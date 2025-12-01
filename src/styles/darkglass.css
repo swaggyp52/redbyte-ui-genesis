@@ -1,0 +1,46 @@
+﻿/* ==== RedByte DarkGlass System ==== */
+.darkglass {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 20px;
+  transition: 0.25s ease;
+}
+
+.darkglass:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Cyber glow text */
+.holo {
+  background: linear-gradient(90deg, #ff004f, #6a00ff, #00d9ff);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: holo-fade 3.5s ease infinite;
+}
+
+@keyframes holo-fade {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Holo button */
+.rb-button {
+  padding: 12px 24px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #181818, #101010);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  transition: 0.25s ease;
+}
+
+.rb-button:hover {
+  border-color: #ff004f;
+  box-shadow: 0 0 12px #ff004f55, inset 0 0 12px #ff004f22;
+}

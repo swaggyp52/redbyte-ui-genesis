@@ -1,0 +1,60 @@
+﻿.landing3d-root {
+  position: relative;
+  background: black;
+  min-height: 100vh;
+  overflow: hidden;
+  color: white;
+}
+
+.particles-canvas {
+  position: absolute !important;
+  inset: 0;
+  z-index: 1;
+}
+
+.orb-wrap {
+  width: 350px;
+  height: 350px;
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  transform: translate(-50%, -60%);
+  z-index: 2;
+  opacity: 0.7;
+}
+
+.landing3d-content {
+  position: relative;
+  z-index: 5;
+  text-align: center;
+  top: 30%;
+}
+
+.landing3d-title {
+  font-size: 4rem;
+  font-weight: 900;
+  text-shadow: 0 0 40px #ff0033;
+}
+
+.landing3d-subtitle {
+  opacity: 0.8;
+  margin-top: 10px;
+  font-size: 1.25rem;
+}
+
+.landing3d-enter {
+  margin-top: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: #ff0033;
+  padding: 16px 32px;
+  border-radius: 50px;
+  box-shadow: 0 0 30px #ff0033;
+  transition: 0.25s;
+}
+
+.landing3d-enter:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 40px #ff3355;
+}

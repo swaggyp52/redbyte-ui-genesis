@@ -4,24 +4,21 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite","api": "node api/server.mjs",
+    "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npm run build && git add dist -f && git commit -m \"Deploy: update\" || echo \"No changes\" && git subtree split --prefix dist -b gh-pages-temp && git push origin gh-pages-temp:gh-pages --force && git branch -D gh-pages-temp"
   },
   "dependencies": {
-    "@headlessui/react": "^2.2.9",
-    "@heroicons/react": "^2.2.0",
-    "@radix-ui/react-avatar": "^1.1.11",
-    "@radix-ui/react-dialog": "^1.1.15",
     "clsx": "^2.1.1",
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
     "framer-motion": "^12.23.24",
-    "gh-pages": "^6.3.0",
+    "immer": "^11.0.1",
     "lucide-react": "^0.555.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^7.9.6"
+    "react-rnd": "^10.5.2",
+    "react-router-dom": "^7.9.6",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",

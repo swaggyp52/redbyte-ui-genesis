@@ -1,0 +1,372 @@
+﻿:root {
+  --rb-parallax-x: 0;
+  --rb-parallax-y: 0;
+  --rb-color-pink: #ff4fd8;
+  --rb-color-red: #ff2560;
+  --rb-color-cyan: #4dffff;
+  --rb-color-gold: #ffc857;
+}
+
+/* Desktop chrome -------------------------------------------------------- */
+
+.rb-desktop {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  color: #f9fafb;
+  background: radial-gradient(circle at top, #05020b 0, #020108 45%, #000 100%);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+}
+
+.rb-desktop__chrome {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  min-height: 100vh;
+  padding: 2.5rem 4vw 1.5rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.rb-desktop__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 11px;
+  color: rgba(249, 250, 251, 0.78);
+}
+
+.rb-desktop__topbar-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.rb-desktop__topbar-title {
+  font-weight: 600;
+  color: rgba(249, 250, 251, 0.96);
+}
+
+.rb-desktop__topbar-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: radial-gradient(circle at top, rgba(255, 255, 255, 0.16), rgba(15, 7, 32, 0.92));
+  font-size: 10px;
+  letter-spacing: 0.22em;
+}
+
+.rb-desktop__topbar-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: radial-gradient(circle at center, #4dffff, #00ffa4);
+  box-shadow: 0 0 12px rgba(0, 255, 165, 0.9);
+}
+
+.rb-desktop__topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 11px;
+}
+
+.rb-desktop__topbar-clock {
+  font-variant-numeric: tabular-nums;
+  padding: 0.2rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.2));
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 0 18px rgba(15, 23, 42, 0.95);
+}
+
+.rb-desktop__topbar-tag {
+  padding: 0.17rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(15, 23, 42, 0.7));
+  color: rgba(254, 226, 226, 0.9);
+}
+
+.rb-desktop__main {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 3.5rem;
+}
+
+.rb-desktop__dock {
+  position: fixed;
+  left: 50%;
+  bottom: 1.6rem;
+  transform: translateX(-50%);
+  z-index: 40;
+}
+
+/* RedByte Background Engine --------------------------------------------- */
+
+.rb-engine {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Hypercolor nebula layers */
+.rb-engine__gradient {
+  position: absolute;
+  inset: -10%;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(255, 79, 216, 0.42), transparent 55%),
+    radial-gradient(circle at 85% 10%, rgba(80, 220, 255, 0.55), transparent 55%),
+    radial-gradient(circle at 12% 80%, rgba(255, 37, 92, 0.6), transparent 55%),
+    radial-gradient(circle at 88% 90%, rgba(255, 200, 87, 0.42), transparent 55%),
+    radial-gradient(circle at 50% 50%, rgba(6, 4, 24, 0.98), rgba(1, 2, 7, 1));
+  filter: blur(2px);
+  transform: translate3d(calc(var(--rb-parallax-x) * 10px), calc(var(--rb-parallax-y) * 6px), 0);
+  transition: transform 120ms linear;
+}
+
+/* Perspective grid "floor" */
+.rb-engine__grid {
+  position: absolute;
+  left: -30%;
+  right: -30%;
+  bottom: -40%;
+  height: 120%;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.7;
+  transform-origin: center bottom;
+  transform:
+    perspective(900px)
+    rotateX(68deg)
+    translate3d(0, 16vh, 0)
+    scale(1.6);
+  mix-blend-mode: screen;
+  mask-image: radial-gradient(circle at 50% 4%, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 1) 42%, rgba(0, 0, 0, 1) 100%);
+}
+
+/* Scanlines */
+.rb-engine__scanline {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  background-size: 100% 3px;
+  mix-blend-mode: soft-light;
+  opacity: 0.35;
+  animation: rb-scan 8s linear infinite;
+}
+
+@keyframes rb-scan {
+  from {
+    transform: translateY(-10%);
+  }
+  to {
+    transform: translateY(10%);
+  }
+}
+
+/* VHS noise */
+.rb-engine__noise {
+  position: absolute;
+  inset: -100px;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.06) 0,
+      rgba(255, 255, 255, 0.06) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  opacity: 0.35;
+  mix-blend-mode: soft-light;
+  animation: rb-noise 1.4s steps(4, end) infinite;
+}
+
+@keyframes rb-noise {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  25% {
+    transform: translate3d(-10px, 6px, 0);
+  }
+  50% {
+    transform: translate3d(6px, -4px, 0);
+  }
+  75% {
+    transform: translate3d(-4px, -2px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Orbital rings */
+.rb-engine__orbits {
+  position: absolute;
+  inset: -10%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rb-engine__orbit {
+  position: absolute;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 0 35px rgba(255, 79, 216, 0.28),
+    0 0 80px rgba(80, 220, 255, 0.2);
+  mix-blend-mode: screen;
+  animation: rb-orbit 26s linear infinite;
+}
+
+.rb-engine__orbit--0 {
+  width: 18rem;
+  height: 18rem;
+  border-color: rgba(255, 79, 216, 0.7);
+  animation-duration: 18s;
+}
+
+.rb-engine__orbit--1 {
+  width: 24rem;
+  height: 24rem;
+  border-color: rgba(80, 220, 255, 0.9);
+  animation-duration: 22s;
+}
+
+.rb-engine__orbit--2 {
+  width: 32rem;
+  height: 32rem;
+  border-color: rgba(255, 200, 87, 0.9);
+  animation-duration: 28s;
+}
+
+.rb-engine__orbit--3 {
+  width: 40rem;
+  height: 40rem;
+  border-color: rgba(80, 220, 255, 0.45);
+  animation-duration: 32s;
+}
+
+.rb-engine__orbit--4 {
+  width: 52rem;
+  height: 52rem;
+  border-color: rgba(255, 79, 216, 0.35);
+  animation-duration: 40s;
+}
+
+.rb-engine__orbit--5 {
+  width: 66rem;
+  height: 66rem;
+  border-color: rgba(148, 163, 184, 0.45);
+  animation-duration: 50s;
+}
+
+.rb-engine__orbit--6 {
+  width: 82rem;
+  height: 82rem;
+  border-color: rgba(15, 23, 42, 0.9);
+  box-shadow: 0 0 130px rgba(15, 23, 42, 1);
+  animation-duration: 60s;
+}
+
+@keyframes rb-orbit {
+  from {
+    transform: rotate(0deg) translate3d(0, 0, 0);
+  }
+  to {
+    transform: rotate(360deg) translate3d(0, 0, 0);
+  }
+}
+
+/* Vertical beams */
+.rb-engine__beams {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10vw;
+  mix-blend-mode: screen;
+}
+
+.rb-engine__beam {
+  width: 2px;
+  height: 80vh;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(80, 220, 255, 0.9),
+    rgba(255, 79, 216, 0.85),
+    transparent
+  );
+  filter: blur(1px);
+  opacity: 0.6;
+  animation: rb-beam-pulse 6s ease-in-out infinite;
+}
+
+.rb-engine__beam--center {
+  height: 90vh;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(255, 79, 216, 1),
+    rgba(255, 200, 87, 1),
+    transparent
+  );
+  animation-duration: 7.5s;
+}
+
+.rb-engine__beam--left {
+  animation-delay: -1.2s;
+}
+
+.rb-engine__beam--right {
+  animation-delay: -2.4s;
+}
+
+@keyframes rb-beam-pulse {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: translateY(5vh) scaleY(0.9);
+  }
+  40% {
+    opacity: 0.9;
+    transform: translateY(0) scaleY(1.1);
+  }
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .rb-desktop__chrome {
+    padding: 1.8rem 1.4rem 1.4rem;
+  }
+
+  .rb-desktop__topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+  }
+
+  .rb-desktop__main {
+    padding-top: 2.4rem;
+  }
+}
