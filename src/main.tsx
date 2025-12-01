@@ -1,15 +1,9 @@
-import React from "react";
-import { createRoot } from "react-dom/client";
+﻿import React from "react";
+import ReactDOM from "react-dom/client";
 import App from "./App";
-import "./index.css";
-import { AppProvider } from "./state/AppState";
 
-const container = document.getElementById("root")!;
-
-createRoot(container).render(
+ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <AppProvider>
-      <App />
-    </AppProvider>
+    <App />
   </React.StrictMode>
 );
