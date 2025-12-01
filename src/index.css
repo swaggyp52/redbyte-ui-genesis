@@ -2,31 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap");
-
-* {
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-html,
-body {
-  height: 100%;
+html {
   scroll-behavior: smooth;
-  -webkit-text-size-adjust: 100%;
 }
-
-/* iOS safe areas */
 body {
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
+  font-family: Inter, system-ui, sans-serif;
 }
-
-/* Hide scrollbars on mobile for cleaner feel */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.6);
-  border-radius: 999px;
-}
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-thumb { background: #555; border-radius: 10px; }
