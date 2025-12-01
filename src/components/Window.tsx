@@ -1,39 +1,67 @@
-﻿import { useRedByteOS } from "../os/RedByteOS";
+﻿import React from 'react';
 
-export default function Window({ win }) {
-  const { closeWindow, focusWindow, minimizeWindow, toggleFullscreen } =
-    useRedByteOS();
+interface WindowProps {
+  id: string;
+  title: string;
+  iconEmoji?: string;
+  offset?: number;
+  focused?: boolean;
+  onClose: () => void;
+  onFocus: () => void;
+  children: React.ReactNode;
+}
 
-  if (win.minimized) return null;
+export function Window(props: WindowProps) {
+  const { id, title, iconEmoji, offset = 0, focused, onClose, onFocus, children } = props;
 
-  const style = {
-    position: "absolute",
-    left: win.x,
-    top: win.y,
-    width: win.fullscreen ? "100vw" : win.width,
-    height: win.fullscreen ? "100vh" : win.height,
-    zIndex: win.z,
-    background: "rgba(20,20,20,0.9)",
-    borderRadius: "10px",
-    border: "1px solid #333",
-    backdropFilter: "blur(20px)",
-  };
+  const top = 80 + offset * 26;
+  const left = 120 + offset * 32;
 
   return (
-    <div style={style} onMouseDown={() => focusWindow(win.id)}>
-      <div className="titlebar">
-        <span>{win.title}</span>
-        <div className="buttons">
-          <button onClick={() => minimizeWindow(win.id)}>â€”</button>
-          <button onClick={() => toggleFullscreen(win.id)}>â¬œ</button>
-          <button onClick={() => closeWindow(win.id)}>âœ•</button>
+    <div
+      onMouseDown={onFocus}
+      className={
+        'absolute rounded-2xl border shadow-xl bg-slate-900/95 backdrop-blur overflow-hidden transition-all ' +
+        (focused
+          ? 'border-emerald-400/70 shadow-emerald-500/30'
+          : 'border-white/10 shadow-black/60 opacity-90')
+      }
+      style={{
+        top,
+        left,
+        width: 520,
+        maxWidth: 'calc(100% - 120px)',
+        height: 320,
+      }}
+      data-window-id={id}
+    >
+      {/* Title bar */}
+      <div className='h-9 flex items-center justify-between px-3 border-b border-white/10 bg-slate-950/80'>
+        <div className='flex items-center gap-2'>
+          <div className='flex gap-1.5 mr-2'>
+            <span className='h-2.5 w-2.5 rounded-full bg-rose-500' />
+            <span className='h-2.5 w-2.5 rounded-full bg-amber-400' />
+            <span className='h-2.5 w-2.5 rounded-full bg-emerald-400' />
+          </div>
+          {iconEmoji && (
+            <span className='text-sm mr-1' aria-hidden='true'>
+              {iconEmoji}
+            </span>
+          )}
+          <span className='text-xs font-medium text-slate-100 truncate'>{title}</span>
         </div>
+        <button
+          onClick={onClose}
+          className='text-[11px] px-2 py-0.5 rounded-full bg-slate-800 hover:bg-rose-600 text-slate-200 hover:text-white transition-colors'
+        >
+          Close
+        </button>
       </div>
-      <div className="window-content">
-        {/* the app component */}
-        <win.component />
+
+      {/* Content */}
+      <div className='w-full h-[calc(100%-2.25rem)] p-3 text-xs text-slate-100 overflow-auto bg-gradient-to-br from-slate-900/80 to-slate-950/90'>
+        {children}
       </div>
     </div>
   );
 }
-

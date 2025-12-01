@@ -1,31 +1,52 @@
-﻿import React, { useState } from "react";
+﻿import React, { useState } from 'react';
 
-export default function Calculator() {
-  const [value, setValue] = useState("");
+export function Calculator() {
+  const [expression, setExpression] = useState('');
+  const [result, setResult] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const press = (v) => setValue(value + v);
-  const solve = () => {
-    try { setValue(String(eval(value))); }
-    catch { setValue("ERR"); }
-  };
+  function evaluate() {
+    try {
+      // Very basic, not for untrusted input in real life
+      // eslint-disable-next-line no-eval
+      const value = eval(expression || '0');
+      setResult(String(value));
+      setError(null);
+    } catch (err) {
+      setError('Invalid expression');
+      setResult(null);
+    }
+  }
 
   return (
-    <div style={{ padding: 20, color: "white", fontFamily: "monospace" }}>
-      <h2>Calculator</h2>
-      <input value={value} readOnly style={{
-        width: "100%", padding: 10, marginBottom: 10,
-        background: "black", color: "lime", fontSize: 18
-      }} />
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>
-        {"7894561230.+-*/".split("").map(c => (
-          <button key={c} onClick={() => press(c)} style={{ padding: 10 }}>
-            {c}
-          </button>
-        ))}
-        <button onClick={solve} style={{ gridColumn: "span 4", padding: 10 }}> = </button>
+    <div className='h-full flex flex-col gap-3'>
+      <div className='text-xs text-slate-300'>
+        Enter a simple math expression, then press <span className='font-mono'>=</span>.
+      </div>
+      <div className='flex gap-2'>
+        <input
+          className='flex-1 rounded-md bg-slate-800/80 border border-slate-600 px-2 py-1 text-xs outline-none focus:border-emerald-400'
+          value={expression}
+          onChange={(e) => setExpression(e.target.value)}
+          placeholder='Example: (2 + 3) * 4'
+        />
+        <button
+          onClick={evaluate}
+          className='px-3 py-1 rounded-md bg-emerald-500 hover:bg-emerald-400 text-xs font-semibold text-slate-900'
+        >
+          =
+        </button>
+      </div>
+      {result !== null && (
+        <div className='text-xs'>
+          <span className='text-slate-400 mr-1'>Result:</span>
+          <span className='font-mono text-emerald-300'>{result}</span>
+        </div>
+      )}
+      {error && <div className='text-xs text-rose-400'>{error}</div>}
+      <div className='mt-auto text-[10px] text-slate-500'>
+        This is a simple demo calculator inside RedbyteOS.
       </div>
     </div>
   );
 }
-

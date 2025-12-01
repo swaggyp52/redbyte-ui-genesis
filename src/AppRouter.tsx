@@ -1,7 +1,7 @@
 ﻿import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Landing from './pages/landing/Landing';
-import Desktop from './Desktop';
 import Boot from './pages/Boot';
+import Desktop from './Desktop';
 
 export default function AppRouter() {
   return (

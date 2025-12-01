@@ -1,98 +1,56 @@
-﻿import React from "react";
-import { create } from "zustand";
+﻿import { create } from 'zustand';
+import type { AppId } from './apps';
 
-export interface RedByteWindow {
+let windowCounter = 1;
+
+export interface WindowInstance {
   id: string;
-  appId: string;
+  appId: AppId;
   title: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  z: number;
-  minimized: boolean;
-  fullscreen: boolean;
 }
 
-export interface RedByteApp {
-  id: string;
-  name: string;
-  icon: string;
-  component: React.FC;
-}
-
-interface RedByteState {
-  windows: RedByteWindow[];
-  apps: Record<string, RedByteApp>;
-  theme: string;
-
-  openApp: (appId: string) => void;
+interface OSState {
+  windows: WindowInstance[];
+  focusedId: string | null;
+  openApp: (appId: AppId) => void;
   closeWindow: (id: string) => void;
   focusWindow: (id: string) => void;
-  minimizeWindow: (id: string) => void;
-  toggleFullscreen: (id: string) => void;
-  setTheme: (theme: string) => void;
+  reset: () => void;
 }
 
-export const useRedByteOS = create<RedByteState>((set, get) => ({
+export const useOSStore = create<OSState>((set, get) => ({
   windows: [],
-  apps: {},
-  theme: "neon",
+  focusedId: null,
 
   openApp: (appId) => {
-    const app = get().apps[appId];
-    if (!app) return;
-
-    const id = crypto.randomUUID();
-    const maxZ = Math.max(0, ...get().windows.map(w => w.z));
-
-    const win: RedByteWindow = {
-      id,
-      appId,
-      title: app.name,
-      x: 140 + Math.random() * 80,
-      y: 120 + Math.random() * 40,
-      width: 960,
-      height: 600,
-      z: maxZ + 1,
-      minimized: false,
-      fullscreen: false,
-    };
-
-    set(state => ({ windows: [...state.windows, win] }));
+    const id = 'win-' + windowCounter++;
+    const title = appId.charAt(0).toUpperCase() + appId.slice(1);
+    set((state) => ({
+      windows: [...state.windows, { id, appId, title }],
+      focusedId: id,
+    }));
   },
 
-  closeWindow: (id) =>
-    set(state => ({
-      windows: state.windows.filter(w => w.id !== id),
-    })),
-
-  focusWindow: (id) =>
-    set(state => {
-      if (!state.windows.length) return state;
-      const maxZ = Math.max(...state.windows.map(w => w.z));
+  closeWindow: (id) => {
+    set((state) => {
+      const remaining = state.windows.filter((w) => w.id !== id);
+      const newFocused =
+        state.focusedId === id ? (remaining[remaining.length - 1]?.id ?? null) : state.focusedId;
       return {
-        windows: state.windows.map(w =>
-          w.id === id ? { ...w, z: maxZ + 1 } : w
-        ),
+        windows: remaining,
+        focusedId: newFocused,
       };
-    }),
+    });
+  },
 
-  minimizeWindow: (id) =>
-    set(state => ({
-      windows: state.windows.map(w =>
-        w.id === id ? { ...w, minimized: !w.minimized } : w
-      ),
-    })),
+  focusWindow: (id) => {
+    const exists = get().windows.some((w) => w.id === id);
+    if (!exists) return;
+    set({ focusedId: id });
+  },
 
-  toggleFullscreen: (id) =>
-    set(state => ({
-      windows: state.windows.map(w =>
-        w.id === id ? { ...w, fullscreen: !w.fullscreen } : w
-      ),
-    })),
-
-  setTheme: (theme) => set({ theme }),
+  reset: () => {
+    windowCounter = 1;
+    set({ windows: [], focusedId: null });
+  },
 }));
-
-
