@@ -1,4 +1,4 @@
-﻿@import "./styles/globals.css";
+@import "./styles/globals.css";
 @import "./styles/tokens.css";
 @import "./styles/theme.css";
 @import "./styles/glass.css";
@@ -10,6 +10,7 @@
 @import "./styles/mobile.css";
 @import "./styles/snap.css";
 @import "./styles/background-engine.css";
+@import "./styles/theme.css";
 
 html,
 body,
@@ -34,4 +35,3 @@ canvas {
 .rb-text-faint {
   color: rgba(148, 163, 184, 0.85);
 }
-@import "./styles/theme.css";

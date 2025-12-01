@@ -1,29 +1,12 @@
-﻿#rb-bg-base {
+﻿.rb-bg-engine {
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: -1;
+  pointer-events: none;
   background:
-    radial-gradient(circle at calc(50% + var(--rb-x)*50px) calc(40% + var(--rb-y)*50px),
-      rgba(255,0,80,0.4), transparent),
-    radial-gradient(circle at calc(80% + var(--rb-x)*20px) calc(70% + var(--rb-y)*20px),
-      rgba(0,200,255,0.3), transparent),
-    #05010b;
-  transition: background 0.2s ease-out;
-}
-
-#rb-neon-grid {
-  position: fixed;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255,0,90,0.2) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,200,255,0.2) 1px, transparent 1px);
-  background-size: 40px 40px;
-  mix-blend-mode: screen;
-  opacity: 0.25;
-  animation: rbGridPulse 6s infinite alternate ease-in-out;
-}
-
-@keyframes rbGridPulse {
-  0% { opacity: 0.15; }
-  100% { opacity: 0.35; }
+    radial-gradient(circle at 20% 20%, rgba(255,0,120,0.25), transparent),
+    radial-gradient(circle at 80% 80%, rgba(0,190,255,0.25), transparent),
+    linear-gradient(160deg, #020617, #000);
+  transform: translate(var(--bg-x), var(--bg-y));
+  transition: transform 0.15s ease-out;
 }
