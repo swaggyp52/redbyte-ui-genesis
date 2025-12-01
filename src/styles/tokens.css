@@ -1,0 +1,13 @@
+:root {
+  --font-sans: "Inter", "SF Pro", system-ui, sans-serif;
+
+  --color-bg: #02010a;
+  --color-surface: rgba(18, 16, 45, 0.6);
+  --color-text: #ffffffee;
+  --color-border: rgba(255, 255, 255, 0.15);
+
+  --gradient-primary: linear-gradient(90deg, #76a9ff, #b088ff);
+  --gradient-accent: linear-gradient(90deg, #5ce1ff, #8458ff);
+
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
