@@ -1,21 +1,190 @@
 ﻿<!DOCTYPE html>
-<html lang='en'>
+<html lang="en">
 <head>
-  <meta charset='UTF-8' />
-  <meta name='viewport' content='width=device-width, initial-scale=1.0' />
-  <meta name='theme-color' content='#0d0013' />
-  <meta name='description' content='RedByteOS — A cybercrafted neon operating system for the browser.' />
-  <meta property='og:title' content='RedByteOS' />
-  <meta property='og:description' content='A neon cyber OS designed for the web.' />
-  <meta property='og:image' content='/favicon.svg' />
-  <meta name='twitter:card' content='summary_large_image' />
-  <link rel='icon' href='/favicon.svg' />
-  <title>RedByteOS</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RedbyteOS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #222;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .app-window {
+            position: absolute;
+            width: 300px;
+            height: 200px;
+            background-color: #333;
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            top: 50px;
+            left: 50px;
+            z-index: 10;
+            cursor: move;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-header {
+            background-color: #444;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+        }
+
+        .app-content {
+            padding: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .close-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .taskbar {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: #333;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .taskbar button {
+            background-color: #555;
+        }
+
+        .taskbar button:hover {
+            background-color: #666;
+        }
+
+        .app-icon {
+            width: 50px;
+            height: 50px;
+            margin: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #444;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
-  <div id='root'></div>
-  <script type='module' src='/src/main.tsx'></script>
+    <h1>RedbyteOS Genesis</h1>
+    <p>Your browser is now an OS.</p>
+    <div id="taskbar" class="taskbar">
+        <div class="app-icon" id="boot-icon">💻</div>
+        <div class="app-icon" id="terminal-icon">🖥️</div>
+        <div class="app-icon" id="notes-icon">📝</div>
+        <div class="app-icon" id="calc-icon">🧮</div>
+        <div class="app-icon" id="sys-monitor-icon">📊</div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // Define app data and interactions
+            const openApp = (appName, content) => {
+                const appWindow = document.createElement("div");
+                appWindow.classList.add("app-window");
+                appWindow.innerHTML = \
+                    <div class="app-header">
+                        <span>\</span>
+                        <button class="close-btn">X</button>
+                    </div>
+                    <div class="app-content">
+                        \
+                    </div>
+                \;
+                document.body.appendChild(appWindow);
+
+                // Close button event
+                appWindow.querySelector(".close-btn").addEventListener("click", () => {
+                    document.body.removeChild(appWindow);
+                });
+
+                // Draggable functionality
+                dragElement(appWindow);
+            };
+
+            const dragElement = (elmnt) => {
+                let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+                if (elmnt.querySelector(".app-header")) {
+                    elmnt.querySelector(".app-header").onmousedown = dragMouseDown;
+                } else {
+                    elmnt.onmousedown = dragMouseDown;
+                }
+
+                function dragMouseDown(e) {
+                    e = e || window.event;
+                    e.preventDefault();
+                    pos3 = e.clientX;
+                    pos4 = e.clientY;
+                    document.onmouseup = closeDragElement;
+                    document.onmousemove = elementDrag;
+                }
+
+                function elementDrag(e) {
+                    e = e || window.event;
+                    e.preventDefault();
+                    pos1 = pos3 - e.clientX;
+                    pos2 = pos4 - e.clientY;
+                    pos3 = e.clientX;
+                    pos4 = e.clientY;
+                    elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+                    elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+                }
+
+                function closeDragElement() {
+                    document.onmouseup = null;
+                    document.onmousemove = null;
+                }
+            };
+
+            // App interactions
+            document.getElementById("boot-icon").addEventListener("click", () => openApp("RedbyteOS", "<h2>Welcome to RedbyteOS!</h2><p>System starting...</p>"));
+            document.getElementById("terminal-icon").addEventListener("click", () => openApp("Terminal", "<p>Fake terminal. Type some commands!</p>"));
+            document.getElementById("notes-icon").addEventListener("click", () => openApp("Notes", "<textarea placeholder='Take notes...'></textarea>"));
+            document.getElementById("calc-icon").addEventListener("click", () => openApp("Calculator", "<input type='text' id='calc-input' placeholder='Enter numbers' />"));
+            document.getElementById("sys-monitor-icon").addEventListener("click", () => openApp("System Monitor", "<p>CPU Usage: 20%</p><p>Memory Usage: 50%</p>"));
+        });
+    </script>
 </body>
 </html>
-
-
