@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+.vite/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+out/
+.cache/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Vite cache
+*.temp
+*.tmp
+
+# OS-specific
+.idea/
+.vscode/
