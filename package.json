@@ -10,8 +10,6 @@
     "deploy": "npm run build && git add dist -f && git commit -m \"Deploy: update\" || echo \"No changes\" && git subtree split --prefix dist -b gh-pages-temp && git push origin gh-pages-temp:gh-pages --force && git branch -D gh-pages-temp"
   },
   "dependencies": {
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.4.2",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.24",
     "immer": "^11.0.1",
@@ -20,7 +18,6 @@
     "react-dom": "^18.2.0",
     "react-rnd": "^10.5.2",
     "react-router-dom": "^7.9.6",
-    "three": "^0.181.2",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
