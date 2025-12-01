@@ -7,3 +7,4 @@ Write-Host "`n[1/2] Running initial deploy..." -ForegroundColor Yellow
 
 Write-Host "`n[2/2] Starting auto-watch..." -ForegroundColor Yellow
 & "$PSScriptRoot\watch-deploy.ps1"
+

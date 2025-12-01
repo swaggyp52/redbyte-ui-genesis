@@ -21,3 +21,4 @@ Register-ObjectEvent -InputObject $watcher -EventName Changed -Action {
 while ($true) {
     Start-Sleep 1
 }
+

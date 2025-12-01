@@ -2,9 +2,6 @@
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
-  base: "/", // Cloudflare requires root base path
+  base: "/",        // IMPORTANT for Cloudflare + Custom Domain
   plugins: [react()],
-  build: {
-    outDir: "dist",
-  },
 });
