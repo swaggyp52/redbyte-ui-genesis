@@ -105,6 +105,20 @@
             color: white;
             cursor: pointer;
         }
+
+        .terminal-input {
+            width: 100%;
+            background: black;
+            color: white;
+            border: none;
+            padding: 10px;
+            margin-top: 10px;
+            font-family: monospace;
+        }
+
+        .terminal-output {
+            color: #00FF00;
+        }
     </style>
 </head>
 <body>
@@ -180,10 +194,27 @@
 
             // App interactions
             document.getElementById("boot-icon").addEventListener("click", () => openApp("RedbyteOS", "<h2>Welcome to RedbyteOS!</h2><p>System starting...</p>"));
-            document.getElementById("terminal-icon").addEventListener("click", () => openApp("Terminal", "<p>Fake terminal. Type some commands!</p>"));
+            document.getElementById("terminal-icon").addEventListener("click", () => openApp("Terminal", "<div><input type='text' class='terminal-input' id='terminal-input' placeholder='Type command...'></div><div id='terminal-output' class='terminal-output'></div>"));
             document.getElementById("notes-icon").addEventListener("click", () => openApp("Notes", "<textarea placeholder='Take notes...'></textarea>"));
             document.getElementById("calc-icon").addEventListener("click", () => openApp("Calculator", "<input type='text' id='calc-input' placeholder='Enter numbers' />"));
             document.getElementById("sys-monitor-icon").addEventListener("click", () => openApp("System Monitor", "<p>CPU Usage: 20%</p><p>Memory Usage: 50%</p>"));
+
+            // Terminal functionality
+            document.getElementById("terminal-input")?.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    const input = document.getElementById("terminal-input").value;
+                    let output = "";
+                    if (input === "date") {
+                        output = new Date().toLocaleString();
+                    } else if (input === "cpu") {
+                        output = "CPU Usage: 20%";
+                    } else {
+                        output = Command not found: ;
+                    }
+                    document.getElementById("terminal-output").innerText = output;
+                    document.getElementById("terminal-input").value = "";
+                }
+            });
         });
     </script>
 </body>
