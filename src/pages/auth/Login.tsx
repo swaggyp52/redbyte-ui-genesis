@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAppState } from "../../state/AppState";
 
@@ -49,9 +49,10 @@ export default function Login() {
           disabled={loading || !email}
           className="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 text-xs font-semibold"
         >
-          {loading ? "Signing in�" : "Sign in"}
+          {loading ? "Signing in…" : "Sign in"}
         </button>
       </form>
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --font-sans: "Inter", "SF Pro", system-ui, sans-serif;
 
   --color-bg: #02010a;
@@ -11,3 +11,4 @@
 
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
+

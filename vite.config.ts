@@ -5,3 +5,5 @@ export default defineConfig({
   base: "/",        // IMPORTANT for Cloudflare + Custom Domain
   plugins: [react()],
 });
+
+

@@ -1,4 +1,4 @@
-{
+﻿{
   "compilerOptions": {
     "target": "ESNext",
     "module": "ESNext",
@@ -10,3 +10,4 @@
   },
   "include": ["src"]
 }
+

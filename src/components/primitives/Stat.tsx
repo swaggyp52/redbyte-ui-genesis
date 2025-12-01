@@ -15,3 +15,4 @@ export default function Stat({ label, value, meta }: StatProps) {
     </div>
   );
 }
+

@@ -47,3 +47,4 @@ export default function Sidebar({ route, onRouteChange }) {
     </aside>
   );
 }
+

@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 
 export default function Pricing() {
   return (
@@ -26,3 +26,4 @@ function Plan({ price, features, highlight }) {
     </div>
   );
 }
+

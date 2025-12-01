@@ -1,4 +1,4 @@
-export default function RBHeader({
+﻿export default function RBHeader({
   title,
   subtitle,
 }: {
@@ -12,3 +12,4 @@ export default function RBHeader({
     </header>
   );
 }
+

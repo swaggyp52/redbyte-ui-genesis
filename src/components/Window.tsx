@@ -1,4 +1,4 @@
-import { useRedByteOS } from "../os/RedByteOS";
+﻿import { useRedByteOS } from "../os/RedByteOS";
 
 export default function Window({ win }) {
   const { closeWindow, focusWindow, minimizeWindow, toggleFullscreen } =
@@ -24,9 +24,9 @@ export default function Window({ win }) {
       <div className="titlebar">
         <span>{win.title}</span>
         <div className="buttons">
-          <button onClick={() => minimizeWindow(win.id)}>—</button>
-          <button onClick={() => toggleFullscreen(win.id)}>⬜</button>
-          <button onClick={() => closeWindow(win.id)}>✕</button>
+          <button onClick={() => minimizeWindow(win.id)}>â€”</button>
+          <button onClick={() => toggleFullscreen(win.id)}>â¬œ</button>
+          <button onClick={() => closeWindow(win.id)}>âœ•</button>
         </div>
       </div>
       <div className="window-content">
@@ -36,3 +36,4 @@ export default function Window({ win }) {
     </div>
   );
 }
+

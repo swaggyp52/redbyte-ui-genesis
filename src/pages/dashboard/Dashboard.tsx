@@ -1,4 +1,4 @@
-import React from "react";
+ï»¿import React from "react";
 import { motion } from "framer-motion";
 import { Rocket, Cpu, BarChart3, Bell, MessageCircle } from "lucide-react";
 import { useAppState } from "../../state/AppState";
@@ -32,7 +32,7 @@ export default function Dashboard() {
         <Card icon={<Rocket size={16} />} title="Launch status" value="ONLINE">
           Deployed on GitHub Pages.
         </Card>
-        <Card icon={<Cpu size={16} />} title="Runtime" value="Vite • React 18">
+        <Card icon={<Cpu size={16} />} title="Runtime" value="Vite â€¢ React 18">
           Tailwind + Framer Motion.
         </Card>
         <Card
@@ -88,14 +88,14 @@ export default function Dashboard() {
         >
           <div className="flex justify-between items-center mb-1">
             <h2 className="text-sm font-semibold">System meta</h2>
-            <span className="text-[10px] text-red-500">v2.0 • All Ultra</span>
+            <span className="text-[10px] text-red-500">v2.0 â€¢ All Ultra</span>
           </div>
           <p>
-            • Frontend: React 18, Vite 5, Tailwind, Framer Motion, React Router.
+            â€¢ Frontend: React 18, Vite 5, Tailwind, Framer Motion, React Router.
           </p>
-          <p>• Demo auth: fake JWT, localStorage user session.</p>
-          <p>• AI: Assistant UI wired for a simple Node API.</p>
-          <p>• Hosting: GitHub Pages (static build).</p>
+          <p>â€¢ Demo auth: fake JWT, localStorage user session.</p>
+          <p>â€¢ AI: Assistant UI wired for a simple Node API.</p>
+          <p>â€¢ Hosting: GitHub Pages (static build).</p>
         </motion.div>
       </div>
     </div>
@@ -128,3 +128,4 @@ function Card(props: {
     </motion.div>
   );
 }
+

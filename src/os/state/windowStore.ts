@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import { AppRegistry } from "./apps";
 
 type Win = {
@@ -67,3 +67,4 @@ export const useWindowManager = create<Store>((set, get) => ({
       ),
     })),
 }));
+

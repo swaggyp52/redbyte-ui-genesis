@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+ï»¿import React, { useState } from "react";
 import { motion } from "framer-motion";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
@@ -93,7 +93,7 @@ export default function Assistant() {
       <div className="mt-4 flex gap-2">
         <input
           className="flex-1 px-3 py-2 rounded-2xl bg-neutral-950 border border-neutral-800 text-xs sm:text-sm text-white outline-none focus:border-red-500"
-          placeholder="Ask something…"
+          placeholder="Ask somethingâ€¦"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKey}
@@ -103,9 +103,10 @@ export default function Assistant() {
           disabled={busy || !input.trim()}
           className="px-4 sm:px-6 py-2 rounded-2xl bg-red-600 hover:bg-red-500 disabled:opacity-40 text-xs sm:text-sm font-semibold text-white"
         >
-          {busy ? "Thinking…" : "Send"}
+          {busy ? "Thinkingâ€¦" : "Send"}
         </button>
       </div>
     </div>
   );
 }
+

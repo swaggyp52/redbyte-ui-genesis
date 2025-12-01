@@ -1,4 +1,4 @@
-import React, {
+﻿import React, {
   createContext,
   useContext,
   useEffect,
@@ -120,3 +120,4 @@ export function useAppState() {
   if (!ctx) throw new Error("useAppState must be used within AppProvider");
   return ctx;
 }
+

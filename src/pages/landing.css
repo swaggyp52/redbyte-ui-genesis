@@ -1,0 +1,45 @@
+﻿
+.landing {
+  height: 100vh;
+  background: radial-gradient(circle at 25% 25%, #1A002B, #050008 70%);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+}
+
+.title {
+  font-size: 52px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: #ff006e;
+}
+
+.tagline {
+  font-size: 18px;
+  opacity: 0.8;
+  max-width: 420px;
+}
+
+.launch-btn {
+  margin-top: 20px;
+  padding: 14px 36px;
+  border-radius: 999px;
+  background: #ff006e;
+  color: white;
+  font-weight: bold;
+  text-decoration: none;
+  font-size: 18px;
+  transition: 0.25s ease;
+}
+
+.launch-btn:hover {
+  background: #ff2c8c;
+  transform: scale(1.06);
+}
+
+

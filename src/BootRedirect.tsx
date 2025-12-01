@@ -10,3 +10,4 @@ export default function BootRedirect() {
 
   return null;
 }
+

@@ -42,3 +42,4 @@ const Dock: React.FC<DockProps> = ({ onLaunchpad }) => {
 };
 
 export default Dock;
+

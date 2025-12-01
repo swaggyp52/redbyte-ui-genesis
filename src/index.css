@@ -1,4 +1,4 @@
-@import "./styles/globals.css";
+﻿@import "./styles/globals.css";
 @import "./styles/tokens.css";
 @import "./styles/theme.css";
 @import "./styles/glass.css";
@@ -35,3 +35,4 @@ canvas {
 .rb-text-faint {
   color: rgba(148, 163, 184, 0.85);
 }
+

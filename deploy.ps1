@@ -16,3 +16,4 @@ git branch -D gh-pages-temp 2>$null
 Write-Host "=== DEPLOY COMPLETE ===" -ForegroundColor Green
 Write-Host "Live at: https://redbyteapps.dev"
 
+

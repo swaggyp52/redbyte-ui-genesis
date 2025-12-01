@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { motion } from "framer-motion";
 import { AppWindow, Puzzle, Code } from "lucide-react";
 
@@ -54,3 +54,4 @@ export default function Marketplace() {
     </div>
   );
 }
+

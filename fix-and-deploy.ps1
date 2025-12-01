@@ -36,3 +36,4 @@ git branch -D gh-pages-temp 2>$null
 Write-Host "[6/6] SUCCESS — RedByte OS deployed!" -ForegroundColor Green
 Write-Host "Visit: https://redbyteapps.dev"
 
+

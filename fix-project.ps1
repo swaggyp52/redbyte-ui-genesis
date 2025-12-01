@@ -1,4 +1,4 @@
-Write-Host '=== FIXING PROJECT ===' -ForegroundColor Yellow
+﻿Write-Host '=== FIXING PROJECT ===' -ForegroundColor Yellow
 
 Set-Content vite.config.ts @'
 import { defineConfig } from "vite";
@@ -24,3 +24,4 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 npm install
 
 Write-Host '=== FIX COMPLETE ===' -ForegroundColor Green
+

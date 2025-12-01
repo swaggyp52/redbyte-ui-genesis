@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+﻿import { ReactNode } from "react";
 
 export default function RBFrame({ children }: { children: ReactNode }) {
   return (
@@ -8,3 +8,4 @@ export default function RBFrame({ children }: { children: ReactNode }) {
     </div>
   );
 }
+

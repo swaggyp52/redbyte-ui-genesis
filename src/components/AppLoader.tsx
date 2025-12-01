@@ -20,3 +20,4 @@ export default function AppLoader({ component: Component }) {
     );
   }
 }
+

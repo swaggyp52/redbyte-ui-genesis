@@ -1,14 +1,16 @@
-﻿import React from "react";
-import { HashRouter, Routes, Route } from "react-router-dom";
-import Desktop from "./pages/Desktop";
+﻿import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Landing from './pages/landing/Landing';
+import Desktop from './Desktop';
+import Boot from './pages/Boot';
 
 export default function AppRouter() {
   return (
-    <HashRouter>
+    <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Desktop />} />
-        <Route path="/desktop" element={<Desktop />} />
+        <Route path='/' element={<Landing />} />
+        <Route path='/boot' element={<Boot />} />
+        <Route path='/os/*' element={<Desktop />} />
       </Routes>
-    </HashRouter>
+    </BrowserRouter>
   );
 }

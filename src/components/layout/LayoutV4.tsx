@@ -38,3 +38,4 @@ function NavLink({ icon, label, to }) {
     </Link>
   );
 }
+

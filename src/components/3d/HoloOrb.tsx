@@ -21,3 +21,4 @@ export default function HoloOrb() {
     </Canvas>
   );
 }
+

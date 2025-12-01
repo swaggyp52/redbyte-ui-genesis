@@ -37,3 +37,4 @@ export default function Window({ title, children, onClose }) {
     </div>
   );
 }
+

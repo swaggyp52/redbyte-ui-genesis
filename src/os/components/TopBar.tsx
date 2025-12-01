@@ -54,3 +54,4 @@ const TopBar: React.FC<TopBarProps> = ({ onLaunchpad }) => {
 };
 
 export default TopBar;
+
