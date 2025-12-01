@@ -3,14 +3,12 @@ import BackgroundEngine from "../os/components/BackgroundEngine";
 import DesktopIcons from "../os/components/DesktopIcons";
 import OSWindowHost from "../os/components/OSWindowHost";
 
-const Desktop = () => {
+export default function Desktop() {
   return (
-    <div className="rb-desktop">
+    <div className="relative h-screen w-screen">
       <BackgroundEngine />
       <DesktopIcons />
       <OSWindowHost />
     </div>
   );
-};
-
-export default Desktop;
+}

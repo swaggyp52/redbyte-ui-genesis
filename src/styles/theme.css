@@ -1,14 +1,20 @@
-html {
-  --transition-fast: 150ms ease;
-  --transition-medium: 300ms ease;
-  --transition-slow: 700ms ease;
+﻿.rb-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+.rb-window-host {
+  position: relative;
+  z-index: 10;
 }
 
 body {
-  animation: fadeIn var(--transition-slow);
+  background: black;
+  overflow: hidden;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+:root {
+  --rb-accent: #ff1188;
+  --rb-accent-glow: 0 0 20px #ff118855;
 }

@@ -1,6 +1,6 @@
 ﻿import React from "react";
 import { useWindowManager } from "../state/windowStore";
-import OSWindow from "./OSWindow";
+import OSWindow from "../components/Window";
 import "./oswindowhost.css";
 
 export default function OSWindowHost() {

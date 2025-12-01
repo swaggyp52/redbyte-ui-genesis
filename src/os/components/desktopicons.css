@@ -1,33 +1,9 @@
-﻿.rb-icon-wrap {
-  position: absolute;
-  top: 100px;
-  left: 80px;
-  display: flex;
-  flex-direction: column;
-  gap: 40px;
+﻿.icon {
+  transition: transform .2s, filter .2s;
+  filter: drop-shadow(0 0 5px #ff118855);
 }
 
-.rb-icon {
-  color: white;
-  cursor: pointer;
-  text-align: center;
-  font-family: "Orbitron", sans-serif;
-  transition: transform 0.2s ease;
-}
-
-.rb-icon:hover {
-  transform: translateY(-4px) scale(1.05);
-}
-
-.rb-icon-square {
-  width: 70px;
-  height: 70px;
-  border-radius: 15px;
-  border: 1px solid rgba(255,0,90,0.7);
-  background: rgba(0,0,0,0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 0 20px rgba(255,0,90,0.4);
+.icon:hover {
+  transform: scale(1.15) translateY(-4px);
+  filter: drop-shadow(0 0 15px #ff1188aa);
 }

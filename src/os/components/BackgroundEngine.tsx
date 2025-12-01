@@ -1,25 +1,25 @@
-﻿import React, { useEffect } from "react";
-import "./background.css";
+﻿import React, { Suspense } from "react";
+import { Canvas } from "@react-three/fiber";
+import { Points, PointMaterial } from "@react-three/drei";
+import * as random from "maath/random";
 
-const BackgroundEngine: React.FC = () => {
-  useEffect(() => {
-    const mover = (e: PointerEvent) => {
-      const x = (e.clientX / window.innerWidth - 0.5) * 2;
-      const y = (e.clientY / window.innerHeight - 0.5) * 2;
-      document.documentElement.style.setProperty("--rb-x", x.toString());
-      document.documentElement.style.setProperty("--rb-y", y.toString());
-    };
-    window.addEventListener("pointermove", mover);
-    return () => window.removeEventListener("pointermove", mover);
-  }, []);
+export default function BackgroundEngine() {
+  const positions = React.useMemo(() => random.inSphere(new Float32Array(5000), { radius: 1.5 }), []);
 
   return (
-    <>
-      <div id="rb-bg-base" />
-      <canvas id="rb-particles"></canvas>
-      <div id="rb-neon-grid" />
-    </>
+    <div className="rb-background">
+      <Canvas camera={{ position: [0, 0, 1] }}>
+        <Suspense fallback={null}>
+          <Points positions={positions} stride={3} frustumCulled>
+            <PointMaterial
+              size={0.005}
+              color="#ff1188"
+              opacity={0.6}
+              transparent
+            />
+          </Points>
+        </Suspense>
+      </Canvas>
+    </div>
   );
-};
-
-export default BackgroundEngine;
+}
