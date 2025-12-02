@@ -13,6 +13,7 @@ import { TerminalApp } from "../../apps/TerminalApp";
 import { NotesApp } from "../../apps/NotesApp";
 import { SystemMonitorApp } from "../../apps/SystemMonitorApp";
 import { FileExplorerApp } from "../../apps/FileExplorerApp";
+import { SettingsApp } from "../../apps/SettingsApp";
 
 type DesktopAppId =
   | "file-explorer"
@@ -21,7 +22,8 @@ type DesktopAppId =
   | "cpu-designer"
   | "terminal"
   | "notes"
-  | "system-monitor";
+  | "system-monitor"
+  | "settings";
 
 interface DesktopAppDef {
   id: DesktopAppId;
@@ -81,6 +83,13 @@ const APPS: DesktopAppDef[] = [
     icon: "📊",
     component: SystemMonitorApp,
   },
+  {
+    id: "settings",
+    title: "Settings",
+    description: "Control boot mode, themes and user preferences.",
+    icon: "⚙️",
+    component: SettingsApp,
+  },
 ];
 
 type WindowId = string;
@@ -104,6 +113,7 @@ interface DragState {
 
 const INITIAL_WIDTH = 720;
 const INITIAL_HEIGHT = 480;
+const CURRENT_USER_KEY = "redbyte_current_user_v1";
 
 // Register commands at module load
 APPS.forEach((app) => {
@@ -142,6 +152,16 @@ registerCommand({
     ),
 });
 
+registerCommand({
+  id: "open-settings",
+  label: "Open Settings",
+  keywords: ["settings", "preferences", "boot", "theme"],
+  action: () =>
+    window.dispatchEvent(
+      new CustomEvent("RB_OPEN_APP", { detail: { id: "settings" } })
+    ),
+});
+
 export function Desktop() {
   const [windows, setWindows] = useState<DesktopWindow[]>([]);
   const [activeId, setActiveId] = useState<WindowId | null>(null);
@@ -153,6 +173,31 @@ export function Desktop() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [missionControl, setMissionControl] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+
+  // Persist current user to localStorage for SettingsApp
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (currentUser) {
+      try {
+        window.localStorage.setItem(
+          CURRENT_USER_KEY,
+          JSON.stringify({
+            id: currentUser.id,
+            name: currentUser.name,
+            tag: currentUser.tag,
+          })
+        );
+      } catch {
+        // ignore
+      }
+    } else {
+      try {
+        window.localStorage.removeItem(CURRENT_USER_KEY);
+      } catch {
+        // ignore
+      }
+    }
+  }, [currentUser]);
 
   // Global hotkeys
   useEffect(() => {
@@ -272,13 +317,10 @@ export function Desktop() {
       />
 
       <div className="relative flex-1">
-        {/* Command Palette */}
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
-        {/* Desktop background */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" />
 
-        {/* Desktop icons */}
         <div className="absolute left-4 top-4 flex flex-col gap-3 z-10">
           {APPS.map((app) => (
             <button
@@ -298,7 +340,6 @@ export function Desktop() {
           ))}
         </div>
 
-        {/* Windows */}
         {windows.map((win) => {
           const def = APPS.find((a) => a.id === win.appId);
           if (!def) return null;
@@ -350,7 +391,6 @@ export function Desktop() {
           );
         })}
 
-        {/* Mission Control overlay */}
         {missionControl && (
           <div className="absolute inset-0 z-[60] bg-slate-950/90 backdrop-blur-xl flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800/80">
@@ -417,7 +457,6 @@ export function Desktop() {
           </div>
         )}
 
-        {/* Login overlay (blocks everything until user is chosen) */}
         <LoginOverlay currentUser={currentUser} onLogin={setCurrentUser} />
       </div>
     </div>

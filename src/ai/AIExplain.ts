@@ -21,6 +21,8 @@ export async function explainApp(appId: string, title: string) {
       "System Monitor shows OS-like stats: window counts, simulation load and other health indicators.",
     "file-explorer":
       "File Explorer lets you browse the RedByte virtual filesystem: Documents, Projects and Exports. It includes a Quick Access sidebar and a Recent Files list so you can quickly find your work.",
+    "settings":
+      "Settings is the control panel for RedByte OS. It controls boot mode (cinematic vs instant), user-facing hints, theme preferences and favorite apps. In future versions it can sync these settings to cloud accounts.",
   };
 
   if (KNOW[appId]) {
