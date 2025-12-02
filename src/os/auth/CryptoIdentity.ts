@@ -42,7 +42,9 @@ async function sha256Hex(data: Uint8Array): Promise<string> {
   if (typeof crypto === "undefined" || !crypto.subtle) {
     return "";
   }
-  const hashBuf = await crypto.subtle.digest("SHA-256", data);
+  // Use a sliced buffer so TypeScript is happy with BufferSource
+  const copy = data.slice();
+  const hashBuf = await crypto.subtle.digest("SHA-256", copy.buffer);
   const arr = Array.from(new Uint8Array(hashBuf));
   return arr.map((b) => b.toString(16).padStart(2, "0")).join("").toUpperCase();
 }

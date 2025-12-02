@@ -1,4 +1,4 @@
-ï»¿import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { loadGlobalSettings } from "../settings/SettingsStore";
 
 interface BootScreenProps {
@@ -118,7 +118,7 @@ export function BootScreen({ onDone }: BootScreenProps) {
         lastPhaseRef.current = idx;
         const phase = PHASES[idx];
         const timestamp = new Date().toISOString().split("T")[1]?.slice(0, 8);
-        const line = `[${timestamp}] ${phase.label}â€¦`;
+        const line = `[${timestamp}] ${phase.label}…`;
         logsRef.current = [...logsRef.current, line];
         setLogs(logsRef.current.slice(-18));
       }
@@ -246,7 +246,7 @@ export function BootScreen({ onDone }: BootScreenProps) {
                   </div>
                 </div>
                 <div className="rb-glass rounded-xl border border-slate-800/80 bg-slate-950/80 px-2 py-1">
-                  <className className="text-slate-500">LOGIC HEAT</className>
+                  <span className="text-slate-500">LOGIC HEAT</span>
                   <div className="text-sky-400 text-sm">
                     {logicWarmth}%
                   </div>
@@ -276,7 +276,7 @@ export function BootScreen({ onDone }: BootScreenProps) {
                 <div className="h-full w-full overflow-y-auto px-3 py-2 text-[0.7rem] font-mono text-slate-300 space-y-0.5">
                   {logs.length === 0 && enabled && (
                     <div className="text-slate-500">
-                      Awaiting first phaseâ€¦
+                      Awaiting first phase…
                     </div>
                   )}
                   {logs.map((line, idx) => (
@@ -285,8 +285,8 @@ export function BootScreen({ onDone }: BootScreenProps) {
                     </div>
                   ))}
                   <div className="text-slate-500 flex items-center gap-1">
-                    <span className="text-emerald-400">â€º</span>
-                    <span>Preparing desktop, apps and AI systemsâ€¦</span>
+                    <span className="text-emerald-400">›</span>
+                    <span>Preparing desktop, apps and AI systems…</span>
                   </div>
                 </div>
               </div>
@@ -313,10 +313,10 @@ export function BootScreen({ onDone }: BootScreenProps) {
 
           <div className="flex items-center justify-between text-[0.65rem] text-slate-500 pt-1 border-t border-slate-900/80">
             <span className="font-mono">
-              REDBYTE-OS v39 â€¢ SIM/LOGIC/3D READY
+              REDBYTE-OS v39 • SIM/LOGIC/3D READY
             </span>
             <span className="font-mono">
-              NEXT: LOGIN â€¢ DESKTOP â€¢ PALETTE â€¢ LAB
+              NEXT: LOGIN • DESKTOP • PALETTE • LAB
             </span>
           </div>
         </div>
