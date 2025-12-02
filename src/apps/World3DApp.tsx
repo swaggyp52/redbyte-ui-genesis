@@ -18,6 +18,7 @@ import {
   exportSliceToBlueprint,
 } from "../world3d/BlueprintBridge";
 import { resetSimHistory } from "../world3d/SimMetrics";
+import { RadialMenu, type RadialItem } from "../ui/RadialMenu";
 
 type Tool = "paint" | "erase" | "eyedropper";
 
@@ -32,6 +33,13 @@ const VOXEL_TYPES: VoxelType[] = [
   "torch",
   "output",
 ];
+
+interface HoveredVoxel {
+  x: number;
+  y: number;
+  z: number;
+  block: VoxelBlock | null;
+}
 
 export function World3DApp() {
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -53,6 +61,14 @@ export function World3DApp() {
 
   const [activeTool, setActiveTool] = useState<Tool>("paint");
   const [activeType, setActiveType] = useState<VoxelType>("wire");
+
+  const [hovered, setHovered] = useState<HoveredVoxel | null>(null);
+
+  const [radialOpen, setRadialOpen] = useState(false);
+  const [radialPos, setRadialPos] = useState<{ x: number; y: number }>({
+    x: 0,
+    y: 0,
+  });
 
   useEffect(() => {
     const unsub = subscribeWorld((blocks) => setVoxels(blocks));
@@ -305,17 +321,24 @@ export function World3DApp() {
     setSelectedBlueprint(name);
   };
 
-  const applyToolToVoxel = (vx: number, vy: number, vz: number) => {
+  const applyToolToVoxel = (
+    vx: number,
+    vy: number,
+    vz: number,
+    toolOverride?: Tool
+  ) => {
+    const tool = toolOverride ?? activeTool;
+
     if (vx < 0 || vx >= WORLD_SIZE) return;
     if (vy < 0 || vy >= WORLD_SIZE) return;
     if (vz < 0 || vz >= WORLD_SIZE) return;
 
-    if (activeTool === "erase") {
+    if (tool === "erase") {
       setVoxel(vx, vy, vz, "air", false);
       return;
     }
 
-    if (activeTool === "eyedropper") {
+    if (tool === "eyedropper") {
       const b = getVoxel(vx, vy, vz);
       if (b && b.type !== "air") {
         setActiveType(b.type);
@@ -323,18 +346,31 @@ export function World3DApp() {
       return;
     }
 
-    if (activeTool === "paint") {
+    if (tool === "paint") {
       setVoxel(vx, vy, vz, activeType, false);
     }
   };
 
-  const handleCanvasPointerDown: React.MouseEventHandler<HTMLDivElement> = (
+  const handleCanvasMouseDown: React.MouseEventHandler<HTMLDivElement> = (
     e
   ) => {
     const mount = mountRef.current;
     const camera = cameraRef.current;
     const group = voxelGroupRef.current;
     if (!mount || !camera || !group) return;
+
+    // Right-click opens radial tool wheel
+    if (e.button === 2) {
+      e.preventDefault();
+      setRadialPos({ x: e.clientX, y: e.clientY });
+      setRadialOpen(true);
+      return;
+    }
+
+    if (radialOpen) {
+      // If wheel is open, ignore direct editing
+      return;
+    }
 
     const rect = mount.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -349,11 +385,56 @@ export function World3DApp() {
       const vx = hit.object.userData.vx as number;
       const vy = hit.object.userData.vy as number;
       const vz = hit.object.userData.vz as number;
-      applyToolToVoxel(vx ?? 0, vy ?? 0, vz ?? 0);
+
+      // Left-click = use current tool
+      if (e.button === 0) {
+        applyToolToVoxel(vx ?? 0, vy ?? 0, vz ?? 0);
+      }
+
+      return;
+    }
+  };
+
+  const handleCanvasMouseMove: React.MouseEventHandler<HTMLDivElement> = (
+    e
+  ) => {
+    if (radialOpen) {
+      setHovered(null);
       return;
     }
 
-    // If you click empty space, do nothing (camera is handled by OrbitControls).
+    const mount = mountRef.current;
+    const camera = cameraRef.current;
+    const group = voxelGroupRef.current;
+    if (!mount || !camera || !group) {
+      setHovered(null);
+      return;
+    }
+
+    const rect = mount.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
+
+    const voxelHits = raycaster.intersectObjects(group.children, false);
+    if (voxelHits.length > 0) {
+      const hit = voxelHits[0];
+      const vx = hit.object.userData.vx as number;
+      const vy = hit.object.userData.vy as number;
+      const vz = hit.object.userData.vz as number;
+      const block = getVoxel(vx, vy, vz);
+      setHovered({ x: vx, y: vy, z: vz, block: block ?? null });
+    } else {
+      setHovered(null);
+    }
+  };
+
+  const handleCanvasContextMenu: React.MouseEventHandler<HTMLDivElement> = (
+    e
+  ) => {
+    e.preventDefault();
   };
 
   const toolLabel = (t: Tool) => {
@@ -369,6 +450,54 @@ export function World3DApp() {
     }
   };
 
+  let suggestion: string;
+  if (!voxels.length) {
+    suggestion = "Click “Seed demo world” to place a starter example you can explore and edit.";
+  } else if (!hovered || !hovered.block) {
+    suggestion =
+      "Drag to look around, scroll to zoom. Right-click opens the tool wheel. Hover blocks to see what they are.";
+  } else {
+    const t = hovered.block.type;
+    suggestion = `Left-click changes this ${t} using the active tool. Right-click opens the wheel to switch tools.`;
+  }
+
+  const hoveredLabel =
+    hovered?.block && hovered.block.type !== "air"
+      ? `${hovered.block.type} @ (${hovered.x},${hovered.y},${hovered.z}) · power ${hovered.block.powerLevel}`
+      : hovered
+      ? `Empty @ (${hovered.x},${hovered.y},${hovered.z})`
+      : "Hover blocks to inspect them.";
+
+  const radialItems: RadialItem[] = [
+    { id: "wire", label: "Wire", subtitle: "Connect power", icon: "▬" },
+    { id: "source", label: "Source", subtitle: "Emit signal", icon: "S" },
+    { id: "repeater", label: "Repeater", subtitle: "Delay + boost", icon: "R" },
+    { id: "comparator", label: "Comparator", subtitle: "Analog logic", icon: "C" },
+    { id: "torch", label: "Torch", subtitle: "Inverter", icon: "T" },
+    { id: "output", label: "Output", subtitle: "Lamp / target", icon: "O" },
+    { id: "erase", label: "Erase", subtitle: "Remove blocks", icon: "✕" },
+    { id: "eyedrop", label: "Eyedrop", subtitle: "Pick block", icon: "◎" },
+  ];
+
+  const activeRadialId =
+    activeTool === "erase"
+      ? "erase"
+      : activeTool === "eyedropper"
+      ? "eyedrop"
+      : activeType;
+
+  const handleRadialSelect = (id: string) => {
+    if (id === "erase") {
+      setActiveTool("erase");
+    } else if (id === "eyedrop") {
+      setActiveTool("eyedropper");
+    } else {
+      setActiveTool("paint");
+      setActiveType(id as VoxelType);
+    }
+    setRadialOpen(false);
+  };
+
   return (
     <div className="h-full flex flex-col gap-3 text-xs">
       <header className="flex items-center justify-between border-b border-slate-800/80 pb-2">
@@ -377,8 +506,9 @@ export function World3DApp() {
             3D Redstone World (Sim + Edit)
           </h1>
           <p className="text-[0.7rem] text-slate-400">
-            Voxel-based Redstone simulation with 3D editing tools and 2D
-            blueprint import/export. Shared with World Map 2D and Redstone Sim.
+            Orbit the world, click blocks to change them, and use the radial
+            tool wheel (right-click) to switch tools. Everything runs on the
+            same live Redstone engine.
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
@@ -468,9 +598,12 @@ export function World3DApp() {
               {VOXEL_TYPES.map((t) => (
                 <button
                   key={t}
-                  onClick={() => setActiveType(t)}
+                  onClick={() => {
+                    setActiveType(t);
+                    setActiveTool("paint");
+                  }}
                   className={`px-2 py-1 rounded-xl border text-[0.7rem] ${
-                    activeType === t
+                    activeType === t && activeTool === "paint"
                       ? "border-emerald-500/80 text-emerald-300 bg-emerald-500/10"
                       : "border-slate-700/80 text-slate-300 hover:border-emerald-500/60"
                   }`}
@@ -498,79 +631,54 @@ export function World3DApp() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 text-[0.7rem] pt-1 border-t border-slate-800/80 mt-2">
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400">Bridge Y-level</span>
-            <input
-              type="range"
-              min={0}
-              max={WORLD_SIZE - 1}
-              value={layerY}
-              onChange={(e) => setLayerY(Number(e.target.value))}
-              className="w-32"
-            />
-            <span className="font-mono text-slate-100">{layerY}</span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-slate-400">
+            <span>
+              <span className="font-semibold text-slate-300">Camera:</span>{" "}
+              Drag to orbit, scroll to zoom, right or middle drag to pan.
+            </span>
+            <span>
+              <span className="font-semibold text-slate-300">Tools:</span>{" "}
+              Right-click opens the tool wheel. Left-click uses the selected
+              tool.
+            </span>
           </div>
-
-          <div className="flex items-center gap-2">
-            <select
-              value={selectedBlueprint}
-              onChange={(e) => setSelectedBlueprint(e.target.value)}
-              className="bg-slate-900/80 border border-slate-700/80 rounded-xl px-2 py-1 text-[0.7rem] text-slate-100"
-            >
-              <option value="">Select 2D blueprint...</option>
-              {blueprints.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-            <button
-              className="px-2 py-1 rounded-xl border border-sky-500/70 text-[0.7rem] text-sky-300 hover:bg-sky-500/10"
-              onClick={handleImportBlueprint}
-              disabled={!selectedBlueprint}
-            >
-              Import → Y={layerY}
-            </button>
-          </div>
-
-          <button
-            className="px-2 py-1 rounded-xl border border-fuchsia-500/70 text-[0.7rem] text-fuchsia-300 hover:bg-fuchsia-500/10 ml-auto"
-            onClick={handleExportSlice}
-          >
-            Export Y={layerY} slice as blueprint
-          </button>
-        </div>
-
-        <div className="text-[0.7rem] text-slate-500 mt-1 flex flex-wrap gap-4">
-          <span>
-            <span className="font-semibold text-slate-300">Camera:</span>{" "}
-            Drag with mouse to orbit, scroll to zoom, right-click or middle-click
-            to pan.
-          </span>
-          <span>
-            <span className="font-semibold text-slate-300">Editing:</span>{" "}
-            Click voxels to {activeTool === "erase" ? "erase" : "paint"} using
-            the active brush type. Use eyedrop to pick blocks.
-          </span>
         </div>
       </section>
 
-      <section className="flex-1 min-h-0 rb-glass rounded-2xl p-3 border border-slate-800/80">
+      <section className="flex-1 min-h-0 rb-glass rounded-2xl p-3 border border-slate-800/80 relative">
         <div
           ref={mountRef}
-          onMouseDown={handleCanvasPointerDown}
+          onMouseDown={handleCanvasMouseDown}
+          onMouseMove={handleCanvasMouseMove}
+          onContextMenu={handleCanvasContextMenu}
           className="w-full h-full rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 cursor-crosshair relative"
         >
-          <div className="absolute top-2 right-2 bg-slate-950/80 border border-slate-700/80 rounded-xl px-2 py-1 text-[0.65rem] text-slate-300 pointer-events-none">
+          <div className="absolute top-2 left-2 bg-slate-950/80 border border-slate-700/80 rounded-xl px-2 py-1 text-[0.65rem] text-slate-300">
             <div className="font-semibold text-slate-100 mb-1">
-              Controls
+              Hover info
             </div>
-            <div>🖱️ Drag: orbit</div>
-            <div>🖱️ Wheel: zoom</div>
-            <div>🖱️ Right/Middle drag: pan</div>
-            <div>👆 Click voxel: {activeTool}</div>
+            <div className="text-[0.65rem] text-slate-300">
+              {hoveredLabel}
+            </div>
+          </div>
+
+          <div className="absolute top-2 right-2 bg-slate-950/80 border border-slate-700/80 rounded-xl px-2 py-1 text-[0.65rem] text-slate-300 max-w-xs">
+            <div className="font-semibold text-slate-100 mb-1">
+              Hint
+            </div>
+            <div className="text-[0.65rem] text-slate-300">{suggestion}</div>
           </div>
         </div>
+
+        <RadialMenu
+          open={radialOpen}
+          x={radialPos.x}
+          y={radialPos.y}
+          items={radialItems}
+          activeId={activeRadialId}
+          onSelect={handleRadialSelect}
+          onRequestClose={() => setRadialOpen(false)}
+        />
       </section>
     </div>
   );

@@ -12,6 +12,12 @@ import {
 
 type ComparatorMode = "compare" | "subtract";
 
+interface HoveredCell {
+  x: number;
+  z: number;
+  cell: SliceCell | null;
+}
+
 export function WorldMap2DApp() {
   const [level, setLevel] = useState<number>(Math.floor(WORLD_SIZE / 2));
   const [slice, setSlice] = useState<SliceCell[][]>(() =>
@@ -26,6 +32,7 @@ export function WorldMap2DApp() {
     useState<ComparatorMode>("compare");
 
   const [showDustLevels, setShowDustLevels] = useState<boolean>(false);
+  const [hovered, setHovered] = useState<HoveredCell | null>(null);
 
   const refreshSlice = (y: number) => {
     setSlice(getSliceGrid(y));
@@ -100,6 +107,16 @@ export function WorldMap2DApp() {
     });
   };
 
+  const handleCellHover = (x: number, z: number) => {
+    const row = slice[z];
+    const cell = row?.[x] ?? null;
+    setHovered({ x, z, cell });
+  };
+
+  const handleCellLeave = () => {
+    setHovered(null);
+  };
+
   const renderCellLabel = (cell: SliceCell) => {
     if (cell.type === "wire" && showDustLevels) {
       return cell.powerLevel > 0 ? cell.powerLevel.toString(10) : "";
@@ -135,6 +152,23 @@ export function WorldMap2DApp() {
     "west",
   ];
 
+  const hoveredText = (() => {
+    if (!hovered || !hovered.cell) {
+      return "Hover over a cell to see what it is.";
+    }
+    const c = hovered.cell;
+    if (c.type === "air") {
+      return `Empty @ (${hovered.x},${level},${hovered.z})`;
+    }
+    const powerText =
+      c.type === "wire"
+        ? ` · power ${c.powerLevel}`
+        : c.powered
+        ? " · powered"
+        : " · off";
+    return `${c.type} @ (${hovered.x},${level},${hovered.z})${powerText}`;
+  })();
+
   return (
     <div className="h-full flex flex-col gap-3 text-xs">
       <header className="flex items-center justify-between border-b border-slate-800/80 pb-2">
@@ -143,8 +177,8 @@ export function WorldMap2DApp() {
             Redstone Map (2D Slice)
           </h1>
           <p className="text-[0.7rem] text-slate-400">
-            Top-down view of a single Y-level of the 3D voxel world. Editing
-            here modifies the shared VoxelWorld.
+            A simple, top-down view of one height level of the 3D world. For
+            people who prefer a diagram over a 3D scene.
           </p>
         </div>
         <span className="text-[0.65rem] text-slate-500 uppercase">
@@ -168,7 +202,9 @@ export function WorldMap2DApp() {
           </div>
 
           <span className="ml-auto text-[0.7rem] text-slate-400">
-            Shared with <span className="font-mono">3D Redstone World</span>.
+            Shared with{" "}
+            <span className="font-mono text-slate-100">3D Redstone World</span>.
+            Change it here or there, it is the same circuit.
           </span>
         </div>
 
@@ -246,82 +282,107 @@ export function WorldMap2DApp() {
         </div>
 
         <div className="text-[0.7rem] text-slate-500">
-          Tip: <span className="font-mono">Right-click</span> a comparator cell
-          to toggle its mode between compare/subtract. Enable dust debug to see
-          numeric power levels (0–15) on dust.
+          Tip:{" "}
+          <span className="font-mono">Right-click</span> a comparator cell
+          to toggle its mode between compare/subtract. Turn on dust debug to
+          see power levels (0–15) on wires.
         </div>
       </section>
 
-      <section className="flex-1 min-h-0 rb-glass rounded-2xl p-3 border border-slate-800/80 flex items-center justify-center overflow-auto">
-        <div className="inline-flex flex-col bg-slate-950/90 rounded-2xl border border-slate-800/80 p-2">
-          {slice.map((row, z) => (
-            <div key={z} className="flex">
-              {row.map((cell, x) => {
-                let bg = "bg-slate-900";
-                let border = "border-slate-700";
-                let extraStyle: React.CSSProperties | undefined;
+      <section className="flex-1 min-h-0 rb-glass rounded-2xl p-3 border border-slate-800/80 flex flex-col gap-2">
+        <div className="flex items-center justify-between text-[0.7rem] text-slate-300">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold">Hover info:</span>
+            <span className="text-slate-300">{hoveredText}</span>
+          </div>
+          <span className="text-slate-500">
+            Think of this like graph paper for your circuit.
+          </span>
+        </div>
 
-                if (cell.type === "wire") {
-                  if (cell.powerLevel > 0) {
-                    const intensity = Math.max(
-                      0.15,
-                      Math.min(1, cell.powerLevel / 15)
-                    );
-                    bg = "bg-sky-400";
-                    border = "border-sky-300";
-                    extraStyle = { opacity: 0.3 + 0.7 * intensity };
+        <div className="flex-1 min-h-0 flex items-center justify-center overflow-auto">
+          <div className="inline-flex flex-col bg-slate-950/90 rounded-2xl border border-slate-800/80 p-2">
+            {slice.map((row, z) => (
+              <div key={z} className="flex">
+                {row.map((cell, x) => {
+                  let bg = "bg-slate-900";
+                  let border = "border-slate-700";
+                  let extraStyle: React.CSSProperties | undefined;
+
+                  if (cell.type === "wire") {
+                    if (cell.powerLevel > 0) {
+                      const intensity = Math.max(
+                        0.15,
+                        Math.min(1, cell.powerLevel / 15)
+                      );
+                      bg = "bg-sky-400";
+                      border = "border-sky-300";
+                      extraStyle = { opacity: 0.3 + 0.7 * intensity };
+                    } else {
+                      bg = "bg-sky-500/10";
+                      border = "border-sky-500/60";
+                      extraStyle = { opacity: 0.25 };
+                    }
                   } else {
-                    bg = "bg-sky-500/10";
-                    border = "border-sky-500/60";
-                    extraStyle = { opacity: 0.25 };
+                    switch (cell.type) {
+                      case "source":
+                        bg = cell.powered
+                          ? "bg-amber-400"
+                          : "bg-amber-500/40";
+                        border = "border-amber-300";
+                        break;
+                      case "gate_and":
+                      case "gate_or":
+                      case "gate_not":
+                      case "repeater":
+                      case "comparator":
+                      case "torch":
+                        bg = cell.powered
+                          ? "bg-emerald-400"
+                          : "bg-emerald-500/20";
+                        border = "border-emerald-300";
+                        break;
+                      case "output":
+                        bg = cell.powered
+                          ? "bg-fuchsia-400"
+                          : "bg-fuchsia-500/20";
+                        border = "border-fuchsia-300";
+                        break;
+                      case "air":
+                      default:
+                        bg = "bg-slate-900";
+                        border = "border-slate-700";
+                        break;
+                    }
                   }
-                } else {
-                  switch (cell.type) {
-                    case "source":
-                      bg = cell.powered
-                        ? "bg-amber-400"
-                        : "bg-amber-500/40";
-                      border = "border-amber-300";
-                      break;
-                    case "gate_and":
-                    case "gate_or":
-                    case "gate_not":
-                    case "repeater":
-                    case "comparator":
-                    case "torch":
-                      bg = cell.powered
-                        ? "bg-emerald-400"
-                        : "bg-emerald-500/20";
-                      border = "border-emerald-300";
-                      break;
-                    case "output":
-                      bg = cell.powered
-                        ? "bg-fuchsia-400"
-                        : "bg-fuchsia-500/20";
-                      border = "border-fuchsia-300";
-                      break;
-                    case "air":
-                    default:
-                      bg = "bg-slate-900";
-                      border = "border-slate-700";
-                      break;
-                  }
-                }
 
-                return (
-                  <button
-                    key={x}
-                    onClick={() => handleCellClick(x, z)}
-                    onContextMenu={(e) => handleCellContextMenu(e, x, z)}
-                    className={`h-6 w-6 m-[1px] rounded-sm border ${bg} ${border} flex items-center justify-center text-[0.65rem] text-slate-900/80`}
-                    style={extraStyle}
-                  >
-                    {renderCellLabel(cell)}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+                  const isHovered =
+                    hovered &&
+                    hovered.x === x &&
+                    hovered.z === z &&
+                    hovered.cell?.type === cell.type;
+
+                  const outlineClass = isHovered
+                    ? "ring-1 ring-sky-400"
+                    : "";
+
+                  return (
+                    <button
+                      key={x}
+                      onClick={() => handleCellClick(x, z)}
+                      onContextMenu={(e) => handleCellContextMenu(e, x, z)}
+                      onMouseEnter={() => handleCellHover(x, z)}
+                      onMouseLeave={handleCellLeave}
+                      className={`h-6 w-6 m-[1px] rounded-sm border ${bg} ${border} ${outlineClass} flex items-center justify-center text-[0.65rem] text-slate-900/80`}
+                      style={extraStyle}
+                    >
+                      {renderCellLabel(cell)}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     </div>
