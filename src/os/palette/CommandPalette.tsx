@@ -1,96 +1,99 @@
-﻿import React, { useMemo, useState } from "react";
-import { apps } from "../registry/apps";
-import { getActions } from "../actions/actions";
-import { loadWorkspaces } from "../workspaces/workspaces";
+﻿import React, { useEffect, useState } from "react";
+import { Commands, Command, emitCommand } from "./CommandRegistry";
 
-interface CommandPaletteProps {
+interface Props {
   open: boolean;
   onClose: () => void;
-  onRun: (action: string) => void;
 }
 
-export const CommandPalette: React.FC<CommandPaletteProps> = ({
-  open,
-  onClose,
-  onRun,
-}) => {
+export function CommandPalette({ open, onClose }: Props) {
   const [query, setQuery] = useState("");
+  const [filtered, setFiltered] = useState<Command[]>([]);
+  const [index, setIndex] = useState(0);
 
-  const workspaces = loadWorkspaces();
-  const actions = getActions();
+  useEffect(() => {
+    if (!open) {
+      setQuery("");
+      setFiltered([]);
+      setIndex(0);
+      return;
+    }
+    setFiltered(Commands);
+  }, [open]);
 
-  const items = useMemo(() => {
-    const sys = [
-      { id: "sys:launchpad", label: "Open Launchpad", hint: "System" },
-      { id: "sys:root", label: "Open /root console", hint: "System" },
-      { id: "sys:agents", label: "Open Agents panel", hint: "System" },
-    ];
-
-    const workspaceItems = workspaces.map((w) => ({
-      id: `ws:${w.id}`,
-      label: `Switch to workspace: ${w.name}`,
-      hint: "Workspace",
-    }));
-
-    const appItems = apps.map((app) => ({
-      id: `app:${app.id}`,
-      label: app.name,
-      hint: app.group ?? "App",
-    }));
-
-    const actionItems = actions.map((a) => ({
-      id: `action:${a.id}`,
-      label: a.label,
-      hint: "Action",
-    }));
-
-    return [...sys, ...workspaceItems, ...appItems, ...actionItems];
-  }, []);
-
-  const filtered = items.filter((i) => {
-    if (!query.trim()) return true;
+  useEffect(() => {
     const q = query.toLowerCase();
-    return (
-      i.label.toLowerCase().includes(q) || (i.hint ?? "").toLowerCase().includes(q)
+    const f = Commands.filter(
+      (cmd) =>
+        cmd.label.toLowerCase().includes(q) ||
+        cmd.keywords.some((k) => k.includes(q))
     );
-  });
+    setFiltered(f);
+    setIndex(0);
+  }, [query]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!open) return;
+
+      if (e.key === "Escape") {
+        onClose();
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setIndex((i) => Math.min(i + 1, filtered.length - 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setIndex((i) => Math.max(i - 1, 0));
+      } else if (e.key === "Enter") {
+        const chosen = filtered[index];
+        if (chosen) {
+          emitCommand(chosen);
+          onClose();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open, filtered, index]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-slate-950/60 backdrop-blur-sm">
-      <div className="w-full max-w-md rb-glass rounded-2xl border border-slate-800/80 shadow-2xl">
-        <div className="border-b border-slate-800/70 px-3 py-2">
-          <input
-            autoFocus
-            className="w-full bg-transparent text-sm text-slate-50 placeholder:text-slate-500 outline-none"
-            placeholder="Search commands, workspaces, apps..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Escape" && onClose()}
-          />
-        </div>
+    <div className="absolute inset-0 z-[999] bg-black/40 backdrop-blur-md flex justify-center pt-32">
+      <div className="w-full max-w-xl rb-glass rounded-2xl border border-slate-800/80 p-3">
+        <input
+          autoFocus
+          className="w-full bg-slate-900/80 border border-slate-700/70 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none"
+          placeholder="Search apps, commands, tools..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
 
-        <div className="max-h-80 overflow-auto py-2">
-          {filtered.map((item) => (
+        <div className="mt-2 max-h-80 overflow-auto flex flex-col">
+          {filtered.length === 0 && (
+            <div className="text-[0.75rem] text-slate-500 p-3">
+              No matches. Try different words.
+            </div>
+          )}
+
+          {filtered.map((cmd, i) => (
             <button
-              key={item.id}
-              className="w-full text-left px-3 py-2 text-xs hover:bg-slate-800/70 flex items-center justify-between"
-              onClick={() => onRun(item.id)}
+              key={cmd.id}
+              onClick={() => {
+                emitCommand(cmd);
+                onClose();
+              }}
+              className={
+                "text-left text-[0.8rem] px-3 py-2 rounded-xl hover:bg-slate-800/70" +
+                (i === index ? " bg-slate-800/70 ring-1 ring-sky-500/50" : "")
+              }
             >
-              <span className="text-slate-100">{item.label}</span>
-              <span className="text-[10px] uppercase tracking-wide text-slate-500">
-                {item.hint}
-              </span>
+              {cmd.label}
             </button>
           ))}
-        </div>
-
-        <div className="border-t border-slate-800/70 px-3 py-1.5 flex justify-between text-[10px] text-slate-500">
-          <span>Enter to run · Esc to close</span>
-          <span>RedByte OS</span>
         </div>
       </div>
     </div>
   );
-};
+}
