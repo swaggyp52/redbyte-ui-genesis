@@ -5,7 +5,9 @@ import {
   loadUsers,
   saveUsers,
   touchUser,
+  ROOT_USER_ID_CONST,
 } from "./UserStore";
+import { ensureUserKeys } from "./CryptoIdentity";
 
 interface LoginOverlayProps {
   currentUser: UserProfile | null;
@@ -15,25 +17,67 @@ interface LoginOverlayProps {
 /**
  * LoginOverlay
  *
- * Front-end only login shell.
+ * Front-end only login shell with crypto identity:
  * - Blocks interaction until a user is chosen
  * - Remembers all users on this device
- * - Shows &quot;secure OS&quot; vibes without real auth
+ * - Generates a crypto keypair + fingerprint per user (local only)
  */
 export function LoginOverlay({ currentUser, onLogin }: LoginOverlayProps) {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [newName, setNewName] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  const [fingerprint, setFingerprint] = useState<string | null>(null);
+  const [keyStatus, setKeyStatus] = useState<"idle" | "generating" | "ready" | "error">("idle");
+
   useEffect(() => {
     const u = loadUsers();
     setUsers(u);
-    if (u.length > 0) {
+
+    // Prefer root user as initial selection if present
+    const root = u.find((x) => x.id === ROOT_USER_ID_CONST);
+    if (root) {
+      setSelectedId(root.id);
+    } else if (u.length > 0) {
       setSelectedId(u[0].id);
     }
   }, []);
 
-  // Once logged in, overlay disappears completely
+  // Generate / load crypto keys for selected user
+  useEffect(() => {
+    let cancelled = false;
+
+    async function run() {
+      if (!selectedId) {
+        setFingerprint(null);
+        setKeyStatus("idle");
+        return;
+      }
+      setKeyStatus("generating");
+      setFingerprint(null);
+      try {
+        const record = await ensureUserKeys(selectedId);
+        if (cancelled) return;
+        if (record && record.fingerprint) {
+          setFingerprint(record.fingerprint);
+          setKeyStatus("ready");
+        } else {
+          setKeyStatus("error");
+        }
+      } catch {
+        if (!cancelled) {
+          setKeyStatus("error");
+        }
+      }
+    }
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId]);
+
+  // Once logged in, overlay disappears
   if (currentUser) return null;
 
   function handleLogin(user: UserProfile) {
@@ -73,14 +117,15 @@ export function LoginOverlay({ currentUser, onLogin }: LoginOverlayProps) {
               RedByte Secure Shell
             </div>
             <p className="text-[0.75rem] text-slate-400 max-w-md mt-1">
-              Choose a user profile to enter the OS. Profiles are stored
-              locally on this device so you can keep different workspaces
-              separate. This is a demo identity layer — not real authentication.
+              Choose a user profile to enter the OS. Profiles and their crypto
+              keys are stored locally on this device. This is a demo identity
+              layer (no real server auth yet), but each user has a unique
+              cryptographic fingerprint.
             </p>
           </div>
           <div className="flex flex-col items-end text-[0.7rem] text-slate-500 font-mono">
-            <span>IDENTITY LAYER v37</span>
-            <span>LOCAL-ONLY • NON-CRYPTO</span>
+            <span>IDENTITY LAYER v38</span>
+            <span>CLIENT-ONLY • ECDSA-P256</span>
           </div>
         </div>
 
@@ -104,6 +149,7 @@ export function LoginOverlay({ currentUser, onLogin }: LoginOverlayProps) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {sortedUsers.map((u) => {
                   const isSelected = selectedId === u.id;
+                  const isRoot = u.tag === "ROOT" || u.id === ROOT_USER_ID_CONST;
                   return (
                     <button
                       key={u.id}
@@ -126,7 +172,7 @@ export function LoginOverlay({ currentUser, onLogin }: LoginOverlayProps) {
                             {u.name}
                           </span>
                           <span className="text-[0.65rem] text-slate-400 font-mono">
-                            {u.tag}
+                            {isRoot ? "ROOT" : u.tag || "USER"}
                           </span>
                         </div>
                       </div>
@@ -154,15 +200,15 @@ export function LoginOverlay({ currentUser, onLogin }: LoginOverlayProps) {
             </div>
           </section>
 
-          {/* New user */}
+          {/* New user + crypto fingerprint */}
           <section className="rb-glass rounded-2xl border border-slate-800/80 bg-slate-950/90 p-3 flex flex-col gap-2">
             <h2 className="text-[0.8rem] font-semibold text-slate-100 mb-1">
               Create new user
             </h2>
             <p className="text-[0.7rem] text-slate-400 mb-1">
-              This creates a local profile with its own sessions and &quot;last
-              login&quot; history. No passwords, no backend — it is meant for
-              teaching, demos and OS vibes.
+              Each user gets a local cryptographic identity (ECDSA keypair) and
+              a short fingerprint. For real backends, you&apos;d verify this key
+              server-side; here it&apos;s for teaching and OS vibes.
             </p>
             <input
               className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-3 py-1.5 text-[0.8rem] text-slate-100 focus:outline-none focus:border-sky-500/80"
@@ -178,10 +224,31 @@ export function LoginOverlay({ currentUser, onLogin }: LoginOverlayProps) {
               Create & enter as new user
             </button>
 
+            <div className="mt-3 border-t border-slate-800/80 pt-2 text-[0.7rem] text-slate-300">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Selected user fingerprint</span>
+                <span className="text-[0.65rem] text-slate-500 font-mono">
+                  CRYPTO://LOCAL
+                </span>
+              </div>
+              <div className="mt-1 px-2 py-1 rounded-lg bg-slate-950/95 border border-slate-800/80 font-mono text-[0.7rem] text-slate-200">
+                {keyStatus === "idle" && "No user selected."}
+                {keyStatus === "generating" && "Generating cryptographic identity…"}
+                {keyStatus === "ready" && fingerprint
+                  ? `FP ${fingerprint.slice(0, 4)}-${fingerprint.slice(
+                      4,
+                      8
+                    )}-${fingerprint.slice(8, 12)}-${fingerprint.slice(12)}`
+                  : null}
+                {keyStatus === "error" &&
+                  "Crypto APIs unavailable. Keys will not be generated in this browser."}
+              </div>
+            </div>
+
             <div className="mt-auto text-[0.65rem] text-slate-500">
-              For real deployments, this layer would plug into proper auth
-              (OAuth, email login, etc.). Here it is intentionally lightweight
-              so you can show the OS to anyone without configuration.
+              WARNING: private keys are stored in browser storage. This is not
+              secure for real-world secrets. For production, plug this into a
+              backend or hardware-backed key storage.
             </div>
           </section>
         </div>

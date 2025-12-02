@@ -154,7 +154,7 @@ export function Desktop() {
   const [missionControl, setMissionControl] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
 
-  // Global hotkeys: palette, mission control, explain
+  // Global hotkeys
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.code === "KeyK") {
@@ -266,7 +266,10 @@ export function Desktop() {
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-950 text-slate-100">
-      <StatusBar />
+      <StatusBar
+        currentUserName={currentUser?.name}
+        currentUserTag={currentUser?.tag}
+      />
 
       <div className="relative flex-1">
         {/* Command Palette */}
@@ -388,7 +391,9 @@ export function Desktop() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-xl">{def.icon}</span>
+                        <span className="text-xl">
+                          {def.icon}
+                        </span>
                         <div className="flex flex-col">
                           <span className="text-[0.8rem] text-slate-100">
                             {def.title}
