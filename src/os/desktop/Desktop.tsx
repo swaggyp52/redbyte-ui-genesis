@@ -1,4 +1,4 @@
-﻿import React from "react";
+﻿/* AUTO_LAUNCH_READY */import React from "react";
 import { useSystem } from "../core/SystemProvider";
 import { Window } from "./Window";
 import { Taskbar } from "./Taskbar";
@@ -51,3 +51,4 @@ export function Desktop() {
     </div>
   );
 }
+
