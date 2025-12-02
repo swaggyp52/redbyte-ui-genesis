@@ -1,16 +1,18 @@
 ﻿import React, { useEffect, useState } from "react";
 import StatusBar from "../statusbar/StatusBar";
 
-// Import a few core apps that already exist in your project
+// Core apps
 import { RedstoneLabApp } from "../../apps/RedstoneLabApp";
 import { LogicWorkspaceApp } from "../../apps/LogicWorkspaceApp";
 import { TerminalApp } from "../../apps/TerminalApp";
 import { NotesApp } from "../../apps/NotesApp";
 import { SystemMonitorApp } from "../../apps/SystemMonitorApp";
+import { CpuDesignerApp } from "../../apps/CpuDesignerApp";
 
 type DesktopAppId =
   | "redstone-lab"
   | "logic-workspace"
+  | "cpu-designer"
   | "terminal"
   | "notes"
   | "system-monitor";
@@ -37,6 +39,13 @@ const APP_REGISTRY: DesktopAppDef[] = [
     description: "2D logic diagrams with explanations and exports.",
     icon: "🧠",
     component: LogicWorkspaceApp,
+  },
+  {
+    id: "cpu-designer",
+    title: "CPU Designer",
+    description: "High-level CPU architecture studio (ALU, registers, control).",
+    icon: "🖥️",
+    component: CpuDesignerApp,
   },
   {
     id: "terminal",
@@ -89,7 +98,6 @@ export function Desktop() {
   const [drag, setDrag] = useState<DragState>({ winId: null, offsetX: 0, offsetY: 0 });
   const [missionControl, setMissionControl] = useState(false);
 
-  // Handle global mouse move / up for dragging
   useEffect(() => {
     const handleMove = (e: MouseEvent) => {
       if (!drag.winId) return;
@@ -119,7 +127,6 @@ export function Desktop() {
     };
   }, [drag]);
 
-  // Simple keyboard toggle for Mission Control (Ctrl+Space)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.code === "Space" && e.ctrlKey) {
@@ -189,12 +196,10 @@ export function Desktop() {
     <div className="w-full h-full flex flex-col bg-slate-950 text-slate-100">
       <StatusBar />
 
-      {/* Desktop body */}
       <div className="flex-1 relative overflow-hidden">
-        {/* Wallpaper */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" />
 
-        {/* App icons on desktop (left side) */}
+        {/* Desktop icons */}
         <div className="absolute left-4 top-4 flex flex-col gap-3 z-10">
           {APP_REGISTRY.map((app) => (
             <button
@@ -212,7 +217,7 @@ export function Desktop() {
           ))}
         </div>
 
-        {/* Mission Control toggle (top-right) */}
+        {/* Mission Control toggle */}
         <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
           <button
             onClick={toggleMissionControl}
@@ -247,7 +252,6 @@ export function Desktop() {
               }}
               onMouseDown={() => bringToFront(win.id)}
             >
-              {/* Title bar */}
               <div
                 className="h-8 flex items-center justify-between px-3 cursor-move bg-slate-950/90 border-b border-slate-800/80"
                 onMouseDown={(e) => startDrag(win.id, e)}
@@ -258,21 +262,18 @@ export function Desktop() {
                     {win.title}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      closeWindow(win.id);
-                    }}
-                    className="h-5 w-5 rounded-full bg-rose-500/70 hover:bg-rose-400 flex items-center justify-center text-[0.6rem] text-slate-950"
-                    title="Close window"
-                  >
-                    ×
-                  </button>
-                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeWindow(win.id);
+                  }}
+                  className="h-5 w-5 rounded-full bg-rose-500/70 hover:bg-rose-400 flex items-center justify-center text-[0.6rem] text-slate-950"
+                  title="Close window"
+                >
+                  ×
+                </button>
               </div>
 
-              {/* Content */}
               <div className="flex-1 min-h-0 bg-slate-950/95">
                 <AppComponent />
               </div>
