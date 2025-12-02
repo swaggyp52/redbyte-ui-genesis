@@ -1,0 +1,48 @@
+﻿export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-50 antialiased;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+      "Inter", "Segoe UI", sans-serif;
+  }
+
+  ::selection {
+    background-color: rgb(244 63 94 / 0.25);
+    color: #f9fafb;
+  }
+}
+
+@layer utilities {
+  .rb-glass {
+    @apply border border-slate-800/80 bg-slate-950/70 backdrop-blur-xl;
+  }
+}
