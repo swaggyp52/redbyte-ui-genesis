@@ -1,13 +1,1 @@
-﻿.rb-bg-engine {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(255,0,120,0.25), transparent),
-    radial-gradient(circle at 80% 80%, rgba(0,190,255,0.25), transparent),
-    linear-gradient(160deg, #020617, #000);
-  transform: translate(var(--bg-x), var(--bg-y));
-  transition: transform 0.15s ease-out;
-}
-
+﻿
