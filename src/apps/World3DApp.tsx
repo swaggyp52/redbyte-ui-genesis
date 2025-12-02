@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import {
   type VoxelBlock,
   type VoxelType,
@@ -38,6 +39,7 @@ export function World3DApp() {
   const voxelGeometryRef = useRef<THREE.BoxGeometry | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const controlsRef = useRef<OrbitControls | null>(null);
   const frameRef = useRef<number | null>(null);
 
   const [voxels, setVoxels] = useState<VoxelBlock[]>([]);
@@ -61,6 +63,7 @@ export function World3DApp() {
     setBlueprints(listBlueprints());
   }, []);
 
+  // Scene + camera + renderer + orbit controls
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
@@ -77,7 +80,8 @@ export function World3DApp() {
       0.1,
       1000
     );
-    camera.position.set(WORLD_SIZE * 1.5, WORLD_SIZE * 1.2, WORLD_SIZE * 1.5);
+    const radius = WORLD_SIZE * 1.8;
+    camera.position.set(radius, radius * 0.8, radius);
     camera.lookAt(new THREE.Vector3(0, 0, 0));
     cameraRef.current = camera;
 
@@ -103,8 +107,19 @@ export function World3DApp() {
     const voxelGeometry = new THREE.BoxGeometry(1, 1, 1);
     voxelGeometryRef.current = voxelGeometry;
 
+    // Orbit controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.rotateSpeed = 0.6;
+    controls.zoomSpeed = 0.8;
+    controls.panSpeed = 0.6;
+    controlsRef.current = controls;
+
     const animate = () => {
       frameRef.current = requestAnimationFrame(animate);
+      controls.update();
       renderer.render(scene, camera);
     };
     animate();
@@ -134,9 +149,15 @@ export function World3DApp() {
         voxelGeometryRef.current.dispose();
         voxelGeometryRef.current = null;
       }
+
+      if (controlsRef.current) {
+        controlsRef.current.dispose();
+        controlsRef.current = null;
+      }
     };
   }, []);
 
+  // Rebuild voxel meshes on world change
   useEffect(() => {
     const group = voxelGroupRef.current;
     const voxelGeometry = voxelGeometryRef.current;
@@ -218,6 +239,7 @@ export function World3DApp() {
     }
   }, [voxels]);
 
+  // Simulation loop
   useEffect(() => {
     if (!running) return;
 
@@ -331,18 +353,7 @@ export function World3DApp() {
       return;
     }
 
-    const planeY = 0;
-    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -planeY);
-    const ray = raycaster.ray;
-    const target = new THREE.Vector3();
-    ray.intersectPlane(plane, target);
-
-    const centerOffset = WORLD_SIZE / 2;
-    const vx = Math.floor(target.x + centerOffset);
-    const vy = Math.floor(planeY + centerOffset);
-    const vz = Math.floor(target.z + centerOffset);
-
-    applyToolToVoxel(vx, vy, vz);
+    // If you click empty space, do nothing (camera is handled by OrbitControls).
   };
 
   const toolLabel = (t: Tool) => {
@@ -370,9 +381,14 @@ export function World3DApp() {
             blueprint import/export. Shared with World Map 2D and Redstone Sim.
           </p>
         </div>
-        <span className="text-[0.65rem] text-slate-500 uppercase">
-          WORLD://3D-SIM
-        </span>
+        <div className="flex flex-col items-end gap-1">
+          <span className="text-[0.65rem] text-emerald-300 font-mono">
+            ENGINE://V23-DUST
+          </span>
+          <span className="text-[0.65rem] text-slate-500 uppercase">
+            WORLD://3D-SIM
+          </span>
+        </div>
       </header>
 
       <section className="rb-glass rounded-2xl p-3 border border-slate-800/80 flex flex-col gap-2">
@@ -524,14 +540,37 @@ export function World3DApp() {
             Export Y={layerY} slice as blueprint
           </button>
         </div>
+
+        <div className="text-[0.7rem] text-slate-500 mt-1 flex flex-wrap gap-4">
+          <span>
+            <span className="font-semibold text-slate-300">Camera:</span>{" "}
+            Drag with mouse to orbit, scroll to zoom, right-click or middle-click
+            to pan.
+          </span>
+          <span>
+            <span className="font-semibold text-slate-300">Editing:</span>{" "}
+            Click voxels to {activeTool === "erase" ? "erase" : "paint"} using
+            the active brush type. Use eyedrop to pick blocks.
+          </span>
+        </div>
       </section>
 
       <section className="flex-1 min-h-0 rb-glass rounded-2xl p-3 border border-slate-800/80">
         <div
           ref={mountRef}
           onMouseDown={handleCanvasPointerDown}
-          className="w-full h-full rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 cursor-crosshair"
-        />
+          className="w-full h-full rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 cursor-crosshair relative"
+        >
+          <div className="absolute top-2 right-2 bg-slate-950/80 border border-slate-700/80 rounded-xl px-2 py-1 text-[0.65rem] text-slate-300 pointer-events-none">
+            <div className="font-semibold text-slate-100 mb-1">
+              Controls
+            </div>
+            <div>🖱️ Drag: orbit</div>
+            <div>🖱️ Wheel: zoom</div>
+            <div>🖱️ Right/Middle drag: pan</div>
+            <div>👆 Click voxel: {activeTool}</div>
+          </div>
+        </div>
       </section>
     </div>
   );

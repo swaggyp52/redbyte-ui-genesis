@@ -1,175 +1,153 @@
-﻿import React, { useEffect, useState } from "react";
-import {
-  listBlueprintMeta,
-  deleteBlueprint,
-  loadBlueprint,
-  saveBlueprint,
-} from "../sim/RedstoneBlueprints";
-import { useSystem } from "../os/core/SystemProvider";
-import { createGrid } from "../sim/RedstoneEngine";
-import { setActiveBlueprintName } from "../sim/RedstoneSession";
+﻿import React from "react";
+import { World3DApp } from "./World3DApp";
+import { WorldMap2DApp } from "./WorldMap2DApp";
+import { RedstoneStatsApp } from "./RedstoneStatsApp";
+import { SignalScopeApp } from "./SignalScopeApp";
+import { AnalyzerApp } from "./AnalyzerApp";
 
+/**
+ * RedstoneLabApp
+ *
+ * High-level demo control room that embeds the core RedByte
+ * redstone tools into a single window:
+ * - 3D voxel world
+ * - 2D map
+ * - Stats
+ * - Signal scope
+ * - Analyzer
+ *
+ * This is THE app to open when you want to show off the platform.
+ */
 export function RedstoneLabApp() {
-  const [blueprints, setBlueprints] = useState(() => listBlueprintMeta());
-  const { openApp } = useSystem();
-
-  const refresh = () => {
-    setBlueprints(listBlueprintMeta());
-  };
-
-  useEffect(() => {
-    refresh();
-  }, []);
-
-  const handleOpenInSim = (name: string) => {
-    // Set session blueprint and then open the sim.
-    setActiveBlueprintName(name);
-    openApp("sim");
-  };
-
-  const handleDelete = (name: string) => {
-    if (!window.confirm(`Delete blueprint "${name}"?`)) return;
-    deleteBlueprint(name);
-    refresh();
-  };
-
-  const handleNewBlank = () => {
-    const name = window.prompt("New blueprint name:");
-    if (!name) return;
-    const grid = createGrid({ width: 16, height: 16 });
-    saveBlueprint(name, grid);
-    refresh();
-  };
-
-  const handleDuplicate = (name: string) => {
-    const newName = window.prompt("Duplicate as:", `${name}-copy`);
-    if (!newName) return;
-    const grid = loadBlueprint(name);
-    if (!grid) {
-      window.alert("Original blueprint could not be loaded.");
-      return;
-    }
-    saveBlueprint(newName, grid);
-    refresh();
-  };
-
-  const handleOpenSimBlank = () => {
-    setActiveBlueprintName(null);
-    openApp("sim");
-  };
-
   return (
-    <div className="h-full flex flex-col gap-3 text-xs">
+    <div className="h-full w-full flex flex-col gap-3 text-xs">
       <header className="flex items-center justify-between border-b border-slate-800/80 pb-2">
         <div>
           <h1 className="text-sm font-semibold text-slate-100">
-            Redstone Lab
+            Redstone Lab — Control Room
           </h1>
           <p className="text-[0.7rem] text-slate-400">
-            Manage Redstone blueprints and launch simulations.
+            Unified workspace for building, simulating, and inspecting
+            Redstone circuits. Everything here shares the same underlying
+            voxel world and simulation engine.
           </p>
         </div>
-        <span className="text-[0.65rem] text-slate-500 uppercase">
-          LAB://REDSTONE
-        </span>
-      </header>
-
-      <section className="rb-glass rounded-2xl p-3 border border-slate-800/80 flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            className="px-2 py-1 rounded-xl border border-emerald-500/70 text-[0.7rem] text-emerald-300 hover:bg-emerald-500/10"
-            onClick={handleNewBlank}
-          >
-            New Blank Blueprint
-          </button>
-          <button
-            className="px-2 py-1 rounded-xl border border-sky-500/70 text-[0.7rem] text-sky-300 hover:bg-sky-500/10"
-            onClick={handleOpenSimBlank}
-          >
-            Open Sim (blank)
-          </button>
-          <button
-            className="px-2 py-1 rounded-xl border border-slate-700/80 text-[0.7rem] hover:border-pink-500/70"
-            onClick={refresh}
-          >
-            Refresh
-          </button>
-          <span className="ml-auto text-[0.7rem] text-slate-400">
-            Stored under <span className="font-mono">/Redstone</span> in RVFS
+        <div className="flex flex-col items-end gap-1">
+          <span className="text-[0.65rem] text-emerald-300 font-mono">
+            ENGINE://V23-DUST
+          </span>
+          <span className="text-[0.65rem] text-slate-500 uppercase">
+            LAB://CONTROL-ROOM
           </span>
         </div>
-      </section>
+      </header>
 
-      <section className="flex-1 min-h-0 rb-glass rounded-2xl p-3 border border-slate-800/80 flex flex-col gap-2">
-        <h2 className="text-xs font-semibold text-slate-100">
-          Blueprints
-        </h2>
-        <div className="text-[0.7rem] text-slate-400 mb-1">
-          These are saved Redstone grids. Use duplicate to experiment on a copy.
-        </div>
-
-        <div className="flex-1 min-h-0 overflow-auto rounded-xl bg-slate-950/80 border border-slate-800/80">
-          {blueprints.length === 0 ? (
-            <div className="px-3 py-2 text-[0.7rem] text-slate-500">
-              No blueprints yet. Create one with{" "}
-              <span className="font-mono">New Blank Blueprint</span>.
+      {/* Main layout: 3D world on the left, stacked panels on the right */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-2 gap-3">
+        {/* Left: 3D world */}
+        <section className="rb-glass rounded-2xl p-3 border border-slate-800/80 flex flex-col min-h-0">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h2 className="text-xs font-semibold text-slate-100">
+                3D Redstone World
+              </h2>
+              <p className="text-[0.7rem] text-slate-400">
+                Voxel world with real dust physics, repeaters, comparators and
+                shared state with all other panels.
+              </p>
             </div>
-          ) : (
-            <table className="w-full text-[0.7rem]">
-              <thead className="bg-slate-900/80 sticky top-0">
-                <tr className="text-slate-400 text-left">
-                  <th className="px-2 py-1 font-normal">Name</th>
-                  <th className="px-2 py-1 font-normal">Created</th>
-                  <th className="px-2 py-1 font-normal">Updated</th>
-                  <th className="px-2 py-1 font-normal text-right">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {blueprints.map((bp) => (
-                  <tr
-                    key={bp.id}
-                    className="border-t border-slate-900/80"
-                  >
-                    <td className="px-2 py-1 text-slate-100 truncate max-w-[10rem]">
-                      {bp.name}
-                    </td>
-                    <td className="px-2 py-1 text-slate-400">
-                      {new Date(bp.createdAt).toLocaleString()}
-                    </td>
-                    <td className="px-2 py-1 text-slate-400">
-                      {new Date(bp.updatedAt).toLocaleString()}
-                    </td>
-                    <td className="px-2 py-1 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        <button
-                          className="px-2 py-0.5 rounded-full border border-sky-500/70 text-sky-300 hover:bg-sky-500/10"
-                          onClick={() => handleOpenInSim(bp.name)}
-                        >
-                          Open in Sim
-                        </button>
-                        <button
-                          className="px-2 py-0.5 rounded-full border border-slate-700/80 text-slate-300 hover:bg-slate-700/50"
-                          onClick={() => handleDuplicate(bp.name)}
-                        >
-                          Duplicate
-                        </button>
-                        <button
-                          className="px-2 py-0.5 rounded-full border border-rose-500/70 text-rose-300 hover:bg-rose-500/10"
-                          onClick={() => handleDelete(bp.name)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+            <span className="text-[0.65rem] text-slate-500 font-mono">
+              VIEW://3D
+            </span>
+          </div>
+          <div className="flex-1 min-h-0 rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-950/90">
+            <World3DApp />
+          </div>
+        </section>
+
+        {/* Right: stacked panels */}
+        <div className="flex flex-col gap-3 min-h-0">
+          {/* 2D Map */}
+          <section className="rb-glass rounded-2xl p-3 border border-slate-800/80 flex flex-col min-h-[10rem] flex-1">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h2 className="text-xs font-semibold text-slate-100">
+                  2D Slice Map
+                </h2>
+                <p className="text-[0.7rem] text-slate-400">
+                  Top-down editor for a single Y-level. Editing here modifies
+                  the same world that the 3D view is rendering.
+                </p>
+              </div>
+              <span className="text-[0.65rem] text-slate-500 font-mono">
+                VIEW://2D-MAP
+              </span>
+            </div>
+            <div className="flex-1 min-h-0 rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-950/90">
+              <WorldMap2DApp />
+            </div>
+          </section>
+
+          {/* Bottom row: stats + scope + analyzer */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 min-h-[12rem]">
+            <section className="rb-glass rounded-2xl p-3 border border-slate-800/80 flex flex-col">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-xs font-semibold text-slate-100">
+                  Simulation Stats
+                </h2>
+                <span className="text-[0.65rem] text-slate-500 font-mono">
+                  PANEL://STATS
+                </span>
+              </div>
+              <p className="text-[0.7rem] text-slate-400 mb-2">
+                Live metrics from the 3D engine: gate counts, power clusters,
+                tick times and more.
+              </p>
+              <div className="flex-1 min-h-0 rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-950/90">
+                <RedstoneStatsApp />
+              </div>
+            </section>
+
+            <section className="rb-glass rounded-2xl p-3 border border-slate-800/80 flex flex-col">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-xs font-semibold text-slate-100">
+                  Signal Scope
+                </h2>
+                <span className="text-[0.65rem] text-slate-500 font-mono">
+                  PANEL://SCOPE
+                </span>
+              </div>
+              <p className="text-[0.7rem] text-slate-400 mb-2">
+                Waveform view of captured probes. Great for clocks, edges and
+                analog strength changes over time.
+              </p>
+              <div className="flex-1 min-h-0 rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-950/90">
+                <SignalScopeApp />
+              </div>
+            </section>
+
+            <section className="rb-glass rounded-2xl p-3 border border-slate-800/80 flex flex-col">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-xs font-semibold text-slate-100">
+                  Analyzer
+                </h2>
+                <span className="text-[0.65rem] text-slate-500 font-mono">
+                  PANEL://ANALYZER
+                </span>
+              </div>
+              <p className="text-[0.7rem] text-slate-400 mb-2">
+                Higher-level views of your circuits: traces, captured sessions
+                and structural analysis.
+              </p>
+              <div className="flex-1 min-h-0 rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-950/90">
+                <AnalyzerApp />
+              </div>
+            </section>
+          </div>
         </div>
-      </section>
+      </div>
     </div>
   );
 }
+
+export default RedstoneLabApp;
