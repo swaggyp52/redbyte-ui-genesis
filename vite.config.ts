@@ -1,4 +1,4 @@
-﻿import WindiCSS from 'vite-plugin-windicss'
+import WindiCSS from 'vite-plugin-windicss'
 import ImageminPlugin from 'vite-plugin-imagemin'
 
 export default {
@@ -13,7 +13,7 @@ export default {
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'] # Example of code splitting
+          vendor: ['react', 'react-dom', 'react-router-dom'] 
         }
       }
     }
