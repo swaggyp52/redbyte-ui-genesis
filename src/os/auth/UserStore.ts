@@ -1,40 +1,43 @@
-﻿export interface UserProfile {
+﻿export type UserRole = "ADMIN" | "USER" | "GUEST";
+
+export interface UserProfile {
   id: string;
-  name: string;
-  tag: string; // e.g. "ROOT", "ADMIN", "USER"
+  username: string;
+  name: string; // display name
+  role: UserRole;
   color: string;
   createdAt: number;
   lastLoginAt: number;
+  tag?: string; // kept for legacy consumers (ADMIN/USER/GUEST)
 }
 
-const STORAGE_KEY = "redbyte_users_v1";
+export interface UserSecret {
+  userId: string;
+  salt: string;
+  passwordHash: string | null;
+}
 
-function now() {
+const USERS_KEY = "redbyte_users_v2";
+const SECRETS_KEY = "redbyte_user_secrets_v2";
+
+const ADMIN_USERNAME = "admin";
+const ADMIN_ID = "user-admin";
+
+const GUEST_USERNAME = "guest";
+const GUEST_ID = "user-guest";
+
+function nowMs() {
   return Date.now();
 }
 
-const ROOT_USER_ID = "user-root";
-
-function defaultUsers(): UserProfile[] {
-  const t = now();
-  return [
-    {
-      id: ROOT_USER_ID,
-      name: "Connor (root)",
-      tag: "ROOT",
-      color: "#ec4899",
-      createdAt: t,
-      lastLoginAt: t,
-    },
-    {
-      id: "user-admin",
-      name: "Admin",
-      tag: "ADMIN",
-      color: "#38bdf8",
-      createdAt: t,
-      lastLoginAt: t,
-    },
-  ];
+function safeParse<T>(raw: string | null): T | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed as T;
+  } catch {
+    return null;
+  }
 }
 
 function randomColor() {
@@ -44,70 +47,147 @@ function randomColor() {
     "#22c55e",
     "#f97316",
     "#ec4899",
+    "#64748b",
   ];
   return palette[Math.floor(Math.random() * palette.length)];
 }
 
-function makeId() {
-  return "user-" + Math.random().toString(36).slice(2);
-}
-
 export function loadUsers(): UserProfile[] {
-  if (typeof window === "undefined") return defaultUsers();
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultUsers();
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return defaultUsers();
-
-    let users = parsed as UserProfile[];
-
-    // Ensure root user always exists
-    if (!users.some((u) => u.id === ROOT_USER_ID)) {
-      const rootTemplate = defaultUsers()[0];
-      users = [rootTemplate, ...users];
-    }
-
-    return users;
-  } catch {
-    return defaultUsers();
-  }
+  if (typeof window === "undefined") return [];
+  const parsed = safeParse<UserProfile[]>(window.localStorage.getItem(USERS_KEY));
+  if (!parsed || !Array.isArray(parsed)) return [];
+  return parsed.map((u) => ({
+    ...u,
+    // backfill defaults
+    role: u.role || (u.tag === "ROOT" || u.tag === "ADMIN" ? "ADMIN" : "USER"),
+    tag: u.tag || (u.role === "ADMIN" ? "ADMIN" : u.role === "GUEST" ? "GUEST" : "USER"),
+  }));
 }
 
 export function saveUsers(users: UserProfile[]) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
+    window.localStorage.setItem(USERS_KEY, JSON.stringify(users));
   } catch {
     // ignore
   }
 }
 
-export function createUser(name: string): UserProfile {
-  const trimmed = name.trim() || "User";
-  const baseTag = trimmed.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
-  const tag = baseTag || "USER";
-  const t = now();
+export function loadSecrets(): Record<string, UserSecret> {
+  if (typeof window === "undefined") return {};
+  const parsed = safeParse<Record<string, UserSecret>>(
+    window.localStorage.getItem(SECRETS_KEY)
+  );
+  if (!parsed || typeof parsed !== "object") return {};
+  return parsed;
+}
+
+export function saveSecrets(secrets: Record<string, UserSecret>) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(SECRETS_KEY, JSON.stringify(secrets));
+  } catch {
+    // ignore
+  }
+}
+
+function findUserByUsername(users: UserProfile[], username: string) {
+  const target = username.trim().toLowerCase();
+  return users.find((u) => u.username.toLowerCase() === target);
+}
+
+export function ensureCoreUsers() {
+  let users = loadUsers();
+  let secrets = loadSecrets();
+
+  const now = nowMs();
+
+  let admin = findUserByUsername(users, ADMIN_USERNAME);
+  if (!admin) {
+    admin = {
+      id: ADMIN_ID,
+      username: ADMIN_USERNAME,
+      name: "System Administrator",
+      role: "ADMIN",
+      tag: "ADMIN",
+      color: "#f97316",
+      createdAt: now,
+      lastLoginAt: now,
+    };
+    users = [admin, ...users];
+  } else {
+    admin.role = "ADMIN";
+    admin.tag = "ADMIN";
+  }
+
+  let guest = findUserByUsername(users, GUEST_USERNAME);
+  if (!guest) {
+    guest = {
+      id: GUEST_ID,
+      username: GUEST_USERNAME,
+      name: "Guest",
+      role: "GUEST",
+      tag: "GUEST",
+      color: "#64748b",
+      createdAt: now,
+      lastLoginAt: now,
+    };
+    users = [...users, guest];
+  } else {
+    guest.role = "GUEST";
+    guest.tag = "GUEST";
+  }
+
+  saveUsers(users);
+
+  const adminSecret = secrets[admin.id];
+  const adminHasPassword = !!(adminSecret && adminSecret.passwordHash);
+
   return {
-    id: makeId(),
-    name: trimmed,
-    tag,
-    color: randomColor(),
-    createdAt: t,
-    lastLoginAt: t,
+    users,
+    secrets,
+    admin,
+    guest,
+    adminHasPassword,
   };
 }
 
-export function touchUser(users: UserProfile[], id: string): UserProfile[] {
-  const t = now();
-  return users.map((u) =>
-    u.id === id
+export function updateLastLogin(users: UserProfile[], userId: string) {
+  const t = nowMs();
+  const updated = users.map((u) =>
+    u.id === userId
       ? {
           ...u,
           lastLoginAt: t,
         }
       : u
   );
+  saveUsers(updated);
+  return updated;
 }
 
-export const ROOT_USER_ID_CONST = ROOT_USER_ID;
+export function upsertUserSecret(
+  secrets: Record<string, UserSecret>,
+  userId: string,
+  passwordHash: string | null,
+  salt: string
+) {
+  const next: Record<string, UserSecret> = { ...secrets };
+  next[userId] = {
+    userId,
+    salt,
+    passwordHash,
+  };
+  saveSecrets(next);
+  return next;
+}
+
+export function getUserSecret(
+  secrets: Record<string, UserSecret>,
+  userId: string
+): UserSecret | undefined {
+  return secrets[userId];
+}
+
+export const ADMIN_USERNAME_CONST = ADMIN_USERNAME;
+export const GUEST_USERNAME_CONST = GUEST_USERNAME;
