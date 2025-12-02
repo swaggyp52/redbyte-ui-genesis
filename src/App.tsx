@@ -1,5 +1,4 @@
-﻿@"
-import React from "react"
+﻿import React from "react"
 
 type Feature = {
   title: string
@@ -195,4 +194,3 @@ export default function App() {
     </div>
   )
 }
-"@ | Set-Content .\src\App.tsx -Encoding UTF8
