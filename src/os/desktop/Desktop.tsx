@@ -3,6 +3,8 @@ import StatusBar from "../statusbar/StatusBar";
 import { ExplainBar } from "../window/ExplainBar";
 import { CommandPalette } from "../palette/CommandPalette";
 import { registerCommand } from "../palette/CommandRegistry";
+import { LoginOverlay } from "../auth/LoginOverlay";
+import type { UserProfile } from "../auth/UserStore";
 
 import { RedstoneLabApp } from "../../apps/RedstoneLabApp";
 import { LogicWorkspaceApp } from "../../apps/LogicWorkspaceApp";
@@ -103,7 +105,7 @@ interface DragState {
 const INITIAL_WIDTH = 720;
 const INITIAL_HEIGHT = 480;
 
-// Register commands once at module load
+// Register commands at module load
 APPS.forEach((app) => {
   registerCommand({
     id: `open-${app.id}`,
@@ -150,8 +152,9 @@ export function Desktop() {
   });
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [missionControl, setMissionControl] = useState(false);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
 
-  // Global hotkeys
+  // Global hotkeys: palette, mission control, explain
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.code === "KeyK") {
@@ -171,7 +174,7 @@ export function Desktop() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // Dragging
+  // Window dragging
   useEffect(() => {
     const move = (e: MouseEvent) => {
       if (!drag.winId) return;
@@ -191,7 +194,6 @@ export function Desktop() {
       if (!drag.winId) return;
       setDrag({ winId: null, offsetX: 0, offsetY: 0 });
     };
-
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
     return () => {
@@ -200,7 +202,7 @@ export function Desktop() {
     };
   }, [drag]);
 
-  // Events: open app + mission control toggles
+  // Open app + mission control events
   useEffect(() => {
     const openHandler = (e: any) => {
       const appId: DesktopAppId = e.detail.id;
@@ -211,6 +213,7 @@ export function Desktop() {
       const id: WindowId = `${appId}-${Date.now()}-${Math.floor(
         Math.random() * 9999
       )}`;
+
       setWindows((prev) => [
         ...prev,
         {
@@ -265,8 +268,8 @@ export function Desktop() {
     <div className="w-full h-full flex flex-col bg-slate-950 text-slate-100">
       <StatusBar />
 
-      {/* Command Palette */}
       <div className="relative flex-1">
+        {/* Command Palette */}
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
         {/* Desktop background */}
@@ -385,9 +388,7 @@ export function Desktop() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-xl">
-                          {def.icon}
-                        </span>
+                        <span className="text-xl">{def.icon}</span>
                         <div className="flex flex-col">
                           <span className="text-[0.8rem] text-slate-100">
                             {def.title}
@@ -410,6 +411,9 @@ export function Desktop() {
             </div>
           </div>
         )}
+
+        {/* Login overlay (blocks everything until user is chosen) */}
+        <LoginOverlay currentUser={currentUser} onLogin={setCurrentUser} />
       </div>
     </div>
   );
