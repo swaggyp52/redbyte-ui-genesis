@@ -1,33 +1,31 @@
 ﻿/**
  * AIExplain
  *
- * v33: a zero-backend, instant explanation engine.
- * Later can be upgraded to use your own Cloudflare Workers AI endpoint.
- *
- * For now this gives beautifully explained summaries that make RedByte
- * easy for ANYONE to understand.
+ * Local explanation engine for RedByte apps.
+ * This can later be wired to Workers AI / external models.
  */
 
 export async function explainApp(appId: string, title: string) {
-  // Local knowledge base for friendly explanations
   const KNOW: Record<string, string> = {
     "redstone-lab":
-      "Redstone Lab is your 2D+3D digital logic simulator. It shows dust power levels, repeaters, comparators and lets you build working circuits.",
+      "Redstone Lab is your 2D+3D digital logic sandbox. It shows dust power levels, repeaters, comparators and lets you build working circuits.",
     "logic-workspace":
-      "Logic Designer is a clean 2D logic diagram tool. You can build AND/OR/NOT circuits, state machines, clocks, and export diagrams.",
+      "Logic Designer is a 2D diagramming tool for gates, clocks and small controllers. It includes a natural-language helper and export panel.",
     "cpu-designer":
-      "CPU Designer shows how a small CPU works: ALU, registers, program counter, memory and control unit. It's a high-level roadmap for building real processors.",
+      "CPU Designer is a high-level studio for CPUs: ALU, registers, control unit, program counter and memory. It helps explain how a CPU is structured.",
     "terminal":
-      "The Terminal is a command-line playground inside RedByte OS. Great for testing ideas and running internal commands.",
+      "The Terminal is a command-line window inside RedByte OS. It is useful for experiments, logs and scripted workflows.",
     "notes":
-      "Notes is a simple writing app for capturing ideas, circuit notes, todos, and CPU schematic plans.",
+      "Notes is a lightweight editor for writing ideas, design notes and circuit documentation.",
     "system-monitor":
-      "System Monitor shows OS-level activity: memory use, virtual CPU load, window count, and live performance metrics.",
+      "System Monitor shows OS-like stats: window counts, simulation load and other health indicators.",
+    "file-explorer":
+      "File Explorer lets you browse the RedByte virtual filesystem: Documents, Projects and Exports. It includes a Quick Access sidebar and a Recent Files list so you can quickly find your work.",
   };
 
   if (KNOW[appId]) {
     return `**${title}**\n\n${KNOW[appId]}`;
   }
 
-  return `**${title}**\n\nThis RedByte application is fully functional but does not yet have a tailored AI explanation.`;
+  return `**${title}**\n\nThis RedByte application is active but does not yet have a specific AI explanation.`;
 }
