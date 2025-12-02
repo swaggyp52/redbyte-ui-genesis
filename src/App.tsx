@@ -1,19 +1,24 @@
 ﻿import React from "react";
-import { BootScreen } from "./os/boot/BootScreen";
-import { Desktop } from "./os/desktop/Desktop";
-import { ThemeProvider } from "./theme/ThemeProvider";
-import { SystemProvider } from "./os/core/SystemProvider";
-import { KernelProvider } from "./kernel/KernelProvider";
+import UniverseOrb from "./os/boot/UniverseOrb";
+import AppRouter from "./Router"; // or your main Desktop/Login router
+import "./global.css";
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <KernelProvider>
-        <SystemProvider>
-          <BootScreen />
-          <Desktop />
-        </SystemProvider>
-      </KernelProvider>
-    </ThemeProvider>
+    <div className="relative w-full h-full overflow-hidden bg-black">
+
+      {/* Background void storm */}
+      <div className="fixed inset-0 -z-50 pointer-events-none opacity-[0.7]">
+        <UniverseOrb progress={1} />
+      </div>
+
+      {/* Foreground OS */}
+      <div className="relative z-10 h-full w-full">
+        <AppRouter />
+      </div>
+
+    </div>
   );
 }
+
+

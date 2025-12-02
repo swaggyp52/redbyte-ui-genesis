@@ -388,3 +388,5 @@ export function WorldMap2DApp() {
     </div>
   );
 }
+
+

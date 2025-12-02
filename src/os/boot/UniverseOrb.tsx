@@ -1,338 +1,163 @@
-﻿import React, { useEffect, useRef } from "react";
+﻿import React, { useRef, useEffect } from "react";
 import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const UniverseOrb: React.FC = () => {
-  const mountRef = useRef<HTMLDivElement | null>(null);
+export default function UniverseOrb({ progress = 1 }) {
+  const mountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const container = mountRef.current;
-    if (!container) return;
-
-    const width = container.clientWidth || container.offsetWidth || 600;
-    const height = container.clientHeight || container.offsetHeight || 400;
+    const mount = mountRef.current;
+    if (!mount) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#020617"); // slate-950, deep void
-    scene.fog = new THREE.FogExp2("#020617", 0.0025);
+    scene.background = new THREE.Color(0x020617);
 
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 2000);
-    camera.position.set(0, 0.4, 4.5);
+    const camera = new THREE.PerspectiveCamera(
+      50,
+      mount.clientWidth / mount.clientHeight,
+      0.1,
+      1000
+    );
+    camera.position.set(0, 0, 4.5);
 
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: false,
-    });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.8));
-    renderer.setSize(width, height);
-    renderer.outputEncoding = THREE.sRGBEncoding;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    mount.appendChild(renderer.domElement);
 
-    container.innerHTML = "";
-    container.appendChild(renderer.domElement);
-
-    // Soft ambient + directional "distant star" light
-    const ambient = new THREE.AmbientLight(0x6b7280, 0.9); // slate-500
+    // ------------------------------
+    // VOID LIGHT + AMBIENCE
+    // ------------------------------
+    const ambient = new THREE.AmbientLight(0x445577, 1.2);
     scene.add(ambient);
 
-    const keyLight = new THREE.DirectionalLight(0x38bdf8, 1.3); // sky-400
-    keyLight.position.set(3, 4, 5);
-    scene.add(keyLight);
+    const voidLight = new THREE.PointLight(0x88bbff, 2.5, 8);
+    voidLight.position.set(1.2, 0.5, 2.5);
+    scene.add(voidLight);
 
-    const rimLight = new THREE.DirectionalLight(0xa855f7, 0.7); // fuchsia-500
-    rimLight.position.set(-4, -3, -5);
-    scene.add(rimLight);
+    // ------------------------------
+    // ORB MATERIAL — VOID STORM
+    // ------------------------------
+    const orbGeo = new THREE.SphereGeometry(1.2, 128, 128);
+    const orbMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uProgress: { value: progress }
+      },
+      vertexShader: 
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        void main() {
+          vUv = uv;
+          vNormal = normal;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      ,
+      fragmentShader: 
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        uniform float uTime;
 
-    // -----------------------------
-    // Starfield (very distant, slow)
-    // -----------------------------
-    const starGeometry = new THREE.BufferGeometry();
-    const starCount = 1500;
-    const starPositions = new Float32Array(starCount * 3);
+        // Noise
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453123);
+        }
 
-    for (let i = 0; i < starCount * 3; i += 3) {
-      const radius = 40 + Math.random() * 60;
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
+        float noise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
 
-      starPositions[i] = radius * Math.sin(phi) * Math.cos(theta);
-      starPositions[i + 1] = radius * Math.cos(phi);
-      starPositions[i + 2] = radius * Math.sin(phi) * Math.sin(theta);
-    }
+          float a = hash(i);
+          float b = hash(i + vec2(1.0, 0.0));
+          float c = hash(i + vec2(0.0, 1.0));
+          float d = hash(i + vec2(1.0, 1.0));
 
-    starGeometry.setAttribute(
-      "position",
-      new THREE.BufferAttribute(starPositions, 3)
-    );
+          vec2 u = f * f * (3.0 - 2.0 * f);
+          return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+        }
 
-    const starMaterial = new THREE.PointsMaterial({
-      color: 0x0ea5e9, // sky-500
-      size: 0.055,
+        void main() {
+          float t = uTime * 0.2;
+
+          float n = noise(vUv * 6.0 + t);
+          float glow = pow(max(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)), 0.0), 4.0);
+
+          vec3 base = mix(vec3(0.02, 0.05, 0.10), vec3(0.12, 0.20, 0.40), n);
+          vec3 storm = vec3(0.4, 0.6, 1.2) * pow(n, 8.0);
+
+          vec3 finalColor = base + storm + glow * 0.8;
+
+          gl_FragColor = vec4(finalColor, 1.0);
+        }
+      ,
+    });
+
+    const orb = new THREE.Mesh(orbGeo, orbMat);
+    scene.add(orb);
+
+    // ------------------------------
+    // RINGS
+    // ------------------------------
+    const ringGeo = new THREE.RingGeometry(1.4, 2.4, 128);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0x0d1b2a,
+      side: THREE.DoubleSide,
       transparent: true,
       opacity: 0.4,
-      depthWrite: false,
     });
 
-    const stars = new THREE.Points(starGeometry, starMaterial);
-    scene.add(stars);
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = Math.PI / 2.4;
+    ring.rotation.y = 0.3;
+    scene.add(ring);
 
-    // -----------------------------
-    // Void haze layers (subtle)
-    // -----------------------------
-    const hazeGroup = new THREE.Group();
-    const hazeMaterial = new THREE.MeshBasicMaterial({
-      color: 0x0f172a,
-      transparent: true,
-      opacity: 0.25,
-      side: THREE.BackSide,
+    // ------------------------------
+    // PARALLAX CAMERA SHIFT
+    // ------------------------------
+    const mouse = { x: 0, y: 0 };
+    window.addEventListener("mousemove", (e) => {
+      mouse.x = (e.clientX / window.innerWidth - 0.5) * 0.4;
+      mouse.y = (e.clientY / window.innerHeight - 0.5) * 0.4;
     });
 
-    for (let i = 0; i < 3; i++) {
-      const sphere = new THREE.Mesh(
-        new THREE.SphereGeometry(15 + i * 3, 32, 32),
-        hazeMaterial.clone()
-      );
-      (sphere.material as THREE.MeshBasicMaterial).opacity =
-        0.18 + i * 0.04;
-      hazeGroup.add(sphere);
-    }
-
-    scene.add(hazeGroup);
-
-    // -----------------------------
-    // Core Orb: layered, ominous
-    // -----------------------------
-    const orbGroup = new THREE.Group();
-
-    // outer shell
-    const outerGeometry = new THREE.SphereGeometry(1.1, 64, 64);
-    const outerMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x020617,
-      emissive: 0x020617,
-      roughness: 0.15,
-      metalness: 0.9,
-      transmission: 0.82,
-      transparent: true,
-      opacity: 0.95,
-      thickness: 1.4,
-      clearcoat: 0.9,
-      clearcoatRoughness: 0.25,
-    });
-    const outerOrb = new THREE.Mesh(outerGeometry, outerMaterial);
-    orbGroup.add(outerOrb);
-
-    // inner core (glowing)
-    const coreGeometry = new THREE.SphereGeometry(0.72, 48, 48);
-    const coreMaterial = new THREE.MeshBasicMaterial({
-      color: 0xf97316, // orange-500
-      transparent: true,
-      opacity: 0.85,
-    });
-    const coreOrb = new THREE.Mesh(coreGeometry, coreMaterial);
-    orbGroup.add(coreOrb);
-
-    // crack overlay (wireframe style)
-    const crackGeometry = new THREE.IcosahedronGeometry(0.98, 2);
-    const crackMaterial = new THREE.MeshBasicMaterial({
-      color: 0xf43f5e, // rose-500
-      wireframe: true,
-      transparent: true,
-      opacity: 0.35,
-    });
-    const crackMesh = new THREE.Mesh(crackGeometry, crackMaterial);
-    orbGroup.add(crackMesh);
-
-    // energy rings
-    const ringsGroup = new THREE.Group();
-    const ringMaterial = new THREE.MeshBasicMaterial({
-      color: 0x38bdf8,
-      transparent: true,
-      opacity: 0.45,
-    });
-
-    const ring1 = new THREE.Mesh(
-      new THREE.TorusGeometry(1.5, 0.01, 16, 128),
-      ringMaterial.clone()
-    );
-    ring1.rotation.x = Math.PI / 2.4;
-    ringsGroup.add(ring1);
-
-    const ring2 = new THREE.Mesh(
-      new THREE.TorusGeometry(1.8, 0.012, 16, 128),
-      ringMaterial.clone()
-    );
-    ring2.rotation.y = Math.PI / 2.2;
-    ringsGroup.add(ring2);
-
-    const ring3 = new THREE.Mesh(
-      new THREE.TorusGeometry(2.2, 0.009, 16, 128),
-      ringMaterial.clone()
-    );
-    ring3.rotation.z = Math.PI / 2.8;
-    (ring3.material as THREE.MeshBasicMaterial).opacity = 0.3;
-    ringsGroup.add(ring3);
-
-    orbGroup.add(ringsGroup);
-
-    // Slight vertical lift
-    orbGroup.position.y = 0.15;
-
-    scene.add(orbGroup);
-
-    // -----------------------------
-    // Shockwave pulse
-    // -----------------------------
-    const shockwaveGeometry = new THREE.RingGeometry(1.4, 1.9, 64);
-    const shockwaveMaterial = new THREE.MeshBasicMaterial({
-      color: 0x38bdf8,
-      transparent: true,
-      opacity: 0.0,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    });
-    const shockwave = new THREE.Mesh(shockwaveGeometry, shockwaveMaterial);
-    shockwave.rotation.x = -Math.PI / 2;
-    shockwave.position.y = -1.2;
-    scene.add(shockwave);
-
-    let shockwaveStrength = 0;
-    let shockwaveOpacity = 0;
-
-    // -----------------------------
-    // Orbit controls (limited)
-    // -----------------------------
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.09;
-    controls.rotateSpeed = 0.45;
-    controls.zoomSpeed = 0.6;
-    controls.enablePan = false;
-    controls.minDistance = 3.5;
-    controls.maxDistance = 6.0;
-    controls.minPolarAngle = Math.PI / 3.2;
-    controls.maxPolarAngle = Math.PI / 1.7;
-
-    // -----------------------------
-    // Mouse-driven subtle tilt
-    // -----------------------------
-    const targetTilt = { x: 0, y: 0 };
-    const currentTilt = { x: 0, y: 0 };
-
-    const onPointerMove = (event: PointerEvent) => {
-      const rect = renderer.domElement.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const dx = (event.clientX - cx) / rect.width;
-      const dy = (event.clientY - cy) / rect.height;
-
-      targetTilt.y = THREE.MathUtils.clamp(dx * 0.6, -0.7, 0.7);
-      targetTilt.x = THREE.MathUtils.clamp(-dy * 0.6, -0.6, 0.6);
-    };
-
-    const onClick = () => {
-      shockwaveStrength = 1.0;
-      shockwaveOpacity = 0.55;
-    };
-
-    renderer.domElement.addEventListener("pointermove", onPointerMove);
-    renderer.domElement.addEventListener("click", onClick);
-
-    // -----------------------------
-    // Resize handling
-    // -----------------------------
-    const onResize = () => {
-      if (!container) return;
-      const w = container.clientWidth || container.offsetWidth || width;
-      const h = container.clientHeight || container.offsetHeight || height;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-    };
-
-    window.addEventListener("resize", onResize);
-
-    // -----------------------------
-    // Animation loop
-    // -----------------------------
-    let frameId: number;
-    const clock = new THREE.Clock();
-
+    // ------------------------------
+    // Animate
+    // ------------------------------
+    let frame = 0;
     const animate = () => {
-      frameId = requestAnimationFrame(animate);
-      const t = clock.getElapsedTime();
+      frame++;
 
-      stars.rotation.y += 0.0004;
-      hazeGroup.rotation.y -= 0.00025;
+      orb.rotation.y += 0.0025;
+      orb.rotation.x += 0.001;
 
-      // Tilt interp
-      currentTilt.x += (targetTilt.x - currentTilt.x) * 0.08;
-      currentTilt.y += (targetTilt.y - currentTilt.y) * 0.08;
-      orbGroup.rotation.x = currentTilt.x + Math.sin(t * 0.15) * 0.03;
-      orbGroup.rotation.y = currentTilt.y + Math.cos(t * 0.17) * 0.04;
+      orbMat.uniforms.uTime.value = frame;
 
-      coreOrb.rotation.y += 0.12 * clock.getDelta();
-      crackMesh.rotation.y -= 0.06;
-      crackMesh.rotation.x += 0.03;
+      camera.position.x += (mouse.x * 1.1 - camera.position.x) * 0.03;
+      camera.position.y += (mouse.y * -1.0 - camera.position.y) * 0.03;
+      camera.lookAt(0, 0, 0);
 
-      ringsGroup.rotation.y += 0.04;
-      ringsGroup.rotation.x -= 0.02;
+      ring.rotation.z += 0.0006;
 
-      // Shockwave
-      if (shockwaveStrength > 0.01 || shockwaveOpacity > 0.01) {
-        shockwaveStrength *= 0.9;
-        shockwaveOpacity *= 0.88;
-
-        const s = 1.4 + (1.2 * (1 - shockwaveStrength)) * 4;
-        shockwave.scale.set(s, s, s);
-        (shockwave.material as THREE.MeshBasicMaterial).opacity =
-          Math.max(0, shockwaveOpacity);
-      } else {
-        (shockwave.material as THREE.MeshBasicMaterial).opacity = 0;
-      }
-
-      controls.update();
       renderer.render(scene, camera);
+      requestAnimationFrame(animate);
     };
-
     animate();
 
+    const handleResize = () => {
+      if (!mount) return;
+      renderer.setSize(mount.clientWidth, mount.clientHeight);
+      camera.aspect = mount.clientWidth / mount.clientHeight;
+      camera.updateProjectionMatrix();
+    };
+    window.addEventListener("resize", handleResize);
+
     return () => {
-      cancelAnimationFrame(frameId);
-      window.removeEventListener("resize", onResize);
-      renderer.domElement.removeEventListener("pointermove", onPointerMove);
-      renderer.domElement.removeEventListener("click", onClick);
-      controls.dispose();
-      starGeometry.dispose();
-      starMaterial.dispose();
-      shockwaveGeometry.dispose();
-      shockwaveMaterial.dispose();
-      outerGeometry.dispose();
-      outerMaterial.dispose();
-      coreGeometry.dispose();
-      coreMaterial.dispose();
-      crackGeometry.dispose();
-      crackMaterial.dispose();
-      ringsGroup.traverse((obj) => {
-        const mesh = obj as THREE.Mesh;
-        if (mesh.geometry) mesh.geometry.dispose();
-        if (mesh.material && (mesh.material as any).dispose) {
-          (mesh.material as any).dispose();
-        }
-      });
-      renderer.dispose();
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
-      }
+      window.removeEventListener("resize", handleResize);
+      mount.removeChild(renderer.domElement);
     };
   }, []);
 
-  return (
-    <div
-      ref={mountRef}
-      className="w-full h-full bg-[#020617] rounded-3xl overflow-hidden"
-    />
-  );
-};
+  return <div ref={mountRef} className="w-full h-full"></div>;
+}
 
-export default UniverseOrb;
+

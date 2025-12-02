@@ -1,18 +1,26 @@
 ﻿import React from "react";
 import ReactDOM from "react-dom/client";
-import BootScreen from "./os/boot/BootScreen";
 import App from "./App";
+import BootScreen from "./os/boot/BootScreen";
 
-const root = ReactDOM.createRoot(document.getElementById("root")!);
+const container = document.getElementById("root")!;
+const root = ReactDOM.createRoot(container);
 
 function RootController() {
-  const [booted, setBooted] = React.useState(false);
+  const [bootDone, setBootDone] = React.useState(false);
 
-  if (!booted) {
-    return <BootScreen onDone={() => setBooted(true)} />;
+  if (!bootDone) {
+    return (
+      <BootScreen
+        durationMs={15000}
+        onDone={() => setBootDone(true)}
+      />
+    );
   }
 
   return <App />;
 }
 
 root.render(<RootController />);
+
+

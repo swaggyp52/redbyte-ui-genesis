@@ -43,3 +43,5 @@ export function getAppComponent(appId: AppId): React.ComponentType {
       return () => <div>Unknown app</div>;
   }
 }
+
+
