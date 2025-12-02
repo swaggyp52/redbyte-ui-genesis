@@ -1,4 +1,4 @@
-import WindiCSS from 'vite-plugin-windicss'
+﻿import WindiCSS from 'vite-plugin-windicss'
 import ImageminPlugin from 'vite-plugin-imagemin'
 
 export default {
@@ -19,4 +19,5 @@ export default {
     }
   }
 }
+
 
