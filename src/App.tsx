@@ -1,6 +1,6 @@
 ﻿import React from "react";
 import UniverseOrb from "./os/boot/UniverseOrb";
-import AppRouter from "./Router"; // or your main Desktop/Login router
+import AppRouter from "./router/AppRouter"; // or your main Desktop/Login router
 import "./global.css";
 
 export default function App() {
@@ -20,6 +20,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
