@@ -28,3 +28,4 @@ export interface RedstoneComponent {
    */
   tick(block: VoxelBlock, ctx: ComponentContext): ComponentResult;
 }
+

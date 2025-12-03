@@ -18,3 +18,4 @@ export interface RedstoneSimConfig {
   width: number;
   height: number;
 }
+

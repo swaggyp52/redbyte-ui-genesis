@@ -31,3 +31,4 @@ export async function explainApp(appId: string, title: string) {
 
   return `**${title}**\n\nThis RedByte application is active but does not yet have a specific AI explanation.`;
 }
+

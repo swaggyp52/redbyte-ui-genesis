@@ -9,3 +9,4 @@ export const neonTheme: ThemeTokenSet = {
   accentSoft: "bg-pink-500/15",
   borderSubtle: "border-slate-800/80",
 };
+

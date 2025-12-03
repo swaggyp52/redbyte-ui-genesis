@@ -53,3 +53,4 @@ export function useWorkspaces() {
 
   return { workspaces, active, createWorkspace, switchWorkspace };
 }
+

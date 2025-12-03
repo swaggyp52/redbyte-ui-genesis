@@ -26,3 +26,4 @@ export function useRootLogs() {
   const logs = getInitialLogs();
   return { logs };
 }
+

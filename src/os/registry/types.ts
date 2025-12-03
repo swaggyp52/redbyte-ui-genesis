@@ -8,3 +8,4 @@ export interface AppDefinition {
   group?: "system" | "dev" | "experiments" | "agents";
   entry: React.ComponentType<any>;
 }
+

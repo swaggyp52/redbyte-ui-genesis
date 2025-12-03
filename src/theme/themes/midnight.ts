@@ -9,3 +9,4 @@ export const midnightTheme: ThemeTokenSet = {
   accentSoft: "bg-sky-500/12",
   borderSubtle: "border-slate-800/80",
 };
+

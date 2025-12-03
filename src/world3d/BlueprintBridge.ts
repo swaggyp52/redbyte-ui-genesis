@@ -158,3 +158,4 @@ export function exportSliceToBlueprint(
   const grid = extractVoxelLayerToGrid(yLevel);
   saveBlueprint(blueprintName, grid);
 }
+

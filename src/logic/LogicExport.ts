@@ -107,3 +107,4 @@ function findTwoInputWires(
     : "1'bx";
   return [a, b];
 }
+

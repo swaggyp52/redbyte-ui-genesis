@@ -21,3 +21,4 @@ export const Commands: Command[] = [];
 export function registerCommand(cmd: Command) {
   Commands.push(cmd);
 }
+

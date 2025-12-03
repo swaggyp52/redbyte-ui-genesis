@@ -22,3 +22,4 @@ export function createExecution(agentId: string, input: string): AgentHostResult
     agentName: agent?.name ?? null,
   };
 }
+

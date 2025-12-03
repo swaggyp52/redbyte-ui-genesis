@@ -1,77 +1,75 @@
-﻿Write-Host "=== RedByte Automation System V5 (Stable) ===" -ForegroundColor Cyan
+﻿Write-Host "=== RedByte Auto Mode (Full Repo Watch) ===" -ForegroundColor Cyan
 
-# ---------------------------------------
-# 1) Fix Engine – gentle, project-wide
-# ---------------------------------------
+# -------------------------------------------------------
+# 1) FIX ENGINE – auto-patches common breakage patterns
+# -------------------------------------------------------
 function Invoke-RedByteFix {
-    Write-Host "[FixEngine] Running repairs..." -ForegroundColor DarkGray
+    Write-Host "[Fix] Scanning & patching..." -ForegroundColor DarkGray
 
-    # Only touch TSX files – your React/3D front-end
-    Get-ChildItem -Recurse -Filter *.tsx | ForEach-Object {
-         = .FullName
-         = Get-Content  -Raw
+    # Target core source files (TSX/TS/JS/JSX)
+    Get-ChildItem -Recurse -Include *.tsx,*.ts,*.jsx,*.js -File | ForEach-Object {
+        $path    = $_.FullName
+        $content = Get-Content $path -Raw
 
-        # THREE.js renderer updates (old → new API)
-         =  
-            -replace "renderer\.outputEncoding", "renderer.outputColorSpace" 
-            -replace "THREE\.sRGBEncoding", "THREE.SRGBColorSpace"
+        # THREE.js renderer updates
+        $content = $content -replace "renderer\.outputEncoding", "renderer.outputColorSpace"
+        $content = $content -replace "THREE\.sRGBEncoding", "THREE.SRGBColorSpace"
 
-        # Fix useRef type patterns that cause TS to scream
-         =  -replace "useRef<[^>]+>\(\)", "useRef(null)"
+        # React useRef<T>() with no initial value → useRef(null)
+        $content = $content -replace "useRef<[^>]+>\(\)", "useRef(null)"
 
-        Set-Content   -Encoding UTF8
+        Set-Content $path $content -Encoding UTF8
     }
 
-    Write-Host "[FixEngine] Completed." -ForegroundColor Green
+    Write-Host "[Fix] Done." -ForegroundColor Green
 }
 
-# Run one fix pass on startup
+# Run one pass immediately on start
 Invoke-RedByteFix
 
-# ---------------------------------------
-# 2) File watcher – auto-fix + auto-push
-# ---------------------------------------
- = New-Object System.IO.FileSystemWatcher
-.Path = (Get-Location).Path
-.Filter = "*.tsx"
-.IncludeSubdirectories = True
-.EnableRaisingEvents = True
+# -------------------------------------------------------
+# 2) FILE WATCHER – watch the whole repo for changes
+# -------------------------------------------------------
+$watcher = New-Object System.IO.FileSystemWatcher
+$watcher.Path                  = (Get-Location).Path
+$watcher.Filter                = "*.*"          # any file change triggers
+$watcher.IncludeSubdirectories = $true
+$watcher.EnableRaisingEvents   = $true
 
-Register-ObjectEvent 
-    -InputObject  
-    -EventName Changed 
-    -SourceIdentifier RedByteWatcher 
+Register-ObjectEvent `
+    -InputObject $watcher `
+    -EventName Changed `
+    -SourceIdentifier RedByteWatcher `
     -Action {
-        Write-Host "
-[Watcher] Change detected → auto-fix + git push..." -ForegroundColor Yellow
+        Write-Host "`n[Watcher] Change detected → auto-fix + push..." -ForegroundColor Yellow
+
+        # Re-run fix engine
         Invoke-RedByteFix
 
         try {
             git add . | Out-Null
-            git commit -m "AutoFix: watcher event" --allow-empty | Out-Null
-            git push origin main
-            Write-Host "[Watcher] Git push OK → Cloudflare will build & deploy." -ForegroundColor Green
+            git commit -m "AutoFix: file change $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" --allow-empty | Out-Null
+            git push origin main | Out-Null
+            Write-Host "[Deploy] Pushed to origin/main. Cloudflare will deploy this commit." -ForegroundColor Green
         } catch {
-            Write-Host "[Watcher] Git push failed: " -ForegroundColor Red
+            Write-Host "[Deploy] Git push failed: $($_.Exception.Message)" -ForegroundColor Red
         }
     }
 
-# ---------------------------------------
-# 3) Dev server – Vite in a loop
-# ---------------------------------------
+# -------------------------------------------------------
+# 3) DEV SERVER LOOP – keeps Vite always running
+# -------------------------------------------------------
 Start-Job -Name "RedByteDev" -ScriptBlock {
-    while (True) {
+    while ($true) {
+        Write-Host "[Dev] Starting dev server (npm run dev)..." -ForegroundColor Cyan
         try {
-            Write-Host "[Dev] Starting Vite (npm run dev)..." -ForegroundColor Cyan
             npm run dev
         } catch {
-            Write-Host "[Dev] npm run dev crashed: " -ForegroundColor Red
+            Write-Host "[Dev] Dev server crashed: $($_.Exception.Message)" -ForegroundColor Red
         }
-        Write-Host "[Dev] Restarting dev server in 3s..." -ForegroundColor DarkGray
+        Write-Host "[Dev] Restarting in 3 seconds..." -ForegroundColor DarkGray
         Start-Sleep -Seconds 3
     }
 }
 
-Write-Host "RedByte Auto Mode ACTIVE." -ForegroundColor Cyan
-Write-Host "• Leave this window open while working." -ForegroundColor DarkGray
-Write-Host "• Editing/saving .tsx files → auto-fix + git push → Cloudflare deploy." -ForegroundColor DarkGray
+Write-Host "Auto Mode is ACTIVE. Any save → auto-fix + git push → Cloudflare deploy." -ForegroundColor Cyan

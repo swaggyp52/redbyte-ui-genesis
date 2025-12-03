@@ -34,3 +34,4 @@ class EventBus {
 }
 
 export const RBEvents = new EventBus();
+

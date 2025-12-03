@@ -38,3 +38,4 @@ export async function runBootSequence(onProgress: (p: number, label: string) => 
 
   onProgress(1, "Done");
 }
+

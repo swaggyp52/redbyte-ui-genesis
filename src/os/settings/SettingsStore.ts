@@ -95,3 +95,4 @@ export const useSettings = create<RedByteSettingsState>((set, get) => ({
 
   logout: () => set({ currentUserId: null }),
 }));
+

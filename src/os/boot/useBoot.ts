@@ -13,3 +13,4 @@ export function useBoot() {
 
   return { isBooted, bootMessage };
 }
+

@@ -24,3 +24,4 @@ export function useShortcut(config: ShortcutConfig, handler: () => void) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [config.key, config.mod, handler]);
 }
+

@@ -150,3 +150,4 @@ export function stepGrid(grid: RedstoneGrid): RedstoneGrid {
 
   return next;
 }
+

@@ -7,3 +7,4 @@
   accentSoft: string;
   borderSubtle: string;
 }
+
