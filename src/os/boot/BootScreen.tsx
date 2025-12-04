@@ -1,165 +1,103 @@
 ﻿import React, { useEffect, useRef, useState } from "react";
 import UniverseOrb from "./UniverseOrb";
 
-export type BootScreenProps = {
-  onDone?: () => void;
-  /** Optional override; defaults to 15 seconds */
-  durationMs?: number;
-};
+const BOOT_DURATION_MS = 15000;
 
-const DEFAULT_DURATION = 15000;
-
-const STEPS = [
-  "Waking the core",
-  "Linking RedByte subsystems",
-  "Preparing your workspace",
-  "Syncing RedByte identity",
+const BOOT_TIPS: string[] = [
+  "Loading core system",
+  "Starting services",
+  "Preparing interface",
+  "Checking session state",
+  "Aligning display",
+  "Final checks in progress"
 ];
 
-const TIPS = [
-  "Tip: Start small. One idea, one sketch, one circuit. Ship it, then expand.",
-  "Tip: Let the machine handle the noise. Save your attention for the hard parts.",
-  "Tip: Silence isn’t empty. It’s the space where your next move appears.",
-  "Tip: RedByte grows when you do. The system is here to keep up, not slow you down.",
-];
+interface BootScreenProps {
+  onComplete?: () => void;
+}
 
-function BootScreen({ onDone, durationMs = DEFAULT_DURATION }: BootScreenProps) {
+const BootScreen: React.FC<BootScreenProps> = ({ onComplete }) => {
   const [progress, setProgress] = useState(0);
-  const [stepIndex, setStepIndex] = useState(0);
+  const [tipIndex, setTipIndex] = useState(0);
   const doneRef = useRef(false);
 
-  // Time-based progress: 0 -> 1 across durationMs
   useEffect(() => {
-    const total = durationMs;
     const start = performance.now();
-    let frameId = 0;
+    let frameId: number;
 
-    const loop = () => {
+    const tick = () => {
       const now = performance.now();
       const elapsed = now - start;
-      const p = Math.min(1, elapsed / total);
+      const pct = Math.min(1, elapsed / BOOT_DURATION_MS);
+      setProgress(pct);
 
-      setProgress(p);
-      const idx = Math.min(
-        STEPS.length - 1,
-        Math.floor(p * STEPS.length)
-      );
-      setStepIndex(idx);
-
-      if (p >= 1 && !doneRef.current) {
+      if (pct < 1) {
+        frameId = requestAnimationFrame(tick);
+      } else if (!doneRef.current) {
         doneRef.current = true;
-        onDone?.();
-        return;
-      }
-
-      frameId = requestAnimationFrame(loop);
-    };
-
-    frameId = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(frameId);
-  }, [durationMs, onDone]);
-
-  // Allow Enter to skip as soon as the screen is visible
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Enter" && !doneRef.current) {
-        doneRef.current = true;
-        setProgress(1);
-        onDone?.();
+        if (onComplete) {
+          // small delay to let the bar reach 100 visually
+          setTimeout(() => onComplete(), 400);
+        }
       }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onDone]);
+
+    frameId = requestAnimationFrame(tick);
+
+    const tipTimer = window.setInterval(() => {
+      setTipIndex((prev) => (prev + 1) % BOOT_TIPS.length);
+    }, 2500);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.clearInterval(tipTimer);
+    };
+  }, [onComplete]);
 
   const percent = Math.round(progress * 100);
-  const clampedPercent = Math.max(0, Math.min(100, percent));
-  const step = STEPS[stepIndex] ?? STEPS[STEPS.length - 1];
-  const tipIndex = Math.min(
-    TIPS.length - 1,
-    Math.floor(progress * TIPS.length)
-  );
-  const tip = TIPS[tipIndex];
 
   return (
-    <div className="fixed inset-0 bg-slate-950 text-slate-100 flex flex-col">
-      {/* Top: Void core */}
-      <div className="flex-1 flex items-center justify-center px-4 pt-6 pb-2 overflow-hidden">
-        <div className="w-full max-w-5xl aspect-[21/9]">
+    <div className="h-screen w-screen bg-slate-950 text-slate-50 flex flex-col items-center justify-center overflow-hidden">
+      {/* background glow */}
+      <div className="pointer-events-none absolute -inset-40 bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.25),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(59,130,246,0.3),transparent_55%)] opacity-70 blur-3xl" />
+
+      {/* center orb */}
+      <div className="relative w-full max-w-xl h-80 flex items-center justify-center z-10">
+        <div className="animate-[spin_40s_linear_infinite]">
           <UniverseOrb progress={progress} />
         </div>
       </div>
 
-      {/* Bottom: Status + progress */}
-      <div className="border-t border-slate-800/80 bg-slate-950/95 px-6 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-1">
-          <div className="text-xs uppercase tracking-[0.14em] text-slate-500">
-            RedByte OS • System boot • Deep void core
-          </div>
-          <div className="text-sm text-slate-200">
-            {step}
-          </div>
-          <div className="text-xs text-slate-400 max-w-xl">
-            {tip}
-          </div>
-          <div className="text-[0.7rem] text-slate-500 mt-1">
-            Press <span className="text-slate-200">Enter</span> to skip.
-          </div>
+      {/* progress bar */}
+      <div className="relative z-10 mt-6 w-full max-w-xl px-8">
+        <div className="h-2 rounded-full bg-slate-800/80 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-sky-400 via-cyan-300 to-emerald-300 transition-all duration-150"
+            style={{ width: `${percent}%` }}
+          />
         </div>
+        <div className="mt-3 flex items-center justify-between text-[10px] text-slate-400 uppercase tracking-[0.22em]">
+          <span>booting redbyte os</span>
+          <span>{percent}%</span>
+        </div>
+      </div>
 
-        <div className="flex flex-col items-end gap-1 mt-2 sm:mt-0">
-          <div className="h-1.5 w-48 rounded-full bg-slate-900 border border-slate-800 overflow-hidden">
-            <div
-              className="h-full bg-sky-400 transition-all"
-              style={{ width: `${clampedPercent}%` }}
-            />
-          </div>
-          <div className="text-[0.7rem] text-slate-400 font-mono">
-            Step {stepIndex + 1} / {STEPS.length} •{" "}
-            {clampedPercent.toString().padStart(3, " ")}%
-          </div>
+      {/* rotating tips */}
+      <div className="relative z-10 mt-6 px-8 max-w-xl text-center">
+        <div className="inline-flex items-center justify-center gap-2 text-sm text-slate-300/90">
+          <span className="h-[6px] w-[6px] rounded-full bg-emerald-400 animate-pulse" />
+          <span className="font-medium text-slate-100/90">
+            {BOOT_TIPS[tipIndex]}
+          </span>
         </div>
+      </div>
+
+      {/* footer brand */}
+      <div className="relative z-10 mt-10 text-[9px] tracking-[0.35em] uppercase text-slate-500/70">
+        redbyte os
       </div>
     </div>
   );
-}
+};
 
-// Keep both default + named exports so older imports still work
-export { BootScreen };
 export default BootScreen;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
