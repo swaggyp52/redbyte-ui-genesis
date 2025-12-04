@@ -1,155 +1,149 @@
 ﻿import React, { useState } from "react";
-import { emitToast } from "../events/events";
+import { useFS } from "../core/fsStore";
 
-interface Line {
-  id: string;
-  text: string;
-  kind: "input" | "output" | "system";
-}
-
-const bootstrap: Line[] = [
-  {
-    id: "l1",
-    text: "RedByte NeonOS shell v0.1.0",
-    kind: "system",
-  },
-  {
-    id: "l2",
-    text: "type `help` for simulated commands",
-    kind: "system",
-  },
-];
-
-const helpLines: string[] = [
-  "available commands:",
-  "  help        · show this help",
-  "  status      · show fake system status",
-  "  deploy      · pretend to trigger a deploy",
-  "  clear       · clear the terminal buffer",
-];
-
-export const TerminalApp: React.FC = () => {
-  const [lines, setLines] = useState<Line[]>(bootstrap);
+const TerminalApp: React.FC = () => {
+  const fs = useFS();
+  const [lines, setLines] = useState<string[]>([
+    "redbyte terminal",
+    "type `help` to list commands.",
+    ""
+  ]);
   const [input, setInput] = useState("");
 
-  const pushLine = (text: string, kind: Line["kind"]) => {
-    setLines((prev) => [
-      ...prev,
-      {
-        id: `line_${Date.now()}_${Math.random().toString(16).slice(2, 6)}`,
-        text,
-        kind,
-      },
-    ]);
+  const append = (next: string | string[]) => {
+    setLines(prev => [...prev, ...(Array.isArray(next) ? next : [next])]);
   };
 
-  const runCommand = (raw: string) => {
+  const handle = (raw: string) => {
     const cmd = raw.trim();
     if (!cmd) return;
+    append(`> ${cmd}`);
 
-    pushLine(`> ${cmd}`, "input");
+    const [name, ...rest] = cmd.split(" ");
+    const arg = rest.join(" ").trim();
 
-    switch (cmd) {
+    switch (name) {
       case "help":
-        helpLines.forEach((l) => pushLine(l, "output"));
-        break;
-      case "status":
-        pushLine("RedByte OS status: OK · 0 alerts · 3 workspaces", "output");
-        break;
-      case "deploy":
-        pushLine("triggering fake deploy to Cloudflare...", "output");
-        emitToast({
-          title: "Deploy (simulated)",
-          body: "Pipeline executed from NeonOS terminal.",
-          level: "info",
-        });
+        append([
+          "available commands:",
+          "  help           show this help",
+          "  clear          clear screen",
+          "  pwd            show current path",
+          "  ls             list directory",
+          "  cd PATH        change directory",
+          "  cat FILE       print file contents",
+          "  write FILE     write text into file",
+          ""
+        ]);
         break;
       case "clear":
-        setLines(bootstrap);
+        setLines([]);
         break;
-      default:
-        pushLine(`command not found: ${cmd}`, "output");
+      case "pwd":
+        append(fs.pwd());
         break;
+      case "ls": {
+        const list = fs.list();
+        if (!list.length) {
+          append("(empty)");
+        } else {
+          append(
+            list.map(
+              n =>
+                `${n.type === "dir" ? "d" : "-"} ${n.name}`
+            )
+          );
+        }
+        append("");
+        break;
+      }
+      case "cd":
+        if (!arg) {
+          append("cd: missing path");
+        } else {
+          const prev = fs.pwd();
+          fs.cd(arg);
+          if (fs.pwd() === prev) {
+            append(`cd: no such directory: ${arg}`);
+          } else {
+            append(fs.pwd());
+          }
+        }
+        break;
+      case "cat":
+        if (!arg) {
+          append("cat: missing file name");
+        } else {
+          const content = fs.readFile(arg);
+          if (content == null) {
+            append(`cat: cannot open file: ${arg}`);
+          } else {
+            append(content.split("\n"));
+          }
+        }
+        break;
+      case "write":
+        if (!arg) {
+          append("usage: write FILE (then enter text, end with single '.' line)");
+        } else {
+          append(`enter text for ${arg}, end with '.' on a single line:`);
+          let buffer: string[] = [];
+
+          const intercept = (line: string) => {
+            if (line === ".") {
+              fs.writeFile(arg, buffer.join("\n"));
+              append([`written to ${arg}`, ""]);
+              setLines(prev => prev.filter(l => !l.startsWith("::input ")));
+              (window as any).__rb_input_handler = null;
+              return;
+            }
+            buffer.push(line);
+            setLines(prev => [...prev, `::input ${line}`]);
+          };
+
+          (window as any).__rb_input_handler = intercept;
+        }
+        break;
+      default: {
+        const handler = (window as any).__rb_input_handler;
+        if (typeof handler === "function") {
+          handler(cmd);
+        } else {
+          append(`unknown command: ${name}`);
+        }
+        break;
+      }
     }
   };
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
-    runCommand(input);
+    const value = input;
     setInput("");
+    handle(value);
   };
 
   return (
-    <div className="h-full flex flex-col bg-slate-950/60 border border-slate-900/80 rounded-xl overflow-hidden">
-      <div className="px-3 py-2 border-b border-slate-800/80 text-[11px] text-slate-400 flex justify-between">
-        <span>NeonOS shell</span>
-        <span className="text-slate-500">simulated</span>
-      </div>
-      <div className="flex-1 px-3 py-2 overflow-auto text-[11px] font-mono text-slate-200 space-y-0.5">
-        {lines.map((line) => (
-          <div
-            key={line.id}
-            className={
-              line.kind === "system"
-                ? "text-slate-400"
-                : line.kind === "output"
-                ? "text-slate-200"
-                : "text-sky-300"
-            }
-          >
-            {line.text}
-          </div>
+    <div className="h-full w-full flex flex-col bg-black/70">
+      <div className="flex-1 overflow-auto p-3 font-mono text-[11px] text-red-100/90">
+        {lines.map((l, i) => (
+          <div key={i}>{l}</div>
         ))}
       </div>
       <form
         onSubmit={onSubmit}
-        className="border-t border-slate-800/80 px-3 py-2 flex items-center gap-2 text-[11px] font-mono"
+        className="border-t border-red-900/70 px-3 py-2 flex items-center gap-2 bg-black/80"
       >
-        <span className="text-slate-500">λ</span>
+        <span className="text-[11px] font-mono text-red-400/90">&gt;</span>
         <input
-          className="flex-1 bg-transparent outline-none text-slate-100 placeholder:text-slate-600"
-          placeholder="type a command, e.g. `help`"
+          className="flex-1 bg-transparent outline-none border-none text-[11px] font-mono text-red-100 placeholder-red-500/40"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={e => setInput(e.target.value)}
+          placeholder="type a command, e.g. `help`"
         />
       </form>
     </div>
   );
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+export default TerminalApp;

@@ -1,100 +1,112 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import UniverseOrb from "./UniverseOrb";
+
+interface BootScreenProps {
+  onComplete: () => void;
+}
 
 const BOOT_DURATION_MS = 15000;
 
 const BOOT_TIPS: string[] = [
-  "Loading core system",
-  "Starting services",
-  "Preparing interface",
-  "Checking session state",
-  "Aligning display",
-  "Final checks in progress"
+  "power-on self test",
+  "mounting workspace",
+  "linking redstone graph",
+  "warming instruction cache",
+  "arming debugger hooks",
+  "finalizing session"
 ];
-
-interface BootScreenProps {
-  onComplete?: () => void;
-}
 
 const BootScreen: React.FC<BootScreenProps> = ({ onComplete }) => {
   const [progress, setProgress] = useState(0);
   const [tipIndex, setTipIndex] = useState(0);
-  const doneRef = useRef(false);
+  const [log, setLog] = useState<string[]>([
+    "[  ok ] boot sequence started",
+    "[  ok ] video: tailwind compositor online",
+    "[  ok ] input: pointer + keyboard bound"
+  ]);
 
   useEffect(() => {
     const start = performance.now();
-    let frameId: number;
+    let doneTimeout: number | undefined;
 
     const tick = () => {
       const now = performance.now();
-      const elapsed = now - start;
-      const pct = Math.min(1, elapsed / BOOT_DURATION_MS);
+      const pct = Math.min(1, (now - start) / BOOT_DURATION_MS);
       setProgress(pct);
 
       if (pct < 1) {
-        frameId = requestAnimationFrame(tick);
-      } else if (!doneRef.current) {
-        doneRef.current = true;
-        if (onComplete) {
-          // small delay to let the bar reach 100 visually
-          setTimeout(() => onComplete(), 400);
-        }
+        requestAnimationFrame(tick);
+      } else {
+        setLog((prev) => [...prev, "[  ok ] environment ready"]);
+        doneTimeout = window.setTimeout(() => {
+          onComplete();
+        }, 600);
       }
     };
 
-    frameId = requestAnimationFrame(tick);
-
     const tipTimer = window.setInterval(() => {
-      setTipIndex((prev) => (prev + 1) % BOOT_TIPS.length);
-    }, 2500);
+      setTipIndex((i) => (i + 1) % BOOT_TIPS.length);
+      setLog((prev) => [
+        ...prev,
+        `[ ... ] ${BOOT_TIPS[(tipIndex + 1) % BOOT_TIPS.length]}`
+      ]);
+    }, 2200);
+
+    tick();
 
     return () => {
-      cancelAnimationFrame(frameId);
       window.clearInterval(tipTimer);
+      if (doneTimeout) window.clearTimeout(doneTimeout);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onComplete]);
 
   const percent = Math.round(progress * 100);
 
   return (
-    <div className="h-screen w-screen bg-slate-950 text-slate-50 flex flex-col items-center justify-center overflow-hidden">
-      {/* background glow */}
-      <div className="pointer-events-none absolute -inset-40 bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.25),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(59,130,246,0.3),transparent_55%)] opacity-70 blur-3xl" />
+    <div className="h-screen w-screen bg-[#02010a] text-slate-50 flex flex-col items-center justify-center overflow-hidden relative">
+      {/* background grid / wiring */}
+      <div className="pointer-events-none absolute inset-0 opacity-60">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(248,113,113,0.3),transparent_60%),radial-gradient(circle_at_90%_100%,rgba(239,68,68,0.18),transparent_60%)] blur-3xl" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(148,27,37,0.22)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.75)_1px,transparent_1px)] bg-[size:32px_32px]" />
+      </div>
 
-      {/* center orb */}
-      <div className="relative w-full max-w-xl h-80 flex items-center justify-center z-10">
-        <div className="animate-[spin_40s_linear_infinite]">
+      {/* center stack */}
+      <div className="relative z-10 flex flex-col items-center gap-10 px-4">
+        {/* orb */}
+        <div className="animate-[spin_48s_linear_infinite]">
           <UniverseOrb progress={progress} />
         </div>
-      </div>
 
-      {/* progress bar */}
-      <div className="relative z-10 mt-6 w-full max-w-xl px-8">
-        <div className="h-2 rounded-full bg-slate-800/80 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-sky-400 via-cyan-300 to-emerald-300 transition-all duration-150"
-            style={{ width: `${percent}%` }}
-          />
-        </div>
-        <div className="mt-3 flex items-center justify-between text-[10px] text-slate-400 uppercase tracking-[0.22em]">
-          <span>booting redbyte os</span>
-          <span>{percent}%</span>
-        </div>
-      </div>
-
-      {/* rotating tips */}
-      <div className="relative z-10 mt-6 px-8 max-w-xl text-center">
-        <div className="inline-flex items-center justify-center gap-2 text-sm text-slate-300/90">
-          <span className="h-[6px] w-[6px] rounded-full bg-emerald-400 animate-pulse" />
-          <span className="font-medium text-slate-100/90">
+        {/* progress + tip */}
+        <div className="w-full max-w-xl space-y-3">
+          <div className="h-2 rounded-full bg-slate-900/80 border border-red-900/70 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-red-500 via-rose-400 to-amber-300 transition-all duration-200"
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-[10px] tracking-[0.22em] uppercase text-slate-300/80">
+            <span>booting redbyte os</span>
+            <span>{percent}%</span>
+          </div>
+          <div className="mt-1 text-[11px] text-red-200/90 font-mono">
             {BOOT_TIPS[tipIndex]}
-          </span>
+          </div>
         </div>
-      </div>
 
-      {/* footer brand */}
-      <div className="relative z-10 mt-10 text-[9px] tracking-[0.35em] uppercase text-slate-500/70">
-        redbyte os
+        {/* log window */}
+        <div className="w-full max-w-xl rounded-xl border border-red-900/70 bg-black/70 backdrop-blur-sm shadow-[0_0_40px_rgba(127,29,29,0.6)]">
+          <div className="h-7 px-3 flex items-center justify-between border-b border-red-900/70 text-[10px] uppercase tracking-[0.18em] text-red-200/80">
+            <span>boot log</span>
+            <span>redbyte</span>
+          </div>
+          <div className="p-3 font-mono text-[11px] text-slate-200/90 max-h-32 overflow-hidden">
+            {log.slice(-5).map((line, idx) => (
+              <div key={idx}>{line}</div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

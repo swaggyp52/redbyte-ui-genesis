@@ -1,14 +1,18 @@
-﻿import { BrowserRouter, Routes, Route } from "react-router-dom";
-import HomePage from "../pages/HomePage";
-import NotFoundPage from "../pages/NotFoundPage";
+﻿import React from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import LoginScreen from "../os/login/LoginScreen";
+import DesktopShell from "../os/desktop/DesktopShell";
 
-export default function AppRouter() {
+const AppRouter: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="*" element={<NotFoundPage />} />
+        <Route path="/" element={<LoginScreen />} />
+        <Route path="/desktop" element={<DesktopShell />} />
+        <Route path="*" element={<LoginScreen />} />
       </Routes>
     </BrowserRouter>
   );
-}
+};
+
+export default AppRouter;

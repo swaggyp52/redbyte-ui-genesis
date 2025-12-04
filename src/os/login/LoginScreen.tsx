@@ -1,83 +1,89 @@
 ﻿import React, { useState } from "react";
 
-interface LoginScreenProps {
-  onSuccess?: (user: string) => void;
+interface LoginProps {
+  onSuccess: (user: string) => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
+const LoginScreen: React.FC<LoginProps> = ({ onSuccess }) => {
   const [user, setUser] = useState("");
-  const [pass, setPass] = useState("");
-  const [status, setStatus] = useState<string | null>(null);
+  const [key, setKey] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const handle = user.trim() || "operator";
-    setStatus("Session opened for " + handle + ".");
-    if (onSuccess) {
-      onSuccess(handle);
+
+    // Placeholder auth logic – you can wire real auth later.
+    if (!user.trim()) {
+      setError("enter an id to continue");
+      return;
     }
+
+    setError(null);
+    onSuccess(user.trim());
   };
 
   return (
-    <div className="h-screen w-screen bg-slate-950 text-slate-50 flex items-center justify-center overflow-hidden">
-      {/* background field */}
-      <div className="absolute -inset-40 bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(8,47,73,0.45),transparent_55%)] opacity-70 blur-3xl pointer-events-none" />
+    <div className="h-screen w-screen bg-[#02010a] text-slate-50 flex items-center justify-center overflow-hidden relative">
+      {/* background wash */}
+      <div className="absolute inset-0 pointer-events-none opacity-70">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_100%,rgba(248,113,113,0.35),transparent_55%),radial-gradient(circle_at_100%_0%,rgba(239,68,68,0.25),transparent_55%)] blur-3xl" />
+      </div>
 
-      <div className="relative z-10 w-full max-w-md px-8">
-        <div className="mb-8">
-          <div className="text-[11px] tracking-[0.35em] uppercase text-slate-400 mb-2">
+      <div className="relative z-10 w-full max-w-sm px-6">
+        <header className="mb-6">
+          <div className="text-[10px] tracking-[0.28em] uppercase text-red-300/80 mb-2">
             redbyte os
           </div>
-          <h1 className="text-3xl font-semibold text-slate-50">
+          <h1 className="text-2xl font-semibold text-slate-50">
             Sign in
           </h1>
-          <p className="mt-2 text-sm text-slate-400">
-            Local client session. Credentials stay on this machine.
+          <p className="mt-1 text-xs text-slate-400">
+            Local dev session. No network sign-in yet.
           </p>
-        </div>
+        </header>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1 uppercase tracking-[0.18em]">
-              handle
+            <label className="block text-[10px] font-medium text-slate-300 mb-1 uppercase tracking-[0.22em]">
+              id
             </label>
             <input
               value={user}
               onChange={(e) => setUser(e.target.value)}
-              className="w-full rounded-xl bg-slate-900/80 border border-slate-700/70 px-3 py-2 text-sm text-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-400/80 focus:border-sky-400/80"
-              placeholder="operator"
+              className="w-full rounded-xl bg-black/50 border border-slate-700/80 px-3 py-2 text-sm text-slate-50 focus:outline-none focus:ring-2 focus:ring-red-500/90 focus:border-red-500/90"
+              placeholder="e.g. 1642 or your handle"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1 uppercase tracking-[0.18em]">
+            <label className="block text-[10px] font-medium text-slate-300 mb-1 uppercase tracking-[0.22em]">
               key
             </label>
             <input
               type="password"
-              value={pass}
-              onChange={(e) => setPass(e.target.value)}
-              className="w-full rounded-xl bg-slate-900/80 border border-slate-700/70 px-3 py-2 text-sm text-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-400/80 focus:border-sky-400/80"
-              placeholder="secure key"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              className="w-full rounded-xl bg-black/50 border border-slate-700/80 px-3 py-2 text-sm text-slate-50 focus:outline-none focus:ring-2 focus:ring-red-500/90 focus:border-red-500/90"
+              placeholder="local-only for now"
             />
           </div>
 
           <button
             type="submit"
-            className="mt-4 w-full rounded-xl bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 font-medium text-sm py-2.5 shadow-lg shadow-sky-500/25 hover:brightness-110 transition"
+            className="mt-2 w-full rounded-xl bg-gradient-to-r from-red-500 via-rose-500 to-orange-400 text-slate-950 font-medium text-sm py-2.5 shadow-lg shadow-red-500/30 hover:brightness-110 transition"
           >
-            Enter session
+            Enter desktop
           </button>
         </form>
 
-        {status && (
-          <div className="mt-4 text-xs text-emerald-300/90 bg-emerald-900/20 border border-emerald-500/30 rounded-lg px-3 py-2">
-            {status}
+        {error && (
+          <div className="mt-3 text-[11px] text-rose-300/90 bg-rose-900/30 border border-rose-500/40 rounded-lg px-3 py-2">
+            {error}
           </div>
         )}
 
         <div className="mt-6 text-[10px] text-slate-500 tracking-[0.25em] uppercase">
-          local build • pre alpha
+          build: local • pre-alpha
         </div>
       </div>
     </div>
