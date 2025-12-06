@@ -7,18 +7,21 @@ const SystemMonitor: React.FC = () => {
 
   const last =
     history[history.length - 1] ?? {
-      nodes: 0,
-      cpuModules: 0,
-      wires: 0,
+      logicNodes: 0,
+      cpuUnits: 0,
+      logicWires: 0,
       buses: 0,
+      logicNets: 0,
+      ioPins: 0,
+      clocks: 0,
       ts: Date.now(),
     };
 
-  const maxNodes = Math.max(1, ...history.map((h) => h.nodes));
-  const maxModules = Math.max(1, ...history.map((h) => h.cpuModules));
+  const maxNodes = Math.max(1, ...history.map((h) => h.logicNodes));
+  const maxModules = Math.max(1, ...history.map((h) => h.cpuUnits));
 
   const makePath = (
-    key: "nodes" | "cpuModules",
+    key: "logicNodes" | "cpuUnits",
     max: number
   ): string => {
     if (history.length === 0) return "";
@@ -26,15 +29,15 @@ const SystemMonitor: React.FC = () => {
     return history
       .map((h, idx) => {
         const x = n === 1 ? 0 : (idx / (n - 1)) * 100;
-        const value = key === "nodes" ? h.nodes : h.cpuModules;
+        const value = key === "logicNodes" ? h.logicNodes : h.cpuUnits;
         const y = 100 - (value / max) * 100;
         return `${x},${y}`;
       })
       .join(" ");
   };
 
-  const nodesPath = makePath("nodes", maxNodes);
-  const modulesPath = makePath("cpuModules", maxModules);
+  const nodesPath = makePath("logicNodes", maxNodes);
+  const modulesPath = makePath("cpuUnits", maxModules);
 
   return (
     <div className="h-full w-full bg-black/80 text-[11px] text-slate-100 flex flex-col p-3 gap-3">
@@ -44,7 +47,7 @@ const SystemMonitor: React.FC = () => {
             project monitor
           </div>
           <div className="text-[11px] text-slate-400">
-            {project.logic.nodes.length} nodes  {project.cpuModules.length} modules
+            {project.logic.template.nodes.length} nodes · {project.cpu.units.length} modules
           </div>
         </div>
       </div>
@@ -55,7 +58,7 @@ const SystemMonitor: React.FC = () => {
             nodes over time
           </div>
           <div className="text-[18px] font-semibold text-red-200">
-            {last.nodes}
+            {last.logicNodes}
             <span className="text-[10px] text-slate-400 ml-1">nodes</span>
           </div>
           <svg viewBox="0 0 100 100" className="w-full h-20">
@@ -73,7 +76,7 @@ const SystemMonitor: React.FC = () => {
             cpu modules over time
           </div>
           <div className="text-[18px] font-semibold text-red-200">
-            {last.cpuModules}
+            {last.cpuUnits}
             <span className="text-[10px] text-slate-400 ml-1">modules</span>
           </div>
           <svg viewBox="0 0 100 100" className="w-full h-20">

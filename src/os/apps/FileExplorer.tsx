@@ -13,7 +13,7 @@ const FileExplorer: React.FC = () => {
         <div className="space-y-1 text-slate-200">
           <div className="font-semibold">{project.meta.name}</div>
           <div className="text-[10px] text-slate-400">
-            {project.logic.nodes.length} nodes  {project.cpuModules.length} modules
+            {project.logic.template.nodes.length} nodes · {project.logic.template.wires.length} wires · {project.cpu.units.length} modules
           </div>
         </div>
 
@@ -26,21 +26,21 @@ const FileExplorer: React.FC = () => {
               <span className="text-red-300">?</span>
               <span>logic/</span>
               <span className="text-[10px] text-slate-500">
-                ({project.logic.nodes.length} nodes)
+                ({project.logic.template.nodes.length} nodes)
               </span>
             </li>
             <li className="flex items-center gap-1">
               <span className="text-red-300">?</span>
               <span>cpu/</span>
               <span className="text-[10px] text-slate-500">
-                ({project.cpuModules.length} modules)
+                ({project.cpu.units.length} modules)
               </span>
             </li>
             <li className="flex items-center gap-1">
               <span className="text-red-300">?</span>
               <span>io/</span>
               <span className="text-[10px] text-slate-500">
-                ({project.ioBuses.length} buses)
+                ({project.cpu.buses.length} buses · {project.logic.ioPins.length} pins)
               </span>
             </li>
           </ul>
@@ -64,7 +64,7 @@ const FileExplorer: React.FC = () => {
               logic/
             </div>
             <ul className="space-y-1">
-              {project.logic.nodes.map((node) => (
+              {project.logic.template.nodes.map((node) => (
                 <li
                   key={node.id}
                   className="flex items-center justify-between rounded border border-red-900/40 bg-black/60 px-2 py-1"
@@ -73,7 +73,7 @@ const FileExplorer: React.FC = () => {
                   <span className="text-[10px] text-slate-400">{node.type}</span>
                 </li>
               ))}
-              {project.logic.nodes.length === 0 && (
+              {project.logic.template.nodes.length === 0 && (
                 <li className="text-[11px] text-slate-500">
                   empty  add nodes in Logic Designer
                 </li>
@@ -86,7 +86,7 @@ const FileExplorer: React.FC = () => {
               cpu/
             </div>
             <ul className="space-y-1">
-              {project.cpuModules.map((u) => (
+              {project.cpu.units.map((u) => (
                 <li
                   key={u.id}
                   className="flex items-center justify-between rounded border border-red-900/40 bg-black/60 px-2 py-1"
@@ -95,7 +95,7 @@ const FileExplorer: React.FC = () => {
                   <span className="text-[10px] text-slate-400">{u.kind}</span>
                 </li>
               ))}
-              {project.cpuModules.length === 0 && (
+              {project.cpu.units.length === 0 && (
                 <li className="text-[11px] text-slate-500">
                   empty  add units in CPU Designer
                 </li>
