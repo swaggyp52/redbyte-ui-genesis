@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { apps } from "../registry/apps";
 
 interface MCProps {

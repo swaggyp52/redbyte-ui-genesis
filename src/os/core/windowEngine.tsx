@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 
 export function useWindowControls(initial) {
   const [pos, setPos] = useState({ x: initial.x, y: initial.y });

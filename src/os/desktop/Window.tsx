@@ -1,4 +1,4 @@
-﻿import React, { useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { WindowInstance, useSystem } from "../core/SystemProvider";
 import { getAppComponent } from "../core/appRegistry";
 

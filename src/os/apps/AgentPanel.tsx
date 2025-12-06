@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { agents } from "../../agents/core/registry";
 import { createExecution } from "../../agents/core/AgentHost";
 import { emitToast } from "../events/events";
@@ -14,7 +14,7 @@ export const AgentPanelApp: React.FC = () => {
     const { execution, agentName } = createExecution(primary.id, input);
     const line = `${agentName ?? primary.id} accepted job ${
       execution.id
-    } · status=${execution.status}`;
+    } � status=${execution.status}`;
     setLastExecution(line);
     emitToast({
       title: "Agent dispatched",

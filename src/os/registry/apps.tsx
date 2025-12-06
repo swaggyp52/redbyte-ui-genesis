@@ -1,4 +1,4 @@
-﻿import type { AppDefinition } from "./types";
+import type { AppDefinition } from "./types";
 import { RootConsole } from "../root/RootConsole";
 import { LaunchpadApp } from "../apps/Launchpad";
 import { NotificationCenterApp } from "../apps/NotificationCenter";
@@ -25,7 +25,7 @@ export const apps: AppDefinition[] = [
     group: "system",
     entry: LaunchpadApp,
     description: "Grid view of installed OS apps.",
-    icon: "◻︎",
+    icon: "??",
   },
   {
     id: "root-console",
@@ -33,7 +33,7 @@ export const apps: AppDefinition[] = [
     group: "system",
     entry: RootConsole,
     description: "System logs, services, and deploy status.",
-    icon: "⌥",
+    icon: "?",
   },
   {
     id: "system-monitor",
@@ -41,7 +41,7 @@ export const apps: AppDefinition[] = [
     group: "system",
     entry: SystemMonitorApp,
     description: "Synthetic CPU, memory, disk and agent stats.",
-    icon: "☲",
+    icon: "?",
   },
   {
     id: "notifications",
@@ -49,7 +49,7 @@ export const apps: AppDefinition[] = [
     group: "system",
     entry: NotificationCenterApp,
     description: "Synthetic notification feed for OS events.",
-    icon: "✶",
+    icon: "?",
   },
   {
     id: "agents",
@@ -57,7 +57,7 @@ export const apps: AppDefinition[] = [
     group: "agents",
     entry: AgentPanelApp,
     description: "View and simulate agent executions.",
-    icon: "λ",
+    icon: "?",
   },
   {
     id: "settings",
@@ -65,7 +65,7 @@ export const apps: AppDefinition[] = [
     group: "system",
     entry: SettingsApp,
     description: "Themes and workspace preferences.",
-    icon: "⚙︎",
+    icon: "??",
   },
   {
     id: "terminal",
@@ -81,7 +81,7 @@ export const apps: AppDefinition[] = [
     group: "dev",
     entry: PlaceholderApp,
     description: "Future developer utilities.",
-    icon: "⌗",
+    icon: "?",
   },
 ];
 

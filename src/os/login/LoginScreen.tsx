@@ -1,4 +1,4 @@
-ï»¿import React, { useState } from "react";
+import React, { useState } from "react";
 
 interface LoginProps {
   onSuccess: (user: string) => void;
@@ -12,7 +12,7 @@ const LoginScreen: React.FC<LoginProps> = ({ onSuccess }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Placeholder auth logic â€“ you can wire real auth later.
+    // Placeholder auth logic – you can wire real auth later.
     if (!user.trim()) {
       setError("enter an id to continue");
       return;
@@ -83,7 +83,7 @@ const LoginScreen: React.FC<LoginProps> = ({ onSuccess }) => {
         )}
 
         <div className="mt-6 text-[10px] text-slate-500 tracking-[0.25em] uppercase">
-          build: local â€¢ pre-alpha
+          build: local • pre-alpha
         </div>
       </div>
     </div>

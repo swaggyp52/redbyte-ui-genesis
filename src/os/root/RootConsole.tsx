@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { useRootLogs } from "./logs";
 
 export const RootConsole: React.FC = () => {
@@ -7,7 +7,7 @@ export const RootConsole: React.FC = () => {
   return (
     <div className="flex flex-col gap-3 text-xs font-mono">
       <div className="flex items-center justify-between">
-        <span className="text-slate-300">/root · system console</span>
+        <span className="text-slate-300">/root � system console</span>
         <span className="text-[10px] px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/40">
           healthy
         </span>

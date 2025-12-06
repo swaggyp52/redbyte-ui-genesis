@@ -1,4 +1,4 @@
-ï»¿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ADMIN_USERNAME_CONST,
   GUEST_USERNAME_CONST,
@@ -203,7 +203,7 @@ export function LoginOverlay({ currentUser, onLogin }: LoginOverlayProps) {
     return (
       <div className="absolute inset-0 z-[999] bg-slate-950/95 backdrop-blur-2xl flex items-center justify-center">
         <div className="rb-glass rounded-3xl border border-slate-800/80 bg-slate-950/90 px-6 py-4 flex flex-col items-center gap-3">
-          <div className="text-sm text-slate-200">Preparing loginâ€¦</div>
+          <div className="text-sm text-slate-200">Preparing login…</div>
           <div className="h-1.5 w-40 rounded-full bg-slate-900 overflow-hidden">
             <div className="h-full w-1/2 animate-pulse bg-slate-500" />
           </div>
@@ -272,7 +272,7 @@ export function LoginOverlay({ currentUser, onLogin }: LoginOverlayProps) {
               disabled={adminBusy}
               className="px-3 py-1.5 rounded-full border border-sky-500/80 text-sky-100 text-[0.75rem] hover:bg-sky-500/10 disabled:opacity-50"
             >
-              {adminBusy ? "Savingâ€¦" : "Save & continue"}
+              {adminBusy ? "Saving…" : "Save & continue"}
             </button>
           </div>
         </div>
@@ -330,7 +330,7 @@ export function LoginOverlay({ currentUser, onLogin }: LoginOverlayProps) {
             disabled={loginBusy}
             className="px-3 py-1.5 rounded-full border border-sky-500/80 text-sky-100 hover:bg-sky-500/10 disabled:opacity-50"
           >
-            {loginBusy ? "Signing inâ€¦" : "Sign in"}
+            {loginBusy ? "Signing in…" : "Sign in"}
           </button>
           <button
             onClick={() => {

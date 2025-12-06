@@ -1,4 +1,4 @@
-﻿import React, {
+import React, {
   createContext,
   useContext,
   useMemo,
@@ -80,18 +80,18 @@ export function SystemProvider({ children }: { children: ReactNode }) {
 
   const apps: AppDefinition[] = useMemo(
     () => [
-      { id: "notes", name: "Notes", icon: "📝" },
-      { id: "terminal", name: "Terminal", icon: "❯" },
-      { id: "settings", name: "Settings", icon: "⚙️" },
-      { id: "sysmon", name: "System Monitor", icon: "📊" },
-      { id: "files", name: "Files", icon: "📁" },
-      { id: "sim", name: "Redstone Sim", icon: "🧪" },
-      { id: "lab", name: "Redstone Lab", icon: "🧬" },
-      { id: "scope", name: "Signal Scope", icon: "📈" },
-      { id: "world3d", name: "3D World", icon: "🧊" },
-      { id: "map2d", name: "World Map 2D", icon: "🗺️" },
-      { id: "rstats", name: "Redstone Stats", icon: "📉" },
-      { id: "analyzer", name: "Circuit Analyzer", icon: "📐" },
+      { id: "notes", name: "Notes", icon: "??" },
+      { id: "terminal", name: "Terminal", icon: "?" },
+      { id: "settings", name: "Settings", icon: "??" },
+      { id: "sysmon", name: "System Monitor", icon: "??" },
+      { id: "files", name: "Files", icon: "??" },
+      { id: "sim", name: "Redstone Sim", icon: "??" },
+      { id: "lab", name: "Redstone Lab", icon: "??" },
+      { id: "scope", name: "Signal Scope", icon: "??" },
+      { id: "world3d", name: "3D World", icon: "??" },
+      { id: "map2d", name: "World Map 2D", icon: "???" },
+      { id: "rstats", name: "Redstone Stats", icon: "??" },
+      { id: "analyzer", name: "Circuit Analyzer", icon: "??" },
     ],
     []
   );

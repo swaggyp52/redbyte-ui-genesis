@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 const wallpapers = [
   "radial-gradient(circle at top left, rgba(255,0,128,0.35), transparent 60%)",

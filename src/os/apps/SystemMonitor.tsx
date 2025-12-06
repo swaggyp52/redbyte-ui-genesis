@@ -1,145 +1,90 @@
-ï»¿import React, { useEffect, useState } from "react";
+import React from "react";
+import { useProject } from "../context/ProjectContext";
 
-interface SystemMonitorProps {
-  windowCount: number;
-}
+const SystemMonitor: React.FC = () => {
+  const { project } = useProject();
+  const { history } = project;
 
-interface Sample {
-  cpu: number;
-  mem: number;
-}
+  const last =
+    history[history.length - 1] ?? {
+      gates: 0,
+      units: 0,
+      ts: Date.now(),
+    };
 
-const clamp = (n: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, n));
+  const maxGates = Math.max(1, ...history.map((h) => h.gates));
+  const maxUnits = Math.max(1, ...history.map((h) => h.units));
 
-const SystemMonitor: React.FC<SystemMonitorProps> = ({ windowCount }) => {
-  const [cpu, setCpu] = useState(18);
-  const [mem, setMem] = useState(32);
-  const [fps, setFps] = useState(60);
-  const [samples, setSamples] = useState<Sample[]>([]);
+  const makePath = (key: "gates" | "units", max: number): string => {
+    if (history.length === 0) return "";
+    const n = history.length;
+    return history
+      .map((h, idx) => {
+        const x = n === 1 ? 0 : (idx / (n - 1)) * 100;
+        const value = key === "gates" ? h.gates : h.units;
+        const y = 100 - (value / max) * 100;
+        return `${x},${y}`;
+      })
+      .join(" ");
+  };
 
-  // fps
-  useEffect(() => {
-    let frames = 0;
-    let last = performance.now();
-    let id = requestAnimationFrame(function loop(now) {
-      frames++;
-      const delta = now - last;
-      if (delta >= 1000) {
-        const f = Math.round((frames * 1000) / delta);
-        setFps(f);
-        frames = 0;
-        last = now;
-      }
-      id = requestAnimationFrame(loop);
-    });
-
-    return () => cancelAnimationFrame(id);
-  }, []);
-
-  // cpu/mem + samples
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setCpu((prev) => {
-        let next = prev + (Math.random() * 12 - 6);
-        next += windowCount * 1.5;
-        next = clamp(next, 2, 98);
-        return Math.round(next);
-      });
-      setMem((prev) => {
-        let next = prev + (Math.random() * 8 - 4);
-        next = clamp(next, 10, 95);
-        return Math.round(next);
-      });
-      setSamples((prev) => {
-        const next = [...prev, { cpu, mem }];
-        if (next.length > 40) next.shift();
-        return next;
-      });
-    }, 900);
-
-    return () => window.clearInterval(timer);
-  }, [windowCount, cpu, mem]);
+  const gatesPath = makePath("gates", maxGates);
+  const unitsPath = makePath("units", maxUnits);
 
   return (
     <div className="h-full w-full bg-black/80 text-[11px] text-slate-100 flex flex-col p-3 gap-3">
-      <div className="text-[10px] uppercase tracking-[0.22em] text-red-300/80">
-        system monitor
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        {/* cpu */}
-        <div className="rounded-lg border border-red-900/70 bg-black/60 p-3 space-y-2">
-          <div className="text-[10px] text-slate-400 uppercase tracking-[0.16em] mb-1">
-            cpu
+      <div className="flex items-baseline justify-between">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-red-300/80">
+            project monitor
           </div>
-          <div className="flex items-end gap-3">
-            <div className="flex-1 h-2 rounded-full bg-slate-800/70 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-red-500 via-red-400 to-amber-300"
-                style={{ width: `${cpu}%` }}
-              />
-            </div>
-            <div className="text-[11px] text-red-200 font-mono w-10 text-right">
-              {cpu}%
-            </div>
-          </div>
-          <div className="text-[10px] text-slate-500">
-            estimated browser load
-          </div>
-        </div>
-
-        {/* memory */}
-        <div className="rounded-lg border border-red-900/70 bg-black/60 p-3 space-y-2">
-          <div className="text-[10px] text-slate-400 uppercase tracking-[0.16em] mb-1">
-            memory
-          </div>
-          <div className="flex items-end gap-3">
-            <div className="flex-1 h-2 rounded-full bg-slate-800/70 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-sky-300"
-                style={{ width: `${mem}%` }}
-              />
-            </div>
-            <div className="text-[11px] text-emerald-200 font-mono w-10 text-right">
-              {mem}%
-            </div>
-          </div>
-          <div className="text-[10px] text-slate-500">
-            simulated working set
-          </div>
-        </div>
-
-        {/* session */}
-        <div className="rounded-lg border border-red-900/70 bg-black/60 p-3 space-y-2">
-          <div className="text-[10px] text-slate-400 uppercase tracking-[0.16em] mb-1">
-            session
-          </div>
-          <div className="space-y-1 text-[10px] text-slate-300">
-            <div>fps: {fps}</div>
-            <div>windows: {windowCount}</div>
-            <div>env: browser / vite</div>
+          <div className="text-[11px] text-slate-400">
+            {project.logicGates.length} gates • {project.cpuUnits.length} units
           </div>
         </div>
       </div>
 
-      {/* sparkline */}
-      <div className="flex-1 rounded-lg border border-red-900/70 bg-black/60 p-3 flex flex-col gap-2">
-        <div className="text-[10px] text-slate-400 uppercase tracking-[0.16em]">
-          cpu trace
-        </div>
-        <div className="flex-1 flex items-end gap-[2px]">
-          {samples.map((s, i) => (
-            <div
-              key={i}
-              className="flex-1 bg-gradient-to-t from-red-500/70 via-red-400/50 to-transparent"
-              style={{ height: `${20 + s.cpu * 0.7}%` }}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-lg border border-red-900/70 bg-black/70 p-3 flex flex-col gap-2">
+          <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">
+            gates over time
+          </div>
+          <div className="text-[18px] font-semibold text-red-200">
+            {last.gates}
+            <span className="text-[10px] text-slate-400 ml-1">gates</span>
+          </div>
+          <svg viewBox="0 0 100 100" className="w-full h-20">
+            <polyline
+              points={gatesPath}
+              fill="none"
+              stroke="rgb(248 113 113)"
+              strokeWidth={1}
             />
-          ))}
+          </svg>
         </div>
-        <div className="text-[10px] text-slate-500">
-          rolling view of recent synthetic cpu load
+
+        <div className="rounded-lg border border-red-900/70 bg-black/70 p-3 flex flex-col gap-2">
+          <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">
+            cpu units over time
+          </div>
+          <div className="text-[18px] font-semibold text-red-200">
+            {last.units}
+            <span className="text-[10px] text-slate-400 ml-1">units</span>
+          </div>
+          <svg viewBox="0 0 100 100" className="w-full h-20">
+            <polyline
+              points={unitsPath}
+              fill="none"
+              stroke="rgb(248 113 113)"
+              strokeWidth={1}
+            />
+          </svg>
         </div>
+      </div>
+
+      <div className="rounded-lg border border-red-900/70 bg-black/70 p-3 text-[10px] text-slate-400">
+        this monitor is watching your redstone computer grow. later it will show real
+        timing, tick rate and signal fanout; for now it mirrors project size.
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { AppId } from "./SystemProvider";
 import { NotesApp } from "../../apps/NotesApp";
 import { TerminalApp } from "../../apps/TerminalApp";

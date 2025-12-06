@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 
 const launchItems = [
   { id: "root-console", name: "/root console", group: "system" },

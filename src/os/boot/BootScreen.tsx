@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import UniverseOrb from "./UniverseOrb";
 
 interface BootScreenProps {

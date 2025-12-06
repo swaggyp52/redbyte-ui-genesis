@@ -1,88 +1,122 @@
-﻿import { create } from "zustand";
+﻿import { useState, useEffect } from "react";
 
-export interface FSNode {
-  type: "file" | "folder";
-  name: string;
-  children?: FSNode[];
-  content?: string;
+/**
+ * In-memory filesystem with automatic persistence.
+ */
+interface FSNodeFile {
+  type: "file";
+  content: string;
+}
+interface FSNodeDir {
+  type: "dir";
+  children: Record<string, FSNode>;
+}
+type FSNode = FSNodeFile | FSNodeDir;
+
+interface FSApi {
+  readFile(path: string): string;
+  writeFile(path: string, content: string): void;
+  list(path: string): string[];
+  mkdir(path: string): void;
+  exists(path: string): boolean;
 }
 
-interface FSState {
-  root: FSNode;
-  createFile: (path: string, content?: string) => void;
-  createFolder: (path: string) => void;
-  readFile: (path: string) => string | null;
-  writeFile: (path: string, content: string) => void;
-  list: (path: string) => FSNode[] | null;
-}
+const STORAGE_KEY = "redbyte_fs_v1";
 
-function getNode(root: FSNode, parts: string[]): FSNode | null {
-  if (parts.length === 0) return root;
-  const [head, ...rest] = parts;
-  if (!root.children) return null;
-  const next = root.children.find((c) => c.name === head);
-  if (!next) return null;
-  return getNode(next, rest);
-}
-
-export const useFS = create<FSState>((set, get) => ({
-  root: {
-    type: "folder",
-    name: "/",
-    children: [
-      { type: "folder", name: "projects", children: [] },
-      { type: "folder", name: "system", children: [] },
-      { type: "file", name: "readme.txt", content: "Welcome to RedByte OS" }
-    ]
-  },
-
-  createFolder: (path) => {
-    const parts = path.split("/").filter(Boolean);
-    const name = parts.pop();
-    if (!name) return;
-
-    set((state) => {
-      const parent = getNode(state.root, parts);
-      if (!parent || parent.type !== "folder") return state;
-      if (!parent.children) parent.children = [];
-      parent.children.push({ type: "folder", name, children: [] });
-      return { ...state };
-    });
-  },
-
-  createFile: (path, content = "") => {
-    const parts = path.split("/").filter(Boolean);
-    const name = parts.pop();
-    if (!name) return;
-
-    set((state) => {
-      const parent = getNode(state.root, parts);
-      if (!parent || parent.type !== "folder") return state;
-      if (!parent.children) parent.children = [];
-      parent.children.push({ type: "file", name, content });
-      return { ...state };
-    });
-  },
-
-  readFile: (path) => {
-    const parts = path.split("/").filter(Boolean);
-    const file = getNode(get().root, parts);
-    return file && file.type === "file" ? file.content || "" : null;
-  },
-
-  writeFile: (path, content) => {
-    const parts = path.split("/").filter(Boolean);
-    const file = getNode(get().root, parts);
-    if (file && file.type === "file") {
-      file.content = content;
-      set((state) => ({ ...state }));
+// ---------- helpers ----------
+function ensureDir(root: FSNodeDir, parts: string[]): FSNodeDir {
+  let curr = root;
+  for (const part of parts) {
+    if (!curr.children[part]) {
+      curr.children[part] = { type: "dir", children: {} };
     }
-  },
-
-  list: (path) => {
-    const parts = path.split("/").filter(Boolean);
-    const folder = getNode(get().root, parts);
-    if (folder && folder.type === "folder") return folder.children || [];
-    return null;
+    const node = curr.children[part];
+    if (node.type !== "dir") throw new Error(`Path component ${part} is not a directory.`);
+    curr = node;
   }
-}));
+  return curr;
+}
+
+function getNode(root: FSNodeDir, path: string): FSNode | null {
+  const parts = path.split("/").filter(Boolean);
+  let curr: FSNode = root;
+  for (const p of parts) {
+    if (curr.type !== "dir") return null;
+    curr = curr.children[p];
+    if (!curr) return null;
+  }
+  return curr;
+}
+
+// ---------- FS API ----------
+function createFS(): FSApi {
+  let root: FSNodeDir = { type: "dir", children: {} };
+
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) root = JSON.parse(saved);
+  } catch {}
+
+  function persist() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(root));
+    } catch {}
+  }
+
+  return {
+    readFile(path) {
+      const node = getNode(root, path);
+      if (!node || node.type !== "file") throw new Error(`File not found: ${path}`);
+      return node.content;
+    },
+
+    writeFile(path, content) {
+      const parts = path.split("/").filter(Boolean);
+      const filename = parts.pop()!;
+      const dir = ensureDir(root, parts);
+      dir.children[filename] = { type: "file", content };
+      persist();
+    },
+
+    list(path) {
+      const node = getNode(root, path);
+      if (!node || node.type !== "dir") throw new Error(`Directory not found: ${path}`);
+      return Object.keys(node.children);
+    },
+
+    mkdir(path) {
+      ensureDir(root, path.split("/").filter(Boolean));
+      persist();
+    },
+
+    exists(path) {
+      return getNode(root, path) !== null;
+    }
+  };
+}
+
+const fs = createFS();
+
+// ---------- React hook wrapper ----------
+export function useFS() {
+  const [, setTick] = useState(0);
+  const forceUpdate = () => setTick(x => x + 1);
+
+  useEffect(() => {}, []);
+
+  return {
+    readFile: (p: string) => fs.readFile(p),
+    writeFile: (p: string, c: string) => {
+      fs.writeFile(p, c);
+      forceUpdate();
+    },
+    list: (p: string) => fs.list(p),
+    mkdir: (p: string) => {
+      fs.mkdir(p);
+      forceUpdate();
+    },
+    exists: (p: string) => fs.exists(p),
+  };
+}
+
+export default fs;

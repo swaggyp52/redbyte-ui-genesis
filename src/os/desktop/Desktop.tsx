@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import StatusBar from "../statusbar/StatusBar";
 import { ExplainBar } from "../window/ExplainBar";
 import { CommandPalette } from "../palette/CommandPalette";
@@ -38,56 +38,56 @@ const APPS: DesktopAppDef[] = [
     id: "file-explorer",
     title: "File Explorer",
     description: "Browse RedByte virtual files, quick access and recent files.",
-    icon: "🗂️",
+    icon: "???",
     component: FileExplorerApp,
   },
   {
     id: "redstone-lab",
     title: "Redstone Lab",
     description: "3D + 2D circuits and dust simulation.",
-    icon: "⚡",
+    icon: "?",
     component: RedstoneLabApp,
   },
   {
     id: "logic-workspace",
     title: "Logic Designer",
     description: "2D logic diagrams with explanations and exports.",
-    icon: "🧠",
+    icon: "??",
     component: LogicWorkspaceApp,
   },
   {
     id: "cpu-designer",
     title: "CPU Designer",
     description: "CPU architecture studio: ALU, registers, PC, control.",
-    icon: "🖥️",
+    icon: "???",
     component: CpuDesignerApp,
   },
   {
     id: "terminal",
     title: "Terminal",
     description: "CLI playground inside RedByte.",
-    icon: "⌨️",
+    icon: "??",
     component: TerminalApp,
   },
   {
     id: "notes",
     title: "Notes",
     description: "Simple notes and documentation.",
-    icon: "📝",
+    icon: "??",
     component: NotesApp,
   },
   {
     id: "system-monitor",
     title: "System Monitor",
     description: "OS and simulation stats.",
-    icon: "📊",
+    icon: "??",
     component: SystemMonitorApp,
   },
   {
     id: "settings",
     title: "Settings",
     description: "Control boot mode, themes and user preferences.",
-    icon: "⚙️",
+    icon: "??",
     component: SettingsApp,
   },
 ];
@@ -378,7 +378,7 @@ export function Desktop() {
                   }}
                   className="h-5 w-5 rounded-full bg-rose-500/70 hover:bg-rose-400 flex items-center justify-center text-[0.6rem] text-slate-950"
                 >
-                  ×
+                  �
                 </button>
               </div>
 

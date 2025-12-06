@@ -1,32 +1,33 @@
-﻿import React, { useState } from "react";
-import BootScreen from "./os/boot/BootScreen";
-import LoginScreen from "./os/login/LoginScreen";
+﻿import React, { useState, useEffect } from "react";
+import "./index.css";
+import LoadingScreen from "./os/ui/LoadingScreen";
+import LoginScreen from "./os/ui/LoginScreen";
 import DesktopShell from "./os/desktop/DesktopShell";
-import "./global.css";
-
-type Phase = "boot" | "login" | "desktop";
+import { SettingsProvider } from "./os/context/SettingsContext";
+import { ProjectProvider } from "./os/context/ProjectContext";
 
 const App: React.FC = () => {
-  const [phase, setPhase] = useState<Phase>("boot");
-  const [user, setUser] = useState<string>("1642");
+  const [phase, setPhase] = useState<"boot" | "login" | "desktop">("boot");
+  const [user, setUser] = useState<string>("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setPhase("login"), 900);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleLogin = (name: string) => {
+    setUser(name || "operator");
+    setPhase("desktop");
+  };
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-black text-slate-50">
-      {phase === "boot" && (
-        <BootScreen onComplete={() => setPhase("login")} />
-      )}
-
-      {phase === "login" && (
-        <LoginScreen
-          onSuccess={(handle: string) => {
-            setUser(handle || "operator");
-            setPhase("desktop");
-          }}
-        />
-      )}
-
-      {phase === "desktop" && <DesktopShell user={user} />}
-    </div>
+    <SettingsProvider>
+      <ProjectProvider>
+        {phase === "boot" && <LoadingScreen />}
+        {phase === "login" && <LoginScreen onLogin={handleLogin} />}
+        {phase === "desktop" && <DesktopShell user={user || "operator"} />}
+      </ProjectProvider>
+    </SettingsProvider>
   );
 };
 

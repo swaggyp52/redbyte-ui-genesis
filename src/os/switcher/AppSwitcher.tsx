@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { apps } from "../registry/apps";
 
 interface AppSwitcherProps {
@@ -34,7 +34,7 @@ export const AppSwitcher: React.FC<AppSwitcherProps> = ({
                 }
               `}
             >
-              <div className="text-lg">{def.icon ?? "◼︎"}</div>
+              <div className="text-lg">{def.icon ?? "??"}</div>
               <span className="text-[10px] text-slate-300">{def.name}</span>
             </button>
           );

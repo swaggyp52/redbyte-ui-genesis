@@ -1,4 +1,4 @@
-ï»¿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import StatusBar from "../statusbar/StatusBar";
 import { ExplainBar } from "../window/ExplainBar";
 
@@ -44,7 +44,7 @@ const APP_REGISTRY: DesktopAppDef[] = [
   {
     id: "cpu-designer",
     title: "CPU Designer",
-    description: "ALU, registers, PC, control â€” CPU architecture studio.",
+    description: "ALU, registers, PC, control — CPU architecture studio.",
     icon: "???",
     component: CpuDesignerApp,
   },
@@ -106,7 +106,7 @@ export function Desktop() {
         e.preventDefault();
         const win = windows.find((w) => w.id === activeId);
         if (win) {
-          // We donâ€™t open anything directly here â€”
+          // We don’t open anything directly here —
           // ExplainBar is part of each window itself.
           // Shortcut simply toggles a "trigger explain" event later.
           const evt = new CustomEvent("RB_EXPLAIN_TRIGGER", {
@@ -254,7 +254,7 @@ export function Desktop() {
                   }}
                   className="h-5 w-5 rounded-full bg-rose-500/70 hover:bg-rose-400 flex items-center justify-center text-[0.6rem] text-slate-950"
                 >
-                  Ã—
+                  ×
                 </button>
               </div>
 

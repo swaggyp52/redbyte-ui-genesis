@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { useEventBus } from "../../hooks/useEventBus";
 import type { OSEvent } from "../events/events";
 

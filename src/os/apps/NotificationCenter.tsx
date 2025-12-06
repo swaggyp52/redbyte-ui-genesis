@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 
 interface NotificationItem {
   id: string;
@@ -16,7 +16,7 @@ const notifications: NotificationItem[] = [
   },
   {
     id: "n2",
-    source: "Agent · Marcus",
+    source: "Agent � Marcus",
     message: "Stage 2 OS shell online.",
     time: "1 min ago",
   },
