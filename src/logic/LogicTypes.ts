@@ -32,6 +32,20 @@ export interface LogicWire {
   toIndex: number;
 }
 
+export interface LogicNetConnection {
+  nodeId: string;
+  portIndex: number;
+  direction: "in" | "out";
+  wireId?: string;
+}
+
+export interface LogicNet {
+  id: string;
+  label: string;
+  description?: string;
+  connections: LogicNetConnection[];
+}
+
 export interface LogicTemplate {
   id: string;
   name: string;

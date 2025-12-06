@@ -15,13 +15,13 @@ const World3DOSApp: React.FC = () => {
   const [mappedBlocks, setMappedBlocks] = useState(0);
 
   useEffect(() => {
-    const mapping = buildLogicProjectIntoWorld(project.logic, layer);
+    const mapping = buildLogicProjectIntoWorld(project.logic.template, layer);
     setMappedBlocks(mapping.blocks);
-  }, [project.logic, layer]);
+  }, [project.logic.template, layer]);
 
   const summary = useMemo(
-    () => `${project.meta.name} · ${project.logic.nodes.length} nodes → ${mappedBlocks} voxels`,
-    [mappedBlocks, project.logic.nodes.length, project.meta.name]
+    () => `${project.meta.name} · ${project.logic.template.nodes.length} nodes → ${mappedBlocks} voxels`,
+    [mappedBlocks, project.logic.template.nodes.length, project.meta.name]
   );
 
   return (
