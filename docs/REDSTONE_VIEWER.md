@@ -6,7 +6,7 @@ This viewer turns the active project into a voxelized redstone world and renders
 1. **ProjectContext** exposes the unified `ProjectState` (logic template, nets, IO pins, clocks, CPU metadata).
 2. **logic → redstone mapping** happens in `src/os/apps/logicWorldBridge.ts` using `mapLogicToRedstone` to convert `LogicTemplate` nodes/wires to block coordinates, then normalizes into the bounded `WORLD_SIZE` grid.
 3. **Voxel world population**: `buildProjectIntoWorld` clears the current world, writes voxels via `setVoxel`, and returns mapping metadata (block count, nets, IO, clocks, layer, node positions).
-4. **Rendering + controls**: `src/os/apps/World3D.tsx` hosts `World3DApp` and keeps the layer/running state in sync. The wrapper exposes Run/Pause/Step/Reset and a "Rebuild mapping" action that replays the mapping from the current project.
+4. **Rendering + controls**: `src/os/apps/World3D.tsx` hosts `World3DApp` and keeps the layer/running state in sync. The wrapper exposes Run/Pause/Step/Reset and a "Rebuild mapping" action that replays the mapping from the current project while pausing and resetting the simulation so the new layout starts cleanly.
 5. **Simulation**: `World3DApp` uses `stepVoxelWorldOnce` on an interval when running; the same API is used for single-step. Powered states are visualized via voxel coloring.
 
 ## Key files
