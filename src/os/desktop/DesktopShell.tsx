@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import WindowFrame from "./WindowFrame";
-import { OS_APPS, AppId, loadApp } from "../apps";
+import { OS_APPS, AppId, loadApp } from "../apps/index";
 import { useSettings, LayoutMode } from "../context/SettingsContext";
 
 interface DesktopShellProps {
