@@ -17,10 +17,10 @@ const LogicDesigner: React.FC = () => {
 
   const gateNodes = useMemo(
     () =>
-      project.logic.nodes.filter((n) =>
+      project.logic.template.nodes.filter((n) =>
         ["GATE_AND", "GATE_OR", "GATE_NOT", "GATE_XOR"].includes(n.type)
       ),
-    [project.logic.nodes]
+    [project.logic.template.nodes]
   );
 
   return (
@@ -55,7 +55,7 @@ const LogicDesigner: React.FC = () => {
             </div>
             <div className="text-[11px] text-slate-400">
               {gateNodes.length} gate
-              {gateNodes.length === 1 ? "" : "s"} in project
+              {gateNodes.length === 1 ? "" : "s"} in project · {project.logic.template.wires.length} wires · {project.logic.nets.length} nets
             </div>
           </div>
         </div>

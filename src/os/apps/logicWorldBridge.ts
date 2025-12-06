@@ -1,5 +1,6 @@
 import { mapLogicToRedstone } from "../../logic/LogicToRedstone";
 import { LogicTemplate } from "../../logic/LogicTypes";
+import { ProjectState } from "../context/ProjectTypes";
 import {
   WORLD_SIZE,
   clearWorld,
@@ -10,6 +11,14 @@ import {
 export interface LogicWorldMapping {
   blocks: number;
   nodePositions: Record<string, { x: number; y: number; z: number }>;
+}
+
+export interface ProjectWorldMapping extends LogicWorldMapping {
+  nets: number;
+  clocks: number;
+  ioPins: number;
+  layer: number;
+  description: string;
 }
 
 const TYPE_TRANSLATION: Record<string, VoxelType> = {
@@ -90,6 +99,28 @@ export function buildLogicProjectIntoWorld(
     setVoxel(block.x, block.y, block.z, block.type, Boolean(block.power));
   }
   return { blocks: blocks.length, nodePositions };
+}
+
+export function buildProjectIntoWorld(
+  project: ProjectState,
+  layer: number
+): ProjectWorldMapping {
+  const { blocks, nodePositions } = normalizeMapping(project.logic.template, layer);
+
+  clearWorld();
+  for (const block of blocks) {
+    setVoxel(block.x, block.y, block.z, block.type, Boolean(block.power));
+  }
+
+  return {
+    blocks: blocks.length,
+    nets: project.logic.nets.length,
+    clocks: project.logic.clocks.length,
+    ioPins: project.logic.ioPins.length,
+    layer,
+    description: `${project.meta.name} mapped to layer ${layer}`,
+    nodePositions,
+  };
 }
 
 export function projectNodePositions(

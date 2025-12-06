@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { World3DApp, type World3DControls } from "../../apps/World3DApp";
 import { useProject } from "../context/ProjectContext";
 import { WORLD_SIZE } from "../../world3d/VoxelWorld";
-import { buildLogicProjectIntoWorld } from "./logicWorldBridge";
+import { buildProjectIntoWorld, type ProjectWorldMapping } from "./logicWorldBridge";
 
 const clampLayer = (layer: number) =>
   Math.max(0, Math.min(WORLD_SIZE - 1, Math.floor(layer)));
@@ -12,17 +12,22 @@ const World3DOSApp: React.FC = () => {
   const controlsRef = useRef<World3DControls | null>(null);
   const [layer, setLayer] = useState(Math.floor(WORLD_SIZE / 2));
   const [running, setRunning] = useState(false);
-  const [mappedBlocks, setMappedBlocks] = useState(0);
+  const [mapping, setMapping] = useState<ProjectWorldMapping | null>(null);
 
   useEffect(() => {
-    const mapping = buildLogicProjectIntoWorld(project.logic, layer);
-    setMappedBlocks(mapping.blocks);
-  }, [project.logic, layer]);
+    const mapped = buildProjectIntoWorld(project, layer);
+    setMapping(mapped);
+  }, [project, layer]);
 
-  const summary = useMemo(
-    () => `${project.meta.name} · ${project.logic.nodes.length} nodes → ${mappedBlocks} voxels`,
-    [mappedBlocks, project.logic.nodes.length, project.meta.name]
-  );
+  const summary = useMemo(() => {
+    if (!mapping) return `${project.meta.name} · awaiting layout`;
+    return `${project.meta.name} · ${project.logic.template.nodes.length} nodes · ${mapping.blocks} voxels on Y=${mapping.layer}`;
+  }, [mapping, project.logic.template.nodes.length, project.meta.name]);
+
+  const rebuild = () => {
+    const mapped = buildProjectIntoWorld(project, layer);
+    setMapping(mapped);
+  };
 
   return (
     <div className="h-full flex flex-col gap-3 text-xs">
@@ -66,6 +71,12 @@ const World3DOSApp: React.FC = () => {
             >
               Reset
             </button>
+            <button
+              onClick={rebuild}
+              className="px-2 py-1 rounded-xl border border-slate-700/80 text-[0.7rem] hover:border-emerald-500/70"
+            >
+              Rebuild mapping
+            </button>
           </div>
 
           <div className="flex items-center gap-2 text-[0.7rem]">
@@ -85,7 +96,9 @@ const World3DOSApp: React.FC = () => {
           </div>
 
           <div className="ml-auto text-[0.7rem] text-slate-400">
-            {mappedBlocks ? `${mappedBlocks} voxels mapped` : "No mapping yet"}
+            {mapping
+              ? `${mapping.blocks} voxels · nets ${mapping.nets} · IO ${mapping.ioPins} · clocks ${mapping.clocks}`
+              : "No mapping yet"}
           </div>
         </div>
 

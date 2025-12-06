@@ -13,14 +13,14 @@ const LogicExportsApp: React.FC = () => {
   const [mode, setMode] = useState<ExportMode>("json");
 
   const mapping = useMemo(
-    () => mapLogicToRedstone(project.logic),
-    [project.logic]
+    () => mapLogicToRedstone(project.logic.template),
+    [project.logic.template]
   );
 
   const body = useMemo(() => {
-    if (mode === "json") return exportLogicAsJson(project.logic);
+    if (mode === "json") return exportLogicAsJson(project.logic.template);
     if (mode === "verilog")
-      return exportLogicAsVerilogModule(project.logic, project.meta.name);
+      return exportLogicAsVerilogModule(project.logic.template, project.meta.name);
     return mapping.blocks
       .map((b) =>
         `${b.logicNodeId ? `${b.logicNodeId}: ` : ""}${b.type} @ (${b.x},${b.y},${b.z})`
@@ -38,7 +38,7 @@ const LogicExportsApp: React.FC = () => {
         <div className="text-right text-[0.65rem] text-slate-500">
           <div className="font-mono text-emerald-300">PROJECT://{project.meta.id}</div>
           <div>
-            {project.logic.nodes.length} nodes, {project.logic.wires.length} wires
+            {project.logic.template.nodes.length} nodes, {project.logic.template.wires.length} wires
           </div>
         </div>
       </header>

@@ -10,13 +10,13 @@ const SignalScopeShell: React.FC = () => {
   const [selectedNodeId, setSelectedNodeId] = useState<string>("");
 
   const outputNodes = useMemo(
-    () => project.logic.nodes.filter((n) => n.type === "OUTPUT_LAMP"),
-    [project.logic.nodes]
+    () => project.logic.template.nodes.filter((n) => n.type === "OUTPUT_LAMP"),
+    [project.logic.template.nodes]
   );
 
   const positions = useMemo(
-    () => projectNodePositions(project.logic, layer),
-    [layer, project.logic]
+    () => projectNodePositions(project.logic.template, layer),
+    [layer, project.logic.template]
   );
 
   const handleAddProbe = () => {
