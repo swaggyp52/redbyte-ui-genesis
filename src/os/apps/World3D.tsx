@@ -2,37 +2,60 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { World3DApp, type World3DControls } from "../../apps/World3DApp";
 import { useProject } from "../context/ProjectContext";
 import { WORLD_SIZE } from "../../world3d/VoxelWorld";
-import { buildLogicProjectIntoWorld } from "./logicWorldBridge";
+import { buildProjectIntoWorld, type ProjectWorldMapping } from "./logicWorldBridge";
 
 const clampLayer = (layer: number) =>
   Math.max(0, Math.min(WORLD_SIZE - 1, Math.floor(layer)));
 
 const World3DOSApp: React.FC = () => {
   const { project } = useProject();
+
   const controlsRef = useRef<World3DControls | null>(null);
+
   const [layer, setLayer] = useState(Math.floor(WORLD_SIZE / 2));
   const [running, setRunning] = useState(false);
-  const [mappedBlocks, setMappedBlocks] = useState(0);
+
+  const [mapping, setMapping] = useState<ProjectWorldMapping | null>(null);
 
   useEffect(() => {
-    const mapping = buildLogicProjectIntoWorld(project.logic.template, layer);
-    setMappedBlocks(mapping.blocks);
-  }, [project.logic.template, layer]);
+    const mapped = buildProjectIntoWorld(project, layer);
+    setMapping(mapped);
 
-  const summary = useMemo(
-    () => `${project.meta.name} · ${project.logic.template.nodes.length} nodes → ${mappedBlocks} voxels`,
-    [mappedBlocks, project.logic.template.nodes.length, project.meta.name]
-  );
+    controlsRef.current?.pause();
+    controlsRef.current?.setLayer(layer);
+    controlsRef.current?.reset();
+    setRunning(false);
+  }, [project, layer]);
+
+  const summary = useMemo(() => {
+    if (!mapping) return `${project.meta.name} · awaiting layout`;
+    return `${project.meta.name} · ${project.logic.template.nodes.length} nodes · ${mapping.blocks} voxels on Y=${mapping.layer}`;
+  }, [mapping, project.logic.template.nodes.length, project.meta.name]);
+
+  const rebuild = () => {
+    const mapped = buildProjectIntoWorld(project, layer);
+    setMapping(mapped);
+
+    controlsRef.current?.pause();
+    controlsRef.current?.setLayer(layer);
+    controlsRef.current?.reset();
+    setRunning(false);
+  };
 
   return (
     <div className="h-full flex flex-col gap-3 text-xs">
       <header className="border-b border-slate-800/80 pb-2 flex items-center justify-between">
         <div>
           <h1 className="text-sm text-slate-100 font-semibold">3D Simulator</h1>
-          <p className="text-[0.7rem] text-slate-400">Active project mapped into the voxel world via logic→redstone layout.</p>
+          <p className="text-[0.7rem] text-slate-400">
+            Active project mapped into the voxel world via logic→redstone layout.
+          </p>
         </div>
+
         <div className="text-right">
-          <div className="text-[0.65rem] text-emerald-300 font-mono">PROJECT://{project.meta.id}</div>
+          <div className="text-[0.65rem] text-emerald-300 font-mono">
+            PROJECT://{project.meta.id}
+          </div>
           <div className="text-[0.65rem] text-slate-500">{summary}</div>
         </div>
       </header>
@@ -54,17 +77,26 @@ const World3DOSApp: React.FC = () => {
             >
               {running ? "Pause" : "Run"}
             </button>
+
             <button
               onClick={() => controlsRef.current?.step()}
               className="px-2 py-1 rounded-xl border border-slate-700/80 text-[0.7rem] hover:border-sky-500/70"
             >
               Step
             </button>
+
             <button
               onClick={() => controlsRef.current?.reset()}
               className="px-2 py-1 rounded-xl border border-slate-700/80 text-[0.7rem] hover:border-amber-500/70"
             >
               Reset
+            </button>
+
+            <button
+              onClick={rebuild}
+              className="px-2 py-1 rounded-xl border border-slate-700/80 text-[0.7rem] hover:border-emerald-500/70"
+            >
+              Rebuild mapping
             </button>
           </div>
 
@@ -85,7 +117,9 @@ const World3DOSApp: React.FC = () => {
           </div>
 
           <div className="ml-auto text-[0.7rem] text-slate-400">
-            {mappedBlocks ? `${mappedBlocks} voxels mapped` : "No mapping yet"}
+            {mapping
+              ? `${mapping.blocks} voxels · nets ${mapping.nets} · IO ${mapping.ioPins} · clocks ${mapping.clocks}`
+              : "No mapping yet"}
           </div>
         </div>
 
