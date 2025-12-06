@@ -1,18 +1,27 @@
-import React from "react";
-import { useProject, LogicGateKind } from "../context/ProjectContext";
+import React, { useMemo } from "react";
+import { useProject } from "../context/ProjectContext";
+import { LogicNodeType } from "../../logic/LogicTypes";
 
-const LOGIC_KINDS: LogicGateKind[] = [
-  "and",
-  "or",
-  "not",
-  "nand",
-  "nor",
-  "xor",
-  "xnor",
+const LOGIC_KINDS: LogicNodeType[] = [
+  "INPUT_TOGGLE",
+  "CLOCK",
+  "GATE_AND",
+  "GATE_OR",
+  "GATE_NOT",
+  "GATE_XOR",
+  "OUTPUT_LAMP",
 ];
 
 const LogicDesigner: React.FC = () => {
-  const { project, addGate, removeGate } = useProject();
+  const { project, addLogicNode, removeLogicNode } = useProject();
+
+  const gateNodes = useMemo(
+    () =>
+      project.logic.nodes.filter((n) =>
+        ["GATE_AND", "GATE_OR", "GATE_NOT", "GATE_XOR"].includes(n.type)
+      ),
+    [project.logic.nodes]
+  );
 
   return (
     <div className="h-full w-full bg-black/80 text-[11px] text-slate-100 flex">
@@ -24,14 +33,14 @@ const LogicDesigner: React.FC = () => {
           {LOGIC_KINDS.map((kind) => (
             <button
               key={kind}
-              onClick={() => addGate(kind)}
+              onClick={() => addLogicNode(kind)}
               className="w-full rounded border border-red-900/70 bg-black/70 hover:border-red-400/80 px-2 py-1 text-left"
             >
               <div className="text-[11px] text-slate-100">
-                {kind.toUpperCase()}
+                {kind.replace("GATE_", "").replace("_", " ")}
               </div>
               <div className="text-[9px] text-slate-400">
-                {kind === "not" ? "invert signal" : "2-input logic"}
+                template-backed {kind.toLowerCase()}
               </div>
             </button>
           ))}
@@ -45,8 +54,8 @@ const LogicDesigner: React.FC = () => {
               logic graph (proto)
             </div>
             <div className="text-[11px] text-slate-400">
-              {project.logicGates.length} gate
-              {project.logicGates.length === 1 ? "" : "s"} in project
+              {gateNodes.length} gate
+              {gateNodes.length === 1 ? "" : "s"} in project
             </div>
           </div>
         </div>
@@ -63,18 +72,18 @@ const LogicDesigner: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {project.logicGates.map((g) => (
+              {gateNodes.map((g) => (
                 <tr
                   key={g.id}
                   className="border-b border-red-900/40 last:border-0 hover:bg-red-950/40"
                 >
                   <td className="px-3 py-1.5">{g.label}</td>
-                  <td className="px-3 py-1.5 text-slate-300">{g.kind}</td>
+                  <td className="px-3 py-1.5 text-slate-300">{g.type}</td>
                   <td className="px-3 py-1.5 text-slate-300">{g.inputs}</td>
                   <td className="px-3 py-1.5 text-slate-300">{g.outputs}</td>
                   <td className="px-3 py-1.5 text-right">
                     <button
-                      onClick={() => removeGate(g.id)}
+                      onClick={() => removeLogicNode(g.id)}
                       className="text-[10px] uppercase tracking-[0.16em] text-red-300/80 hover:text-red-200"
                     >
                       remove
@@ -82,13 +91,13 @@ const LogicDesigner: React.FC = () => {
                   </td>
                 </tr>
               ))}
-              {project.logicGates.length === 0 && (
+              {gateNodes.length === 0 && (
                 <tr>
                   <td
                     colSpan={5}
                     className="px-3 py-4 text-center text-slate-500 text-[11px]"
                   >
-                    no gates yet – add from the left palette
+                    no gates yet  add from the left palette
                   </td>
                 </tr>
               )}
@@ -97,7 +106,7 @@ const LogicDesigner: React.FC = () => {
         </div>
 
         <div className="text-[10px] text-slate-500">
-          full wiring canvas &amp; timing diagrams will live here later – this is just the
+          full wiring canvas &amp; timing diagrams will live here later  this is just the
           data backbone
         </div>
       </div>

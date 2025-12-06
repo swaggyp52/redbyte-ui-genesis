@@ -7,29 +7,34 @@ const SystemMonitor: React.FC = () => {
 
   const last =
     history[history.length - 1] ?? {
-      gates: 0,
-      units: 0,
+      nodes: 0,
+      cpuModules: 0,
+      wires: 0,
+      buses: 0,
       ts: Date.now(),
     };
 
-  const maxGates = Math.max(1, ...history.map((h) => h.gates));
-  const maxUnits = Math.max(1, ...history.map((h) => h.units));
+  const maxNodes = Math.max(1, ...history.map((h) => h.nodes));
+  const maxModules = Math.max(1, ...history.map((h) => h.cpuModules));
 
-  const makePath = (key: "gates" | "units", max: number): string => {
+  const makePath = (
+    key: "nodes" | "cpuModules",
+    max: number
+  ): string => {
     if (history.length === 0) return "";
     const n = history.length;
     return history
       .map((h, idx) => {
         const x = n === 1 ? 0 : (idx / (n - 1)) * 100;
-        const value = key === "gates" ? h.gates : h.units;
+        const value = key === "nodes" ? h.nodes : h.cpuModules;
         const y = 100 - (value / max) * 100;
         return `${x},${y}`;
       })
       .join(" ");
   };
 
-  const gatesPath = makePath("gates", maxGates);
-  const unitsPath = makePath("units", maxUnits);
+  const nodesPath = makePath("nodes", maxNodes);
+  const modulesPath = makePath("cpuModules", maxModules);
 
   return (
     <div className="h-full w-full bg-black/80 text-[11px] text-slate-100 flex flex-col p-3 gap-3">
@@ -39,7 +44,7 @@ const SystemMonitor: React.FC = () => {
             project monitor
           </div>
           <div className="text-[11px] text-slate-400">
-            {project.logicGates.length} gates • {project.cpuUnits.length} units
+            {project.logic.nodes.length} nodes  {project.cpuModules.length} modules
           </div>
         </div>
       </div>
@@ -47,15 +52,15 @@ const SystemMonitor: React.FC = () => {
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-lg border border-red-900/70 bg-black/70 p-3 flex flex-col gap-2">
           <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">
-            gates over time
+            nodes over time
           </div>
           <div className="text-[18px] font-semibold text-red-200">
-            {last.gates}
-            <span className="text-[10px] text-slate-400 ml-1">gates</span>
+            {last.nodes}
+            <span className="text-[10px] text-slate-400 ml-1">nodes</span>
           </div>
           <svg viewBox="0 0 100 100" className="w-full h-20">
             <polyline
-              points={gatesPath}
+              points={nodesPath}
               fill="none"
               stroke="rgb(248 113 113)"
               strokeWidth={1}
@@ -65,15 +70,15 @@ const SystemMonitor: React.FC = () => {
 
         <div className="rounded-lg border border-red-900/70 bg-black/70 p-3 flex flex-col gap-2">
           <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">
-            cpu units over time
+            cpu modules over time
           </div>
           <div className="text-[18px] font-semibold text-red-200">
-            {last.units}
-            <span className="text-[10px] text-slate-400 ml-1">units</span>
+            {last.cpuModules}
+            <span className="text-[10px] text-slate-400 ml-1">modules</span>
           </div>
           <svg viewBox="0 0 100 100" className="w-full h-20">
             <polyline
-              points={unitsPath}
+              points={modulesPath}
               fill="none"
               stroke="rgb(248 113 113)"
               strokeWidth={1}

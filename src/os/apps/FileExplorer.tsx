@@ -11,9 +11,9 @@ const FileExplorer: React.FC = () => {
           project
         </div>
         <div className="space-y-1 text-slate-200">
-          <div className="font-semibold">{project.name}</div>
+          <div className="font-semibold">{project.meta.name}</div>
           <div className="text-[10px] text-slate-400">
-            {project.logicGates.length} gates • {project.cpuUnits.length} units
+            {project.logic.nodes.length} nodes  {project.cpuModules.length} modules
           </div>
         </div>
 
@@ -26,14 +26,21 @@ const FileExplorer: React.FC = () => {
               <span className="text-red-300">?</span>
               <span>logic/</span>
               <span className="text-[10px] text-slate-500">
-                ({project.logicGates.length} gates)
+                ({project.logic.nodes.length} nodes)
               </span>
             </li>
             <li className="flex items-center gap-1">
               <span className="text-red-300">?</span>
               <span>cpu/</span>
               <span className="text-[10px] text-slate-500">
-                ({project.cpuUnits.length} units)
+                ({project.cpuModules.length} modules)
+              </span>
+            </li>
+            <li className="flex items-center gap-1">
+              <span className="text-red-300">?</span>
+              <span>io/</span>
+              <span className="text-[10px] text-slate-500">
+                ({project.ioBuses.length} buses)
               </span>
             </li>
           </ul>
@@ -46,7 +53,7 @@ const FileExplorer: React.FC = () => {
             overview
           </div>
           <div className="text-[11px] text-slate-400">
-            this is a stub explorer – later you&apos;ll see full folders for gates, buses,
+            this is a stub explorer  later you'll see full folders for gates, buses,
             microcode and programs.
           </div>
         </div>
@@ -57,18 +64,18 @@ const FileExplorer: React.FC = () => {
               logic/
             </div>
             <ul className="space-y-1">
-              {project.logicGates.map((g) => (
+              {project.logic.nodes.map((node) => (
                 <li
-                  key={g.id}
+                  key={node.id}
                   className="flex items-center justify-between rounded border border-red-900/40 bg-black/60 px-2 py-1"
                 >
-                  <span>{g.label}</span>
-                  <span className="text-[10px] text-slate-400">{g.kind}</span>
+                  <span>{node.label}</span>
+                  <span className="text-[10px] text-slate-400">{node.type}</span>
                 </li>
               ))}
-              {project.logicGates.length === 0 && (
+              {project.logic.nodes.length === 0 && (
                 <li className="text-[11px] text-slate-500">
-                  empty – add gates in Logic Designer
+                  empty  add nodes in Logic Designer
                 </li>
               )}
             </ul>
@@ -79,7 +86,7 @@ const FileExplorer: React.FC = () => {
               cpu/
             </div>
             <ul className="space-y-1">
-              {project.cpuUnits.map((u) => (
+              {project.cpuModules.map((u) => (
                 <li
                   key={u.id}
                   className="flex items-center justify-between rounded border border-red-900/40 bg-black/60 px-2 py-1"
@@ -88,9 +95,9 @@ const FileExplorer: React.FC = () => {
                   <span className="text-[10px] text-slate-400">{u.kind}</span>
                 </li>
               ))}
-              {project.cpuUnits.length === 0 && (
+              {project.cpuModules.length === 0 && (
                 <li className="text-[11px] text-slate-500">
-                  empty – add units in CPU Designer
+                  empty  add units in CPU Designer
                 </li>
               )}
             </ul>

@@ -1,7 +1,7 @@
 import React from "react";
-import { useProject, CpuUnitKind } from "../context/ProjectContext";
+import { useProject, CpuModuleKind } from "../context/ProjectContext";
 
-const CPU_KINDS: CpuUnitKind[] = [
+const CPU_KINDS: CpuModuleKind[] = [
   "alu",
   "register-file",
   "control-unit",
@@ -11,9 +11,9 @@ const CPU_KINDS: CpuUnitKind[] = [
 ];
 
 const CPUDesigner: React.FC = () => {
-  const { project, addCpuUnit, removeCpuUnit } = useProject();
+  const { project, addCpuModule, removeCpuModule } = useProject();
 
-  const describeKind = (kind: CpuUnitKind): string => {
+  const describeKind = (kind: CpuModuleKind): string => {
     switch (kind) {
       case "alu":
         return "math / logic core";
@@ -42,15 +42,13 @@ const CPUDesigner: React.FC = () => {
           {CPU_KINDS.map((kind) => (
             <button
               key={kind}
-              onClick={() => addCpuUnit(kind)}
+              onClick={() => addCpuModule(kind)}
               className="w-full rounded border border-red-900/70 bg-black/70 hover:border-red-400/80 px-2 py-1 text-left"
             >
               <div className="text-[11px] text-slate-100">
                 {kind.toUpperCase()}
               </div>
-              <div className="text-[9px] text-slate-400">
-                {describeKind(kind)}
-              </div>
+              <div className="text-[9px] text-slate-400">{describeKind(kind)}</div>
             </button>
           ))}
         </div>
@@ -63,8 +61,8 @@ const CPUDesigner: React.FC = () => {
               cpu map (proto)
             </div>
             <div className="text-[11px] text-slate-400">
-              {project.cpuUnits.length} unit
-              {project.cpuUnits.length === 1 ? "" : "s"} in design
+              {project.cpuModules.length} unit
+              {project.cpuModules.length === 1 ? "" : "s"} in design
             </div>
           </div>
         </div>
@@ -80,19 +78,17 @@ const CPUDesigner: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {project.cpuUnits.map((u) => (
+              {project.cpuModules.map((u) => (
                 <tr
                   key={u.id}
                   className="border-b border-red-900/40 last:border-0 hover:bg-red-950/40"
                 >
                   <td className="px-3 py-1.5">{u.label}</td>
                   <td className="px-3 py-1.5 text-slate-300">{u.kind}</td>
-                  <td className="px-3 py-1.5 text-slate-300">
-                    {u.clockMHz.toFixed(2)}
-                  </td>
+                  <td className="px-3 py-1.5 text-slate-300">{u.clockMHz.toFixed(2)}</td>
                   <td className="px-3 py-1.5 text-right">
                     <button
-                      onClick={() => removeCpuUnit(u.id)}
+                      onClick={() => removeCpuModule(u.id)}
                       className="text-[10px] uppercase tracking-[0.16em] text-red-300/80 hover:text-red-200"
                     >
                       remove
@@ -100,13 +96,13 @@ const CPUDesigner: React.FC = () => {
                   </td>
                 </tr>
               ))}
-              {project.cpuUnits.length === 0 && (
+              {project.cpuModules.length === 0 && (
                 <tr>
                   <td
                     colSpan={4}
                     className="px-3 py-4 text-center text-slate-500 text-[11px]"
                   >
-                    no cpu units yet – add from the left palette
+                    no cpu units yet  add from the left palette
                   </td>
                 </tr>
               )}
@@ -115,7 +111,7 @@ const CPUDesigner: React.FC = () => {
         </div>
 
         <div className="text-[10px] text-slate-500">
-          later this view becomes a visual layout of units + buses; for now it&apos;s your
+          later this view becomes a visual layout of units + buses; for now it's your
           CPU bill-of-materials
         </div>
       </div>
