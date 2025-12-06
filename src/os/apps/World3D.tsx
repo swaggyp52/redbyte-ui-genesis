@@ -17,6 +17,8 @@ const World3DOSApp: React.FC = () => {
   useEffect(() => {
     const mapped = buildProjectIntoWorld(project, layer);
     setMapping(mapped);
+    controlsRef.current?.pause();
+    controlsRef.current?.setLayer(layer);
     controlsRef.current?.reset();
     setRunning(false);
   }, [project, layer]);
@@ -29,6 +31,7 @@ const World3DOSApp: React.FC = () => {
   const rebuild = () => {
     const mapped = buildProjectIntoWorld(project, layer);
     setMapping(mapped);
+    controlsRef.current?.pause();
     controlsRef.current?.setLayer(layer);
     controlsRef.current?.reset();
     setRunning(false);
