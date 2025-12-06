@@ -6,6 +6,7 @@ export interface RedstoneBlock {
   z: number;
   type: string;
   power?: number;
+  logicNodeId?: string;
 }
 
 export interface RedstoneMappingResult {
@@ -46,7 +47,7 @@ export function mapLogicToRedstone(
 
     const type = GATE_BLOCK_MAP[node.type] ?? "stone";
 
-    blocks.push({ x, y, z, type });
+    blocks.push({ x, y, z, type, logicNodeId: node.id });
   }
 
   for (const wire of template.wires) {

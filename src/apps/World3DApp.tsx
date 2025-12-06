@@ -1,4 +1,10 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+import React, {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import {
@@ -41,7 +47,25 @@ interface HoveredVoxel {
   block: VoxelBlock | null;
 }
 
-export function World3DApp() {
+export interface World3DControls {
+  run: () => void;
+  pause: () => void;
+  step: () => void;
+  reset: () => void;
+  clear: () => void;
+  setLayer: (y: number) => void;
+  running: boolean;
+  currentLayer: number;
+}
+
+export interface World3DAppProps {
+  initialLayerY?: number;
+  onLayerChange?: (layer: number) => void;
+  onRunningChange?: (running: boolean) => void;
+}
+
+export const World3DApp = forwardRef<World3DControls, World3DAppProps>(
+  ({ initialLayerY, onLayerChange, onRunningChange }, ref) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const voxelGroupRef = useRef<THREE.Group | null>(null);
   const voxelGeometryRef = useRef<THREE.BoxGeometry | null>(null);
@@ -57,7 +81,9 @@ export function World3DApp() {
 
   const [blueprints, setBlueprints] = useState<string[]>([]);
   const [selectedBlueprint, setSelectedBlueprint] = useState<string>("");
-  const [layerY, setLayerY] = useState<number>(Math.floor(WORLD_SIZE / 2));
+  const [layerY, setLayerY] = useState<number>(
+    initialLayerY ?? Math.floor(WORLD_SIZE / 2)
+  );
 
   const [activeTool, setActiveTool] = useState<Tool>("paint");
   const [activeType, setActiveType] = useState<VoxelType>("wire");
@@ -74,6 +100,12 @@ export function World3DApp() {
     const unsub = subscribeWorld((blocks) => setVoxels(blocks));
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (typeof initialLayerY === "number") {
+      setLayerY(initialLayerY);
+    }
+  }, [initialLayerY]);
 
   useEffect(() => {
     setBlueprints(listBlueprints());
@@ -293,6 +325,14 @@ export function World3DApp() {
     setTick(0);
   };
 
+  useEffect(() => {
+    onLayerChange?.(layerY);
+  }, [layerY, onLayerChange]);
+
+  useEffect(() => {
+    onRunningChange?.(running);
+  }, [running, onRunningChange]);
+
   const handleImportBlueprint = () => {
     if (!selectedBlueprint) {
       window.alert("Select a blueprint to import.");
@@ -498,6 +538,22 @@ export function World3DApp() {
     setRadialOpen(false);
   };
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      run: () => setRunning(true),
+      pause: () => setRunning(false),
+      step: handleStep,
+      reset: handleReset,
+      clear: handleClear,
+      setLayer: (y: number) =>
+        setLayerY(Math.max(0, Math.min(WORLD_SIZE - 1, y))),
+      running,
+      currentLayer: layerY,
+    }),
+    [handleClear, handleReset, handleStep, running, layerY]
+  );
+
   return (
     <div className="h-full flex flex-col gap-3 text-xs">
       <header className="flex items-center justify-between border-b border-slate-800/80 pb-2">
@@ -670,52 +726,16 @@ export function World3DApp() {
           </div>
         </div>
 
-        <RadialMenu
-          open={radialOpen}
-          x={radialPos.x}
-          y={radialPos.y}
-          items={radialItems}
-          activeId={activeRadialId}
-          onSelect={handleRadialSelect}
-          onRequestClose={() => setRadialOpen(false)}
-        />
-      </section>
-    </div>
-  );
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      <RadialMenu
+        open={radialOpen}
+        x={radialPos.x}
+        y={radialPos.y}
+        items={radialItems}
+        activeId={activeRadialId}
+        onSelect={handleRadialSelect}
+        onRequestClose={() => setRadialOpen(false)}
+      />
+    </section>
+  </div>
+);
+});

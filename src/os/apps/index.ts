@@ -9,6 +9,9 @@ import CPUDesigner from "./CpuDesigner";
 import NotesApp from "./Notes";
 import SystemMonitor from "./SystemMonitor";
 import SettingsApp from "./Settings";
+import World3DOSApp from "./World3D";
+import SignalScopeShell from "./SignalScope";
+import LogicExportsApp from "./LogicExports";
 
 export type AppId = string;
 
@@ -62,6 +65,27 @@ export const OS_APPS: AppDefinition[] = [
         hint: "Visual gate layout and wiring prototype",
         component: LogicDesigner,
         allowMultiple: false,
+    },
+    {
+        id: "world3d",
+        label: "3D World",
+        hint: "Map active logic into the voxel simulator",
+        component: World3DOSApp,
+        allowMultiple: false,
+    },
+    {
+        id: "scope",
+        label: "Signal Scope",
+        hint: "Probe mapped outputs and view waveforms",
+        component: SignalScopeShell,
+        allowMultiple: true,
+    },
+    {
+        id: "logic-export",
+        label: "Exports & Code",
+        hint: "View JSON, HDL, and redstone mapping text",
+        component: LogicExportsApp,
+        allowMultiple: true,
     },
     {
         id: "cpu",
