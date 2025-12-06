@@ -8,7 +8,7 @@ interface Line {
 const TerminalApp: React.FC = () => {
   const [lines, setLines] = useState<Line[]>([
     { id: 1, text: 'RedByte OS Virtual Terminal' },
-    { id: 2, text: 'type \"help\" for a list of commands.' },
+    { id: 2, text: 'type "help" for a list of commands.' },
   ]);
 
   const [input, setInput] = useState('');
@@ -41,7 +41,7 @@ const TerminalApp: React.FC = () => {
         break;
 
       case 'about':
-        append('RedByte OS — virtual computer lab & builder.');
+        append('RedByte OS  virtual computer lab & builder.');
         append('Build CPUs, logic circuits, and virtual machines.');
         break;
 
@@ -83,7 +83,7 @@ const TerminalApp: React.FC = () => {
       </div>
 
       <div className='flex gap-2 mt-2'>
-        <span className='text-red-400 font-mono'>></span>
+        <span className='text-red-400 font-mono'>&gt;</span>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}

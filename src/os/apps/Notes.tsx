@@ -3,16 +3,16 @@ import { useProject } from '../context/ProjectContext';
 import { downloadProject, importProject } from '../context/ProjectSerializer';
 
 const NotesApp: React.FC = () => {
-  const { project, setNotes, setName, resetProject } = useProject();
-  const [draftName, setDraftName] = useState(project.name);
+  const { project, setNotes, setName, resetProject, replaceProject } = useProject();
+  const [draftName, setDraftName] = useState(project.meta.name);
   const [draftNotes, setDraftNotes] = useState(project.notes);
 
-  useEffect(() => setDraftName(project.name), [project.name]);
+  useEffect(() => setDraftName(project.meta.name), [project.meta.name]);
   useEffect(() => setDraftNotes(project.notes), [project.notes]);
 
   const handleBlurName = () => {
     const trimmed = draftName.trim();
-    if (trimmed && trimmed !== project.name) setName(trimmed);
+    if (trimmed && trimmed !== project.meta.name) setName(trimmed);
   };
 
   const handleBlurNotes = () => {
@@ -25,8 +25,7 @@ const NotesApp: React.FC = () => {
     const text = await file.text();
     try {
       const imported = importProject(text);
-      localStorage.setItem('redbyte-project-v1', JSON.stringify(imported));
-      window.location.reload();
+      replaceProject(imported);
     } catch (err) {
       alert('Invalid or corrupted .redproj file');
     }

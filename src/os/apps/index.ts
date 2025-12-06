@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import React, { ComponentType } from "react";
 import { LaunchpadApp } from "./Launchpad";
 import TerminalApp from "./Terminal";
 import { NotificationCenterApp } from "./NotificationCenter";
@@ -95,5 +95,8 @@ export const OS_APPS: AppDefinition[] = [
 
 export function loadApp(id: AppId) {
     const app = OS_APPS.find(a => a.id === id);
-    return app?.component || (() => <div className="p-3 text-xs text-red-200">Unknown App: {id}</div>);
+    return (
+        app?.component ||
+        (() => React.createElement("div", { className: "p-3 text-xs text-red-200" }, `Unknown App: ${id}`))
+    );
 }
