@@ -35,6 +35,7 @@ export function importProject(jsonString: string): ProjectState {
       ...parsed.meta,
       version: parsed.meta.version ?? 2,
     },
+    signal: parsed.signal ?? { watches: [] },
   };
   return normalized;
 }

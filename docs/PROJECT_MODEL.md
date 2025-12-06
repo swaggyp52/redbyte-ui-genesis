@@ -9,6 +9,7 @@ interface ProjectState {
   meta: ProjectMetadata;
   logic: ProjectLogicModel;
   cpu: ProjectCpuModel;
+  signal: ProjectSignalModel;
   notes: string;
   history: ProjectSnapshot[];
 }
@@ -17,6 +18,7 @@ interface ProjectState {
 - **meta** – identifiers and descriptive text; the `version` flag distinguishes storage formats over time.
 - **logic** – gates, wires, nets, IO pins, clocks, and timing parameters that feed both the simulator and exports.
 - **cpu** – composite CPU-style units and shared buses that relate back to nets and IO pins.
+- **signal** – saved signal watches so waveform views and probes stay in sync with the active project.
 - **notes** – free-form user text for design context.
 - **history** – lightweight snapshots used for the System Monitor charts.
 
@@ -85,6 +87,28 @@ interface ProjectCpuModel {
 ```
 
 CPU units mirror higher-level blocks composed of the logic primitives. Units and buses reference `nets` to stay aligned with the gate-level view.
+
+## Signal model (waveform watches)
+
+```ts
+interface ProjectSignalWatch {
+  id: string;
+  label: string;
+  nodeId?: string;
+  netId?: string;
+  layer: number;
+  pinnedPosition?: { x: number; y: number; z: number };
+  visible: boolean;
+}
+
+interface ProjectSignalModel {
+  watches: ProjectSignalWatch[];
+}
+```
+
+- Watches are persisted selections of nodes/nets the user wants to probe in SignalScope.
+- `layer` tracks which Y-level of the voxel world the probe belongs to; `pinnedPosition` is used when a watch targets a specific coordinate rather than a mapped node.
+- Visibility flags mirror the SignalScope UI and keep waveform rendering aligned with the project state.
 
 ## IO pins and clocks
 

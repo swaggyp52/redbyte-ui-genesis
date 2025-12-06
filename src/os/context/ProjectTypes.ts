@@ -73,6 +73,20 @@ export interface ProjectSnapshot {
   clocks: number;
 }
 
+export interface ProjectSignalWatch {
+  id: string;
+  label: string;
+  nodeId?: string;
+  netId?: string;
+  layer: number;
+  pinnedPosition?: { x: number; y: number; z: number };
+  visible: boolean;
+}
+
+export interface ProjectSignalModel {
+  watches: ProjectSignalWatch[];
+}
+
 export interface ProjectLogicModel {
   template: LogicTemplate;
   nets: LogicNet[];
@@ -90,6 +104,7 @@ export interface ProjectState {
   meta: ProjectMetadata;
   logic: ProjectLogicModel;
   cpu: ProjectCpuModel;
+  signal: ProjectSignalModel;
   notes: string;
   history: ProjectSnapshot[];
 }

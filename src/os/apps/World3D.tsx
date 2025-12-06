@@ -14,13 +14,11 @@ const World3DOSApp: React.FC = () => {
 
   const [layer, setLayer] = useState(Math.floor(WORLD_SIZE / 2));
   const [running, setRunning] = useState(false);
-
   const [mapping, setMapping] = useState<ProjectWorldMapping | null>(null);
 
   useEffect(() => {
     const mapped = buildProjectIntoWorld(project, layer);
     setMapping(mapped);
-
     controlsRef.current?.pause();
     controlsRef.current?.setLayer(layer);
     controlsRef.current?.reset();
@@ -35,7 +33,6 @@ const World3DOSApp: React.FC = () => {
   const rebuild = () => {
     const mapped = buildProjectIntoWorld(project, layer);
     setMapping(mapped);
-
     controlsRef.current?.pause();
     controlsRef.current?.setLayer(layer);
     controlsRef.current?.reset();
@@ -91,7 +88,6 @@ const World3DOSApp: React.FC = () => {
             >
               Reset
             </button>
-
             <button
               onClick={rebuild}
               className="px-2 py-1 rounded-xl border border-slate-700/80 text-[0.7rem] hover:border-emerald-500/70"

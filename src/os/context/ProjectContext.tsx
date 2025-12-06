@@ -27,9 +27,16 @@ import {
   ProjectState,
   ProjectSnapshot,
   LogicTimingProfile,
+  ProjectSignalWatch,
 } from "./ProjectTypes";
 
-export type { CpuModuleKind, ProjectState, ProjectClock, ProjectIOPin } from "./ProjectTypes";
+export type {
+  CpuModuleKind,
+  ProjectState,
+  ProjectClock,
+  ProjectIOPin,
+  ProjectSignalWatch,
+} from "./ProjectTypes";
 
 interface ProjectContextValue {
   project: ProjectState;
@@ -46,6 +53,10 @@ interface ProjectContextValue {
   addClock: (label?: string, hz?: number, netId?: string) => void;
   removeClock: (id: string) => void;
   updateTiming: (timing: Partial<LogicTimingProfile>) => void;
+  addSignalWatch: (watch: Partial<ProjectSignalWatch>) => void;
+  removeSignalWatch: (id: string) => void;
+  toggleSignalWatchVisibility: (id: string) => void;
+  updateSignalWatchLayer: (id: string, layer: number) => void;
   setName: (name: string) => void;
   setNotes: (notes: string) => void;
   resetProject: () => void;
@@ -188,6 +199,16 @@ const demoClocks: ProjectClock[] = [
   },
 ];
 
+const demoSignalWatches: ProjectSignalWatch[] = [
+  {
+    id: "watch_out",
+    label: "Lamp output",
+    nodeId: "lamp",
+    layer: 0,
+    visible: true,
+  },
+];
+
 const demoTiming: LogicTimingProfile = {
   baseClockHz: 1,
   tickIntervalMs: 250,
@@ -240,6 +261,7 @@ function createInitialProject(): ProjectState {
         },
       ],
     },
+    signal: { watches: demoSignalWatches },
     notes: "Sketch ideas, pinouts and timing plans here.",
     history: [
       {
@@ -256,12 +278,20 @@ function createInitialProject(): ProjectState {
   };
 }
 
+function ensureSignalModel(project: ProjectState): ProjectState {
+  if (project.signal && Array.isArray(project.signal.watches)) return project;
+  return {
+    ...project,
+    signal: { watches: [] },
+  };
+}
+
 export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [project, setProject] = useState<ProjectState>(() => {
     const stored = loadProjectFromStorage();
-    return stored ?? createInitialProject();
+    return ensureSignalModel(stored ?? createInitialProject());
   });
 
   const generateId = (prefix: string) =>
@@ -504,6 +534,64 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
     });
   };
 
+  const addSignalWatch = (watch: Partial<ProjectSignalWatch>) => {
+    setProject((prev) => {
+      const id = watch.id ?? generateId("watch");
+      const nextWatch: ProjectSignalWatch = {
+        id,
+        label: watch.label ?? watch.nodeId ?? watch.netId ?? `Watch ${prev.signal.watches.length + 1}`,
+        nodeId: watch.nodeId,
+        netId: watch.netId,
+        layer: watch.layer ?? 0,
+        pinnedPosition: watch.pinnedPosition,
+        visible: watch.visible ?? true,
+      };
+      const signal = {
+        ...prev.signal,
+        watches: [...prev.signal.watches, nextWatch],
+      };
+      const next = withUpdatedMeta({ ...prev, signal });
+      return pushSnapshot(next);
+    });
+  };
+
+  const removeSignalWatch = (id: string) => {
+    setProject((prev) => {
+      const signal = {
+        ...prev.signal,
+        watches: prev.signal.watches.filter((w) => w.id !== id),
+      };
+      const next = withUpdatedMeta({ ...prev, signal });
+      return pushSnapshot(next);
+    });
+  };
+
+  const toggleSignalWatchVisibility = (id: string) => {
+    setProject((prev) => {
+      const signal = {
+        ...prev.signal,
+        watches: prev.signal.watches.map((w) =>
+          w.id === id ? { ...w, visible: !w.visible } : w
+        ),
+      };
+      const next = withUpdatedMeta({ ...prev, signal });
+      return pushSnapshot(next);
+    });
+  };
+
+  const updateSignalWatchLayer = (id: string, layer: number) => {
+    setProject((prev) => {
+      const signal = {
+        ...prev.signal,
+        watches: prev.signal.watches.map((w) =>
+          w.id === id ? { ...w, layer } : w
+        ),
+      };
+      const next = withUpdatedMeta({ ...prev, signal });
+      return pushSnapshot(next);
+    });
+  };
+
   const setName = (name: string) => {
     setProject((prev) =>
       pushSnapshot(
@@ -526,8 +614,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const replaceProject = (next: ProjectState) => {
-    saveProjectToStorage(next);
-    setProject(next);
+    const normalized = ensureSignalModel(next);
+    saveProjectToStorage(normalized);
+    setProject(normalized);
   };
 
   useEffect(() => {
@@ -560,6 +649,10 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
     addClock,
     removeClock,
     updateTiming,
+    addSignalWatch,
+    removeSignalWatch,
+    toggleSignalWatchVisibility,
+    updateSignalWatchLayer,
     setName,
     setNotes,
     resetProject,

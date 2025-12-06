@@ -42,6 +42,14 @@ export function addProbe(def: ProbeDef) {
   probes.push({ ...def });
 }
 
+export function replaceProbes(defs: ProbeDef[], resetHistory = true) {
+  probes = defs.map((d) => ({ ...d }));
+  if (resetHistory) {
+    history = [];
+  }
+  notify();
+}
+
 export function removeProbe(id: string) {
   probes = probes.filter((p) => p.id !== id);
 }
@@ -50,6 +58,7 @@ export function toggleProbeVisibility(id: string) {
   probes = probes.map((p) =>
     p.id === id ? { ...p, visible: !p.visible } : p
   );
+  notify();
 }
 
 export function subscribeProbeSamples(
@@ -93,4 +102,9 @@ subscribeSimHistory((sim) => {
 
   notify();
 });
+
+export function clearProbeHistory() {
+  history = [];
+  notify();
+}
 
