@@ -168,6 +168,7 @@ const DesktopShell: React.FC<DesktopShellProps> = ({ user }) => {
                                     gridSize={gridSize}
                                     onFocus={() => focusWindow(w.id)}
                                     onClose={() => closeWindow(w.id)}
+                                    onMinimize={() => setActiveId(null)}
                                     onChange={patch => updateWindow(w.id, patch)}
                                 >
                                     <Component />
@@ -180,7 +181,7 @@ const DesktopShell: React.FC<DesktopShellProps> = ({ user }) => {
             </main>
 
             <footer className="relative z-10 h-8 border-t border-red-900/70 bg-black/80 px-4 flex items-center justify-between text-[10px] text-slate-400">
-                <span>© {new Date().getFullYear()} redbyte os • web prototype</span>
+                <span>Â© {new Date().getFullYear()} redbyte os Â• web prototype</span>
                 <span>goal: full redstone-native desktop, shipped as .exe</span>
             </footer>
 

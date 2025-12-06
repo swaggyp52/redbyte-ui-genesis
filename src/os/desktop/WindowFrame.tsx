@@ -12,8 +12,8 @@ interface Props {
   layoutMode: LayoutMode;
   gridSize: number;
   onFocus: () => void;
-  onClose: () => void;
-  onMinimize: () => void;
+  onClose?: () => void;
+  onMinimize?: () => void;
   onChange: (patch: Partial<{ x: number; y: number; width: number; height: number }>) => void;
   children: React.ReactNode;
 }
@@ -127,13 +127,13 @@ const WindowFrame: React.FC<Props> = ({
 
         <div className="flex gap-2">
           <button
-            onClick={(e) => { e.stopPropagation(); onMinimize(); }}
+            onClick={(e) => { e.stopPropagation(); onMinimize?.(); }}
             className="text-red-300 hover:text-red-100"
           >
-            —
+
           </button>
           <button
-            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            onClick={(e) => { e.stopPropagation(); onClose?.(); }}
             className="text-red-300 hover:text-red-100"
           >
             ?
