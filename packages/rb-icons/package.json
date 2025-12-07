@@ -1,0 +1,14 @@
+{
+  "name": "rb-icons",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "vite build -c ../../tools/config/vite.lib.config.ts",
+    "test": "vitest --config vitest.config.ts",
+    "lint": "eslint src --ext .ts,.tsx --config ../../tools/config/eslint.base.cjs",
+    "format": "prettier --check ."
+  }
+}
