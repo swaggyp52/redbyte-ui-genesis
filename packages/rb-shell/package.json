@@ -25,5 +25,18 @@
   ],
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "@redbyte/rb-icons": "workspace:*",
+    "@redbyte/rb-primitives": "workspace:*",
+    "@redbyte/rb-theme": "workspace:*",
+    "@redbyte/rb-windowing": "workspace:*",
+    "react": "^19.2.1",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.1.0",
+    "@types/react": "^19.2.7",
+    "@vitejs/plugin-react": "^5.1.1"
   }
 }

@@ -1,0 +1,218 @@
+[1mdiff --git a/.changeset/config.json b/.changeset/config.json[m
+[1mindex 76301943..584f23fb 100644[m
+[1m--- a/.changeset/config.json[m
+[1m+++ b/.changeset/config.json[m
+[36m@@ -2,8 +2,8 @@[m
+   "$schema": "https://unpkg.com/@changesets/config@2.3.1/schema.json",[m
+   "changelog": "@changesets/cli/changelog",[m
+   "commit": false,[m
+[31m-  "access": "restricted",[m
+[32m+[m[32m  "access": "public",[m
+   "baseBranch": "main",[m
+   "updateInternalDependencies": "patch",[m
+[31m-  "ignore": [][m
+[32m+[m[32m  "ignore": ["playground", "docs", "studio"][m
+ }[m
+[1mdiff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml[m
+[1mindex 58b4d670..2982aff6 100644[m
+[1m--- a/.github/workflows/ci.yml[m
+[1m+++ b/.github/workflows/ci.yml[m
+[36m@@ -1,39 +1,65 @@[m
+[31m-name: CI[m
+[31m-[m
+[31m-on:[m
+[31m-  push:[m
+[31m-    branches: ["main"][m
+[31m-  pull_request:[m
+[31m-[m
+[31m-jobs:[m
+[31m-  verify:[m
+[31m-    runs-on: ubuntu-latest[m
+[31m-    steps:[m
+[31m-      - name: Checkout[m
+[31m-        uses: actions/checkout@v4[m
+[31m-[m
+[31m-      - name: Setup pnpm[m
+[31m-        uses: pnpm/action-setup@v4[m
+[31m-        with:[m
+[31m-          version: 9[m
+[31m-[m
+[31m-      - name: Setup Node.js[m
+[31m-        uses: actions/setup-node@v4[m
+[31m-        with:[m
+[31m-          node-version: 20[m
+[31m-          cache: pnpm[m
+[31m-[m
+[31m-      - name: Install dependencies[m
+[31m-        run: pnpm install[m
+[31m-[m
+[31m-      - name: Typecheck[m
+[31m-        run: pnpm -r typecheck[m
+[31m-[m
+[31m-      - name: Lint[m
+[31m-        run: pnpm -r lint[m
+[31m-[m
+[31m-      - name: Test[m
+[31m-        run: pnpm -r test[m
+[31m-[m
+[31m-      - name: Build[m
+[31m-        run: pnpm -r build[m
+[32m+[m[32mname: CI[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mon:[m[41m[m
+[32m+[m[32m  push:[m[41m[m
+[32m+[m[32m    branches: [main, develop][m[41m[m
+[32m+[m[32m  pull_request:[m[41m[m
+[32m+[m[32m    branches: [main, develop][m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mjobs:[m[41m[m
+[32m+[m[32m  lint:[m[41m[m
+[32m+[m[32m    name: Lint[m[41m[m
+[32m+[m[32m    runs-on: ubuntu-latest[m[41m[m
+[32m+[m[32m    steps:[m[41m[m
+[32m+[m[32m      - uses: actions/checkout@v4[m[41m[m
+[32m+[m[32m      - uses: actions/setup-node@v4[m[41m[m
+[32m+[m[32m        with:[m[41m[m
+[32m+[m[32m          node-version: "20"[m[41m[m
+[32m+[m[32m      - uses: pnpm/action-setup@v4[m[41m[m
+[32m+[m[32m        with:[m[41m[m
+[32m+[m[32m          version: 9[m[41m[m
+[32m+[m[32m      - run: pnpm install --frozen-lockfile[m[41m[m
+[32m+[m[32m      - run: pnpm lint[m[41m[m
+[32m+[m[32m      - run: pnpm format[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32m  typecheck:[m[41m[m
+[32m+[m[32m    name: Type Check[m[41m[m
+[32m+[m[32m    runs-on: ubuntu-latest[m[41m[m
+[32m+[m[32m    steps:[m[41m[m
+[32m+[m[32m      - uses: actions/checkout@v4[m[41m[m
+[32m+[m[32m      - uses: actions/setup-node@v4[m[41m[m
+[32m+[m[32m        with:[m[41m[m
+[32m+[m[32m          node-version: "20"[m[41m[m
+[32m+[m[32m      - uses: pnpm/action-setup@v4[m[41m[m
+[32m+[m[32m        with:[m[41m[m
+[32m+[m[32m          version: 9[m[41m[m
+[32m+[m[32m      - run: pnpm install --frozen-lockfile[m[41m[m
+[32m+[m[32m      - run: pnpm typecheck[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32m  test:[m[41m[m
+[32m+[m[32m    name: Unit Tests[m[41m[m
+[32m+[m[32m    runs-on: ubuntu-latest[m[41m[m
+[32m+[m[32m    steps:[m[41m[m
+[32m+[m[32m      - uses: actions/checkout@v4[m[41m[m
+[32m+[m[32m      - uses: actions/setup-node@v4[m[41m[m
+[32m+[m[32m        with:[m[41m[m
+[32m+[m[32m          node-version: "20"[m[41m[m
+[32m+[m[32m      - uses: pnpm/action-setup@v4[m[41m[m
+[32m+[m[32m        with:[m[41m[m
+[32m+[m[32m          version: 9[m[41m[m
+[32m+[m[32m      - run: pnpm install --frozen-lockfile[m[41m[m
+[32m+[m[32m      - run: pnpm test[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32m  build:[m[41m[m
+[32m+[m[32m    name: Build[m[41m[m
+[32m+[m[32m    runs-on: ubuntu-latest[m[41m[m
+[32m+[m[32m    steps:[m[41m[m
+[32m+[m[32m      - uses: actions/checkout@v4[m[41m[m
+[32m+[m[32m      - uses: actions/setup-node@v4[m[41m[m
+[32m+[m[32m        with:[m[41m[m
+[32m+[m[32m          node-version: "20"[m[41m[m
+[32m+[m[32m      - uses: pnpm/action-setup@v4[m[41m[m
+[32m+[m[32m        with:[m[41m[m
+[32m+[m[32m          version: 9[m[41m[m
+[32m+[m[32m      - run: pnpm install --frozen-lockfile[m[41m[m
+[32m+[m[32m      - run: pnpm build[m[41m[m
+[1mdiff --git a/.github/workflows/release.yml b/.github/workflows/release.yml[m
+[1mindex d0518036..69bf0cff 100644[m
+[1m--- a/.github/workflows/release.yml[m
+[1m+++ b/.github/workflows/release.yml[m
+[36m@@ -1,83 +1,56 @@[m
+[31m-name: Release[m
+[31m-[m
+[31m-on:[m
+[31m-  push:[m
+[31m-    branches:[m
+[31m-      - main[m
+[31m-[m
+[31m-jobs:[m
+[31m-  release:[m
+[31m-    name: Version and Publish[m
+[31m-    runs-on: ubuntu-latest[m
+[31m-    permissions:[m
+[31m-      contents: write[m
+[31m-      pull-requests: write[m
+[31m-      id-token: write[m
+[31m-    outputs:[m
+[31m-      published: ${{ steps.changesets.outputs.published }}[m
+[31m-    steps:[m
+[31m-      - name: Checkout[m
+[31m-        uses: actions/checkout@v4[m
+[31m-[m
+[31m-      - name: Setup pnpm[m
+[31m-        uses: pnpm/action-setup@v4[m
+[31m-        with:[m
+[31m-          version: 9[m
+[31m-[m
+[31m-      - name: Setup Node.js[m
+[31m-        uses: actions/setup-node@v4[m
+[31m-        with:[m
+[31m-          node-version: 20[m
+[31m-          cache: pnpm[m
+[31m-          registry-url: https://registry.npmjs.org[m
+[31m-[m
+[31m-      - name: Install dependencies[m
+[31m-        run: pnpm install[m
+[31m-[m
+[31m-      - name: Create Release PR or Publish[m
+[31m-        id: changesets[m
+[31m-        uses: changesets/action@v1[m
+[31m-        with:[m
+[31m-          version: pnpm changeset version[m
+[31m-          publish: pnpm changeset publish[m
+[31m-        env:[m
+[31m-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}[m
+[31m-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}[m
+[31m-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}[m
+[31m-          NPM_CONFIG_PROVENANCE: true[m
+[31m-          NPM_CONFIG_OTP: ${{ secrets.NPM_OTP }}[m
+[31m-[m
+[31m-  deploy_docs:[m
+[31m-    name: Deploy Docs to Cloudflare Pages[m
+[31m-    runs-on: ubuntu-latest[m
+[31m-    needs: release[m
+[31m-    if: needs.release.outputs.published == 'true'[m
+[31m-    steps:[m
+[31m-      - name: Checkout[m
+[31m-        uses: actions/checkout@v4[m
+[31m-[m
+[31m-      - name: Setup pnpm[m
+[31m-        uses: pnpm/action-setup@v4[m
+[31m-        with:[m
+[31m-          version: 9[m
+[31m-[m
+[31m-      - name: Setup Node.js[m
+[31m-        uses: actions/setup-node@v4[m
+[31m-        with:[m
+[31m-          node-version: 20[m
+[31m-          cache: pnpm[m
+[31m-[m
+[31m-      - name: Install dependencies[m
+[31m-        run: pnpm install[m
+[31m-[m
+[31m-      - name: Build docs[m
+[31m-        run: |[m
+[31m-          echo "Building docs placeholder"[m
+[31m-          pnpm --filter docs build || echo "Docs app not implemented yet"[m
+[31m-[m
+[31m-      - name: Deploy to Cloudflare Pages[m
+[31m-        run: echo "Placeholder for Cloudflare Pages deployment"[m
+[31m-        env:[m
+[31m-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}[m
+[31m-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}[m
+[31m-          CLOUDFLARE_PROJECT_NAME: ${{ secrets.CLOUDFLARE_PROJECT_NAME }}[m
+[32m+[m[32mname: Release[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mon:[m[41m[m
+[32m+[m[32m  push:[m[41m[m
+[32m+[m[32m    branches: [main][m[41m[m
+[32m+[m[32m  workflow_dispatch:[m[41m

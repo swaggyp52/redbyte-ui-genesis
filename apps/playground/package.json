@@ -6,10 +6,14 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
+    "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest --config vitest.config.ts",
     "lint": "eslint src --ext .ts,.tsx",
     "format": "prettier --check ."
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.1.1"
   }
 }

@@ -1,1 +1,4 @@
-export const placeholder = 'rb-theme';
+export * from './types';
+export * from './themes';
+export * from './ThemeProvider';
+export * from './applyTheme';
