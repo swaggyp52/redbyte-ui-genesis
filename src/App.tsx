@@ -5,6 +5,7 @@ import LoginScreen from "./os/ui/LoginScreen";
 import DesktopShell from "./os/desktop/DesktopShell";
 import { SettingsProvider } from "./os/context/SettingsContext";
 import { ProjectProvider } from "./os/context/ProjectContext";
+import { LearningProvider } from "./os/context/LearningContext";
 
 const App: React.FC = () => {
   const [phase, setPhase] = useState<"boot" | "login" | "desktop">("boot");
@@ -23,9 +24,11 @@ const App: React.FC = () => {
   return (
     <SettingsProvider>
       <ProjectProvider>
-        {phase === "boot" && <LoadingScreen />}
-        {phase === "login" && <LoginScreen onLogin={handleLogin} />}
-        {phase === "desktop" && <DesktopShell user={user || "operator"} />}
+        <LearningProvider>
+          {phase === "boot" && <LoadingScreen />}
+          {phase === "login" && <LoginScreen onLogin={handleLogin} />}
+          {phase === "desktop" && <DesktopShell user={user || "operator"} />}
+        </LearningProvider>
       </ProjectProvider>
     </SettingsProvider>
   );

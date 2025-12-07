@@ -1,9 +1,13 @@
-import { ProjectState } from "./ProjectContext";
+import { ProjectState } from "./ProjectTypes";
 
-export const LOCAL_STORAGE_KEY = "redbyte-project-v1";
+export const PROJECT_STORAGE_KEY = "redbyte-project-v2";
+
+export function serializeProject(project: ProjectState): string {
+  return JSON.stringify(project, null, 2);
+}
 
 export function exportProjectToBlob(project: ProjectState): Blob {
-  const json = JSON.stringify(project, null, 2);
+  const json = serializeProject(project);
   return new Blob([json], { type: "application/json" });
 }
 
@@ -25,11 +29,19 @@ export function importProject(jsonString: string): ProjectState {
   if (!parsed.meta?.id || !parsed.meta?.createdAt) {
     throw new Error("Missing metadata");
   }
-  return parsed as ProjectState;
+  const normalized: ProjectState = {
+    ...parsed,
+    meta: {
+      ...parsed.meta,
+      version: parsed.meta.version ?? 2,
+    },
+    signal: parsed.signal ?? { watches: [] },
+  };
+  return normalized;
 }
 
 export function loadProjectFromStorage(): ProjectState | null {
-  const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+  const raw = localStorage.getItem(PROJECT_STORAGE_KEY);
   if (!raw) return null;
   try {
     return importProject(raw);
@@ -40,9 +52,9 @@ export function loadProjectFromStorage(): ProjectState | null {
 }
 
 export function saveProjectToStorage(project: ProjectState) {
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(project));
+  localStorage.setItem(PROJECT_STORAGE_KEY, serializeProject(project));
 }
 
 export function clearStoredProject() {
-  localStorage.removeItem(LOCAL_STORAGE_KEY);
+  localStorage.removeItem(PROJECT_STORAGE_KEY);
 }

@@ -5,22 +5,25 @@ import {
   exportLogicAsVerilogModule,
 } from "../../logic/LogicExport";
 import { mapLogicToRedstone } from "../../logic/LogicToRedstone";
+import LearningOverlay from "../ui/LearningOverlay";
+import { useLearning } from "../context/LearningContext";
 
 type ExportMode = "json" | "verilog" | "redstone";
 
 const LogicExportsApp: React.FC = () => {
   const { project } = useProject();
+  const { completeStep } = useLearning();
   const [mode, setMode] = useState<ExportMode>("json");
 
   const mapping = useMemo(
-    () => mapLogicToRedstone(project.logic),
-    [project.logic]
+    () => mapLogicToRedstone(project.logic.template),
+    [project.logic.template]
   );
 
   const body = useMemo(() => {
-    if (mode === "json") return exportLogicAsJson(project.logic);
+    if (mode === "json") return exportLogicAsJson(project.logic.template);
     if (mode === "verilog")
-      return exportLogicAsVerilogModule(project.logic, project.meta.name);
+      return exportLogicAsVerilogModule(project.logic.template, project.meta.name);
     return mapping.blocks
       .map((b) =>
         `${b.logicNodeId ? `${b.logicNodeId}: ` : ""}${b.type} @ (${b.x},${b.y},${b.z})`
@@ -38,12 +41,23 @@ const LogicExportsApp: React.FC = () => {
         <div className="text-right text-[0.65rem] text-slate-500">
           <div className="font-mono text-emerald-300">PROJECT://{project.meta.id}</div>
           <div>
-            {project.logic.nodes.length} nodes, {project.logic.wires.length} wires
+            {project.logic.template.nodes.length} nodes, {project.logic.template.wires.length} wires
           </div>
         </div>
       </header>
 
       <section className="rb-glass rounded-2xl border border-slate-800/80 p-3 flex flex-col gap-2 flex-1 min-h-0">
+        <LearningOverlay
+          stepId="view-code"
+          title="Export code + JSON"
+          description="See how the unified project model renders as JSON, Verilog-style HDL, or a redstone block list."
+          bullets={[
+            "JSON mirrors ProjectContext; Verilog names come from node labels.",
+            "Redstone listing shows block placement used by the 3D viewer.",
+            "Refresh after edits to see how design changes propagate across views.",
+          ]}
+          ctaLabel="I reviewed the code"
+        />
         <div className="flex items-center gap-2 text-[0.7rem]">
           <span className="text-slate-400">Mode</span>
           <select
@@ -66,6 +80,12 @@ const LogicExportsApp: React.FC = () => {
 
         <div className="text-[0.65rem] text-slate-500">
           Generated from the current ProjectContext — refreshes when gates, wires, or metadata change.
+          <button
+            onClick={() => completeStep("view-code")}
+            className="ml-2 text-sky-300 hover:text-sky-200 uppercase tracking-[0.14em]"
+          >
+            mark tutorial step done
+          </button>
         </div>
       </section>
     </div>
