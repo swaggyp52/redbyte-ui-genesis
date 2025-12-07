@@ -1,17 +1,18 @@
-﻿{
-  "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "module": "ESNext",
-    "lib": ["ES2020", "DOM"],
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx",
-    "strict": false
-  },
-  "include": ["src"],
-  "references": []
+{
+  "extends": "./tools/config/tsconfig.base.json",
+  "files": [],
+  "references": [
+    { "path": "./apps/playground" },
+    { "path": "./packages/rb-tokens" },
+    { "path": "./packages/rb-theme" },
+    { "path": "./packages/rb-icons" },
+    { "path": "./packages/rb-primitives" },
+    { "path": "./packages/rb-windowing" },
+    { "path": "./packages/rb-shell" },
+    { "path": "./packages/rb-logic-core" },
+    { "path": "./packages/rb-logic-view" },
+    { "path": "./packages/rb-logic-3d" },
+    { "path": "./packages/rb-apps" },
+    { "path": "./packages/rb-utils" }
+  ]
 }

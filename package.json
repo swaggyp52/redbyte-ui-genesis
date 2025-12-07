@@ -1,32 +1,36 @@
 {
-  "name": "redbyte-ui",
-  "version": "2.0.1",
+  "name": "redbyte-ui-genesis",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@9.12.0",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "framer-motion": "^12.23.25",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^7.10.0",
-    "three": "^0.181.2",
-    "zustand": "^5.0.9"
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "test:e2e": "pnpm -r --if-present test:e2e",
+    "build": "pnpm -r --if-present build",
+    "changeset": "pnpm changeset",
+    "release": "pnpm -r --if-present release"
   },
   "devDependencies": {
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/three": "^0.181.0",
+    "@typescript-eslint/eslint-plugin": "^8.19.1",
+    "@typescript-eslint/parser": "^8.19.1",
     "@vitejs/plugin-react": "^4.7.0",
     "@vitejs/plugin-react-swc": "^4.2.2",
     "autoprefixer": "^10.4.0",
-    "gh-pages": "^6.3.0",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.36.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
     "postcss": "^8.4.0",
+    "prettier": "^3.3.3",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.9.3",
-    "vite": "^7.2.6"
+    "vite": "^7.2.6",
+    "vitest": "^2.1.4"
   }
 }

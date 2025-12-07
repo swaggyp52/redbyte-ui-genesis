@@ -1,0 +1,11 @@
+{
+  "extends": "../../tools/config/tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": "./",
+    "types": ["vitest/globals", "vite/client"],
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": ["src", "vite.config.ts", "tailwind.config.cjs", "postcss.config.cjs", "index.html"],
+  "references": []
+}
