@@ -61,8 +61,8 @@ const CPUDesigner: React.FC = () => {
               cpu map (proto)
             </div>
             <div className="text-[11px] text-slate-400">
-              {project.cpuModules.length} unit
-              {project.cpuModules.length === 1 ? "" : "s"} in design
+              {project.cpu.units.length} unit
+              {project.cpu.units.length === 1 ? "" : "s"} in design
             </div>
           </div>
         </div>
@@ -73,19 +73,19 @@ const CPUDesigner: React.FC = () => {
               <tr>
                 <th className="px-3 py-2 text-left font-normal">Label</th>
                 <th className="px-3 py-2 text-left font-normal">Kind</th>
-                <th className="px-3 py-2 text-left font-normal">Clock (MHz)</th>
+                <th className="px-3 py-2 text-left font-normal">Clock (Hz)</th>
                 <th className="px-3 py-2 text-right font-normal">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {project.cpuModules.map((u) => (
+              {project.cpu.units.map((u) => (
                 <tr
                   key={u.id}
                   className="border-b border-red-900/40 last:border-0 hover:bg-red-950/40"
                 >
                   <td className="px-3 py-1.5">{u.label}</td>
                   <td className="px-3 py-1.5 text-slate-300">{u.kind}</td>
-                  <td className="px-3 py-1.5 text-slate-300">{u.clockMHz.toFixed(2)}</td>
+                    <td className="px-3 py-1.5 text-slate-300">{u.clockHz.toFixed(2)}</td>
                   <td className="px-3 py-1.5 text-right">
                     <button
                       onClick={() => removeCpuModule(u.id)}
@@ -96,7 +96,7 @@ const CPUDesigner: React.FC = () => {
                   </td>
                 </tr>
               ))}
-              {project.cpuModules.length === 0 && (
+              {project.cpu.units.length === 0 && (
                 <tr>
                   <td
                     colSpan={4}

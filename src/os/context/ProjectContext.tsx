@@ -10,59 +10,32 @@ import {
   LogicNodeType,
   LogicTemplate,
   LogicWire,
+  LogicNet,
 } from "../../logic/LogicTypes";
 import {
-  clearStoredProject,
   loadProjectFromStorage,
   saveProjectToStorage,
 } from "./ProjectSerializer";
+import {
+  CpuModule,
+  CpuModuleKind,
+  CpuBus,
+  ProjectClock,
+  ProjectIOPin,
+  ProjectIODirection,
+  ProjectState,
+  ProjectSnapshot,
+  LogicTimingProfile,
+  ProjectSignalWatch,
+} from "./ProjectTypes";
 
-export type CpuModuleKind =
-  | "alu"
-  | "register-file"
-  | "control-unit"
-  | "clock"
-  | "memory"
-  | "io";
-
-export interface CpuModule {
-  id: string;
-  label: string;
-  kind: CpuModuleKind;
-  clockMHz: number;
-}
-
-export interface IOBus {
-  id: string;
-  label: string;
-  width: number;
-  endpoints: string[];
-}
-
-export interface ProjectMetadata {
-  id: string;
-  name: string;
-  description?: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface ProjectSnapshot {
-  ts: number;
-  nodes: number;
-  wires: number;
-  cpuModules: number;
-  buses: number;
-}
-
-export interface ProjectState {
-  meta: ProjectMetadata;
-  logic: LogicTemplate;
-  cpuModules: CpuModule[];
-  ioBuses: IOBus[];
-  notes: string;
-  history: ProjectSnapshot[];
-}
+export type {
+  CpuModuleKind,
+  ProjectState,
+  ProjectClock,
+  ProjectIOPin,
+  ProjectSignalWatch,
+} from "./ProjectTypes";
 
 interface ProjectContextValue {
   project: ProjectState;
@@ -74,6 +47,15 @@ interface ProjectContextValue {
   removeCpuModule: (id: string) => void;
   addBus: (label: string, width?: number) => void;
   removeBus: (id: string) => void;
+  addIoPin: (direction: ProjectIODirection, label?: string, width?: number) => void;
+  removeIoPin: (id: string) => void;
+  addClock: (label?: string, hz?: number, netId?: string) => void;
+  removeClock: (id: string) => void;
+  updateTiming: (timing: Partial<LogicTimingProfile>) => void;
+  addSignalWatch: (watch: Partial<ProjectSignalWatch>) => void;
+  removeSignalWatch: (id: string) => void;
+  toggleSignalWatchVisibility: (id: string) => void;
+  updateSignalWatchLayer: (id: string, layer: number) => void;
   setName: (name: string) => void;
   setNotes: (notes: string) => void;
   resetProject: () => void;
@@ -140,7 +122,96 @@ const demoLogicTemplate: LogicTemplate = {
     { id: "w1", fromNodeId: "in_a", fromIndex: 0, toNodeId: "and1", toIndex: 0 },
     { id: "w2", fromNodeId: "in_b", fromIndex: 0, toNodeId: "and1", toIndex: 1 },
     { id: "w3", fromNodeId: "and1", fromIndex: 0, toNodeId: "lamp", toIndex: 0 },
+    { id: "w4", fromNodeId: "clock", fromIndex: 0, toNodeId: "lamp", toIndex: 0 },
   ],
+};
+
+const demoNets: LogicNet[] = [
+  {
+    id: "net_a",
+    label: "A",
+    connections: [
+      { nodeId: "in_a", portIndex: 0, direction: "out", wireId: "w1" },
+      { nodeId: "and1", portIndex: 0, direction: "in", wireId: "w1" },
+    ],
+  },
+  {
+    id: "net_b",
+    label: "B",
+    connections: [
+      { nodeId: "in_b", portIndex: 0, direction: "out", wireId: "w2" },
+      { nodeId: "and1", portIndex: 1, direction: "in", wireId: "w2" },
+    ],
+  },
+  {
+    id: "net_out",
+    label: "Lamp output",
+    connections: [
+      { nodeId: "and1", portIndex: 0, direction: "out", wireId: "w3" },
+      { nodeId: "lamp", portIndex: 0, direction: "in", wireId: "w3" },
+    ],
+  },
+  {
+    id: "net_clock",
+    label: "Clock",
+    connections: [
+      { nodeId: "clock", portIndex: 0, direction: "out", wireId: "w4" },
+      { nodeId: "lamp", portIndex: 0, direction: "in", wireId: "w4" },
+    ],
+  },
+];
+
+const demoIoPins: ProjectIOPin[] = [
+  {
+    id: "pin_a",
+    label: "IN_A",
+    direction: "input",
+    width: 1,
+    netId: "net_a",
+    attachedNodeId: "in_a",
+  },
+  {
+    id: "pin_b",
+    label: "IN_B",
+    direction: "input",
+    width: 1,
+    netId: "net_b",
+    attachedNodeId: "in_b",
+  },
+  {
+    id: "pin_out",
+    label: "OUT",
+    direction: "output",
+    width: 1,
+    netId: "net_out",
+    attachedNodeId: "lamp",
+  },
+];
+
+const demoClocks: ProjectClock[] = [
+  {
+    id: "clk_main",
+    label: "Main clock",
+    hz: 1,
+    dutyCycle: 0.5,
+    netId: "net_clock",
+  },
+];
+
+const demoSignalWatches: ProjectSignalWatch[] = [
+  {
+    id: "watch_out",
+    label: "Lamp output",
+    nodeId: "lamp",
+    layer: 0,
+    visible: true,
+  },
+];
+
+const demoTiming: LogicTimingProfile = {
+  baseClockHz: 1,
+  tickIntervalMs: 250,
+  propagationDelayNs: 50,
 };
 
 function createInitialProject(): ProjectState {
@@ -152,40 +223,65 @@ function createInitialProject(): ProjectState {
       description: "Seed design spanning logic, CPU, IO and metadata",
       createdAt: now,
       updatedAt: now,
+      tags: ["demo", "sandbox"],
+      version: 2,
     },
-    logic: demoLogicTemplate,
-    cpuModules: [
-      {
-        id: "u1",
-        label: "ALU core",
-        kind: "alu",
-        clockMHz: 1,
-      },
-      {
-        id: "u2",
-        label: "Register file",
-        kind: "register-file",
-        clockMHz: 1,
-      },
-    ],
-    ioBuses: [
-      {
-        id: "b1",
-        label: "Main bus",
-        width: 8,
-        endpoints: ["u1", "u2"],
-      },
-    ],
+    logic: {
+      template: demoLogicTemplate,
+      nets: demoNets,
+      ioPins: demoIoPins,
+      clocks: demoClocks,
+      timing: demoTiming,
+    },
+    cpu: {
+      units: [
+        {
+          id: "u1",
+          label: "ALU core",
+          kind: "alu",
+          clockHz: 1,
+          attachedNets: ["net_a", "net_b", "net_out"],
+          description: "8-bit arithmetic and logical unit",
+        },
+        {
+          id: "u2",
+          label: "Register file",
+          kind: "register-file",
+          clockHz: 1,
+          attachedNets: ["net_out"],
+        },
+      ],
+      buses: [
+        {
+          id: "b1",
+          label: "Main bus",
+          width: 8,
+          endpoints: ["u1", "u2"],
+        },
+      ],
+    },
+    signal: { watches: demoSignalWatches },
     notes: "Sketch ideas, pinouts and timing plans here.",
     history: [
       {
         ts: now,
-        nodes: demoLogicTemplate.nodes.length,
-        wires: demoLogicTemplate.wires.length,
-        cpuModules: 2,
+        logicNodes: demoLogicTemplate.nodes.length,
+        logicWires: demoLogicTemplate.wires.length,
+        logicNets: demoNets.length,
+        cpuUnits: 2,
         buses: 1,
+        ioPins: demoIoPins.length,
+        clocks: demoClocks.length,
       },
     ],
+  };
+}
+
+function ensureSignalModel(project: ProjectState): ProjectState {
+  if (project.signal && Array.isArray(project.signal.watches)) return project;
+  return {
+    ...project,
+    signal: { watches: [] },
   };
 }
 
@@ -194,31 +290,48 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const [project, setProject] = useState<ProjectState>(() => {
     const stored = loadProjectFromStorage();
-    return stored ?? createInitialProject();
+    return ensureSignalModel(stored ?? createInitialProject());
   });
+
+  const generateId = (prefix: string) =>
+    `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
   const pushSnapshot = (next: ProjectState) => {
     const snap: ProjectSnapshot = {
       ts: Date.now(),
-      nodes: next.logic.nodes.length,
-      wires: next.logic.wires.length,
-      cpuModules: next.cpuModules.length,
-      buses: next.ioBuses.length,
+      logicNodes: next.logic.template.nodes.length,
+      logicWires: next.logic.template.wires.length,
+      logicNets: next.logic.nets.length,
+      cpuUnits: next.cpu.units.length,
+      buses: next.cpu.buses.length,
+      ioPins: next.logic.ioPins.length,
+      clocks: next.logic.clocks.length,
     };
     const history = [...next.history, snap];
-    if (history.length > 64) {
-      history.shift();
-    }
+    if (history.length > 64) history.shift();
     return { ...next, history };
   };
-
-  const generateId = (prefix: string) =>
-    `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
   const withUpdatedMeta = (next: ProjectState): ProjectState => ({
     ...next,
     meta: { ...next.meta, updatedAt: Date.now() },
   });
+
+  const pruneNets = (nets: LogicNet[], nodeId: string): LogicNet[] =>
+    nets
+      .map((net) => ({
+        ...net,
+        connections: net.connections.filter((c) => c.nodeId !== nodeId),
+      }))
+      .filter((net) => net.connections.length > 0);
+
+  const pruneConnectionsForWire = (nets: LogicNet[], wireId: string) =>
+    nets
+      .map((net) => ({
+        ...net,
+        connections: net.connections.filter((c) => c.wireId !== wireId),
+      }))
+      .filter((net) => net.connections.length > 0);
 
   const addLogicNode = (type: LogicNodeType) => {
     setProject((prev) => {
@@ -228,16 +341,17 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
         id,
         type,
         label,
-        x: prev.logic.nodes.length % 6,
-        y: Math.floor(prev.logic.nodes.length / 6),
+        x: prev.logic.template.nodes.length % 6,
+        y: Math.floor(prev.logic.template.nodes.length / 6),
         inputs: type === "INPUT_TOGGLE" || type === "CLOCK" ? 0 : 2,
         outputs: 1,
         meta: type === "CLOCK" ? { clockPeriodTicks: 8 } : undefined,
       };
-      const logic: LogicTemplate = {
-        ...prev.logic,
-        nodes: [...prev.logic.nodes, node],
+      const template: LogicTemplate = {
+        ...prev.logic.template,
+        nodes: [...prev.logic.template.nodes, node],
       };
+      const logic = { ...prev.logic, template };
       const next = withUpdatedMeta({ ...prev, logic });
       return pushSnapshot(next);
     });
@@ -245,11 +359,13 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
 
   const removeLogicNode = (id: string) => {
     setProject((prev) => {
-      const nodes = prev.logic.nodes.filter((n) => n.id !== id);
-      const wires = prev.logic.wires.filter(
+      const nodes = prev.logic.template.nodes.filter((n) => n.id !== id);
+      const wires = prev.logic.template.wires.filter(
         (w) => w.fromNodeId !== id && w.toNodeId !== id
       );
-      const logic = { ...prev.logic, nodes, wires };
+      const nets = pruneNets(prev.logic.nets, id);
+      const template = { ...prev.logic.template, nodes, wires };
+      const logic = { ...prev.logic, template, nets };
       const next = withUpdatedMeta({ ...prev, logic });
       return pushSnapshot(next);
     });
@@ -257,7 +373,29 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
 
   const addLogicWire = (wire: LogicWire) => {
     setProject((prev) => {
-      const logic = { ...prev.logic, wires: [...prev.logic.wires, wire] };
+      const template = {
+        ...prev.logic.template,
+        wires: [...prev.logic.template.wires, wire],
+      };
+      const net: LogicNet = {
+        id: generateId("net"),
+        label: `Net ${prev.logic.nets.length + 1}`,
+        connections: [
+          {
+            nodeId: wire.fromNodeId,
+            portIndex: wire.fromIndex,
+            direction: "out",
+            wireId: wire.id,
+          },
+          {
+            nodeId: wire.toNodeId,
+            portIndex: wire.toIndex,
+            direction: "in",
+            wireId: wire.id,
+          },
+        ],
+      };
+      const logic = { ...prev.logic, template, nets: [...prev.logic.nets, net] };
       const next = withUpdatedMeta({ ...prev, logic });
       return pushSnapshot(next);
     });
@@ -265,10 +403,12 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
 
   const removeLogicWire = (wireId: string) => {
     setProject((prev) => {
-      const logic = {
-        ...prev.logic,
-        wires: prev.logic.wires.filter((w) => w.id !== wireId),
+      const template = {
+        ...prev.logic.template,
+        wires: prev.logic.template.wires.filter((w) => w.id !== wireId),
       };
+      const nets = pruneConnectionsForWire(prev.logic.nets, wireId);
+      const logic = { ...prev.logic, template, nets };
       const next = withUpdatedMeta({ ...prev, logic });
       return pushSnapshot(next);
     });
@@ -281,11 +421,11 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
         id,
         label: `${kind.toUpperCase()} module`,
         kind,
-        clockMHz: kind === "clock" ? 1 : 0.5,
+        clockHz: kind === "clock" ? 1 : 0.5,
       };
       const next = withUpdatedMeta({
         ...prev,
-        cpuModules: [...prev.cpuModules, unit],
+        cpu: { ...prev.cpu, units: [...prev.cpu.units, unit] },
       });
       return pushSnapshot(next);
     });
@@ -295,7 +435,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
     setProject((prev) => {
       const next = withUpdatedMeta({
         ...prev,
-        cpuModules: prev.cpuModules.filter((u) => u.id !== id),
+        cpu: { ...prev.cpu, units: prev.cpu.units.filter((u) => u.id !== id) },
       });
       return pushSnapshot(next);
     });
@@ -303,13 +443,16 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
 
   const addBus = (label: string, width: number = 8) => {
     setProject((prev) => {
-      const bus: IOBus = {
+      const bus: CpuBus = {
         id: generateId("bus"),
         label,
         width,
         endpoints: [],
       };
-      const next = withUpdatedMeta({ ...prev, ioBuses: [...prev.ioBuses, bus] });
+      const next = withUpdatedMeta({
+        ...prev,
+        cpu: { ...prev.cpu, buses: [...prev.cpu.buses, bus] },
+      });
       return pushSnapshot(next);
     });
   };
@@ -318,8 +461,132 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
     setProject((prev) => {
       const next = withUpdatedMeta({
         ...prev,
-        ioBuses: prev.ioBuses.filter((b) => b.id !== id),
+        cpu: { ...prev.cpu, buses: prev.cpu.buses.filter((b) => b.id !== id) },
       });
+      return pushSnapshot(next);
+    });
+  };
+
+  const addIoPin = (
+    direction: ProjectIODirection,
+    label: string = direction === "input" ? "IN" : "OUT",
+    width: number = 1
+  ) => {
+    setProject((prev) => {
+      const ioPin: ProjectIOPin = {
+        id: generateId("pin"),
+        label,
+        direction,
+        width,
+      };
+      const logic = { ...prev.logic, ioPins: [...prev.logic.ioPins, ioPin] };
+      const next = withUpdatedMeta({ ...prev, logic });
+      return pushSnapshot(next);
+    });
+  };
+
+  const removeIoPin = (id: string) => {
+    setProject((prev) => {
+      const logic = {
+        ...prev.logic,
+        ioPins: prev.logic.ioPins.filter((pin) => pin.id !== id),
+      };
+      const next = withUpdatedMeta({ ...prev, logic });
+      return pushSnapshot(next);
+    });
+  };
+
+  const addClock = (label: string = "Clock", hz: number = 1, netId?: string) => {
+    setProject((prev) => {
+      const clock: ProjectClock = {
+        id: generateId("clk"),
+        label,
+        hz,
+        dutyCycle: 0.5,
+        netId,
+      };
+      const logic = { ...prev.logic, clocks: [...prev.logic.clocks, clock] };
+      const next = withUpdatedMeta({ ...prev, logic });
+      return pushSnapshot(next);
+    });
+  };
+
+  const removeClock = (id: string) => {
+    setProject((prev) => {
+      const logic = {
+        ...prev.logic,
+        clocks: prev.logic.clocks.filter((clk) => clk.id !== id),
+      };
+      const next = withUpdatedMeta({ ...prev, logic });
+      return pushSnapshot(next);
+    });
+  };
+
+  const updateTiming = (timing: Partial<LogicTimingProfile>) => {
+    setProject((prev) => {
+      const logic = {
+        ...prev.logic,
+        timing: { ...prev.logic.timing, ...timing },
+      };
+      const next = withUpdatedMeta({ ...prev, logic });
+      return pushSnapshot(next);
+    });
+  };
+
+  const addSignalWatch = (watch: Partial<ProjectSignalWatch>) => {
+    setProject((prev) => {
+      const id = watch.id ?? generateId("watch");
+      const nextWatch: ProjectSignalWatch = {
+        id,
+        label: watch.label ?? watch.nodeId ?? watch.netId ?? `Watch ${prev.signal.watches.length + 1}`,
+        nodeId: watch.nodeId,
+        netId: watch.netId,
+        layer: watch.layer ?? 0,
+        pinnedPosition: watch.pinnedPosition,
+        visible: watch.visible ?? true,
+      };
+      const signal = {
+        ...prev.signal,
+        watches: [...prev.signal.watches, nextWatch],
+      };
+      const next = withUpdatedMeta({ ...prev, signal });
+      return pushSnapshot(next);
+    });
+  };
+
+  const removeSignalWatch = (id: string) => {
+    setProject((prev) => {
+      const signal = {
+        ...prev.signal,
+        watches: prev.signal.watches.filter((w) => w.id !== id),
+      };
+      const next = withUpdatedMeta({ ...prev, signal });
+      return pushSnapshot(next);
+    });
+  };
+
+  const toggleSignalWatchVisibility = (id: string) => {
+    setProject((prev) => {
+      const signal = {
+        ...prev.signal,
+        watches: prev.signal.watches.map((w) =>
+          w.id === id ? { ...w, visible: !w.visible } : w
+        ),
+      };
+      const next = withUpdatedMeta({ ...prev, signal });
+      return pushSnapshot(next);
+    });
+  };
+
+  const updateSignalWatchLayer = (id: string, layer: number) => {
+    setProject((prev) => {
+      const signal = {
+        ...prev.signal,
+        watches: prev.signal.watches.map((w) =>
+          w.id === id ? { ...w, layer } : w
+        ),
+      };
+      const next = withUpdatedMeta({ ...prev, signal });
       return pushSnapshot(next);
     });
   };
@@ -346,8 +613,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const replaceProject = (next: ProjectState) => {
-    saveProjectToStorage(next);
-    setProject(next);
+    const normalized = ensureSignalModel(next);
+    saveProjectToStorage(normalized);
+    setProject(normalized);
   };
 
   useEffect(() => {
@@ -361,10 +629,6 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
     return () => window.clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    return () => clearStoredProject();
-  }, []);
-
   const value: ProjectContextValue = {
     project,
     addLogicNode,
@@ -375,6 +639,15 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
     removeCpuModule,
     addBus,
     removeBus,
+    addIoPin,
+    removeIoPin,
+    addClock,
+    removeClock,
+    updateTiming,
+    addSignalWatch,
+    removeSignalWatch,
+    toggleSignalWatchVisibility,
+    updateSignalWatchLayer,
     setName,
     setNotes,
     resetProject,

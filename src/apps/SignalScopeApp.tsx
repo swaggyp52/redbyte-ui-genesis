@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   getProbes,
   addProbe,
@@ -10,7 +10,19 @@ import {
 } from "../scope/ProbeBus";
 import { WaveformCanvas } from "../scope/WaveformCanvas";
 
-export function SignalScopeApp() {
+interface SignalScopeAppProps {
+  onProbeAdded?: (probe: ProbeDef) => void;
+  onProbeRemoved?: (probeId: string) => void;
+  onProbeVisibilityChange?: (probeId: string, visible: boolean) => void;
+  onWaveformTouched?: () => void;
+}
+
+export function SignalScopeApp({
+  onProbeAdded,
+  onProbeRemoved,
+  onProbeVisibilityChange,
+  onWaveformTouched,
+}: SignalScopeAppProps) {
   const [probes, setProbes] = useState<ProbeDef[]>(getProbes());
   const [samples, setSamples] = useState<ProbeSample[]>([]);
   const [label, setLabel] = useState("");
@@ -19,15 +31,24 @@ export function SignalScopeApp() {
   const [z, setZ] = useState(0);
 
   useEffect(() => {
-    const unsub = subscribeProbeSamples((s) => setSamples(s));
+    const unsub = subscribeProbeSamples((s) => {
+      setSamples(s);
+      if (s.length && onWaveformTouched) {
+        onWaveformTouched();
+      }
+    });
     return () => unsub();
-  }, []);
+  }, [onWaveformTouched]);
+
+  useEffect(() => {
+    setProbes(getProbes());
+  }, [samples]);
 
   const refresh = () => setProbes(getProbes());
 
   const handleAdd = () => {
     if (!label.trim()) return;
-    addProbe({
+    const probe: ProbeDef = {
       id: crypto.randomUUID(),
       label,
       mode: "voxel",
@@ -35,9 +56,14 @@ export function SignalScopeApp() {
       y,
       z,
       visible: true,
-    });
+    };
+    if (onProbeAdded) {
+      onProbeAdded(probe);
+    } else {
+      addProbe(probe);
+      refresh();
+    }
     setLabel("");
-    refresh();
   };
 
   return (
@@ -102,8 +128,12 @@ export function SignalScopeApp() {
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => {
-                    toggleProbeVisibility(p.id);
-                    refresh();
+                    if (onProbeVisibilityChange) {
+                      onProbeVisibilityChange(p.id, !p.visible);
+                    } else {
+                      toggleProbeVisibility(p.id);
+                      refresh();
+                    }
                   }}
                   className="px-2 py-1 rounded-xl border border-slate-700/80 hover:border-emerald-500/70 text-slate-400"
                 >
@@ -111,8 +141,12 @@ export function SignalScopeApp() {
                 </button>
                 <button
                   onClick={() => {
-                    removeProbe(p.id);
-                    refresh();
+                    if (onProbeRemoved) {
+                      onProbeRemoved(p.id);
+                    } else {
+                      removeProbe(p.id);
+                      refresh();
+                    }
                   }}
                   className="px-2 py-1 rounded-xl border border-rose-500/70 text-rose-300 hover:bg-rose-500/10"
                 >
@@ -130,39 +164,3 @@ export function SignalScopeApp() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

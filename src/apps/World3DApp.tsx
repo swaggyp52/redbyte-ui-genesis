@@ -62,10 +62,11 @@ export interface World3DAppProps {
   initialLayerY?: number;
   onLayerChange?: (layer: number) => void;
   onRunningChange?: (running: boolean) => void;
+  onReady?: () => void;
 }
 
 export const World3DApp = forwardRef<World3DControls, World3DAppProps>(
-  ({ initialLayerY, onLayerChange, onRunningChange }, ref) => {
+  ({ initialLayerY, onLayerChange, onRunningChange, onReady }, ref) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const voxelGroupRef = useRef<THREE.Group | null>(null);
   const voxelGeometryRef = useRef<THREE.BoxGeometry | null>(null);
@@ -109,7 +110,7 @@ export const World3DApp = forwardRef<World3DControls, World3DAppProps>(
 
   useEffect(() => {
     setBlueprints(listBlueprints());
-  }, []);
+  }, [onReady]);
 
   // Scene + camera + renderer + orbit controls
   useEffect(() => {
@@ -171,6 +172,10 @@ export const World3DApp = forwardRef<World3DControls, World3DAppProps>(
       renderer.render(scene, camera);
     };
     animate();
+
+    if (onReady) {
+      onReady();
+    }
 
     const handleResize = () => {
       const w = mount.clientWidth || width;
