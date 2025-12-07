@@ -14,12 +14,14 @@ interface SignalScopeAppProps {
   onProbeAdded?: (probe: ProbeDef) => void;
   onProbeRemoved?: (probeId: string) => void;
   onProbeVisibilityChange?: (probeId: string, visible: boolean) => void;
+  onWaveformTouched?: () => void;
 }
 
 export function SignalScopeApp({
   onProbeAdded,
   onProbeRemoved,
   onProbeVisibilityChange,
+  onWaveformTouched,
 }: SignalScopeAppProps) {
   const [probes, setProbes] = useState<ProbeDef[]>(getProbes());
   const [samples, setSamples] = useState<ProbeSample[]>([]);
@@ -29,9 +31,14 @@ export function SignalScopeApp({
   const [z, setZ] = useState(0);
 
   useEffect(() => {
-    const unsub = subscribeProbeSamples((s) => setSamples(s));
+    const unsub = subscribeProbeSamples((s) => {
+      setSamples(s);
+      if (s.length && onWaveformTouched) {
+        onWaveformTouched();
+      }
+    });
     return () => unsub();
-  }, []);
+  }, [onWaveformTouched]);
 
   useEffect(() => {
     setProbes(getProbes());

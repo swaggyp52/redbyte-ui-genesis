@@ -7,6 +7,8 @@ import {
 } from "../../scope/ProbeBus";
 import { projectNodePositions } from "./logicWorldBridge";
 import { WORLD_SIZE } from "../../world3d/VoxelWorld";
+import LearningOverlay from "../ui/LearningOverlay";
+import { useLearning } from "../context/LearningContext";
 
 const clampLayer = (layer: number) =>
   Math.max(0, Math.min(WORLD_SIZE - 1, Math.floor(layer)));
@@ -18,6 +20,7 @@ const SignalScopeShell: React.FC = () => {
     removeSignalWatch,
     toggleSignalWatchVisibility,
   } = useProject();
+  const { completeStep } = useLearning();
   const [layer, setLayer] = useState(
     project.signal.watches[0]?.layer ?? 0
   );
@@ -98,6 +101,17 @@ const SignalScopeShell: React.FC = () => {
       </header>
 
       <section className="rb-glass rounded-2xl border border-slate-800/80 p-3 flex flex-col gap-2">
+        <LearningOverlay
+          stepId="inspect-timing"
+          title="Probe timing and propagation"
+          description="Add probes to watched nodes to see rising/falling edges as inputs toggle and clocks tick."
+          bullets={[
+            "Each probe maps to a voxel position; the scope streams signals from the 3D world.",
+            "Use visibility toggles to focus on a subset of nets without deleting them.",
+            "The timing profile from ProjectContext governs tick frequency and propagation delay.",
+          ]}
+          ctaLabel="I viewed waveforms"
+        />
         <div className="flex flex-wrap items-center gap-2 text-[0.7rem]">
           <div className="flex items-center gap-2">
             <span className="text-slate-400">Signal</span>
@@ -146,6 +160,7 @@ const SignalScopeShell: React.FC = () => {
             }
             onProbeRemoved={(id) => removeSignalWatch(id)}
             onProbeVisibilityChange={(id) => toggleSignalWatchVisibility(id)}
+            onWaveformTouched={() => completeStep("inspect-timing")}
           />
         </div>
       </section>

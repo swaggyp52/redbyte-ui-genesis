@@ -1,6 +1,8 @@
 import React, { useMemo } from "react";
 import { useProject } from "../context/ProjectContext";
 import { LogicNodeType } from "../../logic/LogicTypes";
+import LearningOverlay from "../ui/LearningOverlay";
+import { useLearning } from "../context/LearningContext";
 
 const LOGIC_KINDS: LogicNodeType[] = [
   "INPUT_TOGGLE",
@@ -14,6 +16,7 @@ const LOGIC_KINDS: LogicNodeType[] = [
 
 const LogicDesigner: React.FC = () => {
   const { project, addLogicNode, removeLogicNode } = useProject();
+  const { completeStep } = useLearning();
 
   const gateNodes = useMemo(
     () =>
@@ -58,6 +61,18 @@ const LogicDesigner: React.FC = () => {
               {gateNodes.length === 1 ? "" : "s"} in project · {project.logic.template.wires.length} wires · {project.logic.nets.length} nets
             </div>
           </div>
+
+          <LearningOverlay
+            stepId="build-and-gate"
+            title="Design a 2-input AND gate"
+            description="Use two input toggles, an AND gate, and a lamp to show how the truth table flows through the graph."
+            bullets={[
+              "Inputs drive nets; nets bundle wires that feed your gate ports.",
+              "Propagation delay is captured in the timing profile for downstream viewers.",
+              "Clocks can be attached as nets to drive periodic changes.",
+            ]}
+            ctaLabel="I built the gate"
+          />
         </div>
 
         <div className="flex-1 rounded-lg border border-red-900/70 bg-black/70 overflow-auto">
@@ -105,9 +120,17 @@ const LogicDesigner: React.FC = () => {
           </table>
         </div>
 
-        <div className="text-[10px] text-slate-500">
-          full wiring canvas &amp; timing diagrams will live here later  this is just the
-          data backbone
+        <div className="text-[10px] text-slate-500 flex items-center justify-between">
+          <span>
+            full wiring canvas &amp; timing diagrams will live here later  this is just the
+            data backbone
+          </span>
+          <button
+            onClick={() => completeStep("build-and-gate")}
+            className="text-[10px] uppercase tracking-[0.14em] text-sky-300 hover:text-sky-200"
+          >
+            mark tutorial step done
+          </button>
         </div>
       </div>
     </div>
