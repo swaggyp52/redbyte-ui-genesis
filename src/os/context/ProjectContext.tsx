@@ -13,7 +13,6 @@ import {
   LogicNet,
 } from "../../logic/LogicTypes";
 import {
-  clearStoredProject,
   loadProjectFromStorage,
   saveProjectToStorage,
 } from "./ProjectSerializer";
@@ -628,10 +627,6 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
       setProject((prev) => pushSnapshot(withUpdatedMeta(prev)));
     }, 5000);
     return () => window.clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    return () => clearStoredProject();
   }, []);
 
   const value: ProjectContextValue = {

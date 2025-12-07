@@ -1,15 +1,15 @@
 import React, { useState } from "react";
 
 interface LoginScreenProps {
-  onEnter: (handle: string) => void;
+  onLogin: (handle: string) => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onEnter }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [handle, setHandle] = useState("operator");
 
   const tryEnter = () => {
-    if (!onEnter) return;
-    onEnter(handle.trim() || "operator");
+    if (!onLogin) return;
+    onLogin(handle.trim() || "operator");
   };
 
   return (
@@ -28,6 +28,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onEnter }) => {
         <input
           value={handle}
           onChange={(e) => setHandle(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") tryEnter();
+          }}
           className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[12px] mb-3"
         />
 
@@ -39,7 +42,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onEnter }) => {
         </button>
 
         <div className="text-[10px] text-slate-500 mt-3">
-          local build • dev-only • key stored only in this browser
+          Projects stay local to this browser and auto-save as you work.
         </div>
       </div>
     </div>
