@@ -13,6 +13,7 @@ const World3DOSApp: React.FC = () => {
   const { project } = useProject();
   const { completeStep } = useLearning();
   const controlsRef = useRef<World3DControls | null>(null);
+
   const [layer, setLayer] = useState(Math.floor(WORLD_SIZE / 2));
   const [running, setRunning] = useState(false);
   const [mapping, setMapping] = useState<ProjectWorldMapping | null>(null);
@@ -45,10 +46,15 @@ const World3DOSApp: React.FC = () => {
       <header className="border-b border-slate-800/80 pb-2 flex items-center justify-between">
         <div>
           <h1 className="text-sm text-slate-100 font-semibold">3D Simulator</h1>
-          <p className="text-[0.7rem] text-slate-400">Active project mapped into the voxel world via logic→redstone layout.</p>
+          <p className="text-[0.7rem] text-slate-400">
+            Active project mapped into the voxel world via logic→redstone layout.
+          </p>
         </div>
+
         <div className="text-right">
-          <div className="text-[0.65rem] text-emerald-300 font-mono">PROJECT://{project.meta.id}</div>
+          <div className="text-[0.65rem] text-emerald-300 font-mono">
+            PROJECT://{project.meta.id}
+          </div>
           <div className="text-[0.65rem] text-slate-500">{summary}</div>
         </div>
       </header>
@@ -81,12 +87,14 @@ const World3DOSApp: React.FC = () => {
             >
               {running ? "Pause" : "Run"}
             </button>
+
             <button
               onClick={() => controlsRef.current?.step()}
               className="px-2 py-1 rounded-xl border border-slate-700/80 text-[0.7rem] hover:border-sky-500/70"
             >
               Step
             </button>
+
             <button
               onClick={() => controlsRef.current?.reset()}
               className="px-2 py-1 rounded-xl border border-slate-700/80 text-[0.7rem] hover:border-amber-500/70"
