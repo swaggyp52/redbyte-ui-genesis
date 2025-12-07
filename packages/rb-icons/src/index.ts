@@ -1,1 +1,15 @@
-export const placeholder = 'rb-icons placeholder';
+export {
+  AndGateIcon,
+  BufferIcon,
+  DockIcon,
+  IconProps,
+  NandGateIcon,
+  NorGateIcon,
+  NotGateIcon,
+  OrGateIcon,
+  TaskbarIcon,
+  WindowCloseIcon,
+  WindowMaximizeIcon,
+  WindowMinimizeIcon,
+  XorGateIcon,
+} from './icons';

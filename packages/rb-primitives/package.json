@@ -12,6 +12,16 @@
     "lint": "eslint src --ext .ts,.tsx",
     "test": "vitest run"
   },
+  "devDependencies": {
+    "@testing-library/react": "workspace:^",
+    "@testing-library/user-event": "workspace:^",
+    "react": "workspace:^",
+    "react-dom": "workspace:^"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
   "publishConfig": {
     "access": "public"
   }
