@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useWindowStore } from './store';
 
-describe('@redbyte/rb-windowing store', () => {
+describe('@rb/rb-windowing store', () => {
   beforeEach(() => {
     // Reset store before each test
     useWindowStore.setState({

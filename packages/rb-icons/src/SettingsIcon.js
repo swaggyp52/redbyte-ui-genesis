@@ -1,0 +1,2 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+export const SettingsIcon = (props) => (_jsxs("svg", { viewBox: '0 0 24 24', fill: 'currentColor', ...props, children: [_jsx("path", { d: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm-1.5 4a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0z' }), _jsx("path", { d: 'M10.5 2h3l.5 2.5 2 1 2.5-.5 1.5 2.5-1.5 2 .5 2 2.5.5v3l-2.5.5-.5 2 1.5 2-1.5 2.5-2.5-.5-2 1-.5 2.5h-3l-.5-2.5-2-1-2.5.5L4 18.5l1.5-2-.5-2L2.5 14v-3l2.5-.5.5-2-1.5-2L5.5 4l2.5.5 2-1L10.5 2z', opacity: '0.3' })] }));

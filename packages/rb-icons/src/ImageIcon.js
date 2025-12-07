@@ -1,0 +1,2 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+export const ImageIcon = (props) => (_jsxs("svg", { viewBox: '0 0 24 24', fill: 'currentColor', ...props, children: [_jsx("rect", { x: '3', y: '3', width: '18', height: '18', rx: '2', fill: 'none', stroke: 'currentColor', strokeWidth: '2' }), _jsx("circle", { cx: '8.5', cy: '8.5', r: '2' }), _jsx("path", { d: 'M3 16l5-5 4 4 5-5 4 4v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3z', opacity: '0.5' })] }));

@@ -23,7 +23,7 @@ import {
   DocumentIcon,
 } from './index';
 
-describe('@redbyte/rb-icons', () => {
+describe('@rb/rb-icons', () => {
   describe('Window management icons', () => {
     it('renders WindowCloseIcon', () => {
       const { container } = render(<WindowCloseIcon data-testid="icon" />);

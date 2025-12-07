@@ -29,6 +29,18 @@ export default defineConfig({
         'react',
         'react-dom',
         'react/jsx-runtime',
+
+        '@redbyte/rb-windowing',
+        '@redbyte/rb-tokens',
+        '@redbyte/rb-theme',
+        '@redbyte/rb-icons',
+        '@redbyte/rb-primitives',
+        '@redbyte/rb-shell',
+        '@redbyte/rb-logic-core',
+        '@redbyte/rb-logic-view',
+        '@redbyte/rb-logic-3d',
+        '@redbyte/rb-apps',
+
         '@rb/rb-tokens',
         '@rb/rb-icons',
         '@rb/rb-shell',

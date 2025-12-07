@@ -1,33 +1,29 @@
+import { WindowManager } from '@rb/rb-windowing';
+import LogicLabApp from './apps/LogicLabApp';
+
 export interface RBAppDefinition {
   id: string;
   name: string;
-  icon?: string;
-  component: React.ComponentType;
+  launch?: any;
 }
 
-import { LogicLabApp } from './apps/LogicLabApp';
-import { WindowManager } from '@redbyte/rb-windowing';
-import { Launcher } from './Launcher';
-
-export const appRegistry: RBAppDefinition[] = [
+export const apps: RBAppDefinition[] = [
   {
     id: 'logic-lab',
     name: 'Logic Lab',
-    component: LogicLabApp
+    launch: LogicLabApp
   },
   {
     id: 'window-manager',
     name: 'Window Manager',
-    component: WindowManager
+    launch: WindowManager
   }
 ];
 
-export function getApps() {
-  return appRegistry;
+// getApp() used by rb-shell
+export function getApp(id: string): RBAppDefinition | undefined {
+  return apps.find(app => app.id === id);
 }
 
-export function getApp(id: string) {
-  return appRegistry.find(app => app.id === id) || null;
-}
-
-export { Launcher };
+// default export still valid
+export default apps;

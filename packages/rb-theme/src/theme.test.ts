@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { applyTheme, getActiveTheme } from './applyTheme';
 
-describe('@redbyte/rb-theme', () => {
+describe('@rb/rb-theme', () => {
   beforeEach(() => {
     // Clear localStorage and DOM state before each test
     window.localStorage.clear();
