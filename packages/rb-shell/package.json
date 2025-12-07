@@ -1,0 +1,29 @@
+{
+  "name": "@redbyte/rb-shell",
+  "version": "0.0.0",
+  "private": false,
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "dependencies": {
+    "@redbyte/rb-apps": "0.0.0",
+    "@redbyte/rb-icons": "0.0.0",
+    "@redbyte/rb-primitives": "0.0.0",
+    "@redbyte/rb-windowing": "0.0.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

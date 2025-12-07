@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "lib": ["ESNext", "DOM"],
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@rb/tokens": ["packages/rb-tokens/src"],
+      "@rb/theme": ["packages/rb-theme/src"],
+      "@rb/icons": ["packages/rb-icons/src"],
+      "@rb/primitives": ["packages/rb-primitives/src"],
+      "@rb/windowing": ["packages/rb-windowing/src"],
+      "@rb/shell": ["packages/rb-shell/src"],
+      "@rb/logic-core": ["packages/rb-logic-core/src"],
+      "@rb/logic-view": ["packages/rb-logic-view/src"],
+      "@rb/logic-3d": ["packages/rb-logic-3d/src"],
+      "@rb/apps": ["packages/rb-apps/src"],
+      "@rb/utils": ["packages/rb-utils/src"]
+    },
+    "types": ["node"]
+  }
+}

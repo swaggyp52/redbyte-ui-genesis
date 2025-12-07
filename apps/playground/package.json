@@ -1,0 +1,39 @@
+{
+  "name": "@redbyte/playground",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@redbyte/rb-theme": "0.0.0",
+    "@redbyte/rb-icons": "0.0.0",
+    "@redbyte/rb-primitives": "0.0.0",
+    "@redbyte/rb-shell": "0.0.0",
+    "@redbyte/rb-windowing": "0.0.0",
+    "framer-motion": "^12.23.25",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.10.0",
+    "three": "^0.181.2",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/three": "^0.181.0",
+    "@vitejs/plugin-react-swc": "^4.0.0",
+    "tailwindcss": "^3.4.16",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.4"
+  }
+}
