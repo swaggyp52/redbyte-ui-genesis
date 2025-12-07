@@ -6,7 +6,7 @@ export default defineConfig({
   ...baseConfig,
   resolve: {
     alias: {
-      '@redbyte/rb-tokens': fileURLToPath(new URL('../rb-tokens/src', import.meta.url)),
+      '@rb/rb-tokens': fileURLToPath(new URL('../rb-tokens/src', import.meta.url)),
     },
   },
 });

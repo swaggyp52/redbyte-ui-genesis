@@ -6,11 +6,23 @@
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": ["dist"],
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "dependencies": {
+    "@redbyte/rb-apps": "workspace:*",
+    "@redbyte/rb-icons": "workspace:*",
+    "@redbyte/rb-theme": "workspace:*",
+    "@redbyte/rb-windowing": "workspace:*",
+    "zustand": "^4.5.5"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "eslint src --ext .ts,.tsx",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "publishConfig": {
     "access": "public"

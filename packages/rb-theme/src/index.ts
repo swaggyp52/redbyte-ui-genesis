@@ -1,4 +1,4 @@
-import { Tokens, TokenVariant, getTokensForVariant, tokensToCssVariables } from '@redbyte/rb-tokens';
+import { Tokens, TokenVariant, getTokensForVariant, tokensToCssVariables } from '@rb/rb-tokens';
 
 export interface ApplyThemeOptions {
   storageKey?: string | null;
