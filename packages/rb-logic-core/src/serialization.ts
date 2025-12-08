@@ -26,11 +26,19 @@ export function serialize(circuit: Circuit): SerializedCircuitV1 {
  */
 export function deserialize(json: SerializedCircuitV1 | string): Circuit {
   const data: SerializedCircuitV1 = typeof json === 'string' ? JSON.parse(json) : json;
-  
+
   if (data.version !== 1) {
     throw new Error(`Unsupported circuit version: ${data.version}`);
   }
-  
+
+  // Validate that nodes and connections are arrays
+  if (!Array.isArray(data.nodes)) {
+    throw new Error('Invalid circuit data: nodes must be an array');
+  }
+  if (!Array.isArray(data.connections)) {
+    throw new Error('Invalid circuit data: connections must be an array');
+  }
+
   return {
     nodes: data.nodes.map(node => ({
       id: node.id,
