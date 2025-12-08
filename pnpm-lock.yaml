@@ -186,6 +186,9 @@ importers:
       '@rb/rb-theme':
         specifier: workspace:*
         version: link:../rb-theme
+      '@rb/rb-utils':
+        specifier: workspace:*
+        version: link:../rb-utils
       '@rb/rb-windowing':
         specifier: workspace:*
         version: link:../rb-windowing
