@@ -1,4 +1,4 @@
-﻿import type { ThemeTokenSet } from "../types";
+import type { ThemeTokenSet } from "../types";
 
 export const midnightTheme: ThemeTokenSet = {
   id: "midnight",

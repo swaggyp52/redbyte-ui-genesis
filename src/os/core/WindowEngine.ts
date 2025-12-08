@@ -1,4 +1,4 @@
-﻿export class WindowEngine {
+export class WindowEngine {
   constructor(manager, id) {
     this.manager = manager;
     this.id = id;

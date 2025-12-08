@@ -1,17 +1,14 @@
 {
-  "name": "@redbyte/rb-windowing",
+  "name": "@rb/rb-windowing",
   "version": "0.0.1",
-  "main": "dist/rb-windowing.js",
-  "module": "dist/rb-windowing.mjs",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/rb-windowing.mjs",
-      "require": "./dist/rb-windowing.js",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
     }
-  },
-  "scripts": {
-    "build": "vite build -c ../../tools/config/vite.lib.config.ts"
   }
 }

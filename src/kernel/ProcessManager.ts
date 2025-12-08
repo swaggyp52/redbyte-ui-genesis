@@ -1,4 +1,4 @@
-﻿import { RBEvents } from "./EventBus";
+import { RBEvents } from "./EventBus";
 
 export type ProcessStatus = "running" | "suspended" | "stopped";
 export type ProcessType = "window" | "daemon" | "system";

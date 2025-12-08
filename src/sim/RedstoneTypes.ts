@@ -1,4 +1,4 @@
-﻿export type RedstoneCellType =
+export type RedstoneCellType =
   | "empty"
   | "wire"
   | "source"

@@ -1,4 +1,4 @@
-﻿import type { WindowState } from "./types";
+import type { WindowState } from "./types";
 
 /** Metadata about app types so presets can size windows intelligently */
 export const APP_WEIGHTS: Record<string, "small" | "medium" | "large"> = {
@@ -47,7 +47,7 @@ const stackPreset: PresetDefinition = {
 
 const gridPreset: PresetDefinition = {
   id: "grid",
-  label: "2×N Grid",
+  label: "2�N Grid",
   apply: (wins) => {
     const margin = 16;
     const screenW = window.innerWidth;

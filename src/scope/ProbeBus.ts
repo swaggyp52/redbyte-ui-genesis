@@ -1,4 +1,4 @@
-﻿import type { VoxelBlock } from "../world3d/VoxelWorld";
+import type { VoxelBlock } from "../world3d/VoxelWorld";
 import { subscribeSimHistory } from "../world3d/SimMetrics";
 import { getVoxel } from "../world3d/VoxelWorld";
 

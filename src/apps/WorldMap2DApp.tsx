@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   WORLD_SIZE,
   SliceCell,
@@ -125,11 +125,11 @@ export function WorldMap2DApp() {
       case "source":
         return "S";
       case "gate_and":
-        return "∧";
+        return "?";
       case "gate_or":
-        return "∨";
+        return "?";
       case "gate_not":
-        return "¬";
+        return "�";
       case "repeater":
         return "R";
       case "comparator":
@@ -162,10 +162,10 @@ export function WorldMap2DApp() {
     }
     const powerText =
       c.type === "wire"
-        ? ` · power ${c.powerLevel}`
+        ? ` � power ${c.powerLevel}`
         : c.powered
-        ? " · powered"
-        : " · off";
+        ? " � powered"
+        : " � off";
     return `${c.type} @ (${hovered.x},${level},${hovered.z})${powerText}`;
   })();
 
@@ -212,8 +212,8 @@ export function WorldMap2DApp() {
           Click cells to cycle:
           {" "}
           <span className="font-mono">
-            air → wire → source → AND → OR → NOT → repeater → comparator →
-            torch → output → air
+            air ? wire ? source ? AND ? OR ? NOT ? repeater ? comparator ?
+            torch ? output ? air
           </span>
           .
         </div>
@@ -285,7 +285,7 @@ export function WorldMap2DApp() {
           Tip:{" "}
           <span className="font-mono">Right-click</span> a comparator cell
           to toggle its mode between compare/subtract. Turn on dust debug to
-          see power levels (0–15) on wires.
+          see power levels (0�15) on wires.
         </div>
       </section>
 

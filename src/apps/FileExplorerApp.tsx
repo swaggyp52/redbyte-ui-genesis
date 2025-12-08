@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 type NodeType = "folder" | "file";
 
@@ -228,7 +228,7 @@ export function FileExplorerApp() {
       <header className="flex items-center justify-between border-b border-slate-800/80 pb-2">
         <div>
           <h1 className="text-sm font-semibold text-slate-100">
-            File Explorer — RedByte FS
+            File Explorer � RedByte FS
           </h1>
           <p className="text-[0.7rem] text-slate-400">
             Browse virtual folders for documents, projects and exports. This is
@@ -260,7 +260,7 @@ export function FileExplorerApp() {
                   setSelectedId(null);
                 }}
               >
-                <span>🏠</span>
+                <span>??</span>
                 <span>Home (RedByte)</span>
               </button>
               <button
@@ -270,7 +270,7 @@ export function FileExplorerApp() {
                   setSelectedId(null);
                 }}
               >
-                <span>📄</span>
+                <span>??</span>
                 <span>Documents</span>
               </button>
               <button
@@ -280,7 +280,7 @@ export function FileExplorerApp() {
                   setSelectedId(null);
                 }}
               >
-                <span>📁</span>
+                <span>??</span>
                 <span>Projects</span>
               </button>
               <button
@@ -290,7 +290,7 @@ export function FileExplorerApp() {
                   setSelectedId(null);
                 }}
               >
-                <span>📦</span>
+                <span>??</span>
                 <span>Exports</span>
               </button>
             </div>
@@ -327,7 +327,7 @@ export function FileExplorerApp() {
                       }
                     >
                       <div className="flex items-center gap-2">
-                        <span>{node.type === "folder" ? "📁" : "📄"}</span>
+                        <span>{node.type === "folder" ? "??" : "??"}</span>
                         <span className="text-slate-100">{node.name}</span>
                       </div>
                       <span className="text-[0.65rem] text-slate-500">
@@ -352,7 +352,7 @@ export function FileExplorerApp() {
                 <div className="flex flex-col h-full">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
-                      <span>📄</span>
+                      <span>??</span>
                       <span className="text-[0.8rem] text-slate-100 font-semibold">
                         {selectedNode.name}
                       </span>

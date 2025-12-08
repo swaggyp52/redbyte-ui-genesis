@@ -1,4 +1,4 @@
-﻿export type ToastLevel = "info" | "success" | "error";
+export type ToastLevel = "info" | "success" | "error";
 
 export type OSEvent =
   | {

@@ -1,4 +1,4 @@
-﻿import { emitToast } from "../events/events";
+import { emitToast } from "../events/events";
 
 export interface OSAction {
   id: string;

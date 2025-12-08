@@ -1,19 +1,4 @@
 {
-  "name": "docs",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "scripts": {
-    "dev": "vitepress dev",
-    "build": "vitepress build",
-    "preview": "vitepress preview",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint . --ext .ts,.tsx,.vue",
-    "format": "prettier --check ."
-  },
-  "devDependencies": {
-    "vitepress": "^1.5.0"
-  }
+  "name": "@redbyte/docs",
+  "version": "0.0.0"
 }

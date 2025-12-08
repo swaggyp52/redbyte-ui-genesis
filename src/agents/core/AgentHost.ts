@@ -1,4 +1,4 @@
-﻿import type { AgentExecution } from "./types";
+import type { AgentExecution } from "./types";
 import { agents } from "./registry";
 
 export interface AgentHostResult {

@@ -1,4 +1,4 @@
-﻿import type { VoxelBlock } from "../VoxelWorld";
+import type { VoxelBlock } from "../VoxelWorld";
 
 export interface ComponentContext {
   getBlock(x: number, y: number, z: number): VoxelBlock | null;
@@ -11,7 +11,7 @@ export interface ComponentResult {
    */
   powered: boolean;
   /**
-   * Integer power level (0–15). Will be mirrored into block.powerLevel.
+   * Integer power level (0�15). Will be mirrored into block.powerLevel.
    */
   powerLevel: number;
   /**

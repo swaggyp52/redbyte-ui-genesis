@@ -1,4 +1,4 @@
-﻿export interface BootStep {
+export interface BootStep {
   label: string;
   duration: number; // ms
 }

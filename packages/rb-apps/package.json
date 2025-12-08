@@ -1,32 +1,14 @@
 {
-  "name": "@redbyte/rb-apps",
-  "version": "0.0.0",
-  "private": false,
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "scripts": {
-    "build": "vite build -c ../../tools/config/vite.lib.config.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest --config vitest.config.ts",
-    "lint": "eslint src --ext .ts,.tsx",
-    "format": "prettier --check ."
-  },
+  "name": "@rb/rb-apps",
+  "version": "0.0.1",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
-    },
-    "./package.json": "./package.json"
-  },
-  "files": [
-    "dist",
-    "src"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
-  "devDependencies": {
-    "@types/react": "^19.2.7"
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   }
 }

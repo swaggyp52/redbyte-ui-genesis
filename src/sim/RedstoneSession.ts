@@ -1,4 +1,4 @@
-﻿export interface RedstoneSessionState {
+export interface RedstoneSessionState {
   activeBlueprintName: string | null;
 }
 

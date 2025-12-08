@@ -1,4 +1,4 @@
-﻿/**
+/**
  * CryptoIdentity
  *
  * Client-side cryptographic identity for RedByte users.

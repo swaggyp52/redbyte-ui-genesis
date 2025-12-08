@@ -1,4 +1,4 @@
-ï»¿import React, { useState } from "react";
+import React, { useState } from "react";
 import { World3DApp } from "./World3DApp";
 import { WorldMap2DApp } from "./WorldMap2DApp";
 import { RedstoneStatsApp } from "./RedstoneStatsApp";
@@ -26,7 +26,7 @@ export function RedstoneLabApp() {
       <header className="flex items-center justify-between border-b border-slate-800/80 pb-2">
         <div>
           <h1 className="text-sm font-semibold text-slate-100">
-            Redstone Lab â€” Control Room
+            Redstone Lab — Control Room
           </h1>
           <p className="text-[0.7rem] text-slate-400">
             Unified workspace for building, simulating, and explaining logic.
@@ -125,7 +125,7 @@ export function RedstoneLabApp() {
                     </h2>
                     <p className="text-[0.7rem] text-slate-400">
                       Top-down editor for a single Y-level. Use this when the
-                      3D view feels too busy â€” it is the same world, just
+                      3D view feels too busy — it is the same world, just
                       flattened.
                     </p>
                   </div>

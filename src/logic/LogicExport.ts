@@ -1,4 +1,4 @@
-﻿import { LogicTemplate } from "./LogicTypes";
+import { LogicTemplate } from "./LogicTypes";
 
 export function exportLogicAsJson(template: LogicTemplate): string {
   return JSON.stringify(template, null, 2);
@@ -6,7 +6,7 @@ export function exportLogicAsJson(template: LogicTemplate): string {
 
 /**
  * Very simple, human-readable Verilog-style export.
- * Not meant to be fed to a real tool yet — this is for
+ * Not meant to be fed to a real tool yet � this is for
  * teaching and copy/paste in docs/slides.
  */
 export function exportLogicAsVerilogModule(

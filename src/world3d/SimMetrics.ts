@@ -1,4 +1,4 @@
-﻿import type { VoxelBlock } from "./VoxelWorld";
+import type { VoxelBlock } from "./VoxelWorld";
 
 export interface RedstoneSimSample {
   tick: number;

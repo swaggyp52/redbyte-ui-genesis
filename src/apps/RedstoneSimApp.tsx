@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   createGrid,
   stepGrid,
@@ -364,21 +364,21 @@ export function RedstoneSimApp() {
                         ? "bg-emerald-400"
                         : "bg-emerald-500/20";
                       border = "border-emerald-300";
-                      label = "∧";
+                      label = "?";
                       break;
                     case "gate_or":
                       bg = cell.powered
                         ? "bg-emerald-400"
                         : "bg-emerald-500/20";
                       border = "border-emerald-300";
-                      label = "∨";
+                      label = "?";
                       break;
                     case "gate_not":
                       bg = cell.powered
                         ? "bg-emerald-400"
                         : "bg-emerald-500/20";
                       border = "border-emerald-300";
-                      label = "¬";
+                      label = "�";
                       break;
                     case "output":
                       bg = cell.powered

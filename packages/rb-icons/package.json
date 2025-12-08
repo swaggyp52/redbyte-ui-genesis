@@ -1,38 +1,14 @@
 {
-  "name": "@redbyte/rb-icons",
-  "version": "0.0.0",
-  "private": false,
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "scripts": {
-    "build": "vite build -c ../../tools/config/vite.lib.config.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest --config vitest.config.ts",
-    "lint": "eslint src --ext .ts,.tsx",
-    "format": "prettier --check ."
-  },
+  "name": "@rb/rb-icons",
+  "version": "0.0.1",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
-    },
-    "./package.json": "./package.json"
-  },
-  "files": [
-    "dist",
-    "src"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
-  "dependencies": {
-    "react": "^19.2.1"
-  },
-  "devDependencies": {
-    "@testing-library/react": "^16.1.0",
-    "@types/react": "^19.2.7",
-    "@vitejs/plugin-react": "^5.1.1",
-    "jsdom": "^25.0.1"
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   }
 }

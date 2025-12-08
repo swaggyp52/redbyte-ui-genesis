@@ -1,4 +1,4 @@
-﻿/**
+/**
  * AIExplain
  *
  * Local explanation engine for RedByte apps.

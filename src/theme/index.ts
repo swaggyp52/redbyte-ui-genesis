@@ -1,4 +1,4 @@
-﻿import type { ThemeTokenSet } from "./types";
+import type { ThemeTokenSet } from "./types";
 import { neonTheme } from "./themes/neon";
 import { carbonTheme } from "./themes/carbon";
 import { midnightTheme } from "./themes/midnight";

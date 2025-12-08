@@ -1,4 +1,4 @@
-﻿declare module "three/examples/jsm/controls/OrbitControls" {
+declare module "three/examples/jsm/controls/OrbitControls" {
   import { Camera, EventDispatcher, MOUSE, Vector3 } from "three";
 
   export class OrbitControls extends EventDispatcher {

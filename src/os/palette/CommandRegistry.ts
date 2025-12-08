@@ -1,4 +1,4 @@
-﻿export interface Command {
+export interface Command {
   id: string;
   label: string;
   keywords: string[];

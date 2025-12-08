@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 
 export interface AppDefinition {
   id: string;

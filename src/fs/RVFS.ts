@@ -1,4 +1,4 @@
-﻿export interface RVFSNode {
+export interface RVFSNode {
   id: string;
   name: string;
   type: "file" | "folder";

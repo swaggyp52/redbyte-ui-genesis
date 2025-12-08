@@ -1,4 +1,4 @@
-﻿export type WorkspaceLayout = {
+export type WorkspaceLayout = {
   id: string;
   name: string;
   windows: string[];

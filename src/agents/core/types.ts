@@ -1,4 +1,4 @@
-﻿export type AgentKind = "system" | "devtool" | "assistant";
+export type AgentKind = "system" | "devtool" | "assistant";
 
 export interface AgentDefinition {
   id: string;

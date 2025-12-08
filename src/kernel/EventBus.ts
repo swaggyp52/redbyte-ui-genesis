@@ -1,4 +1,4 @@
-﻿export type RBEvent =
+export type RBEvent =
   | { type: "window:focused"; windowId: string }
   | { type: "window:moved"; windowId: string }
   | { type: "window:resized"; windowId: string }

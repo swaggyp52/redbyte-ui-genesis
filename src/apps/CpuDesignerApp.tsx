@@ -1,9 +1,9 @@
-ï»¿import React from "react";
+import React from "react";
 
 /**
  * CpuDesignerApp
  *
- * v1 is a "CPU concept studio" â€” a friendly place to:
+ * v1 is a "CPU concept studio" — a friendly place to:
  * - see the parts of a CPU (ALU, registers, control, memory)
  * - understand how they connect
  * - get guidance on which Logic Workspace templates to use
@@ -16,7 +16,7 @@ export function CpuDesignerApp() {
       <header className="flex items-center justify-between border-b border-slate-800/80 pb-2">
         <div>
           <h1 className="text-sm font-semibold text-slate-100">
-            CPU Designer â€” Concept Studio
+            CPU Designer — Concept Studio
           </h1>
           <p className="text-[0.7rem] text-slate-400">
             A high-level view of how a small CPU is built from blocks: ALU,
@@ -78,7 +78,7 @@ export function CpuDesignerApp() {
                     ALU
                   </span>
                   <span className="text-[0.7rem] text-emerald-300 font-mono">
-                    +âˆ’ &amp;&amp; ||
+                    +- &amp;&amp; ||
                   </span>
                 </div>
                 <p className="text-[0.7rem] text-slate-400">
@@ -105,7 +105,7 @@ export function CpuDesignerApp() {
               {/* Bus */}
               <div className="row-span-1 col-span-3 rb-glass rounded-2xl border border-slate-700/80 p-3 flex items-center justify-center">
                 <span className="text-[0.75rem] text-slate-300 font-mono">
-                  DATA BUS â€” The shared highway where numbers travel between
+                  DATA BUS — The shared highway where numbers travel between
                   registers, ALU and memory.
                 </span>
               </div>

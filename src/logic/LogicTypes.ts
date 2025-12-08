@@ -1,4 +1,4 @@
-﻿export type LogicSignal = 0 | 1 | "X";
+export type LogicSignal = 0 | 1 | "X";
 
 export type LogicNodeType =
   | "INPUT_TOGGLE"

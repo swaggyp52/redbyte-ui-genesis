@@ -1,4 +1,4 @@
-Ôªøimport React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   LogicSignal,
   LogicNodeType,
@@ -16,7 +16,7 @@ import {
 const DEFAULT_CLOCK_PERIOD = 8;
 
 // ------------------------------------------------------------
-// Templates (examples) ‚Äî incl. a tiny "CPU-ish" counter
+// Templates (examples) ó incl. a tiny "CPU-ish" counter
 // ------------------------------------------------------------
 
 const TEMPLATES: LogicTemplate[] = [
@@ -667,7 +667,7 @@ export function LogicWorkspaceApp() {
       <header className="flex items-center justify-between border-b border-slate-800/80 pb-2">
         <div>
           <h1 className="text-sm font-semibold text-slate-100">
-            Logic Workspace ‚Äî 2D Diagram
+            Logic Workspace ó 2D Diagram
           </h1>
           <p className="text-[0.7rem] text-slate-400">
             Simple diagrams for real logic. Every box is a component, every
@@ -913,7 +913,7 @@ export function LogicWorkspaceApp() {
             <div className="mt-2 border-t border-slate-800/80 pt-2">
               <p className="text-[0.7rem] text-slate-400 mb-1">
                 {selectedNode
-                  ? `About ‚Äú${selectedNode.label}‚Äù:`
+                  ? `About ì${selectedNode.label}î:`
                   : "Click a component in the diagram to learn what it does."}
               </p>
               <p className="text-[0.7rem] text-slate-300">
@@ -929,12 +929,12 @@ export function LogicWorkspaceApp() {
                 Natural language designer
               </h2>
               <span className="text-[0.65rem] text-emerald-300 font-mono">
-                DESIGN://TEXT‚ÜíLOGIC
+                DESIGN://TEXT?LOGIC
               </span>
             </div>
             <p className="text-[0.7rem] text-slate-400">
-              Type what you want to simulate (e.g. ‚Äútraffic light for cars and
-              pedestrians‚Äù) and I&apos;ll pick the closest built-in example.
+              Type what you want to simulate (e.g. ìtraffic light for cars and
+              pedestriansî) and I&apos;ll pick the closest built-in example.
             </p>
             <textarea
               value={nlInput}

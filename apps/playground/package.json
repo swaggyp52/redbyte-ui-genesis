@@ -1,19 +1,16 @@
 {
-  "name": "playground",
+  "name": "@redbyte/playground",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest --config vitest.config.ts",
-    "lint": "eslint src --ext .ts,.tsx",
-    "format": "prettier --check ."
+    "build": "vite build"
   },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^5.1.1"
+  "dependencies": {
+    "@rb/rb-shell": "workspace:*",
+    "@rb/rb-apps": "workspace:*",
+    "@rb/rb-windowing": "workspace:*",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1"
   }
 }

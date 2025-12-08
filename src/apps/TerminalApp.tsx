@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 
 interface Line {
   id: number;
@@ -24,7 +24,7 @@ export function TerminalApp() {
       setLines([]);
       return;
     } else if (trimmed === "about") {
-      newTexts.push("RedByte OS — prototype shell running inside the browser.");
+      newTexts.push("RedByte OS � prototype shell running inside the browser.");
     } else if (trimmed === "time") {
       newTexts.push(`Time: ${new Date().toLocaleString()}`);
     } else {
@@ -61,7 +61,7 @@ export function TerminalApp() {
         onSubmit={onSubmit}
         className="flex items-center gap-2 px-3 py-2 border-t border-slate-800/80 bg-slate-950/90"
       >
-        <span className="text-[0.7rem] text-emerald-400 font-mono">❯</span>
+        <span className="text-[0.7rem] text-emerald-400 font-mono">?</span>
         <input
           className="flex-1 bg-transparent border-none outline-none text-[0.7rem] font-mono text-slate-100"
           value={input}

@@ -1,4 +1,4 @@
-﻿import type { RedstoneGrid, RedstoneCell, RedstoneCellType } from "../sim/RedstoneTypes";
+import type { RedstoneGrid, RedstoneCell, RedstoneCellType } from "../sim/RedstoneTypes";
 import {
   WORLD_SIZE,
   VoxelType,

@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 
 export function NotesApp() {
   const [value, setValue] = useState(

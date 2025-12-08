@@ -1,7 +1,7 @@
-﻿import { create } from "zustand";
+import { create } from "zustand";
 
 /* ============================================================
-   RedByte OS • Global + User Settings Store
+   RedByte OS � Global + User Settings Store
    Fully rewritten to fix missing exports + boot logic
 ============================================================ */
 

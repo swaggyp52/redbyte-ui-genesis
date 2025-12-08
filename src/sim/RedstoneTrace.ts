@@ -1,4 +1,4 @@
-﻿import type { RedstoneGrid } from "./RedstoneTypes";
+import type { RedstoneGrid } from "./RedstoneTypes";
 import { inBounds } from "./RedstoneEngine";
 
 export interface WatchSample {

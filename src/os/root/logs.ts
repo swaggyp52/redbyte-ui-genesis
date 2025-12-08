@@ -1,4 +1,4 @@
-﻿export interface RootLogEntry {
+export interface RootLogEntry {
   id: string;
   timestamp: string;
   message: string;
@@ -17,7 +17,7 @@ export function getInitialLogs(): RootLogEntry[] {
     {
       id: "deploy-1",
       timestamp: ts,
-      message: "Last deploy: Cloudflare · status=healthy.",
+      message: "Last deploy: Cloudflare � status=healthy.",
     },
   ];
 }

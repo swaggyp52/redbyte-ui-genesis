@@ -1,4 +1,4 @@
-﻿import { mapLogicToRedstone } from "../logic/LogicToRedstone";
+import { mapLogicToRedstone } from "../logic/LogicToRedstone";
 
 export interface World3DHandle {
   setBlock(x: number, y: number, z: number, type: string): void;

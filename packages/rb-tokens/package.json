@@ -1,29 +1,10 @@
 {
-  "name": "@redbyte/rb-tokens",
-  "version": "0.0.0",
-  "private": false,
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "name": "@rb/rb-tokens",
+  "version": "0.0.1",
+  "main": "dist/rb-tokens.js",
+  "module": "dist/rb-tokens.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "build": "vite build -c ../../tools/config/vite.lib.config.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest --config vitest.config.ts",
-    "lint": "eslint src --ext .ts,.tsx",
-    "format": "prettier --check ."
-  },
-  "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
-    },
-    "./package.json": "./package.json"
-  },
-  "files": [
-    "dist",
-    "src"
-  ],
-  "publishConfig": {
-    "access": "public"
+    "build": "vite build -c ../../tools/config/vite.lib.config.ts"
   }
 }

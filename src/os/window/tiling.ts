@@ -1,4 +1,4 @@
-﻿export type TileRegion = "left" | "right" | "top" | "bottom" | "fullscreen" | "quad1" | "quad2" | "quad3" | "quad4";
+export type TileRegion = "left" | "right" | "top" | "bottom" | "fullscreen" | "quad1" | "quad2" | "quad3" | "quad4";
 
 export function getTileLayout(region: TileRegion, screenW: number, screenH: number) {
   switch (region) {

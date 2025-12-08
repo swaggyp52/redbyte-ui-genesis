@@ -1,4 +1,4 @@
-﻿import React, { useMemo } from "react";
+import React, { useMemo } from "react";
 import { useKernel } from "../kernel/KernelProvider";
 import { useSystem } from "../os/core/SystemProvider";
 
@@ -128,7 +128,7 @@ export function SystemMonitorApp() {
                           Kill
                         </button>
                       ) : (
-                        <span className="text-slate-600">—</span>
+                        <span className="text-slate-600">�</span>
                       )}
                     </td>
                   </tr>

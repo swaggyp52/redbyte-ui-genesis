@@ -1,4 +1,4 @@
-﻿export interface ThemeTokenSet {
+export interface ThemeTokenSet {
   id: string;
   name: string;
   background: string;

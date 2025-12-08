@@ -1,4 +1,4 @@
-﻿export type VoxelType =
+export type VoxelType =
   | "air"
   | "wire"
   | "source"
@@ -29,7 +29,7 @@ export interface VoxelBlock {
    */
   powered: boolean;
   /**
-   * Integer power level (0–15).
+   * Integer power level (0�15).
    */
   powerLevel: number;
   /**

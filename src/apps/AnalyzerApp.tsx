@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   subscribeAnalysis,
   type AnalysisResult,
@@ -15,7 +15,7 @@ export function AnalyzerApp() {
   if (!analysis) {
     return (
       <div className="text-xs text-slate-400 p-4">
-        Waiting for simulation…
+        Waiting for simulation�
       </div>
     );
   }
@@ -49,7 +49,7 @@ export function AnalyzerApp() {
                 key={i}
                 className="border border-slate-700/70 rounded-xl p-1 text-slate-300"
               >
-                Length {l.length} → {l.cycle.join(" → ")}
+                Length {l.length} ? {l.cycle.join(" ? ")}
               </div>
             ))}
             {!loops.length && (
@@ -68,7 +68,7 @@ export function AnalyzerApp() {
                 key={i}
                 className="border border-slate-700/70 rounded-xl p-1 text-slate-300"
               >
-                {o.key} → period {o.period}, freq {o.frequency.toFixed(2)}
+                {o.key} ? period {o.period}, freq {o.frequency.toFixed(2)}
               </div>
             ))}
             {!oscillators.length && (
@@ -87,7 +87,7 @@ export function AnalyzerApp() {
                 key={i}
                 className="border border-slate-700/70 rounded-xl p-1 text-slate-300"
               >
-                {f.key} → fanout {f.fanout}
+                {f.key} ? fanout {f.fanout}
               </div>
             ))}
           </div>

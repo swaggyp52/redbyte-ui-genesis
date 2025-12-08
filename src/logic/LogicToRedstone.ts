@@ -1,4 +1,4 @@
-﻿import { LogicTemplate } from "./LogicTypes";
+import { LogicTemplate } from "./LogicTypes";
 
 export interface RedstoneBlock {
   x: number;
