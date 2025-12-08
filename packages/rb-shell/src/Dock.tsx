@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import { TerminalIcon, FilesIcon, SettingsIcon, LogicIcon, NeonWaveIcon } from '@redbyte/rb-icons';
 
@@ -15,7 +15,11 @@ const dockIcons = [
 ];
 
 export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
-  const runningIds = useWindowStore((s) => s.getActiveWindows().map((w) => w.contentId));
+  const windows = useWindowStore((s) => s.windows);
+  const runningIds = useMemo(
+    () => windows.filter((w) => w.mode !== 'minimized').map((w) => w.contentId),
+    [windows]
+  );
 
   return (
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 rounded-2xl bg-black/50 px-4 py-2 backdrop-blur-md border border-white/10 shadow-2xl">
