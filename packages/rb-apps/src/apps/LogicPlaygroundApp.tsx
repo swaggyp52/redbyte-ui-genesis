@@ -81,8 +81,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           // Convert back to SerializedCircuitV1 format
           const serialized: SerializedCircuitV1 = {
             version: '1',
-            nodes: decoded.gates || [],
-            connections: decoded.wires || [],
+            nodes: Array.isArray(decoded.gates) ? decoded.gates : [],
+            connections: Array.isArray(decoded.wires) ? decoded.wires : [],
           };
           const loadedCircuit = deserialize(serialized);
           setCircuit(loadedCircuit);
