@@ -26,6 +26,7 @@ export const Shell: React.FC<ShellProps> = () => {
   });
 
   const hasShownWelcomeRef = useRef(false);
+  const hasInitializedRef = useRef(false);
 
   const windows = useWindowStore((s) => s.getZOrderedWindows());
   const createWindow = useWindowStore((s) => s.createWindow);
@@ -86,7 +87,9 @@ export const Shell: React.FC<ShellProps> = () => {
   );
 
   useEffect(() => {
-    if (!booted) return;
+    if (!booted || hasInitializedRef.current) return;
+
+    hasInitializedRef.current = true;
 
     try {
       localStorage.setItem('rb:shell:booted', '1');
