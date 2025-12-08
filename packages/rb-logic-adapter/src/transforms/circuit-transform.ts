@@ -1,3 +1,7 @@
+// Copyright © 2025 Connor Angel — RedByte OS Genesis
+// All rights reserved. Unauthorized use, reproduction or distribution is prohibited.
+// Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+
 import type { Circuit, Connection } from '@redbyte/rb-logic-core';
 import type { ViewState, ViewNode, ViewWire } from '../types';
 import { calculatePortPosition, getNodeDimensions } from './shared-helpers';

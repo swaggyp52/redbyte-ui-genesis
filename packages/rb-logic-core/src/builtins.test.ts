@@ -1,3 +1,7 @@
+// Copyright © 2025 Connor Angel — RedByte OS Genesis
+// All rights reserved. Unauthorized use, reproduction or distribution is prohibited.
+// Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+
 import { describe, it, expect, beforeEach } from 'vitest';
 import { NodeRegistry } from './NodeRegistry';
 import { CircuitEngine } from './CircuitEngine';
