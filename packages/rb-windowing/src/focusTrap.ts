@@ -1,1 +1,4 @@
-export { createFocusTrap, type FocusTrapOptions } from '@rb/rb-primitives';
+export {
+  createFocusTrap,
+  type FocusTrapOptions,
+} from '@rb/rb-primitives';
