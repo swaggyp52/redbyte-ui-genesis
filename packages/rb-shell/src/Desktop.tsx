@@ -160,10 +160,10 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
         return (
           <div
             key={icon.id}
-            className={`absolute flex flex-col items-center text-xs cursor-pointer select-none transition-transform duration-150 ${
+            className={`flex flex-col items-center text-xs cursor-pointer select-none transition-transform duration-150 ${
               isSelected ? 'scale-105 drop-shadow-[0_0_12px_rgba(34,211,238,0.5)]' : ''
             }`}
-            style={{ left: icon.x, top: icon.y }}
+            style={{ position: 'absolute', left: `${icon.x}px`, top: `${icon.y}px` }}
             onMouseDown={(e) => onIconMouseDown(e, icon)}
             onClick={() => handleIconClick(icon)}
           >
