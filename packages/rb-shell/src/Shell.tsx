@@ -102,7 +102,8 @@ export const Shell: React.FC<ShellProps> = () => {
         return () => clearTimeout(timer);
       }
     }
-  }, [booted, openWindow]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booted]);
 
   if (!booted) {
     return <BootScreen onComplete={() => setBooted(true)} />;
