@@ -24,13 +24,14 @@
     "@redbyte/rb-logic-view": "workspace:*",
     "@redbyte/rb-theme": "workspace:*",
     "@redbyte/rb-utils": "workspace:*",
-    "react": "^19.2.1",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
     "@types/react": "^19.0.6",
     "jsdom": "^27.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "vitest": "^2.1.8"
   },
   "peerDependencies": {

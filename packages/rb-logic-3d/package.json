@@ -20,7 +20,6 @@
     "@redbyte/rb-logic-adapter": "workspace:*",
     "@react-three/drei": "^9.119.3",
     "@react-three/fiber": "^9.4.2",
-    "react": "^19.2.1",
     "three": "^0.172.0"
   },
   "peerDependencies": {
@@ -30,7 +29,9 @@
   "devDependencies": {
     "@types/react": "^19.0.6",
     "@types/three": "^0.172.0",
-    "vite": "^7.2.6"
+    "vite": "^7.2.6",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "files": [
     "dist"
