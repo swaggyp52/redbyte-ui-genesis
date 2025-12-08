@@ -1,0 +1,142 @@
+RedByte Proprietary License v1.0 (RPL-1.0)
+
+Copyright © 2025 Connor Angel ("RedByte OS Genesis")
+All rights reserved.
+
+TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+1. Definitions
+
+   "License" refers to the terms and conditions for use, reproduction, and
+   distribution as defined in this document.
+
+   "Licensor" refers to Connor Angel, the copyright holder granting this License.
+
+   "Legal Entity" means the union of the acting entity and all other entities
+   that control, are controlled by, or are under common control with that entity.
+
+   "You" (or "Your") means an individual or Legal Entity exercising permissions
+   granted by this License.
+
+   "Source" form means the preferred form for making modifications, including
+   but not limited to software source code, documentation source, and
+   configuration files.
+
+   "Object" form means any form resulting from mechanical transformation or
+   translation of a Source form, including but not limited to compiled object
+   code, generated documentation, and conversions to other media types.
+
+   "Work" means the software, documentation, and related materials made available
+   under this License, including "RedByte OS Genesis" and all associated
+   components.
+
+   "Derivative Works" means any work, whether in Source or Object form, that is
+   based on (or derived from) the Work.
+
+2. Grant of Rights
+
+   Subject to the terms and conditions of this License, Licensor hereby grants
+   You a limited, non-exclusive, non-transferable, revocable license to:
+
+   a) View and study the Source code for personal educational purposes;
+
+   b) Modify the Source code for personal, non-commercial use only;
+
+   c) Use the Work for personal, non-commercial purposes only.
+
+3. Restrictions
+
+   You may NOT:
+
+   a) Use the Work or any Derivative Works for any commercial purpose without
+      obtaining a separate commercial license from the Licensor;
+
+   b) Distribute, sublicense, sell, rent, lease, or otherwise transfer the Work
+      or any Derivative Works to any third party;
+
+   c) Host the Work or any Derivative Works as a service (SaaS, hosting service,
+      or any network-accessible application) for use by third parties;
+
+   d) Create, distribute, or market any product or service that competes with
+      or is substantially similar to the Work;
+
+   e) Remove, modify, or obscure any copyright notices, trademarks, or
+      attribution statements included in the Work;
+
+   f) Use the trademarks "RedByte", "RedByte OS", or "RedByte OS Genesis"
+      without explicit written permission from the Licensor;
+
+   g) Publicly display, perform, or demonstrate the Work or Derivative Works
+      without attribution to the Licensor;
+
+   h) Reverse engineer, decompile, or disassemble the Object form of the Work
+      beyond what is necessary for interoperability and permitted by applicable law;
+
+   i) Patent any invention disclosed in or derived from the Work without written
+      agreement with the Licensor.
+
+4. Attribution Requirements
+
+   Any permitted use of the Work must include clear attribution:
+
+   "Created by Connor Angel - RedByte OS Genesis © 2025"
+
+   Attribution must be displayed prominently in:
+   - User interfaces
+   - Documentation
+   - About/credits sections
+   - Source code comments (where applicable)
+
+5. Patent Rights
+
+   The Licensor retains all patent rights related to inventions disclosed in the
+   Work. No patent license is granted under this License. Any attempt to file
+   patents related to the Work's inventions without written agreement constitutes
+   a breach of this License.
+
+6. Termination
+
+   This License and the rights granted hereunder will terminate automatically
+   upon any breach by You of the terms of this License. Upon termination, You
+   must immediately cease all use of the Work and destroy all copies in Your
+   possession or control.
+
+7. Commercial Licensing
+
+   For commercial use, redistribution, or any use case not permitted under this
+   License, You must contact the Licensor to obtain a separate commercial license.
+
+   Contact: [To be provided by Connor Angel]
+
+8. Disclaimer of Warranty
+
+   THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN
+   ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION
+   WITH THE WORK OR THE USE OR OTHER DEALINGS IN THE WORK.
+
+9. Limitation of Liability
+
+   IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+   PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+   OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+   WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+   OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS WORK, EVEN IF ADVISED
+   OF THE POSSIBILITY OF SUCH DAMAGE.
+
+10. Governing Law
+
+    This License shall be governed by and construed in accordance with the laws
+    of the jurisdiction in which the Licensor resides, without regard to its
+    conflict of law provisions.
+
+11. Entire Agreement
+
+    This License constitutes the entire agreement between the parties concerning
+    the subject matter hereof and supersedes all prior agreements and
+    understandings, whether written or oral, relating to such subject matter.
+
+END OF TERMS AND CONDITIONS

@@ -1,3 +1,8 @@
+// Copyright © 2025 Connor Angel ("RedByte OS Genesis")
+// All rights reserved. Unauthorized use, reproduction, or distribution is prohibited.
+// This software is licensed under the RedByte Proprietary License.
+// See LICENSE file for full terms.
+
 import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import { Desktop } from './Desktop';
 import { Dock } from './Dock';
