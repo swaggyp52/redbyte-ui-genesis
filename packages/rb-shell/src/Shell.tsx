@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { Desktop } from './Desktop';
 import { Dock } from './Dock';
 import { ShellWindow } from './ShellWindow';
@@ -24,6 +24,8 @@ export const Shell: React.FC<ShellProps> = () => {
     if (typeof window === 'undefined') return true;
     return localStorage.getItem('rb:shell:booted') === '1';
   });
+
+  const hasShownWelcomeRef = useRef(false);
 
   const windows = useWindowStore((s) => s.getZOrderedWindows());
   const createWindow = useWindowStore((s) => s.createWindow);
@@ -85,18 +87,20 @@ export const Shell: React.FC<ShellProps> = () => {
 
   useEffect(() => {
     if (!booted) return;
+
     try {
       localStorage.setItem('rb:shell:booted', '1');
     } catch {}
 
-    // Show welcome window on first run
-    const welcomeSeen = localStorage.getItem('rb-os:v1:welcomeSeen');
-    if (!welcomeSeen) {
-      // Small delay to ensure shell is ready
-      const timer = setTimeout(() => {
-        openWindow('welcome');
-      }, 500);
-      return () => clearTimeout(timer);
+    if (!hasShownWelcomeRef.current) {
+      hasShownWelcomeRef.current = true;
+
+      const welcomeSeen = localStorage.getItem('rb-os:v1:welcomeSeen');
+
+      if (welcomeSeen !== 'true') {
+        const timer = setTimeout(() => openWindow('welcome'), 500);
+        return () => clearTimeout(timer);
+      }
     }
   }, [booted, openWindow]);
 
