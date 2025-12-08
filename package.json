@@ -9,7 +9,11 @@
   ],
   "scripts": {
     "dev": "pnpm --filter @redbyte/playground dev",
-    "build": "pnpm -r run build"
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r --if-present run lint",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "test": "pnpm -r --if-present run test",
+    "format": "pnpm -r --if-present run format"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.1",

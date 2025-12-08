@@ -14,7 +14,7 @@
   },
   "scripts": {
     "build": "vite build",
-    "test": "vitest"
+    "test": "vitest run --passWithNoTests"
   },
   "devDependencies": {
     "vite": "^7.2.6",
