@@ -1,3 +1,7 @@
+// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// All rights reserved. Unauthorized use, reproduction or distribution is prohibited.
+// Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';

@@ -1,3 +1,7 @@
+// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// All rights reserved. Unauthorized use, reproduction or distribution is prohibited.
+// Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+
 import React from 'react';
 import type { RedByteApp } from '../types';
 import { useSettingsStore, type ThemeVariant, type WallpaperId } from '@redbyte/rb-utils';
@@ -11,6 +15,7 @@ const SettingsComponent: React.FC<SettingsProps> = ({
   onThemeChange,
   onWallpaperChange,
 }) => {
+  const [licenseExpanded, setLicenseExpanded] = React.useState(false);
   const {
     themeVariant,
     wallpaperId,
@@ -29,6 +34,18 @@ const SettingsComponent: React.FC<SettingsProps> = ({
     setWallpaperId(wallpaper);
     onWallpaperChange?.(wallpaper);
   };
+
+  const licenseText = `RedByte Proprietary License v1.0
+
+No redistribution
+
+No commercial use
+
+No hosting
+
+No derivative competitors
+
+All rights reserved`;
 
   return (
     <div className="h-full overflow-y-auto bg-gray-900 text-white">
@@ -124,13 +141,54 @@ const SettingsComponent: React.FC<SettingsProps> = ({
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-4 text-cyan-400">About</h2>
-          <div className="space-y-2 text-sm text-gray-300">
-            <p>RedByte OS Genesis - Stage E</p>
-            <p>Version: 0.0.1</p>
-            <p className="text-xs text-gray-500 mt-4">
-              A modular desktop environment for logic circuit simulation
-            </p>
+          <h2 className="text-xl font-semibold mb-4 text-cyan-400">About & Legal</h2>
+          <div className="space-y-4 text-sm text-gray-300">
+            <div className="rounded-lg border border-gray-800 bg-gray-850 p-4 shadow-inner">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-gray-400">App Version</div>
+                  <div className="text-lg font-semibold text-white">v1.0.0</div>
+                </div>
+                <span className="rounded-full bg-cyan-500/20 px-3 py-1 text-xs font-medium text-cyan-300">
+                  Stable
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-gray-400">RedByte OS Genesis — Stage E</p>
+            </div>
+
+            <div className="rounded-lg border border-gray-800 bg-gray-850 p-4">
+              <h3 className="text-sm font-semibold text-white">Copyright</h3>
+              <p className="mt-1 text-xs text-gray-400">© 2025 Connor Angiel — RedByte OS Genesis. All rights reserved.</p>
+            </div>
+
+            <div className="rounded-lg border border-gray-800 bg-gray-850 p-4">
+              <h3 className="text-sm font-semibold text-white">Trademarks</h3>
+              <p className="mt-1 text-xs text-gray-400">
+                “RedByte”, “RedByte OS”, and “RedByte OS Genesis” are trademarks of Connor Angiel. Unauthorized use is
+                prohibited.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-gray-800 bg-gray-850 p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-white">License</h3>
+                <button
+                  type="button"
+                  className="rounded border border-cyan-500/40 px-3 py-1 text-xs font-medium text-cyan-200 hover:bg-cyan-500/10"
+                  onClick={() => setLicenseExpanded((prev) => !prev)}
+                >
+                  {licenseExpanded ? 'Hide' : 'Show'} LICENSE
+                </button>
+              </div>
+              {licenseExpanded && (
+                <pre className="mt-3 whitespace-pre-wrap rounded border border-gray-700 bg-gray-900/80 p-3 text-[11px] text-gray-200">{licenseText}</pre>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-gray-800 bg-gray-850 p-4">
+              <h3 className="text-sm font-semibold text-white">Created By</h3>
+              <p className="mt-1 text-xs text-gray-400">Connor Angiel</p>
+            </div>
           </div>
         </section>
       </div>
