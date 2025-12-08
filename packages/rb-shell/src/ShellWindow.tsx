@@ -21,6 +21,8 @@ interface ShellWindowProps {
 
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
+type SnapZone = 'top' | 'left' | 'right' | null;
+
 export const ShellWindow: React.FC<ShellWindowProps> = ({
   state,
   minSize,
@@ -37,6 +39,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
   const [resizing, setResizing] = useState<ResizeDirection | null>(null);
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [snapZone, setSnapZone] = useState<SnapZone>(null);
   const boundsRef = useRef<HTMLDivElement>(null);
 
   const isMax = state.mode === 'maximized';
@@ -85,6 +88,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
     setDragging(false);
     setResizing(null);
     setStart(null);
+    setSnapZone(null);
   };
 
   const onMoveDrag = (e: React.MouseEvent) => {
@@ -93,6 +97,20 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
     const dy = e.clientY - start.y;
     onMove(state.bounds.x + dx, state.bounds.y + dy);
     setStart({ x: e.clientX, y: e.clientY });
+
+    // Update snap zone preview
+    const threshold = 24;
+    const width = window.innerWidth;
+
+    if (e.clientY < threshold) {
+      setSnapZone('top');
+    } else if (e.clientX < threshold) {
+      setSnapZone('left');
+    } else if (e.clientX > width - threshold) {
+      setSnapZone('right');
+    } else {
+      setSnapZone(null);
+    }
   };
 
   const startResize = (dir: ResizeDirection) => (e: React.MouseEvent) => {
@@ -155,15 +173,63 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
     } as React.CSSProperties;
   }, [state, isMax, isMin, mounted]);
 
+  const renderSnapZoneOverlay = () => {
+    if (!snapZone || !dragging) return null;
+
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    let overlayStyle: React.CSSProperties = {};
+
+    if (snapZone === 'top') {
+      overlayStyle = {
+        left: 0,
+        top: 0,
+        width: '100%',
+        height: '100%',
+      };
+    } else if (snapZone === 'left') {
+      overlayStyle = {
+        left: 0,
+        top: 0,
+        width: width / 2,
+        height: '100%',
+      };
+    } else if (snapZone === 'right') {
+      overlayStyle = {
+        left: width / 2,
+        top: 0,
+        width: width / 2,
+        height: '100%',
+      };
+    }
+
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          zIndex: 999999,
+          pointerEvents: 'none',
+          border: '3px solid rgba(236, 72, 153, 0.6)',
+          background: 'rgba(236, 72, 153, 0.12)',
+          borderRadius: 8,
+          transition: 'all 0.15s ease-out',
+          ...overlayStyle,
+        }}
+      />
+    );
+  };
+
   return (
-    <div
-      ref={boundsRef}
-      style={containerStyle}
-      onMouseMove={dragging ? onMoveDrag : resizing ? onResizeDrag : undefined}
-      onMouseUp={endAll}
-      onMouseLeave={endAll}
-      onMouseDown={onFocus}
-    >
+    <>
+      {renderSnapZoneOverlay()}
+      <div
+        ref={boundsRef}
+        style={containerStyle}
+        onMouseMove={dragging ? onMoveDrag : resizing ? onResizeDrag : undefined}
+        onMouseUp={endAll}
+        onMouseLeave={endAll}
+        onMouseDown={onFocus}
+      >
       <div
         className="flex h-10 items-center gap-2 px-3 text-sm select-none bg-gradient-to-r from-slate-900/80 via-slate-800/80 to-slate-900/80"
         style={{ cursor: isMax ? 'default' : 'grab' }}
@@ -201,6 +267,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
           <div className="resize-edge" style={{ cursor: 'ns-resize', bottom: 0 }} onMouseDown={startResize('s')} />
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 };

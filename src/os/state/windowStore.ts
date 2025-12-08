@@ -18,6 +18,13 @@ export interface WindowState {
   width: number;
   height: number;
   z: number;
+  isMaximized?: boolean;
+  restoreBounds?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 }
 
 interface WindowStore {
@@ -29,6 +36,9 @@ interface WindowStore {
   closeWindow: (id: number) => void;
   focusWindow: (id: number) => void;
   moveWindow: (id: number, x: number, y: number) => void;
+  resizeWindow: (id: number, width: number, height: number) => void;
+  maximizeWindow: (id: number, bounds: LayoutBounds) => void;
+  restoreWindow: (id: number) => void;
   setLayout: (layout: LayoutPreset) => void;
   applyLayout: (bounds: LayoutBounds) => void;
 }
@@ -86,6 +96,48 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
       windows: state.windows.map((w) =>
         w.id === id ? { ...w, x, y } : w
       ),
+    }));
+  },
+
+  resizeWindow: (id: number, width: number, height: number) => {
+    set((state) => ({
+      windows: state.windows.map((w) =>
+        w.id === id ? { ...w, width, height } : w
+      ),
+    }));
+  },
+
+  maximizeWindow: (id: number, bounds: LayoutBounds) => {
+    set((state) => ({
+      windows: state.windows.map((w) => {
+        if (w.id !== id) return w;
+        return {
+          ...w,
+          restoreBounds: { x: w.x, y: w.y, width: w.width, height: w.height },
+          isMaximized: true,
+          x: bounds.x + 24,
+          y: bounds.y + 48,
+          width: bounds.width - 48,
+          height: bounds.height - 96,
+        };
+      }),
+    }));
+  },
+
+  restoreWindow: (id: number) => {
+    set((state) => ({
+      windows: state.windows.map((w) => {
+        if (w.id !== id || !w.restoreBounds) return w;
+        return {
+          ...w,
+          x: w.restoreBounds.x,
+          y: w.restoreBounds.y,
+          width: w.restoreBounds.width,
+          height: w.restoreBounds.height,
+          isMaximized: false,
+          restoreBounds: undefined,
+        };
+      }),
     }));
   },
 
