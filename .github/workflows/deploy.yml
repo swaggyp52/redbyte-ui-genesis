@@ -1,8 +1,10 @@
 ﻿name: Deploy RedByte
 
 on:
-  push:
-    branches: [ "main" ]
+  workflow_dispatch:  # Manual trigger only
+  # Disabled - Cloudflare Pages auto-deploys from main branch
+  # push:
+  #   branches: [ "main" ]
 
 jobs:
   deploy:

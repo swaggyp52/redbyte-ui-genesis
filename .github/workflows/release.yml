@@ -1,9 +1,10 @@
 name: Release
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:
+  workflow_dispatch:  # Manual trigger only
+  # Disabled auto-run on push - uncomment when changesets are configured
+  # push:
+  #   branches: [main]
 
 jobs:
   release:
