@@ -11,12 +11,16 @@ export class CircuitEngine {
   private signalCache: Map<string, Signal>;
 
   constructor(circuit: Circuit) {
-    this.circuit = circuit;
+    // Ensure circuit has valid arrays (defensive programming)
+    this.circuit = {
+      nodes: Array.isArray(circuit.nodes) ? circuit.nodes : [],
+      connections: Array.isArray(circuit.connections) ? circuit.connections : [],
+    };
     this.nodeStates = new Map();
     this.signalCache = new Map();
-    
+
     // Initialize node states
-    for (const node of circuit.nodes) {
+    for (const node of this.circuit.nodes) {
       this.nodeStates.set(node.id, node.state ?? {});
     }
   }
@@ -32,10 +36,14 @@ export class CircuitEngine {
    * Update circuit
    */
   setCircuit(circuit: Circuit): void {
-    this.circuit = circuit;
+    // Ensure circuit has valid arrays (defensive programming)
+    this.circuit = {
+      nodes: Array.isArray(circuit.nodes) ? circuit.nodes : [],
+      connections: Array.isArray(circuit.connections) ? circuit.connections : [],
+    };
     // Preserve existing states where possible
     const newStates = new Map<string, Record<string, any>>();
-    for (const node of circuit.nodes) {
+    for (const node of this.circuit.nodes) {
       newStates.set(
         node.id,
         this.nodeStates.get(node.id) ?? node.state ?? {}

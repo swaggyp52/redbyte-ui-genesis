@@ -12,10 +12,14 @@ export class LogicEngine {
   signals: Map<string, Map<string, LogicValue>> = new Map();
 
   constructor(circuit: Circuit) {
-    this.circuit = circuit;
+    // Ensure circuit has valid arrays (defensive programming)
+    this.circuit = {
+      nodes: Array.isArray(circuit.nodes) ? circuit.nodes : [],
+      connections: Array.isArray(circuit.connections) ? circuit.connections : [],
+    };
 
     // Initialize signal storage for each node
-    for (const node of circuit.nodes) {
+    for (const node of this.circuit.nodes) {
       this.signals.set(node.id, new Map());
     }
   }
