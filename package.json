@@ -16,7 +16,7 @@
     "format": "pnpm -r --if-present run format",
     "a11y": "pnpm -r --if-present run test:a11y",
     "perf": "pnpm -r --if-present run test:perf",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage --passWithNoTests"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.1",
