@@ -17,7 +17,8 @@
     "format": "pnpm -r --if-present run format",
     "a11y": "pnpm -r --if-present run test:a11y",
     "perf": "pnpm -r --if-present run test:perf",
-    "coverage": "vitest run --coverage --passWithNoTests"
+    "coverage": "vitest run --coverage --passWithNoTests",
+    "capture:screenshots": "tsx scripts/capture-screenshots.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
