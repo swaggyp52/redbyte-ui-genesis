@@ -7,6 +7,7 @@ import { useSettingsStore } from '@redbyte/rb-utils';
 import { getApp, type RedByteApp } from '@redbyte/rb-apps';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import BootScreen from './BootScreen';
+import { ToastContainer } from './ToastContainer';
 import './styles.css';
 
 export interface ShellProps {
@@ -136,6 +137,8 @@ export const Shell: React.FC<ShellProps> = () => {
           </ShellWindow>
         );
       })}
+
+      <ToastContainer />
     </div>
   );
 };

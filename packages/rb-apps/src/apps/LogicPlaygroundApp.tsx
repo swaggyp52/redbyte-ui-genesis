@@ -6,6 +6,8 @@ import {
   serialize,
   deserialize,
   NodeRegistry,
+  encodeCircuit,
+  decodeCircuit,
   type Circuit,
   type SerializedCircuitV1,
 } from '@redbyte/rb-logic-core';
@@ -13,6 +15,7 @@ import { LogicCanvas } from '@redbyte/rb-logic-view';
 import { ViewAdapter } from '@redbyte/rb-logic-adapter';
 import { Logic3DScene } from '@redbyte/rb-logic-3d';
 import { useSettingsStore } from '@redbyte/rb-utils';
+import { useToastStore } from '@redbyte/rb-shell';
 import { loadExample, listExamples, type ExampleId } from '../examples';
 import {
   getFile,
@@ -21,6 +24,8 @@ import {
   listFiles,
   type LogicFile,
 } from '../stores/filesStore';
+import { useTutorialStore } from '../tutorial/tutorialStore';
+import { TutorialOverlay } from '../tutorial/TutorialOverlay';
 
 type ViewMode = 'circuit' | 'schematic' | 'isometric' | '3d';
 
@@ -34,6 +39,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   initialExampleId,
 }) => {
   const { tickRate } = useSettingsStore();
+  const { addToast } = useToastStore();
+  const { active: tutorialActive, start: startTutorial } = useTutorialStore();
   const examples = useRef(listExamples());
   const [availableFiles, setAvailableFiles] = useState<LogicFile[]>(listFiles());
   const [selectedFileId, setSelectedFileId] = useState<string | ''>(initialFileId ?? '');
@@ -61,6 +68,42 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
 
   const autosaveIntervalRef = useRef<number | null>(null);
+
+  // Load circuit from URL if present
+  useEffect(() => {
+    const detectAndLoadCircuitFromURL = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const circuitParam = params.get('circuit');
+
+      if (circuitParam) {
+        try {
+          const decoded = decodeCircuit(circuitParam);
+          // Convert back to SerializedCircuitV1 format
+          const serialized: SerializedCircuitV1 = {
+            version: '1',
+            nodes: decoded.gates || [],
+            connections: decoded.wires || [],
+          };
+          const loadedCircuit = deserialize(serialized);
+          setCircuit(loadedCircuit);
+          const newEngine = new CircuitEngine(loadedCircuit);
+          setEngine(newEngine);
+          setTickEngine(new TickEngine(newEngine, tickRate));
+          setCurrentFileId(null);
+          setIsDirty(true);
+          addToast('Loaded shared circuit', 'success');
+
+          // Clear URL parameter
+          window.history.replaceState({}, '', window.location.pathname);
+        } catch (error) {
+          addToast('Failed to load shared circuit', 'error');
+          console.error('URL circuit load error:', error);
+        }
+      }
+    };
+
+    detectAndLoadCircuitFromURL();
+  }, []);
 
   // Load initial circuit
   useEffect(() => {
@@ -163,6 +206,26 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setIsDirty(true);
   };
 
+  const handleLoadTutorialExample = async (filename: string) => {
+    // Map tutorial filenames to example IDs
+    const exampleMap: Record<string, ExampleId> = {
+      '01_wire-lamp.json': '01_wire-lamp',
+      '02_and-gate.json': '02_and-gate',
+      '04_4bit-counter.json': '04_4bit-counter',
+      '05_simple-cpu.json': '05_simple-cpu',
+    };
+
+    const exampleId = exampleMap[filename];
+    if (!exampleId) {
+      addToast(`Tutorial example not found: ${filename}`, 'warning');
+      return;
+    }
+
+    await handleLoadExample(exampleId as ExampleId);
+    const exampleName = examples.current.find((ex) => ex.id === exampleId)?.name ?? filename;
+    addToast(`Loaded example: ${exampleName}`, 'success');
+  };
+
   const handleExport = () => {
     const serialized = serialize(circuit);
     const blob = new Blob([JSON.stringify(serialized, null, 2)], {
@@ -221,6 +284,33 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const handleHzChange = (hz: number) => {
     setCurrentHz(hz);
     tickEngine.setTickRate(hz);
+  };
+
+  const handleShare = async () => {
+    try {
+      const serialized = serialize(circuit);
+      // Convert SerializedCircuitV1 to Circuit format for encoding
+      const circuitForEncoding = {
+        gates: serialized.nodes,
+        wires: serialized.connections,
+        inputs: [],
+        outputs: [],
+        metadata: {
+          name: currentFileId ? getFile(currentFileId)?.name : 'Shared Circuit',
+          version: serialized.version,
+        },
+      };
+
+      const encoded = encodeCircuit(circuitForEncoding);
+      const url = `${window.location.origin}${window.location.pathname}?circuit=${encoded}`;
+
+      // Copy to clipboard
+      await navigator.clipboard.writeText(url);
+      addToast('Share link copied to clipboard!', 'success');
+    } catch (error) {
+      addToast('Failed to create share link', 'error');
+      console.error('Share error:', error);
+    }
   };
 
   const primitiveNodes = [
@@ -319,6 +409,13 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         >
           Export
         </button>
+        <button
+          onClick={handleShare}
+          className="px-3 py-1 bg-blue-700 hover:bg-blue-600 rounded"
+          title="Share circuit via link"
+        >
+          Share
+        </button>
 
         <div className="w-px h-6 bg-gray-600" />
 
@@ -364,6 +461,16 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           <option value="isometric">Isometric</option>
           <option value="3d">3D</option>
         </select>
+
+        <div className="flex-1" />
+
+        <button
+          onClick={startTutorial}
+          className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded font-bold"
+          title="Start Tutorial"
+        >
+          ?
+        </button>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
@@ -420,6 +527,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
               showToolbar={false}
             />
           )}
+
+          {tutorialActive && <TutorialOverlay onLoadExample={handleLoadTutorialExample} />}
         </div>
 
         {/* Right Sidebar - Inspector */}

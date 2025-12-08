@@ -1,3 +1,19 @@
+# CI Workflow - Definition of Done (DoD) Compliance
+#
+# This workflow enforces the quality gates defined in docs/specs/dod.md
+# All jobs MUST pass before code can be merged to main.
+#
+# DoD Checklist Coverage:
+# ✅ TypeScript strict mode compliance (typecheck job)
+# ✅ ESLint with zero errors (lint job)
+# ✅ Prettier formatting (lint job)
+# ✅ All tests pass (test job)
+# ✅ Build succeeds (build job)
+# ✅ NPM publish structure valid (publish-check job)
+# ✅ Code coverage tracked (coverage job)
+# ✅ Accessibility compliance (accessibility job)
+# ✅ Performance budgets (performance job)
+
 name: CI
 
 on:
