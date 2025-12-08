@@ -78,6 +78,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     loadInitial();
   }, []);
 
+  useEffect(() => {
+    tickEngine.setTickRate(tickRate);
+    setCurrentHz(tickRate);
+  }, [tickRate]);
+
   // Autosave every 5 seconds when dirty
   useEffect(() => {
     if (autosaveIntervalRef.current) {
