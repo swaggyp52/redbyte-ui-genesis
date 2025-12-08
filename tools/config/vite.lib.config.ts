@@ -10,7 +10,7 @@ const pkg = JSON.parse(
 // Turn "@rb/rb-tokens" -> "rb-tokens"
 const pkgName = pkg.name || "rb-lib";
 const baseName = pkgName.includes("/") ? pkgName.split("/")[1] : pkgName;
-const externals = ["react", "react-dom", "react/jsx-runtime", ...Object.keys(pkg.dependencies || {})];
+const externals = false;
 
 export default defineConfig({
   plugins: [tsconfigPaths()],

@@ -1,14 +1,12 @@
 {
   "name": "@rb/rb-primitives",
-  "version": "0.0.1",
-  "main": "dist/index.js",
+  "version": "0.0.0",
+  "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
+  "scripts": {
+    "build": "vite build -c ../../tools/config/vite.lib.config.ts",
+    "dev": "vite",
+    "test": "vitest"
   }
 }

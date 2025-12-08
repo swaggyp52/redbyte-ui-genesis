@@ -1,6 +1,6 @@
 {
   "name": "@rb/rb-windowing",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "type": "module",
   "main": "./dist/rb-windowing.js",
   "module": "./dist/rb-windowing.js",
@@ -16,7 +16,7 @@
     "build": "vite build -c ../../tools/config/vite.lib.config.ts"
   },
   "dependencies": {
-    "@rb/rb-primitives": "^0.0.1",
+    "@rb/rb-primitives": "workspace:*",
     "zustand": "^5.0.9"
   },
   "files": ["dist"]
