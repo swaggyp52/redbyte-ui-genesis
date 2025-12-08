@@ -108,4 +108,4 @@ jobs:
         with:
           version: 9
       - run: pnpm install --no-frozen-lockfile --ignore-scripts --force
-      - run: pnpm build
+      - run: pnpm build:os

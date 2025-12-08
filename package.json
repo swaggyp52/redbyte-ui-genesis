@@ -1,5 +1,5 @@
 {
-  "name": "redbyte-ui",
+  "name": "redbyte-ui-genesis",
   "version": "0.0.0",
   "private": true,
   "workspaces": [
@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "pnpm --filter @redbyte/playground dev",
     "build": "pnpm -r run build",
+    "build:os": "pnpm -w build && pnpm -F redbyte-ui-genesis build",
     "lint": "pnpm -r --if-present run lint",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "vitest run",
@@ -19,6 +20,7 @@
     "coverage": "vitest run --coverage --passWithNoTests"
   },
   "devDependencies": {
+    "@playwright/test": "^1.50.1",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.22",
     "eslint-plugin-jsx-a11y": "workspace:*",
