@@ -1,53 +1,88 @@
-export type LogicValue = 0 | 1;
+/**
+ * Signal state in the circuit (binary)
+ */
+export type Signal = 0 | 1;
 
-export interface Vec3 {
+/**
+ * Port connection identifier
+ */
+export interface PortRef {
+  nodeId: string;
+  portName: string;
+}
+
+/**
+ * Connection between two ports
+ */
+export interface Connection {
+  from: PortRef;
+  to: PortRef;
+}
+
+/**
+ * Position in 2D space
+ */
+export interface Position {
   x: number;
   y: number;
-  z?: number;
 }
 
-export interface NodeConfig {
-  [key: string]: any;
-}
-
-export interface NodeInstance {
+/**
+ * Node in the circuit
+ */
+export interface Node {
   id: string;
   type: string;
-  position?: Vec3;
-  rotation?: number;
-  config?: NodeConfig;
+  position: Position;
+  rotation: number; // degrees
+  config: Record<string, any>;
+  state?: Record<string, any>;
 }
 
-export interface RuntimeNode extends NodeInstance {
-  state: Record<string, any>;
-}
-
-export interface NodePortRef {
-  nodeId: string;
-  port: string;
-}
-
-export interface Connection {
-  id: string;
-  from: NodePortRef;
-  to: NodePortRef;
-}
-
+/**
+ * Complete circuit definition
+ */
 export interface Circuit {
-  nodes: RuntimeNode[];
+  nodes: Node[];
   connections: Connection[];
 }
 
-export interface CircuitSchemaV1Node {
-  id: string;
-  type: string;
-  position?: Vec3;
-  rotation?: number;
-  config?: NodeConfig;
+/**
+ * Node evaluation inputs
+ */
+export type NodeInputs = Record<string, Signal>;
+
+/**
+ * Node evaluation outputs
+ */
+export type NodeOutputs = Record<string, Signal>;
+
+/**
+ * Node behavior evaluation function
+ */
+export interface NodeBehavior {
+  evaluate(
+    inputs: NodeInputs,
+    state: Record<string, any>,
+    config: Record<string, any>
+  ): {
+    outputs: NodeOutputs;
+    state: Record<string, any>;
+  };
 }
 
-export interface CircuitSchemaV1 {
+/**
+ * Serialized circuit format (V1)
+ */
+export interface SerializedCircuitV1 {
   version: 1;
-  nodes: CircuitSchemaV1Node[];
+  nodes: Node[];
   connections: Connection[];
+}
+
+/**
+ * Tick engine configuration
+ */
+export interface TickEngineConfig {
+  tickRate: number; // Hz (default 20)
 }

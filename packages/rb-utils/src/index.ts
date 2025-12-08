@@ -1,1 +1,1 @@
-export const placeholder = 'rb-utils';
+export * from './settingsStore';

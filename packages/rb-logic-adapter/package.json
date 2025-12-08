@@ -1,0 +1,27 @@
+{
+  "name": "@rb/rb-logic-adapter",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./dist/rb-logic-adapter.js",
+  "module": "./dist/rb-logic-adapter.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/rb-logic-adapter.js",
+      "require": "./dist/rb-logic-adapter.js"
+    }
+  },
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@rb/rb-logic-core": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^7.2.6",
+    "vitest": "^2.1.8"
+  },
+  "files": ["dist"]
+}

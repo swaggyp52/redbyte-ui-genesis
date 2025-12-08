@@ -1,2 +1,0 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-export const TerminalIcon = (props) => (_jsxs("svg", { viewBox: '0 0 24 24', fill: 'currentColor', ...props, children: [_jsx("rect", { x: '3', y: '4', width: '18', height: '16', rx: '2', fill: 'none', stroke: 'currentColor', strokeWidth: '2' }), _jsx("path", { d: 'M7 9l3 3-3 3', stroke: 'currentColor', strokeWidth: '2', fill: 'none', strokeLinecap: 'round', strokeLinejoin: 'round' }), _jsx("line", { x1: '12', y1: '15', x2: '17', y2: '15', stroke: 'currentColor', strokeWidth: '2', strokeLinecap: 'round' })] }));

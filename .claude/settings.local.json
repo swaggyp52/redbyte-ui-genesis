@@ -10,7 +10,14 @@
       "Bash(pnpm add:*)",
       "Bash(pnpm changeset:*)",
       "Bash(python:*)",
-      "Bash(pnpm test:*)"
+      "Bash(pnpm test:*)",
+      "Bash(cat:*)",
+      "Bash(xargs rm:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm --filter @rb/rb-utils build:*)",
+      "Bash(pnpm --filter @rb/rb-apps build:*)",
+      "Bash(pnpm --filter @rb/rb-logic-core test:*)",
+      "Bash(pnpm --filter @rb/rb-apps test --run)"
     ],
     "deny": [],
     "ask": []

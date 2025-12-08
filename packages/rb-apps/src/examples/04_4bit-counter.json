@@ -1,0 +1,69 @@
+{
+  "version": "v1",
+  "nodes": [
+    {
+      "id": "clock1",
+      "type": "Clock",
+      "position": {"x": 0, "y": 200},
+      "rotation": 0,
+      "config": {"period": 4}
+    },
+    {
+      "id": "lamp0",
+      "type": "Lamp",
+      "position": {"x": 400, "y": 0},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "lamp1",
+      "type": "Lamp",
+      "position": {"x": 400, "y": 100},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "lamp2",
+      "type": "Lamp",
+      "position": {"x": 400, "y": 200},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "lamp3",
+      "type": "Lamp",
+      "position": {"x": 400, "y": 300},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "counter",
+      "type": "Counter4Bit",
+      "position": {"x": 200, "y": 150},
+      "rotation": 0,
+      "config": {}
+    }
+  ],
+  "connections": [
+    {
+      "from": {"nodeId": "clock1", "portName": "out"},
+      "to": {"nodeId": "counter", "portName": "clk"}
+    },
+    {
+      "from": {"nodeId": "counter", "portName": "Q0"},
+      "to": {"nodeId": "lamp0", "portName": "in"}
+    },
+    {
+      "from": {"nodeId": "counter", "portName": "Q1"},
+      "to": {"nodeId": "lamp1", "portName": "in"}
+    },
+    {
+      "from": {"nodeId": "counter", "portName": "Q2"},
+      "to": {"nodeId": "lamp2", "portName": "in"}
+    },
+    {
+      "from": {"nodeId": "counter", "portName": "Q3"},
+      "to": {"nodeId": "lamp3", "portName": "in"}
+    }
+  ]
+}

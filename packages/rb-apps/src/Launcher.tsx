@@ -1,27 +1,19 @@
 import React from 'react';
-import { getApps } from './index';
 
-export function Launcher() {
-  const apps = getApps();
+export interface LauncherProps {
+  apps?: Array<{id: string; name: string}>;
+}
 
+export const Launcher: React.FC<LauncherProps> = ({ apps = [] }) => {
   return (
-    <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ padding: '1rem', color: '#fff' }}>
+      <h2>App Launcher</h2>
+      {apps.length === 0 && <p>No apps registered</p>}
       {apps.map(app => (
-        <button
-          key={app.id}
-          style={{
-            padding: '10px 16px',
-            background: '#222',
-            color: '#fff',
-            border: '1px solid #444',
-            borderRadius: 6,
-            cursor: 'pointer'
-          }}
-          onClick={() => console.log('Launch app:', app.id)}
-        >
+        <div key={app.id} style={{ margin: '0.5rem 0' }}>
           {app.name}
-        </button>
+        </div>
       ))}
     </div>
   );
-}
+};

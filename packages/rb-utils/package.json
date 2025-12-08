@@ -1,14 +1,25 @@
 {
   "name": "@rb/rb-utils",
   "version": "0.0.1",
-  "main": "dist/index.js",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "type": "module",
+  "main": "./dist/rb-utils.js",
+  "module": "./dist/rb-utils.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/rb-utils.js",
+      "require": "./dist/rb-utils.cjs"
     }
-  }
+  },
+  "scripts": {
+    "build": "vite build -c ../../tools/config/vite.lib.config.ts"
+  },
+  "dependencies": {
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "vite": "^7.2.6"
+  },
+  "files": ["dist"]
 }

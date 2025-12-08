@@ -1,1 +1,1 @@
-export * from "./applyTheme";
+export * from './applyTheme';

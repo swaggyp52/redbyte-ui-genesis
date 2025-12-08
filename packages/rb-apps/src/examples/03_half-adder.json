@@ -1,0 +1,73 @@
+{
+  "version": "v1",
+  "nodes": [
+    {
+      "id": "a_in",
+      "type": "Switch",
+      "position": {"x": 0, "y": 0},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "b_in",
+      "type": "Switch",
+      "position": {"x": 0, "y": 100},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "xor1",
+      "type": "XOR",
+      "position": {"x": 200, "y": 25},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "and1",
+      "type": "AND",
+      "position": {"x": 200, "y": 125},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sum_lamp",
+      "type": "Lamp",
+      "position": {"x": 400, "y": 25},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "carry_lamp",
+      "type": "Lamp",
+      "position": {"x": 400, "y": 125},
+      "rotation": 0,
+      "config": {}
+    }
+  ],
+  "connections": [
+    {
+      "from": {"nodeId": "a_in", "portName": "out"},
+      "to": {"nodeId": "xor1", "portName": "a"}
+    },
+    {
+      "from": {"nodeId": "b_in", "portName": "out"},
+      "to": {"nodeId": "xor1", "portName": "b"}
+    },
+    {
+      "from": {"nodeId": "a_in", "portName": "out"},
+      "to": {"nodeId": "and1", "portName": "a"}
+    },
+    {
+      "from": {"nodeId": "b_in", "portName": "out"},
+      "to": {"nodeId": "and1", "portName": "b"}
+    },
+    {
+      "from": {"nodeId": "xor1", "portName": "out"},
+      "to": {"nodeId": "sum_lamp", "portName": "in"}
+    },
+    {
+      "from": {"nodeId": "and1", "portName": "out"},
+      "to": {"nodeId": "carry_lamp", "portName": "in"}
+    }
+  ]
+}

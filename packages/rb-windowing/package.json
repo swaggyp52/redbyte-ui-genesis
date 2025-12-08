@@ -1,14 +1,22 @@
 {
   "name": "@rb/rb-windowing",
   "version": "0.0.1",
-  "main": "dist/index.js",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "type": "module",
+  "main": "./dist/rb-windowing.js",
+  "module": "./dist/rb-windowing.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/rb-windowing.js",
+      "require": "./dist/rb-windowing.js"
     }
-  }
+  },
+  "scripts": {
+    "build": "vite build -c ../../tools/config/vite.lib.config.ts"
+  },
+  "dependencies": {
+    "zustand": "^5.0.9"
+  },
+  "files": ["dist"]
 }

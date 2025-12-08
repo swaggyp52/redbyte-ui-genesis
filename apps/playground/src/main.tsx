@@ -1,18 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-
-import { applyTheme } from '@rb/rb-theme';
 import { Shell } from '@rb/rb-shell';
-import { Launcher } from '@rb/rb-apps';
+import './index.css';
 
-applyTheme(null, 'dark-neon');
-
-const root = document.getElementById('root');
-
-ReactDOM.createRoot(root!).render(
+ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <Shell>
-      <Launcher />
-    </Shell>
+    <Shell />
   </React.StrictMode>
 );

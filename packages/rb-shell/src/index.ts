@@ -1,3 +1,2 @@
-export * from './Shell';
-export * from './ShellWindow';
-export * from './ShellContext';
+export { Shell } from './Shell';
+export type { ShellProps } from './Shell';

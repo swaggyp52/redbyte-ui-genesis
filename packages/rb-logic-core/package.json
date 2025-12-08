@@ -1,14 +1,26 @@
 {
   "name": "@rb/rb-logic-core",
   "version": "0.0.1",
-  "main": "dist/index.js",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "type": "module",
+  "main": "./dist/rb-logic-core.js",
+  "module": "./dist/rb-logic-core.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/rb-logic-core.js",
+      "require": "./dist/rb-logic-core.js"
     }
-  }
+  },
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "vite": "^7.2.6",
+    "vitest": "^2.1.8"
+  },
+  "files": [
+    "dist"
+  ]
 }

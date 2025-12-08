@@ -1,0 +1,47 @@
+{
+  "version": "v1",
+  "nodes": [
+    {
+      "id": "sw1",
+      "type": "Switch",
+      "position": {"x": 0, "y": 0},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw2",
+      "type": "Switch",
+      "position": {"x": 0, "y": 100},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "and1",
+      "type": "AND",
+      "position": {"x": 200, "y": 50},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "lamp1",
+      "type": "Lamp",
+      "position": {"x": 400, "y": 50},
+      "rotation": 0,
+      "config": {}
+    }
+  ],
+  "connections": [
+    {
+      "from": {"nodeId": "sw1", "portName": "out"},
+      "to": {"nodeId": "and1", "portName": "a"}
+    },
+    {
+      "from": {"nodeId": "sw2", "portName": "out"},
+      "to": {"nodeId": "and1", "portName": "b"}
+    },
+    {
+      "from": {"nodeId": "and1", "portName": "out"},
+      "to": {"nodeId": "lamp1", "portName": "in"}
+    }
+  ]
+}

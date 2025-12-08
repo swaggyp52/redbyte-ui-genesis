@@ -1,15 +1,15 @@
-import { AppDefinition } from './types';
+import type { RedByteApp } from './types';
 
-const registry: Record<string, AppDefinition> = {};
+const registry = new Map<string, RedByteApp>();
 
-export function registerApp(app: AppDefinition) {
-  registry[app.id] = app;
+export function registerApp(app: RedByteApp): void {
+  registry.set(app.manifest.id, app);
 }
 
-export function getApp(id: string) {
-  return registry[id] ?? null;
+export function getApp(id: string): RedByteApp | null {
+  return registry.get(id) ?? null;
 }
 
-export function listApps() {
-  return Object.values(registry);
+export function listApps(): RedByteApp[] {
+  return Array.from(registry.values());
 }

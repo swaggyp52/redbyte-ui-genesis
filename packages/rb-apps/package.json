@@ -1,14 +1,42 @@
 {
   "name": "@rb/rb-apps",
   "version": "0.0.1",
-  "main": "dist/index.js",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "type": "module",
+  "main": "./dist/rb-apps.js",
+  "module": "./dist/rb-apps.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/rb-apps.js",
+      "require": "./dist/rb-apps.js"
     }
-  }
+  },
+  "scripts": {
+    "build": "vite build -c ../../tools/config/vite.lib.config.ts",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@rb/rb-icons": "workspace:*",
+    "@rb/rb-logic-3d": "workspace:*",
+    "@rb/rb-logic-adapter": "workspace:*",
+    "@rb/rb-logic-core": "workspace:*",
+    "@rb/rb-logic-view": "workspace:*",
+    "@rb/rb-theme": "workspace:*",
+    "@rb/rb-utils": "workspace:*",
+    "react": "^19.2.1",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.0.6",
+    "jsdom": "^27.2.0",
+    "vitest": "^2.1.8"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "files": [
+    "dist"
+  ]
 }

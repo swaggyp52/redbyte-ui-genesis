@@ -1,0 +1,25 @@
+{
+  "version": "v1",
+  "nodes": [
+    {
+      "id": "power1",
+      "type": "PowerSource",
+      "position": {"x": 0, "y": 0},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "lamp1",
+      "type": "Lamp",
+      "position": {"x": 200, "y": 0},
+      "rotation": 0,
+      "config": {}
+    }
+  ],
+  "connections": [
+    {
+      "from": {"nodeId": "power1", "portName": "out"},
+      "to": {"nodeId": "lamp1", "portName": "in"}
+    }
+  ]
+}

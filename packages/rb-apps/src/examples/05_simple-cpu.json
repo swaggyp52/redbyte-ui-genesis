@@ -1,0 +1,84 @@
+{
+  "version": "v1",
+  "nodes": [
+    {
+      "id": "clock",
+      "type": "Clock",
+      "position": {"x": 0, "y": 300},
+      "rotation": 0,
+      "config": {"period": 8}
+    },
+    {
+      "id": "reg_a",
+      "type": "DFlipFlop",
+      "position": {"x": 200, "y": 0},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "reg_b",
+      "type": "DFlipFlop",
+      "position": {"x": 200, "y": 200},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "alu_add",
+      "type": "FullAdder",
+      "position": {"x": 400, "y": 100},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "result_lamp",
+      "type": "Lamp",
+      "position": {"x": 600, "y": 100},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "input_a",
+      "type": "Switch",
+      "position": {"x": 0, "y": 0},
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "input_b",
+      "type": "Switch",
+      "position": {"x": 0, "y": 200},
+      "rotation": 0,
+      "config": {}
+    }
+  ],
+  "connections": [
+    {
+      "from": {"nodeId": "input_a", "portName": "out"},
+      "to": {"nodeId": "reg_a", "portName": "D"}
+    },
+    {
+      "from": {"nodeId": "input_b", "portName": "out"},
+      "to": {"nodeId": "reg_b", "portName": "D"}
+    },
+    {
+      "from": {"nodeId": "clock", "portName": "out"},
+      "to": {"nodeId": "reg_a", "portName": "clk"}
+    },
+    {
+      "from": {"nodeId": "clock", "portName": "out"},
+      "to": {"nodeId": "reg_b", "portName": "clk"}
+    },
+    {
+      "from": {"nodeId": "reg_a", "portName": "Q"},
+      "to": {"nodeId": "alu_add", "portName": "A"}
+    },
+    {
+      "from": {"nodeId": "reg_b", "portName": "Q"},
+      "to": {"nodeId": "alu_add", "portName": "B"}
+    },
+    {
+      "from": {"nodeId": "alu_add", "portName": "Sum"},
+      "to": {"nodeId": "result_lamp", "portName": "in"}
+    }
+  ]
+}

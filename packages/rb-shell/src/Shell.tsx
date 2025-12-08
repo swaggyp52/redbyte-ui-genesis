@@ -1,43 +1,13 @@
-import React, { createContext, useContext } from 'react';
-import { useWindowManager } from '@rb/rb-windowing';
-import { ShellWindow } from './ShellWindow';
-import { getApp } from '@rb/rb-apps';
+import React from 'react';
 
-interface ShellContextValue {
-  createWindow: ReturnType<typeof useWindowManager>['createWindow'];
+export interface ShellProps {
+  children?: React.ReactNode;
 }
 
-const ShellContext = createContext<ShellContextValue | null>(null);
-export const useShell = () => useContext(ShellContext)!;
-
-export const Shell: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
-  const wm = useWindowManager();
-
+export const Shell: React.FC<ShellProps> = ({ children }) => {
   return (
-    <ShellContext.Provider value={{ createWindow: wm.createWindow }}>
-      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-        {wm.windows.map(win => {
-          const def = win.contentId ? getApp(win.contentId) : null;
-          const Content = def?.launch ?? null;
-
-          return (
-            <ShellWindow
-              key={win.id}
-              state={win}
-              onClose={() => wm.closeWindow(win.id)}
-              onFocus={() => wm.focusWindow(win.id)}
-              onMove={(x, y) => wm.moveWindow(win.id, x, y)}
-              onResize={(w, h) => wm.resizeWindow(win.id, w, h)}
-              onMinimize={() => wm.minimizeWindow(win.id)}
-              onMaximize={() => wm.maximizeWindow(win.id)}
-              onRestore={() => wm.restoreWindow(win.id)}
-            >
-              {Content && <Content />}
-            </ShellWindow>
-          );
-        })}
-        {children}
-      </div>
-    </ShellContext.Provider>
+    <div className="shell-container" style={{ width: '100vw', height: '100vh', background: '#0a0a0a' }}>
+      {children || <div style={{ color: '#fff', padding: '2rem' }}>RedByte Shell</div>}
+    </div>
   );
 };

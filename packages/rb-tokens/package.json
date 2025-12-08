@@ -1,10 +1,19 @@
 {
   "name": "@rb/rb-tokens",
   "version": "0.0.1",
-  "main": "dist/rb-tokens.js",
-  "module": "dist/rb-tokens.js",
-  "types": "dist/index.d.ts",
+  "type": "module",
+  "main": "./dist/rb-tokens.js",
+  "module": "./dist/rb-tokens.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/rb-tokens.js",
+      "require": "./dist/rb-tokens.js"
+    }
+  },
   "scripts": {
     "build": "vite build -c ../../tools/config/vite.lib.config.ts"
-  }
+  },
+  "files": ["dist"]
 }

@@ -1,2 +1,0 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-export const BrowserIcon = (props) => (_jsxs("svg", { viewBox: '0 0 24 24', fill: 'currentColor', ...props, children: [_jsx("rect", { x: '2', y: '3', width: '20', height: '18', rx: '2', fill: 'none', stroke: 'currentColor', strokeWidth: '2' }), _jsx("line", { x1: '2', y1: '8', x2: '22', y2: '8', stroke: 'currentColor', strokeWidth: '2' }), _jsx("circle", { cx: '6', cy: '5.5', r: '0.8' }), _jsx("circle", { cx: '8.5', cy: '5.5', r: '0.8' }), _jsx("circle", { cx: '11', cy: '5.5', r: '0.8' })] }));
