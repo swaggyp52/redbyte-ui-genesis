@@ -16,7 +16,12 @@
       "Bash(pnpm build:*)",
       "Bash(ls:*)",
       "Bash(pnpm run build:*)",
-      "Bash(pnpm vite build:*)"
+      "Bash(pnpm vite build:*)",
+      "Bash(git pull:*)",
+      "Bash(pnpm --filter @redbyte/playground build:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm typecheck:*)"
     ],
     "deny": [],
     "ask": []
