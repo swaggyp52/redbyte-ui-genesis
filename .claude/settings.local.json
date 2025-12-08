@@ -8,7 +8,13 @@
       "Bash(/c/nvm4w/v24.11.1/node.exe --version)",
       "Bash(powershell.exe -Command \"Get-Command node -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
       "Bash(test:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(pnpm build:os:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(git push)",
+      "Bash(pnpm build:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

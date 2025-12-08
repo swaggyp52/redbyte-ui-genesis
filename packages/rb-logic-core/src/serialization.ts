@@ -27,7 +27,12 @@ export function serialize(circuit: Circuit): SerializedCircuitV1 {
 export function deserialize(json: SerializedCircuitV1 | string): Circuit {
   const data: SerializedCircuitV1 = typeof json === 'string' ? JSON.parse(json) : json;
 
-  if (data.version !== 1) {
+  // Normalize version to number (handle both "v1", "1", and 1)
+  const version = typeof data.version === 'string'
+    ? parseInt(data.version.replace(/^v/, ''), 10)
+    : data.version;
+
+  if (version !== 1 && !isNaN(version)) {
     throw new Error(`Unsupported circuit version: ${data.version}`);
   }
 

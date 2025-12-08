@@ -75,7 +75,7 @@ export interface NodeBehavior {
  * Serialized circuit format (V1)
  */
 export interface SerializedCircuitV1 {
-  version: 1;
+  version: 1 | '1' | 'v1';  // Support multiple version formats
   nodes: Node[];
   connections: Connection[];
 }
