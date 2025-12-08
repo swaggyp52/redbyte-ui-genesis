@@ -1,0 +1,1 @@
+pnpm install --no-frozen-lockfile && pnpm -r build && pnpm --filter @redbyte/playground build
