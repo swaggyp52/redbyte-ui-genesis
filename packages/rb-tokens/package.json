@@ -1,5 +1,5 @@
 {
-  "name": "@rb/rb-tokens",
+  "name": "@redbyte/rb-tokens",
   "version": "0.0.1",
   "type": "module",
   "main": "./dist/rb-tokens.js",
@@ -13,7 +13,10 @@
     }
   },
   "scripts": {
-    "build": "vite build -c ../../tools/config/vite.lib.config.ts"
+    "build": "vite build -c ../../tools/config/vite.lib.config.ts",
+    "test": "echo \"Tests run at root. This package has no direct tests.\""
   },
-  "files": ["dist"]
+  "files": [
+    "dist"
+  ]
 }

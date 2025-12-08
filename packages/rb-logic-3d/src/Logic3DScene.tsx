@@ -1,8 +1,8 @@
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
-import type { CircuitEngine } from '@rb/rb-logic-core';
-import { ViewAdapter } from '@rb/rb-logic-adapter';
+import type { CircuitEngine } from '@redbyte/rb-logic-core';
+import { ViewAdapter } from '@redbyte/rb-logic-adapter';
 import { NodeMesh } from './meshes/NodeMesh';
 import { WireMesh } from './meshes/WireMesh';
 import { use3DEngineSync } from './hooks/use3DEngineSync';

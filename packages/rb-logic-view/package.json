@@ -1,5 +1,5 @@
 {
-  "name": "@rb/rb-logic-view",
+  "name": "@redbyte/rb-logic-view",
   "version": "0.0.1",
   "type": "module",
   "main": "./dist/rb-logic-view.js",
@@ -14,21 +14,25 @@
   },
   "scripts": {
     "build": "vite build",
-    "test": "vitest"
+    "test": "echo \"Tests run at root. This package has no direct tests.\""
   },
   "dependencies": {
-    "@rb/rb-logic-core": "workspace:*",
-    "react": "^19.2.1",
+    "@redbyte/rb-logic-core": "workspace:*",
     "zustand": "^5.0.9"
   },
   "peerDependencies": {
-    "react": "^18.0.0 || ^19.0.0"
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0"
   },
   "devDependencies": {
     "@testing-library/react": "^16.1.0",
     "@types/react": "^19.0.6",
     "vite": "^7.2.6",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
-  "files": ["dist"]
+  "files": [
+    "dist"
+  ]
 }

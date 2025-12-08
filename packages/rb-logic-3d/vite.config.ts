@@ -12,7 +12,16 @@ export default defineConfig({
       formats: ['es'],
     },
     rollupOptions: {
-      external: ['react', 'react-dom', 'react/jsx-runtime', 'three', '@react-three/fiber', '@react-three/drei'],
+      external: [
+        'react',
+        'react-dom',
+        'react/jsx-runtime',
+        'three',
+        '@react-three/fiber',
+        '@react-three/drei',
+        '@redbyte/rb-logic-adapter',
+        '@redbyte/rb-logic-core',
+      ],
     },
   },
 });

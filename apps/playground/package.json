@@ -7,9 +7,9 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@rb/rb-shell": "workspace:*",
-    "@rb/rb-apps": "workspace:*",
-    "@rb/rb-windowing": "workspace:*",
+    "@redbyte/rb-shell": "workspace:*",
+    "@redbyte/rb-apps": "workspace:*",
+    "@redbyte/rb-windowing": "workspace:*",
     "react": "^19.2.1",
     "react-dom": "^19.2.1"
   }

@@ -12,7 +12,7 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "paths": {
-      "@rb/*": ["packages/*/src"]
+      "@redbyte/*": ["packages/*/src"]
     }
   },
   "include": ["packages", "apps"]

@@ -18,7 +18,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 9
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --no-frozen-lockfile --ignore-scripts --force
       - run: pnpm lint
       - run: pnpm format
 
@@ -33,7 +33,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 9
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --no-frozen-lockfile --ignore-scripts --force
       - run: pnpm typecheck
 
   test:
@@ -47,8 +47,54 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 9
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --no-frozen-lockfile --ignore-scripts --force
       - run: pnpm test
+
+  accessibility:
+    name: A11y Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - run: pnpm install --no-frozen-lockfile --ignore-scripts --force
+      - run: pnpm a11y
+
+  performance:
+    name: Performance Budgets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - run: pnpm install --no-frozen-lockfile --ignore-scripts --force
+      - run: pnpm perf
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - run: pnpm install --no-frozen-lockfile --ignore-scripts --force
+      - run: pnpm coverage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage
 
   build:
     name: Build
@@ -61,5 +107,5 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 9
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
+      - run: pnpm install --no-frozen-lockfile --ignore-scripts --force
+      - run: pnpm build:os

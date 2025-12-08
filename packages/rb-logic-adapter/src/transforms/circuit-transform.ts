@@ -1,4 +1,4 @@
-import type { Circuit, Connection } from '@rb/rb-logic-core';
+import type { Circuit, Connection } from '@redbyte/rb-logic-core';
 import type { ViewState, ViewNode, ViewWire } from '../types';
 import { calculatePortPosition, getNodeDimensions } from './shared-helpers';
 

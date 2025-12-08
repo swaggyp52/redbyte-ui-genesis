@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Connection, Node } from '@rb/rb-logic-core';
+import type { Connection, Node } from '@redbyte/rb-logic-core';
 import type { Camera } from '../useLogicViewStore';
 
 export interface WireViewProps {

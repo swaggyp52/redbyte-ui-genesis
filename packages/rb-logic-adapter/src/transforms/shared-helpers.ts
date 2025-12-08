@@ -1,4 +1,4 @@
-import type { Node, Connection } from '@rb/rb-logic-core';
+import type { Node, Connection } from '@redbyte/rb-logic-core';
 
 /**
  * Calculate port position based on node position and rotation

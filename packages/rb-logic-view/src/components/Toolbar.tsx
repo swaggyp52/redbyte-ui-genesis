@@ -1,5 +1,5 @@
 import React from 'react';
-import type { TickEngine } from '@rb/rb-logic-core';
+import type { TickEngine } from '@redbyte/rb-logic-core';
 
 export interface ToolbarProps {
   engine?: TickEngine;
