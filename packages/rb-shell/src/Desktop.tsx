@@ -1,3 +1,7 @@
+// Copyright © 2025 Connor Angel ("RedByte OS Genesis")
+// All rights reserved. Unauthorized use, reproduction, or distribution is prohibited.
+// Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ThemeVariant, WallpaperId } from '@redbyte/rb-utils';
 import {
@@ -192,6 +196,14 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
           }}
         />
       )}
+
+      {/* Copyright Footer */}
+      <div className="absolute bottom-4 right-6 pointer-events-none select-none">
+        <div className="text-xs text-white/60 text-right font-medium backdrop-blur-sm bg-black/20 px-3 py-1.5 rounded-lg border border-white/10">
+          <div>© 2025 Connor Angel — RedByte OS Genesis</div>
+          <div className="text-[10px] text-white/40 mt-0.5">All rights reserved.</div>
+        </div>
+      </div>
     </div>
   );
 };
