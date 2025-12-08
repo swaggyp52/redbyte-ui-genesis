@@ -31,16 +31,12 @@ export function deserialize(json: SerializedCircuitV1 | string): Circuit {
     throw new Error(`Unsupported circuit version: ${data.version}`);
   }
 
-  // Validate that nodes and connections are arrays
-  if (!Array.isArray(data.nodes)) {
-    throw new Error('Invalid circuit data: nodes must be an array');
-  }
-  if (!Array.isArray(data.connections)) {
-    throw new Error('Invalid circuit data: connections must be an array');
-  }
+  // Safely handle potentially malformed data by defaulting to empty arrays
+  const nodes = Array.isArray(data.nodes) ? data.nodes : [];
+  const connections = Array.isArray(data.connections) ? data.connections : [];
 
   return {
-    nodes: data.nodes.map(node => ({
+    nodes: nodes.map(node => ({
       id: node.id,
       type: node.type,
       position: { ...node.position },
@@ -48,7 +44,7 @@ export function deserialize(json: SerializedCircuitV1 | string): Circuit {
       config: { ...node.config },
       state: node.state ? { ...node.state } : undefined,
     })),
-    connections: data.connections.map(conn => ({
+    connections: connections.map(conn => ({
       from: { ...conn.from },
       to: { ...conn.to },
     })),
