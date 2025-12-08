@@ -14,7 +14,13 @@ import { ViewAdapter } from '@rb/rb-logic-adapter';
 import { Logic3DScene } from '@rb/rb-logic-3d';
 import { useSettingsStore } from '@rb/rb-utils';
 import { loadExample, listExamples, type ExampleId } from '../examples';
-import { getFile, updateFile, createFile, type LogicFile } from '../stores/filesStore';
+import {
+  getFile,
+  updateFile,
+  createFile,
+  listFiles,
+  type LogicFile,
+} from '../stores/filesStore';
 
 type ViewMode = 'circuit' | 'schematic' | 'isometric' | '3d';
 
@@ -28,6 +34,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   initialExampleId,
 }) => {
   const { tickRate } = useSettingsStore();
+  const examples = useRef(listExamples());
+  const [availableFiles, setAvailableFiles] = useState<LogicFile[]>(listFiles());
+  const [selectedFileId, setSelectedFileId] = useState<string | ''>(initialFileId ?? '');
+  const [selectedExampleId, setSelectedExampleId] = useState<ExampleId | ''>(
+    initialExampleId ?? ''
+  );
 
   const [circuit, setCircuit] = useState<Circuit>(() => {
     return {
@@ -54,25 +66,9 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   useEffect(() => {
     const loadInitial = async () => {
       if (initialFileId) {
-        const file = getFile(initialFileId);
-        if (file) {
-          const loadedCircuit = deserialize(file.circuit);
-          setCircuit(loadedCircuit);
-          const newEngine = new CircuitEngine(loadedCircuit);
-          setEngine(newEngine);
-          setTickEngine(new TickEngine(newEngine, tickRate));
-          setCurrentFileId(initialFileId);
-          setIsDirty(false);
-        }
+        await handleLoadFile(initialFileId);
       } else if (initialExampleId) {
-        const exampleData = await loadExample(initialExampleId);
-        const loadedCircuit = deserialize(exampleData);
-        setCircuit(loadedCircuit);
-        const newEngine = new CircuitEngine(loadedCircuit);
-        setEngine(newEngine);
-        setTickEngine(new TickEngine(newEngine, tickRate));
-        setCurrentFileId(null);
-        setIsDirty(true);
+        await handleLoadExample(initialExampleId);
       }
     };
     loadInitial();
@@ -112,6 +108,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setCurrentFileId(null);
     setIsDirty(false);
     setIsRunning(false);
+    setSelectedFileId('');
+    setSelectedExampleId('');
   };
 
   const handleSave = () => {
@@ -119,19 +117,50 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
     if (currentFileId) {
       updateFile(currentFileId, serialized);
+      setAvailableFiles(listFiles());
       setIsDirty(false);
     } else {
       const name = prompt('Enter circuit name:');
       if (name) {
         const newFile = createFile(name, serialized);
         setCurrentFileId(newFile.id);
+        setAvailableFiles(listFiles());
+        setSelectedFileId(newFile.id);
         setIsDirty(false);
       }
     }
   };
 
-  const handleLoad = () => {
-    alert('Use Files app to load a circuit');
+  const handleLoadFile = async (fileId: string | null) => {
+    if (!fileId) return;
+    const file = getFile(fileId);
+    if (!file) {
+      alert('File not found');
+      return;
+    }
+    const loadedCircuit = deserialize(file.circuit);
+    setCircuit(loadedCircuit);
+    const newEngine = new CircuitEngine(loadedCircuit);
+    setEngine(newEngine);
+    setTickEngine(new TickEngine(newEngine, tickRate));
+    setCurrentFileId(file.id);
+    setSelectedFileId(file.id);
+    setSelectedExampleId('');
+    setIsDirty(false);
+  };
+
+  const handleLoadExample = async (exampleId: ExampleId | '') => {
+    if (!exampleId) return;
+    const exampleData = await loadExample(exampleId);
+    const loadedCircuit = deserialize(exampleData);
+    setCircuit(loadedCircuit);
+    const newEngine = new CircuitEngine(loadedCircuit);
+    setEngine(newEngine);
+    setTickEngine(new TickEngine(newEngine, tickRate));
+    setCurrentFileId(null);
+    setSelectedFileId('');
+    setSelectedExampleId(exampleId);
+    setIsDirty(true);
   };
 
   const handleExport = () => {
@@ -232,12 +261,49 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         >
           Save{isDirty ? '*' : ''}
         </button>
-        <button
-          onClick={handleLoad}
-          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded"
-        >
-          Load
-        </button>
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedFileId}
+            onChange={(e) => setSelectedFileId(e.target.value)}
+            className="px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
+          >
+            <option value="">Select file...</option>
+            {availableFiles.map((file) => (
+              <option key={file.id} value={file.id}>
+                {file.name}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => handleLoadFile(selectedFileId)}
+            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded"
+          >
+            Load File
+          </button>
+        </div>
+
+        <div className="w-px h-6 bg-gray-600" />
+
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedExampleId}
+            onChange={(e) => setSelectedExampleId(e.target.value as ExampleId | '')}
+            className="px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
+          >
+            <option value="">Select example...</option>
+            {examples.current.map((ex) => (
+              <option key={ex.id} value={ex.id}>
+                {ex.name}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => handleLoadExample(selectedExampleId)}
+            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded"
+          >
+            Load Example
+          </button>
+        </div>
 
         <div className="w-px h-6 bg-gray-600" />
 

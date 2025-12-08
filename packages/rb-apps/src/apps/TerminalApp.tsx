@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import type { RedByteApp } from '../types';
 import { listExamples, type ExampleId } from '../examples';
 import { useSettingsStore } from '@rb/rb-utils';
-import { getFile, listFiles } from '../stores/filesStore';
+import { deleteFile, getFile, listFiles } from '../stores/filesStore';
 
 interface TerminalProps {
   onOpenApp?: (appId: string, props?: any) => void;
@@ -47,16 +47,17 @@ const TerminalComponent: React.FC<TerminalProps> = ({
     switch (command) {
       case 'help':
         addLine('Available commands:');
-        addLine('  help                 - Show this help message');
-        addLine('  clear                - Clear terminal screen');
-        addLine('  about                - About RedByte Genesis');
-        addLine('  theme <variant>      - Set theme (dark-neon | light-frost)');
-        addLine('  wallpaper <id>       - Set wallpaper (neon-circuit | frost-grid | solid)');
-        addLine('  examples             - List available example circuits');
-        addLine('  open <id>            - Open an example circuit');
-        addLine('  ls                   - List saved circuit files');
-        addLine('  open-file <fileId>   - Open a saved circuit');
-        addLine('  hz <number>          - Set logic simulation tick rate (1-60)');
+        addLine('  help                        - Show this help message');
+        addLine('  clear                       - Clear terminal screen');
+        addLine('  about                       - About RedByte Genesis');
+        addLine('  theme set <variant>         - Set theme (dark-neon | light-frost)');
+        addLine('  wallpaper set <id>          - Set wallpaper (neon-circuit | frost-grid | solid)');
+        addLine('  files list                  - List saved circuit files');
+        addLine('  files open <fileId>         - Open a saved circuit');
+        addLine('  files delete <fileId>       - Delete a saved circuit');
+        addLine('  examples list               - List available example circuits');
+        addLine('  examples load <exampleId>   - Open an example circuit');
+        addLine('  ticks set <number>          - Set logic simulation tick rate (1-60)');
         break;
 
       case 'about':
@@ -71,102 +72,118 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         setLines([]);
         break;
 
-      case 'theme':
-        if (args.length === 0) {
-          addLine('Usage: theme <dark-neon | light-frost>', 'error');
-        } else if (args[0] === 'dark-neon' || args[0] === 'light-frost') {
-          addLine(`Theme set to: ${args[0]}`);
-          useSettingsStore.getState().setThemeVariant(args[0]);
-          onThemeChange?.(args[0]);
+      case 'theme': {
+        if (args[0] !== 'set') {
+          addLine("Usage: theme set <dark-neon | light-frost>", 'error');
+          break;
+        }
+        const variant = args[1];
+        if (variant === 'dark-neon' || variant === 'light-frost') {
+          addLine(`Theme set to: ${variant}`);
+          useSettingsStore.getState().setThemeVariant(variant);
+          onThemeChange?.(variant);
         } else {
-          addLine(`Invalid theme: ${args[0]}`, 'error');
           addLine('Valid themes: dark-neon, light-frost', 'error');
-        }
-        break;
-
-      case 'wallpaper':
-        if (args.length === 0) {
-          addLine('Usage: wallpaper <neon-circuit | frost-grid | solid>', 'error');
-        } else if (
-          args[0] === 'neon-circuit' ||
-          args[0] === 'frost-grid' ||
-          args[0] === 'solid'
-        ) {
-          useSettingsStore.getState().setWallpaperId(args[0]);
-          addLine(`Wallpaper set to: ${args[0]}`);
-        } else {
-          addLine(`Invalid wallpaper: ${args[0]}`, 'error');
-          addLine('Valid wallpapers: neon-circuit, frost-grid, solid', 'error');
-        }
-        break;
-
-      case 'examples':
-        addLine('Available example circuits:');
-        listExamples().forEach((ex) => {
-          addLine(`  ${ex.name} (${ex.id})`);
-        });
-        break;
-
-      case 'open':
-        if (args.length === 0) {
-          addLine('Usage: open <example-id>', 'error');
-        } else {
-          const exampleId = args[0] as ExampleId;
-          const examples = listExamples();
-          const example = examples.find((ex) => ex.id === exampleId);
-
-          if (example) {
-            addLine(`Opening example: ${example.name}`);
-            onOpenApp?.('logic-playground', { initialExampleId: exampleId });
-          } else {
-            addLine(`Example not found: ${exampleId}`, 'error');
-            addLine('Use "examples" to list available examples', 'error');
-          }
-        }
-        break;
-
-      case 'hz':
-        if (args.length === 0) {
-          addLine('Usage: hz <number>', 'error');
-        } else {
-          const rate = parseInt(args[0], 10);
-          if (isNaN(rate) || rate < 1 || rate > 60) {
-            addLine('Tick rate must be between 1 and 60 Hz', 'error');
-          } else {
-            addLine(`Tick rate set to: ${rate} Hz`);
-            useSettingsStore.getState().setTickRate(rate);
-            onTickRateChange?.(rate);
-          }
-        }
-        break;
-
-      case 'ls': {
-        const files = listFiles();
-        if (files.length === 0) {
-          addLine('No saved circuits found.');
-        } else {
-          addLine('Saved circuits:');
-          files.forEach((file) => {
-            addLine(
-              `  ${file.id} - ${file.name} (updated ${new Date(file.updatedAt).toLocaleString()})`
-            );
-          });
         }
         break;
       }
 
-      case 'open-file': {
-        if (args.length === 0) {
-          addLine('Usage: open-file <fileId>', 'error');
+      case 'wallpaper': {
+        if (args[0] !== 'set') {
+          addLine("Usage: wallpaper set <neon-circuit | frost-grid | solid>", 'error');
+          break;
+        }
+        const wallpaper = args[1];
+        if (wallpaper === 'neon-circuit' || wallpaper === 'frost-grid' || wallpaper === 'solid') {
+          useSettingsStore.getState().setWallpaperId(wallpaper);
+          addLine(`Wallpaper set to: ${wallpaper}`);
         } else {
-          const file = getFile(args[0]);
+          addLine('Valid wallpapers: neon-circuit, frost-grid, solid', 'error');
+        }
+        break;
+      }
+
+      case 'examples': {
+        const sub = args[0];
+        if (!sub || sub === 'list') {
+          addLine('Available example circuits:');
+          listExamples().forEach((ex) => addLine(`  ${ex.name} (${ex.id})`));
+          break;
+        }
+
+        if (sub === 'load') {
+          const exampleId = args[1] as ExampleId;
+          const example = listExamples().find((ex) => ex.id === exampleId);
+          if (example) {
+            addLine(`Opening example: ${example.name}`);
+            onOpenApp?.('logic-playground', { initialExampleId: exampleId });
+          } else {
+            addLine('Example not found. Use "examples list".', 'error');
+          }
+        } else {
+          addLine('Usage: examples list | examples load <id>', 'error');
+        }
+        break;
+      }
+
+      case 'ticks': {
+        if (args[0] !== 'set') {
+          addLine('Usage: ticks set <number>', 'error');
+          break;
+        }
+        const rate = parseInt(args[1], 10);
+        if (isNaN(rate) || rate < 1 || rate > 60) {
+          addLine('Tick rate must be between 1 and 60 Hz', 'error');
+        } else {
+          addLine(`Tick rate set to: ${rate} Hz`);
+          useSettingsStore.getState().setTickRate(rate);
+          onTickRateChange?.(rate);
+        }
+        break;
+      }
+
+      case 'files': {
+        const sub = args[0];
+        if (!sub || sub === 'list') {
+          const files = listFiles();
+          if (files.length === 0) {
+            addLine('No saved circuits found.');
+          } else {
+            addLine('Saved circuits:');
+            files.forEach((file) =>
+              addLine(
+                `  ${file.id} - ${file.name} (updated ${new Date(file.updatedAt).toLocaleString()})`
+              )
+            );
+          }
+          break;
+        }
+
+        if (sub === 'open') {
+          const fileId = args[1];
+          const file = fileId ? getFile(fileId) : null;
           if (file) {
             addLine(`Opening file: ${file.name}`);
             onOpenApp?.('logic-playground', { initialFileId: file.id });
           } else {
-            addLine('File not found.', 'error');
+            addLine('File not found. Use "files list".', 'error');
           }
+          break;
         }
+
+        if (sub === 'delete') {
+          const fileId = args[1];
+          const file = fileId ? getFile(fileId) : null;
+          if (file) {
+            deleteFile(file.id);
+            addLine(`Deleted file: ${file.name}`);
+          } else {
+            addLine('File not found. Use "files list".', 'error');
+          }
+          break;
+        }
+
+        addLine('Usage: files list | files open <id> | files delete <id>', 'error');
         break;
       }
 

@@ -11,9 +11,10 @@ import { deserialize } from '@rb/rb-logic-core';
 
 interface FilesProps {
   onOpenFile?: (fileId: string) => void;
+  onOpenApp?: (id: string, props?: any) => void;
 }
 
-const FilesComponent: React.FC<FilesProps> = ({ onOpenFile }) => {
+const FilesComponent: React.FC<FilesProps> = ({ onOpenFile, onOpenApp }) => {
   const [files, setFiles] = useState<LogicFile[]>([]);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renamingValue, setRenamingValue] = useState('');
@@ -46,11 +47,19 @@ const FilesComponent: React.FC<FilesProps> = ({ onOpenFile }) => {
     });
 
     refreshFiles();
-    onOpenFile?.(newFile.id);
+    if (onOpenApp) {
+      onOpenApp('logic-playground', { initialFileId: newFile.id });
+    } else {
+      onOpenFile?.(newFile.id);
+    }
   };
 
   const handleOpen = (fileId: string) => {
-    onOpenFile?.(fileId);
+    if (onOpenApp) {
+      onOpenApp('logic-playground', { initialFileId: fileId });
+    } else {
+      onOpenFile?.(fileId);
+    }
   };
 
   const handleRename = (fileId: string, currentName: string) => {
