@@ -183,6 +183,9 @@ importers:
 
   packages/rb-shell:
     dependencies:
+      '@rb/rb-icons':
+        specifier: workspace:*
+        version: link:../rb-icons
       '@rb/rb-theme':
         specifier: workspace:*
         version: link:../rb-theme

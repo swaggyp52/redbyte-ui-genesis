@@ -16,6 +16,7 @@
     "build": "vite build -c ../../tools/config/vite.lib.config.ts"
   },
   "dependencies": {
+    "@rb/rb-icons": "workspace:*",
     "@rb/rb-theme": "workspace:*",
     "@rb/rb-utils": "workspace:*",
     "@rb/rb-windowing": "workspace:*",
