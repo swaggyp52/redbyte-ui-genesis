@@ -50,7 +50,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         addLine('  help                        - Show this help message');
         addLine('  clear                       - Clear terminal screen');
         addLine('  about                       - About RedByte Genesis');
-        addLine('  theme set <variant>         - Set theme (dark-neon | light-frost)');
+        addLine('  theme list|current|set <variant>');
         addLine('  wallpaper set <id>          - Set wallpaper (neon-circuit | frost-grid | solid)');
         addLine('  files list                  - List saved circuit files');
         addLine('  files open <fileId>         - Open a saved circuit');
@@ -58,6 +58,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         addLine('  examples list               - List available example circuits');
         addLine('  examples load <exampleId>   - Open an example circuit');
         addLine('  ticks set <number>          - Set logic simulation tick rate (1-60)');
+        addLine('  restart                     - Restart RedByte OS (replays boot)');
         break;
 
       case 'about':
@@ -73,18 +74,27 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         break;
 
       case 'theme': {
-        if (args[0] !== 'set') {
-          addLine("Usage: theme set <dark-neon | light-frost>", 'error');
+        const sub = args[0];
+        if (!sub || sub === 'list') {
+          addLine('Available themes: dark-neon, light-frost');
           break;
         }
-        const variant = args[1];
-        if (variant === 'dark-neon' || variant === 'light-frost') {
-          addLine(`Theme set to: ${variant}`);
-          useSettingsStore.getState().setThemeVariant(variant);
-          onThemeChange?.(variant);
-        } else {
-          addLine('Valid themes: dark-neon, light-frost', 'error');
+        if (sub === 'current') {
+          addLine(`Current theme: ${useSettingsStore.getState().themeVariant}`);
+          break;
         }
+        if (sub === 'set') {
+          const variant = args[1];
+          if (variant === 'dark-neon' || variant === 'light-frost') {
+            addLine(`Theme set to: ${variant}`);
+            useSettingsStore.getState().setThemeVariant(variant);
+            onThemeChange?.(variant);
+          } else {
+            addLine('Valid themes: dark-neon, light-frost', 'error');
+          }
+          break;
+        }
+        addLine('Usage: theme list | theme current | theme set <variant>', 'error');
         break;
       }
 
@@ -189,6 +199,15 @@ const TerminalComponent: React.FC<TerminalProps> = ({
 
       case '':
         break;
+
+      case 'restart': {
+        try {
+          localStorage.removeItem('rb:shell:booted');
+        } catch {}
+        addLine('Restarting RedByte OS…');
+        setTimeout(() => window.location.reload(), 300);
+        break;
+      }
 
       default:
         addLine('Command not found. Type "help".', 'error');

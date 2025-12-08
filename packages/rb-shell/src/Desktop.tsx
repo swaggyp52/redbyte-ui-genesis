@@ -49,6 +49,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
       { id: 'files', title: 'Files', appId: 'files', iconId: 'files', x: 36, y: 128 },
       { id: 'settings', title: 'Settings', appId: 'settings', iconId: 'settings', x: 36, y: 224 },
       { id: 'logic', title: 'Logic Playground', appId: 'logic-playground', iconId: 'logic', x: 36, y: 320 },
+      { id: 'app-store', title: 'App Store', appId: 'app-store', iconId: 'neon-wave', x: 36, y: 416 },
     ];
     return base;
   });
@@ -59,6 +60,10 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
   const desktopRef = useRef<HTMLDivElement>(null);
 
   const wallpaperStyle = useMemo(() => getWallpaperStyle(wallpaperId, themeVariant), [wallpaperId, themeVariant]);
+
+  useEffect(() => {
+    desktopRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (!selectionBox) return;
@@ -80,6 +85,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
     selectionStart.current = { x: e.clientX, y: e.clientY };
     setSelectionBox({ x: e.clientX, y: e.clientY, w: 0, h: 0 });
     setSelected([]);
+    desktopRef.current?.focus();
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -122,11 +128,27 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
     onOpenApp(icon.appId);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setSelected([]);
+      return;
+    }
+
+    if (e.key === 'Enter' && selected.length > 0) {
+      const icon = icons.find((i) => i.id === selected[0]);
+      if (icon) {
+        onOpenApp(icon.appId);
+      }
+    }
+  };
+
   return (
     <div
       ref={desktopRef}
       className="absolute inset-0 text-white"
       style={{ ...wallpaperStyle }}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
       onMouseDown={handleDesktopMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

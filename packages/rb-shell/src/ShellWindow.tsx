@@ -168,6 +168,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
         className="flex h-10 items-center gap-2 px-3 text-sm select-none bg-gradient-to-r from-slate-900/80 via-slate-800/80 to-slate-900/80"
         style={{ cursor: isMax ? 'default' : 'grab' }}
         onMouseDown={isMax ? undefined : startDrag}
+        onDoubleClick={isMax ? onRestore : onMaximize}
       >
         <div className="font-semibold tracking-wide flex-1 truncate">{state.title}</div>
         {state.minimizable && (
