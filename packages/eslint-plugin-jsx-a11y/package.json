@@ -1,0 +1,9 @@
+{
+  "name": "eslint-plugin-jsx-a11y",
+  "version": "6.10.2",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Tests run at root. This package has no direct tests.\""
+  }
+}

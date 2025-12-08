@@ -2,10 +2,10 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Desktop } from './Desktop';
 import { Dock } from './Dock';
 import { ShellWindow } from './ShellWindow';
-import { applyTheme } from '@rb/rb-theme';
-import { useSettingsStore } from '@rb/rb-utils';
-import { getApp, type RedByteApp } from '@rb/rb-apps';
-import { useWindowStore } from '@rb/rb-windowing';
+import { applyTheme } from '@redbyte/rb-theme';
+import { useSettingsStore } from '@redbyte/rb-utils';
+import { getApp, type RedByteApp } from '@redbyte/rb-apps';
+import { useWindowStore } from '@redbyte/rb-windowing';
 import BootScreen from './BootScreen';
 import './styles.css';
 

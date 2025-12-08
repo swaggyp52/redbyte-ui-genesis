@@ -1,4 +1,4 @@
-import type { SerializedCircuitV1 } from '@rb/rb-logic-core';
+import type { SerializedCircuitV1 } from '@redbyte/rb-logic-core';
 
 export interface LogicFile {
   id: string;

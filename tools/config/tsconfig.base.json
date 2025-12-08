@@ -11,9 +11,9 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "baseUrl": ".",
+    "baseUrl": "../..",
     "paths": {
-      "@rb/*": ["packages/*/src"]
+      "@redbyte/*": ["packages/*/src"]
     }
   }
 }

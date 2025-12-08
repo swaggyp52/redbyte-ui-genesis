@@ -1,5 +1,5 @@
 {
-  "name": "@rb/rb-theme",
+  "name": "@redbyte/rb-theme",
   "version": "0.0.1",
   "type": "module",
   "main": "./dist/rb-theme.js",
@@ -13,10 +13,13 @@
     }
   },
   "scripts": {
-    "build": "vite build -c ../../tools/config/vite.lib.config.ts"
+    "build": "vite build -c ../../tools/config/vite.lib.config.ts",
+    "test": "echo \"Tests run at root. This package has no direct tests.\""
   },
   "dependencies": {
-    "@rb/rb-tokens": "workspace:*"
+    "@redbyte/rb-tokens": "workspace:*"
   },
-  "files": ["dist"]
+  "files": [
+    "dist"
+  ]
 }

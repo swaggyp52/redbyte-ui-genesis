@@ -7,7 +7,7 @@ const pkg = JSON.parse(
   fs.readFileSync(path.resolve(process.cwd(), "package.json"), "utf-8")
 );
 
-// Turn "@rb/rb-tokens" -> "rb-tokens"
+// Turn "@redbyte/rb-tokens" -> "rb-tokens"
 const pkgName = pkg.name || "rb-lib";
 const baseName = pkgName.includes("/") ? pkgName.split("/")[1] : pkgName;
 
@@ -23,6 +23,13 @@ export default defineConfig({
     rollupOptions: {
       // keep externals small & safe
       external: ["react", "react-dom", "react/jsx-runtime"],
+      output: {
+        globals: {
+          react: "React",
+          "react-dom": "ReactDOM",
+          "react/jsx-runtime": "jsxRuntime",
+        },
+      },
     },
   },
 });

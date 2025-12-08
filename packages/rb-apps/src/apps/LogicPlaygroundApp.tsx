@@ -8,11 +8,11 @@ import {
   NodeRegistry,
   type Circuit,
   type SerializedCircuitV1,
-} from '@rb/rb-logic-core';
-import { LogicCanvas } from '@rb/rb-logic-view';
-import { ViewAdapter } from '@rb/rb-logic-adapter';
-import { Logic3DScene } from '@rb/rb-logic-3d';
-import { useSettingsStore } from '@rb/rb-utils';
+} from '@redbyte/rb-logic-core';
+import { LogicCanvas } from '@redbyte/rb-logic-view';
+import { ViewAdapter } from '@redbyte/rb-logic-adapter';
+import { Logic3DScene } from '@redbyte/rb-logic-3d';
+import { useSettingsStore } from '@redbyte/rb-utils';
 import { loadExample, listExamples, type ExampleId } from '../examples';
 import {
   getFile,

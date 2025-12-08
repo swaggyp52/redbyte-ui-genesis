@@ -1,5 +1,5 @@
 {
-  "name": "@rb/rb-utils",
+  "name": "@redbyte/rb-utils",
   "version": "0.0.1",
   "type": "module",
   "main": "./dist/rb-utils.js",
@@ -13,7 +13,8 @@
     "./dist/*": "./dist/*"
   },
   "scripts": {
-    "build": "vite build -c ../../tools/config/vite.lib.config.ts"
+    "build": "vite build -c ../../tools/config/vite.lib.config.ts",
+    "test": "echo \"Tests run at root. This package has no direct tests.\""
   },
   "dependencies": {
     "zustand": "^5.0.9"
@@ -21,5 +22,8 @@
   "devDependencies": {
     "vite": "^7.2.6"
   },
-  "files": ["dist", "src"]
+  "files": [
+    "dist",
+    "src"
+  ]
 }

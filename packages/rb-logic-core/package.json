@@ -1,5 +1,5 @@
 {
-  "name": "@rb/rb-logic-core",
+  "name": "@redbyte/rb-logic-core",
   "version": "0.0.1",
   "type": "module",
   "main": "./dist/rb-logic-core.js",
@@ -14,7 +14,7 @@
   },
   "scripts": {
     "build": "vite build",
-    "test": "vitest run --passWithNoTests"
+    "test": "echo \"Tests run at root. This package has no direct tests.\""
   },
   "devDependencies": {
     "vite": "^7.2.6",

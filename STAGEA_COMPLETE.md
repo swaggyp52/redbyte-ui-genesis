@@ -353,7 +353,7 @@ Both new apps documented:
 
 ### Path Aliases
 
-✅ **@rb/*** aliases configured in root tsconfig
+✅ **@redbyte/*** aliases configured in root tsconfig
 ✅ **All packages** can import from each other
 ✅ **No relative imports** across package boundaries
 

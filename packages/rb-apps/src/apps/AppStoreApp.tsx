@@ -10,7 +10,7 @@ import {
   CpuIcon,
   ChipIcon,
   FolderIcon,
-} from '@rb/rb-icons';
+} from '@redbyte/rb-icons';
 
 interface AppStoreProps {
   onOpenApp?: (id: string, props?: any) => void;

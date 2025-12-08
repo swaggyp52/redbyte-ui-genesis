@@ -22,6 +22,10 @@ export interface ButtonProps<T extends React.ElementType = 'button'> {
    * Button children content
    */
   children: React.ReactNode;
+  /**
+   * Accessible label override when the visual label is not descriptive
+   */
+  ariaLabel?: string;
 }
 
 type PolymorphicButtonProps<T extends React.ElementType> = ButtonProps<T> &
@@ -53,9 +57,11 @@ export function Button<T extends React.ElementType = 'button'>({
   size = 'md',
   disabled,
   children,
+  ariaLabel,
   ...props
 }: PolymorphicButtonProps<T>) {
   const Component = as || 'button';
+  const role = Component === 'button' ? undefined : 'button';
 
   const baseStyles = [
     'inline-flex',
@@ -107,6 +113,10 @@ export function Button<T extends React.ElementType = 'button'>({
       className={className}
       disabled={disabled}
       aria-disabled={disabled}
+      role={role}
+      aria-label={ariaLabel}
+      // @ts-expect-error type is only valid on button elements
+      type={(props as { type?: string }).type || (Component === 'button' ? 'button' : undefined)}
       {...props}
     >
       {children}

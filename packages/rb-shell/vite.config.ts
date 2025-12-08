@@ -6,10 +6,10 @@ export default defineConfig({
 
   resolve: {
     alias: {
-      '@rb/rb-windowing': new URL('../../packages/rb-windowing/src/index.ts', import.meta.url).pathname,
-      '@rb/rb-apps': new URL('../../packages/rb-apps/src/index.ts', import.meta.url).pathname,
-      '@rb/rb-icons': new URL('../../packages/rb-icons/src/index.ts', import.meta.url).pathname,
-      '@rb/rb-theme': new URL('../../packages/rb-theme/src/index.ts', import.meta.url).pathname
+      '@redbyte/rb-windowing': new URL('../../packages/rb-windowing/src/index.ts', import.meta.url).pathname,
+      '@redbyte/rb-apps': new URL('../../packages/rb-apps/src/index.ts', import.meta.url).pathname,
+      '@redbyte/rb-icons': new URL('../../packages/rb-icons/src/index.ts', import.meta.url).pathname,
+      '@redbyte/rb-theme': new URL('../../packages/rb-theme/src/index.ts', import.meta.url).pathname
     }
   },
 
@@ -23,16 +23,10 @@ export default defineConfig({
         'react',
         'react-dom',
         'react/jsx-runtime',
-
-        '@rb/rb-windowing',
-        '@rb/rb-apps',
-        '@rb/rb-icons',
-        '@rb/rb-theme',
-
-        '@rb/rb-windowing',
-        '@rb/rb-apps',
-        '@rb/rb-icons',
-        '@rb/rb-theme'
+        '@redbyte/rb-windowing',
+        '@redbyte/rb-apps',
+        '@redbyte/rb-icons',
+        '@redbyte/rb-theme'
       ]
     }
   }

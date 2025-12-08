@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { WindowState } from '@rb/rb-windowing';
+import { WindowState } from '@redbyte/rb-windowing';
 import {
   WindowCloseIcon,
   WindowMaximizeIcon,
   WindowMinimizeIcon,
-} from '@rb/rb-icons';
+} from '@redbyte/rb-icons';
 
 interface ShellWindowProps {
   state: WindowState;

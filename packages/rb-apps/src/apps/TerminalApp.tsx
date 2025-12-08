@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { RedByteApp } from '../types';
 import { listExamples, type ExampleId } from '../examples';
-import { useSettingsStore } from '@rb/rb-utils';
+import { useSettingsStore } from '@redbyte/rb-utils';
 import { deleteFile, getFile, listFiles } from '../stores/filesStore';
 
 interface TerminalProps {

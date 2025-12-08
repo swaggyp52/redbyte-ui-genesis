@@ -7,7 +7,7 @@ import {
   deleteFile,
   type LogicFile,
 } from '../stores/filesStore';
-import { deserialize } from '@rb/rb-logic-core';
+import { deserialize } from '@redbyte/rb-logic-core';
 
 interface FilesProps {
   onOpenFile?: (fileId: string) => void;

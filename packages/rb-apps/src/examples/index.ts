@@ -1,4 +1,4 @@
-import type { SerializedCircuitV1 } from '@rb/rb-logic-core';
+import type { SerializedCircuitV1 } from '@redbyte/rb-logic-core';
 import example01 from './01_wire-lamp.json';
 import example02 from './02_and-gate.json';
 import example03 from './03_half-adder.json';
