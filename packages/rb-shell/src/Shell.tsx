@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import { Desktop } from './Desktop';
 import { Dock } from './Dock';
 import { ShellWindow } from './ShellWindow';
@@ -28,7 +28,10 @@ export const Shell: React.FC<ShellProps> = () => {
   const hasShownWelcomeRef = useRef(false);
   const hasInitializedRef = useRef(false);
 
-  const windows = useWindowStore((s) => s.getZOrderedWindows());
+  const windowsRaw = useWindowStore((s) => s.windows);
+  const windows = useMemo(() => {
+    return [...windowsRaw].sort((a, b) => a.zIndex - b.zIndex);
+  }, [windowsRaw]);
   const createWindow = useWindowStore((s) => s.createWindow);
   const closeWindow = useWindowStore((s) => s.closeWindow);
   const moveWindow = useWindowStore((s) => s.moveWindow);
