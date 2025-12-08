@@ -7,9 +7,9 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/rb-icons.js",
-      "require": "./dist/rb-icons.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/rb-icons.cjs"
     }
   },
   "scripts": {
@@ -26,5 +26,9 @@
   "devDependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
 }

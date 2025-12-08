@@ -109,3 +109,19 @@ jobs:
           version: 9
       - run: pnpm install --no-frozen-lockfile --ignore-scripts --force
       - run: pnpm build:os
+
+  publish-check:
+    name: Publish Structure Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - run: pnpm install --no-frozen-lockfile --ignore-scripts --force
+      - run: pnpm build
+      - name: Validate Package Structure
+        run: pnpm -r --workspace-concurrency=1 exec npm publish --dry-run
