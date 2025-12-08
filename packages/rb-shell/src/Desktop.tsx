@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { ThemeVariant, WallpaperId } from '@rb/rb-utils';
+import type { ThemeVariant, WallpaperId } from '@redbyte/rb-utils';
 import {
   TerminalIcon,
   SettingsIcon,
@@ -10,7 +10,7 @@ import {
   CpuIcon,
   ChipIcon,
   PowerButtonIcon,
-} from '@rb/rb-icons';
+} from '@redbyte/rb-icons';
 import { getWallpaperStyle } from './wallpapers';
 
 interface DesktopProps {

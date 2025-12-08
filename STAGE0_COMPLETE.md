@@ -150,7 +150,7 @@ All packages extend shared base configurations from `tools/config/`:
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "paths": { "@rb/*": ["packages/*/src"] }
+    "paths": { "@redbyte/*": ["packages/*/src"] }
   }
 }
 ```
@@ -245,7 +245,7 @@ src/os/styles/engine.css
 ✅ **Tailwind CSS** integrated
 ✅ **No `any` types** in migrated code (strict compliance)
 ✅ **No eval or dynamic code execution**
-✅ **No cross-package relative imports** (using @rb/* aliases)
+✅ **No cross-package relative imports** (using @redbyte/* aliases)
 ✅ **Each package has:**
   - ✅ package.json with @redbyte/* scope
   - ✅ src/index.ts as public export root
@@ -355,10 +355,10 @@ Following the global rule to **preserve and migrate existing UI concepts**:
 Stage 0 provides the foundation for:
 
 - **Stage A:** Implement remaining placeholder packages
-- **Stage B:** Migrate Desktop/Dock/Window components to @rb/shell
-- **Stage C:** Build out @rb/primitives with base UI components
-- **Stage D:** Enhance @rb/logic-core with advanced features
-- **Stage E:** Implement @rb/logic-3d visualization
+- **Stage B:** Migrate Desktop/Dock/Window components to @redbyte/shell
+- **Stage C:** Build out @redbyte/primitives with base UI components
+- **Stage D:** Enhance @redbyte/logic-core with advanced features
+- **Stage E:** Implement @redbyte/logic-3d visualization
 - **Stage F:** Create comprehensive documentation site
 - **Stage G:** Add E2E tests with Playwright
 - **Stage H:** Performance optimization and budgets

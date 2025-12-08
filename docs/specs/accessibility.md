@@ -4,7 +4,7 @@ The Genesis desktop targets predictable, keyboard-first interaction. The guarant
 
 ## Focus Management
 - Every interactive element is keyboard reachable with visible focus styles.
-- Focus traps are available via `createFocusTrap` in `@rb/rb-primitives` and re-exported from `@rb/rb-windowing` for dialogs and windows.
+- Focus traps are available via `createFocusTrap` in `@redbyte/rb-primitives` and re-exported from `@redbyte/rb-windowing` for dialogs and windows.
 - Escape closes transient UI like menus and tooltips; focus returns to the launcher control.
 - Windows are announced as dialogs with titles for assistive tech and expose window controls with clear labels.
 

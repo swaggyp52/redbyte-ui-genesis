@@ -1,5 +1,5 @@
 {
-  "name": "@rb/rb-windowing",
+  "name": "@redbyte/rb-windowing",
   "version": "0.0.0",
   "type": "module",
   "main": "./dist/rb-windowing.js",
@@ -13,11 +13,16 @@
     }
   },
   "scripts": {
-    "build": "vite build -c ../../tools/config/vite.lib.config.ts"
+    "build": "vite build -c ../../tools/config/vite.lib.config.ts",
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@rb/rb-primitives": "workspace:*",
+    "@redbyte/rb-primitives": "workspace:*",
     "zustand": "^5.0.9"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
   },
   "files": ["dist"]
 }

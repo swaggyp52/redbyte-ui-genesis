@@ -1,5 +1,5 @@
 import React from 'react';
-import type { TickEngine, Node, Connection } from '@rb/rb-logic-core';
+import type { TickEngine, Node, Connection } from '@redbyte/rb-logic-core';
 import { useLogicViewStore } from './useLogicViewStore';
 import { NodeView } from './components/NodeView';
 import { WireView } from './components/WireView';

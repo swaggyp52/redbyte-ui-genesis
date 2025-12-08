@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { PortRef } from '@rb/rb-logic-core';
+import type { PortRef } from '@redbyte/rb-logic-core';
 
 export interface Camera {
   x: number;

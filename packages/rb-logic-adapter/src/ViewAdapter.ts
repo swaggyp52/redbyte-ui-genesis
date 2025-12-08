@@ -1,4 +1,4 @@
-import type { CircuitEngine } from '@rb/rb-logic-core';
+import type { CircuitEngine } from '@redbyte/rb-logic-core';
 import type { ViewMode, ViewState } from './types';
 import { circuitTransform } from './transforms/circuit-transform';
 import { schematicTransform } from './transforms/schematic-transform';

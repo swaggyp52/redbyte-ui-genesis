@@ -1,6 +1,6 @@
 import React from 'react';
-import { useWindowStore } from '@rb/rb-windowing';
-import { TerminalIcon, FilesIcon, SettingsIcon, LogicIcon, NeonWaveIcon } from '@rb/rb-icons';
+import { useWindowStore } from '@redbyte/rb-windowing';
+import { TerminalIcon, FilesIcon, SettingsIcon, LogicIcon, NeonWaveIcon } from '@redbyte/rb-icons';
 
 interface DockProps {
   onOpenApp: (id: string) => void;

@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { ThemeVariant, WallpaperId } from '@rb/rb-utils';
+import type { ThemeVariant, WallpaperId } from '@redbyte/rb-utils';
 
 export interface WallpaperDefinition {
   id: WallpaperId;

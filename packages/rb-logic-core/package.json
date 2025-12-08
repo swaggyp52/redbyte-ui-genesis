@@ -1,5 +1,5 @@
 {
-  "name": "@rb/rb-logic-core",
+  "name": "@redbyte/rb-logic-core",
   "version": "0.0.1",
   "type": "module",
   "main": "./dist/rb-logic-core.js",

@@ -1,5 +1,5 @@
 {
-  "name": "@rb/rb-primitives",
+  "name": "@redbyte/rb-primitives",
   "version": "0.0.0",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -7,6 +7,10 @@
   "scripts": {
     "build": "vite build -c ../../tools/config/vite.lib.config.ts",
     "dev": "vite",
-    "test": "vitest"
+    "test": "vitest run --passWithNoTests"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
   }
 }

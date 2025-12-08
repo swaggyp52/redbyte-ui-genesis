@@ -1,6 +1,6 @@
 import React from 'react';
 import type { RedByteApp } from '../types';
-import { useSettingsStore, type ThemeVariant, type WallpaperId } from '@rb/rb-utils';
+import { useSettingsStore, type ThemeVariant, type WallpaperId } from '@redbyte/rb-utils';
 
 interface SettingsProps {
   onThemeChange?: (theme: ThemeVariant) => void;

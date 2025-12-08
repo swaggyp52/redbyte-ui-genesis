@@ -12,12 +12,24 @@ importers:
         specifier: ^5.0.9
         version: 5.0.9(@types/react@19.2.7)(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1))
     devDependencies:
+      '@testing-library/jest-dom':
+        specifier: ^6.6.3
+        version: 6.6.3
+      '@testing-library/react':
+        specifier: ^16.1.0
+        version: 16.3.0(@testing-library/dom@10.4.1)(@types/react@19.2.7)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      '@vitest/coverage-v8':
+        specifier: ^2.1.8
+        version: 2.1.9(vitest@2.1.9(@types/node@24.10.1)(jsdom@27.2.0))
       '@vitejs/plugin-react':
         specifier: ^5.1.1
         version: 5.1.1(vite@7.2.6(@types/node@24.10.1)(jiti@1.21.7))
       autoprefixer:
         specifier: ^10.4.22
         version: 10.4.22(postcss@8.5.6)
+      jsdom:
+        specifier: ^27.2.0
+        version: 27.2.0
       postcss:
         specifier: ^8.5.6
         version: 8.5.6
@@ -27,6 +39,9 @@ importers:
       tailwindcss:
         specifier: ^3.4.18
         version: 3.4.18
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@24.10.1)(jsdom@27.2.0)
       vite:
         specifier: ^7.2.6
         version: 7.2.6(@types/node@24.10.1)(jiti@1.21.7)
@@ -38,13 +53,13 @@ importers:
 
   apps/playground:
     dependencies:
-      '@rb/rb-apps':
+      '@redbyte/rb-apps':
         specifier: workspace:*
         version: link:../../packages/rb-apps
-      '@rb/rb-shell':
+      '@redbyte/rb-shell':
         specifier: workspace:*
         version: link:../../packages/rb-shell
-      '@rb/rb-windowing':
+      '@redbyte/rb-windowing':
         specifier: workspace:*
         version: link:../../packages/rb-windowing
       react:
@@ -58,25 +73,25 @@ importers:
 
   packages/rb-apps:
     dependencies:
-      '@rb/rb-icons':
+      '@redbyte/rb-icons':
         specifier: workspace:*
         version: link:../rb-icons
-      '@rb/rb-logic-3d':
+      '@redbyte/rb-logic-3d':
         specifier: workspace:*
         version: link:../rb-logic-3d
-      '@rb/rb-logic-adapter':
+      '@redbyte/rb-logic-adapter':
         specifier: workspace:*
         version: link:../rb-logic-adapter
-      '@rb/rb-logic-core':
+      '@redbyte/rb-logic-core':
         specifier: workspace:*
         version: link:../rb-logic-core
-      '@rb/rb-logic-view':
+      '@redbyte/rb-logic-view':
         specifier: workspace:*
         version: link:../rb-logic-view
-      '@rb/rb-theme':
+      '@redbyte/rb-theme':
         specifier: workspace:*
         version: link:../rb-theme
-      '@rb/rb-utils':
+      '@redbyte/rb-utils':
         specifier: workspace:*
         version: link:../rb-utils
       react:
@@ -103,10 +118,10 @@ importers:
 
   packages/rb-logic-3d:
     dependencies:
-      '@rb/rb-logic-adapter':
+      '@redbyte/rb-logic-adapter':
         specifier: workspace:*
         version: link:../rb-logic-adapter
-      '@rb/rb-logic-core':
+      '@redbyte/rb-logic-core':
         specifier: workspace:*
         version: link:../rb-logic-core
       '@react-three/drei':
@@ -134,7 +149,7 @@ importers:
 
   packages/rb-logic-adapter:
     dependencies:
-      '@rb/rb-logic-core':
+      '@redbyte/rb-logic-core':
         specifier: workspace:*
         version: link:../rb-logic-core
     devDependencies:
@@ -156,7 +171,7 @@ importers:
 
   packages/rb-logic-view:
     dependencies:
-      '@rb/rb-logic-core':
+      '@redbyte/rb-logic-core':
         specifier: workspace:*
         version: link:../rb-logic-core
       react:
@@ -183,16 +198,16 @@ importers:
 
   packages/rb-shell:
     dependencies:
-      '@rb/rb-icons':
+      '@redbyte/rb-icons':
         specifier: workspace:*
         version: link:../rb-icons
-      '@rb/rb-theme':
+      '@redbyte/rb-theme':
         specifier: workspace:*
         version: link:../rb-theme
-      '@rb/rb-utils':
+      '@redbyte/rb-utils':
         specifier: workspace:*
         version: link:../rb-utils
-      '@rb/rb-windowing':
+      '@redbyte/rb-windowing':
         specifier: workspace:*
         version: link:../rb-windowing
       react:
@@ -204,7 +219,7 @@ importers:
 
   packages/rb-theme:
     dependencies:
-      '@rb/rb-tokens':
+      '@redbyte/rb-tokens':
         specifier: workspace:*
         version: link:../rb-tokens
 

@@ -1,5 +1,5 @@
 {
-  "name": "@rb/rb-logic-adapter",
+  "name": "@redbyte/rb-logic-adapter",
   "version": "0.0.1",
   "type": "module",
   "main": "./dist/rb-logic-adapter.js",
@@ -17,7 +17,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@rb/rb-logic-core": "workspace:*"
+    "@redbyte/rb-logic-core": "workspace:*"
   },
   "devDependencies": {
     "vite": "^7.2.6",

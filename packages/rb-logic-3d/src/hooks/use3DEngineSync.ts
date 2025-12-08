@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CircuitEngine } from '@rb/rb-logic-core';
+import type { CircuitEngine } from '@redbyte/rb-logic-core';
 
 export function use3DEngineSync(engine: CircuitEngine) {
   const [signals, setSignals] = useState<Map<string, 0 | 1>>(new Map());

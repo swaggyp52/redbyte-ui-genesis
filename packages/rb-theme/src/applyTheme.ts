@@ -1,4 +1,4 @@
-import { tokensDarkNeon, tokensLightFrost, tokensToCSSVariables } from '@rb/rb-tokens';
+import { tokensDarkNeon, tokensLightFrost, tokensToCSSVariables } from '@redbyte/rb-tokens';
 
 export type ThemeVariant = 'dark-neon' | 'light-frost';
 

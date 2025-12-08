@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { NeonWaveIcon, PowerButtonIcon } from '@rb/rb-icons';
+import { NeonWaveIcon, PowerButtonIcon } from '@redbyte/rb-icons';
 
 interface BootScreenProps {
   onComplete: () => void;

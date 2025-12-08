@@ -1,4 +1,4 @@
 export {
   createFocusTrap,
   type FocusTrapOptions,
-} from '@rb/rb-primitives';
+} from '@redbyte/rb-primitives';

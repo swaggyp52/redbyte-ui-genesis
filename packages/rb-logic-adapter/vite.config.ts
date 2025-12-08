@@ -10,7 +10,7 @@ export default defineConfig({
       formats: ['es', 'cjs'],
     },
     rollupOptions: {
-      external: ['@rb/rb-logic-core'],
+      external: ['@redbyte/rb-logic-core'],
     },
   },
 });

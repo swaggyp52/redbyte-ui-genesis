@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import type { RedByteApp } from '@rb/rb-apps';
+import type { RedByteApp } from '@redbyte/rb-apps';
 
 interface ShellContextValue {
   openApp: (id: string, props?: any) => void;
