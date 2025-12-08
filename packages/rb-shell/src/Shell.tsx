@@ -20,7 +20,7 @@ interface WindowAppBinding {
 }
 
 export const Shell: React.FC<ShellProps> = () => {
-  const [booted, setBooted] = useState<boolean>(() => {
+  const [booted, setBooted]; const hasShownWelcomeRef = useRef(false); = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
     return localStorage.getItem('rb:shell:booted') === '1';
   });
