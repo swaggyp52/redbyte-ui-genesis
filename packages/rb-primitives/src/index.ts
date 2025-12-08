@@ -21,3 +21,6 @@ export type { MenuProps, MenuItemProps } from './Menu';
 
 export { Tooltip } from './Tooltip';
 export type { TooltipProps } from './Tooltip';
+
+export { createFocusTrap } from './focusTrap';
+export type { FocusTrapOptions } from './focusTrap';

@@ -162,6 +162,9 @@ export function Window({ window: win }: WindowProps) {
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseUp}
+      role="dialog"
+      aria-label={win.title}
+      aria-modal={false}
     >
       {/* WINDOW HEADER */}
       <div
@@ -188,6 +191,7 @@ export function Window({ window: win }: WindowProps) {
             />
             <button
               aria-label="Maximize"
+              aria-pressed={win.isMaximized}
               className="h-2.5 w-2.5 rounded-full bg-emerald-400 hover:bg-emerald-300"
               onClick={(e) => {
                 e.stopPropagation();
