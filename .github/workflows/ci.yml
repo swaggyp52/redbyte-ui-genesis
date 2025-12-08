@@ -1,3 +1,19 @@
+# CI Workflow - Definition of Done (DoD) Compliance
+#
+# This workflow enforces the quality gates defined in docs/specs/dod.md
+# All jobs MUST pass before code can be merged to main.
+#
+# DoD Checklist Coverage:
+# ✅ TypeScript strict mode compliance (typecheck job)
+# ✅ ESLint with zero errors (lint job)
+# ✅ Prettier formatting (lint job)
+# ✅ All tests pass (test job)
+# ✅ Build succeeds (build job)
+# ✅ NPM publish structure valid (publish-check job)
+# ✅ Code coverage tracked (coverage job)
+# ✅ Accessibility compliance (accessibility job)
+# ✅ Performance budgets (performance job)
+
 name: CI
 
 on:
@@ -109,3 +125,19 @@ jobs:
           version: 9
       - run: pnpm install --no-frozen-lockfile --ignore-scripts --force
       - run: pnpm build:os
+
+  publish-check:
+    name: Publish Structure Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - run: pnpm install --no-frozen-lockfile --ignore-scripts --force
+      - run: pnpm build
+      - name: Validate Package Structure
+        run: pnpm -r --workspace-concurrency=1 exec npm publish --dry-run

@@ -77,3 +77,6 @@ registerCompositeNode(DFlipFlopDef);
 registerCompositeNode(JKFlipFlopDef);
 registerCompositeNode(FullAdderDef);
 registerCompositeNode(Counter4BitDef);
+
+// Share utilities
+export * from './share/encoding';

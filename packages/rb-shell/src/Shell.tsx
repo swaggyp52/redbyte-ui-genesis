@@ -7,6 +7,7 @@ import { useSettingsStore } from '@redbyte/rb-utils';
 import { getApp, type RedByteApp } from '@redbyte/rb-apps';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import BootScreen from './BootScreen';
+import { ToastContainer } from './ToastContainer';
 import './styles.css';
 
 export interface ShellProps {
@@ -87,7 +88,17 @@ export const Shell: React.FC<ShellProps> = () => {
     try {
       localStorage.setItem('rb:shell:booted', '1');
     } catch {}
-  }, [booted]);
+
+    // Show welcome window on first run
+    const welcomeSeen = localStorage.getItem('rb-os:v1:welcomeSeen');
+    if (!welcomeSeen) {
+      // Small delay to ensure shell is ready
+      const timer = setTimeout(() => {
+        openWindow('welcome');
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [booted, openWindow]);
 
   if (!booted) {
     return <BootScreen onComplete={() => setBooted(true)} />;
@@ -126,6 +137,8 @@ export const Shell: React.FC<ShellProps> = () => {
           </ShellWindow>
         );
       })}
+
+      <ToastContainer />
     </div>
   );
 };
