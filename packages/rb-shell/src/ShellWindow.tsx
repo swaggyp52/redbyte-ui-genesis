@@ -21,7 +21,7 @@ interface ShellWindowProps {
 
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
-type SnapZone = 'top' | 'left' | 'right' | null;
+type SnapZone = 'top' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | null;
 
 export const ShellWindow: React.FC<ShellWindowProps> = ({
   state,
@@ -50,28 +50,63 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
     return () => cancelAnimationFrame(timer);
   }, []);
 
-  const applySnap = (x: number, y: number) => {
+  const applySnap = (x: number, y: number, mouseX: number, mouseY: number) => {
     const threshold = 24;
+    const cornerThreshold = 100;
     const width = window.innerWidth;
     const height = window.innerHeight;
 
-    if (y < threshold) {
+    const nearTop = mouseY < threshold;
+    const nearBottom = mouseY > height - threshold;
+    const nearLeft = mouseX < threshold;
+    const nearRight = mouseX > width - threshold;
+    const inTopCorner = mouseY < cornerThreshold;
+    const inBottomCorner = mouseY > height - cornerThreshold;
+    const inLeftCorner = mouseX < cornerThreshold;
+    const inRightCorner = mouseX > width - cornerThreshold;
+
+    // Quadrant snapping (corners)
+    if (inTopCorner && inLeftCorner) {
+      onResize(width / 2, height / 2);
+      onMove(0, 0);
+      return;
+    }
+    if (inTopCorner && inRightCorner) {
+      onResize(width / 2, height / 2);
+      onMove(width / 2, 0);
+      return;
+    }
+    if (inBottomCorner && inLeftCorner) {
+      onResize(width / 2, height / 2);
+      onMove(0, height / 2);
+      return;
+    }
+    if (inBottomCorner && inRightCorner) {
+      onResize(width / 2, height / 2);
+      onMove(width / 2, height / 2);
+      return;
+    }
+
+    // Edge snapping
+    if (nearTop) {
       onMaximize();
       return;
     }
 
-    if (x < threshold) {
+    if (nearLeft) {
       onResize(width / 2, height);
       onMove(0, 0);
       return;
     }
 
-    if (width - (x + (state.bounds.width || 0)) < threshold) {
+    if (nearRight) {
       onResize(width / 2, height);
       onMove(width / 2, 0);
-    } else {
-      onMove(x, y);
+      return;
     }
+
+    // No snap
+    onMove(x, y);
   };
 
   const startDrag = (e: React.MouseEvent) => {
@@ -81,9 +116,9 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
     onFocus();
   };
 
-  const endAll = () => {
-    if (dragging && start) {
-      applySnap(state.bounds.x, state.bounds.y);
+  const endAll = (e?: React.MouseEvent) => {
+    if (dragging && start && e) {
+      applySnap(state.bounds.x, state.bounds.y, e.clientX, e.clientY);
     }
     setDragging(false);
     setResizing(null);
@@ -100,13 +135,33 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
 
     // Update snap zone preview
     const threshold = 24;
+    const cornerThreshold = 100;
     const width = window.innerWidth;
+    const height = window.innerHeight;
 
-    if (e.clientY < threshold) {
+    const nearTop = e.clientY < threshold;
+    const nearBottom = e.clientY > height - threshold;
+    const nearLeft = e.clientX < threshold;
+    const nearRight = e.clientX > width - threshold;
+    const inTopCorner = e.clientY < cornerThreshold;
+    const inBottomCorner = e.clientY > height - cornerThreshold;
+    const inLeftCorner = e.clientX < cornerThreshold;
+    const inRightCorner = e.clientX > width - cornerThreshold;
+
+    // Quadrant detection (higher priority)
+    if (inTopCorner && inLeftCorner) {
+      setSnapZone('top-left');
+    } else if (inTopCorner && inRightCorner) {
+      setSnapZone('top-right');
+    } else if (inBottomCorner && inLeftCorner) {
+      setSnapZone('bottom-left');
+    } else if (inBottomCorner && inRightCorner) {
+      setSnapZone('bottom-right');
+    } else if (nearTop) {
       setSnapZone('top');
-    } else if (e.clientX < threshold) {
+    } else if (nearLeft) {
       setSnapZone('left');
-    } else if (e.clientX > width - threshold) {
+    } else if (nearRight) {
       setSnapZone('right');
     } else {
       setSnapZone(null);
@@ -180,27 +235,63 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
     const height = window.innerHeight;
     let overlayStyle: React.CSSProperties = {};
 
-    if (snapZone === 'top') {
-      overlayStyle = {
-        left: 0,
-        top: 0,
-        width: '100%',
-        height: '100%',
-      };
-    } else if (snapZone === 'left') {
-      overlayStyle = {
-        left: 0,
-        top: 0,
-        width: width / 2,
-        height: '100%',
-      };
-    } else if (snapZone === 'right') {
-      overlayStyle = {
-        left: width / 2,
-        top: 0,
-        width: width / 2,
-        height: '100%',
-      };
+    switch (snapZone) {
+      case 'top':
+        overlayStyle = {
+          left: 0,
+          top: 0,
+          width: '100%',
+          height: '100%',
+        };
+        break;
+      case 'left':
+        overlayStyle = {
+          left: 0,
+          top: 0,
+          width: width / 2,
+          height: '100%',
+        };
+        break;
+      case 'right':
+        overlayStyle = {
+          left: width / 2,
+          top: 0,
+          width: width / 2,
+          height: '100%',
+        };
+        break;
+      case 'top-left':
+        overlayStyle = {
+          left: 0,
+          top: 0,
+          width: width / 2,
+          height: height / 2,
+        };
+        break;
+      case 'top-right':
+        overlayStyle = {
+          left: width / 2,
+          top: 0,
+          width: width / 2,
+          height: height / 2,
+        };
+        break;
+      case 'bottom-left':
+        overlayStyle = {
+          left: 0,
+          top: height / 2,
+          width: width / 2,
+          height: height / 2,
+        };
+        break;
+      case 'bottom-right':
+        overlayStyle = {
+          left: width / 2,
+          top: height / 2,
+          width: width / 2,
+          height: height / 2,
+        };
+        break;
     }
 
     return (
