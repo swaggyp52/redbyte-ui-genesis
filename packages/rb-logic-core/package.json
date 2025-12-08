@@ -14,7 +14,7 @@
   },
   "scripts": {
     "build": "vite build",
-    "test": "vitest run --passWithNoTests"
+    "test": "echo \"Tests run at root. This package has no direct tests.\""
   },
   "devDependencies": {
     "vite": "^7.2.6",

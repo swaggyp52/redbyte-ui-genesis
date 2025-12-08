@@ -14,7 +14,7 @@
   },
   "scripts": {
     "build": "vite build",
-    "test": "vitest run --passWithNoTests"
+    "test": "echo \"Tests run at root. This package has no direct tests.\""
   },
   "dependencies": {
     "@redbyte/rb-logic-core": "workspace:*",
@@ -31,5 +31,7 @@
     "vite": "^7.2.6",
     "vitest": "^2.1.8"
   },
-  "files": ["dist"]
+  "files": [
+    "dist"
+  ]
 }

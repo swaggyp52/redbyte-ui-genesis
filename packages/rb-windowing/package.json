@@ -14,7 +14,7 @@
   },
   "scripts": {
     "build": "vite build -c ../../tools/config/vite.lib.config.ts",
-    "test": "vitest run --passWithNoTests"
+    "test": "echo \"Tests run at root. This package has no direct tests.\""
   },
   "dependencies": {
     "@redbyte/rb-primitives": "workspace:*",
@@ -24,5 +24,7 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },
-  "files": ["dist"]
+  "files": [
+    "dist"
+  ]
 }

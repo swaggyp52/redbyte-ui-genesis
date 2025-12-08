@@ -7,7 +7,7 @@
   "scripts": {
     "build": "vite build -c ../../tools/config/vite.lib.config.ts",
     "dev": "vite",
-    "test": "vitest run --passWithNoTests"
+    "test": "echo \"Tests run at root. This package has no direct tests.\""
   },
   "peerDependencies": {
     "react": "^18.0.0",

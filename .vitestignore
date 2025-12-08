@@ -1,0 +1,7 @@
+packages/rb-icons/*
+packages/rb-primitives/*
+packages/rb-windowing/*
+packages/rb-shell/*
+packages/rb-utils/*
+packages/rb-logic-3d/*
+!packages/**/__tests__/

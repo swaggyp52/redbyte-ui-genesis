@@ -12,11 +12,11 @@
     "build": "pnpm -r run build",
     "lint": "pnpm -r --if-present run lint",
     "typecheck": "pnpm -r --if-present run typecheck",
-    "test": "pnpm -r --if-present run test",
+    "test": "vitest run",
     "format": "pnpm -r --if-present run format",
     "a11y": "pnpm -r --if-present run test:a11y",
     "perf": "pnpm -r --if-present run test:perf",
-    "coverage": "pnpm -r --if-present test -- --coverage --runInBand"
+    "coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.1",
