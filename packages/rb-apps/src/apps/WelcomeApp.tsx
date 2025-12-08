@@ -107,12 +107,12 @@ export const WelcomeApp: RedByteApp = {
   manifest: {
     id: 'welcome',
     name: 'Welcome to RedByte OS Genesis',
-    version: '1.0.0',
+    iconId: 'neon-wave',
     singleton: true,
     defaultSize: {
       width: 500,
       height: 400,
     },
   },
-  Component: WelcomeAppContent,
+  component: WelcomeAppContent,
 };
