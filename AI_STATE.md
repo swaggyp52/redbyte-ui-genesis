@@ -236,5 +236,5 @@ After completing work, an AI agent MUST:
 
 \- Added CI legal/trademark guard job to scan tracked files and verify Connor Angiel attribution reference in AI_STATE.md; marked objective “Add CI guard against incorrect attribution” as complete; phase unchanged
 
-
+\- Hardened CI legal_guard patterns/output to avoid banned literals and prevent self-triggering; phase unchanged
 

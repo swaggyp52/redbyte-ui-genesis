@@ -153,30 +153,23 @@ jobs:
         run: |
           set -euo pipefail
 
-          # build patterns without storing forbidden literals in the workflow file
+          # Build banned patterns without storing banned literals in this workflow file.
           P1="Un""authorized use"
-          P2="All rights reserved."" Un""authorized use"
-          TM_SYM="$(printf '\u2122')"   # TM symbol
-          REG_SYM="$(printf '\u00AE')"  # registered symbol
+          P2="All rights re""served."" Un""authorized use"
 
-          # ensure canonical attribution exists at least in the ledger
+          TM_SYM="$(printf '\u2122')"
+          REG_SYM="$(printf '\u00AE')"
+
+          # Require attribution reference at least in the authoritative ledger.
           if ! grep -qF "Connor Angiel" AI_STATE.md; then
-            echo "::error::Missing required attribution reference: 'Connor Angiel' not found in AI_STATE.md"
+            echo "::error::Missing required attribution reference in AI_STATE.md"
             exit 1
           fi
 
-          echo "Scanning tracked text files for prohibited legal/trademark language..."
-          MATCHES=0
-
-          # scan tracked files; grep -I ignores binaries; show file:line:content
+          echo "Scanning tracked text files for banned legal / trademark language..."
           if git ls-files -z | xargs -0 grep -I -nH -F -e "$P1" -e "$P2" -e "$TM_SYM" -e "$REG_SYM" ; then
-            MATCHES=1
-          fi
-
-          if [ "$MATCHES" -ne 0 ]; then
-            echo "::error::Prohibited legal/trademark language detected (remove it)."
-            echo "::error::Banned: '${P1}', '${P2}', TM symbol, registered symbol."
+            echo "::error::Banned legal / trademark language detected. Remove the matching text."
             exit 1
           fi
 
-          echo "OK: no prohibited legal/trademark language detected."
+          echo "OK: scan passed."
