@@ -144,9 +144,9 @@ Status: ACTIVE
 
 \- \[ ] Centralize legal attribution
 
-\- \[ ] Add CI guard against incorrect attribution
+\- \[x] Add CI guard against incorrect attribution
 
-\- \[ ] Document AI usage rules inside repo
+\- \[x] Document AI usage rules inside repo
 
 
 
@@ -228,3 +228,7 @@ After completing work, an AI agent MUST:
 
 
 
+\\- Added AI usage rules documentation in `docs/ai-usage-rules.md`
+\
+\### 2025-12-14
+\- Added CI guard to block prohibited legal attribution and trademark language in CI workflow

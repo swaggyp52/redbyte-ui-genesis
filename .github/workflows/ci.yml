@@ -23,6 +23,28 @@ on:
     branches: [main, develop]
 
 jobs:
+  legal-guard:
+    name: Legal Attribution Guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan for prohibited legal or trademark language
+        run: |
+          set -euo pipefail
+          echo "Checking for prohibited legal or trademark language..."
+
+          if git grep -n -I -E 'Unauthorized use|All rights reserved\. Unauthorized use|[™®]' --; then
+            echo "::error::Prohibited legal or trademark language detected. Remove unauthorized phrases or trademark symbols and ensure attribution references Connor Angiel only."
+            exit 1
+          fi
+
+          if ! git grep -n -I -E 'Connor Angiel' --; then
+            echo "::error::Missing required Connor Angiel attribution reference."
+            exit 1
+          fi
+
+          echo "Legal attribution and trademark scan passed."
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
