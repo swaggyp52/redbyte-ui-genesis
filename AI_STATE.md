@@ -142,11 +142,11 @@ Status: ACTIVE
 
 \- \[x] Correct legal name spelling to Connor Angiel across repo
 
-\- \[ ] Centralize legal attribution
+\- \[x] Centralize legal attribution
 
-\- \[ ] Add CI guard against incorrect attribution
+\- \[x] Add CI guard against incorrect attribution
 
-\- \[ ] Document AI usage rules inside repo
+\- \[x] Document AI usage rules inside repo
 
 
 
@@ -225,6 +225,16 @@ After completing work, an AI agent MUST:
 \- Corrected legal attribution spelling to Connor Angiel across entire codebase
 
 \- Commit: 5b353687
+
+\### 2025-12-14
+
+\- Added docs/ai-usage-rules.md to document existing AI usage governance within the repo
+
+\- Marked objective “Document AI usage rules inside repo” as complete; phase unchanged
+
+\- Added docs/legal-attribution.md as canonical attribution guidance; marked objective “Centralize legal attribution” as complete; phase unchanged
+
+\- Added CI legal/trademark guard job to scan tracked files and verify Connor Angiel attribution reference in AI_STATE.md; marked objective “Add CI guard against incorrect attribution” as complete; phase unchanged
 
 
 
