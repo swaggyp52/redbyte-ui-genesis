@@ -2,6 +2,8 @@
 
 These steps reproduce the deployment workflow that merges the latest development work into `main` and triggers the Cloudflare Pages build for **redbyteapps.dev**.
 
+> Tip: In Cloudflare Pages, confirm that the **Production branch** is set to `main` and that the custom domain `redbyteapps.dev` is connected. If production is pointed at another branch, the live site will not pick up the latest legal/name fixes even if previews show them correctly.
+
 1. Ensure your local repo is up to date:
    ```bash
    git checkout development
