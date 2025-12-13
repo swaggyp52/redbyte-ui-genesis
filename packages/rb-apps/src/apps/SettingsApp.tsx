@@ -1,5 +1,5 @@
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
-// All rights reserved. Unauthorized use, reproduction or distribution is prohibited.
+// Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React from 'react';
@@ -158,13 +158,13 @@ All rights reserved`;
 
             <div className="rounded-lg border border-gray-800 bg-gray-850 p-4">
               <h3 className="text-sm font-semibold text-white">Copyright</h3>
-              <p className="mt-1 text-xs text-gray-400">© 2025 Connor Angiel — RedByte OS Genesis. All rights reserved.</p>
+              <p className="mt-1 text-xs text-gray-400">© 2025 Connor Angiel — RedByte OS Genesis. </p>
             </div>
 
             <div className="rounded-lg border border-gray-800 bg-gray-850 p-4">
               <h3 className="text-sm font-semibold text-white">Trademarks</h3>
               <p className="mt-1 text-xs text-gray-400">
-                “RedByte”, “RedByte OS”, and “RedByte OS Genesis” are trademarks of Connor Angiel. Unauthorized use is
+                “RedByte”, “RedByte OS”, and “RedByte OS Genesis” are trademarks of Connor Angiel. Use without permission is
                 prohibited.
               </p>
             </div>
