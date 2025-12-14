@@ -241,11 +241,3 @@ After completing work, an AI agent MUST:
 \### 2025-12-15
 \- Removed banned boilerplate/legal phrases and trademark symbols across tracked files to satisfy CI legal_guard; objectives unchanged; phase unchanged
 \- Added launcher dock tooltip hint to reinforce desktop metaphor; no behavior change; objectives unchanged; phase unchanged
-
-\- Added AGENTS.md as a pointer for AI agents to AI_STATE.md and existing governance docs; objectives unchanged; phase unchanged
-
-\- Added Launcher app registered in app registry with Dock entry using existing Launcher component; objectives unchanged; phase unchanged
-
-\- Launcher now lists registered apps (excluding itself) and opens selected apps via existing window flow; objectives unchanged; phase unchanged
-
-\- Added keyboard shortcut (Ctrl+K / Cmd+K) to open the Launcher and updated Dock tooltip; objectives unchanged; phase unchanged
