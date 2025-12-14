@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 export interface LauncherAppInfo {
   id: string;
