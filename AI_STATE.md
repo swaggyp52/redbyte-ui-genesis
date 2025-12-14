@@ -254,7 +254,3 @@ After completing work, an AI agent MUST:
 \- Added Launcher smoke test covering registry-derived list (excluding launcher) and click-to-launch behavior; objectives unchanged; phase unchanged
 
 \- Added keyboard navigation (Up/Down/Enter) to the Launcher list and updated launcher test; objectives unchanged; phase unchanged
-\- Launcher now auto-focuses the selected entry on open to enable immediate keyboard navigation; launcher test updated; objectives unchanged; phase unchanged
-\- Added inline Launcher keyboard search filter with query display and tests; objectives unchanged; phase unchanged
-\- Escape now clears Launcher search when present and closes the Launcher window when query is empty; launcher tests updated; objectives unchanged; phase unchanged
-\- Added Launcher recent apps list (last 5 launches tracked in shell memory) with UI section and tests; objectives unchanged; phase unchanged

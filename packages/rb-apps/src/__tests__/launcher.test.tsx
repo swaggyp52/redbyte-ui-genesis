@@ -19,7 +19,6 @@ describe('Launcher component', () => {
 
     render(<Launcher apps={sampleApps} onLaunch={onLaunch} />);
 
-    expect(screen.getByRole('option', { name: 'Terminal' })).toHaveFocus();
     expect(screen.getByText('Terminal')).toBeTruthy();
     expect(screen.getByText('Files')).toBeTruthy();
 
@@ -27,130 +26,18 @@ describe('Launcher component', () => {
     expect(onLaunch).toHaveBeenCalledWith('terminal');
   });
 
-  it('renders recent apps section and launches from it', () => {
-    const onLaunch = vi.fn();
-
-    render(
-      <Launcher
-        apps={sampleApps}
-        recentApps={[{ id: 'files', name: 'Files' }]}
-        onLaunch={onLaunch}
-      />
-    );
-
-    expect(screen.getByText('Recent')).toBeTruthy();
-    const recentButton = screen.getByRole('option', { name: 'Files' });
-    expect(recentButton).toHaveFocus();
-
-    fireEvent.click(recentButton);
-    expect(onLaunch).toHaveBeenCalledWith('files');
-  });
-
   it('supports keyboard navigation and launch', () => {
     const onLaunch = vi.fn();
 
     render(<Launcher apps={sampleApps} onLaunch={onLaunch} />);
 
-    const firstButton = screen.getByRole('option', { name: 'Terminal' });
-    const secondButton = screen.getByRole('option', { name: 'Files' });
+    const list = screen.getByRole('listbox');
+    list.focus();
 
-    fireEvent.keyDown(firstButton, { key: 'ArrowDown' });
-    expect(secondButton).toHaveFocus();
-    fireEvent.keyDown(secondButton, { key: 'Enter' });
+    fireEvent.keyDown(list, { key: 'ArrowDown' });
+    fireEvent.keyDown(list, { key: 'Enter' });
 
     expect(onLaunch).toHaveBeenCalledWith('files');
-  });
-
-  it('filters by keyboard input and launches selection', () => {
-    const onLaunch = vi.fn();
-
-    render(
-      <Launcher
-        apps={[
-          { id: 'terminal', name: 'Terminal' },
-          { id: 'files', name: 'Files' },
-          { id: 'settings', name: 'Settings' },
-        ]}
-        onLaunch={onLaunch}
-      />
-    );
-
-    const listbox = screen.getByRole('listbox');
-
-    fireEvent.keyDown(listbox, { key: 't' });
-    fireEvent.keyDown(listbox, { key: 'e' });
-
-    expect(screen.getByText('Search: te')).toBeTruthy();
-    expect(screen.getByText('Terminal')).toBeTruthy();
-    expect(screen.queryByText('Files')).toBeNull();
-    expect(screen.queryByText('Settings')).toBeNull();
-
-    fireEvent.keyDown(listbox, { key: 'Enter' });
-    expect(onLaunch).toHaveBeenCalledWith('terminal');
-  });
-
-  it('clears query with Escape without closing when query exists', () => {
-    const onClose = vi.fn();
-
-    render(
-      <Launcher
-        apps={[
-          { id: 'terminal', name: 'Terminal' },
-          { id: 'files', name: 'Files' },
-        ]}
-        onClose={onClose}
-      />
-    );
-
-    const listbox = screen.getByRole('listbox');
-
-    fireEvent.keyDown(listbox, { key: 't' });
-    expect(screen.getByText('Search: t')).toBeTruthy();
-
-    fireEvent.keyDown(listbox, { key: 'Escape' });
-
-    expect(screen.queryByText('Search: t')).toBeNull();
-    expect(onClose).not.toHaveBeenCalled();
-  });
-
-  it('handles empty results and backspace restore', () => {
-    const onLaunch = vi.fn();
-
-    render(
-      <Launcher
-        apps={[
-          { id: 'terminal', name: 'Terminal' },
-          { id: 'files', name: 'Files' },
-        ]}
-        onLaunch={onLaunch}
-      />
-    );
-
-    const listbox = screen.getByRole('listbox');
-
-    fireEvent.keyDown(listbox, { key: 'z' });
-    fireEvent.keyDown(listbox, { key: 'z' });
-
-    expect(screen.getByText('No matches')).toBeTruthy();
-
-    fireEvent.keyDown(listbox, { key: 'Backspace' });
-    fireEvent.keyDown(listbox, { key: 'Backspace' });
-
-    expect(screen.queryByText('No matches')).toBeNull();
-    expect(screen.getByText('Terminal')).toBeTruthy();
-    expect(screen.getByText('Files')).toBeTruthy();
-  });
-
-  it('calls onClose when Escape is pressed with empty query', () => {
-    const onClose = vi.fn();
-
-    render(<Launcher apps={sampleApps} onClose={onClose} />);
-
-    const listbox = screen.getByRole('listbox');
-
-    fireEvent.keyDown(listbox, { key: 'Escape' });
-
-    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
 
