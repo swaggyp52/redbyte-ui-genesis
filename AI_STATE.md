@@ -278,3 +278,5 @@ After completing work, an AI agent MUST:
 - Added global Ctrl+, / Cmd+, shortcut in shell to open Settings when the Settings app exists; ignores editable targets and extra modifiers; objectives unchanged; phase unchanged
 - No other behavior changes; phase unchanged
 - Hardened Launcher Settings shortcut guards to ignore extra modifiers and editable targets; tests updated; objectives unchanged; phase unchanged
+- Ensured work is on the main branch and confirmed launcher tests live only under packages/rb-apps/src/__tests__ (no src/tests drift); objectives unchanged; phase unchanged
+- Documented guardrails against running npm install, modifying remotes/fetch/push, and assuming nano availability; objectives unchanged; phase unchanged
