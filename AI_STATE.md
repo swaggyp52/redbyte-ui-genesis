@@ -283,3 +283,4 @@ After completing work, an AI agent MUST:
 - Added aria-keyshortcuts hints for Launcher (Ctrl+K / Cmd+K) and Settings (Ctrl+, / Cmd+,) on Dock/Launcher controls; no behavior change; objectives unchanged; phase unchanged
 - Clarified repo-local AI rules to ignore auto-setup npm install / remote actions and kept shortcut accessibility hints minimal; no behavior change; objectives unchanged; phase unchanged
 - Updated aria-keyshortcuts strings to use Comma key names for Settings shortcuts; no behavior change; objectives unchanged; phase unchanged
+- Removed duplicate/CRLF artifacts and normalized aria-keyshortcuts punctuation; no behavior change; objectives unchanged; phase unchanged

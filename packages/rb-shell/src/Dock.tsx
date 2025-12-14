@@ -22,7 +22,7 @@ const dockIcons = [
 const LAUNCHER_SHORTCUT_HINT = 'Ctrl+K / Cmd+K';
 const SETTINGS_SHORTCUT_HINT = 'Ctrl+, / Cmd+,';
 const LAUNCHER_ARIA_KEYSHORTCUTS = 'Control+K Meta+K';
-const SETTINGS_ARIA_KEYSHORTCUTS = 'Control+Comma Meta+Comma';
+const SETTINGS_ARIA_KEYSHORTCUTS = 'Control+, Meta+,';
 const DOCK_ORDER_STORAGE_KEY = 'rb.shell.dockOrder';
 const LEGACY_DOCK_ORDER_STORAGE_KEY = 'rb:shell:dockOrder';
 
