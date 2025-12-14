@@ -27,6 +27,39 @@ describe('Launcher component', () => {
     expect(onLaunch).toHaveBeenCalledWith('terminal');
   });
 
+  it('renders Open Settings action only when settings app exists', () => {
+    const onLaunch = vi.fn();
+
+    const { rerender } = render(
+      <Launcher apps={[...sampleApps, { id: 'settings', name: 'Settings' }]} onLaunch={onLaunch} />
+    );
+
+    expect(screen.getByText('Open Settings')).toBeTruthy();
+
+    rerender(<Launcher apps={sampleApps} onLaunch={onLaunch} />);
+
+    expect(screen.queryByText('Open Settings')).toBeNull();
+  });
+
+  it('launches settings with Ctrl+, and closes when available', () => {
+    const onLaunch = vi.fn();
+    const onClose = vi.fn();
+
+    render(
+      <Launcher
+        apps={[...sampleApps, { id: 'settings', name: 'Settings' }]}
+        onLaunch={onLaunch}
+        onClose={onClose}
+      />
+    );
+
+    const listbox = screen.getByRole('listbox');
+    fireEvent.keyDown(listbox, { key: ',', ctrlKey: true });
+
+    expect(onLaunch).toHaveBeenCalledWith('settings');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('auto-closes after launching when onClose is provided', () => {
     const onLaunch = vi.fn();
     const onClose = vi.fn();
@@ -100,6 +133,12 @@ describe('Launcher component', () => {
     expect(onTogglePin).toHaveBeenCalledWith('terminal');
     expect(onLaunch).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('shows running indicator for running apps', () => {
+    render(<Launcher apps={sampleApps} runningAppIds={['terminal']} />);
+
+    expect(screen.getByText('(Running)')).toBeTruthy();
   });
 
   it('supports keyboard navigation and launch', () => {

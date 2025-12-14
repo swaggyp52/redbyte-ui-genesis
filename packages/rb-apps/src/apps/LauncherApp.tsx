@@ -13,6 +13,7 @@ interface LauncherComponentProps {
   recentAppIds?: string[];
   pinnedAppIds?: string[];
   onTogglePin?: (id: string) => void;
+  runningAppIds?: string[];
 }
 
 const LauncherComponent: React.FC<LauncherComponentProps> = ({
@@ -21,6 +22,7 @@ const LauncherComponent: React.FC<LauncherComponentProps> = ({
   recentAppIds,
   pinnedAppIds,
   onTogglePin,
+  runningAppIds,
 }) => {
   const apps = useMemo(() => getAppsForLauncher(), []);
 
@@ -46,6 +48,7 @@ const LauncherComponent: React.FC<LauncherComponentProps> = ({
       apps={apps}
       recentApps={recentApps}
       pinnedApps={pinnedApps}
+      runningAppIds={runningAppIds}
       onTogglePin={onTogglePin}
       onLaunch={(id) => onOpenApp?.(id)}
       onClose={onClose}
