@@ -123,11 +123,7 @@ export const Shell: React.FC<ShellProps> = () => {
 
       setBindings((prev) => ({ ...prev, [state.id]: { appId, props } }));
       return state.id;
-    },
-    [createWindow, focusWindow, recordRecentApp, windows]
-  );
-
-  useEffect(() => {
+useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const handler = (event: KeyboardEvent) => {
@@ -166,11 +162,7 @@ export const Shell: React.FC<ShellProps> = () => {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [openWindow]);
-    },
-    [createWindow, focusWindow, recordRecentApp, windows]
-  );
-
-  useEffect(() => {
+useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const handler = (event: KeyboardEvent) => {
@@ -274,3 +266,4 @@ export const Shell: React.FC<ShellProps> = () => {
     </div>
   );
 };
+
