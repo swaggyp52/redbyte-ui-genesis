@@ -4,7 +4,7 @@
 
 import React, { useMemo } from 'react';
 import { useWindowStore } from '@redbyte/rb-windowing';
-import { TerminalIcon, FilesIcon, SettingsIcon, LogicIcon, NeonWaveIcon } from '@redbyte/rb-icons';
+import { BrowserIcon, TerminalIcon, FilesIcon, SettingsIcon, LogicIcon, NeonWaveIcon } from '@redbyte/rb-icons';
 
 interface DockProps {
   onOpenApp: (id: string) => void;
