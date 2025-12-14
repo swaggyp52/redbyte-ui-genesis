@@ -13,4 +13,9 @@ Process reminders (as defined in `AI_STATE.md`):
 - Keep changes small and reversible
 - Update `AI_STATE.md` with a factual Change Log entry for meaningful changes
 
+Environment notes:
+- Do not run `npm install` in this repo (pnpm workspace); use pnpm for the single validation command only.
+- Do not add/remove/configure git remotes or attempt fetch/push in this environment.
+- If `nano` is unavailable, apply edits using `apply_patch`.
+
 If your environment has no git remote configured, report it; do not add or modify remotes unless explicitly instructed.
