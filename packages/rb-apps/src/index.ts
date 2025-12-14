@@ -1,5 +1,5 @@
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
-// All rights reserved. Unauthorized use, reproduction or distribution is prohibited.
+// Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 export * from './types';
@@ -13,6 +13,7 @@ export { FilesApp } from './apps/FilesApp';
 export { LogicPlaygroundApp } from './apps/LogicPlaygroundApp';
 export { AppStoreApp } from './apps/AppStoreApp';
 export { WelcomeApp } from './apps/WelcomeApp';
+export { LauncherApp } from './apps/LauncherApp';
 
 // Auto-register all apps
 import { registerApp } from './AppRegistry';
@@ -22,6 +23,7 @@ import { FilesApp } from './apps/FilesApp';
 import { LogicPlaygroundApp } from './apps/LogicPlaygroundApp';
 import { AppStoreApp } from './apps/AppStoreApp';
 import { WelcomeApp } from './apps/WelcomeApp';
+import { LauncherApp } from './apps/LauncherApp';
 
 registerApp(TerminalApp);
 registerApp(SettingsApp);
@@ -29,3 +31,4 @@ registerApp(FilesApp);
 registerApp(LogicPlaygroundApp);
 registerApp(AppStoreApp);
 registerApp(WelcomeApp);
+registerApp(LauncherApp);

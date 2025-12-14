@@ -1,5 +1,5 @@
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
-// All rights reserved. Unauthorized use, reproduction or distribution is prohibited.
+// Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -199,7 +199,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
 
       <div className="absolute bottom-4 right-4 z-10 space-y-1 text-right text-xs text-white drop-shadow pointer-events-none">
         <div>© 2025 Connor Angiel — RedByte OS Genesis</div>
-        <div>All rights reserved.</div>
+        <div></div>
       </div>
     </div>
   );
