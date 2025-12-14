@@ -291,6 +291,7 @@ export const Launcher: React.FC<LauncherProps> = ({
               type="button"
               title="Open Settings (Ctrl+, / Cmd+,)"
               aria-label="Open Settings (Ctrl+, / Cmd+,)"
+              aria-keyshortcuts="Control+, Meta+,"
               onClick={() => handleLaunch('settings')}
               style={{
                 background: '#1f2a44',
