@@ -25,6 +25,8 @@ const LAUNCHER_ARIA_KEYSHORTCUTS = 'Control+K Meta+K';
 const SETTINGS_ARIA_KEYSHORTCUTS = 'Control+, Meta+,';
 const DOCK_ORDER_STORAGE_KEY = 'rb.shell.dockOrder';
 const LEGACY_DOCK_ORDER_STORAGE_KEY = 'rb:shell:dockOrder';
+const DOCK_ORDER_STORAGE_KEY = 'rb.shell.dockOrder';
+const LEGACY_DOCK_ORDER_STORAGE_KEY = 'rb:shell:dockOrder';
 
 const DEFAULT_DOCK_IDS = dockIcons.map((dock) => dock.id);
 
