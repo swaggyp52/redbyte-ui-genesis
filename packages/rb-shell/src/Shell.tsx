@@ -123,46 +123,11 @@ export const Shell: React.FC<ShellProps> = () => {
 
       setBindings((prev) => ({ ...prev, [state.id]: { appId, props } }));
       return state.id;
-useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const handler = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey)) return;
-      if (event.key.toLowerCase() !== 'k') return;
-
-      const target = event.target as HTMLElement | null;
-      const tag = target?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'option') return;
-      if (target?.isContentEditable) return;
-
-      event.preventDefault();
-      openWindow('launcher');
-    };
-
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [openWindow]);
+    },
+    [createWindow, focusWindow, recordRecentApp, windows]
+  );
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const handler = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey)) return;
-      if (event.key.toLowerCase() !== 'k') return;
-
-      const target = event.target as HTMLElement | null;
-      const tag = target?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'option') return;
-      if (target?.isContentEditable) return;
-
-      event.preventDefault();
-      openWindow('launcher');
-    };
-
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [openWindow]);
-useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const handler = (event: KeyboardEvent) => {
@@ -266,4 +231,3 @@ useEffect(() => {
     </div>
   );
 };
-
