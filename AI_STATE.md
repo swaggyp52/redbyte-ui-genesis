@@ -272,3 +272,9 @@ After completing work, an AI agent MUST:
 - Added Launcher Settings footer action with Ctrl+, / Cmd+, shortcut when Settings app is available; launcher tests updated; objectives unchanged; phase unchanged
 - Launcher now surfaces running apps via shell window state inside the Launcher list with accompanying test coverage; objectives unchanged; phase unchanged
 - Expanded Launcher dock tooltip to include shortcut, type-to-search, and Settings shortcut hints without changing behavior; objectives unchanged; phase unchanged
+### 2025-12-16
+- Confirmed rb-apps Launcher test remains only at packages/rb-apps/src/__tests__/launcher.test.tsx with no src/tests drift; references remain normalized; no behavior change; objectives unchanged; phase unchanged
+- Centralized Dock Launcher Settings shortcut hint string to reduce tooltip drift (no behavior change); objectives unchanged; phase unchanged
+- Added global Ctrl+, / Cmd+, shortcut in shell to open Settings when the Settings app exists; ignores editable targets and extra modifiers; objectives unchanged; phase unchanged
+- No other behavior changes; phase unchanged
+- Hardened Launcher Settings shortcut guards to ignore extra modifiers and editable targets; tests updated; objectives unchanged; phase unchanged

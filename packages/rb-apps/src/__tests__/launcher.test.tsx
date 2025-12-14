@@ -60,6 +60,48 @@ describe('Launcher component', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('does not launch settings when Alt is held with Ctrl+,', () => {
+    const onLaunch = vi.fn();
+    const onClose = vi.fn();
+
+    render(
+      <Launcher
+        apps={[...sampleApps, { id: 'settings', name: 'Settings' }]}
+        onLaunch={onLaunch}
+        onClose={onClose}
+      />
+    );
+
+    const listbox = screen.getByRole('listbox');
+    fireEvent.keyDown(listbox, { key: ',', ctrlKey: true, altKey: true });
+
+    expect(onLaunch).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('does not launch settings with Ctrl+, when typing in editable target', () => {
+    const onLaunch = vi.fn();
+    const onClose = vi.fn();
+
+    render(
+      <Launcher
+        apps={[...sampleApps, { id: 'settings', name: 'Settings' }]}
+        onLaunch={onLaunch}
+        onClose={onClose}
+      />
+    );
+
+    const listbox = screen.getByRole('listbox');
+    const input = document.createElement('input');
+    listbox.appendChild(input);
+    input.focus();
+
+    fireEvent.keyDown(input, { key: ',', ctrlKey: true });
+
+    expect(onLaunch).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it('auto-closes after launching when onClose is provided', () => {
     const onLaunch = vi.fn();
     const onClose = vi.fn();
