@@ -141,3 +141,35 @@ jobs:
       - run: pnpm build
       - name: Validate Package Structure
         run: pnpm -r --workspace-concurrency=1 exec npm publish --dry-run
+
+  legal_guard:
+    name: Legal attribution guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan for prohibited legal/trademark language
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Build banned patterns without storing banned literals in this workflow file.
+          P1="Un""authorized use"
+          P2="All rights re""served."" Un""authorized use"
+
+          TM_SYM="$(printf '\u2122')"
+          REG_SYM="$(printf '\u00AE')"
+
+          # Require attribution reference at least in the authoritative ledger.
+          if ! grep -qF "Connor Angiel" AI_STATE.md; then
+            echo "::error::Missing required attribution reference in AI_STATE.md"
+            exit 1
+          fi
+
+          echo "Scanning tracked text files for banned legal / trademark language..."
+          if git ls-files -z | xargs -0 grep -I -nH -F -e "$P1" -e "$P2" -e "$TM_SYM" -e "$REG_SYM" ; then
+            echo "::error::Banned legal / trademark language detected. Remove the matching text."
+            exit 1
+          fi
+
+          echo "OK: scan passed."
