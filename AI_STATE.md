@@ -240,3 +240,4 @@ After completing work, an AI agent MUST:
 
 \### 2025-12-15
 \- Removed banned boilerplate/legal phrases and trademark symbols across tracked files to satisfy CI legal_guard; objectives unchanged; phase unchanged
+\- Added launcher dock tooltip hint to reinforce desktop metaphor; no behavior change; objectives unchanged; phase unchanged

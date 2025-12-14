@@ -11,11 +11,11 @@ interface DockProps {
 }
 
 const dockIcons = [
-  { id: 'terminal', component: TerminalIcon },
-  { id: 'files', component: FilesIcon },
-  { id: 'settings', component: SettingsIcon },
-  { id: 'logic-playground', component: LogicIcon },
-  { id: 'app-store', component: NeonWaveIcon },
+  { id: 'terminal', label: 'Terminal', component: TerminalIcon },
+  { id: 'files', label: 'Files', component: FilesIcon },
+  { id: 'settings', label: 'Settings', component: SettingsIcon },
+  { id: 'logic-playground', label: 'Logic Playground', component: LogicIcon },
+  { id: 'app-store', label: 'App Store', component: NeonWaveIcon },
 ];
 
 export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
@@ -34,6 +34,7 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
           <button
             key={dock.id}
             onClick={() => onOpenApp(dock.id)}
+            title={`Open ${dock.label} (Shortcut: configurable)`}
             className="relative h-12 w-12 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all"
           >
             <Icon width={26} height={26} />
