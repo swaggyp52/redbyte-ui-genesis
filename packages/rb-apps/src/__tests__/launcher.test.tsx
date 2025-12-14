@@ -39,6 +39,25 @@ describe('Launcher component', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('toggles help overlay with question mark key', () => {
+    const onLaunch = vi.fn();
+    const onClose = vi.fn();
+
+    render(<Launcher apps={sampleApps} onLaunch={onLaunch} onClose={onClose} />);
+
+    const listbox = screen.getByRole('listbox');
+
+    expect(screen.queryByText('Help')).toBeNull();
+
+    fireEvent.keyDown(listbox, { key: '?' });
+    expect(screen.getByText('Help')).toBeTruthy();
+
+    fireEvent.keyDown(listbox, { key: '?' });
+    expect(screen.queryByText('Help')).toBeNull();
+    expect(onLaunch).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it('renders recent apps section and launches from it', () => {
     const onLaunch = vi.fn();
 
