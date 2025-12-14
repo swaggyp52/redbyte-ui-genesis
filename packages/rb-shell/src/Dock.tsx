@@ -5,11 +5,20 @@
 import React, { useMemo } from 'react';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import { BrowserIcon, TerminalIcon, FilesIcon, SettingsIcon, LogicIcon, NeonWaveIcon } from '@redbyte/rb-icons';
+import { BrowserIcon, TerminalIcon, FilesIcon, SettingsIcon, LogicIcon, NeonWaveIcon } from '@redbyte/rb-icons';
 
 interface DockProps {
   onOpenApp: (id: string) => void;
 }
 
+const dockIcons = [
+  { id: 'launcher', label: 'Launcher', component: BrowserIcon },
+  { id: 'terminal', label: 'Terminal', component: TerminalIcon },
+  { id: 'files', label: 'Files', component: FilesIcon },
+  { id: 'settings', label: 'Settings', component: SettingsIcon },
+  { id: 'logic-playground', label: 'Logic Playground', component: LogicIcon },
+  { id: 'app-store', label: 'App Store', component: NeonWaveIcon },
+];
 const dockIcons = [
   { id: 'launcher', label: 'Launcher', component: BrowserIcon },
   { id: 'terminal', label: 'Terminal', component: TerminalIcon },
@@ -32,6 +41,22 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
         const Icon = dock.component;
         const isRunning = runningIds.includes(dock.id);
         return (
+          <button
+            key={dock.id}
+            onClick={() => onOpenApp(dock.id)}
+            aria-label={`Open ${dock.label}`}
+            title={`Open ${dock.label} (Shortcut: Ctrl+K / Cmd+K)`}
+            className="relative h-12 w-12 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all"
+          >
+            <Icon width={26} height={26} />
+          <button
+            key={dock.id}
+            onClick={() => onOpenApp(dock.id)}
+            aria-label={`Open ${dock.label}`}
+            title={`Open ${dock.label} (Shortcut: Ctrl+K / Cmd+K)`}
+            className="relative h-12 w-12 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all"
+          >
+            <Icon width={26} height={26} />
           <button
             key={dock.id}
             onClick={() => onOpenApp(dock.id)}
