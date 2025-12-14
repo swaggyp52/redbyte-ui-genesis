@@ -20,6 +20,7 @@ const dockIcons = [
 ];
 
 const LAUNCHER_SHORTCUT_HINT = 'Ctrl+K / Cmd+K';
+const SETTINGS_SHORTCUT_HINT = 'Ctrl+, / Cmd+,';
 const DOCK_ORDER_STORAGE_KEY = 'rb.shell.dockOrder';
 const LEGACY_DOCK_ORDER_STORAGE_KEY = 'rb:shell:dockOrder';
 
@@ -129,7 +130,7 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
         const isRunning = runningIds.includes(dock.id);
         const title =
           dock.id === 'launcher'
-            ? `${dock.label} (${LAUNCHER_SHORTCUT_HINT}) — Type to search — Ctrl+, / Cmd+, for Settings`
+            ? `${dock.label} (${LAUNCHER_SHORTCUT_HINT}) — Type to search — ${SETTINGS_SHORTCUT_HINT} for Settings`
             : dock.label;
         const ariaLabel = dock.id === 'launcher' ? `Launcher (${LAUNCHER_SHORTCUT_HINT})` : dock.label;
         return (

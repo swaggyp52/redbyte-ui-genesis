@@ -67,6 +67,7 @@ export const Shell: React.FC<ShellProps> = () => {
     return [];
   });
   const settings = useSettingsStore();
+  const hasSettings = useMemo(() => Boolean(getApp('settings')), []);
 
   const recordRecentApp = useCallback((appId: string) => {
     if (appId === 'launcher') return;
@@ -132,20 +133,27 @@ export const Shell: React.FC<ShellProps> = () => {
 
     const handler = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey)) return;
-      if (event.key.toLowerCase() !== 'k') return;
 
       const target = event.target as HTMLElement | null;
       const tag = target?.tagName?.toLowerCase();
       if (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'option') return;
       if (target?.isContentEditable) return;
 
-      event.preventDefault();
-      openWindow('launcher');
+      if (event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        openWindow('launcher');
+        return;
+      }
+
+      if (!event.altKey && !event.shiftKey && event.key === ',' && hasSettings) {
+        event.preventDefault();
+        openWindow('settings');
+      }
     };
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [openWindow]);
+  }, [hasSettings, openWindow]);
 
   const handleClose = useCallback(
     (id: string) => {
