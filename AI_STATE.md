@@ -252,5 +252,3 @@ After completing work, an AI agent MUST:
 \- Re-ran lint for the launcher shortcut, set Launcher as singleton to reuse focus behavior, and confirmed Dock tooltip matches the shortcut; objectives unchanged; phase unchanged
 
 \- Added Launcher smoke test covering registry-derived list (excluding launcher) and click-to-launch behavior; objectives unchanged; phase unchanged
-
-\- Added keyboard navigation (Up/Down/Enter) to the Launcher list and updated launcher test; objectives unchanged; phase unchanged

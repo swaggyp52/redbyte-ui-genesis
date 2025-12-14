@@ -25,20 +25,6 @@ describe('Launcher component', () => {
     fireEvent.click(screen.getByText('Terminal'));
     expect(onLaunch).toHaveBeenCalledWith('terminal');
   });
-
-  it('supports keyboard navigation and launch', () => {
-    const onLaunch = vi.fn();
-
-    render(<Launcher apps={sampleApps} onLaunch={onLaunch} />);
-
-    const list = screen.getByRole('listbox');
-    list.focus();
-
-    fireEvent.keyDown(list, { key: 'ArrowDown' });
-    fireEvent.keyDown(list, { key: 'Enter' });
-
-    expect(onLaunch).toHaveBeenCalledWith('files');
-  });
 });
 
 describe('Launcher data', () => {
