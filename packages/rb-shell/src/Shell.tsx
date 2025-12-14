@@ -47,6 +47,21 @@ export const Shell: React.FC<ShellProps> = () => {
 
   const [bindings, setBindings] = useState<Record<string, WindowAppBinding>>({});
   const [recentAppIds, setRecentAppIds] = useState<string[]>([]);
+  const [pinnedAppIds, setPinnedAppIds] = useState<string[]>(() => {
+    if (typeof localStorage === 'undefined') return [];
+
+    try {
+      const raw = localStorage.getItem('rb:shell:pinnedApps');
+      if (!raw) return [];
+
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((id): id is string => typeof id === 'string');
+      }
+    } catch {}
+
+    return [];
+  });
   const settings = useSettingsStore();
 
   const recordRecentApp = useCallback((appId: string) => {
@@ -55,6 +70,21 @@ export const Shell: React.FC<ShellProps> = () => {
     setRecentAppIds((prev) => {
       const next = [appId, ...prev.filter((id) => id !== appId)];
       return next.slice(0, 5);
+    });
+  }, []);
+
+  const togglePinnedAppId = useCallback((appId: string) => {
+    if (appId === 'launcher') return;
+
+    setPinnedAppIds((prev) => {
+      const exists = prev.includes(appId);
+      const next = exists ? prev.filter((id) => id !== appId) : [appId, ...prev];
+
+      try {
+        localStorage.setItem('rb:shell:pinnedApps', JSON.stringify(next));
+      } catch {}
+
+      return next;
     });
   }, []);
 
@@ -90,48 +120,8 @@ export const Shell: React.FC<ShellProps> = () => {
       setBindings((prev) => ({ ...prev, [state.id]: { appId, props } }));
       return state.id;
     },
-    [createWindow, focusWindow, windows]
+    [createWindow, focusWindow, recordRecentApp, windows]
   );
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const handler = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey)) return;
-      if (event.key.toLowerCase() !== 'k') return;
-
-      const target = event.target as HTMLElement | null;
-      const tag = target?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'option') return;
-      if (target?.isContentEditable) return;
-
-      event.preventDefault();
-      openWindow('launcher');
-    };
-
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [openWindow]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const handler = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey)) return;
-      if (event.key.toLowerCase() !== 'k') return;
-
-      const target = event.target as HTMLElement | null;
-      const tag = target?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'option') return;
-      if (target?.isContentEditable) return;
-
-      event.preventDefault();
-      openWindow('launcher');
-    };
-
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [openWindow]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -224,6 +214,8 @@ export const Shell: React.FC<ShellProps> = () => {
               onOpenApp={openWindow}
               onClose={() => handleClose(window.id)}
               recentAppIds={app.manifest.id === 'launcher' ? recentAppIds : undefined}
+              pinnedAppIds={app.manifest.id === 'launcher' ? pinnedAppIds : undefined}
+              onTogglePin={app.manifest.id === 'launcher' ? togglePinnedAppId : undefined}
               {...binding?.props}
             />
           </ShellWindow>

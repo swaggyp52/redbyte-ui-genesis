@@ -9,11 +9,48 @@ import type { RedByteApp } from '../types';
 
 interface LauncherComponentProps {
   onOpenApp?: (id: string, props?: any) => void;
+  onClose?: () => void;
+  recentAppIds?: string[];
+  pinnedAppIds?: string[];
+  onTogglePin?: (id: string) => void;
 }
 
-const LauncherComponent: React.FC<LauncherComponentProps> = ({ onOpenApp }) => {
+const LauncherComponent: React.FC<LauncherComponentProps> = ({
+  onOpenApp,
+  onClose,
+  recentAppIds,
+  pinnedAppIds,
+  onTogglePin,
+}) => {
   const apps = useMemo(() => getAppsForLauncher(), []);
-  return <Launcher apps={apps} onLaunch={(id) => onOpenApp?.(id)} />;
+
+  const recentApps = useMemo(() => {
+    if (!recentAppIds?.length) return [];
+
+    const lookup = new Map(apps.map((app) => [app.id, app]));
+    return recentAppIds.map((id) => lookup.get(id)).filter(Boolean);
+  }, [apps, recentAppIds]);
+
+  const pinnedApps = useMemo(() => {
+    if (!pinnedAppIds?.length) return [];
+
+    const lookup = new Map(apps.map((app) => [app.id, app]));
+    return pinnedAppIds
+      .map((id) => lookup.get(id))
+      .filter(Boolean)
+      .filter((app) => app.id !== 'launcher');
+  }, [apps, pinnedAppIds]);
+
+  return (
+    <Launcher
+      apps={apps}
+      recentApps={recentApps}
+      pinnedApps={pinnedApps}
+      onTogglePin={onTogglePin}
+      onLaunch={(id) => onOpenApp?.(id)}
+      onClose={onClose}
+    />
+  );
 };
 
 export const LauncherApp: RedByteApp = {
@@ -22,6 +59,7 @@ export const LauncherApp: RedByteApp = {
     name: 'Launcher',
     iconId: 'browser',
     category: 'system',
+    singleton: true,
     defaultSize: { width: 640, height: 480 },
     minSize: { width: 480, height: 360 },
   },

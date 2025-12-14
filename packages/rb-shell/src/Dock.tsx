@@ -11,6 +11,7 @@ interface DockProps {
 }
 
 const dockIcons = [
+  { id: 'launcher', label: 'Launcher', component: BrowserIcon },
   { id: 'terminal', label: 'Terminal', component: TerminalIcon },
   { id: 'files', label: 'Files', component: FilesIcon },
   { id: 'settings', label: 'Settings', component: SettingsIcon },
@@ -34,7 +35,8 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
           <button
             key={dock.id}
             onClick={() => onOpenApp(dock.id)}
-            title={`Open ${dock.label} (Shortcut: configurable)`}
+            aria-label={`Open ${dock.label}`}
+            title={`Open ${dock.label} (Shortcut: Ctrl+K / Cmd+K)`}
             className="relative h-12 w-12 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all"
           >
             <Icon width={26} height={26} />
