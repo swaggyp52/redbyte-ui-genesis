@@ -1,5 +1,5 @@
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
-// All rights reserved. Unauthorized use, reproduction or distribution is prohibited.
+// Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
@@ -80,6 +80,26 @@ export const Shell: React.FC<ShellProps> = () => {
     },
     [createWindow, focusWindow, windows]
   );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handler = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      if (event.key.toLowerCase() !== 'k') return;
+
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'option') return;
+      if (target?.isContentEditable) return;
+
+      event.preventDefault();
+      openWindow('launcher');
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [openWindow]);
 
   const handleClose = useCallback(
     (id: string) => {
