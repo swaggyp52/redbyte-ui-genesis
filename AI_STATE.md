@@ -142,11 +142,11 @@ Status: ACTIVE
 
 \- \[x] Correct legal name spelling to Connor Angiel across repo
 
-\- \[ ] Centralize legal attribution
+\- \[x] Centralize legal attribution
 
-\- \[ ] Add CI guard against incorrect attribution
+\- \[x] Add CI guard against incorrect attribution
 
-\- \[ ] Document AI usage rules inside repo
+\- \[x] Document AI usage rules inside repo
 
 
 
@@ -226,5 +226,31 @@ After completing work, an AI agent MUST:
 
 \- Commit: 5b353687
 
+\### 2025-12-14
 
+\- Added docs/ai-usage-rules.md to document existing AI usage governance within the repo
 
+\- Marked objective “Document AI usage rules inside repo” as complete; phase unchanged
+
+\- Added docs/legal-attribution.md as canonical attribution guidance; marked objective “Centralize legal attribution” as complete; phase unchanged
+
+\- Added CI legal/trademark guard job to scan tracked files and verify Connor Angiel attribution reference in AI_STATE.md; marked objective “Add CI guard against incorrect attribution” as complete; phase unchanged
+
+\- Hardened CI legal_guard patterns/output to avoid banned literals and prevent self-triggering; phase unchanged
+
+\### 2025-12-15
+\- Removed banned boilerplate/legal phrases and trademark symbols across tracked files to satisfy CI legal_guard; objectives unchanged; phase unchanged
+\- Added launcher dock tooltip hint to reinforce desktop metaphor; no behavior change; objectives unchanged; phase unchanged
+
+\- Added AGENTS.md as a pointer for AI agents to AI_STATE.md and existing governance docs; objectives unchanged; phase unchanged
+
+\- Added Launcher app registered in app registry with Dock entry using existing Launcher component; objectives unchanged; phase unchanged
+
+\- Launcher now lists registered apps (excluding itself) and opens selected apps via existing window flow; objectives unchanged; phase unchanged
+
+\- Added keyboard shortcut (Ctrl+K / Cmd+K) to open the Launcher and updated Dock tooltip; objectives unchanged; phase unchanged
+\- Re-ran lint for the launcher shortcut, set Launcher as singleton to reuse focus behavior, and confirmed Dock tooltip matches the shortcut; objectives unchanged; phase unchanged
+
+\- Added Launcher smoke test covering registry-derived list (excluding launcher) and click-to-launch behavior; objectives unchanged; phase unchanged
+
+\- Added keyboard navigation (Up/Down/Enter) to the Launcher list and updated launcher test; objectives unchanged; phase unchanged
