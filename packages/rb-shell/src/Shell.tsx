@@ -106,6 +106,74 @@ export const Shell: React.FC<ShellProps> = () => {
         if (existing) {
           focusWindow(existing.id);
           setBindings((prev) => ({ ...prev, [existing.id]: { appId, props } }));
+  const moveWindow = useWindowStore((s) => s.moveWindow);
+  const resizeWindow = useWindowStore((s) => s.resizeWindow);
+  const focusWindow = useWindowStore((s) => s.focusWindow);
+  const toggleMinimize = useWindowStore((s) => s.toggleMinimize);
+  const toggleMaximize = useWindowStore((s) => s.toggleMaximize);
+  const restoreWindow = useWindowStore((s) => s.restoreWindow);
+
+  const [bindings, setBindings] = useState<Record<string, WindowAppBinding>>({});
+  const [recentAppIds, setRecentAppIds] = useState<string[]>([]);
+  const [pinnedAppIds, setPinnedAppIds] = useState<string[]>(() => {
+    if (typeof localStorage === 'undefined') return [];
+
+    try {
+      const raw = localStorage.getItem('rb:shell:pinnedApps');
+      if (!raw) return [];
+
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((id): id is string => typeof id === 'string');
+      }
+    } catch {}
+
+    return [];
+  });
+  const settings = useSettingsStore();
+
+  const recordRecentApp = useCallback((appId: string) => {
+    if (appId === 'launcher') return;
+
+    setRecentAppIds((prev) => {
+      const next = [appId, ...prev.filter((id) => id !== appId)];
+      return next.slice(0, 5);
+    });
+  }, []);
+
+  const togglePinnedAppId = useCallback((appId: string) => {
+    if (appId === 'launcher') return;
+
+    setPinnedAppIds((prev) => {
+      const exists = prev.includes(appId);
+      const next = exists ? prev.filter((id) => id !== appId) : [appId, ...prev];
+
+      try {
+        localStorage.setItem('rb:shell:pinnedApps', JSON.stringify(next));
+      } catch {}
+
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      applyTheme(document.documentElement, settings.themeVariant);
+    }
+  }, [settings.themeVariant]);
+
+  const openWindow = useCallback(
+    (appId: string, props?: any) => {
+      const app = getApp(appId);
+      if (!app) return null;
+
+      recordRecentApp(appId);
+
+      if (app.manifest.singleton) {
+        const existing = windows.find((w) => w.contentId === appId);
+        if (existing) {
+          focusWindow(existing.id);
+          setBindings((prev) => ({ ...prev, [existing.id]: { appId, props } }));
           return existing.id;
         }
       }
@@ -119,6 +187,29 @@ export const Shell: React.FC<ShellProps> = () => {
 
       setBindings((prev) => ({ ...prev, [state.id]: { appId, props } }));
       return state.id;
+    },
+    [createWindow, focusWindow, recordRecentApp, windows]
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handler = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      if (event.key.toLowerCase() !== 'k') return;
+
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'option') return;
+      if (target?.isContentEditable) return;
+
+      event.preventDefault();
+      openWindow('launcher');
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [openWindow]);
     },
     [createWindow, focusWindow, recordRecentApp, windows]
   );
@@ -197,6 +288,30 @@ export const Shell: React.FC<ShellProps> = () => {
         if (!app) return null;
         const Component = app.component;
 
+        return (
+          <ShellWindow
+            key={window.id}
+            state={window}
+            minSize={app.manifest.minSize}
+            onClose={() => handleClose(window.id)}
+            onFocus={() => focusWindow(window.id)}
+            onMove={(x, y) => moveWindow(window.id, x, y)}
+            onResize={(w, h) => resizeWindow(window.id, w, h)}
+            onMinimize={() => toggleMinimize(window.id)}
+            onMaximize={() => toggleMaximize(window.id)}
+            onRestore={() => restoreWindow(window.id)}
+          >
+            <Component
+              onOpenApp={openWindow}
+              onClose={() => handleClose(window.id)}
+              recentAppIds={app.manifest.id === 'launcher' ? recentAppIds : undefined}
+              pinnedAppIds={app.manifest.id === 'launcher' ? pinnedAppIds : undefined}
+              onTogglePin={app.manifest.id === 'launcher' ? togglePinnedAppId : undefined}
+              {...binding?.props}
+            />
+          </ShellWindow>
+        );
+      })}
         return (
           <ShellWindow
             key={window.id}
