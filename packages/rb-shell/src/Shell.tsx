@@ -1,5 +1,5 @@
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
-// All rights reserved. Unauthorized use, reproduction or distribution is prohibited.
+// Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
@@ -46,7 +46,17 @@ export const Shell: React.FC<ShellProps> = () => {
   const restoreWindow = useWindowStore((s) => s.restoreWindow);
 
   const [bindings, setBindings] = useState<Record<string, WindowAppBinding>>({});
+  const [recentAppIds, setRecentAppIds] = useState<string[]>([]);
   const settings = useSettingsStore();
+
+  const recordRecentApp = useCallback((appId: string) => {
+    if (appId === 'launcher') return;
+
+    setRecentAppIds((prev) => {
+      const next = [appId, ...prev.filter((id) => id !== appId)];
+      return next.slice(0, 5);
+    });
+  }, []);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -58,6 +68,8 @@ export const Shell: React.FC<ShellProps> = () => {
     (appId: string, props?: any) => {
       const app = getApp(appId);
       if (!app) return null;
+
+      recordRecentApp(appId);
 
       if (app.manifest.singleton) {
         const existing = windows.find((w) => w.contentId === appId);
@@ -78,8 +90,28 @@ export const Shell: React.FC<ShellProps> = () => {
       setBindings((prev) => ({ ...prev, [state.id]: { appId, props } }));
       return state.id;
     },
-    [createWindow, focusWindow, windows]
+    [createWindow, focusWindow, recordRecentApp, windows]
   );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handler = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      if (event.key.toLowerCase() !== 'k') return;
+
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'option') return;
+      if (target?.isContentEditable) return;
+
+      event.preventDefault();
+      openWindow('launcher');
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [openWindow]);
 
   const handleClose = useCallback(
     (id: string) => {
@@ -148,7 +180,12 @@ export const Shell: React.FC<ShellProps> = () => {
             onMaximize={() => toggleMaximize(window.id)}
             onRestore={() => restoreWindow(window.id)}
           >
-            <Component onOpenApp={openWindow} {...binding?.props} />
+            <Component
+              onOpenApp={openWindow}
+              onClose={() => handleClose(window.id)}
+              recentAppIds={app.manifest.id === 'launcher' ? recentAppIds : undefined}
+              {...binding?.props}
+            />
           </ShellWindow>
         );
       })}
