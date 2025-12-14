@@ -46,7 +46,17 @@ export const Shell: React.FC<ShellProps> = () => {
   const restoreWindow = useWindowStore((s) => s.restoreWindow);
 
   const [bindings, setBindings] = useState<Record<string, WindowAppBinding>>({});
+  const [recentAppIds, setRecentAppIds] = useState<string[]>([]);
   const settings = useSettingsStore();
+
+  const recordRecentApp = useCallback((appId: string) => {
+    if (appId === 'launcher') return;
+
+    setRecentAppIds((prev) => {
+      const next = [appId, ...prev.filter((id) => id !== appId)];
+      return next.slice(0, 5);
+    });
+  }, []);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -58,6 +68,8 @@ export const Shell: React.FC<ShellProps> = () => {
     (appId: string, props?: any) => {
       const app = getApp(appId);
       if (!app) return null;
+
+      recordRecentApp(appId);
 
       if (app.manifest.singleton) {
         const existing = windows.find((w) => w.contentId === appId);
@@ -78,7 +90,7 @@ export const Shell: React.FC<ShellProps> = () => {
       setBindings((prev) => ({ ...prev, [state.id]: { appId, props } }));
       return state.id;
     },
-    [createWindow, focusWindow, windows]
+    [createWindow, focusWindow, recordRecentApp, windows]
   );
 
   useEffect(() => {
@@ -168,7 +180,12 @@ export const Shell: React.FC<ShellProps> = () => {
             onMaximize={() => toggleMaximize(window.id)}
             onRestore={() => restoreWindow(window.id)}
           >
-            <Component onOpenApp={openWindow} {...binding?.props} />
+            <Component
+              onOpenApp={openWindow}
+              onClose={() => handleClose(window.id)}
+              recentAppIds={app.manifest.id === 'launcher' ? recentAppIds : undefined}
+              {...binding?.props}
+            />
           </ShellWindow>
         );
       })}

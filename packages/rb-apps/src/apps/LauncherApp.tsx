@@ -9,11 +9,28 @@ import type { RedByteApp } from '../types';
 
 interface LauncherComponentProps {
   onOpenApp?: (id: string, props?: any) => void;
+  onClose?: () => void;
+  recentAppIds?: string[];
 }
 
-const LauncherComponent: React.FC<LauncherComponentProps> = ({ onOpenApp }) => {
+const LauncherComponent: React.FC<LauncherComponentProps> = ({ onOpenApp, onClose, recentAppIds }) => {
   const apps = useMemo(() => getAppsForLauncher(), []);
-  return <Launcher apps={apps} onLaunch={(id) => onOpenApp?.(id)} />;
+
+  const recentApps = useMemo(() => {
+    if (!recentAppIds?.length) return [];
+
+    const lookup = new Map(apps.map((app) => [app.id, app]));
+    return recentAppIds.map((id) => lookup.get(id)).filter(Boolean);
+  }, [apps, recentAppIds]);
+
+  return (
+    <Launcher
+      apps={apps}
+      recentApps={recentApps}
+      onLaunch={(id) => onOpenApp?.(id)}
+      onClose={onClose}
+    />
+  );
 };
 
 export const LauncherApp: RedByteApp = {
