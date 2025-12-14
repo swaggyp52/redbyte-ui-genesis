@@ -261,3 +261,5 @@ After completing work, an AI agent MUST:
 \- Added Launcher pinned apps support with pin/unpin controls, pinned section ahead of recent/all lists, in-memory/localStorage tracking, and updated tests; objectives unchanged; phase unchanged
 \- Refined Launcher pinned apps handling (explicit pin/unpin click handling, no duplicate listings) with updated tests; pins remain stored via existing localStorage path; objectives unchanged; phase unchanged
 \- Launcher now auto-closes after launching when onClose is provided; launcher tests updated; objectives unchanged; phase unchanged
+
+- Confirmed launcher tests consolidated at packages/rb-apps/src/__tests__/launcher.test.tsx with no duplicate tests directory; objectives unchanged; phase unchanged
