@@ -249,6 +249,3 @@ After completing work, an AI agent MUST:
 \- Launcher now lists registered apps (excluding itself) and opens selected apps via existing window flow; objectives unchanged; phase unchanged
 
 \- Added keyboard shortcut (Ctrl+K / Cmd+K) to open the Launcher and updated Dock tooltip; objectives unchanged; phase unchanged
-\- Re-ran lint for the launcher shortcut, set Launcher as singleton to reuse focus behavior, and confirmed Dock tooltip matches the shortcut; objectives unchanged; phase unchanged
-
-\- Added Launcher smoke test covering registry-derived list (excluding launcher) and click-to-launch behavior; objectives unchanged; phase unchanged

@@ -22,7 +22,6 @@ export const LauncherApp: RedByteApp = {
     name: 'Launcher',
     iconId: 'browser',
     category: 'system',
-    singleton: true,
     defaultSize: { width: 640, height: 480 },
     minSize: { width: 480, height: 360 },
   },

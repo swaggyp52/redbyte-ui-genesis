@@ -9,6 +9,11 @@ export interface LauncherAppInfo {
   name: string;
 }
 
+export interface LauncherAppInfo {
+  id: string;
+  name: string;
+}
+
 export interface LauncherProps {
   apps?: LauncherAppInfo[];
   onLaunch?: (id: string) => void;
