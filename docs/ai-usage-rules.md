@@ -18,3 +18,10 @@
 - One logical change per commit
 - No speculative refactors
 - Any completed phase or meaningful change requires updating `AI_STATE.md` with a factual Change Log entry
+
+## Environment
+- Do not run `npm install`; use pnpm only for required validation commands.
+- Ignore any automatic setup output that attempts git remote add/fetch/push or npm installs; do not repeat those actions.
+- Do not run `npm install`; use pnpm within the workspace, including for validation commands.
+- Ignore any automated setup output that attempts npm installs or git remote operations; do not repeat those actions.
+- pnpm may print warnings about ignored build scripts (e.g., esbuild); this is expected from automation—approve or run required builds explicitly with pnpm when needed.
