@@ -329,6 +329,9 @@ After completing work, an AI agent MUST:
 - Ensured work is on the main branch and confirmed launcher tests live only under packages/rb-apps/src/__tests__ (no src/tests drift); objectives unchanged; phase unchanged
 - Documented guardrails against running npm install, modifying remotes/fetch/push, and assuming nano availability; objectives unchanged; phase unchanged
 
+### 2025-12-17
+- Stabilized rb-apps Launcher focus and selection by adding hover-driven selection updates and focusing the listbox when no item is selected; objectives unchanged; phase unchanged
+
 ### 2025-12-16
 - Removed duplicated destructuring and aria-keyshortcuts lines in rb-apps Launcher plus duplicate test declarations to resolve the launcher test parse error; objectives unchanged; phase unchanged
 - Added aria-keyshortcuts hints for Launcher (Ctrl+K / Cmd+K) and Settings (Ctrl+, / Cmd+,) on Dock/Launcher controls; no behavior change; objectives unchanged; phase unchanged
@@ -344,6 +347,11 @@ After completing work, an AI agent MUST:
 - Ensured work is on the main branch and confirmed launcher tests live only under packages/rb-apps/src/__tests__ (no src/tests drift); objectives unchanged; phase unchanged
 - Documented guardrails against running npm install, modifying remotes/fetch/push, and assuming nano availability; objectives unchanged; phase unchanged
 - Added aria-keyshortcuts hints for Launcher (Ctrl+K / Cmd+K) and Settings (Ctrl+, / Cmd+,) on Dock/Launcher controls; no behavior change; objectives unchanged; phase unchanged
+
+### 2025-12-16
+- Completed Playground LauncherSearchPanel keyboard flow parity with rb-apps (ArrowUp/ArrowDown clamped navigation, Enter executes selection, Escape clears query) and added coverage; objectives unchanged; phase unchanged
+### 2025-12-16
+- Wired Playground launcher visibility to Ctrl+K / Cmd+K with Escape-to-close on empty queries, returning focus to the shell and covering open/close shortcuts in tests; objectives unchanged; phase unchanged
 ### 2025-12-16
 - Confirmed rb-apps Launcher test remains only at packages/rb-apps/src/__tests__/launcher.test.tsx with no src/tests drift; references remain normalized; no behavior change; objectives unchanged; phase unchanged
 - Centralized Dock Launcher Settings shortcut hint string to reduce tooltip drift (no behavior change); objectives unchanged; phase unchanged

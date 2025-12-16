@@ -1,3 +1,4 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import React, { useMemo, useState } from 'react';
 import { executeLauncherAction, type LauncherActionId } from './launcherActions';
 
@@ -25,6 +26,14 @@ const ACTIONS: LauncherAction[] = [
   },
 ];
 
+interface LauncherSearchPanelProps {
+  onClose?: () => void;
+}
+
+export function LauncherSearchPanel({ onClose }: LauncherSearchPanelProps) {
+  const [query, setQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
 export function LauncherSearchPanel() {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -39,15 +48,45 @@ export function LauncherSearchPanel() {
     );
   }, [query]);
 
+  useEffect(() => {
+    if (filtered.length === 0) {
+      setActiveIndex(0);
+      return;
+    }
+
+    setActiveIndex((current) => Math.min(current, filtered.length - 1));
+  }, [filtered]);
+
   const handleExecute = (actionId: LauncherActionId) => {
     executeLauncherAction(actionId);
   };
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const handleKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (event) => {
+    if (event.key === 'Escape') {
+      if (query) {
+        event.preventDefault();
+        setQuery('');
+        setActiveIndex(0);
+      } else if (onClose) {
+        event.preventDefault();
+        onClose();
+      }
+      return;
+    }
 
   const handleKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (event) => {
     if (filtered.length === 0) return;
 
     if (event.key === 'ArrowDown') {
       event.preventDefault();
+      setActiveIndex((prev) => Math.min(prev + 1, filtered.length - 1));
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setActiveIndex((prev) => Math.max(prev - 1, 0));
       setActiveIndex((prev) => (prev + 1) % filtered.length);
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
@@ -69,6 +108,7 @@ export function LauncherSearchPanel() {
       </div>
       <div className="p-4">
         <input
+          ref={inputRef}
           aria-label="Launcher search"
           className="w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
           placeholder="Search actions..."
