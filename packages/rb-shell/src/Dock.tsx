@@ -20,6 +20,11 @@ const dockIcons = [
 ];
 
 const LAUNCHER_SHORTCUT_HINT = 'Ctrl+K / Cmd+K';
+const SETTINGS_SHORTCUT_HINT = 'Ctrl+, / Cmd+,';
+const LAUNCHER_ARIA_KEYSHORTCUTS = 'Control+K Meta+K';
+const SETTINGS_ARIA_KEYSHORTCUTS = 'Control+, Meta+,';
+const DOCK_ORDER_STORAGE_KEY = 'rb.shell.dockOrder';
+const LEGACY_DOCK_ORDER_STORAGE_KEY = 'rb:shell:dockOrder';
 const DOCK_ORDER_STORAGE_KEY = 'rb.shell.dockOrder';
 const LEGACY_DOCK_ORDER_STORAGE_KEY = 'rb:shell:dockOrder';
 
@@ -129,7 +134,7 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
         const isRunning = runningIds.includes(dock.id);
         const title =
           dock.id === 'launcher'
-            ? `${dock.label} (${LAUNCHER_SHORTCUT_HINT}) — Type to search — Ctrl+, / Cmd+, for Settings`
+            ? `${dock.label} (${LAUNCHER_SHORTCUT_HINT}) — Type to search — ${SETTINGS_SHORTCUT_HINT} for Settings`
             : dock.label;
         const ariaLabel = dock.id === 'launcher' ? `Launcher (${LAUNCHER_SHORTCUT_HINT})` : dock.label;
         return (
@@ -141,6 +146,13 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
               buttonRefs.current[dock.id] = el;
             }}
             aria-label={ariaLabel}
+            aria-keyshortcuts={
+              dock.id === 'launcher'
+                ? LAUNCHER_ARIA_KEYSHORTCUTS
+                : dock.id === 'settings'
+                  ? SETTINGS_ARIA_KEYSHORTCUTS
+                  : undefined
+            }
             title={title}
             className="relative h-12 w-12 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all"
           >

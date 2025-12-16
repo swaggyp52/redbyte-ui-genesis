@@ -17,5 +17,8 @@ Environment notes:
 - Do not run `npm install` in this repo; pnpm workspace only, with pnpm used for validation commands.
 - Do not add, remove, or configure git remotes, and do not fetch/push in this environment.
 - If `nano` is unavailable, use `apply_patch` for edits.
+- Do not run `npm install` in this repo (pnpm workspace); use pnpm for the single validation command only.
+- Do not add/remove/configure git remotes or attempt fetch/push in this environment.
+- If `nano` is unavailable, apply edits using `apply_patch`.
 
 If your environment has no git remote configured, report it; do not add or modify remotes unless explicitly instructed.
