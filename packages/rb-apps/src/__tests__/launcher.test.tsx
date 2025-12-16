@@ -61,7 +61,6 @@ describe('Launcher component', () => {
   });
 
   it('ignores Settings shortcut when Shift is held', () => {
-  it('does not launch settings when Alt is held with Ctrl+,', () => {
     const onLaunch = vi.fn();
     const onClose = vi.fn();
 
@@ -81,7 +80,6 @@ describe('Launcher component', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('ignores Settings shortcut when Meta+Shift is held', () => {
   it('does not launch settings with Ctrl+, when typing in editable target', () => {
     const onLaunch = vi.fn();
     const onClose = vi.fn();
