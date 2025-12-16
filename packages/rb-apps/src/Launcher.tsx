@@ -139,6 +139,7 @@ export const Launcher: React.FC<LauncherProps> = ({
       handleLaunch('settings');
       return;
     }
+    }
 
     if (key === 'Escape') {
       if (query) {

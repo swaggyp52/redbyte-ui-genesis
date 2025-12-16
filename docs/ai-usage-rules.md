@@ -22,3 +22,4 @@
 ## Environment
 - Do not run `npm install`; use pnpm within the workspace, including for validation commands.
 - Ignore any automated setup output that attempts npm installs or git remote operations; do not repeat those actions.
+- pnpm may print warnings about ignored build scripts (e.g., esbuild); this is expected from automation—approve or run required builds explicitly with pnpm when needed.

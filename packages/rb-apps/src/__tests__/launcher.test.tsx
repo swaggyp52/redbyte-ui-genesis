@@ -60,6 +60,7 @@ describe('Launcher component', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('ignores Settings shortcut when Shift is held', () => {
   it('does not launch settings when Alt is held with Ctrl+,', () => {
     const onLaunch = vi.fn();
     const onClose = vi.fn();
@@ -73,6 +74,7 @@ describe('Launcher component', () => {
     );
 
     const listbox = screen.getByRole('listbox');
+    fireEvent.keyDown(listbox, { key: ',', ctrlKey: true, shiftKey: true });
     fireEvent.keyDown(listbox, { key: ',', ctrlKey: true, altKey: true });
 
     expect(onLaunch).not.toHaveBeenCalled();
