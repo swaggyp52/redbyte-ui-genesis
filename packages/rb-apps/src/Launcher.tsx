@@ -32,6 +32,7 @@ export const Launcher: React.FC<LauncherProps> = ({
   const [query, setQuery] = useState('');
   const [showHelp, setShowHelp] = useState(false);
   const selectedRef = useRef<HTMLDivElement | null>(null);
+  const listboxRef = useRef<HTMLDivElement | null>(null);
 
   const hasQuery = Boolean(query);
 
@@ -102,7 +103,12 @@ export const Launcher: React.FC<LauncherProps> = ({
   }, [hasQuery, navigableApps.length]);
 
   useEffect(() => {
-    selectedRef.current?.focus();
+    if (selectedRef.current) {
+      selectedRef.current.focus();
+      return;
+    }
+
+    listboxRef.current?.focus();
   }, [selectedIndex, navigableApps.length]);
 
   const handleLaunch = (id: string) => {
@@ -113,9 +119,6 @@ export const Launcher: React.FC<LauncherProps> = ({
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const { key, ctrlKey, metaKey, altKey, shiftKey } = event;
-    const { key, ctrlKey, metaKey, altKey, shiftKey } = event;
-    const { key, ctrlKey, metaKey, altKey, shiftKey } = event;
     const { key, ctrlKey, metaKey, altKey, shiftKey } = event;
     const target = event.target as HTMLElement | null;
     const tag = target?.tagName?.toLowerCase();
@@ -141,25 +144,6 @@ export const Launcher: React.FC<LauncherProps> = ({
       event.preventDefault();
       handleLaunch('settings');
       return;
-    }
-    if ((ctrlKey || metaKey) && key === ',' && hasSettings && !altKey && !shiftKey) {
-      if (isEditable) return;
-      event.preventDefault();
-      handleLaunch('settings');
-      return;
-    }
-    if ((ctrlKey || metaKey) && key === ',' && hasSettings && !altKey && !shiftKey) {
-      if (isEditable) return;
-      event.preventDefault();
-      handleLaunch('settings');
-      return;
-    }
-    if ((ctrlKey || metaKey) && key === ',' && hasSettings && !altKey && !shiftKey) {
-      if (isEditable) return;
-      event.preventDefault();
-      handleLaunch('settings');
-      return;
-    }
     }
 
     if (key === 'Escape') {
@@ -212,6 +196,7 @@ export const Launcher: React.FC<LauncherProps> = ({
         aria-selected={isSelected}
         ref={isSelected ? selectedRef : undefined}
         tabIndex={-1}
+        onMouseEnter={() => setSelectedIndex(index)}
         style={{
           margin: '0.5rem 0',
           display: 'flex',
@@ -260,6 +245,7 @@ export const Launcher: React.FC<LauncherProps> = ({
     <div
       role="listbox"
       tabIndex={0}
+      ref={listboxRef}
       onKeyDown={handleKeyDown}
       style={{ padding: '1rem', color: '#fff' }}
     >
@@ -313,7 +299,6 @@ export const Launcher: React.FC<LauncherProps> = ({
               type="button"
               title="Open Settings (Ctrl+, / Cmd+,)"
               aria-label="Open Settings (Ctrl+, / Cmd+,)"
-            aria-keyshortcuts="Control+, Meta+,"
               aria-keyshortcuts="Control+, Meta+,"
               onClick={() => handleLaunch('settings')}
               style={{

@@ -35,6 +35,16 @@ function snapToGrid(value: number, gridSize: number): number {
   return Math.round(value / gridSize) * gridSize;
 }
 
+function getTopWindow(windows: WindowState[]): WindowState | null {
+  const candidates = windows.filter((w) => w.mode !== 'minimized');
+  if (!candidates.length) return null;
+
+  return candidates.reduce<WindowState | null>((top, next) => {
+    if (!top) return next;
+    return next.zIndex > top.zIndex ? next : top;
+  }, null);
+}
+
 export const useWindowStore = create<WindowManagerStore>((set, get) => ({
   // State
   windows: [],
@@ -96,9 +106,24 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
   },
 
   closeWindow: (id) => {
-    set((state) => ({
-      windows: state.windows.filter((w) => w.id !== id),
-    }));
+    set((state) => {
+      const closing = state.windows.find((w) => w.id === id);
+      if (!closing) return state;
+
+      const remaining = state.windows.filter((w) => w.id !== id);
+      if (!closing.focused) {
+        return { windows: remaining };
+      }
+
+      const nextFocused = getTopWindow(remaining);
+
+      return {
+        windows: remaining.map((w) => ({
+          ...w,
+          focused: nextFocused ? w.id === nextFocused.id : false,
+        })),
+      };
+    });
   },
 
   focusWindow: (id) => {
@@ -110,6 +135,7 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
         windows: state.windows.map((w) => ({
           ...w,
           focused: w.id === id,
+          mode: w.id === id && w.mode === 'minimized' ? 'normal' : w.mode,
           zIndex: w.id === id ? state.nextZIndex : w.zIndex,
         })),
         nextZIndex: state.nextZIndex + 1,
@@ -168,12 +194,38 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
       const window = state.windows.find((w) => w.id === id);
       if (!window || !window.minimizable) return state;
 
+      const minimizing = window.mode !== 'minimized';
+
+      if (minimizing) {
+        const updated = state.windows.map((w) =>
+          w.id === id ? { ...w, mode: 'minimized', focused: false } : w
+        );
+
+        if (!window.focused) {
+          return { windows: updated };
+        }
+
+        const nextFocused = getTopWindow(updated);
+        return {
+          windows: updated.map((w) => ({
+            ...w,
+            focused: nextFocused ? w.id === nextFocused.id : false,
+          })),
+        };
+      }
+
+      const zIndex = state.nextZIndex;
       return {
-        windows: state.windows.map((w) =>
-          w.id === id
-            ? { ...w, mode: w.mode === 'minimized' ? 'normal' : 'minimized' }
-            : w
-        ),
+        windows: state.windows.map((w) => {
+          const isTarget = w.id === id;
+          return {
+            ...w,
+            focused: isTarget,
+            mode: isTarget ? 'normal' : w.mode,
+            zIndex: isTarget ? zIndex : w.zIndex,
+          };
+        }),
+        nextZIndex: zIndex + 1,
       };
     });
   },
@@ -194,11 +246,24 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
   },
 
   restoreWindow: (id) => {
-    set((state) => ({
-      windows: state.windows.map((w) =>
-        w.id === id ? { ...w, mode: 'normal' } : w
-      ),
-    }));
+    set((state) => {
+      const window = state.windows.find((w) => w.id === id);
+      if (!window) return state;
+
+      const zIndex = state.nextZIndex;
+      return {
+        windows: state.windows.map((w) => {
+          const isTarget = w.id === id;
+          return {
+            ...w,
+            focused: isTarget,
+            mode: isTarget ? 'normal' : w.mode,
+            zIndex: isTarget ? zIndex : w.zIndex,
+          };
+        }),
+        nextZIndex: zIndex + 1,
+      };
+    });
   },
 
   setSnapToGrid: (enabled) => {

@@ -61,7 +61,6 @@ describe('Launcher component', () => {
   });
 
   it('ignores Settings shortcut when Shift is held', () => {
-  it('does not launch settings when Alt is held with Ctrl+,', () => {
     const onLaunch = vi.fn();
     const onClose = vi.fn();
 
@@ -81,7 +80,6 @@ describe('Launcher component', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('ignores Settings shortcut when Meta+Shift is held', () => {
   it('does not launch settings with Ctrl+, when typing in editable target', () => {
     const onLaunch = vi.fn();
     const onClose = vi.fn();
@@ -200,6 +198,21 @@ describe('Launcher component', () => {
     fireEvent.keyDown(secondButton, { key: 'Enter' });
 
     expect(onLaunch).toHaveBeenCalledWith('files');
+  });
+
+  it('updates selection on hover without breaking keyboard navigation', () => {
+    render(<Launcher apps={sampleApps} />);
+
+    const firstButton = screen.getByRole('option', { name: 'Terminal' });
+    const secondButton = screen.getByRole('option', { name: 'Files' });
+
+    expect(firstButton).toHaveFocus();
+
+    fireEvent.mouseEnter(secondButton);
+    expect(secondButton).toHaveFocus();
+
+    fireEvent.keyDown(secondButton, { key: 'ArrowUp' });
+    expect(firstButton).toHaveFocus();
   });
 
   it('filters by keyboard input and launches selection', () => {
