@@ -114,9 +114,6 @@ export const Launcher: React.FC<LauncherProps> = ({
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const { key, ctrlKey, metaKey, altKey, shiftKey } = event;
-    const { key, ctrlKey, metaKey, altKey, shiftKey } = event;
-    const { key, ctrlKey, metaKey, altKey, shiftKey } = event;
-    const { key, ctrlKey, metaKey, altKey, shiftKey } = event;
     const target = event.target as HTMLElement | null;
     const tag = target?.tagName?.toLowerCase();
     const isEditable =
@@ -141,25 +138,6 @@ export const Launcher: React.FC<LauncherProps> = ({
       event.preventDefault();
       handleLaunch('settings');
       return;
-    }
-    if ((ctrlKey || metaKey) && key === ',' && hasSettings && !altKey && !shiftKey) {
-      if (isEditable) return;
-      event.preventDefault();
-      handleLaunch('settings');
-      return;
-    }
-    if ((ctrlKey || metaKey) && key === ',' && hasSettings && !altKey && !shiftKey) {
-      if (isEditable) return;
-      event.preventDefault();
-      handleLaunch('settings');
-      return;
-    }
-    if ((ctrlKey || metaKey) && key === ',' && hasSettings && !altKey && !shiftKey) {
-      if (isEditable) return;
-      event.preventDefault();
-      handleLaunch('settings');
-      return;
-    }
     }
 
     if (key === 'Escape') {
@@ -313,7 +291,6 @@ export const Launcher: React.FC<LauncherProps> = ({
               type="button"
               title="Open Settings (Ctrl+, / Cmd+,)"
               aria-label="Open Settings (Ctrl+, / Cmd+,)"
-            aria-keyshortcuts="Control+, Meta+,"
               aria-keyshortcuts="Control+, Meta+,"
               onClick={() => handleLaunch('settings')}
               style={{
