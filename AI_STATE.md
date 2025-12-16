@@ -314,6 +314,18 @@ After completing work, an AI agent MUST:
 - Ensured work is on the main branch and confirmed launcher tests live only under packages/rb-apps/src/__tests__ (no src/tests drift); objectives unchanged; phase unchanged
 - Documented guardrails against running npm install, modifying remotes/fetch/push, and assuming nano availability; objectives unchanged; phase unchanged
 - Added aria-keyshortcuts hints for Launcher (Ctrl+K / Cmd+K) and Settings (Ctrl+, / Cmd+,) on Dock/Launcher controls; no behavior change; objectives unchanged; phase unchanged
+- Clarified repo-local AI rules to ignore auto-setup npm install / remote actions and kept shortcut accessibility hints minimal; no behavior change; objectives unchanged; phase unchanged
+- Updated aria-keyshortcuts strings to use Comma key names for Settings shortcuts; no behavior change; objectives unchanged; phase unchanged
+- Removed duplicate/CRLF artifacts and normalized aria-keyshortcuts punctuation; no behavior change; objectives unchanged; phase unchanged
+### 2025-12-16
+- Confirmed rb-apps Launcher test remains only at packages/rb-apps/src/__tests__/launcher.test.tsx with no src/tests drift; references remain normalized; no behavior change; objectives unchanged; phase unchanged
+- Centralized Dock Launcher Settings shortcut hint string to reduce tooltip drift (no behavior change); objectives unchanged; phase unchanged
+- Added global Ctrl+, / Cmd+, shortcut in shell to open Settings when the Settings app exists; ignores editable targets and extra modifiers; objectives unchanged; phase unchanged
+- No other behavior changes; phase unchanged
+- Hardened Launcher Settings shortcut guards to ignore extra modifiers and editable targets; tests updated; objectives unchanged; phase unchanged
+- Ensured work is on the main branch and confirmed launcher tests live only under packages/rb-apps/src/__tests__ (no src/tests drift); objectives unchanged; phase unchanged
+- Documented guardrails against running npm install, modifying remotes/fetch/push, and assuming nano availability; objectives unchanged; phase unchanged
+- Added aria-keyshortcuts hints for Launcher (Ctrl+K / Cmd+K) and Settings (Ctrl+, / Cmd+,) on Dock/Launcher controls; no behavior change; objectives unchanged; phase unchanged
 ### 2025-12-16
 - Confirmed rb-apps Launcher test remains only at packages/rb-apps/src/__tests__/launcher.test.tsx with no src/tests drift; references remain normalized; no behavior change; objectives unchanged; phase unchanged
 - Centralized Dock Launcher Settings shortcut hint string to reduce tooltip drift (no behavior change); objectives unchanged; phase unchanged
