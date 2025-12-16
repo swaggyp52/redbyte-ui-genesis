@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { executeLauncherAction, type LauncherActionId } from './launcherActions';
 
 interface LauncherAction {
@@ -33,6 +34,9 @@ export function LauncherSearchPanel({ onClose }: LauncherSearchPanelProps) {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+export function LauncherSearchPanel() {
+  const [query, setQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -74,6 +78,7 @@ export function LauncherSearchPanel({ onClose }: LauncherSearchPanelProps) {
       return;
     }
 
+  const handleKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (event) => {
     if (filtered.length === 0) return;
 
     if (event.key === 'ArrowDown') {
@@ -82,6 +87,10 @@ export function LauncherSearchPanel({ onClose }: LauncherSearchPanelProps) {
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       setActiveIndex((prev) => Math.max(prev - 1, 0));
+      setActiveIndex((prev) => (prev + 1) % filtered.length);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setActiveIndex((prev) => (prev - 1 + filtered.length) % filtered.length);
     } else if (event.key === 'Enter') {
       event.preventDefault();
       const action = filtered[activeIndex];
