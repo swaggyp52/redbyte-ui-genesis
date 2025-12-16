@@ -6,9 +6,13 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Shell } from '@redbyte/rb-shell';
 import './index.css';
+import { LauncherSearchPanel } from './LauncherSearchPanel';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <Shell />
+    <div className="relative h-full">
+      <Shell />
+      <LauncherSearchPanel />
+    </div>
   </React.StrictMode>
 );

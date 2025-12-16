@@ -220,6 +220,10 @@ After completing work, an AI agent MUST:
 
 
 
+\### 2025-12-17
+\- Wired Playground launcher search actions through a centralized handler to open Settings/docs or stub project creation; panel remains mounted; objectives unchanged; phase unchanged
+\- Added launcher search panel test coverage to ensure Enter triggers the action handler; objectives unchanged; phase unchanged
+
 \### 2025-12-13
 
 \- Corrected legal attribution spelling to Connor Angiel across entire codebase
