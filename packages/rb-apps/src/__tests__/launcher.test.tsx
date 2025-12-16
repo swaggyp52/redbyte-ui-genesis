@@ -200,6 +200,21 @@ describe('Launcher component', () => {
     expect(onLaunch).toHaveBeenCalledWith('files');
   });
 
+  it('updates selection on hover without breaking keyboard navigation', () => {
+    render(<Launcher apps={sampleApps} />);
+
+    const firstButton = screen.getByRole('option', { name: 'Terminal' });
+    const secondButton = screen.getByRole('option', { name: 'Files' });
+
+    expect(firstButton).toHaveFocus();
+
+    fireEvent.mouseEnter(secondButton);
+    expect(secondButton).toHaveFocus();
+
+    fireEvent.keyDown(secondButton, { key: 'ArrowUp' });
+    expect(firstButton).toHaveFocus();
+  });
+
   it('filters by keyboard input and launches selection', () => {
     const onLaunch = vi.fn();
 

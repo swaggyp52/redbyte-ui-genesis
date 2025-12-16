@@ -32,6 +32,7 @@ export const Launcher: React.FC<LauncherProps> = ({
   const [query, setQuery] = useState('');
   const [showHelp, setShowHelp] = useState(false);
   const selectedRef = useRef<HTMLDivElement | null>(null);
+  const listboxRef = useRef<HTMLDivElement | null>(null);
 
   const hasQuery = Boolean(query);
 
@@ -102,7 +103,12 @@ export const Launcher: React.FC<LauncherProps> = ({
   }, [hasQuery, navigableApps.length]);
 
   useEffect(() => {
-    selectedRef.current?.focus();
+    if (selectedRef.current) {
+      selectedRef.current.focus();
+      return;
+    }
+
+    listboxRef.current?.focus();
   }, [selectedIndex, navigableApps.length]);
 
   const handleLaunch = (id: string) => {
@@ -190,6 +196,7 @@ export const Launcher: React.FC<LauncherProps> = ({
         aria-selected={isSelected}
         ref={isSelected ? selectedRef : undefined}
         tabIndex={-1}
+        onMouseEnter={() => setSelectedIndex(index)}
         style={{
           margin: '0.5rem 0',
           display: 'flex',
@@ -238,6 +245,7 @@ export const Launcher: React.FC<LauncherProps> = ({
     <div
       role="listbox"
       tabIndex={0}
+      ref={listboxRef}
       onKeyDown={handleKeyDown}
       style={{ padding: '1rem', color: '#fff' }}
     >
