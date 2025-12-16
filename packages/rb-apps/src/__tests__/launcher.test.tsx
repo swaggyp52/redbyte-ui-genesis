@@ -60,6 +60,44 @@ describe('Launcher component', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('ignores Settings shortcut when Shift is held', () => {
+    const onLaunch = vi.fn();
+    const onClose = vi.fn();
+
+    render(
+      <Launcher
+        apps={[...sampleApps, { id: 'settings', name: 'Settings' }]}
+        onLaunch={onLaunch}
+        onClose={onClose}
+      />
+    );
+
+    const listbox = screen.getByRole('listbox');
+    fireEvent.keyDown(listbox, { key: ',', ctrlKey: true, shiftKey: true });
+
+    expect(onLaunch).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('ignores Settings shortcut when Meta+Shift is held', () => {
+    const onLaunch = vi.fn();
+    const onClose = vi.fn();
+
+    render(
+      <Launcher
+        apps={[...sampleApps, { id: 'settings', name: 'Settings' }]}
+        onLaunch={onLaunch}
+        onClose={onClose}
+      />
+    );
+
+    const listbox = screen.getByRole('listbox');
+    fireEvent.keyDown(listbox, { key: ',', metaKey: true, shiftKey: true });
+
+    expect(onLaunch).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it('auto-closes after launching when onClose is provided', () => {
     const onLaunch = vi.fn();
     const onClose = vi.fn();

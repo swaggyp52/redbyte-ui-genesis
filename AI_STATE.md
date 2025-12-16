@@ -272,3 +272,13 @@ After completing work, an AI agent MUST:
 - Added Launcher Settings footer action with Ctrl+, / Cmd+, shortcut when Settings app is available; launcher tests updated; objectives unchanged; phase unchanged
 - Launcher now surfaces running apps via shell window state inside the Launcher list with accompanying test coverage; objectives unchanged; phase unchanged
 - Expanded Launcher dock tooltip to include shortcut, type-to-search, and Settings shortcut hints without changing behavior; objectives unchanged; phase unchanged
+
+### 2025-12-16
+- Reverted commit fbc5488 ("chore: tidy settings aria keyshortcuts") to remove unintended aria shortcut, governance, and test changes; objectives unchanged; phase unchanged
+- Restored environment guardrails documenting pnpm-only workflow, forbidden remote operations, and apply_patch fallback; objectives unchanged; phase unchanged
+- Corrected STAGEA root script examples to keep `--if-present` on pnpm recursion rather than forwarding to test/lint tools; objectives unchanged; phase unchanged
+- Reaffirmed pnpm-only guardrails, advising contributors to ignore automated npm/remote output and expected pnpm build-script warnings; objectives unchanged; phase unchanged
+- Hardened Launcher Settings shortcut to ignore Shift modifier and added test coverage; objectives unchanged; phase unchanged
+- Added Meta+Shift regression coverage for the Launcher Settings shortcut guard; objectives unchanged; phase unchanged
+- Removed unintended governance doc and AGENTS additions from the Meta+Shift shortcut test commit while keeping the launcher shortcut guards and coverage; objectives unchanged; phase unchanged
+- Trimmed governance doc noise while retaining launcher shortcut guard coverage; objectives unchanged; phase unchanged
