@@ -11,6 +11,8 @@ import { useSettingsStore } from '@redbyte/rb-utils';
 import { getApp, type RedByteApp } from '@redbyte/rb-apps';
 import { useWindowStore, loadSession } from '@redbyte/rb-windowing';
 import { useWorkspaceStore, loadWorkspaces } from './workspaceStore';
+import { executeMacro, type MacroExecutionContext } from './macros/executeMacro';
+import { useMacroStore } from './macros/macroStore';
 import BootScreen from './BootScreen';
 import { ToastContainer } from './ToastContainer';
 import { CommandPalette, type Command } from './CommandPalette';
@@ -200,6 +202,40 @@ export const Shell: React.FC<ShellProps> = () => {
     [openWindow]
   );
 
+  const switchWorkspaceById = useCallback(
+    (workspaceId: string): boolean => {
+      const snapshot = useWorkspaceStore.getState().switchWorkspace(workspaceId);
+      if (!snapshot) return false;
+
+      // Close all current windows
+      const currentWindows = useWindowStore.getState().windows;
+      currentWindows.forEach((w) => {
+        handleClose(w.id);
+      });
+
+      // Restore workspace snapshot
+      const validWindows = snapshot.windows.filter((w) => {
+        if (w.contentId === 'launcher') return false;
+        const app = getApp(w.contentId);
+        return Boolean(app);
+      });
+
+      restoreSession(validWindows, snapshot.nextZIndex);
+
+      const newBindings: Record<string, WindowAppBinding> = {};
+      validWindows.forEach((w) => {
+        newBindings[w.id] = { appId: w.contentId };
+      });
+      setBindings(newBindings);
+
+      return true;
+    },
+    [handleClose, restoreSession]
+  );
+
+  // Ref to hold latest executeCommand for macro execution
+  const executeCommandRef = useRef<((command: Command) => void) | null>(null);
+
   const executeCommand = useCallback(
     (command: Command) => {
       switch (command) {
@@ -350,9 +386,53 @@ export const Shell: React.FC<ShellProps> = () => {
           useWorkspaceStore.getState().deleteWorkspace(selectedWorkspace.id);
           break;
         }
+
+        case 'run-macro': {
+          const macros = useMacroStore.getState().listMacros();
+          if (macros.length === 0) {
+            alert('No macros available');
+            return;
+          }
+
+          const names = macros.map((m, i) => `${i + 1}. ${m.name}`).join('\n');
+          const input = window.prompt(`Run macro:\n\n${names}\n\nEnter number:`);
+          if (!input) return;
+
+          const index = parseInt(input, 10) - 1;
+          if (isNaN(index) || index < 0 || index >= macros.length) {
+            alert('Invalid selection');
+            return;
+          }
+
+          const selectedMacro = macros[index];
+          executeMacroById(selectedMacro.id);
+          break;
+        }
       }
     },
     [focusWindow, handleClose, toggleMinimize, snapWindow, centerWindow, restoreSession, setBindings]
+  );
+
+  // Store ref for macro execution to avoid circular dependency
+  executeCommandRef.current = executeCommand;
+
+  const executeMacroById = useCallback(
+    (macroId: string): void => {
+      const context: MacroExecutionContext = {
+        executeCommand: (command) => executeCommandRef.current?.(command),
+        openWindow: (appId, props) => openWindow(appId, props),
+        dispatchIntent: (intent) => dispatchIntent(intent),
+        switchWorkspace: (workspaceId) => switchWorkspaceById(workspaceId),
+        getApp: (appId) => getApp(appId),
+      };
+
+      const result = executeMacro(macroId, context);
+
+      if (!result.success) {
+        alert(`Macro failed at step ${result.stepIndex + 1}: ${result.error}`);
+      }
+    },
+    [openWindow, dispatchIntent, switchWorkspaceById]
   );
 
   const handleSearchExecuteIntent = useCallback(
@@ -546,6 +626,7 @@ export const Shell: React.FC<ShellProps> = () => {
           onExecuteApp={openWindow}
           onExecuteCommand={executeCommand}
           onExecuteIntent={handleSearchExecuteIntent}
+          onExecuteMacro={executeMacroById}
           onClose={() => setSystemSearchOpen(false)}
         />
       )}
