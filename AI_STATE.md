@@ -270,6 +270,70 @@ Keyboard shortcuts:
 \- Cmd/Ctrl+Shift+P: Open Command Palette (lists available commands)
 
 
+### System Search Contract
+
+System Search is the unified discovery surface for apps, commands, and intent targets:
+
+\- System Search is GLOBAL and MODAL (only one instance, invoked via Cmd/Ctrl+Space)
+
+\- System Search is READ-ONLY until confirmed (no side effects before Enter)
+
+\- System Search aggregates registered apps, commands, and intent-capable targets
+
+\- System Search does NOT replace Launcher visually (Launcher remains accessible via Cmd/Ctrl+K)
+
+\- System Search is for SPEED and DISCOVERY (not persistence or history)
+
+
+Search result types (priority order):
+
+\- **Apps**: Registered apps from rb-apps registry (Launcher, Files, Settings, Playground, etc.)
+
+\- **Commands**: Available commands from Command System (focus-next-window, close-focused-window, etc.)
+
+\- **Intent Targets**: Intent-capable actions (e.g. "Open in Playground")
+
+
+Search behavior:
+
+\- Simple string matching (startsWith / includes, case-insensitive)
+
+\- No fuzzy scoring, no ranking heuristics, no async search
+
+\- No indexing engine, no recent history, no persistence
+
+\- Results grouped by section (Apps, Commands, Intent Targets)
+
+
+Keyboard behavior:
+
+\- Cmd/Ctrl+Space: Open System Search
+
+\- ArrowUp / ArrowDown: Navigate results
+
+\- Enter: Execute selected item
+
+\- Escape: Close search without side effects
+
+
+Execution behavior:
+
+\- App → openWindow(appId)
+
+\- Command → executeCommand immediately
+
+\- Intent Target → dispatchIntent via Shell
+
+
+Focus and safety:
+
+\- Search does NOT trigger inside text inputs (respects editable targets)
+
+\- Closing search restores previous focus
+
+\- Search does NOT open windows until Enter is pressed
+
+
 
 ---
 

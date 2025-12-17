@@ -17,6 +17,7 @@
     "test": "echo \"Tests run at root. This package has no direct tests.\""
   },
   "dependencies": {
+    "@redbyte/rb-apps": "workspace:*",
     "@redbyte/rb-icons": "workspace:*",
     "@redbyte/rb-theme": "workspace:*",
     "@redbyte/rb-utils": "workspace:*",

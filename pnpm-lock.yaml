@@ -229,6 +229,9 @@ importers:
 
   packages/rb-shell:
     dependencies:
+      '@redbyte/rb-apps':
+        specifier: workspace:*
+        version: link:../rb-apps
       '@redbyte/rb-icons':
         specifier: workspace:*
         version: link:../rb-icons
