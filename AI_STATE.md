@@ -225,6 +225,51 @@ Intents enable explicit app-to-app interaction without breaking isolation:
 \- No hidden side effects (all intent actions are explicit user choices)
 
 
+### Command System Contract
+
+Commands are system-level actions for power-user workflows without adding global state:
+
+\- Commands are SYSTEM-LEVEL actions (operate on focused window or global OS state)
+
+\- Commands are STATELESS and SYNCHRONOUS (no async side effects)
+
+\- Commands are triggered ONLY by keyboard shortcuts or command UI (never automatic)
+
+\- Commands operate on the focused window when applicable (or no-op if no focus)
+
+\- Commands do NOT open new windows (only manipulate existing windows or OS state)
+
+\- Commands do NOT fire when typing in text inputs (respect editable targets)
+
+\- Command dispatch lives in Shell keyboard handler (no global command bus)
+
+\- Commands reuse existing window store functions (no new primitives unless required)
+
+
+Available commands:
+
+\- **focus-next-window**: Cycle to next non-minimized window by descending zIndex (wraps around)
+
+\- **focus-prev-window**: Cycle to previous non-minimized window by descending zIndex (wraps around)
+
+\- **close-focused-window**: Close the currently focused window (respects singleton semantics)
+
+\- **minimize-focused-window**: Minimize the currently focused window (retains in store)
+
+\- **restore-last-minimized**: Restore most recently minimized window (not implemented yet)
+
+
+Keyboard shortcuts:
+
+\- Cmd/Ctrl+\` (backtick): focus-next-window
+
+\- Cmd/Ctrl+W: close-focused-window
+
+\- Cmd/Ctrl+M: minimize-focused-window
+
+\- Cmd/Ctrl+Shift+P: Open Command Palette (lists available commands)
+
+
 
 ---
 

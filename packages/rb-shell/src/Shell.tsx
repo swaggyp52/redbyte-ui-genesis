@@ -12,6 +12,7 @@ import { getApp, type RedByteApp } from '@redbyte/rb-apps';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import BootScreen from './BootScreen';
 import { ToastContainer } from './ToastContainer';
+import { CommandPalette, type Command } from './CommandPalette';
 import type { Intent } from './intent-types';
 import './styles.css';
 
@@ -29,6 +30,7 @@ export const Shell: React.FC<ShellProps> = () => {
     if (typeof window === 'undefined') return true;
     return localStorage.getItem('rb:shell:booted') === '1';
   });
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   const hasShownWelcomeRef = useRef(false);
   const hasInitializedRef = useRef(false);
@@ -147,32 +149,102 @@ export const Shell: React.FC<ShellProps> = () => {
     [openWindow]
   );
 
+  const executeCommand = useCallback(
+    (command: Command) => {
+      switch (command) {
+        case 'focus-next-window': {
+          const activeWindows = useWindowStore.getState().getActiveWindows();
+          if (activeWindows.length < 2) return;
+
+          const sortedByZ = [...activeWindows].sort((a, b) => b.zIndex - a.zIndex);
+          const focusedIndex = sortedByZ.findIndex((w) => w.focused);
+
+          if (focusedIndex === -1) {
+            focusWindow(sortedByZ[0].id);
+          } else {
+            const nextIndex = (focusedIndex + 1) % sortedByZ.length;
+            focusWindow(sortedByZ[nextIndex].id);
+          }
+          break;
+        }
+
+        case 'close-focused-window': {
+          const focused = useWindowStore.getState().getFocusedWindow();
+          if (focused) {
+            handleClose(focused.id);
+          }
+          break;
+        }
+
+        case 'minimize-focused-window': {
+          const focused = useWindowStore.getState().getFocusedWindow();
+          if (focused && focused.minimizable) {
+            toggleMinimize(focused.id);
+          }
+          break;
+        }
+      }
+    },
+    [focusWindow, handleClose, toggleMinimize]
+  );
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const handler = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey)) return;
-
       const target = event.target as HTMLElement | null;
       const tag = target?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'option') return;
-      if (target?.isContentEditable) return;
+      const isEditable = tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'option' || target?.isContentEditable;
 
+      if (!(event.ctrlKey || event.metaKey)) return;
+      if (isEditable) return;
+
+      // Cmd/Ctrl+Shift+P: Open Command Palette
+      if (event.shiftKey && event.key.toLowerCase() === 'p') {
+        event.preventDefault();
+        setCommandPaletteOpen(true);
+        return;
+      }
+
+      // Cmd/Ctrl+K: Open Launcher
       if (event.key.toLowerCase() === 'k') {
         event.preventDefault();
         openWindow('launcher');
         return;
       }
 
+      // Cmd/Ctrl+,: Open Settings
       if (!event.altKey && !event.shiftKey && event.key === ',' && hasSettings) {
         event.preventDefault();
         openWindow('settings');
+        return;
+      }
+
+      // Cmd/Ctrl+`: Window cycling
+      if (event.key === '`') {
+        event.preventDefault();
+        executeCommand('focus-next-window');
+        return;
+      }
+
+      // Cmd/Ctrl+W: Close focused window
+      if (event.key.toLowerCase() === 'w') {
+        event.preventDefault();
+        executeCommand('close-focused-window');
+        return;
+      }
+
+      // Cmd/Ctrl+M: Minimize focused window
+      if (event.key.toLowerCase() === 'm') {
+        event.preventDefault();
+        executeCommand('minimize-focused-window');
+        return;
       }
     };
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [hasSettings, openWindow]);
+  }, [hasSettings, openWindow, executeCommand]);
 
   const handleClose = useCallback(
     (id: string) => {
@@ -256,6 +328,13 @@ export const Shell: React.FC<ShellProps> = () => {
       })}
 
       <ToastContainer />
+
+      {commandPaletteOpen && (
+        <CommandPalette
+          onExecute={executeCommand}
+          onClose={() => setCommandPaletteOpen(false)}
+        />
+      )}
     </div>
   );
 };
