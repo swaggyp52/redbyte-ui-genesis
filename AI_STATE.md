@@ -113,6 +113,49 @@ The Launcher is the canonical OS entry point with these enforced behaviors:
 \- Shell.openWindow enforces singleton + focus behavior for all singleton apps
 
 
+\### Window \& Shell Lifecycle Contract
+
+Focus surface and interaction rules:
+
+\- New windows always receive focus on creation
+
+\- Focusing a window unfocuses all other windows (single-focus invariant)
+
+\- Minimized windows remain in window store but are excluded from visible layout
+
+\- Minimized windows retain their focus state (focus does not auto-transfer)
+
+\- Maximized windows use mode='maximized' but z-index ordering still applies
+
+\- Z-index is unique per window and increases monotonically
+
+\- Focusing a window raises its z-index above all others
+
+
+Dock interaction rules:
+
+\- Clicking Dock icon for singleton app restores minimized window + focuses
+
+\- Clicking Dock icon for non-singleton app creates new instance (not impl)
+
+\- Dock never creates duplicate singleton windows
+
+\- Dock running indicator shows only non-minimized windows
+
+
+Keyboard semantics (OS-level):
+
+\- Cmd/Ctrl+K opens Launcher (global, always available)
+
+\- Cmd/Ctrl+, opens Settings (global, when Settings exists)
+
+\- Escape in Launcher closes Launcher
+
+\- Escape in Desktop clears icon selection
+
+\- Cmd/Ctrl+W closes focused window (not implemented)
+
+
 
 ---
 
@@ -366,3 +409,4 @@ After completing work, an AI agent MUST:
 - Ensured work is on the main branch and confirmed launcher tests live only under packages/rb-apps/src/__tests__ (no src/tests drift); objectives unchanged; phase unchanged
 - Documented guardrails against running npm install, modifying remotes/fetch/push, and assuming nano availability; objectives unchanged; phase unchanged
 - Formalized Launcher contract in AI_STATE.md specifying singleton, restore-from-minimized, and focus invariants; added Shell.openWindow fix to restore minimized singleton windows before focusing; added launcher-lifecycle.test.tsx OS-level tests; cleaned duplicate code in Launcher.tsx and launcher.test.tsx; all tests pass; objectives unchanged; phase unchanged
+- Formalized Window + Shell lifecycle contract in AI_STATE.md specifying focus surface, Dock interaction, keyboard semantics, and visual state rules; added shell-lifecycle.test.tsx with 11 tests covering focus, minimize/maximize, and z-index behavior; cleaned duplicate code in Dock.tsx; all 49 tests pass; objectives unchanged; phase unchanged
