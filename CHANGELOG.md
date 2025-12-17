@@ -1,5 +1,33 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_U - Modal UI (2025-12-17)
+
+### Replace prompt/alert with Real Minimal OS UI
+
+- **WorkspaceSwitcher modal**: Keyboard-first workspace selection
+  - List all workspaces with arrow key navigation
+  - Show current workspace indicator
+  - Enter switches, Escape cancels
+  - Search/filter by typing
+
+- **MacroRunner modal**: Keyboard-first macro execution
+  - List all macros with search/filter
+  - Show step count in description
+  - Enter executes, Escape cancels
+  - Same interaction pattern as SystemSearch
+
+- **Modal UI Contract**: Documented in AI_STATE.md
+  - Keyboard-first: Arrow keys navigate, Enter selects, Escape closes
+  - No focus theft: Opening modal doesn't change focused window
+  - Deterministic execution: Uses same primitives as direct commands
+  - Consistent styling: Matches SystemSearch / CommandPalette
+
+- **Shell integration**: Removed all window.prompt() calls
+  - switch-workspace command opens WorkspaceSwitcher modal
+  - run-macro command opens MacroRunner modal
+  - No browser prompts in UX
+  - All 201 tests passing
+
 ## PHASE_S - CI + Release Discipline (2025-12-17)
 
 ### Continuous Integration

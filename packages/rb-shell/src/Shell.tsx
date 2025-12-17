@@ -17,6 +17,7 @@ import BootScreen from './BootScreen';
 import { ToastContainer } from './ToastContainer';
 import { CommandPalette, type Command } from './CommandPalette';
 import { SystemSearch } from './SystemSearch';
+import { WorkspaceSwitcher, MacroRunner } from './modals';
 import type { Intent } from './intent-types';
 import './styles.css';
 
@@ -36,6 +37,8 @@ export const Shell: React.FC<ShellProps> = () => {
   });
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [systemSearchOpen, setSystemSearchOpen] = useState(false);
+  const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false);
+  const [macroRunnerOpen, setMacroRunnerOpen] = useState(false);
 
   const hasShownWelcomeRef = useRef(false);
   const hasInitializedRef = useRef(false);
@@ -327,46 +330,7 @@ export const Shell: React.FC<ShellProps> = () => {
         }
 
         case 'switch-workspace': {
-          const workspaces = useWorkspaceStore.getState().listWorkspaces();
-          if (workspaces.length === 0) {
-            alert('No workspaces available');
-            return;
-          }
-
-          const names = workspaces.map((w, i) => `${i + 1}. ${w.name}`).join('\n');
-          const input = window.prompt(`Select workspace:\n\n${names}\n\nEnter number:`);
-          if (!input) return;
-
-          const index = parseInt(input, 10) - 1;
-          if (isNaN(index) || index < 0 || index >= workspaces.length) {
-            alert('Invalid selection');
-            return;
-          }
-
-          const selectedWorkspace = workspaces[index];
-          const snapshot = useWorkspaceStore.getState().switchWorkspace(selectedWorkspace.id);
-          if (!snapshot) return;
-
-          // Close all current windows
-          const currentWindows = useWindowStore.getState().windows;
-          currentWindows.forEach((w) => {
-            handleClose(w.id);
-          });
-
-          // Restore workspace snapshot
-          const validWindows = snapshot.windows.filter((w) => {
-            if (w.contentId === 'launcher') return false;
-            const app = getApp(w.contentId);
-            return Boolean(app);
-          });
-
-          restoreSession(validWindows, snapshot.nextZIndex);
-
-          const newBindings: Record<string, WindowAppBinding> = {};
-          validWindows.forEach((w) => {
-            newBindings[w.id] = { appId: w.contentId };
-          });
-          setBindings(newBindings);
+          setWorkspaceSwitcherOpen(true);
           break;
         }
 
@@ -393,24 +357,7 @@ export const Shell: React.FC<ShellProps> = () => {
         }
 
         case 'run-macro': {
-          const macros = useMacroStore.getState().listMacros();
-          if (macros.length === 0) {
-            alert('No macros available');
-            return;
-          }
-
-          const names = macros.map((m, i) => `${i + 1}. ${m.name}`).join('\n');
-          const input = window.prompt(`Run macro:\n\n${names}\n\nEnter number:`);
-          if (!input) return;
-
-          const index = parseInt(input, 10) - 1;
-          if (isNaN(index) || index < 0 || index >= macros.length) {
-            alert('Invalid selection');
-            return;
-          }
-
-          const selectedMacro = macros[index];
-          executeMacroById(selectedMacro.id);
+          setMacroRunnerOpen(true);
           break;
         }
       }
@@ -438,6 +385,20 @@ export const Shell: React.FC<ShellProps> = () => {
       }
     },
     [openWindow, dispatchIntent, switchWorkspaceById]
+  );
+
+  const handleWorkspaceSelect = useCallback(
+    (workspaceId: string) => {
+      switchWorkspaceById(workspaceId);
+    },
+    [switchWorkspaceById]
+  );
+
+  const handleMacroExecute = useCallback(
+    (macroId: string) => {
+      executeMacroById(macroId);
+    },
+    [executeMacroById]
   );
 
   const handleSearchExecuteIntent = useCallback(
@@ -640,6 +601,23 @@ export const Shell: React.FC<ShellProps> = () => {
         <CommandPalette
           onExecute={executeCommand}
           onClose={() => setCommandPaletteOpen(false)}
+        />
+      )}
+
+      {workspaceSwitcherOpen && (
+        <WorkspaceSwitcher
+          workspaces={useWorkspaceStore.getState().listWorkspaces()}
+          currentWorkspaceId={useWorkspaceStore.getState().activeWorkspaceId || undefined}
+          onSelect={handleWorkspaceSelect}
+          onClose={() => setWorkspaceSwitcherOpen(false)}
+        />
+      )}
+
+      {macroRunnerOpen && (
+        <MacroRunner
+          macros={useMacroStore.getState().listMacros()}
+          onExecute={handleMacroExecute}
+          onClose={() => setMacroRunnerOpen(false)}
         />
       )}
     </div>
