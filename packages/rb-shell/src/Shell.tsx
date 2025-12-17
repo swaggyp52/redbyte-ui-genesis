@@ -9,7 +9,7 @@ import { ShellWindow } from './ShellWindow';
 import { applyTheme } from '@redbyte/rb-theme';
 import { useSettingsStore } from '@redbyte/rb-utils';
 import { getApp, type RedByteApp } from '@redbyte/rb-apps';
-import { useWindowStore } from '@redbyte/rb-windowing';
+import { useWindowStore, loadSession } from '@redbyte/rb-windowing';
 import BootScreen from './BootScreen';
 import { ToastContainer } from './ToastContainer';
 import { CommandPalette, type Command } from './CommandPalette';
@@ -55,6 +55,7 @@ export const Shell: React.FC<ShellProps> = () => {
   const restoreWindow = useWindowStore((s) => s.restoreWindow);
   const snapWindow = useWindowStore((s) => s.snapWindow);
   const centerWindow = useWindowStore((s) => s.centerWindow);
+  const restoreSession = useWindowStore((s) => s.restoreSession);
 
   const [bindings, setBindings] = useState<Record<string, WindowAppBinding>>({});
   const [recentAppIds, setRecentAppIds] = useState<string[]>([]);
@@ -105,6 +106,33 @@ export const Shell: React.FC<ShellProps> = () => {
       applyTheme(document.documentElement, settings.themeVariant);
     }
   }, [settings.themeVariant]);
+
+  // Session restore on mount
+  useEffect(() => {
+    if (!booted) return;
+
+    const session = loadSession();
+    if (!session) return;
+
+    // Filter out unknown apps and Launcher
+    const validWindows = session.windows.filter((w) => {
+      if (w.contentId === 'launcher') return false;
+      const app = getApp(w.contentId);
+      return Boolean(app);
+    });
+
+    if (validWindows.length === 0) return;
+
+    // Restore session to store
+    restoreSession(validWindows, session.nextZIndex);
+
+    // Bind all restored windows
+    const newBindings: Record<string, WindowAppBinding> = {};
+    validWindows.forEach((w) => {
+      newBindings[w.id] = { appId: w.contentId };
+    });
+    setBindings(newBindings);
+  }, [booted, restoreSession]);
 
   const openWindow = useCallback(
     (appId: string, props?: any) => {
