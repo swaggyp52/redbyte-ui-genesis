@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { SettingsApp } from '../apps/SettingsApp';
 import { useSettingsStore } from '@redbyte/rb-utils';
 
@@ -80,9 +80,13 @@ describe('Settings app lifecycle', () => {
     const { container } = render(<SettingsComponent />);
     const mainContainer = container.querySelector('[tabIndex="0"]');
 
-    useSettingsStore.setState({ themeVariant: 'dark' });
+    act(() => {
+      useSettingsStore.setState({ themeVariant: 'dark' });
+    });
 
-    fireEvent.keyDown(mainContainer!, { key: 'Enter' });
+    act(() => {
+      fireEvent.keyDown(mainContainer!, { key: 'Enter' });
+    });
 
     const state = useSettingsStore.getState();
     expect(['light', 'dark', 'system']).toContain(state.themeVariant);
