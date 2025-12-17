@@ -340,7 +340,7 @@ Window layouts are explicit spatial commands for efficient multi-window workflow
 
 \- Layouts are EXPLICIT and USER-TRIGGERED (never automatic or inferred)
 
-\- Layouts are PER-SESSION (no persistence across browser reloads yet)
+\- Layouts are PER-SESSION (restored automatically on reload via Session Contract)
 
 \- Layouts apply ONLY to normal windows (minimized windows are unaffected)
 
@@ -384,6 +384,67 @@ Behavior semantics:
 \- Layout commands do NOT minimize, close, or change window stacking
 
 \- Layout commands are synchronous (no async side effects)
+
+
+### Session Contract
+
+Session restore preserves workspace continuity across browser reloads:
+
+\- Session restore is BEST-EFFORT and FAILURE-SAFE (corrupted data resets cleanly)
+
+\- Session restore is AUTOMATIC on boot (no user confirmation or UI)
+
+\- Session restore is TRANSPARENT (appears instant, no loading UI required)
+
+
+What gets restored:
+
+\- Normal windows (position, size, z-index, focus state)
+
+\- Maximized windows (mode preserved, bounds ignored during maximized state)
+
+\- Minimized windows (restored as minimized, bounds preserved)
+
+\- Z-index ordering (relative stacking matches pre-reload state)
+
+\- Focused window (last focused window regains focus after restore)
+
+
+What does NOT get restored:
+
+\- Launcher window (only opens via explicit user action)
+
+\- App-specific internal state (apps must handle their own rehydration)
+
+\- Command history or intent state (session restore does not trigger commands)
+
+\- Unknown apps (windows referencing unregistered apps are skipped)
+
+
+Persistence rules:
+
+\- Window state persists to localStorage on every window mutation
+
+\- Persisted data: windows array (id, contentId, bounds, mode, zIndex, focused)
+
+\- Persisted data: nextZIndex counter
+
+\- Invalid or corrupted entries are silently ignored (no crash, no alert)
+
+\- Apps that fail to mount are skipped (other windows restore successfully)
+
+
+Restore flow:
+
+\- Shell reads localStorage on initialization (before Welcome screen logic)
+
+\- Valid window entries recreate windows via createWindow-like path
+
+\- Bounds, mode, and zIndex are applied from persisted state
+
+\- Focus is restored to the last focused window (if it exists)
+
+\- Launcher does NOT auto-open (preserves Cmd/Ctrl+K explicit invocation)
 
 
 

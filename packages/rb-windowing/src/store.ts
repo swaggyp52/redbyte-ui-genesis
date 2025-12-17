@@ -26,6 +26,8 @@ interface WindowManagerActions {
   // Layout actions
   snapWindow: (id: WindowId, direction: 'left' | 'right' | 'top' | 'bottom', desktopBounds: WindowBounds) => void;
   centerWindow: (id: WindowId, desktopBounds: WindowBounds) => void;
+  // Session actions
+  restoreSession: (windows: WindowState[], nextZIndex: number) => void;
   // Selectors
   getActiveWindows: () => WindowState[];
   getFocusedWindow: () => WindowState | null;
@@ -33,6 +35,44 @@ interface WindowManagerActions {
 }
 
 type WindowManagerStore = WindowManagerState & WindowManagerActions;
+
+const SESSION_STORAGE_KEY = 'rb:window-session';
+
+interface PersistedSession {
+  windows: WindowState[];
+  nextZIndex: number;
+}
+
+function saveSession(windows: WindowState[], nextZIndex: number): void {
+  if (typeof localStorage === 'undefined') return;
+
+  try {
+    const session: PersistedSession = { windows, nextZIndex };
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+  } catch (error) {
+    // Silently ignore localStorage errors (quota exceeded, etc.)
+  }
+}
+
+export function loadSession(): PersistedSession | null {
+  if (typeof localStorage === 'undefined') return null;
+
+  try {
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (!Array.isArray(parsed.windows)) return null;
+    if (typeof parsed.nextZIndex !== 'number') return null;
+
+    return parsed as PersistedSession;
+  } catch (error) {
+    // Silently ignore corrupted data
+    return null;
+  }
+}
 
 function snapToGrid(value: number, gridSize: number): number {
   return Math.round(value / gridSize) * gridSize;
@@ -294,6 +334,11 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
     });
   },
 
+  // Session actions
+  restoreSession: (windows, nextZIndex) => {
+    set({ windows, nextZIndex });
+  },
+
   // Selectors
   getActiveWindows: () => {
     return get().windows.filter((w) => w.mode !== 'minimized');
@@ -307,3 +352,8 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
     return [...get().windows].sort((a, b) => a.zIndex - b.zIndex);
   },
 }));
+
+// Auto-persist session on window state changes
+useWindowStore.subscribe((state) => {
+  saveSession(state.windows, state.nextZIndex);
+});
