@@ -24,6 +24,36 @@ const COMMANDS: CommandSearchResult[] = [
     name: 'Minimize Window',
     description: 'Minimize the currently focused window',
   },
+  {
+    type: 'command',
+    id: 'snap-left',
+    name: 'Snap Left',
+    description: 'Snap window to left half of screen',
+  },
+  {
+    type: 'command',
+    id: 'snap-right',
+    name: 'Snap Right',
+    description: 'Snap window to right half of screen',
+  },
+  {
+    type: 'command',
+    id: 'snap-top',
+    name: 'Snap Top',
+    description: 'Snap window to top half of screen',
+  },
+  {
+    type: 'command',
+    id: 'snap-bottom',
+    name: 'Snap Bottom',
+    description: 'Snap window to bottom half of screen',
+  },
+  {
+    type: 'command',
+    id: 'center-window',
+    name: 'Center Window',
+    description: 'Center window on screen',
+  },
 ];
 
 const INTENT_TARGETS: IntentSearchResult[] = [

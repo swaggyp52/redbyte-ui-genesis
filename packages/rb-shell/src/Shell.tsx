@@ -53,6 +53,8 @@ export const Shell: React.FC<ShellProps> = () => {
   const toggleMinimize = useWindowStore((s) => s.toggleMinimize);
   const toggleMaximize = useWindowStore((s) => s.toggleMaximize);
   const restoreWindow = useWindowStore((s) => s.restoreWindow);
+  const snapWindow = useWindowStore((s) => s.snapWindow);
+  const centerWindow = useWindowStore((s) => s.centerWindow);
 
   const [bindings, setBindings] = useState<Record<string, WindowAppBinding>>({});
   const [recentAppIds, setRecentAppIds] = useState<string[]>([]);
@@ -185,9 +187,43 @@ export const Shell: React.FC<ShellProps> = () => {
           }
           break;
         }
+
+        case 'snap-left':
+        case 'snap-right':
+        case 'snap-top':
+        case 'snap-bottom': {
+          const focused = useWindowStore.getState().getFocusedWindow();
+          if (!focused) return;
+
+          const desktopBounds = {
+            x: 0,
+            y: 0,
+            width: window.innerWidth,
+            height: window.innerHeight,
+          };
+
+          const direction = command.replace('snap-', '') as 'left' | 'right' | 'top' | 'bottom';
+          snapWindow(focused.id, direction, desktopBounds);
+          break;
+        }
+
+        case 'center-window': {
+          const focused = useWindowStore.getState().getFocusedWindow();
+          if (!focused) return;
+
+          const desktopBounds = {
+            x: 0,
+            y: 0,
+            width: window.innerWidth,
+            height: window.innerHeight,
+          };
+
+          centerWindow(focused.id, desktopBounds);
+          break;
+        }
       }
     },
-    [focusWindow, handleClose, toggleMinimize]
+    [focusWindow, handleClose, toggleMinimize, snapWindow, centerWindow]
   );
 
   const handleSearchExecuteIntent = useCallback(
@@ -257,6 +293,35 @@ export const Shell: React.FC<ShellProps> = () => {
         event.preventDefault();
         executeCommand('minimize-focused-window');
         return;
+      }
+
+      // Cmd/Ctrl+Alt+Arrow: Window snap
+      if (event.altKey) {
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault();
+          executeCommand('snap-left');
+          return;
+        }
+        if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          executeCommand('snap-right');
+          return;
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          executeCommand('snap-top');
+          return;
+        }
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          executeCommand('snap-bottom');
+          return;
+        }
+        if (event.key.toLowerCase() === 'c') {
+          event.preventDefault();
+          executeCommand('center-window');
+          return;
+        }
       }
     };
 

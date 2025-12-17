@@ -7,7 +7,12 @@ import React, { useEffect, useRef, useState } from 'react';
 export type Command =
   | 'focus-next-window'
   | 'close-focused-window'
-  | 'minimize-focused-window';
+  | 'minimize-focused-window'
+  | 'snap-left'
+  | 'snap-right'
+  | 'snap-top'
+  | 'snap-bottom'
+  | 'center-window';
 
 interface CommandItem {
   id: Command;
@@ -30,6 +35,31 @@ const COMMANDS: CommandItem[] = [
     id: 'minimize-focused-window',
     label: 'Minimize Window',
     description: 'Minimize the currently focused window',
+  },
+  {
+    id: 'snap-left',
+    label: 'Snap Left',
+    description: 'Snap window to left half of screen',
+  },
+  {
+    id: 'snap-right',
+    label: 'Snap Right',
+    description: 'Snap window to right half of screen',
+  },
+  {
+    id: 'snap-top',
+    label: 'Snap Top',
+    description: 'Snap window to top half of screen',
+  },
+  {
+    id: 'snap-bottom',
+    label: 'Snap Bottom',
+    description: 'Snap window to bottom half of screen',
+  },
+  {
+    id: 'center-window',
+    label: 'Center Window',
+    description: 'Center window on screen',
   },
 ];
 
