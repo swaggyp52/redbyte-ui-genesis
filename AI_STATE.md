@@ -526,6 +526,80 @@ Non-goals:
 \- No automatic workspace detection or suggestions
 
 
+### Macro Contract
+
+Macros enable repeatable sequences of actions for power-user automation:
+
+\- A macro is a NAMED SEQUENCE of action steps (commands, intents, workspace switches, app opens)
+
+\- Macros are EXPLICIT and USER-TRIGGERED (no background triggers, no schedules)
+
+\- Macros are SYNCHRONOUS and DETERMINISTIC (steps execute in order, no async waits)
+
+\- Macros are FAILURE-SAFE (abort on first error, no partial rollback)
+
+\- Macros are LOCAL-ONLY (no cloud sync, no cross-device persistence)
+
+
+Macro structure:
+
+\- Macro = { id: string, name: string, steps: MacroStep[] }
+
+\- MacroStep is one of:
+  - { type: 'command', commandId: string }
+  - { type: 'openApp', appId: string, props?: Record<string, unknown> }
+  - { type: 'intent', intent: OpenWithIntent }
+  - { type: 'switchWorkspace', workspaceId: string }
+
+
+Execution semantics:
+
+\- Macros execute steps sequentially in array order
+
+\- Each step uses existing Shell functions (executeCommand, openWindow, dispatchIntent, switchWorkspace)
+
+\- If a step fails (unknown ID, invalid data), macro execution ABORTS immediately
+
+\- No rollback of prior steps (steps are idempotent or user-recoverable)
+
+\- Execution returns success/failure status
+
+
+V1 Non-goals:
+
+\- No timers or delays (no setTimeout/setInterval)
+
+\- No async operations (no await/Promise)
+
+\- No loops or conditionals (no for/while/if)
+
+\- No recording mouse movement or DOM interactions
+
+\- No background execution (user must trigger explicitly)
+
+\- No schedules or cron-like triggers
+
+
+Persistence rules:
+
+\- All macros persist to localStorage
+
+\- Macro data structure: { id, name, steps }
+
+\- Corrupted macro entries are skipped (other macros remain functional)
+
+\- Invalid or corrupted localStorage data is silently ignored
+
+
+Discoverability:
+
+\- Macros appear in Command Palette under "Run Macro…" command
+
+\- Macros appear in System Search under "Macros" group
+
+\- Macro management commands (create, delete, rename) accessible via Command Palette
+
+
 
 ---
 
