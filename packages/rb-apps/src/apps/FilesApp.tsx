@@ -89,13 +89,43 @@ const SIDEBAR_ROOTS = [
   { id: 'documents', name: 'Documents' },
 ];
 
+// Build parent map for breadcrumb path resolution
+const FOLDER_PARENTS: Record<string, string | null> = {
+  home: null,
+  desktop: 'home',
+  documents: 'home',
+  downloads: 'home',
+  project1: 'desktop',
+  reports: 'documents',
+  src: 'project1',
+};
+
+// Helper to compute breadcrumb path from root to current folder
+function computeBreadcrumbPath(folderId: string): Array<{ id: string; name: string }> {
+  const path: Array<{ id: string; name: string }> = [];
+  let current: string | null = folderId;
+
+  while (current !== null) {
+    const folder = MOCK_FS[current];
+    if (folder) {
+      path.unshift({ id: folder.id, name: folder.name });
+    }
+    current = FOLDER_PARENTS[current] ?? null;
+  }
+
+  return path;
+}
+
 const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => {
   const [currentFolderId, setCurrentFolderId] = useState('home');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [backStack, setBackStack] = useState<string[]>([]);
+  const [forwardStack, setForwardStack] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const currentFolder = MOCK_FS[currentFolderId] || MOCK_FS.home;
   const entries = currentFolder.entries;
+  const breadcrumbPath = computeBreadcrumbPath(currentFolderId);
 
   useEffect(() => {
     setSelectedIndex(0);
@@ -104,6 +134,38 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
   useEffect(() => {
     containerRef.current?.focus();
   }, []);
+
+  // Centralized navigation helper
+  const navigateTo = (targetId: string, fromHistory = false) => {
+    if (!MOCK_FS[targetId]) return;
+
+    if (!fromHistory) {
+      // Push current folder onto back stack
+      setBackStack((prev) => [...prev, currentFolderId]);
+      // Clear forward stack on new navigation
+      setForwardStack([]);
+    }
+
+    setCurrentFolderId(targetId);
+  };
+
+  const goBack = () => {
+    if (backStack.length === 0) return;
+
+    const targetId = backStack[backStack.length - 1];
+    setBackStack((prev) => prev.slice(0, -1));
+    setForwardStack((prev) => [...prev, currentFolderId]);
+    setCurrentFolderId(targetId);
+  };
+
+  const goForward = () => {
+    if (forwardStack.length === 0) return;
+
+    const targetId = forwardStack[forwardStack.length - 1];
+    setForwardStack((prev) => prev.slice(0, -1));
+    setBackStack((prev) => [...prev, currentFolderId]);
+    setCurrentFolderId(targetId);
+  };
 
   const handleOpenWith = (entry: FileEntry) => {
     if (!onDispatchIntent) return;
@@ -123,6 +185,20 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
     if (event.key === 'Escape') {
       event.preventDefault();
       onClose?.();
+      return;
+    }
+
+    // Alt+Left: Back
+    if (event.altKey && event.key === 'ArrowLeft') {
+      event.preventDefault();
+      goBack();
+      return;
+    }
+
+    // Alt+Right: Forward
+    if (event.altKey && event.key === 'ArrowRight') {
+      event.preventDefault();
+      goForward();
       return;
     }
 
@@ -155,9 +231,7 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
       const selected = entries[selectedIndex];
       if (selected && selected.type === 'folder') {
         const targetId = FOLDER_LINKS[selected.id] || selected.id;
-        if (MOCK_FS[targetId]) {
-          setCurrentFolderId(targetId);
-        }
+        navigateTo(targetId);
       }
     }
   };
@@ -166,9 +240,7 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
     setSelectedIndex(index);
     if (entry.type === 'folder') {
       const targetId = FOLDER_LINKS[entry.id] || entry.id;
-      if (MOCK_FS[targetId]) {
-        setCurrentFolderId(targetId);
-      }
+      navigateTo(targetId);
     }
   };
 
@@ -189,7 +261,7 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
           {SIDEBAR_ROOTS.map((root) => (
             <button
               key={root.id}
-              onClick={() => setCurrentFolderId(root.id)}
+              onClick={() => navigateTo(root.id)}
               className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-800 transition-colors ${
                 currentFolderId === root.id ? 'bg-slate-800 text-cyan-400' : 'text-slate-300'
               }`}
@@ -202,8 +274,44 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
 
       {/* Main pane */}
       <div className="flex-1 flex flex-col">
-        <div className="p-3 border-b border-slate-800">
-          <h2 className="text-sm font-semibold">{currentFolder.name}</h2>
+        {/* Header with back/forward + breadcrumbs */}
+        <div className="p-3 border-b border-slate-800 flex items-center gap-2">
+          {/* Back/Forward buttons */}
+          <button
+            onClick={goBack}
+            disabled={backStack.length === 0}
+            className="px-2 py-1 text-sm rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            title="Back (Alt+Left)"
+          >
+            ←
+          </button>
+          <button
+            onClick={goForward}
+            disabled={forwardStack.length === 0}
+            className="px-2 py-1 text-sm rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            title="Forward (Alt+Right)"
+          >
+            →
+          </button>
+
+          {/* Breadcrumb navigation */}
+          <div className="flex items-center gap-1 text-sm flex-1">
+            {breadcrumbPath.map((segment, index) => (
+              <React.Fragment key={segment.id}>
+                {index > 0 && <span className="text-slate-600">/</span>}
+                <button
+                  onClick={() => navigateTo(segment.id)}
+                  className={`px-2 py-1 rounded transition-colors ${
+                    segment.id === currentFolderId
+                      ? 'text-cyan-400 font-semibold'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  {segment.name}
+                </button>
+              </React.Fragment>
+            ))}
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -263,6 +371,7 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
         <div className="p-2 border-t border-slate-800 text-xs text-slate-500">
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">↑↓</kbd> Navigate{' '}
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> Open{' '}
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Alt+←→</kbd> Back/Forward{' '}
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Cmd/Ctrl+Enter</kbd> Open in Playground{' '}
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Esc</kbd> Close
         </div>
