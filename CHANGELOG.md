@@ -1,5 +1,42 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_V - Files Workflow Polish (2025-12-17)
+
+### Files App Navigation Enhancements
+
+- **Breadcrumb Navigation**: Visual path indicator in Files app
+  - Displays current folder path (e.g., Home / Documents / Reports)
+  - Clickable breadcrumb segments for quick navigation
+  - Always reflects currentFolderId
+  - Updates immediately on folder changes
+
+- **Back/Forward History**: Browser-style navigation for Files
+  - Per-window history stacks (backStack, forwardStack)
+  - Back button (Alt+Left): Navigate to previous folder
+  - Forward button (Alt+Right): Navigate forward in history
+  - New navigation clears forward stack (proper branching behavior)
+  - History is independent per Files window instance
+
+- **Open With Workflow**: Enhanced file interaction
+  - "Open in Playground" button visible for file entries
+  - Keyboard shortcut: Cmd/Ctrl+Enter opens selected file in Logic Playground
+  - Uses existing intent dispatch (no new infrastructure)
+  - Folder selection correctly ignored (no-op behavior)
+
+- **UI Polish**: Professional file manager feel
+  - Back/Forward buttons with disabled states
+  - Breadcrumb path with separators and hover states
+  - Keyboard shortcuts displayed in footer bar
+  - All features keyboard-accessible
+
+- **Testing**: Comprehensive test coverage
+  - 31 total Files tests (all passing)
+  - Breadcrumb render and navigation tests
+  - History stack behavior (push, pop, clear) tests
+  - Open With intent dispatch tests
+  - Edge case coverage (empty stacks, folder vs file handling)
+  - All 222 tests passing with zero warnings
+
 ## PHASE_T - Invariants (2025-12-17)
 
 ### State Invariant Enforcement
