@@ -46,7 +46,7 @@ describe('Shell + Window lifecycle contract', () => {
       expect(window2?.focused).toBe(true);
     });
 
-    it('maintains focus on minimized window (does not auto-unfocus)', () => {
+    it('unfocuses window when minimized (invariant: minimized cannot be focused)', () => {
       const { createWindow, toggleMinimize } = useWindowStore.getState();
 
       const w1 = createWindow({
@@ -60,7 +60,7 @@ describe('Shell + Window lifecycle contract', () => {
       const window = state.windows.find((w) => w.id === w1.id);
 
       expect(window?.mode).toBe('minimized');
-      expect(window?.focused).toBe(true);
+      expect(window?.focused).toBe(false);
     });
   });
 

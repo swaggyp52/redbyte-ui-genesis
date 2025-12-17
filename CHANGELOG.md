@@ -1,5 +1,33 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_T - Invariants (2025-12-17)
+
+### State Invariant Enforcement
+
+- **Invariants Contract**: Documented in AI_STATE.md
+  - At most one focused window
+  - Unique z-index values
+  - Focused windows must not be minimized
+  - Z-index values are positive integers
+
+- **Dev-only assertion checks**: Created invariants.ts
+  - assertWindowInvariants() throws descriptive errors
+  - Gated behind process.env.NODE_ENV !== 'production'
+  - Located in packages/rb-windowing/src/invariants.ts
+
+- **Integrated in store**: All mutating actions check invariants
+  - createWindow, closeWindow, focusWindow
+  - toggleMinimize, toggleMaximize, restoreWindow
+  - snapWindow, centerWindow
+  - restoreSession
+  - Uses setWithInvariants() wrapper
+
+- **Bugs caught and fixed**:
+  - toggleMinimize now unfocuses minimized windows (invariant violation)
+  - Fixed test with invalid state (minimized + focused)
+  - Updated shell-lifecycle test to expect correct behavior
+  - All 201 tests passing with zero warnings
+
 ## PHASE_U - Modal UI (2025-12-17)
 
 ### Replace prompt/alert with Real Minimal OS UI

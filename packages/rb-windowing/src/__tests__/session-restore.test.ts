@@ -192,7 +192,7 @@ describe('Session Restore', () => {
           bounds: { x: 100, y: 100, width: 500, height: 350 },
           mode: 'minimized',
           zIndex: 2,
-          focused: true,
+          focused: false,
           resizable: true,
           minimizable: true,
           maximizable: true,
