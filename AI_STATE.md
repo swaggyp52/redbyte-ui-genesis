@@ -781,6 +781,59 @@ All system modals follow consistent keyboard-first interaction patterns:
 \- Tests verify focus preservation and deterministic execution
 
 
+### Invariants Contract
+
+State invariants ensure correctness under all window store operations:
+
+**Window state invariants (always hold after any action):**
+
+\- **At most one focused window**: Only one window can have `mode: 'normal'` or `mode: 'maximized'` AND be focused
+
+\- **Unique z-index**: No two windows share the same `zIndex` value
+
+\- **Focus validity**: If a focused window exists, it must NOT be minimized (`mode !== 'minimized'`)
+
+\- **Z-index sequence**: All `zIndex` values are positive integers
+
+**Persistence invariants:**
+
+\- **Session restore**: Never restores unknown apps or launcher windows
+
+\- **Workspace restore**: Filters invalid windows before restoration
+
+\- **Corrupt data handling**: Ignores corrupted localStorage without throwing exceptions
+
+\- **No state pollution**: Restore operations don't leak into current state before completion
+
+**Implementation:**
+
+\- Dev-only invariant checks: `assertWindowInvariants(windows)` throws descriptive errors
+
+\- Gated behind `process.env.NODE_ENV !== 'production'`
+
+\- Called after every mutating store action (create/focus/minimize/close/restore/snap/center)
+
+\- Located in `packages/rb-windowing/src/invariants.ts`
+
+**Testing requirements:**
+
+\- Property-style tests: Random action sequences over multiple windows
+
+\- Edge-case tests: Focus behavior when all windows minimized, focused window closed, etc.
+
+\- All tests pass with zero warnings (PHASE\_R enforcement)
+
+\- CI validates on every push (PHASE\_S enforcement)
+
+**Violation handling:**
+
+\- Dev mode: Throw error immediately with detailed message
+
+\- Production: Invariants disabled for performance
+
+\- Tests: Violations fail the test suite immediately
+
+
 ---
 
 
