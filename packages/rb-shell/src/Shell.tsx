@@ -13,6 +13,7 @@ import { useWindowStore } from '@redbyte/rb-windowing';
 import BootScreen from './BootScreen';
 import { ToastContainer } from './ToastContainer';
 import { CommandPalette, type Command } from './CommandPalette';
+import { SystemSearch } from './SystemSearch';
 import type { Intent } from './intent-types';
 import './styles.css';
 
@@ -31,6 +32,7 @@ export const Shell: React.FC<ShellProps> = () => {
     return localStorage.getItem('rb:shell:booted') === '1';
   });
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [systemSearchOpen, setSystemSearchOpen] = useState(false);
 
   const hasShownWelcomeRef = useRef(false);
   const hasInitializedRef = useRef(false);
@@ -188,6 +190,15 @@ export const Shell: React.FC<ShellProps> = () => {
     [focusWindow, handleClose, toggleMinimize]
   );
 
+  const handleSearchExecuteIntent = useCallback(
+    (intentId: string) => {
+      if (intentId === 'open-in-playground') {
+        console.log('Intent target clicked: open-in-playground (no active file context)');
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -198,6 +209,13 @@ export const Shell: React.FC<ShellProps> = () => {
 
       if (!(event.ctrlKey || event.metaKey)) return;
       if (isEditable) return;
+
+      // Cmd/Ctrl+Space: Open System Search
+      if (event.key === ' ') {
+        event.preventDefault();
+        setSystemSearchOpen(true);
+        return;
+      }
 
       // Cmd/Ctrl+Shift+P: Open Command Palette
       if (event.shiftKey && event.key.toLowerCase() === 'p') {
@@ -328,6 +346,15 @@ export const Shell: React.FC<ShellProps> = () => {
       })}
 
       <ToastContainer />
+
+      {systemSearchOpen && (
+        <SystemSearch
+          onExecuteApp={openWindow}
+          onExecuteCommand={executeCommand}
+          onExecuteIntent={handleSearchExecuteIntent}
+          onClose={() => setSystemSearchOpen(false)}
+        />
+      )}
 
       {commandPaletteOpen && (
         <CommandPalette
