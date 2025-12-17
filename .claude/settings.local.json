@@ -21,7 +21,10 @@
       "Bash(pnpm --filter @redbyte/playground build:*)",
       "Bash(pnpm test:*)",
       "Bash(pnpm lint:*)",
-      "Bash(pnpm typecheck:*)"
+      "Bash(pnpm typecheck:*)",
+      "Bash(git switch:*)",
+      "Bash(git merge:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []

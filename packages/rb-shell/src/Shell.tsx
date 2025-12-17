@@ -210,7 +210,12 @@ export const Shell: React.FC<ShellProps> = () => {
       // Close all current windows
       const currentWindows = useWindowStore.getState().windows;
       currentWindows.forEach((w) => {
-        handleClose(w.id);
+        closeWindow(w.id);
+        setBindings((prev) => {
+          const next = { ...prev };
+          delete next[w.id];
+          return next;
+        });
       });
 
       // Restore workspace snapshot
@@ -230,7 +235,7 @@ export const Shell: React.FC<ShellProps> = () => {
 
       return true;
     },
-    [handleClose, restoreSession]
+    [closeWindow, restoreSession]
   );
 
   // Ref to hold latest executeCommand for macro execution
