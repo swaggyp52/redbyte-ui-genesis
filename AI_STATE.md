@@ -447,6 +447,85 @@ Restore flow:
 \- Launcher does NOT auto-open (preserves Cmd/Ctrl+K explicit invocation)
 
 
+### Workspace Contract
+
+Workspaces enable explicit, user-controlled organization of multiple window contexts:
+
+\- A workspace is a NAMED SNAPSHOT of window state (windows, bounds, mode, z-index, focus)
+
+\- Workspaces are EXPLICIT (created, switched, deleted via user action only)
+
+\- Workspaces are LOCAL-ONLY (no cloud sync, no cross-device persistence)
+
+\- Workspaces are FAILURE-SAFE (corrupted workspace data is silently ignored)
+
+
+Workspace semantics:
+
+\- ONE active workspace at a time (switching workspaces is atomic)
+
+\- NO implicit saving (workspace snapshots are created explicitly, not automatically)
+
+\- NO auto-workspaces (users must intentionally create workspaces)
+
+\- Workspaces are STATELESS outside stored snapshots (no runtime workspace metadata)
+
+
+Workspace operations:
+
+\- **Create Workspace**: Captures current window state as named snapshot
+
+\- **Switch Workspace**: Closes current windows, restores target workspace snapshot
+
+\- **Delete Workspace**: Removes workspace from storage (no effect on active windows)
+
+\- **Rename Workspace**: Updates workspace name (snapshot unchanged)
+
+
+Switching behavior:
+
+\- Current windows are closed (all windows, including minimized)
+
+\- Target workspace snapshot is restored (windows recreated with original bounds/mode/zIndex)
+
+\- Active workspace ID is persisted (survives reload)
+
+\- Switching is atomic (no partial states visible to user)
+
+
+Persistence rules:
+
+\- All workspaces persist to localStorage
+
+\- Active workspace ID persists to localStorage
+
+\- Workspace data structure: { id, name, snapshot }
+
+\- Snapshot = same structure as session data (windows, nextZIndex)
+
+\- Corrupted workspace entries are skipped (other workspaces remain functional)
+
+
+Boot behavior:
+
+\- If active workspace exists → restore active workspace
+
+\- Else fall back to session restore (PHASE_O behavior)
+
+\- Workspace restoration uses same restore flow as session restore
+
+
+Non-goals:
+
+\- No workspace nesting or hierarchy
+
+\- No per-app workspace overrides
+
+\- No workspace UI chrome (dock indicators, persistent switchers)
+
+\- No automatic workspace detection or suggestions
+
+
 
 ---
 
