@@ -11,6 +11,7 @@ interface SystemSearchProps {
   onExecuteApp: (appId: string) => void;
   onExecuteCommand: (command: Command) => void;
   onExecuteIntent: (intentId: string) => void;
+  onExecuteMacro: (macroId: string) => void;
   onClose: () => void;
 }
 
@@ -18,6 +19,7 @@ export const SystemSearch: React.FC<SystemSearchProps> = ({
   onExecuteApp,
   onExecuteCommand,
   onExecuteIntent,
+  onExecuteMacro,
   onClose,
 }) => {
   const [query, setQuery] = useState('');
@@ -28,7 +30,7 @@ export const SystemSearch: React.FC<SystemSearchProps> = ({
   const results = useMemo(() => filterSearchResults(query), [query]);
 
   const allResults: SearchResult[] = useMemo(() => {
-    return [...results.apps, ...results.commands, ...results.intents];
+    return [...results.apps, ...results.commands, ...results.intents, ...results.macros];
   }, [results]);
 
   useEffect(() => {
@@ -73,6 +75,9 @@ export const SystemSearch: React.FC<SystemSearchProps> = ({
         case 'intent':
           onExecuteIntent(selected.id);
           break;
+        case 'macro':
+          onExecuteMacro(selected.id);
+          break;
       }
       onClose();
       return;
@@ -89,6 +94,9 @@ export const SystemSearch: React.FC<SystemSearchProps> = ({
         break;
       case 'intent':
         onExecuteIntent(result.id);
+        break;
+      case 'macro':
+        onExecuteMacro(result.id);
         break;
     }
     onClose();
@@ -185,6 +193,30 @@ export const SystemSearch: React.FC<SystemSearchProps> = ({
                   >
                     <div className="font-medium text-sm">{intent.name}</div>
                     <div className="text-xs text-slate-500 mt-1">{intent.description}</div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {results.macros.length > 0 && (
+            <div>
+              <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase bg-slate-950">
+                Macros
+              </div>
+              {results.macros.map((macro, index) => {
+                const globalIndex = results.apps.length + results.commands.length + results.intents.length + index;
+                const isSelected = globalIndex === selectedIndex;
+                return (
+                  <button
+                    key={macro.id}
+                    onClick={() => handleResultClick(macro)}
+                    className={`w-full text-left p-3 border-b border-slate-800 transition-colors ${
+                      isSelected ? 'bg-cyan-900/30 text-cyan-300' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'
+                    }`}
+                  >
+                    <div className="font-medium text-sm">{macro.name}</div>
+                    <div className="text-xs text-slate-500 mt-1">{macro.description}</div>
                   </button>
                 );
               })}

@@ -3,7 +3,8 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import { listApps } from '@redbyte/rb-apps';
-import type { AppSearchResult, CommandSearchResult, IntentSearchResult, SearchResults } from './search-types';
+import { useMacroStore } from './macros/macroStore';
+import type { AppSearchResult, CommandSearchResult, IntentSearchResult, MacroSearchResult, SearchResults } from './search-types';
 
 const COMMANDS: CommandSearchResult[] = [
   {
@@ -72,6 +73,12 @@ const COMMANDS: CommandSearchResult[] = [
     name: 'Delete Workspace',
     description: 'Delete a workspace',
   },
+  {
+    type: 'command',
+    id: 'run-macro',
+    name: 'Run Macro',
+    description: 'Execute a saved macro sequence',
+  },
 ];
 
 const INTENT_TARGETS: IntentSearchResult[] = [
@@ -104,6 +111,16 @@ export function getAllSearchableIntents(): IntentSearchResult[] {
   return INTENT_TARGETS;
 }
 
+export function getAllSearchableMacros(): MacroSearchResult[] {
+  const macros = useMacroStore.getState().listMacros();
+  return macros.map((macro) => ({
+    type: 'macro' as const,
+    id: macro.id,
+    name: macro.name,
+    description: `Macro with ${macro.steps.length} step${macro.steps.length !== 1 ? 's' : ''}`,
+  }));
+}
+
 export function filterSearchResults(query: string): SearchResults {
   const lowerQuery = query.toLowerCase().trim();
 
@@ -112,6 +129,7 @@ export function filterSearchResults(query: string): SearchResults {
       apps: getAllSearchableApps(),
       commands: getAllSearchableCommands(),
       intents: getAllSearchableIntents(),
+      macros: getAllSearchableMacros(),
     };
   }
 
@@ -133,5 +151,11 @@ export function filterSearchResults(query: string): SearchResults {
     return nameMatch || descMatch;
   });
 
-  return { apps, commands, intents };
+  const macros = getAllSearchableMacros().filter((macro) => {
+    const nameMatch = macro.name.toLowerCase().includes(lowerQuery);
+    const descMatch = macro.description.toLowerCase().includes(lowerQuery);
+    return nameMatch || descMatch;
+  });
+
+  return { apps, commands, intents, macros };
 }

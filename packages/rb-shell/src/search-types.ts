@@ -4,7 +4,7 @@
 
 import type { Command } from './CommandPalette';
 
-export type SearchResultType = 'app' | 'command' | 'intent';
+export type SearchResultType = 'app' | 'command' | 'intent' | 'macro';
 
 export interface AppSearchResult {
   type: 'app';
@@ -29,10 +29,18 @@ export interface IntentSearchResult {
   targetAppId: string;
 }
 
-export type SearchResult = AppSearchResult | CommandSearchResult | IntentSearchResult;
+export interface MacroSearchResult {
+  type: 'macro';
+  id: string;
+  name: string;
+  description: string;
+}
+
+export type SearchResult = AppSearchResult | CommandSearchResult | IntentSearchResult | MacroSearchResult;
 
 export interface SearchResults {
   apps: AppSearchResult[];
   commands: CommandSearchResult[];
   intents: IntentSearchResult[];
+  macros: MacroSearchResult[];
 }

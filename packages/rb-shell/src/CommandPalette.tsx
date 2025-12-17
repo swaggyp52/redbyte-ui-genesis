@@ -15,7 +15,8 @@ export type Command =
   | 'center-window'
   | 'create-workspace'
   | 'switch-workspace'
-  | 'delete-workspace';
+  | 'delete-workspace'
+  | 'run-macro';
 
 interface CommandItem {
   id: Command;
@@ -78,6 +79,11 @@ const COMMANDS: CommandItem[] = [
     id: 'delete-workspace',
     label: 'Delete Workspace',
     description: 'Delete a workspace',
+  },
+  {
+    id: 'run-macro',
+    label: 'Run Macro',
+    description: 'Execute a saved macro sequence',
   },
 ];
 
