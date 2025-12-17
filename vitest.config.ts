@@ -1,6 +1,24 @@
+import path from 'path';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@redbyte/rb-apps': path.resolve(__dirname, 'packages/rb-apps/src'),
+      '@redbyte/rb-windowing': path.resolve(__dirname, 'packages/rb-windowing/src'),
+      '@redbyte/rb-shell': path.resolve(__dirname, 'packages/rb-shell/src'),
+      '@redbyte/rb-theme': path.resolve(__dirname, 'packages/rb-theme/src'),
+      '@redbyte/rb-tokens': path.resolve(__dirname, 'packages/rb-tokens/src'),
+      '@redbyte/rb-icons': path.resolve(__dirname, 'packages/rb-icons/src'),
+      '@redbyte/rb-utils': path.resolve(__dirname, 'packages/rb-utils/src'),
+      '@redbyte/rb-primitives': path.resolve(__dirname, 'packages/rb-primitives/src'),
+      '@redbyte/rb-logic-3d': path.resolve(__dirname, 'packages/rb-logic-3d/src'),
+      '@redbyte/rb-logic-adapter': path.resolve(__dirname, 'packages/rb-logic-adapter/src'),
+      '@redbyte/rb-logic-core': path.resolve(__dirname, 'packages/rb-logic-core/src'),
+      '@redbyte/rb-logic-view': path.resolve(__dirname, 'packages/rb-logic-view/src'),
+      '@redbyte/rb-playground': path.resolve(__dirname, 'packages/rb-playground/src'),
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: true,
@@ -8,6 +26,8 @@ export default defineConfig({
     include: [
       'packages/**/__tests__/**/*.test.ts',
       'packages/**/__tests__/**/*.test.tsx',
+      'apps/**/*.test.ts',
+      'apps/**/*.test.tsx',
     ],
     coverage: {
       provider: 'v8',

@@ -145,7 +145,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
       left: isMax ? 0 : bounds.x,
       top: isMax ? 0 : bounds.y,
       width: isMax ? '100%' : bounds.width,
-      height: isMin ? 40 : isMax ? '100%' : bounds.height,
+      height: isMax ? '100%' : bounds.height,
       zIndex,
       opacity,
       transform,
@@ -156,6 +156,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
       overflow: 'hidden',
       boxShadow: '0 10px 40px rgba(0,0,0,0.35)',
       backdropFilter: 'blur(18px)',
+      display: isMin ? 'none' : 'block',
     } as React.CSSProperties;
   }, [state, isMax, isMin, mounted]);
 
@@ -190,7 +191,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
         </button>
       </div>
 
-      {!isMin && <div className="h-[calc(100%-40px)] bg-slate-950/40 text-white">{children}</div>}
+      <div className="h-[calc(100%-40px)] bg-slate-950/40 text-white">{children}</div>
 
       {/* Resize handles */}
       {!isMax && !isMin && (
