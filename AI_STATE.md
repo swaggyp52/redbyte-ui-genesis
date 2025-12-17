@@ -156,6 +156,27 @@ Keyboard semantics (OS-level):
 \- Cmd/Ctrl+W closes focused window (not implemented)
 
 
+\### Files App Contract
+
+Files is the first real multi-window workflow proving the OS substrate:
+
+\- Files is a non-singleton app (multiple windows allowed)
+
+\- Each Files window has independent navigation state
+
+\- Multiple Files windows can exist simultaneously
+
+\- Dock click on Files icon opens a NEW Files window (non-singleton behavior)
+
+\- Closing one Files window does NOT affect other Files windows
+
+\- Window title reflects current folder (e.g. "Files — Documents")
+
+\- Title updates do NOT trigger focus/z-index side effects
+
+\- Keyboard navigation: Arrow keys move selection, Enter opens folder, Escape closes window
+
+
 
 ---
 
@@ -410,3 +431,4 @@ After completing work, an AI agent MUST:
 - Documented guardrails against running npm install, modifying remotes/fetch/push, and assuming nano availability; objectives unchanged; phase unchanged
 - Formalized Launcher contract in AI_STATE.md specifying singleton, restore-from-minimized, and focus invariants; added Shell.openWindow fix to restore minimized singleton windows before focusing; added launcher-lifecycle.test.tsx OS-level tests; cleaned duplicate code in Launcher.tsx and launcher.test.tsx; all tests pass; objectives unchanged; phase unchanged
 - Formalized Window + Shell lifecycle contract in AI_STATE.md specifying focus surface, Dock interaction, keyboard semantics, and visual state rules; added shell-lifecycle.test.tsx with 11 tests covering focus, minimize/maximize, and z-index behavior; cleaned duplicate code in Dock.tsx; all 49 tests pass; objectives unchanged; phase unchanged
+- Implemented Files app as first real multi-window workflow proving non-singleton behavior; added sidebar navigation (Home/Desktop/Documents), mock file system with folder entries, keyboard navigation (Arrow/Enter/Escape), and 10 targeted tests covering lifecycle and independent state; Shell.openWindow correctly creates new Files windows on each Dock click; all 59 tests pass; objectives unchanged; phase unchanged

@@ -2,177 +2,229 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { RedByteApp } from '../types';
-import {
-  listFiles,
-  createFile,
-  renameFile,
-  deleteFile,
-  type LogicFile,
-} from '../stores/filesStore';
-import { deserialize } from '@redbyte/rb-logic-core';
 
 interface FilesProps {
-  onOpenFile?: (fileId: string) => void;
-  onOpenApp?: (id: string, props?: any) => void;
+  onClose?: () => void;
 }
 
-const FilesComponent: React.FC<FilesProps> = ({ onOpenFile, onOpenApp }) => {
-  const [files, setFiles] = useState<LogicFile[]>([]);
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renamingValue, setRenamingValue] = useState('');
+interface FileEntry {
+  id: string;
+  name: string;
+  type: 'folder' | 'file';
+  modified: string;
+}
 
-  const refreshFiles = () => {
-    setFiles(listFiles());
-  };
+interface FolderData {
+  id: string;
+  name: string;
+  entries: FileEntry[];
+}
+
+// Mock file system structure
+const MOCK_FS: Record<string, FolderData> = {
+  home: {
+    id: 'home',
+    name: 'Home',
+    entries: [
+      { id: 'desktop-link', name: 'Desktop', type: 'folder', modified: '2025-12-16 10:00' },
+      { id: 'documents-link', name: 'Documents', type: 'folder', modified: '2025-12-16 10:00' },
+      { id: 'downloads-link', name: 'Downloads', type: 'folder', modified: '2025-12-16 10:00' },
+    ],
+  },
+  desktop: {
+    id: 'desktop',
+    name: 'Desktop',
+    entries: [
+      { id: 'project1', name: 'Project Files', type: 'folder', modified: '2025-12-15 14:30' },
+      { id: 'notes', name: 'Notes.txt', type: 'file', modified: '2025-12-16 09:15' },
+    ],
+  },
+  documents: {
+    id: 'documents',
+    name: 'Documents',
+    entries: [
+      { id: 'reports', name: 'Reports', type: 'folder', modified: '2025-12-14 16:20' },
+      { id: 'readme', name: 'README.md', type: 'file', modified: '2025-12-13 11:45' },
+      { id: 'config', name: 'config.json', type: 'file', modified: '2025-12-12 08:30' },
+    ],
+  },
+  downloads: {
+    id: 'downloads',
+    name: 'Downloads',
+    entries: [
+      { id: 'archive', name: 'archive.zip', type: 'file', modified: '2025-12-11 15:00' },
+    ],
+  },
+  project1: {
+    id: 'project1',
+    name: 'Project Files',
+    entries: [
+      { id: 'src', name: 'src', type: 'folder', modified: '2025-12-15 14:30' },
+      { id: 'package', name: 'package.json', type: 'file', modified: '2025-12-15 12:00' },
+    ],
+  },
+  reports: {
+    id: 'reports',
+    name: 'Reports',
+    entries: [
+      { id: 'q4', name: 'Q4-2024.pdf', type: 'file', modified: '2025-12-14 16:20' },
+    ],
+  },
+};
+
+// Map folder link IDs to actual folders
+const FOLDER_LINKS: Record<string, string> = {
+  'desktop-link': 'desktop',
+  'documents-link': 'documents',
+  'downloads-link': 'downloads',
+};
+
+const SIDEBAR_ROOTS = [
+  { id: 'home', name: 'Home' },
+  { id: 'desktop', name: 'Desktop' },
+  { id: 'documents', name: 'Documents' },
+];
+
+const FilesComponent: React.FC<FilesProps> = ({ onClose }) => {
+  const [currentFolderId, setCurrentFolderId] = useState('home');
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const currentFolder = MOCK_FS[currentFolderId] || MOCK_FS.home;
+  const entries = currentFolder.entries;
 
   useEffect(() => {
-    refreshFiles();
+    setSelectedIndex(0);
+  }, [currentFolderId]);
+
+  useEffect(() => {
+    containerRef.current?.focus();
   }, []);
 
-  const handleNewCircuit = () => {
-    const emptyCircuit = deserialize({
-      version: 'v1',
-      nodes: [],
-      connections: [],
-    });
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose?.();
+      return;
+    }
 
-    const newFile = createFile('New Circuit', {
-      version: 'v1',
-      nodes: emptyCircuit.nodes.map((n) => ({
-        id: n.id,
-        type: n.type,
-        position: n.position,
-        rotation: n.rotation,
-        config: n.config,
-      })),
-      connections: emptyCircuit.connections,
-    });
+    if (entries.length === 0) return;
 
-    refreshFiles();
-    if (onOpenApp) {
-      onOpenApp('logic-playground', { initialFileId: newFile.id });
-    } else {
-      onOpenFile?.(newFile.id);
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setSelectedIndex((prev) => Math.min(prev + 1, entries.length - 1));
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setSelectedIndex((prev) => Math.max(prev - 1, 0));
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const selected = entries[selectedIndex];
+      if (selected && selected.type === 'folder') {
+        const targetId = FOLDER_LINKS[selected.id] || selected.id;
+        if (MOCK_FS[targetId]) {
+          setCurrentFolderId(targetId);
+        }
+      }
     }
   };
 
-  const handleOpen = (fileId: string) => {
-    if (onOpenApp) {
-      onOpenApp('logic-playground', { initialFileId: fileId });
-    } else {
-      onOpenFile?.(fileId);
+  const handleEntryClick = (entry: FileEntry, index: number) => {
+    setSelectedIndex(index);
+    if (entry.type === 'folder') {
+      const targetId = FOLDER_LINKS[entry.id] || entry.id;
+      if (MOCK_FS[targetId]) {
+        setCurrentFolderId(targetId);
+      }
     }
-  };
-
-  const handleRename = (fileId: string, currentName: string) => {
-    setRenamingId(fileId);
-    setRenamingValue(currentName);
-  };
-
-  const handleRenameSubmit = (fileId: string) => {
-    if (renamingValue.trim()) {
-      renameFile(fileId, renamingValue.trim());
-      refreshFiles();
-    }
-    setRenamingId(null);
-  };
-
-  const handleDelete = (fileId: string, fileName: string) => {
-    if (window.confirm(`Delete "${fileName}"?`)) {
-      deleteFile(fileId);
-      refreshFiles();
-    }
-  };
-
-  const formatDate = (isoString: string) => {
-    const date = new Date(isoString);
-    return date.toLocaleString();
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-900 text-white">
-      <div className="border-b border-gray-700 p-4">
-        <button
-          onClick={handleNewCircuit}
-          className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded text-sm font-medium"
-        >
-          + New Circuit
-        </button>
+    <div
+      ref={containerRef}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      className="h-full flex bg-slate-950 text-white"
+      style={{ outline: 'none' }}
+    >
+      {/* Sidebar */}
+      <div className="w-48 bg-slate-900 border-r border-slate-800 flex flex-col">
+        <div className="p-3 border-b border-slate-800">
+          <h3 className="text-xs font-semibold text-slate-400 uppercase">Locations</h3>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {SIDEBAR_ROOTS.map((root) => (
+            <button
+              key={root.id}
+              onClick={() => setCurrentFolderId(root.id)}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-800 transition-colors ${
+                currentFolderId === root.id ? 'bg-slate-800 text-cyan-400' : 'text-slate-300'
+              }`}
+            >
+              {root.name}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        {files.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-400">
-            <div className="text-center">
-              <p className="mb-2">No circuits saved yet</p>
-              <p className="text-sm">Create a new circuit to get started</p>
+      {/* Main pane */}
+      <div className="flex-1 flex flex-col">
+        <div className="p-3 border-b border-slate-800">
+          <h2 className="text-sm font-semibold">{currentFolder.name}</h2>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {entries.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-slate-400">
+              <p className="text-sm">Empty folder</p>
             </div>
-          </div>
-        ) : (
-          <table className="w-full">
-            <thead className="bg-gray-800 sticky top-0">
-              <tr>
-                <th className="text-left p-3 text-sm font-medium">Name</th>
-                <th className="text-left p-3 text-sm font-medium">Last Modified</th>
-                <th className="text-left p-3 text-sm font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {files.map((file) => (
-                <tr
-                  key={file.id}
-                  className="border-b border-gray-800 hover:bg-gray-850"
-                >
-                  <td className="p-3">
-                    {renamingId === file.id ? (
-                      <input
-                        type="text"
-                        value={renamingValue}
-                        onChange={(e) => setRenamingValue(e.target.value)}
-                        onBlur={() => handleRenameSubmit(file.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleRenameSubmit(file.id);
-                          if (e.key === 'Escape') setRenamingId(null);
-                        }}
-                        className="px-2 py-1 bg-gray-700 border border-gray-600 rounded w-full"
-                        autoFocus
-                      />
-                    ) : (
-                      <span className="text-sm">{file.name}</span>
-                    )}
-                  </td>
-                  <td className="p-3 text-sm text-gray-400">
-                    {formatDate(file.updatedAt)}
-                  </td>
-                  <td className="p-3">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleOpen(file.id)}
-                        className="px-3 py-1 bg-cyan-700 hover:bg-cyan-600 rounded text-xs"
-                      >
-                        Open
-                      </button>
-                      <button
-                        onClick={() => handleRename(file.id, file.name)}
-                        className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs"
-                      >
-                        Rename
-                      </button>
-                      <button
-                        onClick={() => handleDelete(file.id, file.name)}
-                        className="px-3 py-1 bg-red-700 hover:bg-red-600 rounded text-xs"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-slate-900 sticky top-0">
+                <tr>
+                  <th className="text-left p-3 text-xs font-medium text-slate-400">Name</th>
+                  <th className="text-left p-3 text-xs font-medium text-slate-400">Type</th>
+                  <th className="text-left p-3 text-xs font-medium text-slate-400">Modified</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody>
+                {entries.map((entry, index) => {
+                  const isSelected = index === selectedIndex;
+                  return (
+                    <tr
+                      key={entry.id}
+                      onClick={() => handleEntryClick(entry, index)}
+                      className={`border-b border-slate-800 cursor-pointer transition-colors ${
+                        isSelected ? 'bg-cyan-900/30 text-cyan-300' : 'hover:bg-slate-850'
+                      }`}
+                    >
+                      <td className="p-3 text-sm">
+                        {entry.type === 'folder' ? '📁' : '📄'} {entry.name}
+                      </td>
+                      <td className="p-3 text-sm text-slate-400">
+                        {entry.type === 'folder' ? 'Folder' : 'File'}
+                      </td>
+                      <td className="p-3 text-sm text-slate-400">{entry.modified}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className="p-2 border-t border-slate-800 text-xs text-slate-500">
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">↑↓</kbd> Navigate{' '}
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> Open{' '}
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Esc</kbd> Close
+        </div>
       </div>
     </div>
   );
@@ -184,8 +236,8 @@ export const FilesApp: RedByteApp = {
     name: 'Files',
     iconId: 'files',
     category: 'system',
-    defaultSize: { width: 700, height: 500 },
-    minSize: { width: 500, height: 300 },
+    defaultSize: { width: 800, height: 600 },
+    minSize: { width: 600, height: 400 },
   },
   component: FilesComponent,
 };
