@@ -600,6 +600,51 @@ Discoverability:
 \- Macro management commands (create, delete, rename) accessible via Command Palette
 
 
+### Testing Contract
+
+Tests must maintain zero-warning output and deterministic behavior:
+
+\- **Zero warnings required**: Tests must produce NO console.warn, console.error, or React warnings
+
+\- **React state updates**: All state updates must be wrapped in act(...) or proper async utilities (waitFor)
+
+\- **Deterministic execution**: No race conditions, no timers without mocking, no flaky assertions
+
+\- **Global state cleanup**: Tests must not pollute localStorage, DOM, or global scope
+
+\- **Isolation**: Each test cleans up after itself (restore mocks, clear stores, reset state)
+
+
+Correct patterns:
+
+\- Use `waitFor(() => expect(...))` for async state updates
+
+\- Use `act(() => { fireEvent.keyDown(...) })` for sync state updates that trigger effects
+
+\- Use `afterEach(() => localStorage.clear())` for cleanup
+
+\- Use `vi.restoreAllMocks()` after tests that mock functions
+
+
+Incorrect patterns:
+
+\- Naked `fireEvent` without waiting for effects to complete
+
+\- Tests that leave localStorage/sessionStorage dirty
+
+\- Tests that depend on execution order
+
+\- Ignoring or suppressing React warnings in test output
+
+
+Quality enforcement:
+
+\- Test suite configured to fail on console.warn/console.error
+
+\- All tests must pass with zero warnings before commit
+
+\- React act(...) warnings indicate improper async handling
+
 
 ---
 
