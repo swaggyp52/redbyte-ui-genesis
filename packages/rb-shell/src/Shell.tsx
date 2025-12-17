@@ -10,6 +10,7 @@ import { applyTheme } from '@redbyte/rb-theme';
 import { useSettingsStore } from '@redbyte/rb-utils';
 import { getApp, type RedByteApp } from '@redbyte/rb-apps';
 import { useWindowStore, loadSession } from '@redbyte/rb-windowing';
+import { useWorkspaceStore, loadWorkspaces } from './workspaceStore';
 import BootScreen from './BootScreen';
 import { ToastContainer } from './ToastContainer';
 import { CommandPalette, type Command } from './CommandPalette';
@@ -107,15 +108,33 @@ export const Shell: React.FC<ShellProps> = () => {
     }
   }, [settings.themeVariant]);
 
-  // Session restore on mount
+  // Workspace/Session restore on mount
   useEffect(() => {
     if (!booted) return;
 
-    const session = loadSession();
-    if (!session) return;
+    // Check for active workspace first
+    const workspaceData = loadWorkspaces();
+    let snapshot = null;
+
+    if (workspaceData?.activeWorkspaceId) {
+      const workspace = workspaceData.workspaces.find((w) => w.id === workspaceData.activeWorkspaceId);
+      if (workspace) {
+        snapshot = workspace.snapshot;
+      }
+    }
+
+    // Fall back to session restore if no active workspace
+    if (!snapshot) {
+      const session = loadSession();
+      if (session) {
+        snapshot = session;
+      }
+    }
+
+    if (!snapshot) return;
 
     // Filter out unknown apps and Launcher
-    const validWindows = session.windows.filter((w) => {
+    const validWindows = snapshot.windows.filter((w) => {
       if (w.contentId === 'launcher') return false;
       const app = getApp(w.contentId);
       return Boolean(app);
@@ -124,7 +143,7 @@ export const Shell: React.FC<ShellProps> = () => {
     if (validWindows.length === 0) return;
 
     // Restore session to store
-    restoreSession(validWindows, session.nextZIndex);
+    restoreSession(validWindows, snapshot.nextZIndex);
 
     // Bind all restored windows
     const newBindings: Record<string, WindowAppBinding> = {};
@@ -249,9 +268,91 @@ export const Shell: React.FC<ShellProps> = () => {
           centerWindow(focused.id, desktopBounds);
           break;
         }
+
+        case 'create-workspace': {
+          const name = window.prompt('Workspace name:');
+          if (!name) return;
+
+          const currentWindows = useWindowStore.getState().windows;
+          const nextZIndex = useWindowStore.getState().nextZIndex;
+
+          const snapshot = {
+            windows: currentWindows,
+            nextZIndex,
+          };
+
+          useWorkspaceStore.getState().createWorkspace(name, snapshot);
+          break;
+        }
+
+        case 'switch-workspace': {
+          const workspaces = useWorkspaceStore.getState().listWorkspaces();
+          if (workspaces.length === 0) {
+            alert('No workspaces available');
+            return;
+          }
+
+          const names = workspaces.map((w, i) => `${i + 1}. ${w.name}`).join('\n');
+          const input = window.prompt(`Select workspace:\n\n${names}\n\nEnter number:`);
+          if (!input) return;
+
+          const index = parseInt(input, 10) - 1;
+          if (isNaN(index) || index < 0 || index >= workspaces.length) {
+            alert('Invalid selection');
+            return;
+          }
+
+          const selectedWorkspace = workspaces[index];
+          const snapshot = useWorkspaceStore.getState().switchWorkspace(selectedWorkspace.id);
+          if (!snapshot) return;
+
+          // Close all current windows
+          const currentWindows = useWindowStore.getState().windows;
+          currentWindows.forEach((w) => {
+            handleClose(w.id);
+          });
+
+          // Restore workspace snapshot
+          const validWindows = snapshot.windows.filter((w) => {
+            if (w.contentId === 'launcher') return false;
+            const app = getApp(w.contentId);
+            return Boolean(app);
+          });
+
+          restoreSession(validWindows, snapshot.nextZIndex);
+
+          const newBindings: Record<string, WindowAppBinding> = {};
+          validWindows.forEach((w) => {
+            newBindings[w.id] = { appId: w.contentId };
+          });
+          setBindings(newBindings);
+          break;
+        }
+
+        case 'delete-workspace': {
+          const workspaces = useWorkspaceStore.getState().listWorkspaces();
+          if (workspaces.length === 0) {
+            alert('No workspaces to delete');
+            return;
+          }
+
+          const names = workspaces.map((w, i) => `${i + 1}. ${w.name}`).join('\n');
+          const input = window.prompt(`Delete workspace:\n\n${names}\n\nEnter number:`);
+          if (!input) return;
+
+          const index = parseInt(input, 10) - 1;
+          if (isNaN(index) || index < 0 || index >= workspaces.length) {
+            alert('Invalid selection');
+            return;
+          }
+
+          const selectedWorkspace = workspaces[index];
+          useWorkspaceStore.getState().deleteWorkspace(selectedWorkspace.id);
+          break;
+        }
       }
     },
-    [focusWindow, handleClose, toggleMinimize, snapWindow, centerWindow]
+    [focusWindow, handleClose, toggleMinimize, snapWindow, centerWindow, restoreSession, setBindings]
   );
 
   const handleSearchExecuteIntent = useCallback(
