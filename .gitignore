@@ -32,4 +32,7 @@ yarn-error.log*
 .idea/
 .vscode/
 
+# Claude local settings
+.claude/settings.local.json
+
 node_modules/
