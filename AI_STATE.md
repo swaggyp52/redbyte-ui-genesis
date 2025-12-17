@@ -720,6 +720,67 @@ Before creating a release tag or pushing to main:
 \- Fix forward with a new commit, or revert and iterate locally
 
 
+### Modal UI Contract
+
+All system modals follow consistent keyboard-first interaction patterns:
+
+**Interaction model:**
+
+\- **Keyboard-first**: Arrow keys navigate, Enter selects, Escape closes
+
+\- **No focus theft**: Opening modal does NOT change focused window unless action is executed
+
+\- **Deterministic execution**: Modal actions use same primitives as direct commands (no duplicate logic)
+
+\- **Consistent styling**: Match SystemSearch / CommandPalette visual language
+
+\- **Search + filter**: Type to filter list, same pattern as Launcher
+
+**Modal types:**
+
+1\. **WorkspaceSwitcher**: Replace `prompt()` for workspace selection
+
+   \- List all workspaces with keyboard navigation
+
+   \- Show current workspace indicator
+
+   \- Enter switches workspace, Escape cancels
+
+   \- Uses `switchWorkspaceById()` primitive (no new logic)
+
+2\. **MacroRunner**: Replace `prompt()` for macro selection
+
+   \- List all macros with search/filter
+
+   \- Show macro step count in description
+
+   \- Enter executes macro, Escape cancels
+
+   \- Uses `executeMacro()` primitive (no new logic)
+
+**Testing requirements:**
+
+\- Modal open/close does not affect focused window
+
+\- Escape always closes without side effects
+
+\- Enter executes the selected action deterministically
+
+\- Search/filter behavior matches Launcher patterns
+
+\- All interactions testable without browser prompts
+
+**Implementation pattern:**
+
+\- Modal components in `packages/rb-shell/src/modals/`
+
+\- Same structure as SystemSearch (search state, keyboard handler, results list)
+
+\- Reuse existing primitives (no command duplication)
+
+\- Tests verify focus preservation and deterministic execution
+
+
 ---
 
 
