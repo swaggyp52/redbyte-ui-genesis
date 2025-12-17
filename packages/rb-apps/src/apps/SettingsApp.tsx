@@ -2,195 +2,214 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { RedByteApp } from '../types';
-import { useSettingsStore, type ThemeVariant, type WallpaperId } from '@redbyte/rb-utils';
+import { useSettingsStore, type ThemeVariant, type AccentColor } from '@redbyte/rb-utils';
 
 interface SettingsProps {
-  onThemeChange?: (theme: ThemeVariant) => void;
-  onWallpaperChange?: (wallpaper: WallpaperId) => void;
+  onClose?: () => void;
 }
 
-const SettingsComponent: React.FC<SettingsProps> = ({
-  onThemeChange,
-  onWallpaperChange,
-}) => {
-  const [licenseExpanded, setLicenseExpanded] = React.useState(false);
+const WALLPAPERS = [
+  { id: 'default', name: 'Default' },
+  { id: 'neon-circuit', name: 'Neon Circuit' },
+  { id: 'frost-grid', name: 'Frost Grid' },
+  { id: 'solid', name: 'Solid Color' },
+];
+
+const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
+  const [selectedSection, setSelectedSection] = useState<'appearance' | 'system'>('appearance');
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const {
     themeVariant,
     wallpaperId,
-    tickRate,
+    accentColor,
     setThemeVariant,
     setWallpaperId,
-    setTickRate,
+    setAccentColor,
   } = useSettingsStore();
 
-  const handleThemeChange = (theme: ThemeVariant) => {
-    setThemeVariant(theme);
-    onThemeChange?.(theme);
+  useEffect(() => {
+    containerRef.current?.focus();
+  }, []);
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose?.();
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setSelectedIndex((prev) => Math.min(prev + 1, 2));
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setSelectedIndex((prev) => Math.max(prev - 1, 0));
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (selectedSection === 'appearance') {
+        if (selectedIndex === 0) {
+          const themes: ThemeVariant[] = ['light', 'dark', 'system'];
+          const currentIdx = themes.indexOf(themeVariant);
+          const nextIdx = (currentIdx + 1) % themes.length;
+          setThemeVariant(themes[nextIdx]);
+        } else if (selectedIndex === 1) {
+          const currentIdx = WALLPAPERS.findIndex((w) => w.id === wallpaperId);
+          const nextIdx = (currentIdx + 1) % WALLPAPERS.length;
+          setWallpaperId(WALLPAPERS[nextIdx].id);
+        }
+      }
+    }
   };
-
-  const handleWallpaperChange = (wallpaper: WallpaperId) => {
-    setWallpaperId(wallpaper);
-    onWallpaperChange?.(wallpaper);
-  };
-
-  const licenseText = `RedByte Proprietary License v1.0
-
-No redistribution
-
-No commercial use
-
-No hosting
-
-No derivative competitors
-
-All rights reserved`;
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-900 text-white">
-      <div className="p-6 space-y-8">
-        <section>
-          <h2 className="text-xl font-semibold mb-4 text-cyan-400">Appearance</h2>
+    <div
+      ref={containerRef}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      className="h-full flex bg-slate-950 text-white"
+      style={{ outline: 'none' }}
+    >
+      {/* Sidebar */}
+      <div className="w-48 bg-slate-900 border-r border-slate-800 flex flex-col">
+        <div className="p-3 border-b border-slate-800">
+          <h3 className="text-xs font-semibold text-slate-400 uppercase">Settings</h3>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <button
+            onClick={() => setSelectedSection('appearance')}
+            className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-800 transition-colors ${
+              selectedSection === 'appearance' ? 'bg-slate-800 text-cyan-400' : 'text-slate-300'
+            }`}
+          >
+            Appearance
+          </button>
+          <button
+            onClick={() => setSelectedSection('system')}
+            className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-800 transition-colors ${
+              selectedSection === 'system' ? 'bg-slate-800 text-cyan-400' : 'text-slate-300'
+            }`}
+          >
+            System
+          </button>
+        </div>
+      </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Theme</label>
-              <div className="space-y-2">
-                <label className="flex items-center gap-3 p-3 rounded bg-gray-800 hover:bg-gray-750 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="theme"
-                    value="dark-neon"
-                    checked={themeVariant === 'dark-neon'}
-                    onChange={() => handleThemeChange('dark-neon')}
-                    className="w-4 h-4"
-                  />
-                  <div>
-                    <div className="font-medium">Dark Neon</div>
-                    <div className="text-xs text-gray-400">
-                      Vibrant neon colors on dark background
+      {/* Main pane */}
+      <div className="flex-1 flex flex-col">
+        <div className="p-3 border-b border-slate-800">
+          <h2 className="text-sm font-semibold">
+            {selectedSection === 'appearance' ? 'Appearance' : 'System'}
+          </h2>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          {selectedSection === 'appearance' && (
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium mb-3">Theme</label>
+                <div className="space-y-2">
+                  <label
+                    className={`flex items-center gap-3 p-3 rounded cursor-pointer ${
+                      selectedIndex === 0 ? 'bg-slate-800 ring-1 ring-cyan-400' : 'bg-slate-900 hover:bg-slate-850'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="theme"
+                      value="light"
+                      checked={themeVariant === 'light'}
+                      onChange={() => setThemeVariant('light')}
+                      className="w-4 h-4"
+                    />
+                    <div>
+                      <div className="font-medium">Light</div>
+                      <div className="text-xs text-slate-400">Light theme with cool frost tones</div>
                     </div>
-                  </div>
-                </label>
+                  </label>
 
-                <label className="flex items-center gap-3 p-3 rounded bg-gray-800 hover:bg-gray-750 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="theme"
-                    value="light-frost"
-                    checked={themeVariant === 'light-frost'}
-                    onChange={() => handleThemeChange('light-frost')}
-                    className="w-4 h-4"
-                  />
-                  <div>
-                    <div className="font-medium">Light Frost</div>
-                    <div className="text-xs text-gray-400">
-                      Cool frost tones on light background
+                  <label
+                    className={`flex items-center gap-3 p-3 rounded cursor-pointer ${
+                      selectedIndex === 0 ? 'bg-slate-800 ring-1 ring-cyan-400' : 'bg-slate-900 hover:bg-slate-850'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="theme"
+                      value="dark"
+                      checked={themeVariant === 'dark'}
+                      onChange={() => setThemeVariant('dark')}
+                      className="w-4 h-4"
+                    />
+                    <div>
+                      <div className="font-medium">Dark</div>
+                      <div className="text-xs text-slate-400">Dark theme with vibrant neon colors</div>
                     </div>
-                  </div>
-                </label>
-              </div>
-            </div>
+                  </label>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Wallpaper</label>
-              <select
-                value={wallpaperId}
-                onChange={(e) => handleWallpaperChange(e.target.value as WallpaperId)}
-                className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-white"
-              >
-                <option value="neon-circuit">Neon Circuit</option>
-                <option value="frost-grid">Frost Grid</option>
-                <option value="solid">Solid Color</option>
-              </select>
-              <div className="mt-2 h-24 rounded border-2 border-gray-700 bg-gradient-to-br from-purple-900 via-blue-900 to-cyan-900">
-                <div className="h-full flex items-center justify-center text-xs text-gray-400">
-                  Preview: {wallpaperId}
+                  <label
+                    className={`flex items-center gap-3 p-3 rounded cursor-pointer ${
+                      selectedIndex === 0 ? 'bg-slate-800 ring-1 ring-cyan-400' : 'bg-slate-900 hover:bg-slate-850'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="theme"
+                      value="system"
+                      checked={themeVariant === 'system'}
+                      onChange={() => setThemeVariant('system')}
+                      className="w-4 h-4"
+                    />
+                    <div>
+                      <div className="font-medium">System</div>
+                      <div className="text-xs text-slate-400">Follow system preference</div>
+                    </div>
+                  </label>
                 </div>
               </div>
-            </div>
-          </div>
-        </section>
 
-        <section>
-          <h2 className="text-xl font-semibold mb-4 text-cyan-400">Simulation</h2>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Default Tick Rate: {tickRate} Hz
-              </label>
-              <input
-                type="range"
-                min="1"
-                max="60"
-                value={tickRate}
-                onChange={(e) => setTickRate(parseInt(e.target.value, 10))}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-gray-400 mt-1">
-                <span>1 Hz (Slow)</span>
-                <span>60 Hz (Fast)</span>
-              </div>
-              <p className="text-xs text-gray-400 mt-2">
-                Sets the default simulation speed for new logic circuits
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold mb-4 text-cyan-400">About & Legal</h2>
-          <div className="space-y-4 text-sm text-gray-300">
-            <div className="rounded-lg border border-gray-800 bg-gray-850 p-4 shadow-inner">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-gray-400">App Version</div>
-                  <div className="text-lg font-semibold text-white">v1.0.0</div>
-                </div>
-                <span className="rounded-full bg-cyan-500/20 px-3 py-1 text-xs font-medium text-cyan-300">
-                  Stable
-                </span>
-              </div>
-              <p className="mt-2 text-xs text-gray-400">RedByte OS Genesis — Stage E</p>
-            </div>
-
-            <div className="rounded-lg border border-gray-800 bg-gray-850 p-4">
-              <h3 className="text-sm font-semibold text-white">Copyright</h3>
-              <p className="mt-1 text-xs text-gray-400">© 2025 Connor Angiel — RedByte OS Genesis. </p>
-            </div>
-
-            <div className="rounded-lg border border-gray-800 bg-gray-850 p-4">
-              <h3 className="text-sm font-semibold text-white">Trademarks</h3>
-              <p className="mt-1 text-xs text-gray-400">
-                “RedByte”, “RedByte OS”, and “RedByte OS Genesis” are trademarks of Connor Angiel. Use without permission is
-                prohibited.
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-gray-800 bg-gray-850 p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-white">License</h3>
-                <button
-                  type="button"
-                  className="rounded border border-cyan-500/40 px-3 py-1 text-xs font-medium text-cyan-200 hover:bg-cyan-500/10"
-                  onClick={() => setLicenseExpanded((prev) => !prev)}
+              <div>
+                <label className="block text-sm font-medium mb-3">Wallpaper</label>
+                <div
+                  className={`rounded p-3 ${
+                    selectedIndex === 1 ? 'bg-slate-800 ring-1 ring-cyan-400' : 'bg-slate-900'
+                  }`}
                 >
-                  {licenseExpanded ? 'Hide' : 'Show'} LICENSE
-                </button>
+                  <select
+                    value={wallpaperId}
+                    onChange={(e) => setWallpaperId(e.target.value)}
+                    className="w-full p-2 rounded bg-slate-800 border border-slate-700 text-white"
+                  >
+                    {WALLPAPERS.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              {licenseExpanded && (
-                <pre className="mt-3 whitespace-pre-wrap rounded border border-gray-700 bg-gray-900/80 p-3 text-[11px] text-gray-200">{licenseText}</pre>
-              )}
             </div>
+          )}
 
-            <div className="rounded-lg border border-gray-800 bg-gray-850 p-4">
-              <h3 className="text-sm font-semibold text-white">Created By</h3>
-              <p className="mt-1 text-xs text-gray-400">Connor Angiel</p>
+          {selectedSection === 'system' && (
+            <div className="space-y-4 text-sm text-slate-300">
+              <p className="text-slate-400">System settings coming soon.</p>
             </div>
-          </div>
-        </section>
+          )}
+        </div>
+
+        <div className="p-2 border-t border-slate-800 text-xs text-slate-500">
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">↑↓</kbd> Navigate{' '}
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> Toggle{' '}
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Esc</kbd> Close
+        </div>
       </div>
     </div>
   );

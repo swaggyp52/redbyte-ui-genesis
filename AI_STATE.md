@@ -177,6 +177,33 @@ Files is the first real multi-window workflow proving the OS substrate:
 \- Keyboard navigation: Arrow keys move selection, Enter opens folder, Escape closes window
 
 
+### Settings App Contract
+
+Settings is the canonical system configuration interface with strict singleton semantics:
+
+\- Settings is a STRICT singleton (only one Settings window may ever exist)
+
+\- Dock click on Settings icon restores minimized Settings window + focuses
+
+\- Dock click on Settings icon when already open focuses existing window
+
+\- Global Cmd/Ctrl+, shortcut opens Settings (registered in Shell keyboard handler)
+
+\- Closing Settings window does NOT lose persisted state (settings survive window close)
+
+\- Settings changes propagate live to Shell, Desktop, Dock, and all windows
+
+\- No flicker, no remounts when settings change (React state updates only)
+
+\- Settings state lives outside Settings component (survives window lifecycle)
+
+\- Settings persist to localStorage and reload on Shell boot
+
+\- Corrupted localStorage resets to safe defaults (no crash)
+
+\- Keyboard navigation: Arrow keys move selection, Enter activates, Escape closes window
+
+
 
 ---
 
@@ -432,3 +459,4 @@ After completing work, an AI agent MUST:
 - Formalized Launcher contract in AI_STATE.md specifying singleton, restore-from-minimized, and focus invariants; added Shell.openWindow fix to restore minimized singleton windows before focusing; added launcher-lifecycle.test.tsx OS-level tests; cleaned duplicate code in Launcher.tsx and launcher.test.tsx; all tests pass; objectives unchanged; phase unchanged
 - Formalized Window + Shell lifecycle contract in AI_STATE.md specifying focus surface, Dock interaction, keyboard semantics, and visual state rules; added shell-lifecycle.test.tsx with 11 tests covering focus, minimize/maximize, and z-index behavior; cleaned duplicate code in Dock.tsx; all 49 tests pass; objectives unchanged; phase unchanged
 - Implemented Files app as first real multi-window workflow proving non-singleton behavior; added sidebar navigation (Home/Desktop/Documents), mock file system with folder entries, keyboard navigation (Arrow/Enter/Escape), and 10 targeted tests covering lifecycle and independent state; Shell.openWindow correctly creates new Files windows on each Dock click; all 59 tests pass; objectives unchanged; phase unchanged
+- Implemented Settings depth & persistence proving singleton semantics and OS-wide configuration; documented Settings contract in AI_STATE.md (strict singleton, Cmd/Ctrl+, shortcut, state persistence, live propagation); updated settings store with light/dark/system theme variants, wallpaperId (string), and accentColor (static list); implemented failure-safe localStorage persistence; updated applyTheme to support new theme variants with system preference detection; rebuilt Settings UI with Appearance/System sidebar, theme toggle (light/dark/system), wallpaper selector, and keyboard navigation (Arrow/Enter/Escape); added 13 Settings tests covering singleton manifest, theme/wallpaper changes, persistence, and keyboard controls; all 72 tests pass; objectives unchanged; phase unchanged
