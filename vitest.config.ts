@@ -29,6 +29,14 @@ export default defineConfig({
       'apps/**/*.test.ts',
       'apps/**/*.test.tsx',
     ],
+    onConsoleLog(log: string, type: 'stdout' | 'stderr'): false | void {
+      if (type === 'stderr') {
+        const isWarning = log.includes('Warning:') || log.includes('act(');
+        if (isWarning) {
+          throw new Error(`Test failed: Console warning detected:\n${log}`);
+        }
+      }
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

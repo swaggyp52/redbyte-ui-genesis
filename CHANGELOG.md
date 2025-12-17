@@ -1,5 +1,25 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_R - Stability Hardening (2025-12-17)
+
+### Testing Quality Enforcement
+
+- **Testing Contract**: Documented zero-warning policy in AI_STATE.md
+  - All tests must produce NO console warnings or React errors
+  - Proper `act(...)` wrapping for state updates
+  - Deterministic execution with no race conditions
+  - Global state cleanup between tests
+
+- **Quality Gate**: Added vitest console warning enforcement
+  - Tests now fail on React warnings (act, hydration, etc.)
+  - Prevents warning regressions from being merged
+  - Ensures production-quality test output
+
+- **Test Fixes**: Fixed React act(...) warning in settings.test.tsx
+  - Wrapped `useSettingsStore.setState()` in `act(...)`
+  - Wrapped `fireEvent.keyDown()` state updates in `act(...)`
+  - All 201 tests passing with zero warnings
+
 ## v1.0.0 - Genesis Release (2025-12-08)
 
 ### Critical Fixes - Production Ready
