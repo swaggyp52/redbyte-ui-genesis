@@ -834,6 +834,137 @@ State invariants ensure correctness under all window store operations:
 \- Tests: Violations fail the test suite immediately
 
 
+### Files Workflow Polish Contract (PHASE_V)
+
+Make Files feel like a daily-use app by adding navigation affordances and workflow depth without touching OS infrastructure.
+
+**Goal:**
+
+Make Files feel real, not just correct. Add breadcrumb navigation, back/forward history, and "Open With..." workflow without touching window store, shell contracts, or command/search/macro/intent systems.
+
+**Non-Goals:**
+
+\- No real filesystem / persistence / backend IO
+
+\- No async loading, indexing, or streaming
+
+\- No new global buses
+
+\- No window title mutation API (still future work)
+
+\- No changes to core window invariants or focus rules
+
+\- No new packages unless strictly necessary
+
+**Invariants:**
+
+\- **Files remains non-singleton**: Each Dock invocation creates a new independent window instance
+
+\- **Per-window state isolation**: Navigation history, selection, and current folder are unique per Files window
+
+\- **Zero warnings**: Tests must pass with PHASE_R "fail on warnings" gate
+
+\- **Keyboard-first**: All new UI must be operable without mouse
+
+\- **Deterministic**: No async in V1; UI updates are synchronous and testable
+
+**Feature Contract:**
+
+1\. **Breadcrumb Navigation**
+
+   \- Files renders a breadcrumb bar representing the current folder path
+
+   \- Breadcrumb shows clickable segments: Home / Documents / Projects (example)
+
+   \- Clicking a breadcrumb segment navigates to that folder
+
+   \- Breadcrumb always reflects currentFolderId
+
+   \- Keyboard: Breadcrumb must not trap focus (clicking remains optional)
+
+   \- Acceptance: Breadcrumb visible in all folders, updates immediately on navigation
+
+2\. **Back / Forward Navigation (History Stack)**
+
+   \- Files maintains per-window history stack: `backStack: FolderId[]`, `forwardStack: FolderId[]`
+
+   \- Navigating into folder: pushes current onto backStack, clears forwardStack
+
+   \- Back: if backStack non-empty, move current into forwardStack, pop into currentFolderId
+
+   \- Forward: if forwardStack non-empty, move current into backStack, pop into currentFolderId
+
+   \- Keyboard: Alt+Left → Back, Alt+Right → Forward
+
+   \- Must respect editable targets (don't fire while typing in inputs)
+
+   \- Acceptance: Back/Forward behave like real file browser, history independent per window
+
+3\. **"Open With..." Workflow Surface**
+
+   \- Selecting a file exposes "Open With..." action
+
+   \- For files (not folders): "Open With..." offers Logic Playground option
+
+   \- Uses existing intent dispatch route (no new infra)
+
+   \- Keyboard: Cmd/Ctrl+Enter → send selected file to Playground (if valid file selection)
+
+   \- For folders: Cmd/Ctrl+Enter is no-op
+
+   \- Acceptance: Mouse path exists (button/menu), keyboard path exists, dispatches correct intent
+
+4\. **Selection + Focus Polish (No Regression)**
+
+   \- Arrow navigation remains stable after folder changes
+
+   \- On entering folder: selection resets to first item (index 0) if items exist
+
+   \- Escape behavior unchanged (closes Files window)
+
+   \- Enter behavior unchanged (opens folder when selection is folder)
+
+   \- Acceptance: No regressions to PHASE_I keyboard semantics, no focus theft
+
+**Implementation checklist:**
+
+\- Add breadcrumb bar UI in FilesApp.tsx (path resolution + click handlers)
+
+\- Add breadcrumb tests (render, update, navigation)
+
+\- Implement per-window history stacks (backStack/forwardStack state)
+
+\- Add Back/Forward UI buttons + keyboard handlers (Alt+Left/Right)
+
+\- Add history tests (push, back, forward, clear forward on new nav)
+
+\- Add "Open With..." UI for selected file (button/menu)
+
+\- Wire to existing Playground intent dispatch
+
+\- Add Cmd/Ctrl+Enter keyboard shortcut
+
+\- Add "Open With..." tests (dispatch, keyboard, folder/file handling)
+
+\- Run full test suite (zero warnings), run build
+
+\- Update CHANGELOG.md with PHASE_V completion
+
+**Definition of Done:**
+
+\- Breadcrumbs + Back/Forward + Open With implemented
+
+\- Keyboard coverage for all critical actions
+
+\- Tests comprehensively cover new behaviors and edge cases
+
+\- All tests pass with zero warnings
+
+\- CI passes (test + build)
+
+\- CHANGELOG.md reflects completion
+
+
 ---
 
 
