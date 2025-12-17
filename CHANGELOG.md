@@ -1,5 +1,30 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_S - CI + Release Discipline (2025-12-17)
+
+### Continuous Integration
+
+- **GitHub Actions CI**: Automated quality gates on PR and main branch
+  - Test job: All 201 tests must pass with zero warnings
+  - Build job: All packages must build successfully
+  - Node 20.19.0 + pnpm 10.24.0 version lock
+  - Frozen lockfile enforcement (no dependency drift)
+  - pnpm store caching for fast CI runs
+
+- **CI/CD Contract**: Documented in AI_STATE.md
+  - No bypass policy: merge blocked if CI fails
+  - Test + build gates mandatory before merge
+  - GitHub is source of truth: green CI = shippable main
+
+- **Release Checklist**: 10-step checklist in AI_STATE.md
+  - Pre-push: tests, build, changelog, secrets check
+  - Post-push: CI verification, tagging, documentation
+  - Emergency rollback procedure documented
+
+- **Version Enforcement**: Added engines field to package.json
+  - node >= 20.19.0
+  - pnpm >= 10.24.0
+
 ## PHASE_R - Stability Hardening (2025-12-17)
 
 ### Testing Quality Enforcement

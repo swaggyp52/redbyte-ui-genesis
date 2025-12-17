@@ -646,6 +646,80 @@ Quality enforcement:
 \- React act(...) warnings indicate improper async handling
 
 
+### CI/CD Contract
+
+Continuous Integration enforces quality gates at the repository level:
+
+\- **PR + main branch checks**: GitHub Actions runs on all pull requests and main branch pushes
+
+\- **Test gate**: `pnpm -r test` must pass with zero warnings (enforced by vitest config)
+
+\- **Build gate**: `pnpm -r build` must succeed for all packages
+
+\- **Node/pnpm version lock**: CI uses exact versions specified in package.json engines field
+
+\- **Cache optimization**: pnpm store cached to minimize install time
+
+\- **No bypass**: Merge blocked if CI fails
+
+Release discipline:
+
+\- Tag releases after major milestones: `phase-{letter}-complete` or `v{major}.{minor}.{patch}`
+
+\- Run confidence checks before tagging: `pnpm test && pnpm build`
+
+\- Update CHANGELOG.md with user-facing changes before release
+
+\- Verify no secrets in git history before pushing
+
+\- GitHub is source of truth: if CI is green, main is shippable
+
+Workflow triggers:
+
+\- Pull requests to main branch
+
+\- Direct pushes to main branch
+
+\- Manual workflow dispatch for testing
+
+CI failure policy:
+
+\- Do NOT merge if CI fails
+
+\- Do NOT bypass checks with force-push unless in emergency
+
+\- Fix the root cause before merging
+
+\- Temporary skip patterns (e.g., skipped tests) are not allowed
+
+
+### Release Checklist
+
+Before creating a release tag or pushing to main:
+
+**Pre-push checklist:**
+
+1. \[ \] Run `pnpm test` locally - all 201 tests passing with zero warnings
+2. \[ \] Run `pnpm -r build` locally - all packages build successfully
+3. \[ \] Update CHANGELOG.md with user-facing changes
+4. \[ \] Verify no secrets in git history: `git log --all --full-history --source --grep='github_pat\|api_key\|secret'`
+5. \[ \] Check .gitignore includes `.claude/settings.local.json` and other local files
+6. \[ \] Git status clean (no unintended files staged)
+
+**Post-push checklist:**
+
+7. \[ \] Verify CI passes on GitHub (all jobs green)
+8. \[ \] Create milestone tag: `git tag phase-{letter}-complete && git push origin phase-{letter}-complete`
+9. \[ \] Verify tag appears on GitHub releases page
+10. \[ \] Document phase completion in AI\_STATE.md Completed Phases section
+
+**Emergency rollback procedure:**
+
+\- If main is broken: revert the commit with `git revert <commit-sha>` and push
+\- If CI is red: do NOT force-push, do NOT bypass checks
+\- Fix forward with a new commit, or revert and iterate locally
+
+
 ---
 
 
