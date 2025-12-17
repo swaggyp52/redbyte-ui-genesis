@@ -38,5 +38,9 @@
   },
   "dependencies": {
     "zustand": "^5.0.9"
+  },
+  "engines": {
+    "node": ">=20.19.0",
+    "pnpm": ">=10.24.0"
   }
 }
