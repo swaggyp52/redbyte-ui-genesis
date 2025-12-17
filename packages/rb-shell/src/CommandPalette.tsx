@@ -12,7 +12,10 @@ export type Command =
   | 'snap-right'
   | 'snap-top'
   | 'snap-bottom'
-  | 'center-window';
+  | 'center-window'
+  | 'create-workspace'
+  | 'switch-workspace'
+  | 'delete-workspace';
 
 interface CommandItem {
   id: Command;
@@ -60,6 +63,21 @@ const COMMANDS: CommandItem[] = [
     id: 'center-window',
     label: 'Center Window',
     description: 'Center window on screen',
+  },
+  {
+    id: 'create-workspace',
+    label: 'Create Workspace',
+    description: 'Save current windows as named workspace',
+  },
+  {
+    id: 'switch-workspace',
+    label: 'Switch Workspace',
+    description: 'Switch to a different workspace',
+  },
+  {
+    id: 'delete-workspace',
+    label: 'Delete Workspace',
+    description: 'Delete a workspace',
   },
 ];
 

@@ -54,6 +54,24 @@ const COMMANDS: CommandSearchResult[] = [
     name: 'Center Window',
     description: 'Center window on screen',
   },
+  {
+    type: 'command',
+    id: 'create-workspace',
+    name: 'Create Workspace',
+    description: 'Save current windows as named workspace',
+  },
+  {
+    type: 'command',
+    id: 'switch-workspace',
+    name: 'Switch Workspace',
+    description: 'Switch to a different workspace',
+  },
+  {
+    type: 'command',
+    id: 'delete-workspace',
+    name: 'Delete Workspace',
+    description: 'Delete a workspace',
+  },
 ];
 
 const INTENT_TARGETS: IntentSearchResult[] = [
