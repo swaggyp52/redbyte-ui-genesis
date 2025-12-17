@@ -204,6 +204,27 @@ Settings is the canonical system configuration interface with strict singleton s
 \- Keyboard navigation: Arrow keys move selection, Enter activates, Escape closes window
 
 
+### Intent System Contract
+
+Intents enable explicit app-to-app interaction without breaking isolation:
+
+\- Intents are EXPLICIT, user-initiated actions (never implicit or automatic)
+
+\- Intents are routed by the Shell, NOT apps directly (no app-to-app calls)
+
+\- Target apps may be singleton or non-singleton (Shell respects manifest)
+
+\- Intents may create new windows or reuse existing ones (per manifest rules)
+
+\- Intent payloads are immutable once dispatched (no mutation in transit)
+
+\- No global state for intents (routing is synchronous, no event bus)
+
+\- Intents must be visible and intentional (button, menu, or keyboard shortcut)
+
+\- No hidden side effects (all intent actions are explicit user choices)
+
+
 
 ---
 

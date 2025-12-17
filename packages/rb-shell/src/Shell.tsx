@@ -12,6 +12,7 @@ import { getApp, type RedByteApp } from '@redbyte/rb-apps';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import BootScreen from './BootScreen';
 import { ToastContainer } from './ToastContainer';
+import type { Intent } from './intent-types';
 import './styles.css';
 
 export interface ShellProps {
@@ -128,7 +129,22 @@ export const Shell: React.FC<ShellProps> = () => {
       setBindings((prev) => ({ ...prev, [state.id]: { appId, props } }));
       return state.id;
     },
-    [createWindow, focusWindow, recordRecentApp, windows]
+    [createWindow, focusWindow, recordRecentApp, windows, restoreWindow]
+  );
+
+  const dispatchIntent = useCallback(
+    (intent: Intent) => {
+      switch (intent.type) {
+        case 'open-with': {
+          const { targetAppId, resourceId, resourceType } = intent.payload;
+          return openWindow(targetAppId, { resourceId, resourceType });
+        }
+        default:
+          console.warn('Unknown intent type:', (intent as any).type);
+          return null;
+      }
+    },
+    [openWindow]
   );
 
   useEffect(() => {
@@ -228,6 +244,7 @@ export const Shell: React.FC<ShellProps> = () => {
             <Component
               onOpenApp={openWindow}
               onClose={() => handleClose(window.id)}
+              onDispatchIntent={dispatchIntent}
               recentAppIds={app.manifest.id === 'launcher' ? recentAppIds : undefined}
               pinnedAppIds={app.manifest.id === 'launcher' ? pinnedAppIds : undefined}
               runningAppIds={app.manifest.id === 'launcher' ? runningAppIds : undefined}
