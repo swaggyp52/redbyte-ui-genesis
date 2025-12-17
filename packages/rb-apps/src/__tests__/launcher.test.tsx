@@ -60,8 +60,7 @@ describe('Launcher component', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('ignores Settings shortcut when Shift is held', () => {
-  it('does not launch settings when Alt is held with Ctrl+,', () => {
+  it('ignores Settings shortcut when Shift or Alt is held', () => {
     const onLaunch = vi.fn();
     const onClose = vi.fn();
 
@@ -76,12 +75,12 @@ describe('Launcher component', () => {
     const listbox = screen.getByRole('listbox');
     fireEvent.keyDown(listbox, { key: ',', ctrlKey: true, shiftKey: true });
     fireEvent.keyDown(listbox, { key: ',', ctrlKey: true, altKey: true });
+    fireEvent.keyDown(listbox, { key: ',', metaKey: true, shiftKey: true });
 
     expect(onLaunch).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('ignores Settings shortcut when Meta+Shift is held', () => {
   it('does not launch settings with Ctrl+, when typing in editable target', () => {
     const onLaunch = vi.fn();
     const onClose = vi.fn();
@@ -95,7 +94,6 @@ describe('Launcher component', () => {
     );
 
     const listbox = screen.getByRole('listbox');
-    fireEvent.keyDown(listbox, { key: ',', metaKey: true, shiftKey: true });
     const input = document.createElement('input');
     listbox.appendChild(input);
     input.focus();

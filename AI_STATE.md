@@ -94,6 +94,26 @@ These rules are permanent unless changed here:
 
 
 
+\### Launcher Contract
+
+The Launcher is the canonical OS entry point with these enforced behaviors:
+
+\- Launcher can always be invoked via Ctrl/Cmd+K global shortcut
+
+\- Launcher is a singleton app (only one instance allowed)
+
+\- When invoked and minimized, Launcher restores and gains focus
+
+\- When invoked and already focused, Launcher reuses existing window
+
+\- Launcher does NOT steal focus when dismissed
+
+\- Launcher gains focus when opened, even if no other window is focused
+
+\- Shell.openWindow enforces singleton + focus behavior for all singleton apps
+
+
+
 ---
 
 
@@ -345,3 +365,4 @@ After completing work, an AI agent MUST:
 - Hardened Launcher Settings shortcut guards to ignore extra modifiers and editable targets; tests updated; objectives unchanged; phase unchanged
 - Ensured work is on the main branch and confirmed launcher tests live only under packages/rb-apps/src/__tests__ (no src/tests drift); objectives unchanged; phase unchanged
 - Documented guardrails against running npm install, modifying remotes/fetch/push, and assuming nano availability; objectives unchanged; phase unchanged
+- Formalized Launcher contract in AI_STATE.md specifying singleton, restore-from-minimized, and focus invariants; added Shell.openWindow fix to restore minimized singleton windows before focusing; added launcher-lifecycle.test.tsx OS-level tests; cleaned duplicate code in Launcher.tsx and launcher.test.tsx; all tests pass; objectives unchanged; phase unchanged

@@ -109,6 +109,9 @@ export const Shell: React.FC<ShellProps> = () => {
       if (app.manifest.singleton) {
         const existing = windows.find((w) => w.contentId === appId);
         if (existing) {
+          if (existing.mode === 'minimized') {
+            restoreWindow(existing.id);
+          }
           focusWindow(existing.id);
           setBindings((prev) => ({ ...prev, [existing.id]: { appId, props } }));
           return existing.id;
