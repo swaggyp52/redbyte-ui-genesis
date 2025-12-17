@@ -4,9 +4,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import type { RedByteApp } from '../types';
+import type { Intent } from '@redbyte/rb-shell';
 
 interface FilesProps {
   onClose?: () => void;
+  onDispatchIntent?: (intent: Intent) => void;
 }
 
 interface FileEntry {
@@ -87,7 +89,7 @@ const SIDEBAR_ROOTS = [
   { id: 'documents', name: 'Documents' },
 ];
 
-const FilesComponent: React.FC<FilesProps> = ({ onClose }) => {
+const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => {
   const [currentFolderId, setCurrentFolderId] = useState('home');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -103,6 +105,20 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose }) => {
     containerRef.current?.focus();
   }, []);
 
+  const handleOpenWith = (entry: FileEntry) => {
+    if (!onDispatchIntent) return;
+
+    onDispatchIntent({
+      type: 'open-with',
+      payload: {
+        sourceAppId: 'files',
+        targetAppId: 'logic-playground',
+        resourceId: entry.id,
+        resourceType: entry.type,
+      },
+    });
+  };
+
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -111,6 +127,16 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose }) => {
     }
 
     if (entries.length === 0) return;
+
+    // Cmd/Ctrl+Enter: Open in Playground
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      event.preventDefault();
+      const selected = entries[selectedIndex];
+      if (selected && selected.type === 'file') {
+        handleOpenWith(selected);
+      }
+      return;
+    }
 
     if (event.key === 'ArrowDown') {
       event.preventDefault();
@@ -192,6 +218,7 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose }) => {
                   <th className="text-left p-3 text-xs font-medium text-slate-400">Name</th>
                   <th className="text-left p-3 text-xs font-medium text-slate-400">Type</th>
                   <th className="text-left p-3 text-xs font-medium text-slate-400">Modified</th>
+                  <th className="text-left p-3 text-xs font-medium text-slate-400">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -212,6 +239,19 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose }) => {
                         {entry.type === 'folder' ? 'Folder' : 'File'}
                       </td>
                       <td className="p-3 text-sm text-slate-400">{entry.modified}</td>
+                      <td className="p-3 text-sm">
+                        {entry.type === 'file' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenWith(entry);
+                            }}
+                            className="text-xs px-2 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white"
+                          >
+                            Open in Playground
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -223,6 +263,7 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose }) => {
         <div className="p-2 border-t border-slate-800 text-xs text-slate-500">
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">↑↓</kbd> Navigate{' '}
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> Open{' '}
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Cmd/Ctrl+Enter</kbd> Open in Playground{' '}
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Esc</kbd> Close
         </div>
       </div>

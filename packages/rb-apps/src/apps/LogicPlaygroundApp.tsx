@@ -36,11 +36,15 @@ type ViewMode = 'circuit' | 'schematic' | 'isometric' | '3d';
 interface LogicPlaygroundProps {
   initialFileId?: string;
   initialExampleId?: ExampleId;
+  resourceId?: string;
+  resourceType?: 'file' | 'folder';
 }
 
 const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   initialFileId,
   initialExampleId,
+  resourceId,
+  resourceType,
 }) => {
   const { tickRate } = useSettingsStore();
   const { addToast } = useToastStore();
@@ -341,6 +345,13 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
   return (
     <div className="h-full flex flex-col bg-gray-900 text-white">
+      {/* Intent Resource Display */}
+      {resourceId && (
+        <div className="bg-cyan-900/30 border-b border-cyan-700 p-2 text-xs">
+          Opened from Files: <span className="font-semibold">{resourceId}</span> ({resourceType})
+        </div>
+      )}
+
       {/* Top Toolbar */}
       <div className="border-b border-gray-700 p-2 flex items-center gap-2 flex-wrap text-sm">
         <button
