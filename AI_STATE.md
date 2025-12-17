@@ -334,6 +334,58 @@ Focus and safety:
 \- Search does NOT open windows until Enter is pressed
 
 
+### Layout Contract
+
+Window layouts are explicit spatial commands for efficient multi-window workflows:
+
+\- Layouts are EXPLICIT and USER-TRIGGERED (never automatic or inferred)
+
+\- Layouts are PER-SESSION (no persistence across browser reloads yet)
+
+\- Layouts apply ONLY to normal windows (minimized windows are unaffected)
+
+\- Layouts do NOT change z-index ordering or focus rules
+
+\- Layouts set window position + size directly (no animation required initially)
+
+
+Available layout actions:
+
+\- **Snap Left**: Position window at left half of desktop (x: 0, y: 0, w: 50%, h: 100%)
+
+\- **Snap Right**: Position window at right half of desktop (x: 50%, y: 0, w: 50%, h: 100%)
+
+\- **Snap Top**: Position window at top half of desktop (x: 0, y: 0, w: 100%, h: 50%)
+
+\- **Snap Bottom**: Position window at bottom half of desktop (x: 0, y: 50%, w: 100%, h: 50%)
+
+\- **Center**: Center window on desktop with default dimensions (400x300 if not specified)
+
+
+Keyboard shortcuts:
+
+\- Cmd/Ctrl+Alt+Left: Snap Left
+
+\- Cmd/Ctrl+Alt+Right: Snap Right
+
+\- Cmd/Ctrl+Alt+Up: Snap Top
+
+\- Cmd/Ctrl+Alt+Down: Snap Bottom
+
+\- Cmd/Ctrl+Alt+C: Center
+
+
+Behavior semantics:
+
+\- Layout commands operate on focused window only (no-op if no focused window)
+
+\- Layout commands exit maximized mode if window is currently maximized
+
+\- Layout commands do NOT minimize, close, or change window stacking
+
+\- Layout commands are synchronous (no async side effects)
+
+
 
 ---
 

@@ -23,6 +23,9 @@ interface WindowManagerActions {
   restoreWindow: (id: WindowId) => void;
   setSnapToGrid: (enabled: boolean) => void;
   setGridSize: (size: number) => void;
+  // Layout actions
+  snapWindow: (id: WindowId, direction: 'left' | 'right' | 'top' | 'bottom', desktopBounds: WindowBounds) => void;
+  centerWindow: (id: WindowId, desktopBounds: WindowBounds) => void;
   // Selectors
   getActiveWindows: () => WindowState[];
   getFocusedWindow: () => WindowState | null;
@@ -207,6 +210,88 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
 
   setGridSize: (size) => {
     set({ gridSize: size });
+  },
+
+  // Layout actions
+  snapWindow: (id, direction, desktopBounds) => {
+    set((state) => {
+      const window = state.windows.find((w) => w.id === id);
+      if (!window || window.mode === 'minimized') return state;
+
+      let newBounds: WindowBounds;
+      const halfWidth = desktopBounds.width / 2;
+      const halfHeight = desktopBounds.height / 2;
+
+      switch (direction) {
+        case 'left':
+          newBounds = {
+            x: desktopBounds.x,
+            y: desktopBounds.y,
+            width: halfWidth,
+            height: desktopBounds.height,
+          };
+          break;
+        case 'right':
+          newBounds = {
+            x: desktopBounds.x + halfWidth,
+            y: desktopBounds.y,
+            width: halfWidth,
+            height: desktopBounds.height,
+          };
+          break;
+        case 'top':
+          newBounds = {
+            x: desktopBounds.x,
+            y: desktopBounds.y,
+            width: desktopBounds.width,
+            height: halfHeight,
+          };
+          break;
+        case 'bottom':
+          newBounds = {
+            x: desktopBounds.x,
+            y: desktopBounds.y + halfHeight,
+            width: desktopBounds.width,
+            height: halfHeight,
+          };
+          break;
+      }
+
+      return {
+        windows: state.windows.map((w) =>
+          w.id === id
+            ? { ...w, bounds: newBounds, mode: 'normal' as const }
+            : w
+        ),
+      };
+    });
+  },
+
+  centerWindow: (id, desktopBounds) => {
+    set((state) => {
+      const window = state.windows.find((w) => w.id === id);
+      if (!window || window.mode === 'minimized') return state;
+
+      const defaultWidth = 400;
+      const defaultHeight = 300;
+      const centeredX = desktopBounds.x + (desktopBounds.width - defaultWidth) / 2;
+      const centeredY = desktopBounds.y + (desktopBounds.height - defaultHeight) / 2;
+
+      const newBounds: WindowBounds = {
+        x: centeredX,
+        y: centeredY,
+        width: defaultWidth,
+        height: defaultHeight,
+      };
+
+      return {
+        windows: state.windows.map((w) =>
+          w.id === id
+            ? { ...w, bounds: newBounds, mode: 'normal' as const }
+            : w
+        ),
+      };
+    });
   },
 
   // Selectors
