@@ -3170,13 +3170,199 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
 
 
 
+\## PHASE\_AF — Deterministic Filesystem Persistence \+ Import/Export/Reset (IN PROGRESS)
+
+
+
+### Goal
+
+Enable the global `fileSystemStore` to persist deterministically to localStorage, surviving page reloads while maintaining failure-safe behavior. Provide helpers (`exportJson`, `importJson`, `resetAll`) for user-controlled filesystem snapshot management.
+
+
+
+### Non-Goals
+
+- NO async operations in persistence (no IndexedDB, no background indexing)
+
+- NO server synchronization or cloud storage
+
+- NO automatic conflict resolution between tabs (last-write-wins on localStorage)
+
+- NO versioned history or undo/redo persistence (only current state snapshot)
+
+- NO encryption or compression of localStorage payload
+
+
+
+### Invariants
+
+1. **Deterministic Serialization**: `exportJson()` produces stable, canonical JSON (consistent ordering of object keys and array elements)
+
+2. **Sync-Only Persistence**: All localStorage operations are synchronous (no Promises, no async/await)
+
+3. **Failure-Safe Loading**: Corrupted or invalid localStorage data falls back to default seed from `createInitialFsState()` without crashing
+
+4. **Atomic State Replacement**: `importJson(json)` validates schema, then replaces entire store state in single `set()` call (no partial updates)
+
+5. **Schema Validation**: Persistence envelope has version field; loading checks minimal shape before deserializing
+
+6. **Reset Clears Storage**: `resetAll()` removes localStorage key and resets store to default seed
+
+7. **No Infinite Loops**: Persistence subscription does not trigger on loads (only on mutations)
+
+
+
+### Persistence Envelope
+
+
+
+```typescript
+interface FileSystemPersistenceEnvelope {
+  version: 1;
+  state: FileSystemState; // From fsModel
+}
+```
+
+
+
+**Storage Key**: `rb:file-system`
+
+
+
+### fileSystemStore Updates
+
+
+
+**Current State** (from PHASE\_AE):
+- Global Zustand store with actions: `createFolder`, `createFile`, `renameEntry`, `deleteEntry`
+- Getters: `getChildren`, `getPath`, `getAllFiles`, etc.
+- Used by both Files app and System Search for single source of truth
+
+
+
+**Target State** (PHASE\_AF):
+- Store loads from localStorage on initialization (with fallback to seed on corruption)
+- Store subscribes to state changes and persists to localStorage after every mutation
+- Three new actions:
+  - `exportJson()`: Returns canonical JSON string (stable ordering for snapshots/diffs)
+  - `importJson(json: string)`: Validates schema, replaces state atomically, persists
+  - `resetAll()`: Clears localStorage, resets to `createInitialFsState()`
+
+
+
+### Implementation Steps
+
+
+
+1. **Add Persistence Helpers** (`packages/rb-apps/src/stores/fileSystemStore.ts`):
+   ```typescript
+   // Deterministic serialization (stable key/array ordering)
+   function serializeState(state: FileSystemState): string {
+     // Sort folder entries by id, sort folder keys, stable JSON.stringify
+   }
+
+   // Load with corruption fallback
+   function loadPersistedState(): FileSystemState | null {
+     try {
+       const raw = localStorage.getItem('rb:file-system');
+       if (!raw) return null;
+       const envelope = JSON.parse(raw);
+       if (envelope.version !== 1) return null;
+       if (!envelope.state || typeof envelope.state !== 'object') return null;
+       // Validate minimal shape (has folders, roots, nextId)
+       return envelope.state;
+     } catch {
+       return null; // Corruption -> fallback to seed
+     }
+   }
+
+   // Save to localStorage (sync)
+   function persistState(state: FileSystemState): void {
+     const envelope: FileSystemPersistenceEnvelope = { version: 1, state };
+     const json = serializeState(envelope);
+     localStorage.setItem('rb:file-system', json);
+   }
+   ```
+
+2. **Update Store Initialization**:
+   ```typescript
+   export const useFileSystemStore = create<FileSystemStore>((set, get) => {
+     const persistedState = loadPersistedState();
+     const initialState = persistedState || createInitialFsState();
+
+     return {
+       ...initialState,
+
+       // Existing actions wrap mutations + persist
+       createFolder: (parentId, name) => {
+         const fs = get();
+         const newFs = fsCreateFolder(parentId, name, fs);
+         set(newFs);
+         persistState(newFs);
+       },
+
+       // exportJson/importJson/resetAll actions
+       exportJson: () => {
+         const state = get();
+         return serializeState({ version: 1, state });
+       },
+
+       importJson: (json: string) => {
+         const envelope = JSON.parse(json);
+         if (envelope.version !== 1) throw new Error('Invalid version');
+         // Validate schema
+         set(envelope.state);
+         persistState(envelope.state);
+       },
+
+       resetAll: () => {
+         localStorage.removeItem('rb:file-system');
+         const seed = createInitialFsState();
+         set(seed);
+       },
+     };
+   });
+   ```
+
+3. **Test Isolation Updates** (`packages/rb-apps/src/__tests__/files-operations.test.tsx` and `packages/rb-shell/src/__tests__/file-search.test.ts`):
+   - Update `beforeEach` to also call `localStorage.removeItem('rb:file-system')` before resetting store
+   - Ensures tests don't inherit persisted state from previous runs
+
+4. **Testing Strategy**:
+   - **Persistence Roundtrip**: Create file, reload page, verify file still exists
+   - **Corruption Fallback**: Set invalid JSON in localStorage, reload, verify default seed loads
+   - **Deterministic Export**: Export twice, verify identical JSON strings
+   - **Import Validation**: Reject invalid version, invalid shape, malformed JSON
+   - **Reset All**: Verify localStorage cleared and default seed restored
+   - **Regression**: All existing Files + System Search tests still pass (369 tests)
+
+
+
+### Definition of Done
+
+- [x] fileSystemStore persists to `rb:file-system` localStorage key after every mutation
+- [x] fileSystemStore loads from localStorage on init with corruption fallback
+- [x] `exportJson()` produces deterministic canonical JSON
+- [x] `importJson(json)` validates schema and replaces state atomically
+- [x] `resetAll()` clears localStorage and resets to default seed
+- [x] Tests cover persistence roundtrip, corruption handling, deterministic export
+- [x] All 369+ tests pass with zero warnings
+- [x] Build passes
+- [x] Contracts and completion logged
+
+
+
+---
+
+
+
 \## Current Phase
 
 
 
-Phase ID: PHASE\_AE
+Phase ID: PHASE\_AF
 
-Phase Name: System Search Open-With Modal \+ Files Global Store Unification
+Phase Name: Deterministic Filesystem Persistence \+ Import/Export/Reset
 
 Status: IN PROGRESS
 
@@ -3247,6 +3433,10 @@ Status: IN PROGRESS
 \- PHASE\_AB — File Association Manager UI
 
 \- PHASE\_AC — Deterministic Window Routing for Open-With
+
+- PHASE\_AD — System Search: Deterministic File Provider + Default Open + Open With
+
+- PHASE\_AE — System Search Open-With Modal + Files Global Store Unification
 
 
 

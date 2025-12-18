@@ -1,5 +1,73 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_AF - Deterministic Filesystem Persistence + Import/Export/Reset (2025-12-18)
+
+### Goal
+Enable the global `fileSystemStore` to persist deterministically to localStorage, surviving page reloads while maintaining failure-safe behavior. Provide user-accessible helpers (`exportJson`, `importJson`, `resetAll`) for filesystem snapshot management.
+
+### Key Changes
+- **LocalStorage Persistence** (`fileSystemStore.ts`):
+  - Store loads from `rb:file-system` localStorage key on initialization
+  - Falls back to default seed (`createInitialFsState()`) on corruption or missing data
+  - All mutations (createFolder, createFile, renameEntry, deleteEntry) persist synchronously after state update
+  - Versioned envelope format with schema validation (version 1)
+
+- **Deterministic Serialization**:
+  - `serializeState()` sorts folder keys and entry arrays for stable JSON output
+  - Enables reliable snapshots and diffs
+  - Export twice produces identical JSON strings
+
+- **New Store Actions**:
+  - `exportJson()`: Returns canonical JSON string of current filesystem state
+  - `importJson(json)`: Validates schema, replaces state atomically, persists to localStorage
+  - `resetAll()`: Clears localStorage and resets to default seed
+
+- **Failure-Safe Loading**:
+  - Invalid JSON → fallback to seed
+  - Wrong version number → fallback to seed
+  - Missing required fields → fallback to seed
+  - No crashes or errors on corrupted data
+
+- **Test Isolation Updates**:
+  - Added `localStorage.removeItem('rb:file-system')` to `beforeEach` in files-operations.test.tsx and file-search.test.ts
+  - Prevents tests from inheriting persisted state from previous runs
+
+### Testing (382 tests passing, 0 warnings)
+- **Persistence Roundtrip** (2 tests): Verify create operations persist + load on init
+- **Corruption Fallback** (3 tests): Invalid JSON, wrong version, missing state all fall back to seed
+- **Deterministic Export** (2 tests): Stable JSON output, sorted folders/entries
+- **Import Validation** (4 tests): Valid import replaces state, invalid version/state/folders all throw
+- **Reset All** (1 test): Clears localStorage and resets to default seed
+- **Regression** (1 test): All CRUD operations still work with persistence enabled
+- **Baseline Regression**: All 369 existing tests still pass
+
+### Files Changed
+- `AI_STATE.md` - PHASE_AF contract added (lines 3173-3355)
+- `packages/rb-apps/src/stores/fileSystemStore.ts` - Added persistence envelope, helpers, load/persist logic
+- `packages/rb-apps/src/__tests__/files-operations.test.tsx` - Added localStorage.removeItem to beforeEach
+- `packages/rb-shell/src/__tests__/file-search.test.ts` - Added localStorage.removeItem to beforeEach
+- `packages/rb-apps/src/stores/__tests__/fileSystemStore.persistence.test.ts` - 13 new persistence tests
+
+### UX Impact
+- **Before**: Filesystem state lost on page reload (ephemeral session only)
+- **After**: Filesystem state persists across reloads automatically
+- **Example workflow**:
+  1. Create file "notes.txt" in Files app
+  2. Reload page (Cmd/Ctrl+R)
+  3. "notes.txt" still exists in Files app and System Search
+  4. Use `exportJson()` to backup filesystem state as JSON
+  5. Use `importJson(json)` to restore from backup
+  6. Use `resetAll()` to clear all data and start fresh
+
+### Technical Notes
+- Storage key: `rb:file-system`
+- Envelope format: `{ version: 1, state: FileSystemState }`
+- All operations synchronous (no async/await, no Promises)
+- SSR-safe (checks `typeof window !== 'undefined'`)
+- Deterministic sorting ensures stable export output
+
+---
+
 ## PHASE_AE - System Search Open With Modal + Files Global Store Unification (2025-12-18)
 
 ### Goal

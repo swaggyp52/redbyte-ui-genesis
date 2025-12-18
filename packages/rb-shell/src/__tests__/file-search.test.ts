@@ -8,6 +8,9 @@ import { getAllSearchableFiles, filterSearchResults } from '../searchRegistry';
 
 describe('PHASE_AD: System Search Files Provider', () => {
   beforeEach(() => {
+    // Clear localStorage to prevent persistence from affecting tests
+    localStorage.removeItem('rb:file-system');
+
     // Reset filesystem store to initial state before each test
     const store = useFileSystemStore.getState();
     // Reset to initial state by creating a fresh store

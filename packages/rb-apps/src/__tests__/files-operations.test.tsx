@@ -12,6 +12,9 @@ const FilesComponent = FilesApp.component;
 
 describe('PHASE_W: Files operations', () => {
   beforeEach(() => {
+    // Clear localStorage to prevent persistence from affecting tests
+    localStorage.removeItem('rb:file-system');
+
     // Reset filesystem store to initial state before each test
     const initialState = useFileSystemStore.getState();
     useFileSystemStore.setState({
