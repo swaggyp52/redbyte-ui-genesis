@@ -76,6 +76,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
 
   const autosaveIntervalRef = useRef<number | null>(null);
+  const canvasAreaRef = useRef<HTMLDivElement>(null);
 
   // Load circuit from URL if present
   useEffect(() => {
@@ -112,6 +113,43 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
     detectAndLoadCircuitFromURL();
   }, []);
+
+  // Load circuit from open-with intent resourceId
+  useEffect(() => {
+    if (resourceId && resourceType === 'file') {
+      // Try to find existing file by resourceId (exact match)
+      const existingFile = availableFiles.find((f) => f.id === resourceId);
+
+      if (existingFile) {
+        // File exists, load it
+        handleLoadFile(existingFile.id);
+        // Focus canvas area after loading
+        setTimeout(() => canvasAreaRef.current?.focus(), 100);
+      } else {
+        // File doesn't exist, try to find by name match
+        // Extract clean name from resourceId (e.g., "notes" -> "notes.txt" or just "notes")
+        const nameMatchFile = availableFiles.find((f) =>
+          f.name.toLowerCase().includes(resourceId.toLowerCase()) ||
+          resourceId.toLowerCase().includes(f.name.toLowerCase())
+        );
+
+        if (nameMatchFile) {
+          handleLoadFile(nameMatchFile.id);
+          setTimeout(() => canvasAreaRef.current?.focus(), 100);
+        } else {
+          // No match found, create new empty circuit file with resourceId as name
+          const serialized = serialize(circuit);
+          const newFile = createFile(resourceId, serialized);
+          setCurrentFileId(newFile.id);
+          setAvailableFiles(listFiles());
+          setSelectedFileId(newFile.id);
+          setIsDirty(false);
+          addToast(`Created new circuit: ${resourceId}`, 'success');
+          setTimeout(() => canvasAreaRef.current?.focus(), 100);
+        }
+      }
+    }
+  }, [resourceId, resourceType]);
 
   // Load initial circuit
   useEffect(() => {
@@ -523,7 +561,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         </div>
 
         {/* Center - Canvas */}
-        <div className="flex-1 relative">
+        <div ref={canvasAreaRef} tabIndex={-1} className="flex-1 relative outline-none">
           {viewMode === '3d' ? (
             <Logic3DScene engine={engine} width={800} height={600} />
           ) : (

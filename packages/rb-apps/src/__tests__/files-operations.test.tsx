@@ -813,4 +813,103 @@ describe('PHASE_W: Files operations', () => {
       expect(screen.queryByText('Open With...')).toBeNull();
     });
   });
+
+  describe('PHASE_Y: Open-With Payload + Target Consumption', () => {
+    it('Files dispatches open-with intent with resourceId', () => {
+      const onDispatchIntent = vi.fn();
+      const { container } = render(<FilesComponent onDispatchIntent={onDispatchIntent} />);
+      const mainContainer = container.querySelector('[tabIndex="0"]');
+
+      // Navigate to Desktop and select Notes.txt
+      const desktopButton = screen.getAllByRole('button', { name: 'Desktop' }).find((el) =>
+        el.className.includes('w-full')
+      );
+      act(() => {
+        fireEvent.click(desktopButton!);
+      });
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
+      });
+
+      // Press Cmd+Shift+Enter to open "Open With..." modal
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'Enter', metaKey: true, shiftKey: true });
+      });
+
+      // Select Logic Playground
+      const playgroundButton = screen.getByText('Logic Playground');
+      act(() => {
+        fireEvent.click(playgroundButton);
+      });
+
+      // Verify intent dispatched with correct resourceId
+      expect(onDispatchIntent).toHaveBeenCalledWith({
+        type: 'open-with',
+        payload: {
+          sourceAppId: 'files',
+          targetAppId: 'logic-playground',
+          resourceId: 'notes',
+          resourceType: 'file',
+        },
+      });
+    });
+
+    it('Files dispatches different resourceIds for different files', () => {
+      const onDispatchIntent = vi.fn();
+      const { container } = render(<FilesComponent onDispatchIntent={onDispatchIntent} />);
+      const mainContainer = container.querySelector('[tabIndex="0"]');
+
+      // Navigate to Documents
+      const documentsButton = screen.getAllByRole('button', { name: 'Documents' }).find((el) =>
+        el.className.includes('w-full')
+      );
+      act(() => {
+        fireEvent.click(documentsButton!);
+      });
+
+      // Select README.md (second entry)
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
+      });
+
+      // Dispatch open-with
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'Enter', metaKey: true });
+      });
+
+      // Verify resourceId is 'readme' (not 'notes')
+      expect(onDispatchIntent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            resourceId: 'readme',
+            resourceType: 'file',
+          }),
+        })
+      );
+    });
+
+    it('Files respects folder guard (no intent for folders)', () => {
+      const onDispatchIntent = vi.fn();
+      const { container } = render(<FilesComponent onDispatchIntent={onDispatchIntent} />);
+      const mainContainer = container.querySelector('[tabIndex="0"]');
+
+      // Navigate to Desktop
+      const desktopButton = screen.getAllByRole('button', { name: 'Desktop' }).find((el) =>
+        el.className.includes('w-full')
+      );
+      act(() => {
+        fireEvent.click(desktopButton!);
+      });
+
+      // First entry is "Project Files" folder
+      // Try Cmd+Shift+Enter (should no-op)
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'Enter', metaKey: true, shiftKey: true });
+      });
+
+      // No modal should appear
+      expect(screen.queryByText('Open With...')).toBeNull();
+      expect(onDispatchIntent).not.toHaveBeenCalled();
+    });
+  });
 });

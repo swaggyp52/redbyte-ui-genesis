@@ -1308,15 +1308,146 @@ Filter targets based on:
 
 
 
+\## PHASE\_Y: Open-With Payload + Target Consumption Contract
+
+### Open-With Payload Routing and Target App File Loading
+
+**Goal:**
+
+Complete the "Open With" workflow by enabling Files to pass deterministic file payload (ID + metadata) through the Intent system, and enable Logic Playground to synchronously load and display the selected file.
+
+**Non-Goals:**
+
+\- No async file loading (synchronous only)
+
+\- No file content indexing or search
+
+\- No background workers
+
+\- No auto-save or auto-reload behaviors
+
+\- No multi-file selection (single file only)
+
+**Invariants:**
+
+\- **Payload integrity**: Files → Shell → Target app passes file metadata unchanged
+
+\- **Synchronous loading**: Target app loads file content synchronously from FS store on mount
+
+\- **Failure-safe**: Missing/invalid fileId → no-op (optional toast), never crash
+
+\- **Focus behavior**: Target app focuses primary editor area after loading file
+
+\- **Folder guard**: Folder selections remain no-op (file-only)
+
+\- **Per-window context**: Open-with actions only operate on focused Files window's selected file
+
+**Implementation Contracts:**
+
+**1. Intent Payload Extension**
+
+Current `open-with` intent payload:
+
+```typescript
+{
+  type: 'open-with',
+  payload: {
+    sourceAppId: string,
+    targetAppId: string,
+    resourceId: string,
+    resourceType: 'file' | 'folder'
+  }
+}
+```
+
+**Extension needed**: `resourceId` must be a deterministic file ID from the FS store that the target app can use to retrieve file content.
+
+**Contract**: `resourceId` is the file's unique ID from `fsModel` (e.g., "notes", "file-2"). Target apps use this ID to look up file content from the shared FS store.
+
+**2. Files App Payload Generation**
+
+**Contract**:
+
+\- When dispatching `open-with` intent, Files passes the selected file entry's `id` as `resourceId`
+
+\- Already implemented in PHASE_X: `handleOpenWith(entry, targetAppId)` dispatches with `resourceId: entry.id`
+
+\- No changes needed (payload already correct)
+
+**3. Shared FS Store Access**
+
+**Contract**:
+
+\- Target apps need read-only access to the same FS store that Files uses
+
+\- Options:
+
+  1. Export `fsModel` functions as read-only utilities
+
+  2. Create shared FS context provider
+
+  3. Pass file content directly in intent payload (violates separation of concerns)
+
+**Decision**: Export read-only FS access functions from `fsModel` for target apps to consume.
+
+**4. Logic Playground Intent Handler**
+
+**Contract**:
+
+\- On component mount, check if window was opened via `open-with` intent
+
+\- If yes, extract `resourceId` from intent payload
+
+\- Synchronously load file content from FS store using `resourceId`
+
+\- Populate editor with file content
+
+\- Focus editor
+
+\- If `resourceId` invalid/missing: no-op (optional toast), never throw
+
+**5. Focus Behavior**
+
+**Contract**:
+
+\- After loading file, Logic Playground focuses the primary editor area
+
+\- User can immediately start typing without clicking
+
+**Definition of Done:**
+
+\- Files dispatches `open-with` with deterministic `resourceId`
+
+\- Logic Playground receives intent and loads file content synchronously
+
+\- Editor populated with file content and focused
+
+\- Invalid `resourceId` handled gracefully (no crash)
+
+\- Folders still no-op
+
+\- PHASE_X tests still pass (no regressions)
+
+\- New tests: payload routing, target load, failure cases
+
+\- Zero async, zero warnings
+
+\- All tests pass, build passes
+
+
+---
+
+
+
 \## Current Phase
 
 
 
 Phase ID: PHASE\_Y
 
-Phase Name: TBD (Awaiting user direction)
+Phase Name: Open-With Payload + Target Consumption
 
-Status: PENDING
+Status: ACTIVE
 
 
 
