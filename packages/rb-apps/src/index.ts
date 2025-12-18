@@ -5,6 +5,7 @@
 export * from './types';
 export * from './AppRegistry';
 export * from './stores/filesStore';
+export * from './stores/fileAssociationsStore';
 export * from './examples';
 
 export { TerminalApp } from './apps/TerminalApp';
