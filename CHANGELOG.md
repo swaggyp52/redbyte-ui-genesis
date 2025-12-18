@@ -1,5 +1,61 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_X - Cross-App File Actions (2025-12-18)
+
+### Files App: Open With Modal
+
+Extended Files from operations to cross-app file routing via generic "Open With..." modal and intent system.
+
+- **FILE_ACTION_TARGETS Registry**: Single source of truth for file action targets
+  - `packages/rb-apps/src/apps/files/fileActionTargets.ts`
+  - FileActionTarget interface: id, name, appId, supportedTypes
+  - Helper functions: getFileActionTargets(), isFileActionEligible(), getDefaultFileActionTarget()
+  - Initial target: Logic Playground (file-only)
+  - Future targets: Text Viewer, Image Viewer (commented placeholders)
+
+- **OpenWithModal Component**: PHASE_U modal pattern with keyboard navigation
+  - `packages/rb-apps/src/apps/files/modals.tsx`
+  - Arrow keys navigate targets, Enter selects, Escape cancels
+  - Visual selection indicator (cyan highlight)
+  - Auto-focus on mount, keyboard-first UX
+  - Shows "No available targets" if targets array empty
+
+- **Keyboard Shortcuts**:
+  - **Cmd/Ctrl+Shift+Enter**: Opens "Open With..." modal for selected file
+  - **Cmd/Ctrl+Enter**: Direct action to Logic Playground (default, no modal)
+  - Both shortcuts no-op for folders (file-only eligibility)
+
+- **Modal Guards** (PHASE_W standard):
+  - "Open With..." modal blocks all Files shortcuts when open
+  - Selection frozen while modal active
+  - Escape priority preserved: modal first, then window
+
+- **Intent Routing**:
+  - Reuses existing `open-with` intent type from PHASE_V (no new types)
+  - Shell dispatcher already supports generic targetAppId routing
+  - Unknown targets fail gracefully via openWindow() (no crash)
+
+- **Footer Update**: Added Ctrl/Cmd+Shift+Enter hint for discoverability
+
+- **System Search**: Not implemented (requires context-awareness that static intents don't support)
+  - Added comment in searchRegistry.ts explaining limitation
+  - Recommended workflow: Use Cmd/Ctrl+Shift+Enter directly in Files
+
+- **Testing**: 8 new PHASE_X tests (295 total passing)
+  - Cmd/Ctrl+Shift+Enter opens modal for files
+  - Cmd/Ctrl+Shift+Enter no-op for folders
+  - Modal blocks Files shortcuts
+  - Modal keyboard navigation (Arrow keys, Enter, Escape)
+  - Intent dispatched with correct payload (targetAppId, resourceId)
+  - Cmd/Ctrl+Enter direct action (no modal)
+  - PHASE_W modal guards preserved
+
+- **Architecture Notes**:
+  - Zero async, synchronous intent routing
+  - Per-window context (actions only affect focused Files window)
+  - Failure-safe (unknown target → no-op)
+  - Extensible (add new targets to FILE_ACTION_TARGETS array)
+
 ## PHASE_W - Files Operations (2025-12-18)
 
 ### Files App: User-Owned Workspace
