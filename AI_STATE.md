@@ -1829,11 +1829,11 @@ Example:
 
 
 
-Phase ID: PHASE\_AA
+Phase ID: PHASE\_AB
 
-Phase Name: File Associations + Deterministic Default Target Resolution
+Phase Name: TBD
 
-Status: IN PROGRESS
+Status: PLANNING
 
 
 
@@ -1894,6 +1894,10 @@ Status: IN PROGRESS
 \- PHASE\_X — Cross-App File Actions
 
 \- PHASE\_Y — Open-With Payload + Target Consumption
+
+\- PHASE\_Z — Multi-Target Open With + Deterministic Focus
+
+\- PHASE\_AA — File Associations + Deterministic Default Target Resolution
 
 
 
@@ -1984,6 +1988,9 @@ After completing work, an AI agent MUST:
 \## Change Log
 
 
+
+\### 2025-12-18
+\- Implemented PHASE_AA file associations with deterministic default target resolution per file type (extension + resourceType); D/Shift+D keyboard actions in Open With modal; [DEFAULT] marker display; extension normalization (lowercase, no leading dot); localStorage persistence (rb:file-associations); resolveDefaultTarget with fallback to first eligible target; Cmd/Ctrl+Enter uses default target; comprehensive tests (24 new association store tests); all 327 tests pass with zero warnings; build passes; phase complete
 
 \### 2025-12-17
 \- Wired Playground launcher search actions through a centralized handler to open Settings/docs or stub project creation; panel remains mounted; objectives unchanged; phase unchanged

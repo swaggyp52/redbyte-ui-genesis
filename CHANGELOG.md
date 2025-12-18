@@ -1,5 +1,80 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_AA - File Associations + Deterministic Default Target Resolution (2025-12-18)
+
+### Goal
+Make Files feel like a daily-driver app by implementing persistent default target associations per file type, eliminating modal friction for repeated open-with actions.
+
+### Key Changes
+- **File Associations Store**: Persistent default target preferences per file type
+  - Extension normalization (lowercase, no leading dot): `.TXT` → `txt`
+  - `getDefaultTarget(resourceType, extension)` → targetId | null
+  - `setDefaultTarget(resourceType, extension, targetId)` → void
+  - `clearDefaultTarget(resourceType, extension)` → void
+  - localStorage persistence (rb:file-associations key)
+  - Failure-safe corrupted data handling
+
+- **Deterministic Default Resolution**: Pure function with fallback
+  - `resolveDefaultTarget(resourceType, extension, eligibleTargets[])` → targetId
+  - Returns saved default if exists and is in eligibleTargets
+  - Falls back to first eligible target if no default or invalid default
+  - Throws if eligibleTargets empty (caller must guard with isFileActionEligible)
+  - Deterministic: always returns first eligible when multiple targets available
+
+- **Files Default-Open Behavior**: Cmd/Ctrl+Enter uses default target
+  - Extracts extension from filename (`Notes.txt` → `txt`)
+  - Calls `resolveDefaultTarget()` to get targetId
+  - Dispatches open-with intent with resolved target
+  - Guards: only files (not folders), only eligible targets
+  - No modal friction for repeated file type actions
+
+- **Open With Modal Enhancements**: D/Shift+D keyboard actions
+  - **D key**: Set selected target as default for file type (closes modal)
+  - **Shift+D key**: Clear default for file type (keeps modal open)
+  - **[DEFAULT] marker**: Displayed next to saved default target
+  - Modal receives resourceType and extension props
+  - Updated keyboard hints footer
+  - Input/textarea guard for D/Shift+D keys
+
+### Testing (327 tests passing, 0 warnings)
+- **Store Tests** (24 new tests):
+  - Extension normalization (`.txt` → `txt`, `TXT` → `txt`, `.RBLOGIC` → `rblogic`)
+  - Get/set/clear operations
+  - Multiple file types with different defaults
+  - File vs folder defaults (separate namespaces)
+  - localStorage persistence on set/clear
+  - Corrupted JSON handling
+  - Invalid schema handling
+- **Resolver Tests**:
+  - Returns saved default if eligible
+  - Falls back to first eligible if no default
+  - Falls back if saved default not in eligible list
+  - Throws if eligibleTargets empty
+  - Deterministic fallback (always first eligible)
+- **Integration Tests**:
+  - Updated PHASE_X test: Notes.txt → text-viewer (was logic-playground)
+  - All PHASE_X/Y/Z tests still pass (no regressions)
+
+### Files Changed
+- `AI_STATE.md` - PHASE_AA contract added
+- `packages/rb-apps/src/stores/fileAssociationsStore.ts` - New store implementation
+- `packages/rb-apps/src/stores/__tests__/fileAssociationsStore.test.ts` - 24 comprehensive tests
+- `packages/rb-apps/src/index.ts` - Export fileAssociationsStore
+- `packages/rb-apps/src/apps/FilesApp.tsx` - Cmd/Ctrl+Enter default routing + modal props
+- `packages/rb-apps/src/apps/files/modals.tsx` - D/Shift+D actions + [DEFAULT] marker
+- `packages/rb-apps/src/__tests__/files-operations.test.tsx` - Updated test expectations
+
+### UX Impact
+- **Before**: Every file open requires modal confirmation (even for same file type)
+- **After**: First file type requires modal → set default → future files open directly
+- **Example workflow**:
+  1. Select `Notes.txt` → Cmd/Ctrl+Shift+Enter → Open With modal
+  2. Arrow to Text Viewer → D key → set as default (modal closes, file opens)
+  3. Select `README.md` → Cmd/Ctrl+Enter → opens directly in Text Viewer (no modal)
+  4. Select `circuit.rblogic` → Cmd/Ctrl+Enter → opens in Logic Playground (different default)
+
+---
+
 ## PHASE_Z - Multi-Target Open With + Deterministic Focus (2025-12-18)
 
 ### Goal
