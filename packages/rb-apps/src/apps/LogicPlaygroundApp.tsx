@@ -123,8 +123,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       if (existingFile) {
         // File exists, load it
         handleLoadFile(existingFile.id);
-        // Focus canvas area after loading
-        setTimeout(() => canvasAreaRef.current?.focus(), 100);
+        // Focus canvas area after loading - PHASE_Z: using requestAnimationFrame for deterministic focus
+        requestAnimationFrame(() => {
+          canvasAreaRef.current?.focus();
+        });
       } else {
         // File doesn't exist, try to find by name match
         // Extract clean name from resourceId (e.g., "notes" -> "notes.txt" or just "notes")
@@ -135,7 +137,9 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
         if (nameMatchFile) {
           handleLoadFile(nameMatchFile.id);
-          setTimeout(() => canvasAreaRef.current?.focus(), 100);
+          requestAnimationFrame(() => {
+            canvasAreaRef.current?.focus();
+          });
         } else {
           // No match found, create new empty circuit file with resourceId as name
           const serialized = serialize(circuit);
@@ -145,7 +149,9 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           setSelectedFileId(newFile.id);
           setIsDirty(false);
           addToast(`Created new circuit: ${resourceId}`, 'success');
-          setTimeout(() => canvasAreaRef.current?.focus(), 100);
+          requestAnimationFrame(() => {
+            canvasAreaRef.current?.focus();
+          });
         }
       }
     }
