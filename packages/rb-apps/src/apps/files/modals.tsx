@@ -4,6 +4,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import type { FileActionTarget } from './fileActionTargets';
+import { useFileAssociationsStore } from '../../stores/fileAssociationsStore';
 
 interface TextInputModalProps {
   title: string;
@@ -156,16 +157,24 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
 interface OpenWithModalProps {
   targets: FileActionTarget[];
+  resourceType: 'file' | 'folder';
+  extension: string; // File extension (e.g., "rblogic", "txt")
   onSelect: (target: FileActionTarget) => void;
   onCancel: () => void;
 }
 
 export const OpenWithModal: React.FC<OpenWithModalProps> = ({
   targets,
+  resourceType,
+  extension,
   onSelect,
   onCancel,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const { getDefaultTarget, setDefaultTarget, clearDefaultTarget } = useFileAssociationsStore();
+
+  // Get current default target for this file type
+  const defaultTargetId = getDefaultTarget(resourceType, extension);
 
   useEffect(() => {
     // Clamp selection if targets change
@@ -175,6 +184,12 @@ export const OpenWithModal: React.FC<OpenWithModalProps> = ({
   }, [targets.length, selectedIndex]);
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
+    // Guard: ignore if event target is input/textarea (for future search functionality)
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+      return;
+    }
+
     if (event.key === 'Escape') {
       event.preventDefault();
       onCancel();
@@ -189,6 +204,20 @@ export const OpenWithModal: React.FC<OpenWithModalProps> = ({
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       setSelectedIndex((prev) => Math.max(prev - 1, 0));
+    } else if (event.key === 'D' && event.shiftKey) {
+      // Shift+D: Clear default
+      event.preventDefault();
+      clearDefaultTarget(resourceType, extension);
+      // Don't close modal (user can still select a target)
+    } else if (event.key === 'd' && !event.shiftKey) {
+      // D: Set default (case-insensitive, check lowercase)
+      event.preventDefault();
+      const selectedTarget = targets[selectedIndex];
+      if (selectedTarget) {
+        setDefaultTarget(resourceType, extension, selectedTarget.id);
+        // Close modal and open with this target (same as Enter)
+        onSelect(selectedTarget);
+      }
     }
   };
 
@@ -209,19 +238,25 @@ export const OpenWithModal: React.FC<OpenWithModalProps> = ({
           <p className="text-slate-400 text-sm mb-4">No available targets</p>
         ) : (
           <div className="mb-4 max-h-64 overflow-y-auto">
-            {targets.map((target, index) => (
-              <button
-                key={target.id}
-                onClick={() => onSelect(target)}
-                className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
-                  index === selectedIndex
-                    ? 'bg-cyan-600 text-white'
-                    : 'text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                {target.name}
-              </button>
-            ))}
+            {targets.map((target, index) => {
+              const isDefault = target.id === defaultTargetId;
+              return (
+                <button
+                  key={target.id}
+                  onClick={() => onSelect(target)}
+                  className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                    index === selectedIndex
+                      ? 'bg-cyan-600 text-white'
+                      : 'text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  {target.name}
+                  {isDefault && (
+                    <span className="ml-2 text-xs font-semibold opacity-70">[DEFAULT]</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -235,7 +270,8 @@ export const OpenWithModal: React.FC<OpenWithModalProps> = ({
         </div>
 
         <div className="mt-3 text-xs text-slate-500 text-center">
-          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">↑↓</kbd> Navigate{' '}
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">D</kbd> Set Default{' '}
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Shift+D</kbd> Clear Default{' '}
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> Open{' '}
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Esc</kbd> Cancel
         </div>
