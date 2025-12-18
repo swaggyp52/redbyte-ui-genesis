@@ -8,6 +8,7 @@ export * from './stores/filesStore';
 export * from './stores/fileAssociationsStore';
 export * from './stores/fileSystemStore';
 export * from './apps/files/fileActionTargets';
+export * from './apps/files/modals';
 export * from './examples';
 
 export { TerminalApp } from './apps/TerminalApp';

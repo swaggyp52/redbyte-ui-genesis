@@ -12,9 +12,12 @@ import {
   getApp,
   type RedByteApp,
   useFileSystemStore,
+  useFileAssociationsStore,
   getFileActionTargets,
   isFileActionEligible,
   resolveDefaultTarget,
+  OpenWithModal,
+  type FileActionTarget,
 } from '@redbyte/rb-apps';
 import { useWindowStore, loadSession, resolveTargetWindowId } from '@redbyte/rb-windowing';
 import { useWorkspaceStore, loadWorkspaces } from './workspaceStore';
@@ -37,6 +40,14 @@ interface WindowAppBinding {
   props?: any;
 }
 
+interface OpenWithModalState {
+  resourceId: string;
+  resourceType: 'file' | 'folder';
+  resourceName: string;
+  extension: string;
+  eligibleTargets: FileActionTarget[];
+}
+
 export const Shell: React.FC<ShellProps> = () => {
   const [booted, setBooted] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
@@ -46,6 +57,7 @@ export const Shell: React.FC<ShellProps> = () => {
   const [systemSearchOpen, setSystemSearchOpen] = useState(false);
   const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false);
   const [macroRunnerOpen, setMacroRunnerOpen] = useState(false);
+  const [openWithModalState, setOpenWithModalState] = useState<OpenWithModalState | null>(null);
 
   const hasShownWelcomeRef = useRef(false);
   const hasInitializedRef = useRef(false);
@@ -468,11 +480,13 @@ export const Shell: React.FC<ShellProps> = () => {
 
       if (shiftKey) {
         // Shift+Enter: Open With modal
-        // For PHASE_AD, we'll open Files app with the file pre-selected
-        // and trigger the Open With modal from there
-        // TODO: Implement direct Open With modal from search
-        console.log('Shift+Enter Open With not yet implemented for search - opening Files app instead');
-        openWindow('files');
+        setOpenWithModalState({
+          resourceId: file.id,
+          resourceType: file.type,
+          resourceName: file.name,
+          extension,
+          eligibleTargets,
+        });
       } else {
         // Enter: Default open using PHASE_AA associations + PHASE_AC routing
         const targetId = resolveDefaultTarget(file.type, extension, eligibleTargets);
@@ -628,7 +642,7 @@ export const Shell: React.FC<ShellProps> = () => {
   }
 
   return (
-    <div className="shell-container relative w-screen h-screen overflow-hidden bg-black text-white">
+    <div data-testid="shell-container" className="shell-container relative w-screen h-screen overflow-hidden bg-black text-white">
       <Desktop
         onOpenApp={openWindow}
         wallpaperId={settings.wallpaperId}
@@ -704,6 +718,29 @@ export const Shell: React.FC<ShellProps> = () => {
           macros={useMacroStore.getState().listMacros()}
           onExecute={handleMacroExecute}
           onClose={() => setMacroRunnerOpen(false)}
+        />
+      )}
+
+      {openWithModalState && (
+        <OpenWithModal
+          targets={openWithModalState.eligibleTargets}
+          resourceType={openWithModalState.resourceType}
+          extension={openWithModalState.extension}
+          onSelect={(target, preferNewWindow) => {
+            // Dispatch open-with intent with selected target
+            dispatchIntent({
+              type: 'open-with',
+              payload: {
+                sourceAppId: 'system-search',
+                targetAppId: target.appId,
+                resourceId: openWithModalState.resourceId,
+                resourceType: openWithModalState.resourceType,
+              },
+              routingHint: preferNewWindow ? { preferNewWindow } : undefined,
+            });
+            setOpenWithModalState(null);
+          }}
+          onCancel={() => setOpenWithModalState(null)}
         />
       )}
     </div>

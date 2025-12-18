@@ -2588,15 +2588,597 @@ Enable file discovery and opening via System Search (Cmd/Ctrl+Space) by implemen
 
 
 
+\## PHASE\_AE — System Search Open-With Modal \+ Files Global Store Unification (IN PROGRESS)
+
+
+
+### Goal
+
+Complete PHASE\_AD by enabling Shift+Enter to open a reusable Open With modal directly from System Search, pre-scoped to the selected file result with eligible targets only. Additionally, unify Files app filesystem state with the global fileSystemStore to eliminate duplication and ensure System Search and Files app always see identical file trees.
+
+
+
+### Non-Goals
+
+\- NO new modal component from scratch (extract and generalize existing Open With modal from Files app)
+
+\- NO async operations in modal opening or target resolution
+
+\- NO changes to FILE\_ACTION\_TARGETS registry or eligibility predicates (reuse PHASE\_Z)
+
+\- NO changes to file associations logic (reuse PHASE\_AA)
+
+\- NO changes to window routing logic (reuse PHASE\_AC)
+
+\- NO breaking changes to Files app keyboard shortcuts or workflows
+
+
+
+### Invariants
+
+1\. **Deterministic Modal State**: Modal receives pre-computed eligible targets (no async target resolution)
+
+2\. **Keyboard-First Navigation**: All modal operations accessible via keyboard (arrow keys, Enter, D, Shift+D, N, Esc)
+
+3\. **Zero Timers**: No setTimeout/setInterval for focus management (rAF acceptable for DOM synchronization)
+
+4\. **Failure-Safe Modal**: Invalid resourceId or zero eligible targets → no-op (log warning, don't crash)
+
+5\. **Single Source of Truth**: fileSystemStore is canonical for all filesystem state (Files app reads from it, never duplicates)
+
+6\. **Stable IDs**: File resourceIds remain unchanged across store migration (no test breakage)
+
+7\. **Zero Regressions**: All PHASE\_X/Y/Z/AA/AB/AC/AD tests continue passing
+
+
+
+### Shared Open With Modal Component
+
+
+
+**Component Name**: `OpenWithModal`
+
+**Location**: `packages/rb-shell/src/components/OpenWithModal.tsx` (or `packages/rb-apps/src/components/OpenWithModal.tsx`)
+
+
+
+**Props Interface**:
+
+```typescript
+
+interface OpenWithModalProps {
+
+  // Resource metadata
+
+  resourceId: string;
+
+  resourceType: 'file' \| 'folder';
+
+  resourceName: string; // Display name (e.g., "Notes.txt")
+
+  extension: string; // Extracted extension (e.g., "txt")
+
+
+
+  // Eligible targets (pre-computed, deterministic)
+
+  eligibleTargets: FileActionTarget\[\];
+
+
+
+  // Current default target (from file associations store)
+
+  currentDefaultTargetId?: string \| null;
+
+
+
+  // Callbacks
+
+  onChoose: (targetId: string, routingHint?: { preferNewWindow?: boolean }) => void;
+
+  onSetDefault: (targetId: string) => void;
+
+  onClearDefault: () => void;
+
+  onClose: () => void;
+
+}
+
+```
+
+
+
+**Key Bindings**:
+
+\- **Arrow Up/Down**: Navigate target list
+
+\- **Enter**: Choose selected target with current routingHint
+
+\- **D**: Set selected target as default (calls onSetDefault)
+
+\- **Shift+D**: Clear default association (calls onClearDefault)
+
+\- **N**: Toggle "Open in New Window" mode (updates routingHint)
+
+\- **Esc**: Close modal (calls onClose)
+
+
+
+**UI Requirements**:
+
+\- Visual indicator when N toggled: "Will open in new window" banner
+
+\- Keyboard hints footer: "↑↓: Navigate | Enter: Open | D: Set Default | Shift+D: Clear Default | N: New Window | Esc: Close"
+
+\- Show \[DEFAULT\] marker next to current default target
+
+\- Highlight selected target with cyan background
+
+\- Display target name and description
+
+
+
+**Extraction Strategy**:
+
+1\. Copy modal logic from `packages/rb-apps/src/apps/files/modals.tsx` (OpenWithModal)
+
+2\. Remove Files app-specific imports (getChildren, getPath, etc.)
+
+3\. Accept all data via props (eligibleTargets, resourceName, etc.)
+
+4\. Preserve all keyboard bindings and UI patterns
+
+5\. Export as shared component
+
+
+
+### System Search Integration
+
+
+
+**File**: `packages/rb-shell/src/Shell.tsx`
+
+
+
+**Updated Handler**: `handleSearchExecuteFile(fileId: string, shiftKey: boolean)`
+
+```typescript
+
+const handleSearchExecuteFile = useCallback(
+
+  (fileId: string, shiftKey: boolean) => {
+
+    const allFiles = useFileSystemStore.getState().getAllFiles();
+
+    const file = allFiles.find((f) => f.id === fileId);
+
+
+
+    if (\!file \|\| \!isFileActionEligible(file)) {
+
+      console.warn(\`File not eligible: ${fileId}\`);
+
+      return;
+
+    }
+
+
+
+    const eligibleTargets = getFileActionTargets(file);
+
+    const extension = file.name.includes('.') ? file.name.split('.').pop() \|\| '' : '';
+
+    const currentDefaultTargetId = useFileAssociationsStore.getState().getDefaultTarget(file.type, extension);
+
+
+
+    if (shiftKey) {
+
+      // Shift+Enter: Open With modal
+
+      setOpenWithModalState({
+
+        resourceId: file.id,
+
+        resourceType: file.type,
+
+        resourceName: file.name,
+
+        extension,
+
+        eligibleTargets,
+
+        currentDefaultTargetId,
+
+      });
+
+    } else {
+
+      // Enter: Default open
+
+      const targetId = resolveDefaultTarget(file.type, extension, eligibleTargets);
+
+      const target = eligibleTargets.find((t) => t.id === targetId);
+
+
+
+      if (target) {
+
+        dispatchIntent({
+
+          type: 'open-with',
+
+          payload: {
+
+            sourceAppId: 'system-search',
+
+            targetAppId: target.appId,
+
+            resourceId: file.id,
+
+            resourceType: file.type,
+
+          },
+
+        });
+
+      }
+
+    }
+
+  },
+
+  \[dispatchIntent\]
+
+);
+
+```
+
+
+
+**Modal State Management**:
+
+```typescript
+
+const \[openWithModalState, setOpenWithModalState\] = useState<OpenWithModalState \| null>(null);
+
+
+
+// Render modal
+
+{openWithModalState && (
+
+  <OpenWithModal
+
+    resourceId={openWithModalState.resourceId}
+
+    resourceType={openWithModalState.resourceType}
+
+    resourceName={openWithModalState.resourceName}
+
+    extension={openWithModalState.extension}
+
+    eligibleTargets={openWithModalState.eligibleTargets}
+
+    currentDefaultTargetId={openWithModalState.currentDefaultTargetId}
+
+    onChoose={(targetId, routingHint) => {
+
+      const target = openWithModalState.eligibleTargets.find((t) => t.id === targetId);
+
+      if (target) {
+
+        dispatchIntent({
+
+          type: 'open-with',
+
+          payload: {
+
+            sourceAppId: 'system-search',
+
+            targetAppId: target.appId,
+
+            resourceId: openWithModalState.resourceId,
+
+            resourceType: openWithModalState.resourceType,
+
+          },
+
+          routingHint,
+
+        });
+
+      }
+
+      setOpenWithModalState(null);
+
+    }}
+
+    onSetDefault={(targetId) => {
+
+      useFileAssociationsStore.getState().setDefaultTarget(
+
+        openWithModalState.resourceType,
+
+        openWithModalState.extension,
+
+        targetId
+
+      );
+
+    }}
+
+    onClearDefault={() => {
+
+      useFileAssociationsStore.getState().clearDefaultTarget(
+
+        openWithModalState.resourceType,
+
+        openWithModalState.extension
+
+      );
+
+    }}
+
+    onClose={() => setOpenWithModalState(null)}
+
+  />
+
+)}
+
+```
+
+
+
+### Files App Global Store Migration
+
+
+
+**Current State**: Files app uses local `useState` with `fsModel` helpers
+
+
+
+**Target State**: Files app reads from global `fileSystemStore` using Zustand subscriptions
+
+
+
+**Migration Steps**:
+
+1\. Replace `useState<FileSystemState>` with `useFileSystemStore` hook
+
+2\. Update all filesystem mutations to use store actions:
+
+   \- `createFolder` → `useFileSystemStore.getState().createFolder()`
+
+   \- `createFile` → `useFileSystemStore.getState().createFile()`
+
+   \- `renameEntry` → `useFileSystemStore.getState().renameEntry()`
+
+   \- `deleteEntry` → `useFileSystemStore.getState().deleteEntry()`
+
+3\. Update all filesystem reads to use store selectors:
+
+   \- `getChildren` → `useFileSystemStore.getState().getChildren()`
+
+   \- `getPath` → `useFileSystemStore.getState().getPath()`
+
+4\. Verify all file IDs remain stable (no test breakage)
+
+
+
+**Files App Updated Code** (`packages/rb-apps/src/apps/FilesApp.tsx`):
+
+```typescript
+
+import { useFileSystemStore } from '../stores/fileSystemStore';
+
+
+
+const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => {
+
+  // Remove: const \[fs, setFs\] = useState<FileSystemState>(() => createInitialFsState());
+
+
+
+  // Use global store
+
+  const fs = useFileSystemStore((s) => s);
+
+  const createFolder = useFileSystemStore((s) => s.createFolder);
+
+  const createFile = useFileSystemStore((s) => s.createFile);
+
+  const renameEntry = useFileSystemStore((s) => s.renameEntry);
+
+  const deleteEntry = useFileSystemStore((s) => s.deleteEntry);
+
+  const getChildren = useFileSystemStore((s) => s.getChildren);
+
+  const getPath = useFileSystemStore((s) => s.getPath);
+
+
+
+  // Update mutation handlers to use store actions
+
+  const handleModalConfirm = () => {
+
+    if (\!modal) return;
+
+
+
+    try {
+
+      if (modal.type === 'create-folder') {
+
+        createFolder(currentFolderId, modalValue);
+
+        setModal(null);
+
+      } else if (modal.type === 'create-file') {
+
+        createFile(currentFolderId, modalValue);
+
+        setModal(null);
+
+      }
+
+      // ... etc
+
+    } catch (error) {
+
+      if (error instanceof Error) {
+
+        setModalError(error.message);
+
+      }
+
+    }
+
+  };
+
+
+
+  // Use store selectors for reads
+
+  const entries = getChildren(currentFolderId);
+
+  const breadcrumbPath = getPath(currentFolderId);
+
+
+
+  // Rest of component unchanged
+
+};
+
+```
+
+
+
+### Testing Strategy
+
+
+
+**New Tests** (`packages/rb-shell/src/\_\_tests\_\_/open-with-modal.test.tsx`):
+
+1\. **Modal Rendering**:
+
+   \- Renders with eligible targets only
+
+   \- Shows \[DEFAULT\] marker for current default
+
+   \- Displays resource name in title
+
+
+
+2\. **Keyboard Navigation**:
+
+   \- Arrow keys navigate target list
+
+   \- Enter calls onChoose with selected target
+
+   \- N toggles preferNewWindow state
+
+   \- D calls onSetDefault
+
+   \- Shift+D calls onClearDefault
+
+   \- Esc calls onClose
+
+
+
+3\. **Integration with System Search**:
+
+   \- Shift+Enter on file result opens modal
+
+   \- Modal shows correct eligible targets
+
+   \- Choosing target dispatches OpenWithIntent
+
+   \- routingHint propagates correctly
+
+
+
+**Regression Tests**:
+
+\- All PHASE\_X/Y/Z/AA/AB/AC/AD tests continue passing
+
+\- Files app workflows unchanged (create, rename, delete, open-with)
+
+\- System Search file provider determinism unchanged
+
+
+
+### Implementation Checklist
+
+
+
+\- \[ \] Extract OpenWithModal from Files app to shared component
+
+\- \[ \] Update Files app to import shared OpenWithModal
+
+\- \[ \] Add openWithModalState to Shell.tsx
+
+\- \[ \] Update handleSearchExecuteFile to open modal on Shift+Enter
+
+\- \[ \] Implement onChoose/onSetDefault/onClearDefault callbacks
+
+\- \[ \] Migrate Files app to use global fileSystemStore
+
+\- \[ \] Verify file IDs remain stable across migration
+
+\- \[ \] Add open-with-modal.test.tsx (keyboard + integration tests)
+
+\- \[ \] Run full test suite (expect 380+ tests passing)
+
+\- \[ \] Run build
+
+\- \[ \] Update CHANGELOG.md with PHASE\_AE completion
+
+
+
+### Definition of Done
+
+
+
+\- Users can press Shift+Enter on file result in System Search
+
+\- Open With modal appears with eligible targets only
+
+\- Arrow keys navigate, Enter opens, N toggles new window
+
+\- D sets default, Shift+D clears default
+
+\- Choosing target opens file with PHASE\_AC routing
+
+\- Files app uses global fileSystemStore (no local fs state)
+
+\- System Search and Files app see identical file tree
+
+\- All operations keyboard-accessible
+
+\- No async in modal opening path
+
+\- Tests cover modal keyboard bindings + integration
+
+\- Entire suite passes with zero warnings, build passes
+
+\- Contracts and completion logged
+
+
+
+---
+
+
+
 \## Current Phase
 
 
 
 Phase ID: PHASE\_AE
 
-Phase Name: TBD
+Phase Name: System Search Open-With Modal \+ Files Global Store Unification
 
-Status: PLANNING
+Status: IN PROGRESS
 
 
 
