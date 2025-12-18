@@ -10,6 +10,9 @@ export interface OpenWithIntent {
     resourceId: string;
     resourceType: 'file' | 'folder';
   };
+  routingHint?: {
+    preferNewWindow?: boolean; // PHASE_AC: if true, always create new window (ignores reuse policy)
+  };
 }
 
 export type Intent = OpenWithIntent;

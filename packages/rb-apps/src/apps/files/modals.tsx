@@ -159,7 +159,7 @@ interface OpenWithModalProps {
   targets: FileActionTarget[];
   resourceType: 'file' | 'folder';
   extension: string; // File extension (e.g., "rblogic", "txt")
-  onSelect: (target: FileActionTarget) => void;
+  onSelect: (target: FileActionTarget, preferNewWindow?: boolean) => void;
   onCancel: () => void;
 }
 
@@ -171,6 +171,7 @@ export const OpenWithModal: React.FC<OpenWithModalProps> = ({
   onCancel,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [preferNewWindow, setPreferNewWindow] = useState(false); // PHASE_AC: N key toggle
   const { getDefaultTarget, setDefaultTarget, clearDefaultTarget } = useFileAssociationsStore();
 
   // Get current default target for this file type
@@ -196,7 +197,7 @@ export const OpenWithModal: React.FC<OpenWithModalProps> = ({
     } else if (event.key === 'Enter') {
       event.preventDefault();
       if (targets[selectedIndex]) {
-        onSelect(targets[selectedIndex]);
+        onSelect(targets[selectedIndex], preferNewWindow);
       }
     } else if (event.key === 'ArrowDown') {
       event.preventDefault();
@@ -204,6 +205,10 @@ export const OpenWithModal: React.FC<OpenWithModalProps> = ({
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       setSelectedIndex((prev) => Math.max(prev - 1, 0));
+    } else if (event.key === 'n' || event.key === 'N') {
+      // N: Toggle new window mode (PHASE_AC)
+      event.preventDefault();
+      setPreferNewWindow((prev) => !prev);
     } else if (event.key === 'D' && event.shiftKey) {
       // Shift+D: Clear default
       event.preventDefault();
@@ -216,7 +221,7 @@ export const OpenWithModal: React.FC<OpenWithModalProps> = ({
       if (selectedTarget) {
         setDefaultTarget(resourceType, extension, selectedTarget.id);
         // Close modal and open with this target (same as Enter)
-        onSelect(selectedTarget);
+        onSelect(selectedTarget, preferNewWindow);
       }
     }
   };
@@ -234,6 +239,12 @@ export const OpenWithModal: React.FC<OpenWithModalProps> = ({
       >
         <h3 className="text-lg font-semibold text-white mb-4">Open With...</h3>
 
+        {preferNewWindow && (
+          <div className="mb-3 px-3 py-2 bg-cyan-900/30 border border-cyan-700/50 rounded text-xs text-cyan-300">
+            Will open in new window
+          </div>
+        )}
+
         {targets.length === 0 ? (
           <p className="text-slate-400 text-sm mb-4">No available targets</p>
         ) : (
@@ -243,7 +254,7 @@ export const OpenWithModal: React.FC<OpenWithModalProps> = ({
               return (
                 <button
                   key={target.id}
-                  onClick={() => onSelect(target)}
+                  onClick={() => onSelect(target, preferNewWindow)}
                   className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
                     index === selectedIndex
                       ? 'bg-cyan-600 text-white'
@@ -270,6 +281,7 @@ export const OpenWithModal: React.FC<OpenWithModalProps> = ({
         </div>
 
         <div className="mt-3 text-xs text-slate-500 text-center">
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">N</kbd> New Window{' '}
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">D</kbd> Set Default{' '}
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Shift+D</kbd> Clear Default{' '}
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> Open{' '}

@@ -1,5 +1,84 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_AC - Deterministic Window Routing for Open-With (2025-12-18)
+
+### Goal
+Eliminate duplicate windows for open-with actions by implementing deterministic window reuse policy (prefer most-recently-focused window for target appId, else oldest window, else create new), with keyboard toggle (N key) in Open With modal to force new window creation when desired.
+
+### Key Changes
+- **Window Routing Resolver**: Pure deterministic function `resolveTargetWindowId(appId, preferNewWindow, windows) → windowId | null`
+  - Default behavior: reuse most-recently-focused window for target appId
+  - Fallback: if no focus history, reuse oldest window (deterministic tie-break using ID sort)
+  - If no windows exist or all minimized: create new window
+  - Override: `preferNewWindow=true` always creates new window (ignores existing)
+
+- **Focus History Tracking**: Added `lastFocusedAt?: number` to WindowState
+  - Updated on `focusWindow` action: sets `lastFocusedAt = Date.now()`
+  - No timers, no debouncing (immediate timestamp update on focus event)
+  - Enables deterministic most-recently-focused window selection
+
+- **Intent Routing Metadata**: Extended OpenWithIntent with `routingHint?: { preferNewWindow?: boolean }`
+  - Routing hint consumed by Shell during intent dispatch (NOT part of app payload)
+  - Preserves PHASE_K contract: intent payload remains immutable for target apps
+  - Failure-safe: missing routingHint defaults to reuse policy
+
+- **Shell Integration**: Updated `dispatchIntent` to use routing resolver
+  - Calls `resolveTargetWindowId()` to determine reuse vs create
+  - If windowId returned: updates binding props and focuses existing window
+  - Else: creates new window and delivers intent
+  - Window reuse updates resource props atomically (no duplicate windows)
+
+- **Open With Modal Enhancements** (Files app):
+  - **N key**: Toggle "Open in New Window" mode (default OFF)
+  - Visual indicator: "Will open in new window" banner when N toggled ON
+  - Updated keyboard hints footer: "N: New Window | D: Set Default | ..."
+  - onSelect callback now includes `preferNewWindow` parameter
+  - D key (set default) honors new-window state
+
+- **Files App Integration**:
+  - `handleOpenWith` accepts `preferNewWindow` parameter
+  - Passes `routingHint: { preferNewWindow }` in intent dispatch
+  - Default-open (Cmd/Ctrl+Enter) uses reuse policy (`preferNewWindow=false`)
+
+### Testing (356 tests passing, 0 warnings)
+- **Window Routing Tests** (10 new tests):
+  - preferNewWindow=true → always returns null (create new)
+  - No windows exist → returns null (create new)
+  - One window exists → returns that window ID (reuse)
+  - Multiple windows + focus history → returns most-recently-focused
+  - Multiple windows + no focus history → returns oldest (deterministic tie-break)
+  - Excludes minimized windows from reuse candidates
+  - All windows minimized → returns null (create new)
+  - Only considers windows for target appId (ignores other apps)
+  - Includes maximized windows as reuse candidates
+- **Regression**: All PHASE_X/Y/Z/AA/AB tests still pass (no regressions)
+
+### Files Changed
+- `AI_STATE.md` - PHASE_AC contract added
+- `packages/rb-windowing/src/types.ts` - Added `lastFocusedAt?: number` to WindowState
+- `packages/rb-windowing/src/store.ts` - Updated focusWindow to set lastFocusedAt timestamp
+- `packages/rb-windowing/src/windowRouting.ts` - New routing resolver (pure function)
+- `packages/rb-windowing/src/index.ts` - Export windowRouting
+- `packages/rb-windowing/src/__tests__/window-routing.test.ts` - 10 new routing policy tests
+- `packages/rb-shell/src/intent-types.ts` - Added routingHint to OpenWithIntent
+- `packages/rb-shell/src/Shell.tsx` - Updated dispatchIntent to use routing resolver
+- `packages/rb-apps/src/apps/files/modals.tsx` - Added N key toggle and preferNewWindow state
+- `packages/rb-apps/src/apps/FilesApp.tsx` - Updated handleOpenWith to accept preferNewWindow
+
+### UX Impact
+- **Before**: Every open-with action creates new window (duplicate windows proliferate)
+- **After**: Open-with actions reuse most-recently-focused window by default (no duplicates)
+- **Example workflow**:
+  1. Select `Notes.txt` → Cmd/Ctrl+Shift+Enter → Open With modal
+  2. Select "Text Viewer" → opens in new window
+  3. Select `README.md` → Cmd/Ctrl+Shift+Enter → Open With modal
+  4. Select "Text Viewer" → reuses existing Text Viewer window (no duplicate)
+  5. Press N key → toggle "Will open in new window" indicator appears
+  6. Select "Text Viewer" → opens in new window (override reuse policy)
+  7. Default-open (Cmd/Ctrl+Enter) always uses reuse policy (transparent)
+
+---
+
 ## PHASE_AB - File Association Manager UI (2025-12-18)
 
 ### Goal

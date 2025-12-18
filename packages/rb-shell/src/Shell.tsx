@@ -9,7 +9,7 @@ import { ShellWindow } from './ShellWindow';
 import { applyTheme } from '@redbyte/rb-theme';
 import { useSettingsStore } from '@redbyte/rb-utils';
 import { getApp, type RedByteApp } from '@redbyte/rb-apps';
-import { useWindowStore, loadSession } from '@redbyte/rb-windowing';
+import { useWindowStore, loadSession, resolveTargetWindowId } from '@redbyte/rb-windowing';
 import { useWorkspaceStore, loadWorkspaces } from './workspaceStore';
 import { executeMacro, type MacroExecutionContext } from './macros/executeMacro';
 import { useMacroStore } from './macros/macroStore';
@@ -195,6 +195,26 @@ export const Shell: React.FC<ShellProps> = () => {
       switch (intent.type) {
         case 'open-with': {
           const { targetAppId, resourceId, resourceType } = intent.payload;
+          const preferNewWindow = intent.routingHint?.preferNewWindow ?? false;
+
+          // PHASE_AC: Use routing resolver to determine reuse vs create
+          const targetWindowId = resolveTargetWindowId(targetAppId, preferNewWindow, windows);
+
+          if (targetWindowId) {
+            // Reuse existing window
+            const binding = bindings[targetWindowId];
+            if (binding) {
+              // Update props with new resource
+              setBindings((prev) => ({
+                ...prev,
+                [targetWindowId]: { ...binding, props: { resourceId, resourceType } },
+              }));
+              focusWindow(targetWindowId);
+              return targetWindowId;
+            }
+          }
+
+          // Create new window (no existing window found or preferNewWindow=true)
           return openWindow(targetAppId, { resourceId, resourceType });
         }
         default:
@@ -202,7 +222,7 @@ export const Shell: React.FC<ShellProps> = () => {
           return null;
       }
     },
-    [openWindow]
+    [openWindow, windows, bindings, focusWindow]
   );
 
   const switchWorkspaceById = useCallback(

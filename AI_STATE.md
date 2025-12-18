@@ -2094,11 +2094,273 @@ Add to fileAssociationsStore:
 
 
 
+\## PHASE\_AC: Deterministic Window Routing for Open-With
+
+### Goal
+
+Eliminate duplicate windows for open-with actions by implementing deterministic window reuse policy (prefer most-recently-focused window for target appId, else oldest window, else create new), with keyboard toggle (N key) in Open With modal to force new window creation when desired.
+
+### Non-Goals
+
+\- No session-based routing persistence (routing is runtime-only, based on current window state)
+
+\- No user-configurable routing policies (single deterministic policy for all apps)
+
+\- No window grouping/tabbing (pure reuse vs create decision)
+
+\- No async routing (synchronous resolution based on current window store state)
+
+\- No routing for non-intent flows (window routing applies only to open-with intents)
+
+### Invariants
+
+\- **Deterministic routing**: `resolveTargetWindowId(appId, preferNewWindow) -> windowId | null` is pure, deterministic, based on current window store state
+
+\- **Focus history**: Track last-focused timestamp per window; update on focus events only (no timers)
+
+\- **Reuse policy**: Default behavior is reuse most-recently-focused window for target appId (if exists), else oldest window for appId, else create new
+
+\- **New-window override**: When `preferNewWindow=true`, always create new window regardless of existing windows
+
+\- **Failure-safe**: Missing routing metadata → fallback to create-new (no crashes)
+
+\- **Keyboard-first**: N key toggle in Open With modal controls new-window preference
+
+\- **Zero async**: All routing resolution synchronous, deterministic focus (rAF-only if needed)
+
+### Routing Policy
+
+**resolveTargetWindowId(appId: string, preferNewWindow: boolean): string | null**
+
+\- If `preferNewWindow=true`: return `null` (always create new window)
+
+\- Get all windows for `appId` from window store
+
+\- If no windows exist: return `null` (create new)
+
+\- If windows exist:
+
+  \- Filter to normal/maximized mode windows (skip minimized)
+
+  \- If focus history available: return most-recently-focused window ID
+
+  \- Else: return oldest window ID (stable tie-break using creation order or window ID sort)
+
+**Focus History Tracking:**
+
+\- Add `lastFocusedAt?: number` field to WindowState
+
+\- Update on `focusWindow` action: set `lastFocusedAt = Date.now()`
+
+\- No timers, no debouncing (update immediately on focus event)
+
+### UI Changes
+
+**Open With Modal (Files app):**
+
+\- Add **N key** toggle: "Open in New Window" (default OFF)
+
+\- Visual indicator: checkbox or toggle state next to selected target
+
+\- When toggled ON: show "Will open in new window" hint
+
+\- When launching target (Enter or D default-set):
+
+  \- Include `preferNewWindow` flag in intent dispatch metadata
+
+  \- Pass to Shell routing resolver
+
+\- Footer keyboard hints: "N: New Window | D: Set Default | Enter: Open | Esc: Cancel"
+
+**Default-Open Behavior (Files Cmd/Ctrl+Enter):**
+
+\- Uses same routing policy with `preferNewWindow=false` (always reuse by default)
+
+\- No UI change (transparent reuse vs create decision)
+
+### Intent Dispatch Changes
+
+**Current open-with intent payload:**
+
+```typescript
+{
+  type: 'open-with',
+  targetId: 'text-viewer',
+  payload: { resourceId: '/Home/Notes.txt' }
+}
+```
+
+**New routing metadata (separate from payload):**
+
+```typescript
+{
+  type: 'open-with',
+  targetId: 'text-viewer',
+  payload: { resourceId: '/Home/Notes.txt' },
+  routingHint: { preferNewWindow: false }
+}
+```
+
+\- Routing hint is NOT part of intent payload (apps don't see it)
+
+\- Shell consumes routing hint during dispatch to resolve target window
+
+\- Intent payload remains immutable (PHASE\_K contract preserved)
+
+### Shell Integration
+
+**dispatchIntent changes:**
+
+1. Extract `routingHint` from intent metadata (if present)
+
+2. Call `resolveTargetWindowId(targetAppId, routingHint?.preferNewWindow ?? false)`
+
+3. If windowId returned:
+
+   \- Deliver intent to that window (existing window.handleIntent)
+
+   \- Focus that window (bringToFront)
+
+4. Else:
+
+   \- Create new window for targetAppId
+
+   \- Deliver intent to new window
+
+   \- Focus new window
+
+**Window store changes:**
+
+\- Add `lastFocusedAt?: number` to WindowState interface
+
+\- Update `focusWindow` action to set `lastFocusedAt = Date.now()`
+
+\- Add `resolveTargetWindowId` helper (can be pure function outside store)
+
+### Testing Requirements
+
+**1. Routing Policy Tests (unit):**
+
+   \- No windows exist → returns null (create new)
+
+   \- One window exists → returns that window ID
+
+   \- Multiple windows exist + focus history → returns most-recently-focused
+
+   \- Multiple windows exist + no focus history → returns oldest (deterministic tie-break)
+
+   \- preferNewWindow=true → always returns null
+
+   \- Minimized windows excluded from reuse candidates
+
+**2. Focus History Tests:**
+
+   \- focusWindow updates lastFocusedAt timestamp
+
+   \- Multiple focus events update timestamps correctly
+
+   \- Newly created windows have no lastFocusedAt (undefined)
+
+**3. Intent Dispatch Integration Tests:**
+
+   \- Open-with intent + no existing windows → creates new window
+
+   \- Open-with intent + existing window → reuses window (no duplicate)
+
+   \- Open-with intent + preferNewWindow=true → creates new window (ignores existing)
+
+   \- Open-with intent + multiple windows → reuses most-recently-focused
+
+   \- Intent payload delivered correctly to target window
+
+**4. Files/OpenWith UI Tests:**
+
+   \- N key toggles new-window state
+
+   \- Enter with new-window ON → dispatches with preferNewWindow=true
+
+   \- Enter with new-window OFF → dispatches with preferNewWindow=false
+
+   \- D key default-set honors new-window state
+
+**5. Regression Tests:**
+
+   \- PHASE\_X/Y/Z tests still pass (cross-app file actions)
+
+   \- PHASE\_AA tests still pass (default target resolution)
+
+   \- PHASE\_AB tests still pass (association manager)
+
+   \- Default-open (Cmd/Ctrl+Enter) uses reuse policy by default
+
+### Implementation Checklist
+
+\- [ ] Add PHASE\_AC contract to AI\_STATE.md (this section)
+
+\- [ ] Audit current window creation/focus model in rb-shell
+
+\- [ ] Add `lastFocusedAt` field to WindowState interface
+
+\- [ ] Update `focusWindow` action to set timestamp
+
+\- [ ] Implement `resolveTargetWindowId` routing resolver (pure function)
+
+\- [ ] Update `dispatchIntent` to use routing resolver
+
+\- [ ] Add routing policy unit tests
+
+\- [ ] Add focus history tests
+
+\- [ ] Wire N key toggle in Open With modal (Files)
+
+\- [ ] Update Open With modal to include routingHint in intent dispatch
+
+\- [ ] Add Files/OpenWith UI tests for N key toggle
+
+\- [ ] Add intent dispatch integration tests
+
+\- [ ] Run full test suite (zero warnings)
+
+\- [ ] Run build
+
+\- [ ] Update CHANGELOG.md with PHASE\_AC completion
+
+### Definition of Done
+
+\- Open-with intents reuse most-recently-focused window for target appId by default
+
+\- No duplicate windows created for repeated open-with actions on same app
+
+\- N key in Open With modal toggles new-window mode
+
+\- New-window mode creates new window regardless of existing windows
+
+\- Focus history tracked deterministically (no timers)
+
+\- Routing resolver is pure and deterministic
+
+\- Default-open (Cmd/Ctrl+Enter) uses reuse policy by default
+
+\- All operations keyboard-accessible
+
+\- No async in routing path
+
+\- Tests cover reuse policy + new-window mode + focus history + regressions
+
+\- Entire suite passes with zero warnings, build passes
+
+\- Contracts and completion logged
+
+
+---
+
+
+
 \## Current Phase
 
 
 
-Phase ID: PHASE\_AC
+Phase ID: PHASE\_AD
 
 Phase Name: TBD
 
@@ -2169,6 +2431,8 @@ Status: PLANNING
 \- PHASE\_AA — File Associations + Deterministic Default Target Resolution
 
 \- PHASE\_AB — File Association Manager UI
+
+\- PHASE\_AC — Deterministic Window Routing for Open-With
 
 
 
@@ -2261,6 +2525,7 @@ After completing work, an AI agent MUST:
 
 
 \### 2025-12-18
+\- Implemented PHASE_AC Deterministic Window Routing for Open-With; resolveTargetWindowId pure function with reuse policy (prefer most-recently-focused, fallback to oldest, create new if none/minimized); added lastFocusedAt timestamp tracking on focusWindow; extended OpenWithIntent with routingHint metadata (NOT in app payload); Shell dispatchIntent uses routing resolver to reuse/create windows; Open With modal N key toggle for new-window mode with visual indicator; Files handleOpenWith passes preferNewWindow through routingHint; all 356 tests pass with zero warnings (346 baseline + 10 new routing tests); build passes; phase complete
 \- Implemented PHASE_AB File Association Manager UI; keyboard-first panel in Settings app (Arrow keys navigate, Enter edits, Delete clears, R resets, E exports, I imports); listAssociations/resetAll/exportJson/importJson store helpers; canonical JSON export with stable key ordering; import validates schema, normalizes extensions, filters unknown targetIds; Target Picker Modal shows only eligible apps; Reset/Export/Import modals with failure-safe error handling; all 346 tests pass with zero warnings (327 baseline + 19 new store tests); build passes; phase complete
 \- Implemented PHASE_AA file associations with deterministic default target resolution per file type (extension + resourceType); D/Shift+D keyboard actions in Open With modal; [DEFAULT] marker display; extension normalization (lowercase, no leading dot); localStorage persistence (rb:file-associations); resolveDefaultTarget with fallback to first eligible target; Cmd/Ctrl+Enter uses default target; comprehensive tests (24 new association store tests); all 327 tests pass with zero warnings; build passes; phase complete
 

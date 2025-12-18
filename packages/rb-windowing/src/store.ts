@@ -166,6 +166,7 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
           ...w,
           focused: w.id === id,
           zIndex: w.id === id ? state.nextZIndex : w.zIndex,
+          lastFocusedAt: w.id === id ? Date.now() : w.lastFocusedAt, // PHASE_AC: track focus history
         })),
         nextZIndex: state.nextZIndex + 1,
       };

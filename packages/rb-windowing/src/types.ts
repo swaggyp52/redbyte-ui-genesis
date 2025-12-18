@@ -24,6 +24,7 @@ export interface WindowState {
   minimizable: boolean;
   maximizable: boolean;
   contentId: string;
+  lastFocusedAt?: number; // PHASE_AC: timestamp for deterministic window routing
 }
 
 export interface CreateWindowOptions {

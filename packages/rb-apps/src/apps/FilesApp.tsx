@@ -100,7 +100,7 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
     setCurrentFolderId(targetId);
   };
 
-  const handleOpenWith = (entry: FileEntry, targetAppId: string) => {
+  const handleOpenWith = (entry: FileEntry, targetAppId: string, preferNewWindow?: boolean) => {
     if (!onDispatchIntent) return;
 
     onDispatchIntent({
@@ -111,6 +111,7 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
         resourceId: entry.id,
         resourceType: entry.type,
       },
+      routingHint: preferNewWindow ? { preferNewWindow } : undefined, // PHASE_AC
     });
   };
 
@@ -177,13 +178,13 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
     setModal({ type: 'delete', targetId: selected.id });
   };
 
-  const handleOpenWithSelect = (target: FileActionTarget) => {
+  const handleOpenWithSelect = (target: FileActionTarget, preferNewWindow?: boolean) => {
     if (!modal || modal.type !== 'open-with' || !modal.targetId) return;
 
     const entry = entries.find((e) => e.id === modal.targetId);
     if (!entry) return;
 
-    handleOpenWith(entry, target.appId);
+    handleOpenWith(entry, target.appId, preferNewWindow);
     setModal(null);
   };
 
