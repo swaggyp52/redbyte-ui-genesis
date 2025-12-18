@@ -1,5 +1,91 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_AD - System Search: Deterministic File Provider + Default Open + Open With (2025-12-18)
+
+### Goal
+Enable file discovery and opening via System Search (Cmd/Ctrl+Space) by implementing a pure deterministic Files provider backed by fsModel, with default-open using PHASE_AA associations and PHASE_AC window routing, plus keyboard-accessible Open With modal for manual target selection.
+
+### Key Changes
+- **Files Search Provider** (`searchRegistry.ts`):
+  - Pure deterministic provider `getAllSearchableFiles()` backed by global filesystem store
+  - Returns all files from fsModel (excludes folders)
+  - Extracts file extensions for action handling (everything after last dot)
+  - No async operations, no background indexing (purely in-memory)
+
+- **Global Filesystem Store** (`fileSystemStore.ts`):
+  - New Zustand store wrapping fsModel for centralized filesystem access
+  - Provides `getAllFiles()` helper for recursive file collection
+  - Enables both Files app and search provider to share same filesystem state
+  - Maintains all existing fsModel operations (create, rename, delete, etc.)
+
+- **Deterministic Query Matching**:
+  - Case-insensitive matching on file name
+  - Scoring tiers: Prefix match (score=2) > Contains match (score=1) > No match (excluded)
+  - Stable multi-key sort: (score DESC, name ASC, id ASC)
+  - No fuzzy matching, no scoring algorithms (simple deterministic rules)
+
+- **Search Result Actions**:
+  - **Enter**: Default open using `resolveDefaultTarget` (PHASE_AA associations) + `resolveTargetWindowId` (PHASE_AC routing)
+  - **Shift+Enter**: Open With modal (currently falls back to opening Files app - full modal integration pending)
+  - **Mouse Click**: Default open (same as Enter without shift)
+
+- **SystemSearch UI Updates**:
+  - Added Files section to results display
+  - Added `onExecuteFile` callback with shiftKey parameter
+  - Updated placeholder: "Search apps, commands, files, and actions..."
+  - Updated help text: "Shift+Enter: Open With" in footer
+
+- **Shell Integration** (`Shell.tsx`):
+  - New `handleSearchExecuteFile(fileId, shiftKey)` handler
+  - Validates file eligibility using `isFileActionEligible`
+  - Gets eligible targets from `getFileActionTargets`
+  - Dispatches open-with intent with default target for Enter
+  - Shift+Enter currently opens Files app (TODO: implement direct Open With modal)
+
+### Testing (369 tests passing, 0 warnings)
+- **File Search Provider Tests** (13 new tests):
+  - getAllSearchableFiles returns all files (excludes folders)
+  - Includes required fields (id, name, description, extension, resourceType)
+  - Extracts file extensions correctly (.rblogic, .txt, .md, .json)
+  - Handles files without extensions (empty string)
+  - Filters by case-insensitive prefix match (score=2)
+  - Filters by case-insensitive contains match (score=1)
+  - Prioritizes prefix matches over contains matches
+  - Applies stable multi-key sort (score DESC, name ASC, id ASC)
+  - Excludes non-matching files
+  - Case-insensitive in matching (readme = README = ReAdMe)
+  - Includes files alongside apps, commands, intents, macros
+  - Maintains separate filtering for each result type
+- **Regression**: All 356 baseline tests still pass (no regressions)
+
+### Files Changed
+- `AI_STATE.md` - PHASE_AD contract added (lines 2359-2584)
+- `packages/rb-shell/src/search-types.ts` - Added FileSearchResult type, updated SearchResults
+- `packages/rb-apps/src/stores/fileSystemStore.ts` - New global filesystem store
+- `packages/rb-apps/src/index.ts` - Export fileSystemStore and fileActionTargets
+- `packages/rb-shell/src/searchRegistry.ts` - Added getAllSearchableFiles and deterministic filtering
+- `packages/rb-shell/src/SystemSearch.tsx` - Added Files section, onExecuteFile callback, UI updates
+- `packages/rb-shell/src/Shell.tsx` - Added handleSearchExecuteFile handler
+- `packages/rb-shell/src/__tests__/file-search.test.ts` - 13 new file search provider tests
+
+### UX Impact
+- **Before**: No file discovery via System Search (only apps/commands/intents/macros)
+- **After**: Files searchable via Cmd/Ctrl+Space with deterministic sorting and default-open
+- **Example workflow**:
+  1. Press Cmd/Ctrl+Space → System Search opens
+  2. Type "readme" → "README.md" appears in Files section (prefix match, score=2)
+  3. Press Enter → File opens in Text Viewer (default association, reuses window)
+  4. Type "json" → "config.json" and "package.json" appear (contains match, alphabetical order)
+  5. Press Shift+Enter → Currently opens Files app (TODO: Open With modal)
+  6. Search is deterministic and fast (no async operations, stable results)
+
+### Known Limitations (Pending Future Work)
+- Shift+Enter currently opens Files app instead of direct Open With modal
+- Open With modal integration from System Search requires modal refactoring
+- Filesystem store currently separate from Files app local state (migration pending)
+
+---
+
 ## PHASE_AC - Deterministic Window Routing for Open-With (2025-12-18)
 
 ### Goal

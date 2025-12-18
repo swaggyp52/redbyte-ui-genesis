@@ -8,7 +8,14 @@ import { Dock } from './Dock';
 import { ShellWindow } from './ShellWindow';
 import { applyTheme } from '@redbyte/rb-theme';
 import { useSettingsStore } from '@redbyte/rb-utils';
-import { getApp, type RedByteApp } from '@redbyte/rb-apps';
+import {
+  getApp,
+  type RedByteApp,
+  useFileSystemStore,
+  getFileActionTargets,
+  isFileActionEligible,
+  resolveDefaultTarget,
+} from '@redbyte/rb-apps';
 import { useWindowStore, loadSession, resolveTargetWindowId } from '@redbyte/rb-windowing';
 import { useWorkspaceStore, loadWorkspaces } from './workspaceStore';
 import { executeMacro, type MacroExecutionContext } from './macros/executeMacro';
@@ -430,6 +437,64 @@ export const Shell: React.FC<ShellProps> = () => {
     []
   );
 
+  const handleSearchExecuteFile = useCallback(
+    (fileId: string, shiftKey: boolean) => {
+      // Get the file entry from filesystem store
+      const allFiles = useFileSystemStore.getState().getAllFiles();
+      const file = allFiles.find((f) => f.id === fileId);
+
+      if (!file) {
+        console.warn(`File not found: ${fileId}`);
+        return;
+      }
+
+      // Check if file is eligible for file actions
+      if (!isFileActionEligible(file)) {
+        console.warn(`File not eligible for actions: ${file.name}`);
+        return;
+      }
+
+      // Get eligible targets
+      const eligibleTargets = getFileActionTargets(file);
+      if (eligibleTargets.length === 0) {
+        console.warn(`No eligible targets for file: ${file.name}`);
+        return;
+      }
+
+      // Extract extension
+      const extension = file.name.includes('.')
+        ? file.name.split('.').pop() || ''
+        : '';
+
+      if (shiftKey) {
+        // Shift+Enter: Open With modal
+        // For PHASE_AD, we'll open Files app with the file pre-selected
+        // and trigger the Open With modal from there
+        // TODO: Implement direct Open With modal from search
+        console.log('Shift+Enter Open With not yet implemented for search - opening Files app instead');
+        openWindow('files');
+      } else {
+        // Enter: Default open using PHASE_AA associations + PHASE_AC routing
+        const targetId = resolveDefaultTarget(file.type, extension, eligibleTargets);
+        const target = eligibleTargets.find((t) => t.id === targetId);
+
+        if (target) {
+          // Dispatch open-with intent with default target
+          dispatchIntent({
+            type: 'open-with',
+            payload: {
+              sourceAppId: 'system-search',
+              targetAppId: target.appId,
+              resourceId: file.id,
+              resourceType: file.type,
+            },
+          });
+        }
+      }
+    },
+    [openWindow, dispatchIntent]
+  );
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -613,6 +678,7 @@ export const Shell: React.FC<ShellProps> = () => {
           onExecuteCommand={executeCommand}
           onExecuteIntent={handleSearchExecuteIntent}
           onExecuteMacro={executeMacroById}
+          onExecuteFile={handleSearchExecuteFile}
           onClose={() => setSystemSearchOpen(false)}
         />
       )}

@@ -4,7 +4,7 @@
 
 import type { Command } from './CommandPalette';
 
-export type SearchResultType = 'app' | 'command' | 'intent' | 'macro';
+export type SearchResultType = 'app' | 'command' | 'intent' | 'macro' | 'file';
 
 export interface AppSearchResult {
   type: 'app';
@@ -36,11 +36,21 @@ export interface MacroSearchResult {
   description: string;
 }
 
-export type SearchResult = AppSearchResult | CommandSearchResult | IntentSearchResult | MacroSearchResult;
+export interface FileSearchResult {
+  type: 'file';
+  id: string; // resourceId from fsModel
+  name: string; // display name (e.g., "Notes.txt")
+  description: string; // path or metadata
+  extension: string; // extracted extension (e.g., "txt")
+  resourceType: 'file';
+}
+
+export type SearchResult = AppSearchResult | CommandSearchResult | IntentSearchResult | MacroSearchResult | FileSearchResult;
 
 export interface SearchResults {
   apps: AppSearchResult[];
   commands: CommandSearchResult[];
   intents: IntentSearchResult[];
   macros: MacroSearchResult[];
+  files: FileSearchResult[];
 }

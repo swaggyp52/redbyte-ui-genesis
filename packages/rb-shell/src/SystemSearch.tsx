@@ -12,6 +12,7 @@ interface SystemSearchProps {
   onExecuteCommand: (command: Command) => void;
   onExecuteIntent: (intentId: string) => void;
   onExecuteMacro: (macroId: string) => void;
+  onExecuteFile: (fileId: string, shiftKey: boolean) => void;
   onClose: () => void;
 }
 
@@ -20,6 +21,7 @@ export const SystemSearch: React.FC<SystemSearchProps> = ({
   onExecuteCommand,
   onExecuteIntent,
   onExecuteMacro,
+  onExecuteFile,
   onClose,
 }) => {
   const [query, setQuery] = useState('');
@@ -30,7 +32,7 @@ export const SystemSearch: React.FC<SystemSearchProps> = ({
   const results = useMemo(() => filterSearchResults(query), [query]);
 
   const allResults: SearchResult[] = useMemo(() => {
-    return [...results.apps, ...results.commands, ...results.intents, ...results.macros];
+    return [...results.apps, ...results.commands, ...results.intents, ...results.macros, ...results.files];
   }, [results]);
 
   useEffect(() => {
@@ -78,6 +80,9 @@ export const SystemSearch: React.FC<SystemSearchProps> = ({
         case 'macro':
           onExecuteMacro(selected.id);
           break;
+        case 'file':
+          onExecuteFile(selected.id, event.shiftKey);
+          break;
       }
       onClose();
       return;
@@ -97,6 +102,9 @@ export const SystemSearch: React.FC<SystemSearchProps> = ({
         break;
       case 'macro':
         onExecuteMacro(result.id);
+        break;
+      case 'file':
+        onExecuteFile(result.id, false); // Mouse clicks are default-open
         break;
     }
     onClose();
@@ -119,7 +127,7 @@ export const SystemSearch: React.FC<SystemSearchProps> = ({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Search apps, commands, and actions..."
+            placeholder="Search apps, commands, files, and actions..."
             className="w-full bg-slate-800 text-white px-4 py-2 rounded outline-none focus:ring-2 focus:ring-cyan-500"
           />
         </div>
@@ -223,6 +231,30 @@ export const SystemSearch: React.FC<SystemSearchProps> = ({
             </div>
           )}
 
+          {results.files.length > 0 && (
+            <div>
+              <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase bg-slate-950">
+                Files
+              </div>
+              {results.files.map((file, index) => {
+                const globalIndex = results.apps.length + results.commands.length + results.intents.length + results.macros.length + index;
+                const isSelected = globalIndex === selectedIndex;
+                return (
+                  <button
+                    key={file.id}
+                    onClick={() => handleResultClick(file)}
+                    className={`w-full text-left p-3 border-b border-slate-800 transition-colors ${
+                      isSelected ? 'bg-cyan-900/30 text-cyan-300' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'
+                    }`}
+                  >
+                    <div className="font-medium text-sm">{file.name}</div>
+                    <div className="text-xs text-slate-500 mt-1">{file.description}</div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {allResults.length === 0 && (
             <div className="p-8 text-center text-slate-500 text-sm">
               No results found for "{query}"
@@ -233,6 +265,7 @@ export const SystemSearch: React.FC<SystemSearchProps> = ({
         <div className="p-2 border-t border-slate-800 text-xs text-slate-500 bg-slate-950">
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">↑↓</kbd> Navigate{' '}
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> Execute{' '}
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Shift+Enter</kbd> Open With{' '}
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Esc</kbd> Close
         </div>
       </div>

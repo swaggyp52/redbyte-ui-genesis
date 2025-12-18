@@ -2356,11 +2356,243 @@ Eliminate duplicate windows for open-with actions by implementing deterministic 
 
 
 
+\## PHASE\_AD: System Search Files Provider + Default Open + Open With
+
+### Goal
+
+Enable file discovery and opening via System Search (Cmd/Ctrl+Space) by implementing a deterministic Files provider backed by fsModel, with default-open using PHASE\_AA associations and PHASE\_AC window routing, plus keyboard-accessible Open With modal for choosing alternate targets.
+
+### Non-Goals
+
+\- No background indexing or async file scanning (purely in-memory fsModel)
+
+\- No fuzzy matching or scoring algorithms (simple case-insensitive prefix/contains matching)
+
+\- No folder results in Files provider (files only; folders excluded or no-op)
+
+\- No new modal components (reuse existing Open With modal from Files app)
+
+\- No session-based recent files (search results derive from current fsModel state only)
+
+### Invariants
+
+\- **Pure deterministic matching**: Query matching is case-insensitive, stable sort, deterministic tie-break
+
+\- **No async**: All file search logic synchronous, derives from in-memory fsModel
+
+\- **Keyboard-first**: Enter opens with default target, Shift+Enter (or O) opens Open With modal
+
+\- **Default target resolution**: Uses PHASE\_AA `resolveDefaultTarget` with eligible targets from FILE\_ACTION\_TARGETS
+
+\- **Window routing**: Uses PHASE\_AC routing policy (reuse most-recently-focused window by default)
+
+\- **Failure-safe**: Invalid resourceId never crashes; folders either excluded or actions no-op
+
+\- **Zero warnings**: Tests must pass with PHASE\_R gate
+
+### Files Provider
+
+**Data Source**: fsModel (files only, no folders)
+
+**Query Matching** (pure, deterministic):
+
+\- Case-insensitive matching on file name
+
+\- Scoring tiers:
+
+  1\. **Prefix match** (starts with query): score = 2
+
+  2\. **Contains match** (includes query): score = 1
+
+  3\. **No match**: excluded
+
+\- Stable sort: `(score DESC, name ASC, id ASC)`
+
+\- Deterministic tie-break using resource ID
+
+**Result Format**:
+
+```typescript
+{
+  type: 'file',
+  id: string, // resourceId from fsModel
+  label: string, // display name (e.g., "Notes.txt")
+  description: string, // optional path or metadata
+  extension: string, // extracted extension (e.g., "txt")
+  resourceType: 'file',
+}
+```
+
+### Search Result Actions
+
+**Enter Key** (default open):
+
+\- Extract extension from filename
+
+\- Get eligible targets using `getFileActionTargets(fileMeta)`
+
+\- If no eligible targets → no-op (guard)
+
+\- Resolve target using `resolveDefaultTarget(resourceType, extension, eligibleTargets)` (PHASE\_AA)
+
+\- Dispatch open-with intent with:
+
+  \- targetAppId from resolution
+
+  \- resourceId from result
+
+  \- routingHint: default reuse policy (no preferNewWindow flag)
+
+\- Uses PHASE\_AC window routing (reuse most-recently-focused window)
+
+**Shift+Enter Key** (or O key) (open-with):
+
+\- Extract extension from filename
+
+\- Get eligible targets using `getFileActionTargets(fileMeta)`
+
+\- If no eligible targets → no-op (guard)
+
+\- Open Open With modal pre-scoped to file:
+
+  \- Pass eligible targets only
+
+  \- Pass resourceType and extension for association state
+
+  \- Modal shows \[DEFAULT] marker for saved default
+
+  \- N key toggle for new-window mode
+
+  \- D key to set default
+
+  \- Reuse existing modal component from Files app
+
+### System Search Integration
+
+**Provider Registration**:
+
+\- Add "Files" provider to searchRegistry
+
+\- Provider function signature: `(query: string) => FileSearchResult[]`
+
+\- Synchronous execution (no promises)
+
+**Result Display**:
+
+\- Group header: "Files"
+
+\- Result item shows: file name + optional path/description
+
+\- Keyboard navigation: Arrow keys, Enter, Shift+Enter
+
+\- Esc closes search without action
+
+### Testing Requirements
+
+**1. Files Provider Tests (unit):**
+
+   \- Empty query → empty results
+
+   \- Prefix match scores higher than contains match
+
+   \- Stable ordering: same query always produces same order
+
+   \- Deterministic tie-break (score, name, id)
+
+   \- Excludes folders (files only)
+
+   \- Case-insensitive matching ("NOT" matches "Notes.txt")
+
+**2. Action Dispatch Tests:**
+
+   \- Enter dispatches open-with intent with targetId from associations
+
+   \- Enter uses fallback to first eligible target if no default
+
+   \- Enter with no eligible targets → no-op (no crash)
+
+   \- Shift+Enter opens Open With modal with eligible targets only
+
+   \- Invalid resourceId → no crash (failure-safe)
+
+**3. Integration Tests:**
+
+   \- Search query → file result → Enter opens default target
+
+   \- Search query → file result → Shift+Enter opens Open With modal
+
+   \- Window routing honors reuse policy (no duplicate windows)
+
+   \- Association state honored (saved default used)
+
+**4. Regression Tests:**
+
+   \- All PHASE\_X/Y/Z/AA/AB/AC tests still pass
+
+   \- System Search app/command/macro results still work
+
+### Implementation Checklist
+
+\- [ ] Add PHASE\_AD contract to AI\_STATE.md (this section)
+
+\- [ ] Audit current System Search architecture (providers, actions, registry)
+
+\- [ ] Implement Files search provider (pure function, deterministic scoring)
+
+\- [ ] Register Files provider in searchRegistry
+
+\- [ ] Implement Enter action (default open with associations + routing)
+
+\- [ ] Implement Shift+Enter action (open Open With modal)
+
+\- [ ] Add Files provider unit tests (scoring, ordering, determinism)
+
+\- [ ] Add action dispatch tests (Enter, Shift+Enter, guards)
+
+\- [ ] Add integration tests (search → open, window routing, associations)
+
+\- [ ] Run full test suite (zero warnings)
+
+\- [ ] Run build
+
+\- [ ] Update CHANGELOG.md with PHASE\_AD completion
+
+### Definition of Done
+
+\- Users can search for files via System Search (Cmd/Ctrl+Space)
+
+\- Typing "notes" shows "Notes.txt" in Files group
+
+\- Enter opens file with default target (PHASE\_AA association or first eligible)
+
+\- Window routing reuses most-recently-focused window (PHASE\_AC)
+
+\- Shift+Enter opens Open With modal pre-scoped to file
+
+\- Open With modal shows only eligible targets for file type
+
+\- All operations keyboard-accessible
+
+\- No async in search path
+
+\- Results are deterministic (stable ordering)
+
+\- Tests cover provider logic + actions + integration
+
+\- Entire suite passes with zero warnings, build passes
+
+\- Contracts and completion logged
+
+
+---
+
+
+
 \## Current Phase
 
 
 
-Phase ID: PHASE\_AD
+Phase ID: PHASE\_AE
 
 Phase Name: TBD
 

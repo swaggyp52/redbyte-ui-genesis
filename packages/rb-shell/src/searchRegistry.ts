@@ -2,9 +2,9 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import { listApps } from '@redbyte/rb-apps';
+import { listApps, useFileSystemStore } from '@redbyte/rb-apps';
 import { useMacroStore } from './macros/macroStore';
-import type { AppSearchResult, CommandSearchResult, IntentSearchResult, MacroSearchResult, SearchResults } from './search-types';
+import type { AppSearchResult, CommandSearchResult, IntentSearchResult, MacroSearchResult, FileSearchResult, SearchResults } from './search-types';
 
 const COMMANDS: CommandSearchResult[] = [
   {
@@ -123,6 +123,26 @@ export function getAllSearchableMacros(): MacroSearchResult[] {
   }));
 }
 
+export function getAllSearchableFiles(): FileSearchResult[] {
+  const allFiles = useFileSystemStore.getState().getAllFiles();
+
+  return allFiles.map((file) => {
+    // Extract extension from filename (everything after last dot)
+    const extension = file.name.includes('.')
+      ? file.name.split('.').pop() || ''
+      : '';
+
+    return {
+      type: 'file' as const,
+      id: file.id,
+      name: file.name,
+      description: `File • Modified ${file.modified}`,
+      extension,
+      resourceType: 'file' as const,
+    };
+  });
+}
+
 export function filterSearchResults(query: string): SearchResults {
   const lowerQuery = query.toLowerCase().trim();
 
@@ -132,6 +152,7 @@ export function filterSearchResults(query: string): SearchResults {
       commands: getAllSearchableCommands(),
       intents: getAllSearchableIntents(),
       macros: getAllSearchableMacros(),
+      files: getAllSearchableFiles(),
     };
   }
 
@@ -159,5 +180,39 @@ export function filterSearchResults(query: string): SearchResults {
     return nameMatch || descMatch;
   });
 
-  return { apps, commands, intents, macros };
+  // Files with deterministic scoring (prefix=2, contains=1) and stable sort
+  const allFiles = getAllSearchableFiles();
+  const filesWithScores = allFiles
+    .map((file) => {
+      const lowerName = file.name.toLowerCase();
+      let score = 0;
+
+      if (lowerName.startsWith(lowerQuery)) {
+        score = 2; // Prefix match
+      } else if (lowerName.includes(lowerQuery)) {
+        score = 1; // Contains match
+      }
+
+      return { file, score };
+    })
+    .filter((item) => item.score > 0); // Exclude non-matches
+
+  // Stable sort: score DESC, name ASC, id ASC
+  filesWithScores.sort((a, b) => {
+    // Score DESC (higher score first)
+    if (a.score !== b.score) {
+      return b.score - a.score;
+    }
+    // Name ASC (alphabetical)
+    const nameCompare = a.file.name.localeCompare(b.file.name);
+    if (nameCompare !== 0) {
+      return nameCompare;
+    }
+    // ID ASC (stable tie-break)
+    return a.file.id.localeCompare(b.file.id);
+  });
+
+  const files = filesWithScores.map((item) => item.file);
+
+  return { apps, commands, intents, macros, files };
 }
