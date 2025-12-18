@@ -18,6 +18,7 @@ export function createInitialFsState(): FileSystemState {
           { id: 'desktop-link', name: 'Desktop', type: 'folder', modified: '2025-12-16 10:00' },
           { id: 'documents-link', name: 'Documents', type: 'folder', modified: '2025-12-16 10:00' },
           { id: 'downloads-link', name: 'Downloads', type: 'folder', modified: '2025-12-16 10:00' },
+          { id: 'circuit', name: 'circuit.rblogic', type: 'file', modified: '2025-12-18 14:00' },
         ],
       },
       desktop: {
