@@ -1,5 +1,41 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_Y - Open-With Payload + Target Consumption (2025-12-18)
+
+### Logic Playground: File Loading from Intent
+
+Completed the "Open With" workflow by enabling Logic Playground to load files from Files app via intent payload routing.
+
+- **ResourceId Handling**: Logic Playground receives `resourceId` from open-with intent
+  - Three-tier matching strategy: exact ID match → name match → create new circuit
+  - Synchronous file loading, no async operations
+  - Creates new empty circuit if resourceId not found in filesStore
+
+- **Focus Behavior**: Canvas area automatically focused after loading file
+  - Added `canvasAreaRef` with `tabIndex={-1}` for programmatic focus
+  - 100ms setTimeout for reliable focus after DOM update
+  - User can immediately start interacting with circuit
+
+- **Architectural Bridge**: resourceId connects Files metadata with Playground content
+  - Files app: metadata-only filesystem (`fsModel`)
+  - Logic Playground: circuit content storage (`filesStore`)
+  - resourceId serves as lookup key between the two systems
+
+- **Failure-Safe Design**:
+  - Unknown resourceId → create new circuit (no crash)
+  - Folder resourceType → no-op (file-only guard preserved)
+  - Toast notification on circuit creation for user feedback
+
+- **Testing**: 3 new PHASE_Y tests (298 total passing)
+  - Payload routing verification (resourceId correctness)
+  - Different files dispatch different resourceIds
+  - Folder guard enforcement (no intent for folders)
+
+- **Implementation Notes**:
+  - useEffect hook in LogicPlaygroundApp handles resourceId prop
+  - Name matching for flexibility (e.g., "notes" matches "notes.txt")
+  - Per-window isolation preserved (each Playground instance independent)
+
 ## PHASE_X - Cross-App File Actions (2025-12-18)
 
 ### Files App: Open With Modal
