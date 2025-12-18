@@ -5,83 +5,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { RedByteApp } from '../types';
 import type { Intent } from '@redbyte/rb-shell';
+import {
+  createInitialFsState,
+  createFolder,
+  createFile,
+  renameEntry,
+  deleteEntry,
+  getChildren,
+  getPath,
+  resolveFolderLink,
+  getFallbackFolderId,
+} from './files/fsModel';
+import type { FileSystemState, FileEntry } from './files/fsTypes';
+import { TextInputModal, ConfirmModal } from './files/modals';
 
 interface FilesProps {
   onClose?: () => void;
   onDispatchIntent?: (intent: Intent) => void;
 }
-
-interface FileEntry {
-  id: string;
-  name: string;
-  type: 'folder' | 'file';
-  modified: string;
-}
-
-interface FolderData {
-  id: string;
-  name: string;
-  entries: FileEntry[];
-}
-
-// Mock file system structure
-const MOCK_FS: Record<string, FolderData> = {
-  home: {
-    id: 'home',
-    name: 'Home',
-    entries: [
-      { id: 'desktop-link', name: 'Desktop', type: 'folder', modified: '2025-12-16 10:00' },
-      { id: 'documents-link', name: 'Documents', type: 'folder', modified: '2025-12-16 10:00' },
-      { id: 'downloads-link', name: 'Downloads', type: 'folder', modified: '2025-12-16 10:00' },
-    ],
-  },
-  desktop: {
-    id: 'desktop',
-    name: 'Desktop',
-    entries: [
-      { id: 'project1', name: 'Project Files', type: 'folder', modified: '2025-12-15 14:30' },
-      { id: 'notes', name: 'Notes.txt', type: 'file', modified: '2025-12-16 09:15' },
-    ],
-  },
-  documents: {
-    id: 'documents',
-    name: 'Documents',
-    entries: [
-      { id: 'reports', name: 'Reports', type: 'folder', modified: '2025-12-14 16:20' },
-      { id: 'readme', name: 'README.md', type: 'file', modified: '2025-12-13 11:45' },
-      { id: 'config', name: 'config.json', type: 'file', modified: '2025-12-12 08:30' },
-    ],
-  },
-  downloads: {
-    id: 'downloads',
-    name: 'Downloads',
-    entries: [
-      { id: 'archive', name: 'archive.zip', type: 'file', modified: '2025-12-11 15:00' },
-    ],
-  },
-  project1: {
-    id: 'project1',
-    name: 'Project Files',
-    entries: [
-      { id: 'src', name: 'src', type: 'folder', modified: '2025-12-15 14:30' },
-      { id: 'package', name: 'package.json', type: 'file', modified: '2025-12-15 12:00' },
-    ],
-  },
-  reports: {
-    id: 'reports',
-    name: 'Reports',
-    entries: [
-      { id: 'q4', name: 'Q4-2024.pdf', type: 'file', modified: '2025-12-14 16:20' },
-    ],
-  },
-};
-
-// Map folder link IDs to actual folders
-const FOLDER_LINKS: Record<string, string> = {
-  'desktop-link': 'desktop',
-  'documents-link': 'documents',
-  'downloads-link': 'downloads',
-};
 
 const SIDEBAR_ROOTS = [
   { id: 'home', name: 'Home' },
@@ -89,43 +30,26 @@ const SIDEBAR_ROOTS = [
   { id: 'documents', name: 'Documents' },
 ];
 
-// Build parent map for breadcrumb path resolution
-const FOLDER_PARENTS: Record<string, string | null> = {
-  home: null,
-  desktop: 'home',
-  documents: 'home',
-  downloads: 'home',
-  project1: 'desktop',
-  reports: 'documents',
-  src: 'project1',
-};
+type ModalType = 'create-folder' | 'create-file' | 'rename' | 'delete';
 
-// Helper to compute breadcrumb path from root to current folder
-function computeBreadcrumbPath(folderId: string): Array<{ id: string; name: string }> {
-  const path: Array<{ id: string; name: string }> = [];
-  let current: string | null = folderId;
-
-  while (current !== null) {
-    const folder = MOCK_FS[current];
-    if (folder) {
-      path.unshift({ id: folder.id, name: folder.name });
-    }
-    current = FOLDER_PARENTS[current] ?? null;
-  }
-
-  return path;
+interface ModalState {
+  type: ModalType;
+  targetId?: string;
 }
 
 const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => {
+  const [fs, setFs] = useState<FileSystemState>(() => createInitialFsState());
   const [currentFolderId, setCurrentFolderId] = useState('home');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [backStack, setBackStack] = useState<string[]>([]);
   const [forwardStack, setForwardStack] = useState<string[]>([]);
+  const [modal, setModal] = useState<ModalState | null>(null);
+  const [modalValue, setModalValue] = useState('');
+  const [modalError, setModalError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const currentFolder = MOCK_FS[currentFolderId] || MOCK_FS.home;
-  const entries = currentFolder.entries;
-  const breadcrumbPath = computeBreadcrumbPath(currentFolderId);
+  const entries = getChildren(currentFolderId, fs);
+  const breadcrumbPath = getPath(currentFolderId, fs);
 
   useEffect(() => {
     setSelectedIndex(0);
@@ -137,7 +61,7 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
 
   // Centralized navigation helper
   const navigateTo = (targetId: string, fromHistory = false) => {
-    if (!MOCK_FS[targetId]) return;
+    if (!fs.folders[targetId]) return;
 
     if (!fromHistory) {
       // Push current folder onto back stack
@@ -181,7 +105,99 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
     });
   };
 
+  // Operation handlers
+  const openCreateFolderModal = () => {
+    setModal({ type: 'create-folder' });
+    setModalValue('New Folder');
+    setModalError(null);
+  };
+
+  const openCreateFileModal = () => {
+    setModal({ type: 'create-file' });
+    setModalValue('New File.txt');
+    setModalError(null);
+  };
+
+  const openRenameModal = () => {
+    if (entries.length === 0) return;
+    const selected = entries[selectedIndex];
+    if (!selected) return;
+
+    // Check if root folder (resolve link first)
+    const resolvedId = resolveFolderLink(selected.id);
+    if (fs.roots.includes(resolvedId)) return;
+
+    setModal({ type: 'rename', targetId: selected.id });
+    setModalValue(selected.name);
+    setModalError(null);
+  };
+
+  const openDeleteModal = () => {
+    if (entries.length === 0) return;
+    const selected = entries[selectedIndex];
+    if (!selected) return;
+
+    // Check if root folder (resolve link first)
+    const resolvedId = resolveFolderLink(selected.id);
+    if (fs.roots.includes(resolvedId)) return;
+
+    setModal({ type: 'delete', targetId: selected.id });
+  };
+
+  const handleModalConfirm = () => {
+    if (!modal) return;
+
+    try {
+      if (modal.type === 'create-folder') {
+        const newFs = createFolder(currentFolderId, modalValue, fs);
+        setFs(newFs);
+        setModal(null);
+      } else if (modal.type === 'create-file') {
+        const newFs = createFile(currentFolderId, modalValue, fs);
+        setFs(newFs);
+        setModal(null);
+      } else if (modal.type === 'rename' && modal.targetId) {
+        const newFs = renameEntry(modal.targetId, modalValue, fs);
+        setFs(newFs);
+        setModal(null);
+      } else if (modal.type === 'delete' && modal.targetId) {
+        const newFs = deleteEntry(modal.targetId, fs);
+        setFs(newFs);
+
+        // Navigate to fallback if deleting current folder
+        if (modal.targetId === currentFolderId) {
+          const fallbackId = getFallbackFolderId(currentFolderId, fs);
+          setCurrentFolderId(fallbackId);
+        }
+
+        // Clamp selection index
+        const newEntries = getChildren(currentFolderId, newFs);
+        if (selectedIndex >= newEntries.length) {
+          setSelectedIndex(Math.max(0, newEntries.length - 1));
+        }
+
+        setModal(null);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        setModalError(error.message);
+      }
+    }
+  };
+
+  const handleModalCancel = () => {
+    setModal(null);
+    setModalValue('');
+    setModalError(null);
+  };
+
   const handleKeyDown = (event: React.KeyboardEvent) => {
+    // Guard: ignore if event target is input/textarea
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+      return;
+    }
+
     if (event.key === 'Escape') {
       event.preventDefault();
       onClose?.();
@@ -199,6 +215,34 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
     if (event.altKey && event.key === 'ArrowRight') {
       event.preventDefault();
       goForward();
+      return;
+    }
+
+    // Cmd/Ctrl+Shift+N: Create Folder
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'N') {
+      event.preventDefault();
+      openCreateFolderModal();
+      return;
+    }
+
+    // Cmd/Ctrl+N: Create File
+    if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key === 'n') {
+      event.preventDefault();
+      openCreateFileModal();
+      return;
+    }
+
+    // F2: Rename
+    if (event.key === 'F2') {
+      event.preventDefault();
+      openRenameModal();
+      return;
+    }
+
+    // Delete: Delete entry
+    if (event.key === 'Delete') {
+      event.preventDefault();
+      openDeleteModal();
       return;
     }
 
@@ -230,7 +274,7 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
       event.preventDefault();
       const selected = entries[selectedIndex];
       if (selected && selected.type === 'folder') {
-        const targetId = FOLDER_LINKS[selected.id] || selected.id;
+        const targetId = resolveFolderLink(selected.id);
         navigateTo(targetId);
       }
     }
@@ -239,7 +283,7 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
   const handleEntryClick = (entry: FileEntry, index: number) => {
     setSelectedIndex(index);
     if (entry.type === 'folder') {
-      const targetId = FOLDER_LINKS[entry.id] || entry.id;
+      const targetId = resolveFolderLink(entry.id);
       navigateTo(targetId);
     }
   };
@@ -371,11 +415,65 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
         <div className="p-2 border-t border-slate-800 text-xs text-slate-500">
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">↑↓</kbd> Navigate{' '}
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> Open{' '}
-          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Alt+←→</kbd> Back/Forward{' '}
-          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Cmd/Ctrl+Enter</kbd> Open in Playground{' '}
-          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Esc</kbd> Close
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">F2</kbd> Rename{' '}
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Del</kbd> Delete{' '}
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Cmd/Ctrl+N</kbd> New File{' '}
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Cmd/Ctrl+Shift+N</kbd> New Folder
         </div>
       </div>
+
+      {/* Modals */}
+      {modal && modal.type === 'create-folder' && (
+        <TextInputModal
+          title="Create Folder"
+          label="Folder name"
+          value={modalValue}
+          error={modalError}
+          onValueChange={setModalValue}
+          onConfirm={handleModalConfirm}
+          onCancel={handleModalCancel}
+          confirmDisabled={!modalValue.trim()}
+        />
+      )}
+
+      {modal && modal.type === 'create-file' && (
+        <TextInputModal
+          title="Create File"
+          label="File name"
+          value={modalValue}
+          error={modalError}
+          onValueChange={setModalValue}
+          onConfirm={handleModalConfirm}
+          onCancel={handleModalCancel}
+          confirmDisabled={!modalValue.trim()}
+        />
+      )}
+
+      {modal && modal.type === 'rename' && (
+        <TextInputModal
+          title="Rename"
+          label="New name"
+          value={modalValue}
+          error={modalError}
+          onValueChange={setModalValue}
+          onConfirm={handleModalConfirm}
+          onCancel={handleModalCancel}
+          confirmDisabled={!modalValue.trim()}
+        />
+      )}
+
+      {modal && modal.type === 'delete' && modal.targetId && (
+        <ConfirmModal
+          title="Delete"
+          message={`Are you sure you want to delete "${entries.find((e) => e.id === modal.targetId)?.name}"? ${
+            entries.find((e) => e.id === modal.targetId)?.type === 'folder'
+              ? 'This will delete all contents recursively.'
+              : ''
+          }`}
+          onConfirm={handleModalConfirm}
+          onCancel={handleModalCancel}
+        />
+      )}
     </div>
   );
 };
