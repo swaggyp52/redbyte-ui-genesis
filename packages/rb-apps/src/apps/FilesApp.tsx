@@ -198,9 +198,19 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
       return;
     }
 
+    // Escape priority: modal first, then window
     if (event.key === 'Escape') {
       event.preventDefault();
-      onClose?.();
+      if (modal) {
+        handleModalCancel();
+      } else {
+        onClose?.();
+      }
+      return;
+    }
+
+    // When modal is open, block all other shortcuts
+    if (modal) {
       return;
     }
 
@@ -412,13 +422,18 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
           )}
         </div>
 
-        <div className="p-2 border-t border-slate-800 text-xs text-slate-500">
-          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">↑↓</kbd> Navigate{' '}
-          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> Open{' '}
-          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">F2</kbd> Rename{' '}
-          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Del</kbd> Delete{' '}
-          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Cmd/Ctrl+N</kbd> New File{' '}
-          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Cmd/Ctrl+Shift+N</kbd> New Folder
+        <div className="p-2 border-t border-slate-800 text-xs text-slate-500 flex items-center justify-between">
+          <div>
+            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">↑↓</kbd> Navigate{' '}
+            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> Open{' '}
+            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Alt+←→</kbd> Back/Forward
+          </div>
+          <div>
+            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Ctrl/Cmd+N</kbd> New File{' '}
+            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Ctrl/Cmd+Shift+N</kbd> New Folder{' '}
+            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">F2</kbd> Rename{' '}
+            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Del</kbd> Delete
+          </div>
         </div>
       </div>
 

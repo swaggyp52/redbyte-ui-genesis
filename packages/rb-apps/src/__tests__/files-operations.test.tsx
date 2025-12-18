@@ -358,4 +358,223 @@ describe('PHASE_W: Files operations', () => {
       expect(table2?.textContent).not.toContain('Instance 1 Folder');
     });
   });
+
+  describe('PHASE_W Stage 3: Keyboard priority and modal guards', () => {
+    it('blocks arrow key navigation when modal is open', () => {
+      const { container } = render(<FilesComponent />);
+      const mainContainer = container.querySelector('[tabIndex="0"]');
+
+      // First entry is selected (Desktop)
+      let rows = screen.getByRole('table').querySelectorAll('tbody tr');
+      expect(rows[0].className).toContain('bg-cyan-900/30');
+
+      // Open create folder modal
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'N', metaKey: true, shiftKey: true });
+      });
+
+      expect(screen.getByText('Create Folder')).toBeTruthy();
+
+      // Try to move selection with arrow keys (should be blocked)
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
+      });
+
+      // Cancel modal
+      const cancelButton = screen.getByText('Cancel');
+      act(() => {
+        fireEvent.click(cancelButton);
+      });
+
+      // Selection should still be on first entry (unchanged)
+      rows = screen.getByRole('table').querySelectorAll('tbody tr');
+      expect(rows[0].className).toContain('bg-cyan-900/30');
+      expect(rows[1].className).not.toContain('bg-cyan-900/30');
+    });
+
+    it('blocks F2/Delete shortcuts when modal is open', () => {
+      const { container } = render(<FilesComponent />);
+      const mainContainer = container.querySelector('[tabIndex="0"]');
+
+      // Open create folder modal
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'N', metaKey: true, shiftKey: true });
+      });
+
+      expect(screen.getByText('Create Folder')).toBeTruthy();
+
+      // Try to open rename modal with F2 (should be blocked)
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'F2' });
+      });
+
+      // Should still only see Create Folder modal, not Rename
+      expect(screen.getByText('Create Folder')).toBeTruthy();
+      expect(screen.queryByText('Rename')).toBeNull();
+
+      // Try to open delete modal (should be blocked)
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'Delete' });
+      });
+
+      // Still only Create Folder modal
+      expect(screen.getByText('Create Folder')).toBeTruthy();
+      expect(screen.queryByText(/Are you sure you want to delete/)).toBeNull();
+
+      // Cancel
+      const cancelButton = screen.getByText('Cancel');
+      act(() => {
+        fireEvent.click(cancelButton);
+      });
+    });
+
+    it('Escape priority: closes modal first, then window', () => {
+      const onClose = vi.fn();
+      const { container } = render(<FilesComponent onClose={onClose} />);
+      const mainContainer = container.querySelector('[tabIndex="0"]');
+
+      // Open modal
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'N', metaKey: true, shiftKey: true });
+      });
+
+      expect(screen.getByText('Create Folder')).toBeTruthy();
+
+      // First Escape: closes modal
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'Escape' });
+      });
+
+      expect(screen.queryByText('Create Folder')).toBeNull();
+      expect(onClose).not.toHaveBeenCalled();
+
+      // Second Escape: closes window
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'Escape' });
+      });
+
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('blocks "Open in Playground" (Cmd+Enter) when modal is open', () => {
+      const onDispatchIntent = vi.fn();
+      const { container } = render(<FilesComponent onDispatchIntent={onDispatchIntent} />);
+      const mainContainer = container.querySelector('[tabIndex="0"]');
+
+      // Navigate to Desktop
+      const desktopButton = screen.getAllByRole('button', { name: 'Desktop' }).find((el) =>
+        el.className.includes('w-full')
+      );
+      act(() => {
+        fireEvent.click(desktopButton!);
+      });
+
+      // Move to Notes.txt (second entry, a file)
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
+      });
+
+      // Open modal
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'N', metaKey: true, shiftKey: true });
+      });
+
+      // Try Cmd+Enter (should be blocked)
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'Enter', metaKey: true });
+      });
+
+      expect(onDispatchIntent).not.toHaveBeenCalled();
+
+      // Cancel modal
+      const cancelButton = screen.getByText('Cancel');
+      act(() => {
+        fireEvent.click(cancelButton);
+      });
+
+      // Now Cmd+Enter should work
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'Enter', metaKey: true });
+      });
+
+      expect(onDispatchIntent).toHaveBeenCalledTimes(1);
+    });
+
+    it('deleting current folder updates breadcrumb to fallback', () => {
+      const { container } = render(<FilesComponent />);
+      const mainContainer = container.querySelector('[tabIndex="0"]');
+
+      // Navigate to Desktop
+      const desktopButton = screen.getAllByRole('button', { name: 'Desktop' }).find((el) =>
+        el.className.includes('w-full')
+      );
+      act(() => {
+        fireEvent.click(desktopButton!);
+      });
+
+      // Navigate into Project Files
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'Enter' });
+      });
+
+      // Breadcrumb should show: Home > Desktop > Project Files
+      const breadcrumbs = screen.getAllByText('Project Files');
+      expect(breadcrumbs.some((el) => el.className.includes('text-cyan-400'))).toBe(true);
+
+      // Go back to Desktop
+      const backButton = screen.getByTitle('Back (Alt+Left)');
+      act(() => {
+        fireEvent.click(backButton);
+      });
+
+      // Delete Project Files
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'Delete' });
+      });
+
+      const buttons = screen.getAllByRole('button');
+      const deleteButton = buttons.find((btn) => btn.textContent === 'Delete');
+      act(() => {
+        fireEvent.click(deleteButton!);
+      });
+
+      // Should navigate to Desktop (parent), breadcrumb should show Desktop active
+      const desktopBreadcrumbs = screen.getAllByText('Desktop');
+      expect(desktopBreadcrumbs.some((el) => el.className.includes('text-cyan-400'))).toBe(true);
+    });
+
+    it('rename with duplicate name auto-suffixes in same folder', () => {
+      const { container } = render(<FilesComponent />);
+      const mainContainer = container.querySelector('[tabIndex="0"]');
+
+      // Navigate to Desktop
+      const desktopButton = screen.getAllByRole('button', { name: 'Desktop' }).find((el) =>
+        el.className.includes('w-full')
+      );
+      act(() => {
+        fireEvent.click(desktopButton!);
+      });
+
+      // Rename Project Files to "Notes.txt" (which already exists)
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'F2' });
+      });
+
+      const input = screen.getByDisplayValue('Project Files') as HTMLInputElement;
+      act(() => {
+        fireEvent.change(input, { target: { value: 'Notes.txt' } });
+      });
+
+      const confirmButton = screen.getByText('Confirm');
+      act(() => {
+        fireEvent.click(confirmButton);
+      });
+
+      // Should auto-suffix to "Notes.txt (2)"
+      const table = screen.getByRole('table');
+      expect(table.textContent).toContain('Notes.txt (2)');
+      expect(table.textContent).toContain('📁 Notes.txt (2)'); // Folder with suffix
+    });
+  });
 });
