@@ -1,5 +1,69 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_AE - System Search Open With Modal + Files Global Store Unification (2025-12-18)
+
+### Goal
+Complete PHASE_AD by integrating the Open With modal directly into System Search for Shift+Enter, and migrate Files app to use the global filesystem store to ensure a single source of truth for file operations across the entire OS.
+
+### Key Changes
+- **System Search Open With Modal Integration** (`Shell.tsx`):
+  - Shift+Enter on file search result now opens the same Open With modal used by Files app
+  - Modal state managed in Shell: `openWithModalState` with pre-computed eligible targets
+  - Dispatches `open-with` intent with `sourceAppId: 'system-search'` when target selected
+  - Supports preferNewWindow toggle (N key) via routingHint propagation (PHASE_AC integration)
+  - Modal renders below Shell with all keyboard shortcuts (arrows, Enter, D, Shift+D, N, Esc)
+
+- **Files App Global Store Migration** (`FilesApp.tsx`):
+  - Removed local `useState<FileSystemState>` in favor of `useFileSystemStore` hook
+  - All filesystem mutations now use store actions: `createFolder`, `createFile`, `renameEntry`, `deleteEntry`
+  - All filesystem reads use store getters: `getChildren`, `getPath`, `resolveFolderLink`, `getFallbackFolderId`
+  - Files app and System Search now share identical filesystem state (single source of truth)
+  - Window instances of Files app share global store (operations visible across all windows)
+
+- **Modal Reuse Strategy**:
+  - Pragmatic approach: Exported existing `OpenWithModal` from `rb-apps` without extraction/refactoring
+  - Modal already generic and reusable with clean props interface
+  - Minimized risk and code changes by avoiding new modal implementation
+
+- **Test Updates** (`files-operations.test.tsx`):
+  - Added `beforeEach` to reset global fileSystemStore state for test isolation
+  - Updated test expectation: "operations are shared across window instances (global store)"
+  - Previously expected independent state per window - now expects shared global state
+  - All 369 tests passing with zero warnings
+
+### Testing (369 tests passing, 0 warnings)
+- **Files Operations Regression**: All existing Files tests adapted for global store
+- **Global Store Behavior**: Verified operations visible across multiple window instances
+- **System Search Integration**: Manual verification of Shift+Enter modal flow
+- **Keyboard Navigation**: All modal shortcuts work (arrows, Enter, N, D, Shift+D, Esc)
+- **Intent Dispatching**: Verified open-with intents dispatched with correct payload and routing hints
+
+### Files Changed
+- `AI_STATE.md` - PHASE_AE contract added (lines 2587-3186)
+- `packages/rb-apps/src/index.ts` - Export OpenWithModal, FileActionTarget, useFileAssociationsStore
+- `packages/rb-apps/src/apps/FilesApp.tsx` - Migrated to global useFileSystemStore
+- `packages/rb-shell/src/Shell.tsx` - Added OpenWithModal integration with state management
+- `packages/rb-apps/src/__tests__/files-operations.test.tsx` - Added beforeEach store reset, updated test expectations
+
+### UX Impact
+- **Before**: Shift+Enter on file search result opened Files app (workaround)
+- **After**: Shift+Enter on file search result opens Open With modal directly with eligible targets
+- **Example workflow**:
+  1. Press Cmd/Ctrl+Space → System Search opens
+  2. Type "circuit.rblogic" → File appears in Files section
+  3. Press Shift+Enter → Open With modal appears with eligible targets (Logic Playground, etc.)
+  4. Press N → Toggle "Will open in new window" banner
+  5. Arrow keys to select target, Enter to open → File opens with selected app
+  6. Modal supports D to set default, Shift+D to clear default (PHASE_AA integration)
+- **Single Source of Truth**: Creating/deleting files in Files app immediately visible in System Search results
+
+### Resolved Limitations from PHASE_AD
+- ✓ Shift+Enter now opens Open With modal directly (no longer falls back to Files app)
+- ✓ Filesystem store now unified between Files app and search provider (no separate local state)
+- ✓ All PHASE_AC window routing features work in System Search (preferNewWindow, MRU reuse, etc.)
+
+---
+
 ## PHASE_AD - System Search: Deterministic File Provider + Default Open + Open With (2025-12-18)
 
 ### Goal
