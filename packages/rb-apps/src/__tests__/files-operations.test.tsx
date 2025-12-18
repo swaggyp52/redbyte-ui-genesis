@@ -3,13 +3,75 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React from 'react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { FilesApp } from '../apps/FilesApp';
+import { useFileSystemStore } from '../stores/fileSystemStore';
 
 const FilesComponent = FilesApp.component;
 
 describe('PHASE_W: Files operations', () => {
+  beforeEach(() => {
+    // Reset filesystem store to initial state before each test
+    const initialState = useFileSystemStore.getState();
+    useFileSystemStore.setState({
+      ...initialState,
+      folders: {
+        home: {
+          id: 'home',
+          name: 'Home',
+          entries: [
+            { id: 'desktop-link', name: 'Desktop', type: 'folder', modified: '2025-12-16 10:00' },
+            { id: 'documents-link', name: 'Documents', type: 'folder', modified: '2025-12-16 10:00' },
+            { id: 'downloads-link', name: 'Downloads', type: 'folder', modified: '2025-12-16 10:00' },
+            { id: 'circuit', name: 'circuit.rblogic', type: 'file', modified: '2025-12-18 14:00' },
+          ],
+        },
+        desktop: {
+          id: 'desktop',
+          name: 'Desktop',
+          entries: [
+            { id: 'project1', name: 'Project Files', type: 'folder', modified: '2025-12-15 14:30' },
+            { id: 'notes', name: 'Notes.txt', type: 'file', modified: '2025-12-16 09:15' },
+          ],
+        },
+        documents: {
+          id: 'documents',
+          name: 'Documents',
+          entries: [
+            { id: 'reports', name: 'Reports', type: 'folder', modified: '2025-12-14 16:20' },
+            { id: 'readme', name: 'README.md', type: 'file', modified: '2025-12-13 11:45' },
+            { id: 'config', name: 'config.json', type: 'file', modified: '2025-12-12 08:30' },
+          ],
+        },
+        downloads: {
+          id: 'downloads',
+          name: 'Downloads',
+          entries: [
+            { id: 'archive', name: 'archive.zip', type: 'file', modified: '2025-12-11 15:00' },
+          ],
+        },
+        project1: {
+          id: 'project1',
+          name: 'Project Files',
+          entries: [
+            { id: 'src', name: 'src', type: 'folder', modified: '2025-12-15 14:30' },
+            { id: 'package', name: 'package.json', type: 'file', modified: '2025-12-15 12:00' },
+          ],
+        },
+        reports: {
+          id: 'reports',
+          name: 'Reports',
+          entries: [
+            { id: 'q4', name: 'Q4-2024.pdf', type: 'file', modified: '2025-12-14 16:20' },
+          ],
+        },
+      },
+      nextId: 1,
+      roots: ['home', 'desktop', 'documents'],
+    });
+  });
+
   describe('Create folder operation', () => {
     it('opens modal with Cmd/Ctrl+Shift+N and creates folder', () => {
       const { container } = render(<FilesComponent />);
@@ -328,7 +390,7 @@ describe('PHASE_W: Files operations', () => {
       expect(screen.getByText('Empty folder')).toBeTruthy();
     });
 
-    it('operations work independently per window instance', () => {
+    it('operations are shared across window instances (global store)', () => {
       const { container: container1 } = render(<FilesComponent />);
       const { container: container2 } = render(<FilesComponent />);
 
@@ -353,9 +415,9 @@ describe('PHASE_W: Files operations', () => {
       const table1 = container1.querySelector('table');
       expect(table1?.textContent).toContain('Instance 1 Folder');
 
-      // Second instance should not have it
+      // Second instance SHOULD also have it (global store behavior)
       const table2 = container2.querySelector('table');
-      expect(table2?.textContent).not.toContain('Instance 1 Folder');
+      expect(table2?.textContent).toContain('Instance 1 Folder');
     });
   });
 
