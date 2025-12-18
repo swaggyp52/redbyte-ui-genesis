@@ -14,6 +14,7 @@ export { LogicPlaygroundApp } from './apps/LogicPlaygroundApp';
 export { AppStoreApp } from './apps/AppStoreApp';
 export { WelcomeApp } from './apps/WelcomeApp';
 export { LauncherApp } from './apps/LauncherApp';
+export { TextViewerApp } from './apps/TextViewerApp';
 
 // Auto-register all apps
 import { registerApp } from './AppRegistry';
@@ -24,6 +25,7 @@ import { LogicPlaygroundApp } from './apps/LogicPlaygroundApp';
 import { AppStoreApp } from './apps/AppStoreApp';
 import { WelcomeApp } from './apps/WelcomeApp';
 import { LauncherApp } from './apps/LauncherApp';
+import { TextViewerApp } from './apps/TextViewerApp';
 
 registerApp(TerminalApp);
 registerApp(SettingsApp);
@@ -32,3 +34,4 @@ registerApp(LogicPlaygroundApp);
 registerApp(AppStoreApp);
 registerApp(WelcomeApp);
 registerApp(LauncherApp);
+registerApp(TextViewerApp);
