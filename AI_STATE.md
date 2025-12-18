@@ -1126,6 +1126,184 @@ Make Files feel owned by adding mutation operations (create folder/file, rename,
 \- Contracts and completion logged
 
 
+### Cross-App File Actions Contract (PHASE_X)
+
+Make Files a hub by turning file selection into first-class actions that route through the existing Intent system, surfacing in Command Palette and System Search.
+
+**Goal:**
+
+Transform file selection into actionable intents that can launch/route to other apps (Logic Playground, future viewers, editors) via explicit user actions, keyboard-first, no async.
+
+**Non-Goals:**
+
+\- No file content indexing or search crawling
+
+\- No background workers or async file operations
+
+\- No auto-open behaviors (user must explicitly trigger)
+
+\- No drag-and-drop to other apps (reserved for future)
+
+\- No file watchers or change detection
+
+**Invariants:**
+
+\- **Intent-based routing**: All file actions go through Intent system (no direct app imports in Files)
+
+\- **Synchronous execution**: Shell dispatcher routes synchronously to target app
+
+\- **Failure-safe**: Unknown target/app → no-op (with optional user notification)
+
+\- **Modal guards preserved**: Actions never fire while modal is open (PHASE_W standard)
+
+\- **Per-window context**: File actions only operate on the focused Files window's selected file
+
+**File Action Semantics:**
+
+1. **Action Triggers**:
+   - UI button click (e.g., "Open in Playground")
+   - Keyboard shortcut (e.g., Cmd/Ctrl+Enter for default, Cmd/Ctrl+Shift+Enter for "Open With...")
+   - Command Palette selection (if Files focused + file selected)
+   - System Search action (if Files focused + file selected)
+
+2. **Action Payload**:
+   ```typescript
+   interface FileActionIntent {
+     type: 'open-with';
+     payload: {
+       sourceAppId: 'files';
+       targetAppId: string; // e.g., 'logic-playground'
+       resourceId: string; // file ID
+       resourceType: 'file' | 'folder';
+       resourceName?: string; // for display
+     };
+   }
+   ```
+
+3. **Action Availability**:
+   - Actions shown only when valid (file vs folder type check)
+   - Folder-only actions vs file-only actions clearly separated
+   - No actions available when no entry selected
+   - No actions fire during modal (PHASE_W guard applies)
+
+**Implementation Contracts:**
+
+1. **Intent Type Expansion**:
+   - Reuse existing `open-with` intent type from PHASE_V
+   - Payload already supports: `{ sourceAppId, targetAppId, resourceId, resourceType }`
+   - No new intent types needed (keeps schema simple)
+
+2. **Shell Dispatcher Enhancements**:
+   - Shell receives `open-with` intent
+   - Maps `targetAppId` to app launcher
+   - Opens target app with props: `{ fileId, fileName, fileType }`
+   - Maintains singleton rules (existing PHASE_J windowing logic)
+   - Unknown `targetAppId` → no-op (silent fail or toast)
+
+3. **Files UI: Action Surface**:
+   - Existing: "Open in Playground" button for files (PHASE_V)
+   - Add: "Open With..." button/modal for file entries
+   - "Open With..." modal:
+     - Lists available targets from intent target registry
+     - Keyboard navigation: Arrow keys, Enter confirms, Escape cancels
+     - No browser prompts, follows PHASE_U modal patterns
+   - Actions disabled/hidden for:
+     - Folders (only show folder-appropriate actions)
+     - Root entries (Home/Desktop/Documents)
+     - When no entry selected
+
+4. **Keyboard Shortcuts**:
+   - **Existing**: Cmd/Ctrl+Enter = "Open in Playground" (default for files)
+   - **New**: Cmd/Ctrl+Shift+Enter = "Open With..." modal
+   - Guard: shortcuts blocked when modal is open (PHASE_W)
+   - Guard: shortcuts no-op when target is input/textarea
+   - Guard: shortcuts no-op when no file selected or folder selected
+
+5. **System Search Integration** (Static Actions):
+   - No file content indexing (stays within PHASE_S scope)
+   - Add static action entries when Files is focused:
+     - "Open With..." (only if file selected in focused Files window)
+     - Action triggers the "Open With..." modal in focused Files window
+   - Actions no-op if Files not focused or no file selected
+   - No global file registry (keeps search deterministic)
+
+6. **Command Palette Integration** (Optional Enhancement):
+   - When Files is focused + file selected:
+     - Show "File: Open With..." command
+     - Executes same "Open With..." modal
+   - No new infrastructure (reuses existing command registry from PHASE_T)
+
+**Target App Registry:**
+
+Maintain a simple static registry of apps that can receive file actions:
+
+```typescript
+const FILE_ACTION_TARGETS = [
+  { id: 'logic-playground', name: 'Logic Playground', supportedTypes: ['file'] },
+  // Future: { id: 'text-viewer', name: 'Text Viewer', supportedTypes: ['file'] },
+  // Future: { id: 'image-viewer', name: 'Image Viewer', supportedTypes: ['file'] },
+];
+```
+
+Filter targets based on:
+- Entry type (file vs folder)
+- Optional: file extension/mime type (future enhancement)
+
+**Task Checklist:**
+
+\- [ ] Add PHASE_X contract to AI_STATE.md
+
+\- [ ] Verify `open-with` intent type suffices (no new types needed)
+
+\- [ ] Create `FILE_ACTION_TARGETS` registry in Files app
+
+\- [ ] Implement "Open With..." modal component
+
+\- [ ] Add Cmd/Ctrl+Shift+Enter shortcut to Files
+
+\- [ ] Enhance shell dispatcher to handle `open-with` intents generically
+
+\- [ ] Add static "File: Open With..." to System Search (context-aware)
+
+\- [ ] Write tests:
+  - [ ] Intent emitted with correct payload for selected file
+  - [ ] No intent for folders (or folder-specific intent)
+  - [ ] Modal blocks shortcuts (PHASE_W guard)
+  - [ ] "Open With" modal lists targets + routes correctly
+  - [ ] Shell routes to target app with correct props
+  - [ ] Unknown target handled safely (no crash)
+  - [ ] Multi-window Files: actions only affect focused window
+  - [ ] System Search action only available when Files focused + file selected
+
+\- [ ] All tests pass with zero warnings
+
+\- [ ] CI passes (test + build)
+
+\- [ ] CHANGELOG.md reflects completion
+
+**Definition of Done:**
+
+\- User can select a file in Files and press Cmd/Ctrl+Shift+Enter to open "Open With..." modal
+
+\- Modal shows available target apps (at minimum: Logic Playground)
+
+\- Selecting a target dispatches `open-with` intent and opens target app
+
+\- Shell correctly routes intent to target app with file context
+
+\- System Search shows "File: Open With..." when Files focused + file selected
+
+\- All actions respect modal guards (PHASE_W)
+
+\- All actions are keyboard-accessible
+
+\- No async, no file indexing, no background work
+
+\- All tests pass (success + failure + edge cases), zero warnings
+
+\- Build passes, contracts logged
+
+
 ---
 
 
@@ -1138,7 +1316,7 @@ Phase ID: PHASE\_X
 
 Phase Name: Cross-App File Actions
 
-Status: READY (awaiting user confirmation)
+Status: ACTIVE
 
 
 
