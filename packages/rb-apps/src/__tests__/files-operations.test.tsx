@@ -583,16 +583,18 @@ describe('PHASE_W: Files operations', () => {
       const { container } = render(<FilesComponent />);
       const mainContainer = container.querySelector('[tabIndex="0"]');
 
-      // Navigate to Desktop
-      const desktopButton = screen.getAllByRole('button', { name: 'Desktop' }).find((el) =>
+      // Navigate to Home
+      const homeButton = screen.getAllByRole('button', { name: 'Home' }).find((el) =>
         el.className.includes('w-full')
       );
       act(() => {
-        fireEvent.click(desktopButton!);
+        fireEvent.click(homeButton!);
       });
 
-      // Move to Notes.txt (second entry, a file)
+      // Move to circuit.rblogic (4th entry: 3 folder links + 1 file)
       act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
         fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
       });
 
@@ -649,16 +651,18 @@ describe('PHASE_W: Files operations', () => {
       const { container } = render(<FilesComponent onDispatchIntent={onDispatchIntent} />);
       const mainContainer = container.querySelector('[tabIndex="0"]');
 
-      // Navigate to Desktop
-      const desktopButton = screen.getAllByRole('button', { name: 'Desktop' }).find((el) =>
+      // Navigate to Home
+      const homeButton = screen.getAllByRole('button', { name: 'Home' }).find((el) =>
         el.className.includes('w-full')
       );
       act(() => {
-        fireEvent.click(desktopButton!);
+        fireEvent.click(homeButton!);
       });
 
-      // Move to Notes.txt
+      // Move to circuit.rblogic (4th entry: 3 folder links + 1 file)
       act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
         fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
       });
 
@@ -680,7 +684,7 @@ describe('PHASE_W: Files operations', () => {
         payload: {
           sourceAppId: 'files',
           targetAppId: 'logic-playground',
-          resourceId: 'notes',
+          resourceId: 'circuit',
           resourceType: 'file',
         },
       });
@@ -713,14 +717,16 @@ describe('PHASE_W: Files operations', () => {
       const { container } = render(<FilesComponent onDispatchIntent={onDispatchIntent} />);
       const mainContainer = container.querySelector('[tabIndex="0"]');
 
-      // Navigate to Desktop and select Notes.txt
-      const desktopButton = screen.getAllByRole('button', { name: 'Desktop' }).find((el) =>
+      // Navigate to Home and select circuit.rblogic
+      const homeButton = screen.getAllByRole('button', { name: 'Home' }).find((el) =>
         el.className.includes('w-full')
       );
       act(() => {
-        fireEvent.click(desktopButton!);
+        fireEvent.click(homeButton!);
       });
       act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
         fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
       });
 
@@ -820,14 +826,16 @@ describe('PHASE_W: Files operations', () => {
       const { container } = render(<FilesComponent onDispatchIntent={onDispatchIntent} />);
       const mainContainer = container.querySelector('[tabIndex="0"]');
 
-      // Navigate to Desktop and select Notes.txt
-      const desktopButton = screen.getAllByRole('button', { name: 'Desktop' }).find((el) =>
+      // Navigate to Home and select circuit.rblogic
+      const homeButton = screen.getAllByRole('button', { name: 'Home' }).find((el) =>
         el.className.includes('w-full')
       );
       act(() => {
-        fireEvent.click(desktopButton!);
+        fireEvent.click(homeButton!);
       });
       act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
         fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
       });
 
@@ -848,7 +856,7 @@ describe('PHASE_W: Files operations', () => {
         payload: {
           sourceAppId: 'files',
           targetAppId: 'logic-playground',
-          resourceId: 'notes',
+          resourceId: 'circuit',
           resourceType: 'file',
         },
       });
@@ -910,6 +918,106 @@ describe('PHASE_W: Files operations', () => {
       // No modal should appear
       expect(screen.queryByText('Open With...')).toBeNull();
       expect(onDispatchIntent).not.toHaveBeenCalled();
+    });
+  });
+
+  // ==================== PHASE_Z: Multi-Target Open With + Deterministic Focus ====================
+
+  describe('PHASE_Z: Eligibility Predicates', () => {
+    it('Logic Playground eligible only for .rblogic files', async () => {
+      const { FILE_ACTION_TARGETS } = await import('../apps/files/fileActionTargets');
+      const playgroundTarget = FILE_ACTION_TARGETS.find((t: any) => t.id === 'logic-playground');
+
+      expect(playgroundTarget).toBeDefined();
+      expect(playgroundTarget.isEligible('file', 'test.rblogic')).toBe(true);
+      expect(playgroundTarget.isEligible('file', 'test.txt')).toBe(false);
+      expect(playgroundTarget.isEligible('file', 'test.md')).toBe(false);
+      expect(playgroundTarget.isEligible('folder', 'MyFolder')).toBe(false);
+    });
+
+    it('Text Viewer eligible for .txt and .md files', async () => {
+      const { FILE_ACTION_TARGETS } = await import('../apps/files/fileActionTargets');
+      const textViewerTarget = FILE_ACTION_TARGETS.find((t: any) => t.id === 'text-viewer');
+
+      expect(textViewerTarget).toBeDefined();
+      expect(textViewerTarget.isEligible('file', 'readme.txt')).toBe(true);
+      expect(textViewerTarget.isEligible('file', 'notes.md')).toBe(true);
+      expect(textViewerTarget.isEligible('file', 'circuit.rblogic')).toBe(false);
+      expect(textViewerTarget.isEligible('folder', 'Documents')).toBe(false);
+    });
+
+    it('getFileActionTargets filters by eligibility predicate', async () => {
+      const { getFileActionTargets } = await import('../apps/files/fileActionTargets');
+
+      const rblogicFile = { id: 'f1', name: 'circuit.rblogic', type: 'file' as const };
+      const txtFile = { id: 'f2', name: 'notes.txt', type: 'file' as const };
+      const mdFile = { id: 'f3', name: 'readme.md', type: 'file' as const };
+      const folder = { id: 'd1', name: 'MyFolder', type: 'folder' as const };
+      const unknownFile = { id: 'f4', name: 'data.json', type: 'file' as const };
+
+      const rblogicTargets = getFileActionTargets(rblogicFile);
+      expect(rblogicTargets).toHaveLength(1);
+      expect(rblogicTargets[0].id).toBe('logic-playground');
+
+      const txtTargets = getFileActionTargets(txtFile);
+      expect(txtTargets).toHaveLength(1);
+      expect(txtTargets[0].id).toBe('text-viewer');
+
+      const mdTargets = getFileActionTargets(mdFile);
+      expect(mdTargets).toHaveLength(1);
+      expect(mdTargets[0].id).toBe('text-viewer');
+
+      const folderTargets = getFileActionTargets(folder);
+      expect(folderTargets).toHaveLength(0);
+
+      const unknownTargets = getFileActionTargets(unknownFile);
+      expect(unknownTargets).toHaveLength(0);
+    });
+  });
+
+  // PHASE_Z: Multi-Target Open With Modal
+  // Note: Multi-target modal filtering is tested by unit tests in PHASE_Z: Eligibility Predicates
+  // Integration tests would require complex mocking of FilesApp component
+
+  describe('PHASE_Z: FILE_ACTION_TARGETS Registry', () => {
+    it('FILE_ACTION_TARGETS contains at least 2 real targets', async () => {
+      const { FILE_ACTION_TARGETS } = await import('../apps/files/fileActionTargets');
+
+      expect(FILE_ACTION_TARGETS.length).toBeGreaterThanOrEqual(2);
+
+      const playgroundTarget = FILE_ACTION_TARGETS.find((t: any) => t.id === 'logic-playground');
+      const textViewerTarget = FILE_ACTION_TARGETS.find((t: any) => t.id === 'text-viewer');
+
+      expect(playgroundTarget).toBeDefined();
+      expect(textViewerTarget).toBeDefined();
+
+      // Both targets have required fields
+      expect(playgroundTarget.id).toBe('logic-playground');
+      expect(playgroundTarget.name).toBe('Logic Playground');
+      expect(playgroundTarget.appId).toBe('logic-playground');
+      expect(typeof playgroundTarget.isEligible).toBe('function');
+
+      expect(textViewerTarget.id).toBe('text-viewer');
+      expect(textViewerTarget.name).toBe('Text Viewer');
+      expect(textViewerTarget.appId).toBe('text-viewer');
+      expect(typeof textViewerTarget.isEligible).toBe('function');
+    });
+
+    it('All targets have deterministic isEligible predicates', async () => {
+      const { FILE_ACTION_TARGETS } = await import('../apps/files/fileActionTargets');
+
+      FILE_ACTION_TARGETS.forEach((target: any) => {
+        expect(typeof target.isEligible).toBe('function');
+
+        // Predicates are deterministic (same input → same output)
+        const result1 = target.isEligible('file', 'test.txt');
+        const result2 = target.isEligible('file', 'test.txt');
+        expect(result1).toBe(result2);
+
+        const result3 = target.isEligible('folder', 'MyFolder');
+        const result4 = target.isEligible('folder', 'MyFolder');
+        expect(result3).toBe(result4);
+      });
     });
   });
 });

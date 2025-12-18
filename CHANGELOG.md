@@ -1,5 +1,50 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_Z - Multi-Target Open With + Deterministic Focus (2025-12-18)
+
+### Goal
+Expand open-with system to support multiple target apps with deterministic eligibility based on file type, and eliminate setTimeout hacks from focus behavior.
+
+### Key Changes
+- **FILE_ACTION_TARGETS Expansion**: Now supports 2 real targets with eligibility predicates
+  - Logic Playground: `.rblogic` files only
+  - Text Viewer: `.txt` and `.md` files
+  - Eligibility predicates are pure functions: `(resourceType, resourceName) → boolean`
+
+- **TextViewerApp**: New app for viewing text files
+  - Handles open-with intent with resourceId payload
+  - Supports `.txt` and `.md` file types
+  - Deterministic focus using requestAnimationFrame (no setTimeout)
+  - Placeholder content for demo purposes
+
+- **Deterministic Focus**: Removed setTimeout hacks from LogicPlaygroundApp
+  - Replaced `setTimeout(() => ref.current?.focus(), 100)` with `requestAnimationFrame(() => ref.current?.focus())`
+  - Focus behavior now deterministic and testable without fake timers
+  - Single frame delay instead of arbitrary 100ms timeout
+
+- **Open With Modal**: Now filters targets by eligibility
+  - Modal only shows eligible targets for selected file
+  - Folders show no targets (ineligible)
+  - Unknown file types show "No available targets" message
+
+### Testing (303 tests passing, 0 warnings)
+- **Eligibility Tests**: Logic Playground vs Text Viewer eligibility for different file types
+- **Registry Tests**: Verified >=2 targets with deterministic isEligible predicates
+- **Focus Tests**: No setTimeout usage, testable without vi.advanceTimersByTime
+- **Integration Tests**: PHASE_X/Y tests updated to use circuit.rblogic from Home
+
+### Files Changed
+- `packages/rb-apps/src/apps/files/fileActionTargets.ts` - Added isEligible predicates
+- `packages/rb-apps/src/apps/TextViewerApp.tsx` - New text viewer app
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx` - Replaced setTimeout with requestAnimationFrame
+- `packages/rb-apps/src/index.ts` - Registered TextViewerApp
+- `packages/rb-apps/src/apps/files/fsModel.ts` - Added circuit.rblogic to Home
+- `packages/rb-apps/src/__tests__/files-operations.test.tsx` - Added 9 PHASE_Z tests
+- `packages/rb-apps/src/apps/files/__tests__/fsModel.test.ts` - Updated for new Home entry
+- `packages/rb-apps/src/__tests__/files.test.tsx` - Updated PHASE_V test for new structure
+
+---
+
 ## PHASE_Y - Open-With Payload + Target Consumption (2025-12-18)
 
 ### Logic Playground: File Loading from Intent

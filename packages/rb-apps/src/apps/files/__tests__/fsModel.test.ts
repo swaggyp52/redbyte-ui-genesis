@@ -31,10 +31,11 @@ describe('fsModel', () => {
       const fs = createInitialFsState();
       const homeEntries = fs.folders.home.entries;
 
-      expect(homeEntries).toHaveLength(3);
+      expect(homeEntries).toHaveLength(4);
       expect(homeEntries[0].name).toBe('Desktop');
       expect(homeEntries[1].name).toBe('Documents');
       expect(homeEntries[2].name).toBe('Downloads');
+      expect(homeEntries[3].name).toBe('circuit.rblogic');
     });
   });
 
@@ -54,10 +55,10 @@ describe('fsModel', () => {
       const newFs = createFolder('home', 'Test Folder', fs);
 
       const homeEntries = newFs.folders.home.entries;
-      expect(homeEntries).toHaveLength(4);
-      expect(homeEntries[3].id).toBe('folder-1');
-      expect(homeEntries[3].name).toBe('Test Folder');
-      expect(homeEntries[3].type).toBe('folder');
+      expect(homeEntries).toHaveLength(5);
+      expect(homeEntries[4].id).toBe('folder-1');
+      expect(homeEntries[4].name).toBe('Test Folder');
+      expect(homeEntries[4].type).toBe('folder');
     });
 
     it('auto-suffixes duplicate names', () => {
@@ -67,9 +68,9 @@ describe('fsModel', () => {
       fs = createFolder('home', 'Test', fs);
 
       const homeEntries = fs.folders.home.entries;
-      expect(homeEntries[3].name).toBe('Test');
-      expect(homeEntries[4].name).toBe('Test (2)');
-      expect(homeEntries[5].name).toBe('Test (3)');
+      expect(homeEntries[4].name).toBe('Test');
+      expect(homeEntries[5].name).toBe('Test (2)');
+      expect(homeEntries[6].name).toBe('Test (3)');
     });
 
     it('rejects empty name', () => {
@@ -93,7 +94,7 @@ describe('fsModel', () => {
       const newFs = createFolder('home', '  Test Folder  ', fs);
 
       const homeEntries = newFs.folders.home.entries;
-      expect(homeEntries[3].name).toBe('Test Folder');
+      expect(homeEntries[4].name).toBe('Test Folder');
     });
 
     it('throws if parent folder does not exist', () => {
@@ -121,9 +122,9 @@ describe('fsModel', () => {
 
       expect(newFs.nextId).toBe(2);
       const homeEntries = newFs.folders.home.entries;
-      expect(homeEntries[3].id).toBe('file-1');
-      expect(homeEntries[3].name).toBe('test.txt');
-      expect(homeEntries[3].type).toBe('file');
+      expect(homeEntries[4].id).toBe('file-1');
+      expect(homeEntries[4].name).toBe('test.txt');
+      expect(homeEntries[4].type).toBe('file');
     });
 
     it('auto-suffixes duplicate file names', () => {
@@ -133,9 +134,9 @@ describe('fsModel', () => {
       fs = createFile('home', 'test.txt', fs);
 
       const homeEntries = fs.folders.home.entries;
-      expect(homeEntries[3].name).toBe('test.txt');
-      expect(homeEntries[4].name).toBe('test.txt (2)');
-      expect(homeEntries[5].name).toBe('test.txt (3)');
+      expect(homeEntries[4].name).toBe('test.txt');
+      expect(homeEntries[5].name).toBe('test.txt (2)');
+      expect(homeEntries[6].name).toBe('test.txt (3)');
     });
 
     it('rejects empty file name', () => {
@@ -154,7 +155,7 @@ describe('fsModel', () => {
       const newFs = createFile('home', '  test.txt  ', fs);
 
       const homeEntries = newFs.folders.home.entries;
-      expect(homeEntries[3].name).toBe('test.txt');
+      expect(homeEntries[4].name).toBe('test.txt');
     });
 
     it('throws if parent folder does not exist', () => {
@@ -305,10 +306,11 @@ describe('fsModel', () => {
       const fs = createInitialFsState();
       const children = getChildren('home', fs);
 
-      expect(children).toHaveLength(3);
+      expect(children).toHaveLength(4);
       expect(children[0].name).toBe('Desktop');
       expect(children[1].name).toBe('Documents');
       expect(children[2].name).toBe('Downloads');
+      expect(children[3].name).toBe('circuit.rblogic');
     });
 
     it('returns empty array for nonexistent folder', () => {
