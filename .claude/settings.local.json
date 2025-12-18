@@ -24,7 +24,18 @@
       "Bash(pnpm typecheck:*)",
       "Bash(git switch:*)",
       "Bash(git merge:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(git push:*)",
+      "Bash(git tag:*)",
+      "Bash(pnpm -r build:*)",
+      "Bash(node --version:*)",
+      "Bash(pnpm --version:*)",
+      "Bash(git restore:*)",
+      "Bash(pnpm -w install:*)",
+      "Bash(pnpm -w test)",
+      "Bash(git checkout:*)",
+      "Bash(del \"c:\\Users\\conno\\redbyte-ui\\packages\\rb-apps\\src\\__tests__\\logic-playground-intent.test.tsx\")",
+      "Bash(git branch:*)"
     ],
     "deny": [],
     "ask": []
