@@ -1637,13 +1637,201 @@ useEffect(() => {
 
 
 
+\## PHASE\_AA: File Associations + Deterministic Default Target Resolution
+
+### Goal
+
+Make Files feel like a daily-driver app by implementing persistent default target associations per file type (extension + resourceType), eliminating modal friction for repeated open-with actions, and making the default target transparent and keyboard-accessible.
+
+### Non-Goals
+
+\- No MIME type detection (extension-based only)
+
+\- No user-configurable file type registrations (static extension → app mappings)
+
+\- No per-file overrides (defaults apply to all files of same type)
+
+\- No async in feature path
+
+\- No new persistence infrastructure (reuse existing settings/localStorage patterns)
+
+### Invariants
+
+\- **Deterministic default resolution**: `resolveDefaultTarget(fileMeta, eligibleTargets[]) -> targetId` is pure and deterministic
+
+\- **Fallback to first eligible target**: If no default saved, use stable first eligible target from FILE\_ACTION\_TARGETS
+
+\- **Extension normalization**: Extensions are lowercase, no leading dot (e.g., "rblogic", "txt", "md")
+
+\- **Failure-safe**: Unknown extensions → no-op; invalid targetIds → fallback to first eligible; folders remain no-op
+
+\- **Keyboard-first**: All operations executable without mouse (D to set default, Shift+D to clear default)
+
+\- **Persistence**: File associations persist to localStorage and survive reload
+
+\- **Zero warnings**: Tests must pass with PHASE\_R "fail on warnings" gate
+
+### Data Model
+
+File associations store structure:
+
+```typescript
+interface FileAssociationsState {
+  // Map: resourceType -> extension -> targetId
+  associations: {
+    [resourceType in 'file' | 'folder']?: {
+      [extension: string]: string; // targetId
+    };
+  };
+}
+```
+
+Example:
+```typescript
+{
+  associations: {
+    file: {
+      rblogic: 'logic-playground',
+      txt: 'text-viewer',
+      md: 'text-viewer',
+    },
+  },
+}
+```
+
+### API Contracts
+
+**1. getDefaultTarget(resourceType, extension): targetId | null**
+   - Returns saved default target for this file type
+   - Extension normalized (lowercase, no leading dot)
+   - Returns null if no default saved
+
+**2. setDefaultTarget(resourceType, extension, targetId): void**
+   - Saves default target for this file type
+   - Extension normalized before storage
+   - Persists to localStorage immediately
+
+**3. clearDefaultTarget(resourceType, extension): void**
+   - Removes default target for this file type
+   - Extension normalized before deletion
+   - Persists to localStorage immediately
+
+**4. resolveDefaultTarget(fileMeta, eligibleTargets[]): targetId**
+   - Pure function: (resourceType, extension, eligibleTargets[]) → targetId
+   - Returns saved default if exists and is in eligibleTargets
+   - Falls back to first eligible target if no default or invalid default
+   - Throws if eligibleTargets is empty (caller must check isFileActionEligible first)
+
+### Keyboard Shortcuts
+
+\- **Cmd/Ctrl+Enter**: Uses default target for file type; falls back to first eligible target if none saved
+\- **Cmd/Ctrl+Shift+Enter**: Opens "Open With" modal (existing PHASE\_X behavior)
+\- **D key in modal**: Set selected target as default for this file type (shows "Set as Default" indicator)
+\- **Shift+D in modal**: Clear default for this file type (shows "Clear Default" indicator)
+
+### UI Changes
+
+**Open With Modal Enhancements:**
+\- Selected target shows **\[DEFAULT]** marker if it's the saved default for this file type
+\- Footer shows keyboard hints: "D: Set Default | Shift+D: Clear Default | Enter: Open | Esc: Cancel"
+\- Setting default closes modal and opens file with that target (same as Enter)
+\- Clearing default does NOT close modal (user can still select a target)
+
+**Files App Default-Open Behavior:**
+\- Cmd/Ctrl+Enter uses `resolveDefaultTarget()` to get targetId
+\- Dispatches `open-with` intent with resolved targetId
+\- No modal friction for repeated actions on same file type
+
+### Persistence Requirements
+
+\- Use existing localStorage pattern (same as settings, workspaces, macros)
+\- Store key: `rb:file-associations`
+\- Schema validation: ignore corrupted data, reset to empty state
+\- Persist immediately on setDefaultTarget/clearDefaultTarget (no batching)
+
+### Failure-Safe Behavior
+
+\- Folders remain no-op (isFileActionEligible guards apply)
+\- Unknown file extensions → no eligible targets → Cmd/Ctrl+Enter is no-op
+\- Invalid saved targetId (app unregistered) → fallback to first eligible target
+\- Empty eligibleTargets → resolveDefaultTarget throws (Files must guard with isFileActionEligible)
+\- Corrupted localStorage → reset to empty associations, no crash
+
+### Testing Requirements
+
+**1. Association Store Tests:**
+   - getDefaultTarget/setDefaultTarget/clearDefaultTarget operations
+   - Extension normalization (".txt" → "txt", "TXT" → "txt")
+   - Persistence to localStorage
+   - Corrupted data handling (invalid JSON, invalid schema)
+
+**2. Default Resolver Tests:**
+   - resolveDefaultTarget returns saved default if eligible
+   - Falls back to first eligible target if no default
+   - Falls back to first eligible if saved default not in eligibleTargets
+   - Throws if eligibleTargets empty (caller violation)
+
+**3. Files Routing Tests:**
+   - Cmd/Ctrl+Enter uses default target for known file type
+   - Cmd/Ctrl+Enter falls back to first eligible if no default
+   - Cmd/Ctrl+Enter dispatches open-with intent with correct targetId
+   - Folders remain no-op
+
+**4. Open With Modal Tests:**
+   - D key sets default and closes modal
+   - Shift+D clears default and keeps modal open
+   - \[DEFAULT] marker shows for saved default target
+   - Modal guards (no D/Shift+D when typing in search input)
+
+**5. Regression Tests:**
+   - PHASE\_X/Y/Z tests still pass (no regressions to multi-target, payload routing, eligibility)
+   - 303 baseline tests still pass with zero warnings
+
+### Implementation Checklist
+
+\- [ ] Add PHASE\_AA contract to AI\_STATE.md (this section)
+\- [ ] Audit existing persistence/settings architecture
+\- [ ] Implement file associations store (Zustand or standalone module)
+\- [ ] Implement extension normalization helper
+\- [ ] Implement getDefaultTarget/setDefaultTarget/clearDefaultTarget
+\- [ ] Implement resolveDefaultTarget with deterministic fallback
+\- [ ] Wire Files default-open behavior (Cmd/Ctrl+Enter)
+\- [ ] Wire Open With modal keyboard actions (D/Shift+D)
+\- [ ] Add \[DEFAULT] marker display in modal
+\- [ ] Write association store tests
+\- [ ] Write resolver tests
+\- [ ] Write Files routing tests
+\- [ ] Write modal UX tests
+\- [ ] Run full test suite (zero warnings)
+\- [ ] Run build
+\- [ ] Update CHANGELOG.md with PHASE\_AA completion
+
+### Definition of Done
+
+\- Users can press Cmd/Ctrl+Enter on a file in Files to open with default target
+\- Default targets persist across reload
+\- D key in Open With modal sets default for file type
+\- Shift+D key in Open With modal clears default for file type
+\- \[DEFAULT] marker visible in Open With modal for saved defaults
+\- Deterministic fallback to first eligible target when no default saved
+\- All operations keyboard-accessible
+\- No async in feature path
+\- Tests cover success + failure + edge cases exhaustively
+\- Entire suite passes with zero warnings, build passes
+\- Contracts and completion logged
+
+
+---
+
+
+
 \## Current Phase
 
 
 
-Phase ID: PHASE\_Z
+Phase ID: PHASE\_AA
 
-Phase Name: Multi-Target Open With + Deterministic Focus
+Phase Name: File Associations + Deterministic Default Target Resolution
 
 Status: IN PROGRESS
 
