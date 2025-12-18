@@ -1439,15 +1439,213 @@ Current `open-with` intent payload:
 
 
 
+\## PHASE\_Z: Multi-Target Open With + Deterministic Focus Contract
+
+### Expand FILE\_ACTION\_TARGETS and Remove Focus Timing Hacks
+
+**Goal:**
+
+Expand the open-with system to support multiple target apps with deterministic eligibility based on file type, and eliminate setTimeout hacks from focus behavior by implementing deterministic focus mechanisms.
+
+**Non-Goals:**
+
+\- No real filesystem I/O or async loading
+
+\- No background workers or indexing
+
+\- No drag-and-drop between apps
+
+\- No file watchers or change detection
+
+\- No MIME type detection (extension-based eligibility only)
+
+**Invariants:**
+
+\- **Multi-target support**: FILE\_ACTION\_TARGETS registry contains at least 2 real target apps
+
+\- **Deterministic eligibility**: Target eligibility based on resourceType + file extension predicates (no timing or async)
+
+\- **Deterministic focus**: Focus behavior uses requestAnimationFrame or existing focus managers (no setTimeout)
+
+\- **Failure-safe**: Unknown resources/targets result in no-op, never crash
+
+\- **Synchronous loading**: All file loading and focus operations remain synchronous
+
+\- **Per-window state**: Each target app window maintains independent state
+
+**Target Registry Structure:**
+
+```typescript
+interface FileActionTarget {
+  id: string;
+  name: string;
+  isEligible: (resourceType: 'file' | 'folder', resourceName: string) => boolean;
+}
+
+const FILE_ACTION_TARGETS: FileActionTarget[] = [
+  {
+    id: 'logic-playground',
+    name: 'Logic Playground',
+    isEligible: (type, name) => type === 'file' && name.endsWith('.rblogic'),
+  },
+  {
+    id: 'text-viewer', // or existing app
+    name: 'Text Viewer',
+    isEligible: (type, name) => type === 'file' && (name.endsWith('.txt') || name.endsWith('.md')),
+  },
+  // Additional targets as needed
+];
+```
+
+**Eligibility Rules:**
+
+\- Predicates are pure functions (resourceType, resourceName) → boolean
+
+\- File extensions are case-sensitive (matches Files app metadata)
+
+\- Folder entries always return false for file-only targets
+
+\- Open With modal only shows eligible targets for selected entry
+
+\- If no eligible targets: Open With button disabled or hidden
+
+**Focus Behavior Changes:**
+
+**Before (PHASE\_Y):**
+```typescript
+// LogicPlaygroundApp.tsx
+setTimeout(() => canvasAreaRef.current?.focus(), 100);
+```
+
+**After (PHASE\_Z):**
+```typescript
+// LogicPlaygroundApp.tsx - Option A: requestAnimationFrame
+useEffect(() => {
+  if (canvasAreaRef.current) {
+    requestAnimationFrame(() => {
+      canvasAreaRef.current?.focus();
+    });
+  }
+}, [/* mount or file load trigger */]);
+
+// OR Option B: Existing focus manager (if available)
+// focusManager.focusCanvas(canvasAreaRef);
+```
+
+**Contract:**
+\- Remove all setTimeout calls used for focus behavior in target apps
+
+\- Use requestAnimationFrame for deferred focus (single frame delay)
+
+\- Or use existing focus management utilities if available
+
+\- Focus must be deterministic and testable without vi.advanceTimersByTime
+
+**Second Target App:**
+
+\- Identify suitable existing app (TextViewer, ImageViewer, or similar)
+
+\- If no suitable app exists, create minimal viewer for .txt/.md files
+
+\- Target app must:
+  - Handle open-with intent with resourceId payload
+  - Load file content synchronously from filesStore
+  - Focus primary content area deterministically (no setTimeout)
+  - Handle invalid resourceId gracefully (no crash)
+
+**Open With Modal Changes:**
+
+\- Filter FILE\_ACTION\_TARGETS by eligibility predicate before displaying
+
+\- Default selection: first eligible target
+
+\- Keyboard navigation unchanged (Arrow/Enter/Escape)
+
+\- Empty target list: modal shows "No compatible apps" message
+
+**Testing Requirements:**
+
+1. **Eligibility Tests**:
+   - Logic Playground eligible for .rblogic files only
+   - Second target eligible for its file types only
+   - Folders return no eligible targets (or folder-specific targets)
+   - Unknown extensions return no eligible targets
+
+2. **Multi-Target Tests**:
+   - Open With modal lists all eligible targets
+   - Modal filters ineligible targets
+   - Selecting each target routes to correct app
+   - Default selection is first eligible target
+
+3. **Focus Tests**:
+   - Focus applied without setTimeout (no vi.useFakeTimers needed)
+   - Focus applied within single requestAnimationFrame
+   - Focus testable with synchronous assertions
+   - No race conditions or flaky focus behavior
+
+4. **Failure-Safe Tests**:
+   - Invalid resourceId → no crash, optional toast
+   - Unknown targetAppId → no crash, no-op
+   - Empty eligible targets → Open With disabled/hidden
+
+**Implementation Checklist:**
+
+\- [ ] Add PHASE\_Z contract to AI_STATE.md
+
+\- [ ] Audit existing apps to identify suitable second target
+
+\- [ ] Expand FILE\_ACTION\_TARGETS with eligibility predicates
+
+\- [ ] Update Open With modal to filter by eligibility
+
+\- [ ] Implement open-with handler in second target app
+
+\- [ ] Remove setTimeout from LogicPlaygroundApp focus behavior
+
+\- [ ] Implement deterministic focus (rAF or focus manager)
+
+\- [ ] Write eligibility tests (registry, modal filtering)
+
+\- [ ] Write multi-target tests (dispatch, routing, focus)
+
+\- [ ] Write focus determinism tests (no timers, synchronous assertions)
+
+\- [ ] Run full test suite (zero warnings), run build
+
+\- [ ] Update CHANGELOG.md with PHASE\_Z completion
+
+**Definition of Done:**
+
+\- FILE\_ACTION\_TARGETS contains at least 2 real targets with eligibility predicates
+
+\- Open With modal filters targets by resourceType + file extension
+
+\- Second target app handles open-with intent and loads files synchronously
+
+\- All setTimeout calls removed from focus behavior in target apps
+
+\- Focus behavior deterministic and testable without fake timers
+
+\- All tests pass with zero warnings (PHASE\_R gate)
+
+\- CI passes (test + build)
+
+\- Contracts and completion logged
+
+
+---
+
+
+
 \## Current Phase
 
 
 
 Phase ID: PHASE\_Z
 
-Phase Name: TBD (Awaiting user direction)
+Phase Name: Multi-Target Open With + Deterministic Focus
 
-Status: PENDING
+Status: IN PROGRESS
 
 
 
@@ -1789,3 +1987,4 @@ After completing work, an AI agent MUST:
 - Implemented session restore and workspace continuity (PHASE_O); documented Session Contract in AI_STATE.md (best-effort automatic restore, failure-safe, transparent to user); added saveSession/loadSession helpers with schema validation; implemented auto-persist via Zustand subscription on every window mutation; added restoreSession action to window store; integrated session restore in Shell initialization (loads localStorage, filters unknown apps/Launcher, restores windows with original bounds/mode/zIndex, creates window-app bindings, runs before Welcome screen); added 21 session restore tests covering persistence (bounds/mode/focus/zIndex), loadSession validation (corrupted JSON, invalid schema), restoreSession action (preserves all window state), integration (post-restore manipulation, new window creation); all 142 tests pass; objectives unchanged; phase unchanged
 - Implemented workspaces for multi-context organization (PHASE_P); documented Workspace Contract in AI_STATE.md (named snapshots of window state, explicit user-controlled, local-only, failure-safe); created workspaceStore.ts with Zustand store managing workspaces array and activeWorkspaceId (createWorkspace, switchWorkspace, deleteWorkspace, renameWorkspace actions); implemented workspace persistence to localStorage with schema validation; integrated workspace-aware boot flow in Shell (prioritizes active workspace, falls back to session restore, filters unknown apps/Launcher); added 3 workspace commands (create-workspace, switch-workspace, delete-workspace) to CommandPalette and SystemSearch; implemented minimal UI using window.prompt for workspace name input and selection, alert for errors (power-user first, no dock UI); workspace switching closes all windows and restores target snapshot; added 28 workspace tests covering create/switch/delete operations, persistence, active workspace across reload, corrupted data handling, rename workspace, getWorkspace, listWorkspaces; all 170 tests pass; objectives unchanged; phase unchanged
 - Implemented macros for repeatable action sequences (PHASE_Q); documented Macro Contract in AI_STATE.md (named sequences of action steps, synchronous/deterministic execution, failure-safe abort-on-error, local-only persistence, explicit user-triggered); created macroTypes.ts (MacroStep union: command/openApp/intent/switchWorkspace) and macroStore.ts with Zustand store (createMacro, deleteMacro, renameMacro, updateMacroSteps, getMacro, listMacros actions); implemented localStorage persistence with schema validation; created executeMacro.ts execution engine (MacroExecutionContext interface, sequential step execution, abort on first error with step index reporting); integrated macro execution in Shell (switchWorkspaceById helper, executeMacroById wrapper, run-macro command, ref-based circular dependency resolution); added run-macro command to CommandPalette and SystemSearch; added MacroSearchResult type to search-types.ts; integrated macros in SystemSearch component with "Macros" group and onExecuteMacro callback; added 31 macro tests covering store operations (create/delete/rename/update, persistence, validation), execution (command/openApp/intent/switchWorkspace steps, sequential multi-step, abort on unknown app/workspace, error reporting), and integration (localStorage restore); all 201 tests pass; objectives unchanged; phase unchanged
+- Implemented multi-target open-with and deterministic focus (PHASE_Z); expanded FILE_ACTION_TARGETS to 2 real targets (Logic Playground for .rblogic, Text Viewer for .txt/.md) with deterministic eligibility predicates based on resourceType + file extension; created TextViewerApp handling open-with intent with resourceId payload and deterministic focus using requestAnimationFrame; removed all setTimeout hacks from LogicPlaygroundApp focus behavior (replaced with requestAnimationFrame for single-frame delay); Open With modal now filters targets by eligibility predicate (only shows compatible apps for selected file, displays "No available targets" for unsupported types); added circuit.rblogic file to Home folder in fsModel for testing; added 9 PHASE_Z tests covering eligibility predicates (Logic Playground vs Text Viewer for different file types), registry validation (>=2 targets with deterministic isEligible functions), and deterministic behavior; updated fsModel tests and PHASE_X/Y/V tests to account for new filesystem structure; all 303 tests pass with zero warnings (PHASE_R gate satisfied); build passes; updated CHANGELOG.md with PHASE_Z completion; objectives unchanged; phase complete
