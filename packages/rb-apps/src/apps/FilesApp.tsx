@@ -23,6 +23,7 @@ import {
   isFileActionEligible,
   type FileActionTarget,
 } from './files/fileActionTargets';
+import { resolveDefaultTarget } from '../stores/fileAssociationsStore';
 
 interface FilesProps {
   onClose?: () => void;
@@ -41,6 +42,8 @@ interface ModalState {
   type: ModalType;
   targetId?: string;
   targets?: FileActionTarget[];
+  resourceType?: 'file' | 'folder';
+  extension?: string;
 }
 
 const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => {
@@ -120,7 +123,19 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
     if (!isFileActionEligible(selected)) return;
 
     const targets = getFileActionTargets(selected);
-    setModal({ type: 'open-with', targetId: selected.id, targets });
+
+    // Extract extension from filename (everything after last dot)
+    const extension = selected.name.includes('.')
+      ? selected.name.split('.').pop() || ''
+      : '';
+
+    setModal({
+      type: 'open-with',
+      targetId: selected.id,
+      targets,
+      resourceType: selected.type,
+      extension,
+    });
   };
 
   // Operation handlers
@@ -293,12 +308,30 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
       return;
     }
 
-    // Cmd/Ctrl+Enter: Open with default (Logic Playground)
+    // Cmd/Ctrl+Enter: Open with default target (uses file associations + fallback)
     if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key === 'Enter') {
       event.preventDefault();
       const selected = entries[selectedIndex];
-      if (selected && selected.type === 'file') {
-        handleOpenWith(selected, 'logic-playground');
+
+      // Only files are eligible for default-open behavior
+      if (!selected || !isFileActionEligible(selected)) return;
+
+      // Get eligible targets for this file
+      const eligibleTargets = getFileActionTargets(selected);
+      if (eligibleTargets.length === 0) return; // No targets available
+
+      // Extract extension from filename (everything after last dot)
+      const extension = selected.name.includes('.')
+        ? selected.name.split('.').pop() || ''
+        : '';
+
+      // Resolve default target (uses saved default or falls back to first eligible)
+      const targetId = resolveDefaultTarget(selected.type, extension, eligibleTargets);
+
+      // Find the target's appId
+      const target = eligibleTargets.find((t) => t.id === targetId);
+      if (target) {
+        handleOpenWith(selected, target.appId);
       }
       return;
     }
@@ -526,9 +559,11 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
         />
       )}
 
-      {modal && modal.type === 'open-with' && modal.targets && (
+      {modal && modal.type === 'open-with' && modal.targets && modal.resourceType && modal.extension !== undefined && (
         <OpenWithModal
           targets={modal.targets}
+          resourceType={modal.resourceType}
+          extension={modal.extension}
           onSelect={handleOpenWithSelect}
           onCancel={handleModalCancel}
         />

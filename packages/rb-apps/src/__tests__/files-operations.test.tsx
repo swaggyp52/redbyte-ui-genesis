@@ -805,13 +805,14 @@ describe('PHASE_W: Files operations', () => {
         fireEvent.keyDown(mainContainer!, { key: 'Enter', metaKey: true });
       });
 
-      // Should dispatch intent directly to Logic Playground (no modal)
+      // Should dispatch intent to default target (text-viewer for .txt files, no modal)
+      // PHASE_AA: Default target resolution uses first eligible target (Text Viewer for .txt)
       expect(onDispatchIntent).toHaveBeenCalledTimes(1);
       expect(onDispatchIntent).toHaveBeenCalledWith({
         type: 'open-with',
         payload: {
           sourceAppId: 'files',
-          targetAppId: 'logic-playground',
+          targetAppId: 'text-viewer',
           resourceId: 'notes',
           resourceType: 'file',
         },
