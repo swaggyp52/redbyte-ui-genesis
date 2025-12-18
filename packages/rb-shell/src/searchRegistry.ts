@@ -90,6 +90,8 @@ const INTENT_TARGETS: IntentSearchResult[] = [
     intentType: 'open-with',
     targetAppId: 'logic-playground',
   },
+  // Note: "File: Open With..." requires context-awareness (focused Files window + selected file)
+  // which static intents don't support. Use Cmd/Ctrl+Shift+Enter in Files instead.
 ];
 
 export function getAllSearchableApps(): AppSearchResult[] {

@@ -577,4 +577,240 @@ describe('PHASE_W: Files operations', () => {
       expect(table.textContent).toContain('📁 Notes.txt (2)'); // Folder with suffix
     });
   });
+
+  describe('PHASE_X: Cross-App File Actions', () => {
+    it('Cmd/Ctrl+Shift+Enter opens "Open With..." modal for selected file', () => {
+      const { container } = render(<FilesComponent />);
+      const mainContainer = container.querySelector('[tabIndex="0"]');
+
+      // Navigate to Desktop
+      const desktopButton = screen.getAllByRole('button', { name: 'Desktop' }).find((el) =>
+        el.className.includes('w-full')
+      );
+      act(() => {
+        fireEvent.click(desktopButton!);
+      });
+
+      // Move to Notes.txt (second entry, a file)
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
+      });
+
+      // Press Cmd+Shift+Enter
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'Enter', metaKey: true, shiftKey: true });
+      });
+
+      // Modal should appear
+      expect(screen.getByText('Open With...')).toBeTruthy();
+      expect(screen.getByText('Logic Playground')).toBeTruthy();
+    });
+
+    it('"Open With..." modal blocks Files shortcuts', () => {
+      const { container } = render(<FilesComponent />);
+      const mainContainer = container.querySelector('[tabIndex="0"]');
+
+      // Navigate to Desktop
+      const desktopButton = screen.getAllByRole('button', { name: 'Desktop' }).find((el) =>
+        el.className.includes('w-full')
+      );
+      act(() => {
+        fireEvent.click(desktopButton!);
+      });
+
+      // Move to Notes.txt
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
+      });
+
+      // Open "Open With..." modal
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'Enter', metaKey: true, shiftKey: true });
+      });
+
+      expect(screen.getByText('Open With...')).toBeTruthy();
+
+      // Try F2 (should be blocked)
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'F2' });
+      });
+
+      expect(screen.queryByText('Rename')).toBeNull();
+
+      // Cancel modal
+      const cancelButton = screen.getByText('Cancel');
+      act(() => {
+        fireEvent.click(cancelButton);
+      });
+    });
+
+    it('selecting target from "Open With..." modal dispatches intent', () => {
+      const onDispatchIntent = vi.fn();
+      const { container } = render(<FilesComponent onDispatchIntent={onDispatchIntent} />);
+      const mainContainer = container.querySelector('[tabIndex="0"]');
+
+      // Navigate to Desktop
+      const desktopButton = screen.getAllByRole('button', { name: 'Desktop' }).find((el) =>
+        el.className.includes('w-full')
+      );
+      act(() => {
+        fireEvent.click(desktopButton!);
+      });
+
+      // Move to Notes.txt
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
+      });
+
+      // Open modal
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'Enter', metaKey: true, shiftKey: true });
+      });
+
+      // Click Logic Playground
+      const playgroundButton = screen.getByText('Logic Playground');
+      act(() => {
+        fireEvent.click(playgroundButton);
+      });
+
+      // Intent should be dispatched
+      expect(onDispatchIntent).toHaveBeenCalledTimes(1);
+      expect(onDispatchIntent).toHaveBeenCalledWith({
+        type: 'open-with',
+        payload: {
+          sourceAppId: 'files',
+          targetAppId: 'logic-playground',
+          resourceId: 'notes',
+          resourceType: 'file',
+        },
+      });
+    });
+
+    it('Cmd/Ctrl+Shift+Enter on folder does nothing (folders ineligible)', () => {
+      const { container } = render(<FilesComponent />);
+      const mainContainer = container.querySelector('[tabIndex="0"]');
+
+      // Navigate to Desktop
+      const desktopButton = screen.getAllByRole('button', { name: 'Desktop' }).find((el) =>
+        el.className.includes('w-full')
+      );
+      act(() => {
+        fireEvent.click(desktopButton!);
+      });
+
+      // Project Files is selected (index 0, a folder)
+      // Press Cmd+Shift+Enter
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'Enter', metaKey: true, shiftKey: true });
+      });
+
+      // Modal should NOT appear (folders are ineligible)
+      expect(screen.queryByText('Open With...')).toBeNull();
+    });
+
+    it('"Open With..." modal supports keyboard navigation', () => {
+      const onDispatchIntent = vi.fn();
+      const { container } = render(<FilesComponent onDispatchIntent={onDispatchIntent} />);
+      const mainContainer = container.querySelector('[tabIndex="0"]');
+
+      // Navigate to Desktop and select Notes.txt
+      const desktopButton = screen.getAllByRole('button', { name: 'Desktop' }).find((el) =>
+        el.className.includes('w-full')
+      );
+      act(() => {
+        fireEvent.click(desktopButton!);
+      });
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
+      });
+
+      // Open modal
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'Enter', metaKey: true, shiftKey: true });
+      });
+
+      const modal = screen.getByText('Open With...').closest('div[tabIndex="0"]') as HTMLElement;
+
+      // Press Enter to select first target (Logic Playground)
+      act(() => {
+        fireEvent.keyDown(modal, { key: 'Enter' });
+      });
+
+      // Intent should be dispatched
+      expect(onDispatchIntent).toHaveBeenCalledTimes(1);
+      expect(onDispatchIntent.mock.calls[0][0]).toMatchObject({
+        type: 'open-with',
+        payload: {
+          targetAppId: 'logic-playground',
+        },
+      });
+    });
+
+    it('Escape closes "Open With..." modal', () => {
+      const { container } = render(<FilesComponent />);
+      const mainContainer = container.querySelector('[tabIndex="0"]');
+
+      // Navigate to Desktop and select Notes.txt
+      const desktopButton = screen.getAllByRole('button', { name: 'Desktop' }).find((el) =>
+        el.className.includes('w-full')
+      );
+      act(() => {
+        fireEvent.click(desktopButton!);
+      });
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
+      });
+
+      // Open modal
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'Enter', metaKey: true, shiftKey: true });
+      });
+
+      expect(screen.getByText('Open With...')).toBeTruthy();
+
+      // Press Escape
+      const modal = screen.getByText('Open With...').closest('div[tabIndex="0"]') as HTMLElement;
+      act(() => {
+        fireEvent.keyDown(modal, { key: 'Escape' });
+      });
+
+      // Modal should close
+      expect(screen.queryByText('Open With...')).toBeNull();
+    });
+
+    it('Cmd/Ctrl+Enter (default action) dispatches intent directly', () => {
+      const onDispatchIntent = vi.fn();
+      const { container } = render(<FilesComponent onDispatchIntent={onDispatchIntent} />);
+      const mainContainer = container.querySelector('[tabIndex="0"]');
+
+      // Navigate to Desktop and select Notes.txt
+      const desktopButton = screen.getAllByRole('button', { name: 'Desktop' }).find((el) =>
+        el.className.includes('w-full')
+      );
+      act(() => {
+        fireEvent.click(desktopButton!);
+      });
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
+      });
+
+      // Press Cmd+Enter (default action)
+      act(() => {
+        fireEvent.keyDown(mainContainer!, { key: 'Enter', metaKey: true });
+      });
+
+      // Should dispatch intent directly to Logic Playground (no modal)
+      expect(onDispatchIntent).toHaveBeenCalledTimes(1);
+      expect(onDispatchIntent).toHaveBeenCalledWith({
+        type: 'open-with',
+        payload: {
+          sourceAppId: 'files',
+          targetAppId: 'logic-playground',
+          resourceId: 'notes',
+          resourceType: 'file',
+        },
+      });
+      expect(screen.queryByText('Open With...')).toBeNull();
+    });
+  });
 });

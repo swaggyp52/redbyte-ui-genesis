@@ -2,7 +2,8 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import type { FileActionTarget } from './fileActionTargets';
 
 interface TextInputModalProps {
   title: string;
@@ -147,6 +148,96 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           >
             {confirmLabel}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface OpenWithModalProps {
+  targets: FileActionTarget[];
+  onSelect: (target: FileActionTarget) => void;
+  onCancel: () => void;
+}
+
+export const OpenWithModal: React.FC<OpenWithModalProps> = ({
+  targets,
+  onSelect,
+  onCancel,
+}) => {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  useEffect(() => {
+    // Clamp selection if targets change
+    if (selectedIndex >= targets.length) {
+      setSelectedIndex(Math.max(0, targets.length - 1));
+    }
+  }, [targets.length, selectedIndex]);
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onCancel();
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      if (targets[selectedIndex]) {
+        onSelect(targets[selectedIndex]);
+      }
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setSelectedIndex((prev) => Math.min(prev + 1, targets.length - 1));
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setSelectedIndex((prev) => Math.max(prev - 1, 0));
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-slate-900 border border-slate-700 rounded-lg shadow-xl w-96 p-4"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+      >
+        <h3 className="text-lg font-semibold text-white mb-4">Open With...</h3>
+
+        {targets.length === 0 ? (
+          <p className="text-slate-400 text-sm mb-4">No available targets</p>
+        ) : (
+          <div className="mb-4 max-h-64 overflow-y-auto">
+            {targets.map((target, index) => (
+              <button
+                key={target.id}
+                onClick={() => onSelect(target)}
+                className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                  index === selectedIndex
+                    ? 'bg-cyan-600 text-white'
+                    : 'text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                {target.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-sm rounded bg-slate-800 hover:bg-slate-700 text-white transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+
+        <div className="mt-3 text-xs text-slate-500 text-center">
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">↑↓</kbd> Navigate{' '}
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> Open{' '}
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Esc</kbd> Cancel
         </div>
       </div>
     </div>

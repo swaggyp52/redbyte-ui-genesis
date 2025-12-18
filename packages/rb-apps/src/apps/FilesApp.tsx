@@ -17,7 +17,12 @@ import {
   getFallbackFolderId,
 } from './files/fsModel';
 import type { FileSystemState, FileEntry } from './files/fsTypes';
-import { TextInputModal, ConfirmModal } from './files/modals';
+import { TextInputModal, ConfirmModal, OpenWithModal } from './files/modals';
+import {
+  getFileActionTargets,
+  isFileActionEligible,
+  type FileActionTarget,
+} from './files/fileActionTargets';
 
 interface FilesProps {
   onClose?: () => void;
@@ -30,11 +35,12 @@ const SIDEBAR_ROOTS = [
   { id: 'documents', name: 'Documents' },
 ];
 
-type ModalType = 'create-folder' | 'create-file' | 'rename' | 'delete';
+type ModalType = 'create-folder' | 'create-file' | 'rename' | 'delete' | 'open-with';
 
 interface ModalState {
   type: ModalType;
   targetId?: string;
+  targets?: FileActionTarget[];
 }
 
 const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => {
@@ -91,18 +97,30 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
     setCurrentFolderId(targetId);
   };
 
-  const handleOpenWith = (entry: FileEntry) => {
+  const handleOpenWith = (entry: FileEntry, targetAppId: string) => {
     if (!onDispatchIntent) return;
 
     onDispatchIntent({
       type: 'open-with',
       payload: {
         sourceAppId: 'files',
-        targetAppId: 'logic-playground',
+        targetAppId,
         resourceId: entry.id,
         resourceType: entry.type,
       },
     });
+  };
+
+  const openOpenWithModal = () => {
+    if (entries.length === 0) return;
+    const selected = entries[selectedIndex];
+    if (!selected) return;
+
+    // Only files are eligible for file actions
+    if (!isFileActionEligible(selected)) return;
+
+    const targets = getFileActionTargets(selected);
+    setModal({ type: 'open-with', targetId: selected.id, targets });
   };
 
   // Operation handlers
@@ -142,6 +160,16 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
     if (fs.roots.includes(resolvedId)) return;
 
     setModal({ type: 'delete', targetId: selected.id });
+  };
+
+  const handleOpenWithSelect = (target: FileActionTarget) => {
+    if (!modal || modal.type !== 'open-with' || !modal.targetId) return;
+
+    const entry = entries.find((e) => e.id === modal.targetId);
+    if (!entry) return;
+
+    handleOpenWith(entry, target.appId);
+    setModal(null);
   };
 
   const handleModalConfirm = () => {
@@ -258,12 +286,19 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
 
     if (entries.length === 0) return;
 
-    // Cmd/Ctrl+Enter: Open in Playground
-    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+    // Cmd/Ctrl+Shift+Enter: Open With... modal
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'Enter') {
+      event.preventDefault();
+      openOpenWithModal();
+      return;
+    }
+
+    // Cmd/Ctrl+Enter: Open with default (Logic Playground)
+    if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key === 'Enter') {
       event.preventDefault();
       const selected = entries[selectedIndex];
       if (selected && selected.type === 'file') {
-        handleOpenWith(selected);
+        handleOpenWith(selected, 'logic-playground');
       }
       return;
     }
@@ -406,7 +441,7 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleOpenWith(entry);
+                              handleOpenWith(entry, 'logic-playground');
                             }}
                             className="text-xs px-2 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white"
                           >
@@ -432,7 +467,8 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
             <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Ctrl/Cmd+N</kbd> New File{' '}
             <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Ctrl/Cmd+Shift+N</kbd> New Folder{' '}
             <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">F2</kbd> Rename{' '}
-            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Del</kbd> Delete
+            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Del</kbd> Delete{' '}
+            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Ctrl/Cmd+Shift+Enter</kbd> Open With...
           </div>
         </div>
       </div>
@@ -486,6 +522,14 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
               : ''
           }`}
           onConfirm={handleModalConfirm}
+          onCancel={handleModalCancel}
+        />
+      )}
+
+      {modal && modal.type === 'open-with' && modal.targets && (
+        <OpenWithModal
+          targets={modal.targets}
+          onSelect={handleOpenWithSelect}
           onCancel={handleModalCancel}
         />
       )}
