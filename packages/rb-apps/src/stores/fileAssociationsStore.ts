@@ -4,6 +4,7 @@
 
 import { create } from 'zustand';
 import type { FileActionTarget } from '../apps/files/fileActionTargets';
+import { FILE_ACTION_TARGETS } from '../apps/files/fileActionTargets';
 
 /**
  * File associations data model: resourceType → extension → targetId
@@ -16,10 +17,25 @@ interface FileAssociationsState {
   };
 }
 
+export interface AssociationEntry {
+  extension: string;
+  targetId: string;
+  resourceType: 'file' | 'folder';
+}
+
+export interface ImportResult {
+  success: boolean;
+  unknownTargets?: string[];
+}
+
 interface FileAssociationsActions {
   getDefaultTarget: (resourceType: 'file' | 'folder', extension: string) => string | null;
   setDefaultTarget: (resourceType: 'file' | 'folder', extension: string, targetId: string) => void;
   clearDefaultTarget: (resourceType: 'file' | 'folder', extension: string) => void;
+  listAssociations: () => AssociationEntry[];
+  resetAll: () => void;
+  exportJson: () => string;
+  importJson: (jsonString: string) => ImportResult;
 }
 
 type FileAssociationsStore = FileAssociationsState & FileAssociationsActions;
@@ -127,6 +143,139 @@ export const useFileAssociationsStore = create<FileAssociationsStore>((set, get)
         associations: newAssociations,
       };
     });
+  },
+
+  listAssociations: () => {
+    const state = get();
+    const entries: AssociationEntry[] = [];
+
+    // Collect from file associations
+    if (state.associations.file) {
+      Object.entries(state.associations.file).forEach(([extension, targetId]) => {
+        entries.push({ extension, targetId, resourceType: 'file' });
+      });
+    }
+
+    // Collect from folder associations
+    if (state.associations.folder) {
+      Object.entries(state.associations.folder).forEach(([extension, targetId]) => {
+        entries.push({ extension, targetId, resourceType: 'folder' });
+      });
+    }
+
+    // Sort alphabetically by extension for stable ordering
+    return entries.sort((a, b) => a.extension.localeCompare(b.extension));
+  },
+
+  resetAll: () => {
+    const emptyAssociations = {};
+    set({ associations: emptyAssociations });
+    saveAssociations(emptyAssociations);
+  },
+
+  exportJson: () => {
+    const state = get();
+    // Create canonical JSON with stable key ordering
+    const canonical: PersistedData = { associations: {} };
+
+    // Add file associations if present (sorted keys)
+    if (state.associations.file && Object.keys(state.associations.file).length > 0) {
+      const sortedFile: Record<string, string> = {};
+      Object.keys(state.associations.file)
+        .sort()
+        .forEach((key) => {
+          sortedFile[key] = state.associations.file![key];
+        });
+      canonical.associations.file = sortedFile;
+    }
+
+    // Add folder associations if present (sorted keys)
+    if (state.associations.folder && Object.keys(state.associations.folder).length > 0) {
+      const sortedFolder: Record<string, string> = {};
+      Object.keys(state.associations.folder)
+        .sort()
+        .forEach((key) => {
+          sortedFolder[key] = state.associations.folder![key];
+        });
+      canonical.associations.folder = sortedFolder;
+    }
+
+    return JSON.stringify(canonical);
+  },
+
+  importJson: (jsonString: string): ImportResult => {
+    try {
+      const parsed = JSON.parse(jsonString);
+
+      // Validate schema
+      if (!parsed || typeof parsed !== 'object') {
+        return { success: false };
+      }
+      if (!parsed.associations || typeof parsed.associations !== 'object') {
+        return { success: false };
+      }
+
+      const associations = parsed.associations;
+      if (associations.file && typeof associations.file !== 'object') {
+        return { success: false };
+      }
+      if (associations.folder && typeof associations.folder !== 'object') {
+        return { success: false };
+      }
+
+      // Get all valid targetIds from FILE_ACTION_TARGETS
+      const validTargetIds = new Set(FILE_ACTION_TARGETS.map((t) => t.id));
+      const unknownTargets: string[] = [];
+      const normalizedAssociations: FileAssociationsState['associations'] = {};
+
+      // Process file associations
+      if (associations.file) {
+        const normalizedFile: Record<string, string> = {};
+        Object.entries(associations.file).forEach(([ext, targetId]) => {
+          if (typeof targetId !== 'string') return;
+
+          const normalized = normalizeExtension(ext);
+          if (validTargetIds.has(targetId)) {
+            normalizedFile[normalized] = targetId;
+          } else {
+            unknownTargets.push(targetId);
+          }
+        });
+        if (Object.keys(normalizedFile).length > 0) {
+          normalizedAssociations.file = normalizedFile;
+        }
+      }
+
+      // Process folder associations
+      if (associations.folder) {
+        const normalizedFolder: Record<string, string> = {};
+        Object.entries(associations.folder).forEach(([ext, targetId]) => {
+          if (typeof targetId !== 'string') return;
+
+          const normalized = normalizeExtension(ext);
+          if (validTargetIds.has(targetId)) {
+            normalizedFolder[normalized] = targetId;
+          } else if (!unknownTargets.includes(targetId)) {
+            unknownTargets.push(targetId);
+          }
+        });
+        if (Object.keys(normalizedFolder).length > 0) {
+          normalizedAssociations.folder = normalizedFolder;
+        }
+      }
+
+      // Atomically replace associations
+      set({ associations: normalizedAssociations });
+      saveAssociations(normalizedAssociations);
+
+      return {
+        success: true,
+        unknownTargets: unknownTargets.length > 0 ? unknownTargets : undefined,
+      };
+    } catch (error) {
+      // Invalid JSON
+      return { success: false };
+    }
   },
 }));
 

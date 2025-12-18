@@ -1825,15 +1825,284 @@ Example:
 
 
 
+\## PHASE\_AB: File Association Manager UI
+
+### Goal
+
+Provide keyboard-first UI to view and edit file associations, with reset/import/export capabilities for power users and deterministic failure-safe operations.
+
+### Non-Goals
+
+\- No drag-and-drop UI (keyboard-first only)
+
+\- No MIME type editing (extension-based only, inherited from PHASE\_AA)
+
+\- No inline extension creation (only edit existing associations from FILE\_ACTION\_TARGETS)
+
+\- No async flows (synchronous import/export/reset operations)
+
+\- No new persistence infrastructure (reuse fileAssociationsStore)
+
+### Invariants
+
+\- **Keyboard-first navigation**: Arrow keys navigate, Enter edits, Delete clears, R resets, E exports, I imports
+
+\- **Eligible targets only**: Target picker shows only eligible apps from FILE\_ACTION\_TARGETS for each extension
+
+\- **Deterministic ordering**: Associations listed in stable alphabetical order by extension
+
+\- **Failure-safe import**: Invalid JSON → toast + no-op; unknown targetIds → filter or reject with toast
+
+\- **Atomic operations**: Reset/import are all-or-nothing (no partial state)
+
+\- **Zero async**: All operations synchronous, deterministic focus
+
+### UI Components
+
+**Association Manager Panel** (hosted in Settings app):
+
+\- List view showing: extension | current default target | [DEFAULT] marker
+
+\- Stable ordering: alphabetical by extension
+
+\- Keyboard navigation: Arrow up/down, Enter to edit, Delete to clear
+
+\- Footer shortcuts: R: Reset All | E: Export | I: Import | Esc: Close
+
+**Target Picker Modal**:
+
+\- Context: extension + resourceType
+
+\- Shows only eligible targets from FILE\_ACTION\_TARGETS
+
+\- Arrow keys navigate, Enter selects, Escape cancels
+
+\- Reuses OpenWithModal pattern from PHASE\_AA
+
+**Reset Confirmation Modal**:
+
+\- "Reset all file associations? This will clear all default targets."
+
+\- Enter confirms, Escape cancels
+
+\- On confirm: calls store.resetAll()
+
+**Export Modal**:
+
+\- Readonly textarea with canonical JSON (stable key ordering)
+
+\- Instructions: "Copy JSON below to save file associations"
+
+\- Escape closes
+
+**Import Modal**:
+
+\- Editable textarea for JSON paste
+
+\- Enter applies (validates schema, normalizes extensions, filters unknown targetIds)
+
+\- Invalid JSON → toast "Invalid JSON format" + modal remains open
+
+\- Unknown targetIds → toast "Filtered unknown apps: appId1, appId2" + apply valid mappings
+
+\- Escape cancels
+
+### Store API Extensions
+
+Add to fileAssociationsStore:
+
+**1. listAssociations(): Array<{ extension: string; targetId: string; resourceType: 'file' | 'folder' }>**
+
+   \- Returns all saved associations in stable alphabetical order by extension
+
+   \- Normalized extensions (lowercase, no leading dot)
+
+**2. resetAll(): void**
+
+   \- Clears all associations
+
+   \- Persists empty state to localStorage
+
+**3. exportJson(): string**
+
+   \- Returns canonical JSON string with stable key ordering
+
+   \- Example: `{"file":{"md":"text-viewer","rblogic":"logic-playground","txt":"text-viewer"}}`
+
+**4. importJson(jsonString: string): { success: boolean; unknownTargets?: string[] }**
+
+   \- Validates JSON shape (must match FileAssociationsState schema)
+
+   \- Normalizes extensions (lowercase, no leading dot)
+
+   \- Filters unknown targetIds (not in FILE\_ACTION\_TARGETS)
+
+   \- Returns success status + list of filtered apps (for toast)
+
+   \- On success: replaces entire associations state atomically
+
+   \- On failure: no-op, returns { success: false }
+
+### Keyboard Shortcuts
+
+**In Association Manager Panel:**
+
+\- **Arrow Up/Down**: Navigate association rows
+
+\- **Enter**: Edit default target for selected extension (opens Target Picker Modal)
+
+\- **Delete/Backspace**: Clear mapping for selected extension
+
+\- **R**: Reset all mappings (opens Reset Confirmation Modal)
+
+\- **E**: Export (opens Export Modal with JSON)
+
+\- **I**: Import (opens Import Modal with textarea)
+
+\- **Escape**: Close panel
+
+**In Modals:**
+
+\- Target Picker: Arrow Up/Down, Enter selects, Escape cancels
+
+\- Reset Confirmation: Enter confirms, Escape cancels
+
+\- Export: Escape closes
+
+\- Import: Enter applies, Escape cancels
+
+### Integration
+
+**Settings App:**
+
+\- Add "File Associations" panel/section
+
+\- Reachable via Settings sidebar navigation
+
+\- Uses existing Settings app patterns (sidebar + panel layout)
+
+**FILE\_ACTION\_TARGETS Registry:**
+
+\- Manager reads FILE\_ACTION\_TARGETS to get eligible apps per extension
+
+\- Only shows targets where isEligible(resourceType, extension) returns true
+
+\- Maintains single source of truth for available apps
+
+### Testing Requirements
+
+**1. Store Tests:**
+
+   \- listAssociations() returns stable alphabetical order
+
+   \- resetAll() clears all mappings and persists
+
+   \- exportJson() returns canonical JSON with stable keys
+
+   \- importJson() validates schema, normalizes extensions, filters unknown targetIds
+
+   \- importJson() rejects invalid JSON (no crash, returns failure)
+
+**2. UI Tests:**
+
+   \- Arrow keys navigate rows
+
+   \- Enter opens Target Picker with eligible targets only
+
+   \- Delete clears mapping
+
+   \- R opens Reset Confirmation
+
+   \- E opens Export Modal with current JSON
+
+   \- I opens Import Modal
+
+   \- Import with valid JSON updates store
+
+   \- Import with invalid JSON shows toast + no-op
+
+**3. Regression Tests:**
+
+   \- Files Cmd/Ctrl+Enter still honors defaults after manager edits
+
+   \- Files Cmd/Ctrl+Enter still honors defaults after reset
+
+   \- Files Cmd/Ctrl+Enter still honors defaults after import
+
+   \- PHASE\_AA tests still pass (no regressions)
+
+### Implementation Checklist
+
+\- [ ] Add PHASE\_AB contract to AI\_STATE.md (this section)
+
+\- [ ] Audit Settings app structure (or identify host for manager UI)
+
+\- [ ] Implement listAssociations/resetAll/exportJson/importJson in fileAssociationsStore
+
+\- [ ] Write store tests for new helpers (stable ordering, schema validation, unknown targetId filtering)
+
+\- [ ] Implement Association Manager Panel component
+
+\- [ ] Implement Target Picker Modal (reuse OpenWithModal pattern)
+
+\- [ ] Implement Reset/Export/Import modals
+
+\- [ ] Wire manager panel into Settings app
+
+\- [ ] Add UI tests (navigation, edit/clear/reset, import validation)
+
+\- [ ] Add regression tests (Files still works after manager operations)
+
+\- [ ] Run full test suite (zero warnings)
+
+\- [ ] Run build
+
+\- [ ] Update CHANGELOG.md with PHASE\_AB completion
+
+### Definition of Done
+
+\- Users can open File Associations panel in Settings
+
+\- Arrow keys navigate associations list
+
+\- Enter edits default target (shows only eligible apps)
+
+\- Delete clears mapping for selected extension
+
+\- R resets all mappings (with confirmation)
+
+\- E exports associations as canonical JSON
+
+\- I imports associations from JSON (validates schema, filters unknown apps, shows toast on error)
+
+\- All operations keyboard-accessible
+
+\- No async in feature path
+
+\- Import is failure-safe (invalid JSON → no-op + toast, never crash)
+
+\- Tests cover success + failure + edge cases exhaustively
+
+\- Entire suite passes with zero warnings, build passes
+
+\- Regression: Files Cmd/Ctrl+Enter still works after all manager operations
+
+\- Contracts and completion logged
+
+
+---
+
+
+
 \## Current Phase
 
 
 
 Phase ID: PHASE\_AB
 
-Phase Name: TBD
+Phase Name: File Association Manager UI
 
-Status: PLANNING
+Status: IN PROGRESS
 
 
 

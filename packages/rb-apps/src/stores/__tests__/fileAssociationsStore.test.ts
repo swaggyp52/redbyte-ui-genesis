@@ -313,4 +313,289 @@ describe('PHASE_AA: File Associations Store', () => {
       expect(result).toBe('folder-viewer');
     });
   });
+
+  describe('PHASE_AB: Store Helpers', () => {
+    describe('listAssociations', () => {
+      it('returns empty array when no associations exist', () => {
+        const store = useFileAssociationsStore.getState();
+
+        const associations = store.listAssociations();
+
+        expect(associations).toEqual([]);
+      });
+
+      it('returns all associations in alphabetical order by extension', () => {
+        const store = useFileAssociationsStore.getState();
+
+        // Add associations in non-alphabetical order
+        store.setDefaultTarget('file', 'txt', 'text-viewer');
+        store.setDefaultTarget('file', 'rblogic', 'logic-playground');
+        store.setDefaultTarget('file', 'md', 'text-viewer');
+
+        const associations = store.listAssociations();
+
+        // Should be sorted alphabetically by extension
+        expect(associations).toEqual([
+          { extension: 'md', targetId: 'text-viewer', resourceType: 'file' },
+          { extension: 'rblogic', targetId: 'logic-playground', resourceType: 'file' },
+          { extension: 'txt', targetId: 'text-viewer', resourceType: 'file' },
+        ]);
+      });
+
+      it('includes both file and folder associations', () => {
+        const store = useFileAssociationsStore.getState();
+
+        store.setDefaultTarget('file', 'txt', 'text-viewer');
+        store.setDefaultTarget('folder', 'proj', 'folder-viewer');
+
+        const associations = store.listAssociations();
+
+        expect(associations).toHaveLength(2);
+        expect(associations.some((a) => a.resourceType === 'file')).toBe(true);
+        expect(associations.some((a) => a.resourceType === 'folder')).toBe(true);
+      });
+
+      it('maintains stable ordering across multiple calls', () => {
+        const store = useFileAssociationsStore.getState();
+
+        store.setDefaultTarget('file', 'txt', 'text-viewer');
+        store.setDefaultTarget('file', 'rblogic', 'logic-playground');
+
+        const first = store.listAssociations();
+        const second = store.listAssociations();
+
+        expect(first).toEqual(second);
+      });
+    });
+
+    describe('resetAll', () => {
+      it('clears all associations', () => {
+        const store = useFileAssociationsStore.getState();
+
+        store.setDefaultTarget('file', 'txt', 'text-viewer');
+        store.setDefaultTarget('file', 'rblogic', 'logic-playground');
+        expect(store.listAssociations()).toHaveLength(2);
+
+        store.resetAll();
+
+        expect(store.listAssociations()).toEqual([]);
+        expect(store.getDefaultTarget('file', 'txt')).toBe(null);
+        expect(store.getDefaultTarget('file', 'rblogic')).toBe(null);
+      });
+
+      it('persists empty state to localStorage', () => {
+        const store = useFileAssociationsStore.getState();
+
+        store.setDefaultTarget('file', 'txt', 'text-viewer');
+        store.resetAll();
+
+        const saved = localStorage.getItem('rb:file-associations');
+        expect(saved).not.toBe(null);
+
+        const parsed = JSON.parse(saved!);
+        expect(parsed.associations).toEqual({});
+      });
+    });
+
+    describe('exportJson', () => {
+      it('returns canonical JSON with stable key ordering', () => {
+        const store = useFileAssociationsStore.getState();
+
+        // Add in non-alphabetical order
+        store.setDefaultTarget('file', 'txt', 'text-viewer');
+        store.setDefaultTarget('file', 'rblogic', 'logic-playground');
+        store.setDefaultTarget('file', 'md', 'text-viewer');
+
+        const json = store.exportJson();
+        const parsed = JSON.parse(json);
+
+        // Keys should be sorted alphabetically
+        expect(Object.keys(parsed.associations.file)).toEqual(['md', 'rblogic', 'txt']);
+        expect(parsed.associations.file).toEqual({
+          md: 'text-viewer',
+          rblogic: 'logic-playground',
+          txt: 'text-viewer',
+        });
+      });
+
+      it('returns empty associations object when no associations exist', () => {
+        const store = useFileAssociationsStore.getState();
+
+        const json = store.exportJson();
+        const parsed = JSON.parse(json);
+
+        expect(parsed).toEqual({ associations: {} });
+      });
+
+      it('includes both file and folder associations', () => {
+        const store = useFileAssociationsStore.getState();
+
+        store.setDefaultTarget('file', 'txt', 'text-viewer');
+        store.setDefaultTarget('folder', 'proj', 'folder-viewer');
+
+        const json = store.exportJson();
+        const parsed = JSON.parse(json);
+
+        expect(parsed.associations.file).toBeDefined();
+        expect(parsed.associations.folder).toBeDefined();
+      });
+
+      it('produces deterministic output across multiple calls', () => {
+        const store = useFileAssociationsStore.getState();
+
+        store.setDefaultTarget('file', 'txt', 'text-viewer');
+        store.setDefaultTarget('file', 'rblogic', 'logic-playground');
+
+        const first = store.exportJson();
+        const second = store.exportJson();
+
+        expect(first).toBe(second);
+      });
+    });
+
+    describe('importJson', () => {
+      it('successfully imports valid JSON', () => {
+        const store = useFileAssociationsStore.getState();
+
+        const json = JSON.stringify({
+          associations: {
+            file: {
+              txt: 'text-viewer',
+              rblogic: 'logic-playground',
+            },
+          },
+        });
+
+        const result = store.importJson(json);
+
+        expect(result.success).toBe(true);
+        expect(result.unknownTargets).toBe(undefined);
+        expect(store.getDefaultTarget('file', 'txt')).toBe('text-viewer');
+        expect(store.getDefaultTarget('file', 'rblogic')).toBe('logic-playground');
+      });
+
+      it('normalizes extensions during import', () => {
+        const store = useFileAssociationsStore.getState();
+
+        const json = JSON.stringify({
+          associations: {
+            file: {
+              '.TXT': 'text-viewer',
+              RBLOGIC: 'logic-playground',
+            },
+          },
+        });
+
+        const result = store.importJson(json);
+
+        expect(result.success).toBe(true);
+        // Should be normalized to lowercase, no leading dot
+        expect(store.getDefaultTarget('file', 'txt')).toBe('text-viewer');
+        expect(store.getDefaultTarget('file', 'rblogic')).toBe('logic-playground');
+      });
+
+      it('filters unknown targetIds', () => {
+        const store = useFileAssociationsStore.getState();
+
+        const json = JSON.stringify({
+          associations: {
+            file: {
+              txt: 'text-viewer',
+              unknown: 'nonexistent-app',
+              rblogic: 'logic-playground',
+            },
+          },
+        });
+
+        const result = store.importJson(json);
+
+        expect(result.success).toBe(true);
+        expect(result.unknownTargets).toEqual(['nonexistent-app']);
+        // Valid associations should be imported
+        expect(store.getDefaultTarget('file', 'txt')).toBe('text-viewer');
+        expect(store.getDefaultTarget('file', 'rblogic')).toBe('logic-playground');
+        // Unknown association should not be imported
+        expect(store.getDefaultTarget('file', 'unknown')).toBe(null);
+      });
+
+      it('rejects invalid JSON', () => {
+        const store = useFileAssociationsStore.getState();
+
+        const result = store.importJson('{invalid json}');
+
+        expect(result.success).toBe(false);
+        expect(result.unknownTargets).toBe(undefined);
+      });
+
+      it('rejects invalid schema (missing associations)', () => {
+        const store = useFileAssociationsStore.getState();
+
+        const result = store.importJson(JSON.stringify({ wrong: 'schema' }));
+
+        expect(result.success).toBe(false);
+      });
+
+      it('rejects invalid schema (associations not an object)', () => {
+        const store = useFileAssociationsStore.getState();
+
+        const result = store.importJson(JSON.stringify({ associations: 'invalid' }));
+
+        expect(result.success).toBe(false);
+      });
+
+      it('rejects invalid schema (file not an object)', () => {
+        const store = useFileAssociationsStore.getState();
+
+        const result = store.importJson(JSON.stringify({ associations: { file: 'invalid' } }));
+
+        expect(result.success).toBe(false);
+      });
+
+      it('atomically replaces all associations', () => {
+        const store = useFileAssociationsStore.getState();
+
+        // Set initial associations
+        store.setDefaultTarget('file', 'txt', 'text-viewer');
+        store.setDefaultTarget('file', 'md', 'text-viewer');
+        expect(store.listAssociations()).toHaveLength(2);
+
+        // Import new associations (doesn't include 'md')
+        const json = JSON.stringify({
+          associations: {
+            file: {
+              rblogic: 'logic-playground',
+            },
+          },
+        });
+
+        store.importJson(json);
+
+        // Old associations should be gone
+        expect(store.getDefaultTarget('file', 'txt')).toBe(null);
+        expect(store.getDefaultTarget('file', 'md')).toBe(null);
+        // New association should be present
+        expect(store.getDefaultTarget('file', 'rblogic')).toBe('logic-playground');
+      });
+
+      it('persists imported associations to localStorage', () => {
+        const store = useFileAssociationsStore.getState();
+
+        const json = JSON.stringify({
+          associations: {
+            file: {
+              txt: 'text-viewer',
+            },
+          },
+        });
+
+        store.importJson(json);
+
+        const saved = localStorage.getItem('rb:file-associations');
+        expect(saved).not.toBe(null);
+
+        const parsed = JSON.parse(saved!);
+        expect(parsed.associations.file.txt).toBe('text-viewer');
+      });
+    });
+  });
 });
