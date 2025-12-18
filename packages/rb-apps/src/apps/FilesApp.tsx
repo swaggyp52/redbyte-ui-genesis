@@ -5,18 +5,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { RedByteApp } from '../types';
 import type { Intent } from '@redbyte/rb-shell';
-import {
-  createInitialFsState,
-  createFolder,
-  createFile,
-  renameEntry,
-  deleteEntry,
-  getChildren,
-  getPath,
-  resolveFolderLink,
-  getFallbackFolderId,
-} from './files/fsModel';
-import type { FileSystemState, FileEntry } from './files/fsTypes';
+import type { FileEntry } from './files/fsTypes';
 import { TextInputModal, ConfirmModal, OpenWithModal } from './files/modals';
 import {
   getFileActionTargets,
@@ -24,6 +13,7 @@ import {
   type FileActionTarget,
 } from './files/fileActionTargets';
 import { resolveDefaultTarget } from '../stores/fileAssociationsStore';
+import { useFileSystemStore } from '../stores/fileSystemStore';
 
 interface FilesProps {
   onClose?: () => void;
@@ -47,7 +37,19 @@ interface ModalState {
 }
 
 const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => {
-  const [fs, setFs] = useState<FileSystemState>(() => createInitialFsState());
+  const {
+    folders,
+    roots,
+    createFolder,
+    createFile,
+    renameEntry,
+    deleteEntry,
+    getChildren,
+    getPath,
+    resolveFolderLink,
+    getFallbackFolderId,
+  } = useFileSystemStore();
+
   const [currentFolderId, setCurrentFolderId] = useState('home');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [backStack, setBackStack] = useState<string[]>([]);
@@ -57,8 +59,8 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
   const [modalError, setModalError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const entries = getChildren(currentFolderId, fs);
-  const breadcrumbPath = getPath(currentFolderId, fs);
+  const entries = getChildren(currentFolderId);
+  const breadcrumbPath = getPath(currentFolderId);
 
   useEffect(() => {
     setSelectedIndex(0);
@@ -70,7 +72,7 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
 
   // Centralized navigation helper
   const navigateTo = (targetId: string, fromHistory = false) => {
-    if (!fs.folders[targetId]) return;
+    if (!folders[targetId]) return;
 
     if (!fromHistory) {
       // Push current folder onto back stack
@@ -159,7 +161,7 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
 
     // Check if root folder (resolve link first)
     const resolvedId = resolveFolderLink(selected.id);
-    if (fs.roots.includes(resolvedId)) return;
+    if (roots.includes(resolvedId)) return;
 
     setModal({ type: 'rename', targetId: selected.id });
     setModalValue(selected.name);
@@ -173,7 +175,7 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
 
     // Check if root folder (resolve link first)
     const resolvedId = resolveFolderLink(selected.id);
-    if (fs.roots.includes(resolvedId)) return;
+    if (roots.includes(resolvedId)) return;
 
     setModal({ type: 'delete', targetId: selected.id });
   };
@@ -193,29 +195,25 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
 
     try {
       if (modal.type === 'create-folder') {
-        const newFs = createFolder(currentFolderId, modalValue, fs);
-        setFs(newFs);
+        createFolder(currentFolderId, modalValue);
         setModal(null);
       } else if (modal.type === 'create-file') {
-        const newFs = createFile(currentFolderId, modalValue, fs);
-        setFs(newFs);
+        createFile(currentFolderId, modalValue);
         setModal(null);
       } else if (modal.type === 'rename' && modal.targetId) {
-        const newFs = renameEntry(modal.targetId, modalValue, fs);
-        setFs(newFs);
+        renameEntry(modal.targetId, modalValue);
         setModal(null);
       } else if (modal.type === 'delete' && modal.targetId) {
-        const newFs = deleteEntry(modal.targetId, fs);
-        setFs(newFs);
-
         // Navigate to fallback if deleting current folder
         if (modal.targetId === currentFolderId) {
-          const fallbackId = getFallbackFolderId(currentFolderId, fs);
+          const fallbackId = getFallbackFolderId(currentFolderId);
           setCurrentFolderId(fallbackId);
         }
 
+        deleteEntry(modal.targetId);
+
         // Clamp selection index
-        const newEntries = getChildren(currentFolderId, newFs);
+        const newEntries = getChildren(currentFolderId);
         if (selectedIndex >= newEntries.length) {
           setSelectedIndex(Math.max(0, newEntries.length - 1));
         }
