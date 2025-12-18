@@ -965,6 +965,167 @@ Make Files feel real, not just correct. Add breadcrumb navigation, back/forward 
 \- CHANGELOG.md reflects completion
 
 
+### Files Operations Contract (PHASE_W)
+
+Upgrade Files from "navigation + intents" into a user-owned workspace by adding create / rename / delete operations.
+
+**Goal:**
+
+Make Files feel owned by adding mutation operations (create folder/file, rename, delete) with modal confirmation, keyboard-first UX, and zero async.
+
+**Non-Goals:**
+
+\- No real filesystem I/O
+
+\- No async/await, timers, network, or background work
+
+\- No drag/drop, copy/paste, multi-select (reserved for future)
+
+\- No permissions/auth
+
+**Invariants:**
+
+\- **Determinism**: All operations are synchronous and produce deterministic state transitions
+
+\- **Per-window state**: Each Files window maintains independent mock FS state (per-window isolation)
+
+\- **Modal-confirmed**: All destructive operations route through Shell modal UI (no window.prompt/confirm)
+
+\- **Zero warnings**: Tests must pass with PHASE_R "fail on warnings" gate
+
+\- **Keyboard-first**: All operations executable without mouse
+
+**Operation Contracts:**
+
+1\. **Create Folder**
+
+   \- Opens modal with name input
+
+   \- Keyboard: Cmd/Ctrl+Shift+N
+
+   \- Default name: "New Folder" (or auto-suffix if duplicate)
+
+   \- Empty name rejected (disabled confirm button)
+
+   \- Duplicate names: auto-suffix with " (2)", " (3)", etc.
+
+   \- Created in current folder
+
+   \- Selection moves to new folder after creation
+
+2\. **Create File**
+
+   \- Opens modal with name input
+
+   \- Keyboard: Cmd/Ctrl+N
+
+   \- Default name: "New File.txt" (or auto-suffix if duplicate)
+
+   \- Empty name rejected
+
+   \- Duplicate names: auto-suffix
+
+   \- Created in current folder
+
+   \- Selection moves to new file after creation
+
+3\. **Rename Entry**
+
+   \- Keyboard: F2
+
+   \- Opens modal with current name pre-filled
+
+   \- Empty name rejected
+
+   \- Duplicate name: show inline error, disable confirm
+
+   \- Rename succeeds: selection stays on renamed entry
+
+   \- Cancel: restores original name
+
+   \- Root folders (Home/Desktop/Documents) cannot be renamed
+
+4\. **Delete Entry**
+
+   \- Keyboard: Delete key
+
+   \- Opens confirmation modal showing entry name and type
+
+   \- Folder delete: cascades to entire subtree (recursive delete)
+
+   \- After delete: selection clamps to valid index (or 0 if list empty)
+
+   \- If current folder deleted: navigate to parent (or Home if no parent)
+
+   \- Root folders cannot be deleted
+
+**Name Validation Rules:**
+
+\- Names are trimmed (leading/trailing whitespace removed)
+
+\- Empty names rejected
+
+\- Reserved characters: `/` and `\` rejected (minimal OS-agnostic rules)
+
+\- Duplicate detection: case-sensitive match
+
+\- Auto-suffix format: " (2)", " (3)", etc. (deterministic numbering)
+
+**Modal Integration:**
+
+\- Reuse PHASE_U modal patterns (keyboard-first, Arrow keys navigate, Enter confirms, Escape cancels)
+
+\- Create modals: text input + confirm/cancel buttons
+
+\- Delete modal: confirmation message + confirm/cancel buttons
+
+\- Rename modal: text input with current name + confirm/cancel buttons
+
+\- All modals block Files keyboard shortcuts while open
+
+**Navigation Safety:**
+
+\- Delete current folder → navigate to parent folder (or Home if parent is null)
+
+\- Selection index clamps after delete (min 0, max entries.length - 1)
+
+\- Selection resets to 0 on folder navigation (existing behavior preserved)
+
+**Implementation checklist:**
+
+\- Add PHASE_W contract to AI_STATE.md
+
+\- Extend mock FS model with mutation primitives (createFolder, createFile, renameEntry, deleteEntry)
+
+\- Implement modals for create/rename/delete operations
+
+\- Add keyboard shortcuts (F2, Delete, Cmd/Ctrl+N, Cmd/Ctrl+Shift+N)
+
+\- Wire modals into Files component
+
+\- Add UI affordances (toolbar buttons optional, keyboard primary)
+
+\- Write exhaustive tests (create, rename, delete, validation, edge cases)
+
+\- Run full test suite (zero warnings), run build
+
+\- Update CHANGELOG.md with PHASE_W completion
+
+**Definition of Done:**
+
+\- Users can create, rename, delete files/folders entirely via keyboard
+
+\- All confirmations via first-class modals (no browser prompts)
+
+\- No async in feature path
+
+\- Tests cover success + failure + edge cases exhaustively
+
+\- Entire suite passes with zero warnings, build passes
+
+\- Contracts and completion logged
+
+
 ---
 
 
@@ -973,11 +1134,11 @@ Make Files feel real, not just correct. Add breadcrumb navigation, back/forward 
 
 
 
-Phase ID: PHASE\_G  
+Phase ID: PHASE\_X
 
-Phase Name: Genesis Stabilization \& Attribution Cleanup  
+Phase Name: Cross-App File Actions
 
-Status: ACTIVE
+Status: READY (awaiting user confirmation)
 
 
 
@@ -1000,6 +1161,40 @@ Status: ACTIVE
 \- PHASE\_E — App Framework
 
 \- PHASE\_F — Legal \& Licensing Foundation
+
+\- PHASE\_G — Genesis Stabilization \& Attribution Cleanup
+
+\- PHASE\_H — Logic Playground Foundation
+
+\- PHASE\_I — Logic Playground Visual Programming
+
+\- PHASE\_J — Advanced Windowing System
+
+\- PHASE\_K — Session Persistence
+
+\- PHASE\_L — Settings Foundation
+
+\- PHASE\_M — Settings Polish
+
+\- PHASE\_N — Launcher App
+
+\- PHASE\_O — Welcome \& Onboarding
+
+\- PHASE\_P — Launcher Refinement
+
+\- PHASE\_Q — Testing Framework
+
+\- PHASE\_R — Test Hardening \& Warning Enforcement
+
+\- PHASE\_S — System Search
+
+\- PHASE\_T — Command Palette \& Macro System
+
+\- PHASE\_U — Files App Foundation
+
+\- PHASE\_V — Files Workflow Polish
+
+\- PHASE\_W — Files Operations
 
 
 

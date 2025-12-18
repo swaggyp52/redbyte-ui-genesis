@@ -1,5 +1,72 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_W - Files Operations (2025-12-18)
+
+### Files App: User-Owned Workspace
+
+Upgraded Files from "navigation + intents" into a user-owned workspace with create/rename/delete operations.
+
+- **Per-Window Mutable Filesystem**: Each Files window has independent mutable state
+  - Deterministic ID generation using incremental counter (`folder-1`, `file-2`)
+  - Auto-suffix for duplicates: "New Folder", "New Folder (2)", "New Folder (3)"
+  - Per-window state isolation (operations in one window don't affect others)
+
+- **Create Operations**: Modal-confirmed folder and file creation
+  - Create Folder: Cmd/Ctrl+Shift+N, default name "New Folder"
+  - Create File: Cmd/Ctrl+N, default name "New File.txt"
+  - Name validation: trim whitespace, reject empty, reject `/` and `\`
+  - Auto-suffix on duplicate names in same folder
+
+- **Rename Operation**: F2 keyboard shortcut
+  - Modal pre-filled with current entry name
+  - Root folder protection (Home/Desktop/Documents cannot be renamed)
+  - Auto-suffix if target name already exists
+  - Updates both entry and folder metadata
+
+- **Delete Operation**: Delete key with confirmation
+  - Confirmation modal shows entry name and type
+  - Cascade delete for folders (entire subtree removed recursively)
+  - Root folder protection (cannot delete Home/Desktop/Documents)
+  - Navigate to parent if deleting current folder
+  - Selection index clamping after delete
+
+- **Modal Components**: Reusable PHASE_U pattern
+  - TextInputModal: Enter to confirm, Escape to cancel, live validation
+  - ConfirmModal: Shows cascade warning for folder deletes
+  - Auto-focus input, pre-select text for quick editing
+
+- **Keyboard Priority & Guards** (Stage 3 Polish):
+  - Modal open blocks all Files shortcuts (F2, Delete, Cmd+N, arrow keys)
+  - Escape priority: closes modal first, then window on second press
+  - "Open in Playground" (Cmd+Enter) suppressed during modal
+  - Selection frozen while modal active
+
+- **UX Polish**:
+  - Organized shortcut hints in footer
+  - Navigation shortcuts (↑↓, Enter, Alt+←→) grouped on left
+  - Operation shortcuts (Ctrl/Cmd+N, F2, Del) grouped on right
+  - Clear visual grouping for discoverability
+
+- **Testing**: Exhaustive coverage with 18 operation tests
+  - Create folder/file via keyboard shortcuts
+  - Rename with F2 (including root protection)
+  - Delete with confirmation (including cascade, root protection)
+  - Auto-suffix for duplicate names
+  - Empty name rejection
+  - Selection index clamping after delete
+  - Navigate to parent when deleting current folder
+  - Per-window state independence
+  - Modal keyboard guards (arrow keys, shortcuts blocked)
+  - Escape priority (modal → window)
+  - "Open in Playground" blocked during modal
+  - 288 total tests passing, zero warnings
+
+- **Filesystem Model** (Stage 1):
+  - Pure mutation functions in `packages/rb-apps/src/apps/files/fsModel.ts`
+  - Type definitions in `packages/rb-apps/src/apps/files/fsTypes.ts`
+  - 48 unit tests for filesystem primitives
+  - Deterministic behavior, immutable updates
+
 ## PHASE_V - Files Workflow Polish (2025-12-17)
 
 ### Files App Navigation Enhancements
