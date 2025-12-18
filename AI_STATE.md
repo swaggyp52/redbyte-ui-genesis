@@ -2098,11 +2098,11 @@ Add to fileAssociationsStore:
 
 
 
-Phase ID: PHASE\_AB
+Phase ID: PHASE\_AC
 
-Phase Name: File Association Manager UI
+Phase Name: TBD
 
-Status: IN PROGRESS
+Status: PLANNING
 
 
 
@@ -2167,6 +2167,8 @@ Status: IN PROGRESS
 \- PHASE\_Z — Multi-Target Open With + Deterministic Focus
 
 \- PHASE\_AA — File Associations + Deterministic Default Target Resolution
+
+\- PHASE\_AB — File Association Manager UI
 
 
 
@@ -2259,6 +2261,7 @@ After completing work, an AI agent MUST:
 
 
 \### 2025-12-18
+\- Implemented PHASE_AB File Association Manager UI; keyboard-first panel in Settings app (Arrow keys navigate, Enter edits, Delete clears, R resets, E exports, I imports); listAssociations/resetAll/exportJson/importJson store helpers; canonical JSON export with stable key ordering; import validates schema, normalizes extensions, filters unknown targetIds; Target Picker Modal shows only eligible apps; Reset/Export/Import modals with failure-safe error handling; all 346 tests pass with zero warnings (327 baseline + 19 new store tests); build passes; phase complete
 \- Implemented PHASE_AA file associations with deterministic default target resolution per file type (extension + resourceType); D/Shift+D keyboard actions in Open With modal; [DEFAULT] marker display; extension normalization (lowercase, no leading dot); localStorage persistence (rb:file-associations); resolveDefaultTarget with fallback to first eligible target; Cmd/Ctrl+Enter uses default target; comprehensive tests (24 new association store tests); all 327 tests pass with zero warnings; build passes; phase complete
 
 \### 2025-12-17

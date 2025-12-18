@@ -1,5 +1,74 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_AB - File Association Manager UI (2025-12-18)
+
+### Goal
+Provide keyboard-first UI to view and edit file associations, with reset/import/export capabilities for power users and deterministic failure-safe operations.
+
+### Key Changes
+- **File Associations Panel** (Settings app):
+  - Keyboard-first navigation: Arrow keys navigate, Enter edits, Delete clears
+  - Shows all associations in stable alphabetical order by extension
+  - Displays extension, target name, and [DEFAULT] marker for each association
+  - Hosted in Settings app sidebar (new "File Associations" section)
+
+- **Store Helpers**:
+  - `listAssociations()`: Returns all associations in stable alphabetical order
+  - `resetAll()`: Clears all associations and persists empty state
+  - `exportJson()`: Returns canonical JSON with stable key ordering
+  - `importJson(jsonString)`: Validates schema, normalizes extensions, filters unknown targetIds
+  - Import is atomic (all-or-nothing) and failure-safe (invalid JSON → no-op)
+
+- **Keyboard Shortcuts**:
+  - **Arrow Up/Down**: Navigate association rows
+  - **Enter**: Edit default target (opens Target Picker Modal with eligible targets only)
+  - **Delete/Backspace**: Clear mapping for selected extension
+  - **R**: Reset all mappings (opens Reset Confirmation Modal)
+  - **E**: Export (opens Export Modal with canonical JSON, readonly textarea)
+  - **I**: Import (opens Import Modal with editable textarea)
+
+- **Modals**:
+  - Target Picker: Shows only eligible apps from FILE_ACTION_TARGETS for each extension
+  - Reset Confirmation: Enter confirms, Escape cancels
+  - Export: Readonly JSON textarea, Escape closes
+  - Import: Editable JSON textarea, Enter applies, validates schema, filters unknown targetIds
+  - Invalid JSON shows toast "Invalid JSON format", keeps modal open
+  - Unknown targetIds shows toast "Filtered unknown apps: ..." and applies valid mappings
+
+### Testing (346 tests passing, 0 warnings)
+- **Store Helper Tests** (19 new tests):
+  - listAssociations stable alphabetical ordering
+  - resetAll clears all mappings and persists
+  - exportJson canonical JSON with sorted keys
+  - exportJson deterministic output across calls
+  - importJson validates schema (invalid JSON, missing fields, wrong types)
+  - importJson normalizes extensions (`.TXT` → `txt`)
+  - importJson filters unknown targetIds
+  - importJson atomic replacement (all-or-nothing)
+  - importJson persists to localStorage
+- **Regression**: All PHASE_AA tests still pass (no regressions)
+
+### Files Changed
+- `AI_STATE.md` - PHASE_AB contract added
+- `packages/rb-apps/src/stores/fileAssociationsStore.ts` - Added listAssociations/resetAll/exportJson/importJson
+- `packages/rb-apps/src/stores/__tests__/fileAssociationsStore.test.ts` - 19 new store helper tests
+- `packages/rb-apps/src/apps/settings/FileAssociationsPanel.tsx` - New keyboard-first manager panel
+- `packages/rb-apps/src/apps/SettingsApp.tsx` - Added "File Associations" sidebar section
+
+### UX Impact
+- **Before**: No UI to view/edit file associations (store API only)
+- **After**: Full keyboard-first manager in Settings app
+- **Example workflow**:
+  1. Open Settings → File Associations section
+  2. Arrow keys navigate existing associations
+  3. Press Enter on `.txt` association → Target Picker shows Text Viewer (eligible), Logic Playground (ineligible)
+  4. Select new target → association updated immediately
+  5. Press R → confirm reset → all associations cleared
+  6. Press E → copy canonical JSON for backup
+  7. Press I → paste JSON → validates and applies atomically
+
+---
+
 ## PHASE_AA - File Associations + Deterministic Default Target Resolution (2025-12-18)
 
 ### Goal
