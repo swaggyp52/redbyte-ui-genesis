@@ -5,6 +5,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { RedByteApp } from '../types';
 import { useSettingsStore, type ThemeVariant, type AccentColor } from '@redbyte/rb-utils';
+import { FileAssociationsPanel } from './settings/FileAssociationsPanel';
 
 interface SettingsProps {
   onClose?: () => void;
@@ -17,8 +18,10 @@ const WALLPAPERS = [
   { id: 'solid', name: 'Solid Color' },
 ];
 
+type SettingsSection = 'appearance' | 'system' | 'files';
+
 const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
-  const [selectedSection, setSelectedSection] = useState<'appearance' | 'system'>('appearance');
+  const [selectedSection, setSelectedSection] = useState<SettingsSection>('appearance');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -99,6 +102,14 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
           >
             System
           </button>
+          <button
+            onClick={() => setSelectedSection('files')}
+            className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-800 transition-colors ${
+              selectedSection === 'files' ? 'bg-slate-800 text-cyan-400' : 'text-slate-300'
+            }`}
+          >
+            File Associations
+          </button>
         </div>
       </div>
 
@@ -106,7 +117,7 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
       <div className="flex-1 flex flex-col">
         <div className="p-3 border-b border-slate-800">
           <h2 className="text-sm font-semibold">
-            {selectedSection === 'appearance' ? 'Appearance' : 'System'}
+            {selectedSection === 'appearance' ? 'Appearance' : selectedSection === 'system' ? 'System' : 'File Associations'}
           </h2>
         </div>
 
@@ -203,13 +214,19 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
               <p className="text-slate-400">System settings coming soon.</p>
             </div>
           )}
+
+          {selectedSection === 'files' && (
+            <FileAssociationsPanel />
+          )}
         </div>
 
-        <div className="p-2 border-t border-slate-800 text-xs text-slate-500">
-          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">↑↓</kbd> Navigate{' '}
-          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> Toggle{' '}
-          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Esc</kbd> Close
-        </div>
+        {selectedSection !== 'files' && (
+          <div className="p-2 border-t border-slate-800 text-xs text-slate-500">
+            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">↑↓</kbd> Navigate{' '}
+            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> Toggle{' '}
+            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Esc</kbd> Close
+          </div>
+        )}
       </div>
     </div>
   );
