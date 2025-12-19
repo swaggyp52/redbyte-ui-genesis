@@ -1,5 +1,4 @@
-export async function onRequest(context) {
-  const { request, next } = context;
+export async function onRequest({ request, next }) {
   const url = new URL(request.url);
 
   if (request.method !== "GET" && request.method !== "HEAD") return next();
@@ -10,13 +9,19 @@ export async function onRequest(context) {
   const last = url.pathname.split("/").pop() || "";
   const hasExt = last.includes(".");
 
-  // SPA fallback only for HTML navigation requests with no extension
+  // Only handle HTML navigation requests with no file extension.
   if (!wantsHTML || hasExt) return next();
 
-  let res = await next();
-  if (res.status === 404) {
+  // Force "/" and any directory-style path to "/index.html" so MIME is correct.
+  if (url.pathname === "/" || url.pathname.endsWith("/")) {
     url.pathname = "/index.html";
-    res = await next(new Request(url.toString(), request));
+    return next(new Request(url.toString(), request));
   }
-  return res;
+
+  // Otherwise try the original path, then SPA-fallback on 404.
+  let res = await next();
+  if (res.status !== 404) return res;
+
+  url.pathname = "/index.html";
+  return next(new Request(url.toString(), request));
 }
