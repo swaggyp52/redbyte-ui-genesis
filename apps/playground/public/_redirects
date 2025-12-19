@@ -1,5 +1,2 @@
-﻿# CF Pages SPA routing:
-# 1) Let actual files through (anything containing a dot)
-# 2) Everything else falls back to /index.html
-/*.* /:splat 200
-/*   /index.html 200
+﻿/assets/* /assets/:splat 200
+/* /index.html 200
