@@ -1,5 +1,57 @@
 # RedByte OS Genesis - Changelog
 
+## v0.1.0-preview - Live Preview RC (Release Hardening + Deploy Wiring) (2025-12-19)
+
+### Goal
+Prepare stable, deployable live preview for redbyteapps.dev with clear "Preview" labeling, version metadata, crash safety, deployment documentation, and tagged anchor point for paused development.
+
+### Key Changes
+- **Version Metadata** ([packages/rb-shell/src/version.ts](packages/rb-shell/src/version.ts)):
+  - Build-time version string: `v0.1.0-preview (git-sha)`
+  - GIT_SHA injected via Vite env define (fallback "dev")
+  - Exposed via `getVersionString()` and `getFullVersionString()` helpers
+  - Displayed in Shell footer for visibility
+
+- **Preview Badge** ([packages/rb-shell/src/Shell.tsx](packages/rb-shell/src/Shell.tsx)):
+  - Visible "PREVIEW" badge in Shell footer
+  - Always-on labeling so visitors understand scope
+  - Styled with amber/yellow accent for clarity
+
+- **Error Boundary** ([packages/rb-shell/src/ErrorBoundary.tsx](packages/rb-shell/src/ErrorBoundary.tsx)):
+  - Top-level crash boundary wraps Shell component
+  - On error: shows "Something went wrong" with reload button
+  - Factory Reset hint: "Settings → Filesystem Data → F → type RESET"
+  - No timers or async; deterministic recovery path
+
+- **Deployment Documentation** ([DEPLOYMENT.md](DEPLOYMENT.md)):
+  - Provider-agnostic build and deploy instructions
+  - SPA fallback configuration guidance
+  - Cache strategy: short-cache index.html, long-cache assets
+  - Rollback procedure: redeploy previous tag/build
+  - Manual smoke checklist (6 critical paths)
+
+- **Build Config** (Vite):
+  - GIT_SHA injection via `define` plugin
+  - Base path verified for root domain deployment
+  - SPA fallback guidance for Netlify/Vercel/CF Pages
+
+### Quality Gates
+- ✅ All tests passing (433/433)
+- ✅ Lint passing
+- ✅ Typecheck passing
+- ✅ Build successful
+
+### Deployment Readiness
+This tag (`v0.1.0-preview`) is the natural resting point:
+- Main branch is green and deployable
+- No pending features required for live preview
+- Smoke checklist validates core functionality
+- Factory Reset + Session Reset provide recovery paths
+
+**Next Step**: Deploy to redbyteapps.dev and run manual smoke checklist.
+
+---
+
 ## PHASE_AJ - Keyboard-First Window Switcher (MRU Ordering + Deterministic Focus Transfer) (2025-12-19)
 
 ### Goal

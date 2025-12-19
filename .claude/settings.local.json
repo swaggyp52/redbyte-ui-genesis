@@ -36,7 +36,10 @@
       "Bash(git checkout:*)",
       "Bash(del \"c:\\Users\\conno\\redbyte-ui\\packages\\rb-apps\\src\\__tests__\\logic-playground-intent.test.tsx\")",
       "Bash(git branch:*)",
-      "Bash(del \"c:\\Users\\conno\\redbyte-ui\\packages\\rb-shell\\src\\__tests__\\phase-ae-open-with-modal.test.tsx\")"
+      "Bash(del \"c:\\Users\\conno\\redbyte-ui\\packages\\rb-shell\\src\\__tests__\\phase-ae-open-with-modal.test.tsx\")",
+      "Bash(pnpm -w typecheck:*)",
+      "Bash(pnpm -w lint:*)",
+      "Bash(pnpm -w build:*)"
     ],
     "deny": [],
     "ask": []

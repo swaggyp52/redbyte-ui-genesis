@@ -4,7 +4,9 @@
 
 export { Shell } from './Shell';
 export type { ShellProps } from './Shell';
+export { ErrorBoundary } from './ErrorBoundary';
 export { useToastStore } from './toastStore';
 export type { Toast, ToastState } from './toastStore';
 export { ToastContainer } from './ToastContainer';
 export type { Intent, OpenWithIntent } from './intent-types';
+export { VERSION, GIT_SHA, BUILD_DATE, getVersionString, getFullVersionString } from './version';

@@ -4258,11 +4258,303 @@ Persist window manager state deterministically to localStorage and restore it on
 
 
 
-Phase ID: PHASE\_AJ
+Phase ID: PHASE\_RELEASE\_0
 
-Phase Name: Keyboard-First Window Switcher (MRU) + Deterministic Focus Transfer
+Phase Name: Live Preview RC (Release Hardening + Deploy Wiring)
 
-Status: COMPLETED (2025-12-19)
+Status: IN PROGRESS
+
+
+
+---
+
+
+
+\## PHASE\_RELEASE\_0: Live Preview RC (Release Hardening + Deploy Wiring)
+
+
+
+### Goal
+
+
+
+Prepare a stable, deployable live preview for redbyteapps.dev with clear "Preview" labeling, version metadata, crash safety, deployment documentation, and a tagged anchor point for paused development.
+
+
+
+### Non-Goals
+
+
+
+- NO marketing polish or landing page content
+
+- NO analytics/monitoring (can be added post-launch if desired)
+
+- NO performance optimization beyond current baseline
+
+- NO new features (this is purely release hardening)
+
+- NO multi-environment config (single production preview only)
+
+
+
+### Invariants
+
+
+
+1. **Cold Load Stability**: App boots reliably from empty localStorage with no console errors (warnings OK if intentional).
+
+2. **Preview Badge**: Visible "PREVIEW" label in Shell chrome so visitors understand scope.
+
+3. **Version Metadata**: Build-time version string (from package.json + git sha) surfaced in UI footer or Settings.
+
+4. **Crash Boundary**: Top-level error boundary prevents white-screen; shows reload + factory reset hint.
+
+5. **Deterministic Persistence Keys**: `rb:file-system`, `rb:file-associations`, `rb:window-layout` remain stable across deployments.
+
+6. **Deployment Documentation**: DEPLOYMENT.md with build steps, SPA fallback config, cache guidance, rollback procedure, and smoke checklist.
+
+7. **Tagged Anchor**: Annotated git tag (`v0.1.0-preview`) as deployable snapshot and natural resting point.
+
+8. **No Timers or Async in Release Metadata**: Version display and crash boundary must be sync-only.
+
+
+
+### Current State
+
+
+
+**Build System** (Vite-based monorepo):
+
+- pnpm workspace with 23 packages
+
+- Build command: `pnpm -w build`
+
+- Test suite: 433 tests passing
+
+- Output directory: likely `apps/playground/dist` or similar (needs verification)
+
+
+
+**Persistence Keys**:
+
+- `rb:file-system` → filesystem state
+
+- `rb:file-associations` → file associations
+
+- `rb:window-layout` → window manager session
+
+
+
+**Existing Safety**:
+
+- Factory Reset in Settings → Filesystem Data (clears all 3 keys)
+
+- Session Reset in Settings → Session (clears window layout only)
+
+- Deterministic boot flow with corruption fallback
+
+
+
+**Missing for Live Preview**:
+
+- No visible version string or preview badge
+
+- No top-level error boundary
+
+- No DEPLOYMENT.md with smoke checklist
+
+- No SPA fallback config verified
+
+
+
+### Target State
+
+
+
+**Shell Chrome**:
+
+- Footer or header displays: "RedByte OS - PREVIEW v0.1.0 (abcdef1)"
+
+- Or minimal: "PREVIEW" badge pill visible at all times
+
+
+
+**Error Boundary** ([packages/rb-shell/src/ErrorBoundary.tsx](packages/rb-shell/src/ErrorBoundary.tsx)):
+
+- Wraps `<Shell>` in root render
+
+- On crash: displays minimal UI with:
+
+  - "Something went wrong" message
+
+  - Reload button (window.location.reload())
+
+  - Factory Reset hint ("Settings → Filesystem Data → F → type RESET")
+
+- No timers; no async; deterministic recovery path
+
+
+
+**Version Metadata** ([packages/rb-shell/src/version.ts](packages/rb-shell/src/version.ts)):
+
+- Export constant: `export const VERSION = "0.1.0-preview"`
+
+- Export constant: `export const GIT_SHA = "abcdef1"` (injected at build via env)
+
+- Export constant: `export const BUILD_DATE = "2025-12-19"` (optional; only if deterministic)
+
+- Used in Shell footer/status and Settings → About
+
+
+
+**Deployment Documentation** ([DEPLOYMENT.md](DEPLOYMENT.md)):
+
+- Build command: `pnpm -w build`
+
+- Output directory: `apps/playground/dist` (or actual path)
+
+- SPA fallback: configure host to return `index.html` for all routes
+
+- Cache: `index.html` short cache, static assets long cache
+
+- Rollback: redeploy previous tag or build artifact
+
+- Smoke checklist:
+
+  1. Cold load → UI renders (no console errors)
+
+  2. System Search → find README.md → Enter opens Text Viewer
+
+  3. Shift+Enter → Open With modal works
+
+  4. Create file → reload → persists
+
+  5. Open 2 windows → reload → layout restores
+
+  6. Factory Reset (type RESET) clears everything + seed restore
+
+
+
+### Implementation Steps
+
+
+
+1. **Add version metadata**:
+
+   - Create `packages/rb-shell/src/version.ts` with VERSION, GIT\_SHA, BUILD\_DATE constants
+
+   - Inject GIT\_SHA via Vite env define (fallback "dev")
+
+   - Display in Shell footer or Settings → About
+
+
+
+2. **Add preview badge**:
+
+   - Add "PREVIEW" pill or text to Shell header/footer (always visible)
+
+   - Style: subtle but clear (e.g., yellow/amber badge)
+
+
+
+3. **Add error boundary**:
+
+   - Create `packages/rb-shell/src/ErrorBoundary.tsx` class component
+
+   - Wrap Shell in root render (`apps/playground/src/main.tsx` or similar)
+
+   - On crash: show reload button + factory reset hint
+
+
+
+4. **Create DEPLOYMENT.md**:
+
+   - Provider-agnostic instructions
+
+   - Include build steps, SPA fallback, cache, rollback, smoke checklist
+
+
+
+5. **Verify build config**:
+
+   - Ensure Vite config has correct base path (root domain)
+
+   - Ensure SPA fallback guidance aligns with typical hosts (Netlify/Vercel/CF Pages)
+
+   - Add `_redirects` or equivalent if missing
+
+
+
+6. **Run quality gates**:
+
+   - `pnpm -w lint`
+
+   - `pnpm -w typecheck`
+
+   - `pnpm -w test`
+
+   - `pnpm -w build`
+
+
+
+7. **Commit, tag, merge**:
+
+   - Single commit: "chore(release): add preview metadata, crash boundary, and deployment docs"
+
+   - Annotated tag: `v0.1.0-preview`
+
+   - FF-merge to main
+
+   - Push tag
+
+
+
+### Testing
+
+
+
+**Unit Tests** (no new tests required; existing 433 tests validate baseline):
+
+- Existing tests verify core functionality remains stable
+
+
+
+**Smoke Checklist** (manual, post-deploy):
+
+1. Cold load renders UI (no console errors)
+
+2. System Search → README.md → Enter opens Text Viewer
+
+3. Shift+Enter → Open With modal works
+
+4. Create file → reload → persists
+
+5. Open 2 windows → reload → layout restores
+
+6. Factory Reset (type RESET) clears everything
+
+
+
+### Definition of Done
+
+
+
+- ✅ Version metadata displayed in UI (Shell footer or Settings)
+
+- ✅ "PREVIEW" badge visible in Shell chrome
+
+- ✅ Error boundary wraps Shell; crash shows reload + factory reset hint
+
+- ✅ DEPLOYMENT.md exists with build steps, SPA fallback, rollback, smoke checklist
+
+- ✅ Build config verified for production deployment
+
+- ✅ All quality gates passing (lint, typecheck, test, build)
+
+- ✅ Commit + tag `v0.1.0-preview` pushed to origin/main
+
+- ✅ Natural resting point: main is green, deployable, pauseable
 
 
 

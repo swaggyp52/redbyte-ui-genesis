@@ -29,6 +29,7 @@ import { CommandPalette, type Command } from './CommandPalette';
 import { SystemSearch } from './SystemSearch';
 import { WorkspaceSwitcher, MacroRunner, WindowSwitcher } from './modals';
 import type { Intent } from './intent-types';
+import { getVersionString } from './version';
 import './styles.css';
 
 export interface ShellProps {
@@ -796,6 +797,21 @@ export const Shell: React.FC<ShellProps> = () => {
           onCancel={() => setOpenWithModalState(null)}
         />
       )}
+
+      {/* Footer: Preview Badge + Version */}
+      <div className="fixed bottom-0 left-0 right-0 bg-slate-900/80 border-t border-slate-800 px-4 py-2 flex items-center justify-between text-xs z-10">
+        <div className="flex items-center gap-3">
+          <span className="px-2 py-1 bg-amber-900/30 border border-amber-600/50 rounded text-amber-400 font-semibold">
+            PREVIEW
+          </span>
+          <span className="text-slate-400">
+            {getVersionString()}
+          </span>
+        </div>
+        <div className="text-slate-500">
+          RedByte OS Genesis
+        </div>
+      </div>
     </div>
   );
 };

@@ -3,12 +3,25 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
+// Get git SHA for version metadata (fallback to "dev" if not in git repo)
+function getGitSha(): string {
+  try {
+    return execSync('git rev-parse HEAD').toString().trim();
+  } catch {
+    return 'dev';
+  }
+}
+
 export default defineConfig({
   plugins: [react(), tsconfigPaths({ loose: true })],
+  define: {
+    __GIT_SHA__: JSON.stringify(getGitSha()),
+  },
   resolve: {
     alias: {
       '@redbyte/rb-shell': path.resolve(__dirname, '../../packages/rb-shell/src'),
