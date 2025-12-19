@@ -6,6 +6,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { FilesystemDataPanel } from '../apps/settings/FilesystemDataPanel';
 import { useFileSystemStore } from '../stores/fileSystemStore';
+import { useFileAssociationsStore } from '../stores/fileAssociationsStore';
 
 describe('PHASE_AG: Filesystem Data Settings Panel', () => {
   let mockShowToast: ReturnType<typeof vi.fn>;
@@ -13,9 +14,11 @@ describe('PHASE_AG: Filesystem Data Settings Panel', () => {
   beforeEach(() => {
     // Clear localStorage to prevent persistence from affecting tests
     localStorage.removeItem('rb:file-system');
+    localStorage.removeItem('rb:file-associations');
 
-    // Reset filesystem store to initial state
+    // Reset both stores to initial state
     useFileSystemStore.getState().resetAll();
+    useFileAssociationsStore.getState().resetAll();
 
     // Create mock toast handler
     mockShowToast = vi.fn();
@@ -398,6 +401,263 @@ describe('PHASE_AG: Filesystem Data Settings Panel', () => {
         expect(state.folders.home.entries.some((e) => e.name === 'Test Folder')).toBe(true);
         expect(state.folders.home.entries.some((e) => e.name === 'extra-file.txt')).toBe(false);
       });
+    });
+  });
+
+  describe('PHASE_AH: Factory Reset', () => {
+    it('should open factory reset modal on F key', () => {
+      const { container } = render(<FilesystemDataPanel onShowToast={mockShowToast} />);
+
+      const panelDiv = container.firstChild as HTMLElement;
+      panelDiv.focus();
+      fireEvent.keyDown(panelDiv, { key: 'F' });
+
+      expect(screen.getByText(/Factory Reset\?/i)).toBeInTheDocument();
+      expect(screen.getByText(/This will permanently delete all files, folders, and file associations/i)).toBeInTheDocument();
+    });
+
+    it('should autofocus input when modal opens', () => {
+      const { container } = render(<FilesystemDataPanel onShowToast={mockShowToast} />);
+
+      const panelDiv = container.firstChild as HTMLElement;
+      panelDiv.focus();
+      fireEvent.keyDown(panelDiv, { key: 'f' });
+
+      const input = screen.getByPlaceholderText(/Type RESET/i) as HTMLInputElement;
+      expect(input).toBeDefined();
+    });
+
+    it('should disable confirm button until RESET typed', () => {
+      const { container } = render(<FilesystemDataPanel onShowToast={mockShowToast} />);
+
+      const panelDiv = container.firstChild as HTMLElement;
+      panelDiv.focus();
+      fireEvent.keyDown(panelDiv, { key: 'F' });
+
+      const factoryResetButton = screen.getByText('Factory Reset', { selector: 'button' }) as HTMLButtonElement;
+      expect(factoryResetButton.disabled).toBe(true);
+      expect(factoryResetButton.className).toContain('opacity-50');
+    });
+
+    it('should enable confirm button when RESET typed (case-sensitive)', () => {
+      const { container } = render(<FilesystemDataPanel onShowToast={mockShowToast} />);
+
+      const panelDiv = container.firstChild as HTMLElement;
+      panelDiv.focus();
+      fireEvent.keyDown(panelDiv, { key: 'F' });
+
+      const input = screen.getByPlaceholderText(/Type RESET/i) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'RESET' } });
+
+      const factoryResetButton = screen.getByText('Factory Reset', { selector: 'button' }) as HTMLButtonElement;
+      expect(factoryResetButton.disabled).toBe(false);
+      expect(factoryResetButton.className).toContain('bg-red-600');
+    });
+
+    it('should keep button disabled when input is "reset" (lowercase)', () => {
+      const { container } = render(<FilesystemDataPanel onShowToast={mockShowToast} />);
+
+      const panelDiv = container.firstChild as HTMLElement;
+      panelDiv.focus();
+      fireEvent.keyDown(panelDiv, { key: 'F' });
+
+      const input = screen.getByPlaceholderText(/Type RESET/i) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'reset' } });
+
+      const factoryResetButton = screen.getByText('Factory Reset', { selector: 'button' }) as HTMLButtonElement;
+      expect(factoryResetButton.disabled).toBe(true);
+    });
+
+    it('should clear both localStorage keys on confirm', async () => {
+      const { container } = render(<FilesystemDataPanel onShowToast={mockShowToast} />);
+
+      // Add data to both stores
+      act(() => {
+        useFileSystemStore.getState().createFile('home', 'test-file.txt');
+        useFileAssociationsStore.getState().setDefaultTarget('file', 'txt', 'text-viewer');
+      });
+
+      // Verify both keys exist
+      expect(localStorage.getItem('rb:file-system')).toBeTruthy();
+      expect(localStorage.getItem('rb:file-associations')).toBeTruthy();
+
+      // Open factory reset modal
+      const panelDiv = container.firstChild as HTMLElement;
+      panelDiv.focus();
+      fireEvent.keyDown(panelDiv, { key: 'F' });
+
+      // Type RESET and confirm
+      const input = screen.getByPlaceholderText(/Type RESET/i) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'RESET' } });
+
+      const factoryResetButton = screen.getByText('Factory Reset', { selector: 'button' }) as HTMLButtonElement;
+      fireEvent.click(factoryResetButton);
+
+      // Verify both keys cleared
+      await waitFor(() => {
+        expect(localStorage.getItem('rb:file-system')).toBeNull();
+        expect(localStorage.getItem('rb:file-associations')).toBeNull();
+      });
+    });
+
+    it('should reset both fileSystemStore and fileAssociationsStore', async () => {
+      const { container } = render(<FilesystemDataPanel onShowToast={mockShowToast} />);
+
+      // Add data to both stores
+      act(() => {
+        useFileSystemStore.getState().createFile('home', 'test-file.txt');
+        useFileAssociationsStore.getState().setDefaultTarget('file', 'txt', 'text-viewer');
+      });
+
+      // Verify data exists
+      expect(useFileSystemStore.getState().folders.home.entries.some((e) => e.name === 'test-file.txt')).toBe(true);
+      expect(useFileAssociationsStore.getState().listAssociations().length).toBeGreaterThan(0);
+
+      // Open factory reset modal
+      const panelDiv = container.firstChild as HTMLElement;
+      panelDiv.focus();
+      fireEvent.keyDown(panelDiv, { key: 'F' });
+
+      // Type RESET and confirm
+      const input = screen.getByPlaceholderText(/Type RESET/i) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'RESET' } });
+
+      const factoryResetButton = screen.getByText('Factory Reset', { selector: 'button' }) as HTMLButtonElement;
+      fireEvent.click(factoryResetButton);
+
+      // Verify both stores reset
+      await waitFor(() => {
+        const fsState = useFileSystemStore.getState();
+        expect(fsState.folders.home.entries.some((e) => e.name === 'test-file.txt')).toBe(false);
+        expect(fsState.roots).toContain('home');
+        expect(fsState.roots).toContain('desktop');
+
+        const assocState = useFileAssociationsStore.getState();
+        expect(assocState.listAssociations().length).toBe(0);
+      });
+    });
+
+    it('should show success toast after factory reset', async () => {
+      const { container } = render(<FilesystemDataPanel onShowToast={mockShowToast} />);
+
+      const panelDiv = container.firstChild as HTMLElement;
+      panelDiv.focus();
+      fireEvent.keyDown(panelDiv, { key: 'F' });
+
+      const input = screen.getByPlaceholderText(/Type RESET/i) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'RESET' } });
+
+      const factoryResetButton = screen.getByText('Factory Reset', { selector: 'button' }) as HTMLButtonElement;
+      fireEvent.click(factoryResetButton);
+
+      await waitFor(() => {
+        expect(mockShowToast).toHaveBeenCalledWith('Factory reset complete - all data cleared');
+      });
+    });
+
+    it('should close modal and return focus after success', async () => {
+      const { container } = render(<FilesystemDataPanel onShowToast={mockShowToast} />);
+
+      const panelDiv = container.firstChild as HTMLElement;
+      panelDiv.focus();
+      fireEvent.keyDown(panelDiv, { key: 'F' });
+
+      const input = screen.getByPlaceholderText(/Type RESET/i) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'RESET' } });
+
+      const factoryResetButton = screen.getByText('Factory Reset', { selector: 'button' }) as HTMLButtonElement;
+      fireEvent.click(factoryResetButton);
+
+      await waitFor(() => {
+        expect(screen.queryByText(/Factory Reset\?/i)).not.toBeInTheDocument();
+        expect(document.activeElement).toBe(panelDiv);
+      });
+    });
+
+    it('should cancel on Escape without changes', () => {
+      const { container } = render(<FilesystemDataPanel onShowToast={mockShowToast} />);
+
+      // Add data to stores
+      act(() => {
+        useFileSystemStore.getState().createFile('home', 'should-remain.txt');
+        useFileAssociationsStore.getState().setDefaultTarget('file', 'txt', 'text-viewer');
+      });
+
+      const panelDiv = container.firstChild as HTMLElement;
+      panelDiv.focus();
+      fireEvent.keyDown(panelDiv, { key: 'F' });
+
+      // Press Escape on modal (use heading to find modal uniquely)
+      const modal = screen.getByText('Factory Reset?').closest('div[tabindex="0"]')!;
+      fireEvent.keyDown(modal, { key: 'Escape' });
+
+      // Verify modal closed and data unchanged
+      waitFor(() => {
+        expect(screen.queryByText(/Factory Reset\?/i)).not.toBeInTheDocument();
+      });
+
+      const fsState = useFileSystemStore.getState();
+      expect(fsState.folders.home.entries.some((e) => e.name === 'should-remain.txt')).toBe(true);
+
+      const assocState = useFileAssociationsStore.getState();
+      expect(assocState.listAssociations().length).toBeGreaterThan(0);
+
+      expect(mockShowToast).not.toHaveBeenCalled();
+    });
+
+    it('should trigger factory reset on Enter when RESET typed', async () => {
+      const { container } = render(<FilesystemDataPanel onShowToast={mockShowToast} />);
+
+      // Add data to both stores
+      act(() => {
+        useFileSystemStore.getState().createFile('home', 'test-file.txt');
+        useFileAssociationsStore.getState().setDefaultTarget('file', 'txt', 'text-viewer');
+      });
+
+      const panelDiv = container.firstChild as HTMLElement;
+      panelDiv.focus();
+      fireEvent.keyDown(panelDiv, { key: 'F' });
+
+      // Type RESET
+      const input = screen.getByPlaceholderText(/Type RESET/i) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'RESET' } });
+
+      // Press Enter on modal (use heading to find modal uniquely)
+      const modal = screen.getByText('Factory Reset?').closest('div[tabindex="0"]')!;
+      fireEvent.keyDown(modal, { key: 'Enter' });
+
+      // Verify reset executed
+      await waitFor(() => {
+        expect(mockShowToast).toHaveBeenCalledWith('Factory reset complete - all data cleared');
+        expect(localStorage.getItem('rb:file-system')).toBeNull();
+        expect(localStorage.getItem('rb:file-associations')).toBeNull();
+      });
+    });
+
+    it('should NOT trigger factory reset on Enter when RESET not typed', () => {
+      const { container } = render(<FilesystemDataPanel onShowToast={mockShowToast} />);
+
+      // Add data to stores
+      act(() => {
+        useFileSystemStore.getState().createFile('home', 'should-remain.txt');
+      });
+
+      const panelDiv = container.firstChild as HTMLElement;
+      panelDiv.focus();
+      fireEvent.keyDown(panelDiv, { key: 'F' });
+
+      // Type something else
+      const input = screen.getByPlaceholderText(/Type RESET/i) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'WRONG' } });
+
+      // Press Enter on modal (use heading to find modal uniquely)
+      const modal = screen.getByText('Factory Reset?').closest('div[tabindex="0"]')!;
+      fireEvent.keyDown(modal, { key: 'Enter' });
+
+      // Verify reset NOT executed
+      const fsState = useFileSystemStore.getState();
+      expect(fsState.folders.home.entries.some((e) => e.name === 'should-remain.txt')).toBe(true);
+      expect(mockShowToast).not.toHaveBeenCalled();
     });
   });
 });

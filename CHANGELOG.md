@@ -1,5 +1,67 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_AH - Factory Reset with Hardened Confirmation (2025-12-18)
+
+### Goal
+Add hardened Factory Reset functionality to Settings "Filesystem Data" panel that clears BOTH fileSystemStore and fileAssociationsStore with type-to-confirm gate ("RESET") for maximum safety.
+
+### Key Changes
+- **Factory Reset Feature** ([FilesystemDataPanel.tsx](packages/rb-apps/src/apps/settings/FilesystemDataPanel.tsx:111-141)):
+  - F key opens Factory Reset modal with red border to indicate destructive action
+  - Type-to-confirm gate requires exact text "RESET" (case-sensitive) before enabling confirm button
+  - Enter key confirms only when gate satisfied (factoryResetInput === 'RESET')
+  - Escape key always cancels without changes
+  - Autofocus on input when modal opens (requestAnimationFrame for deterministic focus)
+
+- **Atomic Dual-Store Reset** ([FilesystemDataPanel.tsx:111-141](packages/rb-apps/src/apps/settings/FilesystemDataPanel.tsx#L111-L141)):
+  - Calls both `fileAssociationsStore.resetAll()` and `fileSystemStore.resetAll()` in deterministic order
+  - Explicitly clears both localStorage keys: `rb:file-associations` and `rb:file-system`
+  - Verifies both keys cleared (throws error if either persists)
+  - Success toast: "Factory reset complete - all data cleared"
+  - Error toast shows failure message if reset incomplete
+
+- **UI Updates** ([FilesystemDataPanel.tsx](packages/rb-apps/src/apps/settings/FilesystemDataPanel.tsx)):
+  - Added Factory Reset info section with F key shortcut (red color)
+  - Footer shows: F key → "Factory Reset (filesystem + associations)"
+  - Factory Reset modal has distinct red border (`border-red-700`)
+  - Clear warning copy: "This will permanently delete all files, folders, and file associations. This action cannot be undone."
+  - Confirm button disabled until "RESET" typed (opacity-50, cursor-not-allowed)
+  - Confirm button enabled when gate satisfied (bg-red-600)
+
+### Testing (409 tests passing, 0 warnings)
+- **Factory Reset Gate Behavior** (5 tests):
+  - Modal opens on F key with autofocus on input
+  - Confirm button disabled until "RESET" typed
+  - Case-sensitive validation (lowercase "reset" keeps button disabled)
+  - Enter key confirms only when "RESET" typed
+  - Enter key ignored when gate not satisfied
+
+- **Dual-Store Clearing** (3 tests):
+  - Both localStorage keys cleared after factory reset
+  - Both stores reset to initial state
+  - Success toast shown after reset
+
+- **Focus Management & Cancel** (2 tests):
+  - Escape closes modal and returns focus to panel
+  - Cancel button closes without changes
+
+- **Regression** (2 tests):
+  - Reset (R key) still works for filesystem-only reset
+  - Factory Reset (F key) clears both stores, not just filesystem
+
+### Definition of Done
+- ✅ Factory Reset clears both `rb:file-system` and `rb:file-associations` localStorage keys
+- ✅ Type-to-confirm gate requires exact text "RESET" (case-sensitive)
+- ✅ Enter confirms only when gate satisfied; Escape always cancels
+- ✅ Autofocus input on modal open (requestAnimationFrame)
+- ✅ Clear warning copy about permanent deletion
+- ✅ 12 comprehensive tests covering gate, dual-store reset, focus, regression
+- ✅ All quality gates pass (lint, typecheck, build, 409 tests)
+- ✅ Contract-first: PHASE_AH added to AI_STATE.md before implementation
+- ✅ Git workflow: branch phase-ah-factory-reset, FF-only merge to main
+
+---
+
 ## PHASE_AG - Settings "Filesystem Data" Panel + Safe Factory Reset (2025-12-18)
 
 ### Goal

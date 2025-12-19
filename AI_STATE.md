@@ -3613,13 +3613,254 @@ Expose the fileSystemStore's new persistence helpers (`exportJson`, `importJson`
 
 
 
+\## PHASE\_AH — Factory Reset with Hardened Confirmation
+
+
+
+### Goal
+
+Add a hardened Factory Reset action to Settings that clears BOTH persisted stores (fileSystemStore + fileAssociationsStore) with a type-to-confirm gate to prevent accidental data loss. Ensure keyboard-first UX, deterministic focus, and comprehensive test coverage.
+
+
+
+### Non-Goals
+
+- NO "soft" confirmation (simple Yes/No button) - must require typing "RESET"
+
+- NO async operations (all localStorage clearing synchronous)
+
+- NO partial reset (must clear both stores atomically or show error)
+
+- NO undo/redo for factory reset (permanent destructive operation)
+
+- NO UI reorganization beyond adding Factory Reset to Filesystem Data panel
+
+
+
+### Invariants
+
+1. **Type-to-Confirm Gate**: Modal requires exact text input "RESET" before Enter key confirms (case-sensitive)
+
+2. **Keyboard-First**: Enter only works when gate satisfied; Esc always cancels; autofocus input on modal open
+
+3. **Atomic Dual-Store Reset**: Calls both `fileSystemStore.resetAll()` and `fileAssociationsStore.resetAll()` in deterministic order
+
+4. **Deterministic Focus**: Modal open/close uses `requestAnimationFrame()` for focus management (no timers)
+
+5. **Clear Warning Copy**: Modal explicitly states "This will permanently delete all files, folders, and file associations"
+
+6. **Never Crash**: If either store reset fails, show error toast and preserve state (don't leave system in partial-reset state)
+
+7. **localStorage Keys Cleared**: Both `rb:file-system` and `rb:file-associations` removed after reset
+
+
+
+### Current State
+
+- `fileSystemStore.resetAll()` exists (PHASE\_AF) - clears `rb:file-system` and resets to seed
+
+- `fileAssociationsStore.resetAll()` exists (PHASE\_AB) - clears `rb:file-associations`
+
+- Filesystem Data panel has E/I/R shortcuts (PHASE\_AG) but no Factory Reset
+
+- No UI for clearing both stores simultaneously
+
+
+
+**Target State** (PHASE\_AH):
+
+- Filesystem Data panel has "Factory Reset" button/action (F key shortcut)
+
+- F key opens modal with:
+
+  - Warning text: "Factory Reset will permanently delete all files, folders, and file associations"
+
+  - Input field with placeholder "Type RESET to confirm"
+
+  - Autofocus on input (via rAF)
+
+  - Enter button disabled until input === "RESET"
+
+  - Enter confirms and executes reset
+
+  - Esc cancels without changes
+
+- Factory Reset action:
+
+  - Calls `fileAssociationsStore.resetAll()`
+
+  - Calls `fileSystemStore.resetAll()`
+
+  - Verifies both localStorage keys cleared
+
+  - Shows success toast
+
+  - Closes modal and returns focus to panel
+
+
+
+### Implementation Steps
+
+
+
+1. **Update FilesystemDataPanel** (`packages/rb-apps/src/apps/settings/FilesystemDataPanel.tsx`):
+
+   ```typescript
+   // Add factory-reset modal type
+   type ModalType = 'export' | 'import' | 'reset-confirm' | 'factory-reset';
+
+   // Add F key handler
+   if (event.key === 'f' || event.key === 'F') {
+     event.preventDefault();
+     setModal({ type: 'factory-reset' });
+     setFactoryResetInput('');
+   }
+
+   // Factory Reset modal component
+   {modal && modal.type === 'factory-reset' && (
+     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+       <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-xl w-96 p-4">
+         <h3 className="text-lg font-semibold text-white mb-4">Factory Reset?</h3>
+         <p className="text-slate-300 text-sm mb-4">
+           This will permanently delete all files, folders, and file associations.
+           This action cannot be undone.
+         </p>
+
+         <div className="mb-4">
+           <label className="block text-sm text-slate-400 mb-2">
+             Type <strong>RESET</strong> to confirm:
+           </label>
+           <input
+             ref={factoryResetInputRef}
+             value={factoryResetInput}
+             onChange={(e) => setFactoryResetInput(e.target.value)}
+             placeholder="Type RESET"
+             className="w-full p-2 bg-slate-800 border border-slate-600 rounded text-white"
+           />
+         </div>
+
+         <div className="flex justify-end gap-2">
+           <button onClick={() => setModal(null)}>Cancel</button>
+           <button
+             disabled={factoryResetInput !== 'RESET'}
+             onClick={handleFactoryReset}
+             className={factoryResetInput === 'RESET' ? 'bg-red-600' : 'bg-slate-700'}
+           >
+             Factory Reset
+           </button>
+         </div>
+       </div>
+     </div>
+   )}
+   ```
+
+
+
+2. **Implement Factory Reset Action**:
+
+   ```typescript
+   const handleFactoryReset = () => {
+     try {
+       // Reset in deterministic order
+       useFileAssociationsStore.getState().resetAll();
+       useFileSystemStore.getState().resetAll();
+
+       // Verify both keys cleared
+       if (typeof window !== 'undefined') {
+         const fsKey = localStorage.getItem('rb:file-system');
+         const assocKey = localStorage.getItem('rb:file-associations');
+         if (fsKey || assocKey) {
+           throw new Error('Factory reset incomplete - localStorage keys not cleared');
+         }
+       }
+
+       onShowToast?.('Factory reset complete - all data cleared');
+       setModal(null);
+       requestAnimationFrame(() => {
+         containerRef.current?.focus();
+       });
+     } catch (error) {
+       const message = error instanceof Error ? error.message : 'Unknown error';
+       onShowToast?.(`Factory reset failed: ${message}`);
+     }
+   };
+   ```
+
+
+
+3. **Add Tests** (`packages/rb-apps/src/__tests__/filesystem-settings-panel.test.tsx`):
+
+   ```typescript
+   describe('Factory Reset', () => {
+     it('should open factory reset modal on F key');
+     it('should disable confirm button until RESET typed');
+     it('should enable confirm button when RESET typed (case-sensitive)');
+     it('should reject confirm when input is "reset" (lowercase)');
+     it('should clear both localStorage keys on confirm');
+     it('should reset both fileSystemStore and fileAssociationsStore');
+     it('should show success toast after factory reset');
+     it('should close modal and return focus after success');
+     it('should show error toast if reset fails');
+     it('should preserve state if reset fails');
+     it('should cancel on Escape without changes');
+   });
+   ```
+
+
+
+### Testing Strategy
+
+1. **Gate Behavior**: Verify Enter disabled until exact "RESET" typed
+
+2. **Dual-Store Clearing**: Verify both localStorage keys cleared and both stores reset to defaults
+
+3. **Focus Management**: Verify autofocus on input, focus return on close
+
+4. **Error Handling**: Verify error toast if reset fails, state preserved
+
+5. **Regression**: Verify existing E/I/R operations still work after adding F key
+
+
+
+### Definition of Done
+
+1. Filesystem Data panel has Factory Reset action accessible via F key
+
+2. Modal requires typing exact "RESET" (case-sensitive) before confirming
+
+3. Factory Reset clears both `rb:file-system` and `rb:file-associations` localStorage keys
+
+4. Factory Reset calls both `fileSystemStore.resetAll()` and `fileAssociationsStore.resetAll()`
+
+5. Success toast shown after factory reset completes
+
+6. Error toast shown if factory reset fails (state preserved)
+
+7. Autofocus on input using `requestAnimationFrame()`
+
+8. Enter confirms only when gate satisfied; Esc cancels always
+
+9. All tests pass (existing 397 + new factory reset tests)
+
+10. `pnpm lint`, `pnpm typecheck`, `pnpm build` pass with zero warnings
+
+11. Manual smoke test: F key -> type RESET -> Enter -> verify both stores cleared
+
+12. Contracts and completion logged in AI\_STATE.md and CHANGELOG.md
+
+
+
+---
+
+
+
 \## Current Phase
 
 
 
-Phase ID: PHASE\_AG
+Phase ID: PHASE\_AH
 
-Phase Name: Settings "Filesystem Data" Panel \+ Safe Factory Reset
+Phase Name: Factory Reset with Hardened Confirmation
 
 Status: IN PROGRESS
 
@@ -3696,6 +3937,8 @@ Status: IN PROGRESS
 - PHASE\_AE — System Search Open-With Modal + Files Global Store Unification
 
 - PHASE\_AF — Deterministic Filesystem Persistence + Import/Export/Reset
+
+- PHASE\_AG — Settings "Filesystem Data" Panel + Safe Factory Reset
 
 
 

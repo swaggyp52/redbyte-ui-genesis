@@ -2,14 +2,15 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useFileSystemStore } from '../../stores/fileSystemStore';
+import { useFileAssociationsStore } from '../../stores/fileAssociationsStore';
 
 interface FilesystemDataPanelProps {
   onShowToast?: (message: string) => void;
 }
 
-type ModalType = 'export' | 'import' | 'reset-confirm';
+type ModalType = 'export' | 'import' | 'reset-confirm' | 'factory-reset';
 
 interface ModalState {
   type: ModalType;
@@ -20,12 +21,23 @@ export const FilesystemDataPanel: React.FC<FilesystemDataPanelProps> = ({ onShow
 
   const [modal, setModal] = useState<ModalState | null>(null);
   const [importValue, setImportValue] = useState('');
+  const [factoryResetInput, setFactoryResetInput] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
+  const factoryResetInputRef = useRef<HTMLInputElement>(null);
+
+  // Autofocus factory reset input when modal opens
+  useEffect(() => {
+    if (modal?.type === 'factory-reset') {
+      requestAnimationFrame(() => {
+        factoryResetInputRef.current?.focus();
+      });
+    }
+  }, [modal]);
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
-    // Guard: ignore if typing in textarea
+    // Guard: ignore if typing in textarea or input
     const target = event.target as HTMLElement;
-    if (target.tagName === 'TEXTAREA') {
+    if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') {
       return;
     }
 
@@ -41,6 +53,10 @@ export const FilesystemDataPanel: React.FC<FilesystemDataPanelProps> = ({ onShow
     } else if (event.key === 'r' || event.key === 'R') {
       event.preventDefault();
       setModal({ type: 'reset-confirm' });
+    } else if (event.key === 'f' || event.key === 'F') {
+      event.preventDefault();
+      setModal({ type: 'factory-reset' });
+      setFactoryResetInput('');
     }
   };
 
@@ -80,6 +96,47 @@ export const FilesystemDataPanel: React.FC<FilesystemDataPanelProps> = ({ onShow
           containerRef.current?.focus();
         });
       }
+    } else if (modalType === 'factory-reset') {
+      // Guard: only handle Enter when not typing in input
+      const target = event.target as HTMLElement;
+      if (target.tagName === 'INPUT') return;
+
+      if (event.key === 'Enter' && factoryResetInput === 'RESET') {
+        event.preventDefault();
+        handleFactoryReset();
+      }
+    }
+  };
+
+  const handleFactoryReset = () => {
+    try {
+      // Reset in deterministic order
+      useFileAssociationsStore.getState().resetAll();
+      useFileSystemStore.getState().resetAll();
+
+      // Explicitly clear localStorage keys (stores may persist empty objects)
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('rb:file-associations');
+        localStorage.removeItem('rb:file-system');
+      }
+
+      // Verify both keys cleared
+      if (typeof window !== 'undefined') {
+        const fsKey = localStorage.getItem('rb:file-system');
+        const assocKey = localStorage.getItem('rb:file-associations');
+        if (fsKey || assocKey) {
+          throw new Error('Factory reset incomplete - localStorage keys not cleared');
+        }
+      }
+
+      onShowToast?.('Factory reset complete - all data cleared');
+      setModal(null);
+      requestAnimationFrame(() => {
+        containerRef.current?.focus();
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      onShowToast?.(`Factory reset failed: ${message}`);
     }
   };
 
@@ -119,21 +176,34 @@ export const FilesystemDataPanel: React.FC<FilesystemDataPanelProps> = ({ onShow
                 <div className="text-xs text-slate-400 mt-1">Clear all data and restore default filesystem</div>
               </div>
             </div>
+
+            <div className="border-t border-slate-800 pt-3 mt-3 flex items-start gap-3">
+              <kbd className="px-2 py-1 bg-slate-800 rounded text-red-600 font-mono text-xs shrink-0">F</kbd>
+              <div>
+                <div className="text-sm font-medium text-white">Factory Reset</div>
+                <div className="text-xs text-slate-400 mt-1">Clear ALL data: filesystem + file associations (requires typing RESET)</div>
+              </div>
+            </div>
           </div>
 
           <div className="bg-slate-900 border border-yellow-900/30 rounded p-3">
             <div className="text-xs text-yellow-400/90">
-              <strong>Warning:</strong> Import and Reset operations will replace your current filesystem. Export your data first to create a backup.
+              <strong>Warning:</strong> Import and Reset operations will replace your current filesystem. Factory Reset will permanently delete all files, folders, and file associations. Export your data first to create a backup.
             </div>
           </div>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="p-3 border-t border-slate-800 text-xs text-slate-500 text-center">
-        <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">E</kbd> Export{' '}
-        <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">I</kbd> Import{' '}
-        <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">R</kbd> Reset
+      <div className="p-3 border-t border-slate-800 text-xs text-slate-500 text-center space-y-1">
+        <div>
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">E</kbd> Export{' '}
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">I</kbd> Import{' '}
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">R</kbd> Reset
+        </div>
+        <div>
+          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-red-400">F</kbd> Factory Reset (filesystem + associations)
+        </div>
       </div>
 
       {/* Export Modal */}
@@ -233,6 +303,70 @@ export const FilesystemDataPanel: React.FC<FilesystemDataPanelProps> = ({ onShow
 
             <div className="mt-3 text-xs text-slate-500 text-center">
               <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> Confirm{' '}
+              <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Esc</kbd> Cancel
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Factory Reset Modal */}
+      {modal && modal.type === 'factory-reset' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setModal(null)}>
+          <div
+            className="bg-slate-900 border border-red-700 rounded-lg shadow-xl w-96 p-4"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => handleModalKeyDown(e, 'factory-reset')}
+            tabIndex={0}
+          >
+            <h3 className="text-lg font-semibold text-white mb-4">Factory Reset?</h3>
+            <p className="text-slate-300 text-sm mb-4">
+              This will permanently delete all files, folders, and file associations. This action cannot be undone.
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm text-slate-400 mb-2">
+                Type <strong className="text-white">RESET</strong> to confirm:
+              </label>
+              <input
+                ref={factoryResetInputRef}
+                value={factoryResetInput}
+                onChange={(e) => setFactoryResetInput(e.target.value)}
+                placeholder="Type RESET"
+                className="w-full p-2 bg-slate-800 border border-slate-600 rounded text-white"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setModal(null);
+                  requestAnimationFrame(() => {
+                    containerRef.current?.focus();
+                  });
+                }}
+                className="px-4 py-2 text-sm rounded bg-slate-800 hover:bg-slate-700 text-white"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={factoryResetInput !== 'RESET'}
+                onClick={handleFactoryReset}
+                className={`px-4 py-2 text-sm rounded text-white transition-opacity ${
+                  factoryResetInput === 'RESET'
+                    ? 'bg-red-600 hover:bg-red-500'
+                    : 'bg-slate-700 opacity-50 cursor-not-allowed'
+                }`}
+              >
+                Factory Reset
+              </button>
+            </div>
+
+            <div className="mt-3 text-xs text-slate-500 text-center">
+              {factoryResetInput === 'RESET' && (
+                <>
+                  <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> Confirm{' '}
+                </>
+              )}
               <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Esc</kbd> Cancel
             </div>
           </div>
