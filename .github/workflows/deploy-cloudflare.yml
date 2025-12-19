@@ -1,0 +1,51 @@
+# Cloudflare Pages Deployment
+#
+# Automatically deploys to redbyteapps.dev when code is pushed to main.
+# Uses Cloudflare Pages Direct Upload API for full control over build process.
+
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build and Deploy to CF Pages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.0'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build playground app
+        run: pnpm -w build
+        env:
+          GIT_SHA: ${{ github.sha }}
+
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: redbyteapps
+          directory: apps/playground/dist
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
