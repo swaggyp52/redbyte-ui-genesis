@@ -4,8 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "postbuild": "node scripts/cf-spa-fallback.mjs"
+    "build": "vite build"
   },
   "dependencies": {
     "@redbyte/rb-shell": "workspace:*",
