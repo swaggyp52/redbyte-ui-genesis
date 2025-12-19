@@ -4262,7 +4262,7 @@ Phase ID: PHASE\_AJ
 
 Phase Name: Keyboard-First Window Switcher (MRU) + Deterministic Focus Transfer
 
-Status: IN PROGRESS
+Status: COMPLETED (2025-12-19)
 
 
 

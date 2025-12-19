@@ -27,7 +27,7 @@ import BootScreen from './BootScreen';
 import { ToastContainer } from './ToastContainer';
 import { CommandPalette, type Command } from './CommandPalette';
 import { SystemSearch } from './SystemSearch';
-import { WorkspaceSwitcher, MacroRunner } from './modals';
+import { WorkspaceSwitcher, MacroRunner, WindowSwitcher } from './modals';
 import type { Intent } from './intent-types';
 import './styles.css';
 
@@ -57,6 +57,8 @@ export const Shell: React.FC<ShellProps> = () => {
   const [systemSearchOpen, setSystemSearchOpen] = useState(false);
   const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false);
   const [macroRunnerOpen, setMacroRunnerOpen] = useState(false);
+  const [windowSwitcherOpen, setWindowSwitcherOpen] = useState(false);
+  const [windowSwitcherPreviousFocus, setWindowSwitcherPreviousFocus] = useState<string | null>(null);
   const [openWithModalState, setOpenWithModalState] = useState<OpenWithModalState | null>(null);
 
   const hasShownWelcomeRef = useRef(false);
@@ -440,6 +442,40 @@ export const Shell: React.FC<ShellProps> = () => {
     [executeMacroById]
   );
 
+  const handleWindowSwitcherSelect = useCallback(
+    (windowId: string) => {
+      const window = windows.find((w) => w.id === windowId);
+      if (!window) return;
+
+      // If minimized, restore first
+      if (window.mode === 'minimized') {
+        restoreWindow(windowId);
+      }
+
+      // Focus the window
+      focusWindow(windowId);
+
+      // Close switcher
+      setWindowSwitcherOpen(false);
+      setWindowSwitcherPreviousFocus(null);
+    },
+    [windows, restoreWindow, focusWindow]
+  );
+
+  const handleWindowSwitcherCancel = useCallback(() => {
+    // Restore focus to previous window if valid
+    if (windowSwitcherPreviousFocus) {
+      const previousWindow = windows.find((w) => w.id === windowSwitcherPreviousFocus);
+      if (previousWindow) {
+        focusWindow(windowSwitcherPreviousFocus);
+      }
+    }
+
+    // Close switcher
+    setWindowSwitcherOpen(false);
+    setWindowSwitcherPreviousFocus(null);
+  }, [windowSwitcherPreviousFocus, windows, focusWindow]);
+
   const handleSearchExecuteIntent = useCallback(
     (intentId: string) => {
       if (intentId === 'open-in-playground') {
@@ -516,6 +552,15 @@ export const Shell: React.FC<ShellProps> = () => {
       const target = event.target as HTMLElement | null;
       const tag = target?.tagName?.toLowerCase();
       const isEditable = tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'option' || target?.isContentEditable;
+
+      // Ctrl+Tab: Window Switcher (check before other ctrl checks)
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Tab' && !isEditable) {
+        event.preventDefault();
+        const focused = useWindowStore.getState().getFocusedWindow();
+        setWindowSwitcherPreviousFocus(focused?.id || null);
+        setWindowSwitcherOpen(true);
+        return;
+      }
 
       if (!(event.ctrlKey || event.metaKey)) return;
       if (isEditable) return;
@@ -718,6 +763,14 @@ export const Shell: React.FC<ShellProps> = () => {
           macros={useMacroStore.getState().listMacros()}
           onExecute={handleMacroExecute}
           onClose={() => setMacroRunnerOpen(false)}
+        />
+      )}
+
+      {windowSwitcherOpen && (
+        <WindowSwitcher
+          windows={windows}
+          onSelect={handleWindowSwitcherSelect}
+          onCancel={handleWindowSwitcherCancel}
         />
       )}
 

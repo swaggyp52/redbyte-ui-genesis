@@ -1,5 +1,81 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_AJ - Keyboard-First Window Switcher (MRU Ordering + Deterministic Focus Transfer) (2025-12-19)
+
+### Goal
+Add keyboard-first Window Switcher overlay with MRU (Most Recently Used) ordering, Tab/Shift+Tab cycling, and deterministic focus transfer with minimized window restoration.
+
+### Key Changes
+- **WindowSwitcher Component** ([packages/rb-shell/src/modals/WindowSwitcher.tsx](packages/rb-shell/src/modals/WindowSwitcher.tsx)):
+  - Modal overlay with z-[9999] stacking (above all windows and modals)
+  - MRU ordering: sorts windows by `lastFocusedAt DESC`, tie-break by `windowId ASC` (deterministic)
+  - Keyboard navigation: Tab/Shift+Tab cycles through windows (wrapping), ArrowUp/Down optional
+  - Enter confirms selection, Escape cancels and restores focus to previous window
+  - Minimized windows appear with "Minimized" badge, restored before focusing on selection
+  - Click-to-select support (mouse-optional UX)
+  - Empty state: "No windows open" when window list is empty
+
+- **Global Keybinding** ([packages/rb-shell/src/Shell.tsx:522-529](packages/rb-shell/src/Shell.tsx#L522-L529)):
+  - Ctrl+Tab (or Cmd+Tab on Mac) opens Window Switcher
+  - Stores previous focused window ID for cancel restoration
+  - Keybinding checked before other Ctrl key handlers (early interception)
+
+- **Focus Restoration and Minimize Handling** ([packages/rb-shell/src/Shell.tsx:445-477](packages/rb-shell/src/Shell.tsx#L445-L477)):
+  - `handleWindowSwitcherSelect`: restores minimized windows before focusing
+  - `handleWindowSwitcherCancel`: returns focus to previous window if valid
+  - No timers used (rAF allowed for focus handoff only)
+  - Deterministic focus transfer via Zustand store actions
+
+### Testing (433 tests passing, +19 new tests)
+- **MRU Ordering** (3 tests):
+  - Sorts windows by lastFocusedAt DESC (most recent first)
+  - Uses windowId ASC for tie-break when lastFocusedAt is equal
+  - Handles windows without lastFocusedAt (defaults to 0)
+
+- **Keyboard Navigation** (4 tests):
+  - Tab cycles forward through windows with wrapping
+  - Shift+Tab cycles backward through windows with wrapping
+  - ArrowDown cycles forward through windows
+  - ArrowUp cycles backward through windows
+
+- **Window Selection** (3 tests):
+  - Enter calls onSelect with selected window ID
+  - Enter selects correct window after Tab navigation
+  - Clicking a window calls onSelect with that window ID
+
+- **Cancel Behavior** (3 tests):
+  - Escape calls onCancel (no selection made)
+  - Clicking overlay background calls onCancel
+  - Clicking inside modal does NOT call onCancel
+
+- **Minimized Windows** (3 tests):
+  - Displays "Minimized" badge for minimized windows
+  - Does not display badge for normal windows
+  - Includes minimized windows in MRU list
+
+- **Edge Cases** (3 tests):
+  - Displays empty state when no windows
+  - Does not call onSelect when Enter pressed with no windows
+  - Resets selection to 0 when windows list changes
+
+### Invariants Verified
+- ✅ Deterministic MRU ordering (lastFocusedAt DESC, windowId ASC tie-break)
+- ✅ Keyboard-only navigation (Tab/Shift+Tab primary, ArrowUp/Down optional)
+- ✅ Minimized windows restored before focusing on selection
+- ✅ No timers (deterministic focus transfer via Zustand actions)
+- ✅ Z-order stacking (z-[9999] above all windows and modals)
+- ✅ No persistence (switcher state is ephemeral)
+- ✅ Cancel restores focus to previous window
+- ✅ Single instance (one switcher at a time)
+
+### Quality Gates
+- ✅ All tests passing (433/433)
+- ✅ Lint passing
+- ✅ Typecheck passing
+- ✅ Build successful
+
+---
+
 ## PHASE_AI - Deterministic Session Restore (Window Layout Persistence + Safe Reset) (2025-12-19)
 
 ### Goal

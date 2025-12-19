@@ -4,5 +4,6 @@
 
 export { WorkspaceSwitcher } from './WorkspaceSwitcher';
 export { MacroRunner } from './MacroRunner';
+export { WindowSwitcher } from './WindowSwitcher';
 export type { Workspace } from './WorkspaceSwitcher';
 export type { Macro } from './MacroRunner';
