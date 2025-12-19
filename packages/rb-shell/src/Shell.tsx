@@ -283,6 +283,18 @@ export const Shell: React.FC<ShellProps> = () => {
     [closeWindow, restoreSession]
   );
 
+  const handleClose = useCallback(
+    (id: string) => {
+      closeWindow(id);
+      setBindings((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    },
+    [closeWindow]
+  );
+
   // Ref to hold latest executeCommand for macro execution
   const executeCommandRef = useRef<((command: Command) => void) | null>(null);
 
@@ -648,18 +660,6 @@ export const Shell: React.FC<ShellProps> = () => {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [hasSettings, openWindow, executeCommand]);
-
-  const handleClose = useCallback(
-    (id: string) => {
-      closeWindow(id);
-      setBindings((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-    },
-    [closeWindow]
-  );
 
   useEffect(() => {
     if (!booted || hasInitializedRef.current) return;
