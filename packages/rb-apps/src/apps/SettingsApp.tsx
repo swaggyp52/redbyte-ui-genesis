@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { RedByteApp } from '../types';
 import { useSettingsStore, type ThemeVariant, type AccentColor } from '@redbyte/rb-utils';
 import { FileAssociationsPanel } from './settings/FileAssociationsPanel';
+import { FilesystemDataPanel } from './settings/FilesystemDataPanel';
 
 interface SettingsProps {
   onClose?: () => void;
@@ -18,7 +19,7 @@ const WALLPAPERS = [
   { id: 'solid', name: 'Solid Color' },
 ];
 
-type SettingsSection = 'appearance' | 'system' | 'files';
+type SettingsSection = 'appearance' | 'system' | 'files' | 'filesystem';
 
 const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
   const [selectedSection, setSelectedSection] = useState<SettingsSection>('appearance');
@@ -110,6 +111,14 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
           >
             File Associations
           </button>
+          <button
+            onClick={() => setSelectedSection('filesystem')}
+            className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-800 transition-colors ${
+              selectedSection === 'filesystem' ? 'bg-slate-800 text-cyan-400' : 'text-slate-300'
+            }`}
+          >
+            Filesystem Data
+          </button>
         </div>
       </div>
 
@@ -117,7 +126,13 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
       <div className="flex-1 flex flex-col">
         <div className="p-3 border-b border-slate-800">
           <h2 className="text-sm font-semibold">
-            {selectedSection === 'appearance' ? 'Appearance' : selectedSection === 'system' ? 'System' : 'File Associations'}
+            {selectedSection === 'appearance'
+              ? 'Appearance'
+              : selectedSection === 'system'
+              ? 'System'
+              : selectedSection === 'files'
+              ? 'File Associations'
+              : 'Filesystem Data'}
           </h2>
         </div>
 
@@ -218,9 +233,13 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
           {selectedSection === 'files' && (
             <FileAssociationsPanel />
           )}
+
+          {selectedSection === 'filesystem' && (
+            <FilesystemDataPanel />
+          )}
         </div>
 
-        {selectedSection !== 'files' && (
+        {selectedSection !== 'files' && selectedSection !== 'filesystem' && (
           <div className="p-2 border-t border-slate-800 text-xs text-slate-500">
             <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">↑↓</kbd> Navigate{' '}
             <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> Toggle{' '}

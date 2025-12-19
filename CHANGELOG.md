@@ -1,5 +1,88 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_AG - Settings "Filesystem Data" Panel + Safe Factory Reset (2025-12-18)
+
+### Goal
+Expose fileSystemStore persistence helpers (`exportJson`, `importJson`, `resetAll`) via a keyboard-first Settings panel. Enable users to manage their filesystem data through export/import/reset operations without writing code.
+
+### Key Changes
+- **New Settings Panel: "Filesystem Data"** (`packages/rb-apps/src/apps/settings/FilesystemDataPanel.tsx`):
+  - Keyboard-first UI with single-key shortcuts: E (Export), I (Import), R (Reset)
+  - Located in Settings sidebar alongside "File Associations" and "Appearance"
+  - Info section explains persistence and available operations
+
+- **Export Modal** (E key):
+  - Opens modal with readonly textarea displaying canonical JSON from `fileSystemStore.exportJson()`
+  - Click textarea to select all for easy copying
+  - Deterministic output with stable sorting (matches PHASE_AF spec)
+  - Escape closes modal and returns focus to panel
+
+- **Import Modal** (I key):
+  - Opens modal with editable textarea for pasting JSON
+  - Enter key applies import (validates schema, replaces state atomically)
+  - Invalid JSON shows error toast and preserves existing state (never crashes)
+  - Schema validation errors (wrong version, missing fields) show error toast
+  - Success toast confirms import completed
+
+- **Reset Confirmation Modal** (R key):
+  - Opens modal with explicit warning about clearing all files and folders
+  - Enter key confirms reset (calls `resetAll()`, clears `rb:file-system` localStorage)
+  - Cancel button or Escape cancels without changes
+  - Success toast confirms reset completed
+
+- **Deterministic Focus Management**:
+  - All modal close operations use `requestAnimationFrame()` for deterministic focus return
+  - Consistent tab order throughout panel
+  - No timers or async focus logic
+
+- **Settings App Integration** (`packages/rb-apps/src/apps/SettingsApp.tsx`):
+  - Updated `SettingsSection` type to include 'filesystem'
+  - Added "Filesystem Data" button to sidebar
+  - Added section header logic for "Filesystem Data"
+  - Added panel routing to render `FilesystemDataPanel` when selected
+  - Updated footer visibility to hide default footer when filesystem panel active (panel has own footer)
+
+### Testing (397 tests passing, 0 warnings)
+- **Panel Rendering** (2 tests): Verify panel displays with keyboard shortcuts info
+- **Export Functionality** (3 tests): Modal opens on E key, displays deterministic JSON, closes on Escape
+- **Import Functionality** (4 tests): Modal opens on I key, valid JSON applies successfully, invalid JSON/schema errors show toast without crashing
+- **Reset Functionality** (5 tests): Modal opens on R key, confirm resets filesystem + clears localStorage, cancel preserves state, Escape closes without changes
+- **Focus Management** (1 test): requestAnimationFrame used for deterministic focus after modal close
+- **Regression** (1 test): Export and import roundtrip preserves state correctly
+- **Baseline Regression**: All 382 existing tests (including PHASE_AF persistence tests) still pass
+
+### Files Changed
+- `AI_STATE.md` - PHASE_AG contract added, PHASE_AF moved to completed phases, current phase updated
+- `packages/rb-apps/src/apps/settings/FilesystemDataPanel.tsx` - New panel component (268 lines)
+- `packages/rb-apps/src/apps/SettingsApp.tsx` - Added filesystem section, routing, and panel integration
+- `packages/rb-apps/src/__tests__/filesystem-settings-panel.test.tsx` - 15 comprehensive tests (new file)
+
+### UX Impact
+- **Before**: Users could only access fileSystemStore methods programmatically (dev console)
+- **After**: Full GUI for managing filesystem data
+- **Example workflow**:
+  1. Open Settings app (⌘⇧,)
+  2. Click "Filesystem Data" in sidebar
+  3. Press E to export current filesystem state (copy JSON for backup)
+  4. Press I to import previously saved JSON (restore from backup)
+  5. Press R to reset filesystem to factory defaults (confirm in modal)
+  6. All operations provide visual feedback via toast notifications
+  7. Invalid JSON or schema errors display friendly error messages without crashing
+
+### Technical Notes
+- All keyboard shortcuts case-insensitive (E and e both work)
+- Export modal uses 600px width for better JSON readability
+- Import/Export modals use 96-line (384px) tall textareas
+- Reset modal uses standard confirmation pattern from File Associations panel
+- Panel footer matches File Associations panel pattern
+- Zero async operations (all sync, deterministic)
+- SSR-safe (checks `typeof window !== 'undefined'` in store)
+
+### Factory Reset (Not Implemented)
+Factory Reset functionality (clearing both fileSystemStore and fileAssociationsStore simultaneously) was not included in this phase. This feature can be added in a future phase if needed.
+
+---
+
 ## PHASE_AF - Deterministic Filesystem Persistence + Import/Export/Reset (2025-12-18)
 
 ### Goal

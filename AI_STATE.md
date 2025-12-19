@@ -3356,13 +3356,270 @@ interface FileSystemPersistenceEnvelope {
 
 
 
+\## PHASE\_AG — Settings "Filesystem Data" Panel \+ Safe Factory Reset
+
+
+
+### Goal
+
+Expose the fileSystemStore's new persistence helpers (`exportJson`, `importJson`, `resetAll`) via a keyboard-first Settings panel. Provide optional "Factory Reset" functionality that clears both filesystem and file associations to restore a pristine OS state.
+
+
+
+### Non-Goals
+
+- NO async file downloads or clipboard API usage (browser security limitations)
+
+- NO automatic export scheduling or cloud sync
+
+- NO filesystem versioning or snapshot history UI
+
+- NO import conflict resolution UI (invalid JSON → no-op + toast)
+
+- NO Settings panel reorganization beyond adding "Filesystem Data"
+
+
+
+### Invariants
+
+1. **Keyboard-First UI**: All operations accessible via single-key shortcuts (E/I/R) with visual feedback
+
+2. **Deterministic Focus**: Focus management uses `requestAnimationFrame` (no timers); predictable tab order
+
+3. **Never Crash on Invalid Input**: `importJson` validation errors display toast notification, preserve existing state
+
+4. **Confirmation for Destructive Actions**: Reset and Factory Reset require explicit modal confirmation with clear warnings
+
+5. **Deterministic Export Output**: Export displays canonical JSON from `fileSystemStore.exportJson()` (stable ordering)
+
+6. **Atomic Factory Reset**: Factory Reset calls both `fileSystemStore.resetAll()` and `fileAssociationsStore.resetAll()` sequentially
+
+7. **Test Coverage for Regressions**: Verify Files app and System Search still work after reset operations
+
+
+
+### Current State
+
+- `fileSystemStore` has `exportJson()`, `importJson(json)`, `resetAll()` actions (PHASE\_AF)
+
+- `fileAssociationsStore` has `resetAll()` action (PHASE\_AB)
+
+- Settings app has "File Associations" panel with keyboard navigation (PHASE\_AB)
+
+- No UI exposure of filesystem persistence helpers yet
+
+
+
+**Target State** (PHASE\_AG):
+
+- Settings has new panel: "Filesystem Data" (alongside "File Associations")
+
+- Panel exposes three operations:
+
+  - **E**: Export filesystem JSON (readonly textarea with deterministic output)
+
+  - **I**: Import filesystem JSON (textarea input; Enter applies; invalid → toast + no-op)
+
+  - **R**: Reset filesystem (confirmation modal; restores default seed + clears `rb:file-system`)
+
+- Optional "Factory Reset" button/action that:
+
+  - Shows confirmation modal with explicit warning
+
+  - Resets both fileSystemStore and fileAssociationsStore
+
+  - Clears both `rb:file-system` and `rb:file-associations` localStorage keys
+
+
+
+### Implementation Steps
+
+
+
+1. **Audit SettingsApp Structure** (`packages/rb-apps/src/apps/SettingsApp.tsx`):
+
+   - Understand existing panel system ("File Associations" panel)
+
+   - Identify navigation pattern (keyboard shortcuts for panel switching)
+
+   - Review modal system (ConfirmModal usage for destructive actions)
+
+
+
+2. **Add "Filesystem Data" Panel**:
+
+   ```typescript
+   // Add new panel type
+   type SettingsPanel = 'general' | 'file-associations' | 'filesystem-data';
+
+   // Panel content component
+   const FilesystemDataPanel: React.FC = () => {
+     const { exportJson, importJson, resetAll } = useFileSystemStore();
+     const [mode, setMode] = useState<'export' | 'import'>('export');
+     const [importValue, setImportValue] = useState('');
+     const [showResetModal, setShowResetModal] = useState(false);
+
+     // E: Show export mode
+     // I: Show import mode
+     // R: Show reset confirmation modal
+
+     return (
+       <div>
+         {mode === 'export' && (
+           <textarea readOnly value={exportJson()} />
+         )}
+         {mode === 'import' && (
+           <textarea
+             value={importValue}
+             onChange={(e) => setImportValue(e.target.value)}
+             onKeyDown={(e) => {
+               if (e.key === 'Enter' && !e.shiftKey) {
+                 try {
+                   importJson(importValue);
+                   showToast('Filesystem imported successfully');
+                 } catch (error) {
+                   showToast(`Import failed: ${error.message}`);
+                 }
+               }
+             }}
+           />
+         )}
+       </div>
+     );
+   };
+   ```
+
+
+
+3. **Add Factory Reset (Optional)**:
+
+   ```typescript
+   const handleFactoryReset = () => {
+     // Confirmation modal with explicit warning
+     setShowFactoryResetModal(true);
+   };
+
+   const confirmFactoryReset = () => {
+     useFileSystemStore.getState().resetAll();
+     useFileAssociationsStore.getState().resetAll();
+     showToast('Factory reset complete - all data cleared');
+     setShowFactoryResetModal(false);
+   };
+   ```
+
+
+
+4. **Add Keyboard Shortcuts** (within Filesystem Data panel):
+
+   - **E**: Switch to export mode, display readonly canonical JSON
+
+   - **I**: Switch to import mode, focus import textarea
+
+   - **R**: Open reset confirmation modal
+
+   - **Escape**: Close modals
+
+
+
+5. **Add Tests** (`packages/rb-apps/src/__tests__/filesystem-settings-panel.test.tsx`):
+
+   ```typescript
+   describe('PHASE_AG: Filesystem Data Settings Panel', () => {
+     describe('Panel Navigation', () => {
+       it('should display Filesystem Data panel when selected');
+       it('should switch to export mode on E key');
+       it('should switch to import mode on I key');
+     });
+
+     describe('Export Functionality', () => {
+       it('should display deterministic JSON in export mode');
+       it('should update export output when filesystem changes');
+     });
+
+     describe('Import Functionality', () => {
+       it('should apply valid JSON on Enter');
+       it('should show toast and preserve state on invalid JSON');
+       it('should show toast and preserve state on schema validation error');
+     });
+
+     describe('Reset Functionality', () => {
+       it('should show confirmation modal on R key');
+       it('should reset filesystem and clear localStorage on confirm');
+       it('should close modal on cancel without changes');
+     });
+
+     describe('Factory Reset', () => {
+       it('should show confirmation modal with explicit warning');
+       it('should reset both filesystem and file associations on confirm');
+       it('should clear both localStorage keys');
+     });
+
+     describe('Regression: Files App + System Search', () => {
+       it('should maintain Files app functionality after reset');
+       it('should maintain System Search file provider after reset');
+     });
+   });
+   ```
+
+
+
+### Testing Strategy
+
+1. **Panel Navigation**: Verify panel appears in Settings, keyboard shortcuts work
+
+2. **Export Mode**: Verify readonly textarea displays canonical JSON from `exportJson()`
+
+3. **Import Mode**: Verify valid JSON applies successfully, invalid JSON shows toast without crashing
+
+4. **Reset Confirmation**: Verify modal appears, confirm resets filesystem, cancel preserves state
+
+5. **Factory Reset**: Verify both stores reset, both localStorage keys cleared
+
+6. **Regression**: Verify Files app and System Search still work after all reset operations
+
+7. **Deterministic Focus**: Verify tab order and focus management after mode switches
+
+
+
+### Definition of Done
+
+1. Settings app has "Filesystem Data" panel with E/I/R keyboard shortcuts
+
+2. Export mode displays readonly canonical JSON from `fileSystemStore.exportJson()`
+
+3. Import mode accepts JSON input; Enter applies valid JSON; invalid JSON shows toast + no-op
+
+4. Reset shows confirmation modal; confirm clears `rb:file-system` and resets to seed
+
+5. Optional Factory Reset implemented (if included in scope) with both stores cleared
+
+6. All operations tested (export, import validation, reset, factory reset, regression)
+
+7. `pnpm lint`, `pnpm typecheck`, `pnpm build` pass with zero warnings
+
+8. All tests pass (including new filesystem-settings-panel tests and existing suite)
+
+9. Manual smoke test: export filesystem, modify, import, verify state restored
+
+10. Manual smoke test: reset filesystem, verify Files app and System Search work
+
+11. Manual smoke test: factory reset, verify both filesystem and file associations cleared
+
+12. Contracts and completion logged in AI\_STATE.md and CHANGELOG.md
+
+
+
+---
+
+
+
 \## Current Phase
 
 
 
-Phase ID: PHASE\_AF
+Phase ID: PHASE\_AG
 
-Phase Name: Deterministic Filesystem Persistence \+ Import/Export/Reset
+Phase Name: Settings "Filesystem Data" Panel \+ Safe Factory Reset
 
 Status: IN PROGRESS
 
@@ -3437,6 +3694,8 @@ Status: IN PROGRESS
 - PHASE\_AD — System Search: Deterministic File Provider + Default Open + Open With
 
 - PHASE\_AE — System Search Open-With Modal + Files Global Store Unification
+
+- PHASE\_AF — Deterministic Filesystem Persistence + Import/Export/Reset
 
 
 
