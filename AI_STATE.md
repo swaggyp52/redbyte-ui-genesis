@@ -3850,6 +3850,406 @@ Add a hardened Factory Reset action to Settings that clears BOTH persisted store
 
 
 
+\## PHASE\_AI — Deterministic Session Restore (Window Layout Persistence + Safe Reset)
+
+
+
+### Goal
+
+Persist window manager state deterministically to localStorage and restore it on boot with a safe reset action in Settings. Ensure window layout (open windows, z-order, focus state, geometry) survives page reloads without corrupting or crashing, with fallback to default seed on corruption.
+
+
+
+### Non-Goals
+
+- NO async persistence (all localStorage operations synchronous)
+
+- NO complex animation or transition state persistence
+
+- NO minimized window geometry tracking (only minimized flag)
+
+- NO export/import UI for window layouts (just persist+restore+reset)
+
+- NO migration from previous layout versions (version mismatch → fallback to default)
+
+- NO partial hydration (either full restore or fallback, never hybrid)
+
+
+
+### Invariants
+
+1. **Deterministic Serialization**: Window layout JSON is canonical - stable key ordering, stable window array ordering (by windowId ascending)
+
+2. **Sync-Only Persistence**: All localStorage operations synchronous (no promises, no async/await)
+
+3. **Schema Validation**: Envelope version check on load; wrong version → fallback to default seed (never crash)
+
+4. **Corruption Fallback**: JSON parse error or missing keys → fallback to default seed (never crash)
+
+5. **Deterministic Restore Order**: Windows created in stable order (windowId ascending), then focused window applied
+
+6. **Focus Restoration**: If persisted focused windowId exists and not minimized → focus it; else focus oldest non-minimized window
+
+7. **Factory Reset Integration**: Factory Reset (PHASE\_AH) clears `rb:window-layout` alongside `rb:file-system` and `rb:file-associations`
+
+8. **Session Reset in Settings**: New "Session" panel with R key to reset window layout (confirm modal, clears key, restores default window set)
+
+
+
+### Current State
+
+- Window manager state exists in rb-shell (windows array, z-order, focused windowId)
+
+- `lastFocusedAt` timestamps tracked per window (PHASE\_AC)
+
+- No persistence of window layout - page reload loses all open windows
+
+- Factory Reset (PHASE\_AH) clears `rb:file-system` and `rb:file-associations` but not window layout
+
+
+
+**Target State** (PHASE\_AI):
+
+- Window manager state persisted to `rb:window-layout` localStorage key
+
+- Envelope: `{ version: 1, state: WindowManagerPersistedState }`
+
+- Persisted state includes: windows (appId, windowId, minimized, geometry), z-order, focusedWindowId, lastFocusedAt timestamps
+
+- On boot: load, validate schema, hydrate store with persisted windows
+
+- If corrupted/wrong version: fallback to default seed (e.g., one Files window)
+
+- Deterministic restore: create windows in windowId order, apply focus to persisted focused window if valid
+
+- Factory Reset clears `rb:window-layout` key
+
+- Settings "Session" panel with R key to reset session layout
+
+
+
+### Implementation Steps
+
+
+
+1. **Define Persistence Schema** (`packages/rb-windowing/src/types.ts` or `packages/rb-shell/src/types.ts`):
+
+   ```typescript
+   interface WindowPersisted {
+     appId: string;
+     windowId: string;
+     minimized: boolean;
+     geometry?: { x: number; y: number; width: number; height: number };
+     lastFocusedAt?: number;
+   }
+
+   interface WindowManagerPersistedState {
+     windows: WindowPersisted[];
+     focusedWindowId: string | null;
+   }
+
+   interface WindowLayoutEnvelope {
+     version: 1;
+     state: WindowManagerPersistedState;
+   }
+   ```
+
+
+
+2. **Implement Serialization** (`packages/rb-windowing/src/sessionRestore.ts` or inline in store):
+
+   ```typescript
+   const STORAGE_KEY = 'rb:window-layout';
+
+   function serializeLayout(envelope: WindowLayoutEnvelope): string {
+     // Sort windows by windowId for deterministic output
+     const sortedWindows = [...envelope.state.windows].sort((a, b) => a.windowId.localeCompare(b.windowId));
+     const sortedState: WindowManagerPersistedState = {
+       windows: sortedWindows,
+       focusedWindowId: envelope.state.focusedWindowId,
+     };
+     const sortedEnvelope: WindowLayoutEnvelope = {
+       version: envelope.version,
+       state: sortedState,
+     };
+     return JSON.stringify(sortedEnvelope);
+   }
+
+   function loadPersistedLayout(): WindowManagerPersistedState | null {
+     if (typeof window === 'undefined') return null;
+
+     try {
+       const raw = localStorage.getItem(STORAGE_KEY);
+       if (!raw) return null;
+
+       const envelope = JSON.parse(raw) as WindowLayoutEnvelope;
+
+       // Validate envelope
+       if (envelope.version !== 1) return null;
+       if (!envelope.state || typeof envelope.state !== 'object') return null;
+       if (!Array.isArray(envelope.state.windows)) return null;
+
+       return envelope.state;
+     } catch {
+       // JSON parse error -> fallback
+       return null;
+     }
+   }
+
+   function persistLayout(state: WindowManagerPersistedState): void {
+     if (typeof window === 'undefined') return;
+
+     const envelope: WindowLayoutEnvelope = {
+       version: 1,
+       state,
+     };
+
+     const json = serializeLayout(envelope);
+     localStorage.setItem(STORAGE_KEY, json);
+   }
+   ```
+
+
+
+3. **Hydrate Store on Boot** (rb-windowing or rb-shell store initializer):
+
+   ```typescript
+   // In store initializer (e.g., useWindowStore)
+   const persistedLayout = loadPersistedLayout();
+   const initialState = persistedLayout
+     ? hydrateFromPersisted(persistedLayout)
+     : createDefaultWindowSet();
+
+   // hydrateFromPersisted: convert WindowPersisted[] to WindowState[]
+   function hydrateFromPersisted(persisted: WindowManagerPersistedState): WindowManagerState {
+     // Create windows in windowId order
+     const windows: WindowState[] = persisted.windows
+       .sort((a, b) => a.windowId.localeCompare(b.windowId))
+       .map((w) => ({
+         ...w,
+         zIndex: 0, // Will be set by z-order logic
+         // ... other WindowState fields
+       }));
+
+     // Determine focused window
+     let focusedId = persisted.focusedWindowId;
+     if (focusedId && !windows.find((w) => w.windowId === focusedId && !w.minimized)) {
+       // Fallback: oldest non-minimized window
+       const eligible = windows.filter((w) => !w.minimized).sort((a, b) => a.windowId.localeCompare(b.windowId));
+       focusedId = eligible[0]?.windowId || null;
+     }
+
+     return {
+       windows,
+       focusedWindowId: focusedId,
+       // ... other WindowManagerState fields
+     };
+   }
+   ```
+
+
+
+4. **Persist on Mutations** (wrap window manager actions):
+
+   ```typescript
+   // After createWindow, closeWindow, minimizeWindow, focusWindow, etc.
+   const newState = { ...state, windows: updatedWindows };
+   set(newState);
+   persistLayout(toPersisted(newState));
+
+   function toPersisted(state: WindowManagerState): WindowManagerPersistedState {
+     return {
+       windows: state.windows.map((w) => ({
+         appId: w.appId,
+         windowId: w.windowId,
+         minimized: w.minimized,
+         geometry: w.geometry,
+         lastFocusedAt: w.lastFocusedAt,
+       })),
+       focusedWindowId: state.focusedWindowId,
+     };
+   }
+   ```
+
+
+
+5. **Update Factory Reset** (`packages/rb-apps/src/apps/settings/FilesystemDataPanel.tsx`):
+
+   ```typescript
+   const handleFactoryReset = () => {
+     try {
+       // Reset in deterministic order
+       useFileAssociationsStore.getState().resetAll();
+       useFileSystemStore.getState().resetAll();
+
+       // Explicitly clear localStorage keys
+       if (typeof window !== 'undefined') {
+         localStorage.removeItem('rb:file-associations');
+         localStorage.removeItem('rb:file-system');
+         localStorage.removeItem('rb:window-layout'); // NEW
+       }
+
+       // Verify all keys cleared
+       if (typeof window !== 'undefined') {
+         const fsKey = localStorage.getItem('rb:file-system');
+         const assocKey = localStorage.getItem('rb:file-associations');
+         const layoutKey = localStorage.getItem('rb:window-layout'); // NEW
+         if (fsKey || assocKey || layoutKey) {
+           throw new Error('Factory reset incomplete - localStorage keys not cleared');
+         }
+       }
+
+       onShowToast?.('Factory reset complete - all data cleared');
+       setModal(null);
+       requestAnimationFrame(() => {
+         containerRef.current?.focus();
+       });
+     } catch (error) {
+       const message = error instanceof Error ? error.message : 'Unknown error';
+       onShowToast?.(`Factory reset failed: ${message}`);
+     }
+   };
+   ```
+
+
+
+6. **Add Settings "Session" Panel** (`packages/rb-apps/src/apps/settings/SessionPanel.tsx`):
+
+   ```typescript
+   export const SessionPanel: React.FC<SessionPanelProps> = ({ onShowToast }) => {
+     const [modal, setModal] = useState<'reset-confirm' | null>(null);
+     const containerRef = useRef<HTMLDivElement>(null);
+
+     const handleKeyDown = (event: React.KeyboardEvent) => {
+       if (modal) return; // Modal handles own keys
+
+       if (event.key === 'r' || event.key === 'R') {
+         event.preventDefault();
+         setModal('reset-confirm');
+       }
+     };
+
+     const handleResetSession = () => {
+       if (typeof window !== 'undefined') {
+         localStorage.removeItem('rb:window-layout');
+       }
+
+       onShowToast?.('Session layout reset - reload to apply');
+       setModal(null);
+       requestAnimationFrame(() => {
+         containerRef.current?.focus();
+       });
+     };
+
+     return (
+       <div ref={containerRef} tabIndex={0} onKeyDown={handleKeyDown}>
+         <h3>Session Management</h3>
+         <p>Your window layout is automatically saved. Use actions below to reset.</p>
+
+         <div>
+           <kbd>R</kbd> Reset Session Layout
+         </div>
+
+         {modal === 'reset-confirm' && (
+           <div className="modal">
+             <h3>Reset Session Layout?</h3>
+             <p>This will clear all open windows. Reload the page to apply.</p>
+             <button onClick={() => setModal(null)}>Cancel</button>
+             <button onClick={handleResetSession}>Reset Session</button>
+           </div>
+         )}
+       </div>
+     );
+   };
+   ```
+
+
+
+7. **Integrate Session Panel into Settings** (`packages/rb-apps/src/apps/SettingsApp.tsx`):
+
+   ```typescript
+   type SettingsSection = 'appearance' | 'system' | 'files' | 'filesystem' | 'session';
+
+   // Add sidebar button
+   <button onClick={() => setSelectedSection('session')}>
+     Session
+   </button>
+
+   // Add panel routing
+   {selectedSection === 'session' && <SessionPanel onShowToast={onShowToast} />}
+   ```
+
+
+
+8. **Add Tests** (`packages/rb-windowing/src/__tests__/session-restore.test.ts`):
+
+   ```typescript
+   describe('Window Layout Persistence', () => {
+     it('should persist window layout to localStorage on mutation');
+     it('should restore persisted layout on store init');
+     it('should produce deterministic JSON (stable window order)');
+     it('should fall back to default on corrupted JSON');
+     it('should fall back to default on version mismatch');
+     it('should restore focused window deterministically');
+     it('should focus oldest non-minimized if persisted focused is minimized');
+     it('should handle empty persisted state');
+   });
+
+   describe('Factory Reset Integration', () => {
+     it('should clear rb:window-layout alongside other keys');
+   });
+
+   describe('Session Reset', () => {
+     it('should open reset modal on R key');
+     it('should clear rb:window-layout on confirm');
+     it('should show toast after reset');
+   });
+   ```
+
+
+
+### Testing Strategy
+
+1. **Persistence Roundtrip**: Create windows, persist, reload, verify restored state matches
+
+2. **Deterministic Serialization**: Run export twice, verify JSON identical
+
+3. **Corruption Fallback**: Inject invalid JSON, verify fallback to default seed without crash
+
+4. **Focus Restoration**: Persist focused window, reload, verify same window focused
+
+5. **Minimized Window Handling**: Persist minimized windows, verify excluded from focus selection
+
+6. **Factory Reset Integration**: Verify `rb:window-layout` cleared alongside other keys
+
+7. **Session Reset**: Verify R key clears layout, toast shown
+
+
+
+### Definition of Done
+
+1. Window layout persisted to `rb:window-layout` localStorage key with versioned envelope
+
+2. On boot: load, validate schema, hydrate store with persisted windows
+
+3. Corrupted JSON or version mismatch → fallback to default seed (never crash)
+
+4. Deterministic restore: windows created in windowId order, focus applied deterministically
+
+5. Factory Reset clears `rb:window-layout` key alongside other keys
+
+6. Settings "Session" panel with R key to reset session layout
+
+7. All tests pass (existing 409 + new session restore tests)
+
+8. `pnpm lint`, `pnpm typecheck`, `pnpm build` pass with zero warnings
+
+9. Manual smoke test: open windows -> reload -> layout restored; Settings -> Session -> Reset clears layout
+
+10. Contracts and completion logged in AI\_STATE.md and CHANGELOG.md
+
+
+
 ---
 
 
@@ -3858,9 +4258,9 @@ Add a hardened Factory Reset action to Settings that clears BOTH persisted store
 
 
 
-Phase ID: PHASE\_AH
+Phase ID: PHASE\_AI
 
-Phase Name: Factory Reset with Hardened Confirmation
+Phase Name: Deterministic Session Restore (Window Layout Persistence + Safe Reset)
 
 Status: IN PROGRESS
 
@@ -3939,6 +4339,8 @@ Status: IN PROGRESS
 - PHASE\_AF — Deterministic Filesystem Persistence + Import/Export/Reset
 
 - PHASE\_AG — Settings "Filesystem Data" Panel + Safe Factory Reset
+
+- PHASE\_AH — Factory Reset with Hardened Confirmation
 
 
 
