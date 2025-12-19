@@ -4258,11 +4258,287 @@ Persist window manager state deterministically to localStorage and restore it on
 
 
 
-Phase ID: PHASE\_AI
+Phase ID: PHASE\_AJ
 
-Phase Name: Deterministic Session Restore (Window Layout Persistence + Safe Reset)
+Phase Name: Keyboard-First Window Switcher (MRU) + Deterministic Focus Transfer
 
-Status: COMPLETED
+Status: IN PROGRESS
+
+
+
+---
+
+
+
+\## PHASE\_AJ: Keyboard-First Window Switcher (MRU) + Deterministic Focus Transfer
+
+
+
+### Goal
+
+
+
+Add a global keyboard-first Window Switcher overlay that displays open windows in MRU (Most Recently Used) order, enabling deterministic window navigation and focus transfer without timers or async operations.
+
+
+
+### Non-Goals
+
+
+
+- NO mouse-only interaction (keyboard-first; mouse hover/click is optional enhancement)
+
+- NO async focus operations (rAF allowed for deterministic focus handoff only)
+
+- NO timers for auto-dismiss or delay
+
+- NO window thumbnails or previews (text list only)
+
+- NO filtering or search within switcher (just MRU ordering)
+
+- NO customizable keybindings (Ctrl+Tab hardcoded for now)
+
+
+
+### Invariants
+
+
+
+1. **Deterministic MRU Ordering**: Windows sorted by `lastFocusedAt` DESC, tie-break by `windowId` ASC (stable sort).
+
+2. **Keyboard-Only Navigation**: Tab / Shift+Tab cycles selection; ArrowUp/Down optional; Enter confirms; Esc cancels.
+
+3. **Minimized Window Handling**: Minimized windows appear in list with badge; selecting minimized window restores it deterministically before focusing.
+
+4. **Focus Transfer Without Timers**: Focus changes occur synchronously or via rAF only (no setTimeout/setInterval).
+
+5. **Overlay Z-Order**: Switcher stacks consistently above all windows and modals (deterministic z-index).
+
+6. **No State Persistence**: Switcher state (selected index, open/closed) is ephemeral (not persisted to localStorage).
+
+7. **Cancel Restores Previous Focus**: Esc closes switcher and returns focus to previously focused window.
+
+8. **Single Instance**: Only one switcher overlay can be open at a time.
+
+
+
+### Current State
+
+
+
+**Windowing Store** ([packages/rb-windowing/src/store.ts](packages/rb-windowing/src/store.ts)):
+
+- Windows have `lastFocusedAt` timestamp (persisted via PHASE\_AI)
+
+- `focusWindow(id)` updates `lastFocusedAt` and `focused` flag
+
+- `restoreWindow(id)` un-minimizes a minimized window
+
+- `getFocusedWindow()` returns currently focused window
+
+
+
+**Global Keybindings** ([packages/rb-shell/src/Shell.tsx](packages/rb-shell/src/Shell.tsx)):
+
+- Ctrl+Space → System Search
+
+- Ctrl+Shift+P → Command Palette
+
+- Ctrl+K → Launcher
+
+- Ctrl+, → Settings
+
+- Ctrl+` → Focus Next Window (cycling)
+
+- Ctrl+W → Close Focused Window
+
+- Ctrl+M → Minimize Focused Window
+
+
+
+**NO** existing Ctrl+Tab or Alt+Tab binding.
+
+
+
+### Target State
+
+
+
+**New Component: WindowSwitcher** ([packages/rb-shell/src/WindowSwitcher.tsx](packages/rb-shell/src/WindowSwitcher.tsx)):
+
+- Props: `windows`, `onSelect`, `onCancel`
+
+- Local state: `selectedIndex`, `previousFocusedWindowId`
+
+- Renders: list of windows in MRU order with app name, window title, minimized badge
+
+- Keys: Tab/Shift+Tab cycles; ArrowUp/Down optional; Enter selects; Esc cancels
+
+
+
+**Shell Integration** ([packages/rb-shell/src/Shell.tsx](packages/rb-shell/src/Shell.tsx)):
+
+- Add state: `windowSwitcherOpen: boolean`, `windowSwitcherPreviousFocus: string | null`
+
+- Ctrl+Tab keybinding opens switcher (stores previous focused window ID)
+
+- On select: if minimized → `restoreWindow(id)` then `focusWindow(id)`; else `focusWindow(id)` directly
+
+- On cancel: `focusWindow(previousFocusedWindowId)` if valid, close switcher
+
+
+
+**MRU Ordering Logic**:
+
+```typescript
+
+const mrUWindows = [...windows]
+
+  .filter(w => w.mode !== 'minimized' || true) // Include minimized
+
+  .sort((a, b) => {
+
+    // Primary: lastFocusedAt DESC
+
+    const aTime = a.lastFocusedAt || 0;
+
+    const bTime = b.lastFocusedAt || 0;
+
+    if (bTime !== aTime) return bTime - aTime;
+
+    // Tie-break: windowId ASC
+
+    return a.id.localeCompare(b.id);
+
+  });
+
+```
+
+
+
+### Implementation Steps
+
+
+
+**Step 1: Create WindowSwitcher Component**
+
+- Create `packages/rb-shell/src/WindowSwitcher.tsx`
+
+- Props: `windows: WindowState[]`, `onSelect: (windowId: string) => void`, `onCancel: () => void`
+
+- State: `selectedIndex: number` (default 0)
+
+- Render: overlay with list of windows in MRU order
+
+- Each item: app icon (optional), app name, window title, minimized badge (if `mode === 'minimized'`)
+
+- Highlight selected item
+
+- Keys: Tab (select next), Shift+Tab (select prev), Enter (confirm), Esc (cancel)
+
+
+
+**Step 2: Wire Ctrl+Tab Keybinding**
+
+- In `Shell.tsx`, add `windowSwitcherOpen` state
+
+- Add global keydown handler: Ctrl+Tab → open switcher, store `previousFocusedWindowId`
+
+- Pass MRU-sorted windows to WindowSwitcher
+
+- On select: if `window.mode === 'minimized'` → `restoreWindow(id)` first, then `focusWindow(id)`
+
+- On cancel: `focusWindow(previousFocusedWindowId)` if valid
+
+
+
+**Step 3: Ensure Z-Order**
+
+- WindowSwitcher should have `z-50` or higher (above all windows and modals)
+
+- Use fixed positioning: `fixed inset-0 bg-black/50 flex items-center justify-center`
+
+
+
+**Step 4: Test Deterministic Behavior**
+
+- MRU ordering determinism + tie-break
+
+- Focus transfer + un-minimize path
+
+- Cancel restores previous focus
+
+- Keybinding opens/closes overlay
+
+
+
+**Step 5: Verify No Regressions**
+
+- PHASE\_AC window routing still works
+
+- PHASE\_AI persistence/restore still works
+
+- Existing keybindings (Ctrl+`, Ctrl+W, etc.) unaffected
+
+
+
+### Testing Strategy
+
+
+
+**Unit Tests** (`packages/rb-shell/src/__tests__/window-switcher.test.tsx`):
+
+1. **MRU Ordering**: Given windows with different `lastFocusedAt`, switcher renders in MRU order
+
+2. **Tie-Break**: Given windows with same `lastFocusedAt`, switcher sorts by `windowId` ASC
+
+3. **Tab Cycling**: Tab advances selection; Shift+Tab reverses
+
+4. **Enter Selects**: Enter calls `onSelect` with selected window ID
+
+5. **Esc Cancels**: Esc calls `onCancel`
+
+6. **Minimized Window**: Selecting minimized window calls `restoreWindow` before `focusWindow`
+
+
+
+**Integration Tests** (optional, via `packages/rb-shell/src/__tests__/shell-lifecycle.test.tsx`):
+
+1. **Ctrl+Tab Opens Switcher**: Pressing Ctrl+Tab opens switcher overlay
+
+2. **Cancel Restores Focus**: Esc closes switcher and returns focus to previous window
+
+3. **Select Focuses Window**: Enter focuses selected window
+
+
+
+### Definition of Done
+
+
+
+- ✅ WindowSwitcher component renders MRU list deterministically
+
+- ✅ Tab / Shift+Tab cycles selection; Enter selects; Esc cancels
+
+- ✅ Ctrl+Tab keybinding opens switcher (no conflicts with existing bindings)
+
+- ✅ Selecting minimized window restores + focuses deterministically (no timers)
+
+- ✅ Cancel restores previous focus
+
+- ✅ Overlay z-order stacks above all windows and modals
+
+- ✅ No state persistence (switcher state is ephemeral)
+
+- ✅ 6+ comprehensive tests covering MRU ordering, cycling, focus transfer, cancel
+
+- ✅ All quality gates pass (lint, typecheck, build, tests)
+
+- ✅ No regressions in PHASE\_AC routing or PHASE\_AI persistence
+
+- ✅ Contract-first: PHASE\_AJ added to AI\_STATE.md before implementation
+
+- ✅ Git workflow: branch phase-aj-window-switcher, FF-only merge to main
 
 
 
