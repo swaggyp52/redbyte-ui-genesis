@@ -4262,7 +4262,7 @@ Phase ID: PHASE\_AI
 
 Phase Name: Deterministic Session Restore (Window Layout Persistence + Safe Reset)
 
-Status: IN PROGRESS
+Status: COMPLETED
 
 
 
@@ -4341,6 +4341,8 @@ Status: IN PROGRESS
 - PHASE\_AG — Settings "Filesystem Data" Panel + Safe Factory Reset
 
 - PHASE\_AH — Factory Reset with Hardened Confirmation
+
+- PHASE\_AI — Deterministic Session Restore (Window Layout Persistence + Safe Reset)
 
 
 

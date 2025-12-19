@@ -118,13 +118,15 @@ export const FilesystemDataPanel: React.FC<FilesystemDataPanelProps> = ({ onShow
       if (typeof window !== 'undefined') {
         localStorage.removeItem('rb:file-associations');
         localStorage.removeItem('rb:file-system');
+        localStorage.removeItem('rb:window-layout');
       }
 
-      // Verify both keys cleared
+      // Verify all keys cleared
       if (typeof window !== 'undefined') {
         const fsKey = localStorage.getItem('rb:file-system');
         const assocKey = localStorage.getItem('rb:file-associations');
-        if (fsKey || assocKey) {
+        const layoutKey = localStorage.getItem('rb:window-layout');
+        if (fsKey || assocKey || layoutKey) {
           throw new Error('Factory reset incomplete - localStorage keys not cleared');
         }
       }

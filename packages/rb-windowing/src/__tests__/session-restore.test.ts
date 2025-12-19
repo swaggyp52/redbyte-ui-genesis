@@ -17,22 +17,23 @@ describe('Session Restore', () => {
       const { createWindow } = useWindowStore.getState();
       createWindow({ title: 'Test Window', contentId: 'test-app' });
 
-      const raw = localStorage.getItem('rb:window-session');
+      const raw = localStorage.getItem('rb:window-layout');
       expect(raw).toBeTruthy();
 
-      const session = JSON.parse(raw!);
-      expect(session.windows).toHaveLength(1);
-      expect(session.windows[0].contentId).toBe('test-app');
-      expect(session.windows[0].title).toBe('Test Window');
+      const envelope = JSON.parse(raw!);
+      expect(envelope.version).toBe(1);
+      expect(envelope.state.windows).toHaveLength(1);
+      expect(envelope.state.windows[0].contentId).toBe('test-app');
+      expect(envelope.state.windows[0].title).toBe('Test Window');
     });
 
     it('persists bounds and mode to localStorage', () => {
       const { createWindow } = useWindowStore.getState();
       const win = createWindow({ title: 'Test', contentId: 'test-app', x: 100, y: 200, width: 500, height: 400 });
 
-      const raw = localStorage.getItem('rb:window-session');
-      const session = JSON.parse(raw!);
-      const saved = session.windows[0];
+      const raw = localStorage.getItem('rb:window-layout');
+      const envelope = JSON.parse(raw!);
+      const saved = envelope.state.windows[0];
 
       expect(saved.bounds.x).toBe(100);
       expect(saved.bounds.y).toBe(200);
@@ -48,11 +49,11 @@ describe('Session Restore', () => {
 
       focusWindow(w1.id);
 
-      const raw = localStorage.getItem('rb:window-session');
-      const session = JSON.parse(raw!);
+      const raw = localStorage.getItem('rb:window-layout');
+      const envelope = JSON.parse(raw!);
 
-      expect(session.windows).toHaveLength(2);
-      expect(session.nextZIndex).toBeGreaterThan(2);
+      expect(envelope.state.windows).toHaveLength(2);
+      expect(envelope.state.nextZIndex).toBeGreaterThan(2);
     });
 
     it('persists focused window state', () => {
@@ -62,11 +63,11 @@ describe('Session Restore', () => {
 
       focusWindow(w1.id);
 
-      const raw = localStorage.getItem('rb:window-session');
-      const session = JSON.parse(raw!);
+      const raw = localStorage.getItem('rb:window-layout');
+      const envelope = JSON.parse(raw!);
 
-      const savedW1 = session.windows.find((w: WindowState) => w.contentId === 'app1');
-      const savedW2 = session.windows.find((w: WindowState) => w.contentId === 'app2');
+      const savedW1 = envelope.state.windows.find((w: WindowState) => w.contentId === 'app1');
+      const savedW2 = envelope.state.windows.find((w: WindowState) => w.contentId === 'app2');
 
       expect(savedW1.focused).toBe(true);
       expect(savedW2.focused).toBe(false);
@@ -78,10 +79,10 @@ describe('Session Restore', () => {
 
       toggleMinimize(win.id);
 
-      const raw = localStorage.getItem('rb:window-session');
-      const session = JSON.parse(raw!);
+      const raw = localStorage.getItem('rb:window-layout');
+      const envelope = JSON.parse(raw!);
 
-      expect(session.windows[0].mode).toBe('minimized');
+      expect(envelope.state.windows[0].mode).toBe('minimized');
     });
 
     it('persists maximized windows', () => {
@@ -90,10 +91,10 @@ describe('Session Restore', () => {
 
       toggleMaximize(win.id);
 
-      const raw = localStorage.getItem('rb:window-session');
-      const session = JSON.parse(raw!);
+      const raw = localStorage.getItem('rb:window-layout');
+      const envelope = JSON.parse(raw!);
 
-      expect(session.windows[0].mode).toBe('maximized');
+      expect(envelope.state.windows[0].mode).toBe('maximized');
     });
 
     it('updates localStorage on closeWindow', () => {
@@ -103,11 +104,11 @@ describe('Session Restore', () => {
 
       closeWindow(w1.id);
 
-      const raw = localStorage.getItem('rb:window-session');
-      const session = JSON.parse(raw!);
+      const raw = localStorage.getItem('rb:window-layout');
+      const envelope = JSON.parse(raw!);
 
-      expect(session.windows).toHaveLength(1);
-      expect(session.windows[0].contentId).toBe('app2');
+      expect(envelope.state.windows).toHaveLength(1);
+      expect(envelope.state.windows[0].contentId).toBe('app2');
     });
   });
 
@@ -118,55 +119,144 @@ describe('Session Restore', () => {
     });
 
     it('returns null for corrupted JSON', () => {
-      localStorage.setItem('rb:window-session', 'invalid json{');
+      localStorage.setItem('rb:window-layout', 'invalid json{');
       const session = loadSession();
       expect(session).toBeNull();
     });
 
     it('returns null for invalid schema (missing windows)', () => {
-      localStorage.setItem('rb:window-session', JSON.stringify({ nextZIndex: 5 }));
+      localStorage.setItem('rb:window-layout', JSON.stringify({ version: 1, state: { nextZIndex: 5 } }));
       const session = loadSession();
       expect(session).toBeNull();
     });
 
     it('returns null for invalid schema (missing nextZIndex)', () => {
-      localStorage.setItem('rb:window-session', JSON.stringify({ windows: [] }));
+      localStorage.setItem('rb:window-layout', JSON.stringify({ version: 1, state: { windows: [] } }));
       const session = loadSession();
       expect(session).toBeNull();
     });
 
     it('returns null for invalid schema (windows not an array)', () => {
-      localStorage.setItem('rb:window-session', JSON.stringify({ windows: {}, nextZIndex: 1 }));
+      localStorage.setItem('rb:window-layout', JSON.stringify({ version: 1, state: { windows: {}, nextZIndex: 1 } }));
       const session = loadSession();
       expect(session).toBeNull();
     });
 
     it('loads valid session data', () => {
-      const validSession = {
-        windows: [
-          {
-            id: 'win-1',
-            contentId: 'test-app',
-            title: 'Test Window',
-            bounds: { x: 100, y: 100, width: 400, height: 300 },
-            mode: 'normal',
-            zIndex: 1,
-            focused: true,
-            resizable: true,
-            minimizable: true,
-            maximizable: true,
-          },
-        ],
-        nextZIndex: 2,
+      const validEnvelope = {
+        version: 1,
+        state: {
+          windows: [
+            {
+              id: 'win-1',
+              contentId: 'test-app',
+              title: 'Test Window',
+              bounds: { x: 100, y: 100, width: 400, height: 300 },
+              mode: 'normal',
+              zIndex: 1,
+              focused: true,
+              resizable: true,
+              minimizable: true,
+              maximizable: true,
+            },
+          ],
+          nextZIndex: 2,
+        },
       };
 
-      localStorage.setItem('rb:window-session', JSON.stringify(validSession));
+      localStorage.setItem('rb:window-layout', JSON.stringify(validEnvelope));
       const session = loadSession();
 
       expect(session).not.toBeNull();
       expect(session!.windows).toHaveLength(1);
       expect(session!.windows[0].contentId).toBe('test-app');
       expect(session!.nextZIndex).toBe(2);
+    });
+    it('returns null for version mismatch', () => {
+      const futureEnvelope = {
+        version: 2,
+        state: {
+          windows: [],
+          nextZIndex: 1,
+        },
+      };
+
+      localStorage.setItem('rb:window-layout', JSON.stringify(futureEnvelope));
+      const session = loadSession();
+
+      expect(session).toBeNull();
+    });
+
+    it('returns null for missing version', () => {
+      const noVersionEnvelope = {
+        state: {
+          windows: [],
+          nextZIndex: 1,
+        },
+      };
+
+      localStorage.setItem('rb:window-layout', JSON.stringify(noVersionEnvelope));
+      const session = loadSession();
+
+      expect(session).toBeNull();
+    });
+
+    it('returns null for missing state object', () => {
+      const noStateEnvelope = {
+        version: 1,
+      };
+
+      localStorage.setItem('rb:window-layout', JSON.stringify(noStateEnvelope));
+      const session = loadSession();
+
+      expect(session).toBeNull();
+    });
+  });
+
+  describe('Deterministic Serialization', () => {
+    it('produces identical JSON for same state (deterministic output)', () => {
+      const { createWindow } = useWindowStore.getState();
+
+      // Create windows in arbitrary order
+      const w1 = createWindow({ title: 'Window 1', contentId: 'app1' });
+      const w2 = createWindow({ title: 'Window 2', contentId: 'app2' });
+      const w3 = createWindow({ title: 'Window 3', contentId: 'app3' });
+
+      // Get first snapshot
+      const raw1 = localStorage.getItem('rb:window-layout');
+      expect(raw1).toBeTruthy();
+
+      // Manually reorder windows in store (different in-memory order) without changing state
+      const state = useWindowStore.getState();
+      useWindowStore.setState({
+        windows: [state.windows[2], state.windows[0], state.windows[1]], // Reorder: w3, w1, w2
+      });
+
+      // Get second snapshot - should be identical because serialization sorts by ID
+      const raw2 = localStorage.getItem('rb:window-layout');
+      expect(raw2).toBeTruthy();
+
+      // JSON should be identical despite different in-memory array order
+      expect(raw1).toBe(raw2);
+    });
+
+    it('sorts windows by id in serialized output', () => {
+      const { createWindow } = useWindowStore.getState();
+
+      createWindow({ title: 'Window C', contentId: 'app-c' });
+      createWindow({ title: 'Window A', contentId: 'app-a' });
+      createWindow({ title: 'Window B', contentId: 'app-b' });
+
+      const raw = localStorage.getItem('rb:window-layout');
+      expect(raw).toBeTruthy();
+
+      const envelope = JSON.parse(raw!);
+      const ids = envelope.state.windows.map((w: any) => w.id);
+
+      // IDs should be in ascending order
+      for (let i = 1; i < ids.length; i++) {
+        expect(ids[i - 1].localeCompare(ids[i])).toBeLessThan(0);
+      }
     });
   });
 

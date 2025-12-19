@@ -37,40 +37,72 @@ interface WindowManagerActions {
 
 type WindowManagerStore = WindowManagerState & WindowManagerActions;
 
-const SESSION_STORAGE_KEY = 'rb:window-session';
+const LAYOUT_STORAGE_KEY = 'rb:window-layout';
 
-interface PersistedSession {
+interface WindowLayoutPersistedState {
   windows: WindowState[];
   nextZIndex: number;
+}
+
+interface WindowLayoutEnvelope {
+  version: 1;
+  state: WindowLayoutPersistedState;
+}
+
+/**
+ * Deterministic serialization of window layout.
+ * Ensures stable JSON output for snapshots and diffs.
+ */
+function serializeLayout(envelope: WindowLayoutEnvelope): string {
+  // Sort windows by id for deterministic output
+  const sortedWindows = [...envelope.state.windows].sort((a, b) => a.id.localeCompare(b.id));
+
+  const sortedState: WindowLayoutPersistedState = {
+    windows: sortedWindows,
+    nextZIndex: envelope.state.nextZIndex,
+  };
+
+  const sortedEnvelope: WindowLayoutEnvelope = {
+    version: envelope.version,
+    state: sortedState,
+  };
+
+  return JSON.stringify(sortedEnvelope);
 }
 
 function saveSession(windows: WindowState[], nextZIndex: number): void {
   if (typeof localStorage === 'undefined') return;
 
   try {
-    const session: PersistedSession = { windows, nextZIndex };
-    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+    const envelope: WindowLayoutEnvelope = {
+      version: 1,
+      state: { windows, nextZIndex },
+    };
+    const json = serializeLayout(envelope);
+    localStorage.setItem(LAYOUT_STORAGE_KEY, json);
   } catch (error) {
     // Silently ignore localStorage errors (quota exceeded, etc.)
   }
 }
 
-export function loadSession(): PersistedSession | null {
+export function loadSession(): WindowLayoutPersistedState | null {
   if (typeof localStorage === 'undefined') return null;
 
   try {
-    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+    const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
     if (!raw) return null;
 
-    const parsed = JSON.parse(raw);
+    const envelope = JSON.parse(raw) as WindowLayoutEnvelope;
 
-    if (!parsed || typeof parsed !== 'object') return null;
-    if (!Array.isArray(parsed.windows)) return null;
-    if (typeof parsed.nextZIndex !== 'number') return null;
+    // Validate envelope structure
+    if (envelope.version !== 1) return null;
+    if (!envelope.state || typeof envelope.state !== 'object') return null;
+    if (!Array.isArray(envelope.state.windows)) return null;
+    if (typeof envelope.state.nextZIndex !== 'number') return null;
 
-    return parsed as PersistedSession;
+    return envelope.state;
   } catch (error) {
-    // Silently ignore corrupted data
+    // JSON parse error or validation failure -> fallback
     return null;
   }
 }

@@ -1,5 +1,93 @@
 # RedByte OS Genesis - Changelog
 
+## PHASE_AI - Deterministic Session Restore (Window Layout Persistence + Safe Reset) (2025-12-19)
+
+### Goal
+Persist window manager state deterministically to localStorage with versioned schema, safe corruption fallback, and deterministic restore order. Enable users to reset session layout through Settings panel.
+
+### Key Changes
+- **Versioned Window Layout Persistence** ([packages/rb-windowing/src/store.ts](packages/rb-windowing/src/store.ts:40-108)):
+  - Renamed storage key from `rb:window-session` to `rb:window-layout` for clarity
+  - Introduced versioned envelope pattern: `{ version: 1, state: { windows, nextZIndex } }`
+  - Deterministic serialization: windows sorted by ID (`localeCompare`) before JSON.stringify
+  - Sync-only persistence (no async/await, no promises)
+  - Automatic save on every window manager state change via Zustand subscription
+
+- **Schema Validation and Corruption Fallback** ([packages/rb-windowing/src/store.ts:88-108](packages/rb-windowing/src/store.ts#L88-L108)):
+  - `loadSession()` validates envelope version, state object structure, array types, required fields
+  - Version mismatch (future version) returns null → clean default state on boot
+  - JSON parse errors return null (never crash)
+  - Missing or invalid fields return null
+  - Boot path (Shell.tsx) handles null gracefully → starts with empty window layout
+
+- **Deterministic Boot Restore** ([packages/rb-shell/src/Shell.tsx:135-178](packages/rb-shell/src/Shell.tsx#L135-L178)):
+  - Load session from `loadSession()` (returns unwrapped state)
+  - Filter invalid apps and Launcher windows
+  - Restore windows in stable order (already sorted by ID in serialization)
+  - Focus restoration preserves persisted focused window state
+
+- **Factory Reset Integration** ([packages/rb-apps/src/apps/settings/FilesystemDataPanel.tsx:117-132](packages/rb-apps/src/apps/settings/FilesystemDataPanel.tsx#L117-L132)):
+  - Factory Reset now clears three localStorage keys: `rb:file-system`, `rb:file-associations`, `rb:window-layout`
+  - Atomic verification ensures all keys cleared (throws error if any persist)
+  - Success toast: "Factory reset complete - all data cleared"
+
+- **Settings Session Panel** ([packages/rb-apps/src/apps/settings/SessionPanel.tsx](packages/rb-apps/src/apps/settings/SessionPanel.tsx)):
+  - New "Session" section in Settings sidebar
+  - R key opens Reset Session Layout confirmation modal
+  - Enter confirms reset (clears `rb:window-layout`, requires page reload)
+  - Escape cancels without changes
+  - Clear warning: "All open windows will be closed on next boot"
+  - Toast notification on success/failure
+
+- **Settings App Integration** ([packages/rb-apps/src/apps/SettingsApp.tsx](packages/rb-apps/src/apps/SettingsApp.tsx)):
+  - Added `SessionPanel` import and integration
+  - Updated `SettingsSection` type to include `'session'`
+  - Session panel rendered when `selectedSection === 'session'`
+
+### Testing (414 tests passing, 0 warnings)
+- **Session Persistence** (7 tests):
+  - Persists windows to localStorage on createWindow with versioned envelope
+  - Persists bounds, mode, z-index ordering, focused state
+  - Persists minimized and maximized windows
+  - Updates localStorage on closeWindow
+
+- **loadSession Validation** (7 tests):
+  - Returns null when localStorage empty
+  - Returns null for corrupted JSON
+  - Returns null for invalid schema (missing windows, missing nextZIndex, non-array windows)
+  - Returns null for version mismatch (future version)
+  - Returns null for missing version or missing state object
+  - Loads valid session data correctly
+
+- **Deterministic Serialization** (2 tests):
+  - Produces identical JSON for same state despite different in-memory array order
+  - Windows sorted by ID in serialized output (localeCompare ascending)
+
+- **restoreSession Action** (6 tests):
+  - Restores windows from persisted data with bounds, z-index, focused state
+  - Preserves minimized and maximized windows
+  - Restored windows can be manipulated after restore
+  - New windows can be created after session restore
+
+- **Integration** (2 tests):
+  - Restored windows respond to moveWindow, createWindow
+  - Session restore preserves window functionality
+
+### Definition of Done
+- ✅ Window layout persisted to `rb:window-layout` with versioned envelope (version 1)
+- ✅ Deterministic serialization (windows sorted by ID before JSON.stringify)
+- ✅ Sync-only persistence (no async/await)
+- ✅ Schema validation with corruption fallback (returns null on error)
+- ✅ Boot restore path handles null gracefully (starts with clean state)
+- ✅ Factory Reset clears `rb:window-layout` alongside filesystem and associations
+- ✅ Settings Session panel with R key reset (requires page reload)
+- ✅ 26 comprehensive tests covering persistence, validation, deterministic serialization, restore
+- ✅ All quality gates pass (lint, typecheck, build, 414 tests)
+- ✅ Contract-first: PHASE_AI added to AI_STATE.md before implementation
+- ✅ Git workflow: branch phase-ai-session-restore, FF-only merge to main
+
+---
+
 ## PHASE_AH - Factory Reset with Hardened Confirmation (2025-12-18)
 
 ### Goal

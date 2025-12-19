@@ -7,6 +7,7 @@ import type { RedByteApp } from '../types';
 import { useSettingsStore, type ThemeVariant, type AccentColor } from '@redbyte/rb-utils';
 import { FileAssociationsPanel } from './settings/FileAssociationsPanel';
 import { FilesystemDataPanel } from './settings/FilesystemDataPanel';
+import { SessionPanel } from './settings/SessionPanel';
 
 interface SettingsProps {
   onClose?: () => void;
@@ -19,7 +20,7 @@ const WALLPAPERS = [
   { id: 'solid', name: 'Solid Color' },
 ];
 
-type SettingsSection = 'appearance' | 'system' | 'files' | 'filesystem';
+type SettingsSection = 'appearance' | 'system' | 'files' | 'filesystem' | 'session';
 
 const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
   const [selectedSection, setSelectedSection] = useState<SettingsSection>('appearance');
@@ -119,6 +120,14 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
           >
             Filesystem Data
           </button>
+          <button
+            onClick={() => setSelectedSection('session')}
+            className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-800 transition-colors ${
+              selectedSection === 'session' ? 'bg-slate-800 text-cyan-400' : 'text-slate-300'
+            }`}
+          >
+            Session
+          </button>
         </div>
       </div>
 
@@ -132,7 +141,9 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
               ? 'System'
               : selectedSection === 'files'
               ? 'File Associations'
-              : 'Filesystem Data'}
+              : selectedSection === 'filesystem'
+              ? 'Filesystem Data'
+              : 'Session'}
           </h2>
         </div>
 
@@ -237,9 +248,13 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
           {selectedSection === 'filesystem' && (
             <FilesystemDataPanel />
           )}
+
+          {selectedSection === 'session' && (
+            <SessionPanel />
+          )}
         </div>
 
-        {selectedSection !== 'files' && selectedSection !== 'filesystem' && (
+        {selectedSection !== 'files' && selectedSection !== 'filesystem' && selectedSection !== 'session' && (
           <div className="p-2 border-t border-slate-800 text-xs text-slate-500">
             <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">↑↓</kbd> Navigate{' '}
             <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> Toggle{' '}
