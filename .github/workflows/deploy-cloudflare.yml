@@ -45,7 +45,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: redbyteapps
+          projectName: redbyte-ui-genesis
           directory: apps/playground/dist
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: main
