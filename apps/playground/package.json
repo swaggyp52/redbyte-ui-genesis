@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "postbuild": "node scripts/cf-pages-postbuild.mjs"
   },
   "dependencies": {
     "@redbyte/rb-shell": "workspace:*",
