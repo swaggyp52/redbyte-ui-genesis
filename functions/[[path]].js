@@ -12,18 +12,19 @@ export async function onRequest({ request, next }) {
   // Only handle HTML navigation requests with no file extension.
   if (!wantsHTML || hasExt) return next();
 
-  const withHtmlHeaders = (res) => {
+  const forceHtmlInline = (res) => {
     const h = new Headers(res.headers);
     h.set("Content-Type", "text/html; charset=utf-8");
+    h.set("Content-Disposition", "inline");
     h.set("Cache-Control", "no-store");
     return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
   };
 
-  // Force "/" and directory-style paths to "/index.html" so we always return real HTML.
+  // Force "/" and directory-style paths to "/index.html" so we always return real HTML (correct MIME).
   if (url.pathname === "/" || url.pathname.endsWith("/")) {
     url.pathname = "/index.html";
     const res = await next(new Request(url.toString(), request));
-    return withHtmlHeaders(res);
+    return forceHtmlInline(res);
   }
 
   // Otherwise try original path, then SPA fallback on 404.
@@ -32,5 +33,5 @@ export async function onRequest({ request, next }) {
 
   url.pathname = "/index.html";
   res = await next(new Request(url.toString(), request));
-  return withHtmlHeaders(res);
+  return forceHtmlInline(res);
 }
