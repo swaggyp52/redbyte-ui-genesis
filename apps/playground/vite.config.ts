@@ -1,4 +1,4 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+﻿// Copyright Â© 2025 Connor Angiel â€” RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
@@ -20,7 +20,7 @@ function getGitSha(): string {
 export default defineConfig({
   plugins: [react(), tsconfigPaths({ loose: true })],
   define: {
-    __GIT_SHA__: JSON.stringify(getGitSha()),
+    __GIT_SHA__: JSON.stringify(process.env.GIT_SHA ?? process.env.CF_PAGES_COMMIT_SHA ?? 'dev'),
   },
   resolve: {
     alias: {
@@ -38,3 +38,4 @@ export default defineConfig({
     port: 5173,
   },
 });
+
