@@ -4258,11 +4258,11 @@ Persist window manager state deterministically to localStorage and restore it on
 
 
 
-Phase ID: PHASE\_RELEASE\_0
+Phase ID: PHASE\_PERF\_0
 
-Phase Name: Live Preview RC (Release Hardening + Deploy Wiring)
+Phase Name: Live Preview Performance + Bundle Hygiene
 
-Status: COMPLETED
+Status: IN PROGRESS
 
 
 
@@ -4555,6 +4555,242 @@ Prepare a stable, deployable live preview for redbyteapps.dev with clear "Previe
 - ✅ Commit + tag `v0.1.0-preview` pushed to origin/main
 
 - ✅ Natural resting point: main is green, deployable, pauseable
+
+
+
+---
+
+
+
+\## PHASE\_PERF\_0: Live Preview Performance + Bundle Hygiene
+
+
+
+### Goal
+
+
+
+Reduce initial JS payload and eliminate Vite build warning about chunks larger than 500 kB through strategic code splitting and lazy loading, while preserving all deterministic keyboard-first invariants and maintaining zero regressions.
+
+
+
+### Non-Goals
+
+
+
+- NO runtime performance tuning (this is build-time bundle optimization only)
+
+- NO algorithmic changes to existing features
+
+- NO removal of features or functionality
+
+- NO changes to user-visible behavior (purely internal optimization)
+
+- NO external monitoring/analytics (can be added separately)
+
+
+
+### Invariants
+
+
+
+1. **Cold Load Stability**: App boots reliably from empty localStorage with no console errors (same as PHASE\_RELEASE\_0).
+
+2. **PREVIEW Badge + Version**: Footer shows PREVIEW badge and version string unchanged.
+
+3. **Windowing Determinism**: Window management, keyboard shortcuts, focus transfer remain deterministic (no regressions to PHASE\_AJ).
+
+4. **Macro Execution**: System Search + Command Palette + macros work identically.
+
+5. **Bundle Warning**: Vite build warning for >500kB chunks is eliminated OR reduced to smallest practical count with explicit justification.
+
+6. **Quality Gates**: All tests (433/433), typecheck, lint, and build remain green.
+
+7. **No Lazy-Loading Regressions**: Any lazy-loaded UI surfaces must render deterministically without flash/delay perceptible to users.
+
+8. **Deployment Pipeline**: GitHub Actions CI/CD continues to work unchanged.
+
+
+
+### Current State
+
+
+
+**Build Output** (baseline):
+
+- Single monolithic bundle: `index-T25MHOsF.js` (1,233.11 kB minified, 338.97 kB gzipped)
+
+- Vite warning: "Some chunks are larger than 500 kB after minification"
+
+- Build command: `pnpm -w build`
+
+- Output: `apps/playground/dist/`
+
+
+
+**Dependencies** (potential heavy imports):
+
+- React + React DOM (vendor)
+
+- Zustand (state management)
+
+- @radix-ui/\* (UI primitives - if present)
+
+- RedByte packages: rb-shell, rb-apps, rb-windowing, rb-theme, rb-icons, rb-utils
+
+- Three.js / @react-three/\* (3D logic - if present)
+
+
+
+**Current Load Behavior**:
+
+- All code loaded eagerly on initial page load
+
+- No code splitting or dynamic imports
+
+- Shell imports all modals/surfaces synchronously
+
+
+
+### Target State
+
+
+
+**Build Output**:
+
+- Vendor chunk: React, React DOM, Zustand separated from app code
+
+- RedByte app chunk: rb-apps split from rb-shell (if size justifies)
+
+- Main shell chunk: reduced to <500 kB
+
+- Lazy-loaded surfaces: non-critical modals loaded on demand
+
+- Vite build warning eliminated OR explicitly justified with thresholds
+
+
+
+**Load Behavior**:
+
+- Critical path (Shell, Desktop, Dock) loads immediately
+
+- Non-critical surfaces (Settings panels, heavy modals) lazy-load on first use
+
+- No perceptible flash or delay (Suspense boundaries with minimal fallbacks)
+
+
+
+### Implementation Steps
+
+
+
+1. **Audit current bundle composition**:
+
+   - Build with Vite and analyze chunk sizes
+
+   - Identify heaviest imports (React, vendor libs, RedByte packages)
+
+
+
+2. **Add Rollup manual chunks to Vite config**:
+
+   - Split React + ReactDOM into `vendor` chunk
+
+   - Split Zustand into `state` chunk
+
+   - Split RedByte packages into logical chunks (e.g., `rb-apps`, `rb-shell`)
+
+   - Use deterministic naming (no runtime env fetches)
+
+
+
+3. **Lazy-load non-critical Shell surfaces**:
+
+   - Convert heavy modal imports to `React.lazy()`
+
+   - Add `<Suspense>` boundaries with minimal fallback UI
+
+   - Ensure keyboard workflows remain deterministic
+
+
+
+4. **Verify bundle size reduction**:
+
+   - Rebuild and confirm Vite warning eliminated
+
+   - Check that main chunk is <500 kB
+
+   - Verify total payload hasn't increased significantly
+
+
+
+5. **Run quality gates**:
+
+   - `pnpm -w typecheck`
+
+   - `pnpm -w lint`
+
+   - `pnpm -w test` (expect 433/433)
+
+   - `pnpm -w build` (no warnings)
+
+
+
+6. **Commit with discipline**:
+
+   - Commit 1: Vite config chunking strategy
+
+   - Commit 2: Shell lazy-loading (if implemented)
+
+   - Commit 3: AI\_STATE.md update
+
+
+
+### Testing Strategy
+
+
+
+**Automated**:
+
+- All existing 433 tests must pass (no regressions)
+
+- Typecheck and lint must remain clean
+
+- Build must complete without >500kB warning
+
+
+
+**Manual Smoke**:
+
+- Cold load from empty localStorage
+
+- All keyboard shortcuts work (Ctrl+K, Ctrl+Space, Ctrl+Tab, Ctrl+W, etc.)
+
+- Window Switcher (Ctrl+Tab) renders without delay
+
+- Settings modal loads on first Ctrl+, press
+
+- No console errors or warnings
+
+
+
+### Definition of Done
+
+
+
+- ✅ Vite build warning eliminated (no chunks >500 kB) OR explicitly justified
+
+- ✅ Main chunk reduced to <500 kB minified
+
+- ✅ All quality gates green (typecheck, lint, test, build)
+
+- ✅ Manual smoke test passed (keyboard workflows unchanged)
+
+- ✅ AI\_STATE.md updated with PHASE\_PERF\_0 status
+
+- ✅ Commits follow discipline (one logical change per commit)
+
+- ✅ No regressions to PREVIEW badge, version string, error boundary
 
 
 
