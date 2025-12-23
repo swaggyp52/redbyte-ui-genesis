@@ -22,6 +22,69 @@ export default defineConfig({
   define: {
     __GIT_SHA__: JSON.stringify(process.env.GIT_SHA ?? process.env.CF_PAGES_COMMIT_SHA ?? 'dev'),
   },
+  build: {
+    // Increase chunk size warning threshold to 750kB to accommodate vendor-3d (Three.js)
+    // This chunk is only loaded when user opens Logic Playground, not on cold load
+    chunkSizeWarningLimit: 750,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Vendor chunk: React ecosystem
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return 'vendor-react';
+          }
+
+          // State management: Zustand
+          if (id.includes('node_modules/zustand')) {
+            return 'vendor-state';
+          }
+
+          // 3D graphics: Three.js + React Three Fiber (very heavy)
+          if (id.includes('node_modules/three') ||
+              id.includes('node_modules/@react-three')) {
+            return 'vendor-3d';
+          }
+
+          // Split heavy apps from rb-apps into separate chunks
+          // Files app + file system (largest)
+          if (id.includes('packages/rb-apps/src/apps/files') ||
+              id.includes('packages/rb-apps/src/apps/FilesApp')) {
+            return 'app-files';
+          }
+
+          // Settings app + panels (second largest)
+          if (id.includes('packages/rb-apps/src/apps/settings') ||
+              id.includes('packages/rb-apps/src/apps/SettingsApp')) {
+            return 'app-settings';
+          }
+
+          // Logic Playground (contains 3D logic)
+          if (id.includes('packages/rb-apps/src/apps/LogicPlaygroundApp') ||
+              id.includes('packages/rb-logic-3d/src')) {
+            return 'app-logic';
+          }
+
+          // Other rb-apps (Launcher, Welcome, Terminal, TextViewer, AppStore)
+          if (id.includes('packages/rb-apps/src')) {
+            return 'rb-apps';
+          }
+
+          // RedByte shell (Shell, modals, search)
+          if (id.includes('packages/rb-shell/src')) {
+            return 'rb-shell';
+          }
+
+          // RedByte windowing
+          if (id.includes('packages/rb-windowing/src')) {
+            return 'rb-windowing';
+          }
+
+          // Other RedByte packages (theme, icons, utils) stay in main chunk
+          // They're small and needed early
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       '@redbyte/rb-shell': path.resolve(__dirname, '../../packages/rb-shell/src'),
