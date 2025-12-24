@@ -104,6 +104,20 @@ export async function decodeCircuitAsync(encoded: string): Promise<Circuit> {
 }
 
 /**
+ * Encode a circuit to compressed format (async, lazy-loads compression module)
+ *
+ * This is a convenience wrapper that lazy-loads the compression module.
+ * Use this for share/export functionality.
+ *
+ * @param circuit - Circuit to encode
+ * @returns Promise resolving to compressed URL-safe string with c1: prefix
+ */
+export async function encodeCircuitCompressed(circuit: Circuit): Promise<string> {
+  await preloadCompressedCodec();
+  return _compressedModule!.encodeCircuitCompressed(circuit);
+}
+
+/**
  * Check if an encoded string uses compressed format
  * Useful for detecting format without loading compression module
  */
