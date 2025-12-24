@@ -76,4 +76,53 @@ describe('Circuit Encoding', () => {
     expect(decoded.metadata?.name).toBe('Test Circuit');
     expect(decoded.metadata?.version).toBe('1.0.0');
   });
+
+  it('compresses large circuits effectively', () => {
+    // Create a large circuit with repetitive data
+    const largeCircuit: Circuit = {
+      gates: Array.from({ length: 100 }, (_, i) => ({
+        id: `gate${i}`,
+        type: 'AND',
+        position: { x: i * 50, y: i * 50 },
+      })),
+      wires: Array.from({ length: 99 }, (_, i) => ({
+        from: `gate${i}:out`,
+        to: `gate${i + 1}:in0`,
+      })),
+      inputs: [{ id: 'in1', position: { x: 0, y: 0 } }],
+      outputs: [{ id: 'out1', position: { x: 5000, y: 5000 } }],
+      metadata: {
+        name: 'Large Circuit',
+        description: 'A circuit with many repeated structures',
+      },
+    };
+
+    const json = JSON.stringify(largeCircuit);
+    const jsonBase64 = btoa(json);
+    const encoded = encodeCircuit(largeCircuit);
+
+    // Compressed version should be significantly smaller than uncompressed
+    expect(encoded.length).toBeLessThan(jsonBase64.length);
+    // But should still decode correctly
+    const decoded = decodeCircuit(encoded);
+    expect(decoded).toEqual(largeCircuit);
+  });
+
+  it('decodes legacy uncompressed circuits (backward compatibility)', () => {
+    // Encode a circuit using old uncompressed format
+    const legacyCircuit: Circuit = {
+      gates: [{ id: 'gate1', type: 'NOT', position: { x: 50, y: 50 } }],
+      wires: [],
+      inputs: [{ id: 'in1', position: { x: 0, y: 50 } }],
+      outputs: [{ id: 'out1', position: { x: 100, y: 50 } }],
+    };
+
+    const json = JSON.stringify(legacyCircuit);
+    const base64 = btoa(json);
+    const urlSafe = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+    // Should decode legacy format successfully
+    const decoded = decodeCircuit(urlSafe);
+    expect(decoded).toEqual(legacyCircuit);
+  });
 });

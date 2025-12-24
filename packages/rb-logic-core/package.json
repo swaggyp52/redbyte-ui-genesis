@@ -16,7 +16,11 @@
     "build": "vite build",
     "test": "echo \"Tests run at root. This package has no direct tests.\""
   },
+  "dependencies": {
+    "pako": "^2.1.0"
+  },
   "devDependencies": {
+    "@types/pako": "^2.0.3",
     "vite": "^7.2.6",
     "vitest": "^2.1.8"
   },
