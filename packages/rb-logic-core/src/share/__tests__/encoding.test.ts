@@ -3,7 +3,8 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import { describe, it, expect } from 'vitest';
-import { encodeCircuit, decodeCircuit, type Circuit } from '../encoding';
+import { encodeCircuit, decodeCircuit, decodeCircuitAsync, isCompressedFormat, type Circuit } from '../encoding';
+import { encodeCircuitCompressed, decodeCircuitCompressed } from '../encoding.compressed';
 
 describe('Circuit Encoding', () => {
   const sampleCircuit: Circuit = {
@@ -75,5 +76,113 @@ describe('Circuit Encoding', () => {
 
     expect(decoded.metadata?.name).toBe('Test Circuit');
     expect(decoded.metadata?.version).toBe('1.0.0');
+  });
+
+  it('detects legacy uncompressed format', () => {
+    const encoded = encodeCircuit(sampleCircuit);
+    expect(isCompressedFormat(encoded)).toBe(false);
+  });
+
+  it('detects compressed format by c1: prefix', () => {
+    const compressed = encodeCircuitCompressed(sampleCircuit);
+    expect(isCompressedFormat(compressed)).toBe(true);
+    expect(compressed).toMatch(/^c1:/);
+  });
+
+  it('decodes legacy uncompressed circuits (backward compatibility)', () => {
+    // Encode a circuit using legacy uncompressed format
+    const legacyCircuit: Circuit = {
+      gates: [{ id: 'gate1', type: 'NOT', position: { x: 50, y: 50 } }],
+      wires: [],
+      inputs: [{ id: 'in1', position: { x: 0, y: 50 } }],
+      outputs: [{ id: 'out1', position: { x: 100, y: 50 } }],
+    };
+
+    const json = JSON.stringify(legacyCircuit);
+    const base64 = btoa(json);
+    const urlSafe = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+    // Should decode legacy format successfully via decodeCircuit
+    const decoded = decodeCircuit(urlSafe);
+    expect(decoded).toEqual(legacyCircuit);
+  });
+});
+
+describe('Circuit Encoding (Compressed)', () => {
+  const sampleCircuit: Circuit = {
+    gates: [
+      { id: 'and1', type: 'AND', position: { x: 100, y: 100 } },
+      { id: 'or1', type: 'OR', position: { x: 200, y: 100 } },
+    ],
+    wires: [
+      { from: 'and1:out', to: 'or1:in0' },
+    ],
+    inputs: [
+      { id: 'in1', position: { x: 0, y: 50 } },
+      { id: 'in2', position: { x: 0, y: 150 } },
+    ],
+    outputs: [
+      { id: 'out1', position: { x: 300, y: 100 } },
+    ],
+    metadata: {
+      name: 'Test Circuit',
+      version: '1.0.0',
+    },
+  };
+
+  it('compressed format has c1: prefix', () => {
+    const compressed = encodeCircuitCompressed(sampleCircuit);
+    expect(compressed.startsWith('c1:')).toBe(true);
+  });
+
+  it('compresses large circuits effectively', () => {
+    // Create a large circuit with repetitive data
+    const largeCircuit: Circuit = {
+      gates: Array.from({ length: 100 }, (_, i) => ({
+        id: `gate${i}`,
+        type: 'AND',
+        position: { x: i * 50, y: i * 50 },
+      })),
+      wires: Array.from({ length: 99 }, (_, i) => ({
+        from: `gate${i}:out`,
+        to: `gate${i + 1}:in0`,
+      })),
+      inputs: [{ id: 'in1', position: { x: 0, y: 0 } }],
+      outputs: [{ id: 'out1', position: { x: 5000, y: 5000 } }],
+      metadata: {
+        name: 'Large Circuit',
+        description: 'A circuit with many repeated structures',
+      },
+    };
+
+    const json = JSON.stringify(largeCircuit);
+    const jsonBase64 = btoa(json);
+    const legacyEncoded = encodeCircuit(largeCircuit); // uncompressed
+    const compressed = encodeCircuitCompressed(largeCircuit);
+
+    // Compressed version should be significantly smaller than uncompressed
+    expect(compressed.length).toBeLessThan(legacyEncoded.length);
+    expect(compressed.length).toBeLessThan(jsonBase64.length);
+  });
+
+  it('round-trip compressed encoding preserves data', () => {
+    const compressed = encodeCircuitCompressed(sampleCircuit);
+    const decoded = decodeCircuitCompressed(compressed);
+
+    expect(decoded).toEqual(sampleCircuit);
+  });
+
+  it('decodes compressed circuits via decodeCircuitAsync', async () => {
+    const compressed = encodeCircuitCompressed(sampleCircuit);
+    const decoded = await decodeCircuitAsync(compressed);
+
+    expect(decoded).toEqual(sampleCircuit);
+  });
+
+  it('throws error when decoding c1: with wrong function', () => {
+    const compressed = encodeCircuitCompressed(sampleCircuit);
+    const withoutPrefix = compressed.slice(3); // remove c1:
+
+    expect(() => decodeCircuitCompressed(withoutPrefix)).toThrow('Invalid compressed format');
   });
 });

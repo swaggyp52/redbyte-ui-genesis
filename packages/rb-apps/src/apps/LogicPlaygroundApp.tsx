@@ -10,8 +10,8 @@ import {
   serialize,
   deserialize,
   NodeRegistry,
-  encodeCircuit,
-  decodeCircuit,
+  decodeCircuitAsync,
+  encodeCircuitCompressed,
   type Circuit,
   type SerializedCircuitV1,
 } from '@redbyte/rb-logic-core';
@@ -78,6 +78,20 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const autosaveIntervalRef = useRef<number | null>(null);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Shift+C or Cmd+Shift+C for share
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
+        e.preventDefault();
+        handleShare();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [circuit, currentFileId]);
+
   // Load circuit from URL if present
   useEffect(() => {
     const detectAndLoadCircuitFromURL = async () => {
@@ -86,7 +100,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
       if (circuitParam) {
         try {
-          const decoded = decodeCircuit(circuitParam);
+          // Use async decoder to support both legacy and compressed (c1:) formats
+          const decoded = await decodeCircuitAsync(circuitParam);
           // Convert back to SerializedCircuitV1 format
           const serialized: SerializedCircuitV1 = {
             version: '1',
@@ -353,11 +368,14 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         },
       };
 
-      const encoded = encodeCircuit(circuitForEncoding);
-      const url = `${window.location.origin}${window.location.pathname}?circuit=${encoded}`;
+      // Lazy-load compressed encoder via async wrapper (code-splits pako)
+      const encoded = await encodeCircuitCompressed(circuitForEncoding);
+
+      const url = new URL(window.location.href);
+      url.searchParams.set('circuit', encoded);
 
       // Copy to clipboard
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(url.toString());
       addToast('Share link copied to clipboard!', 'success');
     } catch (error) {
       addToast('Failed to create share link', 'error');
@@ -471,7 +489,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         <button
           onClick={handleShare}
           className="px-3 py-1 bg-blue-700 hover:bg-blue-600 rounded"
-          title="Share circuit via link"
+          title="Share circuit via link (Ctrl+Shift+C)"
         >
           Share
         </button>
