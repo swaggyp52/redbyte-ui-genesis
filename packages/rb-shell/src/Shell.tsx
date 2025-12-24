@@ -717,6 +717,7 @@ export const Shell: React.FC<ShellProps> = () => {
             onRestore={() => restoreWindow(window.id)}
           >
             <Component
+              windowId={window.id}
               onOpenApp={openWindow}
               onClose={() => handleClose(window.id)}
               onDispatchIntent={dispatchIntent}
