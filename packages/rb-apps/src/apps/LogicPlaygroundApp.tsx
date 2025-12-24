@@ -77,6 +77,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [shareFallbackURL, setShareFallbackURL] = useState<string | null>(null);
   const [showDecodeErrorModal, setShowDecodeErrorModal] = useState(false);
   const [isLoadingSharedCircuit, setIsLoadingSharedCircuit] = useState(false);
+  const [showSaveAsModal, setShowSaveAsModal] = useState(false);
+  const [saveAsFilename, setSaveAsFilename] = useState('circuit.rblogic');
 
   const autosaveIntervalRef = useRef<number | null>(null);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
@@ -89,6 +91,16 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
         e.preventDefault();
         handleShare();
+      }
+      // Ctrl+Shift+S or Cmd+Shift+S for Save As
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
+        e.preventDefault();
+        handleSaveAs();
+      }
+      // Ctrl+S or Cmd+S for Save
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSave();
       }
     };
 
@@ -212,6 +224,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       autosaveIntervalRef.current = setInterval(() => {
         const serialized = serialize(circuit);
         updateFile(currentFileId, serialized);
+        setIsDirty(false); // Clear dirty state after autosave
       }, 5000) as unknown as number;
     }
 
@@ -221,6 +234,19 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       }
     };
   }, [isDirty, currentFileId, circuit]);
+
+  // Beforeunload warning for unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = ''; // Modern browsers ignore custom message
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
 
   const handleNew = () => {
     const emptyCircuit: Circuit = { nodes: [], connections: [] };
@@ -242,16 +268,38 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       updateFile(currentFileId, serialized);
       setAvailableFiles(listFiles());
       setIsDirty(false);
-    } else {
-      const name = prompt('Enter circuit name:');
-      if (name) {
-        const newFile = createFile(name, serialized);
-        setCurrentFileId(newFile.id);
-        setAvailableFiles(listFiles());
-        setSelectedFileId(newFile.id);
-        setIsDirty(false);
+      const file = getFile(currentFileId);
+      if (file) {
+        addToast(`Saved to ${file.name}`, 'success');
       }
+    } else {
+      // No file yet, show Save As modal
+      setShowSaveAsModal(true);
     }
+  };
+
+  const handleSaveAs = () => {
+    const defaultName = currentFileId
+      ? getFile(currentFileId)?.name || 'circuit.rblogic'
+      : 'circuit.rblogic';
+    setSaveAsFilename(defaultName);
+    setShowSaveAsModal(true);
+  };
+
+  const confirmSaveAs = () => {
+    if (!saveAsFilename.trim()) {
+      addToast('Filename cannot be empty', 'error');
+      return;
+    }
+
+    const serialized = serialize(circuit);
+    const newFile = createFile(saveAsFilename, serialized);
+    setCurrentFileId(newFile.id);
+    setAvailableFiles(listFiles());
+    setSelectedFileId(newFile.id);
+    setIsDirty(false);
+    setShowSaveAsModal(false);
+    addToast(`Saved as ${saveAsFilename}`, 'success');
   };
 
   const handleLoadFile = async (fileId: string | null) => {
@@ -733,6 +781,41 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             >
               Report Issue →
             </a>
+          </div>
+        </div>
+      )}
+
+      {/* Save As Modal */}
+      {showSaveAsModal && (
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-3 text-white">Save Circuit As...</h3>
+            <input
+              type="text"
+              value={saveAsFilename}
+              onChange={(e) => setSaveAsFilename(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') confirmSaveAs();
+                if (e.key === 'Escape') setShowSaveAsModal(false);
+              }}
+              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white mb-4"
+              placeholder="circuit.rblogic"
+              autoFocus
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={confirmSaveAs}
+                className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded text-white text-sm"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setShowSaveAsModal(false)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

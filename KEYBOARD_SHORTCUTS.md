@@ -19,9 +19,9 @@ Global keyboard shortcuts for RedByte OS.
 
 | Shortcut | Action | Notes |
 |----------|--------|-------|
+| `Ctrl/Cmd+S` | Save Circuit | Saves to current file or shows Save As modal |
+| `Ctrl/Cmd+Shift+S` | Save As | Creates new file with custom name |
 | `Ctrl/Cmd+Shift+C` | Share Circuit | Copies compressed URL to clipboard |
-| `Ctrl/Cmd+S` | Save Circuit | (If implemented) |
-| `Ctrl/Cmd+N` | New Circuit | (If implemented) |
 
 ### Files App
 
