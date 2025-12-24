@@ -2,11 +2,12 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import pako from 'pako';
-
 /**
  * Circuit encoding utilities for shareable links
- * Serializes circuits to URL-safe base64 strings with compression
+ * Serializes circuits to URL-safe base64 strings
+ *
+ * This module provides the legacy uncompressed format.
+ * For compressed encoding, use encoding.compressed.ts (lazy-loaded to reduce bundle size)
  */
 
 export interface Circuit {
@@ -18,19 +19,13 @@ export interface Circuit {
 }
 
 /**
- * Encode a circuit to a URL-safe base64 string
- * Uses JSON + pako.deflate compression for smaller URLs
+ * Encode a circuit to a URL-safe base64 string (legacy uncompressed format)
+ * For compressed encoding, use encoding.compressed.ts (lazy-loaded)
  */
 export function encodeCircuit(circuit: Circuit): string {
   try {
     const json = JSON.stringify(circuit);
-    // Compress with pako.deflate
-    const compressed = pako.deflate(json);
-    // Convert Uint8Array to binary string
-    const binaryString = Array.from(compressed)
-      .map((byte) => String.fromCharCode(byte))
-      .join('');
-    const base64 = btoa(binaryString);
+    const base64 = btoa(json);
     // Make URL-safe: replace + with -, / with _, remove =
     return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
   } catch (error) {
@@ -40,9 +35,22 @@ export function encodeCircuit(circuit: Circuit): string {
 
 /**
  * Decode a URL-safe base64 string to a circuit
- * Supports both compressed (pako.inflate) and legacy uncompressed formats
+ *
+ * Format detection:
+ * - If starts with "c1:", uses compressed format (lazy-loads pako)
+ * - Otherwise, uses legacy uncompressed format
+ *
+ * Returns a Promise to support dynamic import of compression module
  */
-export function decodeCircuit(encoded: string): Circuit {
+export async function decodeCircuit(encoded: string): Promise<Circuit> {
+  // Check for compressed format prefix
+  if (encoded.startsWith('c1:')) {
+    // Lazy-load compressed decoder (pako is in this chunk, not main bundle)
+    const { decodeCircuitCompressed } = await import('./encoding.compressed');
+    return decodeCircuitCompressed(encoded);
+  }
+
+  // Legacy uncompressed format
   try {
     // Restore standard base64: - to +, _ to /
     let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
@@ -50,21 +58,17 @@ export function decodeCircuit(encoded: string): Circuit {
     while (base64.length % 4) {
       base64 += '=';
     }
-    const binaryString = atob(base64);
-
-    // Try decompression first (new format)
-    try {
-      const compressed = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        compressed[i] = binaryString.charCodeAt(i);
-      }
-      const decompressed = pako.inflate(compressed, { to: 'string' });
-      return JSON.parse(decompressed);
-    } catch {
-      // Fallback to uncompressed (legacy format for backward compatibility)
-      return JSON.parse(binaryString);
-    }
+    const json = atob(base64);
+    return JSON.parse(json);
   } catch (error) {
     throw new Error(`Failed to decode circuit: ${error instanceof Error ? error.message : String(error)}`);
   }
+}
+
+/**
+ * Check if an encoded string uses compressed format
+ * Useful for detecting format without loading compression module
+ */
+export function isCompressedFormat(encoded: string): boolean {
+  return encoded.startsWith('c1:');
 }
