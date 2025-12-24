@@ -15,7 +15,7 @@ export const VERSION = '0.1.0-preview';
 // @ts-expect-error - GIT_SHA is injected at build time via Vite define
 export const GIT_SHA: string = typeof __GIT_SHA__ !== 'undefined' ? __GIT_SHA__ : 'dev';
 
-export const BUILD_DATE = '2025-12-19';
+export const BUILD_DATE = '2025-12-24';
 
 export function getVersionString(): string {
   return `v${VERSION} (${GIT_SHA.substring(0, 7)})`;
