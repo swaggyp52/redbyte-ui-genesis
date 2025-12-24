@@ -74,9 +74,13 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [currentFileId, setCurrentFileId] = useState<string | null>(initialFileId ?? null);
   const [isDirty, setIsDirty] = useState(false);
   const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
+  const [shareFallbackURL, setShareFallbackURL] = useState<string | null>(null);
+  const [showDecodeErrorModal, setShowDecodeErrorModal] = useState(false);
+  const [isLoadingSharedCircuit, setIsLoadingSharedCircuit] = useState(false);
 
   const autosaveIntervalRef = useRef<number | null>(null);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
+  const hasLoadedFromURL = useRef(false);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -95,10 +99,16 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   // Load circuit from URL if present
   useEffect(() => {
     const detectAndLoadCircuitFromURL = async () => {
+      // Idempotent guard - only load once
+      if (hasLoadedFromURL.current) return;
+
       const params = new URLSearchParams(window.location.search);
       const circuitParam = params.get('circuit');
 
       if (circuitParam) {
+        hasLoadedFromURL.current = true;
+        setIsLoadingSharedCircuit(true);
+
         try {
           // Use async decoder to support both legacy and compressed (c1:) formats
           const decoded = await decodeCircuitAsync(circuitParam);
@@ -122,6 +132,9 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         } catch (error) {
           addToast('Failed to load shared circuit', 'error');
           console.error('URL circuit load error:', error);
+          setShowDecodeErrorModal(true);
+        } finally {
+          setIsLoadingSharedCircuit(false);
         }
       }
     };
@@ -374,13 +387,33 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       const url = new URL(window.location.href);
       url.searchParams.set('circuit', encoded);
 
-      // Copy to clipboard
-      await navigator.clipboard.writeText(url.toString());
-      addToast('Share link copied to clipboard!', 'success');
+      // Try to copy to clipboard
+      try {
+        await navigator.clipboard.writeText(url.toString());
+        addToast('Share link copied to clipboard!', 'success');
+      } catch (clipboardError) {
+        // Fallback: show modal with selectable input
+        setShareFallbackURL(url.toString());
+      }
     } catch (error) {
       addToast('Failed to create share link', 'error');
       console.error('Share error:', error);
     }
+  };
+
+  const handleClearURLAndReset = () => {
+    // Clear URL parameter
+    window.history.replaceState({}, '', window.location.pathname);
+    // Reset to empty circuit
+    const emptyCircuit: Circuit = { nodes: [], connections: [] };
+    setCircuit(emptyCircuit);
+    const newEngine = new CircuitEngine(emptyCircuit);
+    setEngine(newEngine);
+    setTickEngine(new TickEngine(newEngine, currentHz));
+    setCurrentFileId(null);
+    setIsDirty(false);
+    setShowDecodeErrorModal(false);
+    addToast('Circuit reset', 'info');
   };
 
   const primitiveNodes = [
@@ -619,6 +652,90 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Loading Overlay */}
+      {isLoadingSharedCircuit && (
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-500" />
+              <span className="text-white">Loading shared circuit...</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clipboard Fallback Modal */}
+      {shareFallbackURL && (
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4">
+            <h3 className="text-lg font-semibold mb-3 text-white">Share Link Ready</h3>
+            <p className="text-sm text-gray-300 mb-4">
+              Automatic clipboard copy failed. Please copy the link manually:
+            </p>
+            <input
+              type="text"
+              readOnly
+              value={shareFallbackURL}
+              onClick={(e) => e.currentTarget.select()}
+              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white font-mono text-sm mb-4"
+              autoFocus
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(shareFallbackURL).catch(() => {});
+                  addToast('Link copied!', 'success');
+                  setShareFallbackURL(null);
+                }}
+                className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded text-white text-sm"
+              >
+                Copy
+              </button>
+              <button
+                onClick={() => setShareFallbackURL(null)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Decode Error Modal */}
+      {showDecodeErrorModal && (
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-3 text-red-400">Invalid Share Link</h3>
+            <p className="text-sm text-gray-300 mb-4">
+              This share link is invalid or corrupted. The circuit could not be loaded.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={handleClearURLAndReset}
+                className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded text-white text-sm"
+              >
+                Clear URL & Start Fresh
+              </button>
+              <button
+                onClick={() => setShowDecodeErrorModal(false)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
+              >
+                Close
+              </button>
+            </div>
+            <a
+              href="https://github.com/swaggyp52/redbyte-ui-genesis/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block mt-4 text-xs text-cyan-400 hover:text-cyan-300"
+            >
+              Report Issue →
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
