@@ -33,21 +33,38 @@ export function encodeCircuit(circuit: Circuit): string {
   }
 }
 
+// Module-level cache for lazy-loaded compression module
+let _compressedModule: typeof import('./encoding.compressed') | null = null;
+
 /**
- * Decode a URL-safe base64 string to a circuit
- *
- * Format detection:
- * - If starts with "c1:", uses compressed format (lazy-loads pako)
- * - Otherwise, uses legacy uncompressed format
- *
- * Returns a Promise to support dynamic import of compression module
+ * Preload the compressed encoding module
+ * Call this during app initialization to avoid async overhead later
  */
-export async function decodeCircuit(encoded: string): Promise<Circuit> {
+export async function preloadCompressedCodec(): Promise<void> {
+  if (!_compressedModule) {
+    _compressedModule = await import('./encoding.compressed');
+  }
+}
+
+/**
+ * Decode a URL-safe base64 string to a circuit (synchronous, legacy format only)
+ *
+ * This function only handles legacy uncompressed format.
+ * For compressed format (c1: prefix), use decodeCircuitAsync() or preload with preloadCompressedCodec().
+ *
+ * @throws Error if encoded string uses compressed format (c1:) and module not preloaded
+ */
+export function decodeCircuit(encoded: string): Circuit {
   // Check for compressed format prefix
   if (encoded.startsWith('c1:')) {
-    // Lazy-load compressed decoder (pako is in this chunk, not main bundle)
-    const { decodeCircuitCompressed } = await import('./encoding.compressed');
-    return decodeCircuitCompressed(encoded);
+    if (_compressedModule) {
+      // Module was preloaded, use it synchronously
+      return _compressedModule.decodeCircuitCompressed(encoded);
+    }
+    throw new Error(
+      'Compressed circuit format (c1:) requires async decoding. ' +
+      'Use decodeCircuitAsync() or call preloadCompressedCodec() during initialization.'
+    );
   }
 
   // Legacy uncompressed format
@@ -63,6 +80,27 @@ export async function decodeCircuit(encoded: string): Promise<Circuit> {
   } catch (error) {
     throw new Error(`Failed to decode circuit: ${error instanceof Error ? error.message : String(error)}`);
   }
+}
+
+/**
+ * Decode a URL-safe base64 string to a circuit (async, supports all formats)
+ *
+ * Handles both legacy uncompressed format and compressed format (c1: prefix).
+ * Automatically lazy-loads compression module if needed.
+ *
+ * @param encoded - URL-safe base64 encoded circuit string
+ * @returns Promise resolving to decoded Circuit
+ */
+export async function decodeCircuitAsync(encoded: string): Promise<Circuit> {
+  // Check for compressed format prefix
+  if (encoded.startsWith('c1:')) {
+    // Ensure compression module is loaded
+    await preloadCompressedCodec();
+    return _compressedModule!.decodeCircuitCompressed(encoded);
+  }
+
+  // Legacy uncompressed format (reuse sync implementation)
+  return decodeCircuit(encoded);
 }
 
 /**
