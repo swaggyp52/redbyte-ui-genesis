@@ -248,7 +248,27 @@ Test settings survive page reloads.
 
 **What this tests**: Settings store persistence (`localStorage`)
 
-### 10. Keyboard Shortcuts
+### 10. Circuit Sharing
+
+Test circuit sharing with compressed URLs.
+
+- [ ] Navigate to Logic Playground
+- [ ] Build a simple circuit (add 2-3 gates)
+- [ ] Press `Ctrl+Shift+C` (or `Cmd+Shift+C`)
+- [ ] **Verify**: Toast appears: "Share link copied to clipboard!"
+- [ ] Paste clipboard contents somewhere
+- [ ] **Verify**: URL contains `?circuit=c1:` prefix
+- [ ] Open URL in new incognito/private window
+- [ ] **Verify**: Circuit loads automatically
+- [ ] **Verify**: DevTools Network tab shows `encoding.compressed-*.js` fetched
+- [ ] **Verify**: URL param cleared from address bar after load
+- [ ] Create a legacy uncompressed URL (from before c1: format)
+- [ ] Open legacy URL
+- [ ] **Verify**: Legacy circuit still loads (backward compatibility)
+
+**What this tests**: Share functionality, lazy-loaded compression, URL ingestion, backward compatibility
+
+### 11. Keyboard Shortcuts
 
 Test global keyboard shortcuts work correctly.
 
