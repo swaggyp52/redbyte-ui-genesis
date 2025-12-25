@@ -14,6 +14,9 @@ import example08 from './08_full-adder.json';
 import example09 from './09_4bit-adder.json';
 import example10 from './10_sr-latch.json';
 import example11 from './11_d-flipflop.json';
+import example12 from './12_2to4-decoder.json';
+import example13 from './13_4to1-mux.json';
+import example14 from './14_4bit-register.json';
 
 export type ExampleId =
   | '01_wire-lamp'
@@ -26,7 +29,10 @@ export type ExampleId =
   | '08_full-adder'
   | '09_4bit-adder'
   | '10_sr-latch'
-  | '11_d-flipflop';
+  | '11_d-flipflop'
+  | '12_2to4-decoder'
+  | '13_4to1-mux'
+  | '14_4bit-register';
 
 export type CircuitLayer = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -143,6 +149,40 @@ const examples: Record<ExampleId, { data: SerializedCircuitV1; metadata: Example
       name: '4-bit Counter',
       description: 'Clock-driven 4-bit binary counter - watch it count!',
       layer: 3,
+      difficulty: 'advanced',
+    },
+  },
+
+  // Layer 4: Control & Coordination - Decoders, multiplexers, control units
+  '12_2to4-decoder': {
+    data: example12 as SerializedCircuitV1,
+    metadata: {
+      id: '12_2to4-decoder',
+      name: '2-to-4 Decoder',
+      description: 'Decodes 2-bit input into 4 output lines - basis of memory addressing',
+      layer: 4,
+      difficulty: 'intermediate',
+    },
+  },
+  '13_4to1-mux': {
+    data: example13 as SerializedCircuitV1,
+    metadata: {
+      id: '13_4to1-mux',
+      name: '4-to-1 Multiplexer',
+      description: 'Selects one of four inputs using 2 control signals - data routing!',
+      layer: 4,
+      difficulty: 'advanced',
+    },
+  },
+
+  // Layer 5: Memory Systems - Registers, RAM, ROM
+  '14_4bit-register': {
+    data: example14 as SerializedCircuitV1,
+    metadata: {
+      id: '14_4bit-register',
+      name: '4-bit Register',
+      description: 'Stores 4 bits simultaneously - the building block of CPU registers',
+      layer: 5,
       difficulty: 'advanced',
     },
   },

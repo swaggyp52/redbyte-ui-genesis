@@ -722,7 +722,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             className="px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
           >
             <option value="">Browse Examples by Layer...</option>
-            {([0, 1, 2, 3, 6] as CircuitLayer[]).map((layer) => {
+            {([0, 1, 2, 3, 4, 5, 6] as CircuitLayer[]).map((layer) => {
               const layerExamples = listExamplesByLayer(layer);
               if (layerExamples.length === 0) return null;
               return (
