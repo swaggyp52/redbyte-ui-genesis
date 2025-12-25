@@ -18,13 +18,14 @@ vi.mock('@redbyte/rb-utils', () => ({
   useSettingsStore: () => ({ tickRate: 1 }),
 }));
 
-vi.mock('@redbyte/rb-windowing', () => ({
-  useWindowStore: () => ({ setWindowTitle: vi.fn() }),
-}));
+vi.mock('@redbyte/rb-windowing');
 
 vi.mock('../tutorial/tutorialStore', () => ({
   useTutorialStore: () => ({ active: false, start: vi.fn() }),
 }));
+
+// Import after mocking to get the mocked version
+import { useWindowStore } from '@redbyte/rb-windowing';
 
 describe('LogicPlaygroundApp - Circuit Persistence', () => {
   beforeEach(() => {
@@ -32,10 +33,14 @@ describe('LogicPlaygroundApp - Circuit Persistence', () => {
     localStorage.clear();
     const { resetAll } = useFileSystemStore.getState();
     resetAll();
+
+    // Reset useWindowStore mock to default implementation
+    vi.mocked(useWindowStore).mockReturnValue({ setWindowTitle: vi.fn() });
   });
 
   afterEach(() => {
     vi.clearAllTimers();
+    vi.clearAllMocks();
   });
 
   describe('Autosave with 5s debounce', () => {
