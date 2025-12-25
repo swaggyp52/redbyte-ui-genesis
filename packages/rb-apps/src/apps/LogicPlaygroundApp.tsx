@@ -31,6 +31,7 @@ import { useTutorialStore } from '../tutorial/tutorialStore';
 import { TutorialOverlay } from '../tutorial/TutorialOverlay';
 import { recognizePattern, type RecognizedPattern } from '../patterns/patternMatcher';
 import { SaveChipModal } from '../components/SaveChipModal';
+import { registerAllChips, registerChip } from '../utils/chipRegistry';
 
 type ViewMode = 'circuit' | 'schematic' | 'isometric' | '3d';
 
@@ -55,7 +56,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const { setWindowTitle } = useWindowStore();
   const { getAllFiles, getFile, updateFileContent, createFile } = useFileSystemStore();
   const { pushState, undo, redo, canUndo, canRedo, clear: clearHistory } = useHistoryStore();
-  const { saveChipFromPattern } = useChipStore();
+  const { saveChipFromPattern, getAllChips } = useChipStore();
   const examples = useRef(listExamples());
 
   // Helper to get all .rblogic files
@@ -66,6 +67,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [selectedExampleId, setSelectedExampleId] = useState<ExampleId | ''>(
     initialExampleId ?? ''
   );
+  const [selectedChipId, setSelectedChipId] = useState<string>('');
 
   const [circuit, setCircuit] = useState<Circuit>(() => {
     return {
@@ -101,6 +103,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const canvasAreaRef = useRef<HTMLDivElement>(null);
   const hasLoadedFromURL = useRef(false);
   const isHydratingRef = useRef(false); // Guard to prevent setting dirty during file load
+
+  // Register saved chips on mount
+  useEffect(() => {
+    const chips = getAllChips();
+    registerAllChips(chips);
+  }, []); // Only run once on mount
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -577,6 +585,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
     try {
       const chip = saveChipFromPattern(recognizedPattern, circuit, inputs, outputs);
+
+      // Register the chip immediately so it can be used in circuits
+      registerChip(chip);
+
       addToast(`Chip "${chip.name}" saved! You can now use it in your circuits.`, 'success', 4000);
       setShowSaveChipModal(false);
     } catch (error) {
@@ -732,6 +744,47 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             Load Example
           </button>
         </div>
+
+        <div className="w-px h-6 bg-gray-600" />
+
+        {/* Saved Chips Dropdown */}
+        {getAllChips().length > 0 && (
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedChipId}
+              onChange={(e) => setSelectedChipId(e.target.value)}
+              className="px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
+            >
+              <option value="">Use Saved Chip...</option>
+              {([0, 1, 2, 3, 4, 5, 6] as number[]).map((layer) => {
+                const layerChips = getAllChips().filter((c) => c.layer === layer);
+                if (layerChips.length === 0) return null;
+                return (
+                  <optgroup key={layer} label={`Layer ${layer} Chips`}>
+                    {layerChips.map((chip) => (
+                      <option key={chip.id} value={chip.id}>
+                        {chip.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
+            </select>
+            <button
+              onClick={() => {
+                const chip = getAllChips().find((c) => c.id === selectedChipId);
+                if (chip) {
+                  setSelectedNodeType(chip.name);
+                  addToast(`Click on canvas to place ${chip.name}`, 'info', 2000);
+                }
+              }}
+              disabled={!selectedChipId}
+              className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Place Chip
+            </button>
+          </div>
+        )}
 
         <div className="w-px h-6 bg-gray-600" />
 

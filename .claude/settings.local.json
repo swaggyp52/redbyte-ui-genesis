@@ -39,7 +39,19 @@
       "Bash(del \"c:\\Users\\conno\\redbyte-ui\\packages\\rb-shell\\src\\__tests__\\phase-ae-open-with-modal.test.tsx\")",
       "Bash(pnpm -w typecheck:*)",
       "Bash(pnpm -w lint:*)",
-      "Bash(pnpm -w build:*)"
+      "Bash(pnpm -w build:*)",
+      "Bash(pnpm -w add:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh secret:*)",
+      "Bash(Select-Object -Last 30)",
+      "Bash(gh run:*)",
+      "Bash(git fetch:*)",
+      "Bash(pnpm -w test -- logic-playground)",
+      "Bash(pnpm --filter @redbyte/rb-apps build:*)",
+      "Bash(pnpm --filter @redbyte/rb-apps test -- pattern-recognition)",
+      "Bash(pnpm -w test pattern-recognition)",
+      "Bash(pnpm --filter @redbyte/rb-apps typecheck:*)",
+      "Bash(pnpm -w test:*)"
     ],
     "deny": [],
     "ask": []
