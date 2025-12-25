@@ -13,6 +13,7 @@ export interface TutorialStep {
 }
 
 export const TUTORIAL_STEPS: TutorialStep[] = [
+  // Layer 0: Foundation - First win for 6th graders
   {
     id: 1,
     title: 'Build a Lamp Circuit',
@@ -22,24 +23,67 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     id: 2,
-    title: 'Add an AND Gate',
-    description: 'Combine inputs with an AND gate. Both inputs must be ON for the output to be ON.',
+    title: 'Try an AND Gate',
+    description: 'Combine two switches with an AND gate. Both must be ON for the lamp to light up.',
     exampleCircuit: '02_and-gate.json',
     docsLink: '/docs/logic/lesson-02',
   },
+
+  // Layer 1: Combinational Logic - Pattern recognition
   {
     id: 3,
-    title: 'Build a Counter',
-    description: 'Create a 4-bit counter using flip-flops. Watch binary counting in action!',
-    exampleCircuit: '04_4bit-counter.json',
+    title: 'Build an XOR Gate',
+    description: 'Create an XOR gate from NANDs - one input OR the other, but not both. See the pattern emerge!',
+    exampleCircuit: '06_xor-gate.json',
     docsLink: '/docs/logic/lesson-03',
   },
   {
     id: 4,
-    title: 'Load a Simple CPU',
-    description: 'Explore a basic CPU architecture. See how instructions flow through the system.',
-    exampleCircuit: '05_simple-cpu.json',
+    title: 'Make a Half Adder',
+    description: 'Combine gates to add two bits together. This is how computers do math!',
+    exampleCircuit: '03_half-adder.json',
     docsLink: '/docs/logic/lesson-04',
+  },
+
+  // Layer 2: Arithmetic - "I built something that does math!"
+  {
+    id: 5,
+    title: 'Chain a Full Adder',
+    description: 'Add a carry input to build a Full Adder - the building block of real calculators.',
+    exampleCircuit: '08_full-adder.json',
+    docsLink: '/docs/logic/lesson-05',
+  },
+  {
+    id: 6,
+    title: 'Build a 4-bit Adder',
+    description: 'Chain four Full Adders to create a 4-bit adder. Watch it add numbers up to 15!',
+    exampleCircuit: '09_4bit-adder.json',
+    docsLink: '/docs/logic/lesson-06',
+  },
+
+  // Layer 3: Memory - The "aha" moment with feedback loops
+  {
+    id: 7,
+    title: 'Create an SR Latch',
+    description: 'Build your first memory circuit using feedback loops. It remembers a bit!',
+    exampleCircuit: '10_sr-latch.json',
+    docsLink: '/docs/logic/lesson-07',
+  },
+  {
+    id: 8,
+    title: 'Make a D Flip-Flop',
+    description: 'Add clock control to create synchronized memory - the foundation of all computer memory.',
+    exampleCircuit: '11_d-flipflop.json',
+    docsLink: '/docs/logic/lesson-08',
+  },
+
+  // Layer 6: Full CPU - The ultimate "I understand computers" moment
+  {
+    id: 9,
+    title: 'Explore a Simple CPU',
+    description: 'See how everything comes together - a complete CPU that runs real programs!',
+    exampleCircuit: '05_simple-cpu.json',
+    docsLink: '/docs/logic/lesson-09',
   },
 ];
 
