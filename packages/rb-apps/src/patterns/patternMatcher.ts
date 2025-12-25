@@ -112,6 +112,18 @@ const KNOWN_PATTERNS: PatternSignature[] = [
     hasInputs: true,
     hasOutputs: true,
   },
+
+  // Layer 5: Memory Systems
+  {
+    name: '4-bit Register',
+    description: 'Stores 4 bits at once - the building block of CPU registers!',
+    layer: 5,
+    gateTypes: { 'NAND': 16 },
+    minConnections: 30,
+    maxConnections: 40,
+    hasInputs: true,
+    hasOutputs: true,
+  },
 ];
 
 /**
