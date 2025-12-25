@@ -21,7 +21,7 @@ import { Logic3DScene } from '@redbyte/rb-logic-3d';
 import { useSettingsStore } from '@redbyte/rb-utils';
 import { useToastStore } from '@redbyte/rb-shell';
 import { useWindowStore } from '@redbyte/rb-windowing';
-import { loadExample, listExamples, type ExampleId } from '../examples';
+import { loadExample, listExamples, listExamplesByLayer, getLayerDescription, type ExampleId, type CircuitLayer } from '../examples';
 import { useFileSystemStore } from '../stores/fileSystemStore';
 import type { FileEntry } from '../apps/files/fsTypes';
 import { useTutorialStore } from '../tutorial/tutorialStore';
@@ -621,16 +621,25 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             onChange={(e) => setSelectedExampleId(e.target.value as ExampleId | '')}
             className="px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
           >
-            <option value="">Select example...</option>
-            {examples.current.map((ex) => (
-              <option key={ex.id} value={ex.id}>
-                {ex.name}
-              </option>
-            ))}
+            <option value="">Browse Examples by Layer...</option>
+            {([0, 1, 2, 3, 6] as CircuitLayer[]).map((layer) => {
+              const layerExamples = listExamplesByLayer(layer);
+              if (layerExamples.length === 0) return null;
+              return (
+                <optgroup key={layer} label={`Layer ${layer}: ${getLayerDescription(layer)}`}>
+                  {layerExamples.map((ex) => (
+                    <option key={ex.id} value={ex.id}>
+                      {ex.name} ({ex.difficulty})
+                    </option>
+                  ))}
+                </optgroup>
+              );
+            })}
           </select>
           <button
             onClick={() => handleLoadExample(selectedExampleId)}
-            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded"
+            disabled={!selectedExampleId}
+            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Load Example
           </button>
