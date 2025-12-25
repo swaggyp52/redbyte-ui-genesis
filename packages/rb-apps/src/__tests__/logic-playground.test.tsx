@@ -51,8 +51,9 @@ describe('LogicPlaygroundApp - Circuit Persistence', () => {
       };
       const fileId = createFile('documents', 'test.rblogic', JSON.stringify(initialCircuit));
 
+      const Component = LogicPlaygroundApp.component;
       const { container } = render(
-        <LogicPlaygroundApp manifest={LogicPlaygroundApp.manifest} initialFileId={fileId} />
+        <Component initialFileId={fileId} />
       );
 
       // Simulate circuit change by interacting with canvas
@@ -79,8 +80,9 @@ describe('LogicPlaygroundApp - Circuit Persistence', () => {
       };
       const fileId = createFile('documents', 'test.rblogic', JSON.stringify(initialCircuit));
 
+      const Component = LogicPlaygroundApp.component;
       render(
-        <LogicPlaygroundApp manifest={LogicPlaygroundApp.manifest} initialFileId={fileId} />
+        <Component initialFileId={fileId} />
       );
 
       // Simulate making the circuit dirty
@@ -110,8 +112,9 @@ describe('LogicPlaygroundApp - Circuit Persistence', () => {
       };
       const fileId = createFile('documents', 'test.rblogic', JSON.stringify(initialCircuit));
 
+      const Component = LogicPlaygroundApp.component;
       render(
-        <LogicPlaygroundApp manifest={LogicPlaygroundApp.manifest} initialFileId={fileId} />
+        <Component initialFileId={fileId} />
       );
 
       // First change
@@ -144,7 +147,8 @@ describe('LogicPlaygroundApp - Circuit Persistence', () => {
       const circuit: SerializedCircuitV1 = { version: '1', nodes: [], connections: [] };
       createFile('documents', 'my-circuit.rblogic', JSON.stringify(circuit));
 
-      render(<LogicPlaygroundApp manifest={LogicPlaygroundApp.manifest} />);
+      const Component = LogicPlaygroundApp.component;
+      render(<Component />);
 
       // Press Ctrl+O
       await user.keyboard('{Control>}o{/Control}');
@@ -164,7 +168,8 @@ describe('LogicPlaygroundApp - Circuit Persistence', () => {
       createFile('documents', 'circuit2.rblogic', JSON.stringify(circuit));
       createFile('documents', 'circuit3.rblogic', JSON.stringify(circuit));
 
-      render(<LogicPlaygroundApp manifest={LogicPlaygroundApp.manifest} />);
+      const Component = LogicPlaygroundApp.component;
+      render(<Component />);
 
       // Open modal
       await user.keyboard('{Control>}o{/Control}');
@@ -187,7 +192,8 @@ describe('LogicPlaygroundApp - Circuit Persistence', () => {
       };
       createFile('documents', 'target.rblogic', JSON.stringify(circuit));
 
-      render(<LogicPlaygroundApp manifest={LogicPlaygroundApp.manifest} />);
+      const Component = LogicPlaygroundApp.component;
+      render(<Component />);
 
       // Open modal
       await user.keyboard('{Control>}o{/Control}');
@@ -208,7 +214,8 @@ describe('LogicPlaygroundApp - Circuit Persistence', () => {
     it('should close modal on Escape key', async () => {
       const user = userEvent.setup();
 
-      render(<LogicPlaygroundApp manifest={LogicPlaygroundApp.manifest} />);
+      const Component = LogicPlaygroundApp.component;
+      render(<Component />);
 
       // Open modal
       await user.keyboard('{Control>}o{/Control}');
@@ -226,7 +233,8 @@ describe('LogicPlaygroundApp - Circuit Persistence', () => {
     it('should show empty state when no files exist', async () => {
       const user = userEvent.setup();
 
-      render(<LogicPlaygroundApp manifest={LogicPlaygroundApp.manifest} />);
+      const Component = LogicPlaygroundApp.component;
+      render(<Component />);
 
       // Open modal
       await user.keyboard('{Control>}o{/Control}');
@@ -249,9 +257,9 @@ describe('LogicPlaygroundApp - Circuit Persistence', () => {
       const fileId = createFile('documents', 'shared.rblogic', JSON.stringify(circuit));
 
       // Render with resourceId (simulating "Open With")
+      const Component = LogicPlaygroundApp.component;
       render(
-        <LogicPlaygroundApp
-          manifest={LogicPlaygroundApp.manifest}
+        <Component
           resourceId={fileId}
           resourceType="file"
         />
@@ -276,9 +284,9 @@ describe('LogicPlaygroundApp - Circuit Persistence', () => {
       };
       const fileId = createFile('documents', 'test.rblogic', JSON.stringify(circuit));
 
+      const Component = LogicPlaygroundApp.component;
       render(
-        <LogicPlaygroundApp
-          manifest={LogicPlaygroundApp.manifest}
+        <Component
           resourceId={fileId}
           resourceType="file"
         />
@@ -325,9 +333,9 @@ describe('LogicPlaygroundApp - Circuit Persistence', () => {
       const circuit: SerializedCircuitV1 = { version: '1', nodes: [], connections: [] };
       const fileId = createFile('documents', 'my-file.rblogic', JSON.stringify(circuit));
 
+      const Component = LogicPlaygroundApp.component;
       render(
-        <LogicPlaygroundApp
-          manifest={LogicPlaygroundApp.manifest}
+        <Component
           windowId="test-window"
           resourceId={fileId}
           resourceType="file"
@@ -349,9 +357,9 @@ describe('LogicPlaygroundApp - Circuit Persistence', () => {
       const circuit: SerializedCircuitV1 = { version: '1', nodes: [], connections: [] };
       const fileId = createFile('documents', 'dirty-test.rblogic', JSON.stringify(circuit));
 
+      const Component = LogicPlaygroundApp.component;
       render(
-        <LogicPlaygroundApp
-          manifest={LogicPlaygroundApp.manifest}
+        <Component
           windowId="test-window"
           initialFileId={fileId}
         />
@@ -374,7 +382,8 @@ describe('LogicPlaygroundApp - Circuit Persistence', () => {
       const user = userEvent.setup();
       const { getAllFiles } = useFileSystemStore.getState();
 
-      render(<LogicPlaygroundApp manifest={LogicPlaygroundApp.manifest} />);
+      const Component = LogicPlaygroundApp.component;
+      render(<Component />);
 
       // Trigger Save As
       await user.keyboard('{Control>}{Shift>}s{/Shift}{/Control}');
@@ -430,7 +439,8 @@ describe('LogicPlaygroundApp - Circuit Persistence', () => {
       // Create non-.rblogic file
       createFile('documents', 'notes.txt', 'Some notes');
 
-      render(<LogicPlaygroundApp manifest={LogicPlaygroundApp.manifest} />);
+      const Component = LogicPlaygroundApp.component;
+      render(<Component />);
 
       // Open file picker
       await user.keyboard('{Control>}o{/Control}');
