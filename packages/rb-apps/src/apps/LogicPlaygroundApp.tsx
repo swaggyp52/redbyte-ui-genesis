@@ -23,6 +23,7 @@ import { useToastStore } from '@redbyte/rb-shell';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import { loadExample, listExamples, listExamplesByLayer, getLayerDescription, type ExampleId, type CircuitLayer } from '../examples';
 import { useFileSystemStore } from '../stores/fileSystemStore';
+import { useHistoryStore } from '../stores/historyStore';
 import type { FileEntry } from '../apps/files/fsTypes';
 import { useTutorialStore } from '../tutorial/tutorialStore';
 import { TutorialOverlay } from '../tutorial/TutorialOverlay';
@@ -49,6 +50,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const { active: tutorialActive, start: startTutorial } = useTutorialStore();
   const { setWindowTitle } = useWindowStore();
   const { getAllFiles, getFile, updateFileContent, createFile } = useFileSystemStore();
+  const { pushState, undo, redo, canUndo, canRedo, clear: clearHistory } = useHistoryStore();
   const examples = useRef(listExamples());
 
   // Helper to get all .rblogic files
@@ -86,6 +88,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [showOpenModal, setShowOpenModal] = useState(false);
 
   const autosaveIntervalRef = useRef<number | null>(null);
+  const historyDebounceRef = useRef<number | null>(null);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
   const hasLoadedFromURL = useRef(false);
   const isHydratingRef = useRef(false); // Guard to prevent setting dirty during file load
@@ -93,6 +96,16 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Z or Cmd+Z for Undo
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        handleUndo();
+      }
+      // Ctrl+Y or Cmd+Y or Ctrl+Shift+Z for Redo
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
+        e.preventDefault();
+        handleRedo();
+      }
       // Ctrl+Shift+C or Cmd+Shift+C for share
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
         e.preventDefault();
@@ -309,8 +322,43 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setIsRunning(false);
     setSelectedFileId('');
     setSelectedExampleId('');
+    // Clear history when starting new circuit
+    clearHistory();
+    pushState(emptyCircuit);
     // Clear hydration guard after load completes
     isHydratingRef.current = false;
+  };
+
+  const handleUndo = () => {
+    if (!canUndo()) {
+      return;
+    }
+
+    const previousCircuit = undo();
+    if (previousCircuit) {
+      setCircuit(previousCircuit);
+      const newEngine = new CircuitEngine(previousCircuit);
+      setEngine(newEngine);
+      setTickEngine(new TickEngine(newEngine, tickRate));
+      setIsDirty(true);
+      addToast('Undo', 'info');
+    }
+  };
+
+  const handleRedo = () => {
+    if (!canRedo()) {
+      return;
+    }
+
+    const nextCircuit = redo();
+    if (nextCircuit) {
+      setCircuit(nextCircuit);
+      const newEngine = new CircuitEngine(nextCircuit);
+      setEngine(newEngine);
+      setTickEngine(new TickEngine(newEngine, tickRate));
+      setIsDirty(true);
+      addToast('Redo', 'info');
+    }
   };
 
   const handleSave = () => {
@@ -391,6 +439,9 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setSelectedFileId(file.id);
     setSelectedExampleId('');
     setIsDirty(false);
+    // Clear history and set initial state when loading file
+    clearHistory();
+    pushState(loadedCircuit);
     // Clear hydration guard after load completes
     isHydratingRef.current = false;
   };
@@ -409,6 +460,9 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setSelectedFileId('');
     setSelectedExampleId(exampleId);
     setIsDirty(true);
+    // Clear history and set initial state when loading example
+    clearHistory();
+    pushState(loadedCircuit);
     // Clear hydration guard after load completes
     isHydratingRef.current = false;
   };
@@ -771,6 +825,14 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
                   // Only mark dirty if not currently loading a file
                   if (!isHydratingRef.current) {
                     setIsDirty(true);
+
+                    // Debounced history push (1 second after last change)
+                    if (historyDebounceRef.current) {
+                      clearTimeout(historyDebounceRef.current);
+                    }
+                    historyDebounceRef.current = setTimeout(() => {
+                      pushState(c);
+                    }, 1000) as unknown as number;
                   }
                 },
                 getEngine: () => engine,
