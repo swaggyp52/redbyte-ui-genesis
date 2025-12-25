@@ -20,20 +20,17 @@ import { ViewAdapter } from '@redbyte/rb-logic-adapter';
 import { Logic3DScene } from '@redbyte/rb-logic-3d';
 import { useSettingsStore } from '@redbyte/rb-utils';
 import { useToastStore } from '@redbyte/rb-shell';
+import { useWindowStore } from '@redbyte/rb-windowing';
 import { loadExample, listExamples, type ExampleId } from '../examples';
-import {
-  getFile,
-  updateFile,
-  createFile,
-  listFiles,
-  type LogicFile,
-} from '../stores/filesStore';
+import { useFileSystemStore } from '../stores/fileSystemStore';
+import type { FileEntry } from '../apps/files/fsTypes';
 import { useTutorialStore } from '../tutorial/tutorialStore';
 import { TutorialOverlay } from '../tutorial/TutorialOverlay';
 
 type ViewMode = 'circuit' | 'schematic' | 'isometric' | '3d';
 
 interface LogicPlaygroundProps {
+  windowId?: string;
   initialFileId?: string;
   initialExampleId?: ExampleId;
   resourceId?: string;
@@ -41,6 +38,7 @@ interface LogicPlaygroundProps {
 }
 
 const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
+  windowId,
   initialFileId,
   initialExampleId,
   resourceId,
@@ -49,8 +47,14 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const { tickRate } = useSettingsStore();
   const { addToast } = useToastStore();
   const { active: tutorialActive, start: startTutorial } = useTutorialStore();
+  const { setWindowTitle } = useWindowStore();
+  const { getAllFiles, getFile, updateFileContent, createFile } = useFileSystemStore();
   const examples = useRef(listExamples());
-  const [availableFiles, setAvailableFiles] = useState<LogicFile[]>(listFiles());
+
+  // Helper to get all .rblogic files
+  const getLogicFiles = () => getAllFiles().filter((f) => f.name.endsWith('.rblogic'));
+
+  const [availableFiles, setAvailableFiles] = useState<FileEntry[]>(getLogicFiles);
   const [selectedFileId, setSelectedFileId] = useState<string | ''>(initialFileId ?? '');
   const [selectedExampleId, setSelectedExampleId] = useState<ExampleId | ''>(
     initialExampleId ?? ''
@@ -77,10 +81,14 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [shareFallbackURL, setShareFallbackURL] = useState<string | null>(null);
   const [showDecodeErrorModal, setShowDecodeErrorModal] = useState(false);
   const [isLoadingSharedCircuit, setIsLoadingSharedCircuit] = useState(false);
+  const [showSaveAsModal, setShowSaveAsModal] = useState(false);
+  const [saveAsFilename, setSaveAsFilename] = useState('circuit.rblogic');
+  const [showOpenModal, setShowOpenModal] = useState(false);
 
   const autosaveIntervalRef = useRef<number | null>(null);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
   const hasLoadedFromURL = useRef(false);
+  const isHydratingRef = useRef(false); // Guard to prevent setting dirty during file load
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -89,6 +97,21 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
         e.preventDefault();
         handleShare();
+      }
+      // Ctrl+Shift+S or Cmd+Shift+S for Save As
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
+        e.preventDefault();
+        handleSaveAs();
+      }
+      // Ctrl+S or Cmd+S for Save
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSave();
+      }
+      // Ctrl+O or Cmd+O for Open
+      if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+        e.preventDefault();
+        handleOpen();
       }
     };
 
@@ -110,6 +133,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         setIsLoadingSharedCircuit(true);
 
         try {
+          // Set hydration guard to prevent marking dirty during load
+          isHydratingRef.current = true;
           // Use async decoder to support both legacy and compressed (c1:) formats
           const decoded = await decodeCircuitAsync(circuitParam);
           // Convert back to SerializedCircuitV1 format
@@ -125,6 +150,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           setTickEngine(new TickEngine(newEngine, tickRate));
           setCurrentFileId(null);
           setIsDirty(true);
+          // Clear hydration guard after load completes
+          isHydratingRef.current = false;
           addToast('Loaded shared circuit', 'success');
 
           // Clear URL parameter
@@ -171,12 +198,15 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         } else {
           // No match found, create new empty circuit file with resourceId as name
           const serialized = serialize(circuit);
-          const newFile = createFile(resourceId, serialized);
-          setCurrentFileId(newFile.id);
-          setAvailableFiles(listFiles());
-          setSelectedFileId(newFile.id);
+          const contentStr = JSON.stringify(serialized);
+          // Ensure filename has .rblogic extension
+          const filename = resourceId.endsWith('.rblogic') ? resourceId : `${resourceId}.rblogic`;
+          const newFileId = createFile('documents', filename, contentStr);
+          setCurrentFileId(newFileId);
+          setAvailableFiles(getLogicFiles());
+          setSelectedFileId(newFileId);
           setIsDirty(false);
-          addToast(`Created new circuit: ${resourceId}`, 'success');
+          addToast(`Created new circuit: ${filename}`, 'success');
           requestAnimationFrame(() => {
             canvasAreaRef.current?.focus();
           });
@@ -202,27 +232,73 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setCurrentHz(tickRate);
   }, [tickRate]);
 
-  // Autosave every 5 seconds when dirty
+  // Autosave after 5 seconds of idle (debounced)
   useEffect(() => {
+    // Clear any existing timeout
     if (autosaveIntervalRef.current) {
-      clearInterval(autosaveIntervalRef.current);
+      clearTimeout(autosaveIntervalRef.current);
+      autosaveIntervalRef.current = null;
     }
 
+    // Only set timeout if dirty and has file association
     if (isDirty && currentFileId) {
-      autosaveIntervalRef.current = setInterval(() => {
-        const serialized = serialize(circuit);
-        updateFile(currentFileId, serialized);
+      autosaveIntervalRef.current = setTimeout(() => {
+        try {
+          const serialized = serialize(circuit);
+          const contentStr = JSON.stringify(serialized);
+          updateFileContent(currentFileId, contentStr);
+          setIsDirty(false); // Clear dirty state after autosave
+        } catch (error) {
+          console.error('Autosave error:', error);
+        }
       }, 5000) as unknown as number;
     }
 
     return () => {
       if (autosaveIntervalRef.current) {
-        clearInterval(autosaveIntervalRef.current);
+        clearTimeout(autosaveIntervalRef.current);
       }
     };
   }, [isDirty, currentFileId, circuit]);
 
+  // Beforeunload warning for unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = ''; // Modern browsers ignore custom message
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
+  // Update window title with filename and dirty indicator
+  useEffect(() => {
+    if (!windowId) return;
+
+    let title = 'Logic Playground';
+
+    // Add filename if file is loaded
+    if (currentFileId) {
+      const file = getFile(currentFileId);
+      if (file) {
+        title = file.name;
+      }
+    }
+
+    // Add dirty indicator
+    if (isDirty) {
+      title = `${title} •`;
+    }
+
+    setWindowTitle(windowId, title);
+  }, [windowId, currentFileId, isDirty]);
+
   const handleNew = () => {
+    // Set hydration guard to prevent marking dirty during load
+    isHydratingRef.current = true;
     const emptyCircuit: Circuit = { nodes: [], connections: [] };
     setCircuit(emptyCircuit);
     const newEngine = new CircuitEngine(emptyCircuit);
@@ -233,25 +309,62 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setIsRunning(false);
     setSelectedFileId('');
     setSelectedExampleId('');
+    // Clear hydration guard after load completes
+    isHydratingRef.current = false;
   };
 
   const handleSave = () => {
     const serialized = serialize(circuit);
+    const contentStr = JSON.stringify(serialized);
 
     if (currentFileId) {
-      updateFile(currentFileId, serialized);
-      setAvailableFiles(listFiles());
+      updateFileContent(currentFileId, contentStr);
+      setAvailableFiles(getLogicFiles());
       setIsDirty(false);
-    } else {
-      const name = prompt('Enter circuit name:');
-      if (name) {
-        const newFile = createFile(name, serialized);
-        setCurrentFileId(newFile.id);
-        setAvailableFiles(listFiles());
-        setSelectedFileId(newFile.id);
-        setIsDirty(false);
+      const file = getFile(currentFileId);
+      if (file) {
+        addToast(`Saved to ${file.name}`, 'success');
       }
+    } else {
+      // No file yet, show Save As modal
+      setShowSaveAsModal(true);
     }
+  };
+
+  const handleSaveAs = () => {
+    const defaultName = currentFileId
+      ? getFile(currentFileId)?.name || 'circuit.rblogic'
+      : 'circuit.rblogic';
+    setSaveAsFilename(defaultName);
+    setShowSaveAsModal(true);
+  };
+
+  const confirmSaveAs = () => {
+    if (!saveAsFilename.trim()) {
+      addToast('Filename cannot be empty', 'error');
+      return;
+    }
+
+    const serialized = serialize(circuit);
+    const contentStr = JSON.stringify(serialized);
+    // Ensure filename has .rblogic extension
+    const filename = saveAsFilename.endsWith('.rblogic') ? saveAsFilename : `${saveAsFilename}.rblogic`;
+    const newFileId = createFile('documents', filename, contentStr);
+    setCurrentFileId(newFileId);
+    setAvailableFiles(getLogicFiles());
+    setSelectedFileId(newFileId);
+    setIsDirty(false);
+    setShowSaveAsModal(false);
+    addToast(`Saved as ${filename}`, 'success');
+  };
+
+  const handleOpen = () => {
+    setShowOpenModal(true);
+  };
+
+  const handleOpenFile = async (fileId: string) => {
+    setShowOpenModal(false);
+    await handleLoadFile(fileId);
   };
 
   const handleLoadFile = async (fileId: string | null) => {
@@ -261,7 +374,15 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       alert('File not found');
       return;
     }
-    const loadedCircuit = deserialize(file.circuit);
+    // Set hydration guard to prevent marking dirty during load
+    isHydratingRef.current = true;
+
+    // Parse the file content (JSON string) to get the serialized circuit
+    const serialized: SerializedCircuitV1 = file.content
+      ? JSON.parse(file.content)
+      : { version: '1', nodes: [], connections: [] };
+
+    const loadedCircuit = deserialize(serialized);
     setCircuit(loadedCircuit);
     const newEngine = new CircuitEngine(loadedCircuit);
     setEngine(newEngine);
@@ -270,10 +391,14 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setSelectedFileId(file.id);
     setSelectedExampleId('');
     setIsDirty(false);
+    // Clear hydration guard after load completes
+    isHydratingRef.current = false;
   };
 
   const handleLoadExample = async (exampleId: ExampleId | '') => {
     if (!exampleId) return;
+    // Set hydration guard to prevent marking dirty during load
+    isHydratingRef.current = true;
     const exampleData = await loadExample(exampleId);
     const loadedCircuit = deserialize(exampleData);
     setCircuit(loadedCircuit);
@@ -284,6 +409,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setSelectedFileId('');
     setSelectedExampleId(exampleId);
     setIsDirty(true);
+    // Clear hydration guard after load completes
+    isHydratingRef.current = false;
   };
 
   const handleLoadTutorialExample = async (filename: string) => {
@@ -329,6 +456,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         const reader = new FileReader();
         reader.onload = (evt) => {
           try {
+            // Set hydration guard to prevent marking dirty during load
+            isHydratingRef.current = true;
             const json = JSON.parse(evt.target?.result as string);
             const loadedCircuit = deserialize(json);
             setCircuit(loadedCircuit);
@@ -337,6 +466,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             setTickEngine(new TickEngine(newEngine, currentHz));
             setCurrentFileId(null);
             setIsDirty(true);
+            // Clear hydration guard after load completes
+            isHydratingRef.current = false;
           } catch (err) {
             alert('Failed to import circuit: ' + err);
           }
@@ -628,7 +759,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
                 setCircuit: (c: Circuit) => {
                   setCircuit(c);
                   engine.setCircuit(c);
-                  setIsDirty(true);
+                  // Only mark dirty if not currently loading a file
+                  if (!isHydratingRef.current) {
+                    setIsDirty(true);
+                  }
                 },
                 getEngine: () => engine,
               }}
@@ -733,6 +867,83 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             >
               Report Issue →
             </a>
+          </div>
+        </div>
+      )}
+
+      {/* Save As Modal */}
+      {showSaveAsModal && (
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-3 text-white">Save Circuit As...</h3>
+            <input
+              type="text"
+              value={saveAsFilename}
+              onChange={(e) => setSaveAsFilename(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') confirmSaveAs();
+                if (e.key === 'Escape') setShowSaveAsModal(false);
+              }}
+              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white mb-4"
+              placeholder="circuit.rblogic"
+              autoFocus
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={confirmSaveAs}
+                className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded text-white text-sm"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setShowSaveAsModal(false)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Open File Modal */}
+      {showOpenModal && (
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-3 text-white">Open Circuit</h3>
+            {availableFiles.length === 0 ? (
+              <p className="text-sm text-gray-300 mb-4">
+                No saved circuits found. Create one with Ctrl+S.
+              </p>
+            ) : (
+              <div className="mb-4 max-h-64 overflow-y-auto">
+                {availableFiles.map((file, index) => (
+                  <button
+                    key={file.id}
+                    onClick={() => handleOpenFile(file.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleOpenFile(file.id);
+                      if (e.key === 'Escape') setShowOpenModal(false);
+                    }}
+                    className="w-full text-left px-3 py-2 bg-gray-900 hover:bg-gray-700 border border-gray-700 rounded mb-2 text-white text-sm transition-colors"
+                    autoFocus={index === 0}
+                  >
+                    <div className="font-medium">{file.name}</div>
+                    <div className="text-xs text-gray-400">
+                      Modified: {file.modified}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setShowOpenModal(false)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
