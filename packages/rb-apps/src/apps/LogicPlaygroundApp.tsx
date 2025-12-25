@@ -24,10 +24,13 @@ import { useWindowStore } from '@redbyte/rb-windowing';
 import { loadExample, listExamples, listExamplesByLayer, getLayerDescription, type ExampleId, type CircuitLayer } from '../examples';
 import { useFileSystemStore } from '../stores/fileSystemStore';
 import { useHistoryStore } from '../stores/historyStore';
+import { useChipStore } from '../stores/chipStore';
+import type { ChipPort } from '../stores/chipStore';
 import type { FileEntry } from '../apps/files/fsTypes';
 import { useTutorialStore } from '../tutorial/tutorialStore';
 import { TutorialOverlay } from '../tutorial/TutorialOverlay';
-import { recognizePattern } from '../patterns/patternMatcher';
+import { recognizePattern, type RecognizedPattern } from '../patterns/patternMatcher';
+import { SaveChipModal } from '../components/SaveChipModal';
 
 type ViewMode = 'circuit' | 'schematic' | 'isometric' | '3d';
 
@@ -52,6 +55,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const { setWindowTitle } = useWindowStore();
   const { getAllFiles, getFile, updateFileContent, createFile } = useFileSystemStore();
   const { pushState, undo, redo, canUndo, canRedo, clear: clearHistory } = useHistoryStore();
+  const { saveChipFromPattern } = useChipStore();
   const examples = useRef(listExamples());
 
   // Helper to get all .rblogic files
@@ -87,6 +91,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [showSaveAsModal, setShowSaveAsModal] = useState(false);
   const [saveAsFilename, setSaveAsFilename] = useState('circuit.rblogic');
   const [showOpenModal, setShowOpenModal] = useState(false);
+  const [showSaveChipModal, setShowSaveChipModal] = useState(false);
+  const [recognizedPattern, setRecognizedPattern] = useState<RecognizedPattern | null>(null);
 
   const autosaveIntervalRef = useRef<number | null>(null);
   const historyDebounceRef = useRef<number | null>(null);
@@ -560,6 +566,25 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     tickEngine.setTickRate(hz);
   };
 
+  const handleSaveChip = (
+    name: string,
+    description: string,
+    layer: number,
+    inputs: ChipPort[],
+    outputs: ChipPort[]
+  ) => {
+    if (!recognizedPattern) return;
+
+    try {
+      const chip = saveChipFromPattern(recognizedPattern, circuit, inputs, outputs);
+      addToast(`Chip "${chip.name}" saved! You can now use it in your circuits.`, 'success', 4000);
+      setShowSaveChipModal(false);
+    } catch (error) {
+      console.error('Failed to save chip:', error);
+      addToast('Failed to save chip', 'error');
+    }
+  };
+
   const handleShare = async () => {
     try {
       const serialized = serialize(circuit);
@@ -729,6 +754,15 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         >
           Share
         </button>
+        {recognizedPattern && (
+          <button
+            onClick={() => setShowSaveChipModal(true)}
+            className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded"
+            title={`Save ${recognizedPattern.name} as reusable chip`}
+          >
+            Save as Chip
+          </button>
+        )}
 
         <div className="w-px h-6 bg-gray-600" />
 
@@ -852,6 +886,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
                       if (pattern && pattern.name !== lastRecognizedPatternRef.current) {
                         // Only show toast if this is a new pattern (not previously recognized)
                         lastRecognizedPatternRef.current = pattern.name;
+                        setRecognizedPattern(pattern); // Save pattern for chip creation
                         addToast(
                           `You just built a ${pattern.name}! ${pattern.description}`,
                           'success',
@@ -1043,6 +1078,16 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Save as Chip Modal */}
+      {showSaveChipModal && recognizedPattern && (
+        <SaveChipModal
+          circuit={circuit}
+          recognizedPattern={recognizedPattern}
+          onSave={handleSaveChip}
+          onCancel={() => setShowSaveChipModal(false)}
+        />
       )}
     </div>
   );
