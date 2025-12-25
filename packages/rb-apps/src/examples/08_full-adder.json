@@ -1,0 +1,151 @@
+{
+  "version": "1",
+  "nodes": [
+    {
+      "id": "input-a",
+      "type": "INPUT",
+      "x": 50,
+      "y": 80
+    },
+    {
+      "id": "input-b",
+      "type": "INPUT",
+      "x": 50,
+      "y": 160
+    },
+    {
+      "id": "carry-in",
+      "type": "INPUT",
+      "x": 50,
+      "y": 240
+    },
+    {
+      "id": "xor1",
+      "type": "XOR",
+      "x": 200,
+      "y": 120
+    },
+    {
+      "id": "xor2",
+      "type": "XOR",
+      "x": 350,
+      "y": 150
+    },
+    {
+      "id": "and1",
+      "type": "AND",
+      "x": 200,
+      "y": 220
+    },
+    {
+      "id": "and2",
+      "type": "AND",
+      "x": 350,
+      "y": 250
+    },
+    {
+      "id": "or-carry",
+      "type": "OR",
+      "x": 500,
+      "y": 235
+    },
+    {
+      "id": "sum-output",
+      "type": "OUTPUT",
+      "x": 550,
+      "y": 150
+    },
+    {
+      "id": "carry-output",
+      "type": "OUTPUT",
+      "x": 650,
+      "y": 235
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn-1",
+      "from": "input-a",
+      "to": "xor1",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "conn-2",
+      "from": "input-b",
+      "to": "xor1",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "conn-3",
+      "from": "xor1",
+      "to": "xor2",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "conn-4",
+      "from": "carry-in",
+      "to": "xor2",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "conn-5",
+      "from": "xor2",
+      "to": "sum-output",
+      "fromPort": "out",
+      "toPort": "in"
+    },
+    {
+      "id": "conn-6",
+      "from": "input-a",
+      "to": "and1",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "conn-7",
+      "from": "input-b",
+      "to": "and1",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "conn-8",
+      "from": "xor1",
+      "to": "and2",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "conn-9",
+      "from": "carry-in",
+      "to": "and2",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "conn-10",
+      "from": "and1",
+      "to": "or-carry",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "conn-11",
+      "from": "and2",
+      "to": "or-carry",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "conn-12",
+      "from": "or-carry",
+      "to": "carry-output",
+      "fromPort": "out",
+      "toPort": "in"
+    }
+  ]
+}

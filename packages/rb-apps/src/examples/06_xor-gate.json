@@ -1,0 +1,92 @@
+{
+  "version": "1",
+  "nodes": [
+    {
+      "id": "input-a",
+      "type": "INPUT",
+      "x": 50,
+      "y": 100
+    },
+    {
+      "id": "input-b",
+      "type": "INPUT",
+      "x": 50,
+      "y": 200
+    },
+    {
+      "id": "nand1",
+      "type": "NAND",
+      "x": 200,
+      "y": 100
+    },
+    {
+      "id": "nand2",
+      "type": "NAND",
+      "x": 200,
+      "y": 200
+    },
+    {
+      "id": "nand3",
+      "type": "NAND",
+      "x": 350,
+      "y": 150
+    },
+    {
+      "id": "output",
+      "type": "OUTPUT",
+      "x": 500,
+      "y": 150
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn-1",
+      "from": "input-a",
+      "to": "nand1",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "conn-2",
+      "from": "input-b",
+      "to": "nand1",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "conn-3",
+      "from": "input-a",
+      "to": "nand2",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "conn-4",
+      "from": "nand1",
+      "to": "nand2",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "conn-5",
+      "from": "input-b",
+      "to": "nand3",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "conn-6",
+      "from": "nand2",
+      "to": "nand3",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "conn-7",
+      "from": "nand3",
+      "to": "output",
+      "fromPort": "out",
+      "toPort": "in"
+    }
+  ]
+}
