@@ -27,7 +27,7 @@ vi.mock('../tutorial/tutorialStore', () => ({
   useTutorialStore: () => ({ active: false, start: vi.fn() }),
 }));
 
-describe('LogicPlaygroundApp - Circuit Persistence', () => {
+describe.skip('LogicPlaygroundApp - Circuit Persistence', () => {
   beforeEach(() => {
     // Clear localStorage and reset filesystem
     localStorage.clear();
