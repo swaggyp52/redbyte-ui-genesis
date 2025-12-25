@@ -27,6 +27,7 @@ import { useHistoryStore } from '../stores/historyStore';
 import type { FileEntry } from '../apps/files/fsTypes';
 import { useTutorialStore } from '../tutorial/tutorialStore';
 import { TutorialOverlay } from '../tutorial/TutorialOverlay';
+import { recognizePattern } from '../patterns/patternMatcher';
 
 type ViewMode = 'circuit' | 'schematic' | 'isometric' | '3d';
 
@@ -89,6 +90,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
   const autosaveIntervalRef = useRef<number | null>(null);
   const historyDebounceRef = useRef<number | null>(null);
+  const patternRecognitionRef = useRef<number | null>(null);
+  const lastRecognizedPatternRef = useRef<string | null>(null);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
   const hasLoadedFromURL = useRef(false);
   const isHydratingRef = useRef(false); // Guard to prevent setting dirty during file load
@@ -325,6 +328,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     // Clear history when starting new circuit
     clearHistory();
     pushState(emptyCircuit);
+    // Clear pattern recognition state
+    lastRecognizedPatternRef.current = null;
     // Clear hydration guard after load completes
     isHydratingRef.current = false;
   };
@@ -442,6 +447,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     // Clear history and set initial state when loading file
     clearHistory();
     pushState(loadedCircuit);
+    // Clear pattern recognition state
+    lastRecognizedPatternRef.current = null;
     // Clear hydration guard after load completes
     isHydratingRef.current = false;
   };
@@ -463,6 +470,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     // Clear history and set initial state when loading example
     clearHistory();
     pushState(loadedCircuit);
+    // Clear pattern recognition state
+    lastRecognizedPatternRef.current = null;
     // Clear hydration guard after load completes
     isHydratingRef.current = false;
   };
@@ -833,6 +842,23 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
                     historyDebounceRef.current = setTimeout(() => {
                       pushState(c);
                     }, 1000) as unknown as number;
+
+                    // Debounced pattern recognition (2 seconds after last change)
+                    if (patternRecognitionRef.current) {
+                      clearTimeout(patternRecognitionRef.current);
+                    }
+                    patternRecognitionRef.current = setTimeout(() => {
+                      const pattern = recognizePattern(c);
+                      if (pattern && pattern.name !== lastRecognizedPatternRef.current) {
+                        // Only show toast if this is a new pattern (not previously recognized)
+                        lastRecognizedPatternRef.current = pattern.name;
+                        addToast(
+                          `You just built a ${pattern.name}! ${pattern.description}`,
+                          'success',
+                          5000
+                        );
+                      }
+                    }, 2000) as unknown as number;
                   }
                 },
                 getEngine: () => engine,
