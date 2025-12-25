@@ -21,11 +21,17 @@ import { Logic3DScene } from '@redbyte/rb-logic-3d';
 import { useSettingsStore } from '@redbyte/rb-utils';
 import { useToastStore } from '@redbyte/rb-shell';
 import { useWindowStore } from '@redbyte/rb-windowing';
-import { loadExample, listExamples, type ExampleId } from '../examples';
+import { loadExample, listExamples, listExamplesByLayer, getLayerDescription, type ExampleId, type CircuitLayer } from '../examples';
 import { useFileSystemStore } from '../stores/fileSystemStore';
+import { useHistoryStore } from '../stores/historyStore';
+import { useChipStore } from '../stores/chipStore';
+import type { ChipPort } from '../stores/chipStore';
 import type { FileEntry } from '../apps/files/fsTypes';
 import { useTutorialStore } from '../tutorial/tutorialStore';
 import { TutorialOverlay } from '../tutorial/TutorialOverlay';
+import { recognizePattern, type RecognizedPattern } from '../patterns/patternMatcher';
+import { SaveChipModal } from '../components/SaveChipModal';
+import { registerAllChips, registerChip } from '../utils/chipRegistry';
 
 type ViewMode = 'circuit' | 'schematic' | 'isometric' | '3d';
 
@@ -49,6 +55,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const { active: tutorialActive, start: startTutorial } = useTutorialStore();
   const { setWindowTitle } = useWindowStore();
   const { getAllFiles, getFile, updateFileContent, createFile } = useFileSystemStore();
+  const { pushState, undo, redo, canUndo, canRedo, clear: clearHistory } = useHistoryStore();
+  const { saveChipFromPattern, getAllChips } = useChipStore();
   const examples = useRef(listExamples());
 
   // Helper to get all .rblogic files
@@ -59,6 +67,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [selectedExampleId, setSelectedExampleId] = useState<ExampleId | ''>(
     initialExampleId ?? ''
   );
+  const [selectedChipId, setSelectedChipId] = useState<string>('');
 
   const [circuit, setCircuit] = useState<Circuit>(() => {
     return {
@@ -84,15 +93,36 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [showSaveAsModal, setShowSaveAsModal] = useState(false);
   const [saveAsFilename, setSaveAsFilename] = useState('circuit.rblogic');
   const [showOpenModal, setShowOpenModal] = useState(false);
+  const [showSaveChipModal, setShowSaveChipModal] = useState(false);
+  const [recognizedPattern, setRecognizedPattern] = useState<RecognizedPattern | null>(null);
 
   const autosaveIntervalRef = useRef<number | null>(null);
+  const historyDebounceRef = useRef<number | null>(null);
+  const patternRecognitionRef = useRef<number | null>(null);
+  const lastRecognizedPatternRef = useRef<string | null>(null);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
   const hasLoadedFromURL = useRef(false);
   const isHydratingRef = useRef(false); // Guard to prevent setting dirty during file load
 
+  // Register saved chips on mount
+  useEffect(() => {
+    const chips = getAllChips();
+    registerAllChips(chips);
+  }, []); // Only run once on mount
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Z or Cmd+Z for Undo
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        handleUndo();
+      }
+      // Ctrl+Y or Cmd+Y or Ctrl+Shift+Z for Redo
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
+        e.preventDefault();
+        handleRedo();
+      }
       // Ctrl+Shift+C or Cmd+Shift+C for share
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
         e.preventDefault();
@@ -309,8 +339,45 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setIsRunning(false);
     setSelectedFileId('');
     setSelectedExampleId('');
+    // Clear history when starting new circuit
+    clearHistory();
+    pushState(emptyCircuit);
+    // Clear pattern recognition state
+    lastRecognizedPatternRef.current = null;
     // Clear hydration guard after load completes
     isHydratingRef.current = false;
+  };
+
+  const handleUndo = () => {
+    if (!canUndo()) {
+      return;
+    }
+
+    const previousCircuit = undo();
+    if (previousCircuit) {
+      setCircuit(previousCircuit);
+      const newEngine = new CircuitEngine(previousCircuit);
+      setEngine(newEngine);
+      setTickEngine(new TickEngine(newEngine, tickRate));
+      setIsDirty(true);
+      addToast('Undo', 'info');
+    }
+  };
+
+  const handleRedo = () => {
+    if (!canRedo()) {
+      return;
+    }
+
+    const nextCircuit = redo();
+    if (nextCircuit) {
+      setCircuit(nextCircuit);
+      const newEngine = new CircuitEngine(nextCircuit);
+      setEngine(newEngine);
+      setTickEngine(new TickEngine(newEngine, tickRate));
+      setIsDirty(true);
+      addToast('Redo', 'info');
+    }
   };
 
   const handleSave = () => {
@@ -391,6 +458,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setSelectedFileId(file.id);
     setSelectedExampleId('');
     setIsDirty(false);
+    // Clear history and set initial state when loading file
+    clearHistory();
+    pushState(loadedCircuit);
+    // Clear pattern recognition state
+    lastRecognizedPatternRef.current = null;
     // Clear hydration guard after load completes
     isHydratingRef.current = false;
   };
@@ -409,6 +481,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setSelectedFileId('');
     setSelectedExampleId(exampleId);
     setIsDirty(true);
+    // Clear history and set initial state when loading example
+    clearHistory();
+    pushState(loadedCircuit);
+    // Clear pattern recognition state
+    lastRecognizedPatternRef.current = null;
     // Clear hydration guard after load completes
     isHydratingRef.current = false;
   };
@@ -495,6 +572,29 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const handleHzChange = (hz: number) => {
     setCurrentHz(hz);
     tickEngine.setTickRate(hz);
+  };
+
+  const handleSaveChip = (
+    name: string,
+    description: string,
+    layer: number,
+    inputs: ChipPort[],
+    outputs: ChipPort[]
+  ) => {
+    if (!recognizedPattern) return;
+
+    try {
+      const chip = saveChipFromPattern(recognizedPattern, circuit, inputs, outputs);
+
+      // Register the chip immediately so it can be used in circuits
+      registerChip(chip);
+
+      addToast(`Chip "${chip.name}" saved! You can now use it in your circuits.`, 'success', 4000);
+      setShowSaveChipModal(false);
+    } catch (error) {
+      console.error('Failed to save chip:', error);
+      addToast('Failed to save chip', 'error');
+    }
   };
 
   const handleShare = async () => {
@@ -621,20 +721,70 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             onChange={(e) => setSelectedExampleId(e.target.value as ExampleId | '')}
             className="px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
           >
-            <option value="">Select example...</option>
-            {examples.current.map((ex) => (
-              <option key={ex.id} value={ex.id}>
-                {ex.name}
-              </option>
-            ))}
+            <option value="">Browse Examples by Layer...</option>
+            {([0, 1, 2, 3, 4, 5, 6] as CircuitLayer[]).map((layer) => {
+              const layerExamples = listExamplesByLayer(layer);
+              if (layerExamples.length === 0) return null;
+              return (
+                <optgroup key={layer} label={`Layer ${layer}: ${getLayerDescription(layer)}`}>
+                  {layerExamples.map((ex) => (
+                    <option key={ex.id} value={ex.id}>
+                      {ex.name} ({ex.difficulty})
+                    </option>
+                  ))}
+                </optgroup>
+              );
+            })}
           </select>
           <button
             onClick={() => handleLoadExample(selectedExampleId)}
-            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded"
+            disabled={!selectedExampleId}
+            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Load Example
           </button>
         </div>
+
+        <div className="w-px h-6 bg-gray-600" />
+
+        {/* Saved Chips Dropdown */}
+        {getAllChips().length > 0 && (
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedChipId}
+              onChange={(e) => setSelectedChipId(e.target.value)}
+              className="px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
+            >
+              <option value="">Use Saved Chip...</option>
+              {([0, 1, 2, 3, 4, 5, 6] as number[]).map((layer) => {
+                const layerChips = getAllChips().filter((c) => c.layer === layer);
+                if (layerChips.length === 0) return null;
+                return (
+                  <optgroup key={layer} label={`Layer ${layer} Chips`}>
+                    {layerChips.map((chip) => (
+                      <option key={chip.id} value={chip.id}>
+                        {chip.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
+            </select>
+            <button
+              onClick={() => {
+                const chip = getAllChips().find((c) => c.id === selectedChipId);
+                if (chip) {
+                  setSelectedNodeType(chip.name);
+                  addToast(`Click on canvas to place ${chip.name}`, 'info', 2000);
+                }
+              }}
+              disabled={!selectedChipId}
+              className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Place Chip
+            </button>
+          </div>
+        )}
 
         <div className="w-px h-6 bg-gray-600" />
 
@@ -657,6 +807,15 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         >
           Share
         </button>
+        {recognizedPattern && (
+          <button
+            onClick={() => setShowSaveChipModal(true)}
+            className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded"
+            title={`Save ${recognizedPattern.name} as reusable chip`}
+          >
+            Save as Chip
+          </button>
+        )}
 
         <div className="w-px h-6 bg-gray-600" />
 
@@ -762,6 +921,32 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
                   // Only mark dirty if not currently loading a file
                   if (!isHydratingRef.current) {
                     setIsDirty(true);
+
+                    // Debounced history push (1 second after last change)
+                    if (historyDebounceRef.current) {
+                      clearTimeout(historyDebounceRef.current);
+                    }
+                    historyDebounceRef.current = setTimeout(() => {
+                      pushState(c);
+                    }, 1000) as unknown as number;
+
+                    // Debounced pattern recognition (2 seconds after last change)
+                    if (patternRecognitionRef.current) {
+                      clearTimeout(patternRecognitionRef.current);
+                    }
+                    patternRecognitionRef.current = setTimeout(() => {
+                      const pattern = recognizePattern(c);
+                      if (pattern && pattern.name !== lastRecognizedPatternRef.current) {
+                        // Only show toast if this is a new pattern (not previously recognized)
+                        lastRecognizedPatternRef.current = pattern.name;
+                        setRecognizedPattern(pattern); // Save pattern for chip creation
+                        addToast(
+                          `You just built a ${pattern.name}! ${pattern.description}`,
+                          'success',
+                          5000
+                        );
+                      }
+                    }, 2000) as unknown as number;
                   }
                 },
                 getEngine: () => engine,
@@ -946,6 +1131,16 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Save as Chip Modal */}
+      {showSaveChipModal && recognizedPattern && (
+        <SaveChipModal
+          circuit={circuit}
+          recognizedPattern={recognizedPattern}
+          onSave={handleSaveChip}
+          onCancel={() => setShowSaveChipModal(false)}
+        />
       )}
     </div>
   );

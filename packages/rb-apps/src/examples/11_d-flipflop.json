@@ -1,0 +1,231 @@
+{
+  "version": "1",
+  "nodes": [
+    {
+      "id": "data",
+      "type": "INPUT",
+      "x": 50,
+      "y": 150
+    },
+    {
+      "id": "clock",
+      "type": "INPUT",
+      "x": 50,
+      "y": 300
+    },
+    {
+      "id": "not-data",
+      "type": "NOT",
+      "x": 150,
+      "y": 150
+    },
+    {
+      "id": "master-nand1",
+      "type": "NAND",
+      "x": 250,
+      "y": 120
+    },
+    {
+      "id": "master-nand2",
+      "type": "NAND",
+      "x": 250,
+      "y": 220
+    },
+    {
+      "id": "master-nand3",
+      "type": "NAND",
+      "x": 400,
+      "y": 140
+    },
+    {
+      "id": "master-nand4",
+      "type": "NAND",
+      "x": 400,
+      "y": 200
+    },
+    {
+      "id": "not-clock",
+      "type": "NOT",
+      "x": 500,
+      "y": 300
+    },
+    {
+      "id": "slave-nand1",
+      "type": "NAND",
+      "x": 600,
+      "y": 140
+    },
+    {
+      "id": "slave-nand2",
+      "type": "NAND",
+      "x": 600,
+      "y": 200
+    },
+    {
+      "id": "slave-nand3",
+      "type": "NAND",
+      "x": 750,
+      "y": 160
+    },
+    {
+      "id": "slave-nand4",
+      "type": "NAND",
+      "x": 750,
+      "y": 220
+    },
+    {
+      "id": "q-output",
+      "type": "OUTPUT",
+      "x": 900,
+      "y": 160
+    },
+    {
+      "id": "qbar-output",
+      "type": "OUTPUT",
+      "x": 900,
+      "y": 220
+    }
+  ],
+  "connections": [
+    {
+      "id": "c1",
+      "from": "data",
+      "to": "not-data",
+      "fromPort": "out",
+      "toPort": "in"
+    },
+    {
+      "id": "c2",
+      "from": "data",
+      "to": "master-nand1",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c3",
+      "from": "clock",
+      "to": "master-nand1",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c4",
+      "from": "not-data",
+      "to": "master-nand2",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c5",
+      "from": "clock",
+      "to": "master-nand2",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c6",
+      "from": "master-nand1",
+      "to": "master-nand3",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c7",
+      "from": "master-nand4",
+      "to": "master-nand3",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c8",
+      "from": "master-nand3",
+      "to": "master-nand4",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c9",
+      "from": "master-nand2",
+      "to": "master-nand4",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c10",
+      "from": "clock",
+      "to": "not-clock",
+      "fromPort": "out",
+      "toPort": "in"
+    },
+    {
+      "id": "c11",
+      "from": "master-nand3",
+      "to": "slave-nand1",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c12",
+      "from": "not-clock",
+      "to": "slave-nand1",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c13",
+      "from": "master-nand4",
+      "to": "slave-nand2",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c14",
+      "from": "not-clock",
+      "to": "slave-nand2",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c15",
+      "from": "slave-nand1",
+      "to": "slave-nand3",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c16",
+      "from": "slave-nand4",
+      "to": "slave-nand3",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c17",
+      "from": "slave-nand3",
+      "to": "slave-nand4",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c18",
+      "from": "slave-nand2",
+      "to": "slave-nand4",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c19",
+      "from": "slave-nand3",
+      "to": "q-output",
+      "fromPort": "out",
+      "toPort": "in"
+    },
+    {
+      "id": "c20",
+      "from": "slave-nand4",
+      "to": "qbar-output",
+      "fromPort": "out",
+      "toPort": "in"
+    }
+  ]
+}

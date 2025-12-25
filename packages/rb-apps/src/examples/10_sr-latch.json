@@ -1,0 +1,85 @@
+{
+  "version": "1",
+  "nodes": [
+    {
+      "id": "set",
+      "type": "INPUT",
+      "x": 50,
+      "y": 100
+    },
+    {
+      "id": "reset",
+      "type": "INPUT",
+      "x": 50,
+      "y": 250
+    },
+    {
+      "id": "nor1",
+      "type": "NOR",
+      "x": 250,
+      "y": 120
+    },
+    {
+      "id": "nor2",
+      "type": "NOR",
+      "x": 250,
+      "y": 230
+    },
+    {
+      "id": "q-output",
+      "type": "OUTPUT",
+      "x": 450,
+      "y": 120
+    },
+    {
+      "id": "qbar-output",
+      "type": "OUTPUT",
+      "x": 450,
+      "y": 230
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn-1",
+      "from": "set",
+      "to": "nor1",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "conn-2",
+      "from": "nor2",
+      "to": "nor1",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "conn-3",
+      "from": "nor1",
+      "to": "nor2",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "conn-4",
+      "from": "reset",
+      "to": "nor2",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "conn-5",
+      "from": "nor1",
+      "to": "q-output",
+      "fromPort": "out",
+      "toPort": "in"
+    },
+    {
+      "id": "conn-6",
+      "from": "nor2",
+      "to": "qbar-output",
+      "fromPort": "out",
+      "toPort": "in"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "version": "v1",
+  "nodes": [
+    {"id": "a0", "type": "INPUT", "position": {"x": 50, "y": 80}, "rotation": 0, "config": {}},
+    {"id": "a1", "type": "INPUT", "position": {"x": 50, "y": 200}, "rotation": 0, "config": {}},
+    {"id": "not-a0", "type": "NOT", "position": {"x": 150, "y": 80}, "rotation": 0, "config": {}},
+    {"id": "not-a1", "type": "NOT", "position": {"x": 150, "y": 200}, "rotation": 0, "config": {}},
+    {"id": "and-y0", "type": "AND", "position": {"x": 280, "y": 60}, "rotation": 0, "config": {}},
+    {"id": "and-y1", "type": "AND", "position": {"x": 280, "y": 140}, "rotation": 0, "config": {}},
+    {"id": "and-y2", "type": "AND", "position": {"x": 280, "y": 220}, "rotation": 0, "config": {}},
+    {"id": "and-y3", "type": "AND", "position": {"x": 280, "y": 300}, "rotation": 0, "config": {}},
+    {"id": "y0", "type": "OUTPUT", "position": {"x": 420, "y": 60}, "rotation": 0, "config": {}},
+    {"id": "y1", "type": "OUTPUT", "position": {"x": 420, "y": 140}, "rotation": 0, "config": {}},
+    {"id": "y2", "type": "OUTPUT", "position": {"x": 420, "y": 220}, "rotation": 0, "config": {}},
+    {"id": "y3", "type": "OUTPUT", "position": {"x": 420, "y": 300}, "rotation": 0, "config": {}}
+  ],
+  "connections": [
+    {"from": {"nodeId": "a0", "portName": "out"}, "to": {"nodeId": "not-a0", "portName": "in"}},
+    {"from": {"nodeId": "a1", "portName": "out"}, "to": {"nodeId": "not-a1", "portName": "in"}},
+    {"from": {"nodeId": "not-a0", "portName": "out"}, "to": {"nodeId": "and-y0", "portName": "in1"}},
+    {"from": {"nodeId": "not-a1", "portName": "out"}, "to": {"nodeId": "and-y0", "portName": "in2"}},
+    {"from": {"nodeId": "a0", "portName": "out"}, "to": {"nodeId": "and-y1", "portName": "in1"}},
+    {"from": {"nodeId": "not-a1", "portName": "out"}, "to": {"nodeId": "and-y1", "portName": "in2"}},
+    {"from": {"nodeId": "not-a0", "portName": "out"}, "to": {"nodeId": "and-y2", "portName": "in1"}},
+    {"from": {"nodeId": "a1", "portName": "out"}, "to": {"nodeId": "and-y2", "portName": "in2"}},
+    {"from": {"nodeId": "a0", "portName": "out"}, "to": {"nodeId": "and-y3", "portName": "in1"}},
+    {"from": {"nodeId": "a1", "portName": "out"}, "to": {"nodeId": "and-y3", "portName": "in2"}},
+    {"from": {"nodeId": "and-y0", "portName": "out"}, "to": {"nodeId": "y0", "portName": "in"}},
+    {"from": {"nodeId": "and-y1", "portName": "out"}, "to": {"nodeId": "y1", "portName": "in"}},
+    {"from": {"nodeId": "and-y2", "portName": "out"}, "to": {"nodeId": "y2", "portName": "in"}},
+    {"from": {"nodeId": "and-y3", "portName": "out"}, "to": {"nodeId": "y3", "portName": "in"}}
+  ]
+}

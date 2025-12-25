@@ -1,0 +1,506 @@
+{
+  "version": "1",
+  "nodes": [
+    {
+      "id": "a0",
+      "type": "INPUT",
+      "x": 50,
+      "y": 100
+    },
+    {
+      "id": "b0",
+      "type": "INPUT",
+      "x": 50,
+      "y": 150
+    },
+    {
+      "id": "a1",
+      "type": "INPUT",
+      "x": 50,
+      "y": 250
+    },
+    {
+      "id": "b1",
+      "type": "INPUT",
+      "x": 50,
+      "y": 300
+    },
+    {
+      "id": "a2",
+      "type": "INPUT",
+      "x": 50,
+      "y": 400
+    },
+    {
+      "id": "b2",
+      "type": "INPUT",
+      "x": 50,
+      "y": 450
+    },
+    {
+      "id": "a3",
+      "type": "INPUT",
+      "x": 50,
+      "y": 550
+    },
+    {
+      "id": "b3",
+      "type": "INPUT",
+      "x": 50,
+      "y": 600
+    },
+    {
+      "id": "fa0-xor1",
+      "type": "XOR",
+      "x": 200,
+      "y": 125
+    },
+    {
+      "id": "fa0-xor2",
+      "type": "XOR",
+      "x": 350,
+      "y": 125
+    },
+    {
+      "id": "fa0-and1",
+      "type": "AND",
+      "x": 200,
+      "y": 200
+    },
+    {
+      "id": "fa0-and2",
+      "type": "AND",
+      "x": 350,
+      "y": 200
+    },
+    {
+      "id": "fa0-or",
+      "type": "OR",
+      "x": 500,
+      "y": 200
+    },
+    {
+      "id": "sum0",
+      "type": "OUTPUT",
+      "x": 550,
+      "y": 125
+    },
+    {
+      "id": "fa1-xor1",
+      "type": "XOR",
+      "x": 200,
+      "y": 275
+    },
+    {
+      "id": "fa1-xor2",
+      "type": "XOR",
+      "x": 350,
+      "y": 275
+    },
+    {
+      "id": "fa1-and1",
+      "type": "AND",
+      "x": 200,
+      "y": 350
+    },
+    {
+      "id": "fa1-and2",
+      "type": "AND",
+      "x": 350,
+      "y": 350
+    },
+    {
+      "id": "fa1-or",
+      "type": "OR",
+      "x": 500,
+      "y": 350
+    },
+    {
+      "id": "sum1",
+      "type": "OUTPUT",
+      "x": 550,
+      "y": 275
+    },
+    {
+      "id": "fa2-xor1",
+      "type": "XOR",
+      "x": 200,
+      "y": 425
+    },
+    {
+      "id": "fa2-xor2",
+      "type": "XOR",
+      "x": 350,
+      "y": 425
+    },
+    {
+      "id": "fa2-and1",
+      "type": "AND",
+      "x": 200,
+      "y": 500
+    },
+    {
+      "id": "fa2-and2",
+      "type": "AND",
+      "x": 350,
+      "y": 500
+    },
+    {
+      "id": "fa2-or",
+      "type": "OR",
+      "x": 500,
+      "y": 500
+    },
+    {
+      "id": "sum2",
+      "type": "OUTPUT",
+      "x": 550,
+      "y": 425
+    },
+    {
+      "id": "fa3-xor1",
+      "type": "XOR",
+      "x": 200,
+      "y": 575
+    },
+    {
+      "id": "fa3-xor2",
+      "type": "XOR",
+      "x": 350,
+      "y": 575
+    },
+    {
+      "id": "fa3-and1",
+      "type": "AND",
+      "x": 200,
+      "y": 650
+    },
+    {
+      "id": "fa3-and2",
+      "type": "AND",
+      "x": 350,
+      "y": 650
+    },
+    {
+      "id": "fa3-or",
+      "type": "OR",
+      "x": 500,
+      "y": 650
+    },
+    {
+      "id": "sum3",
+      "type": "OUTPUT",
+      "x": 550,
+      "y": 575
+    },
+    {
+      "id": "carry-out",
+      "type": "OUTPUT",
+      "x": 650,
+      "y": 650
+    }
+  ],
+  "connections": [
+    {
+      "id": "c1",
+      "from": "a0",
+      "to": "fa0-xor1",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c2",
+      "from": "b0",
+      "to": "fa0-xor1",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c3",
+      "from": "fa0-xor1",
+      "to": "fa0-xor2",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c4",
+      "from": "fa0-xor2",
+      "to": "sum0",
+      "fromPort": "out",
+      "toPort": "in"
+    },
+    {
+      "id": "c5",
+      "from": "a0",
+      "to": "fa0-and1",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c6",
+      "from": "b0",
+      "to": "fa0-and1",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c7",
+      "from": "fa0-xor1",
+      "to": "fa0-and2",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c8",
+      "from": "fa0-and1",
+      "to": "fa0-or",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c9",
+      "from": "fa0-and2",
+      "to": "fa0-or",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c10",
+      "from": "a1",
+      "to": "fa1-xor1",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c11",
+      "from": "b1",
+      "to": "fa1-xor1",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c12",
+      "from": "fa1-xor1",
+      "to": "fa1-xor2",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c13",
+      "from": "fa0-or",
+      "to": "fa1-xor2",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c14",
+      "from": "fa1-xor2",
+      "to": "sum1",
+      "fromPort": "out",
+      "toPort": "in"
+    },
+    {
+      "id": "c15",
+      "from": "a1",
+      "to": "fa1-and1",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c16",
+      "from": "b1",
+      "to": "fa1-and1",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c17",
+      "from": "fa1-xor1",
+      "to": "fa1-and2",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c18",
+      "from": "fa0-or",
+      "to": "fa1-and2",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c19",
+      "from": "fa1-and1",
+      "to": "fa1-or",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c20",
+      "from": "fa1-and2",
+      "to": "fa1-or",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c21",
+      "from": "a2",
+      "to": "fa2-xor1",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c22",
+      "from": "b2",
+      "to": "fa2-xor1",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c23",
+      "from": "fa2-xor1",
+      "to": "fa2-xor2",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c24",
+      "from": "fa1-or",
+      "to": "fa2-xor2",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c25",
+      "from": "fa2-xor2",
+      "to": "sum2",
+      "fromPort": "out",
+      "toPort": "in"
+    },
+    {
+      "id": "c26",
+      "from": "a2",
+      "to": "fa2-and1",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c27",
+      "from": "b2",
+      "to": "fa2-and1",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c28",
+      "from": "fa2-xor1",
+      "to": "fa2-and2",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c29",
+      "from": "fa1-or",
+      "to": "fa2-and2",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c30",
+      "from": "fa2-and1",
+      "to": "fa2-or",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c31",
+      "from": "fa2-and2",
+      "to": "fa2-or",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c32",
+      "from": "a3",
+      "to": "fa3-xor1",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c33",
+      "from": "b3",
+      "to": "fa3-xor1",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c34",
+      "from": "fa3-xor1",
+      "to": "fa3-xor2",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c35",
+      "from": "fa2-or",
+      "to": "fa3-xor2",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c36",
+      "from": "fa3-xor2",
+      "to": "sum3",
+      "fromPort": "out",
+      "toPort": "in"
+    },
+    {
+      "id": "c37",
+      "from": "a3",
+      "to": "fa3-and1",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c38",
+      "from": "b3",
+      "to": "fa3-and1",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c39",
+      "from": "fa3-xor1",
+      "to": "fa3-and2",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c40",
+      "from": "fa2-or",
+      "to": "fa3-and2",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c41",
+      "from": "fa3-and1",
+      "to": "fa3-or",
+      "fromPort": "out",
+      "toPort": "in1"
+    },
+    {
+      "id": "c42",
+      "from": "fa3-and2",
+      "to": "fa3-or",
+      "fromPort": "out",
+      "toPort": "in2"
+    },
+    {
+      "id": "c43",
+      "from": "fa3-or",
+      "to": "carry-out",
+      "fromPort": "out",
+      "toPort": "in"
+    }
+  ]
+}
