@@ -18,6 +18,19 @@ import {
 
 const STORAGE_KEY = 'rb:file-system';
 
+/**
+ * Gets current timestamp string for modified field.
+ */
+function getCurrentTimestamp(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
 interface FileSystemPersistenceEnvelope {
   version: 1;
   state: FileSystemState;
@@ -25,7 +38,7 @@ interface FileSystemPersistenceEnvelope {
 
 interface FileSystemActions {
   createFolder: (parentId: string, name: string) => void;
-  createFile: (parentId: string, name: string) => void;
+  createFile: (parentId: string, name: string, content?: string) => string;
   renameEntry: (id: string, newName: string) => void;
   deleteEntry: (id: string) => void;
   getChildren: (parentId: string) => FileEntry[];
@@ -33,6 +46,8 @@ interface FileSystemActions {
   resolveFolderLink: (id: string) => string;
   getFallbackFolderId: (deletedId: string) => string;
   getAllFiles: () => FileEntry[];
+  getFile: (fileId: string) => FileEntry | null;
+  updateFileContent: (fileId: string, content: string) => void;
   exportJson: () => string;
   importJson: (json: string) => void;
   resetAll: () => void;
@@ -134,11 +149,14 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => {
       persistState(newFs);
     },
 
-    createFile: (parentId, name) => {
+    createFile: (parentId, name, content?) => {
       const fs = get();
-      const newFs = fsCreateFile(parentId, name, fs);
+      const newFs = fsCreateFile(parentId, name, fs, content);
       set(newFs);
       persistState(newFs);
+
+      // Return the new file ID (format: file-{nextId})
+      return `file-${fs.nextId}`;
     },
 
     renameEntry: (id, newName) => {
@@ -199,6 +217,66 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => {
       }
 
       return allFiles;
+    },
+
+    getFile: (fileId) => {
+      const fs = get();
+
+      // Search all folders for the file entry
+      for (const folder of Object.values(fs.folders)) {
+        const entry = folder.entries.find((e) => e.id === fileId && e.type === 'file');
+        if (entry) {
+          return entry;
+        }
+      }
+
+      return null;
+    },
+
+    updateFileContent: (fileId, content) => {
+      const fs = get();
+
+      // Find the parent folder containing this file
+      let parentFolderId: string | null = null;
+      let fileEntry: FileEntry | null = null;
+
+      for (const [folderId, folder] of Object.entries(fs.folders)) {
+        const entry = folder.entries.find((e) => e.id === fileId && e.type === 'file');
+        if (entry) {
+          parentFolderId = folderId;
+          fileEntry = entry;
+          break;
+        }
+      }
+
+      if (!parentFolderId || !fileEntry) {
+        throw new Error(`File ${fileId} not found`);
+      }
+
+      const parentFolder = fs.folders[parentFolderId];
+      const updatedEntry: FileEntry = {
+        ...fileEntry,
+        content,
+        modified: getCurrentTimestamp(),
+      };
+
+      const updatedEntries = parentFolder.entries.map((e) =>
+        e.id === fileId ? updatedEntry : e
+      );
+
+      const newFs: FileSystemState = {
+        ...fs,
+        folders: {
+          ...fs.folders,
+          [parentFolderId]: {
+            ...parentFolder,
+            entries: updatedEntries,
+          },
+        },
+      };
+
+      set(newFs);
+      persistState(newFs);
     },
 
     exportJson: () => {

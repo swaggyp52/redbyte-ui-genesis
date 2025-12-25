@@ -191,7 +191,8 @@ export function createFolder(
 export function createFile(
   parentId: string,
   name: string,
-  fs: FileSystemState
+  fs: FileSystemState,
+  content?: string
 ): FileSystemState {
   const validName = validateName(name);
   if (!validName) {
@@ -214,6 +215,7 @@ export function createFile(
     name: uniqueName,
     type: 'file',
     modified: timestamp,
+    content,
   };
 
   return {

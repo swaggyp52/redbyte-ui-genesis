@@ -19,6 +19,7 @@ interface WindowManagerActions {
   focusWindow: (id: WindowId) => void;
   moveWindow: (id: WindowId, x: number, y: number) => void;
   resizeWindow: (id: WindowId, width: number, height: number) => void;
+  setWindowTitle: (id: WindowId, title: string) => void;
   toggleMinimize: (id: WindowId) => void;
   toggleMaximize: (id: WindowId) => void;
   restoreWindow: (id: WindowId) => void;
@@ -249,6 +250,14 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
         ),
       };
     });
+  },
+
+  setWindowTitle: (id, title) => {
+    set((state) => ({
+      windows: state.windows.map((w) =>
+        w.id === id ? { ...w, title } : w
+      ),
+    }));
   },
 
   toggleMinimize: (id) => {

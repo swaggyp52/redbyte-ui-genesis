@@ -7,6 +7,7 @@ export interface FileEntry {
   name: string;
   type: 'folder' | 'file';
   modified: string;
+  content?: string; // Optional file content (only for type: 'file')
 }
 
 export interface FolderData {
