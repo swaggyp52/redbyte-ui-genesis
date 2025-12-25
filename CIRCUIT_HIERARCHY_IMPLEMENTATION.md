@@ -47,7 +47,7 @@ This branch implements the complete **Circuit Hierarchy** vision for Logic Playg
 - **Goal**: Combining primitives into subsystems
 - **Circuits**: 4-bit Register (4 D flip-flops + clock)
 - **Examples**: `14_4bit-register.json`
-- **Pattern Recognition**: ⏳ Pending
+- **Pattern Recognition**: ✅ Implemented
 - **Tutorial**: Step 12
 
 ### Layer 6: Full CPU
@@ -101,7 +101,7 @@ confidence = (gateTypeScore + connectionScore + ioScore) / maxPossible
 threshold = 0.8  // 80% confidence required
 ```
 
-**Patterns Implemented** (9 total):
+**Patterns Implemented** (10 total):
 
 **Layer 1**:
 - XOR Gate: 3 NANDs, 5-7 connections
@@ -119,7 +119,10 @@ threshold = 0.8  // 80% confidence required
 - 2-to-4 Decoder: 2 NOTs + 4 ANDs, 12-16 connections
 - 4-to-1 Multiplexer: 2 NOTs + 8 ANDs + 3 ORs, 25-32 connections
 
-**Tests**: `__tests__/pattern-recognition.test.tsx` - 9 tests, all passing ✅
+**Layer 5**:
+- 4-bit Register: 16 NANDs (4 D flip-flops), 30-40 connections
+
+**Tests**: `__tests__/pattern-recognition.test.tsx` - 10 tests, all passing ✅
 
 ### 3. Example Circuits (14 Total)
 
@@ -229,7 +232,7 @@ Files Tests:                  31/31 passing
 ## Pending Work
 
 ### High Priority
-1. **Layer 5 Pattern Recognition** - Add 4-bit Register pattern
+1. ✅ ~~Layer 5 Pattern Recognition~~ - **COMPLETE!**
 2. **Chip Visual Rendering** - Custom node appearance for chips (black box)
 3. **Chip Library Browser** - Modal UI to browse/search saved chips
 
