@@ -77,13 +77,47 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     docsLink: '/docs/logic/lesson-08',
   },
 
-  // Layer 6: Full CPU - The ultimate "I understand computers" moment
+  // Special: Chip System Introduction
   {
     id: 9,
+    title: 'Save Your First Chip',
+    description: 'Build a Half Adder, then click "Save as Chip" to make it reusable. Chips are the key to building complex systems!',
+    exampleCircuit: '03_half-adder.json',
+    docsLink: '/docs/logic/lesson-09',
+  },
+
+  // Layer 4: Control & Coordination - Data routing and selection
+  {
+    id: 10,
+    title: 'Build a 2-to-4 Decoder',
+    description: 'Create a decoder that converts 2 bits into 4 output lines - the basis of memory addressing.',
+    exampleCircuit: '12_2to4-decoder.json',
+    docsLink: '/docs/logic/lesson-10',
+  },
+  {
+    id: 11,
+    title: 'Make a 4-to-1 Multiplexer',
+    description: 'Build a circuit that selects one of four inputs - essential for data routing in CPUs.',
+    exampleCircuit: '13_4to1-mux.json',
+    docsLink: '/docs/logic/lesson-11',
+  },
+
+  // Layer 5: Memory Systems - Combining latches into registers
+  {
+    id: 12,
+    title: 'Create a 4-bit Register',
+    description: 'Combine four D flip-flops to store 4 bits at once - this is how CPUs remember numbers!',
+    exampleCircuit: '14_4bit-register.json',
+    docsLink: '/docs/logic/lesson-12',
+  },
+
+  // Layer 6: Full CPU - The ultimate "I understand computers" moment
+  {
+    id: 13,
     title: 'Explore a Simple CPU',
     description: 'See how everything comes together - a complete CPU that runs real programs!',
     exampleCircuit: '05_simple-cpu.json',
-    docsLink: '/docs/logic/lesson-09',
+    docsLink: '/docs/logic/lesson-13',
   },
 ];
 
