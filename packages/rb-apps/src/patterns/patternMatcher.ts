@@ -90,6 +90,28 @@ const KNOWN_PATTERNS: PatternSignature[] = [
     hasInputs: true,
     hasOutputs: true,
   },
+
+  // Layer 4: Control & Coordination
+  {
+    name: '2-to-4 Decoder',
+    description: 'Decodes 2-bit input into 4 output lines - memory addressing magic!',
+    layer: 4,
+    gateTypes: { 'NOT': 2, 'AND': 4 },
+    minConnections: 12,
+    maxConnections: 16,
+    hasInputs: true,
+    hasOutputs: true,
+  },
+  {
+    name: '4-to-1 Multiplexer',
+    description: 'Selects one of four inputs - data routing at its finest!',
+    layer: 4,
+    gateTypes: { 'NOT': 2, 'AND': 8, 'OR': 3 },
+    minConnections: 25,
+    maxConnections: 32,
+    hasInputs: true,
+    hasOutputs: true,
+  },
 ];
 
 /**

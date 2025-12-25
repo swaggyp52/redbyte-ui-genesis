@@ -234,4 +234,48 @@ describe('Pattern Recognition', () => {
       expect(pattern?.confidence).toBeGreaterThanOrEqual(0.8);
     });
   });
+
+  describe('Layer 4 Pattern Recognition', () => {
+    it('should recognize 2-to-4 Decoder', () => {
+      const decoderCircuit: Circuit = {
+        nodes: [
+          { id: 'a0', type: 'INPUT', x: 50, y: 80 },
+          { id: 'a1', type: 'INPUT', x: 50, y: 200 },
+          { id: 'not-a0', type: 'NOT', x: 150, y: 80 },
+          { id: 'not-a1', type: 'NOT', x: 150, y: 200 },
+          { id: 'and-y0', type: 'AND', x: 280, y: 60 },
+          { id: 'and-y1', type: 'AND', x: 280, y: 140 },
+          { id: 'and-y2', type: 'AND', x: 280, y: 220 },
+          { id: 'and-y3', type: 'AND', x: 280, y: 300 },
+          { id: 'y0', type: 'OUTPUT', x: 420, y: 60 },
+          { id: 'y1', type: 'OUTPUT', x: 420, y: 140 },
+          { id: 'y2', type: 'OUTPUT', x: 420, y: 220 },
+          { id: 'y3', type: 'OUTPUT', x: 420, y: 300 },
+        ],
+        connections: [
+          { id: 'c1', from: 'a0', to: 'not-a0', fromPort: 'out', toPort: 'in' },
+          { id: 'c2', from: 'a1', to: 'not-a1', fromPort: 'out', toPort: 'in' },
+          { id: 'c3', from: 'not-a0', to: 'and-y0', fromPort: 'out', toPort: 'in1' },
+          { id: 'c4', from: 'not-a1', to: 'and-y0', fromPort: 'out', toPort: 'in2' },
+          { id: 'c5', from: 'a0', to: 'and-y1', fromPort: 'out', toPort: 'in1' },
+          { id: 'c6', from: 'not-a1', to: 'and-y1', fromPort: 'out', toPort: 'in2' },
+          { id: 'c7', from: 'not-a0', to: 'and-y2', fromPort: 'out', toPort: 'in1' },
+          { id: 'c8', from: 'a1', to: 'and-y2', fromPort: 'out', toPort: 'in2' },
+          { id: 'c9', from: 'a0', to: 'and-y3', fromPort: 'out', toPort: 'in1' },
+          { id: 'c10', from: 'a1', to: 'and-y3', fromPort: 'out', toPort: 'in2' },
+          { id: 'c11', from: 'and-y0', to: 'y0', fromPort: 'out', toPort: 'in' },
+          { id: 'c12', from: 'and-y1', to: 'y1', fromPort: 'out', toPort: 'in' },
+          { id: 'c13', from: 'and-y2', to: 'y2', fromPort: 'out', toPort: 'in' },
+          { id: 'c14', from: 'and-y3', to: 'y3', fromPort: 'out', toPort: 'in' },
+        ],
+      };
+
+      const pattern = recognizePattern(decoderCircuit);
+
+      expect(pattern).not.toBeNull();
+      expect(pattern?.name).toBe('2-to-4 Decoder');
+      expect(pattern?.layer).toBe(4);
+      expect(pattern?.confidence).toBeGreaterThanOrEqual(0.8);
+    });
+  });
 });
