@@ -57,7 +57,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const { setWindowTitle } = useWindowStore();
   const { getAllFiles, getFile, updateFileContent, createFile } = useFileSystemStore();
   const { pushState, undo, redo, canUndo, canRedo, clear: clearHistory } = useHistoryStore();
-  const { saveChipFromPattern, getAllChips, getChip } = useChipStore();
+  const { saveChipFromPattern, getAllChips, getChip, deleteChip } = useChipStore();
   const examples = useRef(listExamples());
 
   // Helper to get all .rblogic files
@@ -613,7 +613,6 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   };
 
   const handleDeleteChip = (chipId: string) => {
-    const { deleteChip } = useChipStore.getState();
     deleteChip(chipId);
     addToast('Chip deleted', 'info');
   };
