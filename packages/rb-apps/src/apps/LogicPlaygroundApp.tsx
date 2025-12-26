@@ -35,6 +35,7 @@ import { ChipLibraryModal } from '../components/ChipLibraryModal';
 import { OscilloscopeView } from '../components/OscilloscopeView';
 import { SchematicView } from '../components/SchematicView';
 import { PropertyInspector } from '../components/PropertyInspector';
+import { TraceViewer } from '../components/TraceViewer';
 import { registerAllChips, registerChip } from '../utils/chipRegistry';
 
 type ViewMode = 'circuit' | 'schematic' | 'oscilloscope' | '3d';
@@ -102,6 +103,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [showSaveChipModal, setShowSaveChipModal] = useState(false);
   const [showChipLibrary, setShowChipLibrary] = useState(false);
   const [recognizedPattern, setRecognizedPattern] = useState<RecognizedPattern | null>(null);
+  const [showTraceViewer, setShowTraceViewer] = useState(false);
+  const [traceSnapshots, setTraceSnapshots] = useState<any[]>([]);
 
   const autosaveIntervalRef = useRef<number | null>(null);
   const historyDebounceRef = useRef<number | null>(null);
@@ -654,6 +657,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   };
 
   const handleRun = () => {
+    // Enable tracing when starting simulation
+    tickEngine.enableTracing(1000);
     tickEngine.start();
     setIsRunning(true);
   };
@@ -661,6 +666,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const handlePause = () => {
     tickEngine.pause();
     setIsRunning(false);
+
+    // Update trace snapshots when pausing
+    const recorder = tickEngine.getTraceRecorder();
+    if (recorder) {
+      setTraceSnapshots(recorder.getSnapshots());
+    }
   };
 
   const handleStep = () => {
@@ -947,6 +958,27 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           <option value="oscilloscope">Oscilloscope</option>
           <option value="3d">3D</option>
         </select>
+
+        <button
+          onClick={() => {
+            setShowTraceViewer(!showTraceViewer);
+            // Update snapshots when opening
+            if (!showTraceViewer) {
+              const recorder = tickEngine.getTraceRecorder();
+              if (recorder) {
+                setTraceSnapshots(recorder.getSnapshots());
+              }
+            }
+          }}
+          className={`px-3 py-1 rounded font-semibold ${
+            showTraceViewer
+              ? 'bg-cyan-600 hover:bg-cyan-500 text-white'
+              : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+          }`}
+          title="Show execution trace"
+        >
+          Trace
+        </button>
 
         <div className="flex-1" />
 
@@ -1275,6 +1307,20 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           onSave={handleSaveChip}
           onCancel={() => setShowSaveChipModal(false)}
         />
+      )}
+
+      {/* Trace Viewer Modal */}
+      {showTraceViewer && (
+        <div className="absolute inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-gray-900 rounded-lg shadow-2xl w-[90%] h-[90%] max-w-5xl overflow-hidden border border-gray-700">
+            <TraceViewer
+              traces={traceSnapshots}
+              circuit={circuit}
+              currentTick={tickEngine.getTickCount()}
+              onClose={() => setShowTraceViewer(false)}
+            />
+          </div>
+        </div>
       )}
 
       {/* Chip Library Modal */}
