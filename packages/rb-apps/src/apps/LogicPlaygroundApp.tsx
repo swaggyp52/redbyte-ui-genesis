@@ -31,6 +31,7 @@ import { useTutorialStore } from '../tutorial/tutorialStore';
 import { TutorialOverlay } from '../tutorial/TutorialOverlay';
 import { recognizePattern, type RecognizedPattern } from '../patterns/patternMatcher';
 import { SaveChipModal } from '../components/SaveChipModal';
+import { ChipLibraryModal } from '../components/ChipLibraryModal';
 import { registerAllChips, registerChip } from '../utils/chipRegistry';
 
 type ViewMode = 'circuit' | 'schematic' | 'isometric' | '3d';
@@ -94,6 +95,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [saveAsFilename, setSaveAsFilename] = useState('circuit.rblogic');
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [showSaveChipModal, setShowSaveChipModal] = useState(false);
+  const [showChipLibrary, setShowChipLibrary] = useState(false);
   const [recognizedPattern, setRecognizedPattern] = useState<RecognizedPattern | null>(null);
 
   const autosaveIntervalRef = useRef<number | null>(null);
@@ -142,6 +144,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
         e.preventDefault();
         handleOpen();
+      }
+      // Ctrl+L or Cmd+L for Chip Library
+      if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+        e.preventDefault();
+        setShowChipLibrary(true);
       }
     };
 
@@ -597,6 +604,20 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     }
   };
 
+  const handleSelectChipFromLibrary = (chipId: string) => {
+    const chip = getAllChips().find((c) => c.id === chipId);
+    if (chip) {
+      setSelectedNodeType(chip.name);
+      addToast(`Click on canvas to place ${chip.name}`, 'info', 2000);
+    }
+  };
+
+  const handleDeleteChip = (chipId: string) => {
+    const { deleteChip } = useChipStore.getState();
+    deleteChip(chipId);
+    addToast('Chip deleted', 'info');
+  };
+
   const handleShare = async () => {
     try {
       const serialized = serialize(circuit);
@@ -747,43 +768,15 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
         <div className="w-px h-6 bg-gray-600" />
 
-        {/* Saved Chips Dropdown */}
+        {/* Chip Library Button */}
         {getAllChips().length > 0 && (
-          <div className="flex items-center gap-2">
-            <select
-              value={selectedChipId}
-              onChange={(e) => setSelectedChipId(e.target.value)}
-              className="px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
-            >
-              <option value="">Use Saved Chip...</option>
-              {([0, 1, 2, 3, 4, 5, 6] as number[]).map((layer) => {
-                const layerChips = getAllChips().filter((c) => c.layer === layer);
-                if (layerChips.length === 0) return null;
-                return (
-                  <optgroup key={layer} label={`Layer ${layer} Chips`}>
-                    {layerChips.map((chip) => (
-                      <option key={chip.id} value={chip.id}>
-                        {chip.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                );
-              })}
-            </select>
-            <button
-              onClick={() => {
-                const chip = getAllChips().find((c) => c.id === selectedChipId);
-                if (chip) {
-                  setSelectedNodeType(chip.name);
-                  addToast(`Click on canvas to place ${chip.name}`, 'info', 2000);
-                }
-              }}
-              disabled={!selectedChipId}
-              className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Place Chip
-            </button>
-          </div>
+          <button
+            onClick={() => setShowChipLibrary(true)}
+            className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded"
+            title="Browse Chip Library (Ctrl+L)"
+          >
+            Browse Chips ({getAllChips().length})
+          </button>
         )}
 
         <div className="w-px h-6 bg-gray-600" />
@@ -1153,6 +1146,15 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           onCancel={() => setShowSaveChipModal(false)}
         />
       )}
+
+      {/* Chip Library Modal */}
+      <ChipLibraryModal
+        isOpen={showChipLibrary}
+        onClose={() => setShowChipLibrary(false)}
+        chips={getAllChips()}
+        onSelectChip={handleSelectChipFromLibrary}
+        onDeleteChip={handleDeleteChip}
+      />
     </div>
   );
 };
