@@ -689,6 +689,9 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     'Counter4Bit',
   ];
 
+  // Memoize chips array to avoid multiple store calls during render
+  const allChips = React.useMemo(() => getAllChips(), [getAllChips]);
+
   return (
     <div className="h-full flex flex-col bg-gray-900 text-white">
       {/* Intent Resource Display */}
@@ -768,13 +771,13 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         <div className="w-px h-6 bg-gray-600" />
 
         {/* Chip Library Button */}
-        {getAllChips().length > 0 && (
+        {allChips.length > 0 && (
           <button
             onClick={() => setShowChipLibrary(true)}
             className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded"
             title="Browse Chip Library (Ctrl+L)"
           >
-            Browse Chips ({getAllChips().length})
+            Browse Chips ({allChips.length})
           </button>
         )}
 
@@ -1150,7 +1153,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       <ChipLibraryModal
         isOpen={showChipLibrary}
         onClose={() => setShowChipLibrary(false)}
-        chips={getAllChips()}
+        chips={allChips}
         onSelectChip={handleSelectChipFromLibrary}
         onDeleteChip={handleDeleteChip}
       />
