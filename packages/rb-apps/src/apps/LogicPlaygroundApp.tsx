@@ -1126,7 +1126,6 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           className="flex-1 relative outline-none"
           onDragOver={handleNodeDragOver}
           onDrop={handleNodeDrop}
-          onDragLeave={() => setDragPosition(null)}
           onDragEnd={() => {
             // Clean up drag state when drag ends
             setDraggingNodeType(null);
