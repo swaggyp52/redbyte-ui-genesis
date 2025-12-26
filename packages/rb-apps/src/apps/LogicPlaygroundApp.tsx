@@ -454,15 +454,23 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
   const handleNodeDragStart = (nodeType: string, e?: React.DragEvent) => {
     if (e) {
-      e.dataTransfer.effectAllowed = 'copy';
-      e.dataTransfer.setData('text/plain', nodeType);
+      try {
+        e.dataTransfer.effectAllowed = 'copy';
+        e.dataTransfer.setData('text/plain', nodeType);
+      } catch (error) {
+        console.error('Failed to set drag data:', error);
+      }
     }
     setDraggingNodeType(nodeType);
   };
 
   const handleNodeDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!draggingNodeType) return;
+
+    // Ensure we have valid client coordinates
+    if (typeof e.clientX !== 'number' || typeof e.clientY !== 'number') return;
 
     const rect = canvasAreaRef.current?.getBoundingClientRect();
     if (rect) {
@@ -475,7 +483,16 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
   const handleNodeDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+
     if (!draggingNodeType || !canvasAreaRef.current) {
+      setDraggingNodeType(null);
+      setDragPosition(null);
+      return;
+    }
+
+    // Ensure we have valid client coordinates
+    if (typeof e.clientX !== 'number' || typeof e.clientY !== 'number') {
       setDraggingNodeType(null);
       setDragPosition(null);
       return;
