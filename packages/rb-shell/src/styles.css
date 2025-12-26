@@ -81,6 +81,26 @@
   }
 }
 
+@keyframes scan-line {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .animate-gradient-shift {
   animation: gradient-shift 15s ease-in-out infinite;
 }
@@ -95,4 +115,12 @@
 
 .animate-grid-pulse {
   animation: grid-pulse 3s ease-in-out infinite;
+}
+
+.animate-scan-line {
+  animation: scan-line 3s linear infinite;
+}
+
+.animate-sparkle {
+  animation: sparkle 2s ease-in-out infinite;
 }

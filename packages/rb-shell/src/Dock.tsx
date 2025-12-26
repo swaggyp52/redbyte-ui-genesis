@@ -74,6 +74,7 @@ const persistDockOrder = (order: string[]) => {
 export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
   const windows = useWindowStore((s) => s.windows);
   const [dockOrder, setDockOrder] = useState<string[]>(() => loadDockOrder());
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const dockItems = useMemo(() => {
@@ -124,12 +125,14 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
 
   return (
     <div
-      className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-2xl bg-slate-900/90 px-3 py-2.5 backdrop-blur-xl border border-cyan-500/20 shadow-2xl shadow-cyan-500/10"
+      className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-end gap-2 rounded-2xl bg-slate-900/95 px-4 py-3 backdrop-blur-xl border border-cyan-500/30 shadow-2xl shadow-cyan-500/20"
       title="Alt+Arrow keys to reorder (when focused)"
+      onMouseLeave={() => setHoveredId(null)}
     >
-      {dockItems.map((dock) => {
+      {dockItems.map((dock, index) => {
         const Icon = dock.component;
         const isRunning = runningIds.includes(dock.id);
+        const isHovered = hoveredId === dock.id;
         const title =
           dock.id === 'launcher'
             ? `${dock.label} (${LAUNCHER_SHORTCUT_HINT}) — Type to search — ${SETTINGS_SHORTCUT_HINT} for Settings`
@@ -141,25 +144,47 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
             : dock.id === 'settings'
               ? SETTINGS_ARIA_KEYSHORTCUTS
               : undefined;
+
+        // Calculate scale based on hover proximity
+        let scale = 1;
+        if (hoveredId) {
+          const hoveredIndex = dockItems.findIndex(d => d.id === hoveredId);
+          const distance = Math.abs(index - hoveredIndex);
+          if (distance === 0) scale = 1.4;
+          else if (distance === 1) scale = 1.2;
+          else if (distance === 2) scale = 1.1;
+        }
+
         return (
           <button
             key={dock.id}
             onClick={() => onOpenApp(dock.id)}
             onKeyDown={(event) => handleKeyDown(event, dock.id)}
+            onMouseEnter={() => setHoveredId(dock.id)}
             ref={(el) => {
               buttonRefs.current[dock.id] = el;
             }}
             aria-label={ariaLabel}
             aria-keyshortcuts={ariaKeyShortcuts}
             title={title}
-            className={`relative h-14 w-14 rounded-xl flex items-center justify-center transition-all ${
+            style={{
+              transform: `scale(${scale}) translateY(${isHovered ? '-8px' : '0px'})`,
+              transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            }}
+            className={`relative h-14 w-14 rounded-xl flex items-center justify-center ${
               isRunning
-                ? 'bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30'
-                : 'bg-slate-800/50 hover:bg-slate-700/50 border border-transparent'
+                ? 'bg-gradient-to-br from-cyan-500/15 to-blue-500/15 hover:from-cyan-500/25 hover:to-blue-500/25 border border-cyan-500/40 shadow-lg shadow-cyan-500/20'
+                : 'bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/50'
             }`}
           >
-            <Icon width={28} height={28} className={isRunning ? 'text-cyan-300' : 'text-slate-300'} />
-            {isRunning && <span className="absolute -bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/50" />}
+            <Icon
+              width={28}
+              height={28}
+              className={`transition-all duration-300 ${isRunning ? 'text-cyan-300 drop-shadow-[0_0_6px_rgba(6,182,212,0.6)]' : 'text-slate-300'}`}
+            />
+            {isRunning && (
+              <span className="absolute -bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/80 animate-pulse" />
+            )}
           </button>
         );
       })}

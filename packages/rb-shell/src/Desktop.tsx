@@ -172,6 +172,12 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
             backgroundImage: 'linear-gradient(rgba(255, 0, 0, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 135, 255, 0.1) 1px, transparent 1px)',
             backgroundSize: '50px 50px',
           }} />
+          {/* Sparkle particles */}
+          <div className="absolute top-[15%] left-[30%] w-2 h-2 bg-cyan-400 rounded-full blur-sm animate-sparkle" style={{ animationDelay: '0s' }} />
+          <div className="absolute top-[60%] left-[70%] w-1.5 h-1.5 bg-pink-400 rounded-full blur-sm animate-sparkle" style={{ animationDelay: '0.5s' }} />
+          <div className="absolute top-[80%] left-[20%] w-2 h-2 bg-blue-400 rounded-full blur-sm animate-sparkle" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-[40%] left-[85%] w-1.5 h-1.5 bg-red-400 rounded-full blur-sm animate-sparkle" style={{ animationDelay: '1.5s' }} />
+          <div className="absolute top-[25%] left-[50%] w-1 h-1 bg-purple-400 rounded-full blur-sm animate-sparkle" style={{ animationDelay: '2s' }} />
         </div>
       )}
       {wallpaperId === 'default' && (

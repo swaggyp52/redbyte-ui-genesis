@@ -58,6 +58,12 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete }) => {
         }} />
       </div>
 
+      {/* Floating orbs in background */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s', animationDuration: '5s' }} />
+      </div>
+
       {/* Logo and title */}
       <div className="relative z-10 flex flex-col items-center">
         <div className="mb-8 relative">
