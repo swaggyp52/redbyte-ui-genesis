@@ -9,6 +9,8 @@ export type * from './types';
 export { NodeRegistry } from './NodeRegistry';
 export { CircuitEngine } from './CircuitEngine';
 export { TickEngine } from './TickEngine';
+export { TraceRecorder } from './TraceRecorder';
+export type { TraceEntry, TraceSnapshot } from './TraceRecorder';
 
 // Serialization
 export { serialize, deserialize } from './serialization';
