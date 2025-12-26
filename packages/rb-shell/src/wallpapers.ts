@@ -17,24 +17,10 @@ export const wallpapers: WallpaperDefinition[] = [
     name: 'Neon Circuit',
     style: (variant) => ({
       background: variant === 'light'
-        ? `
-          radial-gradient(circle at 25% 25%, rgba(255, 100, 100, 0.15) 0%, transparent 25%),
-          radial-gradient(circle at 75% 75%, rgba(100, 150, 255, 0.15) 0%, transparent 25%),
-          radial-gradient(circle at 50% 50%, rgba(180, 100, 255, 0.1) 0%, transparent 30%),
-          linear-gradient(0deg, transparent 49%, rgba(255, 100, 100, 0.05) 49%, rgba(255, 100, 100, 0.05) 51%, transparent 51%),
-          linear-gradient(90deg, transparent 49%, rgba(100, 150, 255, 0.05) 49%, rgba(100, 150, 255, 0.05) 51%, transparent 51%),
-          #f0f4f8
-        `
-        : `
-          radial-gradient(circle at 25% 25%, rgba(255, 0, 0, 0.2) 0%, transparent 25%),
-          radial-gradient(circle at 75% 75%, rgba(0, 135, 255, 0.2) 0%, transparent 25%),
-          radial-gradient(circle at 50% 50%, rgba(128, 0, 255, 0.15) 0%, transparent 30%),
-          linear-gradient(0deg, transparent 49%, rgba(255, 0, 0, 0.05) 49%, rgba(255, 0, 0, 0.05) 51%, transparent 51%),
-          linear-gradient(90deg, transparent 49%, rgba(0, 135, 255, 0.05) 49%, rgba(0, 135, 255, 0.05) 51%, transparent 51%),
-          #050a15
-        `,
-      backgroundSize: '100% 100%, 100% 100%, 100% 100%, 50px 50px, 50px 50px, 100% 100%',
-      backgroundPosition: 'center',
+        ? '#f0f4f8'
+        : variant === 'midnight'
+          ? '#000814'
+          : '#0a0e1a',
     }),
   },
   {
@@ -43,19 +29,23 @@ export const wallpapers: WallpaperDefinition[] = [
     style: (variant) => ({
       background: variant === 'light'
         ? `
-          linear-gradient(rgba(6, 182, 212, 0.08) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(6, 182, 212, 0.08) 1px, transparent 1px),
-          linear-gradient(rgba(6, 182, 212, 0.05) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(6, 182, 212, 0.05) 1px, #f8fafc 1px)
+          linear-gradient(rgba(6, 182, 212, 0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(6, 182, 212, 0.06) 1px, transparent 1px),
+          #f8fafc
         `
-        : `
-          linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px),
-          linear-gradient(rgba(6, 182, 212, 0.02) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(6, 182, 212, 0.02) 1px, #0a0f1a 1px)
-        `,
-      backgroundSize: '100px 100px, 100px 100px, 20px 20px, 20px 20px',
-      backgroundPosition: '-1px -1px, -1px -1px, -1px -1px, -1px -1px',
+        : variant === 'midnight'
+          ? `
+            linear-gradient(rgba(99, 102, 241, 0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(99, 102, 241, 0.04) 1px, transparent 1px),
+            #0a0118
+          `
+          : `
+            linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px),
+            #0a0f1a
+          `,
+      backgroundSize: '60px 60px',
+      backgroundPosition: '0 0',
     }),
   },
   {
@@ -64,12 +54,9 @@ export const wallpapers: WallpaperDefinition[] = [
     style: (variant) => ({
       background: variant === 'light'
         ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-        : `
-          radial-gradient(ellipse at 20% 30%, rgba(255, 0, 0, 0.15) 0%, transparent 50%),
-          radial-gradient(ellipse at 80% 70%, rgba(0, 135, 255, 0.15) 0%, transparent 50%),
-          radial-gradient(ellipse at 50% 50%, rgba(128, 0, 255, 0.1) 0%, transparent 50%),
-          linear-gradient(135deg, #0a0d1a 0%, #0f1729 25%, #1a0f29 50%, #0f1729 75%, #0a0d1a 100%)
-        `,
+        : variant === 'midnight'
+          ? 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%)'
+          : 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
     }),
   },
   {
@@ -77,8 +64,10 @@ export const wallpapers: WallpaperDefinition[] = [
     name: 'Solid',
     style: (variant) => ({
       background: variant === 'light'
-        ? 'linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%)'
-        : 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)',
+        ? '#e2e8f0'
+        : variant === 'midnight'
+          ? '#0a0118'
+          : '#0f172a',
     }),
   },
 ];

@@ -111,7 +111,7 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
                   {[
                     { value: 'light', label: 'Light', desc: 'Bright theme', icon: '☀️' },
                     { value: 'dark', label: 'Dark', desc: 'Dark theme', icon: '🌙' },
-                    { value: 'system', label: 'System', desc: 'Match OS', icon: '💻' },
+                    { value: 'midnight', label: 'Midnight', desc: 'Deep purple', icon: '🌌' },
                   ].map((theme) => (
                     <button
                       key={theme.value}

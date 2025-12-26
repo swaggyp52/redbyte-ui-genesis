@@ -4,7 +4,7 @@
 
 import { create } from 'zustand';
 
-export type ThemeVariant = 'light' | 'dark' | 'system';
+export type ThemeVariant = 'light' | 'dark' | 'midnight';
 export type WallpaperId = 'default' | 'neon-circuit' | 'frost-grid' | 'solid';
 
 const ACCENT_COLORS = ['cyan', 'purple', 'green', 'orange', 'pink'] as const;
@@ -51,7 +51,7 @@ function loadSettings(): SettingsState {
     const VALID_WALLPAPERS: WallpaperId[] = ['default', 'neon-circuit', 'frost-grid', 'solid'];
 
     return {
-      themeVariant: ['light', 'dark', 'system'].includes(parsed.themeVariant)
+      themeVariant: ['light', 'dark', 'midnight'].includes(parsed.themeVariant)
         ? parsed.themeVariant
         : DEFAULT_SETTINGS.themeVariant,
       wallpaperId: VALID_WALLPAPERS.includes(parsed.wallpaperId)

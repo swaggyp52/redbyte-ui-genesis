@@ -146,7 +146,8 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
     }
   };
 
-  const isLightMode = themeVariant === 'light' || (themeVariant === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+  const isLightMode = themeVariant === 'light';
+  const isMidnight = themeVariant === 'midnight';
 
   return (
     <div
@@ -159,43 +160,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
     >
-      {/* Animated wallpaper effects */}
-      {wallpaperId === 'neon-circuit' && (
-        <div className="absolute inset-0 pointer-events-none">
-          {/* Floating glow orbs */}
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-500/15 rounded-full blur-3xl animate-float-orb" />
-          <div className="absolute bottom-1/3 right-1/4 w-[450px] h-[450px] bg-blue-500/15 rounded-full blur-3xl animate-float-orb" style={{ animationDelay: '2s', animationDuration: '12s' }} />
-          <div className="absolute top-1/2 right-1/3 w-80 h-80 bg-purple-500/15 rounded-full blur-3xl animate-float-orb" style={{ animationDelay: '4s', animationDuration: '10s' }} />
-          {/* Pulsing accent glows */}
-          <div className="absolute top-1/3 right-1/2 w-64 h-64 bg-cyan-500/10 rounded-full blur-2xl animate-pulse-glow" />
-          <div className="absolute bottom-1/4 left-1/3 w-72 h-72 bg-pink-500/10 rounded-full blur-2xl animate-pulse-glow" style={{ animationDelay: '1.5s' }} />
-          {/* Animated grid overlay */}
-          <div className="absolute inset-0 animate-grid-pulse" style={{
-            backgroundImage: 'linear-gradient(rgba(255, 0, 0, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 135, 255, 0.1) 1px, transparent 1px)',
-            backgroundSize: '50px 50px',
-          }} />
-          {/* Sparkle particles */}
-          <div className="absolute top-[15%] left-[30%] w-2 h-2 bg-cyan-400 rounded-full blur-sm animate-sparkle" style={{ animationDelay: '0s' }} />
-          <div className="absolute top-[60%] left-[70%] w-1.5 h-1.5 bg-pink-400 rounded-full blur-sm animate-sparkle" style={{ animationDelay: '0.5s' }} />
-          <div className="absolute top-[80%] left-[20%] w-2 h-2 bg-blue-400 rounded-full blur-sm animate-sparkle" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-[40%] left-[85%] w-1.5 h-1.5 bg-red-400 rounded-full blur-sm animate-sparkle" style={{ animationDelay: '1.5s' }} />
-          <div className="absolute top-[25%] left-[50%] w-1 h-1 bg-purple-400 rounded-full blur-sm animate-sparkle" style={{ animationDelay: '2s' }} />
-        </div>
-      )}
-      {/* Gradient wallpaper has no animations - it's a static wallpaper */}
-      {wallpaperId === 'frost-grid' && (
-        <div className="absolute inset-0 pointer-events-none">
-          {/* Subtle cyan glow orbs */}
-          <div className="absolute top-1/3 left-1/4 w-72 h-72 bg-cyan-400/10 rounded-full blur-3xl animate-pulse-glow" style={{ animationDuration: '5s' }} />
-          <div className="absolute bottom-1/3 right-1/3 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '2s', animationDuration: '6s' }} />
-          {/* Pulsing grid overlay */}
-          <div className="absolute inset-0 animate-grid-pulse" style={{
-            backgroundImage: 'linear-gradient(rgba(6, 182, 212, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(6, 182, 212, 0.08) 1px, transparent 1px)',
-            backgroundSize: '60px 60px',
-          }} />
-        </div>
-      )}
-      {/* Solid wallpaper has no animations - it's a static wallpaper */}
+      {/* Clean wallpapers with no animations - all static */}
       <div className={`pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent ${isLightMode ? 'via-white/5 to-white/10' : 'via-black/5 to-black/20'}`} />
       {icons.map((icon) => {
         const IconComponent = iconComponents[icon.iconId] ?? FolderIcon;
@@ -213,24 +178,32 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
             <div
               className={`flex h-16 w-16 items-center justify-center rounded-xl border transition-all duration-200 ${
                 isSelected
-                  ? 'border-cyan-400/80 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 shadow-lg shadow-cyan-500/30'
+                  ? isMidnight
+                    ? 'border-indigo-400/80 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 shadow-lg shadow-indigo-500/30'
+                    : 'border-cyan-400/80 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 shadow-lg shadow-cyan-500/30'
                   : isLightMode
                     ? 'border-gray-300/50 bg-white/40 hover:border-cyan-400/60 hover:bg-white/60'
-                    : 'border-white/10 bg-black/30 hover:border-cyan-400/40 hover:bg-black/40'
+                    : isMidnight
+                      ? 'border-indigo-500/20 bg-indigo-950/30 hover:border-indigo-400/40 hover:bg-indigo-950/50'
+                      : 'border-white/10 bg-black/30 hover:border-cyan-400/40 hover:bg-black/40'
               } backdrop-blur-sm`}
             >
               <IconComponent
                 width={32}
                 height={32}
-                className={isSelected ? 'text-cyan-600 drop-shadow-[0_0_4px_rgba(6,182,212,0.8)]' : isLightMode ? 'text-gray-700' : 'text-white'}
+                className={isSelected ? isMidnight ? 'text-indigo-300 drop-shadow-[0_0_4px_rgba(99,102,241,0.8)]' : 'text-cyan-600 drop-shadow-[0_0_4px_rgba(6,182,212,0.8)]' : isLightMode ? 'text-gray-700' : isMidnight ? 'text-indigo-200' : 'text-white'}
               />
             </div>
             <div className={`mt-2 px-2.5 py-1 rounded-md transition-all duration-200 backdrop-blur-sm font-medium ${
               isSelected
-                ? 'bg-cyan-500/40 text-white shadow-lg shadow-cyan-500/20'
+                ? isMidnight
+                  ? 'bg-indigo-500/40 text-white shadow-lg shadow-indigo-500/20'
+                  : 'bg-cyan-500/40 text-white shadow-lg shadow-cyan-500/20'
                 : isLightMode
                   ? 'bg-white/50 text-gray-900'
-                  : 'bg-black/30 text-white/90'
+                  : isMidnight
+                    ? 'bg-indigo-950/40 text-indigo-100'
+                    : 'bg-black/30 text-white/90'
             }`}>
               {icon.title}
             </div>
