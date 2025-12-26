@@ -471,14 +471,22 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
     // Ensure we have valid client coordinates
     if (typeof e.clientX !== 'number' || typeof e.clientY !== 'number') return;
+    if (isNaN(e.clientX) || isNaN(e.clientY)) return;
 
     const rect = canvasAreaRef.current?.getBoundingClientRect();
-    if (rect) {
-      setDragPosition({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      });
-    }
+    if (!rect) return;
+
+    // Validate rect properties
+    if (typeof rect.left !== 'number' || typeof rect.top !== 'number') return;
+    if (isNaN(rect.left) || isNaN(rect.top)) return;
+
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Final NaN check before setting state
+    if (isNaN(x) || isNaN(y)) return;
+
+    setDragPosition({ x, y });
   };
 
   const handleNodeDrop = (e: React.DragEvent) => {
@@ -498,9 +506,36 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       return;
     }
 
+    if (isNaN(e.clientX) || isNaN(e.clientY)) {
+      setDraggingNodeType(null);
+      setDragPosition(null);
+      return;
+    }
+
     const rect = canvasAreaRef.current.getBoundingClientRect();
+
+    // Validate rect properties
+    if (typeof rect.left !== 'number' || typeof rect.top !== 'number') {
+      setDraggingNodeType(null);
+      setDragPosition(null);
+      return;
+    }
+
+    if (isNaN(rect.left) || isNaN(rect.top)) {
+      setDraggingNodeType(null);
+      setDragPosition(null);
+      return;
+    }
+
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    // Validate calculated position
+    if (isNaN(x) || isNaN(y)) {
+      setDraggingNodeType(null);
+      setDragPosition(null);
+      return;
+    }
 
     // Create new node at drop position
     const newNode: Node = {
