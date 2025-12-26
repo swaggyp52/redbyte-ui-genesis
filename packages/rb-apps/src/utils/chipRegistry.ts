@@ -57,11 +57,10 @@ export function registerAllChips(chips: ChipDefinition[]): void {
 
 /**
  * Unregisters a chip from the NodeRegistry.
- * Note: NodeRegistry doesn't have an unregister method, so this is a placeholder.
+ * This removes the chip's behavior so it can no longer be used in circuits.
  */
-export function unregisterChip(chipName: string): void {
-  // TODO: Implement if NodeRegistry adds an unregister method
-  console.warn(`Unregistering chips is not yet supported. Chip "${chipName}" will remain registered.`);
+export function unregisterChip(chipName: string): boolean {
+  return NodeRegistry.unregister(chipName);
 }
 
 /**

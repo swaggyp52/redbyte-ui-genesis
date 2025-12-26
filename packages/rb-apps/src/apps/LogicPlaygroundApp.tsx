@@ -36,9 +36,33 @@ import { OscilloscopeView } from '../components/OscilloscopeView';
 import { SchematicView } from '../components/SchematicView';
 import { PropertyInspector } from '../components/PropertyInspector';
 import { TraceViewer } from '../components/TraceViewer';
-import { registerAllChips, registerChip } from '../utils/chipRegistry';
+import { registerAllChips, registerChip, unregisterChip } from '../utils/chipRegistry';
 
 type ViewMode = 'circuit' | 'schematic' | 'oscilloscope' | '3d';
+
+// Primitive node types (built-in gates)
+const PRIMITIVE_NODES = [
+  'PowerSource',
+  'Switch',
+  'Lamp',
+  'Wire',
+  'AND',
+  'OR',
+  'NOT',
+  'NAND',
+  'XOR',
+  'Clock',
+  'Delay',
+] as const;
+
+// Composite node types (built-in multi-gate circuits)
+const COMPOSITE_NODES = [
+  'RSLatch',
+  'DFlipFlop',
+  'JKFlipFlop',
+  'FullAdder',
+  'Counter4Bit',
+] as const;
 
 interface LogicPlaygroundProps {
   windowId?: string;
@@ -539,7 +563,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     if (!fileId) return;
     const file = getFile(fileId);
     if (!file) {
-      alert('File not found');
+      addToast('File not found', 'error');
       return;
     }
     // Set hydration guard to prevent marking dirty during load
@@ -647,7 +671,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             // Clear hydration guard after load completes
             isHydratingRef.current = false;
           } catch (err) {
-            alert('Failed to import circuit: ' + err);
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            addToast(`Failed to import circuit: ${errorMessage}`, 'error');
           }
         };
         reader.readAsText(file);
@@ -715,6 +740,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   };
 
   const handleDeleteChip = (chipId: string) => {
+    const chip = getAllChips().find((c) => c.id === chipId);
+    if (chip) {
+      // Unregister from NodeRegistry first to prevent ghost chips
+      unregisterChip(chip.name);
+    }
     deleteChip(chipId);
     addToast('Chip deleted', 'info');
   };
@@ -768,28 +798,6 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setShowDecodeErrorModal(false);
     addToast('Circuit reset', 'info');
   };
-
-  const primitiveNodes = [
-    'PowerSource',
-    'Switch',
-    'Lamp',
-    'Wire',
-    'AND',
-    'OR',
-    'NOT',
-    'NAND',
-    'XOR',
-    'Clock',
-    'Delay',
-  ];
-
-  const compositeNodes = [
-    'RSLatch',
-    'DFlipFlop',
-    'JKFlipFlop',
-    'FullAdder',
-    'Counter4Bit',
-  ];
 
   // Memoize chips array to avoid multiple store calls during render
   const allChips = React.useMemo(() => getAllChips(), [getAllChips]);
@@ -996,7 +1004,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         <div className="w-48 border-r border-gray-700 overflow-y-auto p-2 bg-gray-850">
           <h3 className="text-xs font-semibold mb-2 text-gray-400">PRIMITIVES</h3>
           <div className="space-y-1 mb-4">
-            {primitiveNodes.map((type) => (
+            {PRIMITIVE_NODES.map((type) => (
               <button
                 key={type}
                 draggable
@@ -1011,7 +1019,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
           <h3 className="text-xs font-semibold mb-2 text-gray-400">COMPOSITE</h3>
           <div className="space-y-1 mb-4">
-            {compositeNodes.map((type) => (
+            {COMPOSITE_NODES.map((type) => (
               <button
                 key={type}
                 draggable

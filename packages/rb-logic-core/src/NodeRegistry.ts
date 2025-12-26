@@ -32,6 +32,13 @@ export class NodeRegistry {
   }
 
   /**
+   * Unregister a node behavior
+   */
+  static unregister(type: string): boolean {
+    return this.behaviors.delete(type);
+  }
+
+  /**
    * Clear all registered behaviors (for testing)
    */
   static clear(): void {

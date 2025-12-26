@@ -51,7 +51,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
         signals.set(node.id, engine.getNodeOutputs(node.id));
       }
       setNodeSignals(signals);
-    }, 50);
+    }, 200); // Reduced from 50ms to 200ms for better performance
 
     return () => clearInterval(interval);
   }, [isRunning, selectedNodes, engine]);
