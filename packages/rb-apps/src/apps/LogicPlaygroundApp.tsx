@@ -490,95 +490,75 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   };
 
   const handleNodeDrop = (e: React.DragEvent) => {
-    try {
-      e.preventDefault();
-      e.stopPropagation();
+    e.preventDefault();
+    e.stopPropagation();
 
-      console.log('[Drop] Starting drop handler', { draggingNodeType, hasCanvasRef: !!canvasAreaRef.current });
-
-      if (!draggingNodeType || !canvasAreaRef.current) {
-        console.log('[Drop] Early return - no dragging node type or canvas ref');
-        setDraggingNodeType(null);
-        setDragPosition(null);
-        return;
-      }
-
-      // Ensure we have valid client coordinates
-      if (typeof e.clientX !== 'number' || typeof e.clientY !== 'number') {
-        console.log('[Drop] Invalid client coords type');
-        setDraggingNodeType(null);
-        setDragPosition(null);
-        return;
-      }
-
-      if (isNaN(e.clientX) || isNaN(e.clientY)) {
-        console.log('[Drop] NaN client coords');
-        setDraggingNodeType(null);
-        setDragPosition(null);
-        return;
-      }
-
-      const rect = canvasAreaRef.current.getBoundingClientRect();
-      console.log('[Drop] Got rect', { left: rect.left, top: rect.top, clientX: e.clientX, clientY: e.clientY });
-
-      // Validate rect properties
-      if (typeof rect.left !== 'number' || typeof rect.top !== 'number') {
-        console.log('[Drop] Invalid rect type');
-        setDraggingNodeType(null);
-        setDragPosition(null);
-        return;
-      }
-
-      if (isNaN(rect.left) || isNaN(rect.top)) {
-        console.log('[Drop] NaN rect');
-        setDraggingNodeType(null);
-        setDragPosition(null);
-        return;
-      }
-
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      console.log('[Drop] Calculated position', { x, y });
-
-      // Validate calculated position
-      if (isNaN(x) || isNaN(y)) {
-        console.log('[Drop] Calculated NaN position');
-        setDraggingNodeType(null);
-        setDragPosition(null);
-        return;
-      }
-
-      // Create new node at drop position
-      const newNode: Node = {
-        id: `${draggingNodeType.toLowerCase()}-${Date.now()}`,
-        type: draggingNodeType,
-        x,
-        y,
-        config: {},
-        state: {},
-      };
-      console.log('[Drop] Created node', newNode);
-
-      const updatedCircuit = {
-        ...circuit,
-        nodes: [...circuit.nodes, newNode],
-      };
-      console.log('[Drop] Updated circuit, node count:', updatedCircuit.nodes.length);
-
-      setCircuit(updatedCircuit);
-      engine.setCircuit(updatedCircuit);
-      setIsDirty(true);
-      addToast(`Added ${draggingNodeType}`, 'success');
-
+    if (!draggingNodeType || !canvasAreaRef.current) {
       setDraggingNodeType(null);
       setDragPosition(null);
-      console.log('[Drop] Drop complete');
-    } catch (error) {
-      console.error('[Drop] Error in handleNodeDrop:', error);
-      addToast('Failed to add node: ' + (error instanceof Error ? error.message : String(error)), 'error');
-      setDraggingNodeType(null);
-      setDragPosition(null);
+      return;
     }
+
+    // Ensure we have valid client coordinates
+    if (typeof e.clientX !== 'number' || typeof e.clientY !== 'number') {
+      setDraggingNodeType(null);
+      setDragPosition(null);
+      return;
+    }
+
+    if (isNaN(e.clientX) || isNaN(e.clientY)) {
+      setDraggingNodeType(null);
+      setDragPosition(null);
+      return;
+    }
+
+    const rect = canvasAreaRef.current.getBoundingClientRect();
+
+    // Validate rect properties
+    if (typeof rect.left !== 'number' || typeof rect.top !== 'number') {
+      setDraggingNodeType(null);
+      setDragPosition(null);
+      return;
+    }
+
+    if (isNaN(rect.left) || isNaN(rect.top)) {
+      setDraggingNodeType(null);
+      setDragPosition(null);
+      return;
+    }
+
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Validate calculated position
+    if (isNaN(x) || isNaN(y)) {
+      setDraggingNodeType(null);
+      setDragPosition(null);
+      return;
+    }
+
+    // Create new node at drop position with correct structure
+    const newNode = {
+      id: `${draggingNodeType.toLowerCase()}-${Date.now()}`,
+      type: draggingNodeType,
+      position: { x, y },
+      rotation: 0,
+      config: {},
+      state: {},
+    };
+
+    const updatedCircuit = {
+      ...circuit,
+      nodes: [...circuit.nodes, newNode],
+    };
+
+    setCircuit(updatedCircuit);
+    engine.setCircuit(updatedCircuit);
+    setIsDirty(true);
+    addToast(`Added ${draggingNodeType}`, 'success');
+
+    setDraggingNodeType(null);
+    setDragPosition(null);
   };
 
   const handleSave = () => {
@@ -1152,8 +1132,21 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             setDragPosition(null);
           }}
         >
-          {/* Drag preview indicator - temporarily disabled for debugging */}
-          {null}
+          {/* Drag preview indicator */}
+          {dragPosition && draggingNodeType && (
+            <div
+              className="absolute pointer-events-none z-50"
+              style={{
+                left: `${dragPosition.x}px`,
+                top: `${dragPosition.y}px`,
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              <div className="px-3 py-2 bg-cyan-500/20 border-2 border-cyan-500 rounded-lg shadow-lg backdrop-blur-sm">
+                <div className="text-xs font-semibold text-cyan-300">{draggingNodeType}</div>
+              </div>
+            </div>
+          )}
 
           {viewMode === '3d' ? (
             <Logic3DScene engine={engine} width={800} height={600} />
