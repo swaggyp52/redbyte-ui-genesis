@@ -160,8 +160,150 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
     >
-      {/* Clean wallpapers with no animations - all static */}
-      <div className={`pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent ${isLightMode ? 'via-white/5 to-white/10' : 'via-black/5 to-black/20'}`} />
+      {/* Neon Circuit - Animated circuit board with flowing energy */}
+      {wallpaperId === 'neon-circuit' && (
+        <div className="pointer-events-none absolute inset-0">
+          {/* Horizontal circuit lines */}
+          <div className="absolute inset-0 opacity-20">
+            {[...Array(8)].map((_, i) => (
+              <div
+                key={`h-${i}`}
+                className="absolute h-0.5"
+                style={{
+                  top: `${(i + 1) * 12}%`,
+                  left: 0,
+                  right: 0,
+                  background: isLightMode
+                    ? 'linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.4), transparent)'
+                    : isMidnight
+                      ? 'linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.6), transparent)'
+                      : 'linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.6), transparent)',
+                  animation: `circuit-flow-h ${8 + i}s linear infinite`,
+                  animationDelay: `${i * 0.5}s`,
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Vertical circuit lines */}
+          <div className="absolute inset-0 opacity-20">
+            {[...Array(12)].map((_, i) => (
+              <div
+                key={`v-${i}`}
+                className="absolute w-0.5"
+                style={{
+                  left: `${(i + 1) * 8}%`,
+                  top: 0,
+                  bottom: 0,
+                  background: isLightMode
+                    ? 'linear-gradient(180deg, transparent, rgba(6, 182, 212, 0.4), transparent)'
+                    : isMidnight
+                      ? 'linear-gradient(180deg, transparent, rgba(139, 92, 246, 0.6), transparent)'
+                      : 'linear-gradient(180deg, transparent, rgba(6, 182, 212, 0.6), transparent)',
+                  animation: `circuit-flow-v ${6 + i}s linear infinite`,
+                  animationDelay: `${i * 0.3}s`,
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Circuit nodes - pulsing dots at intersections */}
+          <div className="absolute inset-0 opacity-40">
+            {[...Array(15)].map((_, i) => (
+              <div
+                key={`node-${i}`}
+                className="absolute rounded-full"
+                style={{
+                  left: `${Math.random() * 90 + 5}%`,
+                  top: `${Math.random() * 90 + 5}%`,
+                  width: Math.random() * 8 + 4 + 'px',
+                  height: Math.random() * 8 + 4 + 'px',
+                  background: isLightMode
+                    ? 'rgba(6, 182, 212, 0.7)'
+                    : isMidnight
+                      ? 'rgba(139, 92, 246, 0.9)'
+                      : 'rgba(6, 182, 212, 0.9)',
+                  boxShadow: isLightMode
+                    ? '0 0 20px rgba(6, 182, 212, 0.5)'
+                    : isMidnight
+                      ? '0 0 20px rgba(139, 92, 246, 0.7)'
+                      : '0 0 20px rgba(6, 182, 212, 0.7)',
+                  animation: `circuit-pulse ${2 + Math.random() * 3}s ease-in-out infinite`,
+                  animationDelay: `${Math.random() * 2}s`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Frost Grid - Diagonal shifting grid with shimmer effect */}
+      {wallpaperId === 'frost-grid' && (
+        <div className="pointer-events-none absolute inset-0">
+          {/* Animated diagonal grid layer 1 */}
+          <div
+            className="absolute inset-0 opacity-15"
+            style={{
+              backgroundImage: isLightMode
+                ? `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(6, 182, 212, 0.3) 40px, rgba(6, 182, 212, 0.3) 41px),
+                   repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(6, 182, 212, 0.3) 40px, rgba(6, 182, 212, 0.3) 41px)`
+                : isMidnight
+                  ? `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(139, 92, 246, 0.4) 40px, rgba(139, 92, 246, 0.4) 41px),
+                     repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(139, 92, 246, 0.4) 40px, rgba(139, 92, 246, 0.4) 41px)`
+                  : `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(6, 182, 212, 0.4) 40px, rgba(6, 182, 212, 0.4) 41px),
+                     repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(6, 182, 212, 0.4) 40px, rgba(6, 182, 212, 0.4) 41px)`,
+              animation: 'grid-shift-diagonal 30s linear infinite',
+            }}
+          />
+
+          {/* Shimmer overlay - moves across the grid */}
+          <div
+            className="absolute inset-0 opacity-30"
+            style={{
+              background: isLightMode
+                ? 'linear-gradient(110deg, transparent 30%, rgba(6, 182, 212, 0.15) 50%, transparent 70%)'
+                : isMidnight
+                  ? 'linear-gradient(110deg, transparent 30%, rgba(139, 92, 246, 0.2) 50%, transparent 70%)'
+                  : 'linear-gradient(110deg, transparent 30%, rgba(6, 182, 212, 0.2) 50%, transparent 70%)',
+              backgroundSize: '200% 100%',
+              animation: 'shimmer-sweep 8s ease-in-out infinite',
+            }}
+          />
+
+          {/* Frost particles - small glowing dots */}
+          <div className="absolute inset-0 opacity-25">
+            {[...Array(30)].map((_, i) => (
+              <div
+                key={`frost-${i}`}
+                className="absolute rounded-full"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  width: Math.random() * 3 + 1 + 'px',
+                  height: Math.random() * 3 + 1 + 'px',
+                  background: isLightMode
+                    ? 'rgba(6, 182, 212, 0.8)'
+                    : isMidnight
+                      ? 'rgba(139, 92, 246, 1)'
+                      : 'rgba(6, 182, 212, 1)',
+                  boxShadow: isLightMode
+                    ? '0 0 10px rgba(6, 182, 212, 0.6)'
+                    : isMidnight
+                      ? '0 0 10px rgba(139, 92, 246, 0.8)'
+                      : '0 0 10px rgba(6, 182, 212, 0.8)',
+                  animation: `frost-twinkle ${1 + Math.random() * 2}s ease-in-out infinite`,
+                  animationDelay: `${Math.random() * 3}s`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Subtle gradient overlay for default and solid wallpapers */}
+      {(wallpaperId === 'default' || wallpaperId === 'solid') && (
+        <div className={`pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent ${isLightMode ? 'via-white/5 to-white/10' : 'via-black/5 to-black/20'}`} />
+      )}
       {icons.map((icon) => {
         const IconComponent = iconComponents[icon.iconId] ?? FolderIcon;
         const isSelected = selected.includes(icon.id);
