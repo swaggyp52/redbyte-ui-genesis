@@ -1010,7 +1010,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           </div>
 
           <h3 className="text-xs font-semibold mb-2 text-gray-400">COMPOSITE</h3>
-          <div className="space-y-1">
+          <div className="space-y-1 mb-4">
             {compositeNodes.map((type) => (
               <button
                 key={type}
@@ -1022,6 +1022,36 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
                 {type}
               </button>
             ))}
+          </div>
+
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-semibold text-gray-400">MY CHIPS</h3>
+            <button
+              onClick={() => setShowChipLibrary(true)}
+              className="text-xs text-cyan-400 hover:text-cyan-300"
+              title="Browse chip library"
+            >
+              Browse
+            </button>
+          </div>
+          <div className="space-y-1">
+            {allChips.length === 0 ? (
+              <p className="text-xs text-gray-500 italic px-2 py-1">
+                No saved chips yet
+              </p>
+            ) : (
+              allChips.map((chip) => (
+                <button
+                  key={chip.id}
+                  draggable
+                  onDragStart={() => handleNodeDragStart(chip.name)}
+                  className="w-full text-left px-2 py-1 text-xs bg-purple-900/30 hover:bg-purple-800/40 rounded cursor-move transition-colors border border-purple-700/30"
+                  title={`Drag to canvas to add ${chip.name} (${chip.description})`}
+                >
+                  {chip.name}
+                </button>
+              ))
+            )}
           </div>
         </div>
 
@@ -1330,6 +1360,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         chips={allChips}
         onSelectChip={handleSelectChipFromLibrary}
         onDeleteChip={handleDeleteChip}
+        onDragStart={handleNodeDragStart}
       />
     </div>
   );
