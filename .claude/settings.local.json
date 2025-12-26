@@ -55,7 +55,12 @@
       "Bash(gh api:*)",
       "Bash(xargs:*)",
       "Bash(timeout 90 bash -c 'while true; do status=$\\(gh run list --limit 1 --json conclusion --jq \"\".[0].conclusion\"\"\\); if [[ \"\"$status\"\" == \"\"success\"\" ]] || [[ \"\"$status\"\" == \"\"failure\"\" ]]; then echo \"\"Status: $status\"\"; gh run list --limit 1; break; fi; sleep 5; done')",
-      "Bash(timeout 60 bash -c 'while true; do status=$\\(gh run list --workflow \"\"Deploy to Cloudflare Pages\"\" --limit 1 --json conclusion --jq \"\".[0].conclusion\"\"\\); if [[ \"\"$status\"\" == \"\"success\"\" ]] || [[ \"\"$status\"\" == \"\"failure\"\" ]]; then echo \"\"Cloudflare Status: $status\"\"; gh run list --workflow \"\"Deploy to Cloudflare Pages\"\" --limit 1; break; fi; sleep 5; done')"
+      "Bash(timeout 60 bash -c 'while true; do status=$\\(gh run list --workflow \"\"Deploy to Cloudflare Pages\"\" --limit 1 --json conclusion --jq \"\".[0].conclusion\"\"\\); if [[ \"\"$status\"\" == \"\"success\"\" ]] || [[ \"\"$status\"\" == \"\"failure\"\" ]]; then echo \"\"Cloudflare Status: $status\"\"; gh run list --workflow \"\"Deploy to Cloudflare Pages\"\" --limit 1; break; fi; sleep 5; done')",
+      "Bash(curl -fsSL https://redbyteapps.dev/)",
+      "Bash(timeout 90 bash -c 'while true; do status=$\\(gh run list --workflow \"\"Deploy to Cloudflare Pages\"\" --limit 1 --json conclusion --jq \"\".[0].conclusion\"\"\\); if [[ \"\"$status\"\" == \"\"success\"\" ]] || [[ \"\"$status\"\" == \"\"failure\"\" ]]; then echo \"\"Deploy Status: $status\"\"; gh run list --workflow \"\"Deploy to Cloudflare Pages\"\" --limit 1; break; fi; sleep 5; done')",
+      "Bash(curl:*)",
+      "Bash(gh issue list:*)",
+      "Bash(pnpm --filter @redbyte/rb-utils typecheck:*)"
     ],
     "deny": [],
     "ask": []

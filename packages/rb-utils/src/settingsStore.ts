@@ -5,19 +5,20 @@
 import { create } from 'zustand';
 
 export type ThemeVariant = 'light' | 'dark' | 'system';
+export type WallpaperId = 'default' | 'neon-circuit' | 'frost-grid' | 'solid';
 
 const ACCENT_COLORS = ['cyan', 'purple', 'green', 'orange', 'pink'] as const;
 export type AccentColor = (typeof ACCENT_COLORS)[number];
 
 interface SettingsState {
   themeVariant: ThemeVariant;
-  wallpaperId: string;
+  wallpaperId: WallpaperId;
   accentColor: AccentColor;
 }
 
 interface SettingsActions {
   setThemeVariant: (variant: ThemeVariant) => void;
-  setWallpaperId: (id: string) => void;
+  setWallpaperId: (id: WallpaperId) => void;
   setAccentColor: (color: AccentColor) => void;
 }
 
@@ -27,7 +28,7 @@ const STORAGE_KEY = 'rb.shell.settings';
 
 const DEFAULT_SETTINGS: SettingsState = {
   themeVariant: 'dark',
-  wallpaperId: 'default',
+  wallpaperId: 'neon-circuit',
   accentColor: 'cyan',
 };
 
@@ -47,11 +48,13 @@ function loadSettings(): SettingsState {
       return DEFAULT_SETTINGS;
     }
 
+    const VALID_WALLPAPERS: WallpaperId[] = ['default', 'neon-circuit', 'frost-grid', 'solid'];
+
     return {
       themeVariant: ['light', 'dark', 'system'].includes(parsed.themeVariant)
         ? parsed.themeVariant
         : DEFAULT_SETTINGS.themeVariant,
-      wallpaperId: typeof parsed.wallpaperId === 'string'
+      wallpaperId: VALID_WALLPAPERS.includes(parsed.wallpaperId)
         ? parsed.wallpaperId
         : DEFAULT_SETTINGS.wallpaperId,
       accentColor: ACCENT_COLORS.includes(parsed.accentColor)

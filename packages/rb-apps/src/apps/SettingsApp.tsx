@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import type { RedByteApp } from '../types';
-import { useSettingsStore, type ThemeVariant, type AccentColor } from '@redbyte/rb-utils';
+import { useSettingsStore, type ThemeVariant, type AccentColor, type WallpaperId } from '@redbyte/rb-utils';
 import { FileAssociationsPanel } from './settings/FileAssociationsPanel';
 import { FilesystemDataPanel } from './settings/FilesystemDataPanel';
 import { SessionPanel } from './settings/SessionPanel';
@@ -13,11 +13,11 @@ interface SettingsProps {
   onClose?: () => void;
 }
 
-const WALLPAPERS = [
-  { id: 'default', name: 'Default' },
-  { id: 'neon-circuit', name: 'Neon Circuit' },
-  { id: 'frost-grid', name: 'Frost Grid' },
-  { id: 'solid', name: 'Solid Color' },
+const WALLPAPERS: Array<{ id: WallpaperId; name: string; description: string }> = [
+  { id: 'default', name: 'Default', description: 'Classic RedByte gradient' },
+  { id: 'neon-circuit', name: 'Neon Circuit', description: 'Futuristic circuit board design' },
+  { id: 'frost-grid', name: 'Frost Grid', description: 'Cool minimalist grid pattern' },
+  { id: 'solid', name: 'Solid Color', description: 'Clean solid background' },
 ];
 
 type SettingsSection = 'appearance' | 'system' | 'files' | 'filesystem' | 'session';
@@ -214,22 +214,30 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
 
               <div>
                 <label className="block text-sm font-medium mb-3">Wallpaper</label>
-                <div
-                  className={`rounded p-3 ${
-                    selectedIndex === 1 ? 'bg-slate-800 ring-1 ring-cyan-400' : 'bg-slate-900'
-                  }`}
-                >
-                  <select
-                    value={wallpaperId}
-                    onChange={(e) => setWallpaperId(e.target.value)}
-                    className="w-full p-2 rounded bg-slate-800 border border-slate-700 text-white"
-                  >
-                    {WALLPAPERS.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name}
-                      </option>
-                    ))}
-                  </select>
+                <div className="space-y-2">
+                  {WALLPAPERS.map((wallpaper) => (
+                    <label
+                      key={wallpaper.id}
+                      className={`flex items-center gap-3 p-3 rounded cursor-pointer ${
+                        wallpaperId === wallpaper.id
+                          ? 'bg-slate-800 ring-1 ring-cyan-400'
+                          : 'bg-slate-900 hover:bg-slate-850'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="wallpaper"
+                        value={wallpaper.id}
+                        checked={wallpaperId === wallpaper.id}
+                        onChange={() => setWallpaperId(wallpaper.id)}
+                        className="w-4 h-4"
+                      />
+                      <div>
+                        <div className="font-medium">{wallpaper.name}</div>
+                        <div className="text-xs text-slate-400">{wallpaper.description}</div>
+                      </div>
+                    </label>
+                  ))}
                 </div>
               </div>
             </div>
