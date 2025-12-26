@@ -177,4 +177,21 @@ export class CircuitEngine {
   getAllSignals(): Map<string, Signal> {
     return new Map(this.signalCache);
   }
+
+  /**
+   * Get all outputs for a specific node
+   */
+  getNodeOutputs(nodeId: string): Record<string, Signal> {
+    const node = this.circuit.nodes.find(n => n.id === nodeId);
+    if (!node) return {};
+
+    const behavior = NodeRegistry.get(node.type);
+    if (!behavior) return {};
+
+    const inputs = this.buildNodeInputs(nodeId);
+    const state = this.nodeStates.get(nodeId) ?? {};
+
+    const result = behavior.evaluate(inputs, state, node.config);
+    return result.outputs;
+  }
 }

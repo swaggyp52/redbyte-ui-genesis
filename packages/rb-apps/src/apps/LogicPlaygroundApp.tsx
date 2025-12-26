@@ -32,6 +32,7 @@ import { TutorialOverlay } from '../tutorial/TutorialOverlay';
 import { recognizePattern, type RecognizedPattern } from '../patterns/patternMatcher';
 import { SaveChipModal } from '../components/SaveChipModal';
 import { ChipLibraryModal } from '../components/ChipLibraryModal';
+import { OscilloscopeView } from '../components/OscilloscopeView';
 import { registerAllChips, registerChip } from '../utils/chipRegistry';
 
 type ViewMode = 'circuit' | 'schematic' | 'oscilloscope' | '3d';
@@ -920,18 +921,13 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
               </div>
             </div>
           ) : viewMode === 'oscilloscope' ? (
-            <div className="h-full flex flex-col items-center justify-center bg-gray-900 text-gray-400">
-              <div className="max-w-md text-center p-8">
-                <svg className="w-24 h-24 mx-auto mb-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-                </svg>
-                <h3 className="text-xl font-semibold text-white mb-2">Oscilloscope View</h3>
-                <p className="text-sm mb-4">Real-time signal visualization with waveform analysis and timing diagrams</p>
-                <div className="text-xs bg-gray-800 p-3 rounded border border-gray-700">
-                  <strong className="text-green-400">Coming Soon</strong> – This view will display signal waveforms, timing diagrams, and allow you to probe any node in your circuit.
-                </div>
-              </div>
-            </div>
+            <OscilloscopeView
+              engine={engine}
+              circuit={circuit}
+              isRunning={isRunning}
+              width={800}
+              height={600}
+            />
           ) : (
             <LogicCanvas
               engine={{
