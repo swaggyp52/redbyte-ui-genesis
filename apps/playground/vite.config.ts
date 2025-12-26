@@ -26,6 +26,19 @@ export default defineConfig({
     // Increase chunk size warning threshold to 750kB to accommodate vendor-3d (Three.js)
     // This chunk is only loaded when user opens Logic Playground, not on cold load
     chunkSizeWarningLimit: 750,
+    modulePreload: {
+      // Ensure vendor-react loads before any chunk that depends on it
+      resolveDependencies: (filename, deps, { hostId, hostType }) => {
+        // If loading vendor-3d, ensure vendor-react is preloaded first
+        if (filename.includes('vendor-3d')) {
+          const reactChunk = deps.find(dep => dep.includes('vendor-react'));
+          if (reactChunk) {
+            return [reactChunk, ...deps.filter(d => d !== reactChunk)];
+          }
+        }
+        return deps;
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks(id) {
