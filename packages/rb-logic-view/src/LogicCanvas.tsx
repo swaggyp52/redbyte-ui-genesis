@@ -5,7 +5,7 @@
 import React from 'react';
 import type { TickEngine, Node, Connection } from '@redbyte/rb-logic-core';
 import { useLogicViewStore } from './useLogicViewStore';
-import { NodeView } from './components/NodeView';
+import { NodeView, type ChipMetadata } from './components/NodeView';
 import { WireView } from './components/WireView';
 import { Toolbar } from './components/Toolbar';
 import { renderGrid } from './tools/grid';
@@ -16,6 +16,7 @@ export interface LogicCanvasProps {
   width?: number;
   height?: number;
   showToolbar?: boolean;
+  getChipMetadata?: (nodeType: string) => ChipMetadata | undefined;
 }
 
 export const LogicCanvas: React.FC<LogicCanvasProps> = ({
@@ -23,6 +24,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   width = 800,
   height = 600,
   showToolbar = true,
+  getChipMetadata,
 }) => {
   const {
     camera,
@@ -245,6 +247,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             onMove={handleNodeMove}
             onPortClick={handlePortClick}
             signals={signals}
+            chipMetadata={getChipMetadata?.(node.type)}
           />
         ))}
       </svg>

@@ -56,7 +56,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const { setWindowTitle } = useWindowStore();
   const { getAllFiles, getFile, updateFileContent, createFile } = useFileSystemStore();
   const { pushState, undo, redo, canUndo, canRedo, clear: clearHistory } = useHistoryStore();
-  const { saveChipFromPattern, getAllChips } = useChipStore();
+  const { saveChipFromPattern, getAllChips, getChip } = useChipStore();
   const examples = useRef(listExamples());
 
   // Helper to get all .rblogic files
@@ -950,6 +950,17 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
                   }
                 },
                 getEngine: () => engine,
+              }}
+              getChipMetadata={(nodeType) => {
+                const chip = getChip(nodeType);
+                if (!chip) return undefined;
+                return {
+                  name: chip.name,
+                  inputs: chip.inputs.map((p) => ({ id: p.id, name: p.name })),
+                  outputs: chip.outputs.map((p) => ({ id: p.id, name: p.name })),
+                  color: chip.iconColor,
+                  layer: chip.layer,
+                };
               }}
               width={800}
               height={600}
