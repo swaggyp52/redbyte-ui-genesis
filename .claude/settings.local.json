@@ -51,7 +51,9 @@
       "Bash(pnpm --filter @redbyte/rb-apps test -- pattern-recognition)",
       "Bash(pnpm -w test pattern-recognition)",
       "Bash(pnpm --filter @redbyte/rb-apps typecheck:*)",
-      "Bash(pnpm -w test:*)"
+      "Bash(pnpm -w test:*)",
+      "Bash(gh api:*)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []

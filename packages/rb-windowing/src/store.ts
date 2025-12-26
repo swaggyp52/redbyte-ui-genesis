@@ -115,11 +115,12 @@ function snapToGrid(value: number, gridSize: number): number {
 // Helper to wrap set() with invariant checks
 function setWithInvariants(
   set: any,
+  get: any,
   updater: any
 ): void {
   set(updater);
   // Check invariants after state update (dev-only)
-  const state = useWindowStore.getState();
+  const state = get();
   assertWindowInvariants(state.windows);
 }
 
@@ -172,7 +173,7 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
       contentId: opts.contentId,
     };
 
-    setWithInvariants(set, (state: WindowManagerState) => ({
+    setWithInvariants(set, get, (state: WindowManagerState) => ({
       windows: [
         ...state.windows.map((w) => ({ ...w, focused: false })),
         newWindow,
@@ -184,13 +185,13 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
   },
 
   closeWindow: (id) => {
-    setWithInvariants(set, (state: WindowManagerState) => ({
+    setWithInvariants(set, get, (state: WindowManagerState) => ({
       windows: state.windows.filter((w) => w.id !== id),
     }));
   },
 
   focusWindow: (id) => {
-    setWithInvariants(set, (state: WindowManagerState) => {
+    setWithInvariants(set, get, (state: WindowManagerState) => {
       const window = state.windows.find((w) => w.id === id);
       if (!window) return state;
 
@@ -261,7 +262,7 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
   },
 
   toggleMinimize: (id) => {
-    setWithInvariants(set, (state: WindowManagerState) => {
+    setWithInvariants(set, get, (state: WindowManagerState) => {
       const window = state.windows.find((w) => w.id === id);
       if (!window || !window.minimizable) return state;
 
@@ -276,7 +277,7 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
   },
 
   toggleMaximize: (id) => {
-    setWithInvariants(set, (state: WindowManagerState) => {
+    setWithInvariants(set, get, (state: WindowManagerState) => {
       const window = state.windows.find((w) => w.id === id);
       if (!window || !window.maximizable) return state;
 
@@ -291,7 +292,7 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
   },
 
   restoreWindow: (id) => {
-    setWithInvariants(set, (state: WindowManagerState) => ({
+    setWithInvariants(set, get, (state: WindowManagerState) => ({
       windows: state.windows.map((w) =>
         w.id === id ? { ...w, mode: 'normal' } : w
       ),
@@ -308,7 +309,7 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
 
   // Layout actions
   snapWindow: (id, direction, desktopBounds) => {
-    setWithInvariants(set, (state: WindowManagerState) => {
+    setWithInvariants(set, get, (state: WindowManagerState) => {
       const window = state.windows.find((w) => w.id === id);
       if (!window || window.mode === 'minimized') return state;
 
@@ -362,7 +363,7 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
   },
 
   centerWindow: (id, desktopBounds) => {
-    setWithInvariants(set, (state: WindowManagerState) => {
+    setWithInvariants(set, get, (state: WindowManagerState) => {
       const window = state.windows.find((w) => w.id === id);
       if (!window || window.mode === 'minimized') return state;
 
@@ -390,7 +391,7 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
 
   // Session actions
   restoreSession: (windows, nextZIndex) => {
-    setWithInvariants(set, { windows, nextZIndex });
+    setWithInvariants(set, get, { windows, nextZIndex });
   },
 
   // Selectors
