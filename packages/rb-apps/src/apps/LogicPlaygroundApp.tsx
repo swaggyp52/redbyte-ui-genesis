@@ -1132,29 +1132,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             setDragPosition(null);
           }}
         >
-          {/* Drag preview indicator */}
-          {(() => {
-            // Defensive rendering - capture dragPosition in closure to prevent race conditions
-            const pos = dragPosition;
-            if (!draggingNodeType || !pos) return null;
-            if (typeof pos.x !== 'number' || typeof pos.y !== 'number') return null;
-            if (isNaN(pos.x) || isNaN(pos.y)) return null;
-
-            return (
-              <div
-                className="absolute pointer-events-none z-50"
-                style={{
-                  left: `${pos.x}px`,
-                  top: `${pos.y}px`,
-                  transform: 'translate(-50%, -50%)',
-                }}
-              >
-                <div className="px-3 py-2 bg-cyan-500/20 border-2 border-cyan-500 rounded-lg shadow-lg backdrop-blur-sm">
-                  <div className="text-xs font-semibold text-cyan-300">{draggingNodeType}</div>
-                </div>
-              </div>
-            );
-          })()}
+          {/* Drag preview indicator - temporarily disabled for debugging */}
+          {null}
 
           {viewMode === '3d' ? (
             <Logic3DScene engine={engine} width={800} height={600} />
