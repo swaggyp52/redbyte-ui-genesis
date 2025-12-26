@@ -1099,12 +1099,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           }}
         >
           {/* Drag preview indicator */}
-          {draggingNodeType && dragPosition && (
+          {draggingNodeType && dragPosition && typeof dragPosition.x === 'number' && typeof dragPosition.y === 'number' && (
             <div
               className="absolute pointer-events-none z-50"
               style={{
-                left: dragPosition.x,
-                top: dragPosition.y,
+                left: `${dragPosition.x}px`,
+                top: `${dragPosition.y}px`,
                 transform: 'translate(-50%, -50%)',
               }}
             >
