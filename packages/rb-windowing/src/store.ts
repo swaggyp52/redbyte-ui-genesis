@@ -391,7 +391,11 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
 
   // Session actions
   restoreSession: (windows, nextZIndex) => {
-    setWithInvariants(set, get, { windows, nextZIndex });
+    set({ windows, nextZIndex });
+    // Check invariants after restore
+    if (process.env.NODE_ENV !== 'production') {
+      assertWindowInvariants(get().windows);
+    }
   },
 
   // Selectors

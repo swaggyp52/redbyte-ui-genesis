@@ -53,7 +53,9 @@
       "Bash(pnpm --filter @redbyte/rb-apps typecheck:*)",
       "Bash(pnpm -w test:*)",
       "Bash(gh api:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(timeout 90 bash -c 'while true; do status=$\\(gh run list --limit 1 --json conclusion --jq \"\".[0].conclusion\"\"\\); if [[ \"\"$status\"\" == \"\"success\"\" ]] || [[ \"\"$status\"\" == \"\"failure\"\" ]]; then echo \"\"Status: $status\"\"; gh run list --limit 1; break; fi; sleep 5; done')",
+      "Bash(timeout 60 bash -c 'while true; do status=$\\(gh run list --workflow \"\"Deploy to Cloudflare Pages\"\" --limit 1 --json conclusion --jq \"\".[0].conclusion\"\"\\); if [[ \"\"$status\"\" == \"\"success\"\" ]] || [[ \"\"$status\"\" == \"\"failure\"\" ]]; then echo \"\"Cloudflare Status: $status\"\"; gh run list --workflow \"\"Deploy to Cloudflare Pages\"\" --limit 1; break; fi; sleep 5; done')"
     ],
     "deny": [],
     "ask": []
