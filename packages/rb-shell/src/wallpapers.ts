@@ -17,7 +17,7 @@ export const wallpapers: WallpaperDefinition[] = [
     name: 'Neon Circuit',
     style: (variant) => ({
       background: variant === 'light'
-        ? '#f0f4f8'
+        ? '#d1dae3'
         : variant === 'midnight'
           ? '#000814'
           : '#0a0e1a',
@@ -31,7 +31,7 @@ export const wallpapers: WallpaperDefinition[] = [
         ? `
           linear-gradient(rgba(6, 182, 212, 0.06) 1px, transparent 1px),
           linear-gradient(90deg, rgba(6, 182, 212, 0.06) 1px, transparent 1px),
-          #f8fafc
+          #d4dce5
         `
         : variant === 'midnight'
           ? `
@@ -53,7 +53,7 @@ export const wallpapers: WallpaperDefinition[] = [
     name: 'Gradient',
     style: (variant) => ({
       background: variant === 'light'
-        ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        ? 'linear-gradient(135deg, #5a67d8 0%, #6b46a1 100%)'
         : variant === 'midnight'
           ? 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%)'
           : 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
@@ -64,7 +64,7 @@ export const wallpapers: WallpaperDefinition[] = [
     name: 'Solid',
     style: (variant) => ({
       background: variant === 'light'
-        ? '#e2e8f0'
+        ? '#cbd5e1'
         : variant === 'midnight'
           ? '#0a0118'
           : '#0f172a',

@@ -164,7 +164,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
       {wallpaperId === 'neon-circuit' && (
         <div className="pointer-events-none absolute inset-0">
           {/* Horizontal circuit lines */}
-          <div className="absolute inset-0 opacity-20">
+          <div className={`absolute inset-0 ${isLightMode ? 'opacity-12' : 'opacity-20'}`}>
             {[...Array(8)].map((_, i) => (
               <div
                 key={`h-${i}`}
@@ -174,7 +174,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
                   left: 0,
                   right: 0,
                   background: isLightMode
-                    ? 'linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.4), transparent)'
+                    ? 'linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.3), transparent)'
                     : isMidnight
                       ? 'linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.6), transparent)'
                       : 'linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.6), transparent)',
@@ -186,7 +186,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
           </div>
 
           {/* Vertical circuit lines */}
-          <div className="absolute inset-0 opacity-20">
+          <div className={`absolute inset-0 ${isLightMode ? 'opacity-12' : 'opacity-20'}`}>
             {[...Array(12)].map((_, i) => (
               <div
                 key={`v-${i}`}
@@ -196,7 +196,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
                   top: 0,
                   bottom: 0,
                   background: isLightMode
-                    ? 'linear-gradient(180deg, transparent, rgba(6, 182, 212, 0.4), transparent)'
+                    ? 'linear-gradient(180deg, transparent, rgba(6, 182, 212, 0.3), transparent)'
                     : isMidnight
                       ? 'linear-gradient(180deg, transparent, rgba(139, 92, 246, 0.6), transparent)'
                       : 'linear-gradient(180deg, transparent, rgba(6, 182, 212, 0.6), transparent)',
@@ -208,7 +208,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
           </div>
 
           {/* Circuit nodes - pulsing dots at intersections */}
-          <div className="absolute inset-0 opacity-40">
+          <div className={`absolute inset-0 ${isLightMode ? 'opacity-25' : 'opacity-40'}`}>
             {[...Array(15)].map((_, i) => (
               <div
                 key={`node-${i}`}
@@ -219,12 +219,12 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
                   width: Math.random() * 8 + 4 + 'px',
                   height: Math.random() * 8 + 4 + 'px',
                   background: isLightMode
-                    ? 'rgba(6, 182, 212, 0.7)'
+                    ? 'rgba(6, 182, 212, 0.5)'
                     : isMidnight
                       ? 'rgba(139, 92, 246, 0.9)'
                       : 'rgba(6, 182, 212, 0.9)',
                   boxShadow: isLightMode
-                    ? '0 0 20px rgba(6, 182, 212, 0.5)'
+                    ? '0 0 12px rgba(6, 182, 212, 0.3)'
                     : isMidnight
                       ? '0 0 20px rgba(139, 92, 246, 0.7)'
                       : '0 0 20px rgba(6, 182, 212, 0.7)',
@@ -242,11 +242,11 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
         <div className="pointer-events-none absolute inset-0">
           {/* Animated diagonal grid layer 1 */}
           <div
-            className="absolute inset-0 opacity-15"
+            className={`absolute inset-0 ${isLightMode ? 'opacity-10' : 'opacity-15'}`}
             style={{
               backgroundImage: isLightMode
-                ? `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(6, 182, 212, 0.3) 40px, rgba(6, 182, 212, 0.3) 41px),
-                   repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(6, 182, 212, 0.3) 40px, rgba(6, 182, 212, 0.3) 41px)`
+                ? `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(6, 182, 212, 0.25) 40px, rgba(6, 182, 212, 0.25) 41px),
+                   repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(6, 182, 212, 0.25) 40px, rgba(6, 182, 212, 0.25) 41px)`
                 : isMidnight
                   ? `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(139, 92, 246, 0.4) 40px, rgba(139, 92, 246, 0.4) 41px),
                      repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(139, 92, 246, 0.4) 40px, rgba(139, 92, 246, 0.4) 41px)`
@@ -258,10 +258,10 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
 
           {/* Shimmer overlay - moves across the grid */}
           <div
-            className="absolute inset-0 opacity-30"
+            className={`absolute inset-0 ${isLightMode ? 'opacity-15' : 'opacity-30'}`}
             style={{
               background: isLightMode
-                ? 'linear-gradient(110deg, transparent 30%, rgba(6, 182, 212, 0.15) 50%, transparent 70%)'
+                ? 'linear-gradient(110deg, transparent 30%, rgba(6, 182, 212, 0.1) 50%, transparent 70%)'
                 : isMidnight
                   ? 'linear-gradient(110deg, transparent 30%, rgba(139, 92, 246, 0.2) 50%, transparent 70%)'
                   : 'linear-gradient(110deg, transparent 30%, rgba(6, 182, 212, 0.2) 50%, transparent 70%)',
@@ -271,7 +271,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
           />
 
           {/* Frost particles - small glowing dots */}
-          <div className="absolute inset-0 opacity-25">
+          <div className={`absolute inset-0 ${isLightMode ? 'opacity-15' : 'opacity-25'}`}>
             {[...Array(30)].map((_, i) => (
               <div
                 key={`frost-${i}`}
@@ -282,12 +282,12 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
                   width: Math.random() * 3 + 1 + 'px',
                   height: Math.random() * 3 + 1 + 'px',
                   background: isLightMode
-                    ? 'rgba(6, 182, 212, 0.8)'
+                    ? 'rgba(6, 182, 212, 0.6)'
                     : isMidnight
                       ? 'rgba(139, 92, 246, 1)'
                       : 'rgba(6, 182, 212, 1)',
                   boxShadow: isLightMode
-                    ? '0 0 10px rgba(6, 182, 212, 0.6)'
+                    ? '0 0 8px rgba(6, 182, 212, 0.4)'
                     : isMidnight
                       ? '0 0 10px rgba(139, 92, 246, 0.8)'
                       : '0 0 10px rgba(6, 182, 212, 0.8)',
