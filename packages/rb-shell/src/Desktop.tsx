@@ -146,10 +146,12 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
     }
   };
 
+  const isLightMode = themeVariant === 'light' || (themeVariant === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+
   return (
     <div
       ref={desktopRef}
-      className="absolute inset-0 text-white overflow-hidden"
+      className={`absolute inset-0 overflow-hidden ${isLightMode ? 'text-gray-900' : 'text-white'}`}
       style={{ ...wallpaperStyle }}
       tabIndex={0}
       onKeyDown={handleKeyDown}
@@ -180,18 +182,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
           <div className="absolute top-[25%] left-[50%] w-1 h-1 bg-purple-400 rounded-full blur-sm animate-sparkle" style={{ animationDelay: '2s' }} />
         </div>
       )}
-      {wallpaperId === 'default' && (
-        <div className="absolute inset-0 pointer-events-none">
-          {/* Large animated gradient overlay */}
-          <div className="absolute inset-0 opacity-40">
-            <div className="absolute w-full h-full bg-gradient-to-br from-red-500/30 via-transparent to-blue-500/30 animate-gradient-shift" />
-          </div>
-          {/* Floating color orbs */}
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-500/20 rounded-full blur-3xl animate-float-orb" style={{ animationDuration: '14s' }} />
-          <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-blue-500/20 rounded-full blur-3xl animate-float-orb" style={{ animationDelay: '3s', animationDuration: '16s' }} />
-          <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-purple-500/15 rounded-full blur-3xl animate-pulse-glow" style={{ animationDuration: '6s' }} />
-        </div>
-      )}
+      {/* Gradient wallpaper has no animations - it's a static wallpaper */}
       {wallpaperId === 'frost-grid' && (
         <div className="absolute inset-0 pointer-events-none">
           {/* Subtle cyan glow orbs */}
@@ -204,14 +195,8 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
           }} />
         </div>
       )}
-      {wallpaperId === 'solid' && (
-        <div className="absolute inset-0 pointer-events-none">
-          {/* Subtle ambient glow */}
-          <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl animate-pulse-glow" style={{ animationDuration: '8s' }} />
-          <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '3s', animationDuration: '10s' }} />
-        </div>
-      )}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-black/5 to-black/20" />
+      {/* Solid wallpaper has no animations - it's a static wallpaper */}
+      <div className={`pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent ${isLightMode ? 'via-white/5 to-white/10' : 'via-black/5 to-black/20'}`} />
       {icons.map((icon) => {
         const IconComponent = iconComponents[icon.iconId] ?? FolderIcon;
         const isSelected = selected.includes(icon.id);
@@ -229,19 +214,23 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
               className={`flex h-16 w-16 items-center justify-center rounded-xl border transition-all duration-200 ${
                 isSelected
                   ? 'border-cyan-400/80 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 shadow-lg shadow-cyan-500/30'
-                  : 'border-white/10 bg-black/30 hover:border-cyan-400/40 hover:bg-black/40'
+                  : isLightMode
+                    ? 'border-gray-300/50 bg-white/40 hover:border-cyan-400/60 hover:bg-white/60'
+                    : 'border-white/10 bg-black/30 hover:border-cyan-400/40 hover:bg-black/40'
               } backdrop-blur-sm`}
             >
               <IconComponent
                 width={32}
                 height={32}
-                className={isSelected ? 'text-cyan-300 drop-shadow-[0_0_4px_rgba(6,182,212,0.8)]' : 'text-white'}
+                className={isSelected ? 'text-cyan-600 drop-shadow-[0_0_4px_rgba(6,182,212,0.8)]' : isLightMode ? 'text-gray-700' : 'text-white'}
               />
             </div>
             <div className={`mt-2 px-2.5 py-1 rounded-md transition-all duration-200 backdrop-blur-sm font-medium ${
               isSelected
                 ? 'bg-cyan-500/40 text-white shadow-lg shadow-cyan-500/20'
-                : 'bg-black/30 text-white/90'
+                : isLightMode
+                  ? 'bg-white/50 text-gray-900'
+                  : 'bg-black/30 text-white/90'
             }`}>
               {icon.title}
             </div>
@@ -261,7 +250,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
         />
       )}
 
-      <div className="absolute bottom-4 right-4 z-10 space-y-1 text-right text-xs text-white drop-shadow pointer-events-none">
+      <div className={`absolute bottom-4 right-4 z-10 space-y-1 text-right text-xs drop-shadow pointer-events-none ${isLightMode ? 'text-gray-700' : 'text-white'}`}>
         <div>© 2025 Connor Angiel — RedByte OS Genesis</div>
         <div></div>
       </div>

@@ -13,8 +13,54 @@ export interface WallpaperDefinition {
 
 export const wallpapers: WallpaperDefinition[] = [
   {
+    id: 'neon-circuit',
+    name: 'Neon Circuit',
+    style: (variant) => ({
+      background: variant === 'light'
+        ? `
+          radial-gradient(circle at 25% 25%, rgba(255, 100, 100, 0.15) 0%, transparent 25%),
+          radial-gradient(circle at 75% 75%, rgba(100, 150, 255, 0.15) 0%, transparent 25%),
+          radial-gradient(circle at 50% 50%, rgba(180, 100, 255, 0.1) 0%, transparent 30%),
+          linear-gradient(0deg, transparent 49%, rgba(255, 100, 100, 0.05) 49%, rgba(255, 100, 100, 0.05) 51%, transparent 51%),
+          linear-gradient(90deg, transparent 49%, rgba(100, 150, 255, 0.05) 49%, rgba(100, 150, 255, 0.05) 51%, transparent 51%),
+          #f0f4f8
+        `
+        : `
+          radial-gradient(circle at 25% 25%, rgba(255, 0, 0, 0.2) 0%, transparent 25%),
+          radial-gradient(circle at 75% 75%, rgba(0, 135, 255, 0.2) 0%, transparent 25%),
+          radial-gradient(circle at 50% 50%, rgba(128, 0, 255, 0.15) 0%, transparent 30%),
+          linear-gradient(0deg, transparent 49%, rgba(255, 0, 0, 0.05) 49%, rgba(255, 0, 0, 0.05) 51%, transparent 51%),
+          linear-gradient(90deg, transparent 49%, rgba(0, 135, 255, 0.05) 49%, rgba(0, 135, 255, 0.05) 51%, transparent 51%),
+          #050a15
+        `,
+      backgroundSize: '100% 100%, 100% 100%, 100% 100%, 50px 50px, 50px 50px, 100% 100%',
+      backgroundPosition: 'center',
+    }),
+  },
+  {
+    id: 'frost-grid',
+    name: 'Frost Grid',
+    style: (variant) => ({
+      background: variant === 'light'
+        ? `
+          linear-gradient(rgba(6, 182, 212, 0.08) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(6, 182, 212, 0.08) 1px, transparent 1px),
+          linear-gradient(rgba(6, 182, 212, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(6, 182, 212, 0.05) 1px, #f8fafc 1px)
+        `
+        : `
+          linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px),
+          linear-gradient(rgba(6, 182, 212, 0.02) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(6, 182, 212, 0.02) 1px, #0a0f1a 1px)
+        `,
+      backgroundSize: '100px 100px, 100px 100px, 20px 20px, 20px 20px',
+      backgroundPosition: '-1px -1px, -1px -1px, -1px -1px, -1px -1px',
+    }),
+  },
+  {
     id: 'default',
-    name: 'Default',
+    name: 'Gradient',
     style: (variant) => ({
       background: variant === 'light'
         ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
@@ -24,36 +70,6 @@ export const wallpapers: WallpaperDefinition[] = [
           radial-gradient(ellipse at 50% 50%, rgba(128, 0, 255, 0.1) 0%, transparent 50%),
           linear-gradient(135deg, #0a0d1a 0%, #0f1729 25%, #1a0f29 50%, #0f1729 75%, #0a0d1a 100%)
         `,
-    }),
-  },
-  {
-    id: 'neon-circuit',
-    name: 'Neon Circuit',
-    style: () => ({
-      background: `
-        radial-gradient(circle at 25% 25%, rgba(255, 0, 0, 0.2) 0%, transparent 25%),
-        radial-gradient(circle at 75% 75%, rgba(0, 135, 255, 0.2) 0%, transparent 25%),
-        radial-gradient(circle at 50% 50%, rgba(128, 0, 255, 0.15) 0%, transparent 30%),
-        linear-gradient(0deg, transparent 49%, rgba(255, 0, 0, 0.05) 49%, rgba(255, 0, 0, 0.05) 51%, transparent 51%),
-        linear-gradient(90deg, transparent 49%, rgba(0, 135, 255, 0.05) 49%, rgba(0, 135, 255, 0.05) 51%, transparent 51%),
-        #050a15
-      `,
-      backgroundSize: '100% 100%, 100% 100%, 100% 100%, 50px 50px, 50px 50px, 100% 100%',
-      backgroundPosition: 'center',
-    }),
-  },
-  {
-    id: 'frost-grid',
-    name: 'Frost Grid',
-    style: () => ({
-      background: `
-        linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px),
-        linear-gradient(rgba(6, 182, 212, 0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(6, 182, 212, 0.02) 1px, #0a0f1a 1px)
-      `,
-      backgroundSize: '100px 100px, 100px 100px, 20px 20px, 20px 20px',
-      backgroundPosition: '-1px -1px, -1px -1px, -1px -1px, -1px -1px',
     }),
   },
   {
