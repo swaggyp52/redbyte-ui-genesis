@@ -33,6 +33,7 @@ import { recognizePattern, type RecognizedPattern } from '../patterns/patternMat
 import { SaveChipModal } from '../components/SaveChipModal';
 import { ChipLibraryModal } from '../components/ChipLibraryModal';
 import { OscilloscopeView } from '../components/OscilloscopeView';
+import { PropertyInspector } from '../components/PropertyInspector';
 import { registerAllChips, registerChip } from '../utils/chipRegistry';
 
 type ViewMode = 'circuit' | 'schematic' | 'oscilloscope' | '3d';
@@ -386,6 +387,39 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       setIsDirty(true);
       addToast('Redo', 'info');
     }
+  };
+
+  const handleNodeUpdate = (nodeId: string, updates: Partial<Node>) => {
+    const updatedCircuit = {
+      ...circuit,
+      nodes: circuit.nodes.map((n) => (n.id === nodeId ? { ...n, ...updates } : n)),
+    };
+    setCircuit(updatedCircuit);
+    engine.setCircuit(updatedCircuit);
+    setIsDirty(true);
+  };
+
+  const handleConnectionDelete = (connectionId: string) => {
+    const [from, to] = connectionId.split('->');
+    const [fromNodeId, fromPort] = from.split('.');
+    const [toNodeId, toPort] = to.split('.');
+
+    const updatedCircuit = {
+      ...circuit,
+      connections: circuit.connections.filter(
+        (c) =>
+          !(
+            c.from.nodeId === fromNodeId &&
+            c.from.portName === fromPort &&
+            c.to.nodeId === toNodeId &&
+            c.to.portName === toPort
+          )
+      ),
+    };
+    setCircuit(updatedCircuit);
+    engine.setCircuit(updatedCircuit);
+    setIsDirty(true);
+    addToast('Connection deleted', 'info');
   };
 
   const handleSave = () => {
@@ -989,15 +1023,13 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         </div>
 
         {/* Right Sidebar - Inspector */}
-        <div className="w-64 border-l border-gray-700 overflow-y-auto p-4 bg-gray-850">
-          <h3 className="text-sm font-semibold mb-3">Inspector</h3>
-          <div className="text-xs text-gray-400">
-            <p>Select a node to view properties</p>
-            <p className="mt-4">Circuit Stats:</p>
-            <p>Nodes: {circuit.nodes.length}</p>
-            <p>Connections: {circuit.connections.length}</p>
-          </div>
-        </div>
+        <PropertyInspector
+          circuit={circuit}
+          engine={engine}
+          isRunning={isRunning}
+          onNodeUpdate={handleNodeUpdate}
+          onConnectionDelete={handleConnectionDelete}
+        />
       </div>
 
       {/* Loading Overlay */}
