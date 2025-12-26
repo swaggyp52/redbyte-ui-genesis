@@ -155,12 +155,11 @@ export const ChipLibraryModal: React.FC<ChipLibraryModalProps> = ({
                             if (onDragStart) {
                               e.stopPropagation();
                               onDragStart(chip.name, e);
-                              // Close modal after drag starts successfully
-                              setTimeout(() => onClose(), 100);
                             }
                           }}
                           onDragEnd={() => {
-                            // Ensure modal stays closed after drag
+                            // Close modal after drag completes
+                            onClose();
                           }}
                           onClick={(e) => {
                             // Prevent click if dragging
