@@ -1,4 +1,4 @@
-﻿// Copyright Â© 2025 Connor Angiel â€” RedByte OS Genesis
+// Copyright Â© 2025 Connor Angiel â€” RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
@@ -29,6 +29,9 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+  // Ensure Zustand + use-sync-external-store load with React to avoid prod init-order crash
+  if (id.includes('zustand') || id.includes('use-sync-external-store')) return 'vendor-react';
+
           // Vendor chunk: React ecosystem
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
             return 'vendor-react';
@@ -36,7 +39,7 @@ export default defineConfig({
 
           // State management: Zustand
           if (id.includes('node_modules/zustand')) {
-            return 'vendor-state';
+            return 'vendor-react';
           }
 
           // 3D graphics: Three.js + React Three Fiber (very heavy)
