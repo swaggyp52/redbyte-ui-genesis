@@ -55,9 +55,13 @@ export default defineConfig({
             return 'vendor-react';
           }
 
-          // 3D graphics: Three.js + React Three Fiber (very heavy)
-          if (id.includes('node_modules/three') ||
-              id.includes('node_modules/@react-three')) {
+          // React Three Fiber MUST bundle with React to access createContext
+          if (id.includes('node_modules/@react-three')) {
+            return 'vendor-react';
+          }
+
+          // 3D graphics: Three.js only (React Three Fiber moved to vendor-react)
+          if (id.includes('node_modules/three')) {
             return 'vendor-3d';
           }
 
