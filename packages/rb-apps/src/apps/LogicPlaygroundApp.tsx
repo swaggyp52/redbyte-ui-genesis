@@ -91,6 +91,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [currentFileId, setCurrentFileId] = useState<string | null>(initialFileId ?? null);
   const [isDirty, setIsDirty] = useState(false);
   const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
+  const [draggingNodeType, setDraggingNodeType] = useState<string | null>(null);
+  const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   const [shareFallbackURL, setShareFallbackURL] = useState<string | null>(null);
   const [showDecodeErrorModal, setShowDecodeErrorModal] = useState(false);
   const [isLoadingSharedCircuit, setIsLoadingSharedCircuit] = useState(false);
@@ -421,6 +423,59 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     engine.setCircuit(updatedCircuit);
     setIsDirty(true);
     addToast('Connection deleted', 'info');
+  };
+
+  const handleNodeDragStart = (nodeType: string) => {
+    setDraggingNodeType(nodeType);
+  };
+
+  const handleNodeDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!draggingNodeType) return;
+
+    const rect = canvasAreaRef.current?.getBoundingClientRect();
+    if (rect) {
+      setDragPosition({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+    }
+  };
+
+  const handleNodeDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!draggingNodeType || !canvasAreaRef.current) {
+      setDraggingNodeType(null);
+      setDragPosition(null);
+      return;
+    }
+
+    const rect = canvasAreaRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Create new node at drop position
+    const newNode: Node = {
+      id: `${draggingNodeType.toLowerCase()}-${Date.now()}`,
+      type: draggingNodeType,
+      x,
+      y,
+      config: {},
+      state: {},
+    };
+
+    const updatedCircuit = {
+      ...circuit,
+      nodes: [...circuit.nodes, newNode],
+    };
+
+    setCircuit(updatedCircuit);
+    engine.setCircuit(updatedCircuit);
+    setIsDirty(true);
+    addToast(`Added ${draggingNodeType}`, 'success');
+
+    setDraggingNodeType(null);
+    setDragPosition(null);
   };
 
   const handleSave = () => {
@@ -912,10 +967,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             {primitiveNodes.map((type) => (
               <button
                 key={type}
-                onClick={() => {
-                  alert(`Add ${type} node (drag-to-add not yet implemented)`);
-                }}
-                className="w-full text-left px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded"
+                draggable
+                onDragStart={() => handleNodeDragStart(type)}
+                className="w-full text-left px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded cursor-move transition-colors"
+                title="Drag to canvas to add node"
               >
                 {type}
               </button>
@@ -927,10 +982,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             {compositeNodes.map((type) => (
               <button
                 key={type}
-                onClick={() => {
-                  alert(`Add ${type} node (drag-to-add not yet implemented)`);
-                }}
-                className="w-full text-left px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded"
+                draggable
+                onDragStart={() => handleNodeDragStart(type)}
+                className="w-full text-left px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded cursor-move transition-colors"
+                title="Drag to canvas to add node"
               >
                 {type}
               </button>
@@ -939,7 +994,30 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         </div>
 
         {/* Center - Canvas */}
-        <div ref={canvasAreaRef} tabIndex={-1} className="flex-1 relative outline-none">
+        <div
+          ref={canvasAreaRef}
+          tabIndex={-1}
+          className="flex-1 relative outline-none"
+          onDragOver={handleNodeDragOver}
+          onDrop={handleNodeDrop}
+          onDragLeave={() => setDragPosition(null)}
+        >
+          {/* Drag preview indicator */}
+          {draggingNodeType && dragPosition && (
+            <div
+              className="absolute pointer-events-none z-50"
+              style={{
+                left: dragPosition.x,
+                top: dragPosition.y,
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              <div className="px-3 py-2 bg-cyan-500/20 border-2 border-cyan-500 rounded-lg shadow-lg backdrop-blur-sm">
+                <div className="text-xs font-semibold text-cyan-300">{draggingNodeType}</div>
+              </div>
+            </div>
+          )}
+
           {viewMode === '3d' ? (
             <Logic3DScene engine={engine} width={800} height={600} />
           ) : viewMode === 'schematic' ? (
