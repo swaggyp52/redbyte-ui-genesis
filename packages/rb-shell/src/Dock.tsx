@@ -124,7 +124,7 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
 
   return (
     <div
-      className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 rounded-2xl bg-black/50 px-4 py-2 backdrop-blur-md border border-white/10 shadow-2xl"
+      className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-2xl bg-slate-900/90 px-3 py-2.5 backdrop-blur-xl border border-cyan-500/20 shadow-2xl shadow-cyan-500/10"
       title="Alt+Arrow keys to reorder (when focused)"
     >
       {dockItems.map((dock) => {
@@ -152,10 +152,14 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
             aria-label={ariaLabel}
             aria-keyshortcuts={ariaKeyShortcuts}
             title={title}
-            className="relative h-12 w-12 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all"
+            className={`relative h-14 w-14 rounded-xl flex items-center justify-center transition-all ${
+              isRunning
+                ? 'bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30'
+                : 'bg-slate-800/50 hover:bg-slate-700/50 border border-transparent'
+            }`}
           >
-            <Icon width={26} height={26} />
-            {isRunning && <span className="absolute -bottom-1 left-1/2 h-1.5 w-3 -translate-x-1/2 rounded-full bg-cyan-400" />}
+            <Icon width={28} height={28} className={isRunning ? 'text-cyan-300' : 'text-slate-300'} />
+            {isRunning && <span className="absolute -bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/50" />}
           </button>
         );
       })}

@@ -136,7 +136,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
   };
 
   const containerStyle = useMemo(() => {
-    const { bounds, zIndex } = state;
+    const { bounds, zIndex, focused } = state;
     const opacity = mounted ? 1 : 0;
     const transform = mounted ? 'scale(1) translateY(0)' : 'scale(0.96) translateY(8px)';
     const animating = 'transition-all duration-300 ease-out';
@@ -150,12 +150,14 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
       opacity,
       transform,
       transition: animating,
-      background: 'rgba(5, 8, 15, 0.8)',
-      border: '1px solid rgba(255,255,255,0.08)',
+      background: 'rgba(15, 23, 42, 0.95)',
+      border: focused ? '1px solid rgba(6, 182, 212, 0.3)' : '1px solid rgba(71, 85, 105, 0.3)',
       borderRadius: 12,
       overflow: 'hidden',
-      boxShadow: '0 10px 40px rgba(0,0,0,0.35)',
-      backdropFilter: 'blur(18px)',
+      boxShadow: focused
+        ? '0 20px 60px rgba(6, 182, 212, 0.15), 0 0 0 1px rgba(6, 182, 212, 0.1)'
+        : '0 10px 40px rgba(0,0,0,0.4)',
+      backdropFilter: 'blur(20px)',
       display: isMin ? 'none' : 'block',
     } as React.CSSProperties;
   }, [state, isMax, isMin, mounted]);
@@ -170,28 +172,50 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
       onMouseDown={onFocus}
     >
       <div
-        className="flex h-10 items-center gap-2 px-3 text-sm select-none bg-gradient-to-r from-slate-900/80 via-slate-800/80 to-slate-900/80"
+        className={`flex h-11 items-center gap-2 px-4 text-sm select-none border-b ${
+          state.focused
+            ? 'bg-gradient-to-r from-slate-800/90 via-slate-900/90 to-slate-800/90 border-cyan-500/20'
+            : 'bg-slate-900/70 border-slate-700/30'
+        }`}
         style={{ cursor: isMax ? 'default' : 'grab' }}
         onMouseDown={isMax ? undefined : startDrag}
         onDoubleClick={isMax ? onRestore : onMaximize}
       >
-        <div className="font-semibold tracking-wide flex-1 truncate">{state.title}</div>
-        {state.minimizable && (
-          <button className="hover:text-cyan-300" onClick={onMinimize}>
-            <WindowMinimizeIcon width={16} height={16} />
+        <div className={`font-semibold tracking-wide flex-1 truncate ${
+          state.focused ? 'text-white' : 'text-slate-400'
+        }`}>
+          {state.title}
+        </div>
+        <div className="flex items-center gap-1">
+          {state.minimizable && (
+            <button
+              className="p-1.5 rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-cyan-300 transition-colors"
+              onClick={onMinimize}
+              title="Minimize"
+            >
+              <WindowMinimizeIcon width={14} height={14} />
+            </button>
+          )}
+          {state.maximizable && (
+            <button
+              className="p-1.5 rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-cyan-300 transition-colors"
+              onClick={isMax ? onRestore : onMaximize}
+              title={isMax ? "Restore" : "Maximize"}
+            >
+              <WindowMaximizeIcon width={14} height={14} />
+            </button>
+          )}
+          <button
+            className="p-1.5 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+            onClick={onClose}
+            title="Close"
+          >
+            <WindowCloseIcon width={14} height={14} />
           </button>
-        )}
-        {state.maximizable && (
-          <button className="hover:text-cyan-300" onClick={isMax ? onRestore : onMaximize}>
-            <WindowMaximizeIcon width={16} height={16} />
-          </button>
-        )}
-        <button className="hover:text-red-400" onClick={onClose}>
-          <WindowCloseIcon width={16} height={16} />
-        </button>
+        </div>
       </div>
 
-      <div className="h-[calc(100%-40px)] bg-slate-950/40 text-white">{children}</div>
+      <div className="h-[calc(100%-44px)] bg-slate-950/50 text-white overflow-hidden">{children}</div>
 
       {/* Resize handles */}
       {!isMax && !isMin && (
