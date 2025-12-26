@@ -11,7 +11,7 @@ export interface ChipLibraryModalProps {
   chips: ChipDefinition[];
   onSelectChip: (chipId: string) => void;
   onDeleteChip?: (chipId: string) => void;
-  onDragStart?: (chipName: string) => void;
+  onDragStart?: (chipName: string, e?: React.DragEvent) => void;
 }
 
 export const ChipLibraryModal: React.FC<ChipLibraryModalProps> = ({
@@ -153,12 +153,19 @@ export const ChipLibraryModal: React.FC<ChipLibraryModalProps> = ({
                           draggable={!!onDragStart}
                           onDragStart={(e) => {
                             if (onDragStart) {
-                              onDragStart(chip.name);
+                              e.stopPropagation();
+                              onDragStart(chip.name, e);
                               // Close modal after drag starts successfully
-                              setTimeout(() => onClose(), 50);
+                              setTimeout(() => onClose(), 100);
                             }
                           }}
-                          onClick={() => handleSelectChip(chip.id)}
+                          onDragEnd={() => {
+                            // Ensure modal stays closed after drag
+                          }}
+                          onClick={(e) => {
+                            // Prevent click if dragging
+                            handleSelectChip(chip.id);
+                          }}
                           className="bg-gray-700 hover:bg-gray-650 rounded-lg p-4 cursor-move transition-colors group"
                         >
                           <div className="flex items-start justify-between">

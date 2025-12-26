@@ -452,7 +452,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     addToast('Connection deleted', 'info');
   };
 
-  const handleNodeDragStart = (nodeType: string) => {
+  const handleNodeDragStart = (nodeType: string, e?: React.DragEvent) => {
+    if (e) {
+      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.setData('text/plain', nodeType);
+    }
     setDraggingNodeType(nodeType);
   };
 
@@ -1008,7 +1012,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
               <button
                 key={type}
                 draggable
-                onDragStart={() => handleNodeDragStart(type)}
+                onDragStart={(e) => handleNodeDragStart(type, e)}
                 className="w-full text-left px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded cursor-move transition-colors"
                 title="Drag to canvas to add node"
               >
@@ -1023,7 +1027,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
               <button
                 key={type}
                 draggable
-                onDragStart={() => handleNodeDragStart(type)}
+                onDragStart={(e) => handleNodeDragStart(type, e)}
                 className="w-full text-left px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded cursor-move transition-colors"
                 title="Drag to canvas to add node"
               >
@@ -1052,7 +1056,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
                 <button
                   key={chip.id}
                   draggable
-                  onDragStart={() => handleNodeDragStart(chip.name)}
+                  onDragStart={(e) => handleNodeDragStart(chip.name, e)}
                   className="w-full text-left px-2 py-1 text-xs bg-purple-900/30 hover:bg-purple-800/40 rounded cursor-move transition-colors border border-purple-700/30"
                   title={`Drag to canvas to add ${chip.name} (${chip.description})`}
                 >
