@@ -33,6 +33,7 @@ import { recognizePattern, type RecognizedPattern } from '../patterns/patternMat
 import { SaveChipModal } from '../components/SaveChipModal';
 import { ChipLibraryModal } from '../components/ChipLibraryModal';
 import { OscilloscopeView } from '../components/OscilloscopeView';
+import { SchematicView } from '../components/SchematicView';
 import { PropertyInspector } from '../components/PropertyInspector';
 import { registerAllChips, registerChip } from '../utils/chipRegistry';
 
@@ -942,18 +943,13 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           {viewMode === '3d' ? (
             <Logic3DScene engine={engine} width={800} height={600} />
           ) : viewMode === 'schematic' ? (
-            <div className="h-full flex flex-col items-center justify-center bg-gray-900 text-gray-400">
-              <div className="max-w-md text-center p-8">
-                <svg className="w-24 h-24 mx-auto mb-4 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                </svg>
-                <h3 className="text-xl font-semibold text-white mb-2">Schematic View</h3>
-                <p className="text-sm mb-4">Professional electrical schematic diagram rendering with IEEE/ANSI symbols</p>
-                <div className="text-xs bg-gray-800 p-3 rounded border border-gray-700">
-                  <strong className="text-cyan-400">Coming Soon</strong> – This view will render your circuit as a traditional schematic with proper symbol placement and connection routing.
-                </div>
-              </div>
-            </div>
+            <SchematicView
+              circuit={circuit}
+              engine={engine}
+              isRunning={isRunning}
+              width={800}
+              height={600}
+            />
           ) : viewMode === 'oscilloscope' ? (
             <OscilloscopeView
               engine={engine}
