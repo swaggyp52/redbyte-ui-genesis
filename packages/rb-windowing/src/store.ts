@@ -143,9 +143,24 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
       height: 300,
     };
 
+    // Smart cascade positioning: If position not specified, cascade from existing windows
+    const CASCADE_OFFSET = 30;
+    const MAX_CASCADE = 8; // After 8 cascades, reset to start
+    let defaultX = defaultBounds.x;
+    let defaultY = defaultBounds.y;
+
+    if (opts.x === undefined || opts.y === undefined) {
+      // Count windows for same contentId to determine cascade offset
+      const existingWindows = state.windows.filter(w => w.contentId === opts.contentId);
+      const cascadeIndex = existingWindows.length % MAX_CASCADE;
+
+      defaultX = defaultBounds.x + (cascadeIndex * CASCADE_OFFSET);
+      defaultY = defaultBounds.y + (cascadeIndex * CASCADE_OFFSET);
+    }
+
     let bounds: WindowBounds = {
-      x: opts.x ?? defaultBounds.x,
-      y: opts.y ?? defaultBounds.y,
+      x: opts.x ?? defaultX,
+      y: opts.y ?? defaultY,
       width: opts.width ?? defaultBounds.width,
       height: opts.height ?? defaultBounds.height,
     };
