@@ -62,11 +62,12 @@ export const NodeView: React.FC<NodeViewProps> = ({
 }) => {
   const [isDragging, setIsDragging] = React.useState(false);
   const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 });
+  const [dragPosition, setDragPosition] = React.useState({ x: node.position.x, y: node.position.y });
   const [hoveredPort, setHoveredPort] = React.useState<string | null>(null);
   const [isHovered, setIsHovered] = React.useState(false);
 
-  const screenX = node.position.x * camera.zoom + camera.x;
-  const screenY = node.position.y * camera.zoom + camera.y;
+  const screenX = (isDragging ? dragPosition.x : node.position.x) * camera.zoom + camera.x;
+  const screenY = (isDragging ? dragPosition.y : node.position.y) * camera.zoom + camera.y;
   const size = 48 * camera.zoom;
 
   const isSwitch = node.type === 'Switch' || node.type === 'INPUT';
@@ -78,6 +79,7 @@ export const NodeView: React.FC<NodeViewProps> = ({
 
     setIsDragging(true);
     setDragStart({ x: e.clientX, y: e.clientY });
+    setDragPosition({ x: node.position.x, y: node.position.y });
 
     onSelect(node.id, e.shiftKey);
   };
@@ -97,21 +99,32 @@ export const NodeView: React.FC<NodeViewProps> = ({
     const dx = (e.clientX - dragStart.x) / camera.zoom;
     const dy = (e.clientY - dragStart.y) / camera.zoom;
 
-    onMove(node.id, node.position.x + dx, node.position.y + dy);
-    setDragStart({ x: e.clientX, y: e.clientY });
+    // Update local position immediately for smooth dragging
+    setDragPosition({
+      x: node.position.x + dx,
+      y: node.position.y + dy,
+    });
   };
 
   const handleMouseUp = () => {
+    if (isDragging) {
+      // Commit the final position when drag ends
+      onMove(node.id, dragPosition.x, dragPosition.y);
+    }
     setIsDragging(false);
   };
 
   React.useEffect(() => {
     if (isDragging) {
-      const handleGlobalMouseUp = () => setIsDragging(false);
+      const handleGlobalMouseUp = () => {
+        // Commit the final position when drag ends
+        onMove(node.id, dragPosition.x, dragPosition.y);
+        setIsDragging(false);
+      };
       window.addEventListener('mouseup', handleGlobalMouseUp);
       return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
     }
-  }, [isDragging]);
+  }, [isDragging, dragPosition, node.id, onMove]);
 
   const color = NODE_COLORS[node.type] || '#94a3b8';
   const isActive = signals?.get(`${node.id}.out`) === 1;

@@ -145,6 +145,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [inspectorPosition, setInspectorPosition] = useState({ x: 0, y: 0 });
   const [isDraggingInspector, setIsDraggingInspector] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [inspectorMinimized, setInspectorMinimized] = useState(false);
 
   const autosaveIntervalRef = useRef<number | null>(null);
   const historyDebounceRef = useRef<number | null>(null);
@@ -1560,30 +1561,40 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
           {/* Floating Inspector Panel */}
           <div
-            className="inspector-panel absolute w-80 max-h-[60vh] bg-gray-850 border border-gray-700 rounded-lg shadow-2xl overflow-hidden z-50 flex flex-col"
+            className="inspector-panel absolute bg-gray-850 border border-gray-700 rounded-lg shadow-2xl overflow-hidden z-50 flex flex-col"
             style={{
               left: inspectorPosition.x !== 0 ? `${inspectorPosition.x}px` : 'auto',
               top: inspectorPosition.y !== 0 ? `${inspectorPosition.y}px` : 'auto',
               bottom: inspectorPosition.x === 0 && inspectorPosition.y === 0 ? '1rem' : 'auto',
               right: inspectorPosition.x === 0 && inspectorPosition.y === 0 ? '1rem' : 'auto',
+              width: inspectorMinimized ? 'auto' : '20rem',
+              maxHeight: inspectorMinimized ? 'auto' : '60vh',
             }}
           >
             <div
-              className="px-3 py-2 bg-gray-800 border-b border-gray-700 flex items-center justify-between cursor-move select-none"
+              className="px-3 py-2 bg-gray-800 border-b border-gray-700 flex items-center gap-2 cursor-move select-none"
               onMouseDown={handleInspectorMouseDown}
             >
-              <h3 className="text-sm font-semibold text-cyan-400">Inspector</h3>
-              <div className="text-xs text-gray-500">Drag to move</div>
+              <h3 className="text-sm font-semibold text-cyan-400 flex-1">Inspector</h3>
+              <button
+                onClick={() => setInspectorMinimized(!inspectorMinimized)}
+                className="text-gray-400 hover:text-white text-sm px-1"
+                title={inspectorMinimized ? "Expand" : "Minimize"}
+              >
+                {inspectorMinimized ? '□' : '_'}
+              </button>
             </div>
-            <div className="flex-1 overflow-auto">
-              <PropertyInspector
-                circuit={circuit}
-                engine={engine}
-                isRunning={isRunning}
-                onNodeUpdate={handleNodeUpdate}
-                onConnectionDelete={handleConnectionDelete}
-              />
-            </div>
+            {!inspectorMinimized && (
+              <div className="flex-1 overflow-auto">
+                <PropertyInspector
+                  circuit={circuit}
+                  engine={engine}
+                  isRunning={isRunning}
+                  onNodeUpdate={handleNodeUpdate}
+                  onConnectionDelete={handleConnectionDelete}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
