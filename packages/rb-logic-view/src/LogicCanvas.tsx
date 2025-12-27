@@ -101,6 +101,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
   // Subscribe to engine updates
   React.useEffect(() => {
+    // Immediately sync circuit when engine changes
+    setCircuit(engine.getCircuit());
+    setSignals(engine.getEngine().getAllSignals());
+
     const interval = setInterval(() => {
       setCircuit(engine.getCircuit());
       setSignals(engine.getEngine().getAllSignals());

@@ -181,14 +181,14 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
       {/* Help button */}
       <button
         onClick={() => setShowHelp(!showHelp)}
-        className="absolute top-2 right-2 px-2 py-1 bg-gray-800 hover:bg-gray-700 text-white text-xs rounded border border-gray-600"
+        className="absolute top-2 right-2 px-2 py-1 bg-gray-800 hover:bg-gray-700 text-white text-xs rounded border border-gray-600 z-50"
       >
         {showHelp ? 'Hide' : 'Controls'}
       </button>
 
       {/* Help overlay */}
       {showHelp && (
-        <div className="absolute top-10 right-2 bg-gray-900 border border-gray-700 rounded p-3 text-xs text-gray-300 space-y-1 shadow-xl">
+        <div className="absolute top-10 right-2 bg-gray-900 border border-gray-700 rounded p-3 text-xs text-gray-300 space-y-1 shadow-xl z-50">
           <div className="font-semibold text-white mb-2">3D View Controls</div>
           <div><span className="text-cyan-400">Left Click + Drag:</span> Rotate camera</div>
           <div><span className="text-cyan-400">Right Click + Drag:</span> Pan camera</div>

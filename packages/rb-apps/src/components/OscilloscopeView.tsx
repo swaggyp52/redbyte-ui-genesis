@@ -78,6 +78,8 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   onDismissHints,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 600 });
   const [probes, setProbes] = useState<ProbeConfig[]>([]);
   const [probeData, setProbeData] = useState<Map<string, ProbeData>>(new Map());
   const [timeScale, setTimeScale] = useState(10); // seconds visible
@@ -109,6 +111,57 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
 
   // Get global selection state for auto-probe
   const { selectedNodeIds, autoProbeEnabled, setAutoProbeEnabled } = useViewStateStore();
+
+  // Update canvas dimensions based on container size
+  useEffect(() => {
+    const updateCanvasDimensions = () => {
+      if (canvasContainerRef.current) {
+        const rect = canvasContainerRef.current.getBoundingClientRect();
+        setCanvasDimensions({
+          width: Math.max(rect.width - 20, 400),
+          height: Math.max(rect.height - 20, 300),
+        });
+      }
+    };
+
+    updateCanvasDimensions();
+    window.addEventListener('resize', updateCanvasDimensions);
+    return () => window.removeEventListener('resize', updateCanvasDimensions);
+  }, []);
+
+  // Auto-populate all INPUT and OUTPUT nodes on initial load
+  useEffect(() => {
+    // Only run on initial load when probes are empty and circuit has nodes
+    if (probes.length > 0 || circuit.nodes.length === 0) return;
+
+    const initialProbes: ProbeConfig[] = [];
+    let colorIndex = 0;
+
+    // Find all INPUT and OUTPUT nodes
+    circuit.nodes.forEach((node) => {
+      if (node.type === 'INPUT' || node.type === 'OUTPUT' ||
+          node.type === 'PowerSource' || node.type === 'Switch' ||
+          node.type === 'Lamp') {
+        const probeId = `probe-init-${node.id}`;
+        const portName = node.type === 'INPUT' || node.type === 'PowerSource' || node.type === 'Switch' ? 'out' : 'in';
+
+        initialProbes.push({
+          id: probeId,
+          nodeId: node.id,
+          portName,
+          label: `${node.id}[${portName}]`,
+          color: COLORS[colorIndex % COLORS.length],
+          enabled: true,
+        });
+
+        colorIndex++;
+      }
+    });
+
+    if (initialProbes.length > 0) {
+      setProbes(initialProbes);
+    }
+  }, [circuit.nodes, probes.length]);
 
   // Auto-probe selected nodes
   useEffect(() => {
@@ -670,7 +723,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
         </div>
 
         {/* Canvas */}
-        <div className="flex-1 flex items-center justify-center bg-gray-950 p-2 relative">
+        <div ref={canvasContainerRef} className="flex-1 flex items-center justify-center bg-gray-950 p-2 relative overflow-hidden">
           {/* Interaction hints when no probes */}
           {probes.length === 0 && showHints && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
@@ -701,8 +754,8 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
 
           <canvas
             ref={canvasRef}
-            width={width - 20}
-            height={height - 60}
+            width={canvasDimensions.width}
+            height={canvasDimensions.height}
             onClick={handleCanvasClick}
             className="cursor-crosshair border border-gray-700 rounded"
           />
