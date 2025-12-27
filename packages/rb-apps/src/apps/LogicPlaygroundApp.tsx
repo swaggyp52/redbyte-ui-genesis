@@ -1,6 +1,7 @@
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+// v1.0.1 - Multi-view enhancement with null safety
 
 import React, { useState, useEffect, useRef } from 'react';
 import type { RedByteApp } from '../types';
