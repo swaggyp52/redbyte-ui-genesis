@@ -4,7 +4,7 @@
 
 import React from 'react';
 import type { TickEngine, Node, Connection } from '@redbyte/rb-logic-core';
-import { useLogicViewStore } from './useLogicViewStore';
+import { useLogicViewStore, getGlobalViewStateStore } from './useLogicViewStore';
 import { NodeView, type ChipMetadata } from './components/NodeView';
 import { WireView } from './components/WireView';
 import { Toolbar } from './components/Toolbar';
@@ -41,6 +41,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     editingState,
     startWire,
     endWire,
+    selectMultipleNodes,
   } = useLogicViewStore();
 
   const [circuit, setCircuit] = React.useState(engine.getCircuit());
@@ -56,6 +57,32 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
     return () => clearInterval(interval);
   }, [engine]);
+
+  // Subscribe to global selection changes from other views
+  React.useEffect(() => {
+    const globalStore = getGlobalViewStateStore();
+    if (!globalStore) return;
+
+    const unsubscribe = globalStore.subscribe(
+      (state: any) => {
+        // Sync global selection to local selection
+        const globalNodeIds = Array.from(state.selectedNodeIds || new Set());
+        const localNodeIds = Array.from(selection.nodes);
+
+        // Only update if selections are different to avoid infinite loops
+        const isDifferent =
+          globalNodeIds.length !== localNodeIds.length ||
+          globalNodeIds.some((id: string) => !selection.nodes.has(id));
+
+        if (isDifferent) {
+          // Pass syncToGlobal: false to prevent circular updates
+          selectMultipleNodes(globalNodeIds, false);
+        }
+      }
+    );
+
+    return unsubscribe;
+  }, [selection.nodes, selectMultipleNodes]);
 
   // Mouse handlers for pan/zoom
   const [isPanning, setIsPanning] = React.useState(false);

@@ -12,6 +12,10 @@ export function setGlobalViewStateSync(store: any) {
   globalViewStateStore = store;
 }
 
+export function getGlobalViewStateStore() {
+  return globalViewStateStore;
+}
+
 export interface Camera {
   x: number;
   y: number;
@@ -44,7 +48,7 @@ export interface LogicViewState {
   selectNode: (nodeId: string, addToSelection?: boolean) => void;
   selectWire: (wireId: string, addToSelection?: boolean) => void;
   clearSelection: () => void;
-  selectMultipleNodes: (nodeIds: string[]) => void;
+  selectMultipleNodes: (nodeIds: string[], syncToGlobal?: boolean) => void;
 
   // Tool mode
   toolMode: ToolMode;
@@ -167,9 +171,9 @@ export const useLogicViewStore = create<LogicViewState>((set, get) => ({
     });
   },
 
-  selectMultipleNodes: (nodeIds) => {
-    // Sync with global view state if available
-    if (globalViewStateStore) {
+  selectMultipleNodes: (nodeIds, syncToGlobal = true) => {
+    // Only sync with global view state if this is a local change
+    if (syncToGlobal && globalViewStateStore) {
       globalViewStateStore.getState().selectNodes(nodeIds, false);
     }
 
