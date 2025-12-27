@@ -830,6 +830,19 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     addToast('Chip deleted', 'info');
   };
 
+  const getChipMetadataForNode = (nodeType: string) => {
+    const chip = getAllChips().find((c) => c.name === nodeType);
+    if (!chip) return undefined;
+
+    return {
+      name: chip.name,
+      inputs: chip.inputs.map((port) => ({ id: port.id, name: port.name })),
+      outputs: chip.outputs.map((port) => ({ id: port.id, name: port.name })),
+      color: undefined, // Could add color to ChipDefinition if needed
+      layer: chip.layer,
+    };
+  };
+
   const handleShare = async () => {
     try {
       const serialized = serialize(circuit);
@@ -1317,6 +1330,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             tickEngine={tickEngine}
             circuit={circuit}
             isRunning={isRunning}
+            getChipMetadata={getChipMetadataForNode}
             onCircuitChange={(updatedCircuit) => {
               setCircuit(updatedCircuit);
               engine.setCircuit(updatedCircuit);
