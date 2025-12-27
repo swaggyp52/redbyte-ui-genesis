@@ -48,6 +48,8 @@ interface OscilloscopeViewProps {
   isRunning: boolean;
   width?: number;
   height?: number;
+  showHints?: boolean;
+  onDismissHints?: () => void;
 }
 
 const COLORS = [
@@ -70,6 +72,8 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   isRunning,
   width = 800,
   height = 600,
+  showHints = true,
+  onDismissHints,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [probes, setProbes] = useState<ProbeConfig[]>([]);
@@ -638,10 +642,21 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
         {/* Canvas */}
         <div className="flex-1 flex items-center justify-center bg-gray-950 p-2 relative">
           {/* Interaction hints when no probes */}
-          {probes.length === 0 && (
+          {probes.length === 0 && showHints && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-              <div className="bg-gray-800/90 border border-gray-700 rounded-lg p-4 text-xs text-gray-300 space-y-2 max-w-sm">
-                <div className="font-semibold text-white mb-2">📊 Oscilloscope</div>
+              <div className="bg-gray-800/90 border border-gray-700 rounded-lg p-4 text-xs text-gray-300 space-y-2 max-w-sm pointer-events-auto">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-semibold text-white">📊 Oscilloscope</div>
+                  {onDismissHints && (
+                    <button
+                      onClick={onDismissHints}
+                      className="text-gray-500 hover:text-gray-300 transition-colors"
+                      title="Dismiss hints"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
                 <div><span className="text-cyan-400">Add probes →</span> Monitor signals over time</div>
                 <div><span className="text-cyan-400">Auto-Probe:</span> Auto-add selected nodes</div>
                 <div><span className="text-cyan-400">Click canvas:</span> Place cursor</div>

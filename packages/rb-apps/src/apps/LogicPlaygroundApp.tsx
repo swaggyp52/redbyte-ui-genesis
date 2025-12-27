@@ -1331,6 +1331,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             circuit={circuit}
             isRunning={isRunning}
             getChipMetadata={getChipMetadataForNode}
+            showCircuitHints={showCircuitHints}
+            onDismissCircuitHints={() => setShowCircuitHints(false)}
+            showOscilloscopeHints={showOscilloscopeHints}
+            onDismissOscilloscopeHints={() => setShowOscilloscopeHints(false)}
             onCircuitChange={(updatedCircuit) => {
               setCircuit(updatedCircuit);
               engine.setCircuit(updatedCircuit);

@@ -94,6 +94,10 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
             showHints={showCircuitHints}
             onDismissHints={onDismissCircuitHints}
             getChipMetadata={getChipMetadata}
+            showCircuitHints={showCircuitHints}
+            onDismissCircuitHints={onDismissCircuitHints}
+            showOscilloscopeHints={showOscilloscopeHints}
+            onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
         </div>
       );
@@ -121,6 +125,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
             isRunning={isRunning}
             width={dimensions.width}
             height={dimensions.height}
+            showHints={showOscilloscopeHints}
+            onDismissHints={onDismissOscilloscopeHints}
           />
         </div>
       );
@@ -134,6 +140,10 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
             height={dimensions.height}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
+            showCircuitHints={showCircuitHints}
+            onDismissCircuitHints={onDismissCircuitHints}
+            showOscilloscopeHints={showOscilloscopeHints}
+            onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
         </div>
       );
@@ -184,6 +194,10 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           onCircuitChange={onCircuitChange}
           viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
+            showCircuitHints={showCircuitHints}
+            onDismissCircuitHints={onDismissCircuitHints}
+            showOscilloscopeHints={showOscilloscopeHints}
+            onDismissOscilloscopeHints={onDismissOscilloscopeHints}
         />
       </div>
     );
@@ -203,6 +217,10 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onCircuitChange={onCircuitChange}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
+            showCircuitHints={showCircuitHints}
+            onDismissCircuitHints={onDismissCircuitHints}
+            showOscilloscopeHints={showOscilloscopeHints}
+            onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
         </div>
         <div className="flex-1 bg-gray-900">
@@ -215,6 +233,10 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onCircuitChange={onCircuitChange}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
+            showCircuitHints={showCircuitHints}
+            onDismissCircuitHints={onDismissCircuitHints}
+            showOscilloscopeHints={showOscilloscopeHints}
+            onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
         </div>
       </div>
@@ -235,6 +257,10 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onCircuitChange={onCircuitChange}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
+            showCircuitHints={showCircuitHints}
+            onDismissCircuitHints={onDismissCircuitHints}
+            showOscilloscopeHints={showOscilloscopeHints}
+            onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
         </div>
         <div className="flex-1 bg-gray-900">
@@ -247,6 +273,10 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onCircuitChange={onCircuitChange}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
+            showCircuitHints={showCircuitHints}
+            onDismissCircuitHints={onDismissCircuitHints}
+            showOscilloscopeHints={showOscilloscopeHints}
+            onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
         </div>
       </div>
@@ -267,6 +297,10 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onCircuitChange={onCircuitChange}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
+            showCircuitHints={showCircuitHints}
+            onDismissCircuitHints={onDismissCircuitHints}
+            showOscilloscopeHints={showOscilloscopeHints}
+            onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
         </div>
         <div className="bg-gray-900">
@@ -279,6 +313,10 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onCircuitChange={onCircuitChange}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
+            showCircuitHints={showCircuitHints}
+            onDismissCircuitHints={onDismissCircuitHints}
+            showOscilloscopeHints={showOscilloscopeHints}
+            onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
         </div>
         <div className="bg-gray-900">
@@ -291,6 +329,10 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onCircuitChange={onCircuitChange}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
+            showCircuitHints={showCircuitHints}
+            onDismissCircuitHints={onDismissCircuitHints}
+            showOscilloscopeHints={showOscilloscopeHints}
+            onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
         </div>
         <div className="bg-gray-900">
@@ -303,6 +345,10 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onCircuitChange={onCircuitChange}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
+            showCircuitHints={showCircuitHints}
+            onDismissCircuitHints={onDismissCircuitHints}
+            showOscilloscopeHints={showOscilloscopeHints}
+            onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
         </div>
       </div>
