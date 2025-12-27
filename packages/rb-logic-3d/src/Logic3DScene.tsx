@@ -116,8 +116,15 @@ const Scene: React.FC<{
         );
       })}
 
-      {/* Camera controls */}
-      <OrbitControls makeDefault />
+      {/* Camera controls with better settings */}
+      <OrbitControls
+        makeDefault
+        enableDamping
+        dampingFactor={0.05}
+        minDistance={5}
+        maxDistance={50}
+        maxPolarAngle={Math.PI / 2.1}
+      />
     </>
   );
 };
@@ -128,13 +135,39 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
   height = 600,
   viewStateStore,
 }) => {
+  const [showHelp, setShowHelp] = React.useState(false);
+
   return (
-    <div style={{ width, height }}>
+    <div style={{ width, height, position: 'relative' }}>
       <Canvas camera={{ position: [10, 10, 10], fov: 50 }}>
         <color attach="background" args={['#0a0a0a']} />
         <fog attach="fog" args={['#0a0a0a', 20, 60]} />
         <Scene engine={engine} viewStateStore={viewStateStore} />
       </Canvas>
+
+      {/* Help button */}
+      <button
+        onClick={() => setShowHelp(!showHelp)}
+        className="absolute top-2 right-2 px-2 py-1 bg-gray-800 hover:bg-gray-700 text-white text-xs rounded border border-gray-600"
+      >
+        {showHelp ? 'Hide' : 'Controls'}
+      </button>
+
+      {/* Help overlay */}
+      {showHelp && (
+        <div className="absolute top-10 right-2 bg-gray-900 border border-gray-700 rounded p-3 text-xs text-gray-300 space-y-1 shadow-xl">
+          <div className="font-semibold text-white mb-2">3D View Controls</div>
+          <div><span className="text-cyan-400">Left Click + Drag:</span> Rotate camera</div>
+          <div><span className="text-cyan-400">Right Click + Drag:</span> Pan camera</div>
+          <div><span className="text-cyan-400">Scroll:</span> Zoom in/out</div>
+          <div><span className="text-cyan-400">Click Node:</span> Select</div>
+          <div><span className="text-cyan-400">Ctrl+Click:</span> Multi-select</div>
+          <div className="pt-2 border-t border-gray-700 text-gray-500">
+            <div className="text-green-500">● Green:</div> Active signal (HIGH)
+            <div className="text-gray-500">● Gray:</div> Inactive (LOW)
+          </div>
+        </div>
+      )}
     </div>
   );
 };

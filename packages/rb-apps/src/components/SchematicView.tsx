@@ -429,20 +429,22 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   }, [circuit.connections, schematicNodes, signals]);
 
   return (
-    <div className="w-full h-full bg-gray-900 overflow-auto">
-      <div className="p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Schematic View</h2>
-          <div className="text-xs text-gray-400">
-            {circuit.nodes.length} components • {circuit.connections.length} connections
-          </div>
+    <div className="w-full h-full bg-gray-900 flex flex-col overflow-hidden">
+      {/* Compact header */}
+      <div className="px-3 py-2 flex items-center justify-between border-b border-gray-700 shrink-0">
+        <h2 className="text-sm font-semibold text-white">Schematic View</h2>
+        <div className="text-xs text-gray-400">
+          {circuit.nodes.length} components • {circuit.connections.length} connections
         </div>
+      </div>
 
+      {/* SVG canvas fills remaining space */}
+      <div className="flex-1 relative">
         <svg
           ref={svgRef}
           width={width}
-          height={height}
-          className="border border-gray-700 rounded bg-gray-850"
+          height={height - 42}
+          className="absolute inset-0 bg-gray-850"
           style={{ cursor: isPanning ? 'grabbing' : draggingNodeId ? 'move' : 'default' }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -561,23 +563,20 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
             </g>
           </g> {/* End camera transform */}
         </svg>
+      </div>
 
-        {/* Legend */}
-        <div className="mt-4 p-3 bg-gray-800 rounded border border-gray-700">
-          <div className="text-xs text-gray-300 space-y-1">
-            <div className="font-semibold mb-2">Schematic View Features:</div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-0.5 bg-green-500"></div>
-              <span>Active signal (logic HIGH)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-0.5 bg-gray-500"></div>
-              <span>Inactive signal (logic LOW)</span>
-            </div>
-            <div className="mt-2 text-gray-400">
-              IEEE/ANSI standard symbols with real-time signal visualization
-            </div>
-          </div>
+      {/* Compact legend */}
+      <div className="px-3 py-2 bg-gray-800 border-t border-gray-700 shrink-0">
+        <div className="text-xs text-gray-400 flex items-center gap-4">
+          <span className="flex items-center gap-1.5">
+            <div className="w-3 h-0.5 bg-green-500"></div>
+            HIGH
+          </span>
+          <span className="flex items-center gap-1.5">
+            <div className="w-3 h-0.5 bg-gray-500"></div>
+            LOW
+          </span>
+          <span className="text-gray-500">IEEE/ANSI symbols • Pan: Shift+Drag • Zoom: Scroll</span>
         </div>
       </div>
     </div>

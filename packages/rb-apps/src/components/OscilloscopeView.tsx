@@ -525,74 +525,71 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   };
 
   return (
-    <div className="h-full flex bg-gray-900 text-white">
+    <div className="h-full flex bg-gray-900 text-white overflow-hidden">
       {/* Main oscilloscope display */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Toolbar */}
-        <div className="border-b border-gray-700 p-2 flex items-center gap-4 text-sm bg-gray-850">
-          <div className="flex items-center gap-2">
-            <label className="text-gray-400">Time/Div:</label>
+        <div className="border-b border-gray-700 px-3 py-1.5 flex items-center gap-3 text-xs bg-gray-850 shrink-0">
+          <div className="flex items-center gap-1.5">
+            <label className="text-gray-500 text-xs">Time:</label>
             <select
               value={timeScale}
               onChange={(e) => setTimeScale(Number(e.target.value))}
-              className="px-2 py-1 bg-gray-800 rounded border border-gray-700"
+              className="px-1.5 py-0.5 bg-gray-800 rounded border border-gray-700 text-xs"
             >
               <option value={1}>1s</option>
               <option value={2}>2s</option>
               <option value={5}>5s</option>
               <option value={10}>10s</option>
-              <option value={20}>20s</option>
-              <option value={30}>30s</option>
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <label className="text-gray-400">V/Div:</label>
+          <div className="flex items-center gap-1.5">
+            <label className="text-gray-500 text-xs">V:</label>
             <select
               value={voltageScale}
               onChange={(e) => setVoltageScale(Number(e.target.value))}
-              className="px-2 py-1 bg-gray-800 rounded border border-gray-700"
+              className="px-1.5 py-0.5 bg-gray-800 rounded border border-gray-700 text-xs"
             >
               <option value={0.5}>0.5</option>
               <option value={1}>1</option>
               <option value={1.5}>1.5</option>
-              <option value={2}>2</option>
             </select>
           </div>
 
-          <div className="w-px h-6 bg-gray-600" />
+          <div className="w-px h-4 bg-gray-600" />
 
           <button
             onClick={handleClearData}
-            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded"
+            className="px-2 py-0.5 bg-gray-700 hover:bg-gray-600 rounded text-xs"
           >
             Clear
           </button>
 
-          <label className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 cursor-pointer">
             <input
               type="checkbox"
               checked={showGrid}
               onChange={(e) => setShowGrid(e.target.checked)}
-              className="rounded"
+              className="w-3 h-3"
             />
-            <span className="text-gray-400">Grid</span>
+            <span className="text-gray-400 text-xs">Grid</span>
           </label>
 
-          <label className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 cursor-pointer">
             <input
               type="checkbox"
               checked={autoProbeEnabled}
               onChange={(e) => setAutoProbeEnabled(e.target.checked)}
-              className="rounded"
+              className="w-3 h-3"
             />
-            <span className="text-gray-400">Auto-Probe</span>
+            <span className="text-gray-400 text-xs">Auto</span>
           </label>
 
           <button
             onClick={exportAsCSV}
             disabled={probeData.size === 0}
-            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-0.5 bg-gray-700 hover:bg-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed text-xs"
             title="Export as CSV"
           >
             CSV
@@ -601,7 +598,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
           <button
             onClick={exportAsJSON}
             disabled={probeData.size === 0}
-            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-0.5 bg-gray-700 hover:bg-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed text-xs"
             title="Export as JSON"
           >
             JSON
@@ -639,11 +636,11 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
         </div>
 
         {/* Canvas */}
-        <div className="flex-1 flex items-center justify-center bg-gray-950 p-4">
+        <div className="flex-1 flex items-center justify-center bg-gray-950 p-2">
           <canvas
             ref={canvasRef}
-            width={width}
-            height={height}
+            width={width - 20}
+            height={height - 60}
             onClick={handleCanvasClick}
             className="cursor-crosshair border border-gray-700 rounded"
           />
@@ -651,16 +648,16 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       </div>
 
       {/* Right sidebar - Probes */}
-      <div className="w-80 border-l border-gray-700 flex flex-col bg-gray-850">
-        <div className="p-4 border-b border-gray-700">
-          <h3 className="text-lg font-semibold mb-4 text-cyan-400">Probes</h3>
+      <div className="w-64 border-l border-gray-700 flex flex-col bg-gray-850 overflow-hidden">
+        <div className="px-3 py-2 border-b border-gray-700 shrink-0">
+          <h3 className="text-sm font-semibold mb-2 text-cyan-400">Probes</h3>
 
           {/* Add probe section */}
-          <div className="space-y-2 mb-4">
+          <div className="space-y-1.5">
             <select
               value={selectedNodeId}
               onChange={(e) => setSelectedNodeId(e.target.value)}
-              className="w-full px-2 py-1 bg-gray-800 rounded border border-gray-700 text-sm"
+              className="w-full px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
             >
               <option value="">Select node...</option>
               {circuit.nodes.map((node) => (
@@ -674,14 +671,14 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
               type="text"
               value={selectedPortName}
               onChange={(e) => setSelectedPortName(e.target.value)}
-              placeholder="Port name (e.g., 'output')"
-              className="w-full px-2 py-1 bg-gray-800 rounded border border-gray-700 text-sm"
+              placeholder="Port (e.g., 'output')"
+              className="w-full px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
             />
 
             <button
               onClick={handleAddProbe}
               disabled={!selectedNodeId}
-              className="w-full px-3 py-2 bg-cyan-700 hover:bg-cyan-600 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-2 py-1 bg-cyan-700 hover:bg-cyan-600 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Add Probe
             </button>
@@ -689,78 +686,78 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
         </div>
 
         {/* Active probes list */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto px-3 py-2">
           {probes.length === 0 ? (
-            <p className="text-gray-500 text-sm text-center mt-8">
-              No probes added yet.
+            <p className="text-gray-500 text-xs text-center mt-4">
+              No probes.
               <br />
-              Add a probe to start monitoring signals.
+              Add a probe above.
             </p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {probes.map((probe) => (
                 <div
                   key={probe.id}
-                  className="p-3 bg-gray-800 rounded border border-gray-700"
+                  className="p-2 bg-gray-800 rounded border border-gray-700"
                 >
-                  <div className="flex items-start gap-2 mb-2">
+                  <div className="flex items-start gap-1.5 mb-1">
                     <div
-                      className="w-3 h-3 rounded-full mt-0.5 flex-shrink-0"
+                      className="w-2.5 h-2.5 rounded-full mt-0.5 flex-shrink-0"
                       style={{ backgroundColor: probe.color }}
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">
+                      <div className="text-xs font-medium truncate">
                         {probe.label}
                       </div>
-                      <div className="text-xs text-gray-500 truncate">
-                        {probe.nodeId.slice(0, 12)}
+                      <div className="text-[10px] text-gray-500 truncate">
+                        {probe.nodeId.slice(0, 10)}
                       </div>
                     </div>
                     <button
                       onClick={() => handleRemoveProbe(probe.id)}
-                      className="text-gray-400 hover:text-red-400"
+                      className="text-gray-400 hover:text-red-400 text-sm leading-none"
                       title="Remove probe"
                     >
                       ×
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <label className="flex items-center gap-1 text-xs">
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="flex items-center gap-1 text-[10px] cursor-pointer">
                       <input
                         type="checkbox"
                         checked={probe.enabled}
                         onChange={() => handleToggleProbe(probe.id)}
-                        className="rounded"
+                        className="w-3 h-3"
                       />
-                      <span className="text-gray-400">Enabled</span>
+                      <span className="text-gray-400">On</span>
                     </label>
 
                     <div className="flex-1" />
 
-                    <div className="text-xs text-gray-500">
-                      {probeData.get(probe.id)?.samples.length ?? 0} samples
+                    <div className="text-[10px] text-gray-500">
+                      {probeData.get(probe.id)?.samples.length ?? 0}
                     </div>
                   </div>
 
                   {/* Signal measurements */}
                   {probeData.get(probe.id)?.measurements && (
-                    <div className="mt-2 pt-2 border-t border-gray-700 space-y-1 text-xs">
+                    <div className="mt-1 pt-1 border-t border-gray-700 space-y-0.5 text-[10px]">
                       <div className="flex justify-between">
-                        <span className="text-gray-400">Freq:</span>
-                        <span className="font-mono">
+                        <span className="text-gray-500">Freq:</span>
+                        <span className="font-mono text-gray-300">
                           {probeData.get(probe.id)?.measurements?.frequency?.toFixed(2) ?? '-'}Hz
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-400">Period:</span>
-                        <span className="font-mono">
+                        <span className="text-gray-500">Period:</span>
+                        <span className="font-mono text-gray-300">
                           {probeData.get(probe.id)?.measurements?.period?.toFixed(3) ?? '-'}s
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-400">Duty:</span>
-                        <span className="font-mono">
+                        <span className="text-gray-500">Duty:</span>
+                        <span className="font-mono text-gray-300">
                           {probeData.get(probe.id)?.measurements?.dutyCycle?.toFixed(1) ?? '-'}%
                         </span>
                       </div>

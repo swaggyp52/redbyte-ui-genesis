@@ -59,6 +59,7 @@ export const NodeMesh: React.FC<NodeMeshProps> = ({
   const handlePointerOver = (event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation();
     setHovered(true);
+    document.body.style.cursor = 'pointer';
     if (onHover) {
       onHover(id);
     }
@@ -66,6 +67,7 @@ export const NodeMesh: React.FC<NodeMeshProps> = ({
 
   const handlePointerOut = () => {
     setHovered(false);
+    document.body.style.cursor = 'default';
     if (onHover) {
       onHover(null);
     }

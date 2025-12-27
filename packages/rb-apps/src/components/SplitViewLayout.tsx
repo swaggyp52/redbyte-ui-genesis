@@ -44,6 +44,22 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   width,
   height,
 }) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = React.useState({ width: 800, height: 600 });
+
+  React.useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setDimensions({ width: rect.width, height: rect.height });
+      }
+    };
+
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, []);
+
   const containerStyle: React.CSSProperties = {
     width: width || '100%',
     height: height || '100%',
@@ -54,11 +70,11 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   switch (view) {
     case 'circuit':
       return (
-        <div style={containerStyle}>
+        <div ref={containerRef} style={containerStyle}>
           <LogicCanvas
             engine={tickEngine}
-            width={width}
-            height={height}
+            width={dimensions.width}
+            height={dimensions.height}
             showToolbar={false}
           />
         </div>
@@ -66,13 +82,13 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
 
     case 'schematic':
       return (
-        <div style={containerStyle}>
+        <div ref={containerRef} style={containerStyle}>
           <SchematicView
             circuit={circuit}
             engine={engine}
             isRunning={isRunning}
-            width={width}
-            height={height}
+            width={dimensions.width}
+            height={dimensions.height}
             onCircuitChange={onCircuitChange}
           />
         </div>
@@ -80,24 +96,24 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
 
     case 'oscilloscope':
       return (
-        <div style={containerStyle}>
+        <div ref={containerRef} style={containerStyle}>
           <OscilloscopeView
             engine={engine}
             circuit={circuit}
             isRunning={isRunning}
-            width={width}
-            height={height}
+            width={dimensions.width}
+            height={dimensions.height}
           />
         </div>
       );
 
     case '3d':
       return (
-        <div style={containerStyle}>
+        <div ref={containerRef} style={containerStyle}>
           <Logic3DScene
             engine={engine}
-            width={width}
-            height={height}
+            width={dimensions.width}
+            height={dimensions.height}
             viewStateStore={viewStateStore}
           />
         </div>
