@@ -110,14 +110,6 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
             onDismissHints={onDismissCircuitHints}
             getChipMetadata={getChipMetadata}
             onNodeDoubleClick={onNodeDoubleClick}
-            showCircuitHints={showCircuitHints}
-            onDismissCircuitHints={onDismissCircuitHints}
-            showSchematicHints={showSchematicHints}
-            onDismissSchematicHints={onDismissSchematicHints}
-            show3DHints={show3DHints}
-            onDismiss3DHints={onDismiss3DHints}
-            showOscilloscopeHints={showOscilloscopeHints}
-            onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
         </div>
       );
