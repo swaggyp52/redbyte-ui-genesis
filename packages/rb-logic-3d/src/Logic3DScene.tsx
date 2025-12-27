@@ -24,14 +24,25 @@ const Scene: React.FC<{
   engine: CircuitEngine;
   viewStateStore?: any;
 }> = ({ engine, viewStateStore }) => {
-  // Safety check: ensure engine has getCircuit method
-  if (!engine || typeof engine.getCircuit !== 'function') {
+  const signals = use3DEngineSync(engine);
+  const adapter = React.useMemo(() => {
+    if (!engine || typeof engine.getCircuit !== 'function') {
+      return null;
+    }
+    return new ViewAdapter(engine, '3d');
+  }, [engine]);
+
+  const viewState = React.useMemo(() => {
+    if (!adapter) {
+      return { nodes: [], wires: [] };
+    }
+    return adapter.computeViewState();
+  }, [adapter]);
+
+  // Early return if no valid adapter
+  if (!adapter) {
     return null;
   }
-
-  const signals = use3DEngineSync(engine);
-  const adapter = React.useMemo(() => new ViewAdapter(engine, '3d'), [engine]);
-  const viewState = React.useMemo(() => adapter.computeViewState(), [adapter]);
 
   // Get selection state from global store if available
   const selectedNodeIds = viewStateStore?.getState?.()?.selectedNodeIds || new Set<string>();

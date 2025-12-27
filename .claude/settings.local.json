@@ -62,7 +62,8 @@
       "Bash(gh issue list:*)",
       "Bash(pnpm --filter @redbyte/rb-utils typecheck:*)",
       "Bash(dir:*)",
-      "Bash(pnpm --filter @redbyte/rb-logic-core build:*)"
+      "Bash(pnpm --filter @redbyte/rb-logic-core build:*)",
+      "Bash(timeout 90 bash:*)"
     ],
     "deny": [],
     "ask": []
