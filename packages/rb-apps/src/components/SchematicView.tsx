@@ -394,8 +394,8 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   const schematicNodes = useMemo<SchematicNode[]>(() => {
     return circuit.nodes.map((node) => ({
       id: node.id,
-      x: node.position.x,
-      y: node.position.y,
+      x: Number.isFinite(node.position?.x) ? node.position.x : 0,
+      y: Number.isFinite(node.position?.y) ? node.position.y : 0,
       type: node.type,
       symbol: node.type,
     }));
@@ -537,7 +537,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
           <rect width="100%" height="100%" fill="url(#schematic-grid)" />
 
           {/* Camera transform group */}
-          <g transform={`translate(${camera.x},${camera.y}) scale(${camera.zoom})`}>
+          <g transform={`translate(${Number.isFinite(camera.x) ? camera.x : 0},${Number.isFinite(camera.y) ? camera.y : 0}) scale(${Number.isFinite(camera.zoom) ? camera.zoom : 1})`}>
             {/* Render wires */}
             <g className="wires">
             {schematicWires.map((wire, i) => {

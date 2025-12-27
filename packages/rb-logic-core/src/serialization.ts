@@ -48,7 +48,10 @@ export function deserialize(json: SerializedCircuitV1 | string): Circuit {
     nodes: nodes.map(node => ({
       id: node.id,
       type: node.type,
-      position: { ...node.position },
+      position: {
+        x: Number.isFinite(node.position?.x) ? node.position.x : 0,
+        y: Number.isFinite(node.position?.y) ? node.position.y : 0
+      },
       rotation: node.rotation,
       config: { ...node.config },
       state: node.state ? { ...node.state } : undefined,
