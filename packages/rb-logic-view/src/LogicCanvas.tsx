@@ -52,6 +52,50 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const [signals, setSignals] = React.useState<Map<string, 0 | 1>>(new Map());
   const svgRef = React.useRef<SVGSVGElement>(null);
   const lastSyncedSelection = React.useRef<Set<string>>(new Set());
+  const lastCircuitNodeCount = React.useRef(0);
+
+  // Auto-center and fit circuit in view when circuit changes
+  React.useEffect(() => {
+    const currentNodeCount = circuit.nodes.length;
+
+    // Only auto-fit if the circuit has changed (different node count)
+    if (currentNodeCount > 0 && currentNodeCount !== lastCircuitNodeCount.current) {
+      lastCircuitNodeCount.current = currentNodeCount;
+
+      // Calculate bounds
+      let minX = Infinity, maxX = -Infinity;
+      let minY = Infinity, maxY = -Infinity;
+
+      circuit.nodes.forEach((node) => {
+        minX = Math.min(minX, node.position.x);
+        maxX = Math.max(maxX, node.position.x);
+        minY = Math.min(minY, node.position.y);
+        maxY = Math.max(maxY, node.position.y);
+      });
+
+      if (!isFinite(minX)) return;
+
+      // Add padding
+      const padding = 100;
+      const boundsWidth = maxX - minX + padding * 2;
+      const boundsHeight = maxY - minY + padding * 2;
+
+      // Calculate zoom to fit
+      const zoomX = width / boundsWidth;
+      const zoomY = height / boundsHeight;
+      const newZoom = Math.min(zoomX, zoomY, 2); // Max zoom of 2x
+
+      // Calculate center offset
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+
+      setCamera({
+        x: width / 2 - centerX * newZoom,
+        y: height / 2 - centerY * newZoom,
+        zoom: newZoom,
+      });
+    }
+  }, [circuit.nodes.length, width, height, setCamera]);
 
   // Subscribe to engine updates
   React.useEffect(() => {
