@@ -18,6 +18,8 @@ interface Logic3DSceneProps {
   width?: number;
   height?: number;
   viewStateStore?: any; // Global view state store for selection sync
+  showHints?: boolean;
+  onDismissHints?: () => void;
 }
 
 const Scene: React.FC<{
@@ -134,8 +136,12 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
   width = 800,
   height = 600,
   viewStateStore,
+  showHints = true,
+  onDismissHints,
 }) => {
   const [showHelp, setShowHelp] = React.useState(false);
+  const circuit = engine?.getCircuit?.();
+  const hasNodes = circuit?.nodes?.length > 0;
 
   return (
     <div style={{ width, height, position: 'relative' }}>
@@ -144,6 +150,33 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
         <fog attach="fog" args={['#0a0a0a', 20, 60]} />
         <Scene engine={engine} viewStateStore={viewStateStore} />
       </Canvas>
+
+      {/* Empty state hints */}
+      {!hasNodes && showHints && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="bg-gray-800/90 border border-gray-700 rounded-lg p-4 text-xs text-gray-300 space-y-2 max-w-sm pointer-events-auto">
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-semibold text-white">🎮 3D View</div>
+              {onDismissHints && (
+                <button
+                  onClick={onDismissHints}
+                  className="text-gray-500 hover:text-gray-300 transition-colors"
+                  title="Dismiss hints"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <div><span className="text-cyan-400">Left Click + Drag:</span> Rotate camera</div>
+            <div><span className="text-cyan-400">Right Click + Drag:</span> Pan camera</div>
+            <div><span className="text-cyan-400">Scroll:</span> Zoom in/out</div>
+            <div><span className="text-cyan-400">Click Node:</span> Select component</div>
+            <div className="pt-2 border-t border-gray-700 text-gray-500">
+              Visualize circuits in 3D with flowing signal particles!
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Help button */}
       <button

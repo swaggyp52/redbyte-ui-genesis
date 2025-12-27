@@ -23,6 +23,8 @@ interface SplitViewLayoutProps {
   onDismissCircuitHints?: () => void;
   showSchematicHints?: boolean;
   onDismissSchematicHints?: () => void;
+  show3DHints?: boolean;
+  onDismiss3DHints?: () => void;
   showOscilloscopeHints?: boolean;
   onDismissOscilloscopeHints?: () => void;
   getChipMetadata?: (nodeType: string) => any;
@@ -42,6 +44,8 @@ interface ViewRendererProps {
   onDismissCircuitHints?: () => void;
   showSchematicHints?: boolean;
   onDismissSchematicHints?: () => void;
+  show3DHints?: boolean;
+  onDismiss3DHints?: () => void;
   showOscilloscopeHints?: boolean;
   onDismissOscilloscopeHints?: () => void;
   getChipMetadata?: (nodeType: string) => any;
@@ -61,6 +65,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   onDismissCircuitHints,
   showSchematicHints,
   onDismissSchematicHints,
+  show3DHints,
+  onDismiss3DHints,
   showOscilloscopeHints,
   onDismissOscilloscopeHints,
   getChipMetadata,
@@ -104,6 +110,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
             onDismissCircuitHints={onDismissCircuitHints}
             showSchematicHints={showSchematicHints}
             onDismissSchematicHints={onDismissSchematicHints}
+            show3DHints={show3DHints}
+            onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
@@ -150,12 +158,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
             height={dimensions.height}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
-            showCircuitHints={showCircuitHints}
-            onDismissCircuitHints={onDismissCircuitHints}
-            showSchematicHints={showSchematicHints}
-            onDismissSchematicHints={onDismissSchematicHints}
-            showOscilloscopeHints={showOscilloscopeHints}
-            onDismissOscilloscopeHints={onDismissOscilloscopeHints}
+            showHints={show3DHints}
+            onDismissHints={onDismiss3DHints}
           />
         </div>
       );
@@ -210,6 +214,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismissCircuitHints={onDismissCircuitHints}
             showSchematicHints={showSchematicHints}
             onDismissSchematicHints={onDismissSchematicHints}
+            show3DHints={show3DHints}
+            onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
         />
@@ -235,6 +241,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismissCircuitHints={onDismissCircuitHints}
             showSchematicHints={showSchematicHints}
             onDismissSchematicHints={onDismissSchematicHints}
+            show3DHints={show3DHints}
+            onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
@@ -253,6 +261,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismissCircuitHints={onDismissCircuitHints}
             showSchematicHints={showSchematicHints}
             onDismissSchematicHints={onDismissSchematicHints}
+            show3DHints={show3DHints}
+            onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
@@ -279,6 +289,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismissCircuitHints={onDismissCircuitHints}
             showSchematicHints={showSchematicHints}
             onDismissSchematicHints={onDismissSchematicHints}
+            show3DHints={show3DHints}
+            onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
@@ -297,6 +309,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismissCircuitHints={onDismissCircuitHints}
             showSchematicHints={showSchematicHints}
             onDismissSchematicHints={onDismissSchematicHints}
+            show3DHints={show3DHints}
+            onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
@@ -323,6 +337,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismissCircuitHints={onDismissCircuitHints}
             showSchematicHints={showSchematicHints}
             onDismissSchematicHints={onDismissSchematicHints}
+            show3DHints={show3DHints}
+            onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
@@ -341,6 +357,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismissCircuitHints={onDismissCircuitHints}
             showSchematicHints={showSchematicHints}
             onDismissSchematicHints={onDismissSchematicHints}
+            show3DHints={show3DHints}
+            onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
@@ -359,6 +377,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismissCircuitHints={onDismissCircuitHints}
             showSchematicHints={showSchematicHints}
             onDismissSchematicHints={onDismissSchematicHints}
+            show3DHints={show3DHints}
+            onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
@@ -377,6 +397,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismissCircuitHints={onDismissCircuitHints}
             showSchematicHints={showSchematicHints}
             onDismissSchematicHints={onDismissSchematicHints}
+            show3DHints={show3DHints}
+            onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
