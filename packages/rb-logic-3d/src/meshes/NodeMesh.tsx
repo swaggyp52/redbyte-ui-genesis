@@ -30,6 +30,7 @@ export const NodeMesh: React.FC<NodeMeshProps> = ({
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const material = useMemo(() => {
     const color = NODE_COLORS[type] || '#94a3b8';
@@ -51,15 +52,27 @@ export const NodeMesh: React.FC<NodeMeshProps> = ({
 
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
     event.stopPropagation();
-    if (onSelect) {
+    if (!isDragging && onSelect) {
       onSelect(id, event.shiftKey);
+    }
+    setIsDragging(false);
+  };
+
+  const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handlePointerMove = (event: ThreeEvent<PointerEvent>) => {
+    if (event.buttons > 0) {
+      setIsDragging(true);
     }
   };
 
   const handlePointerOver = (event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation();
     setHovered(true);
-    document.body.style.cursor = 'pointer';
+    document.body.style.cursor = isSelected ? 'grab' : 'pointer';
     if (onHover) {
       onHover(id);
     }
@@ -82,6 +95,8 @@ export const NodeMesh: React.FC<NodeMeshProps> = ({
       rotation={rotation}
       scale={scale}
       onClick={handleClick}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
       userData={{ nodeId: id }}

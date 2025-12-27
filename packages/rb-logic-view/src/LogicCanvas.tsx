@@ -99,19 +99,39 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     }
   }, [circuit.nodes.length, width, height, setCamera]);
 
-  // Subscribe to engine updates
+  // Subscribe to engine updates with aggressive syncing
   React.useEffect(() => {
     // Immediately sync circuit when engine changes
     const syncCircuit = () => {
       const newCircuit = engine.getCircuit();
-      setCircuit(newCircuit);
+      // Only update if circuit actually changed (by reference or content)
+      setCircuit((prev) => {
+        if (prev === newCircuit) return prev;
+        if (prev.nodes.length !== newCircuit.nodes.length) return newCircuit;
+        if (prev.connections.length !== newCircuit.connections.length) return newCircuit;
+        return newCircuit; // Force update anyway to catch any changes
+      });
       setSignals(engine.getEngine().getAllSignals());
     };
 
+    // Immediate first sync
     syncCircuit();
 
-    // Poll more frequently (16ms ≈ 60fps) to ensure responsiveness
-    const interval = setInterval(syncCircuit, 16);
+    // Aggressive initial polling (5ms for first second to catch initial load)
+    let fastPollCount = 0;
+    const maxFastPolls = 200; // 1 second of 5ms polling
+
+    const interval = setInterval(() => {
+      syncCircuit();
+      fastPollCount++;
+
+      // After initial burst, slow down to 60fps
+      if (fastPollCount >= maxFastPolls) {
+        clearInterval(interval);
+        const slowInterval = setInterval(syncCircuit, 16);
+        return () => clearInterval(slowInterval);
+      }
+    }, 5);
 
     return () => clearInterval(interval);
   }, [engine]);
