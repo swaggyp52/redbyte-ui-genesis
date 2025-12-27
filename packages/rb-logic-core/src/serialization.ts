@@ -45,20 +45,37 @@ export function deserialize(json: SerializedCircuitV1 | string): Circuit {
   const connections = Array.isArray(data.connections) ? data.connections : [];
 
   return {
-    nodes: nodes.map(node => ({
-      id: node.id,
-      type: node.type,
-      position: {
-        x: Number.isFinite(node.position?.x) ? node.position.x : 0,
-        y: Number.isFinite(node.position?.y) ? node.position.y : 0
-      },
-      rotation: node.rotation,
-      config: { ...node.config },
-      state: node.state ? { ...node.state } : undefined,
-    })),
-    connections: connections.map(conn => ({
-      from: { ...conn.from },
-      to: { ...conn.to },
-    })),
+    nodes: nodes.map(node => {
+      // Handle both legacy format (x, y directly on node) and new format (position.x, position.y)
+      const x = Number.isFinite(node.position?.x) ? node.position.x :
+                Number.isFinite((node as any).x) ? (node as any).x : 0;
+      const y = Number.isFinite(node.position?.y) ? node.position.y :
+                Number.isFinite((node as any).y) ? (node as any).y : 0;
+
+      return {
+        id: node.id,
+        type: node.type,
+        position: { x, y },
+        rotation: node.rotation ?? 0,
+        config: node.config ? { ...node.config } : {},
+        state: node.state ? { ...node.state } : undefined,
+      };
+    }),
+    connections: connections.map(conn => {
+      // Handle both legacy format (from/to as strings or objects with id) and new format (from/to with nodeId/portName)
+      const from = typeof conn.from === 'string'
+        ? { nodeId: conn.from, portName: (conn as any).fromPort || 'out' }
+        : conn.from.nodeId
+        ? { nodeId: conn.from.nodeId, portName: conn.from.portName }
+        : { nodeId: (conn.from as any).id || '', portName: (conn as any).fromPort || 'out' };
+
+      const to = typeof conn.to === 'string'
+        ? { nodeId: conn.to, portName: (conn as any).toPort || 'in' }
+        : conn.to.nodeId
+        ? { nodeId: conn.to.nodeId, portName: conn.to.portName }
+        : { nodeId: (conn.to as any).id || '', portName: (conn as any).toPort || 'in' };
+
+      return { from, to };
+    }),
   };
 }
