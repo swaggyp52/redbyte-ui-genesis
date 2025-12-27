@@ -26,7 +26,7 @@ const Scene: React.FC<{
 }> = ({ engine, viewStateStore }) => {
   const signals = use3DEngineSync(engine);
   const adapter = React.useMemo(() => new ViewAdapter(engine, '3d'), [engine]);
-  const viewState = adapter.computeViewState();
+  const viewState = React.useMemo(() => adapter.computeViewState(), [adapter]);
 
   // Get selection state from global store if available
   const selectedNodeIds = viewStateStore?.getState?.()?.selectedNodeIds || new Set<string>();

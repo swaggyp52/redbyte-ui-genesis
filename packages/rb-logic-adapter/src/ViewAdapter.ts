@@ -39,7 +39,12 @@ export class ViewAdapter {
    * This is the main transform function
    */
   computeViewState(): ViewState {
-    const circuit = this.engine.getCircuit();
+    const circuit = this.engine?.getCircuit?.();
+
+    // Return empty state if no circuit
+    if (!circuit) {
+      return { nodes: [], wires: [] };
+    }
 
     switch (this.viewMode) {
       case 'circuit':
