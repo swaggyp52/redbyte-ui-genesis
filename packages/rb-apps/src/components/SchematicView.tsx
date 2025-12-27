@@ -397,6 +397,44 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
     }));
   }, [circuit.nodes]);
 
+  // Auto-center and fit circuit in view on load
+  React.useEffect(() => {
+    if (circuit.nodes.length === 0) return;
+
+    // Calculate bounds
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+
+    circuit.nodes.forEach((node) => {
+      minX = Math.min(minX, node.position.x);
+      maxX = Math.max(maxX, node.position.x);
+      minY = Math.min(minY, node.position.y);
+      maxY = Math.max(maxY, node.position.y);
+    });
+
+    if (!isFinite(minX)) return;
+
+    // Add padding
+    const padding = 100;
+    const boundsWidth = maxX - minX + padding * 2;
+    const boundsHeight = maxY - minY + padding * 2;
+
+    // Calculate zoom to fit
+    const zoomX = width / boundsWidth;
+    const zoomY = height / boundsHeight;
+    const newZoom = Math.min(zoomX, zoomY, 2); // Max zoom of 2x
+
+    // Calculate center offset
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    setCamera({
+      x: width / 2 - centerX * newZoom,
+      y: height / 2 - centerY * newZoom,
+      zoom: newZoom,
+    });
+  }, [circuit.nodes.length, width, height]);
+
   // Route wires between nodes
   const schematicWires = useMemo<SchematicWire[]>(() => {
     return circuit.connections.map((conn) => {

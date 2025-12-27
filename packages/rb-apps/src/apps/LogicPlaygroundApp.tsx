@@ -1033,13 +1033,20 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         <div className="w-px h-6 bg-gray-600" />
 
         {/* View mode tabs */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2 bg-gray-800 rounded p-1">
+          <span className="text-xs text-gray-400 px-2">Views:</span>
           {(['circuit', 'schematic', '3d', 'oscilloscope'] as const).map((mode) => {
             const labels = {
               circuit: 'Circuit',
               schematic: 'Schematic',
               '3d': '3D',
               oscilloscope: 'Scope',
+            };
+            const icons = {
+              circuit: '⚡',
+              schematic: '📐',
+              '3d': '🧊',
+              oscilloscope: '📊',
             };
             const isActive = splitScreenMode === 'single' ? activeViews[0] === mode : activeViews.includes(mode);
             return (
@@ -1051,14 +1058,15 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
                     setActiveViews([mode]);
                   }
                 }}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5 ${
                   isActive
-                    ? 'bg-cyan-600 text-white'
-                    : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                    ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/50'
+                    : 'bg-gray-700 hover:bg-gray-600 text-gray-300 hover:shadow-md'
                 }`}
                 title={`Switch to ${labels[mode]} view`}
               >
-                {labels[mode]}
+                <span>{icons[mode]}</span>
+                <span>{labels[mode]}</span>
               </button>
             );
           })}
@@ -1067,62 +1075,74 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         <div className="w-px h-6 bg-gray-600" />
 
         {/* Split-screen layout selector */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2 bg-gray-800 rounded p-1">
+          <span className="text-xs text-gray-400 px-2">Layout:</span>
           <button
             onClick={() => {
               setSplitScreenMode('single');
               setActiveViews([viewMode]);
             }}
-            className={`px-2 py-1 rounded text-xs font-mono ${
+            className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
               splitScreenMode === 'single'
-                ? 'bg-cyan-600 text-white'
-                : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/50'
+                : 'bg-gray-700 hover:bg-gray-600 text-gray-300 hover:shadow-md'
             }`}
             title="Single view"
           >
-            ▢
+            <div className="w-5 h-5 border-2 border-current rounded"></div>
           </button>
           <button
             onClick={() => {
               setSplitScreenMode('horizontal');
               setActiveViews(['circuit', 'schematic']);
             }}
-            className={`px-2 py-1 rounded text-xs font-mono ${
+            className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
               splitScreenMode === 'horizontal'
-                ? 'bg-cyan-600 text-white'
-                : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/50'
+                : 'bg-gray-700 hover:bg-gray-600 text-gray-300 hover:shadow-md'
             }`}
-            title="Horizontal split"
+            title="Horizontal split (side-by-side)"
           >
-            ▢|▢
+            <div className="flex gap-0.5">
+              <div className="w-2.5 h-5 border-2 border-current rounded"></div>
+              <div className="w-2.5 h-5 border-2 border-current rounded"></div>
+            </div>
           </button>
           <button
             onClick={() => {
               setSplitScreenMode('vertical');
               setActiveViews(['circuit', 'oscilloscope']);
             }}
-            className={`px-2 py-1 rounded text-xs font-mono ${
+            className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
               splitScreenMode === 'vertical'
-                ? 'bg-cyan-600 text-white'
-                : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/50'
+                : 'bg-gray-700 hover:bg-gray-600 text-gray-300 hover:shadow-md'
             }`}
-            title="Vertical split"
+            title="Vertical split (stacked)"
           >
-            ▢—▢
+            <div className="flex flex-col gap-0.5">
+              <div className="w-5 h-2 border-2 border-current rounded"></div>
+              <div className="w-5 h-2 border-2 border-current rounded"></div>
+            </div>
           </button>
           <button
             onClick={() => {
               setSplitScreenMode('quad');
               setActiveViews(['circuit', 'schematic', '3d', 'oscilloscope']);
             }}
-            className={`px-2 py-1 rounded text-xs font-mono ${
+            className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
               splitScreenMode === 'quad'
-                ? 'bg-cyan-600 text-white'
-                : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/50'
+                : 'bg-gray-700 hover:bg-gray-600 text-gray-300 hover:shadow-md'
             }`}
-            title="Quad view"
+            title="Quad view (2x2 grid)"
           >
-            ▢+▢
+            <div className="grid grid-cols-2 gap-0.5">
+              <div className="w-2 h-2 border-2 border-current rounded"></div>
+              <div className="w-2 h-2 border-2 border-current rounded"></div>
+              <div className="w-2 h-2 border-2 border-current rounded"></div>
+              <div className="w-2 h-2 border-2 border-current rounded"></div>
+            </div>
           </button>
         </div>
 
