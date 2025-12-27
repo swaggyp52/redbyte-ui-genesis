@@ -119,6 +119,15 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   onCircuitChange,
   viewStateStore,
 }) => {
+  // Safety check: ensure engine and circuit are defined
+  if (!engine || !circuit) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gray-900 text-gray-500">
+        Initializing circuit engine...
+      </div>
+    );
+  }
+
   // Single view mode
   if (mode === 'single') {
     return (
