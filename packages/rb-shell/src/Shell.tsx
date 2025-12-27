@@ -492,7 +492,7 @@ export const Shell: React.FC<ShellProps> = () => {
   const handleSearchExecuteIntent = useCallback(
     (intentId: string) => {
       if (intentId === 'open-in-playground') {
-        console.log('Intent target clicked: open-in-playground (no active file context)');
+        // Intent handled - no active file context
       }
     },
     []

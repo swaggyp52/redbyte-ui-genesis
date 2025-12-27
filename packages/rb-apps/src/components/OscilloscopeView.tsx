@@ -3,7 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import type { CircuitEngine, Node, Signal } from '@redbyte/rb-logic-core';
+import type { CircuitEngine, Node, Signal, TickEngine } from '@redbyte/rb-logic-core';
 import { useViewStateStore } from '../stores/viewStateStore';
 import {
   calculateMeasurements,
@@ -44,6 +44,7 @@ interface TriggerConfig {
 
 interface OscilloscopeViewProps {
   engine: CircuitEngine;
+  tickEngine: TickEngine;
   circuit: { nodes: Node[] };
   isRunning: boolean;
   width?: number;
@@ -68,6 +69,7 @@ const SAMPLE_INTERVAL = 50; // ms between samples (20 Hz)
 
 export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   engine,
+  tickEngine,
   circuit,
   isRunning,
   width = 800,
@@ -195,9 +197,18 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     });
   }, [isRunning, probes, circuit.nodes, engine]);
 
-  // Start/stop sampling
+  // Start/stop trace recording
   useEffect(() => {
+    const traceRecorder = tickEngine.getTraceRecorder();
+
     if (isRunning) {
+      // Start trace recording if not already active
+      if (!traceRecorder) {
+        tickEngine.startTracing(2000); // Keep last 2000 ticks
+      } else if (!traceRecorder.isActive()) {
+        traceRecorder.start();
+      }
+
       // Reset start time when starting
       startTimeRef.current = Date.now();
       setTotalSamples(0);
@@ -210,7 +221,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
         setMeasurementUpdateCounter((prev) => prev + 1);
       }, 1000);
     } else {
-      // Stop sampling
+      // Stop sampling (but keep trace recording active for review)
       if (samplingIntervalRef.current) {
         clearInterval(samplingIntervalRef.current);
         samplingIntervalRef.current = null;
@@ -229,7 +240,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
         clearInterval(measurementUpdateRef.current);
       }
     };
-  }, [isRunning, sampleSignals]);
+  }, [isRunning, sampleSignals, tickEngine]);
 
   // Update measurements periodically
   useEffect(() => {
@@ -418,6 +429,12 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   const handleClearData = () => {
     setProbeData(new Map());
     startTimeRef.current = Date.now();
+
+    // Also clear the trace recorder
+    const traceRecorder = tickEngine.getTraceRecorder();
+    if (traceRecorder) {
+      traceRecorder.clear();
+    }
   };
 
   // Canvas click for cursor
@@ -626,6 +643,19 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
               <span className="text-gray-400">Rate:</span>
               <span className="font-mono text-cyan-300">{1000 / SAMPLE_INTERVAL}Hz</span>
             </div>
+            {(() => {
+              const traceRecorder = tickEngine.getTraceRecorder();
+              const stats = traceRecorder?.getStats();
+              if (stats && stats.totalTicks > 0) {
+                return (
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-400">Ticks:</span>
+                    <span className="font-mono text-purple-300">{stats.totalTicks}</span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </div>
 
           <div className="w-px h-6 bg-gray-600" />

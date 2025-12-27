@@ -41,23 +41,17 @@ import { SplitViewLayout } from '../components/SplitViewLayout';
 import { registerAllChips, registerChip, unregisterChip } from '../utils/chipRegistry';
 import { useViewStateStore } from '../stores/viewStateStore';
 import { setGlobalViewStateSync } from '@redbyte/rb-logic-view';
+import { useHierarchyStore } from '../stores/hierarchyStore';
+import { HierarchyBreadcrumbs } from '../components/HierarchyBreadcrumbs';
 
 type ViewMode = 'circuit' | 'schematic' | 'oscilloscope' | '3d';
 
-// Primitive node types (built-in gates)
-const PRIMITIVE_NODES = [
-  'PowerSource',
-  'Switch',
-  'Lamp',
-  'Wire',
-  'AND',
-  'OR',
-  'NOT',
-  'NAND',
-  'XOR',
-  'Clock',
-  'Delay',
-] as const;
+// Primitive node types (built-in gates) organized by category
+const PRIMITIVE_NODES = {
+  'Basic I/O': ['PowerSource', 'Switch', 'INPUT', 'Lamp', 'OUTPUT', 'Wire'],
+  'Logic Gates': ['AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR', 'XNOR'],
+  'Timing': ['Clock', 'Delay'],
+} as const;
 
 // Composite node types (built-in multi-gate circuits)
 const COMPOSITE_NODES = [
@@ -90,6 +84,16 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const { getAllFiles, getFile, updateFileContent, createFile } = useFileSystemStore();
   const { pushState, undo, redo, canUndo, canRedo, clear: clearHistory } = useHistoryStore();
   const { saveChipFromPattern, getAllChips, getChip, deleteChip } = useChipStore();
+  const {
+    stack: hierarchyStack,
+    currentCircuit: hierarchyCircuit,
+    enterChip,
+    exitToParent,
+    exitToTop,
+    setCurrentCircuit: setHierarchyCircuit,
+    isEditMode,
+    toggleEditMode,
+  } = useHierarchyStore();
   const examples = useRef(listExamples());
 
   // Helper to get all .rblogic files
@@ -199,11 +203,47 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         e.preventDefault();
         setShowChipLibrary(true);
       }
+      // Escape to exit hierarchy
+      if (e.key === 'Escape' && hierarchyStack.length > 0) {
+        e.preventDefault();
+        exitToParent();
+      }
+      // Backspace to exit hierarchy (alternative)
+      if (e.key === 'Backspace' && hierarchyStack.length > 0 && !isInputFocused()) {
+        e.preventDefault();
+        exitToParent();
+      }
+      // E to toggle edit mode when inside a chip
+      if (e.key === 'e' && hierarchyStack.length > 0 && !isInputFocused()) {
+        e.preventDefault();
+        toggleEditMode();
+      }
+    };
+
+    const isInputFocused = () => {
+      const active = document.activeElement;
+      return active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [circuit, currentFileId]);
+
+  // Sync hierarchy circuit with main circuit
+  useEffect(() => {
+    if (hierarchyStack.length > 0) {
+      // We're inside a chip - use hierarchy circuit
+      if (hierarchyCircuit && JSON.stringify(hierarchyCircuit) !== JSON.stringify(circuit)) {
+        setCircuit(hierarchyCircuit);
+        engine.setCircuit(hierarchyCircuit);
+      }
+    } else {
+      // We're at top level - sync hierarchy with main
+      if (JSON.stringify(hierarchyCircuit) !== JSON.stringify(circuit)) {
+        setHierarchyCircuit(circuit);
+      }
+    }
+  }, [hierarchyStack.length, hierarchyCircuit, circuit, engine, setHierarchyCircuit]);
 
   // Load circuit from URL if present
   useEffect(() => {
@@ -832,16 +872,96 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     addToast('Chip deleted', 'info');
   };
 
+  const handleEnterChip = (nodeId: string) => {
+    // Find the node in current circuit
+    const node = circuit.nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+
+    // Check if this node type is a chip
+    const chip = getAllChips().find((c) => c.name === node.type);
+    if (!chip) {
+      addToast(`${node.type} is not a chip (it's a primitive component)`, 'info');
+      return;
+    }
+
+    // Enter the chip's internal circuit
+    enterChip(chip, nodeId);
+    addToast(`Entered ${chip.name} • Press Esc to exit`, 'info', 3000);
+  };
+
+  const getNodeDescription = (nodeType: string): string => {
+    const descriptions: Record<string, string> = {
+      PowerSource: 'Always ON - provides constant HIGH signal (1)',
+      Switch: 'Toggle ON/OFF - double-click to toggle state',
+      INPUT: 'Toggle ON/OFF - double-click to toggle state',
+      Lamp: 'Visual indicator - lights up when signal is HIGH',
+      OUTPUT: 'Visual indicator - lights up when signal is HIGH',
+      Wire: 'Pass-through connection',
+      AND: 'TRUE if both inputs are TRUE | Truth: 0,0→0 | 0,1→0 | 1,0→0 | 1,1→1',
+      OR: 'TRUE if either input is TRUE | Truth: 0,0→0 | 0,1→1 | 1,0→1 | 1,1→1',
+      NOT: 'Inverts input | Truth: 0→1 | 1→0',
+      NAND: 'NOT AND - opposite of AND gate | Truth: 0,0→1 | 0,1→1 | 1,0→1 | 1,1→0',
+      NOR: 'NOT OR - opposite of OR gate | Truth: 0,0→1 | 0,1→0 | 1,0→0 | 1,1→0',
+      XOR: 'TRUE if inputs differ | Truth: 0,0→0 | 0,1→1 | 1,0→1 | 1,1→0',
+      XNOR: 'TRUE if inputs are same | Truth: 0,0→1 | 0,1→0 | 1,0→0 | 1,1→1',
+      Clock: 'Oscillates between HIGH/LOW periodically',
+      Delay: 'Delays signal by configured number of ticks',
+      RSLatch: 'Set-Reset memory latch - remembers 1 bit using feedback',
+      DFlipFlop: 'D Flip-Flop - captures data on clock edge',
+      JKFlipFlop: 'JK Flip-Flop - versatile flip-flop with toggle capability',
+      FullAdder: 'Adds 2 bits + carry-in, outputs sum + carry-out',
+      Counter4Bit: '4-bit binary counter - counts from 0 to 15',
+    };
+    return descriptions[nodeType] || nodeType;
+  };
+
   const getChipMetadataForNode = (nodeType: string) => {
+    // First check if it's a custom chip
     const chip = getAllChips().find((c) => c.name === nodeType);
-    if (!chip) return undefined;
+    if (chip) {
+      return {
+        name: chip.name,
+        inputs: chip.inputs.map((port) => ({ id: port.id, name: port.name })),
+        outputs: chip.outputs.map((port) => ({ id: port.id, name: port.name })),
+        color: chip.iconColor,
+        layer: chip.layer,
+      };
+    }
+
+    // Otherwise, provide metadata for built-in node types
+    const builtinMetadata: Record<string, { inputs: Array<{ id: string; name: string }>; outputs: Array<{ id: string; name: string }>; layer: number; color?: string }> = {
+      PowerSource: { inputs: [], outputs: [{ id: 'out', name: 'out' }], layer: 0, color: '#ef4444' },
+      Switch: { inputs: [], outputs: [{ id: 'out', name: 'out' }], layer: 0, color: '#3b82f6' },
+      INPUT: { inputs: [], outputs: [{ id: 'out', name: 'out' }], layer: 0, color: '#3b82f6' },
+      Lamp: { inputs: [{ id: 'in', name: 'in' }], outputs: [{ id: 'out', name: 'out' }], layer: 0, color: '#fbbf24' },
+      OUTPUT: { inputs: [{ id: 'in', name: 'in' }], outputs: [{ id: 'out', name: 'out' }], layer: 0, color: '#fbbf24' },
+      Wire: { inputs: [{ id: 'in', name: 'in' }], outputs: [{ id: 'out', name: 'out' }], layer: 0, color: '#6b7280' },
+      AND: { inputs: [{ id: 'a', name: 'a' }, { id: 'b', name: 'b' }], outputs: [{ id: 'out', name: 'out' }], layer: 0, color: '#8b5cf6' },
+      OR: { inputs: [{ id: 'a', name: 'a' }, { id: 'b', name: 'b' }], outputs: [{ id: 'out', name: 'out' }], layer: 0, color: '#8b5cf6' },
+      NOT: { inputs: [{ id: 'in', name: 'in' }], outputs: [{ id: 'out', name: 'out' }], layer: 0, color: '#8b5cf6' },
+      NAND: { inputs: [{ id: 'a', name: 'a' }, { id: 'b', name: 'b' }], outputs: [{ id: 'out', name: 'out' }], layer: 0, color: '#8b5cf6' },
+      NOR: { inputs: [{ id: 'a', name: 'a' }, { id: 'b', name: 'b' }], outputs: [{ id: 'out', name: 'out' }], layer: 0, color: '#8b5cf6' },
+      XOR: { inputs: [{ id: 'a', name: 'a' }, { id: 'b', name: 'b' }], outputs: [{ id: 'out', name: 'out' }], layer: 1, color: '#10b981' },
+      XNOR: { inputs: [{ id: 'a', name: 'a' }, { id: 'b', name: 'b' }], outputs: [{ id: 'out', name: 'out' }], layer: 1, color: '#10b981' },
+      Clock: { inputs: [], outputs: [{ id: 'out', name: 'out' }], layer: 0, color: '#f59e0b' },
+      Delay: { inputs: [{ id: 'in', name: 'in' }], outputs: [{ id: 'out', name: 'out' }], layer: 0, color: '#6b7280' },
+      // Composite nodes
+      RSLatch: { inputs: [{ id: 'R', name: 'R' }, { id: 'S', name: 'S' }], outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q̅' }], layer: 3, color: '#ec4899' },
+      DFlipFlop: { inputs: [{ id: 'D', name: 'D' }, { id: 'CLK', name: 'CLK' }], outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q̅' }], layer: 3, color: '#ec4899' },
+      JKFlipFlop: { inputs: [{ id: 'J', name: 'J' }, { id: 'K', name: 'K' }, { id: 'CLK', name: 'CLK' }], outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q̅' }], layer: 3, color: '#ec4899' },
+      FullAdder: { inputs: [{ id: 'A', name: 'A' }, { id: 'B', name: 'B' }, { id: 'Cin', name: 'Cin' }], outputs: [{ id: 'Sum', name: 'Sum' }, { id: 'Cout', name: 'Cout' }], layer: 2, color: '#14b8a6' },
+      Counter4Bit: { inputs: [{ id: 'CLK', name: 'CLK' }], outputs: [{ id: 'Q0', name: 'Q0' }, { id: 'Q1', name: 'Q1' }, { id: 'Q2', name: 'Q2' }, { id: 'Q3', name: 'Q3' }], layer: 4, color: '#f97316' },
+    };
+
+    const metadata = builtinMetadata[nodeType];
+    if (!metadata) return undefined;
 
     return {
-      name: chip.name,
-      inputs: chip.inputs.map((port) => ({ id: port.id, name: port.name })),
-      outputs: chip.outputs.map((port) => ({ id: port.id, name: port.name })),
-      color: undefined, // Could add color to ChipDefinition if needed
-      layer: chip.layer,
+      name: nodeType,
+      inputs: metadata.inputs,
+      outputs: metadata.outputs,
+      color: metadata.color,
+      layer: metadata.layer,
     };
   };
 
@@ -940,6 +1060,9 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           Opened from Files: <span className="font-semibold">{resourceId}</span> ({resourceType})
         </div>
       )}
+
+      {/* Hierarchy Breadcrumbs */}
+      <HierarchyBreadcrumbs />
 
       {/* Top Toolbar */}
       <div className="border-b border-gray-700 p-2 flex items-center gap-2 flex-wrap text-sm">
@@ -1043,13 +1166,23 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           Share
         </button>
         {recognizedPattern && (
-          <button
-            onClick={() => setShowSaveChipModal(true)}
-            className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded"
-            title={`Save ${recognizedPattern.name} as reusable chip`}
-          >
-            Save as Chip
-          </button>
+          <>
+            <div className="flex items-center gap-2 px-3 py-1 bg-green-900/40 border border-green-600 rounded">
+              <span className="text-green-400 font-semibold text-sm">
+                🎉 {recognizedPattern.name} (L{recognizedPattern.layer})
+              </span>
+              <span className="text-xs text-green-300">
+                {Math.round(recognizedPattern.confidence * 100)}% match
+              </span>
+            </div>
+            <button
+              onClick={() => setShowSaveChipModal(true)}
+              className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded font-semibold animate-pulse"
+              title={`Save ${recognizedPattern.name} as reusable chip`}
+            >
+              💾 Save as Chip
+            </button>
+          </>
         )}
 
         <div className="w-px h-6 bg-gray-600" />
@@ -1235,34 +1368,71 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Library */}
         <div className="w-48 border-r border-gray-700 overflow-y-auto p-2 bg-gray-850">
-          <h3 className="text-xs font-semibold mb-2 text-gray-400">PRIMITIVES</h3>
-          <div className="space-y-1 mb-4">
-            {PRIMITIVE_NODES.map((type) => (
-              <button
-                key={type}
-                draggable
-                onDragStart={(e) => handleNodeDragStart(type, e)}
-                className="w-full text-left px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded cursor-move transition-colors"
-                title="Drag to canvas to add node"
-              >
-                {type}
-              </button>
-            ))}
-          </div>
+          {Object.entries(PRIMITIVE_NODES).map(([category, nodes]) => (
+            <div key={category} className="mb-4">
+              <h3 className="text-xs font-semibold mb-2 text-gray-400">{category.toUpperCase()}</h3>
+              <div className="space-y-1">
+                {nodes.map((type) => {
+                  const metadata = getChipMetadataForNode(type);
+                  const description = getNodeDescription(type);
+                  const layerColor = metadata?.layer === 0 ? 'bg-blue-900/20 border-blue-700/30' : 'bg-green-900/20 border-green-700/30';
+                  return (
+                    <button
+                      key={type}
+                      draggable
+                      onDragStart={(e) => handleNodeDragStart(type, e)}
+                      className={`w-full text-left px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded cursor-move transition-colors border ${layerColor} group relative`}
+                      title={description}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>{type}</span>
+                        {metadata && metadata.layer > 0 && (
+                          <span className="text-[10px] text-gray-500">L{metadata.layer}</span>
+                        )}
+                      </div>
+                      {/* Tooltip on hover */}
+                      <div className="hidden group-hover:block absolute left-full ml-2 top-0 bg-gray-900 border border-gray-600 rounded p-2 text-xs whitespace-nowrap z-50 shadow-xl">
+                        {description}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
 
           <h3 className="text-xs font-semibold mb-2 text-gray-400">COMPOSITE</h3>
           <div className="space-y-1 mb-4">
-            {COMPOSITE_NODES.map((type) => (
-              <button
-                key={type}
-                draggable
-                onDragStart={(e) => handleNodeDragStart(type, e)}
-                className="w-full text-left px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded cursor-move transition-colors"
-                title="Drag to canvas to add node"
-              >
-                {type}
-              </button>
-            ))}
+            {COMPOSITE_NODES.map((type) => {
+              const metadata = getChipMetadataForNode(type);
+              const description = getNodeDescription(type);
+              const layerColors: Record<number, string> = {
+                2: 'bg-teal-900/20 border-teal-700/30',
+                3: 'bg-pink-900/20 border-pink-700/30',
+                4: 'bg-orange-900/20 border-orange-700/30',
+              };
+              const layerColor = metadata?.layer ? layerColors[metadata.layer] || 'bg-gray-800' : 'bg-gray-800';
+              return (
+                <button
+                  key={type}
+                  draggable
+                  onDragStart={(e) => handleNodeDragStart(type, e)}
+                  className={`w-full text-left px-2 py-1 text-xs hover:bg-gray-700 rounded cursor-move transition-colors border ${layerColor} group relative`}
+                  title={description}
+                >
+                  <div className="flex items-center justify-between">
+                    <span>{type}</span>
+                    {metadata && metadata.layer && (
+                      <span className="text-[10px] text-gray-500">L{metadata.layer}</span>
+                    )}
+                  </div>
+                  {/* Tooltip on hover */}
+                  <div className="hidden group-hover:block absolute left-full ml-2 top-0 bg-gray-900 border border-gray-600 rounded p-2 text-xs whitespace-nowrap z-50 shadow-xl max-w-xs">
+                    {description}
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
           <div className="flex items-center justify-between mb-2">
@@ -1287,9 +1457,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
                   draggable
                   onDragStart={(e) => handleNodeDragStart(chip.name, e)}
                   className="w-full text-left px-2 py-1 text-xs bg-purple-900/30 hover:bg-purple-800/40 rounded cursor-move transition-colors border border-purple-700/30"
-                  title={`Drag to canvas to add ${chip.name} (${chip.description})`}
+                  title={`${chip.description} • Layer ${chip.layer} • Drag to canvas`}
                 >
-                  {chip.name}
+                  <div className="flex items-center justify-between">
+                    <span className="truncate">{chip.name}</span>
+                    <span className="text-[10px] text-purple-400 ml-1">L{chip.layer}</span>
+                  </div>
                 </button>
               ))
             )}
@@ -1333,6 +1506,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             circuit={circuit}
             isRunning={isRunning}
             getChipMetadata={getChipMetadataForNode}
+            onNodeDoubleClick={handleEnterChip}
             showCircuitHints={showCircuitHints}
             onDismissCircuitHints={() => setShowCircuitHints(false)}
             showSchematicHints={showSchematicHints}
@@ -1367,9 +1541,14 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
                     lastRecognizedPatternRef.current = pattern.name;
                     setRecognizedPattern(pattern);
                     addToast(
-                      `You just built a ${pattern.name}! ${pattern.description}`,
-                      'success'
+                      `🎉 You just built a ${pattern.name}! ${pattern.description} (Layer ${pattern.layer})`,
+                      'success',
+                      6000
                     );
+                  } else if (!pattern && lastRecognizedPatternRef.current) {
+                    // Circuit changed - pattern no longer matches
+                    lastRecognizedPatternRef.current = '';
+                    setRecognizedPattern(null);
                   }
                 }, 2000) as unknown as number;
               }
@@ -1381,12 +1560,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
           {/* Floating Inspector Panel */}
           <div
-            className="inspector-panel absolute w-80 max-h-[60vh] bg-gray-850 border border-gray-700 rounded-lg shadow-2xl overflow-hidden z-40 flex flex-col"
+            className="inspector-panel absolute w-80 max-h-[60vh] bg-gray-850 border border-gray-700 rounded-lg shadow-2xl overflow-hidden z-50 flex flex-col"
             style={{
               left: inspectorPosition.x !== 0 ? `${inspectorPosition.x}px` : 'auto',
-              top: inspectorPosition.x !== 0 ? `${inspectorPosition.y}px` : 'auto',
-              bottom: inspectorPosition.x === 0 ? '1rem' : 'auto',
-              right: inspectorPosition.x === 0 ? '1rem' : 'auto',
+              top: inspectorPosition.y !== 0 ? `${inspectorPosition.y}px` : 'auto',
+              bottom: inspectorPosition.x === 0 && inspectorPosition.y === 0 ? '1rem' : 'auto',
+              right: inspectorPosition.x === 0 && inspectorPosition.y === 0 ? '1rem' : 'auto',
             }}
           >
             <div

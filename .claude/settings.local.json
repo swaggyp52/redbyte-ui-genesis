@@ -65,7 +65,8 @@
       "Bash(pnpm --filter @redbyte/rb-logic-core build:*)",
       "Bash(timeout 90 bash:*)",
       "Bash(timeout 100 bash:*)",
-      "Bash(pnpm:*)"
+      "Bash(pnpm:*)",
+      "Bash(node -e:*)"
     ],
     "deny": [],
     "ask": []

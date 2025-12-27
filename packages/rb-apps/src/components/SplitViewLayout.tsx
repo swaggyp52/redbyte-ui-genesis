@@ -18,6 +18,7 @@ interface SplitViewLayoutProps {
   circuit: Circuit;
   isRunning: boolean;
   onCircuitChange: (circuit: Circuit) => void;
+  onNodeDoubleClick?: (nodeId: string) => void;
   viewStateStore?: any;
   showCircuitHints?: boolean;
   onDismissCircuitHints?: () => void;
@@ -37,6 +38,7 @@ interface ViewRendererProps {
   circuit: Circuit;
   isRunning: boolean;
   onCircuitChange: (circuit: Circuit) => void;
+  onNodeDoubleClick?: (nodeId: string) => void;
   viewStateStore?: any;
   width?: number;
   height?: number;
@@ -58,6 +60,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   circuit,
   isRunning,
   onCircuitChange,
+  onNodeDoubleClick,
   viewStateStore,
   width,
   height,
@@ -106,6 +109,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
             showHints={showCircuitHints}
             onDismissHints={onDismissCircuitHints}
             getChipMetadata={getChipMetadata}
+            onNodeDoubleClick={onNodeDoubleClick}
             showCircuitHints={showCircuitHints}
             onDismissCircuitHints={onDismissCircuitHints}
             showSchematicHints={showSchematicHints}
@@ -139,6 +143,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
         <div ref={containerRef} style={containerStyle}>
           <OscilloscopeView
             engine={engine}
+            tickEngine={tickEngine}
             circuit={circuit}
             isRunning={isRunning}
             width={dimensions.width}
@@ -181,9 +186,14 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   circuit,
   isRunning,
   onCircuitChange,
+  onNodeDoubleClick,
   viewStateStore,
   showCircuitHints,
   onDismissCircuitHints,
+  showSchematicHints,
+  onDismissSchematicHints,
+  show3DHints,
+  onDismiss3DHints,
   showOscilloscopeHints,
   onDismissOscilloscopeHints,
   getChipMetadata,
@@ -208,16 +218,17 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           circuit={circuit}
           isRunning={isRunning}
           onCircuitChange={onCircuitChange}
+          onNodeDoubleClick={onNodeDoubleClick}
           viewStateStore={viewStateStore}
-            getChipMetadata={getChipMetadata}
-            showCircuitHints={showCircuitHints}
-            onDismissCircuitHints={onDismissCircuitHints}
-            showSchematicHints={showSchematicHints}
-            onDismissSchematicHints={onDismissSchematicHints}
-            show3DHints={show3DHints}
-            onDismiss3DHints={onDismiss3DHints}
-            showOscilloscopeHints={showOscilloscopeHints}
-            onDismissOscilloscopeHints={onDismissOscilloscopeHints}
+          getChipMetadata={getChipMetadata}
+          showCircuitHints={showCircuitHints}
+          onDismissCircuitHints={onDismissCircuitHints}
+          showSchematicHints={showSchematicHints}
+          onDismissSchematicHints={onDismissSchematicHints}
+          show3DHints={show3DHints}
+          onDismiss3DHints={onDismiss3DHints}
+          showOscilloscopeHints={showOscilloscopeHints}
+          onDismissOscilloscopeHints={onDismissOscilloscopeHints}
         />
       </div>
     );
@@ -235,6 +246,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             circuit={circuit}
             isRunning={isRunning}
             onCircuitChange={onCircuitChange}
+            onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
@@ -255,6 +267,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             circuit={circuit}
             isRunning={isRunning}
             onCircuitChange={onCircuitChange}
+            onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
@@ -283,6 +296,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             circuit={circuit}
             isRunning={isRunning}
             onCircuitChange={onCircuitChange}
+            onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
@@ -303,6 +317,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             circuit={circuit}
             isRunning={isRunning}
             onCircuitChange={onCircuitChange}
+            onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
@@ -331,6 +346,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             circuit={circuit}
             isRunning={isRunning}
             onCircuitChange={onCircuitChange}
+            onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
@@ -351,6 +367,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             circuit={circuit}
             isRunning={isRunning}
             onCircuitChange={onCircuitChange}
+            onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
@@ -371,6 +388,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             circuit={circuit}
             isRunning={isRunning}
             onCircuitChange={onCircuitChange}
+            onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
@@ -391,6 +409,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             circuit={circuit}
             isRunning={isRunning}
             onCircuitChange={onCircuitChange}
+            onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}

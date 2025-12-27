@@ -57,3 +57,98 @@ registerNode({
     return { out: oldOutput };
   },
 });
+
+/** Switch: toggleable input (state-based) */
+registerNode({
+  type: "Switch",
+  update(node) {
+    const isOn = node.state?.isOn ?? 0;
+    return { out: isOn as LogicValue };
+  },
+});
+
+/** AND gate: outputs 1 only if both inputs are 1 */
+registerNode({
+  type: "AND",
+  update(_node, inputs) {
+    const a = inputs["a"] ?? inputs["in1"] ?? 0;
+    const b = inputs["b"] ?? inputs["in2"] ?? 0;
+    return { out: (a && b ? 1 : 0) as LogicValue };
+  },
+});
+
+/** OR gate: outputs 1 if either input is 1 */
+registerNode({
+  type: "OR",
+  update(_node, inputs) {
+    const a = inputs["a"] ?? inputs["in1"] ?? 0;
+    const b = inputs["b"] ?? inputs["in2"] ?? 0;
+    return { out: (a || b ? 1 : 0) as LogicValue };
+  },
+});
+
+/** NOT gate: inverts the input */
+registerNode({
+  type: "NOT",
+  update(_node, inputs) {
+    const input = inputs["in"] ?? 0;
+    return { out: (input ? 0 : 1) as LogicValue };
+  },
+});
+
+/** NAND gate: NOT AND */
+registerNode({
+  type: "NAND",
+  update(_node, inputs) {
+    const a = inputs["a"] ?? inputs["in1"] ?? 0;
+    const b = inputs["b"] ?? inputs["in2"] ?? 0;
+    return { out: (a && b ? 0 : 1) as LogicValue };
+  },
+});
+
+/** NOR gate: NOT OR */
+registerNode({
+  type: "NOR",
+  update(_node, inputs) {
+    const a = inputs["a"] ?? inputs["in1"] ?? 0;
+    const b = inputs["b"] ?? inputs["in2"] ?? 0;
+    return { out: (a || b ? 0 : 1) as LogicValue };
+  },
+});
+
+/** XOR gate: outputs 1 if inputs are different */
+registerNode({
+  type: "XOR",
+  update(_node, inputs) {
+    const a = inputs["a"] ?? inputs["in1"] ?? 0;
+    const b = inputs["b"] ?? inputs["in2"] ?? 0;
+    return { out: (a !== b ? 1 : 0) as LogicValue };
+  },
+});
+
+/** XNOR gate: outputs 1 if inputs are the same */
+registerNode({
+  type: "XNOR",
+  update(_node, inputs) {
+    const a = inputs["a"] ?? inputs["in1"] ?? 0;
+    const b = inputs["b"] ?? inputs["in2"] ?? 0;
+    return { out: (a === b ? 1 : 0) as LogicValue };
+  },
+});
+
+/** INPUT: same as Switch - toggleable input */
+registerNode({
+  type: "INPUT",
+  update(node) {
+    const isOn = node.state?.isOn ?? 0;
+    return { out: isOn as LogicValue };
+  },
+});
+
+/** OUTPUT: same as Lamp - displays input state */
+registerNode({
+  type: "OUTPUT",
+  update(_node, inputs) {
+    return { out: inputs["in"] ?? 0 };
+  },
+});

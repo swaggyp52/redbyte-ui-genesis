@@ -17,6 +17,7 @@ export interface LogicCanvasProps {
   height?: number;
   showToolbar?: boolean;
   getChipMetadata?: (nodeType: string) => ChipMetadata | undefined;
+  onNodeDoubleClick?: (nodeId: string) => void;
   showHints?: boolean;
   onDismissHints?: () => void;
 }
@@ -27,6 +28,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   height = 600,
   showToolbar = true,
   getChipMetadata,
+  onNodeDoubleClick,
   showHints = true,
   onDismissHints,
 }) => {
@@ -188,6 +190,22 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       nodes: circuit.nodes.map((n) =>
         n.id === nodeId ? { ...n, position: { x: newX, y: newY } } : n
       ),
+    };
+
+    engine.setCircuit(updatedCircuit);
+    setCircuit(updatedCircuit);
+  };
+
+  const handleToggleSwitch = (nodeId: string) => {
+    const updatedCircuit = {
+      ...circuit,
+      nodes: circuit.nodes.map((n) => {
+        if (n.id === nodeId && (n.type === 'Switch' || n.type === 'INPUT')) {
+          const currentState = n.state?.isOn ?? 0;
+          return { ...n, state: { ...n.state, isOn: currentState ? 0 : 1 } };
+        }
+        return n;
+      }),
     };
 
     engine.setCircuit(updatedCircuit);
@@ -381,6 +399,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             onSelect={selectNode}
             onMove={handleNodeMove}
             onPortClick={handlePortClick}
+            onToggleSwitch={handleToggleSwitch}
+            onNodeDoubleClick={onNodeDoubleClick}
             signals={signals}
             chipMetadata={getChipMetadata?.(node.type)}
             wireStartPort={editingState.wireStartPort}

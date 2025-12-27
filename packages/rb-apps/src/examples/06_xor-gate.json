@@ -1,92 +1,77 @@
 {
-  "version": "1",
+  "version": "v1",
   "nodes": [
     {
       "id": "input-a",
-      "type": "INPUT",
-      "x": 50,
-      "y": 100
+      "type": "Switch",
+      "position": {"x": 0, "y": 0},
+      "rotation": 0,
+      "config": {}
     },
     {
       "id": "input-b",
-      "type": "INPUT",
-      "x": 50,
-      "y": 200
+      "type": "Switch",
+      "position": {"x": 0, "y": 100},
+      "rotation": 0,
+      "config": {}
     },
     {
       "id": "nand1",
       "type": "NAND",
-      "x": 200,
-      "y": 100
+      "position": {"x": 200, "y": 0},
+      "rotation": 0,
+      "config": {}
     },
     {
       "id": "nand2",
       "type": "NAND",
-      "x": 200,
-      "y": 200
+      "position": {"x": 200, "y": 100},
+      "rotation": 0,
+      "config": {}
     },
     {
       "id": "nand3",
       "type": "NAND",
-      "x": 350,
-      "y": 150
+      "position": {"x": 400, "y": 50},
+      "rotation": 0,
+      "config": {}
     },
     {
       "id": "output",
-      "type": "OUTPUT",
-      "x": 500,
-      "y": 150
+      "type": "Lamp",
+      "position": {"x": 600, "y": 50},
+      "rotation": 0,
+      "config": {}
     }
   ],
   "connections": [
     {
-      "id": "conn-1",
-      "from": "input-a",
-      "to": "nand1",
-      "fromPort": "out",
-      "toPort": "in1"
+      "from": {"nodeId": "input-a", "portName": "out"},
+      "to": {"nodeId": "nand1", "portName": "a"}
     },
     {
-      "id": "conn-2",
-      "from": "input-b",
-      "to": "nand1",
-      "fromPort": "out",
-      "toPort": "in2"
+      "from": {"nodeId": "input-b", "portName": "out"},
+      "to": {"nodeId": "nand1", "portName": "b"}
     },
     {
-      "id": "conn-3",
-      "from": "input-a",
-      "to": "nand2",
-      "fromPort": "out",
-      "toPort": "in1"
+      "from": {"nodeId": "input-a", "portName": "out"},
+      "to": {"nodeId": "nand2", "portName": "a"}
     },
     {
-      "id": "conn-4",
-      "from": "nand1",
-      "to": "nand2",
-      "fromPort": "out",
-      "toPort": "in2"
+      "from": {"nodeId": "nand1", "portName": "out"},
+      "to": {"nodeId": "nand2", "portName": "b"}
     },
     {
-      "id": "conn-5",
-      "from": "input-b",
-      "to": "nand3",
-      "fromPort": "out",
-      "toPort": "in1"
+      "from": {"nodeId": "input-b", "portName": "out"},
+      "to": {"nodeId": "nand3", "portName": "a"}
     },
     {
-      "id": "conn-6",
-      "from": "nand2",
-      "to": "nand3",
-      "fromPort": "out",
-      "toPort": "in2"
+      "from": {"nodeId": "nand2", "portName": "out"},
+      "to": {"nodeId": "nand3", "portName": "b"}
     },
     {
-      "id": "conn-7",
-      "from": "nand3",
-      "to": "output",
-      "fromPort": "out",
-      "toPort": "in"
+      "from": {"nodeId": "nand3", "portName": "out"},
+      "to": {"nodeId": "output", "portName": "in"}
     }
   ]
 }

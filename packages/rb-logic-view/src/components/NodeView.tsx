@@ -21,6 +21,8 @@ export interface NodeViewProps {
   onSelect: (nodeId: string, addToSelection: boolean) => void;
   onMove: (nodeId: string, x: number, y: number) => void;
   onPortClick?: (nodeId: string, portName: string) => void;
+  onToggleSwitch?: (nodeId: string) => void; // Toggle switch state
+  onNodeDoubleClick?: (nodeId: string) => void; // Double-click to drill into chip
   signals?: Map<string, 0 | 1>;
   chipMetadata?: ChipMetadata; // Metadata for custom chips
   wireStartPort?: PortRef; // Port where wire drawing started
@@ -52,6 +54,8 @@ export const NodeView: React.FC<NodeViewProps> = ({
   onSelect,
   onMove,
   onPortClick,
+  onToggleSwitch,
+  onNodeDoubleClick,
   signals,
   chipMetadata,
   wireStartPort,
@@ -59,10 +63,14 @@ export const NodeView: React.FC<NodeViewProps> = ({
   const [isDragging, setIsDragging] = React.useState(false);
   const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 });
   const [hoveredPort, setHoveredPort] = React.useState<string | null>(null);
+  const [isHovered, setIsHovered] = React.useState(false);
 
   const screenX = node.position.x * camera.zoom + camera.x;
   const screenY = node.position.y * camera.zoom + camera.y;
   const size = 48 * camera.zoom;
+
+  const isSwitch = node.type === 'Switch' || node.type === 'INPUT';
+  const switchState = node.state?.isOn ?? 0;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
@@ -72,6 +80,15 @@ export const NodeView: React.FC<NodeViewProps> = ({
     setDragStart({ x: e.clientX, y: e.clientY });
 
     onSelect(node.id, e.shiftKey);
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isSwitch && onToggleSwitch) {
+      onToggleSwitch(node.id);
+    } else if (onNodeDoubleClick) {
+      onNodeDoubleClick(node.id);
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -112,6 +129,9 @@ export const NodeView: React.FC<NodeViewProps> = ({
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onDoubleClick={handleDoubleClick}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
       >
         {/* Chip body - black box appearance */}
@@ -121,10 +141,25 @@ export const NodeView: React.FC<NodeViewProps> = ({
           width={size}
           height={chipHeight}
           fill={chipColor}
-          stroke={isSelected ? '#3b82f6' : '#475569'}
-          strokeWidth={isSelected ? 3 : 2}
+          stroke={isSelected ? '#3b82f6' : isHovered ? '#8b5cf6' : '#475569'}
+          strokeWidth={isSelected ? 3 : isHovered ? 2.5 : 2}
           rx={6}
         />
+
+        {/* Hover hint - double-click to drill down */}
+        {isHovered && onNodeDoubleClick && (
+          <text
+            x={0}
+            y={-chipHeight / 2 - 8}
+            textAnchor="middle"
+            fill="#8b5cf6"
+            fontSize={9}
+            fontWeight="500"
+            style={{ pointerEvents: 'none', userSelect: 'none' }}
+          >
+            Double-click to explore
+          </text>
+        )}
 
         {/* Chip icon - small circuit pattern */}
         <circle cx={0} cy={-chipHeight / 4} r={3} fill="#64748b" opacity={0.5} />
@@ -269,7 +304,8 @@ export const NodeView: React.FC<NodeViewProps> = ({
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+      onDoubleClick={handleDoubleClick}
+      style={{ cursor: isDragging ? 'grabbing' : (isSwitch ? 'pointer' : 'grab') }}
     >
       {/* Node body */}
       <rect
@@ -283,10 +319,22 @@ export const NodeView: React.FC<NodeViewProps> = ({
         rx={4}
       />
 
+      {/* Switch state indicator */}
+      {isSwitch && (
+        <circle
+          cx={size / 3}
+          cy={-size / 3}
+          r={6}
+          fill={switchState ? '#22c55e' : '#ef4444'}
+          stroke="#fff"
+          strokeWidth={1}
+        />
+      )}
+
       {/* Node label */}
       <text
         x={0}
-        y={0}
+        y={isSwitch ? 5 : 0}
         textAnchor="middle"
         dominantBaseline="middle"
         fill="#fff"
@@ -295,6 +343,20 @@ export const NodeView: React.FC<NodeViewProps> = ({
       >
         {node.type}
       </text>
+
+      {/* Switch hint */}
+      {isSwitch && (
+        <text
+          x={0}
+          y={size / 3}
+          textAnchor="middle"
+          fill="#64748b"
+          fontSize={Math.max(6, 8 * camera.zoom)}
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
+        >
+          {switchState ? 'ON' : 'OFF'}
+        </text>
+      )}
 
       {/* Input port */}
       {!['PowerSource', 'Clock'].includes(node.type) && (() => {
