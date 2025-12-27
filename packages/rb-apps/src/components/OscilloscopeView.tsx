@@ -129,7 +129,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     return () => window.removeEventListener('resize', updateCanvasDimensions);
   }, []);
 
-  // Auto-populate all INPUT and OUTPUT nodes on initial load
+  // Auto-populate interesting nodes on initial load
   useEffect(() => {
     // Only run on initial load when probes are empty and circuit has nodes
     if (probes.length > 0 || circuit.nodes.length === 0) return;
@@ -137,29 +137,38 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     const initialProbes: ProbeConfig[] = [];
     let colorIndex = 0;
 
-    // Find all INPUT and OUTPUT nodes
-    circuit.nodes.forEach((node) => {
-      if (node.type === 'INPUT' || node.type === 'OUTPUT' ||
-          node.type === 'PowerSource' || node.type === 'Switch' ||
-          node.type === 'Lamp') {
-        const probeId = `probe-init-${node.id}`;
-        const portName = node.type === 'INPUT' || node.type === 'PowerSource' || node.type === 'Switch' ? 'out' : 'in';
+    // Priority order for auto-probing
+    const priorityTypes = ['Clock', 'INPUT', 'PowerSource', 'Switch', 'OUTPUT', 'Lamp'];
+    const probedNodes = new Set<string>();
 
-        initialProbes.push({
-          id: probeId,
-          nodeId: node.id,
-          portName,
-          label: `${node.id}[${portName}]`,
-          color: COLORS[colorIndex % COLORS.length],
-          enabled: true,
-        });
+    // First pass: probe priority nodes
+    priorityTypes.forEach((priorityType) => {
+      circuit.nodes.forEach((node) => {
+        if (node.type === priorityType && !probedNodes.has(node.id)) {
+          const probeId = `probe-init-${node.id}`;
+          const isInput = ['INPUT', 'PowerSource', 'Switch', 'Clock'].includes(node.type);
+          const portName = isInput ? 'out' : 'in';
 
-        colorIndex++;
-      }
+          initialProbes.push({
+            id: probeId,
+            nodeId: node.id,
+            portName,
+            label: `${node.type}: ${node.id.substring(0, 8)}`,
+            color: COLORS[colorIndex % COLORS.length],
+            enabled: true,
+          });
+
+          probedNodes.add(node.id);
+          colorIndex++;
+        }
+      });
     });
 
-    if (initialProbes.length > 0) {
-      setProbes(initialProbes);
+    // If we have too many probes, limit to first 8
+    const limitedProbes = initialProbes.slice(0, 8);
+
+    if (limitedProbes.length > 0) {
+      setProbes(limitedProbes);
     }
   }, [circuit.nodes, probes.length]);
 
@@ -186,11 +195,14 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       if (!node) return;
 
       const probeId = `probe-${Date.now()}-${nodeId}`;
+      const isOutput = ['OUTPUT', 'Lamp'].includes(node.type);
+      const portName = isOutput ? 'in' : 'out';
+
       newProbes.push({
         id: probeId,
         nodeId,
-        portName: 'output', // Default to output port
-        label: `${node.type}[output]`,
+        portName,
+        label: `${node.type}: ${nodeId.substring(0, 8)}`,
         color: COLORS[colorIndex],
         enabled: true,
       });
@@ -454,7 +466,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
         id: probeId,
         nodeId: selectedNodeId,
         portName: selectedPortName,
-        label: `${node.type}[${selectedPortName}]`,
+        label: `${node.type}: ${selectedNodeId.substring(0, 8)}[${selectedPortName}]`,
         color: COLORS[colorIndex],
         enabled: true,
       },

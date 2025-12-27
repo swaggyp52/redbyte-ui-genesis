@@ -102,13 +102,16 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   // Subscribe to engine updates
   React.useEffect(() => {
     // Immediately sync circuit when engine changes
-    setCircuit(engine.getCircuit());
-    setSignals(engine.getEngine().getAllSignals());
-
-    const interval = setInterval(() => {
-      setCircuit(engine.getCircuit());
+    const syncCircuit = () => {
+      const newCircuit = engine.getCircuit();
+      setCircuit(newCircuit);
       setSignals(engine.getEngine().getAllSignals());
-    }, 50);
+    };
+
+    syncCircuit();
+
+    // Poll more frequently (16ms ≈ 60fps) to ensure responsiveness
+    const interval = setInterval(syncCircuit, 16);
 
     return () => clearInterval(interval);
   }, [engine]);
