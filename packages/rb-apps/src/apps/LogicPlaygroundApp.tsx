@@ -660,25 +660,35 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
   const handleLoadExample = async (exampleId: ExampleId | '') => {
     if (!exampleId) return;
-    // Set hydration guard to prevent marking dirty during load
-    isHydratingRef.current = true;
-    const exampleData = await loadExample(exampleId);
-    const loadedCircuit = deserialize(exampleData);
-    setCircuit(loadedCircuit);
-    const newEngine = new CircuitEngine(loadedCircuit);
-    setEngine(newEngine);
-    setTickEngine(new TickEngine(newEngine, tickRate));
-    setCurrentFileId(null);
-    setSelectedFileId('');
-    setSelectedExampleId(exampleId);
-    setIsDirty(true);
-    // Clear history and set initial state when loading example
-    clearHistory();
-    pushState(loadedCircuit);
-    // Clear pattern recognition state
-    lastRecognizedPatternRef.current = null;
-    // Clear hydration guard after load completes
-    isHydratingRef.current = false;
+
+    try {
+      // Set hydration guard to prevent marking dirty during load
+      isHydratingRef.current = true;
+      const exampleData = await loadExample(exampleId);
+      const loadedCircuit = deserialize(exampleData);
+      setCircuit(loadedCircuit);
+      const newEngine = new CircuitEngine(loadedCircuit);
+      setEngine(newEngine);
+      setTickEngine(new TickEngine(newEngine, tickRate));
+      setCurrentFileId(null);
+      setSelectedFileId('');
+      setSelectedExampleId(exampleId);
+      setIsDirty(true);
+      // Clear history and set initial state when loading example
+      clearHistory();
+      pushState(loadedCircuit);
+      // Clear pattern recognition state
+      lastRecognizedPatternRef.current = null;
+      // Clear hydration guard after load completes
+      isHydratingRef.current = false;
+
+      const exampleName = examples.current.find((ex) => ex.id === exampleId)?.name ?? exampleId;
+      addToast(`Loaded example: ${exampleName}`, 'success');
+    } catch (error) {
+      isHydratingRef.current = false;
+      addToast(`Failed to load example: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      console.error('Error loading example:', error);
+    }
   };
 
   const handleLoadTutorialExample = async (filename: string) => {
@@ -1022,23 +1032,37 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
         <div className="w-px h-6 bg-gray-600" />
 
-        <select
-          value={viewMode}
-          onChange={(e) => {
-            const newViewMode = e.target.value as ViewMode;
-            setViewMode(newViewMode);
-            // Update active views when in single mode
-            if (splitScreenMode === 'single') {
-              setActiveViews([newViewMode]);
-            }
-          }}
-          className="px-3 py-1 bg-gray-700 rounded"
-        >
-          <option value="circuit">Circuit</option>
-          <option value="schematic">Schematic</option>
-          <option value="oscilloscope">Oscilloscope</option>
-          <option value="3d">3D</option>
-        </select>
+        {/* View mode tabs */}
+        <div className="flex items-center gap-1">
+          {(['circuit', 'schematic', '3d', 'oscilloscope'] as const).map((mode) => {
+            const labels = {
+              circuit: 'Circuit',
+              schematic: 'Schematic',
+              '3d': '3D',
+              oscilloscope: 'Scope',
+            };
+            const isActive = splitScreenMode === 'single' ? activeViews[0] === mode : activeViews.includes(mode);
+            return (
+              <button
+                key={mode}
+                onClick={() => {
+                  setViewMode(mode);
+                  if (splitScreenMode === 'single') {
+                    setActiveViews([mode]);
+                  }
+                }}
+                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-cyan-600 text-white'
+                    : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                }`}
+                title={`Switch to ${labels[mode]} view`}
+              >
+                {labels[mode]}
+              </button>
+            );
+          })}
+        </div>
 
         <div className="w-px h-6 bg-gray-600" />
 
