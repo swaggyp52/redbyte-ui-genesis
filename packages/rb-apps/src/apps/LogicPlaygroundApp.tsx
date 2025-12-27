@@ -46,7 +46,6 @@ import { HierarchyBreadcrumbs } from '../components/HierarchyBreadcrumbs';
 import { KeyboardShortcutsHelp } from '../components/KeyboardShortcutsHelp';
 import { ComponentPalette } from '../components/ComponentPalette';
 import { QuickAddPalette } from '../components/QuickAddPalette';
-import { WelcomeOverlay } from '../components/WelcomeOverlay';
 import { StatusBar } from '../components/StatusBar';
 
 type ViewMode = 'circuit' | 'schematic' | 'oscilloscope' | '3d';
@@ -153,11 +152,6 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [inspectorMinimized, setInspectorMinimized] = useState(false);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(() => {
-    // Show welcome only on first visit
-    const hasVisited = localStorage.getItem('rblogic_has_visited');
-    return !hasVisited;
-  });
 
   const autosaveIntervalRef = useRef<number | null>(null);
   const historyDebounceRef = useRef<number | null>(null);
@@ -297,10 +291,6 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         e.preventDefault();
         if (showKeyboardHelp) setShowKeyboardHelp(false);
         if (showQuickAdd) setShowQuickAdd(false);
-        if (showWelcome) {
-          setShowWelcome(false);
-          localStorage.setItem('rblogic_has_visited', 'true');
-        }
       }
     };
 
@@ -311,7 +301,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [circuit, currentFileId, showKeyboardHelp, showQuickAdd, showWelcome]);
+  }, [circuit, currentFileId, showKeyboardHelp, showQuickAdd]);
 
   // Sync hierarchy circuit with main circuit
   useEffect(() => {
@@ -1591,13 +1581,13 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             isRunning={isRunning}
             getChipMetadata={getChipMetadataForNode}
             onNodeDoubleClick={handleEnterChip}
-            showCircuitHints={showCircuitHints}
+            showCircuitHints={false}
             onDismissCircuitHints={() => setShowCircuitHints(false)}
-            showSchematicHints={showSchematicHints}
+            showSchematicHints={false}
             onDismissSchematicHints={() => setShowSchematicHints(false)}
-            show3DHints={show3DHints}
+            show3DHints={false}
             onDismiss3DHints={() => setShow3DHints(false)}
-            showOscilloscopeHints={showOscilloscopeHints}
+            showOscilloscopeHints={false}
             onDismissOscilloscopeHints={() => setShowOscilloscopeHints(false)}
             onCircuitChange={(updatedCircuit) => {
               setCircuit(updatedCircuit);
@@ -1890,25 +1880,6 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         onSelectComponent={(type) => {
           handleAddNode(type);
           setShowQuickAdd(false);
-        }}
-      />
-
-      {/* Welcome Overlay */}
-      <WelcomeOverlay
-        isOpen={showWelcome}
-        onClose={() => {
-          setShowWelcome(false);
-          localStorage.setItem('rblogic_has_visited', 'true');
-        }}
-        onStartTutorial={() => {
-          setShowWelcome(false);
-          localStorage.setItem('rblogic_has_visited', 'true');
-          startTutorial();
-        }}
-        onLoadExample={(exampleId) => {
-          setShowWelcome(false);
-          localStorage.setItem('rblogic_has_visited', 'true');
-          handleLoadExample(exampleId as ExampleId);
         }}
       />
 
