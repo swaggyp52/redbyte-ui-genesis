@@ -47,7 +47,7 @@ const NODE_COLORS: Record<string, string> = {
   Counter4Bit: '#e879f9',
 };
 
-export const NodeView: React.FC<NodeViewProps> = ({
+const NodeViewComponent: React.FC<NodeViewProps> = ({
   node,
   camera,
   isSelected,
@@ -447,3 +447,41 @@ export const NodeView: React.FC<NodeViewProps> = ({
     </g>
   );
 };
+
+// Memoize NodeView to prevent unnecessary re-renders
+export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => {
+  // Only re-render if relevant props change
+  return (
+    prevProps.node.id === nextProps.node.id &&
+    prevProps.node.type === nextProps.node.type &&
+    prevProps.node.position.x === nextProps.node.position.x &&
+    prevProps.node.position.y === nextProps.node.position.y &&
+    prevProps.node.rotation === nextProps.node.rotation &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.camera.x === nextProps.camera.x &&
+    prevProps.camera.y === nextProps.camera.y &&
+    prevProps.camera.zoom === nextProps.camera.zoom &&
+    JSON.stringify(prevProps.node.state) === JSON.stringify(nextProps.node.state) &&
+    JSON.stringify(prevProps.chipMetadata) === JSON.stringify(nextProps.chipMetadata) &&
+    prevProps.wireStartPort?.nodeId === nextProps.wireStartPort?.nodeId &&
+    prevProps.wireStartPort?.portName === nextProps.wireStartPort?.portName &&
+    // Check if relevant signals changed
+    (() => {
+      // Get all ports for this node
+      const getPorts = (nodeType: string) => {
+        if (nodeType === 'AND' || nodeType === 'NAND') return ['a', 'b', 'out'];
+        if (nodeType === 'OR' || nodeType === 'NOR' || nodeType === 'XOR' || nodeType === 'XNOR') return ['a', 'b', 'out'];
+        if (nodeType === 'NOT') return ['in', 'out'];
+        return ['in', 'out'];
+      };
+
+      const ports = getPorts(prevProps.node.type);
+      for (const port of ports) {
+        const prevSignal = prevProps.signals?.get(`${prevProps.node.id}.${port}`);
+        const nextSignal = nextProps.signals?.get(`${nextProps.node.id}.${port}`);
+        if (prevSignal !== nextSignal) return false;
+      }
+      return true;
+    })()
+  );
+});

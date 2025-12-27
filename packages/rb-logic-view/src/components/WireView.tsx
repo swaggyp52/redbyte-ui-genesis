@@ -15,7 +15,7 @@ export interface WireViewProps {
   signal?: 0 | 1;
 }
 
-export const WireView: React.FC<WireViewProps> = ({
+const WireViewComponent: React.FC<WireViewProps> = ({
   connection,
   nodes,
   camera,
@@ -63,3 +63,28 @@ export const WireView: React.FC<WireViewProps> = ({
     </g>
   );
 };
+
+// Memoize WireView to prevent unnecessary re-renders
+export const WireView = React.memo(WireViewComponent, (prevProps, nextProps) => {
+  // Only re-render if relevant props change
+  const prevFromNode = prevProps.nodes.find((n) => n.id === prevProps.connection.from.nodeId);
+  const nextFromNode = nextProps.nodes.find((n) => n.id === nextProps.connection.from.nodeId);
+  const prevToNode = prevProps.nodes.find((n) => n.id === prevProps.connection.to.nodeId);
+  const nextToNode = nextProps.nodes.find((n) => n.id === nextProps.connection.to.nodeId);
+
+  return (
+    prevProps.connection.from.nodeId === nextProps.connection.from.nodeId &&
+    prevProps.connection.from.portName === nextProps.connection.from.portName &&
+    prevProps.connection.to.nodeId === nextProps.connection.to.nodeId &&
+    prevProps.connection.to.portName === nextProps.connection.to.portName &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.signal === nextProps.signal &&
+    prevProps.camera.x === nextProps.camera.x &&
+    prevProps.camera.y === nextProps.camera.y &&
+    prevProps.camera.zoom === nextProps.camera.zoom &&
+    prevFromNode?.position.x === nextFromNode?.position.x &&
+    prevFromNode?.position.y === nextFromNode?.position.y &&
+    prevToNode?.position.x === nextToNode?.position.x &&
+    prevToNode?.position.y === nextToNode?.position.y
+  );
+});

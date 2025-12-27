@@ -43,6 +43,7 @@ import { useViewStateStore } from '../stores/viewStateStore';
 import { setGlobalViewStateSync } from '@redbyte/rb-logic-view';
 import { useHierarchyStore } from '../stores/hierarchyStore';
 import { HierarchyBreadcrumbs } from '../components/HierarchyBreadcrumbs';
+import { KeyboardShortcutsHelp } from '../components/KeyboardShortcutsHelp';
 
 type ViewMode = 'circuit' | 'schematic' | 'oscilloscope' | '3d';
 
@@ -146,6 +147,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [isDraggingInspector, setIsDraggingInspector] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [inspectorMinimized, setInspectorMinimized] = useState(false);
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
 
   const autosaveIntervalRef = useRef<number | null>(null);
   const historyDebounceRef = useRef<number | null>(null);
@@ -159,6 +161,57 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   useEffect(() => {
     setGlobalViewStateSync(useViewStateStore);
   }, []);
+
+  // Crash recovery: Save to localStorage every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      try {
+        const backup = {
+          circuit: serialize(circuit),
+          timestamp: Date.now(),
+          fileId: currentFileId,
+        };
+        localStorage.setItem('rblogic_crash_backup', JSON.stringify(backup));
+      } catch (error) {
+        console.error('Crash backup error:', error);
+      }
+    }, 10000); // Every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [circuit, currentFileId]);
+
+  // Crash recovery: Check for backup on mount
+  useEffect(() => {
+    try {
+      const backupStr = localStorage.getItem('rblogic_crash_backup');
+      if (backupStr) {
+        const backup = JSON.parse(backupStr);
+        const ageMinutes = (Date.now() - backup.timestamp) / 60000;
+
+        // Only restore if backup is less than 30 minutes old and we don't have a file loaded
+        if (ageMinutes < 30 && !initialFileId && !initialExampleId && backup.circuit) {
+          const shouldRestore = confirm(
+            `Found an auto-saved circuit from ${Math.round(ageMinutes)} minute(s) ago. Would you like to restore it?`
+          );
+
+          if (shouldRestore) {
+            const restored = deserialize(backup.circuit);
+            setCircuit(restored);
+            engine.setCircuit(restored);
+            setIsDirty(true);
+            addToast({
+              id: `restore-${Date.now()}`,
+              message: 'Circuit restored from auto-save',
+              type: 'success',
+              duration: 4000,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Crash recovery error:', error);
+    }
+  }, []); // Only run once on mount
 
   // Register saved chips on mount
   useEffect(() => {
@@ -219,6 +272,16 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         e.preventDefault();
         toggleEditMode();
       }
+      // ? to show keyboard shortcuts help
+      if (e.key === '?' && !isInputFocused()) {
+        e.preventDefault();
+        setShowKeyboardHelp(true);
+      }
+      // Escape to close keyboard shortcuts help
+      if (e.key === 'Escape' && showKeyboardHelp) {
+        e.preventDefault();
+        setShowKeyboardHelp(false);
+      }
     };
 
     const isInputFocused = () => {
@@ -228,7 +291,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [circuit, currentFileId]);
+  }, [circuit, currentFileId, showKeyboardHelp]);
 
   // Sync hierarchy circuit with main circuit
   useEffect(() => {
@@ -1792,6 +1855,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         onSelectChip={handleSelectChipFromLibrary}
         onDeleteChip={handleDeleteChip}
         onDragStart={handleNodeDragStart}
+      />
+
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp
+        isOpen={showKeyboardHelp}
+        onClose={() => setShowKeyboardHelp(false)}
       />
     </div>
   );

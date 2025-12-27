@@ -217,7 +217,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     setIsPanning(false);
   };
 
-  const handleNodeMove = (nodeId: string, x: number, y: number) => {
+  const handleNodeMove = React.useCallback((nodeId: string, x: number, y: number) => {
     const newX = shouldSnap ? snapToGrid(x, gridSize) : x;
     const newY = shouldSnap ? snapToGrid(y, gridSize) : y;
 
@@ -230,9 +230,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
     engine.setCircuit(updatedCircuit);
     setCircuit(updatedCircuit);
-  };
+  }, [circuit, shouldSnap, gridSize, engine]);
 
-  const handleToggleSwitch = (nodeId: string) => {
+  const handleToggleSwitch = React.useCallback((nodeId: string) => {
     const updatedCircuit = {
       ...circuit,
       nodes: circuit.nodes.map((n) => {
@@ -246,9 +246,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
     engine.setCircuit(updatedCircuit);
     setCircuit(updatedCircuit);
-  };
+  }, [circuit, engine]);
 
-  const handlePortClick = (nodeId: string, portName: string) => {
+  const handlePortClick = React.useCallback((nodeId: string, portName: string) => {
     if (editingState.wireStartPort) {
       // End wire
       const newConnection: Connection = {
@@ -268,9 +268,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       // Start wire
       startWire({ nodeId, portName });
     }
-  };
+  }, [circuit, editingState.wireStartPort, engine, endWire, startWire]);
 
-  const handleAddNode = (type: string) => {
+  const handleAddNode = React.useCallback((type: string) => {
     const newNode: Node = {
       id: `node_${Date.now()}`,
       type,
@@ -289,9 +289,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
     engine.setCircuit(updatedCircuit);
     setCircuit(updatedCircuit);
-  };
+  }, [circuit, camera, width, height, engine]);
 
-  const handleDelete = () => {
+  const handleDelete = React.useCallback(() => {
     const updatedCircuit = {
       nodes: circuit.nodes.filter((n) => !selection.nodes.has(n.id)),
       connections: circuit.connections.filter(
@@ -303,7 +303,50 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     engine.setCircuit(updatedCircuit);
     setCircuit(updatedCircuit);
     clearSelection();
-  };
+  }, [circuit, selection.nodes, engine, clearSelection]);
+
+  // Fit circuit to view
+  const fitToView = React.useCallback(() => {
+    if (circuit.nodes.length === 0) return;
+
+    // Calculate bounds
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+
+    circuit.nodes.forEach((node) => {
+      minX = Math.min(minX, node.position.x);
+      maxX = Math.max(maxX, node.position.x);
+      minY = Math.min(minY, node.position.y);
+      maxY = Math.max(maxY, node.position.y);
+    });
+
+    if (!isFinite(minX)) return;
+
+    // Add padding
+    const padding = 100;
+    const boundsWidth = maxX - minX + padding * 2;
+    const boundsHeight = maxY - minY + padding * 2;
+
+    // Calculate zoom to fit
+    const zoomX = width / boundsWidth;
+    const zoomY = height / boundsHeight;
+    const newZoom = Math.min(zoomX, zoomY, 2); // Max zoom of 2x
+
+    // Calculate center offset
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    setCamera({
+      x: width / 2 - centerX * newZoom,
+      y: height / 2 - centerY * newZoom,
+      zoom: newZoom,
+    });
+  }, [circuit.nodes, width, height, setCamera]);
+
+  // Reset view to default
+  const resetView = React.useCallback(() => {
+    setCamera({ x: 0, y: 0, zoom: 1 });
+  }, [setCamera]);
 
   // Keyboard handlers
   React.useEffect(() => {
@@ -315,6 +358,18 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         if (editingState.wireStartPort) {
           endWire();
         }
+      } else if (e.key === 'f' && (e.ctrlKey || e.metaKey)) {
+        // Ctrl/Cmd+F: Fit to view
+        e.preventDefault();
+        fitToView();
+      } else if (e.key === 'r' && (e.ctrlKey || e.metaKey)) {
+        // Ctrl/Cmd+R: Reset view
+        e.preventDefault();
+        resetView();
+      } else if (e.key === '0' && (e.ctrlKey || e.metaKey)) {
+        // Ctrl/Cmd+0: Reset zoom to 100%
+        e.preventDefault();
+        setCamera({ ...camera, zoom: 1 });
       }
     };
 
@@ -355,6 +410,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             <div><span className="text-cyan-400">Drag nodes:</span> Move components</div>
             <div><span className="text-cyan-400">Shift+Drag:</span> Pan view</div>
             <div><span className="text-cyan-400">Scroll:</span> Zoom</div>
+            <div><span className="text-cyan-400">Ctrl/Cmd+F:</span> Fit to view</div>
+            <div><span className="text-cyan-400">Ctrl/Cmd+R:</span> Reset view</div>
+            <div><span className="text-cyan-400">Ctrl/Cmd+0:</span> Reset zoom</div>
             <div><span className="text-cyan-400">Delete/Backspace:</span> Remove selected</div>
             <div className="pt-2 border-t border-gray-700 text-gray-500">
               Selections sync across all views!
