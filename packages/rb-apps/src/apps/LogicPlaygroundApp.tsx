@@ -44,6 +44,10 @@ import { setGlobalViewStateSync } from '@redbyte/rb-logic-view';
 import { useHierarchyStore } from '../stores/hierarchyStore';
 import { HierarchyBreadcrumbs } from '../components/HierarchyBreadcrumbs';
 import { KeyboardShortcutsHelp } from '../components/KeyboardShortcutsHelp';
+import { ComponentPalette } from '../components/ComponentPalette';
+import { QuickAddPalette } from '../components/QuickAddPalette';
+import { WelcomeOverlay } from '../components/WelcomeOverlay';
+import { StatusBar } from '../components/StatusBar';
 
 type ViewMode = 'circuit' | 'schematic' | 'oscilloscope' | '3d';
 
@@ -148,6 +152,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [inspectorMinimized, setInspectorMinimized] = useState(false);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(() => {
+    // Show welcome only on first visit
+    const hasVisited = localStorage.getItem('rblogic_has_visited');
+    return !hasVisited;
+  });
 
   const autosaveIntervalRef = useRef<number | null>(null);
   const historyDebounceRef = useRef<number | null>(null);
@@ -277,10 +287,20 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         e.preventDefault();
         setShowKeyboardHelp(true);
       }
-      // Escape to close keyboard shortcuts help
-      if (e.key === 'Escape' && showKeyboardHelp) {
+      // Space to show quick add palette
+      if (e.key === ' ' && !isInputFocused() && !showQuickAdd) {
         e.preventDefault();
-        setShowKeyboardHelp(false);
+        setShowQuickAdd(true);
+      }
+      // Escape to close modals
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (showKeyboardHelp) setShowKeyboardHelp(false);
+        if (showQuickAdd) setShowQuickAdd(false);
+        if (showWelcome) {
+          setShowWelcome(false);
+          localStorage.setItem('rblogic_has_visited', 'true');
+        }
       }
     };
 
@@ -291,7 +311,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [circuit, currentFileId, showKeyboardHelp]);
+  }, [circuit, currentFileId, showKeyboardHelp, showQuickAdd, showWelcome]);
 
   // Sync hierarchy circuit with main circuit
   useEffect(() => {
@@ -1861,6 +1881,48 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       <KeyboardShortcutsHelp
         isOpen={showKeyboardHelp}
         onClose={() => setShowKeyboardHelp(false)}
+      />
+
+      {/* Quick Add Palette */}
+      <QuickAddPalette
+        isOpen={showQuickAdd}
+        onClose={() => setShowQuickAdd(false)}
+        onSelectComponent={(type) => {
+          handleAddNode(type);
+          setShowQuickAdd(false);
+        }}
+      />
+
+      {/* Welcome Overlay */}
+      <WelcomeOverlay
+        isOpen={showWelcome}
+        onClose={() => {
+          setShowWelcome(false);
+          localStorage.setItem('rblogic_has_visited', 'true');
+        }}
+        onStartTutorial={() => {
+          setShowWelcome(false);
+          localStorage.setItem('rblogic_has_visited', 'true');
+          startTutorial();
+        }}
+        onLoadExample={(exampleId) => {
+          setShowWelcome(false);
+          localStorage.setItem('rblogic_has_visited', 'true');
+          handleLoadExample(exampleId as ExampleId);
+        }}
+      />
+
+      {/* Status Bar */}
+      <StatusBar
+        nodeCount={circuit.nodes.length}
+        connectionCount={circuit.connections.length}
+        selectedCount={0}
+        isRunning={isRunning}
+        tickRate={currentHz}
+        isDirty={isDirty}
+        canUndo={canUndo()}
+        canRedo={canRedo()}
+        viewMode={splitScreenMode ? `${activeViews[0]}+${activeViews[1]}` : viewMode}
       />
     </div>
   );

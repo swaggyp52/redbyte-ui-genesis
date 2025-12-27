@@ -46,11 +46,24 @@ const WireViewComponent: React.FC<WireViewProps> = ({
   };
 
   const strokeColor = signal === 1 ? '#22c55e' : '#6b7280';
+  const isActive = signal === 1;
 
   return (
     <g onClick={handleClick} style={{ cursor: 'pointer' }}>
       {/* Invisible wider path for easier clicking */}
       <path d={path} fill="none" stroke="transparent" strokeWidth={10} />
+
+      {/* Glow effect for active wires */}
+      {isActive && (
+        <path
+          d={path}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth={6}
+          opacity={0.3}
+          filter="blur(3px)"
+        />
+      )}
 
       {/* Visible wire */}
       <path
@@ -60,6 +73,21 @@ const WireViewComponent: React.FC<WireViewProps> = ({
         strokeWidth={isSelected ? 3 : 2}
         opacity={signal === 1 ? 1 : 0.5}
       />
+
+      {/* Animated signal flow particles */}
+      {isActive && (
+        <>
+          <circle r="3" fill={strokeColor} opacity={0.9}>
+            <animateMotion dur="1.5s" repeatCount="indefinite" path={path} />
+          </circle>
+          <circle r="3" fill={strokeColor} opacity={0.9}>
+            <animateMotion dur="1.5s" repeatCount="indefinite" path={path} begin="0.5s" />
+          </circle>
+          <circle r="3" fill={strokeColor} opacity={0.9}>
+            <animateMotion dur="1.5s" repeatCount="indefinite" path={path} begin="1s" />
+          </circle>
+        </>
+      )}
     </g>
   );
 };
