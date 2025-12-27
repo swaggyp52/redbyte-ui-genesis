@@ -304,6 +304,34 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
     return () => clearInterval(interval);
   }, [isRunning, engine]);
 
+  // Non-passive wheel event listener for zooming (React 19 compatibility)
+  React.useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = -e.deltaY * 0.001;
+      const newZoom = Math.max(0.25, Math.min(4, camera.zoom * (1 + delta)));
+
+      // Zoom towards cursor
+      const rect = svg.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const worldX = (mouseX - camera.x) / camera.zoom;
+      const worldY = (mouseY - camera.y) / camera.zoom;
+
+      setCamera({
+        x: mouseX - worldX * newZoom,
+        y: mouseY - worldY * newZoom,
+        zoom: newZoom,
+      });
+    };
+
+    svg.addEventListener('wheel', handleWheel, { passive: false });
+    return () => svg.removeEventListener('wheel', handleWheel);
+  }, [camera]);
+
   // Mouse handlers for pan/zoom
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
@@ -347,24 +375,6 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   const handleMouseUp = () => {
     setIsPanning(false);
     setDraggingNodeId(null);
-  };
-
-  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
-    e.preventDefault();
-    const delta = -e.deltaY * 0.001;
-    const newZoom = Math.max(0.25, Math.min(4, camera.zoom * (1 + delta)));
-
-    // Zoom towards cursor
-    const rect = svgRef.current?.getBoundingClientRect();
-    if (rect) {
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      const zoomFactor = newZoom / camera.zoom;
-      const newX = mouseX - (mouseX - camera.x) * zoomFactor;
-      const newY = mouseY - (mouseY - camera.y) * zoomFactor;
-
-      setCamera({ x: newX, y: newY, zoom: newZoom });
-    }
   };
 
   const handleNodeMouseDown = (e: React.MouseEvent, nodeId: string) => {
@@ -521,7 +531,6 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          onWheel={handleWheel}
         >
           {/* Grid pattern */}
           <defs>

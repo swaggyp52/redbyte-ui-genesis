@@ -550,7 +550,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       {/* Main oscilloscope display */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Toolbar */}
-        <div className="border-b border-gray-700 px-3 py-1.5 flex items-center gap-3 text-xs bg-gray-850 shrink-0">
+        <div className="border-b border-gray-700 px-3 py-1.5 flex items-center gap-2 text-xs bg-gray-850 shrink-0 flex-wrap">
           <div className="flex items-center gap-1.5">
             <label className="text-gray-500 text-xs">Time:</label>
             <select

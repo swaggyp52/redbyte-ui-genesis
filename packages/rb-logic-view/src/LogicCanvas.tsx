@@ -136,6 +136,21 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     return unsubscribe;
   }, [selectMultipleNodes]);
 
+  // Non-passive wheel event listener for zooming (React 19 compatibility)
+  React.useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.ctrlKey ? -e.deltaY * 0.5 : -e.deltaY;
+      zoomFn(delta, e.clientX, e.clientY);
+    };
+
+    svg.addEventListener('wheel', handleWheel, { passive: false });
+    return () => svg.removeEventListener('wheel', handleWheel);
+  }, [zoomFn]);
+
   // Mouse handlers for pan/zoom
   const [isPanning, setIsPanning] = React.useState(false);
   const [lastMouse, setLastMouse] = React.useState({ x: 0, y: 0 });
@@ -173,12 +188,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
   const handleMouseUp = () => {
     setIsPanning(false);
-  };
-
-  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
-    e.preventDefault();
-    const delta = e.ctrlKey ? -e.deltaY * 0.5 : -e.deltaY;
-    zoomFn(delta, e.clientX, e.clientY);
   };
 
   const handleNodeMove = (nodeId: string, x: number, y: number) => {
@@ -338,7 +347,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onWheel={handleWheel}
       >
         {/* Grid */}
         {renderGrid(camera, width, height, {
