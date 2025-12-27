@@ -24,6 +24,11 @@ const Scene: React.FC<{
   engine: CircuitEngine;
   viewStateStore?: any;
 }> = ({ engine, viewStateStore }) => {
+  // Safety check: ensure engine has getCircuit method
+  if (!engine || typeof engine.getCircuit !== 'function') {
+    return null;
+  }
+
   const signals = use3DEngineSync(engine);
   const adapter = React.useMemo(() => new ViewAdapter(engine, '3d'), [engine]);
   const viewState = React.useMemo(() => adapter.computeViewState(), [adapter]);
