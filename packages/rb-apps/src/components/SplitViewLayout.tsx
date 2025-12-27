@@ -19,6 +19,10 @@ interface SplitViewLayoutProps {
   isRunning: boolean;
   onCircuitChange: (circuit: Circuit) => void;
   viewStateStore?: any;
+  showCircuitHints?: boolean;
+  onDismissCircuitHints?: () => void;
+  showOscilloscopeHints?: boolean;
+  onDismissOscilloscopeHints?: () => void;
 }
 
 interface ViewRendererProps {
@@ -31,6 +35,10 @@ interface ViewRendererProps {
   viewStateStore?: any;
   width?: number;
   height?: number;
+  showCircuitHints?: boolean;
+  onDismissCircuitHints?: () => void;
+  showOscilloscopeHints?: boolean;
+  onDismissOscilloscopeHints?: () => void;
 }
 
 const ViewRenderer: React.FC<ViewRendererProps> = ({
@@ -43,6 +51,10 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   viewStateStore,
   width,
   height,
+  showCircuitHints,
+  onDismissCircuitHints,
+  showOscilloscopeHints,
+  onDismissOscilloscopeHints,
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = React.useState({ width: 800, height: 600 });
@@ -76,6 +88,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
             width={dimensions.width}
             height={dimensions.height}
             showToolbar={false}
+            showHints={showCircuitHints}
+            onDismissHints={onDismissCircuitHints}
           />
         </div>
       );
@@ -137,6 +151,10 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   isRunning,
   onCircuitChange,
   viewStateStore,
+  showCircuitHints,
+  onDismissCircuitHints,
+  showOscilloscopeHints,
+  onDismissOscilloscopeHints,
 }) => {
   // Safety check: ensure engine and circuit are defined
   if (!engine || !tickEngine || !circuit) {

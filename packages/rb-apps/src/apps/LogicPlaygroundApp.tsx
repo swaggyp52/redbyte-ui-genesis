@@ -134,6 +134,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [recognizedPattern, setRecognizedPattern] = useState<RecognizedPattern | null>(null);
   const [showTraceViewer, setShowTraceViewer] = useState(false);
   const [traceSnapshots, setTraceSnapshots] = useState<any[]>([]);
+  const [showCircuitHints, setShowCircuitHints] = useState(true);
+  const [showOscilloscopeHints, setShowOscilloscopeHints] = useState(true);
+  const [inspectorPosition, setInspectorPosition] = useState({ x: 0, y: 0 });
+  const [isDraggingInspector, setIsDraggingInspector] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   const autosaveIntervalRef = useRef<number | null>(null);
   const historyDebounceRef = useRef<number | null>(null);
@@ -875,6 +880,40 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     addToast('Circuit reset', 'info');
   };
 
+  const handleInspectorMouseDown = (e: React.MouseEvent) => {
+    setIsDraggingInspector(true);
+    const rect = (e.currentTarget as HTMLElement).closest('.inspector-panel')?.getBoundingClientRect();
+    if (rect) {
+      setDragOffset({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+    }
+  };
+
+  React.useEffect(() => {
+    if (!isDraggingInspector) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setInspectorPosition({
+        x: e.clientX - dragOffset.x,
+        y: e.clientY - dragOffset.y,
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingInspector(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingInspector, dragOffset]);
+
   // Memoize chips array to avoid multiple store calls during render
   const allChips = React.useMemo(() => getAllChips(), [getAllChips]);
 
@@ -1317,8 +1356,19 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           {tutorialActive && <TutorialOverlay onLoadExample={handleLoadTutorialExample} />}
 
           {/* Floating Inspector Panel */}
-          <div className="absolute bottom-4 right-4 w-80 max-h-[60vh] bg-gray-850 border border-gray-700 rounded-lg shadow-2xl overflow-hidden z-40 flex flex-col">
-            <div className="px-3 py-2 bg-gray-800 border-b border-gray-700 flex items-center justify-between cursor-move">
+          <div
+            className="inspector-panel absolute w-80 max-h-[60vh] bg-gray-850 border border-gray-700 rounded-lg shadow-2xl overflow-hidden z-40 flex flex-col"
+            style={{
+              left: inspectorPosition.x !== 0 ? `${inspectorPosition.x}px` : 'auto',
+              top: inspectorPosition.x !== 0 ? `${inspectorPosition.y}px` : 'auto',
+              bottom: inspectorPosition.x === 0 ? '1rem' : 'auto',
+              right: inspectorPosition.x === 0 ? '1rem' : 'auto',
+            }}
+          >
+            <div
+              className="px-3 py-2 bg-gray-800 border-b border-gray-700 flex items-center justify-between cursor-move select-none"
+              onMouseDown={handleInspectorMouseDown}
+            >
               <h3 className="text-sm font-semibold text-cyan-400">Inspector</h3>
               <div className="text-xs text-gray-500">Drag to move</div>
             </div>

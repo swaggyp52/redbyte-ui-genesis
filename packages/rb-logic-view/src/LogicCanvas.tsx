@@ -17,6 +17,8 @@ export interface LogicCanvasProps {
   height?: number;
   showToolbar?: boolean;
   getChipMetadata?: (nodeType: string) => ChipMetadata | undefined;
+  showHints?: boolean;
+  onDismissHints?: () => void;
 }
 
 export const LogicCanvas: React.FC<LogicCanvasProps> = ({
@@ -25,6 +27,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   height = 600,
   showToolbar = true,
   getChipMetadata,
+  showHints = true,
+  onDismissHints,
 }) => {
   const {
     camera,
@@ -47,6 +51,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const [circuit, setCircuit] = React.useState(engine.getCircuit());
   const [signals, setSignals] = React.useState<Map<string, 0 | 1>>(new Map());
   const svgRef = React.useRef<SVGSVGElement>(null);
+  const lastSyncedSelection = React.useRef<Set<string>>(new Set());
 
   // Subscribe to engine updates
   React.useEffect(() => {
@@ -66,23 +71,24 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     const unsubscribe = globalStore.subscribe(
       (state: any) => {
         // Sync global selection to local selection
-        const globalNodeIds = Array.from(state.selectedNodeIds || new Set());
-        const localNodeIds = Array.from(selection.nodes);
+        const globalNodeIds = state.selectedNodeIds || new Set();
 
-        // Only update if selections are different to avoid infinite loops
+        // Check if this is different from what we last synced
+        const lastSynced = lastSyncedSelection.current;
         const isDifferent =
-          globalNodeIds.length !== localNodeIds.length ||
-          globalNodeIds.some((id: string) => !selection.nodes.has(id));
+          globalNodeIds.size !== lastSynced.size ||
+          Array.from(globalNodeIds).some((id: string) => !lastSynced.has(id));
 
         if (isDifferent) {
+          lastSyncedSelection.current = new Set(globalNodeIds);
           // Pass syncToGlobal: false to prevent circular updates
-          selectMultipleNodes(globalNodeIds, false);
+          selectMultipleNodes(Array.from(globalNodeIds), false);
         }
       }
     );
 
     return unsubscribe;
-  }, [selection.nodes, selectMultipleNodes]);
+  }, [selectMultipleNodes]);
 
   // Mouse handlers for pan/zoom
   const [isPanning, setIsPanning] = React.useState(false);
@@ -225,10 +231,21 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       )}
 
       {/* Interaction Hints */}
-      {!showToolbar && circuit.nodes.length === 0 && (
+      {!showToolbar && circuit.nodes.length === 0 && showHints && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-gray-800/90 border border-gray-700 rounded-lg p-4 text-xs text-gray-300 space-y-2 max-w-sm">
-            <div className="font-semibold text-white mb-2">⚡ Circuit View</div>
+          <div className="bg-gray-800/90 border border-gray-700 rounded-lg p-4 text-xs text-gray-300 space-y-2 max-w-sm pointer-events-auto">
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-semibold text-white">⚡ Circuit View</div>
+              {onDismissHints && (
+                <button
+                  onClick={onDismissHints}
+                  className="text-gray-500 hover:text-gray-300 transition-colors"
+                  title="Dismiss hints"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
             <div><span className="text-cyan-400">Drag from left panel:</span> Add components</div>
             <div><span className="text-cyan-400">Click port → Click port:</span> Connect wires</div>
             <div><span className="text-cyan-400">Drag nodes:</span> Move components</div>
