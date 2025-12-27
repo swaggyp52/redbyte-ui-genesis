@@ -10,6 +10,11 @@ export function use3DEngineSync(engine: CircuitEngine) {
   const frameIdRef = useRef<number>();
 
   useEffect(() => {
+    // Guard against undefined engine or missing methods
+    if (!engine || typeof engine.getAllSignals !== 'function') {
+      return;
+    }
+
     let lastUpdate = Date.now();
 
     const updateSignals = () => {
