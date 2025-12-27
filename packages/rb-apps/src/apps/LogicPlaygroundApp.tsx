@@ -1315,16 +1315,24 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           />
 
           {tutorialActive && <TutorialOverlay onLoadExample={handleLoadTutorialExample} />}
-        </div>
 
-        {/* Right Sidebar - Inspector */}
-        <PropertyInspector
-          circuit={circuit}
-          engine={engine}
-          isRunning={isRunning}
-          onNodeUpdate={handleNodeUpdate}
-          onConnectionDelete={handleConnectionDelete}
-        />
+          {/* Floating Inspector Panel */}
+          <div className="absolute bottom-4 right-4 w-80 max-h-[60vh] bg-gray-850 border border-gray-700 rounded-lg shadow-2xl overflow-hidden z-40 flex flex-col">
+            <div className="px-3 py-2 bg-gray-800 border-b border-gray-700 flex items-center justify-between cursor-move">
+              <h3 className="text-sm font-semibold text-cyan-400">Inspector</h3>
+              <div className="text-xs text-gray-500">Drag to move</div>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <PropertyInspector
+                circuit={circuit}
+                engine={engine}
+                isRunning={isRunning}
+                onNodeUpdate={handleNodeUpdate}
+                onConnectionDelete={handleConnectionDelete}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Loading Overlay */}

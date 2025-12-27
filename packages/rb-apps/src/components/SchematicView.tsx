@@ -470,7 +470,10 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
     <div className="w-full h-full bg-gray-900 flex flex-col overflow-hidden">
       {/* Compact header */}
       <div className="px-3 py-2 flex items-center justify-between border-b border-gray-700 shrink-0">
-        <h2 className="text-sm font-semibold text-white">Schematic View</h2>
+        <div>
+          <h2 className="text-sm font-semibold text-white">📐 Schematic View</h2>
+          <div className="text-[10px] text-gray-500">IEEE/ANSI symbols</div>
+        </div>
         <div className="text-xs text-gray-400">
           {circuit.nodes.length} components • {circuit.connections.length} connections
         </div>
@@ -478,6 +481,22 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
 
       {/* SVG canvas fills remaining space */}
       <div className="flex-1 relative">
+        {/* Interaction hints */}
+        {circuit.nodes.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <div className="bg-gray-800/90 border border-gray-700 rounded-lg p-4 text-xs text-gray-300 space-y-2 max-w-sm">
+              <div className="font-semibold text-white mb-2">📐 Schematic View</div>
+              <div><span className="text-cyan-400">Drag nodes:</span> Reposition components</div>
+              <div><span className="text-cyan-400">Click node:</span> Select (syncs to all views)</div>
+              <div><span className="text-cyan-400">Shift+Drag:</span> Pan view</div>
+              <div><span className="text-cyan-400">Scroll:</span> Zoom</div>
+              <div className="pt-2 border-t border-gray-700 text-gray-500">
+                Add components in Circuit view to see them here!
+              </div>
+            </div>
+          </div>
+        )}
+
         <svg
           ref={svgRef}
           width={width}

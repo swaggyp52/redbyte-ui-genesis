@@ -197,13 +197,31 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         />
       )}
 
+      {/* Interaction Hints */}
+      {!showToolbar && circuit.nodes.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="bg-gray-800/90 border border-gray-700 rounded-lg p-4 text-xs text-gray-300 space-y-2 max-w-sm">
+            <div className="font-semibold text-white mb-2">⚡ Circuit View</div>
+            <div><span className="text-cyan-400">Drag from left panel:</span> Add components</div>
+            <div><span className="text-cyan-400">Click port → Click port:</span> Connect wires</div>
+            <div><span className="text-cyan-400">Drag nodes:</span> Move components</div>
+            <div><span className="text-cyan-400">Shift+Drag:</span> Pan view</div>
+            <div><span className="text-cyan-400">Scroll:</span> Zoom</div>
+            <div><span className="text-cyan-400">Delete/Backspace:</span> Remove selected</div>
+            <div className="pt-2 border-t border-gray-700 text-gray-500">
+              Selections sync across all views!
+            </div>
+          </div>
+        </div>
+      )}
+
       <svg
         ref={svgRef}
         width={width}
         height={height}
         style={{
           background: '#0a0a0a',
-          cursor: isPanning ? 'grabbing' : 'default',
+          cursor: isPanning ? 'grabbing' : editingState.wireStartPort ? 'crosshair' : 'default',
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}

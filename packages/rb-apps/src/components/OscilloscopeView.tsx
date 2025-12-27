@@ -636,7 +636,24 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
         </div>
 
         {/* Canvas */}
-        <div className="flex-1 flex items-center justify-center bg-gray-950 p-2">
+        <div className="flex-1 flex items-center justify-center bg-gray-950 p-2 relative">
+          {/* Interaction hints when no probes */}
+          {probes.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+              <div className="bg-gray-800/90 border border-gray-700 rounded-lg p-4 text-xs text-gray-300 space-y-2 max-w-sm">
+                <div className="font-semibold text-white mb-2">📊 Oscilloscope</div>
+                <div><span className="text-cyan-400">Add probes →</span> Monitor signals over time</div>
+                <div><span className="text-cyan-400">Auto-Probe:</span> Auto-add selected nodes</div>
+                <div><span className="text-cyan-400">Click canvas:</span> Place cursor</div>
+                <div><span className="text-cyan-400">Shift+Click:</span> Add 2nd cursor for Δt</div>
+                <div><span className="text-cyan-400">Run circuit:</span> See waveforms</div>
+                <div className="pt-2 border-t border-gray-700 text-gray-500">
+                  Enable Auto-Probe, then select nodes in other views!
+                </div>
+              </div>
+            </div>
+          )}
+
           <canvas
             ref={canvasRef}
             width={width - 20}
@@ -650,7 +667,8 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       {/* Right sidebar - Probes */}
       <div className="w-64 border-l border-gray-700 flex flex-col bg-gray-850 overflow-hidden">
         <div className="px-3 py-2 border-b border-gray-700 shrink-0">
-          <h3 className="text-sm font-semibold mb-2 text-cyan-400">Probes</h3>
+          <h3 className="text-sm font-semibold text-cyan-400">📊 Probes</h3>
+          <div className="text-[10px] text-gray-500 mt-0.5">Monitor signal values</div>
 
           {/* Add probe section */}
           <div className="space-y-1.5">
