@@ -62,18 +62,30 @@ export function deserialize(json: SerializedCircuitV1 | string): Circuit {
       };
     }),
     connections: connections.map(conn => {
-      // Handle both legacy format (from/to as strings or objects with id) and new format (from/to with nodeId/portName)
-      const from = typeof conn.from === 'string'
-        ? { nodeId: conn.from, portName: (conn as any).fromPort || 'out' }
-        : conn.from.nodeId
-        ? { nodeId: conn.from.nodeId, portName: conn.from.portName }
-        : { nodeId: (conn.from as any).id || '', portName: (conn as any).fromPort || 'out' };
+      // Handle both legacy format (from/to as strings) and new format (from/to with nodeId/portName)
+      let from, to;
 
-      const to = typeof conn.to === 'string'
-        ? { nodeId: conn.to, portName: (conn as any).toPort || 'in' }
-        : conn.to.nodeId
-        ? { nodeId: conn.to.nodeId, portName: conn.to.portName }
-        : { nodeId: (conn.to as any).id || '', portName: (conn as any).toPort || 'in' };
+      if (typeof conn.from === 'string') {
+        // Legacy: from is a string node ID
+        from = { nodeId: conn.from, portName: (conn as any).fromPort || 'out' };
+      } else if (conn.from && typeof conn.from === 'object' && 'nodeId' in conn.from) {
+        // New format: from has nodeId and portName
+        from = { nodeId: conn.from.nodeId, portName: conn.from.portName };
+      } else {
+        // Fallback for malformed data
+        from = { nodeId: '', portName: 'out' };
+      }
+
+      if (typeof conn.to === 'string') {
+        // Legacy: to is a string node ID
+        to = { nodeId: conn.to, portName: (conn as any).toPort || 'in' };
+      } else if (conn.to && typeof conn.to === 'object' && 'nodeId' in conn.to) {
+        // New format: to has nodeId and portName
+        to = { nodeId: conn.to.nodeId, portName: conn.to.portName };
+      } else {
+        // Fallback for malformed data
+        to = { nodeId: '', portName: 'in' };
+      }
 
       return { from, to };
     }),
