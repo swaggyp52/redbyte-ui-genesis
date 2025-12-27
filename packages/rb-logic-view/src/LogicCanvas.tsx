@@ -105,6 +105,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     }
   };
 
+  const [mousePosition, setMousePosition] = React.useState({ x: 0, y: 0 });
+
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     if (isPanning) {
       const dx = e.clientX - lastMouse.x;
@@ -113,9 +115,13 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       setLastMouse({ x: e.clientX, y: e.clientY });
     }
 
-    // Update wire preview if drawing
-    if (editingState.wireStartPort) {
-      // Wire preview would be drawn here
+    // Track mouse position for wire preview
+    if (svgRef.current) {
+      const rect = svgRef.current.getBoundingClientRect();
+      setMousePosition({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
     }
   };
 
@@ -298,6 +304,29 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           );
         })}
 
+        {/* Wire Preview - shows while drawing */}
+        {editingState.wireStartPort && (() => {
+          const startNode = circuit.nodes.find(n => n.id === editingState.wireStartPort!.nodeId);
+          if (!startNode) return null;
+
+          const startX = startNode.position.x * camera.zoom + camera.x;
+          const startY = startNode.position.y * camera.zoom + camera.y;
+
+          return (
+            <line
+              x1={startX}
+              y1={startY}
+              x2={mousePosition.x}
+              y2={mousePosition.y}
+              stroke="#00ffff"
+              strokeWidth="2"
+              strokeDasharray="5,5"
+              opacity="0.7"
+              pointerEvents="none"
+            />
+          );
+        })()}
+
         {/* Nodes */}
         {circuit.nodes.map((node) => (
           <NodeView
@@ -310,6 +339,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             onPortClick={handlePortClick}
             signals={signals}
             chipMetadata={getChipMetadata?.(node.type)}
+            wireStartPort={editingState.wireStartPort}
           />
         ))}
       </svg>

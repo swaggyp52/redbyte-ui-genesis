@@ -21,6 +21,8 @@ interface SplitViewLayoutProps {
   viewStateStore?: any;
   showCircuitHints?: boolean;
   onDismissCircuitHints?: () => void;
+  showSchematicHints?: boolean;
+  onDismissSchematicHints?: () => void;
   showOscilloscopeHints?: boolean;
   onDismissOscilloscopeHints?: () => void;
   getChipMetadata?: (nodeType: string) => any;
@@ -38,6 +40,8 @@ interface ViewRendererProps {
   height?: number;
   showCircuitHints?: boolean;
   onDismissCircuitHints?: () => void;
+  showSchematicHints?: boolean;
+  onDismissSchematicHints?: () => void;
   showOscilloscopeHints?: boolean;
   onDismissOscilloscopeHints?: () => void;
   getChipMetadata?: (nodeType: string) => any;
@@ -55,6 +59,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   height,
   showCircuitHints,
   onDismissCircuitHints,
+  showSchematicHints,
+  onDismissSchematicHints,
   showOscilloscopeHints,
   onDismissOscilloscopeHints,
   getChipMetadata,
@@ -96,6 +102,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
             onDismissCircuitHints={onDismissCircuitHints}
+            showSchematicHints={showSchematicHints}
+            onDismissSchematicHints={onDismissSchematicHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
@@ -112,6 +120,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
             width={dimensions.width}
             height={dimensions.height}
             onCircuitChange={onCircuitChange}
+            showHints={showSchematicHints}
+            onDismissHints={onDismissSchematicHints}
           />
         </div>
       );
@@ -142,6 +152,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
             onDismissCircuitHints={onDismissCircuitHints}
+            showSchematicHints={showSchematicHints}
+            onDismissSchematicHints={onDismissSchematicHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
@@ -196,6 +208,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
             onDismissCircuitHints={onDismissCircuitHints}
+            showSchematicHints={showSchematicHints}
+            onDismissSchematicHints={onDismissSchematicHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
         />
@@ -219,6 +233,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
             onDismissCircuitHints={onDismissCircuitHints}
+            showSchematicHints={showSchematicHints}
+            onDismissSchematicHints={onDismissSchematicHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
@@ -235,6 +251,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
             onDismissCircuitHints={onDismissCircuitHints}
+            showSchematicHints={showSchematicHints}
+            onDismissSchematicHints={onDismissSchematicHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
@@ -259,6 +277,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
             onDismissCircuitHints={onDismissCircuitHints}
+            showSchematicHints={showSchematicHints}
+            onDismissSchematicHints={onDismissSchematicHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
@@ -275,6 +295,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
             onDismissCircuitHints={onDismissCircuitHints}
+            showSchematicHints={showSchematicHints}
+            onDismissSchematicHints={onDismissSchematicHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
@@ -299,6 +321,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
             onDismissCircuitHints={onDismissCircuitHints}
+            showSchematicHints={showSchematicHints}
+            onDismissSchematicHints={onDismissSchematicHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
@@ -315,6 +339,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
             onDismissCircuitHints={onDismissCircuitHints}
+            showSchematicHints={showSchematicHints}
+            onDismissSchematicHints={onDismissSchematicHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
@@ -331,6 +357,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
             onDismissCircuitHints={onDismissCircuitHints}
+            showSchematicHints={showSchematicHints}
+            onDismissSchematicHints={onDismissSchematicHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />
@@ -347,6 +375,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             getChipMetadata={getChipMetadata}
             showCircuitHints={showCircuitHints}
             onDismissCircuitHints={onDismissCircuitHints}
+            showSchematicHints={showSchematicHints}
+            onDismissSchematicHints={onDismissSchematicHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           />

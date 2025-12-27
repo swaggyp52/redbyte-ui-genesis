@@ -3,7 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React from 'react';
-import type { Node } from '@redbyte/rb-logic-core';
+import type { Node, PortRef } from '@redbyte/rb-logic-core';
 import type { Camera } from '../useLogicViewStore';
 
 export interface ChipMetadata {
@@ -23,6 +23,7 @@ export interface NodeViewProps {
   onPortClick?: (nodeId: string, portName: string) => void;
   signals?: Map<string, 0 | 1>;
   chipMetadata?: ChipMetadata; // Metadata for custom chips
+  wireStartPort?: PortRef; // Port where wire drawing started
 }
 
 const NODE_COLORS: Record<string, string> = {
@@ -53,9 +54,11 @@ export const NodeView: React.FC<NodeViewProps> = ({
   onPortClick,
   signals,
   chipMetadata,
+  wireStartPort,
 }) => {
   const [isDragging, setIsDragging] = React.useState(false);
   const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 });
+  const [hoveredPort, setHoveredPort] = React.useState<string | null>(null);
 
   const screenX = node.position.x * camera.zoom + camera.x;
   const screenY = node.position.y * camera.zoom + camera.y;
@@ -160,20 +163,36 @@ export const NodeView: React.FC<NodeViewProps> = ({
         {/* Input ports */}
         {chipMetadata.inputs.map((input, i) => {
           const yPos = -chipHeight / 2 + portSpacing * (i + 1);
+          const isWireStart = wireStartPort?.nodeId === node.id && wireStartPort?.portName === input.id;
+          const isHovered = hoveredPort === input.id;
+          const shouldGlow = isWireStart || (isHovered && wireStartPort);
+
           return (
             <g key={`input-${input.id}`}>
+              {shouldGlow && (
+                <circle
+                  cx={-size / 2}
+                  cy={yPos}
+                  r={8}
+                  fill="#00ffff"
+                  opacity={0.4}
+                  style={{ pointerEvents: 'none' }}
+                />
+              )}
               <circle
                 cx={-size / 2}
                 cy={yPos}
                 r={4}
-                fill="#3b82f6"
+                fill={isWireStart ? "#00ffff" : "#3b82f6"}
                 stroke="#fff"
-                strokeWidth={1}
+                strokeWidth={isHovered ? 2 : 1}
                 style={{ cursor: 'crosshair' }}
                 onClick={(e) => {
                   e.stopPropagation();
                   onPortClick?.(node.id, input.id);
                 }}
+                onMouseEnter={() => setHoveredPort(input.id)}
+                onMouseLeave={() => setHoveredPort(null)}
               />
               <text
                 x={-size / 2 - 8}
@@ -194,20 +213,36 @@ export const NodeView: React.FC<NodeViewProps> = ({
         {chipMetadata.outputs.map((output, i) => {
           const yPos = -chipHeight / 2 + portSpacing * (i + 1);
           const outputSignal = signals?.get(`${node.id}.${output.id}`) === 1;
+          const isWireStart = wireStartPort?.nodeId === node.id && wireStartPort?.portName === output.id;
+          const isHovered = hoveredPort === output.id;
+          const shouldGlow = isWireStart || (isHovered && wireStartPort);
+
           return (
             <g key={`output-${output.id}`}>
+              {shouldGlow && (
+                <circle
+                  cx={size / 2}
+                  cy={yPos}
+                  r={8}
+                  fill="#00ffff"
+                  opacity={0.4}
+                  style={{ pointerEvents: 'none' }}
+                />
+              )}
               <circle
                 cx={size / 2}
                 cy={yPos}
                 r={4}
-                fill={outputSignal ? '#22c55e' : '#6b7280'}
+                fill={isWireStart ? "#00ffff" : outputSignal ? '#22c55e' : '#6b7280'}
                 stroke="#fff"
-                strokeWidth={1}
+                strokeWidth={isHovered ? 2 : 1}
                 style={{ cursor: 'crosshair' }}
                 onClick={(e) => {
                   e.stopPropagation();
                   onPortClick?.(node.id, output.id);
                 }}
+                onMouseEnter={() => setHoveredPort(output.id)}
+                onMouseLeave={() => setHoveredPort(null)}
               />
               <text
                 x={size / 2 + 8}
@@ -262,38 +297,78 @@ export const NodeView: React.FC<NodeViewProps> = ({
       </text>
 
       {/* Input port */}
-      {!['PowerSource', 'Clock'].includes(node.type) && (
-        <circle
-          cx={-size / 2}
-          cy={0}
-          r={4}
-          fill="#3b82f6"
-          stroke="#fff"
-          strokeWidth={1}
-          style={{ cursor: 'crosshair' }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onPortClick?.(node.id, 'in');
-          }}
-        />
-      )}
+      {!['PowerSource', 'Clock'].includes(node.type) && (() => {
+        const isWireStart = wireStartPort?.nodeId === node.id && wireStartPort?.portName === 'in';
+        const isHovered = hoveredPort === 'in';
+        const shouldGlow = isWireStart || (isHovered && wireStartPort);
+
+        return (
+          <g>
+            {shouldGlow && (
+              <circle
+                cx={-size / 2}
+                cy={0}
+                r={8}
+                fill="#00ffff"
+                opacity={0.4}
+                style={{ pointerEvents: 'none' }}
+              />
+            )}
+            <circle
+              cx={-size / 2}
+              cy={0}
+              r={4}
+              fill={isWireStart ? "#00ffff" : "#3b82f6"}
+              stroke="#fff"
+              strokeWidth={isHovered ? 2 : 1}
+              style={{ cursor: 'crosshair' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onPortClick?.(node.id, 'in');
+              }}
+              onMouseEnter={() => setHoveredPort('in')}
+              onMouseLeave={() => setHoveredPort(null)}
+            />
+          </g>
+        );
+      })()}
 
       {/* Output port */}
-      {!['Lamp'].includes(node.type) && (
-        <circle
-          cx={size / 2}
-          cy={0}
-          r={4}
-          fill={isActive ? '#22c55e' : '#6b7280'}
-          stroke="#fff"
-          strokeWidth={1}
-          style={{ cursor: 'crosshair' }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onPortClick?.(node.id, 'out');
-          }}
-        />
-      )}
+      {!['Lamp'].includes(node.type) && (() => {
+        const isWireStart = wireStartPort?.nodeId === node.id && wireStartPort?.portName === 'out';
+        const isHovered = hoveredPort === 'out';
+        const shouldGlow = isWireStart || (isHovered && wireStartPort);
+
+        return (
+          <g>
+            {shouldGlow && (
+              <circle
+                cx={size / 2}
+                cy={0}
+                r={8}
+                fill="#00ffff"
+                opacity={0.4}
+                style={{ pointerEvents: 'none' }}
+              />
+            )}
+            <circle
+              cx={size / 2}
+              cy={0}
+              r={4}
+              fill={isWireStart ? "#00ffff" : isActive ? '#22c55e' : '#6b7280'}
+              stroke="#fff"
+              strokeWidth={isHovered ? 2 : 1}
+              style={{ cursor: 'crosshair' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onPortClick?.(node.id, 'out');
+              }}
+              onMouseEnter={() => setHoveredPort('out')}
+              onMouseLeave={() => setHoveredPort(null)}
+            />
+          </g>
+        );
+      })()}
     </g>
   );
 };

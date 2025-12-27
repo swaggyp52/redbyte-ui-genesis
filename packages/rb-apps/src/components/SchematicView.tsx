@@ -15,6 +15,8 @@ interface SchematicViewProps {
   width?: number;
   height?: number;
   onCircuitChange?: (circuit: Circuit) => void;
+  showHints?: boolean;
+  onDismissHints?: () => void;
 }
 
 interface SchematicNode {
@@ -268,6 +270,8 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   width = 800,
   height = 600,
   onCircuitChange,
+  showHints = true,
+  onDismissHints,
 }) => {
   const [signals, setSignals] = React.useState<Map<string, Signal>>(new Map());
 
@@ -482,10 +486,21 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
       {/* SVG canvas fills remaining space */}
       <div className="flex-1 relative">
         {/* Interaction hints */}
-        {circuit.nodes.length === 0 && (
+        {circuit.nodes.length === 0 && showHints && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-            <div className="bg-gray-800/90 border border-gray-700 rounded-lg p-4 text-xs text-gray-300 space-y-2 max-w-sm">
-              <div className="font-semibold text-white mb-2">📐 Schematic View</div>
+            <div className="bg-gray-800/90 border border-gray-700 rounded-lg p-4 text-xs text-gray-300 space-y-2 max-w-sm pointer-events-auto">
+              <div className="flex items-center justify-between mb-2">
+                <div className="font-semibold text-white">📐 Schematic View</div>
+                {onDismissHints && (
+                  <button
+                    onClick={onDismissHints}
+                    className="text-gray-500 hover:text-gray-300 transition-colors"
+                    title="Dismiss hints"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
               <div><span className="text-cyan-400">Drag nodes:</span> Reposition components</div>
               <div><span className="text-cyan-400">Click node:</span> Select (syncs to all views)</div>
               <div><span className="text-cyan-400">Shift+Drag:</span> Pan view</div>

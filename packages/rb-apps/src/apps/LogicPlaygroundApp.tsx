@@ -135,6 +135,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [showTraceViewer, setShowTraceViewer] = useState(false);
   const [traceSnapshots, setTraceSnapshots] = useState<any[]>([]);
   const [showCircuitHints, setShowCircuitHints] = useState(true);
+  const [showSchematicHints, setShowSchematicHints] = useState(true);
   const [showOscilloscopeHints, setShowOscilloscopeHints] = useState(true);
   const [inspectorPosition, setInspectorPosition] = useState({ x: 0, y: 0 });
   const [isDraggingInspector, setIsDraggingInspector] = useState(false);
@@ -1333,6 +1334,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             getChipMetadata={getChipMetadataForNode}
             showCircuitHints={showCircuitHints}
             onDismissCircuitHints={() => setShowCircuitHints(false)}
+            showSchematicHints={showSchematicHints}
+            onDismissSchematicHints={() => setShowSchematicHints(false)}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={() => setShowOscilloscopeHints(false)}
             onCircuitChange={(updatedCircuit) => {
