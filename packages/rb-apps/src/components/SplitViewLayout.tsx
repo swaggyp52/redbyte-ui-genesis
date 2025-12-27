@@ -3,7 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React from 'react';
-import type { CircuitEngine, Circuit } from '@redbyte/rb-logic-core';
+import type { CircuitEngine, Circuit, TickEngine } from '@redbyte/rb-logic-core';
 import { LogicCanvas } from '@redbyte/rb-logic-view';
 import { Logic3DScene } from '@redbyte/rb-logic-3d';
 import { SchematicView } from './SchematicView';
@@ -14,6 +14,7 @@ interface SplitViewLayoutProps {
   mode: SplitScreenMode;
   views: ViewMode[];
   engine: CircuitEngine;
+  tickEngine: TickEngine;
   circuit: Circuit;
   isRunning: boolean;
   onCircuitChange: (circuit: Circuit) => void;
@@ -23,6 +24,7 @@ interface SplitViewLayoutProps {
 interface ViewRendererProps {
   view: ViewMode;
   engine: CircuitEngine;
+  tickEngine: TickEngine;
   circuit: Circuit;
   isRunning: boolean;
   onCircuitChange: (circuit: Circuit) => void;
@@ -34,6 +36,7 @@ interface ViewRendererProps {
 const ViewRenderer: React.FC<ViewRendererProps> = ({
   view,
   engine,
+  tickEngine,
   circuit,
   isRunning,
   onCircuitChange,
@@ -53,8 +56,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
       return (
         <div style={containerStyle}>
           <LogicCanvas
-            circuit={circuit}
-            isRunning={isRunning}
+            engine={tickEngine}
             width={width}
             height={height}
             showToolbar={false}
@@ -114,13 +116,14 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   mode,
   views,
   engine,
+  tickEngine,
   circuit,
   isRunning,
   onCircuitChange,
   viewStateStore,
 }) => {
   // Safety check: ensure engine and circuit are defined
-  if (!engine || !circuit) {
+  if (!engine || !tickEngine || !circuit) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-gray-900 text-gray-500">
         Initializing circuit engine...
@@ -135,6 +138,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
         <ViewRenderer
           view={views[0] || 'circuit'}
           engine={engine}
+          tickEngine={tickEngine}
           circuit={circuit}
           isRunning={isRunning}
           onCircuitChange={onCircuitChange}
@@ -152,6 +156,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           <ViewRenderer
             view={views[0] || 'circuit'}
             engine={engine}
+            tickEngine={tickEngine}
             circuit={circuit}
             isRunning={isRunning}
             onCircuitChange={onCircuitChange}
@@ -162,6 +167,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           <ViewRenderer
             view={views[1] || 'schematic'}
             engine={engine}
+            tickEngine={tickEngine}
             circuit={circuit}
             isRunning={isRunning}
             onCircuitChange={onCircuitChange}
@@ -180,6 +186,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           <ViewRenderer
             view={views[0] || 'circuit'}
             engine={engine}
+            tickEngine={tickEngine}
             circuit={circuit}
             isRunning={isRunning}
             onCircuitChange={onCircuitChange}
@@ -190,6 +197,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           <ViewRenderer
             view={views[1] || 'oscilloscope'}
             engine={engine}
+            tickEngine={tickEngine}
             circuit={circuit}
             isRunning={isRunning}
             onCircuitChange={onCircuitChange}
@@ -208,6 +216,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           <ViewRenderer
             view={views[0] || 'circuit'}
             engine={engine}
+            tickEngine={tickEngine}
             circuit={circuit}
             isRunning={isRunning}
             onCircuitChange={onCircuitChange}
@@ -218,6 +227,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           <ViewRenderer
             view={views[1] || 'schematic'}
             engine={engine}
+            tickEngine={tickEngine}
             circuit={circuit}
             isRunning={isRunning}
             onCircuitChange={onCircuitChange}
@@ -228,6 +238,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           <ViewRenderer
             view={views[2] || '3d'}
             engine={engine}
+            tickEngine={tickEngine}
             circuit={circuit}
             isRunning={isRunning}
             onCircuitChange={onCircuitChange}
@@ -238,6 +249,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           <ViewRenderer
             view={views[3] || 'oscilloscope'}
             engine={engine}
+            tickEngine={tickEngine}
             circuit={circuit}
             isRunning={isRunning}
             onCircuitChange={onCircuitChange}

@@ -1231,6 +1231,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             mode={splitScreenMode}
             views={activeViews}
             engine={engine}
+            tickEngine={tickEngine}
             circuit={circuit}
             isRunning={isRunning}
             onCircuitChange={(updatedCircuit) => {
