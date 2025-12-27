@@ -5,6 +5,13 @@
 import { create } from 'zustand';
 import type { PortRef } from '@redbyte/rb-logic-core';
 
+// Global view state sync (optional import for apps that use it)
+let globalViewStateStore: any = null;
+
+export function setGlobalViewStateSync(store: any) {
+  globalViewStateStore = store;
+}
+
 export interface Camera {
   x: number;
   y: number;
@@ -110,6 +117,12 @@ export const useLogicViewStore = create<LogicViewState>((set, get) => ({
       } else {
         nodes.add(nodeId);
       }
+
+      // Sync with global view state if available
+      if (globalViewStateStore) {
+        globalViewStateStore.getState().selectNodes(Array.from(nodes), false);
+      }
+
       return {
         selection: {
           ...state.selection,
@@ -126,6 +139,12 @@ export const useLogicViewStore = create<LogicViewState>((set, get) => ({
       } else {
         wires.add(wireId);
       }
+
+      // Sync with global view state if available
+      if (globalViewStateStore) {
+        globalViewStateStore.getState().selectWires(Array.from(wires), false);
+      }
+
       return {
         selection: {
           ...state.selection,
@@ -134,21 +153,33 @@ export const useLogicViewStore = create<LogicViewState>((set, get) => ({
       };
     }),
 
-  clearSelection: () =>
-    set({
+  clearSelection: () => {
+    // Sync with global view state if available
+    if (globalViewStateStore) {
+      globalViewStateStore.getState().clearSelection();
+    }
+
+    return set({
       selection: {
         nodes: new Set(),
         wires: new Set(),
       },
-    }),
+    });
+  },
 
-  selectMultipleNodes: (nodeIds) =>
-    set({
+  selectMultipleNodes: (nodeIds) => {
+    // Sync with global view state if available
+    if (globalViewStateStore) {
+      globalViewStateStore.getState().selectNodes(nodeIds, false);
+    }
+
+    return set({
       selection: {
         nodes: new Set(nodeIds),
         wires: new Set(),
       },
-    }),
+    });
+  },
 
   // Tool mode
   toolMode: 'select',

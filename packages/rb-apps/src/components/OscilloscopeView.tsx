@@ -4,6 +4,13 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { CircuitEngine, Node, Signal } from '@redbyte/rb-logic-core';
+import { useViewStateStore } from '../stores/viewStateStore';
+import {
+  calculateMeasurements,
+  detectTrigger,
+  type SignalSample,
+  type SignalMeasurements,
+} from '../utils/signalMeasurements';
 
 interface ProbeConfig {
   id: string;
@@ -14,14 +21,25 @@ interface ProbeConfig {
   enabled: boolean;
 }
 
-interface SignalSample {
-  timestamp: number;
-  value: Signal;
-}
-
 interface ProbeData {
   probeId: string;
   samples: SignalSample[];
+  measurements: SignalMeasurements | null;
+}
+
+interface Cursor {
+  id: string;
+  time: number;
+  color: string;
+}
+
+interface TriggerConfig {
+  enabled: boolean;
+  probeId: string | null;
+  type: 'edge' | 'level';
+  edge: 'rising' | 'falling';
+  level: number;
+  holdOff: number;
 }
 
 interface OscilloscopeViewProps {
@@ -58,16 +76,73 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   const [probeData, setProbeData] = useState<Map<string, ProbeData>>(new Map());
   const [timeScale, setTimeScale] = useState(10); // seconds visible
   const [voltageScale, setVoltageScale] = useState(1.5); // vertical scale
-  const [triggerEnabled, setTriggerEnabled] = useState(false);
-  const [triggerProbeId, setTriggerProbeId] = useState<string | null>(null);
-  const [triggerEdge, setTriggerEdge] = useState<'rising' | 'falling'>('rising');
-  const [cursorTime, setCursorTime] = useState<number | null>(null);
+
+  // Trigger configuration
+  const [triggerConfig, setTriggerConfig] = useState<TriggerConfig>({
+    enabled: false,
+    probeId: null,
+    type: 'edge',
+    edge: 'rising',
+    level: 0.5,
+    holdOff: 0,
+  });
+
+  // Cursors
+  const [cursors, setCursors] = useState<Cursor[]>([]);
   const [showGrid, setShowGrid] = useState(true);
   const [selectedNodeId, setSelectedNodeId] = useState<string>('');
   const [selectedPortName, setSelectedPortName] = useState<string>('output');
 
+  // Clock tracking
+  const [totalSamples, setTotalSamples] = useState(0);
+  const [measurementUpdateCounter, setMeasurementUpdateCounter] = useState(0);
+
   const samplingIntervalRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
+  const measurementUpdateRef = useRef<number | null>(null);
+
+  // Get global selection state for auto-probe
+  const { selectedNodeIds, autoProbeEnabled, setAutoProbeEnabled } = useViewStateStore();
+
+  // Auto-probe selected nodes
+  useEffect(() => {
+    if (!autoProbeEnabled) return;
+
+    // Get currently probed node IDs
+    const currentProbedNodeIds = new Set(probes.map((p) => p.nodeId));
+
+    // Find newly selected nodes that aren't already probed
+    const newlySelectedNodes = Array.from(selectedNodeIds).filter(
+      (nodeId) => !currentProbedNodeIds.has(nodeId)
+    );
+
+    if (newlySelectedNodes.length === 0) return;
+
+    // Add probes for newly selected nodes
+    const newProbes: ProbeConfig[] = [];
+    let colorIndex = probes.length % COLORS.length;
+
+    newlySelectedNodes.forEach((nodeId) => {
+      const node = circuit.nodes.find((n) => n.id === nodeId);
+      if (!node) return;
+
+      const probeId = `probe-${Date.now()}-${nodeId}`;
+      newProbes.push({
+        id: probeId,
+        nodeId,
+        portName: 'output', // Default to output port
+        label: `${node.type}[output]`,
+        color: COLORS[colorIndex],
+        enabled: true,
+      });
+
+      colorIndex = (colorIndex + 1) % COLORS.length;
+    });
+
+    if (newProbes.length > 0) {
+      setProbes((prev) => [...prev, ...newProbes]);
+    }
+  }, [selectedNodeIds, autoProbeEnabled, circuit.nodes, probes]);
 
   // Sample signals from probes
   const sampleSignals = useCallback(() => {
@@ -93,7 +168,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
         // Get or create probe data
         let data = newData.get(probe.id);
         if (!data) {
-          data = { probeId: probe.id, samples: [] };
+          data = { probeId: probe.id, samples: [], measurements: null };
           newData.set(probe.id, data);
         }
 
@@ -109,6 +184,9 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
         }
       });
 
+      // Increment sample counter
+      setTotalSamples((prev) => prev + probes.filter((p) => p.enabled).length);
+
       return newData;
     });
   }, [isRunning, probes, circuit.nodes, engine]);
@@ -118,14 +196,24 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     if (isRunning) {
       // Reset start time when starting
       startTimeRef.current = Date.now();
+      setTotalSamples(0);
 
       // Start sampling
       samplingIntervalRef.current = window.setInterval(sampleSignals, SAMPLE_INTERVAL);
+
+      // Start measurement updates (every 1 second)
+      measurementUpdateRef.current = window.setInterval(() => {
+        setMeasurementUpdateCounter((prev) => prev + 1);
+      }, 1000);
     } else {
       // Stop sampling
       if (samplingIntervalRef.current) {
         clearInterval(samplingIntervalRef.current);
         samplingIntervalRef.current = null;
+      }
+      if (measurementUpdateRef.current) {
+        clearInterval(measurementUpdateRef.current);
+        measurementUpdateRef.current = null;
       }
     }
 
@@ -133,8 +221,26 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       if (samplingIntervalRef.current) {
         clearInterval(samplingIntervalRef.current);
       }
+      if (measurementUpdateRef.current) {
+        clearInterval(measurementUpdateRef.current);
+      }
     };
   }, [isRunning, sampleSignals]);
+
+  // Update measurements periodically
+  useEffect(() => {
+    if (!isRunning) return;
+
+    setProbeData((prevData) => {
+      const newData = new Map(prevData);
+      newData.forEach((data) => {
+        if (data.samples.length >= 2) {
+          data.measurements = calculateMeasurements(data.samples);
+        }
+      });
+      return newData;
+    });
+  }, [measurementUpdateCounter, isRunning]);
 
   // Render waveforms
   useEffect(() => {
@@ -220,13 +326,15 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       ctx.stroke();
     });
 
-    // Draw cursor
-    if (cursorTime !== null) {
-      const timeOffset = currentTime - cursorTime;
+    // Draw cursors
+    cursors.forEach((cursor, index) => {
+      const timeOffset = currentTime - cursor.time;
       const cursorX = width - (timeOffset / timeScale) * width;
 
-      ctx.strokeStyle = '#ffff00';
-      ctx.lineWidth = 1;
+      if (cursorX < 0 || cursorX > width) return; // Cursor off screen
+
+      ctx.strokeStyle = cursor.color;
+      ctx.lineWidth = 2;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
       ctx.moveTo(cursorX, 0);
@@ -234,10 +342,22 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Draw cursor time label
-      ctx.fillStyle = '#ffff00';
+      // Draw cursor label
+      ctx.fillStyle = cursor.color;
       ctx.font = '12px monospace';
-      ctx.fillText(`T: ${cursorTime.toFixed(3)}s`, cursorX + 5, 20);
+      const label = index === 0 ? 'C1' : 'C2';
+      ctx.fillText(`${label}: ${cursor.time.toFixed(3)}s`, cursorX + 5, 20 + index * 20);
+    });
+
+    // Draw delta measurements between cursors
+    if (cursors.length === 2) {
+      const dt = Math.abs(cursors[1].time - cursors[0].time);
+      const freq = dt > 0 ? 1 / dt : 0;
+
+      ctx.fillStyle = '#00ff00';
+      ctx.font = '14px monospace';
+      ctx.fillText(`Δt: ${dt.toFixed(3)}s`, width - 150, 40);
+      ctx.fillText(`Δf: ${freq.toFixed(2)}Hz`, width - 150, 60);
     }
 
     // Draw time labels
@@ -248,7 +368,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       const x = (i / 10) * width;
       ctx.fillText(`${time.toFixed(1)}s`, x + 2, height - 5);
     }
-  }, [probes, probeData, width, height, timeScale, voltageScale, cursorTime, showGrid]);
+  }, [probes, probeData, width, height, timeScale, voltageScale, cursors, showGrid]);
 
   // Add probe
   const handleAddProbe = () => {
@@ -310,7 +430,98 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     const timeOffset = ((width - x) / width) * timeScale;
     const clickedTime = currentTime - timeOffset;
 
-    setCursorTime(clickedTime);
+    // Shift+click adds second cursor
+    if (e.shiftKey && cursors.length < 2) {
+      const cursorColor = cursors.length === 0 ? '#ffff00' : '#ff00ff';
+      setCursors([...cursors, {
+        id: `cursor-${Date.now()}`,
+        time: clickedTime,
+        color: cursorColor,
+      }]);
+    } else {
+      // Regular click replaces first cursor
+      setCursors([{
+        id: `cursor-${Date.now()}`,
+        time: clickedTime,
+        color: '#ffff00',
+      }]);
+    }
+  };
+
+  // Export functions
+  const exportAsCSV = () => {
+    if (probeData.size === 0) return;
+
+    // Build CSV content
+    const headers = ['Time (s)', ...probes.filter((p) => p.enabled).map((p) => p.label)];
+    const rows: string[][] = [headers];
+
+    // Get all timestamps
+    const allTimestamps = new Set<number>();
+    probeData.forEach((data) => {
+      data.samples.forEach((sample) => allTimestamps.add(sample.timestamp));
+    });
+
+    // Sort timestamps
+    const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b);
+
+    // Build rows
+    sortedTimestamps.forEach((timestamp) => {
+      const row = [timestamp.toFixed(6)];
+      probes.filter((p) => p.enabled).forEach((probe) => {
+        const data = probeData.get(probe.id);
+        const sample = data?.samples.find((s) => s.timestamp === timestamp);
+        row.push(sample ? String(sample.value) : '-');
+      });
+      rows.push(row);
+    });
+
+    // Convert to CSV string
+    const csvContent = rows.map((row) => row.join(',')).join('\n');
+
+    // Download
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `waveform-export-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportAsJSON = () => {
+    if (probeData.size === 0) return;
+
+    const exportData = {
+      metadata: {
+        exportTime: new Date().toISOString(),
+        timeScale,
+        voltageScale,
+        sampleRate: 1000 / SAMPLE_INTERVAL,
+        totalSamples,
+      },
+      probes: probes.filter((p) => p.enabled).map((probe) => {
+        const data = probeData.get(probe.id);
+        return {
+          id: probe.id,
+          nodeId: probe.nodeId,
+          portName: probe.portName,
+          label: probe.label,
+          color: probe.color,
+          samples: data?.samples || [],
+          measurements: data?.measurements || null,
+        };
+      }),
+    };
+
+    // Download
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `waveform-export-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -368,7 +579,55 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
             <span className="text-gray-400">Grid</span>
           </label>
 
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={autoProbeEnabled}
+              onChange={(e) => setAutoProbeEnabled(e.target.checked)}
+              className="rounded"
+            />
+            <span className="text-gray-400">Auto-Probe</span>
+          </label>
+
+          <button
+            onClick={exportAsCSV}
+            disabled={probeData.size === 0}
+            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Export as CSV"
+          >
+            CSV
+          </button>
+
+          <button
+            onClick={exportAsJSON}
+            disabled={probeData.size === 0}
+            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Export as JSON"
+          >
+            JSON
+          </button>
+
           <div className="flex-1" />
+
+          {/* Clock display */}
+          <div className="flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">Time:</span>
+              <span className="font-mono text-cyan-300">
+                {((Date.now() - startTimeRef.current) / 1000).toFixed(2)}s
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">Samples:</span>
+              <span className="font-mono text-cyan-300">{totalSamples}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">Rate:</span>
+              <span className="font-mono text-cyan-300">{1000 / SAMPLE_INTERVAL}Hz</span>
+            </div>
+          </div>
+
+          <div className="w-px h-6 bg-gray-600" />
 
           <div className="text-gray-400 text-xs">
             {isRunning ? (
@@ -483,48 +742,96 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
                       {probeData.get(probe.id)?.samples.length ?? 0} samples
                     </div>
                   </div>
+
+                  {/* Signal measurements */}
+                  {probeData.get(probe.id)?.measurements && (
+                    <div className="mt-2 pt-2 border-t border-gray-700 space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Freq:</span>
+                        <span className="font-mono">
+                          {probeData.get(probe.id)?.measurements?.frequency?.toFixed(2) ?? '-'}Hz
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Period:</span>
+                        <span className="font-mono">
+                          {probeData.get(probe.id)?.measurements?.period?.toFixed(3) ?? '-'}s
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Duty:</span>
+                        <span className="font-mono">
+                          {probeData.get(probe.id)?.measurements?.dutyCycle?.toFixed(1) ?? '-'}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Measurements */}
-        {cursorTime !== null && (
+        {/* Cursor measurements */}
+        {cursors.length > 0 && (
           <div className="p-4 border-t border-gray-700 bg-gray-900">
             <h4 className="text-sm font-semibold mb-2 text-yellow-400">
               Cursor Measurements
             </h4>
-            <div className="space-y-1 text-xs">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Time:</span>
-                <span className="font-mono">{cursorTime.toFixed(3)}s</span>
-              </div>
-              {probes
-                .filter((p) => p.enabled)
-                .map((probe) => {
-                  const data = probeData.get(probe.id);
-                  if (!data) return null;
+            <div className="space-y-2 text-xs">
+              {cursors.map((cursor, index) => (
+                <div key={cursor.id} className="space-y-1">
+                  <div className="flex justify-between">
+                    <span style={{ color: cursor.color }}>
+                      C{index + 1} Time:
+                    </span>
+                    <span className="font-mono">{cursor.time.toFixed(3)}s</span>
+                  </div>
+                  {probes
+                    .filter((p) => p.enabled)
+                    .map((probe) => {
+                      const data = probeData.get(probe.id);
+                      if (!data || data.samples.length === 0) return null;
 
-                  // Find closest sample to cursor
-                  const closestSample = data.samples.reduce(
-                    (prev, curr) =>
-                      Math.abs(curr.timestamp - cursorTime) <
-                      Math.abs(prev.timestamp - cursorTime)
-                        ? curr
-                        : prev,
-                    data.samples[0]
-                  );
+                      // Find closest sample to cursor
+                      const closestSample = data.samples.reduce(
+                        (prev, curr) =>
+                          Math.abs(curr.timestamp - cursor.time) <
+                          Math.abs(prev.timestamp - cursor.time)
+                            ? curr
+                            : prev,
+                        data.samples[0]
+                      );
 
-                  return (
-                    <div key={probe.id} className="flex justify-between">
-                      <span style={{ color: probe.color }}>{probe.label}:</span>
-                      <span className="font-mono">
-                        {closestSample?.value ?? '-'}
-                      </span>
-                    </div>
-                  );
-                })}
+                      return (
+                        <div key={`${cursor.id}-${probe.id}`} className="flex justify-between pl-4">
+                          <span style={{ color: probe.color }}>{probe.label}:</span>
+                          <span className="font-mono">
+                            {closestSample?.value ?? '-'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              ))}
+
+              {/* Delta measurements */}
+              {cursors.length === 2 && (
+                <div className="mt-2 pt-2 border-t border-gray-700 space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-green-400">Δt:</span>
+                    <span className="font-mono">
+                      {Math.abs(cursors[1].time - cursors[0].time).toFixed(3)}s
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-green-400">Δf:</span>
+                    <span className="font-mono">
+                      {(1 / Math.abs(cursors[1].time - cursors[0].time)).toFixed(2)}Hz
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

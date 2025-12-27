@@ -2,9 +2,11 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useMemo } from 'react';
-import type { Circuit, Node, Connection, Signal } from '@redbyte/rb-logic-core';
+import React, { useMemo, useState, useRef } from 'react';
+import type { Circuit, Node, Connection, Signal, PortRef } from '@redbyte/rb-logic-core';
 import { CircuitEngine } from '@redbyte/rb-logic-core';
+import { useViewStateStore } from '../stores/viewStateStore';
+import { getPortPositions, findNearestPort, type PortPosition } from './schematic/SchematicPortDetector';
 
 interface SchematicViewProps {
   circuit: Circuit;
@@ -12,6 +14,7 @@ interface SchematicViewProps {
   isRunning: boolean;
   width?: number;
   height?: number;
+  onCircuitChange?: (circuit: Circuit) => void;
 }
 
 interface SchematicNode {
@@ -264,8 +267,24 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   isRunning,
   width = 800,
   height = 600,
+  onCircuitChange,
 }) => {
   const [signals, setSignals] = React.useState<Map<string, Signal>>(new Map());
+
+  // Camera state for pan/zoom
+  const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [lastMouse, setLastMouse] = useState({ x: 0, y: 0 });
+
+  // Editing state
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [wireStartPort, setWireStartPort] = useState<PortRef | null>(null);
+
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  // Get global selection state
+  const { selectedNodeIds, selectNodes } = useViewStateStore();
 
   // Update signals in real-time
   React.useEffect(() => {
@@ -281,13 +300,98 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
     return () => clearInterval(interval);
   }, [isRunning, engine]);
 
-  // Layout nodes in a simple grid-based layout
+  // Mouse handlers for pan/zoom
+  const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
+      // Middle mouse or shift+click for panning
+      setIsPanning(true);
+      setLastMouse({ x: e.clientX, y: e.clientY });
+    } else if (e.button === 0) {
+      // Left click on background clears selection
+      selectNodes([], false);
+      setWireStartPort(null);
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (isPanning) {
+      const dx = e.clientX - lastMouse.x;
+      const dy = e.clientY - lastMouse.y;
+      setCamera((prev) => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
+      setLastMouse({ x: e.clientX, y: e.clientY });
+    }
+
+    if (draggingNodeId && svgRef.current) {
+      const rect = svgRef.current.getBoundingClientRect();
+      const x = (e.clientX - rect.left - camera.x) / camera.zoom - dragOffset.x;
+      const y = (e.clientY - rect.top - camera.y) / camera.zoom - dragOffset.y;
+
+      // Update node position
+      const updatedCircuit = {
+        ...circuit,
+        nodes: circuit.nodes.map((n) =>
+          n.id === draggingNodeId ? { ...n, position: { x, y } } : n
+        ),
+      };
+
+      if (onCircuitChange) {
+        onCircuitChange(updatedCircuit);
+      }
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsPanning(false);
+    setDraggingNodeId(null);
+  };
+
+  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    e.preventDefault();
+    const delta = -e.deltaY * 0.001;
+    const newZoom = Math.max(0.25, Math.min(4, camera.zoom * (1 + delta)));
+
+    // Zoom towards cursor
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (rect) {
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const zoomFactor = newZoom / camera.zoom;
+      const newX = mouseX - (mouseX - camera.x) * zoomFactor;
+      const newY = mouseY - (mouseY - camera.y) * zoomFactor;
+
+      setCamera({ x: newX, y: newY, zoom: newZoom });
+    }
+  };
+
+  const handleNodeMouseDown = (e: React.MouseEvent, nodeId: string) => {
+    e.stopPropagation();
+
+    if (e.button === 0 && !e.shiftKey) {
+      // Start dragging
+      const node = circuit.nodes.find((n) => n.id === nodeId);
+      if (node && svgRef.current) {
+        const rect = svgRef.current.getBoundingClientRect();
+        const mouseX = (e.clientX - rect.left - camera.x) / camera.zoom;
+        const mouseY = (e.clientY - rect.top - camera.y) / camera.zoom;
+
+        setDraggingNodeId(nodeId);
+        setDragOffset({
+          x: mouseX - node.position.x,
+          y: mouseY - node.position.y,
+        });
+
+        // Select the node
+        selectNodes([nodeId], e.ctrlKey || e.metaKey);
+      }
+    }
+  };
+
+  // Layout nodes using circuit positions
   const schematicNodes = useMemo<SchematicNode[]>(() => {
-    // Use the circuit's existing positions but scale them for schematic view
     return circuit.nodes.map((node) => ({
       id: node.id,
-      x: node.x * 0.8 + 100, // Scale and offset for better spacing
-      y: node.y * 0.8 + 50,
+      x: node.position.x,
+      y: node.position.y,
       type: node.type,
       symbol: node.type,
     }));
@@ -335,9 +439,15 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
         </div>
 
         <svg
-          width={Math.max(width, 1200)}
-          height={Math.max(height, 800)}
+          ref={svgRef}
+          width={width}
+          height={height}
           className="border border-gray-700 rounded bg-gray-850"
+          style={{ cursor: isPanning ? 'grabbing' : draggingNodeId ? 'move' : 'default' }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onWheel={handleWheel}
         >
           {/* Grid pattern */}
           <defs>
@@ -352,8 +462,10 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
           </defs>
           <rect width="100%" height="100%" fill="url(#schematic-grid)" />
 
-          {/* Render wires */}
-          <g className="wires">
+          {/* Camera transform group */}
+          <g transform={`translate(${camera.x},${camera.y}) scale(${camera.zoom})`}>
+            {/* Render wires */}
+            <g className="wires">
             {schematicWires.map((wire, i) => {
               const pathData = wire.points
                 .map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x},${p.y}`)
@@ -390,35 +502,64 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
             })}
           </g>
 
-          {/* Render components */}
-          <g className="components">
-            {schematicNodes.map((node) => {
-              const nodeSignals = engine.getNodeOutputs(node.id);
-              const outputSignal = Object.values(nodeSignals)[0] ?? 0;
+            {/* Render components */}
+            <g className="components">
+              {schematicNodes.map((node) => {
+                const nodeSignals = engine.getNodeOutputs(node.id);
+                const outputSignal = Object.values(nodeSignals)[0] ?? 0;
+                const isSelected = selectedNodeIds.has(node.id);
 
-              return (
-                <g key={node.id}>
-                  <GateSymbols
-                    type={node.type}
-                    x={node.x}
-                    y={node.y}
-                    signal={isRunning ? outputSignal : undefined}
-                  />
-                  {/* Node label */}
-                  <text
-                    x={node.x + 25}
-                    y={node.y - 8}
-                    textAnchor="middle"
-                    fontSize="10"
-                    fill="#9ca3af"
-                    className="select-none"
-                  >
-                    {node.type}
-                  </text>
-                </g>
-              );
-            })}
-          </g>
+                return (
+                  <g key={node.id}>
+                    {/* Selection highlight */}
+                    {isSelected && (
+                      <rect
+                        x={node.x - 10}
+                        y={node.y - 10}
+                        width="70"
+                        height="60"
+                        rx="4"
+                        fill="none"
+                        stroke="#3b82f6"
+                        strokeWidth="2"
+                        opacity="0.5"
+                      />
+                    )}
+
+                    {/* Interactive hit-box */}
+                    <rect
+                      x={node.x - 5}
+                      y={node.y - 5}
+                      width="60"
+                      height="50"
+                      fill="transparent"
+                      style={{ cursor: 'move' }}
+                      onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
+                    />
+
+                    <GateSymbols
+                      type={node.type}
+                      x={node.x}
+                      y={node.y}
+                      signal={isRunning ? outputSignal : undefined}
+                    />
+
+                    {/* Node label */}
+                    <text
+                      x={node.x + 25}
+                      y={node.y - 8}
+                      textAnchor="middle"
+                      fontSize="10"
+                      fill="#9ca3af"
+                      className="select-none pointer-events-none"
+                    >
+                      {node.type}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          </g> {/* End camera transform */}
         </svg>
 
         {/* Legend */}

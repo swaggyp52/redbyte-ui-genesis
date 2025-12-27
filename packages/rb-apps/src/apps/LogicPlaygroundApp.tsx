@@ -36,7 +36,10 @@ import { OscilloscopeView } from '../components/OscilloscopeView';
 import { SchematicView } from '../components/SchematicView';
 import { PropertyInspector } from '../components/PropertyInspector';
 import { TraceViewer } from '../components/TraceViewer';
+import { SplitViewLayout } from '../components/SplitViewLayout';
 import { registerAllChips, registerChip, unregisterChip } from '../utils/chipRegistry';
+import { useViewStateStore } from '../stores/viewStateStore';
+import { setGlobalViewStateSync } from '@redbyte/rb-logic-view';
 
 type ViewMode = 'circuit' | 'schematic' | 'oscilloscope' | '3d';
 
@@ -111,6 +114,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   );
 
   const [viewMode, setViewMode] = useState<ViewMode>('circuit');
+  const { splitScreenMode, activeViews, setSplitScreenMode, setActiveViews } = useViewStateStore();
   const [isRunning, setIsRunning] = useState(false);
   const [currentHz, setCurrentHz] = useState(tickRate);
   const [currentFileId, setCurrentFileId] = useState<string | null>(initialFileId ?? null);
@@ -137,6 +141,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const canvasAreaRef = useRef<HTMLDivElement>(null);
   const hasLoadedFromURL = useRef(false);
   const isHydratingRef = useRef(false); // Guard to prevent setting dirty during file load
+
+  // Initialize global view state sync
+  useEffect(() => {
+    setGlobalViewStateSync(useViewStateStore);
+  }, []);
 
   // Register saved chips on mount
   useEffect(() => {
@@ -1014,7 +1023,14 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
         <select
           value={viewMode}
-          onChange={(e) => setViewMode(e.target.value as ViewMode)}
+          onChange={(e) => {
+            const newViewMode = e.target.value as ViewMode;
+            setViewMode(newViewMode);
+            // Update active views when in single mode
+            if (splitScreenMode === 'single') {
+              setActiveViews([newViewMode]);
+            }
+          }}
           className="px-3 py-1 bg-gray-700 rounded"
         >
           <option value="circuit">Circuit</option>
@@ -1022,6 +1038,68 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           <option value="oscilloscope">Oscilloscope</option>
           <option value="3d">3D</option>
         </select>
+
+        <div className="w-px h-6 bg-gray-600" />
+
+        {/* Split-screen layout selector */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => {
+              setSplitScreenMode('single');
+              setActiveViews([viewMode]);
+            }}
+            className={`px-2 py-1 rounded text-xs font-mono ${
+              splitScreenMode === 'single'
+                ? 'bg-cyan-600 text-white'
+                : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+            }`}
+            title="Single view"
+          >
+            ▢
+          </button>
+          <button
+            onClick={() => {
+              setSplitScreenMode('horizontal');
+              setActiveViews(['circuit', 'schematic']);
+            }}
+            className={`px-2 py-1 rounded text-xs font-mono ${
+              splitScreenMode === 'horizontal'
+                ? 'bg-cyan-600 text-white'
+                : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+            }`}
+            title="Horizontal split"
+          >
+            ▢|▢
+          </button>
+          <button
+            onClick={() => {
+              setSplitScreenMode('vertical');
+              setActiveViews(['circuit', 'oscilloscope']);
+            }}
+            className={`px-2 py-1 rounded text-xs font-mono ${
+              splitScreenMode === 'vertical'
+                ? 'bg-cyan-600 text-white'
+                : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+            }`}
+            title="Vertical split"
+          >
+            ▢—▢
+          </button>
+          <button
+            onClick={() => {
+              setSplitScreenMode('quad');
+              setActiveViews(['circuit', 'schematic', '3d', 'oscilloscope']);
+            }}
+            className={`px-2 py-1 rounded text-xs font-mono ${
+              splitScreenMode === 'quad'
+                ? 'bg-cyan-600 text-white'
+                : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+            }`}
+            title="Quad view"
+          >
+            ▢+▢
+          </button>
+        </div>
 
         <button
           onClick={() => {
@@ -1148,80 +1226,47 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             </div>
           )}
 
-          {viewMode === '3d' ? (
-            <Logic3DScene engine={engine} width={800} height={600} />
-          ) : viewMode === 'schematic' ? (
-            <SchematicView
-              circuit={circuit}
-              engine={engine}
-              isRunning={isRunning}
-              width={800}
-              height={600}
-            />
-          ) : viewMode === 'oscilloscope' ? (
-            <OscilloscopeView
-              engine={engine}
-              circuit={circuit}
-              isRunning={isRunning}
-              width={800}
-              height={600}
-            />
-          ) : (
-            <LogicCanvas
-              engine={{
-                getCircuit: () => circuit,
-                setCircuit: (c: Circuit) => {
-                  setCircuit(c);
-                  engine.setCircuit(c);
-                  // Only mark dirty if not currently loading a file
-                  if (!isHydratingRef.current) {
-                    setIsDirty(true);
+          <SplitViewLayout
+            mode={splitScreenMode}
+            views={activeViews}
+            engine={engine}
+            circuit={circuit}
+            isRunning={isRunning}
+            onCircuitChange={(updatedCircuit) => {
+              setCircuit(updatedCircuit);
+              engine.setCircuit(updatedCircuit);
+              tickEngine.setCircuit(updatedCircuit);
+              setIsDirty(true);
 
-                    // Debounced history push (1 second after last change)
-                    if (historyDebounceRef.current) {
-                      clearTimeout(historyDebounceRef.current);
-                    }
-                    historyDebounceRef.current = setTimeout(() => {
-                      pushState(c);
-                    }, 1000) as unknown as number;
+              // Only mark dirty and handle history if not currently loading a file
+              if (!isHydratingRef.current) {
+                // Debounced history push (1 second after last change)
+                if (historyDebounceRef.current) {
+                  clearTimeout(historyDebounceRef.current);
+                }
+                historyDebounceRef.current = setTimeout(() => {
+                  pushState(updatedCircuit);
+                }, 1000) as unknown as number;
 
-                    // Debounced pattern recognition (2 seconds after last change)
-                    if (patternRecognitionRef.current) {
-                      clearTimeout(patternRecognitionRef.current);
-                    }
-                    patternRecognitionRef.current = setTimeout(() => {
-                      const pattern = recognizePattern(c);
-                      if (pattern && pattern.name !== lastRecognizedPatternRef.current) {
-                        // Only show toast if this is a new pattern (not previously recognized)
-                        lastRecognizedPatternRef.current = pattern.name;
-                        setRecognizedPattern(pattern); // Save pattern for chip creation
-                        addToast(
-                          `You just built a ${pattern.name}! ${pattern.description}`,
-                          'success',
-                          5000
-                        );
-                      }
-                    }, 2000) as unknown as number;
+                // Debounced pattern recognition (2 seconds after last change)
+                if (patternRecognitionRef.current) {
+                  clearTimeout(patternRecognitionRef.current);
+                }
+                patternRecognitionRef.current = setTimeout(() => {
+                  const pattern = recognizePattern(updatedCircuit);
+                  if (pattern && pattern.name !== lastRecognizedPatternRef.current) {
+                    lastRecognizedPatternRef.current = pattern.name;
+                    setRecognizedPattern(pattern);
+                    addToast(
+                      `You just built a ${pattern.name}! ${pattern.description}`,
+                      'success'
+                    );
                   }
-                },
-                getEngine: () => engine,
-              }}
-              getChipMetadata={(nodeType) => {
-                const chip = getChip(nodeType);
-                if (!chip) return undefined;
-                return {
-                  name: chip.name,
-                  inputs: chip.inputs.map((p) => ({ id: p.id, name: p.name })),
-                  outputs: chip.outputs.map((p) => ({ id: p.id, name: p.name })),
-                  color: chip.iconColor,
-                  layer: chip.layer,
-                };
-              }}
-              width={800}
-              height={600}
-              showToolbar={false}
-            />
-          )}
+                }, 2000) as unknown as number;
+              }
+            }}
+            viewStateStore={useViewStateStore}
+          />
 
           {tutorialActive && <TutorialOverlay onLoadExample={handleLoadTutorialExample} />}
         </div>
