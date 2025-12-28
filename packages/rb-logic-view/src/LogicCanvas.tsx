@@ -20,6 +20,8 @@ export interface LogicCanvasProps {
   onNodeDoubleClick?: (nodeId: string) => void;
   showHints?: boolean;
   onDismissHints?: () => void;
+  // Milestone D: Determinism recording (optional, dev-only)
+  onInputToggled?: (nodeId: string, portName: string, newValue: 0 | 1) => void;
 }
 
 export const LogicCanvas: React.FC<LogicCanvasProps> = ({
@@ -31,6 +33,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   onNodeDoubleClick,
   showHints = true,
   onDismissHints,
+  onInputToggled,
 }) => {
   const {
     camera,
@@ -117,23 +120,31 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     // Immediate first sync
     syncCircuit();
 
-    // Aggressive initial polling (5ms for first second to catch initial load)
+    // Track intervals for cleanup
+    let fastInterval: NodeJS.Timeout | null = null;
+    let slowInterval: NodeJS.Timeout | null = null;
     let fastPollCount = 0;
     const maxFastPolls = 200; // 1 second of 5ms polling
 
-    const interval = setInterval(() => {
+    // Start with fast polling
+    fastInterval = setInterval(() => {
       syncCircuit();
       fastPollCount++;
 
       // After initial burst, slow down to 60fps
-      if (fastPollCount >= maxFastPolls) {
-        clearInterval(interval);
-        const slowInterval = setInterval(syncCircuit, 16);
-        return () => clearInterval(slowInterval);
+      if (fastPollCount >= maxFastPolls && fastInterval) {
+        clearInterval(fastInterval);
+        fastInterval = null;
+        // Start slow polling
+        slowInterval = setInterval(syncCircuit, 16);
       }
     }, 5);
 
-    return () => clearInterval(interval);
+    // Cleanup both intervals on unmount
+    return () => {
+      if (fastInterval) clearInterval(fastInterval);
+      if (slowInterval) clearInterval(slowInterval);
+    };
   }, [engine]);
 
   // Subscribe to global selection changes from other views
@@ -238,7 +249,14 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       nodes: circuit.nodes.map((n) => {
         if (n.id === nodeId && (n.type === 'Switch' || n.type === 'INPUT')) {
           const currentState = n.state?.isOn ?? 0;
-          return { ...n, state: { ...n.state, isOn: currentState ? 0 : 1 } };
+          const newValue = currentState ? 0 : 1;
+
+          // Milestone D: Record input toggled event
+          if (onInputToggled) {
+            onInputToggled(nodeId, 'out', newValue);
+          }
+
+          return { ...n, state: { ...n.state, isOn: newValue } };
         }
         return n;
       }),
@@ -246,7 +264,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
     engine.setCircuit(updatedCircuit);
     setCircuit(updatedCircuit);
-  }, [circuit, engine]);
+  }, [circuit, engine, onInputToggled]);
 
   const handlePortClick = React.useCallback((nodeId: string, portName: string) => {
     if (editingState.wireStartPort) {

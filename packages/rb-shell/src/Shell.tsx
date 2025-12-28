@@ -33,6 +33,9 @@ import type { Intent } from './intent-types';
 import { getVersionString } from './version';
 import './styles.css';
 
+// Dev-only imports (gated by import.meta.env.DEV)
+import { DeterminismPanel, useDeterminismRecorder } from './dev';
+
 export interface ShellProps {
   children?: React.ReactNode;
 }
@@ -62,6 +65,7 @@ export const Shell: React.FC<ShellProps> = () => {
   const [windowSwitcherOpen, setWindowSwitcherOpen] = useState(false);
   const [windowSwitcherPreviousFocus, setWindowSwitcherPreviousFocus] = useState<string | null>(null);
   const [openWithModalState, setOpenWithModalState] = useState<OpenWithModalState | null>(null);
+  const [determinismPanelOpen, setDeterminismPanelOpen] = useState(false);
 
   const hasShownWelcomeRef = useRef(false);
   const hasInitializedRef = useRef(false);
@@ -88,6 +92,10 @@ export const Shell: React.FC<ShellProps> = () => {
 
   const [bindings, setBindings] = useState<Record<string, WindowAppBinding>>({});
   const [recentAppIds, setRecentAppIds] = useState<string[]>([]);
+
+  // Determinism recorder (dev only)
+  const determinismRecorder = import.meta.env.DEV && useDeterminismRecorder ? useDeterminismRecorder() : null;
+
   const [pinnedAppIds, setPinnedAppIds] = useState<string[]>(() => {
     if (typeof localStorage === 'undefined') return [];
 
@@ -318,6 +326,72 @@ export const Shell: React.FC<ShellProps> = () => {
       });
     },
     [closeWindow]
+  );
+
+  // Window state accessors registry (for determinism recording)
+  const windowStateAccessorsRef = useRef<Map<string, { getCircuit?: () => any }>>(new Map());
+
+  // Register/unregister state accessors for windows
+  const registerWindowStateAccessor = useCallback((windowId: string, accessor: { getCircuit?: () => any }) => {
+    windowStateAccessorsRef.current.set(windowId, accessor);
+  }, []);
+
+  const unregisterWindowStateAccessor = useCallback((windowId: string) => {
+    windowStateAccessorsRef.current.delete(windowId);
+  }, []);
+
+  // Determinism panel helpers (dev only)
+  const getCurrentCircuit = useCallback(() => {
+    // Find the focused Logic Playground window
+    const focusedWindow = useWindowStore.getState().getFocusedWindow();
+    if (!focusedWindow) {
+      console.warn('getCurrentCircuit: No focused window');
+      return null;
+    }
+
+    // Check if this window has registered a circuit accessor
+    const accessor = windowStateAccessorsRef.current.get(focusedWindow.id);
+    if (!accessor?.getCircuit) {
+      console.warn(`getCurrentCircuit: Window ${focusedWindow.id} has no circuit accessor registered`);
+      return null;
+    }
+
+    return accessor.getCircuit();
+  }, []);
+
+  const handleDeterminismAction = useCallback(
+    (action: any) => {
+      if (!determinismRecorder) return;
+
+      switch (action.type) {
+        case 'start-recording': {
+          const circuit = getCurrentCircuit();
+          if (circuit) {
+            determinismRecorder.startRecording(circuit);
+          }
+          break;
+        }
+        case 'stop-recording':
+          determinismRecorder.stopRecording();
+          break;
+        case 'verify-replay':
+          determinismRecorder.verifyRecording();
+          break;
+        case 'reset':
+          determinismRecorder.reset();
+          break;
+        case 'initialize-timetravel':
+          determinismRecorder.initializeTimeTravel();
+          break;
+        case 'step-forward':
+          determinismRecorder.stepForwardInTime();
+          break;
+        case 'step-backward':
+          determinismRecorder.stepBackwardInTime();
+          break;
+      }
+    },
+    [determinismRecorder, getCurrentCircuit]
   );
 
   // Ref to hold latest executeCommand for macro execution
@@ -617,6 +691,13 @@ export const Shell: React.FC<ShellProps> = () => {
         return;
       }
 
+      // Cmd/Ctrl+Shift+D: Open Determinism Tools (Dev only)
+      if (import.meta.env.DEV && event.shiftKey && event.key.toLowerCase() === 'd') {
+        event.preventDefault();
+        setDeterminismPanelOpen(true);
+        return;
+      }
+
       // Cmd/Ctrl+K: Open Launcher
       if (event.key.toLowerCase() === 'k') {
         event.preventDefault();
@@ -746,6 +827,9 @@ export const Shell: React.FC<ShellProps> = () => {
               onOpenApp={openWindow}
               onClose={() => handleClose(window.id)}
               onDispatchIntent={dispatchIntent}
+              registerStateAccessor={registerWindowStateAccessor}
+              unregisterStateAccessor={unregisterWindowStateAccessor}
+              determinismRecorder={import.meta.env.DEV ? determinismRecorder : undefined}
               recentAppIds={app.manifest.id === 'launcher' ? recentAppIds : undefined}
               pinnedAppIds={app.manifest.id === 'launcher' ? pinnedAppIds : undefined}
               runningAppIds={app.manifest.id === 'launcher' ? runningAppIds : undefined}
@@ -822,6 +906,22 @@ export const Shell: React.FC<ShellProps> = () => {
             setOpenWithModalState(null);
           }}
           onCancel={() => setOpenWithModalState(null)}
+        />
+      )}
+
+      {/* Determinism Tools Panel (Dev only) */}
+      {import.meta.env.DEV && determinismPanelOpen && DeterminismPanel && determinismRecorder && (
+        <DeterminismPanel
+          isOpen={determinismPanelOpen}
+          onClose={() => setDeterminismPanelOpen(false)}
+          getCurrentCircuit={getCurrentCircuit}
+          onRecordAction={handleDeterminismAction}
+          onExportLog={determinismRecorder.exportLog}
+          isRecording={determinismRecorder.isRecording}
+          verificationResult={determinismRecorder.verificationResult}
+          currentSnapshot={determinismRecorder.currentSnapshot}
+          canNavigateForward={determinismRecorder.canNavigateForward()}
+          canNavigateBackward={determinismRecorder.canNavigateBackward()}
         />
       )}
 

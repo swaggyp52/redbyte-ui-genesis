@@ -14,12 +14,14 @@ interface SettingsState {
   themeVariant: ThemeVariant;
   wallpaperId: WallpaperId;
   accentColor: AccentColor;
+  tickRate: number;
 }
 
 interface SettingsActions {
   setThemeVariant: (variant: ThemeVariant) => void;
   setWallpaperId: (id: WallpaperId) => void;
   setAccentColor: (color: AccentColor) => void;
+  setTickRate: (rate: number) => void;
 }
 
 type SettingsStore = SettingsState & SettingsActions;
@@ -30,6 +32,7 @@ const DEFAULT_SETTINGS: SettingsState = {
   themeVariant: 'dark',
   wallpaperId: 'neon-circuit',
   accentColor: 'cyan',
+  tickRate: 20,
 };
 
 function loadSettings(): SettingsState {
@@ -60,6 +63,9 @@ function loadSettings(): SettingsState {
       accentColor: ACCENT_COLORS.includes(parsed.accentColor)
         ? parsed.accentColor
         : DEFAULT_SETTINGS.accentColor,
+      tickRate: typeof parsed.tickRate === 'number' && parsed.tickRate > 0 && parsed.tickRate <= 60
+        ? parsed.tickRate
+        : DEFAULT_SETTINGS.tickRate,
     };
   } catch (err) {
     console.warn('Failed to load settings from localStorage, using defaults', err);
@@ -92,6 +98,13 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
   setAccentColor: (color) => {
     set({ accentColor: color });
+    persistSettings(get());
+  },
+
+  setTickRate: (rate) => {
+    // Clamp to valid range
+    const clampedRate = Math.max(1, Math.min(60, rate));
+    set({ tickRate: clampedRate });
     persistSettings(get());
   },
 }));
