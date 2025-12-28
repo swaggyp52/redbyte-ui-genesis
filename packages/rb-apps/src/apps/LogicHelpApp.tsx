@@ -24,12 +24,14 @@ import {
  */
 
 type TrackId = 'A' | 'B' | 'C';
+type ViewMode = 'tracks' | 'shortcuts' | TrackId;
 
 interface LogicHelpProps {
   onDispatchIntent?: (intent: Intent) => void;
 }
 
 const LogicHelpComponent: React.FC<LogicHelpProps> = ({ onDispatchIntent }) => {
+  const [viewMode, setViewMode] = useState<ViewMode>('tracks');
   const [selectedTrack, setSelectedTrack] = useState<TrackId | null>(null);
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
@@ -597,6 +599,95 @@ const LogicHelpComponent: React.FC<LogicHelpProps> = ({ onDispatchIntent }) => {
     );
   };
 
+  // Keyboard shortcuts content
+  const renderKeyboardShortcuts = () => {
+    return (
+      <div className="space-y-8">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl text-cyan-400 mb-3">Keyboard Shortcuts</h1>
+          <p className="text-gray-300">Master these shortcuts for faster workflow</p>
+        </div>
+
+        {/* System Shortcuts */}
+        <div>
+          <h2 className="text-xl text-cyan-300 mb-4 border-b border-gray-700 pb-2">System</h2>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-3 bg-slate-800 rounded">
+              <span className="text-gray-200">Open System Search</span>
+              <kbd className="px-3 py-1 bg-gray-700 text-cyan-300 rounded font-mono text-sm">Ctrl/Cmd + Space</kbd>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-slate-800 rounded">
+              <span className="text-gray-200">Open Command Palette</span>
+              <kbd className="px-3 py-1 bg-gray-700 text-cyan-300 rounded font-mono text-sm">Ctrl/Cmd + Shift + P</kbd>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-slate-800 rounded">
+              <span className="text-gray-200">Open Launcher</span>
+              <kbd className="px-3 py-1 bg-gray-700 text-cyan-300 rounded font-mono text-sm">Ctrl/Cmd + K</kbd>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-slate-800 rounded">
+              <span className="text-gray-200">Open Settings</span>
+              <kbd className="px-3 py-1 bg-gray-700 text-cyan-300 rounded font-mono text-sm">Ctrl/Cmd + ,</kbd>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-slate-800 rounded">
+              <span className="text-gray-200">Open About</span>
+              <kbd className="px-3 py-1 bg-gray-700 text-cyan-300 rounded font-mono text-sm">Ctrl/Cmd + /</kbd>
+            </div>
+          </div>
+        </div>
+
+        {/* Window Management */}
+        <div>
+          <h2 className="text-xl text-cyan-300 mb-4 border-b border-gray-700 pb-2">Window Management</h2>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-3 bg-slate-800 rounded">
+              <span className="text-gray-200">Switch Windows</span>
+              <kbd className="px-3 py-1 bg-gray-700 text-cyan-300 rounded font-mono text-sm">Ctrl/Cmd + Tab</kbd>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-slate-800 rounded">
+              <span className="text-gray-200">Cycle Through Windows</span>
+              <kbd className="px-3 py-1 bg-gray-700 text-cyan-300 rounded font-mono text-sm">Ctrl/Cmd + `</kbd>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-slate-800 rounded">
+              <span className="text-gray-200">Close Window</span>
+              <kbd className="px-3 py-1 bg-gray-700 text-cyan-300 rounded font-mono text-sm">Ctrl/Cmd + W</kbd>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-slate-800 rounded">
+              <span className="text-gray-200">Minimize Window</span>
+              <kbd className="px-3 py-1 bg-gray-700 text-cyan-300 rounded font-mono text-sm">Ctrl/Cmd + M</kbd>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-slate-800 rounded">
+              <span className="text-gray-200">Center Window</span>
+              <kbd className="px-3 py-1 bg-gray-700 text-cyan-300 rounded font-mono text-sm">Ctrl/Cmd + Alt + C</kbd>
+            </div>
+          </div>
+        </div>
+
+        {/* Window Snapping */}
+        <div>
+          <h2 className="text-xl text-cyan-300 mb-4 border-b border-gray-700 pb-2">Window Snapping</h2>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-3 bg-slate-800 rounded">
+              <span className="text-gray-200">Snap Left</span>
+              <kbd className="px-3 py-1 bg-gray-700 text-cyan-300 rounded font-mono text-sm">Ctrl/Cmd + Alt + ←</kbd>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-slate-800 rounded">
+              <span className="text-gray-200">Snap Right</span>
+              <kbd className="px-3 py-1 bg-gray-700 text-cyan-300 rounded font-mono text-sm">Ctrl/Cmd + Alt + →</kbd>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-slate-800 rounded">
+              <span className="text-gray-200">Snap Top</span>
+              <kbd className="px-3 py-1 bg-gray-700 text-cyan-300 rounded font-mono text-sm">Ctrl/Cmd + Alt + ↑</kbd>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-slate-800 rounded">
+              <span className="text-gray-200">Snap Bottom</span>
+              <kbd className="px-3 py-1 bg-gray-700 text-cyan-300 rounded font-mono text-sm">Ctrl/Cmd + Alt + ↓</kbd>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const currentTrack = selectedTrack ? tracks[selectedTrack] : null;
   const currentLesson = currentTrack?.lessons[currentLessonIndex];
 
@@ -629,22 +720,94 @@ const LogicHelpComponent: React.FC<LogicHelpProps> = ({ onDispatchIntent }) => {
   return (
     <HelpLayout
       sidebar={
-        <HelpSidebar
-          tracks={!selectedTrack ? Object.values(tracks) : undefined}
-          onSelectTrack={(id) => {
-            setSelectedTrack(id as TrackId);
-            setCurrentLessonIndex(0);
-          }}
-          selectedTrack={currentTrack}
-          lessons={currentTrack?.lessons}
-          currentLessonIndex={currentLessonIndex}
-          completedLessons={completedLessons}
-          onSelectLesson={setCurrentLessonIndex}
-          onBackToTracks={() => setSelectedTrack(null)}
-        />
+        <div>
+          <h1 className="text-2xl mb-4 text-cyan-400">Logic Help</h1>
+          <p className="text-sm text-gray-400 mb-6">Learn digital logic from gates to CPUs</p>
+
+          {viewMode === 'tracks' ? (
+            // Track Selection Mode
+            <div>
+              <h2 className="text-base mb-4">Choose a Track:</h2>
+              {Object.values(tracks).map((track) => (
+                <button
+                  key={track.id}
+                  onClick={() => {
+                    setSelectedTrack(track.id as TrackId);
+                    setViewMode(track.id as TrackId);
+                    setCurrentLessonIndex(0);
+                  }}
+                  className="w-full p-4 mb-3 bg-slate-800 border border-slate-700 rounded-md text-gray-200 cursor-pointer text-left transition-all hover:bg-slate-700 hover:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                >
+                  <div className="text-lg mb-1">{track.title}</div>
+                  <div className="text-xs text-gray-400">{track.description}</div>
+                </button>
+              ))}
+
+              {/* Keyboard Shortcuts Button */}
+              <button
+                onClick={() => setViewMode('shortcuts')}
+                className="w-full p-4 mb-3 bg-purple-900/30 border border-purple-700/50 rounded-md text-gray-200 cursor-pointer text-left transition-all hover:bg-purple-900/40 hover:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <div className="text-lg mb-1">⌨️ Keyboard Shortcuts</div>
+                <div className="text-xs text-gray-400">Master shortcuts for faster workflow</div>
+              </button>
+            </div>
+          ) : viewMode === 'shortcuts' ? (
+            // Keyboard Shortcuts Mode
+            <div>
+              <button
+                onClick={() => setViewMode('tracks')}
+                className="mb-4 px-3 py-2 border border-slate-700 text-cyan-400 rounded hover:bg-slate-700 transition-colors text-sm"
+              >
+                ← Back to Tracks
+              </button>
+              <h2 className="text-base mb-4">Keyboard Shortcuts</h2>
+            </div>
+          ) : currentTrack ? (
+            // Lesson Navigation Mode
+            <div>
+              <button
+                onClick={() => {
+                  setSelectedTrack(null);
+                  setViewMode('tracks');
+                }}
+                className="mb-4 px-3 py-2 border border-slate-700 text-cyan-400 rounded hover:bg-slate-700 transition-colors text-sm"
+              >
+                ← Back to Tracks
+              </button>
+
+              <h2 className="text-base mb-4">{currentTrack.title}</h2>
+
+              <div>
+                {currentTrack.lessons.map((lesson, index) => {
+                  const isCompleted = completedLessons?.has(lesson.id);
+                  const isCurrent = index === currentLessonIndex;
+
+                  return (
+                    <div key={lesson.id} className="mb-1">
+                      <button
+                        onClick={() => setCurrentLessonIndex(index)}
+                        className={`w-full px-3 py-2 rounded text-left text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                          isCurrent
+                            ? 'bg-cyan-900/30 border border-cyan-500 text-cyan-300 font-medium'
+                            : 'text-gray-300 hover:bg-slate-700'
+                        }`}
+                      >
+                        <span className="mr-2">{isCompleted ? '✓' : '○'}</span>
+                        {lesson.id}: {lesson.title}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
       }
     >
-      {currentLesson && currentTrack ? (
+      {viewMode === 'shortcuts' ? (
+        renderKeyboardShortcuts()
+      ) : currentLesson && currentTrack ? (
         <div>
           {/* Lesson Header */}
           <div className="mb-6">
@@ -676,7 +839,7 @@ const LogicHelpComponent: React.FC<LogicHelpProps> = ({ onDispatchIntent }) => {
       ) : (
         <div className="text-center mt-16 text-gray-400">
           <h2 className="text-2xl mb-4">Welcome to Logic Help!</h2>
-          <p>Choose a track from the sidebar to begin your journey.</p>
+          <p>Choose a track or keyboard shortcuts from the sidebar to begin.</p>
         </div>
       )}
     </HelpLayout>

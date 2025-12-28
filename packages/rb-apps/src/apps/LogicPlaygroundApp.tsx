@@ -72,6 +72,10 @@ interface LogicPlaygroundProps {
   initialExampleId?: ExampleId;
   resourceId?: string;
   resourceType?: 'file' | 'folder';
+  // Determinism recording (Milestone D - optional, dev-only)
+  registerStateAccessor?: (windowId: string, accessor: { getCircuit?: () => any }) => void;
+  unregisterStateAccessor?: (windowId: string) => void;
+  determinismRecorder?: any; // Type from useDeterminismRecorder hook
 }
 
 const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
@@ -80,6 +84,9 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   initialExampleId,
   resourceId,
   resourceType,
+  registerStateAccessor,
+  unregisterStateAccessor,
+  determinismRecorder,
 }) => {
   const { tickRate } = useSettingsStore();
   const { addToast } = useToastStore();
@@ -203,6 +210,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             setCircuit(restored);
             engine.setCircuit(restored);
             setIsDirty(true);
+
+            // Milestone D: Record circuit loaded event
+            if (determinismRecorder?.isRecording) {
+              determinismRecorder.recordCircuitLoaded(restored);
+            }
+
             addToast({
               id: `restore-${Date.now()}`,
               message: 'Circuit restored from auto-save',
@@ -216,6 +229,48 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       console.error('Crash recovery error:', error);
     }
   }, []); // Only run once on mount
+
+  // Milestone D: Register state accessor for determinism recording
+  useEffect(() => {
+    if (!windowId || !registerStateAccessor) return;
+
+    // Register a function that returns the current circuit
+    registerStateAccessor(windowId, {
+      getCircuit: () => engine.getCircuit(),
+    });
+
+    // Cleanup on unmount
+    return () => {
+      if (unregisterStateAccessor) {
+        unregisterStateAccessor(windowId);
+      }
+    };
+  }, [windowId, registerStateAccessor, unregisterStateAccessor, engine]);
+
+  // Milestone D: Wrap TickEngine.stepOnce to record simulation ticks during continuous run
+  useEffect(() => {
+    if (!determinismRecorder?.isRecording) return;
+
+    // Save original stepOnce method
+    const originalStepOnce = tickEngine.stepOnce.bind(tickEngine);
+
+    // Override with recording version
+    tickEngine.stepOnce = function(this: TickEngine) {
+      const prevTick = this.getTickCount();
+      originalStepOnce();
+      const newTick = this.getTickCount();
+
+      // Record the tick
+      if (determinismRecorder?.isRecording) {
+        determinismRecorder.recordSimulationTick(prevTick, newTick);
+      }
+    };
+
+    // Restore original on cleanup or when recording stops
+    return () => {
+      tickEngine.stepOnce = originalStepOnce;
+    };
+  }, [tickEngine, determinismRecorder, determinismRecorder?.isRecording]);
 
   // Register saved chips on mount
   useEffect(() => {
@@ -352,6 +407,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           setIsDirty(true);
           // Clear hydration guard after load completes
           isHydratingRef.current = false;
+
+          // Milestone D: Record circuit loaded event
+          if (determinismRecorder?.isRecording) {
+            determinismRecorder.recordCircuitLoaded(loadedCircuit);
+          }
+
           addToast('Loaded shared circuit', 'success');
 
           // Clear URL parameter
@@ -773,6 +834,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     // Clear history and set initial state when loading file
     clearHistory();
     pushState(loadedCircuit);
+
+    // Milestone D: Record circuit loaded event
+    if (determinismRecorder?.isRecording) {
+      determinismRecorder.recordCircuitLoaded(loadedCircuit);
+    }
     // Clear pattern recognition state
     lastRecognizedPatternRef.current = null;
     // Clear hydration guard after load completes
@@ -809,6 +875,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       // Clear history and set initial state when loading example
       clearHistory();
       pushState(loadedCircuit);
+
+      // Milestone D: Record circuit loaded event
+      if (determinismRecorder?.isRecording) {
+        determinismRecorder.recordCircuitLoaded(loadedCircuit);
+      }
+
       // Clear pattern recognition state
       lastRecognizedPatternRef.current = null;
       // Clear hydration guard after load completes
@@ -908,7 +980,14 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   };
 
   const handleStep = () => {
+    const prevTick = tickEngine.getTickCount();
     tickEngine.stepOnce();
+    const newTick = tickEngine.getTickCount();
+
+    // Milestone D: Record simulation tick event
+    if (determinismRecorder?.isRecording) {
+      determinismRecorder.recordSimulationTick(prevTick, newTick);
+    }
   };
 
   const handleHzChange = (hz: number) => {
@@ -1583,6 +1662,25 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             </div>
           )}
 
+          {/* Empty State Message (shown when canvas is empty in demo mode) */}
+          {circuit.nodes.length === 0 && import.meta.env.VITE_PUBLIC_DEMO === 'true' && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+              <div className="bg-slate-800/90 backdrop-blur-sm border border-slate-600 rounded-lg px-8 py-6 max-w-md text-center shadow-2xl">
+                <div className="text-2xl text-cyan-400 mb-3">Get Started</div>
+                <p className="text-gray-300 text-sm leading-relaxed">
+                  Drag components from the left palette to begin building your circuit, or{' '}
+                  <button
+                    onClick={() => setShowOpenModal(true)}
+                    className="text-cyan-400 hover:text-cyan-300 underline pointer-events-auto"
+                  >
+                    load an example
+                  </button>
+                  .
+                </p>
+              </div>
+            </div>
+          )}
+
           <SplitViewLayout
             mode={splitScreenMode}
             views={activeViews}
@@ -1600,6 +1698,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             onDismiss3DHints={() => setShow3DHints(false)}
             showOscilloscopeHints={false}
             onDismissOscilloscopeHints={() => setShowOscilloscopeHints(false)}
+            onInputToggled={determinismRecorder?.isRecording ? determinismRecorder.recordInputToggled : undefined}
             onCircuitChange={(updatedCircuit) => {
               setCircuit(updatedCircuit);
               engine.setCircuit(updatedCircuit);

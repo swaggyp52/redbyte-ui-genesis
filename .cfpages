@@ -1,0 +1,7 @@
+# Cloudflare Pages Build Configuration
+# Build command: pnpm install && cd apps/playground && pnpm run build
+# Build output directory: apps/playground/dist
+# Root directory: /
+
+# Environment variables to set in Cloudflare Pages dashboard:
+# VITE_PUBLIC_DEMO=true
