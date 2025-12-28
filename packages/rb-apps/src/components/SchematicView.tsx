@@ -415,11 +415,17 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   React.useEffect(() => {
     if (circuit.nodes.length === 0) return;
 
+    // Guard: ensure dimensions are valid before calculating camera
+    if (width === 0 || height === 0) return;
+
     // Calculate bounds
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
 
     circuit.nodes.forEach((node) => {
+      // Guard: ensure positions are finite
+      if (!Number.isFinite(node.position?.x) || !Number.isFinite(node.position?.y)) return;
+
       minX = Math.min(minX, node.position.x);
       maxX = Math.max(maxX, node.position.x);
       minY = Math.min(minY, node.position.y);
@@ -447,7 +453,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
       y: height / 2 - centerY * newZoom,
       zoom: newZoom,
     });
-  }, [circuit.nodes.length, width, height]);
+  }, [circuit.nodes, width, height]);
 
   // Route wires between nodes
   const schematicWires = useMemo<SchematicWire[]>(() => {
