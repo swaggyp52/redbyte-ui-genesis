@@ -2,7 +2,8 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { Modal, Input, Button } from '@redbyte/rb-primitives';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { ChipPort } from '../stores/chipStore';
 import type { RecognizedPattern } from '../patterns/patternMatcher';
@@ -40,11 +41,6 @@ export const SaveChipModal: React.FC<SaveChipModalProps> = ({
   const [inputs] = useState<ChipPort[]>(suggestedPorts.inputs);
   const [outputs] = useState<ChipPort[]>(suggestedPorts.outputs);
 
-  useEffect(() => {
-    nameInputRef.current?.focus();
-    nameInputRef.current?.select();
-  }, []);
-
   const handleSave = () => {
     // Validate inputs
     if (!name.trim()) {
@@ -67,10 +63,7 @@ export const SaveChipModal: React.FC<SaveChipModalProps> = ({
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      onCancel();
-    } else if (event.key === 'Enter' && event.ctrlKey) {
+    if (event.key === 'Enter' && event.ctrlKey) {
       event.preventDefault();
       handleSave();
     }
@@ -87,17 +80,17 @@ export const SaveChipModal: React.FC<SaveChipModalProps> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-      onClick={onCancel}
+    <Modal
+      isOpen={true}
+      onClose={onCancel}
+      title="Save as Chip"
+      variant="center"
+      size="md"
+      closeOnEsc={true}
+      closeOnBackdrop={true}
+      initialFocusRef={nameInputRef}
     >
-      <div
-        className="bg-slate-900 border border-slate-700 rounded-lg shadow-xl w-[500px] p-4"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={handleKeyDown}
-      >
-        <h3 className="text-lg font-semibold text-white mb-4">Save as Chip</h3>
-
+      <div onKeyDown={handleKeyDown}>
         {recognizedPattern && (
           <div className="mb-4 px-3 py-2 bg-cyan-900/30 border border-cyan-700/50 rounded text-sm text-cyan-300">
             Recognized pattern: <span className="font-semibold">{recognizedPattern.name}</span>
@@ -107,8 +100,11 @@ export const SaveChipModal: React.FC<SaveChipModalProps> = ({
         <div className="space-y-4 mb-4">
           {/* Name */}
           <div>
-            <label className="block text-sm text-slate-300 mb-2">Chip Name</label>
-            <input
+            <label htmlFor="chip-name" className="block text-sm text-slate-300 mb-2">
+              Chip Name
+            </label>
+            <Input
+              id="chip-name"
               ref={nameInputRef}
               type="text"
               value={name}
@@ -116,15 +112,19 @@ export const SaveChipModal: React.FC<SaveChipModalProps> = ({
                 setName(e.target.value);
                 setError(null);
               }}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white focus:outline-none focus:border-cyan-500"
               placeholder="XOR Gate"
+              size="md"
+              aria-label="Chip name"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-sm text-slate-300 mb-2">Description</label>
+            <label htmlFor="chip-description" className="block text-sm text-slate-300 mb-2">
+              Description
+            </label>
             <textarea
+              id="chip-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white focus:outline-none focus:border-cyan-500 resize-none"
@@ -146,6 +146,8 @@ export const SaveChipModal: React.FC<SaveChipModalProps> = ({
                       ? `${layerColors[l]} text-white`
                       : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                   }`}
+                  aria-label={`Layer ${l}`}
+                  aria-pressed={layer === l}
                 >
                   {l}
                 </button>
@@ -178,18 +180,12 @@ export const SaveChipModal: React.FC<SaveChipModalProps> = ({
         {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
 
         <div className="flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 text-sm rounded bg-slate-800 hover:bg-slate-700 text-white transition-colors"
-          >
+          <Button onClick={onCancel} variant="secondary" size="md">
             Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 text-sm rounded bg-cyan-600 hover:bg-cyan-500 text-white transition-colors"
-          >
+          </Button>
+          <Button onClick={handleSave} variant="primary" size="md">
             Save Chip
-          </button>
+          </Button>
         </div>
 
         <div className="mt-3 text-xs text-slate-500 text-center">
@@ -197,6 +193,6 @@ export const SaveChipModal: React.FC<SaveChipModalProps> = ({
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Esc</kbd> Cancel
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };

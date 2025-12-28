@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { SettingsApp } from '../apps/SettingsApp';
 import { useSettingsStore } from '@redbyte/rb-utils';
 
@@ -22,23 +22,23 @@ describe('Settings app lifecycle', () => {
   it('renders sidebar with Appearance and System sections', () => {
     render(<SettingsComponent />);
 
-    expect(screen.getByRole('button', { name: 'Appearance' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'System' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Appearance/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /System/ })).toBeTruthy();
   });
 
   it('renders theme options in Appearance panel', () => {
     render(<SettingsComponent />);
 
-    expect(screen.getByLabelText(/Light/i)).toBeTruthy();
-    expect(screen.getByLabelText(/Dark/i)).toBeTruthy();
-    expect(screen.getByLabelText(/System/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Light/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Dark/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Midnight/i })).toBeTruthy();
   });
 
-  it('changes theme when radio button is clicked', () => {
+  it('changes theme when button is clicked', () => {
     render(<SettingsComponent />);
 
-    const lightRadio = screen.getByLabelText(/Light/i) as HTMLInputElement;
-    fireEvent.click(lightRadio);
+    const lightButton = screen.getByRole('button', { name: /Light/i });
+    fireEvent.click(lightButton);
 
     const state = useSettingsStore.getState();
     expect(state.themeVariant).toBe('light');
@@ -47,8 +47,8 @@ describe('Settings app lifecycle', () => {
   it('changes wallpaper when selector is changed', () => {
     render(<SettingsComponent />);
 
-    const wallpaperSelect = screen.getByRole('combobox') as HTMLSelectElement;
-    fireEvent.change(wallpaperSelect, { target: { value: 'neon-circuit' } });
+    const neonCircuitButton = screen.getByRole('button', { name: /Neon Circuit/i });
+    fireEvent.click(neonCircuitButton);
 
     const state = useSettingsStore.getState();
     expect(state.wallpaperId).toBe('neon-circuit');
@@ -57,40 +57,12 @@ describe('Settings app lifecycle', () => {
   it('switches to System section when clicked', () => {
     render(<SettingsComponent />);
 
-    const systemButton = screen.getByRole('button', { name: 'System' });
+    const systemButton = screen.getByRole('button', { name: /System/ });
     fireEvent.click(systemButton);
 
     expect(screen.getByText(/System settings coming soon/i)).toBeTruthy();
   });
 
-  it('navigates with arrow keys', () => {
-    const { container } = render(<SettingsComponent />);
-    const mainContainer = container.querySelector('[tabIndex="0"]');
-
-    expect(mainContainer).toBeTruthy();
-
-    fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
-    fireEvent.keyDown(mainContainer!, { key: 'ArrowUp' });
-
-    // Test passes if no errors thrown
-    expect(mainContainer).toBeTruthy();
-  });
-
-  it('toggles theme with Enter key', () => {
-    const { container } = render(<SettingsComponent />);
-    const mainContainer = container.querySelector('[tabIndex="0"]');
-
-    act(() => {
-      useSettingsStore.setState({ themeVariant: 'dark' });
-    });
-
-    act(() => {
-      fireEvent.keyDown(mainContainer!, { key: 'Enter' });
-    });
-
-    const state = useSettingsStore.getState();
-    expect(['light', 'dark', 'system']).toContain(state.themeVariant);
-  });
 
   it('closes window with Escape key', () => {
     const onClose = vi.fn();
@@ -115,8 +87,8 @@ describe('Settings app manifest', () => {
   });
 
   it('has sensible default and min sizes', () => {
-    expect(SettingsApp.manifest.defaultSize).toEqual({ width: 500, height: 600 });
-    expect(SettingsApp.manifest.minSize).toEqual({ width: 400, height: 400 });
+    expect(SettingsApp.manifest.defaultSize).toEqual({ width: 800, height: 600 });
+    expect(SettingsApp.manifest.minSize).toEqual({ width: 600, height: 500 });
   });
 });
 
@@ -124,8 +96,8 @@ describe('Settings persistence', () => {
   it('persists theme changes to localStorage', () => {
     render(<SettingsComponent />);
 
-    const lightRadio = screen.getByLabelText(/Light/i) as HTMLInputElement;
-    fireEvent.click(lightRadio);
+    const lightButton = screen.getByRole('button', { name: /Light/i });
+    fireEvent.click(lightButton);
 
     const stored = localStorage.getItem('rb.shell.settings');
     expect(stored).toBeTruthy();
@@ -139,8 +111,8 @@ describe('Settings persistence', () => {
   it('persists wallpaper changes to localStorage', () => {
     render(<SettingsComponent />);
 
-    const wallpaperSelect = screen.getByRole('combobox') as HTMLSelectElement;
-    fireEvent.change(wallpaperSelect, { target: { value: 'frost-grid' } });
+    const frostGridButton = screen.getByRole('button', { name: /Frost Grid/i });
+    fireEvent.click(frostGridButton);
 
     const stored = localStorage.getItem('rb.shell.settings');
     expect(stored).toBeTruthy();

@@ -20,7 +20,7 @@ import { LogicCanvas } from '@redbyte/rb-logic-view';
 import { ViewAdapter } from '@redbyte/rb-logic-adapter';
 import { Logic3DScene } from '@redbyte/rb-logic-3d';
 import { useSettingsStore } from '@redbyte/rb-utils';
-import { useToastStore } from '@redbyte/rb-shell';
+import { useToastStore, triggerNarrative } from '@redbyte/rb-shell';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import { loadExample, listExamples, listExamplesByLayer, getLayerDescription, type ExampleId, type CircuitLayer } from '../examples';
 import { useFileSystemStore } from '../stores/fileSystemStore';
@@ -795,6 +795,17 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       setSelectedFileId('');
       setSelectedExampleId(exampleId);
       setIsDirty(true);
+
+      // Trigger narrative events for key examples
+      if (exampleId === '10_sr-latch') {
+        triggerNarrative('milestone.srLatchBuilt', { exampleId });
+      } else if (exampleId === '11_d-flipflop') {
+        triggerNarrative('milestone.dffUnderstood', { exampleId });
+      } else if (exampleId === '04_4bit-counter') {
+        triggerNarrative('milestone.counterRuns', { exampleId });
+      } else if (exampleId === '05_simple-cpu') {
+        triggerNarrative('milestone.cpuExplored', { exampleId });
+      }
       // Clear history and set initial state when loading example
       clearHistory();
       pushState(loadedCircuit);

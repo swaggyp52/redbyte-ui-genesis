@@ -15,4 +15,16 @@ export interface OpenWithIntent {
   };
 }
 
-export type Intent = OpenWithIntent;
+export interface OpenExampleIntent {
+  type: 'open-example';
+  payload: {
+    sourceAppId: string;
+    targetAppId: string;
+    exampleId: string;
+  };
+  routingHint?: {
+    preferNewWindow?: boolean;
+  };
+}
+
+export type Intent = OpenWithIntent | OpenExampleIntent;

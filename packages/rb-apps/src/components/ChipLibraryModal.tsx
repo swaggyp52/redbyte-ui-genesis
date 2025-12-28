@@ -2,7 +2,8 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
+import { Modal, Input, Select, Button } from '@redbyte/rb-primitives';
 import type { ChipDefinition } from '../stores/chipStore';
 
 export interface ChipLibraryModalProps {
@@ -24,6 +25,7 @@ export const ChipLibraryModal: React.FC<ChipLibraryModalProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLayer, setSelectedLayer] = useState<number | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Filter chips by search query and layer
   const filteredChips = useMemo(() => {
@@ -69,63 +71,47 @@ export const ChipLibraryModal: React.FC<ChipLibraryModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-      onClick={onClose}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Chip Library"
+      variant="center"
+      size="xl"
+      closeOnEsc={true}
+      closeOnBackdrop={true}
+      initialFocusRef={searchInputRef}
     >
-      <div
-        className="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-700">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white">Chip Library</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors"
-              aria-label="Close"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-
-          {/* Search and Filters */}
-          <div className="flex gap-3">
-            <input
-              type="text"
-              placeholder="Search chips..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <select
-              value={selectedLayer ?? ''}
-              onChange={(e) => setSelectedLayer(e.target.value === '' ? null : Number(e.target.value))}
-              className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Layers</option>
-              {layers.map((layer) => (
-                <option key={layer} value={layer}>
-                  Layer {layer}
-                </option>
-              ))}
-            </select>
-          </div>
+      <div className="flex flex-col max-h-[60vh]">
+        {/* Search and Filters */}
+        <div className="flex gap-3 mb-4">
+          <Input
+            ref={searchInputRef}
+            type="text"
+            placeholder="Search chips..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            size="md"
+            aria-label="Search chips"
+            className="flex-1"
+          />
+          <Select
+            value={selectedLayer ?? ''}
+            onChange={(e) => setSelectedLayer(e.target.value === '' ? null : Number(e.target.value))}
+            size="md"
+            aria-label="Filter by layer"
+          >
+            <option value="">All Layers</option>
+            {layers.map((layer) => (
+              <option key={layer} value={layer}>
+                Layer {layer}
+              </option>
+            ))}
+          </Select>
         </div>
 
         {/* Chip List */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto">
           {filteredChips.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
               {chips.length === 0 ? (
@@ -148,7 +134,7 @@ export const ChipLibraryModal: React.FC<ChipLibraryModalProps> = ({
                     <h3 className="text-sm font-semibold text-gray-400 mb-3">Layer {layer}</h3>
                     <div className="space-y-2">
                       {layerChips.map((chip) => (
-                        <div
+                        <button
                           key={chip.id}
                           draggable={!!onDragStart}
                           onDragStart={(e) => {
@@ -158,14 +144,12 @@ export const ChipLibraryModal: React.FC<ChipLibraryModalProps> = ({
                             }
                           }}
                           onDragEnd={() => {
-                            // Close modal after drag completes
                             onClose();
                           }}
-                          onClick={(e) => {
-                            // Prevent click if dragging
+                          onClick={() => {
                             handleSelectChip(chip.id);
                           }}
-                          className="bg-gray-700 hover:bg-gray-650 rounded-lg p-4 cursor-move transition-colors group"
+                          className="w-full bg-slate-700 hover:bg-slate-650 rounded-lg p-4 cursor-move transition-colors group text-left focus:outline-none focus:ring-2 focus:ring-cyan-500"
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -177,23 +161,16 @@ export const ChipLibraryModal: React.FC<ChipLibraryModalProps> = ({
                               <div className="flex gap-4 text-xs text-gray-500">
                                 <span>{chip.inputs.length} inputs</span>
                                 <span>{chip.outputs.length} outputs</span>
-                                <span>
-                                  {chip.subcircuit.nodes.length} gates
-                                </span>
+                                <span>{chip.subcircuit.nodes.length} gates</span>
                               </div>
                             </div>
                             {onDeleteChip && (
                               <button
                                 onClick={(e) => handleDeleteChip(e, chip.id)}
-                                className="text-gray-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-4"
-                                aria-label="Delete chip"
+                                className="text-gray-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-4 focus:outline-none focus:ring-2 focus:ring-red-500 rounded p-1"
+                                aria-label={`Delete ${chip.name}`}
                               >
-                                <svg
-                                  className="w-5 h-5"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -204,7 +181,7 @@ export const ChipLibraryModal: React.FC<ChipLibraryModalProps> = ({
                               </button>
                             )}
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -214,19 +191,16 @@ export const ChipLibraryModal: React.FC<ChipLibraryModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-700 flex justify-between items-center">
+        <div className="pt-4 border-t border-slate-700 flex justify-between items-center">
           <div className="text-sm text-gray-400">
             {filteredChips.length} {filteredChips.length === 1 ? 'chip' : 'chips'}
             {selectedLayer !== null && ` in Layer ${selectedLayer}`}
           </div>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors"
-          >
+          <Button onClick={onClose} variant="secondary" size="md">
             Close
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };

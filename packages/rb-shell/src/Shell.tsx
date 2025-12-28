@@ -24,10 +24,11 @@ import { useWorkspaceStore, loadWorkspaces } from './workspaceStore';
 import { executeMacro, type MacroExecutionContext } from './macros/executeMacro';
 import { useMacroStore } from './macros/macroStore';
 import BootScreen from './BootScreen';
-import { ToastContainer } from './ToastContainer';
+import { ToastContainer } from '@redbyte/rb-primitives';
 import { CommandPalette, type Command } from './CommandPalette';
 import { SystemSearch } from './SystemSearch';
 import { WorkspaceSwitcher, MacroRunner, WindowSwitcher } from './modals';
+import { NarrativeOverlay } from './narrative/NarrativeOverlay';
 import type { Intent } from './intent-types';
 import { getVersionString } from './version';
 import './styles.css';
@@ -238,6 +239,30 @@ export const Shell: React.FC<ShellProps> = () => {
 
           // Create new window (no existing window found or preferNewWindow=true)
           return openWindow(targetAppId, { resourceId, resourceType });
+        }
+        case 'open-example': {
+          const { targetAppId, exampleId } = intent.payload;
+          const preferNewWindow = intent.routingHint?.preferNewWindow ?? false;
+
+          // PHASE_AC: Use routing resolver to determine reuse vs create
+          const targetWindowId = resolveTargetWindowId(targetAppId, preferNewWindow, windows);
+
+          if (targetWindowId) {
+            // Reuse existing window
+            const binding = bindings[targetWindowId];
+            if (binding) {
+              // Update props with example
+              setBindings((prev) => ({
+                ...prev,
+                [targetWindowId]: { ...binding, props: { initialExampleId: exampleId } },
+              }));
+              focusWindow(targetWindowId);
+              return targetWindowId;
+            }
+          }
+
+          // Create new window (no existing window found or preferNewWindow=true)
+          return openWindow(targetAppId, { initialExampleId: exampleId });
         }
         default:
           console.warn('Unknown intent type:', (intent as any).type);
@@ -732,6 +757,7 @@ export const Shell: React.FC<ShellProps> = () => {
       })}
 
       <ToastContainer />
+      <NarrativeOverlay />
 
       {systemSearchOpen && (
         <SystemSearch

@@ -19,6 +19,7 @@ export { AppStoreApp } from './apps/AppStoreApp';
 export { WelcomeApp } from './apps/WelcomeApp';
 export { LauncherApp } from './apps/LauncherApp';
 export { TextViewerApp } from './apps/TextViewerApp';
+export { default as LogicHelpApp } from './apps/LogicHelpApp';
 
 // Auto-register all apps
 import { registerApp } from './AppRegistry';
@@ -30,6 +31,7 @@ import { AppStoreApp } from './apps/AppStoreApp';
 import { WelcomeApp } from './apps/WelcomeApp';
 import { LauncherApp } from './apps/LauncherApp';
 import { TextViewerApp } from './apps/TextViewerApp';
+import LogicHelpApp from './apps/LogicHelpApp';
 
 registerApp(TerminalApp);
 registerApp(SettingsApp);
@@ -39,3 +41,4 @@ registerApp(AppStoreApp);
 registerApp(WelcomeApp);
 registerApp(LauncherApp);
 registerApp(TextViewerApp);
+registerApp(LogicHelpApp);

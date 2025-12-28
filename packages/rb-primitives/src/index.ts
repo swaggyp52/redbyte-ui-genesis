@@ -28,3 +28,12 @@ export type { TooltipProps } from './Tooltip';
 
 export { createFocusTrap } from './focusTrap';
 export type { FocusTrapOptions } from './focusTrap';
+
+export { Portal } from './Portal';
+export type { PortalProps } from './Portal';
+
+export { Modal } from './Modal';
+export type { ModalProps } from './Modal';
+
+export { Toast, ToastContainer, useToast, toast, toastStore, subscribeToToasts } from './Toast';
+export type { ToastType, ToastKind, ToastOptions, ToastAction } from './Toast';
