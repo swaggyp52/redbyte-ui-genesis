@@ -117,8 +117,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
         return (
           <div ref={containerRef} style={containerStyle}>
             <LogicCanvas
-              key={`circuit-${circuit.nodes.length}-${circuit.connections.length}`}
               engine={tickEngine}
+              circuit={circuit}
               width={dimensions.width}
               height={dimensions.height}
               showToolbar={false}

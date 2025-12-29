@@ -13,6 +13,7 @@ import { snapToGrid } from './tools/panzoom';
 
 export interface LogicCanvasProps {
   engine: TickEngine;
+  circuit?: Circuit; // Optional: if provided, use this instead of polling engine
   width?: number;
   height?: number;
   showToolbar?: boolean;
@@ -26,6 +27,7 @@ export interface LogicCanvasProps {
 
 export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   engine,
+  circuit: externalCircuit,
   width = 800,
   height = 600,
   showToolbar = true,
@@ -53,7 +55,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     selectMultipleNodes,
   } = useLogicViewStore();
 
-  const [circuit, setCircuit] = React.useState(engine.getCircuit());
+  // Use external circuit if provided, otherwise poll from engine
+  const [internalCircuit, setInternalCircuit] = React.useState(engine.getCircuit());
+  const circuit = externalCircuit ?? internalCircuit;
   const [signals, setSignals] = React.useState<Map<string, 0 | 1>>(new Map());
   const svgRef = React.useRef<SVGSVGElement>(null);
   const lastSyncedSelection = React.useRef<Set<string>>(new Set());
@@ -102,13 +106,21 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     }
   }, [circuit.nodes.length, width, height, setCamera]);
 
-  // Subscribe to engine updates with aggressive syncing
+  // Subscribe to engine updates with aggressive syncing (only if no external circuit provided)
   React.useEffect(() => {
-    // Immediately sync circuit when engine changes
+    // If external circuit is provided, skip polling (parent handles updates)
+    if (externalCircuit) {
+      // Still sync signals for live updates
+      const interval = setInterval(() => {
+        setSignals(engine.getEngine().getAllSignals());
+      }, 16);
+      return () => clearInterval(interval);
+    }
+
+    // Otherwise, poll circuit from engine (legacy behavior)
     const syncCircuit = () => {
       const newCircuit = engine.getCircuit();
-      // Always update - force re-render to ensure circuit view displays
-      setCircuit(newCircuit);
+      setInternalCircuit(newCircuit);
       setSignals(engine.getEngine().getAllSignals());
     };
 
@@ -140,7 +152,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       if (fastInterval) clearInterval(fastInterval);
       if (slowInterval) clearInterval(slowInterval);
     };
-  }, [engine]);
+  }, [engine, externalCircuit]);
 
   // Subscribe to global selection changes from other views
   React.useEffect(() => {
