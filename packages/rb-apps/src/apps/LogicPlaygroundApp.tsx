@@ -47,8 +47,11 @@ import { KeyboardShortcutsHelp } from '../components/KeyboardShortcutsHelp';
 import { ComponentPalette } from '../components/ComponentPalette';
 import { QuickAddPalette } from '../components/QuickAddPalette';
 import { StatusBar } from '../components/StatusBar';
+import { TopCommandBar } from '../components/TopCommandBar';
+import { RightDock, type RightDockState } from '../components/RightDock';
 
 type ViewMode = 'circuit' | 'schematic' | 'oscilloscope' | '3d';
+type PlaygroundMode = 'build' | 'analyze' | 'learn' | 'quad';
 
 // Primitive node types (built-in gates) organized by category
 const PRIMITIVE_NODES = {
@@ -130,6 +133,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   );
 
   const [viewMode, setViewMode] = useState<ViewMode>('circuit');
+  const [playgroundMode, setPlaygroundMode] = useState<PlaygroundMode>('build');
   const { splitScreenMode, activeViews, setSplitScreenMode, setActiveViews } = useViewStateStore();
   const [isRunning, setIsRunning] = useState(false);
   const [currentHz, setCurrentHz] = useState(tickRate);
@@ -153,10 +157,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [showSchematicHints, setShowSchematicHints] = useState(true);
   const [show3DHints, setShow3DHints] = useState(true);
   const [showOscilloscopeHints, setShowOscilloscopeHints] = useState(true);
-  const [inspectorPosition, setInspectorPosition] = useState({ x: 0, y: 0 });
-  const [isDraggingInspector, setIsDraggingInspector] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [inspectorMinimized, setInspectorMinimized] = useState(false);
+  const [rightDockState, setRightDockState] = useState<RightDockState>('expanded');
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showExamplesModal, setShowExamplesModal] = useState(false);
@@ -493,6 +494,32 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     tickEngine.setTickRate(tickRate);
     setCurrentHz(tickRate);
   }, [tickRate]);
+
+  // Playground mode: auto-adjust views based on mode
+  useEffect(() => {
+    switch (playgroundMode) {
+      case 'build':
+        // Build mode: Large Circuit + optional small Schematic preview
+        setSplitScreenMode('single');
+        setActiveViews(['circuit']);
+        break;
+      case 'analyze':
+        // Analyze mode: Large Scope + Circuit smaller
+        setSplitScreenMode('vertical');
+        setActiveViews(['circuit', 'oscilloscope']);
+        break;
+      case 'learn':
+        // Learn mode: Circuit emphasized (Help will be in side panel)
+        setSplitScreenMode('single');
+        setActiveViews(['circuit']);
+        break;
+      case 'quad':
+        // Quad mode: 2×2 views
+        setSplitScreenMode('quad');
+        setActiveViews(['circuit', 'schematic', '3d', 'oscilloscope']);
+        break;
+    }
+  }, [playgroundMode, setSplitScreenMode, setActiveViews]);
 
   // Autosave after 5 seconds of idle (debounced)
   useEffect(() => {
@@ -1180,40 +1207,6 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     addToast('Circuit reset', 'info');
   };
 
-  const handleInspectorMouseDown = (e: React.MouseEvent) => {
-    setIsDraggingInspector(true);
-    const rect = (e.currentTarget as HTMLElement).closest('.inspector-panel')?.getBoundingClientRect();
-    if (rect) {
-      setDragOffset({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      });
-    }
-  };
-
-  React.useEffect(() => {
-    if (!isDraggingInspector) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      setInspectorPosition({
-        x: e.clientX - dragOffset.x,
-        y: e.clientY - dragOffset.y,
-      });
-    };
-
-    const handleMouseUp = () => {
-      setIsDraggingInspector(false);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDraggingInspector, dragOffset]);
-
   // Memoize chips array to avoid multiple store calls during render
   const allChips = React.useMemo(() => getAllChips(), [getAllChips]);
 
@@ -1229,138 +1222,22 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       {/* Hierarchy Breadcrumbs */}
       <HierarchyBreadcrumbs />
 
-      {/* Redesigned Top Toolbar - File & Simulation */}
-      <div className="border-b border-gray-700 bg-gradient-to-b from-gray-850 to-gray-900 px-3 py-2 flex items-center justify-between gap-3">
-        {/* Left: File Operations */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowExamplesModal(true)}
-            className="px-3 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded font-medium text-sm transition-all shadow-lg"
-            title="Load Example"
-          >
-            📚 Examples
-          </button>
-          <button
-            onClick={handleSave}
-            className={`px-3 py-1.5 rounded font-medium text-sm transition-all ${
-              isDirty
-                ? 'bg-cyan-600 hover:bg-cyan-500 shadow-lg shadow-cyan-600/30 animate-pulse'
-                : 'bg-gray-700 hover:bg-gray-600'
-            }`}
-            title="Save (Ctrl+S)"
-          >
-            {isDirty ? '● Save' : 'Save'}
-          </button>
-          <button
-            onClick={handleShare}
-            className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded font-medium text-sm transition-all"
-            title="Share via link"
-          >
-            Share
-          </button>
-        </div>
-
-        {/* Center: Simulation Controls */}
-        <div className="flex items-center gap-2 bg-gray-800/50 rounded-lg px-3 py-1.5 border border-gray-700/50">
-          <button
-            onClick={isRunning ? handlePause : handleRun}
-            className={`px-4 py-1.5 rounded font-semibold text-sm transition-all flex items-center gap-2 ${
-              isRunning
-                ? 'bg-yellow-600 hover:bg-yellow-500 shadow-lg'
-                : 'bg-green-600 hover:bg-green-500 shadow-lg'
-            }`}
-          >
-            {isRunning ? '⏸ Pause' : '▶ Run'}
-          </button>
-          <button
-            onClick={handleStep}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded font-medium text-sm transition-all"
-            title="Step Once"
-          >
-            Step
-          </button>
-          <div className="flex items-center gap-2 ml-2">
-            <input
-              type="range"
-              min="1"
-              max="60"
-              value={currentHz}
-              onChange={(e) => handleHzChange(parseInt(e.target.value, 10))}
-              className="w-20 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-            />
-            <span className="text-sm font-mono text-cyan-400 w-10 text-right">{currentHz}Hz</span>
-          </div>
-        </div>
-
-        {/* Right: Help */}
-        <button
-          onClick={() => setShowKeyboardHelp(true)}
-          className="px-3 py-1.5 bg-purple-700 hover:bg-purple-600 rounded font-bold transition-all"
-          title="Keyboard Shortcuts (?)"
-        >
-          ?
-        </button>
-      </div>
-
-      {/* Second Toolbar - View Controls */}
-      <div className="border-b border-gray-700 bg-gray-900 px-3 py-2 flex items-center justify-between gap-3">
-        {/* View Mode Selector */}
-        <div className="flex items-center gap-1.5">
-          {([['circuit', '⚡'], ['schematic', '📐'], ['3d', '🧊'], ['oscilloscope', '📊']] as const).map(([mode, icon]) => {
-            const isActive = activeViews.includes(mode);
-            return (
-              <button
-                key={mode}
-                onClick={() => {
-                  if (splitScreenMode === 'single') {
-                    setActiveViews([mode]);
-                  }
-                  setViewMode(mode);
-                }}
-                className={`px-3 py-1.5 rounded font-medium text-sm transition-all flex items-center gap-1.5 ${
-                  isActive
-                    ? 'bg-cyan-600 text-white shadow-lg scale-105'
-                    : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
-                }`}
-                title={mode.charAt(0).toUpperCase() + mode.slice(1)}
-              >
-                <span>{icon}</span>
-                <span className="capitalize">{mode === '3d' ? '3D' : mode === 'oscilloscope' ? 'Scope' : mode}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Layout Selector */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-gray-500 mr-1">Layout:</span>
-          {[
-            ['single', <div key="s" className="w-4 h-4 border-2 border-current rounded"></div>],
-            ['horizontal', <div key="h" className="flex gap-0.5"><div className="w-2 h-4 border-2 border-current rounded"></div><div className="w-2 h-4 border-2 border-current rounded"></div></div>],
-            ['vertical', <div key="v" className="flex flex-col gap-0.5"><div className="w-4 h-1.5 border-2 border-current rounded"></div><div className="w-4 h-1.5 border-2 border-current rounded"></div></div>],
-            ['quad', <div key="q" className="grid grid-cols-2 gap-0.5"><div className="w-1.5 h-1.5 border-2 border-current rounded"></div><div className="w-1.5 h-1.5 border-2 border-current rounded"></div><div className="w-1.5 h-1.5 border-2 border-current rounded"></div><div className="w-1.5 h-1.5 border-2 border-current rounded"></div></div>],
-          ].map(([mode, icon]) => (
-            <button
-              key={mode as string}
-              onClick={() => {
-                setSplitScreenMode(mode as any);
-                if (mode === 'single') setActiveViews([viewMode]);
-                else if (mode === 'horizontal') setActiveViews(['circuit', 'schematic']);
-                else if (mode === 'vertical') setActiveViews(['circuit', 'oscilloscope']);
-                else setActiveViews(['circuit', 'schematic', '3d', 'oscilloscope']);
-              }}
-              className={`px-2 py-1.5 rounded transition-all ${
-                splitScreenMode === mode
-                  ? 'bg-cyan-600 text-white'
-                  : 'bg-gray-800 hover:bg-gray-700 text-gray-400'
-              }`}
-              title={`${mode} layout`}
-            >
-              {icon}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Top Command Bar - vNext Design */}
+      <TopCommandBar
+        onExamples={() => setShowExamplesModal(true)}
+        onSave={handleSave}
+        onShare={handleShare}
+        isDirty={isDirty}
+        isRunning={isRunning}
+        onRun={handleRun}
+        onPause={handlePause}
+        onStep={handleStep}
+        tickRate={currentHz}
+        onTickRateChange={handleHzChange}
+        viewMode={playgroundMode}
+        onViewModeChange={setPlaygroundMode}
+        onHelp={() => setShowKeyboardHelp(true)}
+      />
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Library */}
@@ -1574,45 +1451,19 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           />
 
           {tutorialActive && <TutorialOverlay onLoadExample={handleLoadTutorialExample} />}
-
-          {/* Floating Inspector Panel */}
-          <div
-            className="inspector-panel absolute bg-gray-850 border border-gray-700 rounded-lg shadow-2xl overflow-hidden z-50 flex flex-col"
-            style={{
-              left: inspectorPosition.x !== 0 ? `${inspectorPosition.x}px` : 'auto',
-              top: inspectorPosition.y !== 0 ? `${inspectorPosition.y}px` : 'auto',
-              bottom: inspectorPosition.x === 0 && inspectorPosition.y === 0 ? '1rem' : 'auto',
-              right: inspectorPosition.x === 0 && inspectorPosition.y === 0 ? '1rem' : 'auto',
-              width: inspectorMinimized ? 'auto' : '20rem',
-              maxHeight: inspectorMinimized ? 'auto' : '60vh',
-            }}
-          >
-            <div
-              className="px-3 py-2 bg-gray-800 border-b border-gray-700 flex items-center gap-2 cursor-move select-none"
-              onMouseDown={handleInspectorMouseDown}
-            >
-              <h3 className="text-sm font-semibold text-cyan-400 flex-1">Inspector</h3>
-              <button
-                onClick={() => setInspectorMinimized(!inspectorMinimized)}
-                className="text-gray-400 hover:text-white text-sm px-1"
-                title={inspectorMinimized ? "Expand" : "Minimize"}
-              >
-                {inspectorMinimized ? '□' : '_'}
-              </button>
-            </div>
-            {!inspectorMinimized && (
-              <div className="flex-1 overflow-auto">
-                <PropertyInspector
-                  circuit={circuit}
-                  engine={engine}
-                  isRunning={isRunning}
-                  onNodeUpdate={handleNodeUpdate}
-                  onConnectionDelete={handleConnectionDelete}
-                />
-              </div>
-            )}
-          </div>
         </div>
+
+        {/* Right Dock - vNext Design (replaces floating inspector) */}
+        <RightDock
+          circuit={circuit}
+          engine={engine}
+          isRunning={isRunning}
+          onNodeUpdate={handleNodeUpdate}
+          onConnectionDelete={handleConnectionDelete}
+          chips={allChips}
+          initialState={rightDockState}
+          onStateChange={setRightDockState}
+        />
       </div>
 
       {/* Loading Overlay */}
