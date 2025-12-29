@@ -29,6 +29,8 @@ interface SplitViewLayoutProps {
   showOscilloscopeHints?: boolean;
   onDismissOscilloscopeHints?: () => void;
   getChipMetadata?: (nodeType: string) => any;
+  // Milestone D: Determinism recording (optional, dev-only)
+  onInputToggled?: (nodeId: string, portName: string, newValue: 0 | 1) => void;
 }
 
 interface ViewRendererProps {
@@ -51,7 +53,16 @@ interface ViewRendererProps {
   showOscilloscopeHints?: boolean;
   onDismissOscilloscopeHints?: () => void;
   getChipMetadata?: (nodeType: string) => any;
+  onInputToggled?: (nodeId: string, portName: string, newValue: 0 | 1) => void;
 }
+
+// View metadata for headers
+const VIEW_METADATA = {
+  circuit: { icon: '⚡', label: 'Circuit View', color: 'cyan' },
+  schematic: { icon: '📐', label: 'Schematic View', color: 'blue' },
+  '3d': { icon: '🧊', label: '3D View', color: 'purple' },
+  oscilloscope: { icon: '📊', label: 'Oscilloscope', color: 'green' },
+} as const;
 
 const ViewRenderer: React.FC<ViewRendererProps> = ({
   view,
@@ -73,6 +84,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   showOscilloscopeHints,
   onDismissOscilloscopeHints,
   getChipMetadata,
+  onInputToggled,
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = React.useState({ width: 800, height: 600 });
@@ -81,7 +93,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     const updateDimensions = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        setDimensions({ width: rect.width, height: rect.height });
+        // Account for header height
+        setDimensions({ width: rect.width, height: rect.height - 32 });
       }
     };
 
@@ -90,84 +103,104 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
+  const metadata = VIEW_METADATA[view];
   const containerStyle: React.CSSProperties = {
     width: width || '100%',
-    height: height || '100%',
+    height: height || 'calc(100% - 32px)',
     position: 'relative',
     overflow: 'hidden',
   };
 
-  switch (view) {
-    case 'circuit':
-      return (
-        <div ref={containerRef} style={containerStyle}>
-          <LogicCanvas
-            engine={tickEngine}
-            width={dimensions.width}
-            height={dimensions.height}
-            showToolbar={false}
-            showHints={showCircuitHints}
-            onDismissHints={onDismissCircuitHints}
-            getChipMetadata={getChipMetadata}
-            onNodeDoubleClick={onNodeDoubleClick}
-          />
-        </div>
-      );
+  const renderContent = () => {
+    switch (view) {
+      case 'circuit':
+        return (
+          <div ref={containerRef} style={containerStyle}>
+            <LogicCanvas
+              key={`circuit-${circuit.nodes.length}-${circuit.connections.length}`}
+              engine={tickEngine}
+              width={dimensions.width}
+              height={dimensions.height}
+              showToolbar={false}
+              showHints={showCircuitHints}
+              onDismissHints={onDismissCircuitHints}
+              getChipMetadata={getChipMetadata}
+              onNodeDoubleClick={onNodeDoubleClick}
+              onInputToggled={onInputToggled}
+            />
+          </div>
+        );
 
-    case 'schematic':
-      return (
-        <div ref={containerRef} style={containerStyle}>
-          <SchematicView
-            circuit={circuit}
-            engine={engine}
-            isRunning={isRunning}
-            width={dimensions.width}
-            height={dimensions.height}
-            onCircuitChange={onCircuitChange}
-            showHints={showSchematicHints}
-            onDismissHints={onDismissSchematicHints}
-          />
-        </div>
-      );
+      case 'schematic':
+        return (
+          <div ref={containerRef} style={containerStyle}>
+            <SchematicView
+              circuit={circuit}
+              engine={engine}
+              isRunning={isRunning}
+              width={dimensions.width}
+              height={dimensions.height}
+              onCircuitChange={onCircuitChange}
+              showHints={showSchematicHints}
+              onDismissHints={onDismissSchematicHints}
+            />
+          </div>
+        );
 
-    case 'oscilloscope':
-      return (
-        <div ref={containerRef} style={containerStyle}>
-          <OscilloscopeView
-            engine={engine}
-            tickEngine={tickEngine}
-            circuit={circuit}
-            isRunning={isRunning}
-            width={dimensions.width}
-            height={dimensions.height}
-            showHints={showOscilloscopeHints}
-            onDismissHints={onDismissOscilloscopeHints}
-          />
-        </div>
-      );
+      case 'oscilloscope':
+        return (
+          <div ref={containerRef} style={containerStyle}>
+            <OscilloscopeView
+              engine={engine}
+              tickEngine={tickEngine}
+              circuit={circuit}
+              isRunning={isRunning}
+              width={dimensions.width}
+              height={dimensions.height}
+              showHints={showOscilloscopeHints}
+              onDismissHints={onDismissOscilloscopeHints}
+            />
+          </div>
+        );
 
-    case '3d':
-      return (
-        <div ref={containerRef} style={containerStyle}>
-          <Logic3DScene
-            engine={engine}
-            width={dimensions.width}
-            height={dimensions.height}
-            viewStateStore={viewStateStore}
-            getChipMetadata={getChipMetadata}
-            showHints={show3DHints}
-            onDismissHints={onDismiss3DHints}
-          />
-        </div>
-      );
+      case '3d':
+        return (
+          <div ref={containerRef} style={containerStyle}>
+            <Logic3DScene
+              engine={engine}
+              width={dimensions.width}
+              height={dimensions.height}
+              viewStateStore={viewStateStore}
+              getChipMetadata={getChipMetadata}
+              showHints={show3DHints}
+              onDismissHints={onDismiss3DHints}
+            />
+          </div>
+        );
 
-    default:
-      return (
-        <div style={containerStyle} className="flex items-center justify-center bg-gray-900 text-gray-500">
-          Unknown view: {view}
+      default:
+        return (
+          <div style={containerStyle} className="flex items-center justify-center bg-gray-900 text-gray-500">
+            Unknown view: {view}
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* View Header */}
+      <div className={`h-8 px-3 flex items-center gap-2 border-b border-gray-700/50 bg-gradient-to-r from-${metadata.color}-900/20 to-gray-900/20`}>
+        <span className="text-lg">{metadata.icon}</span>
+        <span className={`text-xs font-semibold text-${metadata.color}-400 uppercase tracking-wide`}>{metadata.label}</span>
+        <div className="ml-auto text-[10px] text-gray-500">
+          {circuit.nodes.length} nodes • {circuit.connections.length} wires
         </div>
-      );
-  }
+      </div>
+      {/* View Content */}
+      {renderContent()}
+    </div>
+  );
 };
 
 export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
@@ -189,6 +222,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   showOscilloscopeHints,
   onDismissOscilloscopeHints,
   getChipMetadata,
+  onInputToggled,
 }) => {
   // Safety check: ensure engine and circuit are defined
   if (!engine || !tickEngine || !circuit) {
@@ -221,6 +255,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           onDismiss3DHints={onDismiss3DHints}
           showOscilloscopeHints={showOscilloscopeHints}
           onDismissOscilloscopeHints={onDismissOscilloscopeHints}
+          onInputToggled={onInputToggled}
         />
       </div>
     );
@@ -229,8 +264,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   // Horizontal split (side by side)
   if (mode === 'horizontal') {
     return (
-      <div className="w-full h-full flex gap-px bg-gray-800">
-        <div className="flex-1 bg-gray-900">
+      <div className="w-full h-full flex gap-1 bg-gray-950">
+        <div className="flex-1 bg-gray-900 overflow-hidden">
           <ViewRenderer
             view={views[0] || 'circuit'}
             engine={engine}
@@ -249,9 +284,10 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
+            onInputToggled={onInputToggled}
           />
         </div>
-        <div className="flex-1 bg-gray-900">
+        <div className="flex-1 bg-gray-900 overflow-hidden">
           <ViewRenderer
             view={views[1] || 'schematic'}
             engine={engine}
@@ -279,8 +315,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   // Vertical split (stacked)
   if (mode === 'vertical') {
     return (
-      <div className="w-full h-full flex flex-col gap-px bg-gray-800">
-        <div className="flex-1 bg-gray-900">
+      <div className="w-full h-full flex flex-col gap-1 bg-gray-950">
+        <div className="flex-1 bg-gray-900 overflow-hidden">
           <ViewRenderer
             view={views[0] || 'circuit'}
             engine={engine}
@@ -299,9 +335,10 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
+            onInputToggled={onInputToggled}
           />
         </div>
-        <div className="flex-1 bg-gray-900">
+        <div className="flex-1 bg-gray-900 overflow-hidden">
           <ViewRenderer
             view={views[1] || 'oscilloscope'}
             engine={engine}
@@ -329,8 +366,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   // Quad view (2x2 grid)
   if (mode === 'quad') {
     return (
-      <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-px bg-gray-800">
-        <div className="bg-gray-900">
+      <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-1 bg-gray-950">
+        <div className="bg-gray-900 overflow-hidden">
           <ViewRenderer
             view={views[0] || 'circuit'}
             engine={engine}
@@ -349,9 +386,10 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
+            onInputToggled={onInputToggled}
           />
         </div>
-        <div className="bg-gray-900">
+        <div className="bg-gray-900 overflow-hidden">
           <ViewRenderer
             view={views[1] || 'schematic'}
             engine={engine}
@@ -370,9 +408,10 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
+            onInputToggled={onInputToggled}
           />
         </div>
-        <div className="bg-gray-900">
+        <div className="bg-gray-900 overflow-hidden">
           <ViewRenderer
             view={views[2] || '3d'}
             engine={engine}
@@ -391,9 +430,10 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
+            onInputToggled={onInputToggled}
           />
         </div>
-        <div className="bg-gray-900">
+        <div className="bg-gray-900 overflow-hidden">
           <ViewRenderer
             view={views[3] || 'oscilloscope'}
             engine={engine}
