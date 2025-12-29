@@ -1228,305 +1228,137 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       {/* Hierarchy Breadcrumbs */}
       <HierarchyBreadcrumbs />
 
-      {/* Top Toolbar */}
-      <div className="border-b border-gray-700 p-2 flex items-center gap-2 flex-wrap text-sm">
-        <button
-          onClick={handleNew}
-          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded"
-        >
-          New
-        </button>
-        <button
-          onClick={handleSave}
-          className="px-3 py-1 bg-cyan-700 hover:bg-cyan-600 rounded"
-        >
-          Save{isDirty ? '*' : ''}
-        </button>
+      {/* Redesigned Top Toolbar - File & Simulation */}
+      <div className="border-b border-gray-700 bg-gradient-to-b from-gray-850 to-gray-900 px-3 py-2 flex items-center justify-between gap-3">
+        {/* Left: File Operations */}
         <div className="flex items-center gap-2">
-          <select
-            value={selectedFileId}
-            onChange={(e) => setSelectedFileId(e.target.value)}
-            className="px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
-          >
-            <option value="">Select file...</option>
-            {availableFiles.map((file) => (
-              <option key={file.id} value={file.id}>
-                {file.name}
-              </option>
-            ))}
-          </select>
           <button
-            onClick={() => handleLoadFile(selectedFileId)}
-            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded"
+            onClick={() => handleLoadExample(selectedExampleId || '01_wire-lamp')}
+            className="px-3 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded font-medium text-sm transition-all shadow-lg"
+            title="Load Example"
           >
-            Load File
+            📚 Examples
+          </button>
+          <button
+            onClick={handleSave}
+            className={`px-3 py-1.5 rounded font-medium text-sm transition-all ${
+              isDirty
+                ? 'bg-cyan-600 hover:bg-cyan-500 shadow-lg shadow-cyan-600/30 animate-pulse'
+                : 'bg-gray-700 hover:bg-gray-600'
+            }`}
+            title="Save (Ctrl+S)"
+          >
+            {isDirty ? '● Save' : 'Save'}
+          </button>
+          <button
+            onClick={handleShare}
+            className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded font-medium text-sm transition-all"
+            title="Share via link"
+          >
+            Share
           </button>
         </div>
 
-        <div className="w-px h-6 bg-gray-600" />
-
-        <div className="flex items-center gap-2">
-          <select
-            value={selectedExampleId}
-            onChange={(e) => setSelectedExampleId(e.target.value as ExampleId | '')}
-            className="px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
-          >
-            <option value="">Browse Examples by Layer...</option>
-            {([0, 1, 2, 3, 4, 5, 6] as CircuitLayer[]).map((layer) => {
-              const layerExamples = listExamplesByLayer(layer);
-              if (layerExamples.length === 0) return null;
-              return (
-                <optgroup key={layer} label={`Layer ${layer}: ${getLayerDescription(layer)}`}>
-                  {layerExamples.map((ex) => (
-                    <option key={ex.id} value={ex.id}>
-                      {ex.name} ({ex.difficulty})
-                    </option>
-                  ))}
-                </optgroup>
-              );
-            })}
-          </select>
+        {/* Center: Simulation Controls */}
+        <div className="flex items-center gap-2 bg-gray-800/50 rounded-lg px-3 py-1.5 border border-gray-700/50">
           <button
-            onClick={() => handleLoadExample(selectedExampleId)}
-            disabled={!selectedExampleId}
-            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={isRunning ? handlePause : handleRun}
+            className={`px-4 py-1.5 rounded font-semibold text-sm transition-all flex items-center gap-2 ${
+              isRunning
+                ? 'bg-yellow-600 hover:bg-yellow-500 shadow-lg'
+                : 'bg-green-600 hover:bg-green-500 shadow-lg'
+            }`}
           >
-            Load Example
+            {isRunning ? '⏸ Pause' : '▶ Run'}
           </button>
+          <button
+            onClick={handleStep}
+            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded font-medium text-sm transition-all"
+            title="Step Once"
+          >
+            Step
+          </button>
+          <div className="flex items-center gap-2 ml-2">
+            <input
+              type="range"
+              min="1"
+              max="60"
+              value={currentHz}
+              onChange={(e) => handleHzChange(parseInt(e.target.value, 10))}
+              className="w-20 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+            />
+            <span className="text-sm font-mono text-cyan-400 w-10 text-right">{currentHz}Hz</span>
+          </div>
         </div>
 
-        <div className="w-px h-6 bg-gray-600" />
-
-        {/* Chip Library Button */}
-        {allChips.length > 0 && (
-          <button
-            onClick={() => setShowChipLibrary(true)}
-            className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded"
-            title="Browse Chip Library (Ctrl+L)"
-          >
-            Browse Chips ({allChips.length})
-          </button>
-        )}
-
-        <div className="w-px h-6 bg-gray-600" />
-
+        {/* Right: Help */}
         <button
-          onClick={handleImport}
-          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded"
+          onClick={() => setShowKeyboardHelp(true)}
+          className="px-3 py-1.5 bg-purple-700 hover:bg-purple-600 rounded font-bold transition-all"
+          title="Keyboard Shortcuts (?)"
         >
-          Import
+          ?
         </button>
-        <button
-          onClick={handleExport}
-          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded"
-        >
-          Export
-        </button>
-        <button
-          onClick={handleShare}
-          className="px-3 py-1 bg-blue-700 hover:bg-blue-600 rounded"
-          title="Share circuit via link (Ctrl+Shift+C)"
-        >
-          Share
-        </button>
-        {recognizedPattern && (
-          <>
-            <div className="flex items-center gap-2 px-3 py-1 bg-green-900/40 border border-green-600 rounded">
-              <span className="text-green-400 font-semibold text-sm">
-                🎉 {recognizedPattern.name} (L{recognizedPattern.layer})
-              </span>
-              <span className="text-xs text-green-300">
-                {Math.round(recognizedPattern.confidence * 100)}% match
-              </span>
-            </div>
-            <button
-              onClick={() => setShowSaveChipModal(true)}
-              className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded font-semibold animate-pulse"
-              title={`Save ${recognizedPattern.name} as reusable chip`}
-            >
-              💾 Save as Chip
-            </button>
-          </>
-        )}
+      </div>
 
-        <div className="w-px h-6 bg-gray-600" />
-
-        <button
-          onClick={isRunning ? handlePause : handleRun}
-          className={`px-3 py-1 rounded ${
-            isRunning
-              ? 'bg-yellow-700 hover:bg-yellow-600'
-              : 'bg-green-700 hover:bg-green-600'
-          }`}
-        >
-          {isRunning ? 'Pause' : 'Run'}
-        </button>
-        <button
-          onClick={handleStep}
-          className="px-3 py-1 bg-blue-700 hover:bg-blue-600 rounded"
-        >
-          Step
-        </button>
-
-        <label className="flex items-center gap-2">
-          <span>Hz:</span>
-          <input
-            type="range"
-            min="1"
-            max="60"
-            value={currentHz}
-            onChange={(e) => handleHzChange(parseInt(e.target.value, 10))}
-            className="w-24"
-          />
-          <span className="w-8 text-right">{currentHz}</span>
-        </label>
-
-        <div className="w-px h-6 bg-gray-600" />
-
-        {/* View mode tabs */}
-        <div className="flex items-center gap-2 bg-gray-800 rounded p-1">
-          <span className="text-xs text-gray-400 px-2">Views:</span>
-          {(['circuit', 'schematic', '3d', 'oscilloscope'] as const).map((mode) => {
-            const labels = {
-              circuit: 'Circuit',
-              schematic: 'Schematic',
-              '3d': '3D',
-              oscilloscope: 'Scope',
-            };
-            const icons = {
-              circuit: '⚡',
-              schematic: '📐',
-              '3d': '🧊',
-              oscilloscope: '📊',
-            };
-            const isActive = splitScreenMode === 'single' ? activeViews[0] === mode : activeViews.includes(mode);
+      {/* Second Toolbar - View Controls */}
+      <div className="border-b border-gray-700 bg-gray-900 px-3 py-2 flex items-center justify-between gap-3">
+        {/* View Mode Selector */}
+        <div className="flex items-center gap-1.5">
+          {([['circuit', '⚡'], ['schematic', '📐'], ['3d', '🧊'], ['oscilloscope', '📊']] as const).map(([mode, icon]) => {
+            const isActive = activeViews.includes(mode);
             return (
               <button
                 key={mode}
                 onClick={() => {
-                  setViewMode(mode);
                   if (splitScreenMode === 'single') {
                     setActiveViews([mode]);
                   }
+                  setViewMode(mode);
                 }}
-                className={`px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded font-medium text-sm transition-all flex items-center gap-1.5 ${
                   isActive
-                    ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/50'
-                    : 'bg-gray-700 hover:bg-gray-600 text-gray-300 hover:shadow-md'
+                    ? 'bg-cyan-600 text-white shadow-lg scale-105'
+                    : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
                 }`}
-                title={`Switch to ${labels[mode]} view`}
+                title={mode.charAt(0).toUpperCase() + mode.slice(1)}
               >
-                <span>{icons[mode]}</span>
-                <span>{labels[mode]}</span>
+                <span>{icon}</span>
+                <span className="capitalize">{mode === '3d' ? '3D' : mode === 'oscilloscope' ? 'Scope' : mode}</span>
               </button>
             );
           })}
         </div>
 
-        <div className="w-px h-6 bg-gray-600" />
-
-        {/* Split-screen layout selector */}
-        <div className="flex items-center gap-2 bg-gray-800 rounded p-1">
-          <span className="text-xs text-gray-400 px-2">Layout:</span>
-          <button
-            onClick={() => {
-              setSplitScreenMode('single');
-              setActiveViews([viewMode]);
-            }}
-            className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
-              splitScreenMode === 'single'
-                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/50'
-                : 'bg-gray-700 hover:bg-gray-600 text-gray-300 hover:shadow-md'
-            }`}
-            title="Single view"
-          >
-            <div className="w-5 h-5 border-2 border-current rounded"></div>
-          </button>
-          <button
-            onClick={() => {
-              setSplitScreenMode('horizontal');
-              setActiveViews(['circuit', 'schematic']);
-            }}
-            className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
-              splitScreenMode === 'horizontal'
-                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/50'
-                : 'bg-gray-700 hover:bg-gray-600 text-gray-300 hover:shadow-md'
-            }`}
-            title="Horizontal split (side-by-side)"
-          >
-            <div className="flex gap-0.5">
-              <div className="w-2.5 h-5 border-2 border-current rounded"></div>
-              <div className="w-2.5 h-5 border-2 border-current rounded"></div>
-            </div>
-          </button>
-          <button
-            onClick={() => {
-              setSplitScreenMode('vertical');
-              setActiveViews(['circuit', 'oscilloscope']);
-            }}
-            className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
-              splitScreenMode === 'vertical'
-                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/50'
-                : 'bg-gray-700 hover:bg-gray-600 text-gray-300 hover:shadow-md'
-            }`}
-            title="Vertical split (stacked)"
-          >
-            <div className="flex flex-col gap-0.5">
-              <div className="w-5 h-2 border-2 border-current rounded"></div>
-              <div className="w-5 h-2 border-2 border-current rounded"></div>
-            </div>
-          </button>
-          <button
-            onClick={() => {
-              setSplitScreenMode('quad');
-              setActiveViews(['circuit', 'schematic', '3d', 'oscilloscope']);
-            }}
-            className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
-              splitScreenMode === 'quad'
-                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/50'
-                : 'bg-gray-700 hover:bg-gray-600 text-gray-300 hover:shadow-md'
-            }`}
-            title="Quad view (2x2 grid)"
-          >
-            <div className="grid grid-cols-2 gap-0.5">
-              <div className="w-2 h-2 border-2 border-current rounded"></div>
-              <div className="w-2 h-2 border-2 border-current rounded"></div>
-              <div className="w-2 h-2 border-2 border-current rounded"></div>
-              <div className="w-2 h-2 border-2 border-current rounded"></div>
-            </div>
-          </button>
+        {/* Layout Selector */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-gray-500 mr-1">Layout:</span>
+          {[
+            ['single', <div key="s" className="w-4 h-4 border-2 border-current rounded"></div>],
+            ['horizontal', <div key="h" className="flex gap-0.5"><div className="w-2 h-4 border-2 border-current rounded"></div><div className="w-2 h-4 border-2 border-current rounded"></div></div>],
+            ['vertical', <div key="v" className="flex flex-col gap-0.5"><div className="w-4 h-1.5 border-2 border-current rounded"></div><div className="w-4 h-1.5 border-2 border-current rounded"></div></div>],
+            ['quad', <div key="q" className="grid grid-cols-2 gap-0.5"><div className="w-1.5 h-1.5 border-2 border-current rounded"></div><div className="w-1.5 h-1.5 border-2 border-current rounded"></div><div className="w-1.5 h-1.5 border-2 border-current rounded"></div><div className="w-1.5 h-1.5 border-2 border-current rounded"></div></div>],
+          ].map(([mode, icon]) => (
+            <button
+              key={mode as string}
+              onClick={() => {
+                setSplitScreenMode(mode as any);
+                if (mode === 'single') setActiveViews([viewMode]);
+                else if (mode === 'horizontal') setActiveViews(['circuit', 'schematic']);
+                else if (mode === 'vertical') setActiveViews(['circuit', 'oscilloscope']);
+                else setActiveViews(['circuit', 'schematic', '3d', 'oscilloscope']);
+              }}
+              className={`px-2 py-1.5 rounded transition-all ${
+                splitScreenMode === mode
+                  ? 'bg-cyan-600 text-white'
+                  : 'bg-gray-800 hover:bg-gray-700 text-gray-400'
+              }`}
+              title={`${mode} layout`}
+            >
+              {icon}
+            </button>
+          ))}
         </div>
-
-        <button
-          onClick={() => {
-            setShowTraceViewer(!showTraceViewer);
-            // Update snapshots when opening
-            if (!showTraceViewer) {
-              const recorder = tickEngine.getTraceRecorder();
-              if (recorder) {
-                setTraceSnapshots(recorder.getSnapshots());
-              }
-            }
-          }}
-          className={`px-3 py-1 rounded font-semibold ${
-            showTraceViewer
-              ? 'bg-cyan-600 hover:bg-cyan-500 text-white'
-              : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-          }`}
-          title="Show execution trace"
-        >
-          Trace
-        </button>
-
-        <div className="flex-1" />
-
-        <button
-          onClick={startTutorial}
-          className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded font-bold"
-          title="Start Tutorial"
-        >
-          ?
-        </button>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
