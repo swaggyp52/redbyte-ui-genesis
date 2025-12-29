@@ -107,13 +107,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     // Immediately sync circuit when engine changes
     const syncCircuit = () => {
       const newCircuit = engine.getCircuit();
-      // Only update if circuit actually changed (by reference or content)
-      setCircuit((prev) => {
-        if (prev === newCircuit) return prev;
-        if (prev.nodes.length !== newCircuit.nodes.length) return newCircuit;
-        if (prev.connections.length !== newCircuit.connections.length) return newCircuit;
-        return newCircuit; // Force update anyway to catch any changes
-      });
+      // Always update - force re-render to ensure circuit view displays
+      setCircuit(newCircuit);
       setSignals(engine.getEngine().getAllSignals());
     };
 
