@@ -159,6 +159,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [inspectorMinimized, setInspectorMinimized] = useState(false);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showExamplesModal, setShowExamplesModal] = useState(false);
 
   const autosaveIntervalRef = useRef<number | null>(null);
   const historyDebounceRef = useRef<number | null>(null);
@@ -1233,7 +1234,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         {/* Left: File Operations */}
         <div className="flex items-center gap-2">
           <button
-            onClick={() => handleLoadExample(selectedExampleId || '01_wire-lamp')}
+            onClick={() => setShowExamplesModal(true)}
             className="px-3 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded font-medium text-sm transition-all shadow-lg"
             title="Load Example"
           >
@@ -1766,6 +1767,53 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setShowOpenModal(false)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Examples Modal */}
+      {showExamplesModal && (
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
+            <h3 className="text-lg font-semibold mb-3 text-white">Load Example</h3>
+            <div className="flex-1 overflow-y-auto mb-4">
+              {([0, 1, 2, 3, 4, 5, 6] as CircuitLayer[]).map((layer) => {
+                const layerExamples = listExamplesByLayer(layer);
+                if (layerExamples.length === 0) return null;
+                return (
+                  <div key={layer} className="mb-4">
+                    <h4 className="text-sm font-semibold text-cyan-400 mb-2">
+                      Layer {layer}: {getLayerDescription(layer)}
+                    </h4>
+                    <div className="space-y-1">
+                      {layerExamples.map((ex) => (
+                        <button
+                          key={ex.id}
+                          onClick={() => {
+                            handleLoadExample(ex.id);
+                            setShowExamplesModal(false);
+                          }}
+                          className="w-full text-left px-3 py-2 bg-gray-900 hover:bg-gray-700 border border-gray-700 rounded text-white text-sm transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">{ex.name}</span>
+                            <span className="text-xs text-gray-400">{ex.difficulty}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-2 justify-end border-t border-gray-700 pt-4">
+              <button
+                onClick={() => setShowExamplesModal(false)}
                 className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
               >
                 Cancel
