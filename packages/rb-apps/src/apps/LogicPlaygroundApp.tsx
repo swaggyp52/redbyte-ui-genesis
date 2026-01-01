@@ -49,6 +49,7 @@ import { QuickAddPalette } from '../components/QuickAddPalette';
 import { StatusBar } from '../components/StatusBar';
 import { TopCommandBar } from '../components/TopCommandBar';
 import { RightDock, type RightDockState } from '../components/RightDock';
+import { EnhancedPalette } from '../components/EnhancedPalette';
 
 type ViewMode = 'circuit' | 'schematic' | 'oscilloscope' | '3d';
 type PlaygroundMode = 'build' | 'analyze' | 'learn' | 'quad';
@@ -1240,108 +1241,16 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - Library */}
-        <div className="w-48 border-r border-gray-700 overflow-y-auto p-2 bg-gray-850">
-          {Object.entries(PRIMITIVE_NODES).map(([category, nodes]) => (
-            <div key={category} className="mb-4">
-              <h3 className="text-xs font-semibold mb-2 text-gray-400">{category.toUpperCase()}</h3>
-              <div className="space-y-1">
-                {nodes.map((type) => {
-                  const metadata = getChipMetadataForNode(type);
-                  const description = getNodeDescription(type);
-                  const layerColor = metadata?.layer === 0 ? 'bg-blue-900/20 border-blue-700/30' : 'bg-green-900/20 border-green-700/30';
-                  return (
-                    <button
-                      key={type}
-                      draggable
-                      onDragStart={(e) => handleNodeDragStart(type, e)}
-                      className={`w-full text-left px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded cursor-move transition-colors border ${layerColor} group relative`}
-                      title={description}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span>{type}</span>
-                        {metadata && metadata.layer > 0 && (
-                          <span className="text-[10px] text-gray-500">L{metadata.layer}</span>
-                        )}
-                      </div>
-                      {/* Tooltip on hover */}
-                      <div className="hidden group-hover:block absolute left-full ml-2 top-0 bg-gray-900 border border-gray-600 rounded p-2 text-xs whitespace-nowrap z-50 shadow-xl">
-                        {description}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-
-          <h3 className="text-xs font-semibold mb-2 text-gray-400">COMPOSITE</h3>
-          <div className="space-y-1 mb-4">
-            {COMPOSITE_NODES.map((type) => {
-              const metadata = getChipMetadataForNode(type);
-              const description = getNodeDescription(type);
-              const layerColors: Record<number, string> = {
-                2: 'bg-teal-900/20 border-teal-700/30',
-                3: 'bg-pink-900/20 border-pink-700/30',
-                4: 'bg-orange-900/20 border-orange-700/30',
-              };
-              const layerColor = metadata?.layer ? layerColors[metadata.layer] || 'bg-gray-800' : 'bg-gray-800';
-              return (
-                <button
-                  key={type}
-                  draggable
-                  onDragStart={(e) => handleNodeDragStart(type, e)}
-                  className={`w-full text-left px-2 py-1 text-xs hover:bg-gray-700 rounded cursor-move transition-colors border ${layerColor} group relative`}
-                  title={description}
-                >
-                  <div className="flex items-center justify-between">
-                    <span>{type}</span>
-                    {metadata && metadata.layer && (
-                      <span className="text-[10px] text-gray-500">L{metadata.layer}</span>
-                    )}
-                  </div>
-                  {/* Tooltip on hover */}
-                  <div className="hidden group-hover:block absolute left-full ml-2 top-0 bg-gray-900 border border-gray-600 rounded p-2 text-xs whitespace-nowrap z-50 shadow-xl max-w-xs">
-                    {description}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-semibold text-gray-400">MY CHIPS</h3>
-            <button
-              onClick={() => setShowChipLibrary(true)}
-              className="text-xs text-cyan-400 hover:text-cyan-300"
-              title="Browse chip library"
-            >
-              Browse
-            </button>
-          </div>
-          <div className="space-y-1">
-            {allChips.length === 0 ? (
-              <p className="text-xs text-gray-500 italic px-2 py-1">
-                No saved chips yet
-              </p>
-            ) : (
-              allChips.map((chip) => (
-                <button
-                  key={chip.id}
-                  draggable
-                  onDragStart={(e) => handleNodeDragStart(chip.name, e)}
-                  className="w-full text-left px-2 py-1 text-xs bg-purple-900/30 hover:bg-purple-800/40 rounded cursor-move transition-colors border border-purple-700/30"
-                  title={`${chip.description} • Layer ${chip.layer} • Drag to canvas`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="truncate">{chip.name}</span>
-                    <span className="text-[10px] text-purple-400 ml-1">L{chip.layer}</span>
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
+        {/* Left Sidebar - Enhanced Palette (PR3) */}
+        <EnhancedPalette
+          primitiveNodes={PRIMITIVE_NODES}
+          compositeNodes={COMPOSITE_NODES}
+          chips={allChips}
+          onNodeDragStart={handleNodeDragStart}
+          onChipLibraryOpen={() => setShowChipLibrary(true)}
+          getChipMetadata={getChipMetadataForNode}
+          getNodeDescription={getNodeDescription}
+        />
 
         {/* Center - Canvas */}
         <div
