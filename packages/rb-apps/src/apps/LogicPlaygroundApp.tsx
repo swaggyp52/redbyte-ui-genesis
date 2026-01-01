@@ -50,6 +50,7 @@ import { StatusBar } from '../components/StatusBar';
 import { TopCommandBar } from '../components/TopCommandBar';
 import { RightDock, type RightDockState } from '../components/RightDock';
 import { EnhancedPalette } from '../components/EnhancedPalette';
+import { HelpDock } from '../components/HelpDock';
 
 type ViewMode = 'circuit' | 'schematic' | 'oscilloscope' | '3d';
 type PlaygroundMode = 'build' | 'analyze' | 'learn' | 'quad';
@@ -1362,17 +1363,31 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           {tutorialActive && <TutorialOverlay onLoadExample={handleLoadTutorialExample} />}
         </div>
 
-        {/* Right Dock - vNext Design (replaces floating inspector) */}
-        <RightDock
-          circuit={circuit}
-          engine={engine}
-          isRunning={isRunning}
-          onNodeUpdate={handleNodeUpdate}
-          onConnectionDelete={handleConnectionDelete}
-          chips={allChips}
-          initialState={rightDockState}
-          onStateChange={setRightDockState}
-        />
+        {/* Right Dock or Help Dock depending on mode */}
+        {playgroundMode === 'learn' ? (
+          <HelpDock
+            visible={true}
+            onClose={() => setPlaygroundMode('build')}
+            onLoadExample={(exampleId, highlightComponents) => {
+              handleLoadExample(exampleId);
+              // TODO: Implement component highlighting
+              if (highlightComponents) {
+                console.log('Highlighting components:', highlightComponents);
+              }
+            }}
+          />
+        ) : (
+          <RightDock
+            circuit={circuit}
+            engine={engine}
+            isRunning={isRunning}
+            onNodeUpdate={handleNodeUpdate}
+            onConnectionDelete={handleConnectionDelete}
+            chips={allChips}
+            initialState={rightDockState}
+            onStateChange={setRightDockState}
+          />
+        )}
       </div>
 
       {/* Loading Overlay */}
