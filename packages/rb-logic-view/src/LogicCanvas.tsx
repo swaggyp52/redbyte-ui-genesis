@@ -383,6 +383,11 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         if (editingState.wireStartPort) {
           endWire();
         }
+      } else if (e.key === 'w' || e.key === 'W') {
+        // W: Toggle wire tool (cancel wire mode if active)
+        if (editingState.wireStartPort) {
+          endWire();
+        }
       } else if (e.key === 'f' && (e.ctrlKey || e.metaKey)) {
         // Ctrl/Cmd+F: Fit to view
         e.preventDefault();

@@ -392,10 +392,10 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
             <circle
               cx={-size / 2}
               cy={0}
-              r={4}
+              r={5}
               fill={isWireStart ? "#00ffff" : "#3b82f6"}
               stroke="#fff"
-              strokeWidth={isHovered ? 2 : 1}
+              strokeWidth={isHovered ? 2.5 : 1.5}
               style={{ cursor: 'crosshair' }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -429,10 +429,10 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
             <circle
               cx={size / 2}
               cy={0}
-              r={4}
-              fill={isWireStart ? "#00ffff" : isActive ? '#22c55e' : '#6b7280'}
+              r={5}
+              fill={isWireStart ? "#00ffff" : isActive ? '#22c55e' : '#9ca3af'}
               stroke="#fff"
-              strokeWidth={isHovered ? 2 : 1}
+              strokeWidth={isHovered ? 2.5 : 1.5}
               style={{ cursor: 'crosshair' }}
               onClick={(e) => {
                 e.stopPropagation();
