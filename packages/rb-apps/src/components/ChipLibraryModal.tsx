@@ -158,10 +158,28 @@ export const ChipLibraryModal: React.FC<ChipLibraryModalProps> = ({
                                 <span className="text-xs text-gray-400">L{chip.layer}</span>
                               </div>
                               <p className="text-sm text-gray-400 mb-2">{chip.description}</p>
+
+                              {/* I/O Preview */}
+                              <div className="flex gap-4 text-xs mb-2">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-green-400">→</span>
+                                  <span className="text-gray-500">In:</span>
+                                  <span className="text-gray-300 font-mono">
+                                    {chip.inputs.map(i => i.name).join(', ') || 'none'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-orange-400">←</span>
+                                  <span className="text-gray-500">Out:</span>
+                                  <span className="text-gray-300 font-mono">
+                                    {chip.outputs.map(o => o.name).join(', ') || 'none'}
+                                  </span>
+                                </div>
+                              </div>
+
                               <div className="flex gap-4 text-xs text-gray-500">
-                                <span>{chip.inputs.length} inputs</span>
-                                <span>{chip.outputs.length} outputs</span>
                                 <span>{chip.subcircuit.nodes.length} gates</span>
+                                <span>{chip.subcircuit.connections.length} wires</span>
                               </div>
                             </div>
                             {onDeleteChip && (

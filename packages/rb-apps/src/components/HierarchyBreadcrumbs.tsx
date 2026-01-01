@@ -14,15 +14,18 @@ export const HierarchyBreadcrumbs: React.FC = () => {
   const currentLevel = stack[stack.length - 1];
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-900/40 to-blue-900/40 border-b border-purple-600/50">
-      {/* Context indicator */}
-      <div className="flex items-center gap-2 text-sm">
-        <span className="text-purple-300 font-semibold">
-          {isEditMode ? '✏️ Editing:' : '👁️ Viewing:'}
-        </span>
-        <span className="text-white font-bold">{currentLevel.name}</span>
-        <span className="text-purple-400 text-xs">
-          (Layer {stack.length})
+    <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-900/40 to-blue-900/40 border-b border-purple-600/50 shadow-lg">
+      {/* Strong visual indicator - "You are inside a chip" */}
+      <div className="flex items-center gap-2 bg-purple-800/50 px-3 py-1 rounded border border-purple-500/30">
+        <span className="text-lg">📦</span>
+        <div className="flex flex-col">
+          <span className="text-[10px] text-purple-300 uppercase tracking-wide">
+            {isEditMode ? 'Editing Chip' : 'Viewing Chip'}
+          </span>
+          <span className="text-white font-bold text-sm">{currentLevel.name}</span>
+        </div>
+        <span className="text-purple-400 text-xs ml-2">
+          L{stack.length}
         </span>
       </div>
 
