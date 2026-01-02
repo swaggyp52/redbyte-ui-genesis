@@ -79,7 +79,9 @@
       "Bash(pnpm run typecheck:*)",
       "Bash(pnpm -w run typecheck:*)",
       "Bash(pnpm run dev)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(pnpm preview:*)",
+      "Bash(npx vite preview)"
     ],
     "deny": [],
     "ask": []

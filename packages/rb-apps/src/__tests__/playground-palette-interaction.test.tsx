@@ -42,17 +42,17 @@ describe('Playground - Palette Interaction (PR0 Baseline)', () => {
     const Component = LogicPlaygroundApp.component;
     render(<Component />);
 
-    // Wait for palette to render
+    // Wait for palette to render by checking for Step button (stable UI element)
     await waitFor(() => {
-      expect(screen.getByText(/^AND$/)).toBeInTheDocument();
+      expect(screen.getByTitle(/Step Once/i)).toBeInTheDocument();
     });
 
     // Get initial circuit state
     const initialNodeCount = useCircuitStore.getState().circuit.nodes.length;
 
-    // Click AND gate
-    const andButton = screen.getByText(/^AND$/);
-    await user.click(andButton);
+    // Find AND gate in palette (may appear multiple times due to favorites/recents)
+    const andButtons = screen.getAllByText(/^AND$/);
+    await user.click(andButtons[0]);
 
     // Verify node was added to store
     await waitFor(() => {
@@ -63,13 +63,17 @@ describe('Playground - Palette Interaction (PR0 Baseline)', () => {
   });
 
   it('should have engines connected when circuit mutations occur', async () => {
-    const user = userEvent.setup();
     const consoleSpy = vi.spyOn(console, 'warn');
 
     const Component = LogicPlaygroundApp.component;
     render(<Component />);
 
-    // Wait for component to mount and engines to be initialized
+    // Wait for UI to render (using stable element)
+    await waitFor(() => {
+      expect(screen.getByTitle(/Step Once/i)).toBeInTheDocument();
+    });
+
+    // Wait for engines to be initialized
     await waitFor(() => {
       const { engine, tickEngine } = useCircuitStore.getState();
       expect(engine).not.toBeNull();
@@ -79,7 +83,7 @@ describe('Playground - Palette Interaction (PR0 Baseline)', () => {
     // Add a node via store (direct call to test invariant)
     useCircuitStore.getState().addNode('AND', { x: 100, y: 100 });
 
-    // Verify no warning about missing engines (dev invariant should pass)
+    // Verify circuit was updated
     await waitFor(() => {
       const circuit = useCircuitStore.getState().circuit;
       expect(circuit.nodes.length).toBeGreaterThan(0);

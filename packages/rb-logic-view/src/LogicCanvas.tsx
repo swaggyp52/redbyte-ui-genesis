@@ -66,7 +66,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const lastCircuitNodeCount = React.useRef(0);
 
   // Invariant: controlled mode requires onCircuitChange callback
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     if (externalCircuit && !onCircuitChange) {
       throw new Error(
         'LogicCanvas: When circuit prop is provided (controlled mode), onCircuitChange callback is REQUIRED. ' +

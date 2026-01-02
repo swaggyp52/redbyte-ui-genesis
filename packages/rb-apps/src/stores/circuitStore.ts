@@ -43,7 +43,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     const { engine, tickEngine } = get();
 
     // Dev-mode invariant: warn if engines not connected when mutating circuit
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       if (!engine || !tickEngine) {
         console.warn(
           '[CircuitStore] Circuit mutation called but engines not connected!\n' +
