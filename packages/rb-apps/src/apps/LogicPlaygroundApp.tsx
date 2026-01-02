@@ -128,6 +128,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       connections: [],
     };
   });
+  const setCircuitRef = useRef(setCircuit);
 
   const [engine, setEngine] = useState<CircuitEngine>(() => new CircuitEngine(circuit));
   const [tickEngine, setTickEngine] = useState<TickEngine>(
@@ -176,9 +177,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
   // Keep refs in sync with state
   useEffect(() => {
+    setCircuitRef.current = setCircuit;
     engineRef.current = engine;
     tickEngineRef.current = tickEngine;
-  }, [engine, tickEngine]);
+  }, [setCircuit, engine, tickEngine]);
 
   // Initialize global view state sync
   useEffect(() => {
@@ -683,7 +685,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   };
 
   const handleCircuitChange = useCallback((updatedCircuit: Circuit) => {
-    setCircuit(updatedCircuit);
+    setCircuitRef.current(updatedCircuit);
     engineRef.current.setCircuit(updatedCircuit);
     tickEngineRef.current.setCircuit(updatedCircuit);
     setIsDirty(true);
