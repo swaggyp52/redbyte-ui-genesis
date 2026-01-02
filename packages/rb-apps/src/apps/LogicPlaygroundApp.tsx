@@ -3,7 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 // v1.0.1 - Multi-view enhancement with null safety
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { RedByteApp } from '../types';
 import {
   CircuitEngine,
@@ -674,6 +674,45 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     addToast('Connection deleted', 'info');
   };
 
+  const handleCircuitChange = useCallback((updatedCircuit: Circuit) => {
+    setCircuit(updatedCircuit);
+    engine.setCircuit(updatedCircuit);
+    tickEngine.setCircuit(updatedCircuit);
+    setIsDirty(true);
+
+    // Only mark dirty and handle history if not currently loading a file
+    if (!isHydratingRef.current) {
+      // Debounced history push (1 second after last change)
+      if (historyDebounceRef.current) {
+        clearTimeout(historyDebounceRef.current);
+      }
+      historyDebounceRef.current = setTimeout(() => {
+        pushState(updatedCircuit);
+      }, 1000) as unknown as number;
+
+      // Debounced pattern recognition (2 seconds after last change)
+      if (patternRecognitionRef.current) {
+        clearTimeout(patternRecognitionRef.current);
+      }
+      patternRecognitionRef.current = setTimeout(() => {
+        const pattern = recognizePattern(updatedCircuit);
+        if (pattern && pattern.name !== lastRecognizedPatternRef.current) {
+          lastRecognizedPatternRef.current = pattern.name;
+          setRecognizedPattern(pattern);
+          addToast(
+            `🎉 You just built a ${pattern.name}! ${pattern.description} (Layer ${pattern.layer})`,
+            'success',
+            6000
+          );
+        } else if (!pattern && lastRecognizedPatternRef.current) {
+          // Circuit changed - pattern no longer matches
+          lastRecognizedPatternRef.current = '';
+          setRecognizedPattern(null);
+        }
+      }, 2000) as unknown as number;
+    }
+  }, [engine, tickEngine, pushState, addToast]);
+
   const handleNodeDragStart = (nodeType: string, e?: React.DragEvent) => {
     if (e) {
       try {
@@ -1319,44 +1358,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             showOscilloscopeHints={false}
             onDismissOscilloscopeHints={() => setShowOscilloscopeHints(false)}
             onInputToggled={determinismRecorder?.isRecording ? determinismRecorder.recordInputToggled : undefined}
-            onCircuitChange={(updatedCircuit) => {
-              setCircuit(updatedCircuit);
-              engine.setCircuit(updatedCircuit);
-              tickEngine.setCircuit(updatedCircuit);
-              setIsDirty(true);
-
-              // Only mark dirty and handle history if not currently loading a file
-              if (!isHydratingRef.current) {
-                // Debounced history push (1 second after last change)
-                if (historyDebounceRef.current) {
-                  clearTimeout(historyDebounceRef.current);
-                }
-                historyDebounceRef.current = setTimeout(() => {
-                  pushState(updatedCircuit);
-                }, 1000) as unknown as number;
-
-                // Debounced pattern recognition (2 seconds after last change)
-                if (patternRecognitionRef.current) {
-                  clearTimeout(patternRecognitionRef.current);
-                }
-                patternRecognitionRef.current = setTimeout(() => {
-                  const pattern = recognizePattern(updatedCircuit);
-                  if (pattern && pattern.name !== lastRecognizedPatternRef.current) {
-                    lastRecognizedPatternRef.current = pattern.name;
-                    setRecognizedPattern(pattern);
-                    addToast(
-                      `🎉 You just built a ${pattern.name}! ${pattern.description} (Layer ${pattern.layer})`,
-                      'success',
-                      6000
-                    );
-                  } else if (!pattern && lastRecognizedPatternRef.current) {
-                    // Circuit changed - pattern no longer matches
-                    lastRecognizedPatternRef.current = '';
-                    setRecognizedPattern(null);
-                  }
-                }, 2000) as unknown as number;
-              }
-            }}
+            onCircuitChange={handleCircuitChange}
             viewStateStore={useViewStateStore}
           />
 
