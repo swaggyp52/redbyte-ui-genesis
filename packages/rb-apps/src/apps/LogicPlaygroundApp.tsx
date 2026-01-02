@@ -171,6 +171,14 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const canvasAreaRef = useRef<HTMLDivElement>(null);
   const hasLoadedFromURL = useRef(false);
   const isHydratingRef = useRef(false); // Guard to prevent setting dirty during file load
+  const engineRef = useRef<CircuitEngine>(engine);
+  const tickEngineRef = useRef<TickEngine>(tickEngine);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    engineRef.current = engine;
+    tickEngineRef.current = tickEngine;
+  }, [engine, tickEngine]);
 
   // Initialize global view state sync
   useEffect(() => {
@@ -676,8 +684,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
   const handleCircuitChange = useCallback((updatedCircuit: Circuit) => {
     setCircuit(updatedCircuit);
-    engine.setCircuit(updatedCircuit);
-    tickEngine.setCircuit(updatedCircuit);
+    engineRef.current.setCircuit(updatedCircuit);
+    tickEngineRef.current.setCircuit(updatedCircuit);
     setIsDirty(true);
 
     // Only mark dirty and handle history if not currently loading a file
@@ -711,7 +719,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         }
       }, 2000) as unknown as number;
     }
-  }, [engine, tickEngine, pushState, addToast]);
+  }, [pushState, addToast]);
 
   const handleNodeDragStart = (nodeType: string, e?: React.DragEvent) => {
     if (e) {
