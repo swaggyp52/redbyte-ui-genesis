@@ -41,6 +41,20 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
 
   updateCircuit: (circuit) => {
     const { engine, tickEngine } = get();
+
+    // Dev-mode invariant: warn if engines not connected when mutating circuit
+    if (process.env.NODE_ENV === 'development') {
+      if (!engine || !tickEngine) {
+        console.warn(
+          '[CircuitStore] Circuit mutation called but engines not connected!\n' +
+          `  - engine: ${engine ? '✓' : '✗ MISSING'}\n` +
+          `  - tickEngine: ${tickEngine ? '✓' : '✗ MISSING'}\n` +
+          'Circuit mutations will not propagate to simulation. ' +
+          'Call setEngine() and setTickEngine() during app initialization.'
+        );
+      }
+    }
+
     set({ circuit, isDirty: true });
     engine?.setCircuit(circuit);
     tickEngine?.setCircuit(circuit);
