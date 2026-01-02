@@ -65,6 +65,35 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const lastSyncedSelection = React.useRef<Set<string>>(new Set());
   const lastCircuitNodeCount = React.useRef(0);
 
+  // Invariant: controlled mode requires onCircuitChange callback
+  if (process.env.NODE_ENV === 'development') {
+    if (externalCircuit && !onCircuitChange) {
+      throw new Error(
+        'LogicCanvas: When circuit prop is provided (controlled mode), onCircuitChange callback is REQUIRED. ' +
+        'This ensures circuit mutations propagate to the parent/store. ' +
+        'Either provide onCircuitChange or remove the circuit prop to use internal state.'
+      );
+    }
+  }
+
+  /**
+   * Centralized circuit mutation handler - ALL mutations MUST go through this
+   * Ensures proper propagation to engine + parent/store
+   */
+  const commitCircuit = React.useCallback((nextCircuit: Circuit) => {
+    // Update engine
+    engine.setCircuit(nextCircuit);
+
+    // Propagate to parent/store (controlled mode) or update internal state
+    if (externalCircuit) {
+      // Controlled mode: MUST have callback (enforced by dev invariant above)
+      onCircuitChange!(nextCircuit);
+    } else {
+      // Uncontrolled mode: update internal state
+      setInternalCircuit(nextCircuit);
+    }
+  }, [engine, externalCircuit, onCircuitChange]);
+
   // Auto-center and fit circuit in view when circuit changes
   React.useEffect(() => {
     const currentNodeCount = circuit.nodes.length;
@@ -248,16 +277,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       ),
     };
 
-    // Update engine
-    engine.setCircuit(updatedCircuit);
-    // Propagate to parent/store (if external circuit is used)
-    if (externalCircuit && onCircuitChange) {
-      onCircuitChange(updatedCircuit);
-    } else {
-      // Update internal state if using internal circuit
-      setInternalCircuit(updatedCircuit);
-    }
-  }, [circuit, shouldSnap, gridSize, engine, externalCircuit, onCircuitChange]);
+    commitCircuit(updatedCircuit);
+  }, [circuit, shouldSnap, gridSize, commitCircuit]);
 
   const handleToggleSwitch = React.useCallback((nodeId: string) => {
     const updatedCircuit = {
@@ -278,13 +299,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       }),
     };
 
-    engine.setCircuit(updatedCircuit);
-    if (externalCircuit && onCircuitChange) {
-      onCircuitChange(updatedCircuit);
-    } else {
-      setInternalCircuit(updatedCircuit);
-    }
-  }, [circuit, engine, onInputToggled, externalCircuit, onCircuitChange]);
+    commitCircuit(updatedCircuit);
+  }, [circuit, onInputToggled, commitCircuit]);
 
   const handlePortClick = React.useCallback((nodeId: string, portName: string) => {
     if (editingState.wireStartPort) {
@@ -299,18 +315,13 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         connections: [...circuit.connections, newConnection],
       };
 
-      engine.setCircuit(updatedCircuit);
-      if (externalCircuit && onCircuitChange) {
-        onCircuitChange(updatedCircuit);
-      } else {
-        setInternalCircuit(updatedCircuit);
-      }
+      commitCircuit(updatedCircuit);
       endWire();
     } else {
       // Start wire
       startWire({ nodeId, portName });
     }
-  }, [circuit, editingState.wireStartPort, engine, endWire, startWire]);
+  }, [circuit, editingState.wireStartPort, commitCircuit, endWire, startWire]);
 
   const handleAddNode = React.useCallback((type: string) => {
     const newNode: Node = {
@@ -329,13 +340,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       nodes: [...circuit.nodes, newNode],
     };
 
-    engine.setCircuit(updatedCircuit);
-    if (externalCircuit && onCircuitChange) {
-      onCircuitChange(updatedCircuit);
-    } else {
-      setInternalCircuit(updatedCircuit);
-    }
-  }, [circuit, camera, width, height, engine, externalCircuit, onCircuitChange]);
+    commitCircuit(updatedCircuit);
+  }, [circuit, camera, width, height, commitCircuit]);
 
   const handleDelete = React.useCallback(() => {
     const updatedCircuit = {
@@ -346,14 +352,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       ),
     };
 
-    engine.setCircuit(updatedCircuit);
-    if (externalCircuit && onCircuitChange) {
-      onCircuitChange(updatedCircuit);
-    } else {
-      setInternalCircuit(updatedCircuit);
-    }
+    commitCircuit(updatedCircuit);
     clearSelection();
-  }, [circuit, selection.nodes, engine, clearSelection, externalCircuit, onCircuitChange]);
+  }, [circuit, selection.nodes, commitCircuit, clearSelection]);
 
   // Fit circuit to view
   const fitToView = React.useCallback(() => {
