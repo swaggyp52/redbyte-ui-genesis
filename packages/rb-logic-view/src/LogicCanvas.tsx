@@ -19,6 +19,7 @@ export interface LogicCanvasProps {
   showToolbar?: boolean;
   getChipMetadata?: (nodeType: string) => ChipMetadata | undefined;
   onNodeDoubleClick?: (nodeId: string) => void;
+  onCircuitChange?: (circuit: Circuit) => void; // Callback to propagate circuit updates
   showHints?: boolean;
   onDismissHints?: () => void;
   // Milestone D: Determinism recording (optional, dev-only)
@@ -33,6 +34,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   showToolbar = true,
   getChipMetadata,
   onNodeDoubleClick,
+  onCircuitChange,
   showHints = true,
   onDismissHints,
   onInputToggled,
@@ -246,9 +248,16 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       ),
     };
 
+    // Update engine
     engine.setCircuit(updatedCircuit);
-    setCircuit(updatedCircuit);
-  }, [circuit, shouldSnap, gridSize, engine]);
+    // Propagate to parent/store (if external circuit is used)
+    if (externalCircuit && onCircuitChange) {
+      onCircuitChange(updatedCircuit);
+    } else {
+      // Update internal state if using internal circuit
+      setInternalCircuit(updatedCircuit);
+    }
+  }, [circuit, shouldSnap, gridSize, engine, externalCircuit, onCircuitChange]);
 
   const handleToggleSwitch = React.useCallback((nodeId: string) => {
     const updatedCircuit = {
@@ -270,8 +279,12 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     };
 
     engine.setCircuit(updatedCircuit);
-    setCircuit(updatedCircuit);
-  }, [circuit, engine, onInputToggled]);
+    if (externalCircuit && onCircuitChange) {
+      onCircuitChange(updatedCircuit);
+    } else {
+      setInternalCircuit(updatedCircuit);
+    }
+  }, [circuit, engine, onInputToggled, externalCircuit, onCircuitChange]);
 
   const handlePortClick = React.useCallback((nodeId: string, portName: string) => {
     if (editingState.wireStartPort) {
@@ -287,7 +300,11 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       };
 
       engine.setCircuit(updatedCircuit);
-      setCircuit(updatedCircuit);
+      if (externalCircuit && onCircuitChange) {
+        onCircuitChange(updatedCircuit);
+      } else {
+        setInternalCircuit(updatedCircuit);
+      }
       endWire();
     } else {
       // Start wire
@@ -313,8 +330,12 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     };
 
     engine.setCircuit(updatedCircuit);
-    setCircuit(updatedCircuit);
-  }, [circuit, camera, width, height, engine]);
+    if (externalCircuit && onCircuitChange) {
+      onCircuitChange(updatedCircuit);
+    } else {
+      setInternalCircuit(updatedCircuit);
+    }
+  }, [circuit, camera, width, height, engine, externalCircuit, onCircuitChange]);
 
   const handleDelete = React.useCallback(() => {
     const updatedCircuit = {
@@ -326,9 +347,13 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     };
 
     engine.setCircuit(updatedCircuit);
-    setCircuit(updatedCircuit);
+    if (externalCircuit && onCircuitChange) {
+      onCircuitChange(updatedCircuit);
+    } else {
+      setInternalCircuit(updatedCircuit);
+    }
     clearSelection();
-  }, [circuit, selection.nodes, engine, clearSelection]);
+  }, [circuit, selection.nodes, engine, clearSelection, externalCircuit, onCircuitChange]);
 
   // Fit circuit to view
   const fitToView = React.useCallback(() => {

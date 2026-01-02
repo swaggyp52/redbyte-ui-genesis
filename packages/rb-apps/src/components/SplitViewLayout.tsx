@@ -126,6 +126,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               onDismissHints={onDismissCircuitHints}
               getChipMetadata={getChipMetadata}
               onNodeDoubleClick={onNodeDoubleClick}
+              onCircuitChange={onCircuitChange}
               onInputToggled={onInputToggled}
             />
           </div>
