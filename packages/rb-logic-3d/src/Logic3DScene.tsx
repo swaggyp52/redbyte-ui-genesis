@@ -140,12 +140,62 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
   onDismissHints,
 }) => {
   const [showHelp, setShowHelp] = React.useState(false);
+  const [webglFailed, setWebglFailed] = React.useState(false);
   const circuit = engine?.getCircuit?.();
   const hasNodes = circuit?.nodes?.length > 0;
 
+  // Handle WebGL context loss
+  React.useEffect(() => {
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
+      console.warn('WebGL context lost - 3D view disabled');
+      setWebglFailed(true);
+    };
+
+    const handleContextRestored = () => {
+      console.log('WebGL context restored');
+      setWebglFailed(false);
+    };
+
+    const canvas = document.querySelector('canvas');
+    if (canvas) {
+      canvas.addEventListener('webglcontextlost', handleContextLost);
+      canvas.addEventListener('webglcontextrestored', handleContextRestored);
+
+      return () => {
+        canvas.removeEventListener('webglcontextlost', handleContextLost);
+        canvas.removeEventListener('webglcontextrestored', handleContextRestored);
+      };
+    }
+  }, []);
+
+  if (webglFailed) {
+    return (
+      <div style={{ width, height, position: 'relative' }} className="flex items-center justify-center bg-gray-900">
+        <div className="bg-gray-800/90 border border-yellow-700 rounded-lg p-6 text-center max-w-md">
+          <div className="text-yellow-500 text-2xl mb-3">⚠️</div>
+          <div className="font-semibold text-white mb-2">3D View Unavailable</div>
+          <div className="text-sm text-gray-300 mb-4">
+            WebGL context was lost. This can happen due to GPU driver issues or resource constraints.
+          </div>
+          <div className="text-xs text-gray-400">
+            Switch to Circuit or Schematic view to continue working.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ width, height, position: 'relative' }}>
-      <Canvas camera={{ position: [10, 10, 10], fov: 50 }}>
+      <Canvas
+        camera={{ position: [10, 10, 10], fov: 50 }}
+        gl={{
+          antialias: true,
+          powerPreference: 'high-performance',
+          failIfMajorPerformanceCaveat: false
+        }}
+      >
         <color attach="background" args={['#0a0a0a']} />
         <fog attach="fog" args={['#0a0a0a', 20, 60]} />
         <Scene engine={engine} viewStateStore={viewStateStore} />

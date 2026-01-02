@@ -68,7 +68,18 @@
       "Bash(pnpm:*)",
       "Bash(node -e:*)",
       "Bash(Select-Object -Last 100)",
-      "Bash(del \"c:\\\\Users\\\\conno\\\\redbyte-ui\\\\packages\\\\rb-shell\\\\src\\\\ToastContainer.tsx\")"
+      "Bash(del \"c:\\\\Users\\\\conno\\\\redbyte-ui\\\\packages\\\\rb-shell\\\\src\\\\ToastContainer.tsx\")",
+      "Bash(del \"c:\\\\Users\\\\conno\\\\redbyte-ui\\\\packages\\\\rb-logic-core\\\\src\\\\determinism\\\\__tests__\\\\replay.test.ts\")",
+      "Bash(node test-debug.js:*)",
+      "Bash(del \"c:\\\\Users\\\\conno\\\\redbyte-ui\\\\test-debug.js\")",
+      "Bash(find:*)",
+      "Bash(powershell -Command \"\\(Get-Content index.ts\\) | Where-Object { $_-notmatch ''Determinism \\\\\\(dev-only'' -and $_-notmatch ''export \\\\* from.*determinism'' } | Set-Content index.ts\")",
+      "Bash(powershell -Command:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat\\(demo\\): add public demo mode with onboarding and polish\n\nImplements complete public demo mode infrastructure:\n\n- Add VITE_PUBLIC_DEMO environment flag\n- Gate all dev tools \\(determinism panel, preview badges\\)\n- Create Start Here onboarding modal with examples\n- Add keyboard shortcuts documentation in Help\n- Implement canvas empty state messaging\n- Add autosave recovery toast notifications\n- Create About page/modal \\(Cmd+/\\)\n- Polish copy for public-facing content\n\nAll features are production-ready. Set VITE_PUBLIC_DEMO=true for deployment.\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(pnpm run typecheck:*)",
+      "Bash(pnpm -w run typecheck:*)",
+      "Bash(pnpm run dev)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []

@@ -27,6 +27,7 @@ import { useFileSystemStore } from '../stores/fileSystemStore';
 import { useHistoryStore } from '../stores/historyStore';
 import { useChipStore } from '../stores/chipStore';
 import type { ChipPort } from '../stores/chipStore';
+import { useCircuitStore } from '../stores/circuitStore';
 import type { FileEntry } from '../apps/files/fsTypes';
 import { useTutorialStore } from '../tutorial/tutorialStore';
 import { TutorialOverlay } from '../tutorial/TutorialOverlay';
@@ -181,6 +182,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     engineRef.current = engine;
     tickEngineRef.current = tickEngine;
   }, [setCircuit, engine, tickEngine]);
+
+  // Sync circuit store with engine instances
+  useEffect(() => {
+    useCircuitStore.getState().setEngine(engine);
+    useCircuitStore.getState().setTickEngine(tickEngine);
+  }, [engine, tickEngine]);
 
   // Initialize global view state sync
   useEffect(() => {

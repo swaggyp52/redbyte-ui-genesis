@@ -90,7 +90,7 @@ export const NarrativeOverlay: React.FC = () => {
       {event.expandedMessage && (
         <button
           onClick={handleToggleExpand}
-          className="text-cyan-400 text-sm mt-2 hover:text-cyan-300 transition-colors focus:outline-none focus:underline"
+          className="text-cyan-400 text-sm mt-2 hover:text-cyan-300 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded px-1"
         >
           {expanded ? '↑ Show less' : '↓ Show me more'}
         </button>

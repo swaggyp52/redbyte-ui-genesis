@@ -40,12 +40,12 @@ export class LogicEngine {
     // Build input maps from connections
     for (const conn of this.circuit.connections) {
       const src = this.signals.get(conn.from.nodeId);
-      const v = src?.get(conn.from.port) ?? 0;
+      const v = src?.get(conn.from.portName) ?? 0;
 
       if (!inputMap[conn.to.nodeId]) {
         inputMap[conn.to.nodeId] = {};
       }
-      inputMap[conn.to.nodeId][conn.to.port] = v;
+      inputMap[conn.to.nodeId][conn.to.portName] = v;
     }
 
     // Update each node

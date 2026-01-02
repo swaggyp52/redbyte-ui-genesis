@@ -6,6 +6,7 @@ import React, { useMemo, useState, useRef } from 'react';
 import type { Circuit, Node, Connection, Signal, PortRef } from '@redbyte/rb-logic-core';
 import { CircuitEngine } from '@redbyte/rb-logic-core';
 import { useViewStateStore } from '../stores/viewStateStore';
+import { useCircuitStore } from '../stores/circuitStore';
 import { getPortPositions, findNearestPort, type PortPosition } from './schematic/SchematicPortDetector';
 
 interface SchematicViewProps {
@@ -274,6 +275,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   onDismissHints,
 }) => {
   const [signals, setSignals] = React.useState<Map<string, Signal>>(new Map());
+  const updateCircuit = useCircuitStore((state) => state.updateCircuit);
 
   // Camera state for pan/zoom
   const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1 });
@@ -366,9 +368,10 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
         ),
       };
 
-      if (onCircuitChange) {
-        onCircuitChange(updatedCircuit);
-      }
+      // Use store-based update instead of callback to avoid closure issues
+      updateCircuit(updatedCircuit);
+      // Also call the callback if provided for backward compatibility
+      onCircuitChange?.(updatedCircuit);
     }
   };
 
