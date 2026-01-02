@@ -111,6 +111,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     isEditMode,
     toggleEditMode,
   } = useHierarchyStore();
+
+  // Get stable circuit mutation methods from store (NO closures)
+  const storeAddNode = useCircuitStore((state) => state.addNode);
+  const storeUpdateNode = useCircuitStore((state) => state.updateNode);
+  const storeUpdateCircuit = useCircuitStore((state) => state.updateCircuit);
+
   const examples = useRef(listExamples());
 
   // Helper to get all .rblogic files
@@ -1304,6 +1310,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           compositeNodes={COMPOSITE_NODES}
           chips={allChips}
           onNodeDragStart={handleNodeDragStart}
+          onAddNode={storeAddNode}
           onChipLibraryOpen={() => setShowChipLibrary(true)}
           getChipMetadata={getChipMetadataForNode}
           getNodeDescription={getNodeDescription}

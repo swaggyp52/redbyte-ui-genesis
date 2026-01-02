@@ -27,6 +27,7 @@ interface EnhancedPaletteProps {
   compositeNodes: readonly string[];
   chips: Array<{ id: string; name: string; description?: string; layer?: number }>;
   onNodeDragStart: (type: string, e: React.DragEvent) => void;
+  onAddNode: (type: string, position: { x: number; y: number }) => void;
   onChipLibraryOpen: () => void;
   getChipMetadata: (type: string) => any;
   getNodeDescription: (type: string) => string;
@@ -37,6 +38,7 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
   compositeNodes,
   chips,
   onNodeDragStart,
+  onAddNode,
   onChipLibraryOpen,
   getChipMetadata,
   getNodeDescription,
@@ -126,6 +128,12 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
     onNodeDragStart(type, e);
   };
 
+  const handleComponentClick = (type: string) => {
+    addToRecent(type);
+    // Add node at default center position
+    onAddNode(type, { x: 400, y: 300 });
+  };
+
   const renderComponentButton = (type: string, extraClass: string = '') => {
     const metadata = getChipMetadata(type);
     const description = getNodeDescription(type);
@@ -145,6 +153,7 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
         key={type}
         draggable
         onDragStart={(e) => handleDragStart(type, e)}
+        onClick={() => handleComponentClick(type)}
         className={`w-full text-left px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded cursor-move transition-colors border ${layerColor} group relative ${extraClass}`}
         title={description}
       >
