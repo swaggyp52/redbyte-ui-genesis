@@ -44,7 +44,10 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
   getNodeDescription,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem('rb-palette-collapsed');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
   const [favorites, setFavorites] = useState<Set<string>>(() => {
     const saved = localStorage.getItem('rb-component-favorites');
     return saved ? new Set(JSON.parse(saved)) : new Set(['Switch', 'Lamp', 'AND', 'OR', 'NOT']);
@@ -56,7 +59,7 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Build searchable component list
+  // Build searchable component list (primitives + composites + chips)
   const allComponents: ComponentInfo[] = [
     ...Object.entries(primitiveNodes).flatMap(([category, nodes]) =>
       nodes.map(type => ({
@@ -71,6 +74,12 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
       category: 'Composite',
       description: getNodeDescription(type),
       layer: getChipMetadata(type)?.layer,
+    })),
+    ...chips.map(chip => ({
+      type: chip.name,
+      category: 'Chips',
+      description: chip.description || '',
+      layer: chip.layer,
     })),
   ];
 
@@ -104,6 +113,7 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
       newCollapsed.add(category);
     }
     setCollapsedCategories(newCollapsed);
+    localStorage.setItem('rb-palette-collapsed', JSON.stringify([...newCollapsed]));
   };
 
   const toggleFavorite = (type: string) => {
@@ -118,7 +128,7 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
   };
 
   const addToRecent = (type: string) => {
-    const newRecent = [type, ...recentComponents.filter(t => t !== type)].slice(0, 5);
+    const newRecent = [type, ...recentComponents.filter(t => t !== type)].slice(0, 12);
     setRecentComponents(newRecent);
     localStorage.setItem('rb-component-recent', JSON.stringify(newRecent));
   };

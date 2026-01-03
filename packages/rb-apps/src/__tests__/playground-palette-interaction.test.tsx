@@ -117,4 +117,67 @@ describe('Playground - Palette Interaction (PR0 Baseline)', () => {
     expect(andNodes).toHaveLength(1);
     expect(lampNodes).toHaveLength(2);
   });
+
+  // PR1 Tests: Palette Search + Recents + Favorites
+  it('should filter components by search query', async () => {
+    const user = userEvent.setup();
+
+    const Component = LogicPlaygroundApp.component;
+    render(<Component />);
+
+    // Wait for palette to render
+    await waitFor(() => {
+      expect(screen.getByTitle(/Step Once/i)).toBeInTheDocument();
+    });
+
+    // Find search input
+    const searchInput = screen.getByPlaceholderText(/Search components/i);
+    expect(searchInput).toBeInTheDocument();
+
+    // Type "and" in search
+    await user.type(searchInput, 'and');
+
+    // Verify search results appear
+    await waitFor(() => {
+      expect(screen.getByText(/SEARCH RESULTS/i)).toBeInTheDocument();
+    });
+
+    // Verify AND gate is in filtered results
+    const andButtons = screen.getAllByText(/^AND$/);
+    expect(andButtons.length).toBeGreaterThan(0);
+
+    // Verify NAND gate also appears (contains "and")
+    expect(screen.getByText(/^NAND$/)).toBeInTheDocument();
+  });
+
+  it('should persist recents after adding components', async () => {
+    const user = userEvent.setup();
+
+    // Clear localStorage before test
+    localStorage.removeItem('rb-component-recent');
+
+    const Component = LogicPlaygroundApp.component;
+    render(<Component />);
+
+    // Wait for palette to render
+    await waitFor(() => {
+      expect(screen.getByTitle(/Step Once/i)).toBeInTheDocument();
+    });
+
+    // Click OR gate (get first occurrence in case it's in favorites)
+    const orButtons = screen.getAllByText(/^OR$/);
+    await user.click(orButtons[0]);
+
+    // Verify OR was added to circuit
+    await waitFor(() => {
+      const circuit = useCircuitStore.getState().circuit;
+      expect(circuit.nodes.some(n => n.type === 'OR')).toBe(true);
+    });
+
+    // Verify recents were persisted to localStorage
+    const savedRecents = localStorage.getItem('rb-component-recent');
+    expect(savedRecents).toBeTruthy();
+    const recents = JSON.parse(savedRecents!);
+    expect(recents).toContain('OR');
+  });
 });
