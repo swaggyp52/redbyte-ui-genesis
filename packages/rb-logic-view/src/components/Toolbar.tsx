@@ -4,6 +4,7 @@
 
 import React from 'react';
 import type { TickEngine } from '@redbyte/rb-logic-core';
+import type { ToolMode } from '../useLogicViewStore';
 
 export interface ToolbarProps {
   engine?: TickEngine;
@@ -11,6 +12,8 @@ export interface ToolbarProps {
   onDelete?: () => void;
   snapToGrid: boolean;
   onToggleSnap: () => void;
+  toolMode?: ToolMode;
+  onToolModeChange?: (mode: ToolMode) => void;
 }
 
 const NODE_TYPES = [
@@ -33,6 +36,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onDelete,
   snapToGrid,
   onToggleSnap,
+  toolMode = 'select',
+  onToolModeChange,
 }) => {
   const [isRunning, setIsRunning] = React.useState(false);
   const [tickRate, setTickRate] = React.useState(engine?.getTickRate() ?? 20);
@@ -131,6 +136,29 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         </span>
         <span style={{ color: '#94a3b8' }}>Ticks: {tickCount}</span>
       </div>
+
+      {/* Tool mode toggle */}
+      {onToolModeChange && (
+        <div style={{ display: 'flex', gap: 8, borderRight: '1px solid #333', paddingRight: 12 }}>
+          <button
+            type="button"
+            onClick={() => onToolModeChange(toolMode === 'wire' ? 'select' : 'wire')}
+            style={{
+              padding: '4px 12px',
+              background: toolMode === 'wire' ? '#06b6d4' : '#374151',
+              border: toolMode === 'wire' ? '2px solid #22d3ee' : '1px solid #444',
+              borderRadius: 4,
+              color: '#fff',
+              cursor: 'pointer',
+              fontWeight: toolMode === 'wire' ? '600' : '400',
+              transition: 'all 0.2s',
+            }}
+            title="Toggle Wire Mode (W)"
+          >
+            {toolMode === 'wire' ? '⚡ Wire Mode' : '🔌 Wire Tool'}
+          </button>
+        </div>
+      )}
 
       {/* Add node menu */}
       <div style={{ display: 'flex', gap: 8, borderRight: '1px solid #333', paddingRight: 12 }}>

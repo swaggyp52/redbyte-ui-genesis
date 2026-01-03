@@ -159,7 +159,7 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
     const layerColor = metadata?.layer !== undefined ? layerColors[metadata.layer] || 'bg-gray-800' : 'bg-gray-800';
 
     return (
-      <button
+      <div
         key={type}
         draggable
         onDragStart={(e) => handleDragStart(type, e)}
@@ -190,7 +190,7 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
         <div className="hidden group-hover:block absolute left-full ml-2 top-0 bg-gray-900 border border-gray-600 rounded p-2 text-xs whitespace-nowrap z-50 shadow-xl max-w-xs">
           {description}
         </div>
-      </button>
+      </div>
     );
   };
 

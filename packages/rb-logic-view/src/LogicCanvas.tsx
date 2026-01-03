@@ -55,6 +55,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     startWire,
     endWire,
     selectMultipleNodes,
+    toolMode,
+    setToolMode,
   } = useLogicViewStore();
 
   // Use external circuit if provided, otherwise poll from engine
@@ -270,15 +272,40 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     const newX = shouldSnap ? snapToGrid(x, gridSize) : x;
     const newY = shouldSnap ? snapToGrid(y, gridSize) : y;
 
+    // Calculate delta for the dragged node
+    const draggedNode = circuit.nodes.find(n => n.id === nodeId);
+    if (!draggedNode) return;
+
+    const dx = newX - draggedNode.position.x;
+    const dy = newY - draggedNode.position.y;
+
+    // If this node is selected and there are multiple selected nodes, move all of them
+    const isNodeSelected = selection.nodes.has(nodeId);
+    const hasMultipleSelected = selection.nodes.size > 1;
+
     const updatedCircuit = {
       ...circuit,
-      nodes: circuit.nodes.map((n) =>
-        n.id === nodeId ? { ...n, position: { x: newX, y: newY } } : n
-      ),
+      nodes: circuit.nodes.map((n) => {
+        // Move the dragged node
+        if (n.id === nodeId) {
+          return { ...n, position: { x: newX, y: newY } };
+        }
+        // If dragging a selected node and others are also selected, move them too
+        if (isNodeSelected && hasMultipleSelected && selection.nodes.has(n.id)) {
+          return {
+            ...n,
+            position: {
+              x: shouldSnap ? snapToGrid(n.position.x + dx, gridSize) : n.position.x + dx,
+              y: shouldSnap ? snapToGrid(n.position.y + dy, gridSize) : n.position.y + dy,
+            },
+          };
+        }
+        return n;
+      }),
     };
 
     commitCircuit(updatedCircuit);
-  }, [circuit, shouldSnap, gridSize, commitCircuit]);
+  }, [circuit, shouldSnap, gridSize, selection.nodes, commitCircuit]);
 
   const handleToggleSwitch = React.useCallback((nodeId: string) => {
     const updatedCircuit = {
@@ -344,17 +371,42 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   }, [circuit, camera, width, height, commitCircuit]);
 
   const handleDelete = React.useCallback(() => {
-    const updatedCircuit = {
-      nodes: circuit.nodes.filter((n) => !selection.nodes.has(n.id)),
-      connections: circuit.connections.filter(
-        (c) =>
-          !selection.nodes.has(c.from.nodeId) && !selection.nodes.has(c.to.nodeId)
-      ),
-    };
+    // Don't delete if focus is in input/textarea
+    const activeElement = document.activeElement;
+    if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+      return;
+    }
 
-    commitCircuit(updatedCircuit);
-    clearSelection();
-  }, [circuit, selection.nodes, commitCircuit, clearSelection]);
+    let updatedCircuit = circuit;
+
+    // Delete selected nodes (and their connections)
+    if (selection.nodes.size > 0) {
+      updatedCircuit = {
+        nodes: circuit.nodes.filter((n) => !selection.nodes.has(n.id)),
+        connections: circuit.connections.filter(
+          (c) =>
+            !selection.nodes.has(c.from.nodeId) && !selection.nodes.has(c.to.nodeId)
+        ),
+      };
+    }
+
+    // Delete selected wires
+    if (selection.wires.size > 0) {
+      updatedCircuit = {
+        ...updatedCircuit,
+        connections: updatedCircuit.connections.filter((c) => {
+          const wireId = `${c.from.nodeId}.${c.from.portName}-${c.to.nodeId}.${c.to.portName}`;
+          return !selection.wires.has(wireId);
+        }),
+      };
+    }
+
+    // Only commit if something changed
+    if (selection.nodes.size > 0 || selection.wires.size > 0) {
+      commitCircuit(updatedCircuit);
+      clearSelection();
+    }
+  }, [circuit, selection.nodes, selection.wires, commitCircuit, clearSelection]);
 
   // Fit circuit to view
   const fitToView = React.useCallback(() => {
@@ -410,9 +462,13 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           endWire();
         }
       } else if (e.key === 'w' || e.key === 'W') {
-        // W: Toggle wire tool (cancel wire mode if active)
+        // W: Toggle wire mode
         if (editingState.wireStartPort) {
+          // Cancel active wire
           endWire();
+        } else {
+          // Toggle wire mode on/off
+          setToolMode(toolMode === 'wire' ? 'select' : 'wire');
         }
       } else if (e.key === 'f' && (e.ctrlKey || e.metaKey)) {
         // Ctrl/Cmd+F: Fit to view
@@ -442,6 +498,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           onDelete={handleDelete}
           snapToGrid={shouldSnap}
           onToggleSnap={toggleSnapToGrid}
+          toolMode={toolMode}
+          onToolModeChange={setToolMode}
         />
       )}
 
