@@ -24,6 +24,12 @@ interface TopCommandBarProps {
   onShare?: () => void;
   isDirty?: boolean;
 
+  // Undo/Redo controls
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+
   // Simulation controls (primary)
   isRunning: boolean;
   onRun: () => void;
@@ -46,6 +52,10 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   onExamples,
   onShare,
   isDirty = false,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
   isRunning,
   onRun,
   onPause,
@@ -109,6 +119,36 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             title="Share via link"
           >
             Share
+          </button>
+        )}
+
+        {/* Undo/Redo buttons */}
+        {onUndo && (
+          <button
+            onClick={onUndo}
+            disabled={!canUndo}
+            className={`px-2 py-1.5 text-sm rounded transition-colors ${
+              canUndo
+                ? 'bg-gray-800 hover:bg-gray-700 text-white'
+                : 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
+            }`}
+            title="Undo (Ctrl+Z)"
+          >
+            ↶
+          </button>
+        )}
+        {onRedo && (
+          <button
+            onClick={onRedo}
+            disabled={!canRedo}
+            className={`px-2 py-1.5 text-sm rounded transition-colors ${
+              canRedo
+                ? 'bg-gray-800 hover:bg-gray-700 text-white'
+                : 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
+            }`}
+            title="Redo (Ctrl+Shift+Z)"
+          >
+            ↷
           </button>
         )}
       </div>

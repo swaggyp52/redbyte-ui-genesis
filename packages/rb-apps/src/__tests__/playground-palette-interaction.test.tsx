@@ -299,4 +299,147 @@ describe('Playground - Palette Interaction (PR0 Baseline)', () => {
     expect(useLogicViewStore.getState().selection.nodes.has(nodeIds[0])).toBe(true);
     expect(useLogicViewStore.getState().selection.nodes.has(nodeIds[1])).toBe(true);
   });
+
+  // PR2.3 Tests: Undo/Redo
+  it('should restore previous circuit when undo is called after commit', async () => {
+    const Component = LogicPlaygroundApp.component;
+    render(<Component />);
+
+    // Wait for palette to render
+    await waitFor(() => {
+      expect(screen.getByTitle(/Step Once/i)).toBeInTheDocument();
+    });
+
+    // Get initial circuit state
+    const initialCircuit = useCircuitStore.getState().circuit;
+    expect(initialCircuit.nodes.length).toBe(0);
+
+    // Add a node via store
+    await act(async () => {
+      useCircuitStore.getState().addNode('AND', { x: 100, y: 100 });
+    });
+
+    // Verify node was added
+    await waitFor(() => {
+      const circuit = useCircuitStore.getState().circuit;
+      expect(circuit.nodes.length).toBe(1);
+      expect(circuit.nodes[0].type).toBe('AND');
+    });
+
+    // Undo
+    await act(async () => {
+      useCircuitStore.getState().undo();
+    });
+
+    // Verify circuit restored to initial state
+    await waitFor(() => {
+      const circuit = useCircuitStore.getState().circuit;
+      expect(circuit.nodes.length).toBe(0);
+    });
+  });
+
+  it('should restore future circuit when redo is called after undo', async () => {
+    const Component = LogicPlaygroundApp.component;
+    render(<Component />);
+
+    // Wait for palette to render
+    await waitFor(() => {
+      expect(screen.getByTitle(/Step Once/i)).toBeInTheDocument();
+    });
+
+    // Add two nodes
+    await act(async () => {
+      useCircuitStore.getState().addNode('AND', { x: 100, y: 100 });
+      useCircuitStore.getState().addNode('OR', { x: 200, y: 100 });
+    });
+
+    // Verify both nodes added
+    await waitFor(() => {
+      const circuit = useCircuitStore.getState().circuit;
+      expect(circuit.nodes.length).toBe(2);
+    });
+
+    // Undo twice
+    await act(async () => {
+      useCircuitStore.getState().undo();
+      useCircuitStore.getState().undo();
+    });
+
+    // Verify all nodes removed
+    await waitFor(() => {
+      const circuit = useCircuitStore.getState().circuit;
+      expect(circuit.nodes.length).toBe(0);
+    });
+
+    // Redo once
+    await act(async () => {
+      useCircuitStore.getState().redo();
+    });
+
+    // Verify first node restored
+    await waitFor(() => {
+      const circuit = useCircuitStore.getState().circuit;
+      expect(circuit.nodes.length).toBe(1);
+      expect(circuit.nodes[0].type).toBe('AND');
+    });
+
+    // Redo again
+    await act(async () => {
+      useCircuitStore.getState().redo();
+    });
+
+    // Verify second node restored
+    await waitFor(() => {
+      const circuit = useCircuitStore.getState().circuit;
+      expect(circuit.nodes.length).toBe(2);
+      expect(circuit.nodes[1].type).toBe('OR');
+    });
+  });
+
+  it('should clear future history when new commit happens after undo (branching)', async () => {
+    const Component = LogicPlaygroundApp.component;
+    render(<Component />);
+
+    // Wait for palette to render
+    await waitFor(() => {
+      expect(screen.getByTitle(/Step Once/i)).toBeInTheDocument();
+    });
+
+    // Add two nodes
+    await act(async () => {
+      useCircuitStore.getState().addNode('AND', { x: 100, y: 100 });
+      useCircuitStore.getState().addNode('OR', { x: 200, y: 100 });
+    });
+
+    // Verify both nodes added and can redo is false
+    await waitFor(() => {
+      const circuit = useCircuitStore.getState().circuit;
+      expect(circuit.nodes.length).toBe(2);
+      expect(useCircuitStore.getState().canRedo()).toBe(false);
+    });
+
+    // Undo once
+    await act(async () => {
+      useCircuitStore.getState().undo();
+    });
+
+    // Verify can redo is now true
+    expect(useCircuitStore.getState().canRedo()).toBe(true);
+
+    // Add a different node (branch the history)
+    await act(async () => {
+      useCircuitStore.getState().addNode('NOT', { x: 150, y: 150 });
+    });
+
+    // Verify future was cleared (can't redo anymore)
+    expect(useCircuitStore.getState().canRedo()).toBe(false);
+
+    // Verify circuit has AND and NOT (OR was erased from future)
+    await waitFor(() => {
+      const circuit = useCircuitStore.getState().circuit;
+      expect(circuit.nodes.length).toBe(2);
+      expect(circuit.nodes[0].type).toBe('AND');
+      expect(circuit.nodes[1].type).toBe('NOT');
+    });
+  });
 });

@@ -99,7 +99,6 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const { active: tutorialActive, start: startTutorial } = useTutorialStore();
   const { setWindowTitle } = useWindowStore();
   const { getAllFiles, getFile, updateFileContent, createFile } = useFileSystemStore();
-  const { pushState, undo, redo, canUndo, canRedo, clear: clearHistory } = useHistoryStore();
   const { saveChipFromPattern, getAllChips, getChip, deleteChip } = useChipStore();
   const {
     stack: hierarchyStack,
@@ -623,9 +622,6 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setIsRunning(false);
     setSelectedFileId('');
     setSelectedExampleId('');
-    // Clear history when starting new circuit
-    clearHistory();
-    pushState(emptyCircuit);
     // Clear pattern recognition state
     lastRecognizedPatternRef.current = null;
     // Clear hydration guard after load completes
@@ -633,35 +629,23 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   };
 
   const handleUndo = () => {
-    if (!canUndo()) {
+    const circuitStore = useCircuitStore.getState();
+    if (!circuitStore.canUndo()) {
       return;
     }
 
-    const previousCircuit = undo();
-    if (previousCircuit) {
-      setCircuit(previousCircuit);
-      const newEngine = new CircuitEngine(previousCircuit);
-      setEngine(newEngine);
-      setTickEngine(new TickEngine(newEngine, tickRate));
-      setIsDirty(true);
-      addToast('Undo', 'info');
-    }
+    circuitStore.undo();
+    addToast('Undo', 'info');
   };
 
   const handleRedo = () => {
-    if (!canRedo()) {
+    const circuitStore = useCircuitStore.getState();
+    if (!circuitStore.canRedo()) {
       return;
     }
 
-    const nextCircuit = redo();
-    if (nextCircuit) {
-      setCircuit(nextCircuit);
-      const newEngine = new CircuitEngine(nextCircuit);
-      setEngine(newEngine);
-      setTickEngine(new TickEngine(newEngine, tickRate));
-      setIsDirty(true);
-      addToast('Redo', 'info');
-    }
+    circuitStore.redo();
+    addToast('Redo', 'info');
   };
 
   const handleNodeUpdate = (nodeId: string, updates: Partial<Node>) => {
@@ -698,21 +682,21 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   };
 
   const handleCircuitChange = useCallback((updatedCircuit: Circuit) => {
-    setCircuitRef.current(updatedCircuit);
-    engineRef.current.setCircuit(updatedCircuit);
-    tickEngineRef.current.setCircuit(updatedCircuit);
+    // Use circuitStore.commit to add to history
+    const circuitStore = useCircuitStore.getState();
+
+    // Only commit to history if not loading a file
+    if (!isHydratingRef.current) {
+      circuitStore.commit(updatedCircuit);
+    } else {
+      // During file load, update without history
+      circuitStore.updateCircuit(updatedCircuit, true);
+    }
+
     setIsDirty(true);
 
-    // Only mark dirty and handle history if not currently loading a file
+    // Only handle pattern recognition if not currently loading a file
     if (!isHydratingRef.current) {
-      // Debounced history push (1 second after last change)
-      if (historyDebounceRef.current) {
-        clearTimeout(historyDebounceRef.current);
-      }
-      historyDebounceRef.current = setTimeout(() => {
-        pushState(updatedCircuit);
-      }, 1000) as unknown as number;
-
       // Debounced pattern recognition (2 seconds after last change)
       if (patternRecognitionRef.current) {
         clearTimeout(patternRecognitionRef.current);
@@ -734,7 +718,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         }
       }, 2000) as unknown as number;
     }
-  }, [pushState, addToast]);
+  }, [addToast]);
 
   const handleNodeDragStart = (nodeType: string, e?: React.DragEvent) => {
     if (e) {
@@ -923,9 +907,6 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setSelectedFileId(file.id);
     setSelectedExampleId('');
     setIsDirty(false);
-    // Clear history and set initial state when loading file
-    clearHistory();
-    pushState(loadedCircuit);
 
     // Milestone D: Record circuit loaded event
     if (determinismRecorder?.isRecording) {
@@ -964,9 +945,6 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       } else if (exampleId === '05_simple-cpu') {
         triggerNarrative('milestone.cpuExplored', { exampleId });
       }
-      // Clear history and set initial state when loading example
-      clearHistory();
-      pushState(loadedCircuit);
 
       // Milestone D: Record circuit loaded event
       if (determinismRecorder?.isRecording) {
@@ -1292,6 +1270,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         onSave={handleSave}
         onShare={handleShare}
         isDirty={isDirty}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        canUndo={useCircuitStore.getState().canUndo()}
+        canRedo={useCircuitStore.getState().canRedo()}
         isRunning={isRunning}
         onRun={handleRun}
         onPause={handlePause}
@@ -1682,8 +1664,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         isRunning={isRunning}
         tickRate={currentHz}
         isDirty={isDirty}
-        canUndo={canUndo()}
-        canRedo={canRedo()}
+        canUndo={useCircuitStore.getState().canUndo()}
+        canRedo={useCircuitStore.getState().canRedo()}
         viewMode={splitScreenMode ? `${activeViews[0]}+${activeViews[1]}` : viewMode}
       />
     </div>
