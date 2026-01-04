@@ -10,6 +10,7 @@ import { WireView } from './components/WireView';
 import { Toolbar } from './components/Toolbar';
 import { renderGrid } from './tools/grid';
 import { snapToGrid, calculateFitToView } from './tools/panzoom';
+import { isValidConnection, normalizeConnection, isInputPort } from './tools/wireValidation';
 
 export interface LogicCanvasProps {
   engine: TickEngine;
@@ -234,6 +235,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const [lastMouse, setLastMouse] = React.useState({ x: 0, y: 0 });
   const [isSpacePressed, setIsSpacePressed] = React.useState(false);
   const [isAltPressed, setIsAltPressed] = React.useState(false);
+  const [hoveredPort, setHoveredPort] = React.useState<{ nodeId: string; portName: string } | null>(null);
+  const [showFirstWireToast, setShowFirstWireToast] = React.useState(false);
 
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     if (e.button === 1 || isSpacePressed) {
@@ -241,9 +244,18 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       setIsPanning(true);
       setLastMouse({ x: e.clientX, y: e.clientY });
       e.preventDefault(); // Prevent text selection during space-pan
+    } else if (e.button === 2) {
+      // Right-click cancels wire
+      if (editingState.wireStartPort) {
+        e.preventDefault();
+        endWire();
+      }
     } else if (e.button === 0 && !isSpacePressed) {
-      // Left click on background clears selection
+      // Left click on background clears selection and cancels wire
       clearSelection();
+      if (editingState.wireStartPort) {
+        endWire();
+      }
     }
   };
 
@@ -336,24 +348,42 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
   const handlePortClick = React.useCallback((nodeId: string, portName: string) => {
     if (editingState.wireStartPort) {
-      // End wire
-      const newConnection: Connection = {
-        from: editingState.wireStartPort,
-        to: { nodeId, portName },
-      };
+      // End wire - validate connection first
+      const from = editingState.wireStartPort;
+      const to = { nodeId, portName };
+
+      const validation = isValidConnection(from, to, circuit, getChipMetadata);
+
+      if (!validation.valid) {
+        // Invalid connection - just cancel the wire silently
+        endWire();
+        return;
+      }
+
+      // Normalize connection (output -> input)
+      const normalizedConnection = normalizeConnection(from, to, circuit, getChipMetadata);
 
       const updatedCircuit = {
         ...circuit,
-        connections: [...circuit.connections, newConnection],
+        connections: [...circuit.connections, normalizedConnection],
       };
 
       commitCircuit(updatedCircuit);
       endWire();
+
+      // Show first-wire toast if this is the user's first wire
+      const hasSeenFirstWireToast = localStorage.getItem('rb-logic-view:hasSeenFirstWireToast');
+      if (!hasSeenFirstWireToast && circuit.connections.length === 0) {
+        setShowFirstWireToast(true);
+        localStorage.setItem('rb-logic-view:hasSeenFirstWireToast', 'true');
+        // Auto-hide after 4 seconds
+        setTimeout(() => setShowFirstWireToast(false), 4000);
+      }
     } else {
       // Start wire
       startWire({ nodeId, portName });
     }
-  }, [circuit, editingState.wireStartPort, commitCircuit, endWire, startWire]);
+  }, [circuit, editingState.wireStartPort, commitCircuit, endWire, startWire, getChipMetadata]);
 
   const handleAddNode = React.useCallback((type: string) => {
     const newNode: Node = {
@@ -552,17 +582,50 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         </div>
       )}
 
+      {/* First Wire Toast */}
+      {showFirstWireToast && (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-none">
+          <div className="bg-blue-600/90 border border-blue-500 rounded-lg px-4 py-3 text-sm text-white shadow-lg animate-fade-in">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🎉</span>
+              <div>
+                <div className="font-semibold">First wire created!</div>
+                <div className="text-blue-100 text-xs mt-1">
+                  Press <span className="font-mono bg-blue-700/50 px-1 rounded">Delete</span> to remove wires, or right-click to cancel while drawing
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <svg
         ref={svgRef}
         width={width}
         height={height}
         style={{
           background: '#0a0a0a',
-          cursor: isPanning ? 'grabbing' : isSpacePressed ? 'grab' : editingState.wireStartPort ? 'crosshair' : 'default',
+          cursor: isPanning ? 'grabbing' : isSpacePressed ? 'grab' : (() => {
+            if (editingState.wireStartPort) {
+              // During wire creation, check if hovering over invalid port
+              if (hoveredPort) {
+                const validation = isValidConnection(
+                  editingState.wireStartPort,
+                  hoveredPort,
+                  circuit,
+                  getChipMetadata
+                );
+                return validation.valid ? 'crosshair' : 'not-allowed';
+              }
+              return 'crosshair';
+            }
+            return 'default';
+          })(),
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onContextMenu={(e) => e.preventDefault()}
       >
         {/* Grid */}
         {renderGrid(camera, width, height, {
@@ -598,13 +661,25 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           const startX = startNode.position.x * camera.zoom + camera.x;
           const startY = startNode.position.y * camera.zoom + camera.y;
 
+          // Check if hovering over a valid target port
+          let isValid = true;
+          if (hoveredPort) {
+            const validation = isValidConnection(
+              editingState.wireStartPort,
+              hoveredPort,
+              circuit,
+              getChipMetadata
+            );
+            isValid = validation.valid;
+          }
+
           return (
             <line
               x1={startX}
               y1={startY}
               x2={mousePosition.x}
               y2={mousePosition.y}
-              stroke="#00ffff"
+              stroke={isValid ? "#00ffff" : "#ef4444"}
               strokeWidth="2"
               strokeDasharray="5,5"
               opacity="0.7"
@@ -628,6 +703,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             signals={signals}
             chipMetadata={getChipMetadata?.(node.type)}
             wireStartPort={editingState.wireStartPort}
+            onPortHover={(portName) => setHoveredPort({ nodeId: node.id, portName })}
+            onPortLeave={() => setHoveredPort(null)}
           />
         ))}
       </svg>

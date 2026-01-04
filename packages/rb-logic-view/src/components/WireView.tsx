@@ -54,7 +54,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
       <path d={path} fill="none" stroke="transparent" strokeWidth={10} />
 
       {/* Glow effect for active wires */}
-      {isActive && (
+      {isActive && !isSelected && (
         <path
           d={path}
           fill="none"
@@ -65,12 +65,24 @@ const WireViewComponent: React.FC<WireViewProps> = ({
         />
       )}
 
+      {/* Glow effect for selected wires */}
+      {isSelected && (
+        <path
+          d={path}
+          fill="none"
+          stroke="#3b82f6"
+          strokeWidth={8}
+          opacity={0.4}
+          filter="blur(4px)"
+        />
+      )}
+
       {/* Visible wire */}
       <path
         d={path}
         fill="none"
         stroke={isSelected ? '#3b82f6' : strokeColor}
-        strokeWidth={isSelected ? 3 : 2}
+        strokeWidth={isSelected ? 4 : 2}
         opacity={signal === 1 ? 1 : 0.5}
       />
 

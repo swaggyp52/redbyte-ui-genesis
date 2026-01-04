@@ -26,6 +26,8 @@ export interface NodeViewProps {
   signals?: Map<string, 0 | 1>;
   chipMetadata?: ChipMetadata; // Metadata for custom chips
   wireStartPort?: PortRef; // Port where wire drawing started
+  onPortHover?: (portName: string) => void; // Port hover for wire validation
+  onPortLeave?: () => void; // Port leave for wire validation
 }
 
 const NODE_COLORS: Record<string, string> = {
@@ -59,6 +61,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   signals,
   chipMetadata,
   wireStartPort,
+  onPortHover,
+  onPortLeave,
 }) => {
   const [isDragging, setIsDragging] = React.useState(false);
   const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 });
@@ -227,20 +231,42 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                   style={{ pointerEvents: 'none' }}
                 />
               )}
-              <circle
-                cx={-size / 2}
-                cy={yPos}
-                r={4}
-                fill={isWireStart ? "#00ffff" : "#3b82f6"}
-                stroke="#fff"
-                strokeWidth={isHovered ? 2 : 1}
+              {/* Larger invisible hit area for easier clicking */}
+              <rect
+                x={-size / 2 - 10}
+                y={yPos - 10}
+                width={20}
+                height={20}
+                fill="transparent"
                 style={{ cursor: 'crosshair' }}
                 onClick={(e) => {
                   e.stopPropagation();
                   onPortClick?.(node.id, input.id);
                 }}
-                onMouseEnter={() => setHoveredPort(input.id)}
-                onMouseLeave={() => setHoveredPort(null)}
+                onMouseEnter={() => {
+                  setHoveredPort(input.id);
+                  if (wireStartPort) {
+                    onPortHover?.(input.id);
+                  }
+                }}
+                onMouseLeave={() => {
+                  setHoveredPort(null);
+                  if (wireStartPort) {
+                    onPortLeave?.();
+                  }
+                }}
+              />
+              {/* Visual port */}
+              <rect
+                x={-size / 2 - 4}
+                y={yPos - 4}
+                width={8}
+                height={8}
+                fill={isWireStart ? "#00ffff" : "#3b82f6"}
+                stroke="#fff"
+                strokeWidth={isHovered ? 2 : 1}
+                rx={1}
+                style={{ pointerEvents: 'none' }}
               />
               <text
                 x={-size / 2 - 8}
@@ -277,6 +303,31 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                   style={{ pointerEvents: 'none' }}
                 />
               )}
+              {/* Larger invisible hit area for easier clicking */}
+              <circle
+                cx={size / 2}
+                cy={yPos}
+                r={10}
+                fill="transparent"
+                style={{ cursor: 'crosshair' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPortClick?.(node.id, output.id);
+                }}
+                onMouseEnter={() => {
+                  setHoveredPort(output.id);
+                  if (wireStartPort) {
+                    onPortHover?.(output.id);
+                  }
+                }}
+                onMouseLeave={() => {
+                  setHoveredPort(null);
+                  if (wireStartPort) {
+                    onPortLeave?.();
+                  }
+                }}
+              />
+              {/* Visual port */}
               <circle
                 cx={size / 2}
                 cy={yPos}
@@ -284,13 +335,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 fill={isWireStart ? "#00ffff" : outputSignal ? '#22c55e' : '#6b7280'}
                 stroke="#fff"
                 strokeWidth={isHovered ? 2 : 1}
-                style={{ cursor: 'crosshair' }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPortClick?.(node.id, output.id);
-                }}
-                onMouseEnter={() => setHoveredPort(output.id)}
-                onMouseLeave={() => setHoveredPort(null)}
+                style={{ pointerEvents: 'none' }}
               />
               <text
                 x={size / 2 + 8}
