@@ -14,6 +14,8 @@ export interface ToolbarProps {
   onToggleSnap: () => void;
   toolMode?: ToolMode;
   onToolModeChange?: (mode: ToolMode) => void;
+  onFitToView?: () => void;
+  onResetView?: () => void;
 }
 
 const NODE_TYPES = [
@@ -38,6 +40,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onToggleSnap,
   toolMode = 'select',
   onToolModeChange,
+  onFitToView,
+  onResetView,
 }) => {
   const [isRunning, setIsRunning] = React.useState(false);
   const [tickRate, setTickRate] = React.useState(engine?.getTickRate() ?? 20);
@@ -207,6 +211,42 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <input type="checkbox" checked={snapToGrid} onChange={onToggleSnap} />
         Snap to Grid
       </label>
+
+      {/* View controls */}
+      <div style={{ display: 'flex', gap: 8, borderLeft: '1px solid #333', paddingLeft: 12 }}>
+        {onFitToView && (
+          <button
+            onClick={onFitToView}
+            style={{
+              padding: '4px 12px',
+              background: '#374151',
+              border: '1px solid #444',
+              borderRadius: 4,
+              color: '#fff',
+              cursor: 'pointer',
+            }}
+            title="Fit to View (F)"
+          >
+            🔍 Fit
+          </button>
+        )}
+        {onResetView && (
+          <button
+            onClick={onResetView}
+            style={{
+              padding: '4px 12px',
+              background: '#374151',
+              border: '1px solid #444',
+              borderRadius: 4,
+              color: '#fff',
+              cursor: 'pointer',
+            }}
+            title="Reset View (0)"
+          >
+            ⟲ Reset
+          </button>
+        )}
+      </div>
     </div>
   );
 };

@@ -135,3 +135,52 @@ export function worldToScreen(
 export function snapToGrid(value: number, gridSize: number): number {
   return Math.round(value / gridSize) * gridSize;
 }
+
+/**
+ * Calculate camera position to fit all nodes in view
+ */
+export function calculateFitToView(
+  nodes: Array<{ position: { x: number; y: number } }>,
+  viewportWidth: number,
+  viewportHeight: number,
+  padding: number = 100,
+  maxZoom: number = 2
+): Camera {
+  if (nodes.length === 0) {
+    return { x: 0, y: 0, zoom: 1 };
+  }
+
+  // Calculate bounds
+  let minX = Infinity, maxX = -Infinity;
+  let minY = Infinity, maxY = -Infinity;
+
+  nodes.forEach((node) => {
+    minX = Math.min(minX, node.position.x);
+    maxX = Math.max(maxX, node.position.x);
+    minY = Math.min(minY, node.position.y);
+    maxY = Math.max(maxY, node.position.y);
+  });
+
+  if (!isFinite(minX)) {
+    return { x: 0, y: 0, zoom: 1 };
+  }
+
+  // Add padding
+  const boundsWidth = maxX - minX + padding * 2;
+  const boundsHeight = maxY - minY + padding * 2;
+
+  // Calculate zoom to fit
+  const zoomX = viewportWidth / boundsWidth;
+  const zoomY = viewportHeight / boundsHeight;
+  const newZoom = Math.min(zoomX, zoomY, maxZoom);
+
+  // Calculate center offset
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+
+  return {
+    x: viewportWidth / 2 - centerX * newZoom,
+    y: viewportHeight / 2 - centerY * newZoom,
+    zoom: newZoom,
+  };
+}

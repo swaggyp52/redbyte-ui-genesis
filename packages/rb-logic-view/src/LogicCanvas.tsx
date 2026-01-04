@@ -9,7 +9,7 @@ import { NodeView, type ChipMetadata } from './components/NodeView';
 import { WireView } from './components/WireView';
 import { Toolbar } from './components/Toolbar';
 import { renderGrid } from './tools/grid';
-import { snapToGrid } from './tools/panzoom';
+import { snapToGrid, calculateFitToView } from './tools/panzoom';
 
 export interface LogicCanvasProps {
   engine: TickEngine;
@@ -232,13 +232,16 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   // Mouse handlers for pan/zoom
   const [isPanning, setIsPanning] = React.useState(false);
   const [lastMouse, setLastMouse] = React.useState({ x: 0, y: 0 });
+  const [isSpacePressed, setIsSpacePressed] = React.useState(false);
+  const [isAltPressed, setIsAltPressed] = React.useState(false);
 
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (e.button === 1 || e.shiftKey) {
-      // Middle mouse or shift+click for panning
+    if (e.button === 1 || isSpacePressed) {
+      // Middle mouse or space+drag for panning
       setIsPanning(true);
       setLastMouse({ x: e.clientX, y: e.clientY });
-    } else if (e.button === 0 && !e.shiftKey) {
+      e.preventDefault(); // Prevent text selection during space-pan
+    } else if (e.button === 0 && !isSpacePressed) {
       // Left click on background clears selection
       clearSelection();
     }
@@ -269,8 +272,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   };
 
   const handleNodeMove = React.useCallback((nodeId: string, x: number, y: number) => {
-    const newX = shouldSnap ? snapToGrid(x, gridSize) : x;
-    const newY = shouldSnap ? snapToGrid(y, gridSize) : y;
+    // Alt temporarily disables snap
+    const snapEnabled = shouldSnap && !isAltPressed;
+    const newX = snapEnabled ? snapToGrid(x, gridSize) : x;
+    const newY = snapEnabled ? snapToGrid(y, gridSize) : y;
 
     // Calculate delta for the dragged node
     const draggedNode = circuit.nodes.find(n => n.id === nodeId);
@@ -295,8 +300,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           return {
             ...n,
             position: {
-              x: shouldSnap ? snapToGrid(n.position.x + dx, gridSize) : n.position.x + dx,
-              y: shouldSnap ? snapToGrid(n.position.y + dy, gridSize) : n.position.y + dy,
+              x: snapEnabled ? snapToGrid(n.position.x + dx, gridSize) : n.position.x + dx,
+              y: snapEnabled ? snapToGrid(n.position.y + dy, gridSize) : n.position.y + dy,
             },
           };
         }
@@ -305,7 +310,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     };
 
     commitCircuit(updatedCircuit);
-  }, [circuit, shouldSnap, gridSize, selection.nodes, commitCircuit]);
+  }, [circuit, shouldSnap, isAltPressed, gridSize, selection.nodes, commitCircuit]);
 
   const handleToggleSwitch = React.useCallback((nodeId: string) => {
     const updatedCircuit = {
@@ -410,40 +415,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
   // Fit circuit to view
   const fitToView = React.useCallback(() => {
-    if (circuit.nodes.length === 0) return;
-
-    // Calculate bounds
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-
-    circuit.nodes.forEach((node) => {
-      minX = Math.min(minX, node.position.x);
-      maxX = Math.max(maxX, node.position.x);
-      minY = Math.min(minY, node.position.y);
-      maxY = Math.max(maxY, node.position.y);
-    });
-
-    if (!isFinite(minX)) return;
-
-    // Add padding
-    const padding = 100;
-    const boundsWidth = maxX - minX + padding * 2;
-    const boundsHeight = maxY - minY + padding * 2;
-
-    // Calculate zoom to fit
-    const zoomX = width / boundsWidth;
-    const zoomY = height / boundsHeight;
-    const newZoom = Math.min(zoomX, zoomY, 2); // Max zoom of 2x
-
-    // Calculate center offset
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-
-    setCamera({
-      x: width / 2 - centerX * newZoom,
-      y: height / 2 - centerY * newZoom,
-      zoom: newZoom,
-    });
+    const newCamera = calculateFitToView(circuit.nodes, width, height);
+    setCamera(newCamera);
   }, [circuit.nodes, width, height, setCamera]);
 
   // Reset view to default
@@ -454,7 +427,20 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   // Keyboard handlers
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Delete' || e.key === 'Backspace') {
+      // Don't handle keyboard events if focus is in an input
+      const activeElement = document.activeElement;
+      if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+        return;
+      }
+
+      if (e.key === ' ') {
+        // Space: Enable pan mode
+        e.preventDefault(); // Prevent page scroll
+        setIsSpacePressed(true);
+      } else if (e.key === 'Alt') {
+        // Alt: Temporarily disable snap
+        setIsAltPressed(true);
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
         handleDelete();
       } else if (e.key === 'Escape') {
         clearSelection();
@@ -470,23 +456,51 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           // Toggle wire mode on/off
           setToolMode(toolMode === 'wire' ? 'select' : 'wire');
         }
-      } else if (e.key === 'f' && (e.ctrlKey || e.metaKey)) {
-        // Ctrl/Cmd+F: Fit to view
-        e.preventDefault();
-        fitToView();
+      } else if (e.key === 'g' || e.key === 'G') {
+        // G: Toggle snap to grid
+        toggleSnapToGrid();
+      } else if (e.key === 'f' || e.key === 'F') {
+        if (e.ctrlKey || e.metaKey) {
+          // Ctrl/Cmd+F: Fit to view
+          e.preventDefault();
+          fitToView();
+        } else {
+          // F: Fit to view
+          fitToView();
+        }
       } else if (e.key === 'r' && (e.ctrlKey || e.metaKey)) {
         // Ctrl/Cmd+R: Reset view
         e.preventDefault();
         resetView();
-      } else if (e.key === '0' && (e.ctrlKey || e.metaKey)) {
-        // Ctrl/Cmd+0: Reset zoom to 100%
-        e.preventDefault();
-        setCamera({ ...camera, zoom: 1 });
+      } else if (e.key === '0') {
+        if (e.ctrlKey || e.metaKey) {
+          // Ctrl/Cmd+0: Reset zoom to 100%
+          e.preventDefault();
+          setCamera({ ...camera, zoom: 1 });
+        } else {
+          // 0: Reset view
+          resetView();
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === ' ') {
+        // Space released: Disable pan mode
+        setIsSpacePressed(false);
+        setIsPanning(false); // Stop panning if in progress
+      } else if (e.key === 'Alt') {
+        // Alt released: Re-enable snap
+        setIsAltPressed(false);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
   });
 
   return (
@@ -500,6 +514,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           onToggleSnap={toggleSnapToGrid}
           toolMode={toolMode}
           onToolModeChange={setToolMode}
+          onFitToView={fitToView}
+          onResetView={resetView}
         />
       )}
 
@@ -522,11 +538,12 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             <div><span className="text-cyan-400">Drag from left panel:</span> Add components</div>
             <div><span className="text-cyan-400">Click port → Click port:</span> Connect wires</div>
             <div><span className="text-cyan-400">Drag nodes:</span> Move components</div>
-            <div><span className="text-cyan-400">Shift+Drag:</span> Pan view</div>
+            <div><span className="text-cyan-400">Space+Drag:</span> Pan view</div>
             <div><span className="text-cyan-400">Scroll:</span> Zoom</div>
-            <div><span className="text-cyan-400">Ctrl/Cmd+F:</span> Fit to view</div>
-            <div><span className="text-cyan-400">Ctrl/Cmd+R:</span> Reset view</div>
-            <div><span className="text-cyan-400">Ctrl/Cmd+0:</span> Reset zoom</div>
+            <div><span className="text-cyan-400">F:</span> Fit to view</div>
+            <div><span className="text-cyan-400">0:</span> Reset view</div>
+            <div><span className="text-cyan-400">G:</span> Toggle snap to grid</div>
+            <div><span className="text-cyan-400">Alt (hold):</span> Disable snap while moving</div>
             <div><span className="text-cyan-400">Delete/Backspace:</span> Remove selected</div>
             <div className="pt-2 border-t border-gray-700 text-gray-500">
               Selections sync across all views!
@@ -541,7 +558,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         height={height}
         style={{
           background: '#0a0a0a',
-          cursor: isPanning ? 'grabbing' : editingState.wireStartPort ? 'crosshair' : 'default',
+          cursor: isPanning ? 'grabbing' : isSpacePressed ? 'grab' : editingState.wireStartPort ? 'crosshair' : 'default',
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
