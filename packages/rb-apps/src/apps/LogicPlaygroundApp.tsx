@@ -41,7 +41,7 @@ import { TraceViewer } from '../components/TraceViewer';
 import { SplitViewLayout } from '../components/SplitViewLayout';
 import { registerAllChips, registerChip, unregisterChip } from '../utils/chipRegistry';
 import { useViewStateStore } from '../stores/viewStateStore';
-import { setGlobalViewStateSync } from '@redbyte/rb-logic-view';
+import { setGlobalViewStateSync, getGlobalViewStateStore } from '@redbyte/rb-logic-view';
 import { useHierarchyStore } from '../stores/hierarchyStore';
 import { HierarchyBreadcrumbs } from '../components/HierarchyBreadcrumbs';
 import { KeyboardShortcutsHelp } from '../components/KeyboardShortcutsHelp';
@@ -679,6 +679,16 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     engine.setCircuit(updatedCircuit);
     setIsDirty(true);
     addToast('Connection deleted', 'info');
+  };
+
+  const handleFocusNode = (nodeId: string, portName?: string) => {
+    // Use the global view state store to select the node
+    const viewStore = getGlobalViewStateStore();
+    if (viewStore) {
+      viewStore.getState().clearSelection();
+      viewStore.getState().selectNode(nodeId, false);
+      // TODO: Could also pan/zoom to center the node if needed
+    }
   };
 
   const handleCircuitChange = useCallback((updatedCircuit: Circuit) => {
@@ -1391,6 +1401,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             isRunning={isRunning}
             onNodeUpdate={handleNodeUpdate}
             onConnectionDelete={handleConnectionDelete}
+            onFocusNode={handleFocusNode}
             chips={allChips}
             initialState={rightDockState}
             onStateChange={setRightDockState}

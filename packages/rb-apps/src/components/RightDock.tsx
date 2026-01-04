@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import type { Circuit, CircuitEngine } from '@redbyte/rb-logic-core';
 import { PropertyInspector } from './PropertyInspector';
+import { CircuitHealthPanel } from './CircuitHealthPanel';
 
 /**
  * Logic Playground vNext Right Dock
@@ -18,7 +19,7 @@ import { PropertyInspector } from './PropertyInspector';
  * Never overlaps the main stage
  */
 
-export type RightDockTab = 'inspector' | 'probes' | 'chips';
+export type RightDockTab = 'inspector' | 'health' | 'probes' | 'chips';
 export type RightDockState = 'collapsed' | 'peek' | 'expanded';
 
 interface RightDockProps {
@@ -27,6 +28,9 @@ interface RightDockProps {
   isRunning: boolean;
   onNodeUpdate?: (nodeId: string, updates: any) => void;
   onConnectionDelete?: (connectionId: string) => void;
+
+  // Health tab
+  onFocusNode?: (nodeId: string, portName?: string) => void;
 
   // Probes tab
   probes?: Array<{ nodeId: string; portName: string }>;
@@ -52,6 +56,7 @@ export const RightDock: React.FC<RightDockProps> = ({
   isRunning,
   onNodeUpdate,
   onConnectionDelete,
+  onFocusNode,
   probes = [],
   onProbeAdd,
   onProbeRemove,
@@ -90,6 +95,16 @@ export const RightDock: React.FC<RightDockProps> = ({
         </button>
         <button
           onClick={() => {
+            setActiveTab('health');
+            setDockState('peek');
+          }}
+          className="p-2 rounded hover:bg-gray-800 transition-colors"
+          title="Health"
+        >
+          <span className="text-xl">💊</span>
+        </button>
+        <button
+          onClick={() => {
             setActiveTab('probes');
             setDockState('peek');
           }}
@@ -120,35 +135,46 @@ export const RightDock: React.FC<RightDockProps> = ({
       <div className="h-10 border-b border-gray-700 bg-gray-850 flex items-center px-2 gap-1">
         <button
           onClick={() => setActiveTab('inspector')}
-          className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition-all ${
+          className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
             activeTab === 'inspector'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
         >
-          <span className="mr-1.5">🔍</span>
-          Inspector
+          <span className="mr-1">🔍</span>
+          Info
+        </button>
+        <button
+          onClick={() => setActiveTab('health')}
+          className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
+            activeTab === 'health'
+              ? 'bg-cyan-600 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+          }`}
+        >
+          <span className="mr-1">💊</span>
+          Health
         </button>
         <button
           onClick={() => setActiveTab('probes')}
-          className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition-all ${
+          className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
             activeTab === 'probes'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
         >
-          <span className="mr-1.5">📊</span>
+          <span className="mr-1">📊</span>
           Probes
         </button>
         <button
           onClick={() => setActiveTab('chips')}
-          className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition-all ${
+          className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
             activeTab === 'chips'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
         >
-          <span className="mr-1.5">🧩</span>
+          <span className="mr-1">🧩</span>
           Chips
         </button>
 
@@ -172,6 +198,12 @@ export const RightDock: React.FC<RightDockProps> = ({
             onNodeUpdate={onNodeUpdate}
             onConnectionDelete={onConnectionDelete}
           />
+        )}
+
+        {activeTab === 'health' && (
+          <div className="h-full overflow-y-auto">
+            <CircuitHealthPanel circuit={circuit} onFocusNode={onFocusNode} />
+          </div>
         )}
 
         {activeTab === 'probes' && (

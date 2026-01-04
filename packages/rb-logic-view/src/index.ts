@@ -7,7 +7,7 @@ export { LogicCanvas } from './LogicCanvas';
 export type { LogicCanvasProps } from './LogicCanvas';
 
 // Store
-export { useLogicViewStore, setGlobalViewStateSync } from './useLogicViewStore';
+export { useLogicViewStore, setGlobalViewStateSync, getGlobalViewStateStore } from './useLogicViewStore';
 export type {
   Camera,
   Selection,
