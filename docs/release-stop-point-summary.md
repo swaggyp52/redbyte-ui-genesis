@@ -6,7 +6,22 @@
 
 ## Critical Bugs Fixed
 
-### 1. **QuickAddPalette Runtime Error** (CRITICAL)
+### 1. **Switch Toggle Interaction** (CRITICAL)
+**Issue**: Switches required double-click to toggle instead of single-click. This made the app feel broken and unusable - users couldn't interact with circuits at all.
+
+**Fix**: Modified click/drag detection logic to distinguish between clicks and drags:
+- Single click now toggles switches immediately
+- Added 3px movement threshold before drag activates (prevents accidental drag on click)
+- Double-click reserved for chip drill-down only
+
+**Files Changed**:
+- `packages/rb-logic-view/src/components/NodeView.tsx:80-133`
+
+**Impact**: CRITICAL - Without this fix, users cannot interact with switches, making the entire playground unusable. This was a showstopper bug preventing any circuit building or testing.
+
+**Commit**: `f6cc2b99`
+
+### 2. **QuickAddPalette Runtime Error** (CRITICAL)
 **Issue**: `QuickAddPalette` called undefined `handleAddNode()` function, causing runtime crash when adding components via quick palette.
 
 **Fix**: Changed to use `storeAddNode` (the correct circuit store method).
@@ -16,7 +31,9 @@
 
 **Impact**: HIGH - This would have crashed the app whenever a user tried to add a component via the Quick Add Palette (keyboard shortcut workflow).
 
-### 2. **TopCommandBar Missing Handlers** (HIGH)
+**Commit**: `42d7092d`
+
+### 3. **TopCommandBar Missing Handlers** (HIGH)
 **Issue**: "New" and "Save As" buttons in TopCommandBar were not wired to their handlers, making them non-functional.
 
 **Fix**: Connected `onNew={handleNew}` and `onSaveAs={handleSaveAs}` to TopCommandBar component.
@@ -25,6 +42,8 @@
 - `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx:1294-1296`
 
 **Impact**: HIGH - Users could see these buttons but clicking them did nothing. Now file operations work correctly.
+
+**Commit**: `42d7092d`
 
 ---
 
