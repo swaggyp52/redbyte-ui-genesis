@@ -708,7 +708,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const handleCircuitChange = useCallback((updatedCircuit: Circuit) => {
     // CRITICAL: Update local state AND store to keep them in sync
     setCircuit(updatedCircuit);
-    engine.setCircuit(updatedCircuit);
+    engineRef.current.setCircuit(updatedCircuit);
 
     // Use circuitStore.commit to add to history
     const circuitStore = useCircuitStore.getState();
