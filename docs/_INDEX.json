@@ -1,0 +1,699 @@
+{
+  "meta": {
+    "name": "RedByte Documentation OS",
+    "version": "1.0.0",
+    "lastUpdated": "2026-01-05",
+    "schema": "1.0"
+  },
+  "documents": [
+    {
+      "id": "docs-readme",
+      "path": "docs/README.md",
+      "title": "Documentation OS — Home",
+      "category": "navigation",
+      "status": "CANONICAL",
+      "audience": ["everyone"],
+      "tags": ["navigation", "overview", "index"],
+      "description": "Entry point to the complete documentation system",
+      "readTime": 10
+    },
+    {
+      "id": "traceability",
+      "path": "docs/TRACEABILITY.md",
+      "title": "Traceability Maps — Documentation → Code",
+      "category": "proof",
+      "status": "CANONICAL",
+      "audience": ["developers", "auditors"],
+      "tags": ["traceability", "proof", "code-mapping", "audit"],
+      "description": "Links every system concept to actual code locations. Proof of understanding.",
+      "readTime": 30
+    },
+    {
+      "id": "canon-00-identity",
+      "path": "docs/00-canon/00-project-identity.md",
+      "title": "00 — Project Identity",
+      "category": "canon",
+      "status": "CANONICAL",
+      "audience": ["everyone"],
+      "tags": ["vision", "philosophy", "scope", "identity"],
+      "description": "What RedByte is/isn't, who it's for, the medium claim",
+      "readTime": 20
+    },
+    {
+      "id": "canon-01-principles",
+      "path": "docs/00-canon/01-core-principles.md",
+      "title": "01 — Core Principles",
+      "category": "canon",
+      "status": "CANONICAL",
+      "audience": ["developers", "auditors", "stakeholders"],
+      "tags": ["principles", "philosophy", "boundaries", "constraints"],
+      "description": "8 principles that guide every decision: Truth over simplicity, local-first, deterministic, etc.",
+      "readTime": 25
+    },
+    {
+      "id": "canon-02-determinism",
+      "path": "docs/00-canon/02-determinism-contract.md",
+      "title": "02 — Determinism Contract",
+      "category": "canon",
+      "status": "PLANNED",
+      "audience": ["developers", "auditors"],
+      "tags": ["determinism", "guarantees", "verification", "technical"],
+      "description": "Exact semantics, guarantees, non-goals, and verification methods",
+      "readTime": 15
+    },
+    {
+      "id": "canon-03-architecture",
+      "path": "docs/00-canon/03-system-architecture.md",
+      "title": "03 — System Architecture",
+      "category": "canon",
+      "status": "PLANNED",
+      "audience": ["developers", "architects"],
+      "tags": ["architecture", "packages", "boundaries", "data-flow"],
+      "description": "All packages, their responsibilities, data flow, lifecycles",
+      "readTime": 20
+    },
+    {
+      "id": "canon-04-experience",
+      "path": "docs/00-canon/04-experience-design.md",
+      "title": "04 — Experience Design",
+      "category": "canon",
+      "status": "PLANNED",
+      "audience": ["product", "ux", "developers"],
+      "tags": ["ux", "learn-mode", "build-mode", "interaction"],
+      "description": "Learn Mode, Build posture, why UI layers never alter truth",
+      "readTime": 15
+    },
+    {
+      "id": "canon-05-roadmap",
+      "path": "docs/00-canon/05-roadmap.md",
+      "title": "05 — Roadmap",
+      "category": "canon",
+      "status": "PLANNED",
+      "audience": ["stakeholders", "contributors"],
+      "tags": ["roadmap", "planning", "future", "priorities"],
+      "description": "Near-term vs long-term plans, explicitly labeled as planned",
+      "readTime": 10
+    },
+    {
+      "id": "canon-06-owners-manual",
+      "path": "docs/00-canon/06-owners-manual.md",
+      "title": "06 — Owner's Manual",
+      "category": "canon",
+      "status": "CANONICAL",
+      "audience": ["developers", "auditors", "future-self"],
+      "tags": ["proof", "mastery", "interview", "audit", "onboarding"],
+      "description": "\"I can rebuild this from scratch\" proof document. Complete system understanding.",
+      "readTime": 45
+    },
+    {
+      "id": "dev-setup",
+      "path": "docs/01-dev/dev-setup.md",
+      "title": "Developer Setup",
+      "category": "developer",
+      "status": "TODO",
+      "audience": ["developers"],
+      "tags": ["setup", "install", "build", "dev", "getting-started"],
+      "description": "Exact commands: install/build/test/dev/preview/deploy",
+      "readTime": 10
+    },
+    {
+      "id": "dev-repo-tour",
+      "path": "docs/01-dev/repo-tour.md",
+      "title": "Repository Tour",
+      "category": "developer",
+      "status": "TODO",
+      "audience": ["developers"],
+      "tags": ["monorepo", "packages", "structure", "navigation"],
+      "description": "Monorepo walkthrough & package purposes",
+      "readTime": 15
+    },
+    {
+      "id": "dev-coding-standards",
+      "path": "docs/01-dev/coding-standards.md",
+      "title": "Coding Standards",
+      "category": "developer",
+      "status": "TODO",
+      "audience": ["developers"],
+      "tags": ["patterns", "zustand", "controlled-components", "testing"],
+      "description": "Patterns: Zustand, controlled components, invariants, tests",
+      "readTime": 20
+    },
+    {
+      "id": "dev-debugging",
+      "path": "docs/01-dev/debugging-playbook.md",
+      "title": "Debugging Playbook",
+      "category": "developer",
+      "status": "CURRENT",
+      "audience": ["developers"],
+      "tags": ["debugging", "troubleshooting", "state", "failure-modes"],
+      "description": "How to diagnose issues, where state lives, common failure modes. See Owner's Manual for now.",
+      "readTime": 15,
+      "seeAlso": ["canon-06-owners-manual"]
+    },
+    {
+      "id": "dev-tests",
+      "path": "docs/01-dev/tests-and-quality.md",
+      "title": "Tests & Quality",
+      "category": "developer",
+      "status": "TODO",
+      "audience": ["developers"],
+      "tags": ["testing", "quality", "ci", "coverage"],
+      "description": "What tests exist, how to add per PR, Definition of Done",
+      "readTime": 15
+    },
+    {
+      "id": "dev-release",
+      "path": "docs/01-dev/release-process.md",
+      "title": "Release Process",
+      "category": "developer",
+      "status": "CURRENT",
+      "audience": ["developers", "maintainers"],
+      "tags": ["release", "deployment", "qa", "checklist"],
+      "description": "Stop-point criteria, smoke tests, tagging. See release-stop-point.md for now.",
+      "readTime": 10,
+      "seeAlso": ["release-stop-point"]
+    },
+    {
+      "id": "sys-circuit-model",
+      "path": "docs/02-systems/circuit-model.md",
+      "title": "Circuit Model",
+      "category": "systems",
+      "status": "TODO",
+      "audience": ["developers"],
+      "tags": ["data-model", "circuit", "nodes", "connections"],
+      "description": "Data structures, invariants, files. Circuit, Node, Connection types.",
+      "readTime": 15
+    },
+    {
+      "id": "sys-simulation",
+      "path": "docs/02-systems/simulation-engine.md",
+      "title": "Simulation Engine",
+      "category": "systems",
+      "status": "TODO",
+      "audience": ["developers"],
+      "tags": ["simulation", "engine", "ticks", "evaluation"],
+      "description": "CircuitEngine & TickEngine. Tick loop, determinism, gate evaluation.",
+      "readTime": 20
+    },
+    {
+      "id": "sys-store",
+      "path": "docs/02-systems/zustand-store-and-mutation-pipeline.md",
+      "title": "Zustand Store & Mutation Pipeline",
+      "category": "systems",
+      "status": "CURRENT",
+      "audience": ["developers"],
+      "tags": ["zustand", "store", "mutations", "state-management"],
+      "description": "Store design, mutation flow, commit pipeline. See TRACEABILITY for now.",
+      "readTime": 20,
+      "seeAlso": ["traceability", "canon-06-owners-manual"]
+    },
+    {
+      "id": "sys-undo-redo",
+      "path": "docs/02-systems/undo-redo.md",
+      "title": "Undo/Redo System",
+      "category": "systems",
+      "status": "CURRENT",
+      "audience": ["developers"],
+      "tags": ["undo", "redo", "history", "time-travel"],
+      "description": "History system, snapshot management. See Owner's Manual for now.",
+      "readTime": 10,
+      "seeAlso": ["canon-06-owners-manual"]
+    },
+    {
+      "id": "sys-wiring",
+      "path": "docs/02-systems/wiring-and-validation.md",
+      "title": "Wiring & Validation",
+      "category": "systems",
+      "status": "CURRENT",
+      "audience": ["developers"],
+      "tags": ["wiring", "validation", "connections", "ports"],
+      "description": "Connection rules, port validation, wire validation. See TRACEABILITY.",
+      "readTime": 10,
+      "seeAlso": ["traceability"]
+    },
+    {
+      "id": "sys-multiview",
+      "path": "docs/02-systems/multi-view-sync.md",
+      "title": "Multi-View Sync",
+      "category": "systems",
+      "status": "CURRENT",
+      "audience": ["developers"],
+      "tags": ["multi-view", "sync", "controlled-components", "views"],
+      "description": "Circuit/Schematic/3D/Scope synchronization. One truth, many views.",
+      "readTime": 15,
+      "seeAlso": ["canon-06-owners-manual"]
+    },
+    {
+      "id": "sys-learn-mode",
+      "path": "docs/02-systems/learn-mode.md",
+      "title": "Learn Mode",
+      "category": "systems",
+      "status": "CURRENT",
+      "audience": ["developers", "product"],
+      "tags": ["learn-mode", "tutorials", "education", "validation"],
+      "description": "Tutorial system, step validation, completion. See TRACEABILITY.",
+      "readTime": 15,
+      "seeAlso": ["traceability"]
+    },
+    {
+      "id": "sys-circuit-health",
+      "path": "docs/02-systems/circuit-health.md",
+      "title": "Circuit Health",
+      "category": "systems",
+      "status": "CURRENT",
+      "audience": ["developers"],
+      "tags": ["validation", "health", "errors", "diagnostics"],
+      "description": "Validation, error detection, feedback. See TRACEABILITY.",
+      "readTime": 10,
+      "seeAlso": ["traceability"]
+    },
+    {
+      "id": "sys-chip-system",
+      "path": "docs/02-systems/chip-system.md",
+      "title": "Chip System",
+      "category": "systems",
+      "status": "CURRENT",
+      "audience": ["developers"],
+      "tags": ["chips", "hierarchical", "pattern-recognition", "library"],
+      "description": "Pattern recognition, library, hierarchy. See CHIP_SYSTEM_SUMMARY.",
+      "readTime": 15,
+      "seeAlso": ["chip-system-summary"]
+    },
+    {
+      "id": "sys-determinism-tools",
+      "path": "docs/02-systems/determinism-tools.md",
+      "title": "Determinism Tools",
+      "category": "systems",
+      "status": "CURRENT",
+      "audience": ["developers"],
+      "tags": ["determinism", "record", "replay", "verification"],
+      "description": "Recording, replay, verification. See TRACEABILITY.",
+      "readTime": 10,
+      "seeAlso": ["traceability"]
+    },
+    {
+      "id": "sys-export-future",
+      "path": "docs/02-systems/export-future.md",
+      "title": "Export (Future)",
+      "category": "systems",
+      "status": "PLANNED",
+      "audience": ["developers", "stakeholders"],
+      "tags": ["export", "verilog", "hdl", "bom", "pdf", "planned"],
+      "description": "Placeholder: Verilog/BOM/PDF exports. Not yet implemented.",
+      "readTime": 10
+    },
+    {
+      "id": "product-workflows",
+      "path": "docs/03-product/user-workflows.md",
+      "title": "User Workflows",
+      "category": "product",
+      "status": "TODO",
+      "audience": ["product", "ux", "developers"],
+      "tags": ["workflows", "user-flows", "ux", "build", "debug", "learn"],
+      "description": "Build, debug, learn flows",
+      "readTime": 15
+    },
+    {
+      "id": "product-onboarding",
+      "path": "docs/03-product/onboarding-and-ux.md",
+      "title": "Onboarding & UX",
+      "category": "product",
+      "status": "CURRENT",
+      "audience": ["product", "ux"],
+      "tags": ["onboarding", "ux", "tooltips", "first-run"],
+      "description": "First-run experience, tooltips. See ONBOARDING_PLAN.",
+      "readTime": 10,
+      "seeAlso": ["onboarding-plan"]
+    },
+    {
+      "id": "product-demo-mode",
+      "path": "docs/03-product/public-demo-mode.md",
+      "title": "Public Demo Mode",
+      "category": "product",
+      "status": "TODO",
+      "audience": ["product", "marketing"],
+      "tags": ["demo", "public", "constraints", "marketing"],
+      "description": "Demo constraints, public site behavior",
+      "readTime": 10
+    },
+    {
+      "id": "company-why",
+      "path": "docs/04-company/company-why.md",
+      "title": "Company Why",
+      "category": "company",
+      "status": "TODO",
+      "audience": ["stakeholders", "investors"],
+      "tags": ["mission", "vision", "why", "life-work"],
+      "description": "Life's work framing, mission",
+      "readTime": 10
+    },
+    {
+      "id": "company-ops",
+      "path": "docs/04-company/llc-and-ops.md",
+      "title": "LLC & Operations",
+      "category": "company",
+      "status": "TODO",
+      "audience": ["stakeholders", "founders"],
+      "tags": ["llc", "legal", "accounting", "ip", "operations"],
+      "description": "LLC, banking, accounting, IP stance",
+      "readTime": 10
+    },
+    {
+      "id": "company-fundraising",
+      "path": "docs/04-company/fundraising-qa.md",
+      "title": "Fundraising Q&A",
+      "category": "company",
+      "status": "TODO",
+      "audience": ["investors", "stakeholders"],
+      "tags": ["fundraising", "investors", "qa", "due-diligence"],
+      "description": "Investor questions, grounded answers",
+      "readTime": 15
+    },
+    {
+      "id": "company-positioning",
+      "path": "docs/04-company/positioning.md",
+      "title": "Positioning",
+      "category": "company",
+      "status": "TODO",
+      "audience": ["stakeholders", "marketing"],
+      "tags": ["positioning", "strategy", "market", "education", "professional"],
+      "description": "Education + professional tool coexistence strategy",
+      "readTime": 10
+    },
+    {
+      "id": "archive-readme",
+      "path": "docs/05-archive/README.md",
+      "title": "Archive — Historical Documentation",
+      "category": "archive",
+      "status": "CANONICAL",
+      "audience": ["developers", "historians"],
+      "tags": ["archive", "historical", "preservation", "context"],
+      "description": "Explains what's archived and why. Preservation policy.",
+      "readTime": 5
+    },
+    {
+      "id": "release-stop-point",
+      "path": "docs/release-stop-point.md",
+      "title": "Release Stop Point — Definition of Done",
+      "category": "process",
+      "status": "CURRENT",
+      "audience": ["developers", "qa"],
+      "tags": ["release", "qa", "checklist", "stabilization"],
+      "description": "Manual QA checklist, production readiness criteria",
+      "readTime": 10
+    },
+    {
+      "id": "release-summary",
+      "path": "docs/release-stop-point-summary.md",
+      "title": "Release Stop Point — Summary",
+      "category": "process",
+      "status": "CURRENT",
+      "audience": ["developers", "stakeholders"],
+      "tags": ["release", "status", "bugs-fixed", "tests"],
+      "description": "Stabilization status: bugs fixed, tests passing, next steps",
+      "readTime": 10
+    },
+    {
+      "id": "architecture-legacy",
+      "path": "docs/ARCHITECTURE.md",
+      "title": "Architecture (Legacy)",
+      "category": "technical",
+      "status": "CURRENT",
+      "audience": ["developers", "architects"],
+      "tags": ["architecture", "legacy", "technical", "overview"],
+      "description": "System architecture: kernel, shell, apps, contexts. Will be superseded by /00-canon/03.",
+      "readTime": 15
+    },
+    {
+      "id": "app-map",
+      "path": "docs/APP_MAP.md",
+      "title": "Application Map",
+      "category": "technical",
+      "status": "CURRENT",
+      "audience": ["developers"],
+      "tags": ["apps", "map", "inventory"],
+      "description": "Maps all OS applications (Launchpad, Logic Designer, CPU Designer, etc.)",
+      "readTime": 5
+    },
+    {
+      "id": "project-model",
+      "path": "docs/PROJECT_MODEL.md",
+      "title": "Project Data Model",
+      "category": "technical",
+      "status": "CURRENT",
+      "audience": ["developers"],
+      "tags": ["data-model", "project", "circuit", "cpu"],
+      "description": "Unified project data structure (ProjectState, logic model, CPU model)",
+      "readTime": 10
+    },
+    {
+      "id": "learning-guide",
+      "path": "docs/LEARNING_GUIDE.md",
+      "title": "Learning Guide",
+      "category": "product",
+      "status": "CURRENT",
+      "audience": ["developers", "product"],
+      "tags": ["tutorial", "learning", "context", "implementation"],
+      "description": "Tutorial system: Build AND → View 3D → Inspect timing → View code",
+      "readTime": 10
+    },
+    {
+      "id": "chip-system-summary",
+      "path": "docs/CHIP_SYSTEM_SUMMARY.md",
+      "title": "Chip System Summary",
+      "category": "technical",
+      "status": "CURRENT",
+      "audience": ["developers"],
+      "tags": ["chips", "pattern-recognition", "hierarchical"],
+      "description": "Pattern recognition, chip save workflow, library management",
+      "readTime": 10
+    },
+    {
+      "id": "circuit-hierarchy",
+      "path": "docs/CIRCUIT_HIERARCHY.md",
+      "title": "Circuit Complexity Hierarchy",
+      "category": "product",
+      "status": "CURRENT",
+      "audience": ["product", "educators"],
+      "tags": ["curriculum", "complexity", "progression"],
+      "description": "9-layer complexity hierarchy from basic wires to meta-computation",
+      "readTime": 10
+    },
+    {
+      "id": "onboarding-plan",
+      "path": "docs/ONBOARDING_PLAN.md",
+      "title": "Onboarding Plan",
+      "category": "product",
+      "status": "PLANNED",
+      "audience": ["product", "ux"],
+      "tags": ["onboarding", "tooltips", "planned"],
+      "description": "Contextual tooltips for Logic Designer, CPU Designer, 3D World (planned)",
+      "readTime": 10
+    },
+    {
+      "id": "redstone-viewer",
+      "path": "docs/REDSTONE_VIEWER.md",
+      "title": "Redstone Viewer",
+      "category": "technical",
+      "status": "CURRENT",
+      "audience": ["developers"],
+      "tags": ["3d", "redstone", "voxel", "three-js"],
+      "description": "3D world pipeline: Circuit → voxel mapping → Three.js rendering",
+      "readTime": 10
+    },
+    {
+      "id": "signal-viewer",
+      "path": "docs/SIGNAL_VIEWER.md",
+      "title": "Signal Viewer (Oscilloscope)",
+      "category": "technical",
+      "status": "CURRENT",
+      "audience": ["developers"],
+      "tags": ["oscilloscope", "timing", "waveforms", "probes"],
+      "description": "Waveform scope for logic nodes, probe management, sample recording",
+      "readTime": 10
+    },
+    {
+      "id": "desktop-packaging",
+      "path": "docs/DESKTOP_PACKAGING.md",
+      "title": "Desktop Packaging",
+      "category": "deployment",
+      "status": "PLANNED",
+      "audience": ["developers", "devops"],
+      "tags": ["tauri", "electron", "packaging", "desktop", "planned"],
+      "description": "Tauri/Electron packaging, build config, security policies (planned)",
+      "readTime": 10
+    },
+    {
+      "id": "ai-state",
+      "path": "docs/AI_STATE.md",
+      "title": "AI Development Guidelines",
+      "category": "process",
+      "status": "CURRENT",
+      "audience": ["ai-agents", "developers"],
+      "tags": ["ai", "claude", "guidelines", "determinism"],
+      "description": "Development guidelines for AI agent: deterministic execution, testing requirements",
+      "readTime": 10
+    },
+    {
+      "id": "adr-logic-engine-ticks",
+      "path": "docs/specs/adrs/adr-0002-logic-engine-ticks.md",
+      "title": "ADR-0002: Tick-Based Simulation",
+      "category": "adr",
+      "status": "CANONICAL",
+      "audience": ["developers", "architects"],
+      "tags": ["adr", "decision-record", "simulation", "determinism"],
+      "description": "ADR: Tick-based simulation decoupled from rendering (determinism, performance)",
+      "readTime": 10
+    }
+  ],
+  "categories": {
+    "navigation": {
+      "label": "Navigation",
+      "description": "Entry points and documentation maps"
+    },
+    "proof": {
+      "label": "Proof & Traceability",
+      "description": "Documents that prove understanding and map concepts to code"
+    },
+    "canon": {
+      "label": "Canonical Truth",
+      "description": "Source of truth documents, authoritative and actively maintained"
+    },
+    "developer": {
+      "label": "Developer Docs",
+      "description": "For contributors who want to understand and ship code"
+    },
+    "systems": {
+      "label": "Subsystem Deep Dives",
+      "description": "Detailed documentation of each subsystem"
+    },
+    "product": {
+      "label": "Product & UX",
+      "description": "Product thinking and user experience design"
+    },
+    "company": {
+      "label": "Business & Organization",
+      "description": "Business context and organizational information"
+    },
+    "archive": {
+      "label": "Historical Archive",
+      "description": "Historical documents preserved for context"
+    },
+    "process": {
+      "label": "Process & Workflow",
+      "description": "Development processes, releases, QA"
+    },
+    "technical": {
+      "label": "Technical Documentation",
+      "description": "Technical specifications and implementation details"
+    },
+    "deployment": {
+      "label": "Deployment",
+      "description": "Deployment and packaging documentation"
+    },
+    "adr": {
+      "label": "Architecture Decision Records",
+      "description": "Architectural decisions with rationale and consequences"
+    }
+  },
+  "audiences": {
+    "everyone": {
+      "label": "Everyone",
+      "description": "General audience, accessible to all"
+    },
+    "developers": {
+      "label": "Developers",
+      "description": "Software engineers contributing to the project"
+    },
+    "auditors": {
+      "label": "Auditors",
+      "description": "Technical auditors reviewing system design"
+    },
+    "stakeholders": {
+      "label": "Stakeholders",
+      "description": "Business stakeholders and decision makers"
+    },
+    "investors": {
+      "label": "Investors",
+      "description": "Current or potential investors"
+    },
+    "product": {
+      "label": "Product",
+      "description": "Product managers and designers"
+    },
+    "ux": {
+      "label": "UX",
+      "description": "User experience designers"
+    },
+    "educators": {
+      "label": "Educators",
+      "description": "Teachers and curriculum designers"
+    },
+    "qa": {
+      "label": "QA",
+      "description": "Quality assurance testers"
+    },
+    "marketing": {
+      "label": "Marketing",
+      "description": "Marketing and communications team"
+    },
+    "devops": {
+      "label": "DevOps",
+      "description": "Infrastructure and deployment engineers"
+    },
+    "ai-agents": {
+      "label": "AI Agents",
+      "description": "AI development agents like Claude"
+    },
+    "historians": {
+      "label": "Historians",
+      "description": "People interested in project history and evolution"
+    },
+    "future-self": {
+      "label": "Future Self",
+      "description": "Connor 1+ years from now"
+    },
+    "architects": {
+      "label": "Architects",
+      "description": "Software architects and system designers"
+    },
+    "maintainers": {
+      "label": "Maintainers",
+      "description": "Project maintainers and core team"
+    },
+    "founders": {
+      "label": "Founders",
+      "description": "Company founders"
+    }
+  },
+  "learningPaths": {
+    "new-user": {
+      "label": "I'm a New User",
+      "description": "Learn what RedByte is and how to use it",
+      "documents": ["canon-00-identity", "product-onboarding", "learning-guide"]
+    },
+    "new-developer": {
+      "label": "I'm a New Developer",
+      "description": "Get started contributing to the codebase",
+      "documents": ["canon-00-identity", "canon-01-principles", "dev-setup", "canon-06-owners-manual", "traceability"]
+    },
+    "investor-auditor": {
+      "label": "I'm an Investor / Auditor",
+      "description": "Understand the vision, verify the claims",
+      "documents": ["canon-00-identity", "canon-06-owners-manual", "traceability", "company-fundraising"]
+    },
+    "future-self": {
+      "label": "I'm Future Connor",
+      "description": "Remember how this works and why decisions were made",
+      "documents": ["canon-06-owners-manual", "traceability", "archive-readme"]
+    }
+  },
+  "stats": {
+    "totalDocuments": 50,
+    "canonical": 5,
+    "current": 19,
+    "planned": 14,
+    "todo": 12,
+    "completeness": "45%"
+  }
+}
