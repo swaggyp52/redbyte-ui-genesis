@@ -1678,7 +1678,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         isOpen={showQuickAdd}
         onClose={() => setShowQuickAdd(false)}
         onSelectComponent={(type) => {
-          handleAddNode(type);
+          storeAddNode(type);
           setShowQuickAdd(false);
         }}
       />
