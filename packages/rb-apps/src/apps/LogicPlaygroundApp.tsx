@@ -1291,7 +1291,9 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       {/* Top Command Bar - vNext Design */}
       <TopCommandBar
         onExamples={() => setShowExamplesModal(true)}
+        onNew={handleNew}
         onSave={handleSave}
+        onSaveAs={handleSaveAs}
         onShare={handleShare}
         isDirty={isDirty}
         onUndo={handleUndo}

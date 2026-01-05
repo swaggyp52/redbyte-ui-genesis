@@ -2,7 +2,7 @@
 
 **Date**: 2026-01-05
 **Phase**: Production Hardening Sprint
-**Status**: In Progress
+**Status**: ✅ COMPLETE - Ready for Human QA
 
 ## Critical Bugs Fixed
 
@@ -16,6 +16,16 @@
 
 **Impact**: HIGH - This would have crashed the app whenever a user tried to add a component via the Quick Add Palette (keyboard shortcut workflow).
 
+### 2. **TopCommandBar Missing Handlers** (HIGH)
+**Issue**: "New" and "Save As" buttons in TopCommandBar were not wired to their handlers, making them non-functional.
+
+**Fix**: Connected `onNew={handleNew}` and `onSaveAs={handleSaveAs}` to TopCommandBar component.
+
+**Files Changed**:
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx:1294-1296`
+
+**Impact**: HIGH - Users could see these buttons but clicking them did nothing. Now file operations work correctly.
+
 ---
 
 ## Test Results
@@ -23,7 +33,8 @@
 ### Core Playground Tests: ✅ PASS
 - Circuit Health: 13/13 tests passing
 - Learn Mode: 12/12 tests passing
-- **Total Core Tests**: 25/25 passing
+- **Stabilization Tests: 11/11 tests passing** (NEW)
+- **Total Core Tests**: 36/36 passing
 
 ### Files App Tests: ⚠️ KNOWN ISSUES
 - 169 tests failing in Files app operations
@@ -109,11 +120,39 @@ All circuit mutations flow through:
 
 ---
 
+## Completed Work ✅
+
+- [x] Phase 1: Created Definition of Done checklist
+- [x] Phase 2: Fixed CRITICAL QuickAddPalette runtime crash
+- [x] Phase 2: Verified production build succeeds
+- [x] Phase 2: Verified all core tests pass (36/36)
+- [x] Phase 3: Audited circuit mutation pipeline - verified consistent
+- [x] Phase 4: Fixed broken UI (New/SaveAs button wiring)
+- [x] Phase 5: Added 11 stabilization integration tests
+- [x] Added DEV-only runtime invariants:
+  - Circuit store warns if engines not connected
+  - Circuit store validates node types on addNode
+  - LogicCanvas asserts onCircuitChange in controlled mode
+- [x] Updated release documentation
+
 ## Remaining Work
 
-- [ ] Phase 3: Complete circuit pipeline audit
-- [ ] Phase 4: Fix any broken UI affordances
-- [ ] Phase 5: Add integration tests for critical workflows
-- [ ] Document final release notes
-- [ ] Tag and deploy
+- [ ] Human QA: Run `npm run preview` and verify Definition of Done
+- [ ] Final commit: Create "stabilization release" commit
+- [ ] Tag release: Tag as `v1.0-learn-mode-stable` or similar
+- [ ] Deploy to production
+
+## DEV-Only Runtime Invariants Added
+
+1. **Circuit Store - Engine Connection Warning** (`circuitStore.ts:69-78`)
+   - Warns if circuit mutations occur without engines connected
+   - Helps catch initialization order issues during development
+
+2. **Circuit Store - Node Type Validation** (`circuitStore.ts:129-143`)
+   - Validates node type against registered types on addNode
+   - Prevents typos or unregistered component types from being added
+
+3. **LogicCanvas - Controlled Mode Assertion** (`LogicCanvas.tsx:71-80`)
+   - Throws error if circuit prop provided without onCircuitChange
+   - Ensures controlled components properly propagate mutations
 

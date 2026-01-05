@@ -126,6 +126,22 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   canRedo: () => get().future.length > 0,
 
   addNode: (nodeType, position) => {
+    // Dev-mode invariant: validate node type is registered
+    if (import.meta.env.DEV) {
+      const validTypes = [
+        'PowerSource', 'Switch', 'INPUT', 'Lamp', 'OUTPUT', 'Wire',
+        'AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR', 'XNOR',
+        'Clock', 'Delay',
+        'RSLatch', 'DFlipFlop', 'JKFlipFlop', 'FullAdder', 'Counter4Bit',
+      ];
+      if (!validTypes.includes(nodeType)) {
+        console.error(
+          `[CircuitStore] Attempted to add unregistered node type: "${nodeType}"\n` +
+          `Valid types: ${validTypes.join(', ')}`
+        );
+      }
+    }
+
     const { circuit } = get();
     const newNode: Node = {
       id: `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
