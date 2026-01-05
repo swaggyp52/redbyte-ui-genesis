@@ -159,8 +159,8 @@ export const RightDock: React.FC<RightDockProps> = ({
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
         >
-          <span className="mr-1">🔍</span>
-          Info
+          <span className="mr-1 pointer-events-none select-none">🔍</span>
+          <span className="pointer-events-none select-none">Info</span>
         </button>
         <button
           onClick={() => setActiveTab('health')}
@@ -170,8 +170,8 @@ export const RightDock: React.FC<RightDockProps> = ({
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
         >
-          <span className="mr-1">💊</span>
-          Health
+          <span className="mr-1 pointer-events-none select-none">💊</span>
+          <span className="pointer-events-none select-none">Health</span>
         </button>
         <button
           onClick={() => setActiveTab('learn')}
@@ -181,8 +181,8 @@ export const RightDock: React.FC<RightDockProps> = ({
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
         >
-          <span className="mr-1">🎓</span>
-          Learn
+          <span className="mr-1 pointer-events-none select-none">🎓</span>
+          <span className="pointer-events-none select-none">Learn</span>
         </button>
         <button
           onClick={() => setActiveTab('probes')}
@@ -192,8 +192,8 @@ export const RightDock: React.FC<RightDockProps> = ({
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
         >
-          <span className="mr-1">📊</span>
-          Probes
+          <span className="mr-1 pointer-events-none select-none">📊</span>
+          <span className="pointer-events-none select-none">Probes</span>
         </button>
         <button
           onClick={() => setActiveTab('chips')}
@@ -203,8 +203,8 @@ export const RightDock: React.FC<RightDockProps> = ({
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
         >
-          <span className="mr-1">🧩</span>
-          Chips
+          <span className="mr-1 pointer-events-none select-none">🧩</span>
+          <span className="pointer-events-none select-none">Chips</span>
         </button>
 
         {/* Dock state toggle */}
