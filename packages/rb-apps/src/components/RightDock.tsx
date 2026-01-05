@@ -6,6 +6,8 @@ import React, { useState } from 'react';
 import type { Circuit, CircuitEngine } from '@redbyte/rb-logic-core';
 import { PropertyInspector } from './PropertyInspector';
 import { CircuitHealthPanel } from './CircuitHealthPanel';
+import { LearnModePanel } from './LearnModePanel';
+import type { GuidedExample } from '../logic/learnMode';
 
 /**
  * Logic Playground vNext Right Dock
@@ -19,7 +21,7 @@ import { CircuitHealthPanel } from './CircuitHealthPanel';
  * Never overlaps the main stage
  */
 
-export type RightDockTab = 'inspector' | 'health' | 'probes' | 'chips';
+export type RightDockTab = 'inspector' | 'health' | 'learn' | 'probes' | 'chips';
 export type RightDockState = 'collapsed' | 'peek' | 'expanded';
 
 interface RightDockProps {
@@ -31,6 +33,10 @@ interface RightDockProps {
 
   // Health tab
   onFocusNode?: (nodeId: string, portName?: string) => void;
+
+  // Learn tab
+  onLoadExample?: (example: GuidedExample) => void;
+  onExitLearnMode?: () => void;
 
   // Probes tab
   probes?: Array<{ nodeId: string; portName: string }>;
@@ -57,6 +63,8 @@ export const RightDock: React.FC<RightDockProps> = ({
   onNodeUpdate,
   onConnectionDelete,
   onFocusNode,
+  onLoadExample,
+  onExitLearnMode,
   probes = [],
   onProbeAdd,
   onProbeRemove,
@@ -102,6 +110,16 @@ export const RightDock: React.FC<RightDockProps> = ({
           title="Health"
         >
           <span className="text-xl">💊</span>
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab('learn');
+            setDockState('peek');
+          }}
+          className="p-2 rounded hover:bg-gray-800 transition-colors"
+          title="Learn"
+        >
+          <span className="text-xl">🎓</span>
         </button>
         <button
           onClick={() => {
@@ -156,6 +174,17 @@ export const RightDock: React.FC<RightDockProps> = ({
           Health
         </button>
         <button
+          onClick={() => setActiveTab('learn')}
+          className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
+            activeTab === 'learn'
+              ? 'bg-cyan-600 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+          }`}
+        >
+          <span className="mr-1">🎓</span>
+          Learn
+        </button>
+        <button
           onClick={() => setActiveTab('probes')}
           className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
             activeTab === 'probes'
@@ -203,6 +232,16 @@ export const RightDock: React.FC<RightDockProps> = ({
         {activeTab === 'health' && (
           <div className="h-full overflow-y-auto">
             <CircuitHealthPanel circuit={circuit} onFocusNode={onFocusNode} />
+          </div>
+        )}
+
+        {activeTab === 'learn' && (
+          <div className="h-full overflow-hidden">
+            <LearnModePanel
+              circuit={circuit}
+              onLoadExample={onLoadExample}
+              onExitLearnMode={onExitLearnMode}
+            />
           </div>
         )}
 

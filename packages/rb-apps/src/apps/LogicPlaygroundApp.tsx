@@ -691,6 +691,20 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     }
   };
 
+  const handleLoadLearnExample = useCallback((example: any) => {
+    // Load the example's initial circuit
+    const newCircuit = example.initialCircuit || { nodes: [], connections: [] };
+    setCircuit(newCircuit);
+    engine.setCircuit(newCircuit);
+    setIsDirty(false);
+    addToast(`Loaded: ${example.title}`, 'success');
+  }, [engine, addToast]);
+
+  const handleExitLearnMode = useCallback(() => {
+    // Just a placeholder - user can manually clear or load a file
+    addToast('Exited learn mode', 'info');
+  }, [addToast]);
+
   const handleCircuitChange = useCallback((updatedCircuit: Circuit) => {
     // Use circuitStore.commit to add to history
     const circuitStore = useCircuitStore.getState();
@@ -1402,6 +1416,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             onNodeUpdate={handleNodeUpdate}
             onConnectionDelete={handleConnectionDelete}
             onFocusNode={handleFocusNode}
+            onLoadExample={handleLoadLearnExample}
+            onExitLearnMode={handleExitLearnMode}
             chips={allChips}
             initialState={rightDockState}
             onStateChange={setRightDockState}
