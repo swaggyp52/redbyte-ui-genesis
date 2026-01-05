@@ -6,9 +6,17 @@ import { create } from 'zustand';
 import type { Circuit, CircuitEngine, Node, Connection, PortRef } from '@redbyte/rb-logic-core';
 import type { TickEngine } from '@redbyte/rb-logic-core';
 
+// Debug flag for instrumentation (DEV-only)
+const DEBUG_PLAYGROUND = import.meta.env.DEV && false; // Set to true to enable debug logs
+
 // Deep clone circuit to avoid mutation leaks in history
 function cloneCircuit(circuit: Circuit): Circuit {
   return structuredClone(circuit);
+}
+
+// Simple circuit hash for debugging
+function hashCircuit(circuit: Circuit): string {
+  return `nodes:${circuit.nodes.length},conns:${circuit.connections.length}`;
 }
 
 interface CircuitState {
@@ -65,6 +73,16 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   updateCircuit: (circuit, skipHistory = false) => {
     const { engine, tickEngine, circuit: currentCircuit } = get();
 
+    // Debug instrumentation
+    if (DEBUG_PLAYGROUND) {
+      console.log('[CircuitStore] updateCircuit called', {
+        skipHistory,
+        before: hashCircuit(currentCircuit),
+        after: hashCircuit(circuit),
+        historyAdded: !skipHistory,
+      });
+    }
+
     // Dev-mode invariant: warn if engines not connected when mutating circuit
     if (import.meta.env.DEV) {
       if (!engine || !tickEngine) {
@@ -83,6 +101,10 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       const { past, maxHistory } = get();
       const newPast = [...past, cloneCircuit(currentCircuit)].slice(-maxHistory);
       set({ past: newPast, future: [] }); // Clear future on new commit
+
+      if (DEBUG_PLAYGROUND) {
+        console.log('[CircuitStore] History entry added', { pastLength: newPast.length });
+      }
     }
 
     // Update state
@@ -91,6 +113,10 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     // Sync engines
     engine?.setCircuit(circuit);
     tickEngine?.setCircuit(circuit);
+
+    if (DEBUG_PLAYGROUND) {
+      console.log('[CircuitStore] Engines synced with new circuit');
+    }
   },
 
   commit: (circuit) => {
