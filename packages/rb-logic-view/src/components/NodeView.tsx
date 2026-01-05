@@ -81,7 +81,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     if (e.button !== 0) return;
     e.stopPropagation();
 
-    setIsDragging(true);
+    // Don't start drag yet - wait for movement
     setDragStart({ x: e.clientX, y: e.clientY });
     setDragPosition({ x: node.position.x, y: node.position.y });
 
@@ -90,14 +90,22 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isSwitch && onToggleSwitch) {
-      onToggleSwitch(node.id);
-    } else if (onNodeDoubleClick) {
+    // Double-click for chip drill-down only (not switches)
+    if (!isSwitch && onNodeDoubleClick) {
       onNodeDoubleClick(node.id);
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    // Only start drag if mouse moved more than 3px (prevents accidental drag on click)
+    if (!isDragging && dragStart.x !== 0) {
+      const dx = Math.abs(e.clientX - dragStart.x);
+      const dy = Math.abs(e.clientY - dragStart.y);
+      if (dx > 3 || dy > 3) {
+        setIsDragging(true);
+      }
+    }
+
     if (!isDragging) return;
 
     const dx = (e.clientX - dragStart.x) / camera.zoom;
@@ -114,8 +122,14 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     if (isDragging) {
       // Commit the final position when drag ends
       onMove(node.id, dragPosition.x, dragPosition.y);
+      setIsDragging(false);
+    } else if (dragStart.x !== 0) {
+      // Click without drag - toggle switch
+      if (isSwitch && onToggleSwitch) {
+        onToggleSwitch(node.id);
+      }
+      setDragStart({ x: 0, y: 0 });
     }
-    setIsDragging(false);
   };
 
   React.useEffect(() => {
