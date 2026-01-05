@@ -68,7 +68,7 @@ describe('Recorder (PR5: Record Harness)', () => {
     };
   }
 
-  it('Test 1: recorded log replays to same hash', () => {
+  it('Test 1: recorded log replays to same hash', async () => {
     // Build a test circuit
     const testCircuit = createTestCircuit();
 
@@ -105,7 +105,7 @@ describe('Recorder (PR5: Record Harness)', () => {
     recorder.recordSimulationTick(1);
 
     // Compute final live hash
-    const hashLiveFinal = hashCircuitState(liveCircuit);
+    const hashLiveFinal = await hashCircuitState(liveCircuit);
 
     // ========== REPLAY RUN ==========
     // Get recorded log
@@ -119,7 +119,7 @@ describe('Recorder (PR5: Record Harness)', () => {
     const replayResult = runReplay(decoded, engineFactory);
 
     // Compute final replay hash
-    const hashReplayFinal = hashCircuitState(replayResult.circuit);
+    const hashReplayFinal = await hashCircuitState(replayResult.circuit);
 
     // ========== ASSERTIONS ==========
     // Core proof: recorded live hash === replayed hash
@@ -131,7 +131,7 @@ describe('Recorder (PR5: Record Harness)', () => {
     expect(replayResult.engine.signals.get('andGate')?.get('out')).toBe(1);
   });
 
-  it('Test 2: recorder produces strictly increasing timestamps', () => {
+  it('Test 2: recorder produces strictly increasing timestamps', async () => {
     // Deterministic clock
     let t = 2000;
     const clock = () => t++;
@@ -161,7 +161,7 @@ describe('Recorder (PR5: Record Harness)', () => {
     }
   });
 
-  it('Test 3: log is immutable / stable', () => {
+  it('Test 3: log is immutable / stable', async () => {
     // Deterministic clock
     let t = 3000;
     const clock = () => t++;
@@ -222,7 +222,7 @@ describe('Recorder (PR5: Record Harness)', () => {
     expect(metaSnapshot2.metadata?.description).toBe('test');
   });
 
-  it('recorder respects stop() method', () => {
+  it('recorder respects stop() method', async () => {
     let t = 4000;
     const clock = () => t++;
 
@@ -248,7 +248,7 @@ describe('Recorder (PR5: Record Harness)', () => {
     expect(log.events[0].type).toBe('circuit_loaded');
   });
 
-  it('recorder handles complex multi-event scenario', () => {
+  it('recorder handles complex multi-event scenario', async () => {
     // Deterministic clock
     let t = 5000;
     const clock = () => t++;
@@ -297,12 +297,12 @@ describe('Recorder (PR5: Record Harness)', () => {
     liveEngine.tick(1, 3);
     recorder.recordSimulationTick(1);
 
-    const hashLive = hashCircuitState(liveCircuit);
+    const hashLive = await hashCircuitState(liveCircuit);
 
     // Replay from recorded log
     const recordedLog = recorder.getLog();
     const replayResult = runReplay(recordedLog, engineFactory);
-    const hashReplay = hashCircuitState(replayResult.circuit);
+    const hashReplay = await hashCircuitState(replayResult.circuit);
 
     // Core proof
     expect(hashLive).toBe(hashReplay);

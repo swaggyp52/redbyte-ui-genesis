@@ -75,7 +75,7 @@ describe('verifyReplay (PR6: Replay Verification Command)', () => {
     };
   }
 
-  it('Test 1: verifyReplay returns equal: true for valid log', () => {
+  it('Test 1: verifyReplay returns equal: true for valid log', async () => {
     const testCircuit = createTestCircuit();
 
     // Deterministic clock
@@ -113,7 +113,7 @@ describe('verifyReplay (PR6: Replay Verification Command)', () => {
     const recordedLog = recorder.getLog();
 
     // Verify the log using verifyReplay
-    const result = verifyReplay(testCircuit, recordedLog, { engineFactory });
+    const result = await verifyReplay(testCircuit, recordedLog, { engineFactory });
 
     // Core assertion: valid log should verify successfully
     expect(result.equal).toBe(true);
@@ -126,7 +126,7 @@ describe('verifyReplay (PR6: Replay Verification Command)', () => {
     expect(typeof result.replayHash).toBe('string');
   });
 
-  it('Test 2: verifyReplay detects divergence (corrupted log)', () => {
+  it('Test 2: verifyReplay detects divergence (corrupted log)', async () => {
     const testCircuit = createTestCircuit();
 
     // Build a valid event log
@@ -138,7 +138,7 @@ describe('verifyReplay (PR6: Replay Verification Command)', () => {
     log = appendEvent(log, createSimulationTickEvent(1, 1, 1004));
 
     // Verify it's valid first
-    const validResult = verifyReplay(testCircuit, log, { engineFactory });
+    const validResult = await verifyReplay(testCircuit, log, { engineFactory });
     expect(validResult.equal).toBe(true);
 
     // Now create a corrupted version by using a DIFFERENT initial circuit
@@ -156,7 +156,7 @@ describe('verifyReplay (PR6: Replay Verification Command)', () => {
     });
 
     // Verify the same log against the corrupted initial circuit
-    const result = verifyReplay(corruptedCircuit, log, { engineFactory });
+    const result = await verifyReplay(corruptedCircuit, log, { engineFactory });
 
     // Core assertion: should detect the mismatch
     // Live path: applies events to corruptedCircuit (has extraNode)
@@ -169,7 +169,7 @@ describe('verifyReplay (PR6: Replay Verification Command)', () => {
     expect(result.replayHash).toBeTruthy();
   });
 
-  it('Test 3: verifyReplay is repeatable', () => {
+  it('Test 3: verifyReplay is repeatable', async () => {
     const testCircuit = createTestCircuit();
 
     // Build an event log
@@ -179,8 +179,8 @@ describe('verifyReplay (PR6: Replay Verification Command)', () => {
     log = appendEvent(log, createSimulationTickEvent(0, 1, 2002));
 
     // Call verifyReplay twice
-    const result1 = verifyReplay(testCircuit, log, { engineFactory });
-    const result2 = verifyReplay(testCircuit, log, { engineFactory });
+    const result1 = await verifyReplay(testCircuit, log, { engineFactory });
+    const result2 = await verifyReplay(testCircuit, log, { engineFactory });
 
     // Core assertion: results should be identical
     expect(result1.liveHash).toBe(result2.liveHash);
@@ -192,7 +192,7 @@ describe('verifyReplay (PR6: Replay Verification Command)', () => {
     expect(result2.equal).toBe(true);
   });
 
-  it('verifyReplay works with complex multi-event scenario', () => {
+  it('verifyReplay works with complex multi-event scenario', async () => {
     const testCircuit = createTestCircuit();
 
     // Deterministic clock
@@ -242,13 +242,13 @@ describe('verifyReplay (PR6: Replay Verification Command)', () => {
     const recordedLog = recorder.getLog();
 
     // Verify
-    const result = verifyReplay(testCircuit, recordedLog, { engineFactory });
+    const result = await verifyReplay(testCircuit, recordedLog, { engineFactory });
 
     expect(result.equal).toBe(true);
     expect(result.liveHash).toBe(result.replayHash);
   });
 
-  it('verifyReplay uses default engine factory when not provided', () => {
+  it('verifyReplay uses default engine factory when not provided', async () => {
     const testCircuit = createTestCircuit();
 
     // Build simple log
@@ -258,26 +258,26 @@ describe('verifyReplay (PR6: Replay Verification Command)', () => {
     log = appendEvent(log, createSimulationTickEvent(0, 1, 4002));
 
     // Call without engineFactory option (should use default LogicEngine)
-    const result = verifyReplay(testCircuit, log);
+    const result = await verifyReplay(testCircuit, log);
 
     expect(result.equal).toBe(true);
     expect(result.liveHash).toBe(result.replayHash);
   });
 
-  it('verifyReplay handles empty circuit (circuit_loaded only)', () => {
+  it('verifyReplay handles empty circuit (circuit_loaded only)', async () => {
     const testCircuit = createTestCircuit();
 
     // Log with only circuit_loaded event
     let log = createEventLog();
     log = appendEvent(log, createCircuitLoadedEvent(testCircuit, 6000));
 
-    const result = verifyReplay(testCircuit, log, { engineFactory });
+    const result = await verifyReplay(testCircuit, log, { engineFactory });
 
     // Should still verify successfully (no events = no divergence)
     expect(result.equal).toBe(true);
   });
 
-  it('verifyReplay detects circuit structure mismatch', () => {
+  it('verifyReplay detects circuit structure mismatch', async () => {
     const testCircuit = createTestCircuit();
 
     // Build log
@@ -297,13 +297,13 @@ describe('verifyReplay (PR6: Replay Verification Command)', () => {
     });
 
     // Verify log with different circuit
-    const result = verifyReplay(differentCircuit, log, { engineFactory });
+    const result = await verifyReplay(differentCircuit, log, { engineFactory });
 
     // Should detect the mismatch
     expect(result.equal).toBe(false);
   });
 
-  it('verifyReplay detects initial state mismatch', () => {
+  it('verifyReplay detects initial state mismatch', async () => {
     const testCircuit = createTestCircuit();
 
     // Build log starting from default state (all switches OFF)
@@ -316,7 +316,7 @@ describe('verifyReplay (PR6: Replay Verification Command)', () => {
     modifiedCircuit.nodes[0].state = { isOn: 1 }; // switchA starts ON
 
     // Verify - should detect mismatch
-    const result = verifyReplay(modifiedCircuit, log, { engineFactory });
+    const result = await verifyReplay(modifiedCircuit, log, { engineFactory });
 
     expect(result.equal).toBe(false);
   });

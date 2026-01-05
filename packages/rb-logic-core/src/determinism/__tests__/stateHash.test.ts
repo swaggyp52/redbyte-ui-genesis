@@ -15,7 +15,7 @@ import {
 
 describe('stateHash', () => {
   describe('normalizeCircuitState', () => {
-    it('sorts nodes by ID', () => {
+    it('sorts nodes by ID', async () => {
       const circuit: Circuit = {
         nodes: [
           {
@@ -48,7 +48,7 @@ describe('stateHash', () => {
       expect(normalized.nodes.map((n) => n.id)).toEqual(['a', 'b', 'c']);
     });
 
-    it('sorts connections by stable key', () => {
+    it('sorts connections by stable key', async () => {
       const circuit: Circuit = {
         nodes: [],
         connections: [
@@ -69,7 +69,7 @@ describe('stateHash', () => {
       expect(normalized.connections[1].from.nodeId).toBe('b');
     });
 
-    it('normalizes node config into sorted key-value pairs', () => {
+    it('normalizes node config into sorted key-value pairs', async () => {
       const circuit: Circuit = {
         nodes: [
           {
@@ -92,7 +92,7 @@ describe('stateHash', () => {
       ]);
     });
 
-    it('normalizes node state into sorted key-value pairs', () => {
+    it('normalizes node state into sorted key-value pairs', async () => {
       const circuit: Circuit = {
         nodes: [
           {
@@ -115,7 +115,7 @@ describe('stateHash', () => {
       ]);
     });
 
-    it('handles nested config objects', () => {
+    it('handles nested config objects', async () => {
       const circuit: Circuit = {
         nodes: [
           {
@@ -149,7 +149,7 @@ describe('stateHash', () => {
   });
 
   describe('serializeNormalizedState', () => {
-    it('produces deterministic JSON string', () => {
+    it('produces deterministic JSON string', async () => {
       const normalized = {
         nodes: [
           {
@@ -173,7 +173,7 @@ describe('stateHash', () => {
   });
 
   describe('hashCircuitState', () => {
-    it('produces same hash for identical circuits', () => {
+    it('produces same hash for identical circuits', async () => {
       const circuit: Circuit = {
         nodes: [
           {
@@ -187,14 +187,14 @@ describe('stateHash', () => {
         connections: [],
       };
 
-      const hash1 = hashCircuitState(circuit);
-      const hash2 = hashCircuitState(circuit);
+      const hash1 = await hashCircuitState(circuit);
+      const hash2 = await hashCircuitState(circuit);
 
       expect(hash1).toBe(hash2);
       expect(hash1).toHaveLength(64); // SHA-256 hex is 64 chars
     });
 
-    it('produces same hash for circuits with nodes in different order', () => {
+    it('produces same hash for circuits with nodes in different order', async () => {
       const circuit1: Circuit = {
         nodes: [
           {
@@ -235,13 +235,13 @@ describe('stateHash', () => {
         connections: [],
       };
 
-      const hash1 = hashCircuitState(circuit1);
-      const hash2 = hashCircuitState(circuit2);
+      const hash1 = await hashCircuitState(circuit1);
+      const hash2 = await hashCircuitState(circuit2);
 
       expect(hash1).toBe(hash2);
     });
 
-    it('produces same hash for circuits with config keys in different order', () => {
+    it('produces same hash for circuits with config keys in different order', async () => {
       const circuit1: Circuit = {
         nodes: [
           {
@@ -268,13 +268,13 @@ describe('stateHash', () => {
         connections: [],
       };
 
-      const hash1 = hashCircuitState(circuit1);
-      const hash2 = hashCircuitState(circuit2);
+      const hash1 = await hashCircuitState(circuit1);
+      const hash2 = await hashCircuitState(circuit2);
 
       expect(hash1).toBe(hash2);
     });
 
-    it('produces different hash for different circuits', () => {
+    it('produces different hash for different circuits', async () => {
       const circuit1: Circuit = {
         nodes: [
           {
@@ -301,13 +301,13 @@ describe('stateHash', () => {
         connections: [],
       };
 
-      const hash1 = hashCircuitState(circuit1);
-      const hash2 = hashCircuitState(circuit2);
+      const hash1 = await hashCircuitState(circuit1);
+      const hash2 = await hashCircuitState(circuit2);
 
       expect(hash1).not.toBe(hash2);
     });
 
-    it('produces different hash when node state changes', () => {
+    it('produces different hash when node state changes', async () => {
       const circuit1: Circuit = {
         nodes: [
           {
@@ -336,15 +336,15 @@ describe('stateHash', () => {
         connections: [],
       };
 
-      const hash1 = hashCircuitState(circuit1);
-      const hash2 = hashCircuitState(circuit2);
+      const hash1 = await hashCircuitState(circuit1);
+      const hash2 = await hashCircuitState(circuit2);
 
       expect(hash1).not.toBe(hash2);
     });
   });
 
   describe('normalizeRuntimeState', () => {
-    it('sorts signals by node ID and port name', () => {
+    it('sorts signals by node ID and port name', async () => {
       const state: CircuitRuntimeState = {
         circuit: {
           nodes: [],
@@ -378,7 +378,7 @@ describe('stateHash', () => {
   });
 
   describe('hashRuntimeState', () => {
-    it('produces same hash for identical runtime states', () => {
+    it('produces same hash for identical runtime states', async () => {
       const state: CircuitRuntimeState = {
         circuit: {
           nodes: [
@@ -395,13 +395,13 @@ describe('stateHash', () => {
         signals: new Map([['n1', new Map([['out', 1]])]]),
       };
 
-      const hash1 = hashRuntimeState(state);
-      const hash2 = hashRuntimeState(state);
+      const hash1 = await hashRuntimeState(state);
+      const hash2 = await hashRuntimeState(state);
 
       expect(hash1).toBe(hash2);
     });
 
-    it('produces same hash regardless of Map iteration order', () => {
+    it('produces same hash regardless of Map iteration order', async () => {
       const state1: CircuitRuntimeState = {
         circuit: { nodes: [], connections: [] },
         signals: new Map([
@@ -418,13 +418,13 @@ describe('stateHash', () => {
         ]),
       };
 
-      const hash1 = hashRuntimeState(state1);
-      const hash2 = hashRuntimeState(state2);
+      const hash1 = await hashRuntimeState(state1);
+      const hash2 = await hashRuntimeState(state2);
 
       expect(hash1).toBe(hash2);
     });
 
-    it('produces different hash when signal values change', () => {
+    it('produces different hash when signal values change', async () => {
       const state1: CircuitRuntimeState = {
         circuit: { nodes: [], connections: [] },
         signals: new Map([['n1', new Map([['out', 0]])]]),
@@ -435,8 +435,8 @@ describe('stateHash', () => {
         signals: new Map([['n1', new Map([['out', 1]])]]),
       };
 
-      const hash1 = hashRuntimeState(state1);
-      const hash2 = hashRuntimeState(state2);
+      const hash1 = await hashRuntimeState(state1);
+      const hash2 = await hashRuntimeState(state2);
 
       expect(hash1).not.toBe(hash2);
     });

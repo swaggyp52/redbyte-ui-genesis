@@ -74,7 +74,7 @@ describe('Determinism Integration (Milestone A Proof)', () => {
     };
   }
 
-  it('proves hash(live) === hash(replay) for deterministic circuit evolution', () => {
+  it('proves hash(live) === hash(replay) for deterministic circuit evolution', async () => {
     const testCircuit = createTestCircuit();
 
     // ========== LIVE RUN ==========
@@ -83,7 +83,7 @@ describe('Determinism Integration (Milestone A Proof)', () => {
     const liveEngine = engineFactory(liveCircuit);
 
     // Initial state hash
-    const hashInitial = hashCircuitState(liveCircuit);
+    const hashInitial = await hashCircuitState(liveCircuit);
 
     // Action 1: Toggle switchA on
     const switchA = liveCircuit.nodes.find((n) => n.id === 'switchA')!;
@@ -102,7 +102,7 @@ describe('Determinism Integration (Milestone A Proof)', () => {
     liveEngine.tick(1, 1);
 
     // Final live hash
-    const hashLive = hashCircuitState(liveCircuit);
+    const hashLive = await hashCircuitState(liveCircuit);
 
     // ========== REPLAY RUN ==========
     // Build event log matching the live session
@@ -115,7 +115,7 @@ describe('Determinism Integration (Milestone A Proof)', () => {
 
     // Run replay
     const replayResult = runReplay(log, engineFactory);
-    const hashReplay = hashCircuitState(replayResult.circuit);
+    const hashReplay = await hashCircuitState(replayResult.circuit);
 
     // ========== ASSERTIONS ==========
 
@@ -132,7 +132,7 @@ describe('Determinism Integration (Milestone A Proof)', () => {
     expect(replayResult.engine.signals.get('andGate')?.get('out')).toBe(1);
   });
 
-  it('proves replay is repeatable (hash consistency across multiple runs)', () => {
+  it('proves replay is repeatable (hash consistency across multiple runs)', async () => {
     // Use fresh circuit copy for each replay
     const circuit1 = createTestCircuit();
     const circuit2 = createTestCircuit();
@@ -152,17 +152,17 @@ describe('Determinism Integration (Milestone A Proof)', () => {
     const result1 = runReplay(log1, engineFactory);
     const result2 = runReplay(log2, engineFactory);
 
-    const hash1 = hashCircuitState(result1.circuit);
-    const hash2 = hashCircuitState(result2.circuit);
+    const hash1 = await hashCircuitState(result1.circuit);
+    const hash2 = await hashCircuitState(result2.circuit);
 
     // Replay must be deterministic
     expect(hash1).toBe(hash2);
   });
 
-  it('detects state changes correctly (initial vs final hash)', () => {
+  it('detects state changes correctly (initial vs final hash)', async () => {
     // Use fresh circuit
     const circuit = createTestCircuit();
-    const hashBefore = hashCircuitState(circuit);
+    const hashBefore = await hashCircuitState(circuit);
 
     // Build event log that modifies circuit
     let log = createEventLog();
@@ -171,13 +171,13 @@ describe('Determinism Integration (Milestone A Proof)', () => {
     log = appendEvent(log, createSimulationTickEvent(0, 1, 3002));
 
     const result = runReplay(log, engineFactory);
-    const hashAfter = hashCircuitState(result.circuit);
+    const hashAfter = await hashCircuitState(result.circuit);
 
     // Hash must change when circuit evolves
     expect(hashAfter).not.toBe(hashBefore);
   });
 
-  it('handles complex multi-tick scenario deterministically', () => {
+  it('handles complex multi-tick scenario deterministically', async () => {
     const testCircuit = createTestCircuit();
 
     // ========== LIVE RUN ==========
@@ -205,7 +205,7 @@ describe('Determinism Integration (Milestone A Proof)', () => {
     liveEngine.signals.get('switchA')!.set('out', 1);
     liveEngine.tick(1, 2);
 
-    const hashLive = hashCircuitState(liveCircuit);
+    const hashLive = await hashCircuitState(liveCircuit);
 
     // ========== REPLAY RUN ==========
     let log = createEventLog();
@@ -219,7 +219,7 @@ describe('Determinism Integration (Milestone A Proof)', () => {
     log = appendEvent(log, createSimulationTickEvent(2, 1, 4007));
 
     const replayResult = runReplay(log, engineFactory);
-    const hashReplay = hashCircuitState(replayResult.circuit);
+    const hashReplay = await hashCircuitState(replayResult.circuit);
 
     // Core proof
     expect(hashLive).toBe(hashReplay);
