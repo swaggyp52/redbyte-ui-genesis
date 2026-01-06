@@ -24,9 +24,9 @@ describe('CircuitHealthPanel', () => {
     const user = userEvent.setup();
     render(<CircuitHealthPanel circuit={TEST_CIRCUIT} />);
 
-    expect(screen.getByText(/unconnected input/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/unconnected input/i)).toHaveLength(2);
     await user.click(screen.getAllByRole('button', { name: /ignore/i })[0]);
-    expect(screen.queryByText(/unconnected input/i)).toBeNull();
+    expect(screen.queryAllByText(/unconnected input/i)).toHaveLength(1);
   });
 
   it('focuses issues via the provided callback', async () => {
