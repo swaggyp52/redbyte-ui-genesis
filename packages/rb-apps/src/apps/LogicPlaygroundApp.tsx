@@ -43,7 +43,9 @@ import { TraceViewer } from '../components/TraceViewer';
 import { SplitViewLayout } from '../components/SplitViewLayout';
 import { registerAllChips, registerChip, unregisterChip } from '../utils/chipRegistry';
 import { useViewStateStore } from '../stores/viewStateStore';
-import { setGlobalViewStateSync, getGlobalViewStateStore } from '@redbyte/rb-logic-view';
+import { useProbeStore } from '../stores/probeStore';
+import { useLayoutStore } from '../stores/layoutStore';
+import { setGlobalViewStateSync } from '@redbyte/rb-logic-view';
 import { useHierarchyStore } from '../stores/hierarchyStore';
 import { HierarchyBreadcrumbs } from '../components/HierarchyBreadcrumbs';
 import { KeyboardShortcutsHelp } from '../components/KeyboardShortcutsHelp';
@@ -51,12 +53,9 @@ import { ComponentPalette } from '../components/ComponentPalette';
 import { QuickAddPalette } from '../components/QuickAddPalette';
 import { StatusBar } from '../components/StatusBar';
 import { TopCommandBar } from '../components/TopCommandBar';
-import { RightDock, type RightDockState } from '../components/RightDock';
+import { RightDock } from '../components/RightDock';
 import { EnhancedPalette } from '../components/EnhancedPalette';
 import { HelpDock } from '../components/HelpDock';
-
-type ViewMode = 'circuit' | 'schematic' | 'oscilloscope' | '3d';
-type PlaygroundMode = 'build' | 'analyze' | 'learn' | 'quad';
 
 // Primitive node types (built-in gates) organized by category
 const PRIMITIVE_NODES = {
@@ -73,6 +72,17 @@ const COMPOSITE_NODES = [
   'FullAdder',
   'Counter4Bit',
 ] as const;
+
+const EXAMPLE_NOTES: Partial<Record<ExampleId, { title: string; description: string }>> = {
+  '11_d-flipflop': {
+    title: 'D Flip-Flop Demo',
+    description: 'Toggle Data, then run or step the clock to see Q update only on rising edges.',
+  },
+  '04_4bit-counter': {
+    title: '4-bit Counter Demo',
+    description: 'Run the clock and watch the lamps count in binary. Slow the tick rate to follow each step.',
+  },
+};
 
 interface LogicPlaygroundProps {
   windowId?: string;
@@ -143,11 +153,23 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     () => new TickEngine(circuit, { tickRate })
   );
 
-  const [viewMode, setViewMode] = useState<ViewMode>('circuit');
-  const [playgroundMode, setPlaygroundMode] = useState<PlaygroundMode>('build');
-  const { splitScreenMode, activeViews, setSplitScreenMode, setActiveViews } = useViewStateStore();
+  const {
+    splitScreenMode,
+    activeViews,
+    perspective,
+    setPerspective,
+    splitRatio,
+    rightDockState,
+    rightDockTab,
+    showHelpDock,
+    schematicMiniEnabled,
+    toggleSchematicMini,
+    setRightDockState,
+    setRightDockTab,
+  } = useLayoutStore();
   const [isRunning, setIsRunning] = useState(false);
   const [currentHz, setCurrentHz] = useState(tickRate);
+  const [tickCount, setTickCount] = useState(0);
   const [currentFileId, setCurrentFileId] = useState<string | null>(initialFileId ?? null);
   const [isDirty, setIsDirty] = useState(false);
   const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
@@ -168,10 +190,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [showSchematicHints, setShowSchematicHints] = useState(true);
   const [show3DHints, setShow3DHints] = useState(true);
   const [showOscilloscopeHints, setShowOscilloscopeHints] = useState(true);
-  const [rightDockState, setRightDockState] = useState<RightDockState>('expanded');
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showExamplesModal, setShowExamplesModal] = useState(false);
+  const [exampleNoteDismissed, setExampleNoteDismissed] = useState(false);
 
   const autosaveIntervalRef = useRef<number | null>(null);
   const historyDebounceRef = useRef<number | null>(null);
@@ -516,31 +538,21 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setCurrentHz(tickRate);
   }, [tickRate]);
 
-  // Playground mode: auto-adjust views based on mode
+  // Track tick count for UI display
   useEffect(() => {
-    switch (playgroundMode) {
-      case 'build':
-        // Build mode: Large Circuit + optional small Schematic preview
-        setSplitScreenMode('single');
-        setActiveViews(['circuit']);
-        break;
-      case 'analyze':
-        // Analyze mode: Large Scope + Circuit smaller
-        setSplitScreenMode('vertical');
-        setActiveViews(['circuit', 'oscilloscope']);
-        break;
-      case 'learn':
-        // Learn mode: Circuit emphasized (Help will be in side panel)
-        setSplitScreenMode('single');
-        setActiveViews(['circuit']);
-        break;
-      case 'quad':
-        // Quad mode: 2×2 views
-        setSplitScreenMode('quad');
-        setActiveViews(['circuit', 'schematic', '3d', 'oscilloscope']);
-        break;
-    }
-  }, [playgroundMode, setSplitScreenMode, setActiveViews]);
+    setTickCount(tickEngine.getTickCount());
+    const interval = window.setInterval(() => {
+      setTickCount(tickEngine.getTickCount());
+    }, 200);
+    return () => window.clearInterval(interval);
+  }, [tickEngine]);
+
+  useEffect(() => {
+    setExampleNoteDismissed(false);
+  }, [selectedExampleId]);
+
+  // Layout is driven by the perspective store.
+  useEffect(() => {}, [perspective]);
 
   // Autosave after 5 seconds of idle (debounced)
   useEffect(() => {
@@ -678,14 +690,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     addToast('Connection deleted', 'info');
   };
 
-  const handleFocusNode = (nodeId: string, portName?: string) => {
-    // Use the global view state store to select the node
-    const viewStore = getGlobalViewStateStore();
-    if (viewStore) {
-      viewStore.getState().clearSelection();
-      viewStore.getState().selectNode(nodeId, false);
-      // TODO: Could also pan/zoom to center the node if needed
-    }
+  const handleFocusNode = (nodeId: string, _portName?: string) => {
+    const viewStore = useViewStateStore.getState();
+    viewStore.clearSelection();
+    viewStore.selectNodes([nodeId], false);
+    viewStore.setHighlightedNode(nodeId, 1600);
+    viewStore.requestFocusNode(nodeId);
   };
 
   const handleLoadLearnExample = useCallback((example: any) => {
@@ -831,12 +841,13 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     }
 
     // Create new node at drop position with correct structure
+    const defaultConfig = draggingNodeType === 'Clock' ? { period: 10 } : {};
     const newNode = {
       id: `${draggingNodeType.toLowerCase()}-${Date.now()}`,
       type: draggingNodeType,
       position: { x, y },
       rotation: 0,
-      config: {},
+      config: defaultConfig,
       state: {},
     };
 
@@ -943,6 +954,31 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     isHydratingRef.current = false;
   };
 
+  const seedExampleProbes = (exampleId: ExampleId, loadedCircuit: Circuit) => {
+    const { clearProbes, addProbe } = useProbeStore.getState();
+    clearProbes();
+
+    const addIfNode = (nodeId: string, portName: string, label: string) => {
+      if (!loadedCircuit.nodes.some((node) => node.id === nodeId)) return;
+      addProbe({ nodeId, portName, label });
+    };
+
+    if (exampleId === '11_d-flipflop') {
+      addIfNode('clock', 'out', 'Clock out');
+      addIfNode('data', 'out', 'Data in');
+      addIfNode('q-output', 'out', 'Q output');
+      addIfNode('qbar-output', 'out', 'Q bar');
+    }
+
+    if (exampleId === '04_4bit-counter') {
+      addIfNode('clock1', 'out', 'Clock out');
+      addIfNode('counter', 'Q0', 'Counter Q0');
+      addIfNode('counter', 'Q1', 'Counter Q1');
+      addIfNode('counter', 'Q2', 'Counter Q2');
+      addIfNode('counter', 'Q3', 'Counter Q3');
+    }
+  };
+
   const handleLoadExample = async (exampleId: ExampleId | '') => {
     if (!exampleId) return;
 
@@ -974,6 +1010,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       // Milestone D: Record circuit loaded event
       if (determinismRecorder?.isRecording) {
         determinismRecorder.recordCircuitLoaded(loadedCircuit);
+      }
+
+      seedExampleProbes(exampleId, loadedCircuit);
+      if (exampleId === '11_d-flipflop' || exampleId === '04_4bit-counter') {
+        setPerspective('debug');
       }
 
       // Clear pattern recognition state
@@ -1078,6 +1119,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     const prevTick = tickEngine.getTickCount();
     tickEngine.stepOnce();
     const newTick = tickEngine.getTickCount();
+    setTickCount(newTick);
 
     // Milestone D: Record simulation tick event
     if (determinismRecorder?.isRecording) {
@@ -1286,6 +1328,16 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     return { x: rect.width / 2, y: rect.height / 2 };
   };
 
+  const canUndo = useCircuitStore.getState().canUndo();
+  const canRedo = useCircuitStore.getState().canRedo();
+
+  const viewLabel =
+    splitScreenMode === 'single'
+      ? activeViews[0] ?? 'circuit'
+      : splitScreenMode === 'quad'
+        ? activeViews.slice(0, 4).join('+')
+        : activeViews.slice(0, 2).join('+');
+
   // Memoize chips array to avoid multiple store calls during render
   const allChips = React.useMemo(() => getAllChips(), [getAllChips]);
 
@@ -1311,16 +1363,19 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         isDirty={isDirty}
         onUndo={handleUndo}
         onRedo={handleRedo}
-        canUndo={useCircuitStore.getState().canUndo()}
-        canRedo={useCircuitStore.getState().canRedo()}
+        canUndo={canUndo}
+        canRedo={canRedo}
         isRunning={isRunning}
         onRun={handleRun}
         onPause={handlePause}
         onStep={handleStep}
+        tickCount={tickCount}
         tickRate={currentHz}
         onTickRateChange={handleHzChange}
-        viewMode={playgroundMode}
-        onViewModeChange={setPlaygroundMode}
+        perspective={perspective}
+        onPerspectiveChange={setPerspective}
+        schematicMiniEnabled={schematicMiniEnabled}
+        onToggleSchematicMini={toggleSchematicMini}
         onHelp={() => setShowKeyboardHelp(true)}
       />
 
@@ -1388,10 +1443,15 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           <SplitViewLayout
             mode={splitScreenMode}
             views={activeViews}
+            splitRatio={splitRatio}
             engine={engine}
             tickEngine={tickEngine}
             circuit={circuit}
             isRunning={isRunning}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
             getChipMetadata={getChipMetadataForNode}
             onNodeDoubleClick={handleEnterChip}
             showCircuitHints={false}
@@ -1407,14 +1467,42 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             viewStateStore={useViewStateStore}
           />
 
+          {selectedExampleId && EXAMPLE_NOTES[selectedExampleId] && !exampleNoteDismissed && (
+            <div className="absolute top-3 left-3 z-20 max-w-sm pointer-events-auto">
+              <div className="bg-slate-900/90 border border-slate-700 rounded-lg px-4 py-3 text-xs shadow-lg">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] uppercase tracking-wide text-cyan-300">
+                      What to do
+                    </div>
+                    <div className="text-sm font-semibold text-white">
+                      {EXAMPLE_NOTES[selectedExampleId]?.title}
+                    </div>
+                    <div className="text-gray-300 mt-1 leading-relaxed">
+                      {EXAMPLE_NOTES[selectedExampleId]?.description}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setExampleNoteDismissed(true)}
+                    className="text-gray-500 hover:text-gray-300 transition-colors"
+                    aria-label="Dismiss example note"
+                    type="button"
+                  >
+                    x
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {tutorialActive && <TutorialOverlay onLoadExample={handleLoadTutorialExample} />}
         </div>
 
-        {/* Right Dock or Help Dock depending on mode */}
-        {playgroundMode === 'learn' ? (
+        {/* Right Dock or Help Dock depending on perspective */}
+        {showHelpDock ? (
           <HelpDock
             visible={true}
-            onClose={() => setPlaygroundMode('build')}
+            onClose={() => setPerspective('build')}
             onLoadExample={(exampleId, highlightComponents) => {
               handleLoadExample(exampleId);
               // TODO: Implement component highlighting
@@ -1435,7 +1523,9 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             onExitLearnMode={handleExitLearnMode}
             chips={allChips}
             initialState={rightDockState}
+            initialTab={rightDockTab}
             onStateChange={setRightDockState}
+            onTabChange={setRightDockTab}
           />
         )}
       </div>
@@ -1707,9 +1797,9 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         isRunning={isRunning}
         tickRate={currentHz}
         isDirty={isDirty}
-        canUndo={useCircuitStore.getState().canUndo()}
-        canRedo={useCircuitStore.getState().canRedo()}
-        viewMode={splitScreenMode ? `${activeViews[0]}+${activeViews[1]}` : viewMode}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        viewMode={viewLabel}
       />
     </div>
   );

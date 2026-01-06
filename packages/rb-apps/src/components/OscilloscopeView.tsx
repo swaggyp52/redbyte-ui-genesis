@@ -2,24 +2,15 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import type { CircuitEngine, Node, Signal, TickEngine } from '@redbyte/rb-logic-core';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import type { CircuitEngine, Node, TickEngine } from '@redbyte/rb-logic-core';
 import { useViewStateStore } from '../stores/viewStateStore';
+import { useProbeStore } from '../stores/probeStore';
 import {
   calculateMeasurements,
-  detectTrigger,
   type SignalSample,
   type SignalMeasurements,
 } from '../utils/signalMeasurements';
-
-interface ProbeConfig {
-  id: string;
-  nodeId: string;
-  portName: string;
-  label: string;
-  color: string;
-  enabled: boolean;
-}
 
 interface ProbeData {
   probeId: string;
@@ -53,17 +44,6 @@ interface OscilloscopeViewProps {
   onDismissHints?: () => void;
 }
 
-const COLORS = [
-  '#00ffff', // cyan
-  '#ffff00', // yellow
-  '#ff00ff', // magenta
-  '#00ff00', // green
-  '#ff8800', // orange
-  '#8800ff', // purple
-  '#ff0088', // pink
-  '#00ff88', // teal
-];
-
 const MAX_SAMPLES = 500; // Maximum samples to keep in buffer
 const SAMPLE_INTERVAL = 50; // ms between samples (20 Hz)
 
@@ -80,7 +60,14 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 600 });
-  const [probes, setProbes] = useState<ProbeConfig[]>([]);
+  const {
+    probes,
+    activeProbeId,
+    addProbe,
+    removeProbe,
+    toggleProbe,
+    setActiveProbe,
+  } = useProbeStore();
   const [probeData, setProbeData] = useState<Map<string, ProbeData>>(new Map());
   const [timeScale, setTimeScale] = useState(10); // seconds visible
   const [voltageScale, setVoltageScale] = useState(1.5); // vertical scale
@@ -99,11 +86,15 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   const [cursors, setCursors] = useState<Cursor[]>([]);
   const [showGrid, setShowGrid] = useState(true);
   const [selectedNodeId, setSelectedNodeId] = useState<string>('');
-  const [selectedPortName, setSelectedPortName] = useState<string>('output');
+  const [selectedPortName, setSelectedPortName] = useState<string>('out');
 
   // Clock tracking
   const [totalSamples, setTotalSamples] = useState(0);
   const [measurementUpdateCounter, setMeasurementUpdateCounter] = useState(0);
+  const clockNode = useMemo(
+    () => circuit.nodes.find((node) => node.type === 'Clock') ?? null,
+    [circuit.nodes]
+  );
 
   const samplingIntervalRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
@@ -111,6 +102,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
 
   // Get global selection state for auto-probe
   const { selectedNodeIds, autoProbeEnabled, setAutoProbeEnabled } = useViewStateStore();
+
 
   // Update canvas dimensions based on container size
   useEffect(() => {
@@ -134,8 +126,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     // Only run on initial load when probes are empty and circuit has nodes
     if (probes.length > 0 || circuit.nodes.length === 0) return;
 
-    const initialProbes: ProbeConfig[] = [];
-    let colorIndex = 0;
+    const initialProbes: Array<{ nodeId: string; portName: string; label: string }> = [];
 
     // Priority order for auto-probing
     const priorityTypes = ['Clock', 'INPUT', 'PowerSource', 'Switch', 'OUTPUT', 'Lamp'];
@@ -145,21 +136,16 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     priorityTypes.forEach((priorityType) => {
       circuit.nodes.forEach((node) => {
         if (node.type === priorityType && !probedNodes.has(node.id)) {
-          const probeId = `probe-init-${node.id}`;
           const isInput = ['INPUT', 'PowerSource', 'Switch', 'Clock'].includes(node.type);
           const portName = isInput ? 'out' : 'in';
 
           initialProbes.push({
-            id: probeId,
             nodeId: node.id,
             portName,
             label: `${node.type}: ${node.id.substring(0, 8)}`,
-            color: COLORS[colorIndex % COLORS.length],
-            enabled: true,
           });
 
           probedNodes.add(node.id);
-          colorIndex++;
         }
       });
     });
@@ -168,9 +154,15 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     const limitedProbes = initialProbes.slice(0, 8);
 
     if (limitedProbes.length > 0) {
-      setProbes(limitedProbes);
+      limitedProbes.forEach((probe) => {
+        addProbe({
+          nodeId: probe.nodeId,
+          portName: probe.portName,
+          label: probe.label,
+        });
+      });
     }
-  }, [circuit.nodes, probes.length]);
+  }, [addProbe, circuit.nodes, probes.length]);
 
   // Auto-probe selected nodes
   useEffect(() => {
@@ -187,33 +179,46 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     if (newlySelectedNodes.length === 0) return;
 
     // Add probes for newly selected nodes
-    const newProbes: ProbeConfig[] = [];
-    let colorIndex = probes.length % COLORS.length;
+    const newProbes: Array<{ nodeId: string; portName: string; label: string }> = [];
 
     newlySelectedNodes.forEach((nodeId) => {
       const node = circuit.nodes.find((n) => n.id === nodeId);
       if (!node) return;
 
-      const probeId = `probe-${Date.now()}-${nodeId}`;
       const isOutput = ['OUTPUT', 'Lamp'].includes(node.type);
       const portName = isOutput ? 'in' : 'out';
 
       newProbes.push({
-        id: probeId,
         nodeId,
         portName,
         label: `${node.type}: ${nodeId.substring(0, 8)}`,
-        color: COLORS[colorIndex],
-        enabled: true,
       });
-
-      colorIndex = (colorIndex + 1) % COLORS.length;
     });
 
     if (newProbes.length > 0) {
-      setProbes((prev) => [...prev, ...newProbes]);
+      newProbes.forEach((probe) => {
+        addProbe({
+          nodeId: probe.nodeId,
+          portName: probe.portName,
+          label: probe.label,
+        });
+      });
     }
-  }, [selectedNodeIds, autoProbeEnabled, circuit.nodes, probes]);
+  }, [addProbe, selectedNodeIds, autoProbeEnabled, circuit.nodes, probes]);
+
+  // Prune stale probe data when probes are removed elsewhere
+  useEffect(() => {
+    setProbeData((prev) => {
+      const next = new Map(prev);
+      const activeIds = new Set(probes.map((probe) => probe.id));
+      Array.from(next.keys()).forEach((id) => {
+        if (!activeIds.has(id)) {
+          next.delete(id);
+        }
+      });
+      return next;
+    });
+  }, [probes]);
 
   // Sample signals from probes
   const sampleSignals = useCallback(() => {
@@ -457,25 +462,25 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     const node = circuit.nodes.find((n) => n.id === selectedNodeId);
     if (!node) return;
 
-    const probeId = `probe-${Date.now()}`;
-    const colorIndex = probes.length % COLORS.length;
+    addProbe({
+      nodeId: selectedNodeId,
+      portName: selectedPortName,
+      label: `${node.type}: ${selectedNodeId.substring(0, 8)}[${selectedPortName}]`,
+    });
+  };
 
-    setProbes([
-      ...probes,
-      {
-        id: probeId,
-        nodeId: selectedNodeId,
-        portName: selectedPortName,
-        label: `${node.type}: ${selectedNodeId.substring(0, 8)}[${selectedPortName}]`,
-        color: COLORS[colorIndex],
-        enabled: true,
-      },
-    ]);
+  const handleAddClockProbe = () => {
+    if (!clockNode) return;
+    addProbe({
+      nodeId: clockNode.id,
+      portName: 'out',
+      label: 'Clock out',
+    });
   };
 
   // Remove probe
   const handleRemoveProbe = (probeId: string) => {
-    setProbes(probes.filter((p) => p.id !== probeId));
+    removeProbe(probeId);
     setProbeData((prev) => {
       const newData = new Map(prev);
       newData.delete(probeId);
@@ -485,9 +490,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
 
   // Toggle probe
   const handleToggleProbe = (probeId: string) => {
-    setProbes(
-      probes.map((p) => (p.id === probeId ? { ...p, enabled: !p.enabled } : p))
-    );
+    toggleProbe(probeId);
   };
 
   // Clear all data
@@ -807,8 +810,18 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
               onClick={handleAddProbe}
               disabled={!selectedNodeId}
               className="w-full px-2 py-1 bg-cyan-700 hover:bg-cyan-600 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+              type="button"
             >
               Add Probe
+            </button>
+
+            <button
+              onClick={handleAddClockProbe}
+              disabled={!clockNode}
+              className="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+              type="button"
+            >
+              Add Clock Probe
             </button>
           </div>
         </div>
@@ -826,7 +839,12 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
               {probes.map((probe) => (
                 <div
                   key={probe.id}
-                  className="p-2 bg-gray-800 rounded border border-gray-700"
+                  className={`p-2 rounded border transition-colors ${
+                    probe.id === activeProbeId
+                      ? 'border-cyan-500/70 bg-cyan-900/20'
+                      : 'border-gray-700 bg-gray-800 hover:bg-gray-800/80'
+                  }`}
+                  onClick={() => setActiveProbe(probe.id)}
                 >
                   <div className="flex items-start gap-1.5 mb-1">
                     <div

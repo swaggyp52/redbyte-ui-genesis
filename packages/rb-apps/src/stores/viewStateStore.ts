@@ -12,6 +12,9 @@ interface ViewStateStore {
   selectedNodeIds: Set<string>;
   selectedWireIds: Set<string>;
   hoveredNodeId: string | null;
+  highlightedNodeId: string | null;
+  focusNodeId: string | null;
+  focusRequestId: number;
 
   // Auto-probe state
   autoProbedNodes: Set<string>;
@@ -26,6 +29,8 @@ interface ViewStateStore {
   selectWires: (wireIds: string[], additive?: boolean) => void;
   clearSelection: () => void;
   setHoveredNode: (nodeId: string | null) => void;
+  setHighlightedNode: (nodeId: string | null, durationMs?: number) => void;
+  requestFocusNode: (nodeId: string) => void;
 
   // Auto-probe actions
   toggleAutoProbe: (nodeId: string) => void;
@@ -37,11 +42,14 @@ interface ViewStateStore {
   setActiveViews: (views: ViewMode[]) => void;
 }
 
-export const useViewStateStore = create<ViewStateStore>((set) => ({
+export const useViewStateStore = create<ViewStateStore>((set, get) => ({
   // Initial state
   selectedNodeIds: new Set<string>(),
   selectedWireIds: new Set<string>(),
   hoveredNodeId: null,
+  highlightedNodeId: null,
+  focusNodeId: null,
+  focusRequestId: 0,
   autoProbedNodes: new Set<string>(),
   autoProbeEnabled: true,
   splitScreenMode: 'single',
@@ -82,6 +90,24 @@ export const useViewStateStore = create<ViewStateStore>((set) => ({
     set({
       hoveredNodeId: nodeId,
     }),
+
+  setHighlightedNode: (nodeId: string | null, durationMs: number = 1200) => {
+    set({ highlightedNodeId: nodeId });
+    if (nodeId && durationMs > 0) {
+      const current = nodeId;
+      window.setTimeout(() => {
+        if (get().highlightedNodeId === current) {
+          set({ highlightedNodeId: null });
+        }
+      }, durationMs);
+    }
+  },
+
+  requestFocusNode: (nodeId: string) =>
+    set((state) => ({
+      focusNodeId: nodeId,
+      focusRequestId: state.focusRequestId + 1,
+    })),
 
   // Auto-probe actions
   toggleAutoProbe: (nodeId: string) =>

@@ -169,11 +169,13 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     }
 
     const { circuit } = get();
+    const defaultConfig = nodeType === 'Clock' ? { period: 10 } : {};
     const newNode: Node = {
       id: `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       type: nodeType,
       position,
       state: {},
+      config: defaultConfig,
     };
     get().commit({
       ...circuit,

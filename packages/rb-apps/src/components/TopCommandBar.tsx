@@ -36,12 +36,17 @@ interface TopCommandBarProps {
   onPause: () => void;
   onStep: () => void;
   onReset?: () => void;
+  tickCount: number;
   tickRate: number;
   onTickRateChange: (hz: number) => void;
 
-  // Mode + Help
-  viewMode: 'build' | 'analyze' | 'learn' | 'quad';
-  onViewModeChange: (mode: 'build' | 'analyze' | 'learn' | 'quad') => void;
+  // Perspective + Help
+  perspective: 'build' | 'inspect' | 'debug' | 'schematic' | 'quad' | 'learn';
+  onPerspectiveChange: (
+    perspective: 'build' | 'inspect' | 'debug' | 'schematic' | 'quad' | 'learn'
+  ) => void;
+  schematicMiniEnabled?: boolean;
+  onToggleSchematicMini?: () => void;
   onHelp: () => void;
 }
 
@@ -61,10 +66,13 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   onPause,
   onStep,
   onReset,
+  tickCount,
   tickRate,
   onTickRateChange,
-  viewMode,
-  onViewModeChange,
+  perspective,
+  onPerspectiveChange,
+  schematicMiniEnabled,
+  onToggleSchematicMini,
   onHelp,
 }) => {
   return (
@@ -204,6 +212,20 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           <span className="text-sm font-mono text-cyan-400 w-11 text-right">{tickRate}Hz</span>
         </div>
 
+        {/* Clock Widget */}
+        <div className="flex items-center gap-2 border-l border-gray-700 pl-3 text-xs text-gray-300">
+          <div
+            className="font-mono text-cyan-300"
+            title="A tick is one discrete simulation step."
+          >
+            Ticks: {tickCount}
+          </div>
+          <div className="flex items-center gap-1 text-[10px] text-gray-400">
+            <span className={`h-2 w-2 rounded-full ${isRunning ? 'bg-green-400' : 'bg-gray-500'}`} />
+            {isRunning ? 'Running' : 'Paused'}
+          </div>
+        </div>
+
         {/* Reset */}
         {onReset && (
           <button
@@ -216,22 +238,22 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         )}
       </div>
 
-      {/* RIGHT: Mode + Help */}
+      {/* RIGHT: Perspective + Help */}
       <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-500 uppercase tracking-wide mr-1">Mode</span>
+        <span className="text-xs text-gray-500 uppercase tracking-wide mr-1">Perspective</span>
 
-        {/* View Mode Selector */}
+        {/* Perspective Selector */}
         <div className="flex items-center gap-1 bg-gray-800/50 rounded p-0.5">
-          {(['build', 'analyze', 'learn', 'quad'] as const).map((mode) => (
+          {(['build', 'inspect', 'debug', 'schematic', 'quad', 'learn'] as const).map((mode) => (
             <button
               key={mode}
-              onClick={() => onViewModeChange(mode)}
+              onClick={() => onPerspectiveChange(mode)}
               className={`px-3 py-1.5 text-sm rounded capitalize transition-all ${
-                viewMode === mode
+                perspective === mode
                   ? 'bg-cyan-600 text-white shadow-lg'
                   : 'text-gray-400 hover:text-white hover:bg-gray-700'
               }`}
-              title={`${mode.charAt(0).toUpperCase() + mode.slice(1)} Mode`}
+              title={`${mode.charAt(0).toUpperCase() + mode.slice(1)} Perspective`}
             >
               {mode === 'build' && '🔧'}
               {mode === 'analyze' && '📊'}
@@ -241,6 +263,20 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             </button>
           ))}
         </div>
+
+        {perspective === 'schematic' && onToggleSchematicMini && (
+          <button
+            onClick={onToggleSchematicMini}
+            className={`px-3 py-2 rounded text-xs transition-all ${
+              schematicMiniEnabled
+                ? 'bg-gray-800 hover:bg-gray-700 text-white'
+                : 'bg-gray-800/50 text-gray-500 hover:text-gray-300 hover:bg-gray-700'
+            }`}
+            title="Toggle circuit mini view"
+          >
+            Circuit mini
+          </button>
+        )}
 
         {/* Help */}
         <button

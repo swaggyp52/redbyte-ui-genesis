@@ -67,6 +67,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const svgRef = React.useRef<SVGSVGElement>(null);
   const lastSyncedSelection = React.useRef<Set<string>>(new Set());
   const lastCircuitNodeCount = React.useRef(0);
+  const lastFocusRequestId = React.useRef<number>(-1);
+  const [highlightedNodeId, setHighlightedNodeId] = React.useState<string | null>(null);
 
   // Invariant: controlled mode requires onCircuitChange callback
   if (import.meta.env.DEV) {
@@ -188,6 +190,20 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     };
   }, [engine, externalCircuit]);
 
+  const focusNode = React.useCallback(
+    (nodeId: string) => {
+      const target = circuit.nodes.find((node) => node.id === nodeId);
+      if (!target) return;
+      const nextZoom = Math.min(2, Math.max(camera.zoom, 1.1));
+      setCamera({
+        x: width / 2 - target.position.x * nextZoom,
+        y: height / 2 - target.position.y * nextZoom,
+        zoom: nextZoom,
+      });
+    },
+    [camera.zoom, circuit.nodes, setCamera, width, height]
+  );
+
   // Subscribe to global selection changes from other views
   React.useEffect(() => {
     const globalStore = getGlobalViewStateStore();
@@ -209,11 +225,24 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           // Pass syncToGlobal: false to prevent circular updates
           selectMultipleNodes(Array.from(globalNodeIds), false);
         }
+
+        const nextHighlight = state.highlightedNodeId ?? null;
+        setHighlightedNodeId(nextHighlight);
+
+        if (
+          typeof state.focusRequestId === 'number' &&
+          state.focusRequestId !== lastFocusRequestId.current
+        ) {
+          lastFocusRequestId.current = state.focusRequestId;
+          if (state.focusNodeId) {
+            focusNode(state.focusNodeId);
+          }
+        }
       }
     );
 
     return unsubscribe;
-  }, [selectMultipleNodes]);
+  }, [focusNode, selectMultipleNodes]);
 
   // Non-passive wheel event listener for zooming (React 19 compatibility)
   React.useEffect(() => {
@@ -695,6 +724,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             node={node}
             camera={camera}
             isSelected={selection.nodes.has(node.id)}
+            isHighlighted={node.id === highlightedNodeId}
             onSelect={selectNode}
             onMove={handleNodeMove}
             onPortClick={handlePortClick}

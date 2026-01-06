@@ -6,6 +6,7 @@ import React, { useMemo } from 'react';
 import type { Circuit, Node, Connection, Signal } from '@redbyte/rb-logic-core';
 import { CircuitEngine } from '@redbyte/rb-logic-core';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
+import { useProbeStore } from '../stores/probeStore';
 
 interface PropertyInspectorProps {
   circuit: Circuit;
@@ -23,6 +24,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
   onConnectionDelete,
 }) => {
   const selection = useLogicViewStore((s) => s.selection);
+  const addProbe = useProbeStore((s) => s.addProbe);
 
   // Get selected nodes and connections
   const selectedNodes = useMemo(() => {
@@ -132,16 +134,32 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
               </div>
               <div className="space-y-1.5">
                 {Object.entries(signals).map(([port, signal]) => (
-                  <div key={port} className="flex items-center justify-between">
+                  <div key={port} className="flex items-center justify-between gap-2">
                     <span className="text-white text-sm font-medium">{port}</span>
-                    <div
-                      className={`font-bold text-lg px-3 py-1 rounded-md transition-all ${
-                        signal === 1
-                          ? 'bg-green-500/30 text-green-300 shadow-lg shadow-green-500/20 scale-110'
-                          : 'bg-gray-700/50 text-gray-500 scale-100'
-                      }`}
-                    >
-                      {signal}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() =>
+                          addProbe({
+                            nodeId: node.id,
+                            portName: port,
+                            label: `${node.type} ${port}`,
+                          })
+                        }
+                        className="px-2 py-1 text-[10px] bg-gray-800/70 hover:bg-gray-700 rounded text-gray-200"
+                        type="button"
+                        title="Add probe"
+                      >
+                        Add Probe
+                      </button>
+                      <div
+                        className={`font-bold text-lg px-3 py-1 rounded-md transition-all ${
+                          signal === 1
+                            ? 'bg-green-500/30 text-green-300 shadow-lg shadow-green-500/20 scale-110'
+                            : 'bg-gray-700/50 text-gray-500 scale-100'
+                        }`}
+                      >
+                        {signal}
+                      </div>
                     </div>
                   </div>
                 ))}

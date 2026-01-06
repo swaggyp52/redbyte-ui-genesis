@@ -32,5 +32,6 @@ export {
   screenToWorld,
   worldToScreen,
   snapToGrid,
+  calculateFitToView,
 } from './tools/panzoom';
 export type { PanZoomHandlers, PanZoomOptions } from './tools/panzoom';

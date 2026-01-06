@@ -2,12 +2,14 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { Circuit, CircuitEngine } from '@redbyte/rb-logic-core';
+import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import { PropertyInspector } from './PropertyInspector';
 import { CircuitHealthPanel } from './CircuitHealthPanel';
 import { LearnModePanel } from './LearnModePanel';
 import type { GuidedExample } from '../logic/learnMode';
+import { useProbeStore } from '../stores/probeStore';
 
 /**
  * Logic Playground vNext Right Dock
@@ -38,12 +40,6 @@ interface RightDockProps {
   onLoadExample?: (example: GuidedExample) => void;
   onExitLearnMode?: () => void;
 
-  // Probes tab
-  probes?: Array<{ nodeId: string; portName: string }>;
-  onProbeAdd?: (nodeId: string, portName: string) => void;
-  onProbeRemove?: (nodeId: string, portName: string) => void;
-  onOpenScope?: () => void;
-
   // Chips tab
   chips?: Array<{ id: string; name: string; description?: string }>;
   onChipInsert?: (chipId: string) => void;
@@ -54,6 +50,7 @@ interface RightDockProps {
   initialTab?: RightDockTab;
   initialState?: RightDockState;
   onStateChange?: (state: RightDockState) => void;
+  onTabChange?: (tab: RightDockTab) => void;
 }
 
 export const RightDock: React.FC<RightDockProps> = ({
@@ -65,10 +62,6 @@ export const RightDock: React.FC<RightDockProps> = ({
   onFocusNode,
   onLoadExample,
   onExitLearnMode,
-  probes = [],
-  onProbeAdd,
-  onProbeRemove,
-  onOpenScope,
   chips = [],
   onChipInsert,
   onChipDelete,
@@ -76,9 +69,82 @@ export const RightDock: React.FC<RightDockProps> = ({
   initialTab = 'inspector',
   initialState = 'expanded',
   onStateChange,
+  onTabChange,
 }) => {
   const [activeTab, setActiveTab] = useState<RightDockTab>(initialTab);
   const [dockState, setDockState] = useState<RightDockState>(initialState);
+  const selection = useLogicViewStore((state) => state.selection);
+  const {
+    probes,
+    activeProbeId,
+    addProbe,
+    removeProbe,
+    renameProbe,
+    toggleProbe,
+    setActiveProbe,
+  } = useProbeStore();
+  const [selectedNodeId, setSelectedNodeId] = useState<string>('');
+  const [selectedPortName, setSelectedPortName] = useState<string>('out');
+  const [probeValues, setProbeValues] = useState<Record<string, number>>({});
+
+  const selectableNodes = useMemo(
+    () => circuit.nodes.map((node) => ({ id: node.id, type: node.type })),
+    [circuit.nodes]
+  );
+  const clockNode = useMemo(
+    () => circuit.nodes.find((node) => node.type === 'Clock') ?? null,
+    [circuit.nodes]
+  );
+
+  const portOptions = useMemo(() => {
+    if (!selectedNodeId) return [];
+    const outputs = engine.getNodeOutputs(selectedNodeId);
+    const ports = Object.keys(outputs);
+    if (ports.length > 0) return ports;
+    return ['out'];
+  }, [engine, selectedNodeId]);
+
+  useEffect(() => {
+    if (portOptions.length === 0) return;
+    if (!portOptions.includes(selectedPortName)) {
+      setSelectedPortName(portOptions[0]);
+    }
+  }, [portOptions, selectedPortName]);
+
+  useEffect(() => {
+    const firstSelected = Array.from(selection.nodes)[0];
+    if (!firstSelected) return;
+    setSelectedNodeId(firstSelected);
+  }, [selection.nodes]);
+
+  useEffect(() => {
+    if (probes.length === 0) {
+      setProbeValues({});
+      return;
+    }
+
+    const updateValues = () => {
+      const nextValues: Record<string, number> = {};
+      probes.forEach((probe) => {
+        const outputs = engine.getNodeOutputs(probe.nodeId);
+        const value = outputs[probe.portName] ?? 0;
+        nextValues[probe.id] = value;
+      });
+      setProbeValues(nextValues);
+    };
+
+    updateValues();
+    const interval = window.setInterval(updateValues, 200);
+    return () => window.clearInterval(interval);
+  }, [engine, probes]);
+
+  React.useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
+  React.useEffect(() => {
+    setDockState(initialState);
+  }, [initialState]);
 
   const handleStateToggle = () => {
     const nextState: RightDockState =
@@ -87,57 +153,93 @@ export const RightDock: React.FC<RightDockProps> = ({
     onStateChange?.(nextState);
   };
 
+  const handleTabChange = (tab: RightDockTab) => {
+    setActiveTab(tab);
+    onTabChange?.(tab);
+  };
+
+  const handleAddProbe = () => {
+    if (!selectedNodeId || !selectedPortName) return;
+    const node = circuit.nodes.find((n) => n.id === selectedNodeId);
+    if (!node) return;
+    addProbe({
+      nodeId: selectedNodeId,
+      portName: selectedPortName,
+      label: `${node.type} ${selectedPortName}`,
+    });
+  };
+
+  const handleProbeSelect = (probeId: string) => {
+    const probe = probes.find((item) => item.id === probeId);
+    if (!probe) return;
+    setActiveProbe(probeId);
+  };
+
+  const handleAddClockProbe = () => {
+    if (!clockNode) return;
+    addProbe({
+      nodeId: clockNode.id,
+      portName: 'out',
+      label: 'Clock out',
+    });
+  };
+
   if (dockState === 'collapsed') {
     return (
-      <div className="w-12 border-l border-gray-700 bg-gray-900 flex flex-col items-center py-4 gap-4">
+      <div className="w-14 border-l border-gray-700 bg-gray-900 flex flex-col items-center py-4 gap-4">
         {/* Collapsed tabs - vertical icons */}
         <button
           onClick={() => {
-            setActiveTab('inspector');
+            handleTabChange('inspector');
             setDockState('peek');
           }}
-          className="p-2 rounded hover:bg-gray-800 transition-colors"
+          className="w-10 h-10 rounded hover:bg-gray-800 transition-colors flex items-center justify-center"
           title="Inspector"
+          type="button"
         >
           <span className="text-xl">🔍</span>
         </button>
         <button
           onClick={() => {
-            setActiveTab('health');
+            handleTabChange('health');
             setDockState('peek');
           }}
-          className="p-2 rounded hover:bg-gray-800 transition-colors"
+          className="w-10 h-10 rounded hover:bg-gray-800 transition-colors flex items-center justify-center"
           title="Health"
+          type="button"
         >
           <span className="text-xl">💊</span>
         </button>
         <button
           onClick={() => {
-            setActiveTab('learn');
+            handleTabChange('learn');
             setDockState('peek');
           }}
-          className="p-2 rounded hover:bg-gray-800 transition-colors"
+          className="w-10 h-10 rounded hover:bg-gray-800 transition-colors flex items-center justify-center"
           title="Learn"
+          type="button"
         >
           <span className="text-xl">🎓</span>
         </button>
         <button
           onClick={() => {
-            setActiveTab('probes');
+            handleTabChange('probes');
             setDockState('peek');
           }}
-          className="p-2 rounded hover:bg-gray-800 transition-colors"
+          className="w-10 h-10 rounded hover:bg-gray-800 transition-colors flex items-center justify-center"
           title="Probes"
+          type="button"
         >
           <span className="text-xl">📊</span>
         </button>
         <button
           onClick={() => {
-            setActiveTab('chips');
+            handleTabChange('chips');
             setDockState('peek');
           }}
-          className="p-2 rounded hover:bg-gray-800 transition-colors"
+          className="w-10 h-10 rounded hover:bg-gray-800 transition-colors flex items-center justify-center"
           title="Chips"
+          type="button"
         >
           <span className="text-xl">🧩</span>
         </button>
@@ -150,58 +252,63 @@ export const RightDock: React.FC<RightDockProps> = ({
   return (
     <div className={`${width} border-l border-gray-700 bg-gray-900 flex flex-col transition-all duration-200`}>
       {/* Tab Bar */}
-      <div className="h-10 border-b border-gray-700 bg-gray-850 flex items-center px-2 gap-1">
+      <div className="h-12 border-b border-gray-700 bg-gray-850 flex items-stretch px-2 gap-1">
         <button
-          onClick={() => setActiveTab('inspector')}
-          className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
+          onClick={() => handleTabChange('inspector')}
+          className={`flex-1 h-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'inspector'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
+          type="button"
         >
           <span className="mr-1 pointer-events-none select-none">🔍</span>
           <span className="pointer-events-none select-none">Info</span>
         </button>
         <button
-          onClick={() => setActiveTab('health')}
-          className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
+          onClick={() => handleTabChange('health')}
+          className={`flex-1 h-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'health'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
+          type="button"
         >
           <span className="mr-1 pointer-events-none select-none">💊</span>
           <span className="pointer-events-none select-none">Health</span>
         </button>
         <button
-          onClick={() => setActiveTab('learn')}
-          className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
+          onClick={() => handleTabChange('learn')}
+          className={`flex-1 h-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'learn'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
+          type="button"
         >
           <span className="mr-1 pointer-events-none select-none">🎓</span>
           <span className="pointer-events-none select-none">Learn</span>
         </button>
         <button
-          onClick={() => setActiveTab('probes')}
-          className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
+          onClick={() => handleTabChange('probes')}
+          className={`flex-1 h-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'probes'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
+          type="button"
         >
           <span className="mr-1 pointer-events-none select-none">📊</span>
           <span className="pointer-events-none select-none">Probes</span>
         </button>
         <button
-          onClick={() => setActiveTab('chips')}
-          className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
+          onClick={() => handleTabChange('chips')}
+          className={`flex-1 h-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'chips'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
+          type="button"
         >
           <span className="mr-1 pointer-events-none select-none">🧩</span>
           <span className="pointer-events-none select-none">Chips</span>
@@ -210,8 +317,9 @@ export const RightDock: React.FC<RightDockProps> = ({
         {/* Dock state toggle */}
         <button
           onClick={handleStateToggle}
-          className="px-2 py-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+          className="h-full px-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
           title={dockState === 'peek' ? 'Expand' : 'Collapse'}
+          type="button"
         >
           {dockState === 'peek' ? '→' : '←'}
         </button>
@@ -246,50 +354,129 @@ export const RightDock: React.FC<RightDockProps> = ({
         )}
 
         {activeTab === 'probes' && (
-          <div className="h-full p-4">
-            <div className="flex items-center justify-between mb-4">
+          <div className="h-full p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-300">Signal Probes</h3>
-              {onOpenScope && (
-                <button
-                  onClick={onOpenScope}
-                  className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-500 rounded transition-colors"
-                >
-                  Open Scope
-                </button>
-              )}
+              <span className="text-[10px] text-gray-500">Live values</span>
             </div>
 
-            {probes.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
-                <div className="text-4xl mb-2">📊</div>
-                <div className="text-sm">No probes added</div>
-                <div className="text-xs text-gray-500 mt-2">
-                  Right-click a node output to add probe
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {probes.map((probe, i) => (
-                  <div
-                    key={`${probe.nodeId}-${probe.portName}`}
-                    className="bg-gray-800/50 rounded p-3 flex items-center justify-between"
-                  >
-                    <div>
-                      <div className="text-sm font-medium text-white">{probe.portName}</div>
-                      <div className="text-xs text-gray-400 font-mono truncate">{probe.nodeId}</div>
-                    </div>
-                    {onProbeRemove && (
-                      <button
-                        onClick={() => onProbeRemove(probe.nodeId, probe.portName)}
-                        className="px-2 py-1 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded transition-colors"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
+            <div className="space-y-2">
+              <select
+                value={selectedNodeId}
+                onChange={(e) => setSelectedNodeId(e.target.value)}
+                className="w-full px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
+              >
+                <option value="">Select node...</option>
+                {selectableNodes.map((node) => (
+                  <option key={node.id} value={node.id}>
+                    {node.type} ({node.id.slice(0, 8)})
+                  </option>
                 ))}
-              </div>
-            )}
+              </select>
+
+              <select
+                value={selectedPortName}
+                onChange={(e) => setSelectedPortName(e.target.value)}
+                className="w-full px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
+              >
+                {portOptions.map((port) => (
+                  <option key={port} value={port}>
+                    {port}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                onClick={handleAddProbe}
+                disabled={!selectedNodeId}
+                className="w-full px-2 py-1 bg-cyan-700 hover:bg-cyan-600 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+              >
+                Add Probe
+              </button>
+
+              <button
+                onClick={handleAddClockProbe}
+                disabled={!clockNode}
+                className="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+              >
+                Add Clock Probe
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto mt-1">
+              {probes.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <div className="text-4xl mb-2">dY"S</div>
+                  <div className="text-sm">No probes added</div>
+                  <div className="text-xs text-gray-500 mt-2">
+                    Select a node and add a probe
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {probes.map((probe) => (
+                    <div
+                      key={probe.id}
+                      className={`rounded border p-3 transition-colors ${activeProbeId === probe.id
+                        ? 'border-cyan-500/60 bg-cyan-900/20'
+                        : 'border-gray-700/50 bg-gray-800/50 hover:bg-gray-800/80'}`}
+                      onClick={() => handleProbeSelect(probe.id)}
+                    >
+                      <div className="flex items-start gap-2">
+                        <div
+                          className="mt-1 h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: probe.color }}
+                        />
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <input
+                            value={probe.label}
+                            onChange={(e) => renameProbe(probe.id, e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full bg-transparent text-sm font-medium text-white outline-none"
+                          />
+                          <div className="text-[10px] text-gray-400 font-mono truncate">
+                            {probe.nodeId} - {probe.portName}
+                          </div>
+                        </div>
+                        <div
+                          className={`px-2 py-1 text-xs rounded font-mono ${probeValues[probe.id] === 1
+                            ? 'bg-green-500/20 text-green-300'
+                            : 'bg-gray-700/50 text-gray-400'}`}
+                        >
+                          {probeValues[probe.id] ?? 0}
+                        </div>
+                      </div>
+
+                      <div className="mt-2 flex items-center gap-2">
+                        <label className="flex items-center gap-1 text-[10px] text-gray-400 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={probe.enabled}
+                            onChange={() => toggleProbe(probe.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-3 h-3"
+                          />
+                          Enabled
+                        </label>
+                        <div className="flex-1" />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeProbe(probe.id);
+                          }}
+                          className="px-2 py-1 text-[10px] text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded transition-colors"
+                          type="button"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

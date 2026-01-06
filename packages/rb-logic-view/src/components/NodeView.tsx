@@ -18,6 +18,7 @@ export interface NodeViewProps {
   node: Node;
   camera: Camera;
   isSelected: boolean;
+  isHighlighted?: boolean;
   onSelect: (nodeId: string, addToSelection: boolean) => void;
   onMove: (nodeId: string, x: number, y: number) => void;
   onPortClick?: (nodeId: string, portName: string) => void;
@@ -53,6 +54,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   node,
   camera,
   isSelected,
+  isHighlighted = false,
   onSelect,
   onMove,
   onPortClick,
@@ -167,6 +169,22 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         onMouseLeave={() => setIsHovered(false)}
         style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
       >
+        {/* Highlight ring */}
+        {isHighlighted && (
+          <rect
+            x={-size / 2 - 4}
+            y={-chipHeight / 2 - 4}
+            width={size + 8}
+            height={chipHeight + 8}
+            fill="none"
+            stroke="#22d3ee"
+            strokeWidth={2}
+            rx={8}
+            className="animate-pulse"
+            style={{ pointerEvents: 'none' }}
+          />
+        )}
+
         {/* Chip body - black box appearance */}
         <rect
           x={-size / 2}
@@ -381,6 +399,22 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
       onDoubleClick={handleDoubleClick}
       style={{ cursor: isDragging ? 'grabbing' : (isSwitch ? 'pointer' : 'grab') }}
     >
+      {/* Highlight ring */}
+      {isHighlighted && (
+        <rect
+          x={-size / 2 - 4}
+          y={-size / 2 - 4}
+          width={size + 8}
+          height={size + 8}
+          fill="none"
+          stroke="#22d3ee"
+          strokeWidth={2}
+          rx={6}
+          className="animate-pulse"
+          style={{ pointerEvents: 'none' }}
+        />
+      )}
+
       {/* Node body */}
       <rect
         x={-size / 2}
@@ -519,6 +553,7 @@ export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => 
     prevProps.node.position.y === nextProps.node.position.y &&
     prevProps.node.rotation === nextProps.node.rotation &&
     prevProps.isSelected === nextProps.isSelected &&
+    prevProps.isHighlighted === nextProps.isHighlighted &&
     prevProps.camera.x === nextProps.camera.x &&
     prevProps.camera.y === nextProps.camera.y &&
     prevProps.camera.zoom === nextProps.camera.zoom &&

@@ -9,7 +9,7 @@
     },
     {
       "id": "clock",
-      "type": "INPUT",
+      "type": "Clock",
       "x": 50,
       "y": 300
     },

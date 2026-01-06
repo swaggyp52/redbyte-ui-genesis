@@ -8,15 +8,21 @@ import { LogicCanvas } from '@redbyte/rb-logic-view';
 import { Logic3DScene } from '@redbyte/rb-logic-3d';
 import { SchematicView } from './SchematicView';
 import { OscilloscopeView } from './OscilloscopeView';
+import { CircuitToolStrip } from './CircuitToolStrip';
 import type { SplitScreenMode, ViewMode } from '../stores/viewStateStore';
 
 interface SplitViewLayoutProps {
   mode: SplitScreenMode;
   views: ViewMode[];
+  splitRatio?: number;
   engine: CircuitEngine;
   tickEngine: TickEngine;
   circuit: Circuit;
   isRunning: boolean;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
   onCircuitChange: (circuit: Circuit) => void;
   onNodeDoubleClick?: (nodeId: string) => void;
   viewStateStore?: any;
@@ -39,6 +45,10 @@ interface ViewRendererProps {
   tickEngine: TickEngine;
   circuit: Circuit;
   isRunning: boolean;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
   onCircuitChange: (circuit: Circuit) => void;
   onNodeDoubleClick?: (nodeId: string) => void;
   viewStateStore?: any;
@@ -70,6 +80,10 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   tickEngine,
   circuit,
   isRunning,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
   onCircuitChange,
   onNodeDoubleClick,
   viewStateStore,
@@ -129,6 +143,17 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               onCircuitChange={onCircuitChange}
               onInputToggled={onInputToggled}
             />
+            {onUndo && onRedo && (
+              <CircuitToolStrip
+                circuit={circuit}
+                width={dimensions.width}
+                height={dimensions.height}
+                canUndo={!!canUndo}
+                canRedo={!!canRedo}
+                onUndo={onUndo}
+                onRedo={onRedo}
+              />
+            )}
           </div>
         );
 
@@ -207,10 +232,15 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
 export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   mode,
   views,
+  splitRatio = 0.5,
   engine,
   tickEngine,
   circuit,
   isRunning,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
   onCircuitChange,
   onNodeDoubleClick,
   viewStateStore,
@@ -244,6 +274,10 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           tickEngine={tickEngine}
           circuit={circuit}
           isRunning={isRunning}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={onUndo}
+          onRedo={onRedo}
           onCircuitChange={onCircuitChange}
           onNodeDoubleClick={onNodeDoubleClick}
           viewStateStore={viewStateStore}
@@ -264,16 +298,22 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
 
   // Horizontal split (side by side)
   if (mode === 'horizontal') {
+    const primaryStyle = { flex: `0 0 ${Math.round(splitRatio * 100)}%` };
+    const secondaryStyle = { flex: '1 1 0%' };
     return (
       <div className="w-full h-full flex gap-1 bg-gray-950">
-        <div className="flex-1 bg-gray-900 overflow-hidden">
+        <div className="bg-gray-900 overflow-hidden" style={primaryStyle}>
           <ViewRenderer
             view={views[0] || 'circuit'}
             engine={engine}
-            tickEngine={tickEngine}
-            circuit={circuit}
-            isRunning={isRunning}
-            onCircuitChange={onCircuitChange}
+          tickEngine={tickEngine}
+          circuit={circuit}
+          isRunning={isRunning}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          onCircuitChange={onCircuitChange}
             onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
@@ -288,14 +328,18 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onInputToggled={onInputToggled}
           />
         </div>
-        <div className="flex-1 bg-gray-900 overflow-hidden">
+        <div className="bg-gray-900 overflow-hidden" style={secondaryStyle}>
           <ViewRenderer
             view={views[1] || 'schematic'}
             engine={engine}
-            tickEngine={tickEngine}
-            circuit={circuit}
-            isRunning={isRunning}
-            onCircuitChange={onCircuitChange}
+          tickEngine={tickEngine}
+          circuit={circuit}
+          isRunning={isRunning}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          onCircuitChange={onCircuitChange}
             onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
@@ -315,16 +359,22 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
 
   // Vertical split (stacked)
   if (mode === 'vertical') {
+    const primaryStyle = { flex: `0 0 ${Math.round(splitRatio * 100)}%` };
+    const secondaryStyle = { flex: '1 1 0%' };
     return (
       <div className="w-full h-full flex flex-col gap-1 bg-gray-950">
-        <div className="flex-1 bg-gray-900 overflow-hidden">
+        <div className="bg-gray-900 overflow-hidden" style={primaryStyle}>
           <ViewRenderer
             view={views[0] || 'circuit'}
             engine={engine}
-            tickEngine={tickEngine}
-            circuit={circuit}
-            isRunning={isRunning}
-            onCircuitChange={onCircuitChange}
+          tickEngine={tickEngine}
+          circuit={circuit}
+          isRunning={isRunning}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          onCircuitChange={onCircuitChange}
             onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
@@ -339,14 +389,18 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onInputToggled={onInputToggled}
           />
         </div>
-        <div className="flex-1 bg-gray-900 overflow-hidden">
+        <div className="bg-gray-900 overflow-hidden" style={secondaryStyle}>
           <ViewRenderer
             view={views[1] || 'oscilloscope'}
             engine={engine}
-            tickEngine={tickEngine}
-            circuit={circuit}
-            isRunning={isRunning}
-            onCircuitChange={onCircuitChange}
+          tickEngine={tickEngine}
+          circuit={circuit}
+          isRunning={isRunning}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          onCircuitChange={onCircuitChange}
             onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
@@ -372,10 +426,14 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           <ViewRenderer
             view={views[0] || 'circuit'}
             engine={engine}
-            tickEngine={tickEngine}
-            circuit={circuit}
-            isRunning={isRunning}
-            onCircuitChange={onCircuitChange}
+          tickEngine={tickEngine}
+          circuit={circuit}
+          isRunning={isRunning}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          onCircuitChange={onCircuitChange}
             onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
@@ -394,10 +452,14 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           <ViewRenderer
             view={views[1] || 'schematic'}
             engine={engine}
-            tickEngine={tickEngine}
-            circuit={circuit}
-            isRunning={isRunning}
-            onCircuitChange={onCircuitChange}
+          tickEngine={tickEngine}
+          circuit={circuit}
+          isRunning={isRunning}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          onCircuitChange={onCircuitChange}
             onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
@@ -416,10 +478,14 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           <ViewRenderer
             view={views[2] || '3d'}
             engine={engine}
-            tickEngine={tickEngine}
-            circuit={circuit}
-            isRunning={isRunning}
-            onCircuitChange={onCircuitChange}
+          tickEngine={tickEngine}
+          circuit={circuit}
+          isRunning={isRunning}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          onCircuitChange={onCircuitChange}
             onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
@@ -438,10 +504,14 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           <ViewRenderer
             view={views[3] || 'oscilloscope'}
             engine={engine}
-            tickEngine={tickEngine}
-            circuit={circuit}
-            isRunning={isRunning}
-            onCircuitChange={onCircuitChange}
+          tickEngine={tickEngine}
+          circuit={circuit}
+          isRunning={isRunning}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          onCircuitChange={onCircuitChange}
             onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
