@@ -5259,7 +5259,8 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
-
+\### 2026-01-05
+\- Fixed LogicPlaygroundApp TickEngine construction to pass circuit + tickRate config (no CircuitEngine type mismatch), updated quick-add to supply default node position, aligned crash-recovery toast call with string-based API, and added demo-mode guard + share-link aria-label for a11y; objectives unchanged; phase unchanged
 
 \### 2025-12-18
 \- Implemented PHASE_AC Deterministic Window Routing for Open-With; resolveTargetWindowId pure function with reuse policy (prefer most-recently-focused, fallback to oldest, create new if none/minimized); added lastFocusedAt timestamp tracking on focusWindow; extended OpenWithIntent with routingHint metadata (NOT in app payload); Shell dispatchIntent uses routing resolver to reuse/create windows; Open With modal N key toggle for new-window mode with visual indicator; Files handleOpenWith passes preferNewWindow through routingHint; all 356 tests pass with zero warnings (346 baseline + 10 new routing tests); build passes; phase complete

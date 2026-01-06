@@ -15,6 +15,8 @@ import {
   encodeCircuitCompressed,
   type Circuit,
   type SerializedCircuitV1,
+  type Node,
+  type Connection,
 } from '@redbyte/rb-logic-core';
 import { LogicCanvas } from '@redbyte/rb-logic-view';
 import { ViewAdapter } from '@redbyte/rb-logic-adapter';
@@ -138,7 +140,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
   const [engine, setEngine] = useState<CircuitEngine>(() => new CircuitEngine(circuit));
   const [tickEngine, setTickEngine] = useState<TickEngine>(
-    () => new TickEngine(engine, tickRate)
+    () => new TickEngine(circuit, { tickRate })
   );
 
   const [viewMode, setViewMode] = useState<ViewMode>('circuit');
@@ -242,12 +244,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
               determinismRecorder.recordCircuitLoaded(restored);
             }
 
-            addToast({
-              id: `restore-${Date.now()}`,
-              message: 'Circuit restored from auto-save',
-              type: 'success',
-              duration: 4000,
-            });
+            addToast('Circuit restored from auto-save', 'success', 4000);
           }
         }
       }
@@ -428,7 +425,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           setCircuit(loadedCircuit);
           const newEngine = new CircuitEngine(loadedCircuit);
           setEngine(newEngine);
-          setTickEngine(new TickEngine(newEngine, tickRate));
+          setTickEngine(new TickEngine(loadedCircuit, { tickRate }));
           setCurrentFileId(null);
           setIsDirty(true);
           // Clear hydration guard after load completes
@@ -616,7 +613,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setCircuit(emptyCircuit);
     const newEngine = new CircuitEngine(emptyCircuit);
     setEngine(newEngine);
-    setTickEngine(new TickEngine(newEngine, currentHz));
+    setTickEngine(new TickEngine(emptyCircuit, { tickRate: currentHz }));
     setCurrentFileId(null);
     setIsDirty(false);
     setIsRunning(false);
@@ -930,7 +927,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setCircuit(loadedCircuit);
     const newEngine = new CircuitEngine(loadedCircuit);
     setEngine(newEngine);
-    setTickEngine(new TickEngine(newEngine, tickRate));
+    setTickEngine(new TickEngine(loadedCircuit, { tickRate }));
     setCurrentFileId(file.id);
     setSelectedFileId(file.id);
     setSelectedExampleId('');
@@ -957,7 +954,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       setCircuit(loadedCircuit);
       const newEngine = new CircuitEngine(loadedCircuit);
       setEngine(newEngine);
-      setTickEngine(new TickEngine(newEngine, tickRate));
+      setTickEngine(new TickEngine(loadedCircuit, { tickRate }));
       setCurrentFileId(null);
       setSelectedFileId('');
       setSelectedExampleId(exampleId);
@@ -1043,7 +1040,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             setCircuit(loadedCircuit);
             const newEngine = new CircuitEngine(loadedCircuit);
             setEngine(newEngine);
-            setTickEngine(new TickEngine(newEngine, currentHz));
+            setTickEngine(new TickEngine(loadedCircuit, { tickRate: currentHz }));
             setCurrentFileId(null);
             setIsDirty(true);
             // Clear hydration guard after load completes
@@ -1270,11 +1267,23 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setCircuit(emptyCircuit);
     const newEngine = new CircuitEngine(emptyCircuit);
     setEngine(newEngine);
-    setTickEngine(new TickEngine(newEngine, currentHz));
+    setTickEngine(new TickEngine(emptyCircuit, { tickRate: currentHz }));
     setCurrentFileId(null);
     setIsDirty(false);
     setShowDecodeErrorModal(false);
     addToast('Circuit reset', 'info');
+  };
+
+  const isDemoMode =
+    (import.meta as ImportMeta & { env?: { VITE_PUBLIC_DEMO?: string } }).env?.VITE_PUBLIC_DEMO ===
+    'true';
+
+  const getDefaultAddPosition = () => {
+    const rect = canvasAreaRef.current?.getBoundingClientRect();
+    if (!rect) {
+      return { x: 400, y: 300 };
+    }
+    return { x: rect.width / 2, y: rect.height / 2 };
   };
 
   // Memoize chips array to avoid multiple store calls during render
@@ -1358,7 +1367,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           )}
 
           {/* Empty State Message (shown when canvas is empty in demo mode) */}
-          {circuit.nodes.length === 0 && import.meta.env.VITE_PUBLIC_DEMO === 'true' && (
+          {circuit.nodes.length === 0 && isDemoMode && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
               <div className="bg-slate-800/90 backdrop-blur-sm border border-slate-600 rounded-lg px-8 py-6 max-w-md text-center shadow-2xl">
                 <div className="text-2xl text-cyan-400 mb-3">Get Started</div>
@@ -1456,6 +1465,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
               readOnly
               value={shareFallbackURL}
               onClick={(e) => e.currentTarget.select()}
+              aria-label="Share link"
               className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white font-mono text-sm mb-4"
               autoFocus
             />
@@ -1684,7 +1694,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         isOpen={showQuickAdd}
         onClose={() => setShowQuickAdd(false)}
         onSelectComponent={(type) => {
-          storeAddNode(type);
+          storeAddNode(type, getDefaultAddPosition());
           setShowQuickAdd(false);
         }}
       />
