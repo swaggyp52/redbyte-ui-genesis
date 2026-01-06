@@ -123,6 +123,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
       // Commit the final position when drag ends
       onMove(node.id, dragPosition.x, dragPosition.y);
       setIsDragging(false);
+      setDragStart({ x: 0, y: 0 });
     } else if (dragStart.x !== 0) {
       // Click without drag - toggle switch
       if (isSwitch && onToggleSwitch) {
@@ -138,6 +139,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         // Commit the final position when drag ends
         onMove(node.id, dragPosition.x, dragPosition.y);
         setIsDragging(false);
+        setDragStart({ x: 0, y: 0 });
       };
       window.addEventListener('mouseup', handleGlobalMouseUp);
       return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
