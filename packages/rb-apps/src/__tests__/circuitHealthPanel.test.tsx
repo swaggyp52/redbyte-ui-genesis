@@ -10,7 +10,7 @@ import { CircuitHealthPanel } from '../components/CircuitHealthPanel';
 import { useViewStateStore } from '../stores/viewStateStore';
 
 const TEST_CIRCUIT: Circuit = {
-  nodes: [{ id: 'and1', type: 'AND', position: { x: 0, y: 0 } }],
+  nodes: [{ id: 'and1', type: 'AND', position: { x: 0, y: 0 }, rotation: 0, config: {} }],
   connections: [],
 };
 
