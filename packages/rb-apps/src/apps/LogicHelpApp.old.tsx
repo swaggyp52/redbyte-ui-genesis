@@ -936,7 +936,7 @@ const LogicHelpComponent: React.FC<LogicHelpProps> = ({ onDispatchIntent }) => {
         {
           id: 'C2',
           title: 'SR Latch - Basic Memory Cell',
-          content: ({ onDispatchIntent }) => (
+          content: ({ onDispatchIntent }: { onDispatchIntent?: (intent: Intent) => void }) => (
             <div>
               <h3 style={{ color: '#00d9ff', marginBottom: '0.5rem' }}>Concept</h3>
               <p>The <strong>SR Latch</strong> (Set-Reset Latch) is the simplest memory circuit. It has two stable states and can be "set" or "reset."</p>
@@ -1054,7 +1054,7 @@ const LogicHelpComponent: React.FC<LogicHelpProps> = ({ onDispatchIntent }) => {
         {
           id: 'C4',
           title: 'D Flip-Flop - Edge-Triggered Memory',
-          content: ({ onDispatchIntent }) => (
+          content: ({ onDispatchIntent }: { onDispatchIntent?: (intent: Intent) => void }) => (
             <div>
               <h3 style={{ color: '#00d9ff', marginBottom: '0.5rem' }}>Concept</h3>
               <p>The D Latch has a problem: while E=1, output Q continuously follows D. Any noise or glitches get captured!</p>
@@ -1116,7 +1116,7 @@ const LogicHelpComponent: React.FC<LogicHelpProps> = ({ onDispatchIntent }) => {
         {
           id: 'C5',
           title: 'Registers & Counters',
-          content: ({ onDispatchIntent }) => (
+          content: ({ onDispatchIntent }: { onDispatchIntent?: (intent: Intent) => void }) => (
             <div>
               <h3 style={{ color: '#00d9ff', marginBottom: '0.5rem' }}>Concept</h3>
               <p>A <strong>register</strong> is a group of flip-flops that store multiple bits (like a 4-bit or 8-bit number).</p>
@@ -1278,7 +1278,7 @@ const LogicHelpComponent: React.FC<LogicHelpProps> = ({ onDispatchIntent }) => {
         {
           id: 'C7',
           title: 'Simple CPU - Bringing It All Together',
-          content: ({ onDispatchIntent }) => (
+          content: ({ onDispatchIntent }: { onDispatchIntent?: (intent: Intent) => void }) => (
             <div>
               <h3 style={{ color: '#00d9ff', marginBottom: '0.5rem' }}>Concept</h3>
               <p>A <strong>CPU</strong> (Central Processing Unit) is a state machine that fetches instructions from memory and executes them.</p>

@@ -225,6 +225,7 @@ export const FilesystemDataPanel: React.FC<FilesystemDataPanelProps> = ({ onShow
               value={exportJson()}
               className="w-full p-3 font-mono text-xs bg-slate-800 border border-slate-600 rounded text-white h-96"
               onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+              aria-label="Exported filesystem JSON"
             />
 
             <div className="mt-3 text-xs text-slate-500 text-center">
@@ -252,6 +253,7 @@ export const FilesystemDataPanel: React.FC<FilesystemDataPanelProps> = ({ onShow
               placeholder='{"version":1,"state":{"folders":{...},"roots":[...],"nextId":...}}'
               className="w-full p-3 font-mono text-xs bg-slate-800 border border-slate-600 rounded text-white h-96"
               autoFocus
+              aria-label="Import filesystem JSON"
             />
 
             <div className="mt-3 text-xs text-slate-500 text-center">

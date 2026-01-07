@@ -276,6 +276,7 @@ export const FileAssociationsPanel: React.FC<FileAssociationsPanelProps> = ({ on
               value={exportJson()}
               className="w-full p-3 font-mono text-xs bg-slate-800 border border-slate-600 rounded text-white h-48"
               onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+              aria-label="Exported file associations JSON"
             />
 
             <div className="mt-3 text-xs text-slate-500 text-center">
@@ -302,6 +303,7 @@ export const FileAssociationsPanel: React.FC<FileAssociationsPanelProps> = ({ on
               placeholder='{"associations":{"file":{"txt":"text-viewer"}}}'
               className="w-full p-3 font-mono text-xs bg-slate-800 border border-slate-600 rounded text-white h-48"
               autoFocus
+              aria-label="Import file associations JSON"
             />
 
             <div className="mt-3 text-xs text-slate-500 text-center">
