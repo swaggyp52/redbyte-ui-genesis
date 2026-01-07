@@ -8,6 +8,7 @@ import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import { PropertyInspector } from './PropertyInspector';
 import { CircuitHealthPanel } from './CircuitHealthPanel';
 import { LearnModePanel } from './LearnModePanel';
+import { RunRecorderPanel } from './RunRecorderPanel';
 import type { GuidedExample } from '../logic/learnMode';
 import { useProbeStore } from '../stores/probeStore';
 
@@ -23,7 +24,7 @@ import { useProbeStore } from '../stores/probeStore';
  * Never overlaps the main stage
  */
 
-export type RightDockTab = 'inspector' | 'health' | 'learn' | 'probes' | 'chips';
+export type RightDockTab = 'inspector' | 'health' | 'learn' | 'probes' | 'record' | 'chips';
 export type RightDockState = 'collapsed' | 'peek' | 'expanded';
 
 interface RightDockProps {
@@ -35,6 +36,18 @@ interface RightDockProps {
 
   // Health tab
   onFocusNode?: (nodeId: string, portName?: string) => void;
+  onIssueHover?: (nodeId: string | null, portName?: string | null) => void;
+
+  // Record tab
+  tickCount?: number;
+  tickRate?: number;
+  onRecordArm?: () => void;
+  onRecordStart?: () => void;
+  onRecordStop?: () => void;
+  onRecordReplayStart?: () => void;
+  onRecordReplayStop?: () => void;
+  onRecordVerify?: () => void;
+  onRecordExport?: () => void;
 
   // Learn tab
   onLoadExample?: (example: GuidedExample) => void;
@@ -60,6 +73,16 @@ export const RightDock: React.FC<RightDockProps> = ({
   onNodeUpdate,
   onConnectionDelete,
   onFocusNode,
+  onIssueHover,
+  tickCount = 0,
+  tickRate = 0,
+  onRecordArm,
+  onRecordStart,
+  onRecordStop,
+  onRecordReplayStart,
+  onRecordReplayStop,
+  onRecordVerify,
+  onRecordExport,
   onLoadExample,
   onExitLearnMode,
   chips = [],
@@ -237,6 +260,17 @@ export const RightDock: React.FC<RightDockProps> = ({
         </button>
         <button
           onClick={() => {
+            handleTabChange('record');
+            setDockState('peek');
+          }}
+          className="w-10 h-10 rounded hover:bg-gray-800 transition-colors flex items-center justify-center"
+          title="Record"
+          type="button"
+        >
+          <span className="text-xl">dY"7</span>
+        </button>
+        <button
+          onClick={() => {
             handleTabChange('chips');
             setDockState('peek');
           }}
@@ -313,6 +347,20 @@ export const RightDock: React.FC<RightDockProps> = ({
           <span className="pointer-events-none select-none">Probes</span>
         </button>
         <button
+          onClick={() => handleTabChange('record')}
+          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            activeTab === 'record'
+              ? 'bg-cyan-600 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+          }`}
+          aria-label="Record"
+          data-testid="rightdock-tab-record"
+          type="button"
+        >
+          <span className="mr-1 pointer-events-none select-none">dY"7</span>
+          <span className="pointer-events-none select-none">Record</span>
+        </button>
+        <button
           onClick={() => handleTabChange('chips')}
           className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTab === 'chips'
@@ -352,7 +400,11 @@ export const RightDock: React.FC<RightDockProps> = ({
 
         {activeTab === 'health' && (
           <div className="h-full overflow-y-auto">
-            <CircuitHealthPanel circuit={circuit} onFocusNode={onFocusNode} />
+            <CircuitHealthPanel
+              circuit={circuit}
+              onFocusNode={onFocusNode}
+              onIssueHover={onIssueHover}
+            />
           </div>
         )}
 
@@ -526,6 +578,23 @@ export const RightDock: React.FC<RightDockProps> = ({
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'record' && (
+          <div className="h-full overflow-y-auto">
+            <RunRecorderPanel
+              isRunning={isRunning}
+              currentTick={tickCount}
+              tickRate={tickRate}
+              onArm={onRecordArm ?? (() => {})}
+              onStartRecording={onRecordStart ?? (() => {})}
+              onStopRecording={onRecordStop ?? (() => {})}
+              onStartReplay={onRecordReplayStart ?? (() => {})}
+              onStopReplay={onRecordReplayStop ?? (() => {})}
+              onVerify={onRecordVerify ?? (() => {})}
+              onExport={onRecordExport ?? (() => {})}
+            />
           </div>
         )}
 

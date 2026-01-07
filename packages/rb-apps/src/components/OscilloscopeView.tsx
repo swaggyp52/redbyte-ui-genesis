@@ -12,6 +12,7 @@ import {
   type SignalSample,
   type SignalMeasurements,
 } from '../utils/signalMeasurements';
+import { getOscilloscopeHoverInfo, type HoverInfo } from '../utils/oscilloscopeHover';
 
 interface ProbeData {
   probeId: string;
@@ -89,8 +90,10 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   // Cursors
   const [cursors, setCursors] = useState<Cursor[]>([]);
   const [showGrid, setShowGrid] = useState(true);
+  const [showTickGuides, setShowTickGuides] = useState(true);
   const [selectedNodeId, setSelectedNodeId] = useState<string>('');
   const [selectedPortName, setSelectedPortName] = useState<string>('out');
+  const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
 
   // Clock tracking
   const [totalSamples, setTotalSamples] = useState(0);
@@ -404,6 +407,27 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     // Get current time
     const currentTime = getCurrentTime();
     const windowEndTime = pauseScroll ? viewEndTime : currentTime;
+    const windowStartTime = windowEndTime - timeScale;
+
+    // Draw tick guides
+    if (showTickGuides) {
+      const tickRate = tickEngine.getTickRate();
+      if (tickRate > 0) {
+        const tickInterval = 1 / tickRate;
+        const firstTick = Math.ceil(windowStartTime / tickInterval) * tickInterval;
+        ctx.strokeStyle = 'rgba(100, 116, 139, 0.2)';
+        ctx.lineWidth = 1;
+        for (let tickTime = firstTick; tickTime <= windowEndTime; tickTime += tickInterval) {
+          const timeOffset = windowEndTime - tickTime;
+          const x = renderWidth - (timeOffset / timeScale) * renderWidth;
+          if (x < 0 || x > renderWidth) continue;
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, renderHeight);
+          ctx.stroke();
+        }
+      }
+    }
 
     // Draw waveforms
     probes.forEach((probe) => {
@@ -413,7 +437,9 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       if (!data || data.samples.length < 2) return;
 
       ctx.strokeStyle = probe.color;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = probe.color;
+      ctx.shadowBlur = 3;
       ctx.beginPath();
 
       let firstPoint = true;
@@ -441,23 +467,23 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       });
 
       ctx.stroke();
+      ctx.shadowBlur = 0;
+    });
 
+    const enabledProbes = probes.filter((probe) => probe.enabled);
+    enabledProbes.forEach((probe, index) => {
+      const data = probeData.get(probe.id);
+      if (!data || data.samples.length === 0) return;
       const latestSample = data.samples[data.samples.length - 1];
-      if (latestSample) {
-        const latestOffset = windowEndTime - latestSample.timestamp;
-        const latestX = renderWidth - (latestOffset / timeScale) * renderWidth;
-        const labelX = Math.min(renderWidth - 6, Math.max(6, latestX + 8));
-        const labelY =
-          renderHeight / 2 - (latestSample.value * voltageScale * renderHeight) / 4;
-        const label = `${probe.label} ${latestSample.value}`;
-
-        ctx.font = '10px monospace';
-        const textWidth = ctx.measureText(label).width;
-        ctx.fillStyle = 'rgba(10, 14, 26, 0.85)';
-        ctx.fillRect(labelX - 4, labelY - 8, textWidth + 8, 14);
-        ctx.fillStyle = probe.color;
-        ctx.fillText(label, labelX, labelY + 2);
-      }
+      const label = `${probe.label} ${latestSample.value}`;
+      ctx.font = '10px monospace';
+      const textWidth = ctx.measureText(label).width;
+      const labelX = renderWidth - textWidth - 12;
+      const labelY = 12 + index * 14;
+      ctx.fillStyle = 'rgba(10, 14, 26, 0.85)';
+      ctx.fillRect(labelX - 4, labelY - 8, textWidth + 8, 14);
+      ctx.fillStyle = probe.color;
+      ctx.fillText(label, labelX, labelY + 2);
     });
 
     // Draw "now" cursor
@@ -533,6 +559,8 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     pauseScroll,
     showTimeCursor,
     viewEndTime,
+    showTickGuides,
+    tickEngine,
   ]);
 
   // Add probe
@@ -628,6 +656,33 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     const secondsPerPixel = timeScale / canvasDimensions.width;
     const shiftSeconds = delta * secondsPerPixel * 10;
     setViewEndTime((prev) => clampViewEndTime(prev + shiftSeconds));
+  };
+
+  const handleCanvasHover = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const currentTime = getCurrentTime();
+    const windowEndTime = pauseScroll ? viewEndTime : currentTime;
+    const hover = getOscilloscopeHoverInfo({
+      x,
+      y,
+      width: canvasDimensions.width,
+      height: canvasDimensions.height,
+      timeScale,
+      voltageScale,
+      windowEndTime,
+      probes,
+      probeData,
+    });
+
+    setHoverInfo(hover);
+  };
+
+  const handleCanvasLeave = () => {
+    setHoverInfo(null);
   };
 
   // Canvas click for cursor
@@ -912,6 +967,18 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
             >
               T
             </button>
+            <button
+              onClick={() => setShowTickGuides((prev) => !prev)}
+              className={`px-1.5 py-0.5 rounded border ${
+                showTickGuides
+                  ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
+                  : 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
+              }`}
+              title="Toggle tick guides"
+              type="button"
+            >
+              K
+            </button>
             <span className="px-1 text-gray-400">
               {pauseScroll ? 'Paused Scroll' : 'Live'}
             </span>
@@ -959,6 +1026,8 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
             width={canvasDimensions.width}
             height={canvasDimensions.height}
             onClick={handleCanvasClick}
+            onMouseMove={handleCanvasHover}
+            onMouseLeave={handleCanvasLeave}
             onWheel={handleScopeWheel}
             className="cursor-crosshair border border-gray-700 rounded"
             data-testid="oscilloscope-canvas"
@@ -967,6 +1036,22 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
             data-now-time={getCurrentTime().toFixed(4)}
             data-total-samples={totalSamples}
           />
+          {hoverInfo && (
+            <div
+              className="absolute z-20 pointer-events-none bg-gray-900/90 border border-gray-700 rounded px-2 py-1 text-[10px] text-gray-200"
+              style={{
+                left: Math.min(hoverInfo.x + 12, canvasDimensions.width - 140),
+                top: Math.max(6, Math.min(hoverInfo.y - 12, canvasDimensions.height - 40)),
+              }}
+            >
+              <div className="font-mono" style={{ color: hoverInfo.color }}>
+                {hoverInfo.label}
+              </div>
+              <div className="text-gray-400">
+                t={hoverInfo.time.toFixed(3)}s ƒ?› v={hoverInfo.value}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

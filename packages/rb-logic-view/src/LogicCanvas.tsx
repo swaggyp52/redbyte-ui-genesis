@@ -28,6 +28,11 @@ export interface LogicCanvasProps {
   // Probe toggling callback
   onProbeToggle?: (nodeId: string, portName: string, label: string) => void;
   probedPorts?: Set<string>; // Set of probed port keys (e.g., "nodeId.portName")
+  probeWireHighlights?: Map<string, string[]>;
+  highlightedPort?: { nodeId: string; portName: string } | null;
+  isRunning?: boolean;
+  isReplayMode?: boolean;
+  tickRate?: number;
 }
 
 export const LogicCanvas: React.FC<LogicCanvasProps> = ({
@@ -44,6 +49,11 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   onInputToggled,
   onProbeToggle,
   probedPorts,
+  probeWireHighlights,
+  highlightedPort,
+  isRunning = false,
+  isReplayMode = false,
+  tickRate = 0,
 }) => {
   const {
     camera,
@@ -74,6 +84,17 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const lastCircuitNodeCount = React.useRef(0);
   const lastFocusRequestId = React.useRef<number>(-1);
   const [highlightedNodeId, setHighlightedNodeId] = React.useState<string | null>(null);
+  const [showHud, setShowHud] = React.useState(true);
+  const hudTimerRef = React.useRef<number | null>(null);
+  const bumpHud = React.useCallback(() => {
+    setShowHud(true);
+    if (hudTimerRef.current) {
+      window.clearTimeout(hudTimerRef.current);
+    }
+    hudTimerRef.current = window.setTimeout(() => {
+      setShowHud(false);
+    }, 2400);
+  }, []);
 
   // Invariant: controlled mode requires onCircuitChange callback
   if (import.meta.env.DEV) {
@@ -318,6 +339,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   };
 
   const handleNodeMove = React.useCallback((nodeId: string, x: number, y: number) => {
+    if (isReplayMode) return;
     // Alt temporarily disables snap
     const snapEnabled = shouldSnap && !isAltPressed;
     const newX = snapEnabled ? snapToGrid(x, gridSize) : x;
@@ -356,9 +378,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     };
 
     commitCircuit(updatedCircuit);
-  }, [circuit, shouldSnap, isAltPressed, gridSize, selection.nodes, commitCircuit]);
+  }, [circuit, shouldSnap, isAltPressed, gridSize, selection.nodes, commitCircuit, isReplayMode]);
 
   const handleToggleSwitch = React.useCallback((nodeId: string) => {
+    if (isReplayMode) return;
     const updatedCircuit = {
       ...circuit,
       nodes: circuit.nodes.map((n) => {
@@ -378,9 +401,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     };
 
     commitCircuit(updatedCircuit);
-  }, [circuit, onInputToggled, commitCircuit]);
+  }, [circuit, onInputToggled, commitCircuit, isReplayMode]);
 
   const handlePortClick = React.useCallback((nodeId: string, portName: string) => {
+    if (isReplayMode) return;
     if (editingState.wireStartPort) {
       // End wire - validate connection first
       const from = editingState.wireStartPort;
@@ -417,9 +441,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       // Start wire
       startWire({ nodeId, portName });
     }
-  }, [circuit, editingState.wireStartPort, commitCircuit, endWire, startWire, getChipMetadata]);
+  }, [circuit, editingState.wireStartPort, commitCircuit, endWire, startWire, getChipMetadata, isReplayMode]);
 
   const handleAddNode = React.useCallback((type: string) => {
+    if (isReplayMode) return;
     const newNode: Node = {
       id: `node_${Date.now()}`,
       type,
@@ -437,9 +462,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     };
 
     commitCircuit(updatedCircuit);
-  }, [circuit, camera, width, height, commitCircuit]);
+  }, [circuit, camera, width, height, commitCircuit, isReplayMode]);
 
   const handleDelete = React.useCallback(() => {
+    if (isReplayMode) return;
     // Don't delete if focus is in input/textarea
     const activeElement = document.activeElement;
     if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
@@ -475,7 +501,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       commitCircuit(updatedCircuit);
       clearSelection();
     }
-  }, [circuit, selection.nodes, selection.wires, commitCircuit, clearSelection]);
+  }, [circuit, selection.nodes, selection.wires, commitCircuit, clearSelection, isReplayMode]);
 
   // Fit circuit to view
   const fitToView = React.useCallback(() => {
@@ -567,6 +593,30 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     };
   });
 
+  React.useEffect(() => {
+    bumpHud();
+  }, [bumpHud, selection.nodes.size, selection.wires.size, toolMode, shouldSnap, isRunning, isReplayMode, tickRate]);
+
+  React.useEffect(() => {
+    const handleActivity = () => {
+      bumpHud();
+    };
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+    };
+  }, [bumpHud]);
+
+  React.useEffect(() => {
+    return () => {
+      if (hudTimerRef.current) {
+        window.clearTimeout(hudTimerRef.current);
+      }
+    };
+  }, []);
+
   return (
     <div style={{ position: 'relative', width, height, overflow: 'hidden' }}>
       {showToolbar && (
@@ -581,6 +631,42 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           onFitToView={fitToView}
           onResetView={resetView}
         />
+      )}
+
+      {!showToolbar && showHud && (
+        <div
+          className="absolute top-3 right-3 z-20 bg-gray-900/80 border border-gray-700 rounded px-2.5 py-2 text-[10px] text-gray-300 space-y-1 pointer-events-none"
+          data-testid="circuit-hud"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-gray-500 uppercase tracking-wide">Selection</span>
+            <span className="font-mono">
+              {selection.nodes.size}n / {selection.wires.size}w
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-gray-500 uppercase tracking-wide">Mode</span>
+            <span className="font-mono">{toolMode === 'wire' ? 'Wire' : 'Select'}</span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-gray-500 uppercase tracking-wide">Snap</span>
+            <span className="font-mono">{shouldSnap ? 'On' : 'Off'}</span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-gray-500 uppercase tracking-wide">Sim</span>
+            <span
+              className={`font-mono ${
+                isReplayMode ? 'text-cyan-300' : isRunning ? 'text-green-400' : 'text-gray-400'
+              }`}
+            >
+              {isReplayMode
+                ? `Replay${tickRate ? ` ${tickRate}Hz` : ''}`
+                : isRunning
+                ? `Running${tickRate ? ` ${tickRate}Hz` : ''}`
+                : 'Paused'}
+            </span>
+          </div>
+        </div>
       )}
 
       {/* Interaction Hints */}
@@ -673,6 +759,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         {circuit.connections.map((conn, idx) => {
           const wireId = `${conn.from.nodeId}.${conn.from.portName}-${conn.to.nodeId}.${conn.to.portName}`;
           const signal = signals.get(`${conn.from.nodeId}.${conn.from.portName}`);
+          const probeColors = probeWireHighlights?.get(wireId);
 
           return (
             <WireView
@@ -683,6 +770,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               isSelected={selection.wires.has(wireId)}
               onSelect={selectWire}
               signal={signal}
+              probeColors={probeColors}
             />
           );
         })}
@@ -742,6 +830,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             onPortHover={(portName) => setHoveredPort({ nodeId: node.id, portName })}
             onPortLeave={() => setHoveredPort(null)}
             probedPorts={probedPorts}
+            highlightedPort={highlightedPort}
           />
         ))}
       </svg>

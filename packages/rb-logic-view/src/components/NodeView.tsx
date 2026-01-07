@@ -31,6 +31,7 @@ export interface NodeViewProps {
   onPortHover?: (portName: string) => void; // Port hover for wire validation
   onPortLeave?: () => void; // Port leave for wire validation
   probedPorts?: Set<string>; // Set of probed port keys (e.g., "nodeId.portName")
+  highlightedPort?: { nodeId: string; portName: string } | null;
 }
 
 const NODE_COLORS: Record<string, string> = {
@@ -69,6 +70,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   onPortHover,
   onPortLeave,
   probedPorts,
+  highlightedPort,
 }) => {
   const [isDragging, setIsDragging] = React.useState(false);
   const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 });
@@ -92,6 +94,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const toggleHitHeight = 24;
   const toggleHitX = -toggleHitWidth / 2;
   const toggleHitY = toggleY - (toggleHitHeight - toggleHeight) / 2;
+  const isIssueHighlighted = (portName: string) =>
+    highlightedPort?.nodeId === node.id && highlightedPort.portName === portName;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
@@ -276,6 +280,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           const isWireStart = wireStartPort?.nodeId === node.id && wireStartPort?.portName === input.id;
           const isHovered = hoveredPort === input.id;
           const shouldGlow = isWireStart || (isHovered && wireStartPort);
+          const isIssueHighlight = isIssueHighlighted(input.id);
 
           return (
             <g key={`input-${input.id}`}>
@@ -286,6 +291,20 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                   r={8}
                   fill="#00ffff"
                   opacity={0.4}
+                  style={{ pointerEvents: 'none' }}
+                />
+              )}
+              {isIssueHighlight && (
+                <rect
+                  x={-size / 2 - 6}
+                  y={yPos - 6}
+                  width={12}
+                  height={12}
+                  fill="none"
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  rx={2}
+                  opacity={0.8}
                   style={{ pointerEvents: 'none' }}
                 />
               )}
@@ -407,6 +426,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           const isWireStart = wireStartPort?.nodeId === node.id && wireStartPort?.portName === output.id;
           const isHovered = hoveredPort === output.id;
           const shouldGlow = isWireStart || (isHovered && wireStartPort);
+          const isIssueHighlight = isIssueHighlighted(output.id);
 
           return (
             <g key={`output-${output.id}`}>
@@ -417,6 +437,18 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                   r={8}
                   fill="#00ffff"
                   opacity={0.4}
+                  style={{ pointerEvents: 'none' }}
+                />
+              )}
+              {isIssueHighlight && (
+                <circle
+                  cx={size / 2}
+                  cy={yPos}
+                  r={7}
+                  fill="none"
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  opacity={0.8}
                   style={{ pointerEvents: 'none' }}
                 />
               )}
@@ -640,6 +672,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         const isWireStart = wireStartPort?.nodeId === node.id && wireStartPort?.portName === 'in';
         const isHovered = hoveredPort === 'in';
         const shouldGlow = isWireStart || (isHovered && wireStartPort);
+        const isIssueHighlight = isIssueHighlighted('in');
 
         return (
           <g>
@@ -650,6 +683,18 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 r={8}
                 fill="#00ffff"
                 opacity={0.4}
+                style={{ pointerEvents: 'none' }}
+              />
+            )}
+            {isIssueHighlight && (
+              <circle
+                cx={-size / 2}
+                cy={0}
+                r={8}
+                fill="none"
+                stroke="#f59e0b"
+                strokeWidth={2}
+                opacity={0.8}
                 style={{ pointerEvents: 'none' }}
               />
             )}
@@ -733,6 +778,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         const isWireStart = wireStartPort?.nodeId === node.id && wireStartPort?.portName === 'out';
         const isHovered = hoveredPort === 'out';
         const shouldGlow = isWireStart || (isHovered && wireStartPort);
+        const isIssueHighlight = isIssueHighlighted('out');
 
         return (
           <g>
@@ -743,6 +789,18 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 r={8}
                 fill="#00ffff"
                 opacity={0.4}
+                style={{ pointerEvents: 'none' }}
+              />
+            )}
+            {isIssueHighlight && (
+              <circle
+                cx={size / 2}
+                cy={0}
+                r={8}
+                fill="none"
+                stroke="#f59e0b"
+                strokeWidth={2}
+                opacity={0.8}
                 style={{ pointerEvents: 'none' }}
               />
             )}

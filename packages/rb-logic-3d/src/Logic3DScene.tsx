@@ -22,6 +22,7 @@ interface Logic3DSceneProps {
   showHints?: boolean;
   onDismissHints?: () => void;
   onHelp?: () => void;
+  probeWireHighlights?: Map<string, string[]>;
 }
 
 export const buildSelectionMap = (
@@ -41,7 +42,8 @@ const Scene: React.FC<{
   animateSignalFlow: boolean;
   followSelection: boolean;
   controlsRef: React.RefObject<OrbitControlsImpl>;
-}> = ({ engine, viewStateStore, animateSignalFlow, followSelection, controlsRef }) => {
+  probeWireHighlights?: Map<string, string[]>;
+}> = ({ engine, viewStateStore, animateSignalFlow, followSelection, controlsRef, probeWireHighlights }) => {
   const signals = use3DEngineSync(engine);
   const adapter = useMemo(() => {
     if (!engine || typeof engine.getCircuit !== 'function') {
@@ -168,10 +170,11 @@ const Scene: React.FC<{
           animateSignalFlow && lastChange > 0 ? Math.max(0, 1 - (Date.now() - lastChange) / 250) : 0;
         const from: [number, number, number] = [wire.from.x / 20, 0.25, wire.from.y / 20];
         const to: [number, number, number] = [wire.to.x / 20, 0.25, wire.to.y / 20];
+        const probeColors = probeWireHighlights?.get(wire.id);
 
         return (
           <React.Fragment key={wire.id}>
-            <WireMesh from={from} to={to} isActive={isActive} pulse={pulse} />
+            <WireMesh from={from} to={to} isActive={isActive} pulse={pulse} probeColors={probeColors} />
             {isActive && animateSignalFlow && (
               <SignalParticleSystem from={from} to={to} isActive={isActive} wireId={wire.id} />
             )}
@@ -201,6 +204,7 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
   showHints = true,
   onDismissHints,
   onHelp,
+  probeWireHighlights,
 }) => {
   const [showHelp, setShowHelp] = React.useState(false);
   const [webglFailed, setWebglFailed] = React.useState(false);
@@ -270,6 +274,7 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
           animateSignalFlow={animateSignalFlow}
           followSelection={followSelection}
           controlsRef={controlsRef}
+          probeWireHighlights={probeWireHighlights}
         />
       </Canvas>
 

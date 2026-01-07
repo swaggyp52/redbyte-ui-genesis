@@ -42,6 +42,9 @@ interface SplitViewLayoutProps {
   // Probe toggling
   onProbeToggle?: (nodeId: string, portName: string, label: string) => void;
   probedPorts?: Set<string>;
+  probeWireHighlights?: Map<string, string[]>;
+  highlightedPort?: { nodeId: string; portName: string } | null;
+  isReplayMode?: boolean;
   onHelpOpen?: (section: HelpSectionId) => void;
 }
 
@@ -72,6 +75,9 @@ interface ViewRendererProps {
   onInputToggled?: (nodeId: string, portName: string, newValue: 0 | 1) => void;
   onProbeToggle?: (nodeId: string, portName: string, label: string) => void;
   probedPorts?: Set<string>;
+  probeWireHighlights?: Map<string, string[]>;
+  highlightedPort?: { nodeId: string; portName: string } | null;
+  isReplayMode?: boolean;
   onHelpOpen?: (section: HelpSectionId) => void;
 }
 
@@ -110,6 +116,9 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   onInputToggled,
   onProbeToggle,
   probedPorts,
+  probeWireHighlights,
+  highlightedPort,
+  isReplayMode,
   onHelpOpen,
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -247,7 +256,12 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               onCircuitChange={onCircuitChange}
               onProbeToggle={onProbeToggle}
               probedPorts={probedPorts}
+              probeWireHighlights={probeWireHighlights}
+              highlightedPort={highlightedPort}
               onInputToggled={onInputToggled}
+              isRunning={isRunning}
+              isReplayMode={isReplayMode}
+              tickRate={tickEngine.getTickRate()}
             />
             {onUndo && onRedo && (
               <CircuitToolStrip
@@ -275,6 +289,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               onCircuitChange={onCircuitChange}
               showHints={showSchematicHints}
               onDismissHints={onDismissSchematicHints}
+              probeWireHighlights={probeWireHighlights}
               onHelp={onHelpOpen ? () => onHelpOpen('schematic-controls') : undefined}
             />
           </div>
@@ -308,6 +323,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               getChipMetadata={getChipMetadata}
               showHints={show3DHints}
               onDismissHints={onDismiss3DHints}
+              probeWireHighlights={probeWireHighlights}
               onHelp={onHelpOpen ? () => onHelpOpen('3d-controls') : undefined}
             />
           </div>
@@ -366,6 +382,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   onInputToggled,
   onProbeToggle,
   probedPorts,
+  probeWireHighlights,
+  highlightedPort,
   onHelpOpen,
 }) => {
   // Safety check: ensure engine and circuit are defined
@@ -406,6 +424,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           onInputToggled={onInputToggled}
           onProbeToggle={onProbeToggle}
           probedPorts={probedPorts}
+          probeWireHighlights={probeWireHighlights}
+          highlightedPort={highlightedPort}
+          isReplayMode={isReplayMode}
           onHelpOpen={onHelpOpen}
         />
       </div>
@@ -444,6 +465,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onInputToggled={onInputToggled}
             onProbeToggle={onProbeToggle}
             probedPorts={probedPorts}
+            probeWireHighlights={probeWireHighlights}
+            highlightedPort={highlightedPort}
+            isReplayMode={isReplayMode}
             onHelpOpen={onHelpOpen}
           />
         </div>
@@ -472,6 +496,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
             onProbeToggle={onProbeToggle}
             probedPorts={probedPorts}
+            probeWireHighlights={probeWireHighlights}
+            highlightedPort={highlightedPort}
+            isReplayMode={isReplayMode}
             onHelpOpen={onHelpOpen}
           />
         </div>
@@ -511,6 +538,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onInputToggled={onInputToggled}
             onProbeToggle={onProbeToggle}
             probedPorts={probedPorts}
+            probeWireHighlights={probeWireHighlights}
+            highlightedPort={highlightedPort}
+            isReplayMode={isReplayMode}
             onHelpOpen={onHelpOpen}
           />
         </div>
@@ -539,6 +569,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
             onProbeToggle={onProbeToggle}
             probedPorts={probedPorts}
+            probeWireHighlights={probeWireHighlights}
+            highlightedPort={highlightedPort}
+            isReplayMode={isReplayMode}
             onHelpOpen={onHelpOpen}
           />
         </div>
@@ -576,6 +609,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onInputToggled={onInputToggled}
             onProbeToggle={onProbeToggle}
             probedPorts={probedPorts}
+            probeWireHighlights={probeWireHighlights}
+            highlightedPort={highlightedPort}
+            isReplayMode={isReplayMode}
             onHelpOpen={onHelpOpen}
           />
         </div>
@@ -605,6 +641,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onInputToggled={onInputToggled}
             onProbeToggle={onProbeToggle}
             probedPorts={probedPorts}
+            probeWireHighlights={probeWireHighlights}
+            highlightedPort={highlightedPort}
+            isReplayMode={isReplayMode}
             onHelpOpen={onHelpOpen}
           />
         </div>
@@ -634,6 +673,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onInputToggled={onInputToggled}
             onProbeToggle={onProbeToggle}
             probedPorts={probedPorts}
+            probeWireHighlights={probeWireHighlights}
+            highlightedPort={highlightedPort}
+            isReplayMode={isReplayMode}
             onHelpOpen={onHelpOpen}
           />
         </div>
@@ -662,6 +704,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
             onProbeToggle={onProbeToggle}
             probedPorts={probedPorts}
+            probeWireHighlights={probeWireHighlights}
+            highlightedPort={highlightedPort}
             onHelpOpen={onHelpOpen}
           />
         </div>

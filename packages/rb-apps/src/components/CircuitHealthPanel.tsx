@@ -9,34 +9,41 @@ import { analyzeCircuitHealth, type HealthIssue } from '../logic/circuitHealth';
 export interface CircuitHealthPanelProps {
   circuit: Circuit;
   onFocusNode?: (nodeId: string, portName?: string) => void;
+  onIssueHover?: (nodeId: string | null, portName?: string | null) => void;
 }
 
-const ISSUE_DETAILS: Record<HealthIssue['type'], { why: string; suggestion: string }> = {
+const ISSUE_DETAILS: Record<HealthIssue['type'], { why: string; suggestion: string; fixHint: string }> = {
   'unconnected-input': {
     why: 'Inputs left floating will read as 0 and can block logic evaluation.',
     suggestion: 'Wire the input to a source or remove the gate if unused.',
+    fixHint: 'Connect the input to a switch, input pin, or power source.',
   },
   'floating-output': {
     why: 'Outputs that do not feed anything make it hard to observe behavior.',
     suggestion: 'Connect the output to a Lamp/OUTPUT or another gate.',
+    fixHint: 'Wire the output into a Lamp or OUTPUT node.',
   },
   'disconnected-subgraph': {
     why: 'Disconnected groups of nodes do not affect the main circuit.',
     suggestion: 'Connect the subgraph or delete unused nodes.',
+    fixHint: 'Connect this group to the main circuit or remove it.',
   },
   'no-inputs': {
     why: 'Without an input source, the circuit cannot be stimulated.',
     suggestion: 'Add a Switch, INPUT, or PowerSource.',
+    fixHint: 'Add at least one input source to drive signals.',
   },
   'no-outputs': {
     why: 'Without an output, there is no visible result.',
     suggestion: 'Add a Lamp or OUTPUT node to observe signals.',
+    fixHint: 'Add a Lamp or OUTPUT node to observe behavior.',
   },
 };
 
 export const CircuitHealthPanel: React.FC<CircuitHealthPanelProps> = ({
   circuit,
   onFocusNode,
+  onIssueHover,
 }) => {
   const health = React.useMemo(() => analyzeCircuitHealth(circuit), [circuit]);
   const [ignoredIssues, setIgnoredIssues] = React.useState<Set<string>>(new Set());
@@ -48,6 +55,15 @@ export const CircuitHealthPanel: React.FC<CircuitHealthPanelProps> = ({
     if (onFocusNode) {
       onFocusNode(issue.nodeId, issue.portName);
     }
+  };
+
+  const handleIssueHover = (issue: HealthIssue | null) => {
+    if (!onIssueHover) return;
+    if (!issue) {
+      onIssueHover(null, null);
+      return;
+    }
+    onIssueHover(issue.nodeId, issue.portName ?? null);
   };
 
   const toggleIgnore = (issue: HealthIssue) => {
@@ -142,8 +158,13 @@ export const CircuitHealthPanel: React.FC<CircuitHealthPanelProps> = ({
             <div
               key={i}
               className="w-full text-left p-3 rounded bg-yellow-900/20 border border-yellow-700/30 space-y-2"
+              onMouseEnter={() => handleIssueHover(issue)}
+              onMouseLeave={() => handleIssueHover(null)}
             >
               <div className="text-yellow-300 text-xs font-semibold">{issue.message}</div>
+              <div className="text-[10px] text-yellow-200/80">
+                Fix hint: {ISSUE_DETAILS[issue.type]?.fixHint}
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleIssueFocus(issue)}
@@ -177,8 +198,13 @@ export const CircuitHealthPanel: React.FC<CircuitHealthPanelProps> = ({
             <div
               key={i}
               className="w-full text-left p-3 rounded bg-blue-900/20 border border-blue-700/30 space-y-2"
+              onMouseEnter={() => handleIssueHover(issue)}
+              onMouseLeave={() => handleIssueHover(null)}
             >
               <div className="text-blue-300 text-xs font-semibold">{issue.message}</div>
+              <div className="text-[10px] text-blue-200/80">
+                Fix hint: {ISSUE_DETAILS[issue.type]?.fixHint}
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleIssueFocus(issue)}

@@ -5263,9 +5263,12 @@ After completing work, an AI agent MUST:
 \- Fixed SplitViewLayout to forward probe toggle state across view renderers and avoid undefined access; objectives unchanged; phase unchanged
 \- Added selection mapping helper for Logic3DScene and simplified 3D selection sync test to avoid React DOM warnings; objectives unchanged; phase unchanged
 \- Escaped HelpDock breadcrumb separator to fix JSX parsing during build; objectives unchanged; phase unchanged
+\- Added probe-driven wire highlights across circuit/schematic/3D plus circuit HUD visibility, and extended Circuit Health with fix hints and hover port highlights; objectives unchanged; phase unchanged
+\- Improved oscilloscope readability with tick guides, trace legend stacking, and hover readouts; added helper tests for clock indicator, probe highlights, oscilloscope hover, and HUD auto-hide; objectives unchanged; phase unchanged
 \- Added a compact Clock widget readout (tick count + running indicator with Hz when active) and a tick counter reset action in the Logic Playground TopCommandBar; objectives unchanged; phase unchanged
 \- Hardened switch interaction hit targets to prevent drag/selection conflicts, and updated switch help text to reflect single-click toggling; objectives unchanged; phase unchanged
 \- Added oscilloscope pause-scroll mode with wheel panning, a live time cursor, and step-style trace rendering with on-trace labels, plus new oscilloscope control tests; objectives unchanged; phase unchanged
+\- Added pure stimulus replay helper, relative tick offsets for run recordings, and replay safety guards (edit lock, control lock, state restore); extended run recorder tests for stimulus timing and summary fields; objectives unchanged; phase unchanged
 
 \### 2026-01-05
 \- Fixed LogicPlaygroundApp TickEngine construction to pass circuit + tickRate config (no CircuitEngine type mismatch), updated quick-add to supply default node position, aligned crash-recovery toast call with string-based API, and added demo-mode guard + share-link aria-label for a11y; objectives unchanged; phase unchanged

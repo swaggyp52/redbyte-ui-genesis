@@ -50,6 +50,14 @@ const PROBE_COLORS = [
   '#00ff88',
 ];
 
+const hashProbeId = (id: string) => {
+  let hash = 0;
+  for (let i = 0; i < id.length; i += 1) {
+    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+};
+
 export const useProbeStore = create<ProbeStore>((set, get) => ({
   probes: [],
   activeProbeId: null,
@@ -64,7 +72,7 @@ export const useProbeStore = create<ProbeStore>((set, get) => ({
     }
 
     const id = `probe-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    const color = PROBE_COLORS[get().probes.length % PROBE_COLORS.length];
+    const color = PROBE_COLORS[hashProbeId(id) % PROBE_COLORS.length];
     const nextProbe: Probe = {
       id,
       nodeId,

@@ -19,6 +19,7 @@ interface SchematicViewProps {
   showHints?: boolean;
   onDismissHints?: () => void;
   onHelp?: () => void;
+  probeWireHighlights?: Map<string, string[]>;
 }
 
 interface SchematicNode {
@@ -30,10 +31,12 @@ interface SchematicNode {
 }
 
 interface SchematicWire {
+  id: string;
   from: { x: number; y: number };
   to: { x: number; y: number };
   signal: Signal;
   points: { x: number; y: number }[];
+  probeColors?: string[];
 }
 
 /**
@@ -275,6 +278,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   showHints = true,
   onDismissHints,
   onHelp,
+  probeWireHighlights,
 }) => {
   const [signals, setSignals] = React.useState<Map<string, Signal>>(new Map());
   const updateCircuit = useCircuitStore((state) => state.updateCircuit);
@@ -471,11 +475,13 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   // Route wires between nodes
   const schematicWires = useMemo<SchematicWire[]>(() => {
     return circuit.connections.map((conn) => {
+      const wireId = `${conn.from.nodeId}.${conn.from.portName}-${conn.to.nodeId}.${conn.to.portName}`;
       const fromNode = schematicNodes.find((n) => n.id === conn.from.nodeId);
       const toNode = schematicNodes.find((n) => n.id === conn.to.nodeId);
 
       if (!fromNode || !toNode) {
         return {
+          id: wireId,
           from: { x: 0, y: 0 },
           to: { x: 0, y: 0 },
           signal: 0,
@@ -491,13 +497,15 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
       const signal = signals.get(signalKey) ?? 0;
 
       return {
+        id: wireId,
         from,
         to,
         signal,
         points: routeWire(from, to),
+        probeColors: probeWireHighlights?.get(wireId),
       };
     });
-  }, [circuit.connections, schematicNodes, signals]);
+  }, [circuit.connections, schematicNodes, signals, probeWireHighlights]);
 
   return (
     <div className="w-full h-full bg-gray-900 flex flex-col overflow-hidden">
@@ -611,6 +619,16 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
 
               return (
                 <g key={i}>
+                  {wire.probeColors?.map((color, index) => (
+                    <path
+                      key={`${wire.id}-probe-${index}`}
+                      d={pathData}
+                      stroke={color}
+                      strokeWidth="5"
+                      opacity="0.25"
+                      fill="none"
+                    />
+                  ))}
                   <path
                     d={pathData}
                     stroke={wireColor}

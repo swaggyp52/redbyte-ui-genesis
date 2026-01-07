@@ -13,6 +13,7 @@ export interface WireViewProps {
   isSelected: boolean;
   onSelect: (wireId: string, addToSelection: boolean) => void;
   signal?: 0 | 1;
+  probeColors?: string[];
 }
 
 const WireViewComponent: React.FC<WireViewProps> = ({
@@ -22,6 +23,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
   isSelected,
   onSelect,
   signal,
+  probeColors,
 }) => {
   const fromNode = nodes.find((n) => n.id === connection.from.nodeId);
   const toNode = nodes.find((n) => n.id === connection.to.nodeId);
@@ -52,6 +54,19 @@ const WireViewComponent: React.FC<WireViewProps> = ({
     <g onClick={handleClick} style={{ cursor: 'pointer' }}>
       {/* Invisible wider path for easier clicking */}
       <path d={path} fill="none" stroke="transparent" strokeWidth={10} />
+
+      {/* Probe glow highlight */}
+      {probeColors?.map((color, index) => (
+        <path
+          key={`${wireId}-probe-${index}`}
+          d={path}
+          fill="none"
+          stroke={color}
+          strokeWidth={6}
+          opacity={0.35}
+          filter="blur(3px)"
+        />
+      ))}
 
       {/* Glow effect for active wires */}
       {isActive && !isSelected && (
@@ -106,6 +121,8 @@ const WireViewComponent: React.FC<WireViewProps> = ({
 
 // Memoize WireView to prevent unnecessary re-renders
 export const WireView = React.memo(WireViewComponent, (prevProps, nextProps) => {
+  const prevProbeKey = (prevProps.probeColors ?? []).join('|');
+  const nextProbeKey = (nextProps.probeColors ?? []).join('|');
   // Only re-render if relevant props change
   const prevFromNode = prevProps.nodes.find((n) => n.id === prevProps.connection.from.nodeId);
   const nextFromNode = nextProps.nodes.find((n) => n.id === nextProps.connection.from.nodeId);
@@ -119,6 +136,7 @@ export const WireView = React.memo(WireViewComponent, (prevProps, nextProps) => 
     prevProps.connection.to.portName === nextProps.connection.to.portName &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.signal === nextProps.signal &&
+    prevProbeKey === nextProbeKey &&
     prevProps.camera.x === nextProps.camera.x &&
     prevProps.camera.y === nextProps.camera.y &&
     prevProps.camera.zoom === nextProps.camera.zoom &&
