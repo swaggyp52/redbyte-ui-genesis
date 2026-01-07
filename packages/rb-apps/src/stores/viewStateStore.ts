@@ -24,6 +24,10 @@ interface ViewStateStore {
   splitScreenMode: SplitScreenMode;
   activeViews: ViewMode[];
 
+  // Circuit view bounds (for fit/reset commands)
+  circuitViewSize: { width: number; height: number } | null;
+  setCircuitViewSize: (size: { width: number; height: number } | null) => void;
+
   // Selection actions
   selectNodes: (nodeIds: string[], additive?: boolean) => void;
   selectWires: (wireIds: string[], additive?: boolean) => void;
@@ -54,6 +58,7 @@ export const useViewStateStore = create<ViewStateStore>((set, get) => ({
   autoProbeEnabled: true,
   splitScreenMode: 'single',
   activeViews: ['circuit'],
+  circuitViewSize: null,
 
   // Selection actions
   selectNodes: (nodeIds: string[], additive = false) =>
@@ -140,5 +145,10 @@ export const useViewStateStore = create<ViewStateStore>((set, get) => ({
   setActiveViews: (views: ViewMode[]) =>
     set({
       activeViews: views,
+    }),
+
+  setCircuitViewSize: (size) =>
+    set({
+      circuitViewSize: size,
     }),
 }));

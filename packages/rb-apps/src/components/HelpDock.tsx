@@ -20,6 +20,7 @@ export interface HelpDockProps {
   onClose?: () => void;
   onLoadExample?: (exampleId: ExampleId, highlightComponents?: string[]) => void;
   width?: number;
+  focusSection?: HelpSectionId | null;
 }
 
 interface Lesson {
@@ -29,6 +30,65 @@ interface Lesson {
   example?: ExampleId;
   highlightComponents?: string[];
 }
+
+export type HelpSectionId =
+  | 'circuit-controls'
+  | 'schematic-controls'
+  | 'scope-controls'
+  | '3d-controls';
+
+const CONTROL_SECTIONS: Record<
+  HelpSectionId,
+  { title: string; summary: string; items: string[] }
+> = {
+  'circuit-controls': {
+    title: 'Circuit Controls',
+    summary: 'Build, wire, and inspect with precise input control.',
+    items: [
+      'Click switches to toggle inputs instantly',
+      'W: Toggle wire tool, click ports to connect',
+      'G: Toggle snap to grid (Alt to temporarily disable)',
+      'F: Fit circuit to view, 0: Reset view',
+      'Drag to move, Shift+Click to multi-select, Delete to remove',
+      'Ctrl/Cmd+Z: Undo, Ctrl/Cmd+Shift+Z: Redo',
+    ],
+  },
+  'schematic-controls': {
+    title: 'Schematic Controls',
+    summary: 'Inspect IEEE/ANSI symbols with clean pan/zoom.',
+    items: [
+      'Shift+Drag to pan, Scroll to zoom',
+      'Drag nodes to reposition in schematic view',
+      'F: Fit to view, 0: Reset view',
+    ],
+  },
+  'scope-controls': {
+    title: 'Scope Controls',
+    summary: 'Inspect signals over time without losing data.',
+    items: [
+      'Pause Scroll keeps sampling while view stops auto-follow',
+      'Wheel pan while paused to inspect history',
+      'Clear resets the scope display only when you request it',
+      'Time cursor shows current time; toggle if needed',
+      'Trace labels show probe name and latest value',
+    ],
+  },
+  '3d-controls': {
+    title: '3D Controls',
+    summary: 'See live signals with spatial context.',
+    items: [
+      'Click nodes to select (syncs to other views)',
+      'Follow Selection keeps camera centered on selection',
+      'Animate signal flow emphasizes active connections',
+      'Use Fit to re-center the scene',
+    ],
+  },
+};
+
+const COMMON_SHORTCUTS = [
+  'Layout: 1-5 presets, Shift+1-4 single views',
+  'Probes: Right-click ports to toggle, Shift+P opens Probes tab',
+];
 
 const SAMPLE_LESSONS: Lesson[] = [
   {
@@ -84,7 +144,7 @@ const SAMPLE_LESSONS: Lesson[] = [
           <div className="text-xs font-semibold text-blue-400 mb-2">👉 Try This</div>
           <ol className="text-sm text-gray-300 space-y-2 list-decimal list-inside">
             <li>Load the example</li>
-            <li>Double-click the switch to toggle it</li>
+            <li>Click the switch to toggle it</li>
             <li>Press Step to see the change</li>
             <li>Watch the lamp respond!</li>
           </ol>
@@ -137,12 +197,14 @@ export const HelpDock: React.FC<HelpDockProps> = ({
   onClose,
   onLoadExample,
   width = 400,
+  focusSection,
 }) => {
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   if (!visible) return null;
 
+  const focusedSection = focusSection ? CONTROL_SECTIONS[focusSection] : null;
   const currentLesson = SAMPLE_LESSONS[currentLessonIndex];
   const hasPrev = currentLessonIndex > 0;
   const hasNext = currentLessonIndex < SAMPLE_LESSONS.length - 1;
@@ -177,8 +239,12 @@ export const HelpDock: React.FC<HelpDockProps> = ({
         <div className="flex items-center gap-2">
           <span className="text-xl">📖</span>
           <div className="flex flex-col">
-            <div className="text-xs text-gray-500">Learn Mode</div>
-            <div className="text-sm font-semibold text-white">{currentLesson.title}</div>
+            <div className="text-xs text-gray-500">
+              {focusedSection ? 'Controls' : 'Learn Mode'}
+            </div>
+            <div className="text-sm font-semibold text-white">
+              {focusedSection ? focusedSection.title : currentLesson.title}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -204,59 +270,93 @@ export const HelpDock: React.FC<HelpDockProps> = ({
       {/* Breadcrumb - "You are here" */}
       <div className="px-4 py-2 bg-cyan-900/10 border-b border-gray-700">
         <div className="text-xs text-cyan-400 flex items-center gap-1">
-          <span>📍</span>
-          <span>Track A</span>
-          <span className="text-gray-600">›</span>
-          <span>Lesson {currentLessonIndex + 1} of {SAMPLE_LESSONS.length}</span>
+          <span>dY"?</span>
+          {focusedSection ? (
+            <span>{focusedSection.title}</span>
+          ) : (
+            <>
+              <span>Track A</span>
+              <span className="text-gray-600">></span>
+              <span>Lesson {currentLessonIndex + 1} of {SAMPLE_LESSONS.length}</span>
+            </>
+          )}
         </div>
       </div>
 
       {/* Lesson Content */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        {currentLesson.content}
+        {focusedSection ? (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-300">{focusedSection.summary}</p>
+            <div className="bg-gray-800/60 border border-gray-700 rounded p-3">
+              <ul className="text-sm text-gray-300 space-y-2 list-disc list-inside">
+                {focusedSection.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="bg-slate-900/50 border border-slate-700 rounded p-3">
+              <div className="text-xs font-semibold text-slate-300 uppercase mb-2">
+                Global Shortcuts
+              </div>
+              <ul className="text-xs text-gray-300 space-y-1 list-disc list-inside">
+                {COMMON_SHORTCUTS.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : (
+          <>
+            {currentLesson.content}
 
-        {/* Load Example Button */}
-        {currentLesson.example && (
-          <button
-            onClick={handleLoadExample}
-            className="w-full mt-4 px-4 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg font-semibold text-sm transition-all shadow-lg flex items-center justify-center gap-2"
-          >
-            <span className="text-lg">📚</span>
-            Load Example
-          </button>
+            {/* Load Example Button */}
+            {currentLesson.example && (
+              <button
+                onClick={handleLoadExample}
+                className="w-full mt-4 px-4 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg font-semibold text-sm transition-all shadow-lg flex items-center justify-center gap-2"
+              >
+                <span className="text-lg">dY"s</span>
+                Load Example
+              </button>
+            )}
+          </>
         )}
       </div>
 
       {/* Navigation Footer */}
-      <div className="border-t border-gray-700 bg-gray-850 px-4 py-3 flex items-center justify-between">
-        <button
-          onClick={() => setCurrentLessonIndex(Math.max(0, currentLessonIndex - 1))}
-          disabled={!hasPrev}
-          className={`px-3 py-1.5 rounded text-sm transition-all ${
-            hasPrev
-              ? 'bg-gray-700 hover:bg-gray-600 text-white'
-              : 'bg-gray-800 text-gray-600 cursor-not-allowed'
-          }`}
-        >
-          ← Previous
-        </button>
+      {!focusedSection && (
+        <div className="border-t border-gray-700 bg-gray-850 px-4 py-3 flex items-center justify-between">
+          <button
+            onClick={() => setCurrentLessonIndex(Math.max(0, currentLessonIndex - 1))}
+            disabled={!hasPrev}
+            className={`px-3 py-1.5 rounded text-sm transition-all ${
+              hasPrev
+                ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+            }`}
+          >
+            Previous
+          </button>
 
-        <div className="text-xs text-gray-400">
-          {currentLessonIndex + 1} / {SAMPLE_LESSONS.length}
+          <div className="text-xs text-gray-400">
+            {currentLessonIndex + 1} / {SAMPLE_LESSONS.length}
+          </div>
+
+          <button
+            onClick={() => setCurrentLessonIndex(Math.min(SAMPLE_LESSONS.length - 1, currentLessonIndex + 1))}
+            disabled={!hasNext}
+            className={`px-3 py-1.5 rounded text-sm transition-all ${
+              hasNext
+                ? 'bg-cyan-600 hover:bg-cyan-500 text-white'
+                : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+            }`}
+          >
+            Next
+          </button>
         </div>
+      )}
 
-        <button
-          onClick={() => setCurrentLessonIndex(Math.min(SAMPLE_LESSONS.length - 1, currentLessonIndex + 1))}
-          disabled={!hasNext}
-          className={`px-3 py-1.5 rounded text-sm transition-all ${
-            hasNext
-              ? 'bg-cyan-600 hover:bg-cyan-500 text-white'
-              : 'bg-gray-800 text-gray-600 cursor-not-allowed'
-          }`}
-        >
-          Next →
-        </button>
-      </div>
     </div>
   );
 };

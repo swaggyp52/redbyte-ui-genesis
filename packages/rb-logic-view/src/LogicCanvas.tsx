@@ -25,6 +25,9 @@ export interface LogicCanvasProps {
   onDismissHints?: () => void;
   // Milestone D: Determinism recording (optional, dev-only)
   onInputToggled?: (nodeId: string, portName: string, newValue: 0 | 1) => void;
+  // Probe toggling callback
+  onProbeToggle?: (nodeId: string, portName: string, label: string) => void;
+  probedPorts?: Set<string>; // Set of probed port keys (e.g., "nodeId.portName")
 }
 
 export const LogicCanvas: React.FC<LogicCanvasProps> = ({
@@ -39,6 +42,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   showHints = true,
   onDismissHints,
   onInputToggled,
+  onProbeToggle,
+  probedPorts,
 }) => {
   const {
     camera,
@@ -730,11 +735,13 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             onPortClick={handlePortClick}
             onToggleSwitch={handleToggleSwitch}
             onNodeDoubleClick={onNodeDoubleClick}
+            onProbeToggle={onProbeToggle}
             signals={signals}
             chipMetadata={getChipMetadata?.(node.type)}
             wireStartPort={editingState.wireStartPort}
             onPortHover={(portName) => setHoveredPort({ nodeId: node.id, portName })}
             onPortLeave={() => setHoveredPort(null)}
+            probedPorts={probedPorts}
           />
         ))}
       </svg>

@@ -15,6 +15,7 @@ interface NodeMeshProps {
   position: [number, number, number];
   isActive: boolean;
   isSelected?: boolean;
+  pulse?: number;
   onSelect?: (nodeId: string, additive: boolean) => void;
   onHover?: (nodeId: string | null) => void;
 }
@@ -25,6 +26,7 @@ export const NodeMesh: React.FC<NodeMeshProps> = ({
   position,
   isActive,
   isSelected = false,
+  pulse = 0,
   onSelect,
   onHover,
 }) => {
@@ -45,7 +47,8 @@ export const NodeMesh: React.FC<NodeMeshProps> = ({
     if (meshRef.current) {
       // Update emissive intensity based on active state
       const mat = meshRef.current.material as THREE.MeshStandardMaterial;
-      const targetIntensity = isActive ? 0.8 : 0;
+      const pulseBoost = pulse * 0.6;
+      const targetIntensity = (isActive ? 0.8 : 0) + pulseBoost;
       mat.emissiveIntensity = THREE.MathUtils.lerp(mat.emissiveIntensity, targetIntensity, 0.1);
     }
   });

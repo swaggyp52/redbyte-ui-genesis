@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import type { CircuitEngine } from '@redbyte/rb-logic-core';
@@ -12,6 +12,7 @@ import { WireMesh } from './meshes/WireMesh';
 import { use3DEngineSync } from './hooks/use3DEngineSync';
 import { NodeLabel } from './components/NodeLabel';
 import { SignalParticleSystem } from './components/SignalParticle';
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 
 interface Logic3DSceneProps {
   engine: CircuitEngine;
@@ -20,26 +21,64 @@ interface Logic3DSceneProps {
   viewStateStore?: any; // Global view state store for selection sync
   showHints?: boolean;
   onDismissHints?: () => void;
+  onHelp?: () => void;
 }
+
+export const buildSelectionMap = (
+  nodes: Array<{ id: string }>,
+  selectedNodeIds: Set<string>
+) => {
+  const selectionMap = new Map<string, boolean>();
+  nodes.forEach((node) => {
+    selectionMap.set(node.id, selectedNodeIds.has(node.id));
+  });
+  return selectionMap;
+};
 
 const Scene: React.FC<{
   engine: CircuitEngine;
   viewStateStore?: any;
-}> = ({ engine, viewStateStore }) => {
+  animateSignalFlow: boolean;
+  followSelection: boolean;
+  controlsRef: React.RefObject<OrbitControlsImpl>;
+}> = ({ engine, viewStateStore, animateSignalFlow, followSelection, controlsRef }) => {
   const signals = use3DEngineSync(engine);
-  const adapter = React.useMemo(() => {
+  const adapter = useMemo(() => {
     if (!engine || typeof engine.getCircuit !== 'function') {
       return null;
     }
     return new ViewAdapter(engine, '3d');
   }, [engine]);
 
-  const viewState = React.useMemo(() => {
+  const viewState = useMemo(() => {
     if (!adapter) {
       return { nodes: [], wires: [] };
     }
     return adapter.computeViewState();
   }, [adapter]);
+
+  const [pulseMap, setPulseMap] = useState<Map<string, number>>(new Map());
+  const previousSignalsRef = useRef<Map<string, 0 | 1>>(new Map());
+
+  useEffect(() => {
+    const now = Date.now();
+    const previous = previousSignalsRef.current;
+    const nextPulse = new Map(pulseMap);
+    let changed = false;
+
+    signals.forEach((value, key) => {
+      const previousValue = previous.get(key);
+      if (previousValue !== undefined && previousValue !== value) {
+        nextPulse.set(key, now);
+        changed = true;
+      }
+    });
+
+    previousSignalsRef.current = signals;
+    if (changed) {
+      setPulseMap(nextPulse);
+    }
+  }, [signals, pulseMap]);
 
   // Early return if no valid adapter
   if (!adapter) {
@@ -48,6 +87,23 @@ const Scene: React.FC<{
 
   // Get selection state from global store if available
   const selectedNodeIds = viewStateStore?.getState?.()?.selectedNodeIds || new Set<string>();
+  const selectionMap = useMemo(
+    () => buildSelectionMap(viewState.nodes, selectedNodeIds),
+    [viewState.nodes, selectedNodeIds]
+  );
+
+  useEffect(() => {
+    if (!followSelection) return;
+    if (!controlsRef.current) return;
+    const selectedId = Array.from(selectedNodeIds)[0];
+    if (!selectedId) return;
+    const targetNode = viewState.nodes.find((node) => node.id === selectedId);
+    if (!targetNode) return;
+    const targetX = targetNode.view.x / 20;
+    const targetZ = targetNode.view.y / 20;
+    controlsRef.current.target.set(targetX, 0.25, targetZ);
+    controlsRef.current.update();
+  }, [followSelection, selectedNodeIds, viewState.nodes, controlsRef]);
 
   const handleNodeSelect = useCallback(
     (nodeId: string, additive: boolean) => {
@@ -78,9 +134,13 @@ const Scene: React.FC<{
 
       {/* Nodes */}
       {viewState.nodes.map((node) => {
-        const isActive = signals.get(`${node.id}.out`) === 1;
+        const signalKey = `${node.id}.out`;
+        const isActive = signals.get(signalKey) === 1;
         const position: [number, number, number] = [node.view.x / 20, 0.25, node.view.y / 20];
-        const isSelected = selectedNodeIds.has(node.id);
+        const isSelected = selectionMap.get(node.id) ?? false;
+        const lastChange = pulseMap.get(signalKey) ?? 0;
+        const pulse =
+          animateSignalFlow && lastChange > 0 ? Math.max(0, 1 - (Date.now() - lastChange) / 250) : 0;
 
         return (
           <React.Fragment key={node.id}>
@@ -90,6 +150,7 @@ const Scene: React.FC<{
               position={position}
               isActive={isActive}
               isSelected={isSelected}
+              pulse={pulse}
               onSelect={handleNodeSelect}
               onHover={handleNodeHover}
             />
@@ -100,18 +161,18 @@ const Scene: React.FC<{
 
       {/* Wires with signal particles */}
       {viewState.wires.map((wire) => {
-        const fromNode = viewState.nodes.find((n) =>
-          wire.id.startsWith(n.id)
-        );
         const signalKey = wire.id.split('-')[0];
         const isActive = signals.get(signalKey) === 1;
+        const lastChange = pulseMap.get(signalKey) ?? 0;
+        const pulse =
+          animateSignalFlow && lastChange > 0 ? Math.max(0, 1 - (Date.now() - lastChange) / 250) : 0;
         const from: [number, number, number] = [wire.from.x / 20, 0.25, wire.from.y / 20];
         const to: [number, number, number] = [wire.to.x / 20, 0.25, wire.to.y / 20];
 
         return (
           <React.Fragment key={wire.id}>
-            <WireMesh from={from} to={to} isActive={isActive} />
-            {isActive && (
+            <WireMesh from={from} to={to} isActive={isActive} pulse={pulse} />
+            {isActive && animateSignalFlow && (
               <SignalParticleSystem from={from} to={to} isActive={isActive} wireId={wire.id} />
             )}
           </React.Fragment>
@@ -120,6 +181,7 @@ const Scene: React.FC<{
 
       {/* Camera controls with better settings */}
       <OrbitControls
+        ref={controlsRef}
         makeDefault
         enableDamping
         dampingFactor={0.05}
@@ -138,9 +200,13 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
   viewStateStore,
   showHints = true,
   onDismissHints,
+  onHelp,
 }) => {
   const [showHelp, setShowHelp] = React.useState(false);
   const [webglFailed, setWebglFailed] = React.useState(false);
+  const [followSelection, setFollowSelection] = useState(false);
+  const [animateSignalFlow, setAnimateSignalFlow] = useState(true);
+  const controlsRef = useRef<OrbitControlsImpl>(null);
   const circuit = engine?.getCircuit?.();
   const hasNodes = circuit?.nodes?.length > 0;
 
@@ -198,7 +264,13 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
       >
         <color attach="background" args={['#0a0a0a']} />
         <fog attach="fog" args={['#0a0a0a', 20, 60]} />
-        <Scene engine={engine} viewStateStore={viewStateStore} />
+        <Scene
+          engine={engine}
+          viewStateStore={viewStateStore}
+          animateSignalFlow={animateSignalFlow}
+          followSelection={followSelection}
+          controlsRef={controlsRef}
+        />
       </Canvas>
 
       {/* Empty state hints */}
@@ -228,13 +300,58 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
         </div>
       )}
 
-      {/* Help button */}
-      <button
-        onClick={() => setShowHelp(!showHelp)}
-        className="absolute top-2 right-2 px-2 py-1 bg-gray-800 hover:bg-gray-700 text-white text-xs rounded border border-gray-600 z-50"
-      >
-        {showHelp ? 'Hide' : 'Controls'}
-      </button>
+      <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-gray-900/80 border border-gray-700 rounded px-2 py-1 text-[10px] z-50" data-testid="3d-micro-toolbar">
+        <button
+          onClick={() => setFollowSelection((prev) => !prev)}
+          className={`px-1.5 py-0.5 rounded border ${
+            followSelection
+              ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
+              : 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
+          }`}
+          title="Follow selection"
+        >
+          Follow
+        </button>
+        <button
+          onClick={() => setAnimateSignalFlow((prev) => !prev)}
+          className={`px-1.5 py-0.5 rounded border ${
+            animateSignalFlow
+              ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
+              : 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
+          }`}
+          title="Animate signal flow"
+        >
+          Flow
+        </button>
+        <button
+          onClick={() => {
+            if (!controlsRef.current) return;
+            controlsRef.current.object.position.set(10, 10, 10);
+            controlsRef.current.target.set(0, 0.25, 0);
+            controlsRef.current.update();
+          }}
+          className="px-1.5 py-0.5 rounded border border-gray-600 text-gray-300 hover:bg-gray-700/60"
+          title="Center camera"
+        >
+          Fit
+        </button>
+        {onHelp && (
+          <button
+            onClick={onHelp}
+            className="px-1.5 py-0.5 rounded border border-gray-600 text-gray-300 hover:bg-gray-700/60"
+            title="3D controls"
+          >
+            ?
+          </button>
+        )}
+        <button
+          onClick={() => setShowHelp(!showHelp)}
+          className="px-1.5 py-0.5 rounded border border-gray-600 text-gray-300 hover:bg-gray-700/60"
+          title="Toggle inline help"
+        >
+          i
+        </button>
+      </div>
 
       {/* Help overlay */}
       {showHelp && (

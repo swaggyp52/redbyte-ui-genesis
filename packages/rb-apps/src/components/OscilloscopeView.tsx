@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import type { CircuitEngine, Node, TickEngine } from '@redbyte/rb-logic-core';
 import { useViewStateStore } from '../stores/viewStateStore';
 import { useProbeStore } from '../stores/probeStore';
+import { useOscilloscopeStore } from '../stores/oscilloscopeStore';
 import {
   calculateMeasurements,
   type SignalSample,
@@ -42,6 +43,7 @@ interface OscilloscopeViewProps {
   height?: number;
   showHints?: boolean;
   onDismissHints?: () => void;
+  onHelp?: () => void;
 }
 
 const MAX_SAMPLES = 500; // Maximum samples to keep in buffer
@@ -56,6 +58,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   height = 600,
   showHints = true,
   onDismissHints,
+  onHelp,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -71,6 +74,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   const [probeData, setProbeData] = useState<Map<string, ProbeData>>(new Map());
   const [timeScale, setTimeScale] = useState(10); // seconds visible
   const [voltageScale, setVoltageScale] = useState(1.5); // vertical scale
+  const [viewEndTime, setViewEndTime] = useState(0);
 
   // Trigger configuration
   const [triggerConfig, setTriggerConfig] = useState<TriggerConfig>({
@@ -99,9 +103,29 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   const samplingIntervalRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
   const measurementUpdateRef = useRef<number | null>(null);
+  const pauseScroll = useOscilloscopeStore((state) => state.pauseScroll);
+  const togglePauseScroll = useOscilloscopeStore((state) => state.togglePauseScroll);
+  const showTimeCursor = useOscilloscopeStore((state) => state.showTimeCursor);
+  const toggleTimeCursor = useOscilloscopeStore((state) => state.toggleTimeCursor);
+  const clearRequestId = useOscilloscopeStore((state) => state.clearRequestId);
+  const requestClear = useOscilloscopeStore((state) => state.requestClear);
+  const pauseScrollRef = useRef(pauseScroll);
 
   // Get global selection state for auto-probe
   const { selectedNodeIds, autoProbeEnabled, setAutoProbeEnabled } = useViewStateStore();
+  const getCurrentTime = useCallback(() => (Date.now() - startTimeRef.current) / 1000, []);
+
+  useEffect(() => {
+    pauseScrollRef.current = pauseScroll;
+  }, [pauseScroll]);
+
+  useEffect(() => {
+    if (pauseScroll) {
+      setViewEndTime((prev) => (prev === 0 ? getCurrentTime() : prev));
+    } else {
+      setViewEndTime(getCurrentTime());
+    }
+  }, [pauseScroll, getCurrentTime]);
 
 
   // Update canvas dimensions based on container size
@@ -224,8 +248,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   const sampleSignals = useCallback(() => {
     if (!isRunning) return;
 
-    const now = Date.now();
-    const relativeTime = (now - startTimeRef.current) / 1000; // seconds
+    const relativeTime = getCurrentTime(); // seconds
 
     setProbeData((prevData) => {
       const newData = new Map(prevData);
@@ -233,12 +256,11 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       probes.forEach((probe) => {
         if (!probe.enabled) return;
 
-        // Get the node
+        // Get the node - if it doesn't exist, continue sampling with value 0 (missing node)
         const node = circuit.nodes.find((n) => n.id === probe.nodeId);
-        if (!node) return;
 
-        // Get signal value from engine
-        const outputs = engine.getNodeOutputs(probe.nodeId);
+        // Get signal value from engine (will be 0 if node doesn't exist)
+        const outputs = node ? engine.getNodeOutputs(probe.nodeId) : {};
         const value = outputs[probe.portName] ?? 0;
 
         // Get or create probe data
@@ -265,7 +287,11 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
 
       return newData;
     });
-  }, [isRunning, probes, circuit.nodes, engine]);
+
+    if (!pauseScrollRef.current) {
+      setViewEndTime(relativeTime);
+    }
+  }, [isRunning, probes, circuit.nodes, engine, getCurrentTime]);
 
   // Start/stop trace recording
   useEffect(() => {
@@ -282,6 +308,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       // Reset start time when starting
       startTimeRef.current = Date.now();
       setTotalSamples(0);
+      setViewEndTime(0);
 
       // Start sampling
       samplingIntervalRef.current = window.setInterval(sampleSignals, SAMPLE_INTERVAL);
@@ -335,9 +362,12 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const renderWidth = canvasDimensions.width;
+    const renderHeight = canvasDimensions.height;
+
     // Clear canvas
     ctx.fillStyle = '#0a0e1a';
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillRect(0, 0, renderWidth, renderHeight);
 
     // Draw grid
     if (showGrid) {
@@ -345,21 +375,20 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       ctx.lineWidth = 1;
 
       // Vertical lines (time divisions)
-      const timeDiv = timeScale / 10;
       for (let i = 0; i <= 10; i++) {
-        const x = (i / 10) * width;
+        const x = (i / 10) * renderWidth;
         ctx.beginPath();
         ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
+        ctx.lineTo(x, renderHeight);
         ctx.stroke();
       }
 
       // Horizontal lines (voltage divisions)
       for (let i = 0; i <= 8; i++) {
-        const y = (i / 8) * height;
+        const y = (i / 8) * renderHeight;
         ctx.beginPath();
         ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
+        ctx.lineTo(renderWidth, y);
         ctx.stroke();
       }
 
@@ -367,14 +396,14 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       ctx.strokeStyle = '#2a3342';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(0, height / 2);
-      ctx.lineTo(width, height / 2);
+      ctx.moveTo(0, renderHeight / 2);
+      ctx.lineTo(renderWidth, renderHeight / 2);
       ctx.stroke();
     }
 
     // Get current time
-    const now = Date.now();
-    const currentTime = (now - startTimeRef.current) / 1000;
+    const currentTime = getCurrentTime();
+    const windowEndTime = pauseScroll ? viewEndTime : currentTime;
 
     // Draw waveforms
     probes.forEach((probe) => {
@@ -388,42 +417,81 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       ctx.beginPath();
 
       let firstPoint = true;
+      let previousY = 0;
 
-      data.samples.forEach((sample, index) => {
+      data.samples.forEach((sample) => {
         // Calculate x position (time axis)
-        const timeOffset = currentTime - sample.timestamp;
+        const timeOffset = windowEndTime - sample.timestamp;
         if (timeOffset > timeScale) return; // Sample too old
 
-        const x = width - (timeOffset / timeScale) * width;
+        const x = renderWidth - (timeOffset / timeScale) * renderWidth;
 
         // Calculate y position (voltage axis)
-        // Map 0-1 signal to vertical position
-        const y = height / 2 - (sample.value * voltageScale * height) / 4;
+        const y = renderHeight / 2 - (sample.value * voltageScale * renderHeight) / 4;
 
         if (firstPoint) {
           ctx.moveTo(x, y);
           firstPoint = false;
+          previousY = y;
         } else {
+          ctx.lineTo(x, previousY);
           ctx.lineTo(x, y);
+          previousY = y;
         }
       });
 
       ctx.stroke();
+
+      const latestSample = data.samples[data.samples.length - 1];
+      if (latestSample) {
+        const latestOffset = windowEndTime - latestSample.timestamp;
+        const latestX = renderWidth - (latestOffset / timeScale) * renderWidth;
+        const labelX = Math.min(renderWidth - 6, Math.max(6, latestX + 8));
+        const labelY =
+          renderHeight / 2 - (latestSample.value * voltageScale * renderHeight) / 4;
+        const label = `${probe.label} ${latestSample.value}`;
+
+        ctx.font = '10px monospace';
+        const textWidth = ctx.measureText(label).width;
+        ctx.fillStyle = 'rgba(10, 14, 26, 0.85)';
+        ctx.fillRect(labelX - 4, labelY - 8, textWidth + 8, 14);
+        ctx.fillStyle = probe.color;
+        ctx.fillText(label, labelX, labelY + 2);
+      }
     });
+
+    // Draw "now" cursor
+    if (showTimeCursor) {
+      const nowCursorTime = pauseScroll ? viewEndTime : currentTime;
+      const nowCursorX =
+        renderWidth - ((windowEndTime - nowCursorTime) / timeScale) * renderWidth;
+      if (nowCursorX >= 0 && nowCursorX <= renderWidth) {
+        ctx.strokeStyle = '#9ca3af';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(nowCursorX, 0);
+        ctx.lineTo(nowCursorX, renderHeight);
+        ctx.stroke();
+
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '10px monospace';
+        ctx.fillText(`t=${nowCursorTime.toFixed(2)}s`, nowCursorX + 4, 12);
+      }
+    }
 
     // Draw cursors
     cursors.forEach((cursor, index) => {
-      const timeOffset = currentTime - cursor.time;
-      const cursorX = width - (timeOffset / timeScale) * width;
+      const timeOffset = windowEndTime - cursor.time;
+      const cursorX = renderWidth - (timeOffset / timeScale) * renderWidth;
 
-      if (cursorX < 0 || cursorX > width) return; // Cursor off screen
+      if (cursorX < 0 || cursorX > renderWidth) return; // Cursor off screen
 
       ctx.strokeStyle = cursor.color;
       ctx.lineWidth = 2;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
       ctx.moveTo(cursorX, 0);
-      ctx.lineTo(cursorX, height);
+      ctx.lineTo(cursorX, renderHeight);
       ctx.stroke();
       ctx.setLineDash([]);
 
@@ -441,19 +509,31 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
 
       ctx.fillStyle = '#00ff00';
       ctx.font = '14px monospace';
-      ctx.fillText(`Δt: ${dt.toFixed(3)}s`, width - 150, 40);
-      ctx.fillText(`Δf: ${freq.toFixed(2)}Hz`, width - 150, 60);
+      ctx.fillText(`I"t: ${dt.toFixed(3)}s`, renderWidth - 150, 40);
+      ctx.fillText(`I"f: ${freq.toFixed(2)}Hz`, renderWidth - 150, 60);
     }
 
     // Draw time labels
     ctx.fillStyle = '#888';
     ctx.font = '10px monospace';
     for (let i = 0; i <= 10; i++) {
-      const time = currentTime - (timeScale * (10 - i)) / 10;
-      const x = (i / 10) * width;
-      ctx.fillText(`${time.toFixed(1)}s`, x + 2, height - 5);
+      const time = windowEndTime - (timeScale * (10 - i)) / 10;
+      const x = (i / 10) * renderWidth;
+      ctx.fillText(`${time.toFixed(1)}s`, x + 2, renderHeight - 5);
     }
-  }, [probes, probeData, width, height, timeScale, voltageScale, cursors, showGrid]);
+  }, [
+    probes,
+    probeData,
+    timeScale,
+    voltageScale,
+    cursors,
+    showGrid,
+    canvasDimensions,
+    getCurrentTime,
+    pauseScroll,
+    showTimeCursor,
+    viewEndTime,
+  ]);
 
   // Add probe
   const handleAddProbe = () => {
@@ -494,15 +574,60 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   };
 
   // Clear all data
-  const handleClearData = () => {
+  const handleClearData = useCallback(() => {
     setProbeData(new Map());
     startTimeRef.current = Date.now();
+    setViewEndTime(0);
 
     // Also clear the trace recorder
     const traceRecorder = tickEngine.getTraceRecorder();
     if (traceRecorder) {
       traceRecorder.clear();
     }
+  }, [tickEngine]);
+
+  useEffect(() => {
+    if (clearRequestId === 0) return;
+    handleClearData();
+  }, [clearRequestId, handleClearData]);
+
+  const sampleBounds = useMemo(() => {
+    let minTime = Infinity;
+    let maxTime = -Infinity;
+    probeData.forEach((data) => {
+      data.samples.forEach((sample) => {
+        minTime = Math.min(minTime, sample.timestamp);
+        maxTime = Math.max(maxTime, sample.timestamp);
+      });
+    });
+
+    return {
+      minSampleTime: Number.isFinite(minTime) ? minTime : 0,
+      maxSampleTime: Number.isFinite(maxTime) ? maxTime : 0,
+    };
+  }, [probeData]);
+
+  const clampViewEndTime = useCallback(
+    (nextEndTime: number) => {
+      const minEnd = sampleBounds.minSampleTime + timeScale;
+      const maxEnd = Math.max(sampleBounds.maxSampleTime, minEnd);
+      return Math.min(maxEnd, Math.max(minEnd, nextEndTime));
+    },
+    [sampleBounds, timeScale]
+  );
+
+  const handlePauseScrollToggle = () => {
+    togglePauseScroll();
+  };
+
+  const handleScopeWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    if (!pauseScroll) return;
+    if (sampleBounds.maxSampleTime <= 0) return;
+    e.preventDefault();
+    const delta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
+    const secondsPerPixel = timeScale / canvasDimensions.width;
+    const shiftSeconds = delta * secondsPerPixel * 10;
+    setViewEndTime((prev) => clampViewEndTime(prev + shiftSeconds));
   };
 
   // Canvas click for cursor
@@ -514,10 +639,10 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     const x = e.clientX - rect.left;
 
     // Calculate time from click position
-    const now = Date.now();
-    const currentTime = (now - startTimeRef.current) / 1000;
-    const timeOffset = ((width - x) / width) * timeScale;
-    const clickedTime = currentTime - timeOffset;
+    const currentTime = getCurrentTime();
+    const windowEndTime = pauseScroll ? viewEndTime : currentTime;
+    const timeOffset = ((canvasDimensions.width - x) / canvasDimensions.width) * timeScale;
+    const clickedTime = windowEndTime - timeOffset;
 
     // Shift+click adds second cursor
     if (e.shiftKey && cursors.length < 2) {
@@ -649,10 +774,22 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
           <div className="w-px h-4 bg-gray-600" />
 
           <button
-            onClick={handleClearData}
+            onClick={requestClear}
             className="px-2 py-0.5 bg-gray-700 hover:bg-gray-600 rounded text-xs"
           >
             Clear
+          </button>
+
+          <button
+            onClick={handlePauseScrollToggle}
+            className={`px-2 py-0.5 rounded text-xs border ${
+              pauseScroll
+                ? 'bg-cyan-700/20 border-cyan-500 text-cyan-200'
+                : 'bg-gray-700 hover:bg-gray-600 border-gray-600'
+            }`}
+            title="Pause scroll (keeps simulation running)"
+          >
+            Pause Scroll
           </button>
 
           <label className="flex items-center gap-1.5 cursor-pointer">
@@ -739,6 +876,56 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
 
         {/* Canvas */}
         <div ref={canvasContainerRef} className="flex-1 flex items-center justify-center bg-gray-950 p-2 relative overflow-hidden">
+          <div
+            className="absolute top-2 left-2 z-20 flex items-center gap-1.5 bg-gray-900/80 border border-gray-700 rounded px-2 py-1 text-[10px]"
+            data-testid="scope-micro-toolbar"
+          >
+            <button
+              onClick={handlePauseScrollToggle}
+              className={`px-1.5 py-0.5 rounded border ${
+                pauseScroll
+                  ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
+                  : 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
+              }`}
+              title="Pause scroll (keeps simulation running)"
+              type="button"
+            >
+              P
+            </button>
+            <button
+              onClick={requestClear}
+              className="px-1.5 py-0.5 rounded border border-gray-600 text-gray-300 hover:bg-gray-700/60"
+              title="Clear scope"
+              type="button"
+            >
+              C
+            </button>
+            <button
+              onClick={toggleTimeCursor}
+              className={`px-1.5 py-0.5 rounded border ${
+                showTimeCursor
+                  ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
+                  : 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
+              }`}
+              title="Toggle time cursor"
+              type="button"
+            >
+              T
+            </button>
+            <span className="px-1 text-gray-400">
+              {pauseScroll ? 'Paused Scroll' : 'Live'}
+            </span>
+            {onHelp && (
+              <button
+                onClick={onHelp}
+                className="px-1.5 py-0.5 rounded border border-gray-600 text-gray-300 hover:bg-gray-700/60"
+                title="Scope controls"
+                type="button"
+              >
+                ?
+              </button>
+            )}
+          </div>
           {/* Interaction hints when no probes */}
           {probes.length === 0 && showHints && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
@@ -772,7 +959,13 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
             width={canvasDimensions.width}
             height={canvasDimensions.height}
             onClick={handleCanvasClick}
+            onWheel={handleScopeWheel}
             className="cursor-crosshair border border-gray-700 rounded"
+            data-testid="oscilloscope-canvas"
+            data-pause-scroll={pauseScroll ? 'on' : 'off'}
+            data-view-end-time={viewEndTime.toFixed(4)}
+            data-now-time={getCurrentTime().toFixed(4)}
+            data-total-samples={totalSamples}
           />
         </div>
       </div>
@@ -836,29 +1029,38 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
             </p>
           ) : (
             <div className="space-y-1.5">
-              {probes.map((probe) => (
-                <div
-                  key={probe.id}
-                  className={`p-2 rounded border transition-colors ${
-                    probe.id === activeProbeId
-                      ? 'border-cyan-500/70 bg-cyan-900/20'
-                      : 'border-gray-700 bg-gray-800 hover:bg-gray-800/80'
-                  }`}
-                  onClick={() => setActiveProbe(probe.id)}
-                >
-                  <div className="flex items-start gap-1.5 mb-1">
-                    <div
-                      className="w-2.5 h-2.5 rounded-full mt-0.5 flex-shrink-0"
-                      style={{ backgroundColor: probe.color }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium truncate">
-                        {probe.label}
+              {probes.map((probe) => {
+                const nodeExists = circuit.nodes.some((n) => n.id === probe.nodeId);
+                return (
+                  <div
+                    key={probe.id}
+                    className={`p-2 rounded border transition-colors ${
+                      probe.id === activeProbeId
+                        ? 'border-cyan-500/70 bg-cyan-900/20'
+                        : nodeExists
+                        ? 'border-gray-700 bg-gray-800 hover:bg-gray-800/80'
+                        : 'border-yellow-700/50 bg-yellow-900/10 hover:bg-yellow-900/20'
+                    }`}
+                    onClick={() => setActiveProbe(probe.id)}
+                  >
+                    <div className="flex items-start gap-1.5 mb-1">
+                      <div
+                        className="w-2.5 h-2.5 rounded-full mt-0.5 flex-shrink-0"
+                        style={{ backgroundColor: probe.color }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-medium truncate flex items-center gap-1">
+                          {probe.label}
+                          {!nodeExists && (
+                            <span className="text-yellow-500 text-[10px]" title="Node not found in circuit">
+                              ⚠
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-gray-500 truncate">
+                          {probe.nodeId.slice(0, 10)}
+                        </div>
                       </div>
-                      <div className="text-[10px] text-gray-500 truncate">
-                        {probe.nodeId.slice(0, 10)}
-                      </div>
-                    </div>
                     <button
                       onClick={() => handleRemoveProbe(probe.id)}
                       className="text-gray-400 hover:text-red-400 text-sm leading-none"
@@ -910,7 +1112,8 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

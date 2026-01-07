@@ -30,8 +30,11 @@ interface ProbeActions {
   removeProbe: (id: string) => void;
   renameProbe: (id: string, label: string) => void;
   toggleProbe: (id: string) => void;
+  toggleProbeForPort: (nodeId: string, portName: string, label?: string) => void;
   setActiveProbe: (id: string | null) => void;
   clearProbes: () => void;
+  hasProbe: (nodeId: string, portName: string) => boolean;
+  reorderProbes: (fromIndex: number, toIndex: number) => void;
 }
 
 type ProbeStore = ProbeState & ProbeActions;
@@ -117,5 +120,38 @@ export const useProbeStore = create<ProbeStore>((set, get) => ({
 
   clearProbes: () => {
     set({ probes: [], activeProbeId: null });
+  },
+
+  toggleProbeForPort: (nodeId, portName, label) => {
+    const existing = get().probes.find(
+      (probe) => probe.nodeId === nodeId && probe.portName === portName
+    );
+
+    if (existing) {
+      // Remove if exists
+      get().removeProbe(existing.id);
+    } else {
+      // Add if doesn't exist
+      get().addProbe({
+        nodeId,
+        portName,
+        label: label || `${nodeId.slice(0, 8)}.${portName}`,
+      });
+    }
+  },
+
+  hasProbe: (nodeId, portName) => {
+    return get().probes.some(
+      (probe) => probe.nodeId === nodeId && probe.portName === portName
+    );
+  },
+
+  reorderProbes: (fromIndex, toIndex) => {
+    set((state) => {
+      const newProbes = [...state.probes];
+      const [movedProbe] = newProbes.splice(fromIndex, 1);
+      newProbes.splice(toIndex, 0, movedProbe);
+      return { probes: newProbes };
+    });
   },
 }));

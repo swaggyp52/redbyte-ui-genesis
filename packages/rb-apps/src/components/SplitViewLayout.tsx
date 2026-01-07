@@ -4,12 +4,14 @@
 
 import React from 'react';
 import type { CircuitEngine, Circuit, TickEngine } from '@redbyte/rb-logic-core';
-import { LogicCanvas } from '@redbyte/rb-logic-view';
+import { LogicCanvas, calculateFitToView, useLogicViewStore } from '@redbyte/rb-logic-view';
 import { Logic3DScene } from '@redbyte/rb-logic-3d';
 import { SchematicView } from './SchematicView';
 import { OscilloscopeView } from './OscilloscopeView';
 import { CircuitToolStrip } from './CircuitToolStrip';
 import type { SplitScreenMode, ViewMode } from '../stores/viewStateStore';
+import { useViewStateStore } from '../stores/viewStateStore';
+import type { HelpSectionId } from './HelpDock';
 
 interface SplitViewLayoutProps {
   mode: SplitScreenMode;
@@ -37,6 +39,10 @@ interface SplitViewLayoutProps {
   getChipMetadata?: (nodeType: string) => any;
   // Milestone D: Determinism recording (optional, dev-only)
   onInputToggled?: (nodeId: string, portName: string, newValue: 0 | 1) => void;
+  // Probe toggling
+  onProbeToggle?: (nodeId: string, portName: string, label: string) => void;
+  probedPorts?: Set<string>;
+  onHelpOpen?: (section: HelpSectionId) => void;
 }
 
 interface ViewRendererProps {
@@ -64,6 +70,9 @@ interface ViewRendererProps {
   onDismissOscilloscopeHints?: () => void;
   getChipMetadata?: (nodeType: string) => any;
   onInputToggled?: (nodeId: string, portName: string, newValue: 0 | 1) => void;
+  onProbeToggle?: (nodeId: string, portName: string, label: string) => void;
+  probedPorts?: Set<string>;
+  onHelpOpen?: (section: HelpSectionId) => void;
 }
 
 // View metadata for headers
@@ -99,9 +108,18 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   onDismissOscilloscopeHints,
   getChipMetadata,
   onInputToggled,
+  onProbeToggle,
+  probedPorts,
+  onHelpOpen,
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = React.useState({ width: 800, height: 600 });
+  const toolMode = useLogicViewStore((state) => state.toolMode);
+  const setToolMode = useLogicViewStore((state) => state.setToolMode);
+  const snapToGrid = useLogicViewStore((state) => state.snapToGrid);
+  const toggleSnapToGrid = useLogicViewStore((state) => state.toggleSnapToGrid);
+  const setCamera = useLogicViewStore((state) => state.setCamera);
+  const setCircuitViewSize = useViewStateStore((state) => state.setCircuitViewSize);
 
   React.useEffect(() => {
     const updateDimensions = () => {
@@ -116,6 +134,92 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     window.addEventListener('resize', updateDimensions);
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
+
+  React.useEffect(() => {
+    if (view === 'circuit') {
+      setCircuitViewSize(dimensions);
+    }
+  }, [view, dimensions, setCircuitViewSize]);
+
+  const handleFitToView = React.useCallback(() => {
+    const nextCamera = calculateFitToView(circuit.nodes, dimensions.width, dimensions.height);
+    setCamera(nextCamera);
+  }, [circuit.nodes, dimensions.width, dimensions.height, setCamera]);
+
+  const handleResetView = React.useCallback(() => {
+    setCamera({ x: 0, y: 0, zoom: 1 });
+  }, [setCamera]);
+
+  const renderMicroToolbar = () => {
+    if (view !== 'circuit') return null;
+
+    return (
+      <div className="ml-3 flex items-center gap-1.5" data-testid="circuit-micro-toolbar">
+        <button
+          onClick={() => setToolMode('select')}
+          className={`px-2 py-1 rounded text-[10px] border ${
+            toolMode === 'select'
+              ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
+              : 'border-gray-600 text-gray-300 hover:bg-gray-800/60'
+          }`}
+          title="Select tool"
+          type="button"
+        >
+          SEL
+        </button>
+        <button
+          onClick={() => setToolMode(toolMode === 'wire' ? 'select' : 'wire')}
+          className={`px-2 py-1 rounded text-[10px] border ${
+            toolMode === 'wire'
+              ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
+              : 'border-gray-600 text-gray-300 hover:bg-gray-800/60'
+          }`}
+          title="Wire tool"
+          type="button"
+        >
+          W
+        </button>
+        <button
+          onClick={toggleSnapToGrid}
+          className={`px-2 py-1 rounded text-[10px] border ${
+            snapToGrid
+              ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
+              : 'border-gray-600 text-gray-300 hover:bg-gray-800/60'
+          }`}
+          title="Toggle snap to grid"
+          type="button"
+        >
+          G
+        </button>
+        <button
+          onClick={handleFitToView}
+          className="px-2 py-1 rounded text-[10px] border border-gray-600 text-gray-300 hover:bg-gray-800/60"
+          title="Fit to view"
+          type="button"
+        >
+          F
+        </button>
+        <button
+          onClick={handleResetView}
+          className="px-2 py-1 rounded text-[10px] border border-gray-600 text-gray-300 hover:bg-gray-800/60"
+          title="Reset view"
+          type="button"
+        >
+          0
+        </button>
+        {onHelpOpen && (
+          <button
+            onClick={() => onHelpOpen('circuit-controls')}
+            className="px-2 py-1 rounded text-[10px] border border-gray-600 text-gray-300 hover:bg-gray-800/60"
+            title="Circuit controls"
+            type="button"
+          >
+            ?
+          </button>
+        )}
+      </div>
+    );
+  };
 
   const metadata = VIEW_METADATA[view];
   const containerStyle: React.CSSProperties = {
@@ -141,6 +245,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               getChipMetadata={getChipMetadata}
               onNodeDoubleClick={onNodeDoubleClick}
               onCircuitChange={onCircuitChange}
+              onProbeToggle={onProbeToggle}
+              probedPorts={probedPorts}
               onInputToggled={onInputToggled}
             />
             {onUndo && onRedo && (
@@ -169,6 +275,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               onCircuitChange={onCircuitChange}
               showHints={showSchematicHints}
               onDismissHints={onDismissSchematicHints}
+              onHelp={onHelpOpen ? () => onHelpOpen('schematic-controls') : undefined}
             />
           </div>
         );
@@ -185,6 +292,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               height={dimensions.height}
               showHints={showOscilloscopeHints}
               onDismissHints={onDismissOscilloscopeHints}
+              onHelp={onHelpOpen ? () => onHelpOpen('scope-controls') : undefined}
             />
           </div>
         );
@@ -200,6 +308,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               getChipMetadata={getChipMetadata}
               showHints={show3DHints}
               onDismissHints={onDismiss3DHints}
+              onHelp={onHelpOpen ? () => onHelpOpen('3d-controls') : undefined}
             />
           </div>
         );
@@ -219,6 +328,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
       <div className={`h-8 px-3 flex items-center gap-2 border-b border-gray-700/50 bg-gradient-to-r from-${metadata.color}-900/20 to-gray-900/20`}>
         <span className="text-lg">{metadata.icon}</span>
         <span className={`text-xs font-semibold text-${metadata.color}-400 uppercase tracking-wide`}>{metadata.label}</span>
+        {renderMicroToolbar()}
         <div className="ml-auto text-[10px] text-gray-500">
           {circuit.nodes.length} nodes • {circuit.connections.length} wires
         </div>
@@ -254,6 +364,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   onDismissOscilloscopeHints,
   getChipMetadata,
   onInputToggled,
+  onProbeToggle,
+  probedPorts,
+  onHelpOpen,
 }) => {
   // Safety check: ensure engine and circuit are defined
   if (!engine || !tickEngine || !circuit) {
@@ -291,6 +404,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           showOscilloscopeHints={showOscilloscopeHints}
           onDismissOscilloscopeHints={onDismissOscilloscopeHints}
           onInputToggled={onInputToggled}
+          onProbeToggle={onProbeToggle}
+          probedPorts={probedPorts}
+          onHelpOpen={onHelpOpen}
         />
       </div>
     );
@@ -326,6 +442,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
             onInputToggled={onInputToggled}
+            onProbeToggle={onProbeToggle}
+            probedPorts={probedPorts}
+            onHelpOpen={onHelpOpen}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden" style={secondaryStyle}>
@@ -351,6 +470,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
+            onProbeToggle={onProbeToggle}
+            probedPorts={probedPorts}
+            onHelpOpen={onHelpOpen}
           />
         </div>
       </div>
@@ -387,6 +509,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
             onInputToggled={onInputToggled}
+            onProbeToggle={onProbeToggle}
+            probedPorts={probedPorts}
+            onHelpOpen={onHelpOpen}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden" style={secondaryStyle}>
@@ -412,6 +537,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
+            onProbeToggle={onProbeToggle}
+            probedPorts={probedPorts}
+            onHelpOpen={onHelpOpen}
           />
         </div>
       </div>
@@ -446,6 +574,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
             onInputToggled={onInputToggled}
+            onProbeToggle={onProbeToggle}
+            probedPorts={probedPorts}
+            onHelpOpen={onHelpOpen}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden">
@@ -472,6 +603,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
             onInputToggled={onInputToggled}
+            onProbeToggle={onProbeToggle}
+            probedPorts={probedPorts}
+            onHelpOpen={onHelpOpen}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden">
@@ -498,6 +632,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
             onInputToggled={onInputToggled}
+            onProbeToggle={onProbeToggle}
+            probedPorts={probedPorts}
+            onHelpOpen={onHelpOpen}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden">
@@ -523,6 +660,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onDismiss3DHints={onDismiss3DHints}
             showOscilloscopeHints={showOscilloscopeHints}
             onDismissOscilloscopeHints={onDismissOscilloscopeHints}
+            onProbeToggle={onProbeToggle}
+            probedPorts={probedPorts}
+            onHelpOpen={onHelpOpen}
           />
         </div>
       </div>

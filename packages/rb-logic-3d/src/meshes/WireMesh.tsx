@@ -9,19 +9,22 @@ interface WireMeshProps {
   from: [number, number, number];
   to: [number, number, number];
   isActive: boolean;
+  pulse?: number;
 }
 
-export const WireMesh: React.FC<WireMeshProps> = ({ from, to, isActive }) => {
+export const WireMesh: React.FC<WireMeshProps> = ({ from, to, isActive, pulse = 0 }) => {
   const points = [new THREE.Vector3(...from), new THREE.Vector3(...to)];
   const curve = new THREE.CatmullRomCurve3(points);
   const tubeGeometry = new THREE.TubeGeometry(curve, 10, 0.05, 8, false);
+  const pulseBoost = pulse * 0.6;
+  const emissiveIntensity = (isActive ? 0.6 : 0.1) + pulseBoost;
 
   return (
     <mesh geometry={tubeGeometry}>
       <meshStandardMaterial
         color={isActive ? '#22c55e' : '#6b7280'}
         emissive={isActive ? '#22c55e' : '#000000'}
-        emissiveIntensity={isActive ? 0.6 : 0}
+        emissiveIntensity={emissiveIntensity}
       />
     </mesh>
   );

@@ -82,10 +82,13 @@ export const RightDock: React.FC<RightDockProps> = ({
     renameProbe,
     toggleProbe,
     setActiveProbe,
+    reorderProbes,
   } = useProbeStore();
   const [selectedNodeId, setSelectedNodeId] = useState<string>('');
   const [selectedPortName, setSelectedPortName] = useState<string>('out');
   const [probeValues, setProbeValues] = useState<Record<string, number>>({});
+  const [draggedProbeIndex, setDraggedProbeIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const selectableNodes = useMemo(
     () => circuit.nodes.map((node) => ({ id: node.id, type: node.type })),
@@ -255,11 +258,13 @@ export const RightDock: React.FC<RightDockProps> = ({
       <div className="h-12 border-b border-gray-700 bg-gray-850 flex items-stretch px-2 gap-1">
         <button
           onClick={() => handleTabChange('inspector')}
-          className={`flex-1 h-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTab === 'inspector'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
+          aria-label="Inspector"
+          data-testid="rightdock-tab-inspector"
           type="button"
         >
           <span className="mr-1 pointer-events-none select-none">🔍</span>
@@ -267,11 +272,13 @@ export const RightDock: React.FC<RightDockProps> = ({
         </button>
         <button
           onClick={() => handleTabChange('health')}
-          className={`flex-1 h-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTab === 'health'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
+          aria-label="Health"
+          data-testid="rightdock-tab-health"
           type="button"
         >
           <span className="mr-1 pointer-events-none select-none">💊</span>
@@ -279,11 +286,13 @@ export const RightDock: React.FC<RightDockProps> = ({
         </button>
         <button
           onClick={() => handleTabChange('learn')}
-          className={`flex-1 h-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTab === 'learn'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
+          aria-label="Learn"
+          data-testid="rightdock-tab-learn"
           type="button"
         >
           <span className="mr-1 pointer-events-none select-none">🎓</span>
@@ -291,11 +300,13 @@ export const RightDock: React.FC<RightDockProps> = ({
         </button>
         <button
           onClick={() => handleTabChange('probes')}
-          className={`flex-1 h-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTab === 'probes'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
+          aria-label="Probes"
+          data-testid="rightdock-tab-probes"
           type="button"
         >
           <span className="mr-1 pointer-events-none select-none">📊</span>
@@ -303,11 +314,13 @@ export const RightDock: React.FC<RightDockProps> = ({
         </button>
         <button
           onClick={() => handleTabChange('chips')}
-          className={`flex-1 h-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTab === 'chips'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
+          aria-label="Chips"
+          data-testid="rightdock-tab-chips"
           type="button"
         >
           <span className="mr-1 pointer-events-none select-none">🧩</span>
@@ -416,17 +429,53 @@ export const RightDock: React.FC<RightDockProps> = ({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {probes.map((probe) => (
+                  {probes.map((probe, index) => (
                     <div
                       key={probe.id}
-                      className={`rounded border p-3 transition-colors ${activeProbeId === probe.id
-                        ? 'border-cyan-500/60 bg-cyan-900/20'
-                        : 'border-gray-700/50 bg-gray-800/50 hover:bg-gray-800/80'}`}
+                      draggable
+                      onDragStart={(e) => {
+                        setDraggedProbeIndex(index);
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        setDragOverIndex(index);
+                      }}
+                      onDragLeave={() => {
+                        setDragOverIndex(null);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (draggedProbeIndex !== null && draggedProbeIndex !== index) {
+                          reorderProbes(draggedProbeIndex, index);
+                        }
+                        setDraggedProbeIndex(null);
+                        setDragOverIndex(null);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedProbeIndex(null);
+                        setDragOverIndex(null);
+                      }}
+                      className={`rounded border p-3 transition-colors cursor-move ${
+                        draggedProbeIndex === index
+                          ? 'opacity-50'
+                          : dragOverIndex === index
+                          ? 'border-cyan-500 bg-cyan-900/30'
+                          : activeProbeId === probe.id
+                          ? 'border-cyan-500/60 bg-cyan-900/20'
+                          : 'border-gray-700/50 bg-gray-800/50 hover:bg-gray-800/80'
+                      }`}
                       onClick={() => handleProbeSelect(probe.id)}
                     >
                       <div className="flex items-start gap-2">
+                        <div className="flex flex-col items-center gap-0.5 pt-1 cursor-grab active:cursor-grabbing text-gray-500 hover:text-gray-400">
+                          <div className="w-1 h-1 bg-current rounded-full" />
+                          <div className="w-1 h-1 bg-current rounded-full" />
+                          <div className="w-1 h-1 bg-current rounded-full" />
+                        </div>
                         <div
-                          className="mt-1 h-2.5 w-2.5 rounded-full"
+                          className="mt-1 h-2.5 w-2.5 rounded-full flex-shrink-0"
                           style={{ backgroundColor: probe.color }}
                         />
                         <div className="flex-1 min-w-0 space-y-1">

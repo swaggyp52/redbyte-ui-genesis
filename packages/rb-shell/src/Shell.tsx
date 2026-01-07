@@ -424,6 +424,16 @@ export const Shell: React.FC<ShellProps> = () => {
   // Ref to hold latest executeCommand for macro execution
   const executeCommandRef = useRef<((command: Command) => void) | null>(null);
 
+  const dispatchPlaygroundCommand = useCallback((command: Command) => {
+    const focused = useWindowStore.getState().getFocusedWindow();
+    if (!focused || focused.contentId !== 'logic-playground') return;
+    window.dispatchEvent(
+      new CustomEvent('rb:playground-command', {
+        detail: { command, windowId: focused.id },
+      })
+    );
+  }, []);
+
   const executeCommand = useCallback(
     (command: Command) => {
       switch (command) {
@@ -540,9 +550,41 @@ export const Shell: React.FC<ShellProps> = () => {
           setMacroRunnerOpen(true);
           break;
         }
+
+        case 'playground-layout-build':
+        case 'playground-layout-analyze':
+        case 'playground-layout-explain':
+        case 'playground-layout-explore':
+        case 'playground-layout-quad':
+        case 'playground-layout-circuit-only':
+        case 'playground-layout-schematic-only':
+        case 'playground-layout-scope-only':
+        case 'playground-layout-3d-only':
+        case 'playground-dock-info':
+        case 'playground-dock-health':
+        case 'playground-dock-learn':
+        case 'playground-dock-probes':
+        case 'playground-dock-chips':
+        case 'playground-toggle-wire':
+        case 'playground-toggle-pause-scroll':
+        case 'playground-fit-view':
+        case 'playground-reset-view':
+        case 'playground-clear-scope': {
+          dispatchPlaygroundCommand(command);
+          break;
+        }
       }
     },
-    [focusWindow, handleClose, toggleMinimize, snapWindow, centerWindow, restoreSession, setBindings]
+    [
+      dispatchPlaygroundCommand,
+      focusWindow,
+      handleClose,
+      toggleMinimize,
+      snapWindow,
+      centerWindow,
+      restoreSession,
+      setBindings,
+    ]
   );
 
   // Store ref for macro execution to avoid circular dependency

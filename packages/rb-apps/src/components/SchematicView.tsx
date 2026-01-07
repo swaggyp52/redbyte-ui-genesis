@@ -18,6 +18,7 @@ interface SchematicViewProps {
   onCircuitChange?: (circuit: Circuit) => void;
   showHints?: boolean;
   onDismissHints?: () => void;
+  onHelp?: () => void;
 }
 
 interface SchematicNode {
@@ -273,6 +274,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   onCircuitChange,
   showHints = true,
   onDismissHints,
+  onHelp,
 }) => {
   const [signals, setSignals] = React.useState<Map<string, Signal>>(new Map());
   const updateCircuit = useCircuitStore((state) => state.updateCircuit);
@@ -414,8 +416,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
     }));
   }, [circuit.nodes]);
 
-  // Auto-center and fit circuit in view on load
-  React.useEffect(() => {
+  const fitToView = React.useCallback(() => {
     if (circuit.nodes.length === 0) return;
 
     // Guard: ensure dimensions are valid before calculating camera
@@ -458,6 +459,15 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
     });
   }, [circuit.nodes, width, height]);
 
+  const resetView = React.useCallback(() => {
+    setCamera({ x: 0, y: 0, zoom: 1 });
+  }, []);
+
+  // Auto-center and fit circuit in view on load
+  React.useEffect(() => {
+    fitToView();
+  }, [fitToView]);
+
   // Route wires between nodes
   const schematicWires = useMemo<SchematicWire[]>(() => {
     return circuit.connections.map((conn) => {
@@ -494,11 +504,41 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
       {/* Compact header */}
       <div className="px-3 py-2 flex items-center justify-between border-b border-gray-700 shrink-0">
         <div>
-          <h2 className="text-sm font-semibold text-white">📐 Schematic View</h2>
+          <h2 className="text-sm font-semibold text-white">dY"? Schematic View</h2>
           <div className="text-[10px] text-gray-500">IEEE/ANSI symbols</div>
         </div>
-        <div className="text-xs text-gray-400">
-          {circuit.nodes.length} components • {circuit.connections.length} connections
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5" data-testid="schematic-micro-toolbar">
+            <button
+              onClick={fitToView}
+              className="px-2 py-1 rounded text-[10px] border border-gray-600 text-gray-300 hover:bg-gray-800/60"
+              title="Fit to view"
+              type="button"
+            >
+              F
+            </button>
+            <button
+              onClick={resetView}
+              className="px-2 py-1 rounded text-[10px] border border-gray-600 text-gray-300 hover:bg-gray-800/60"
+              title="Reset view"
+              type="button"
+            >
+              0
+            </button>
+            {onHelp && (
+              <button
+                onClick={onHelp}
+                className="px-2 py-1 rounded text-[10px] border border-gray-600 text-gray-300 hover:bg-gray-800/60"
+                title="Schematic controls"
+                type="button"
+              >
+                ?
+              </button>
+            )}
+          </div>
+          <div className="text-xs text-gray-400">
+            {circuit.nodes.length} components ??? {circuit.connections.length} connections
+          </div>
         </div>
       </div>
 

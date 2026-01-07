@@ -45,7 +45,8 @@ import { registerAllChips, registerChip, unregisterChip } from '../utils/chipReg
 import { useViewStateStore } from '../stores/viewStateStore';
 import { useProbeStore } from '../stores/probeStore';
 import { useLayoutStore } from '../stores/layoutStore';
-import { setGlobalViewStateSync } from '@redbyte/rb-logic-view';
+import { useOscilloscopeStore } from '../stores/oscilloscopeStore';
+import { calculateFitToView, setGlobalViewStateSync, useLogicViewStore } from '@redbyte/rb-logic-view';
 import { useHierarchyStore } from '../stores/hierarchyStore';
 import { HierarchyBreadcrumbs } from '../components/HierarchyBreadcrumbs';
 import { KeyboardShortcutsHelp } from '../components/KeyboardShortcutsHelp';
@@ -162,11 +163,15 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     rightDockState,
     rightDockTab,
     showHelpDock,
+    helpDockSection,
     schematicMiniEnabled,
     toggleSchematicMini,
     setRightDockState,
     setRightDockTab,
+    setShowHelpDock,
+    setHelpDockSection,
   } = useLayoutStore();
+  const { probes, toggleProbeForPort } = useProbeStore();
   const [isRunning, setIsRunning] = useState(false);
   const [currentHz, setCurrentHz] = useState(tickRate);
   const [tickCount, setTickCount] = useState(0);
@@ -222,6 +227,106 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   useEffect(() => {
     setGlobalViewStateSync(useViewStateStore);
   }, []);
+
+  useEffect(() => {
+    const handlePlaygroundCommand = (event: Event) => {
+      const detail = (event as CustomEvent<{ command?: string; windowId?: string }>).detail;
+      if (!detail?.command) return;
+
+      if (detail.windowId && detail.windowId !== windowId) return;
+
+      const focused = useWindowStore.getState().getFocusedWindow();
+      if (!focused || focused.id !== windowId) return;
+
+      switch (detail.command) {
+        case 'playground-layout-build':
+          setPerspective('build');
+          return;
+        case 'playground-layout-analyze':
+          setPerspective('analyze');
+          return;
+        case 'playground-layout-explain':
+          setPerspective('explain');
+          return;
+        case 'playground-layout-explore':
+          setPerspective('explore');
+          return;
+        case 'playground-layout-quad':
+          setPerspective('quad');
+          return;
+        case 'playground-layout-circuit-only':
+          setPerspective('circuit-only');
+          return;
+        case 'playground-layout-schematic-only':
+          setPerspective('schematic-only');
+          return;
+        case 'playground-layout-scope-only':
+          setPerspective('scope-only');
+          return;
+        case 'playground-layout-3d-only':
+          setPerspective('3d-only');
+          return;
+        case 'playground-dock-info':
+          setRightDockTab('inspector');
+          if (rightDockState === 'collapsed') setRightDockState('peek');
+          return;
+        case 'playground-dock-health':
+          setRightDockTab('health');
+          if (rightDockState === 'collapsed') setRightDockState('peek');
+          return;
+        case 'playground-dock-learn':
+          setRightDockTab('learn');
+          if (rightDockState === 'collapsed') setRightDockState('peek');
+          return;
+        case 'playground-dock-probes':
+          setRightDockTab('probes');
+          if (rightDockState === 'collapsed') setRightDockState('peek');
+          return;
+        case 'playground-dock-chips':
+          setRightDockTab('chips');
+          if (rightDockState === 'collapsed') setRightDockState('peek');
+          return;
+        case 'playground-toggle-wire': {
+          const logicView = useLogicViewStore.getState();
+          const editingState = logicView.editingState;
+          if (editingState.wireStartPort) {
+            logicView.endWire();
+            return;
+          }
+          logicView.setToolMode(logicView.toolMode === 'wire' ? 'select' : 'wire');
+          return;
+        }
+        case 'playground-toggle-pause-scroll':
+          useOscilloscopeStore.getState().togglePauseScroll();
+          return;
+        case 'playground-fit-view': {
+          const size = useViewStateStore.getState().circuitViewSize;
+          if (!size) return;
+          const nextCamera = calculateFitToView(circuit.nodes, size.width, size.height);
+          useLogicViewStore.getState().setCamera(nextCamera);
+          return;
+        }
+        case 'playground-reset-view':
+          useLogicViewStore.getState().setCamera({ x: 0, y: 0, zoom: 1 });
+          return;
+        case 'playground-clear-scope':
+          useOscilloscopeStore.getState().requestClear();
+          return;
+      }
+    };
+
+    window.addEventListener('rb:playground-command', handlePlaygroundCommand as EventListener);
+    return () => {
+      window.removeEventListener('rb:playground-command', handlePlaygroundCommand as EventListener);
+    };
+  }, [
+    windowId,
+    circuit.nodes,
+    rightDockState,
+    setPerspective,
+    setRightDockTab,
+    setRightDockState,
+  ]);
 
   // Crash recovery: Save to localStorage every 10 seconds
   useEffect(() => {
@@ -392,16 +497,68 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         if (showKeyboardHelp) setShowKeyboardHelp(false);
         if (showQuickAdd) setShowQuickAdd(false);
       }
+
+      // Shift+P to open Probes tab
+      if (e.key === 'P' && e.shiftKey && !e.ctrlKey && !e.metaKey && !isInputFocused()) {
+        e.preventDefault();
+        setRightDockTab('probes');
+        if (rightDockState === 'collapsed') {
+          setRightDockState('peek');
+        }
+      }
+
+      // Layout shortcuts (only when NOT typing in inputs/textareas)
+      if (!isInputFocused()) {
+        // Number keys 1-5 for single-view layouts
+        if (e.key === '1' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          setPerspective('circuit-only');
+        }
+        if (e.key === '2' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          setPerspective('schematic-only');
+        }
+        if (e.key === '3' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          setPerspective('scope-only');
+        }
+        if (e.key === '4' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          setPerspective('3d-only');
+        }
+        if (e.key === '5' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          setPerspective('quad');
+        }
+
+        // Shift+Number for workflow layouts
+        if (e.key === '!' && e.shiftKey) { // Shift+1
+          e.preventDefault();
+          setPerspective('build');
+        }
+        if (e.key === '@' && e.shiftKey) { // Shift+2
+          e.preventDefault();
+          setPerspective('explain');
+        }
+        if (e.key === '#' && e.shiftKey) { // Shift+3
+          e.preventDefault();
+          setPerspective('analyze');
+        }
+        if (e.key === '$' && e.shiftKey) { // Shift+4
+          e.preventDefault();
+          setPerspective('explore');
+        }
+      }
     };
 
     const isInputFocused = () => {
       const active = document.activeElement;
-      return active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+      return active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT');
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [circuit, currentFileId, showKeyboardHelp, showQuickAdd]);
+  }, [circuit, currentFileId, showKeyboardHelp, showQuickAdd, setPerspective]);
 
   // Sync hierarchy circuit with main circuit
   useEffect(() => {
@@ -754,6 +911,19 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       }, 2000) as unknown as number;
     }
   }, [addToast]);
+
+  // Probe handling
+  const probedPorts = React.useMemo(() => {
+    const set = new Set<string>();
+    probes.forEach((probe) => {
+      set.add(`${probe.nodeId}.${probe.portName}`);
+    });
+    return set;
+  }, [probes]);
+
+  const handleProbeToggle = useCallback((nodeId: string, portName: string, label: string) => {
+    toggleProbeForPort(nodeId, portName, label);
+  }, [toggleProbeForPort]);
 
   const handleNodeDragStart = (nodeType: string, e?: React.DragEvent) => {
     if (e) {
@@ -1127,6 +1297,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     }
   };
 
+  const handleResetTickCount = () => {
+    tickEngine.resetTickCount();
+    setTickCount(0);
+  };
+
   const handleHzChange = (hz: number) => {
     setCurrentHz(hz);
     tickEngine.setTickRate(hz);
@@ -1193,8 +1368,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const getNodeDescription = (nodeType: string): string => {
     const descriptions: Record<string, string> = {
       PowerSource: 'Always ON - provides constant HIGH signal (1)',
-      Switch: 'Toggle ON/OFF - double-click to toggle state',
-      INPUT: 'Toggle ON/OFF - double-click to toggle state',
+      Switch: 'Toggle ON/OFF - click to toggle state',
+      INPUT: 'Toggle ON/OFF - click to toggle state',
       Lamp: 'Visual indicator - lights up when signal is HIGH',
       OUTPUT: 'Visual indicator - lights up when signal is HIGH',
       Wire: 'Pass-through connection',
@@ -1372,6 +1547,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         tickCount={tickCount}
         tickRate={currentHz}
         onTickRateChange={handleHzChange}
+        onResetTickCount={handleResetTickCount}
         perspective={perspective}
         onPerspectiveChange={setPerspective}
         schematicMiniEnabled={schematicMiniEnabled}
@@ -1465,6 +1641,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             onInputToggled={determinismRecorder?.isRecording ? determinismRecorder.recordInputToggled : undefined}
             onCircuitChange={handleCircuitChange}
             viewStateStore={useViewStateStore}
+            onProbeToggle={handleProbeToggle}
+            probedPorts={probedPorts}
+            onHelpOpen={(section) => {
+              setHelpDockSection(section);
+              setShowHelpDock(true);
+            }}
           />
 
           {selectedExampleId && EXAMPLE_NOTES[selectedExampleId] && !exampleNoteDismissed && (
@@ -1502,7 +1684,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         {showHelpDock ? (
           <HelpDock
             visible={true}
-            onClose={() => setPerspective('build')}
+            focusSection={helpDockSection}
+            onClose={() => {
+              setShowHelpDock(false);
+              setHelpDockSection(null);
+            }}
             onLoadExample={(exampleId, highlightComponents) => {
               handleLoadExample(exampleId);
               // TODO: Implement component highlighting

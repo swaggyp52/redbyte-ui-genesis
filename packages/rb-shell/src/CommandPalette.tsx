@@ -16,7 +16,26 @@ export type Command =
   | 'create-workspace'
   | 'switch-workspace'
   | 'delete-workspace'
-  | 'run-macro';
+  | 'run-macro'
+  | 'playground-layout-build'
+  | 'playground-layout-analyze'
+  | 'playground-layout-explain'
+  | 'playground-layout-explore'
+  | 'playground-layout-quad'
+  | 'playground-layout-circuit-only'
+  | 'playground-layout-schematic-only'
+  | 'playground-layout-scope-only'
+  | 'playground-layout-3d-only'
+  | 'playground-dock-info'
+  | 'playground-dock-health'
+  | 'playground-dock-learn'
+  | 'playground-dock-probes'
+  | 'playground-dock-chips'
+  | 'playground-toggle-wire'
+  | 'playground-toggle-pause-scroll'
+  | 'playground-fit-view'
+  | 'playground-reset-view'
+  | 'playground-clear-scope';
 
 interface CommandItem {
   id: Command;
@@ -84,6 +103,101 @@ const COMMANDS: CommandItem[] = [
     id: 'run-macro',
     label: 'Run Macro',
     description: 'Execute a saved macro sequence',
+  },
+  {
+    id: 'playground-layout-build',
+    label: 'Playground: Layout Build',
+    description: 'Switch to Build layout',
+  },
+  {
+    id: 'playground-layout-analyze',
+    label: 'Playground: Layout Analyze',
+    description: 'Switch to Analyze layout',
+  },
+  {
+    id: 'playground-layout-explain',
+    label: 'Playground: Layout Explain',
+    description: 'Switch to Explain layout',
+  },
+  {
+    id: 'playground-layout-explore',
+    label: 'Playground: Layout Explore',
+    description: 'Switch to Explore layout',
+  },
+  {
+    id: 'playground-layout-quad',
+    label: 'Playground: Layout Quad',
+    description: 'Switch to Quad layout',
+  },
+  {
+    id: 'playground-layout-circuit-only',
+    label: 'Playground: Circuit Only',
+    description: 'Switch to Circuit-only layout',
+  },
+  {
+    id: 'playground-layout-schematic-only',
+    label: 'Playground: Schematic Only',
+    description: 'Switch to Schematic-only layout',
+  },
+  {
+    id: 'playground-layout-scope-only',
+    label: 'Playground: Scope Only',
+    description: 'Switch to Scope-only layout',
+  },
+  {
+    id: 'playground-layout-3d-only',
+    label: 'Playground: 3D Only',
+    description: 'Switch to 3D-only layout',
+  },
+  {
+    id: 'playground-dock-info',
+    label: 'Playground: Open Info Tab',
+    description: 'Open RightDock Info tab',
+  },
+  {
+    id: 'playground-dock-health',
+    label: 'Playground: Open Health Tab',
+    description: 'Open RightDock Health tab',
+  },
+  {
+    id: 'playground-dock-learn',
+    label: 'Playground: Open Learn Tab',
+    description: 'Open RightDock Learn tab',
+  },
+  {
+    id: 'playground-dock-probes',
+    label: 'Playground: Open Probes Tab',
+    description: 'Open RightDock Probes tab',
+  },
+  {
+    id: 'playground-dock-chips',
+    label: 'Playground: Open Chips Tab',
+    description: 'Open RightDock Chips tab',
+  },
+  {
+    id: 'playground-toggle-wire',
+    label: 'Playground: Toggle Wire Tool',
+    description: 'Toggle wire tool in circuit view',
+  },
+  {
+    id: 'playground-toggle-pause-scroll',
+    label: 'Playground: Toggle Pause Scroll',
+    description: 'Toggle oscilloscope pause scroll',
+  },
+  {
+    id: 'playground-fit-view',
+    label: 'Playground: Fit View',
+    description: 'Fit circuit view to contents',
+  },
+  {
+    id: 'playground-reset-view',
+    label: 'Playground: Reset View',
+    description: 'Reset circuit view camera',
+  },
+  {
+    id: 'playground-clear-scope',
+    label: 'Playground: Clear Scope',
+    description: 'Clear oscilloscope display',
   },
 ];
 

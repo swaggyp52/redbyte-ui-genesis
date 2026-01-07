@@ -6,7 +6,21 @@ import { create } from 'zustand';
 import type { SplitScreenMode, ViewMode } from './viewStateStore';
 import type { RightDockState, RightDockTab } from '../components/RightDock';
 
-export type PerspectiveId = 'build' | 'inspect' | 'debug' | 'schematic' | 'quad' | 'learn';
+export type PerspectiveId =
+  | 'build'           // Circuit + RightDock
+  | 'analyze'         // Circuit + Scope
+  | 'explain'         // Circuit + Schematic
+  | 'explore'         // Circuit + 3D
+  | 'quad'            // All four views
+  | 'circuit-only'    // Circuit only
+  | 'schematic-only'  // Schematic only
+  | 'scope-only'      // Oscilloscope only
+  | '3d-only'         // 3D only
+  // Legacy perspectives (kept for compatibility)
+  | 'inspect'
+  | 'debug'
+  | 'schematic'
+  | 'learn';
 
 interface LayoutState {
   perspective: PerspectiveId;
@@ -16,6 +30,7 @@ interface LayoutState {
   rightDockState: RightDockState;
   rightDockTab: RightDockTab;
   showHelpDock: boolean;
+  helpDockSection: string | null;
   schematicMiniEnabled: boolean;
 }
 
@@ -23,6 +38,8 @@ interface LayoutActions {
   setPerspective: (perspective: PerspectiveId) => void;
   setRightDockState: (state: RightDockState) => void;
   setRightDockTab: (tab: RightDockTab) => void;
+  setShowHelpDock: (visible: boolean) => void;
+  setHelpDockSection: (section: string | null) => void;
   setSplitRatio: (ratio: number) => void;
   toggleSchematicMini: () => void;
   resetLayout: () => void;
@@ -30,7 +47,7 @@ interface LayoutActions {
 
 type LayoutStore = LayoutState & LayoutActions;
 
-const STORAGE_KEY = 'rb:playground-layout';
+const STORAGE_KEY = 'rb.playground.layout';
 
 interface PersistedData {
   perspective: PerspectiveId;
@@ -40,7 +57,11 @@ interface PersistedData {
 
 const DEFAULT_SPLIT_RATIO = 0.5;
 
-const PERSPECTIVE_PRESETS: Record<PerspectiveId, Omit<LayoutState, 'perspective' | 'splitRatio' | 'schematicMiniEnabled'>> = {
+const PERSPECTIVE_PRESETS: Record<
+  PerspectiveId,
+  Omit<LayoutState, 'perspective' | 'splitRatio' | 'schematicMiniEnabled' | 'helpDockSection'>
+> = {
+  // NEW PRESETS - Primary workflow layouts
   build: {
     splitScreenMode: 'single',
     activeViews: ['circuit'],
@@ -48,6 +69,64 @@ const PERSPECTIVE_PRESETS: Record<PerspectiveId, Omit<LayoutState, 'perspective'
     rightDockTab: 'inspector',
     showHelpDock: false,
   },
+  analyze: {
+    splitScreenMode: 'horizontal',
+    activeViews: ['circuit', 'oscilloscope'],
+    rightDockState: 'peek',
+    rightDockTab: 'probes',
+    showHelpDock: false,
+  },
+  explain: {
+    splitScreenMode: 'horizontal',
+    activeViews: ['circuit', 'schematic'],
+    rightDockState: 'peek',
+    rightDockTab: 'inspector',
+    showHelpDock: false,
+  },
+  explore: {
+    splitScreenMode: 'horizontal',
+    activeViews: ['circuit', '3d'],
+    rightDockState: 'collapsed',
+    rightDockTab: 'inspector',
+    showHelpDock: false,
+  },
+  quad: {
+    splitScreenMode: 'quad',
+    activeViews: ['circuit', 'schematic', '3d', 'oscilloscope'],
+    rightDockState: 'collapsed',
+    rightDockTab: 'probes',
+    showHelpDock: false,
+  },
+  // SINGLE-VIEW FOCUS - Fullscreen individual tools
+  'circuit-only': {
+    splitScreenMode: 'single',
+    activeViews: ['circuit'],
+    rightDockState: 'collapsed',
+    rightDockTab: 'inspector',
+    showHelpDock: false,
+  },
+  'schematic-only': {
+    splitScreenMode: 'single',
+    activeViews: ['schematic'],
+    rightDockState: 'collapsed',
+    rightDockTab: 'inspector',
+    showHelpDock: false,
+  },
+  'scope-only': {
+    splitScreenMode: 'single',
+    activeViews: ['oscilloscope'],
+    rightDockState: 'collapsed',
+    rightDockTab: 'probes',
+    showHelpDock: false,
+  },
+  '3d-only': {
+    splitScreenMode: 'single',
+    activeViews: ['3d'],
+    rightDockState: 'collapsed',
+    rightDockTab: 'inspector',
+    showHelpDock: false,
+  },
+  // LEGACY PRESETS - Kept for backward compatibility
   inspect: {
     splitScreenMode: 'single',
     activeViews: ['circuit'],
@@ -67,13 +146,6 @@ const PERSPECTIVE_PRESETS: Record<PerspectiveId, Omit<LayoutState, 'perspective'
     activeViews: ['schematic', 'circuit'],
     rightDockState: 'peek',
     rightDockTab: 'inspector',
-    showHelpDock: false,
-  },
-  quad: {
-    splitScreenMode: 'quad',
-    activeViews: ['circuit', 'schematic', '3d', 'oscilloscope'],
-    rightDockState: 'collapsed',
-    rightDockTab: 'probes',
     showHelpDock: false,
   },
   learn: {
@@ -146,6 +218,7 @@ function applyPreset(
     rightDockState: preset.rightDockState,
     rightDockTab: preset.rightDockTab,
     showHelpDock: preset.showHelpDock,
+    helpDockSection: null,
   };
 }
 
@@ -180,6 +253,14 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
 
   setRightDockTab: (tab) => {
     set((current) => ({ ...current, rightDockTab: tab }));
+  },
+
+  setShowHelpDock: (visible) => {
+    set((current) => ({ ...current, showHelpDock: visible }));
+  },
+
+  setHelpDockSection: (section) => {
+    set((current) => ({ ...current, helpDockSection: section }));
   },
 
   setSplitRatio: (ratio) => {

@@ -5259,6 +5259,13 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+\### 2026-01-06
+\- Fixed SplitViewLayout to forward probe toggle state across view renderers and avoid undefined access; objectives unchanged; phase unchanged
+\- Added selection mapping helper for Logic3DScene and simplified 3D selection sync test to avoid React DOM warnings; objectives unchanged; phase unchanged
+\- Added a compact Clock widget readout (tick count + running indicator with Hz when active) and a tick counter reset action in the Logic Playground TopCommandBar; objectives unchanged; phase unchanged
+\- Hardened switch interaction hit targets to prevent drag/selection conflicts, and updated switch help text to reflect single-click toggling; objectives unchanged; phase unchanged
+\- Added oscilloscope pause-scroll mode with wheel panning, a live time cursor, and step-style trace rendering with on-trace labels, plus new oscilloscope control tests; objectives unchanged; phase unchanged
+
 \### 2026-01-05
 \- Fixed LogicPlaygroundApp TickEngine construction to pass circuit + tickRate config (no CircuitEngine type mismatch), updated quick-add to supply default node position, aligned crash-recovery toast call with string-based API, and added demo-mode guard + share-link aria-label for a11y; objectives unchanged; phase unchanged
 \- Reset NodeView dragStart after drag end (including global mouseup) to prevent stale offsets from sending nodes flying on hover/drag; objectives unchanged; phase unchanged
