@@ -1033,19 +1033,19 @@ export const Shell: React.FC<ShellProps> = () => {
         />
       )}
 
-      {/* Footer: Preview Badge + Version (hidden in demo mode) */}
+      {/* Footer: Version Info (hidden in demo mode) */}
       {!isDemoMode && (
-        <div className="fixed bottom-0 left-0 right-0 bg-slate-900/80 border-t border-slate-800 px-4 py-2 flex items-center justify-between text-xs z-10">
+        <div className="fixed bottom-0 left-0 right-0 bg-slate-900/90 border-t border-slate-700 px-4 py-2 flex items-center justify-between text-xs z-10">
           <div className="flex items-center gap-3">
-            <span className="px-2 py-1 bg-amber-900/30 border border-amber-600/50 rounded text-amber-400 font-semibold">
-              PREVIEW
+            <span className="px-2 py-1 bg-cyan-900/40 border border-cyan-600/60 rounded text-cyan-300 font-semibold">
+              V1.0
             </span>
             <span className="text-slate-400">
               {getVersionString()}
             </span>
           </div>
           <div className="text-slate-500">
-            RedByte OS Genesis
+            RedByte OS
           </div>
         </div>
       )}

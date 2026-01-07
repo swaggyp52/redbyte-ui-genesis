@@ -22,7 +22,7 @@ import { LogicCanvas } from '@redbyte/rb-logic-view';
 import { ViewAdapter } from '@redbyte/rb-logic-adapter';
 import { Logic3DScene } from '@redbyte/rb-logic-3d';
 import { useSettingsStore } from '@redbyte/rb-utils';
-import { useToastStore, triggerNarrative } from '@redbyte/rb-shell';
+import { toast } from '@redbyte/rb-primitives';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import { loadExample, listExamples, listExamplesByLayer, getLayerDescription, type ExampleId, type CircuitLayer } from '../examples';
 import { useFileSystemStore } from '../stores/fileSystemStore';
@@ -122,7 +122,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   determinismRecorder,
 }) => {
   const { tickRate } = useSettingsStore();
-  const { addToast } = useToastStore();
+  const addToast = (msg: string, type = "info", dur?: number) => toast[type]?.({message: msg, duration: dur});
   const { active: tutorialActive, start: startTutorial } = useTutorialStore();
   const { setWindowTitle } = useWindowStore();
   const { getAllFiles, getFile, updateFileContent, createFile } = useFileSystemStore();
@@ -1744,15 +1744,16 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       setIsDirty(true);
 
       // Trigger narrative events for key examples
-      if (exampleId === '10_sr-latch') {
-        triggerNarrative('milestone.srLatchBuilt', { exampleId });
-      } else if (exampleId === '11_d-flipflop') {
-        triggerNarrative('milestone.dffUnderstood', { exampleId });
-      } else if (exampleId === '04_4bit-counter') {
-        triggerNarrative('milestone.counterRuns', { exampleId });
-      } else if (exampleId === '05_simple-cpu') {
-        triggerNarrative('milestone.cpuExplored', { exampleId });
-      }
+      // Note: Narrative system temporarily disabled to avoid circular dependency
+      // if (exampleId === '10_sr-latch') {
+      //   triggerNarrative('milestone.srLatchBuilt', { exampleId });
+      // } else if (exampleId === '11_d-flipflop') {
+      //   triggerNarrative('milestone.dffUnderstood', { exampleId });
+      // } else if (exampleId === '04_4bit-counter') {
+      //   triggerNarrative('milestone.counterRuns', { exampleId });
+      // } else if (exampleId === '05_simple-cpu') {
+      //   triggerNarrative('milestone.cpuExplored', { exampleId });
+      // }
 
       // Milestone D: Record circuit loaded event
       if (determinismRecorder?.isRecording) {
