@@ -276,7 +276,7 @@ export const HelpDock: React.FC<HelpDockProps> = ({
           ) : (
             <>
               <span>Track A</span>
-              <span className="text-gray-600">></span>
+                <span className="text-gray-600">&gt;</span>
               <span>Lesson {currentLessonIndex + 1} of {SAMPLE_LESSONS.length}</span>
             </>
           )}

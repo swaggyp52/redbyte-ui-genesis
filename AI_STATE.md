@@ -5262,6 +5262,7 @@ After completing work, an AI agent MUST:
 \### 2026-01-06
 \- Fixed SplitViewLayout to forward probe toggle state across view renderers and avoid undefined access; objectives unchanged; phase unchanged
 \- Added selection mapping helper for Logic3DScene and simplified 3D selection sync test to avoid React DOM warnings; objectives unchanged; phase unchanged
+\- Escaped HelpDock breadcrumb separator to fix JSX parsing during build; objectives unchanged; phase unchanged
 \- Added a compact Clock widget readout (tick count + running indicator with Hz when active) and a tick counter reset action in the Logic Playground TopCommandBar; objectives unchanged; phase unchanged
 \- Hardened switch interaction hit targets to prevent drag/selection conflicts, and updated switch help text to reflect single-click toggling; objectives unchanged; phase unchanged
 \- Added oscilloscope pause-scroll mode with wheel panning, a live time cursor, and step-style trace rendering with on-trace labels, plus new oscilloscope control tests; objectives unchanged; phase unchanged
