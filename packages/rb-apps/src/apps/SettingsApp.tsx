@@ -195,9 +195,20 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
           )}
 
           {selectedSection === 'system' && (
-            <div className="space-y-4 text-sm text-slate-300">
-              <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
-                <p className="text-slate-400">System settings coming soon.</p>
+            <div className="space-y-6 text-sm text-slate-300 max-w-2xl">
+              <div className="p-6 bg-slate-800/50 rounded-xl border border-slate-700">
+                <div className="flex items-start gap-4">
+                  <div className="text-3xl">⚙️</div>
+                  <div className="flex-1">
+                    <h4 className="text-base font-semibold text-white mb-2">System Configuration</h4>
+                    <p className="text-slate-400 mb-4">
+                      Advanced system settings for power users will be available in future releases.
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      Currently, you can customize appearance, manage file associations, and control session behavior using the other panels.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}

@@ -25,7 +25,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
   onTickRateChange,
 }) => {
   const [lines, setLines] = useState<TerminalLine[]>([
-    { type: 'output', text: 'RedByte OS Genesis Terminal v0.1' },
+    { type: 'output', text: 'RedByte OS Terminal v1.0' },
     { type: 'output', text: 'Type "help" for available commands' },
     { type: 'output', text: '' },
   ]);
@@ -66,8 +66,9 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         break;
 
       case 'about':
-        addLine('RedByte OS Genesis - Stage E/F');
-        addLine('A modular desktop environment for logic circuit simulation');
+        addLine('RedByte OS v1.0');
+        addLine('Digital Logic Workspace');
+        addLine('');
         addLine(`Theme: ${useSettingsStore.getState().themeVariant}`);
         addLine(`Wallpaper: ${useSettingsStore.getState().wallpaperId}`);
         addLine(`Tick Rate: ${useSettingsStore.getState().tickRate} Hz`);
