@@ -32,7 +32,10 @@ interface DesktopIconData {
   y: number;
 }
 
-const ICON_SIZE = 76;
+const ICON_SIZE = 80;
+const GRID_SPACING = 120;
+const GRID_START_X = 48;
+const GRID_START_Y = 48;
 
 const iconComponents: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> = {
   terminal: TerminalIcon,
@@ -48,12 +51,12 @@ const iconComponents: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> = 
 
 export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeVariant }) => {
   const [icons, setIcons] = useState<DesktopIconData[]>(() => {
+    // Grid-aligned icons with Logic Playground featured
     const base: DesktopIconData[] = [
-      { id: 'terminal', title: 'Terminal', appId: 'terminal', iconId: 'terminal', x: 36, y: 32 },
-      { id: 'files', title: 'Files', appId: 'files', iconId: 'files', x: 36, y: 128 },
-      { id: 'settings', title: 'Settings', appId: 'settings', iconId: 'settings', x: 36, y: 224 },
-      { id: 'logic', title: 'Logic Playground', appId: 'logic-playground', iconId: 'logic', x: 36, y: 320 },
-      { id: 'app-store', title: 'App Store', appId: 'app-store', iconId: 'neon-wave', x: 36, y: 416 },
+      { id: 'logic', title: 'Logic Playground', appId: 'logic-playground', iconId: 'logic', x: GRID_START_X, y: GRID_START_Y },
+      { id: 'files', title: 'Files', appId: 'files', iconId: 'files', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING },
+      { id: 'settings', title: 'Settings', appId: 'settings', iconId: 'settings', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 2 },
+      { id: 'terminal', title: 'Terminal', appId: 'terminal', iconId: 'terminal', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 3 },
     ];
     return base;
   });
@@ -307,45 +310,49 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
       {icons.map((icon) => {
         const IconComponent = iconComponents[icon.iconId] ?? FolderIcon;
         const isSelected = selected.includes(icon.id);
+        const isFlagship = icon.id === 'logic'; // Logic Playground is the flagship
+
         return (
           <div
             key={icon.id}
-            className={`flex flex-col items-center text-xs cursor-pointer select-none transition-all duration-200 ${
-              isSelected ? 'scale-110 drop-shadow-[0_0_20px_rgba(6,182,212,0.6)]' : 'hover:scale-105'
+            className={`flex flex-col items-center text-xs cursor-pointer select-none transition-all duration-150 ${
+              isSelected ? 'scale-105' : 'hover:scale-102'
             }`}
             style={{ position: 'absolute', left: `${icon.x}px`, top: `${icon.y}px` }}
             onMouseDown={(e) => onIconMouseDown(e, icon)}
             onClick={() => handleIconClick(icon)}
           >
           <div
-            className={`flex h-16 w-16 items-center justify-center rounded-xl border transition-all duration-200 ${
-                isSelected
-                  ? isMidnight
-                    ? 'border-indigo-400/80 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 shadow-lg shadow-indigo-500/30'
-                    : 'border-cyan-400/80 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 shadow-lg shadow-cyan-500/30'
+            className={`flex items-center justify-center rounded-lg border transition-all duration-150 ${
+              isFlagship
+                ? 'h-20 w-20 border-cyan-500/60 bg-cyan-500/10 hover:bg-cyan-500/20 hover:border-cyan-400 shadow-lg shadow-cyan-500/20'
+                : isSelected
+                  ? isLightMode
+                    ? 'h-16 w-16 border-gray-400/80 bg-white/60'
+                    : 'h-16 w-16 border-cyan-400/60 bg-cyan-500/10'
                   : isLightMode
-                    ? 'border-gray-300/50 bg-white/40 hover:border-cyan-400/60 hover:bg-white/60'
-                    : isMidnight
-                      ? 'border-indigo-500/20 bg-indigo-950/30 hover:border-indigo-400/40 hover:bg-indigo-950/50'
-                      : 'border-white/10 bg-black/30 hover:border-cyan-400/40 hover:bg-black/40'
-              } backdrop-blur-sm`}
+                    ? 'h-16 w-16 border-gray-300/40 bg-white/30 hover:border-gray-400/60 hover:bg-white/50'
+                    : 'h-16 w-16 border-white/10 bg-black/20 hover:border-white/20 hover:bg-black/30'
+            } backdrop-blur-sm`}
           >
             <IconComponent
-              width={32}
-              height={32}
-              className={isSelected ? isMidnight ? 'text-indigo-300 drop-shadow-[0_0_4px_rgba(99,102,241,0.8)]' : 'text-cyan-600 drop-shadow-[0_0_4px_rgba(6,182,212,0.8)]' : isLightMode ? 'text-gray-700' : isMidnight ? 'text-indigo-200' : 'text-white'}
+              width={isFlagship ? 40 : 28}
+              height={isFlagship ? 40 : 28}
+              className={
+                isFlagship
+                  ? 'text-cyan-400'
+                  : isLightMode
+                    ? 'text-gray-700'
+                    : 'text-slate-300'
+              }
             />
           </div>
-            <div className={`mt-2 min-w-[88px] text-center px-2.5 py-1 rounded-md transition-all duration-200 backdrop-blur-sm font-medium ${
-              isSelected
-                ? isMidnight
-                  ? 'bg-indigo-500/40 text-white shadow-lg shadow-indigo-500/20'
-                  : 'bg-cyan-500/40 text-white shadow-lg shadow-cyan-500/20'
+            <div className={`mt-2 px-2.5 py-1 rounded-md text-center backdrop-blur-sm font-medium ${
+              isFlagship
+                ? 'text-cyan-400 font-semibold'
                 : isLightMode
-                  ? 'bg-white/50 text-gray-900'
-                  : isMidnight
-                    ? 'bg-indigo-950/40 text-indigo-100'
-                    : 'bg-black/30 text-white/90'
+                  ? 'text-gray-900'
+                  : 'text-slate-300'
             }`}>
               {icon.title}
             </div>
