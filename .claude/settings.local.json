@@ -89,7 +89,9 @@
       "Bash(git -C \"c:\\\\Users\\\\conno\\\\redbyte-ui\" log --oneline -20)",
       "Bash(git -C \"c:\\\\Users\\\\conno\\\\redbyte-ui\" log --oneline -1 --format=\"%H %s\" 036c502c)",
       "Bash(git -C \"c:\\\\Users\\\\conno\\\\redbyte-ui\" log --all --oneline --graph)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(pnpm run lint:*)",
+      "Bash(pnpm -w run lint:*)"
     ],
     "deny": [],
     "ask": []
