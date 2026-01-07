@@ -35,7 +35,11 @@ export type Command =
   | 'playground-toggle-pause-scroll'
   | 'playground-fit-view'
   | 'playground-reset-view'
-  | 'playground-clear-scope';
+  | 'playground-clear-scope'
+  | 'playground-project-new'
+  | 'playground-project-save'
+  | 'playground-project-open'
+  | 'playground-project-export';
 
 interface CommandItem {
   id: Command;
@@ -103,6 +107,26 @@ const COMMANDS: CommandItem[] = [
     id: 'run-macro',
     label: 'Run Macro',
     description: 'Execute a saved macro sequence',
+  },
+  {
+    id: 'playground-project-new',
+    label: 'Playground: New Project',
+    description: 'Start a new Logic Playground project',
+  },
+  {
+    id: 'playground-project-open',
+    label: 'Playground: Open Project',
+    description: 'Open a Logic Playground project file',
+  },
+  {
+    id: 'playground-project-save',
+    label: 'Playground: Save Project',
+    description: 'Export the current Logic Playground project',
+  },
+  {
+    id: 'playground-project-export',
+    label: 'Playground: Export Artifacts',
+    description: 'Export netlist, Verilog, or debug bundle',
   },
   {
     id: 'playground-layout-build',

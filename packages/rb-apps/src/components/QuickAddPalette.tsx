@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useState, useEffect, useRef } from 'react';
+import { REPLAY_LOCK_MESSAGE } from '../utils/replayLock';
 
 interface Component {
   type: string;
@@ -17,6 +18,7 @@ interface QuickAddPaletteProps {
   onClose: () => void;
   onSelectComponent: (type: string) => void;
   position?: { x: number; y: number };
+  isReplayMode?: boolean;
 }
 
 const COMPONENTS: Component[] = [
@@ -46,10 +48,12 @@ export const QuickAddPalette: React.FC<QuickAddPaletteProps> = ({
   onClose,
   onSelectComponent,
   position,
+  isReplayMode = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const lockMessage = REPLAY_LOCK_MESSAGE;
 
   const filteredComponents = COMPONENTS.filter(comp => {
     const query = searchQuery.toLowerCase();
@@ -72,6 +76,13 @@ export const QuickAddPalette: React.FC<QuickAddPaletteProps> = ({
   }, [searchQuery]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (isReplayMode) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+      return;
+    }
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setSelectedIndex(prev => (prev + 1) % filteredComponents.length);
@@ -110,6 +121,11 @@ export const QuickAddPalette: React.FC<QuickAddPaletteProps> = ({
         style={style}
       >
         <div className="bg-gray-900 border-2 border-cyan-500 rounded-lg shadow-2xl overflow-hidden">
+          {isReplayMode && (
+            <div className="px-4 py-2 text-xs text-orange-300 bg-orange-900/20 border-b border-orange-500/30">
+              {lockMessage}
+            </div>
+          )}
           {/* Search Input */}
           <div className="p-4 border-b border-gray-700">
             <input
@@ -120,11 +136,13 @@ export const QuickAddPalette: React.FC<QuickAddPaletteProps> = ({
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-cyan-500 text-white text-lg"
+              disabled={isReplayMode}
+              title={isReplayMode ? lockMessage : undefined}
             />
           </div>
 
           {/* Results */}
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-96 overflow-y-auto" title={isReplayMode ? lockMessage : undefined}>
             {filteredComponents.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
                 No components found for "{searchQuery}"
@@ -135,6 +153,7 @@ export const QuickAddPalette: React.FC<QuickAddPaletteProps> = ({
                   <div
                     key={comp.type}
                     onClick={() => {
+                      if (isReplayMode) return;
                       onSelectComponent(comp.type);
                       onClose();
                     }}
@@ -144,6 +163,7 @@ export const QuickAddPalette: React.FC<QuickAddPaletteProps> = ({
                         ? 'bg-cyan-600/20 border-l-4 border-l-cyan-400'
                         : 'hover:bg-gray-800'
                       }
+                      ${isReplayMode ? 'pointer-events-none opacity-60' : ''}
                     `}
                   >
                     <div className="flex items-center gap-3">

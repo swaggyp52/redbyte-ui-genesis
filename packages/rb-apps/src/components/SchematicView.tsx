@@ -20,6 +20,12 @@ interface SchematicViewProps {
   onDismissHints?: () => void;
   onHelp?: () => void;
   probeWireHighlights?: Map<string, string[]>;
+  mismatchWireHighlights?: Map<string, string[]> | null;
+  mismatchNodeIds?: Set<string> | null;
+  mismatchPortKeys?: Set<string> | null;
+  debugSignals?: Map<string, 0 | 1> | null;
+  debugTick?: number | null;
+  isReplayMode?: boolean;
 }
 
 interface SchematicNode {
@@ -37,6 +43,7 @@ interface SchematicWire {
   signal: Signal;
   points: { x: number; y: number }[];
   probeColors?: string[];
+  mismatchColors?: string[];
 }
 
 /**
@@ -279,9 +286,43 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   onDismissHints,
   onHelp,
   probeWireHighlights,
+  mismatchWireHighlights,
+  mismatchNodeIds,
+  mismatchPortKeys,
+  debugSignals,
+  debugTick,
+  isReplayMode = false,
 }) => {
   const [signals, setSignals] = React.useState<Map<string, Signal>>(new Map());
+  const renderSignals = debugSignals ?? signals;
   const updateCircuit = useCircuitStore((state) => state.updateCircuit);
+
+  const debugPortValues = useMemo(() => {
+    if (!debugSignals || !hoveredNodeId) return null;
+    const entries = Array.from(debugSignals.entries())
+      .filter(([key]) => key.startsWith(`${hoveredNodeId}.`))
+      .map(([key, value]) => ({
+        portName: key.slice(hoveredNodeId.length + 1),
+        value,
+      }))
+      .sort((a, b) => a.portName.localeCompare(b.portName));
+    return entries.length > 0 ? entries : null;
+  }, [debugSignals, hoveredNodeId]);
+
+  const mismatchPortsByNode = useMemo(() => {
+    const map = new Map<string, string[]>();
+    if (!mismatchPortKeys) return map;
+    mismatchPortKeys.forEach((key) => {
+      const [nodeId, portName] = key.split(':');
+      if (!nodeId || !portName) return;
+      const list = map.get(nodeId) ?? [];
+      list.push(portName);
+      map.set(nodeId, list);
+    });
+    return map;
+  }, [mismatchPortKeys]);
+
+  const isOutputPort = (portName: string) => /^(out|q|y)/i.test(portName);
 
   // Camera state for pan/zoom
   const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1 });
@@ -292,6 +333,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [wireStartPort, setWireStartPort] = useState<PortRef | null>(null);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -300,6 +342,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
 
   // Update signals in real-time
   React.useEffect(() => {
+    if (debugSignals) return;
     if (!isRunning) {
       setSignals(new Map());
       return;
@@ -310,7 +353,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
     }, 50);
 
     return () => clearInterval(interval);
-  }, [isRunning, engine]);
+  }, [isRunning, engine, debugSignals]);
 
   // Non-passive wheel event listener for zooming (React 19 compatibility)
   React.useEffect(() => {
@@ -342,6 +385,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
 
   // Mouse handlers for pan/zoom
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (isReplayMode) return;
     if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
       // Middle mouse or shift+click for panning
       setIsPanning(true);
@@ -354,6 +398,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (isReplayMode) return;
     if (isPanning) {
       const dx = e.clientX - lastMouse.x;
       const dy = e.clientY - lastMouse.y;
@@ -387,6 +432,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   };
 
   const handleNodeMouseDown = (e: React.MouseEvent, nodeId: string) => {
+    if (isReplayMode) return;
     e.stopPropagation();
 
     if (e.button === 0 && !e.shiftKey) {
@@ -494,7 +540,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
       const to = { x: toNode.x - 10, y: toNode.y + 20 };
 
       const signalKey = `${conn.from.nodeId}.${conn.from.portName}`;
-      const signal = signals.get(signalKey) ?? 0;
+      const signal = renderSignals.get(signalKey) ?? 0;
 
       return {
         id: wireId,
@@ -503,9 +549,10 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
         signal,
         points: routeWire(from, to),
         probeColors: probeWireHighlights?.get(wireId),
+        mismatchColors: mismatchWireHighlights?.get(wireId),
       };
     });
-  }, [circuit.connections, schematicNodes, signals, probeWireHighlights]);
+  }, [circuit.connections, schematicNodes, renderSignals, probeWireHighlights, mismatchWireHighlights]);
 
   return (
     <div className="w-full h-full bg-gray-900 flex flex-col overflow-hidden">
@@ -629,6 +676,16 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
                       fill="none"
                     />
                   ))}
+                  {wire.mismatchColors?.map((color, index) => (
+                    <path
+                      key={`${wire.id}-mismatch-${index}`}
+                      d={pathData}
+                      stroke={color}
+                      strokeWidth="6"
+                      opacity="0.35"
+                      fill="none"
+                    />
+                  ))}
                   <path
                     d={pathData}
                     stroke={wireColor}
@@ -655,9 +712,12 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
             {/* Render components */}
             <g className="components">
               {schematicNodes.map((node) => {
-                const nodeSignals = engine.getNodeOutputs(node.id);
-                const outputSignal = Object.values(nodeSignals)[0] ?? 0;
+                const outputSignal =
+                  renderSignals.get(`${node.id}.out`) ??
+                  renderSignals.get(`${node.id}.in`) ??
+                  0;
                 const isSelected = selectedNodeIds.has(node.id);
+                const isMismatchHighlighted = mismatchNodeIds?.has(node.id) ?? false;
 
                 return (
                   <g key={node.id}>
@@ -675,6 +735,19 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
                         opacity="0.5"
                       />
                     )}
+                    {isMismatchHighlighted && (
+                      <rect
+                        x={node.x - 12}
+                        y={node.y - 12}
+                        width="74"
+                        height="64"
+                        rx="6"
+                        fill="none"
+                        stroke="#f97316"
+                        strokeWidth="2"
+                        opacity="0.7"
+                      />
+                    )}
 
                     {/* Interactive hit-box */}
                     <rect
@@ -685,14 +758,74 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
                       fill="transparent"
                       style={{ cursor: 'move' }}
                       onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
+                      onMouseEnter={() => {
+                        if (debugSignals) setHoveredNodeId(node.id);
+                      }}
+                      onMouseLeave={() => setHoveredNodeId(null)}
                     />
 
                     <GateSymbols
                       type={node.type}
                       x={node.x}
                       y={node.y}
-                      signal={isRunning ? outputSignal : undefined}
+                      signal={outputSignal}
                     />
+
+                    {mismatchPortsByNode.get(node.id)?.map((portName, index) => {
+                      const outputSide = isOutputPort(portName);
+                      const xPos = outputSide ? node.x + 58 : node.x - 8;
+                      const yPos = node.y + 18 + index * 8;
+                      return (
+                        <circle
+                          key={`${node.id}-${portName}`}
+                          cx={xPos}
+                          cy={yPos}
+                          r={4}
+                          fill="none"
+                          stroke="#ef4444"
+                          strokeWidth={2}
+                          className="animate-pulse"
+                          opacity={0.9}
+                        />
+                      );
+                    })}
+
+                    {debugSignals && hoveredNodeId === node.id && debugPortValues && (
+                      <g transform={`translate(${node.x + 50}, ${node.y - 16})`}>
+                        <rect
+                          x={0}
+                          y={0}
+                          width={70}
+                          height={Math.max(18, debugPortValues.length * 12 + 12)}
+                          rx={4}
+                          fill="#0f172a"
+                          stroke="#22d3ee"
+                          strokeWidth={1}
+                          opacity={0.9}
+                        />
+                        <text
+                          x={6}
+                          y={10}
+                          fontSize="9"
+                          fill="#7dd3fc"
+                          fontFamily="monospace"
+                        >
+                          t{debugTick ?? '-'}
+                        </text>
+                        {debugPortValues.map((entry, idx) => (
+                          <text
+                            key={`${entry.portName}-${idx}`}
+                            x={6}
+                            y={22 + idx * 11}
+                            fontSize="9"
+                            fill={entry.value === 1 ? '#22c55e' : '#9ca3af'}
+                            fontFamily="monospace"
+                          >
+                            {entry.portName}: {entry.value}
+                          </text>
+                        ))}
+                      </g>
+                    )}
 
                     {/* Node label */}
                     <text

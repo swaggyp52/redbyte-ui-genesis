@@ -4,6 +4,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import type { Circuit, CircuitEngine } from '@redbyte/rb-logic-core';
+import type { ProofPack } from '../recording/runRecord';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import { PropertyInspector } from './PropertyInspector';
 import { CircuitHealthPanel } from './CircuitHealthPanel';
@@ -31,6 +32,7 @@ interface RightDockProps {
   circuit: Circuit;
   engine: CircuitEngine;
   isRunning: boolean;
+  isReplayMode?: boolean;
   onNodeUpdate?: (nodeId: string, updates: any) => void;
   onConnectionDelete?: (connectionId: string) => void;
 
@@ -46,8 +48,17 @@ interface RightDockProps {
   onRecordStop?: () => void;
   onRecordReplayStart?: () => void;
   onRecordReplayStop?: () => void;
+  onRecordReplayPause?: () => void;
+  onRecordReplayResume?: () => void;
+  onRecordReplayStep?: (ticks: number) => void;
+  onRecordReplayJump?: (tick: number) => void;
   onRecordVerify?: () => void;
   onRecordExport?: () => void;
+  onRecordExportProof?: () => void;
+  onRecordProof?: () => void;
+  onRecordFocus?: (nodeId: string, portName: string) => void;
+  onRecordMismatchSelect?: (probeId: string) => void;
+  onRecordImportProofPack?: (pack: ProofPack) => void;
 
   // Learn tab
   onLoadExample?: (example: GuidedExample) => void;
@@ -70,6 +81,7 @@ export const RightDock: React.FC<RightDockProps> = ({
   circuit,
   engine,
   isRunning,
+  isReplayMode = false,
   onNodeUpdate,
   onConnectionDelete,
   onFocusNode,
@@ -81,8 +93,17 @@ export const RightDock: React.FC<RightDockProps> = ({
   onRecordStop,
   onRecordReplayStart,
   onRecordReplayStop,
+  onRecordReplayPause,
+  onRecordReplayResume,
+  onRecordReplayStep,
+  onRecordReplayJump,
   onRecordVerify,
   onRecordExport,
+  onRecordExportProof,
+  onRecordProof,
+  onRecordFocus,
+  onRecordMismatchSelect,
+  onRecordImportProofPack,
   onLoadExample,
   onExitLearnMode,
   chips = [],
@@ -393,6 +414,7 @@ export const RightDock: React.FC<RightDockProps> = ({
             circuit={circuit}
             engine={engine}
             isRunning={isRunning}
+            isReplayMode={isReplayMode}
             onNodeUpdate={onNodeUpdate}
             onConnectionDelete={onConnectionDelete}
           />
@@ -584,6 +606,7 @@ export const RightDock: React.FC<RightDockProps> = ({
         {activeTab === 'record' && (
           <div className="h-full overflow-y-auto">
             <RunRecorderPanel
+              circuit={circuit}
               isRunning={isRunning}
               currentTick={tickCount}
               tickRate={tickRate}
@@ -592,8 +615,17 @@ export const RightDock: React.FC<RightDockProps> = ({
               onStopRecording={onRecordStop ?? (() => {})}
               onStartReplay={onRecordReplayStart ?? (() => {})}
               onStopReplay={onRecordReplayStop ?? (() => {})}
+              onPauseReplay={onRecordReplayPause ?? (() => {})}
+              onResumeReplay={onRecordReplayResume ?? (() => {})}
+              onStepReplay={onRecordReplayStep ?? (() => {})}
+              onJumpReplay={onRecordReplayJump ?? (() => {})}
               onVerify={onRecordVerify ?? (() => {})}
               onExport={onRecordExport ?? (() => {})}
+              onExportProof={onRecordExportProof ?? (() => {})}
+              onRecordProof={onRecordProof ?? (() => {})}
+              onFocusTarget={onRecordFocus ?? (() => {})}
+              onMismatchSelect={onRecordMismatchSelect ?? (() => {})}
+              onImportProofPack={onRecordImportProofPack ?? (() => {})}
             />
           </div>
         )}

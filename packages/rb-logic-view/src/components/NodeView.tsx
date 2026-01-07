@@ -19,6 +19,8 @@ export interface NodeViewProps {
   camera: Camera;
   isSelected: boolean;
   isHighlighted?: boolean;
+  isMismatchHighlighted?: boolean;
+  mismatchPortKeys?: Set<string> | null;
   onSelect: (nodeId: string, addToSelection: boolean) => void;
   onMove: (nodeId: string, x: number, y: number) => void;
   onPortClick?: (nodeId: string, portName: string) => void;
@@ -32,6 +34,7 @@ export interface NodeViewProps {
   onPortLeave?: () => void; // Port leave for wire validation
   probedPorts?: Set<string>; // Set of probed port keys (e.g., "nodeId.portName")
   highlightedPort?: { nodeId: string; portName: string } | null;
+  debugTick?: number | null;
 }
 
 const NODE_COLORS: Record<string, string> = {
@@ -58,6 +61,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   camera,
   isSelected,
   isHighlighted = false,
+  isMismatchHighlighted = false,
+  mismatchPortKeys = null,
   onSelect,
   onMove,
   onPortClick,
@@ -71,6 +76,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   onPortLeave,
   probedPorts,
   highlightedPort,
+  debugTick,
 }) => {
   const [isDragging, setIsDragging] = React.useState(false);
   const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 });
@@ -79,6 +85,72 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const [isHovered, setIsHovered] = React.useState(false);
   const [isToggleHovered, setIsToggleHovered] = React.useState(false);
   const [hoveredProbePort, setHoveredProbePort] = React.useState<{portName: string; x: number; y: number} | null>(null);
+
+  const getPortValue = React.useCallback(
+    (portName: string) => {
+      if (!signals) return 0;
+      return (signals.get(`${node.id}.${portName}`) ?? 0) as 0 | 1;
+    },
+    [signals, node.id]
+  );
+
+  const isPortMismatch = React.useCallback(
+    (portName: string) => {
+      if (!mismatchPortKeys) return false;
+      return mismatchPortKeys.has(`${node.id}:${portName}`);
+    },
+    [mismatchPortKeys, node.id]
+  );
+
+  const renderHoverBadge = (x: number, y: number, portName: string) => {
+    if (!isHovered || hoveredPort !== portName) return null;
+    const value = getPortValue(portName);
+    const tickLabel = typeof debugTick === 'number' ? `t${debugTick}` : 't';
+    return (
+      <g>
+        <rect
+          x={x - 20}
+          y={y - 10}
+          width={36}
+          height={16}
+          rx={2}
+          fill="#1e293b"
+          stroke="#00ffff"
+          strokeWidth={1}
+          style={{ pointerEvents: 'none' }}
+        />
+        <text
+          x={x - 2}
+          y={y - 2}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill={value === 1 ? '#22c55e' : '#9ca3af'}
+          fontSize={8}
+          fontWeight="600"
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
+        >
+          {tickLabel}:{value}
+        </text>
+      </g>
+    );
+  };
+
+  const renderMismatchRing = (x: number, y: number, portName: string) => {
+    if (!isPortMismatch(portName)) return null;
+    return (
+      <circle
+        cx={x}
+        cy={y}
+        r={6}
+        fill="none"
+        stroke="#ef4444"
+        strokeWidth={2}
+        opacity={0.9}
+        className="animate-pulse"
+        style={{ pointerEvents: 'none' }}
+      />
+    );
+  };
 
   const screenX = (isDragging ? dragPosition.x : node.position.x) * camera.zoom + camera.x;
   const screenY = (isDragging ? dragPosition.y : node.position.y) * camera.zoom + camera.y;
@@ -224,6 +296,20 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           strokeWidth={isSelected ? 3 : isHovered ? 2.5 : 2}
           rx={6}
         />
+        {isMismatchHighlighted && (
+          <rect
+            x={-size / 2 - 4}
+            y={-chipHeight / 2 - 4}
+            width={size + 8}
+            height={chipHeight + 8}
+            fill="none"
+            stroke="#f97316"
+            strokeWidth={2}
+            rx={8}
+            opacity={0.8}
+            style={{ pointerEvents: 'none' }}
+          />
+        )}
 
         {/* Hover hint - double-click to drill down */}
         {isHovered && onNodeDoubleClick && (
@@ -308,6 +394,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                   style={{ pointerEvents: 'none' }}
                 />
               )}
+              {renderMismatchRing(-size / 2, yPos, input.id)}
               {/* Larger invisible hit area for easier clicking */}
               <rect
                 x={-size / 2 - 10}
@@ -404,6 +491,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                   )}
                 </>
               )}
+              {renderHoverBadge(-size / 2 - 12, yPos, input.id)}
               <text
                 x={-size / 2 - 8}
                 y={yPos}
@@ -452,6 +540,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                   style={{ pointerEvents: 'none' }}
                 />
               )}
+              {renderMismatchRing(size / 2, yPos, output.id)}
               {/* Larger invisible hit area for easier clicking */}
               <circle
                 cx={size / 2}
@@ -543,6 +632,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                   )}
                 </>
               )}
+              {renderHoverBadge(size / 2 + 12, yPos, output.id)}
               <text
                 x={size / 2 + 8}
                 y={yPos}
@@ -598,6 +688,20 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         strokeWidth={isSelected ? 3 : 1}
         rx={4}
       />
+      {isMismatchHighlighted && (
+        <rect
+          x={-size / 2 - 3}
+          y={-size / 2 - 3}
+          width={size + 6}
+          height={size + 6}
+          fill="none"
+          stroke="#f97316"
+          strokeWidth={2}
+          rx={6}
+          opacity={0.8}
+          style={{ pointerEvents: 'none' }}
+        />
+      )}
 
       {/* Switch toggle control - dedicated interactive area */}
       {isSwitch && (
@@ -611,6 +715,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
             rx={toggleHitHeight / 2}
             fill="transparent"
             style={{ cursor: 'pointer' }}
+            data-testid={`switch-toggle-${node.id}`}
             onMouseDown={handleToggleMouseDown}
             onClick={handleToggleClick}
             onMouseEnter={() => setIsToggleHovered(true)}
@@ -698,6 +803,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 style={{ pointerEvents: 'none' }}
               />
             )}
+            {renderMismatchRing(-size / 2, 0, 'in')}
             <circle
               cx={-size / 2}
               cy={0}
@@ -769,6 +875,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 )}
               </>
             )}
+            {renderHoverBadge(-size / 2 - 12, 0, 'in')}
           </g>
         );
       })()}
@@ -804,6 +911,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 style={{ pointerEvents: 'none' }}
               />
             )}
+            {renderMismatchRing(size / 2, 0, 'out')}
             <circle
               cx={size / 2}
               cy={0}
@@ -875,6 +983,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 )}
               </>
             )}
+            {renderHoverBadge(size / 2 + 12, 0, 'out')}
           </g>
         );
       })()}

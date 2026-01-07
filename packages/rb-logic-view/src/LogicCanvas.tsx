@@ -29,10 +29,16 @@ export interface LogicCanvasProps {
   onProbeToggle?: (nodeId: string, portName: string, label: string) => void;
   probedPorts?: Set<string>; // Set of probed port keys (e.g., "nodeId.portName")
   probeWireHighlights?: Map<string, string[]>;
+  mismatchWireHighlights?: Map<string, string[]> | null;
+  mismatchNodeIds?: Set<string> | null;
+  mismatchPortKeys?: Set<string> | null;
+  debugSignals?: Map<string, 0 | 1> | null;
+  debugTick?: number | null;
   highlightedPort?: { nodeId: string; portName: string } | null;
   isRunning?: boolean;
   isReplayMode?: boolean;
   tickRate?: number;
+  tickCount?: number;
 }
 
 export const LogicCanvas: React.FC<LogicCanvasProps> = ({
@@ -50,10 +56,16 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   onProbeToggle,
   probedPorts,
   probeWireHighlights,
+  mismatchWireHighlights,
+  mismatchNodeIds,
+  mismatchPortKeys,
+  debugSignals,
+  debugTick,
   highlightedPort,
   isRunning = false,
   isReplayMode = false,
   tickRate = 0,
+  tickCount = 0,
 }) => {
   const {
     camera,
@@ -79,6 +91,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const [internalCircuit, setInternalCircuit] = React.useState(engine.getCircuit());
   const circuit = externalCircuit ?? internalCircuit;
   const [signals, setSignals] = React.useState<Map<string, 0 | 1>>(new Map());
+  const renderSignals = debugSignals ?? signals;
   const svgRef = React.useRef<SVGSVGElement>(null);
   const lastSyncedSelection = React.useRef<Set<string>>(new Set());
   const lastCircuitNodeCount = React.useRef(0);
@@ -666,6 +679,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                 : 'Paused'}
             </span>
           </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-gray-500 uppercase tracking-wide">Tick</span>
+            <span className="font-mono">{tickCount}</span>
+          </div>
         </div>
       )}
 
@@ -758,8 +775,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         {/* Wires */}
         {circuit.connections.map((conn, idx) => {
           const wireId = `${conn.from.nodeId}.${conn.from.portName}-${conn.to.nodeId}.${conn.to.portName}`;
-          const signal = signals.get(`${conn.from.nodeId}.${conn.from.portName}`);
+          const signal = renderSignals.get(`${conn.from.nodeId}.${conn.from.portName}`);
           const probeColors = probeWireHighlights?.get(wireId);
+          const mismatchColors = mismatchWireHighlights?.get(wireId);
 
           return (
             <WireView
@@ -771,6 +789,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               onSelect={selectWire}
               signal={signal}
               probeColors={probeColors}
+              mismatchColors={mismatchColors}
             />
           );
         })}
@@ -818,19 +837,22 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             camera={camera}
             isSelected={selection.nodes.has(node.id)}
             isHighlighted={node.id === highlightedNodeId}
+            isMismatchHighlighted={mismatchNodeIds?.has(node.id) ?? false}
             onSelect={selectNode}
             onMove={handleNodeMove}
             onPortClick={handlePortClick}
             onToggleSwitch={handleToggleSwitch}
             onNodeDoubleClick={onNodeDoubleClick}
             onProbeToggle={onProbeToggle}
-            signals={signals}
+            signals={renderSignals}
             chipMetadata={getChipMetadata?.(node.type)}
             wireStartPort={editingState.wireStartPort}
             onPortHover={(portName) => setHoveredPort({ nodeId: node.id, portName })}
             onPortLeave={() => setHoveredPort(null)}
             probedPorts={probedPorts}
             highlightedPort={highlightedPort}
+            debugTick={debugTick}
+            mismatchPortKeys={mismatchPortKeys}
           />
         ))}
       </svg>

@@ -21,6 +21,12 @@ interface SplitViewLayoutProps {
   tickEngine: TickEngine;
   circuit: Circuit;
   isRunning: boolean;
+  tickCount?: number;
+  debugSignals?: Map<string, 0 | 1> | null;
+  debugTick?: number | null;
+  mismatchWireHighlights?: Map<string, string[]> | null;
+  mismatchNodeIds?: Set<string> | null;
+  mismatchPortKeys?: Set<string> | null;
   canUndo?: boolean;
   canRedo?: boolean;
   onUndo?: () => void;
@@ -54,6 +60,12 @@ interface ViewRendererProps {
   tickEngine: TickEngine;
   circuit: Circuit;
   isRunning: boolean;
+  tickCount?: number;
+  debugSignals?: Map<string, 0 | 1> | null;
+  debugTick?: number | null;
+  mismatchWireHighlights?: Map<string, string[]> | null;
+  mismatchNodeIds?: Set<string> | null;
+  mismatchPortKeys?: Set<string> | null;
   canUndo?: boolean;
   canRedo?: boolean;
   onUndo?: () => void;
@@ -95,6 +107,12 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   tickEngine,
   circuit,
   isRunning,
+  tickCount,
+  debugSignals,
+  debugTick,
+  mismatchWireHighlights,
+  mismatchNodeIds,
+  mismatchPortKeys,
   canUndo,
   canRedo,
   onUndo,
@@ -257,11 +275,17 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               onProbeToggle={onProbeToggle}
               probedPorts={probedPorts}
               probeWireHighlights={probeWireHighlights}
+              mismatchWireHighlights={mismatchWireHighlights}
+              mismatchNodeIds={mismatchNodeIds}
+              mismatchPortKeys={mismatchPortKeys}
               highlightedPort={highlightedPort}
               onInputToggled={onInputToggled}
               isRunning={isRunning}
               isReplayMode={isReplayMode}
               tickRate={tickEngine.getTickRate()}
+              tickCount={tickCount}
+              debugSignals={debugSignals}
+              debugTick={debugTick}
             />
             {onUndo && onRedo && (
               <CircuitToolStrip
@@ -290,7 +314,13 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               showHints={showSchematicHints}
               onDismissHints={onDismissSchematicHints}
               probeWireHighlights={probeWireHighlights}
+              mismatchWireHighlights={mismatchWireHighlights}
+              mismatchNodeIds={mismatchNodeIds}
+              mismatchPortKeys={mismatchPortKeys}
               onHelp={onHelpOpen ? () => onHelpOpen('schematic-controls') : undefined}
+              debugSignals={debugSignals}
+              debugTick={debugTick}
+              isReplayMode={isReplayMode}
             />
           </div>
         );
@@ -308,6 +338,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               showHints={showOscilloscopeHints}
               onDismissHints={onDismissOscilloscopeHints}
               onHelp={onHelpOpen ? () => onHelpOpen('scope-controls') : undefined}
+              debugTick={debugTick}
             />
           </div>
         );
@@ -324,6 +355,10 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               showHints={show3DHints}
               onDismissHints={onDismiss3DHints}
               probeWireHighlights={probeWireHighlights}
+              mismatchWireHighlights={mismatchWireHighlights}
+              mismatchNodeIds={mismatchNodeIds}
+              mismatchPortKeys={mismatchPortKeys}
+              debugSignals={debugSignals}
               onHelp={onHelpOpen ? () => onHelpOpen('3d-controls') : undefined}
             />
           </div>
@@ -363,6 +398,12 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   tickEngine,
   circuit,
   isRunning,
+  tickCount,
+  debugSignals,
+  debugTick,
+  mismatchWireHighlights,
+  mismatchNodeIds,
+  mismatchPortKeys,
   canUndo,
   canRedo,
   onUndo,
@@ -405,6 +446,12 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           tickEngine={tickEngine}
           circuit={circuit}
           isRunning={isRunning}
+          tickCount={tickCount}
+          debugSignals={debugSignals}
+          debugTick={debugTick}
+          mismatchWireHighlights={mismatchWireHighlights}
+          mismatchNodeIds={mismatchNodeIds}
+          mismatchPortKeys={mismatchPortKeys}
           canUndo={canUndo}
           canRedo={canRedo}
           onUndo={onUndo}
@@ -446,6 +493,12 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           tickEngine={tickEngine}
           circuit={circuit}
           isRunning={isRunning}
+          tickCount={tickCount}
+          debugSignals={debugSignals}
+          debugTick={debugTick}
+          mismatchWireHighlights={mismatchWireHighlights}
+          mismatchNodeIds={mismatchNodeIds}
+          mismatchPortKeys={mismatchPortKeys}
           canUndo={canUndo}
           canRedo={canRedo}
           onUndo={onUndo}
@@ -478,6 +531,12 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           tickEngine={tickEngine}
           circuit={circuit}
           isRunning={isRunning}
+          tickCount={tickCount}
+          debugSignals={debugSignals}
+          debugTick={debugTick}
+          mismatchWireHighlights={mismatchWireHighlights}
+          mismatchNodeIds={mismatchNodeIds}
+          mismatchPortKeys={mismatchPortKeys}
           canUndo={canUndo}
           canRedo={canRedo}
           onUndo={onUndo}
@@ -519,6 +578,12 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           tickEngine={tickEngine}
           circuit={circuit}
           isRunning={isRunning}
+          tickCount={tickCount}
+          debugSignals={debugSignals}
+          debugTick={debugTick}
+          mismatchWireHighlights={mismatchWireHighlights}
+          mismatchNodeIds={mismatchNodeIds}
+          mismatchPortKeys={mismatchPortKeys}
           canUndo={canUndo}
           canRedo={canRedo}
           onUndo={onUndo}
@@ -551,6 +616,12 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           tickEngine={tickEngine}
           circuit={circuit}
           isRunning={isRunning}
+          tickCount={tickCount}
+          debugSignals={debugSignals}
+          debugTick={debugTick}
+          mismatchWireHighlights={mismatchWireHighlights}
+          mismatchNodeIds={mismatchNodeIds}
+          mismatchPortKeys={mismatchPortKeys}
           canUndo={canUndo}
           canRedo={canRedo}
           onUndo={onUndo}
@@ -590,6 +661,12 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           tickEngine={tickEngine}
           circuit={circuit}
           isRunning={isRunning}
+          tickCount={tickCount}
+          debugSignals={debugSignals}
+          debugTick={debugTick}
+          mismatchWireHighlights={mismatchWireHighlights}
+          mismatchNodeIds={mismatchNodeIds}
+          mismatchPortKeys={mismatchPortKeys}
           canUndo={canUndo}
           canRedo={canRedo}
           onUndo={onUndo}
@@ -622,6 +699,12 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           tickEngine={tickEngine}
           circuit={circuit}
           isRunning={isRunning}
+          tickCount={tickCount}
+          debugSignals={debugSignals}
+          debugTick={debugTick}
+          mismatchWireHighlights={mismatchWireHighlights}
+          mismatchNodeIds={mismatchNodeIds}
+          mismatchPortKeys={mismatchPortKeys}
           canUndo={canUndo}
           canRedo={canRedo}
           onUndo={onUndo}
@@ -654,6 +737,11 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           tickEngine={tickEngine}
           circuit={circuit}
           isRunning={isRunning}
+          tickCount={tickCount}
+          debugSignals={debugSignals}
+          debugTick={debugTick}
+          mismatchWireHighlights={mismatchWireHighlights}
+          mismatchNodeIds={mismatchNodeIds}
           canUndo={canUndo}
           canRedo={canRedo}
           onUndo={onUndo}

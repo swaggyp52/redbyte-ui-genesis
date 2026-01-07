@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useMemo } from 'react';
+import { REPLAY_LOCK_MESSAGE } from '../utils/replayLock';
 import type { Circuit, Node, Connection, Signal } from '@redbyte/rb-logic-core';
 import { CircuitEngine } from '@redbyte/rb-logic-core';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
@@ -12,6 +13,7 @@ interface PropertyInspectorProps {
   circuit: Circuit;
   engine: CircuitEngine;
   isRunning: boolean;
+  isReplayMode?: boolean;
   onNodeUpdate?: (nodeId: string, updates: Partial<Node>) => void;
   onConnectionDelete?: (connectionId: string) => void;
 }
@@ -20,11 +22,13 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
   circuit,
   engine,
   isRunning,
+  isReplayMode = false,
   onNodeUpdate,
   onConnectionDelete,
 }) => {
   const selection = useLogicViewStore((s) => s.selection);
   const addProbe = useProbeStore((s) => s.addProbe);
+  const lockMessage = REPLAY_LOCK_MESSAGE;
 
   // Get selected nodes and connections
   const selectedNodes = useMemo(() => {
@@ -61,7 +65,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
   // Handle property changes
   const handleConfigChange = (nodeId: string, configKey: string, value: any) => {
     const node = selectedNodes.find((n) => n.id === nodeId);
-    if (!node || !onNodeUpdate) return;
+    if (!node || !onNodeUpdate || isReplayMode) return;
 
     onNodeUpdate(nodeId, {
       config: {
@@ -72,7 +76,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
   };
 
   const handlePositionChange = (nodeId: string, x: number, y: number) => {
-    if (!onNodeUpdate) return;
+    if (!onNodeUpdate || isReplayMode) return;
     onNodeUpdate(nodeId, { x, y });
   };
 
@@ -178,7 +182,13 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                       {key.replace(/([A-Z])/g, ' $1').trim()}
                     </label>
                     {typeof value === 'boolean' ? (
-                      <label className="flex items-center gap-3 cursor-pointer bg-gray-800/50 rounded px-3 py-2 hover:bg-gray-700/50 transition-colors">
+                      <label
+                        className={`flex items-center gap-3 bg-gray-800/50 rounded px-3 py-2 transition-colors ${
+                          isReplayMode ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-700/50'
+                        }`}
+                        title={isReplayMode ? lockMessage : undefined}
+                        aria-disabled={isReplayMode}
+                      >
                         <div className={`w-10 h-5 rounded-full transition-all ${value ? 'bg-cyan-500' : 'bg-gray-600'}`}>
                           <div className={`w-4 h-4 bg-white rounded-full mt-0.5 transition-transform ${value ? 'ml-5' : 'ml-0.5'}`}></div>
                         </div>
@@ -188,6 +198,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                           checked={value}
                           onChange={(e) => handleConfigChange(node.id, key, e.target.checked)}
                           className="hidden"
+                          disabled={isReplayMode}
                         />
                       </label>
                     ) : typeof value === 'number' ? (
@@ -199,12 +210,16 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                           value={value}
                           onChange={(e) => handleConfigChange(node.id, key, parseFloat(e.target.value) || 0)}
                           className="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                          disabled={isReplayMode}
+                          title={isReplayMode ? lockMessage : undefined}
                         />
                         <input
                           type="number"
                           value={value}
                           onChange={(e) => handleConfigChange(node.id, key, parseFloat(e.target.value) || 0)}
                           className="w-16 px-2 py-1 bg-gray-800 rounded border border-gray-600 text-white text-sm font-mono"
+                          disabled={isReplayMode}
+                          title={isReplayMode ? lockMessage : undefined}
                         />
                       </div>
                     ) : (
@@ -213,6 +228,8 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                         value={String(value)}
                         onChange={(e) => handleConfigChange(node.id, key, e.target.value)}
                         className="w-full px-3 py-2 bg-gray-800/50 rounded border border-gray-600 text-white text-sm"
+                        disabled={isReplayMode}
+                        title={isReplayMode ? lockMessage : undefined}
                       />
                     )}
                   </div>
@@ -296,7 +313,13 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                 const id = `${conn.from.nodeId}.${conn.from.portName}->${conn.to.nodeId}.${conn.to.portName}`;
                 onConnectionDelete(id);
               }}
-              className="w-full px-4 py-3 bg-red-500/10 hover:bg-red-500/20 active:bg-red-500/30 border border-red-500/30 rounded-lg text-red-400 hover:text-red-300 transition-all font-medium flex items-center justify-center gap-2 group"
+              className={`w-full px-4 py-3 border border-red-500/30 rounded-lg text-red-400 transition-all font-medium flex items-center justify-center gap-2 group ${
+                isReplayMode
+                  ? 'bg-red-500/5 opacity-60 cursor-not-allowed'
+                  : 'bg-red-500/10 hover:bg-red-500/20 active:bg-red-500/30 hover:text-red-300'
+              }`}
+              disabled={isReplayMode}
+              title={isReplayMode ? lockMessage : undefined}
             >
               <span className="text-lg group-hover:scale-110 transition-transform">🗑️</span>
               <span>Delete Wire</span>

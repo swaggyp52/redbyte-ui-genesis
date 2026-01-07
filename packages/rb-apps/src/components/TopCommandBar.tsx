@@ -18,6 +18,10 @@ import React from 'react';
 interface TopCommandBarProps {
   // Project controls
   onNew?: () => void;
+  onNewProject?: () => void;
+  onSaveProject?: () => void;
+  onOpenProject?: () => void;
+  onExportProject?: () => void;
   onSave?: () => void;
   onSaveAs?: () => void;
   onExamples?: () => void;
@@ -51,6 +55,10 @@ interface TopCommandBarProps {
 
 export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   onNew,
+  onNewProject,
+  onSaveProject,
+  onOpenProject,
+  onExportProject,
   onSave,
   onSaveAs,
   onExamples,
@@ -80,13 +88,49 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
       {/* LEFT: Project */}
       <div className="flex items-center gap-2">
         <span className="text-xs text-gray-500 uppercase tracking-wide mr-2">Project</span>
+        {onNewProject && (
+          <button
+            onClick={onNewProject}
+            className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded transition-colors"
+            title="New Project"
+          >
+            New Project
+          </button>
+        )}
+        {onOpenProject && (
+          <button
+            onClick={onOpenProject}
+            className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded transition-colors"
+            title="Open Project"
+          >
+            Open Project
+          </button>
+        )}
+        {onSaveProject && (
+          <button
+            onClick={onSaveProject}
+            className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded transition-colors"
+            title="Save Project"
+          >
+            Save Project
+          </button>
+        )}
+        {onExportProject && (
+          <button
+            onClick={onExportProject}
+            className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded transition-colors"
+            title="Export Project Artifacts"
+          >
+            Export...
+          </button>
+        )}
         {onNew && (
           <button
             onClick={onNew}
             className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded transition-colors"
             title="New Circuit"
           >
-            New
+            New Circuit
           </button>
         )}
         {onExamples && (

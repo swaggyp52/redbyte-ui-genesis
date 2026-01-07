@@ -560,6 +560,10 @@ export const Shell: React.FC<ShellProps> = () => {
         case 'playground-layout-schematic-only':
         case 'playground-layout-scope-only':
         case 'playground-layout-3d-only':
+        case 'playground-project-new':
+        case 'playground-project-open':
+        case 'playground-project-save':
+        case 'playground-project-export':
         case 'playground-dock-info':
         case 'playground-dock-health':
         case 'playground-dock-learn':

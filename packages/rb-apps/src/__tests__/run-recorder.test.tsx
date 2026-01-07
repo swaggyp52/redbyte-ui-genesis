@@ -12,6 +12,7 @@ import {
   type RunRecord,
 } from '../recording/runRecord';
 import { applyStimulusEvents } from '../recording/stimulus';
+import { buildCircuitSummary } from '../recording/runRecordUtils';
 
 const TEST_CIRCUIT: Circuit = {
   nodes: [{ id: 'sw1', type: 'Switch', position: { x: 0, y: 0 } }],
@@ -75,14 +76,15 @@ describe('run recorder store', () => {
   it('verifies replay traces against recorded traces', () => {
     const record: RunRecord = {
       version: 1,
-      createdAt: Date.now(),
+      createdAt: new Date().toISOString(),
       appVersion: 'test',
       circuitSnapshot: TEST_CIRCUIT,
+      circuitSummary: buildCircuitSummary(TEST_CIRCUIT),
       engineConfig: { tickRate: 10 },
       stimulus: [],
       probes: [{ id: 'p1', nodeId: 'sw1', portName: 'out', label: 'SW', color: '#00ffff' }],
       trace: [{ tick: 1, values: { p1: 1 } }],
-      summary: { tickCount: 1, startTick: 0, missingNodes: [] },
+      summary: { tickCount: 1, startTick: 0, durationTicks: 1, missingNodes: [] },
     };
 
     const store = useRunRecorderStore.getState();
@@ -97,14 +99,15 @@ describe('run recorder store', () => {
   it('fails verification on mismatched trace', () => {
     const record: RunRecord = {
       version: 1,
-      createdAt: Date.now(),
+      createdAt: new Date().toISOString(),
       appVersion: 'test',
       circuitSnapshot: TEST_CIRCUIT,
+      circuitSummary: buildCircuitSummary(TEST_CIRCUIT),
       engineConfig: { tickRate: 10 },
       stimulus: [],
       probes: [{ id: 'p1', nodeId: 'sw1', portName: 'out', label: 'SW', color: '#00ffff' }],
       trace: [{ tick: 1, values: { p1: 1 } }],
-      summary: { tickCount: 1, startTick: 0, missingNodes: [] },
+      summary: { tickCount: 1, startTick: 0, durationTicks: 1, missingNodes: [] },
     };
 
     const store = useRunRecorderStore.getState();
@@ -119,19 +122,68 @@ describe('run recorder store', () => {
   it('round-trips run record export/import', () => {
     const record: RunRecord = {
       version: 1,
-      createdAt: Date.now(),
+      createdAt: new Date().toISOString(),
       appVersion: 'test',
       circuitSnapshot: TEST_CIRCUIT,
+      circuitSummary: buildCircuitSummary(TEST_CIRCUIT),
       engineConfig: { tickRate: 10 },
       stimulus: [],
       probes: [],
       trace: [],
-      summary: { tickCount: 0, startTick: 0, missingNodes: [] },
+      summary: { tickCount: 0, startTick: 0, durationTicks: 0, missingNodes: [] },
     };
 
     const encoded = encodeRunRecord(record);
     const decoded = decodeRunRecord(encoded);
     expect(decoded.version).toBe(1);
     expect(decoded.engineConfig.tickRate).toBe(10);
+  });
+
+  it('preserves digests on export/import', () => {
+    const record: RunRecord = {
+      version: 2,
+      createdAt: new Date().toISOString(),
+      appVersion: 'test',
+      circuitSnapshot: TEST_CIRCUIT,
+      circuitSummary: buildCircuitSummary(TEST_CIRCUIT),
+      circuitDigest: 'circuit-digest',
+      engineConfig: { tickRate: 20 },
+      stimulus: [],
+      stimulusDigest: 'stimulus-digest',
+      probes: [],
+      trace: [],
+      traceDigest: 'trace-digest',
+      summary: { tickCount: 0, startTick: 0, durationTicks: 0, missingNodes: [] },
+    };
+
+    const encoded = encodeRunRecord(record);
+    const decoded = decodeRunRecord(encoded);
+    expect(decoded.circuitDigest).toBe('circuit-digest');
+    expect(decoded.stimulusDigest).toBe('stimulus-digest');
+    expect(decoded.traceDigest).toBe('trace-digest');
+  });
+
+  it('advances playhead when stepping replay', () => {
+    const record: RunRecord = {
+      version: 1,
+      createdAt: new Date().toISOString(),
+      appVersion: 'test',
+      circuitSnapshot: TEST_CIRCUIT,
+      circuitSummary: buildCircuitSummary(TEST_CIRCUIT),
+      engineConfig: { tickRate: 10 },
+      stimulus: [],
+      probes: [],
+      trace: [],
+      summary: { tickCount: 0, startTick: 0, durationTicks: 0, missingNodes: [] },
+    };
+
+    const store = useRunRecorderStore.getState();
+    store.startReplay(record);
+    store.setReplayPaused(true);
+    store.setPlayheadTick(2);
+    store.stepReplay(3);
+
+    expect(useRunRecorderStore.getState().playheadTick).toBe(5);
+    expect(useRunRecorderStore.getState().pendingStepTicks).toBe(3);
   });
 });

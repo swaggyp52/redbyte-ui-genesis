@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import '@testing-library/jest-dom';
 import { render, screen, act } from '@testing-library/react';
 import { TickEngine } from '@redbyte/rb-logic-core';
 import { LogicCanvas } from '../LogicCanvas';
@@ -30,7 +31,7 @@ describe('circuit HUD', () => {
       />
     );
 
-    expect(screen.getByTestId('circuit-hud')).toBeInTheDocument();
+    expect(screen.queryByTestId('circuit-hud')).not.toBeNull();
 
     act(() => {
       vi.advanceTimersByTime(2600);

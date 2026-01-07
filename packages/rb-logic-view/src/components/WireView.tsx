@@ -14,6 +14,7 @@ export interface WireViewProps {
   onSelect: (wireId: string, addToSelection: boolean) => void;
   signal?: 0 | 1;
   probeColors?: string[];
+  mismatchColors?: string[];
 }
 
 const WireViewComponent: React.FC<WireViewProps> = ({
@@ -24,6 +25,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
   onSelect,
   signal,
   probeColors,
+  mismatchColors,
 }) => {
   const fromNode = nodes.find((n) => n.id === connection.from.nodeId);
   const toNode = nodes.find((n) => n.id === connection.to.nodeId);
@@ -64,6 +66,19 @@ const WireViewComponent: React.FC<WireViewProps> = ({
           stroke={color}
           strokeWidth={6}
           opacity={0.35}
+          filter="blur(3px)"
+        />
+      ))}
+
+      {/* Mismatch glow highlight */}
+      {mismatchColors?.map((color, index) => (
+        <path
+          key={`${wireId}-mismatch-${index}`}
+          d={path}
+          fill="none"
+          stroke={color}
+          strokeWidth={7}
+          opacity={0.45}
           filter="blur(3px)"
         />
       ))}
@@ -123,6 +138,8 @@ const WireViewComponent: React.FC<WireViewProps> = ({
 export const WireView = React.memo(WireViewComponent, (prevProps, nextProps) => {
   const prevProbeKey = (prevProps.probeColors ?? []).join('|');
   const nextProbeKey = (nextProps.probeColors ?? []).join('|');
+  const prevMismatchKey = (prevProps.mismatchColors ?? []).join('|');
+  const nextMismatchKey = (nextProps.mismatchColors ?? []).join('|');
   // Only re-render if relevant props change
   const prevFromNode = prevProps.nodes.find((n) => n.id === prevProps.connection.from.nodeId);
   const nextFromNode = nextProps.nodes.find((n) => n.id === nextProps.connection.from.nodeId);
@@ -137,6 +154,7 @@ export const WireView = React.memo(WireViewComponent, (prevProps, nextProps) => 
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.signal === nextProps.signal &&
     prevProbeKey === nextProbeKey &&
+    prevMismatchKey === nextMismatchKey &&
     prevProps.camera.x === nextProps.camera.x &&
     prevProps.camera.y === nextProps.camera.y &&
     prevProps.camera.zoom === nextProps.camera.zoom &&

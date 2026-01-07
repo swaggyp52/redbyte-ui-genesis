@@ -14,6 +14,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { REPLAY_LOCK_MESSAGE } from '../utils/replayLock';
 
 interface ComponentInfo {
   type: string;
@@ -31,6 +32,7 @@ interface EnhancedPaletteProps {
   onChipLibraryOpen: () => void;
   getChipMetadata: (type: string) => any;
   getNodeDescription: (type: string) => string;
+  isReplayMode?: boolean;
 }
 
 export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
@@ -42,6 +44,7 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
   onChipLibraryOpen,
   getChipMetadata,
   getNodeDescription,
+  isReplayMode = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(() => {
@@ -134,11 +137,13 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
   };
 
   const handleDragStart = (type: string, e: React.DragEvent) => {
+    if (isReplayMode) return;
     addToRecent(type);
     onNodeDragStart(type, e);
   };
 
   const handleComponentClick = (type: string) => {
+    if (isReplayMode) return;
     addToRecent(type);
     // Add node at default center position
     onAddNode(type, { x: 400, y: 300 });
@@ -161,11 +166,13 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
     return (
       <div
         key={type}
-        draggable
+        draggable={!isReplayMode}
         onDragStart={(e) => handleDragStart(type, e)}
         onClick={() => handleComponentClick(type)}
-        className={`w-full text-left px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded cursor-move transition-colors border ${layerColor} group relative ${extraClass}`}
-        title={description}
+        className={`w-full text-left px-2 py-1 text-xs bg-gray-800 rounded transition-colors border ${layerColor} group relative ${extraClass} ${
+          isReplayMode ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-700 cursor-move'
+        }`}
+        title={isReplayMode ? REPLAY_LOCK_MESSAGE : description}
       >
         <div className="flex items-center justify-between">
           <span className="flex-1">{type}</span>

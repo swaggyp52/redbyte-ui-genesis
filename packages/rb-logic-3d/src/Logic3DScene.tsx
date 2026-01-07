@@ -23,6 +23,10 @@ interface Logic3DSceneProps {
   onDismissHints?: () => void;
   onHelp?: () => void;
   probeWireHighlights?: Map<string, string[]>;
+  mismatchWireHighlights?: Map<string, string[]> | null;
+  mismatchNodeIds?: Set<string> | null;
+  mismatchPortKeys?: Set<string> | null;
+  debugSignals?: Map<string, 0 | 1> | null;
 }
 
 export const buildSelectionMap = (
@@ -43,8 +47,23 @@ const Scene: React.FC<{
   followSelection: boolean;
   controlsRef: React.RefObject<OrbitControlsImpl>;
   probeWireHighlights?: Map<string, string[]>;
-}> = ({ engine, viewStateStore, animateSignalFlow, followSelection, controlsRef, probeWireHighlights }) => {
-  const signals = use3DEngineSync(engine);
+  mismatchWireHighlights?: Map<string, string[]> | null;
+  mismatchNodeIds?: Set<string> | null;
+  mismatchPortKeys?: Set<string> | null;
+  debugSignals?: Map<string, 0 | 1> | null;
+}> = ({
+  engine,
+  viewStateStore,
+  animateSignalFlow,
+  followSelection,
+  controlsRef,
+  probeWireHighlights,
+  mismatchWireHighlights,
+  mismatchNodeIds,
+  debugSignals,
+}) => {
+  const liveSignals = use3DEngineSync(engine);
+  const signals = debugSignals ?? liveSignals;
   const adapter = useMemo(() => {
     if (!engine || typeof engine.getCircuit !== 'function') {
       return null;
@@ -140,6 +159,7 @@ const Scene: React.FC<{
         const isActive = signals.get(signalKey) === 1;
         const position: [number, number, number] = [node.view.x / 20, 0.25, node.view.y / 20];
         const isSelected = selectionMap.get(node.id) ?? false;
+        const isMismatch = mismatchNodeIds?.has(node.id) ?? false;
         const lastChange = pulseMap.get(signalKey) ?? 0;
         const pulse =
           animateSignalFlow && lastChange > 0 ? Math.max(0, 1 - (Date.now() - lastChange) / 250) : 0;
@@ -152,6 +172,7 @@ const Scene: React.FC<{
               position={position}
               isActive={isActive}
               isSelected={isSelected}
+              isMismatch={isMismatch}
               pulse={pulse}
               onSelect={handleNodeSelect}
               onHover={handleNodeHover}
@@ -171,10 +192,18 @@ const Scene: React.FC<{
         const from: [number, number, number] = [wire.from.x / 20, 0.25, wire.from.y / 20];
         const to: [number, number, number] = [wire.to.x / 20, 0.25, wire.to.y / 20];
         const probeColors = probeWireHighlights?.get(wire.id);
+        const mismatchColors = mismatchWireHighlights?.get(wire.id);
 
         return (
           <React.Fragment key={wire.id}>
-            <WireMesh from={from} to={to} isActive={isActive} pulse={pulse} probeColors={probeColors} />
+            <WireMesh
+              from={from}
+              to={to}
+              isActive={isActive}
+              pulse={pulse}
+              probeColors={probeColors}
+              mismatchColors={mismatchColors}
+            />
             {isActive && animateSignalFlow && (
               <SignalParticleSystem from={from} to={to} isActive={isActive} wireId={wire.id} />
             )}
@@ -205,6 +234,9 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
   onDismissHints,
   onHelp,
   probeWireHighlights,
+  mismatchWireHighlights,
+  mismatchNodeIds,
+  debugSignals,
 }) => {
   const [showHelp, setShowHelp] = React.useState(false);
   const [webglFailed, setWebglFailed] = React.useState(false);
@@ -275,6 +307,9 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
           followSelection={followSelection}
           controlsRef={controlsRef}
           probeWireHighlights={probeWireHighlights}
+          mismatchWireHighlights={mismatchWireHighlights}
+          mismatchNodeIds={mismatchNodeIds}
+          debugSignals={debugSignals}
         />
       </Canvas>
 

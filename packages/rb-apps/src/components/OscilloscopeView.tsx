@@ -45,6 +45,7 @@ interface OscilloscopeViewProps {
   showHints?: boolean;
   onDismissHints?: () => void;
   onHelp?: () => void;
+  debugTick?: number | null;
 }
 
 const MAX_SAMPLES = 500; // Maximum samples to keep in buffer
@@ -60,6 +61,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   showHints = true,
   onDismissHints,
   onHelp,
+  debugTick,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -73,7 +75,6 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     setActiveProbe,
   } = useProbeStore();
   const [probeData, setProbeData] = useState<Map<string, ProbeData>>(new Map());
-  const [timeScale, setTimeScale] = useState(10); // seconds visible
   const [voltageScale, setVoltageScale] = useState(1.5); // vertical scale
   const [viewEndTime, setViewEndTime] = useState(0);
 
@@ -90,7 +91,6 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   // Cursors
   const [cursors, setCursors] = useState<Cursor[]>([]);
   const [showGrid, setShowGrid] = useState(true);
-  const [showTickGuides, setShowTickGuides] = useState(true);
   const [selectedNodeId, setSelectedNodeId] = useState<string>('');
   const [selectedPortName, setSelectedPortName] = useState<string>('out');
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
@@ -110,6 +110,10 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   const togglePauseScroll = useOscilloscopeStore((state) => state.togglePauseScroll);
   const showTimeCursor = useOscilloscopeStore((state) => state.showTimeCursor);
   const toggleTimeCursor = useOscilloscopeStore((state) => state.toggleTimeCursor);
+  const timeWindowSec = useOscilloscopeStore((state) => state.timeWindowSec);
+  const setTimeWindowSec = useOscilloscopeStore((state) => state.setTimeWindowSec);
+  const showTickGuides = useOscilloscopeStore((state) => state.showTickGuides);
+  const setShowTickGuides = useOscilloscopeStore((state) => state.setShowTickGuides);
   const clearRequestId = useOscilloscopeStore((state) => state.clearRequestId);
   const requestClear = useOscilloscopeStore((state) => state.requestClear);
   const pauseScrollRef = useRef(pauseScroll);
@@ -407,7 +411,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     // Get current time
     const currentTime = getCurrentTime();
     const windowEndTime = pauseScroll ? viewEndTime : currentTime;
-    const windowStartTime = windowEndTime - timeScale;
+    const windowStartTime = windowEndTime - timeWindowSec;
 
     // Draw tick guides
     if (showTickGuides) {
@@ -419,7 +423,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
         ctx.lineWidth = 1;
         for (let tickTime = firstTick; tickTime <= windowEndTime; tickTime += tickInterval) {
           const timeOffset = windowEndTime - tickTime;
-          const x = renderWidth - (timeOffset / timeScale) * renderWidth;
+          const x = renderWidth - (timeOffset / timeWindowSec) * renderWidth;
           if (x < 0 || x > renderWidth) continue;
           ctx.beginPath();
           ctx.moveTo(x, 0);
@@ -448,9 +452,9 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       data.samples.forEach((sample) => {
         // Calculate x position (time axis)
         const timeOffset = windowEndTime - sample.timestamp;
-        if (timeOffset > timeScale) return; // Sample too old
+        if (timeOffset > timeWindowSec) return; // Sample too old
 
-        const x = renderWidth - (timeOffset / timeScale) * renderWidth;
+        const x = renderWidth - (timeOffset / timeWindowSec) * renderWidth;
 
         // Calculate y position (voltage axis)
         const y = renderHeight / 2 - (sample.value * voltageScale * renderHeight) / 4;
@@ -490,7 +494,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     if (showTimeCursor) {
       const nowCursorTime = pauseScroll ? viewEndTime : currentTime;
       const nowCursorX =
-        renderWidth - ((windowEndTime - nowCursorTime) / timeScale) * renderWidth;
+        renderWidth - ((windowEndTime - nowCursorTime) / timeWindowSec) * renderWidth;
       if (nowCursorX >= 0 && nowCursorX <= renderWidth) {
         ctx.strokeStyle = '#9ca3af';
         ctx.lineWidth = 1;
@@ -505,10 +509,27 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       }
     }
 
+    if (typeof debugTick === 'number' && tickEngine.getTickRate() > 0) {
+      const debugTime = debugTick / tickEngine.getTickRate();
+      const debugX =
+        renderWidth - ((windowEndTime - debugTime) / timeWindowSec) * renderWidth;
+      if (debugX >= 0 && debugX <= renderWidth) {
+        ctx.strokeStyle = '#f97316';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(debugX, 0);
+        ctx.lineTo(debugX, renderHeight);
+        ctx.stroke();
+        ctx.fillStyle = '#f97316';
+        ctx.font = '10px monospace';
+        ctx.fillText(`t=${debugTime.toFixed(2)}s`, debugX + 4, 24);
+      }
+    }
+
     // Draw cursors
     cursors.forEach((cursor, index) => {
       const timeOffset = windowEndTime - cursor.time;
-      const cursorX = renderWidth - (timeOffset / timeScale) * renderWidth;
+      const cursorX = renderWidth - (timeOffset / timeWindowSec) * renderWidth;
 
       if (cursorX < 0 || cursorX > renderWidth) return; // Cursor off screen
 
@@ -543,14 +564,14 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     ctx.fillStyle = '#888';
     ctx.font = '10px monospace';
     for (let i = 0; i <= 10; i++) {
-      const time = windowEndTime - (timeScale * (10 - i)) / 10;
+      const time = windowEndTime - (timeWindowSec * (10 - i)) / 10;
       const x = (i / 10) * renderWidth;
       ctx.fillText(`${time.toFixed(1)}s`, x + 2, renderHeight - 5);
     }
   }, [
     probes,
     probeData,
-    timeScale,
+    timeWindowSec,
     voltageScale,
     cursors,
     showGrid,
@@ -637,11 +658,11 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
 
   const clampViewEndTime = useCallback(
     (nextEndTime: number) => {
-      const minEnd = sampleBounds.minSampleTime + timeScale;
+      const minEnd = sampleBounds.minSampleTime + timeWindowSec;
       const maxEnd = Math.max(sampleBounds.maxSampleTime, minEnd);
       return Math.min(maxEnd, Math.max(minEnd, nextEndTime));
     },
-    [sampleBounds, timeScale]
+    [sampleBounds, timeWindowSec]
   );
 
   const handlePauseScrollToggle = () => {
@@ -653,7 +674,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     if (sampleBounds.maxSampleTime <= 0) return;
     e.preventDefault();
     const delta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
-    const secondsPerPixel = timeScale / canvasDimensions.width;
+    const secondsPerPixel = timeWindowSec / canvasDimensions.width;
     const shiftSeconds = delta * secondsPerPixel * 10;
     setViewEndTime((prev) => clampViewEndTime(prev + shiftSeconds));
   };
@@ -671,7 +692,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       y,
       width: canvasDimensions.width,
       height: canvasDimensions.height,
-      timeScale,
+      timeWindowSec,
       voltageScale,
       windowEndTime,
       probes,
@@ -696,7 +717,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     // Calculate time from click position
     const currentTime = getCurrentTime();
     const windowEndTime = pauseScroll ? viewEndTime : currentTime;
-    const timeOffset = ((canvasDimensions.width - x) / canvasDimensions.width) * timeScale;
+    const timeOffset = ((canvasDimensions.width - x) / canvasDimensions.width) * timeWindowSec;
     const clickedTime = windowEndTime - timeOffset;
 
     // Shift+click adds second cursor
@@ -764,7 +785,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     const exportData = {
       metadata: {
         exportTime: new Date().toISOString(),
-        timeScale,
+        timeWindowSec,
         voltageScale,
         sampleRate: 1000 / SAMPLE_INTERVAL,
         totalSamples,
@@ -802,8 +823,8 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
           <div className="flex items-center gap-1.5">
             <label className="text-gray-500 text-xs">Time:</label>
             <select
-              value={timeScale}
-              onChange={(e) => setTimeScale(Number(e.target.value))}
+              value={timeWindowSec}
+              onChange={(e) => setTimeWindowSec(Number(e.target.value))}
               className="px-1.5 py-0.5 bg-gray-800 rounded border border-gray-700 text-xs"
             >
               <option value={1}>1s</option>
@@ -896,6 +917,14 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
               </span>
             </div>
             <div className="flex items-center gap-2">
+              <span className="text-gray-400">Tick:</span>
+              <span className="font-mono text-purple-300">{tickEngine.getTickCount()}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">TickRate:</span>
+              <span className="font-mono text-purple-300">{tickEngine.getTickRate()}Hz</span>
+            </div>
+            <div className="flex items-center gap-2">
               <span className="text-gray-400">Samples:</span>
               <span className="font-mono text-cyan-300">{totalSamples}</span>
             </div>
@@ -968,7 +997,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
               T
             </button>
             <button
-              onClick={() => setShowTickGuides((prev) => !prev)}
+              onClick={() => setShowTickGuides(!showTickGuides)}
               className={`px-1.5 py-0.5 rounded border ${
                 showTickGuides
                   ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'

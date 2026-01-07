@@ -10,8 +10,17 @@ import {
   type RunProbe,
   type RunStimulusEvent,
   type RunTraceSample,
+  type DebugOverlay,
   type VerificationStatus,
 } from '../recording/runRecord';
+import {
+  buildCircuitSummary,
+  buildMismatchReport,
+  digestCircuit,
+  digestStimulus,
+  digestTrace,
+  normalizeStimulusEvents,
+} from '../recording/runRecordUtils';
 
 interface RecordingContext {
   circuitSnapshot: Circuit;
@@ -35,6 +44,11 @@ interface RunRecorderState {
   replayTrace: RunTraceSample[];
   record: RunRecord | null;
   verificationStatus: VerificationStatus;
+  debugOverlay: DebugOverlay | null;
+  playheadTick: number;
+  replayPaused: boolean;
+  pendingStepTicks: number | null;
+  pendingJumpTick: number | null;
 }
 
 interface RunRecorderActions {
@@ -44,41 +58,22 @@ interface RunRecorderActions {
   recordEvent: (event: RunStimulusEvent) => void;
   removeEventAt: (index: number) => void;
   moveEvent: (fromIndex: number, toIndex: number) => void;
+  applyEditedEvents: (events: RunStimulusEvent[]) => void;
+  normalizeEvents: () => void;
   recordTraceSample: (sample: RunTraceSample) => void;
   startReplay: (record: RunRecord) => void;
   recordReplaySample: (sample: RunTraceSample) => void;
   stopReplay: () => void;
   verifyReplay: () => void;
   reset: () => void;
+  setPlayheadTick: (tick: number) => void;
+  setReplayPaused: (paused: boolean) => void;
+  stepReplay: (ticks: number) => void;
+  jumpReplay: (tick: number) => void;
   setRecord: (record: RunRecord | null) => void;
   setVerificationStatus: (status: VerificationStatus) => void;
+  setDebugOverlay: (overlay: DebugOverlay | null) => void;
 }
-
-const findMismatch = (expected: RunTraceSample[], actual: RunTraceSample[]) => {
-  const expectedMap = new Map<number, RunTraceSample>();
-  expected.forEach((sample) => {
-    expectedMap.set(sample.tick, sample);
-  });
-
-  for (const sample of actual) {
-    const expectedSample = expectedMap.get(sample.tick);
-    if (!expectedSample) continue;
-    for (const [probeId, actualValue] of Object.entries(sample.values)) {
-      const expectedValue = expectedSample.values[probeId];
-      if (expectedValue === undefined) continue;
-      if (expectedValue !== actualValue) {
-        return {
-          tick: sample.tick,
-          probeId,
-          expected: expectedValue,
-          actual: actualValue,
-        };
-      }
-    }
-  }
-
-  return null;
-};
 
 export const useRunRecorderStore = create<RunRecorderState & RunRecorderActions>((set, get) => ({
   mode: 'idle',
@@ -89,6 +84,11 @@ export const useRunRecorderStore = create<RunRecorderState & RunRecorderActions>
   replayTrace: [],
   record: null,
   verificationStatus: { status: 'unknown' },
+  debugOverlay: null,
+  playheadTick: 0,
+  replayPaused: false,
+  pendingStepTicks: null,
+  pendingJumpTick: null,
 
   arm: (context) =>
     set({
@@ -98,6 +98,11 @@ export const useRunRecorderStore = create<RunRecorderState & RunRecorderActions>
       trace: [],
       replayTrace: [],
       verificationStatus: { status: 'unknown' },
+      debugOverlay: null,
+      playheadTick: 0,
+      replayPaused: false,
+      pendingStepTicks: null,
+      pendingJumpTick: null,
     }),
 
   startRecording: (context) =>
@@ -108,6 +113,11 @@ export const useRunRecorderStore = create<RunRecorderState & RunRecorderActions>
       trace: [],
       replayTrace: [],
       verificationStatus: { status: 'unknown' },
+      debugOverlay: null,
+      playheadTick: 0,
+      replayPaused: false,
+      pendingStepTicks: null,
+      pendingJumpTick: null,
     }),
 
   stopRecording: (tickCount, missingNodes = []) => {
@@ -115,19 +125,29 @@ export const useRunRecorderStore = create<RunRecorderState & RunRecorderActions>
     if (!context) return;
     const startTick = context.startTick ?? 0;
     const runTickCount = Math.max(0, tickCount - startTick);
+    const normalizedStimulus = normalizeStimulusEvents(get().stimulus);
+    const probeCount = context.probes.length;
     const record: RunRecord = {
-      version: 1,
-      createdAt: Date.now(),
+      version: 2,
+      createdAt: new Date().toISOString(),
       appVersion: context.appVersion,
       circuitSnapshot: context.circuitSnapshot,
+      circuitSummary: buildCircuitSummary(context.circuitSnapshot),
+      circuitDigest: digestCircuit(context.circuitSnapshot),
       engineConfig: { tickRate: context.tickRate },
-      stimulus: [...get().stimulus],
+      stimulus: normalizedStimulus,
+      stimulusDigest: digestStimulus(normalizedStimulus),
       probes: context.probes,
       trace: [...get().trace],
+      traceDigest: digestTrace(get().trace),
       summary: {
         tickCount: runTickCount,
         startTick,
+        durationTicks: runTickCount,
         missingNodes,
+        ticks: runTickCount,
+        probeCount,
+        inputEventCount: normalizedStimulus.length,
       },
     };
 
@@ -135,6 +155,11 @@ export const useRunRecorderStore = create<RunRecorderState & RunRecorderActions>
       mode: 'idle',
       record,
       context: null,
+      debugOverlay: null,
+      playheadTick: 0,
+      replayPaused: false,
+      pendingStepTicks: null,
+      pendingJumpTick: null,
     });
   },
 
@@ -163,6 +188,30 @@ export const useRunRecorderStore = create<RunRecorderState & RunRecorderActions>
       return { stimulus: next };
     }),
 
+  applyEditedEvents: (events) =>
+    set((state) => {
+      if (state.record) {
+        return {
+          record: {
+            ...state.record,
+            stimulus: [...events],
+          },
+        };
+      }
+      return { stimulus: [...events] };
+    }),
+
+  normalizeEvents: () =>
+    set((state) => {
+      if (!state.record) return state;
+      return {
+        record: {
+          ...state.record,
+          stimulus: normalizeStimulusEvents(state.record.stimulus),
+        },
+      };
+    }),
+
   recordTraceSample: (sample) =>
     set((state) => {
       if (state.mode !== 'recording') return state;
@@ -175,6 +224,11 @@ export const useRunRecorderStore = create<RunRecorderState & RunRecorderActions>
       replay: { record, replayIndex: 0 },
       replayTrace: [],
       verificationStatus: { status: 'unknown' },
+      debugOverlay: null,
+      playheadTick: 0,
+      replayPaused: false,
+      pendingStepTicks: null,
+      pendingJumpTick: null,
     }),
 
   recordReplaySample: (sample) =>
@@ -187,16 +241,38 @@ export const useRunRecorderStore = create<RunRecorderState & RunRecorderActions>
     set({
       mode: 'idle',
       replay: null,
+      debugOverlay: null,
+      replayPaused: false,
+      pendingStepTicks: null,
+      pendingJumpTick: null,
     }),
 
   verifyReplay: () => {
     const record = get().record;
     if (!record) return;
-    const mismatch = findMismatch(record.trace, get().replayTrace);
+    const mismatch = buildMismatchReport(record.trace, get().replayTrace, record.stimulus, 10);
     if (mismatch) {
-      set({ verificationStatus: { status: 'fail', mismatch } });
+      set({
+        verificationStatus: { status: 'fail', mismatch },
+        record: {
+          ...record,
+          summary: {
+            ...record.summary,
+            firstMismatchTick: mismatch.tick,
+          },
+        },
+      });
     } else {
-      set({ verificationStatus: { status: 'pass' } });
+      set({
+        verificationStatus: { status: 'pass' },
+        record: {
+          ...record,
+          summary: {
+            ...record.summary,
+            firstMismatchTick: undefined,
+          },
+        },
+      });
     }
   },
 
@@ -210,8 +286,40 @@ export const useRunRecorderStore = create<RunRecorderState & RunRecorderActions>
       replayTrace: [],
       record: null,
       verificationStatus: { status: 'unknown' },
+      debugOverlay: null,
+      playheadTick: 0,
+      replayPaused: false,
+      pendingStepTicks: null,
+      pendingJumpTick: null,
     }),
 
-  setRecord: (record) => set({ record }),
+  setPlayheadTick: (tick) => set({ playheadTick: Math.max(0, Math.floor(tick)) }),
+  setReplayPaused: (paused) => set({ replayPaused: paused }),
+  stepReplay: (ticks) =>
+    set((state) => {
+      if (state.mode !== 'replaying' || !state.replayPaused) return state;
+      if (ticks <= 0) return state;
+      return {
+        pendingStepTicks: ticks,
+        playheadTick: Math.max(0, state.playheadTick + ticks),
+      };
+    }),
+  jumpReplay: (tick) =>
+    set((state) => {
+      if (state.mode !== 'replaying') return state;
+      const nextTick = Math.max(0, Math.floor(tick));
+      return { pendingJumpTick: nextTick, playheadTick: nextTick };
+    }),
+
+  setRecord: (record) =>
+    set({
+      record,
+      debugOverlay: null,
+      playheadTick: 0,
+      replayPaused: false,
+      pendingStepTicks: null,
+      pendingJumpTick: null,
+    }),
   setVerificationStatus: (verificationStatus) => set({ verificationStatus }),
+  setDebugOverlay: (debugOverlay) => set({ debugOverlay }),
 }));

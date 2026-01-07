@@ -15,6 +15,7 @@ interface NodeMeshProps {
   position: [number, number, number];
   isActive: boolean;
   isSelected?: boolean;
+  isMismatch?: boolean;
   pulse?: number;
   onSelect?: (nodeId: string, additive: boolean) => void;
   onHover?: (nodeId: string | null) => void;
@@ -26,6 +27,7 @@ export const NodeMesh: React.FC<NodeMeshProps> = ({
   position,
   isActive,
   isSelected = false,
+  isMismatch = false,
   pulse = 0,
   onSelect,
   onHover,
@@ -35,9 +37,9 @@ export const NodeMesh: React.FC<NodeMeshProps> = ({
   const [isDragging, setIsDragging] = useState(false);
 
   const material = useMemo(() => {
-    const color = NODE_COLORS[type] || '#94a3b8';
-    return createNeonMaterial(color, isActive);
-  }, [type, isActive]);
+    const color = isMismatch ? '#f97316' : NODE_COLORS[type] || '#94a3b8';
+    return createNeonMaterial(color, isActive || isMismatch);
+  }, [type, isActive, isMismatch]);
 
   const geometry = useMemo(() => createNodeGeometry(type), [type]);
   const rotation = useMemo(() => getGeometryRotation(type), [type]);

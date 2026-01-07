@@ -81,6 +81,30 @@ const COMMANDS: CommandSearchResult[] = [
   },
   {
     type: 'command',
+    id: 'playground-project-new',
+    name: 'Playground: New Project',
+    description: 'Start a new Logic Playground project',
+  },
+  {
+    type: 'command',
+    id: 'playground-project-open',
+    name: 'Playground: Open Project',
+    description: 'Open a Logic Playground project file',
+  },
+  {
+    type: 'command',
+    id: 'playground-project-save',
+    name: 'Playground: Save Project',
+    description: 'Export the current Logic Playground project',
+  },
+  {
+    type: 'command',
+    id: 'playground-project-export',
+    name: 'Playground: Export Artifacts',
+    description: 'Export netlist, Verilog, or debug bundle',
+  },
+  {
+    type: 'command',
     id: 'playground-layout-build',
     name: 'Playground: Layout Build',
     description: 'Switch to Build layout',

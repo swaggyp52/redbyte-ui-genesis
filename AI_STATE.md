@@ -646,6 +646,15 @@ Quality enforcement:
 \- React act(...) warnings indicate improper async handling
 
 
+### Test Command Reminder
+
+\- rb-apps tests: `pnpm exec vitest run packages/rb-apps/src/__tests__/your-test.test.tsx`
+
+\- rb-logic-view tests: `pnpm exec vitest run packages/rb-logic-view/src/__tests__/your-test.test.tsx`
+
+\- Example: Circuit HUD test lives at `packages/rb-logic-view/src/__tests__/circuit-hud.test.tsx`
+
+
 ### CI/CD Contract
 
 Continuous Integration enforces quality gates at the repository level:
@@ -5269,6 +5278,7 @@ After completing work, an AI agent MUST:
 \- Hardened switch interaction hit targets to prevent drag/selection conflicts, and updated switch help text to reflect single-click toggling; objectives unchanged; phase unchanged
 \- Added oscilloscope pause-scroll mode with wheel panning, a live time cursor, and step-style trace rendering with on-trace labels, plus new oscilloscope control tests; objectives unchanged; phase unchanged
 \- Added pure stimulus replay helper, relative tick offsets for run recordings, and replay safety guards (edit lock, control lock, state restore); extended run recorder tests for stimulus timing and summary fields; objectives unchanged; phase unchanged
+\- Added run-record utilities (timeline mapping, mismatch report, circuit summary), expanded run recorder store with playhead/step/pause controls, and rebuilt the recorder panel as a trace explorer with timeline scrub + mismatch inspector; extended tests and noted rb-apps vs rb-logic-view test commands; objectives unchanged; phase unchanged
 
 \### 2026-01-05
 \- Fixed LogicPlaygroundApp TickEngine construction to pass circuit + tickRate config (no CircuitEngine type mismatch), updated quick-add to supply default node position, aligned crash-recovery toast call with string-based API, and added demo-mode guard + share-link aria-label for a11y; objectives unchanged; phase unchanged
@@ -5473,3 +5483,15 @@ After completing work, an AI agent MUST:
 - Implemented workspaces for multi-context organization (PHASE_P); documented Workspace Contract in AI_STATE.md (named snapshots of window state, explicit user-controlled, local-only, failure-safe); created workspaceStore.ts with Zustand store managing workspaces array and activeWorkspaceId (createWorkspace, switchWorkspace, deleteWorkspace, renameWorkspace actions); implemented workspace persistence to localStorage with schema validation; integrated workspace-aware boot flow in Shell (prioritizes active workspace, falls back to session restore, filters unknown apps/Launcher); added 3 workspace commands (create-workspace, switch-workspace, delete-workspace) to CommandPalette and SystemSearch; implemented minimal UI using window.prompt for workspace name input and selection, alert for errors (power-user first, no dock UI); workspace switching closes all windows and restores target snapshot; added 28 workspace tests covering create/switch/delete operations, persistence, active workspace across reload, corrupted data handling, rename workspace, getWorkspace, listWorkspaces; all 170 tests pass; objectives unchanged; phase unchanged
 - Implemented macros for repeatable action sequences (PHASE_Q); documented Macro Contract in AI_STATE.md (named sequences of action steps, synchronous/deterministic execution, failure-safe abort-on-error, local-only persistence, explicit user-triggered); created macroTypes.ts (MacroStep union: command/openApp/intent/switchWorkspace) and macroStore.ts with Zustand store (createMacro, deleteMacro, renameMacro, updateMacroSteps, getMacro, listMacros actions); implemented localStorage persistence with schema validation; created executeMacro.ts execution engine (MacroExecutionContext interface, sequential step execution, abort on first error with step index reporting); integrated macro execution in Shell (switchWorkspaceById helper, executeMacroById wrapper, run-macro command, ref-based circular dependency resolution); added run-macro command to CommandPalette and SystemSearch; added MacroSearchResult type to search-types.ts; integrated macros in SystemSearch component with "Macros" group and onExecuteMacro callback; added 31 macro tests covering store operations (create/delete/rename/update, persistence, validation), execution (command/openApp/intent/switchWorkspace steps, sequential multi-step, abort on unknown app/workspace, error reporting), and integration (localStorage restore); all 201 tests pass; objectives unchanged; phase unchanged
 - Implemented multi-target open-with and deterministic focus (PHASE_Z); expanded FILE_ACTION_TARGETS to 2 real targets (Logic Playground for .rblogic, Text Viewer for .txt/.md) with deterministic eligibility predicates based on resourceType + file extension; created TextViewerApp handling open-with intent with resourceId payload and deterministic focus using requestAnimationFrame; removed all setTimeout hacks from LogicPlaygroundApp focus behavior (replaced with requestAnimationFrame for single-frame delay); Open With modal now filters targets by eligibility predicate (only shows compatible apps for selected file, displays "No available targets" for unsupported types); added circuit.rblogic file to Home folder in fsModel for testing; added 9 PHASE_Z tests covering eligibility predicates (Logic Playground vs Text Viewer for different file types), registry validation (>=2 targets with deterministic isEligible functions), and deterministic behavior; updated fsModel tests and PHASE_X/Y/V tests to account for new filesystem structure; all 303 tests pass with zero warnings (PHASE_R gate satisfied); build passes; updated CHANGELOG.md with PHASE_Z completion; objectives unchanged; phase complete
+
+### 2026-01-07
+- Added deterministic project export format plus netlist/Verilog/debug bundle exporters and wired project save/open/export actions into Logic Playground UI + command palette; objectives unchanged; phase unchanged
+- Persisted oscilloscope time window and tick-guide settings in store for project save/load and added probe restore support; objectives unchanged; phase unchanged
+- Added exporter tests and adjusted circuit HUD test matcher; clarified test command reminder for rb-logic-view test location; objectives unchanged; phase unchanged
+### 2026-01-06
+- Updated replay scrubbing to reset/rebuild replay engine on rewind and drive interval stepping from replay context so playhead + engine stay aligned; determinism UI now updates circuit snapshots and debug signals without mutating persistent state outside replay; objectives unchanged; phase unchanged
+- Locked replay mutation entry points: passed replay mode into palette and inspector, disabled Quick Add selections and inspector edits with replay tooltips, and guarded node/connection mutations during replay; objectives unchanged; phase unchanged
+- Simplified run record utils imports to remove duplicate Circuit type and added digest preservation coverage in run recorder tests; objectives unchanged; phase unchanged
+- Added debug overlay construction helpers, mismatch entry mapping, and replay restore utility; replay exit now restores camera/selection plus run-replay HUD exposes pause/step/exit controls; objectives unchanged; phase unchanged
+- Added proof-pack export/import helpers and UI wiring for trace explorer; mismatch forensics list now shows labels/ports with fan-in hints; objectives unchanged; phase unchanged
+- Added tests for debug overlay generation, mismatch forensics entries, proof-pack round-trip, and replay exit restore helper; objectives unchanged; phase unchanged

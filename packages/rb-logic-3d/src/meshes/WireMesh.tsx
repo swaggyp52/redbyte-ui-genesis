@@ -11,9 +11,17 @@ interface WireMeshProps {
   isActive: boolean;
   pulse?: number;
   probeColors?: string[];
+  mismatchColors?: string[];
 }
 
-export const WireMesh: React.FC<WireMeshProps> = ({ from, to, isActive, pulse = 0, probeColors }) => {
+export const WireMesh: React.FC<WireMeshProps> = ({
+  from,
+  to,
+  isActive,
+  pulse = 0,
+  probeColors,
+  mismatchColors,
+}) => {
   const points = [new THREE.Vector3(...from), new THREE.Vector3(...to)];
   const curve = new THREE.CatmullRomCurve3(points);
   const tubeGeometry = new THREE.TubeGeometry(curve, 10, 0.05, 8, false);
@@ -31,6 +39,17 @@ export const WireMesh: React.FC<WireMeshProps> = ({ from, to, isActive, pulse = 
             emissiveIntensity={0.35}
             transparent
             opacity={0.45}
+          />
+        </mesh>
+      ))}
+      {mismatchColors?.map((color, index) => (
+        <mesh key={`${color}-mismatch-${index}`} geometry={glowGeometry}>
+          <meshStandardMaterial
+            color={color}
+            emissive={color}
+            emissiveIntensity={0.5}
+            transparent
+            opacity={0.6}
           />
         </mesh>
       ))}

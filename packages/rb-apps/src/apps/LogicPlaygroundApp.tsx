@@ -50,15 +50,25 @@ import { calculateFitToView, setGlobalViewStateSync, useLogicViewStore } from '@
 import { useHierarchyStore } from '../stores/hierarchyStore';
 import { buildProbeWireHighlights } from '../utils/probeHighlight';
 import { useRunRecorderStore } from '../stores/runRecorderStore';
-import { encodeRunRecord, indexStimulusByTick, type RunStimulusEvent } from '../recording/runRecord';
+import { encodeRunRecord, indexStimulusByTick, type RunStimulusEvent, type ProofPack } from '../recording/runRecord';
+import { buildProofPack, encodeProofPack } from '../recording/proofPack';
 import { applyStimulusEvents } from '../recording/stimulus';
+import { buildSuspectSet } from '../utils/mismatchLocalization';
+import { buildDebugOverlayFromSignals } from '../recording/runRecordUtils';
+import { restoreReplayState } from '../utils/replayRestore';
+import { analyzeCircuitHealth } from '../logic/circuitHealth';
+import { buildDebugBundle } from '../export/debugBundle';
+import { netlistFromCircuit } from '../export/netlistExport';
+import { createRBProject, decodeRBProject, encodeRBProject, type RBProject } from '../export/projectFormat';
+import { stableStringify } from '../export/stableStringify';
+import { verilogFromNetlist } from '../export/verilogExport';
 import { HierarchyBreadcrumbs } from '../components/HierarchyBreadcrumbs';
 import { KeyboardShortcutsHelp } from '../components/KeyboardShortcutsHelp';
 import { ComponentPalette } from '../components/ComponentPalette';
 import { QuickAddPalette } from '../components/QuickAddPalette';
 import { StatusBar } from '../components/StatusBar';
 import { TopCommandBar } from '../components/TopCommandBar';
-import { RightDock } from '../components/RightDock';
+import { RightDock, type RightDockTab } from '../components/RightDock';
 import { EnhancedPalette } from '../components/EnhancedPalette';
 import { HelpDock } from '../components/HelpDock';
 
@@ -164,6 +174,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     perspective,
     setPerspective,
     splitRatio,
+    setSplitRatio,
     rightDockState,
     rightDockTab,
     showHelpDock,
@@ -176,19 +187,35 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setHelpDockSection,
   } = useLayoutStore();
   const { probes, toggleProbeForPort } = useProbeStore();
+  const oscilloscopePauseScroll = useOscilloscopeStore((state) => state.pauseScroll);
+  const oscilloscopeTimeWindowSec = useOscilloscopeStore((state) => state.timeWindowSec);
+  const oscilloscopeShowTickGuides = useOscilloscopeStore((state) => state.showTickGuides);
   const recorderMode = useRunRecorderStore((state) => state.mode);
   const record = useRunRecorderStore((state) => state.record);
+  const verificationStatus = useRunRecorderStore((state) => state.verificationStatus);
   const recordEvent = useRunRecorderStore((state) => state.recordEvent);
   const replayRecord = useRunRecorderStore((state) => state.replay?.record ?? null);
+  const replayPaused = useRunRecorderStore((state) => state.replayPaused);
+  const pendingStepTicks = useRunRecorderStore((state) => state.pendingStepTicks);
+  const pendingJumpTick = useRunRecorderStore((state) => state.pendingJumpTick);
+  const playheadTick = useRunRecorderStore((state) => state.playheadTick);
+  const setReplayPaused = useRunRecorderStore((state) => state.setReplayPaused);
+  const stepReplay = useRunRecorderStore((state) => state.stepReplay);
+  const jumpReplay = useRunRecorderStore((state) => state.jumpReplay);
   const armRunRecorder = useRunRecorderStore((state) => state.arm);
   const startRunRecording = useRunRecorderStore((state) => state.startRecording);
   const stopRunRecording = useRunRecorderStore((state) => state.stopRecording);
   const startRunReplay = useRunRecorderStore((state) => state.startReplay);
   const stopRunReplay = useRunRecorderStore((state) => state.stopReplay);
   const verifyRunReplay = useRunRecorderStore((state) => state.verifyReplay);
+  const resetRunRecorder = useRunRecorderStore((state) => state.reset);
+  const setDebugOverlay = useRunRecorderStore((state) => state.setDebugOverlay);
   const [isRunning, setIsRunning] = useState(false);
   const [currentHz, setCurrentHz] = useState(tickRate);
   const [tickCount, setTickCount] = useState(0);
+  const [projectName, setProjectName] = useState('Untitled Project');
+  const [projectDescription, setProjectDescription] = useState('');
+  const [projectCreatedAt, setProjectCreatedAt] = useState(() => new Date().toISOString());
   const [currentFileId, setCurrentFileId] = useState<string | null>(initialFileId ?? null);
   const [isDirty, setIsDirty] = useState(false);
   const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
@@ -200,6 +227,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [showSaveAsModal, setShowSaveAsModal] = useState(false);
   const [saveAsFilename, setSaveAsFilename] = useState('circuit.rblogic');
   const [showOpenModal, setShowOpenModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [showSaveChipModal, setShowSaveChipModal] = useState(false);
   const [showChipLibrary, setShowChipLibrary] = useState(false);
   const [recognizedPattern, setRecognizedPattern] = useState<RecognizedPattern | null>(null);
@@ -216,16 +244,31 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [highlightedPort, setHighlightedPort] = useState<{ nodeId: string; portName: string } | null>(
     null
   );
+  const [debugSignals, setDebugSignals] = useState<Map<string, 0 | 1> | null>(null);
+  const [debugTick, setDebugTick] = useState<number | null>(null);
+  const [mismatchWireHighlights, setMismatchWireHighlights] = useState<Map<string, string[]> | null>(
+    null
+  );
+  const [mismatchNodeIds, setMismatchNodeIds] = useState<Set<string> | null>(null);
+  const [mismatchPortKeys, setMismatchPortKeys] = useState<Set<string> | null>(null);
 
   const autosaveIntervalRef = useRef<number | null>(null);
   const historyDebounceRef = useRef<number | null>(null);
   const patternRecognitionRef = useRef<number | null>(null);
   const lastRecognizedPatternRef = useRef<string | null>(null);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
+  const projectFileInputRef = useRef<HTMLInputElement>(null);
   const hasLoadedFromURL = useRef(false);
   const isHydratingRef = useRef(false); // Guard to prevent setting dirty during file load
   const replayIntervalRef = useRef<number | null>(null);
   const replaySetupRef = useRef(false);
+  const replayPausedRef = useRef(false);
+  const replayContextRef = useRef<{
+    engine: CircuitEngine;
+    tickEngine: TickEngine;
+    eventsByTick: Map<number, RunStimulusEvent[]>;
+    maxTick: number;
+  } | null>(null);
   const preReplayStateRef = useRef<{
     circuit: Circuit;
     engine: CircuitEngine;
@@ -233,6 +276,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     tickRate: number;
     isRunning: boolean;
     tickCount: number;
+    viewState: {
+      camera: ReturnType<typeof useLogicViewStore.getState>['camera'];
+      selection: ReturnType<typeof useLogicViewStore.getState>['selection'];
+    };
   } | null>(null);
   const engineRef = useRef<CircuitEngine>(engine);
   const tickEngineRef = useRef<TickEngine>(tickEngine);
@@ -256,6 +303,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   }, []);
 
   useEffect(() => {
+    replayPausedRef.current = replayPaused;
+  }, [replayPaused]);
+
+  useEffect(() => {
     const handlePlaygroundCommand = (event: Event) => {
       const detail = (event as CustomEvent<{ command?: string; windowId?: string }>).detail;
       if (!detail?.command) return;
@@ -266,6 +317,18 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       if (!focused || focused.id !== windowId) return;
 
       switch (detail.command) {
+        case 'playground-project-new':
+          handleNewProject();
+          return;
+        case 'playground-project-save':
+          handleSaveProject();
+          return;
+        case 'playground-project-open':
+          handleOpenProject();
+          return;
+        case 'playground-project-export':
+          handleExportProject();
+          return;
         case 'playground-layout-build':
           setPerspective('build');
           return;
@@ -350,6 +413,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     windowId,
     circuit.nodes,
     rightDockState,
+    handleNewProject,
+    handleSaveProject,
+    handleOpenProject,
+    handleExportProject,
     setPerspective,
     setRightDockTab,
     setRightDockState,
@@ -476,6 +543,13 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   useEffect(() => {
     if (recorderMode !== 'replaying' || !replayRecord) {
       replaySetupRef.current = false;
+      replayContextRef.current = null;
+      setDebugSignals(null);
+      setDebugTick(null);
+      setDebugOverlay(null);
+      setMismatchWireHighlights(null);
+      setMismatchNodeIds(null);
+      setMismatchPortKeys(null);
       return;
     }
 
@@ -483,6 +557,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     replaySetupRef.current = true;
 
     if (!preReplayStateRef.current) {
+      const viewState = useLogicViewStore.getState();
       preReplayStateRef.current = {
         circuit,
         engine,
@@ -490,6 +565,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         tickRate: currentHz,
         isRunning,
         tickCount: tickEngine.getTickCount(),
+        viewState: {
+          camera: viewState.camera,
+          selection: viewState.selection,
+        },
       };
       tickEngine.pause();
     }
@@ -514,23 +593,39 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
     const eventsByTick = indexStimulusByTick(replayRecord.stimulus);
     const tickInterval = Math.max(16, Math.floor(1000 / replayRecord.engineConfig.tickRate));
-    const maxTick = replayRecord.summary.tickCount;
+    const maxTick = replayRecord.summary.durationTicks ?? replayRecord.summary.tickCount;
+
+    replayContextRef.current = {
+      engine: newEngine,
+      tickEngine: newTickEngine,
+      eventsByTick,
+      maxTick,
+    };
 
     replayIntervalRef.current = window.setInterval(() => {
-      const tick = newTickEngine.getTickCount();
-      const events = eventsByTick.get(tick) ?? [];
+      if (replayPausedRef.current) return;
+      const context = replayContextRef.current;
+      if (!context) return;
+      const { tickEngine, eventsByTick: tickEvents, engine: replayEngine, maxTick: replayMaxTick } = context;
+
+      const tick = tickEngine.getTickCount();
+      const events = tickEvents.get(tick) ?? [];
       if (events.length > 0) {
         setCircuit((prev) => {
           const nextCircuit = applyStimulusEvents(prev, events);
-          newEngine.setCircuit(nextCircuit);
-          newTickEngine.setCircuit(nextCircuit);
+          replayEngine.setCircuit(nextCircuit);
+          tickEngine.setCircuit(nextCircuit);
           return nextCircuit;
         });
       }
 
-      newTickEngine.stepOnce();
+      tickEngine.stepOnce();
+      const nextTick = tickEngine.getTickCount();
+      useRunRecorderStore.getState().setPlayheadTick(nextTick);
+      setDebugSignals(new Map(tickEngine.getEngine().getAllSignals()));
+      setDebugTick(nextTick);
 
-      if (newTickEngine.getTickCount() >= maxTick) {
+      if (nextTick >= replayMaxTick) {
         if (replayIntervalRef.current) {
           window.clearInterval(replayIntervalRef.current);
           replayIntervalRef.current = null;
@@ -544,6 +639,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         window.clearInterval(replayIntervalRef.current);
         replayIntervalRef.current = null;
       }
+      replayContextRef.current = null;
     };
   }, [
     recorderMode,
@@ -564,18 +660,113 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     preReplayStateRef.current = null;
     replaySetupRef.current = false;
 
-    setEngine(previous.engine);
-    setTickEngine(previous.tickEngine);
-    setCircuit(previous.circuit);
-    setCurrentHz(previous.tickRate);
-    setTickCount(previous.tickCount);
-    setIsRunning(previous.isRunning);
-
-    previous.tickEngine.setTickRate(previous.tickRate);
-    if (previous.isRunning) {
-      previous.tickEngine.start();
-    }
+    restoreReplayState(
+      previous,
+      {
+        setEngine,
+        setTickEngine,
+        setCircuit,
+        setCurrentHz,
+        setTickCount,
+        setIsRunning,
+      },
+      useLogicViewStore
+    );
   }, [recorderMode]);
+
+  useEffect(() => {
+    if (recorderMode === 'replaying' && debugSignals) {
+      const tick = debugTick ?? playheadTick;
+      setDebugOverlay(buildDebugOverlayFromSignals(debugSignals, tick, currentHz));
+      return;
+    }
+    setDebugOverlay(null);
+  }, [recorderMode, debugSignals, debugTick, playheadTick, currentHz, setDebugOverlay]);
+
+  useEffect(() => {
+    if (recorderMode !== 'replaying' || !replayRecord) return;
+    if (!replayPaused) return;
+    const context = replayContextRef.current;
+    if (!context) return;
+
+    const maxTick = context.maxTick;
+    const targetTick = Math.min(Math.max(0, playheadTick), maxTick);
+    const currentTick = context.tickEngine.getTickCount();
+
+    if (targetTick < currentTick) {
+      const resetCircuit = JSON.parse(JSON.stringify(replayRecord.circuitSnapshot)) as Circuit;
+      const resetEngine = new CircuitEngine(resetCircuit);
+      const resetTickEngine = new TickEngine(resetCircuit, {
+        tickRate: replayRecord.engineConfig.tickRate,
+      });
+      context.engine = resetEngine;
+      context.tickEngine = resetTickEngine;
+      setEngine(resetEngine);
+      setTickEngine(resetTickEngine);
+    }
+
+    while (context.tickEngine.getTickCount() < targetTick) {
+      const tick = context.tickEngine.getTickCount();
+      const events = context.eventsByTick.get(tick) ?? [];
+      if (events.length > 0) {
+        const nextCircuit = applyStimulusEvents(context.engine.getCircuit(), events);
+        context.engine.setCircuit(nextCircuit);
+        context.tickEngine.setCircuit(nextCircuit);
+      }
+      context.tickEngine.stepOnce();
+    }
+
+    setCircuit(context.engine.getCircuit());
+    setDebugSignals(new Map(context.tickEngine.getEngine().getAllSignals()));
+    setDebugTick(context.tickEngine.getTickCount());
+  }, [recorderMode, replayRecord, replayPaused, playheadTick]);
+
+  const runReplayTickOnce = useCallback(() => {
+    const context = replayContextRef.current;
+    if (!context) return false;
+
+    const { tickEngine: replayTickEngine, eventsByTick, engine: replayEngine, maxTick } = context;
+    const tick = replayTickEngine.getTickCount();
+    const events = eventsByTick.get(tick) ?? [];
+    if (events.length > 0) {
+      setCircuit((prev) => {
+        const nextCircuit = applyStimulusEvents(prev, events);
+        replayEngine.setCircuit(nextCircuit);
+        replayTickEngine.setCircuit(nextCircuit);
+        return nextCircuit;
+      });
+    }
+
+    replayTickEngine.stepOnce();
+    const newTick = replayTickEngine.getTickCount();
+    useRunRecorderStore.getState().setPlayheadTick(newTick);
+
+    if (newTick >= maxTick) {
+      stopRunReplay();
+      return false;
+    }
+    return true;
+  }, [stopRunReplay]);
+
+  useEffect(() => {
+    if (recorderMode !== 'replaying') return;
+    if (!pendingStepTicks || pendingStepTicks <= 0) return;
+    if (!replayPausedRef.current) return;
+
+    for (let i = 0; i < pendingStepTicks; i += 1) {
+      if (!runReplayTickOnce()) break;
+    }
+
+    useRunRecorderStore.setState({ pendingStepTicks: null });
+  }, [pendingStepTicks, recorderMode, runReplayTickOnce]);
+
+  useEffect(() => {
+    if (recorderMode !== 'replaying') return;
+    if (pendingJumpTick === null || pendingJumpTick === undefined) return;
+
+    useRunRecorderStore.getState().setPlayheadTick(pendingJumpTick);
+    useRunRecorderStore.setState({ pendingJumpTick: null });
+  }, [pendingJumpTick, recorderMode]);
 
   // Register saved chips on mount
   useEffect(() => {
@@ -642,7 +833,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         setShowKeyboardHelp(true);
       }
       // Space to show quick add palette
-      if (e.key === ' ' && !isInputFocused() && !showQuickAdd) {
+      if (e.key === ' ' && !isInputFocused() && !showQuickAdd && !isReplayMode) {
         e.preventDefault();
         setShowQuickAdd(true);
       }
@@ -713,7 +904,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [circuit, currentFileId, showKeyboardHelp, showQuickAdd, setPerspective]);
+  }, [circuit, currentFileId, showKeyboardHelp, showQuickAdd, setPerspective, isReplayMode]);
 
   // Sync hierarchy circuit with main circuit
   useEffect(() => {
@@ -786,6 +977,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
     detectAndLoadCircuitFromURL();
   }, []);
+
+  useEffect(() => {
+    if (isReplayMode && showQuickAdd) {
+      setShowQuickAdd(false);
+    }
+  }, [isReplayMode, showQuickAdd]);
 
   // Load circuit from open-with intent resourceId
   useEffect(() => {
@@ -970,6 +1167,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   };
 
   const handleNodeUpdate = (nodeId: string, updates: Partial<Node>) => {
+    if (recorderMode === 'replaying') return;
     const updatedCircuit = {
       ...circuit,
       nodes: circuit.nodes.map((n) => (n.id === nodeId ? { ...n, ...updates } : n)),
@@ -980,6 +1178,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   };
 
   const handleConnectionDelete = (connectionId: string) => {
+    if (recorderMode === 'replaying') return;
     const [from, to] = connectionId.split('->');
     const [fromNodeId, fromPort] = from.split('.');
     const [toNodeId, toPort] = to.split('.');
@@ -1121,6 +1320,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     stopRunRecording(tickEngineRef.current.getTickCount(), getMissingProbeNodes());
   }, [stopRunRecording, getMissingProbeNodes]);
 
+  const handleRunRecorderProof = useCallback(() => {
+    resetRunRecorder();
+    startRunRecording(buildRunRecorderContext());
+  }, [resetRunRecorder, startRunRecording, buildRunRecorderContext]);
+
   const handleRunRecorderExport = useCallback(() => {
     if (!record) return;
     const json = encodeRunRecord(record);
@@ -1133,6 +1337,41 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     URL.revokeObjectURL(url);
   }, [record]);
 
+  const handleRunRecorderExportProof = useCallback(() => {
+    if (!record) return;
+    const proofPack = buildProofPack(record, circuit, {
+      appVersion,
+      tickRate: currentHz,
+      exampleId: selectedExampleId || undefined,
+    });
+    const json = encodeProofPack(proofPack);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `proof-pack-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [record, circuit, appVersion, currentHz, selectedExampleId]);
+
+  const handleRunRecorderImportProofPack = useCallback(
+    (pack: ProofPack) => {
+      const replayCircuit = JSON.parse(JSON.stringify(pack.runRecord.circuitSnapshot)) as Circuit;
+      const newEngine = new CircuitEngine(replayCircuit);
+      const newTickEngine = new TickEngine(replayCircuit, {
+        tickRate: pack.runRecord.engineConfig.tickRate,
+      });
+      setCircuit(replayCircuit);
+      setEngine(newEngine);
+      setTickEngine(newTickEngine);
+      setCurrentHz(pack.runRecord.engineConfig.tickRate);
+      setIsRunning(false);
+      setTickCount(newTickEngine.getTickCount());
+      setIsDirty(true);
+    },
+    [setCircuit, setEngine, setTickEngine, setCurrentHz, setIsRunning, setTickCount, setIsDirty]
+  );
+
   const handleRunReplayStart = useCallback(() => {
     if (!record) return;
     startRunReplay(record);
@@ -1142,9 +1381,91 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     stopRunReplay();
   }, [stopRunReplay]);
 
+  const handleRunReplayPause = useCallback(() => {
+    setReplayPaused(true);
+  }, [setReplayPaused]);
+
+  const handleRunReplayResume = useCallback(() => {
+    setReplayPaused(false);
+  }, [setReplayPaused]);
+
+  const handleRunReplayStep = useCallback(
+    (ticks: number) => {
+      stepReplay(ticks);
+    },
+    [stepReplay]
+  );
+
+  const handleRunReplayJump = useCallback(
+    (tick: number) => {
+      jumpReplay(tick);
+    },
+    [jumpReplay]
+  );
+
   const handleProbeToggle = useCallback((nodeId: string, portName: string, label: string) => {
     toggleProbeForPort(nodeId, portName, label);
   }, [toggleProbeForPort]);
+
+  const handleRunRecorderFocus = useCallback(
+    (nodeId: string, portName: string) => {
+      handleFocusNode(nodeId, portName);
+      setHighlightedPort({ nodeId, portName });
+    },
+    [handleFocusNode, setHighlightedPort]
+  );
+
+  const handleMismatchSelect = useCallback(
+    (probeId: string) => {
+      if (!record) return;
+      const probe = record.probes.find((item) => item.id === probeId);
+      if (!probe) return;
+      handleRunRecorderFocus(probe.nodeId, probe.portName);
+
+      const suspect = buildSuspectSet(
+        circuit,
+        [{ nodeId: probe.nodeId, portName: probe.portName }],
+        4
+      );
+      const highlightMap = new Map<string, string[]>();
+      suspect.wireIds.forEach((wireId) => {
+        highlightMap.set(wireId, ['#f97316']);
+      });
+      setMismatchWireHighlights(highlightMap);
+      setMismatchNodeIds(new Set(suspect.nodeIds));
+      setMismatchPortKeys(new Set([`${probe.nodeId}:${probe.portName}`]));
+    },
+    [record, handleRunRecorderFocus, circuit]
+  );
+
+  useEffect(() => {
+    if (!record || verificationStatus.status !== 'fail' || !verificationStatus.mismatch) {
+      setMismatchPortKeys(null);
+      return;
+    }
+
+    const mismatchPorts = new Set<string>();
+    const combinedNodes = new Set<string>();
+    const combinedWires = new Set<string>();
+
+    verificationStatus.mismatch.probeIds.forEach((probeId) => {
+      const probe = record.probes.find((item) => item.id === probeId);
+      if (!probe) return;
+      mismatchPorts.add(`${probe.nodeId}:${probe.portName}`);
+      const suspect = buildSuspectSet(circuit, [{ nodeId: probe.nodeId, portName: probe.portName }], 4);
+      suspect.nodeIds.forEach((nodeId) => combinedNodes.add(nodeId));
+      suspect.wireIds.forEach((wireId) => combinedWires.add(wireId));
+    });
+
+    const highlightMap = new Map<string, string[]>();
+    combinedWires.forEach((wireId) => {
+      highlightMap.set(wireId, ['#f97316']);
+    });
+
+    setMismatchPortKeys(mismatchPorts);
+    setMismatchNodeIds(combinedNodes);
+    setMismatchWireHighlights(highlightMap);
+  }, [record, verificationStatus, circuit]);
 
   const handleInputToggled = useCallback(
     (nodeId: string, portName: string, newValue: 0 | 1) => {
@@ -1154,17 +1475,20 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       if (recorderMode === 'recording') {
         const startTick = useRunRecorderStore.getState().context?.startTick ?? 0;
         const tick = Math.max(0, tickEngineRef.current.getTickCount() - startTick);
+        const node = circuit.nodes.find((item) => item.id === nodeId);
+        const label = node ? `${node.type} ${portName}` : `${nodeId}.${portName}`;
         const event: RunStimulusEvent = {
           tick,
           type: 'input_toggled',
           nodeId,
           portName,
           value: newValue,
+          label,
         };
         recordEvent(event);
       }
     },
-    [determinismRecorder, recorderMode, recordEvent]
+    [determinismRecorder, recorderMode, recordEvent, circuit.nodes]
   );
 
   const handleNodeDragStart = (nodeType: string, e?: React.DragEvent) => {
@@ -1741,6 +2065,205 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     (import.meta as ImportMeta & { env?: { VITE_APP_VERSION?: string } }).env?.VITE_APP_VERSION ??
     'dev';
 
+  const downloadText = useCallback((filename: string, text: string, type = 'application/json') => {
+    const blob = new Blob([text], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const buildProject = useCallback((): RBProject => {
+    const name = projectName.trim() || 'Untitled Project';
+    return createRBProject({
+      createdAt: projectCreatedAt,
+      name,
+      description: projectDescription.trim() || undefined,
+      circuit,
+      layout: {
+        perspectiveId: perspective,
+        splitRatio,
+        dock: {
+          open: rightDockState !== 'collapsed',
+          tab: rightDockTab,
+        },
+      },
+      probes,
+      oscilloscope: {
+        timeWindowSec: oscilloscopeTimeWindowSec,
+        paused: oscilloscopePauseScroll,
+        showTickGuides: oscilloscopeShowTickGuides,
+      },
+      recorder: record ? { lastRunRecord: record } : undefined,
+      meta: {
+        appVersion,
+        tickRate: currentHz,
+      },
+    });
+  }, [
+    projectCreatedAt,
+    projectName,
+    projectDescription,
+    circuit,
+    perspective,
+    splitRatio,
+    rightDockState,
+    rightDockTab,
+    probes,
+    oscilloscopeTimeWindowSec,
+    oscilloscopePauseScroll,
+    oscilloscopeShowTickGuides,
+    record,
+    appVersion,
+    currentHz,
+  ]);
+
+  const applyProject = useCallback(
+    (project: RBProject) => {
+      isHydratingRef.current = true;
+      const nextCircuit = project.circuit ?? { nodes: [], connections: [] };
+      const nextTickRate = project.meta?.tickRate ?? tickRate;
+      const newEngine = new CircuitEngine(nextCircuit);
+      const newTickEngine = new TickEngine(nextCircuit, { tickRate: nextTickRate });
+
+      setCircuit(nextCircuit);
+      setEngine(newEngine);
+      setTickEngine(newTickEngine);
+      setCurrentHz(nextTickRate);
+      useSettingsStore.getState().setTickRate(nextTickRate);
+      setTickCount(newTickEngine.getTickCount());
+      setIsRunning(false);
+      setIsDirty(false);
+      setCurrentFileId(null);
+      setSelectedFileId('');
+      setSelectedExampleId('');
+      lastRecognizedPatternRef.current = null;
+
+      setProjectName(project.name ?? 'Untitled Project');
+      setProjectDescription(project.description ?? '');
+      setProjectCreatedAt(project.createdAt ?? new Date().toISOString());
+
+      if (project.layout?.perspectiveId) {
+        setPerspective(project.layout.perspectiveId);
+      }
+      if (typeof project.layout?.splitRatio === 'number') {
+        setSplitRatio(project.layout.splitRatio);
+      }
+      if (project.layout?.dock) {
+        setRightDockState(project.layout.dock.open ? 'expanded' : 'collapsed');
+        const dockTab = project.layout.dock.tab;
+        if (dockTab && ['inspector', 'health', 'learn', 'probes', 'record', 'chips'].includes(dockTab)) {
+          setRightDockTab(dockTab as RightDockTab);
+        }
+      }
+
+      useProbeStore.getState().setProbes(project.probes ?? []);
+
+      const oscilloscopeStore = useOscilloscopeStore.getState();
+      if (typeof project.oscilloscope?.timeWindowSec === 'number') {
+        oscilloscopeStore.setTimeWindowSec(project.oscilloscope.timeWindowSec);
+      }
+      if (typeof project.oscilloscope?.paused === 'boolean') {
+        oscilloscopeStore.setPauseScroll(project.oscilloscope.paused);
+      }
+      if (typeof project.oscilloscope?.showTickGuides === 'boolean') {
+        oscilloscopeStore.setShowTickGuides(project.oscilloscope.showTickGuides);
+      }
+
+      useRunRecorderStore.getState().setRecord(project.recorder?.lastRunRecord ?? null);
+      isHydratingRef.current = false;
+    },
+    [
+      tickRate,
+      setPerspective,
+      setSplitRatio,
+      setRightDockState,
+      setRightDockTab,
+      setCircuit,
+      setEngine,
+      setTickEngine,
+    ]
+  );
+
+  const handleNewProject = useCallback(() => {
+    handleNew();
+    useLayoutStore.getState().resetLayout();
+    useProbeStore.getState().clearProbes();
+    useOscilloscopeStore.getState().setPauseScroll(false);
+    useOscilloscopeStore.getState().setShowTimeCursor(true);
+    useOscilloscopeStore.getState().setTimeWindowSec(10);
+    useOscilloscopeStore.getState().setShowTickGuides(true);
+    resetRunRecorder();
+    setProjectName('Untitled Project');
+    setProjectDescription('');
+    setProjectCreatedAt(new Date().toISOString());
+  }, [handleNew, resetRunRecorder]);
+
+  const handleSaveProject = useCallback(() => {
+    const project = buildProject();
+    downloadText('rb-project.json', encodeRBProject(project));
+    addToast('Project exported', 'success');
+  }, [buildProject, downloadText, addToast]);
+
+  const handleOpenProject = useCallback(() => {
+    projectFileInputRef.current?.click();
+  }, []);
+
+  const handleProjectFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const project = decodeRBProject(String(reader.result ?? ''));
+          applyProject(project);
+          addToast('Project loaded', 'success');
+        } catch (error) {
+          console.error('Failed to load project', error);
+          addToast('Failed to load project', 'error');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    },
+    [applyProject, addToast]
+  );
+
+  const handleExportProject = useCallback(() => {
+    setShowExportModal(true);
+  }, []);
+
+  const handleExportNetlist = useCallback(() => {
+    const netlist = netlistFromCircuit(circuit);
+    downloadText('netlist.json', stableStringify(netlist));
+  }, [circuit, downloadText]);
+
+  const handleExportVerilog = useCallback(() => {
+    const netlist = netlistFromCircuit(circuit);
+    const verilog = verilogFromNetlist(netlist);
+    downloadText('circuit.v', verilog, 'text/plain');
+  }, [circuit, downloadText]);
+
+  const handleExportDebugBundle = useCallback(() => {
+    const project = buildProject();
+    const health = analyzeCircuitHealth(circuit);
+    const proofPack = record
+      ? buildProofPack(record, circuit, { appVersion, tickRate: currentHz })
+      : undefined;
+    const bundle = buildDebugBundle({
+      project,
+      circuit,
+      proofPack,
+      health,
+      runRecord: record ?? undefined,
+    });
+    downloadText('rb-debug-bundle.json', stableStringify(bundle));
+  }, [buildProject, circuit, record, appVersion, currentHz, downloadText]);
+
   const getDefaultAddPosition = () => {
     const rect = canvasAreaRef.current?.getBoundingClientRect();
     if (!rect) {
@@ -1779,6 +2302,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       <TopCommandBar
         onExamples={() => setShowExamplesModal(true)}
         onNew={handleNew}
+        onNewProject={handleNewProject}
+        onSaveProject={handleSaveProject}
+        onOpenProject={handleOpenProject}
+        onExportProject={handleExportProject}
         onSave={handleSave}
         onSaveAs={handleSaveAs}
         onShare={handleShare}
@@ -1802,6 +2329,14 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         onHelp={() => setShowKeyboardHelp(true)}
       />
 
+      <input
+        ref={projectFileInputRef}
+        type="file"
+        accept="application/json,.json"
+        onChange={handleProjectFileChange}
+        className="hidden"
+      />
+
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Enhanced Palette (PR3) */}
         <EnhancedPalette
@@ -1813,6 +2348,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           onChipLibraryOpen={() => setShowChipLibrary(true)}
           getChipMetadata={getChipMetadataForNode}
           getNodeDescription={getNodeDescription}
+          isReplayMode={isReplayMode}
         />
 
         {/* Center - Canvas */}
@@ -1871,6 +2407,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             tickEngine={tickEngine}
             circuit={circuit}
             isRunning={isRunning}
+            tickCount={tickCount}
+            debugSignals={debugSignals}
+            debugTick={debugTick}
+            mismatchWireHighlights={mismatchWireHighlights}
+            mismatchNodeIds={mismatchNodeIds}
+            mismatchPortKeys={mismatchPortKeys}
             canUndo={canUndo}
             canRedo={canRedo}
             onUndo={handleUndo}
@@ -1899,9 +2441,46 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             }}
           />
           {isReplayMode && (
-            <div className="absolute inset-0 z-30 pointer-events-auto">
-              <div className="absolute top-3 right-3 bg-gray-900/80 border border-gray-700 rounded px-2 py-1 text-[10px] text-cyan-300 font-mono pointer-events-none">
-                REPLAY
+            <div className="absolute inset-0 z-30 pointer-events-none">
+              <div className="absolute top-3 right-3 bg-gray-900/80 border border-gray-700 rounded px-2 py-2 text-[10px] text-cyan-300 font-mono pointer-events-auto">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="uppercase tracking-wide">Replay</span>
+                  <span>t{playheadTick}</span>
+                </div>
+                <div className="mt-2 flex items-center gap-1">
+                  <button
+                    onClick={replayPaused ? handleRunReplayResume : handleRunReplayPause}
+                    className="px-1.5 py-0.5 border border-gray-600 rounded text-[10px] text-gray-200 hover:bg-gray-800"
+                    type="button"
+                  >
+                    {replayPaused ? 'Play' : 'Pause'}
+                  </button>
+                  <button
+                    onClick={() => handleRunReplayStep(1)}
+                    className="px-1.5 py-0.5 border border-gray-600 rounded text-[10px] text-gray-200 hover:bg-gray-800"
+                    type="button"
+                    disabled={!replayPaused}
+                    title={!replayPaused ? 'Pause replay to step' : undefined}
+                  >
+                    Step
+                  </button>
+                  <button
+                    onClick={() => handleRunReplayStep(10)}
+                    className="px-1.5 py-0.5 border border-gray-600 rounded text-[10px] text-gray-200 hover:bg-gray-800"
+                    type="button"
+                    disabled={!replayPaused}
+                    title={!replayPaused ? 'Pause replay to step' : undefined}
+                  >
+                    +10
+                  </button>
+                  <button
+                    onClick={handleRunReplayStop}
+                    className="px-1.5 py-0.5 border border-red-700 rounded text-[10px] text-red-300 hover:bg-red-900/30"
+                    type="button"
+                  >
+                    Exit
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -1959,6 +2538,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             circuit={circuit}
             engine={engine}
             isRunning={isRunning}
+            isReplayMode={isReplayMode}
             onNodeUpdate={handleNodeUpdate}
             onConnectionDelete={handleConnectionDelete}
             onFocusNode={handleFocusNode}
@@ -1976,8 +2556,17 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             onRecordStop={handleRunRecorderStop}
             onRecordReplayStart={handleRunReplayStart}
             onRecordReplayStop={handleRunReplayStop}
+            onRecordReplayPause={handleRunReplayPause}
+            onRecordReplayResume={handleRunReplayResume}
+            onRecordReplayStep={handleRunReplayStep}
+            onRecordReplayJump={handleRunReplayJump}
             onRecordVerify={verifyRunReplay}
             onRecordExport={handleRunRecorderExport}
+            onRecordExportProof={handleRunRecorderExportProof}
+            onRecordProof={handleRunRecorderProof}
+            onRecordFocus={handleRunRecorderFocus}
+            onRecordMismatchSelect={handleMismatchSelect}
+            onRecordImportProofPack={handleRunRecorderImportProofPack}
             onLoadExample={handleLoadLearnExample}
             onExitLearnMode={handleExitLearnMode}
             chips={allChips}
@@ -2070,6 +2659,61 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             >
               Report Issue →
             </a>
+          </div>
+        </div>
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-3 text-white">Export</h3>
+            <div className="space-y-2 mb-4">
+              <button
+                onClick={() => {
+                  handleSaveProject();
+                  setShowExportModal(false);
+                }}
+                className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
+              >
+                Project (rb-project.json)
+              </button>
+              <button
+                onClick={() => {
+                  handleExportNetlist();
+                  setShowExportModal(false);
+                }}
+                className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
+              >
+                Netlist (netlist.json)
+              </button>
+              <button
+                onClick={() => {
+                  handleExportVerilog();
+                  setShowExportModal(false);
+                }}
+                className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
+              >
+                Verilog (circuit.v)
+              </button>
+              <button
+                onClick={() => {
+                  handleExportDebugBundle();
+                  setShowExportModal(false);
+                }}
+                className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
+              >
+                Debug Bundle (rb-debug-bundle.json)
+              </button>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -2243,9 +2887,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         isOpen={showQuickAdd}
         onClose={() => setShowQuickAdd(false)}
         onSelectComponent={(type) => {
+          if (isReplayMode) return;
           storeAddNode(type, getDefaultAddPosition());
           setShowQuickAdd(false);
         }}
+        isReplayMode={isReplayMode}
       />
 
       {/* Status Bar */}

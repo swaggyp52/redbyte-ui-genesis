@@ -33,6 +33,7 @@ interface ProbeActions {
   toggleProbeForPort: (nodeId: string, portName: string, label?: string) => void;
   setActiveProbe: (id: string | null) => void;
   clearProbes: () => void;
+  setProbes: (probes: Probe[]) => void;
   hasProbe: (nodeId: string, portName: string) => boolean;
   reorderProbes: (fromIndex: number, toIndex: number) => void;
 }
@@ -128,6 +129,11 @@ export const useProbeStore = create<ProbeStore>((set, get) => ({
 
   clearProbes: () => {
     set({ probes: [], activeProbeId: null });
+  },
+
+  setProbes: (probes) => {
+    const nextActive = probes.length > 0 ? probes[0].id : null;
+    set({ probes: [...probes], activeProbeId: nextActive });
   },
 
   toggleProbeForPort: (nodeId, portName, label) => {
