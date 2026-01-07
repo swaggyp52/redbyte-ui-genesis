@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import type { RedByteApp } from '../types';
 import type { Intent } from '@redbyte/rb-shell';
-import { triggerNarrative } from '@redbyte/rb-shell';
 import { OpenExampleButton } from '../components/OpenExampleButton';
 import {
   HelpLayout,
@@ -698,20 +697,6 @@ const LogicHelpComponent: React.FC<LogicHelpProps> = ({ onDispatchIntent }) => {
         newCompleted.delete(currentLesson.id);
       } else {
         newCompleted.add(currentLesson.id);
-
-        // Trigger narrative for first lesson completion
-        if (currentLesson.id === 'A1' && newCompleted.size === 1) {
-          triggerNarrative('first-lesson-complete');
-        }
-
-        // Trigger narrative for track completion
-        if (
-          currentLesson.id === 'A8' ||
-          currentLesson.id === 'B6' ||
-          currentLesson.id === 'C8'
-        ) {
-          triggerNarrative('track-complete');
-        }
       }
       setCompletedLessons(newCompleted);
     }

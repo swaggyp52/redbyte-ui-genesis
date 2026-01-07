@@ -2047,7 +2047,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       setProjectCreatedAt(project.createdAt ?? new Date().toISOString());
 
       if (project.layout?.perspectiveId) {
-        setPerspective(project.layout.perspectiveId);
+        const perspectiveId = project.layout.perspectiveId;
+        const validPerspectives = ['build', 'analyze', 'explain', 'explore', 'quad', 'circuit-only', 'schematic-only', 'scope-only', '3d-only', 'inspect', 'debug', 'schematic', 'learn'] as const;
+        if ((validPerspectives as readonly string[]).includes(perspectiveId)) {
+          setPerspective(perspectiveId as PerspectiveId);
+        }
       }
       if (typeof project.layout?.splitRatio === 'number') {
         setSplitRatio(project.layout.splitRatio);
