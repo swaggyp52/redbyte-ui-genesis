@@ -107,6 +107,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   const startTimeRef = useRef<number>(Date.now());
   const measurementUpdateRef = useRef<number | null>(null);
   const pauseScroll = useOscilloscopeStore((state) => state.pauseScroll);
+  const setPauseScroll = useOscilloscopeStore((state) => state.setPauseScroll);
   const togglePauseScroll = useOscilloscopeStore((state) => state.togglePauseScroll);
   const showTimeCursor = useOscilloscopeStore((state) => state.showTimeCursor);
   const toggleTimeCursor = useOscilloscopeStore((state) => state.toggleTimeCursor);
@@ -669,6 +670,11 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     togglePauseScroll();
   };
 
+  const handleFollowNow = () => {
+    setPauseScroll(false);
+    setViewEndTime(getCurrentTime());
+  };
+
   const handleScopeWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
     if (!pauseScroll) return;
     if (sampleBounds.maxSampleTime <= 0) return;
@@ -867,6 +873,16 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
           >
             Pause Scroll
           </button>
+          {pauseScroll && (
+            <button
+              onClick={handleFollowNow}
+              className="px-2 py-0.5 rounded text-xs border border-gray-600 bg-gray-700 hover:bg-gray-600"
+              title="Return to live"
+              type="button"
+            >
+              Follow Now
+            </button>
+          )}
 
           <label className="flex items-center gap-1.5 cursor-pointer">
             <input
@@ -976,6 +992,16 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
             >
               P
             </button>
+            {pauseScroll && (
+              <button
+                onClick={handleFollowNow}
+                className="px-1.5 py-0.5 rounded border border-gray-600 text-gray-300 hover:bg-gray-700/60"
+                title="Return to live"
+                type="button"
+              >
+                L
+              </button>
+            )}
             <button
               onClick={requestClear}
               className="px-1.5 py-0.5 rounded border border-gray-600 text-gray-300 hover:bg-gray-700/60"

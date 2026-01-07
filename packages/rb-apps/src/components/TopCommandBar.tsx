@@ -17,6 +17,7 @@ import React from 'react';
 
 interface TopCommandBarProps {
   // Project controls
+  projectName?: string;
   onNew?: () => void;
   onNewProject?: () => void;
   onSaveProject?: () => void;
@@ -54,6 +55,7 @@ interface TopCommandBarProps {
 }
 
 export const TopCommandBar: React.FC<TopCommandBarProps> = ({
+  projectName,
   onNew,
   onNewProject,
   onSaveProject,
@@ -88,6 +90,12 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
       {/* LEFT: Project */}
       <div className="flex items-center gap-2">
         <span className="text-xs text-gray-500 uppercase tracking-wide mr-2">Project</span>
+        {projectName && (
+          <div className="text-xs text-gray-300 font-medium px-2 py-1 bg-gray-800/60 border border-gray-700/60 rounded">
+            {projectName}
+            {isDirty ? <span className="ml-1 text-cyan-400">*</span> : null}
+          </div>
+        )}
         {onNewProject && (
           <button
             onClick={onNewProject}

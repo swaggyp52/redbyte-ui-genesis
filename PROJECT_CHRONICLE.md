@@ -773,6 +773,39 @@ After completing ANY work on this project, add an entry here with:
 
 ---
 
+### 2026-01-07T12:00:00Z - Claude Sonnet 4.5
+
+**Task:** RedByte V1 Finish Pass — Playground + OS Alignment
+
+**What was done:**
+- Completed V1 Finish Pass: added Clock Panel to RightDock with tick counter, sim status, and controls
+- Enhanced probe path highlighting with toggleable visibility
+- Added "Follow Now" button to oscilloscope when paused
+- Reduced boot screen and desktop wallpaper animation intensity for calmer OS experience
+- Improved desktop icon alignment with consistent sizing and centering
+- Created V1_STOP_POINT.md checklist defining V1 completion criteria
+- Verified all tests pass and build succeeds
+
+**What V1 delivers:**
+- Complete Build → Probe → Run → Inspect → Export workflow
+- First-class Clock/Tick visibility across UI
+- Instrument-grade probe and oscilloscope ergonomics
+- Deterministic project save/load/export with all state
+- Coherent OS shell matching Playground maturity level
+
+**Files touched:**
+- `packages/rb-apps/src/components/RightDock.tsx` (Clock Panel)
+- `packages/rb-apps/src/components/OscilloscopeView.tsx` (Follow Now button)
+- `packages/rb-apps/src/components/HelpDock.tsx` (shortcuts update)
+- `packages/rb-apps/src/stores/viewStateStore.ts` (highlight toggle)
+- `packages/rb-shell/src/BootScreen.tsx` (calmer animations)
+- `packages/rb-shell/src/Desktop.tsx` (icon alignment, reduced wallpaper opacity)
+- `docs/V1_STOP_POINT.md` (created)
+
+**Signature:** Claude Sonnet 4.5 (Anthropic)
+
+---
+
 ### 2026-01-07T00:00:00Z - Codex (OpenAI)
 
 **Task:** PR-H export artifacts and project save/load wiring
@@ -846,6 +879,38 @@ After completing ANY work on this project, add an entry here with:
 
 **Instructions:**
 This section is a high-level timeline of major changes. After completing significant work, add an entry here in reverse chronological order (newest first).
+
+---
+
+### 2026-01-07 - V1 Completion: Playground + OS Alignment
+
+**What:** Completed RedByte V1 with final UI polish, Clock Panel integration, and V1 checklist.
+
+**Why:**
+- V1 needed visible, first-class clock/tick awareness throughout the UI
+- Probe/scope ergonomics needed final polish (path highlighting, Follow Now button)
+- OS visual noise needed reduction to match Playground's professional maturity
+- Project needed clear V1 definition and completion criteria
+
+**Impact:**
+- Clock Panel in RightDock shows tick count, sim status (Running/Paused/Stopped), and controls
+- Probe path highlighting is now toggleable for reduced visual clutter
+- Oscilloscope "Follow Now" button jumps back to live view when paused
+- Boot screen and wallpapers calmed down (reduced opacity/animation)
+- Desktop icons have improved alignment and consistent sizing
+- V1_STOP_POINT.md defines what V1 means and how to verify it
+- All tests pass, build succeeds
+
+**Files:**
+- `packages/rb-apps/src/components/RightDock.tsx`
+- `packages/rb-apps/src/components/OscilloscopeView.tsx`
+- `packages/rb-apps/src/components/HelpDock.tsx`
+- `packages/rb-apps/src/stores/viewStateStore.ts`
+- `packages/rb-shell/src/BootScreen.tsx`
+- `packages/rb-shell/src/Desktop.tsx`
+- `docs/V1_STOP_POINT.md`
+
+**By:** Claude Sonnet 4.5
 
 ---
 

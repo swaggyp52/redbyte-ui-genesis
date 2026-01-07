@@ -35,6 +35,13 @@ interface RightDockProps {
   isReplayMode?: boolean;
   onNodeUpdate?: (nodeId: string, updates: any) => void;
   onConnectionDelete?: (connectionId: string) => void;
+  onRun?: () => void;
+  onPause?: () => void;
+  onStep?: () => void;
+  onResetTickCount?: () => void;
+  lastTickAt?: number | null;
+  highlightProbePaths?: boolean;
+  onToggleHighlightProbePaths?: (enabled: boolean) => void;
 
   // Health tab
   onFocusNode?: (nodeId: string, portName?: string) => void;
@@ -84,6 +91,13 @@ export const RightDock: React.FC<RightDockProps> = ({
   isReplayMode = false,
   onNodeUpdate,
   onConnectionDelete,
+  onRun,
+  onPause,
+  onStep,
+  onResetTickCount,
+  lastTickAt = null,
+  highlightProbePaths = true,
+  onToggleHighlightProbePaths,
   onFocusNode,
   onIssueHover,
   tickCount = 0,
@@ -410,14 +424,80 @@ export const RightDock: React.FC<RightDockProps> = ({
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden">
         {activeTab === 'inspector' && (
-          <PropertyInspector
-            circuit={circuit}
-            engine={engine}
-            isRunning={isRunning}
-            isReplayMode={isReplayMode}
-            onNodeUpdate={onNodeUpdate}
-            onConnectionDelete={onConnectionDelete}
-          />
+          <div className="h-full flex flex-col overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-700/60 bg-gray-900/80">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-gray-500">
+                    Clock
+                  </div>
+                  <div className="mt-1 flex items-center gap-2 text-xs font-mono">
+                    <span className="text-cyan-300">t{tickCount}</span>
+                    <span
+                      className={`text-[10px] ${
+                        isRunning ? 'text-green-400' : tickCount === 0 ? 'text-gray-400' : 'text-yellow-300'
+                      }`}
+                    >
+                      {isRunning ? 'Running' : tickCount === 0 ? 'Stopped' : 'Paused'}
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      {isRunning ? `${tickRate}Hz` : 'Manual'}
+                    </span>
+                  </div>
+                  {lastTickAt && (
+                    <div className="mt-1 text-[10px] text-gray-500">
+                      Last step {new Date(lastTickAt).toLocaleTimeString()}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  {onStep && (
+                    <button
+                      onClick={onStep}
+                      className="px-2 py-1 text-[10px] rounded border border-blue-500/50 text-blue-200 hover:bg-blue-500/20"
+                      type="button"
+                      title="Step once"
+                    >
+                      Step
+                    </button>
+                  )}
+                  {onRun && onPause && (
+                    <button
+                      onClick={isRunning ? onPause : onRun}
+                      className={`px-2 py-1 text-[10px] rounded border ${
+                        isRunning
+                          ? 'border-yellow-500/50 text-yellow-200 hover:bg-yellow-500/20'
+                          : 'border-green-500/50 text-green-200 hover:bg-green-500/20'
+                      }`}
+                      type="button"
+                    >
+                      {isRunning ? 'Pause' : 'Run'}
+                    </button>
+                  )}
+                  {onResetTickCount && (
+                    <button
+                      onClick={onResetTickCount}
+                      className="px-2 py-1 text-[10px] rounded border border-gray-600 text-gray-300 hover:bg-gray-700/60"
+                      type="button"
+                      title="Reset tick counter"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <PropertyInspector
+                circuit={circuit}
+                engine={engine}
+                isRunning={isRunning}
+                isReplayMode={isReplayMode}
+                onNodeUpdate={onNodeUpdate}
+                onConnectionDelete={onConnectionDelete}
+              />
+            </div>
+          </div>
         )}
 
         {activeTab === 'health' && (
@@ -446,6 +526,15 @@ export const RightDock: React.FC<RightDockProps> = ({
               <h3 className="text-sm font-semibold text-gray-300">Signal Probes</h3>
               <span className="text-[10px] text-gray-500">Live values</span>
             </div>
+            <label className="flex items-center justify-between text-[10px] text-gray-400 bg-gray-800/40 border border-gray-700/60 rounded px-2 py-1">
+              <span>Highlight probed paths</span>
+              <input
+                type="checkbox"
+                checked={highlightProbePaths}
+                onChange={(e) => onToggleHighlightProbePaths?.(e.target.checked)}
+                className="w-3 h-3"
+              />
+            </label>
 
             <div className="space-y-2">
               <select

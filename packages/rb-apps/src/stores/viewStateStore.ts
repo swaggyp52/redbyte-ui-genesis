@@ -19,6 +19,7 @@ interface ViewStateStore {
   // Auto-probe state
   autoProbedNodes: Set<string>;
   autoProbeEnabled: boolean;
+  highlightProbePaths: boolean;
 
   // Split-screen configuration
   splitScreenMode: SplitScreenMode;
@@ -39,6 +40,7 @@ interface ViewStateStore {
   // Auto-probe actions
   toggleAutoProbe: (nodeId: string) => void;
   setAutoProbeEnabled: (enabled: boolean) => void;
+  setHighlightProbePaths: (enabled: boolean) => void;
   clearAutoProbes: () => void;
 
   // Split-screen actions
@@ -56,6 +58,7 @@ export const useViewStateStore = create<ViewStateStore>((set, get) => ({
   focusRequestId: 0,
   autoProbedNodes: new Set<string>(),
   autoProbeEnabled: true,
+  highlightProbePaths: true,
   splitScreenMode: 'single',
   activeViews: ['circuit'],
   circuitViewSize: null,
@@ -129,6 +132,11 @@ export const useViewStateStore = create<ViewStateStore>((set, get) => ({
   setAutoProbeEnabled: (enabled: boolean) =>
     set({
       autoProbeEnabled: enabled,
+    }),
+
+  setHighlightProbePaths: (enabled: boolean) =>
+    set({
+      highlightProbePaths: enabled,
     }),
 
   clearAutoProbes: () =>

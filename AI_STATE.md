@@ -4267,15 +4267,17 @@ Persist window manager state deterministically to localStorage and restore it on
 
 
 
-Phase ID: PHASE\_PERF\_0
+Phase ID: PHASE\_V1\_0
 
-Phase Name: Live Preview Performance + Bundle Hygiene
+Phase Name: RedByte V1 Completion
 
 Status: COMPLETED
 
-Deployed: 2025-12-23
+Deployed: 2026-01-07
 
-Main SHA: 7d47bd76
+Main SHA: (pending commit)
+
+Details: See docs/V1\_STOP\_POINT.md for full V1 definition and verification checklist
 
 
 

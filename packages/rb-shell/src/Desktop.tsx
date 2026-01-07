@@ -164,7 +164,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
       {wallpaperId === 'neon-circuit' && (
         <div className="pointer-events-none absolute inset-0">
           {/* Horizontal circuit lines */}
-          <div className={`absolute inset-0 ${isLightMode ? 'opacity-12' : 'opacity-20'}`}>
+          <div className={`absolute inset-0 ${isLightMode ? 'opacity-8' : 'opacity-12'}`}>
             {[...Array(8)].map((_, i) => (
               <div
                 key={`h-${i}`}
@@ -186,7 +186,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
           </div>
 
           {/* Vertical circuit lines */}
-          <div className={`absolute inset-0 ${isLightMode ? 'opacity-12' : 'opacity-20'}`}>
+          <div className={`absolute inset-0 ${isLightMode ? 'opacity-8' : 'opacity-12'}`}>
             {[...Array(12)].map((_, i) => (
               <div
                 key={`v-${i}`}
@@ -208,7 +208,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
           </div>
 
           {/* Circuit nodes - pulsing dots at intersections */}
-          <div className={`absolute inset-0 ${isLightMode ? 'opacity-25' : 'opacity-40'}`}>
+          <div className={`absolute inset-0 ${isLightMode ? 'opacity-20' : 'opacity-30'}`}>
             {[...Array(15)].map((_, i) => (
               <div
                 key={`node-${i}`}
@@ -242,7 +242,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
         <div className="pointer-events-none absolute inset-0">
           {/* Animated diagonal grid layer 1 */}
           <div
-            className={`absolute inset-0 ${isLightMode ? 'opacity-10' : 'opacity-15'}`}
+            className={`absolute inset-0 ${isLightMode ? 'opacity-8' : 'opacity-12'}`}
             style={{
               backgroundImage: isLightMode
                 ? `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(6, 182, 212, 0.25) 40px, rgba(6, 182, 212, 0.25) 41px),
@@ -258,7 +258,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
 
           {/* Shimmer overlay - moves across the grid */}
           <div
-            className={`absolute inset-0 ${isLightMode ? 'opacity-15' : 'opacity-30'}`}
+            className={`absolute inset-0 ${isLightMode ? 'opacity-10' : 'opacity-20'}`}
             style={{
               background: isLightMode
                 ? 'linear-gradient(110deg, transparent 30%, rgba(6, 182, 212, 0.1) 50%, transparent 70%)'
@@ -271,7 +271,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
           />
 
           {/* Frost particles - small glowing dots */}
-          <div className={`absolute inset-0 ${isLightMode ? 'opacity-15' : 'opacity-25'}`}>
+          <div className={`absolute inset-0 ${isLightMode ? 'opacity-10' : 'opacity-20'}`}>
             {[...Array(30)].map((_, i) => (
               <div
                 key={`frost-${i}`}
@@ -317,8 +317,8 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
             onMouseDown={(e) => onIconMouseDown(e, icon)}
             onClick={() => handleIconClick(icon)}
           >
-            <div
-              className={`flex h-16 w-16 items-center justify-center rounded-xl border transition-all duration-200 ${
+          <div
+            className={`flex h-16 w-16 items-center justify-center rounded-xl border transition-all duration-200 ${
                 isSelected
                   ? isMidnight
                     ? 'border-indigo-400/80 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 shadow-lg shadow-indigo-500/30'
@@ -329,14 +329,14 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
                       ? 'border-indigo-500/20 bg-indigo-950/30 hover:border-indigo-400/40 hover:bg-indigo-950/50'
                       : 'border-white/10 bg-black/30 hover:border-cyan-400/40 hover:bg-black/40'
               } backdrop-blur-sm`}
-            >
-              <IconComponent
-                width={32}
-                height={32}
-                className={isSelected ? isMidnight ? 'text-indigo-300 drop-shadow-[0_0_4px_rgba(99,102,241,0.8)]' : 'text-cyan-600 drop-shadow-[0_0_4px_rgba(6,182,212,0.8)]' : isLightMode ? 'text-gray-700' : isMidnight ? 'text-indigo-200' : 'text-white'}
-              />
-            </div>
-            <div className={`mt-2 px-2.5 py-1 rounded-md transition-all duration-200 backdrop-blur-sm font-medium ${
+          >
+            <IconComponent
+              width={32}
+              height={32}
+              className={isSelected ? isMidnight ? 'text-indigo-300 drop-shadow-[0_0_4px_rgba(99,102,241,0.8)]' : 'text-cyan-600 drop-shadow-[0_0_4px_rgba(6,182,212,0.8)]' : isLightMode ? 'text-gray-700' : isMidnight ? 'text-indigo-200' : 'text-white'}
+            />
+          </div>
+            <div className={`mt-2 min-w-[88px] text-center px-2.5 py-1 rounded-md transition-all duration-200 backdrop-blur-sm font-medium ${
               isSelected
                 ? isMidnight
                   ? 'bg-indigo-500/40 text-white shadow-lg shadow-indigo-500/20'

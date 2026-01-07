@@ -50,18 +50,18 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete }) => {
   return (
     <div className="flex h-screen w-screen flex-col items-center justify-center bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950 text-white overflow-hidden relative">
       {/* Animated background grid */}
-      <div className="absolute inset-0 opacity-10">
+      <div className="absolute inset-0 opacity-5">
         <div className="absolute inset-0" style={{
           backgroundImage: 'linear-gradient(#00ffff 1px, transparent 1px), linear-gradient(90deg, #00ffff 1px, transparent 1px)',
           backgroundSize: '50px 50px',
-          animation: 'gridSlide 20s linear infinite'
+          animation: 'gridSlide 30s linear infinite'
         }} />
       </div>
 
       {/* Floating orbs in background */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s', animationDuration: '5s' }} />
+        <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-cyan-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s' }} />
+        <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s', animationDuration: '7s' }} />
       </div>
 
       {/* Logo and title */}

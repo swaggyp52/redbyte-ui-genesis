@@ -187,6 +187,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setHelpDockSection,
   } = useLayoutStore();
   const { probes, toggleProbeForPort } = useProbeStore();
+  const highlightProbePaths = useViewStateStore((state) => state.highlightProbePaths);
+  const setHighlightProbePaths = useViewStateStore((state) => state.setHighlightProbePaths);
   const oscilloscopePauseScroll = useOscilloscopeStore((state) => state.pauseScroll);
   const oscilloscopeTimeWindowSec = useOscilloscopeStore((state) => state.timeWindowSec);
   const oscilloscopeShowTickGuides = useOscilloscopeStore((state) => state.showTickGuides);
@@ -213,6 +215,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [isRunning, setIsRunning] = useState(false);
   const [currentHz, setCurrentHz] = useState(tickRate);
   const [tickCount, setTickCount] = useState(0);
+  const [lastTickAt, setLastTickAt] = useState<number | null>(null);
   const [projectName, setProjectName] = useState('Untitled Project');
   const [projectDescription, setProjectDescription] = useState('');
   const [projectCreatedAt, setProjectCreatedAt] = useState(() => new Date().toISOString());
@@ -1057,6 +1060,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   }, [tickEngine]);
 
   useEffect(() => {
+    setLastTickAt(Date.now());
+  }, [tickCount]);
+
+  useEffect(() => {
     setExampleNoteDismissed(false);
   }, [selectedExampleId]);
 
@@ -1275,10 +1282,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     return set;
   }, [probes]);
 
-  const probeWireHighlights = React.useMemo(
-    () => buildProbeWireHighlights(circuit, probes),
-    [circuit, probes]
-  );
+  const probeWireHighlights = React.useMemo(() => {
+    if (!highlightProbePaths) {
+      return new Map();
+    }
+    return buildProbeWireHighlights(circuit, probes);
+  }, [circuit, probes, highlightProbePaths]);
 
   const buildRunRecorderContext = useCallback(() => {
     const enabledProbes = probes.filter((probe) => probe.enabled);
@@ -2221,7 +2230,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         try {
           const project = decodeRBProject(String(reader.result ?? ''));
           applyProject(project);
-          addToast('Project loaded', 'success');
+          addToast('Project loaded (simulation reset to apply state)', 'info');
         } catch (error) {
           console.error('Failed to load project', error);
           addToast('Failed to load project', 'error');
@@ -2301,6 +2310,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       {/* Top Command Bar - vNext Design */}
       <TopCommandBar
         onExamples={() => setShowExamplesModal(true)}
+        projectName={projectName}
         onNew={handleNew}
         onNewProject={handleNewProject}
         onSaveProject={handleSaveProject}
@@ -2335,6 +2345,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         accept="application/json,.json"
         onChange={handleProjectFileChange}
         className="hidden"
+        aria-label="Open project file"
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -2539,6 +2550,13 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             engine={engine}
             isRunning={isRunning}
             isReplayMode={isReplayMode}
+            onRun={handleRun}
+            onPause={handlePause}
+            onStep={handleStep}
+            onResetTickCount={handleResetTickCount}
+            lastTickAt={lastTickAt}
+            highlightProbePaths={highlightProbePaths}
+            onToggleHighlightProbePaths={setHighlightProbePaths}
             onNodeUpdate={handleNodeUpdate}
             onConnectionDelete={handleConnectionDelete}
             onFocusNode={handleFocusNode}

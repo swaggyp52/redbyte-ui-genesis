@@ -88,6 +88,7 @@ const CONTROL_SECTIONS: Record<
 const COMMON_SHORTCUTS = [
   'Layout: 1-5 presets, Shift+1-4 single views',
   'Probes: Right-click ports to toggle, Shift+P opens Probes tab',
+  'Inspector: Use Add Probe on live signals to pin outputs',
 ];
 
 const SAMPLE_LESSONS: Lesson[] = [

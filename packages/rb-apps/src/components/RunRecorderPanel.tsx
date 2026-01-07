@@ -439,6 +439,7 @@ export const RunRecorderPanel: React.FC<RunRecorderPanelProps> = ({
                     handleEventUpdate(index, { tick: Math.max(0, Number(e.target.value)) })
                   }
                   className="w-14 px-1 py-0.5 bg-gray-900 border border-gray-700 rounded text-[10px] font-mono"
+                  aria-label="Event tick number"
                 />
                 <input
                   type="text"
@@ -447,6 +448,7 @@ export const RunRecorderPanel: React.FC<RunRecorderPanelProps> = ({
                   onChange={(e) => handleEventUpdate(index, { label: e.target.value })}
                   className="flex-1 px-1 py-0.5 bg-gray-900 border border-gray-700 rounded text-[10px]"
                   placeholder={`${event.nodeId}.${event.portName}`}
+                  aria-label="Event label"
                 />
                 <div className="font-mono text-gray-300">
                   {event.nodeId}.{event.portName}
