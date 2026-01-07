@@ -23,6 +23,7 @@ import { ViewAdapter } from '@redbyte/rb-logic-adapter';
 import { Logic3DScene } from '@redbyte/rb-logic-3d';
 import { useSettingsStore } from '@redbyte/rb-utils';
 import { toast } from '@redbyte/rb-primitives';
+import type { ToastKind } from '@redbyte/rb-primitives';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import { loadExample, listExamples, listExamplesByLayer, getLayerDescription, type ExampleId, type CircuitLayer } from '../examples';
 import { useFileSystemStore } from '../stores/fileSystemStore';
@@ -122,7 +123,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   determinismRecorder,
 }) => {
   const { tickRate } = useSettingsStore();
-  const addToast = (msg: string, type = "info", dur?: number) => toast[type]?.({message: msg, duration: dur});
+  const addToast = useCallback(
+    (message: string, kind: ToastKind = 'info', duration?: number) => {
+      toast[kind]({ message, duration });
+    },
+    []
+  );
   const { active: tutorialActive, start: startTutorial } = useTutorialStore();
   const { setWindowTitle } = useWindowStore();
   const { getAllFiles, getFile, updateFileContent, createFile } = useFileSystemStore();
@@ -212,6 +218,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const verifyRunReplay = useRunRecorderStore((state) => state.verifyReplay);
   const resetRunRecorder = useRunRecorderStore((state) => state.reset);
   const setDebugOverlay = useRunRecorderStore((state) => state.setDebugOverlay);
+  const isReplayMode = recorderMode === 'replaying';
   const [isRunning, setIsRunning] = useState(false);
   const [currentHz, setCurrentHz] = useState(tickRate);
   const [tickCount, setTickCount] = useState(0);
@@ -258,6 +265,13 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const autosaveIntervalRef = useRef<number | null>(null);
   const historyDebounceRef = useRef<number | null>(null);
   const patternRecognitionRef = useRef<number | null>(null);
+
+  const isDemoMode =
+    (import.meta as ImportMeta & { env?: { VITE_PUBLIC_DEMO?: string } }).env?.VITE_PUBLIC_DEMO ===
+    'true';
+  const appVersion =
+    (import.meta as ImportMeta & { env?: { VITE_APP_VERSION?: string } }).env?.VITE_APP_VERSION ??
+    'dev';
   const lastRecognizedPatternRef = useRef<string | null>(null);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
   const projectFileInputRef = useRef<HTMLInputElement>(null);
@@ -308,122 +322,6 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   useEffect(() => {
     replayPausedRef.current = replayPaused;
   }, [replayPaused]);
-
-  useEffect(() => {
-    const handlePlaygroundCommand = (event: Event) => {
-      const detail = (event as CustomEvent<{ command?: string; windowId?: string }>).detail;
-      if (!detail?.command) return;
-
-      if (detail.windowId && detail.windowId !== windowId) return;
-
-      const focused = useWindowStore.getState().getFocusedWindow();
-      if (!focused || focused.id !== windowId) return;
-
-      switch (detail.command) {
-        case 'playground-project-new':
-          handleNewProject();
-          return;
-        case 'playground-project-save':
-          handleSaveProject();
-          return;
-        case 'playground-project-open':
-          handleOpenProject();
-          return;
-        case 'playground-project-export':
-          handleExportProject();
-          return;
-        case 'playground-layout-build':
-          setPerspective('build');
-          return;
-        case 'playground-layout-analyze':
-          setPerspective('analyze');
-          return;
-        case 'playground-layout-explain':
-          setPerspective('explain');
-          return;
-        case 'playground-layout-explore':
-          setPerspective('explore');
-          return;
-        case 'playground-layout-quad':
-          setPerspective('quad');
-          return;
-        case 'playground-layout-circuit-only':
-          setPerspective('circuit-only');
-          return;
-        case 'playground-layout-schematic-only':
-          setPerspective('schematic-only');
-          return;
-        case 'playground-layout-scope-only':
-          setPerspective('scope-only');
-          return;
-        case 'playground-layout-3d-only':
-          setPerspective('3d-only');
-          return;
-        case 'playground-dock-info':
-          setRightDockTab('inspector');
-          if (rightDockState === 'collapsed') setRightDockState('peek');
-          return;
-        case 'playground-dock-health':
-          setRightDockTab('health');
-          if (rightDockState === 'collapsed') setRightDockState('peek');
-          return;
-        case 'playground-dock-learn':
-          setRightDockTab('learn');
-          if (rightDockState === 'collapsed') setRightDockState('peek');
-          return;
-        case 'playground-dock-probes':
-          setRightDockTab('probes');
-          if (rightDockState === 'collapsed') setRightDockState('peek');
-          return;
-        case 'playground-dock-chips':
-          setRightDockTab('chips');
-          if (rightDockState === 'collapsed') setRightDockState('peek');
-          return;
-        case 'playground-toggle-wire': {
-          const logicView = useLogicViewStore.getState();
-          const editingState = logicView.editingState;
-          if (editingState.wireStartPort) {
-            logicView.endWire();
-            return;
-          }
-          logicView.setToolMode(logicView.toolMode === 'wire' ? 'select' : 'wire');
-          return;
-        }
-        case 'playground-toggle-pause-scroll':
-          useOscilloscopeStore.getState().togglePauseScroll();
-          return;
-        case 'playground-fit-view': {
-          const size = useViewStateStore.getState().circuitViewSize;
-          if (!size) return;
-          const nextCamera = calculateFitToView(circuit.nodes, size.width, size.height);
-          useLogicViewStore.getState().setCamera(nextCamera);
-          return;
-        }
-        case 'playground-reset-view':
-          useLogicViewStore.getState().setCamera({ x: 0, y: 0, zoom: 1 });
-          return;
-        case 'playground-clear-scope':
-          useOscilloscopeStore.getState().requestClear();
-          return;
-      }
-    };
-
-    window.addEventListener('rb:playground-command', handlePlaygroundCommand as EventListener);
-    return () => {
-      window.removeEventListener('rb:playground-command', handlePlaygroundCommand as EventListener);
-    };
-  }, [
-    windowId,
-    circuit.nodes,
-    rightDockState,
-    handleNewProject,
-    handleSaveProject,
-    handleOpenProject,
-    handleExportProject,
-    setPerspective,
-    setRightDockTab,
-    setRightDockState,
-  ]);
 
   // Crash recovery: Save to localStorage every 10 seconds
   useEffect(() => {
@@ -2068,13 +1966,6 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     addToast('Circuit reset', 'info');
   };
 
-  const isDemoMode =
-    (import.meta as ImportMeta & { env?: { VITE_PUBLIC_DEMO?: string } }).env?.VITE_PUBLIC_DEMO ===
-    'true';
-  const appVersion =
-    (import.meta as ImportMeta & { env?: { VITE_APP_VERSION?: string } }).env?.VITE_APP_VERSION ??
-    'dev';
-
   const downloadText = useCallback((filename: string, text: string, type = 'application/json') => {
     const blob = new Blob([text], { type });
     const url = URL.createObjectURL(blob);
@@ -2274,6 +2165,122 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     downloadText('rb-debug-bundle.json', stableStringify(bundle));
   }, [buildProject, circuit, record, appVersion, currentHz, downloadText]);
 
+  useEffect(() => {
+    const handlePlaygroundCommand = (event: Event) => {
+      const detail = (event as CustomEvent<{ command?: string; windowId?: string }>).detail;
+      if (!detail?.command) return;
+
+      if (detail.windowId && detail.windowId !== windowId) return;
+
+      const focused = useWindowStore.getState().getFocusedWindow();
+      if (!focused || focused.id !== windowId) return;
+
+      switch (detail.command) {
+        case 'playground-project-new':
+          handleNewProject();
+          return;
+        case 'playground-project-save':
+          handleSaveProject();
+          return;
+        case 'playground-project-open':
+          handleOpenProject();
+          return;
+        case 'playground-project-export':
+          handleExportProject();
+          return;
+        case 'playground-layout-build':
+          setPerspective('build');
+          return;
+        case 'playground-layout-analyze':
+          setPerspective('analyze');
+          return;
+        case 'playground-layout-explain':
+          setPerspective('explain');
+          return;
+        case 'playground-layout-explore':
+          setPerspective('explore');
+          return;
+        case 'playground-layout-quad':
+          setPerspective('quad');
+          return;
+        case 'playground-layout-circuit-only':
+          setPerspective('circuit-only');
+          return;
+        case 'playground-layout-schematic-only':
+          setPerspective('schematic-only');
+          return;
+        case 'playground-layout-scope-only':
+          setPerspective('scope-only');
+          return;
+        case 'playground-layout-3d-only':
+          setPerspective('3d-only');
+          return;
+        case 'playground-dock-info':
+          setRightDockTab('inspector');
+          if (rightDockState === 'collapsed') setRightDockState('peek');
+          return;
+        case 'playground-dock-health':
+          setRightDockTab('health');
+          if (rightDockState === 'collapsed') setRightDockState('peek');
+          return;
+        case 'playground-dock-learn':
+          setRightDockTab('learn');
+          if (rightDockState === 'collapsed') setRightDockState('peek');
+          return;
+        case 'playground-dock-probes':
+          setRightDockTab('probes');
+          if (rightDockState === 'collapsed') setRightDockState('peek');
+          return;
+        case 'playground-dock-chips':
+          setRightDockTab('chips');
+          if (rightDockState === 'collapsed') setRightDockState('peek');
+          return;
+        case 'playground-toggle-wire': {
+          const logicView = useLogicViewStore.getState();
+          const editingState = logicView.editingState;
+          if (editingState.wireStartPort) {
+            logicView.endWire();
+            return;
+          }
+          logicView.setToolMode(logicView.toolMode === 'wire' ? 'select' : 'wire');
+          return;
+        }
+        case 'playground-toggle-pause-scroll':
+          useOscilloscopeStore.getState().togglePauseScroll();
+          return;
+        case 'playground-fit-view': {
+          const size = useViewStateStore.getState().circuitViewSize;
+          if (!size) return;
+          const nextCamera = calculateFitToView(circuit.nodes, size.width, size.height);
+          useLogicViewStore.getState().setCamera(nextCamera);
+          return;
+        }
+        case 'playground-reset-view':
+          useLogicViewStore.getState().setCamera({ x: 0, y: 0, zoom: 1 });
+          return;
+        case 'playground-clear-scope':
+          useOscilloscopeStore.getState().requestClear();
+          return;
+      }
+    };
+
+    window.addEventListener('rb:playground-command', handlePlaygroundCommand as EventListener);
+    return () => {
+      window.removeEventListener('rb:playground-command', handlePlaygroundCommand as EventListener);
+    };
+  }, [
+    windowId,
+    circuit.nodes,
+    rightDockState,
+    handleNewProject,
+    handleSaveProject,
+    handleOpenProject,
+    handleExportProject,
+    setPerspective,
+    setRightDockTab,
+    setRightDockState,
+  ]);
+
   const getDefaultAddPosition = () => {
     const rect = canvasAreaRef.current?.getBoundingClientRect();
     if (!rect) {
@@ -2291,13 +2298,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       : splitScreenMode === 'quad'
         ? activeViews.slice(0, 4).join('+')
         : activeViews.slice(0, 2).join('+');
-  const isReplayMode = recorderMode === 'replaying';
-
   // Memoize chips array to avoid multiple store calls during render
   const allChips = React.useMemo(() => getAllChips(), [getAllChips]);
 
   return (
-    <div className="h-full flex flex-col bg-gray-900 text-white">
+    <div className="h-full flex flex-col bg-gray-900 text-white" data-testid="logic-playground-root">
       {/* Intent Resource Display */}
       {resourceId && (
         <div className="bg-cyan-900/30 border-b border-cyan-700 p-2 text-xs">
@@ -2752,6 +2757,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
               }}
               className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white mb-4"
               placeholder="circuit.rblogic"
+              aria-label="Save as filename"
               autoFocus
             />
             <div className="flex gap-2 justify-end">

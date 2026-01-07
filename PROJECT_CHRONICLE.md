@@ -42,7 +42,7 @@ This document is also for you. It's the fastest way to understand the entire pro
 **Repository:** Monorepo using pnpm workspaces
 **Canonical Branch:** `main` (always production-ready)
 **License:** RedByte Proprietary License (RPL-1.0)
-**Version:** v0.1.0-preview (Release Hardening RC)
+**Version:** v1.0.0-rc (Release Candidate)
 **Live Preview:** redbyteapps.dev
 
 ---
@@ -656,6 +656,12 @@ Each package has its own README:
 3. **Keep it updated** — Update docs when you update code
 4. **This file is the master** — PROJECT_CHRONICLE.md ties everything together
 
+### Docs Contract (V1)
+- **Canonical sources:** `PROJECT_CHRONICLE.md` (master), `AI_STATE.md` (contracts), `docs/DOC_INDEX.md` (index), `docs/V1.md` (V1 definition)
+- **Per-PR updates:** update this file's Chronicle + AI log; update `docs/DOC_INDEX.md` when adding/moving docs
+- **Historical material:** keep archives in `docs/05-archive/` and placeholders in `docs/99-placeholders/` with explicit "historical" or "planned" labeling
+- **No drift:** if a doc becomes outdated, either update it, mark it historical, or deprecate it explicitly
+
 ---
 
 ## 📈 RECENT DEVELOPMENT WORK
@@ -697,7 +703,7 @@ Based on git status, active work includes:
 ## 🎯 CURRENT OBJECTIVES & NEXT STEPS
 
 ### Active Development Phase
-**Status:** Release Hardening RC (v0.1.0-preview)
+**Status:** V1 Release Candidate (v1.0.0-rc)
 
 ### Immediate Priorities
 1. ✅ Run recorder replay hardening (COMPLETED)
@@ -770,6 +776,35 @@ After completing ANY work on this project, add an entry here with:
 - Your identifier (Claude Sonnet 4.5, Codex GPT-4, etc.)
 - Brief description of what was done
 - Links to affected files or commits
+
+---
+
+### 2026-01-07T18:30:00Z - Codex (OpenAI)
+
+**Task:** V1 Release Candidate wrap-up
+
+**What was done:**
+- Finalized boot/desktop/window alignment and ensured Logic Playground launch path is tested end-to-end
+- Hardened Terminal/Files/Settings copy and wiring (no placeholder language, correct theme variants, deterministic tick rate)
+- Moved OS launch and Playground flow tests to rb-apps to match release verification commands
+- Updated docs and state ledgers for V1 release-candidate accuracy
+
+**Files touched:**
+- `packages/rb-shell/src/BootScreen.tsx`
+- `packages/rb-shell/src/Desktop.tsx`
+- `packages/rb-shell/src/Shell.tsx`
+- `packages/rb-shell/src/ShellWindow.tsx`
+- `packages/rb-apps/src/apps/TerminalApp.tsx`
+- `packages/rb-apps/src/apps/FilesApp.tsx`
+- `packages/rb-apps/src/apps/SettingsApp.tsx`
+- `packages/rb-apps/src/apps/LogicHelpApp.tsx`
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+- `packages/rb-apps/src/__tests__/app-launch.test.tsx`
+- `packages/rb-apps/src/__tests__/os-playground-flow.test.tsx`
+- `PROJECT_CHRONICLE.md`
+- `AI_STATE.md`
+
+**Signature:** Codex (OpenAI)
 
 ---
 
@@ -882,6 +917,38 @@ This section is a high-level timeline of major changes. After completing signifi
 
 ---
 
+### 2026-01-07 - V1 Release Candidate
+
+**What:** Completed the final V1 release-candidate polish pass across the OS shell, core apps, and Logic Playground integration path.
+
+**Why:**
+- V1 requires a cohesive OS experience that matches the Playground's maturity
+- Release verification must cover boot → desktop → Playground → deterministic circuit flow
+
+**Impact:**
+- Boot and desktop alignment is consistent, with a flagship Logic Playground icon and reliable launch path
+- Terminal, Files, and Settings present only wired controls and correct theme variants
+- OS launch and Playground flow tests live under rb-apps for release verification
+
+**Files:**
+- `packages/rb-shell/src/BootScreen.tsx`
+- `packages/rb-shell/src/Desktop.tsx`
+- `packages/rb-shell/src/Shell.tsx`
+- `packages/rb-shell/src/ShellWindow.tsx`
+- `packages/rb-apps/src/apps/TerminalApp.tsx`
+- `packages/rb-apps/src/apps/FilesApp.tsx`
+- `packages/rb-apps/src/apps/SettingsApp.tsx`
+- `packages/rb-apps/src/apps/LogicHelpApp.tsx`
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+- `packages/rb-apps/src/__tests__/app-launch.test.tsx`
+- `packages/rb-apps/src/__tests__/os-playground-flow.test.tsx`
+- `PROJECT_CHRONICLE.md`
+- `AI_STATE.md`
+
+**By:** Codex (OpenAI)
+
+---
+
 ### 2026-01-07 - V1 Completion: Playground + OS Alignment
 
 **What:** Completed RedByte V1 with final UI polish, Clock Panel integration, and V1 checklist.
@@ -911,6 +978,45 @@ This section is a high-level timeline of major changes. After completing signifi
 - `docs/V1_STOP_POINT.md`
 
 **By:** Claude Sonnet 4.5
+
+---
+
+### 2026-01-07 - OS V1 Integration + Polish Pass
+
+**What:** Hardened OS-to-Playground launch path, refreshed boot/desktop/window chrome alignment, wired real system controls, and added V1 documentation + guardrails.
+
+**Why:**
+- The OS needed parity with the Logic Playground for V1 readiness
+- Boot and desktop visuals required precision alignment and intentional presentation
+- Critical paths needed integration coverage and basic a11y guardrails
+
+**Impact:**
+- Desktop now aligns to a strict grid with consistent icon bounds and flagship treatment
+- Boot screen is calmer, faster, and explicitly branded as the Digital Logic Workspace
+- Terminal, Files, Settings, and Text Viewer now reflect actual state and real content
+- CI includes typechecking, and new tests cover OS launch + basic a11y checks
+
+**Files:**
+- `packages/rb-shell/src/BootScreen.tsx`
+- `packages/rb-shell/src/Desktop.tsx`
+- `packages/rb-shell/src/ShellWindow.tsx`
+- `packages/rb-shell/src/Shell.tsx`
+- `packages/rb-apps/src/apps/TerminalApp.tsx`
+- `packages/rb-apps/src/apps/FilesApp.tsx`
+- `packages/rb-apps/src/apps/SettingsApp.tsx`
+- `packages/rb-apps/src/apps/TextViewerApp.tsx`
+- `packages/rb-apps/src/apps/files/fsModel.ts`
+- `packages/rb-shell/src/__tests__/app-launch.test.tsx`
+- `packages/rb-shell/src/__tests__/os-playground-flow.test.tsx`
+- `packages/rb-shell/src/__tests__/a11y-core.test.tsx`
+- `docs/V1.md`
+- `docs/DOC_INDEX.md`
+- `README.md`
+- `.github/workflows/ci.yml`
+- `package.json`
+- `pnpm-lock.yaml`
+
+**By:** Codex (OpenAI)
 
 ---
 

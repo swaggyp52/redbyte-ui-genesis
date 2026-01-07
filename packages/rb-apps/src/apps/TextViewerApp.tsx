@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import type { RedByteApp } from '../types';
+import { useFileSystemStore } from '../stores/fileSystemStore';
 
 interface TextViewerProps {
   resourceId?: string;
@@ -22,11 +23,16 @@ const TextViewerComponent: React.FC<TextViewerProps> = ({
   // Load file content from resourceId
   useEffect(() => {
     if (resourceId && resourceType === 'file') {
-      // For now, we'll use mock text content since Files app doesn't store actual file content
-      // In a real implementation, this would load from a text file store
-      // For demo purposes, we'll show the resourceId as content
-      setFileName(resourceId);
-      setContent(`Text file: ${resourceId}\n\nThis is a placeholder for text file content.\n\nIn PHASE_Z, the TextViewer app can display .txt and .md files from the Files app.`);
+      const file = useFileSystemStore.getState().getFile(resourceId);
+      if (!file) {
+        setNotFound(true);
+        setFileName(resourceId);
+        setContent('');
+        return;
+      }
+
+      setFileName(file.name);
+      setContent(file.content ?? 'No content stored for this file.');
       setNotFound(false);
 
       // Focus content area deterministically using requestAnimationFrame

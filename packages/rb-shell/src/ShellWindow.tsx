@@ -174,7 +174,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
       onMouseDown={onFocus}
     >
       <div
-        className={`flex h-11 items-center gap-2 px-4 text-sm select-none border-b transition-all duration-200 ${
+        className={`flex h-10 items-center gap-3 px-3 text-sm select-none border-b transition-all duration-200 ${
           state.focused
             ? 'bg-gradient-to-r from-slate-800/95 via-slate-900/95 to-slate-800/95 border-cyan-500/30 shadow-[0_1px_10px_rgba(6,182,212,0.1)]'
             : 'bg-slate-900/70 border-slate-700/30'
@@ -183,15 +183,15 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
         onMouseDown={isMax ? undefined : startDrag}
         onDoubleClick={isMax ? onRestore : onMaximize}
       >
-        <div className={`font-semibold tracking-wide flex-1 truncate transition-colors duration-200 ${
+        <div className={`flex-1 truncate font-semibold tracking-wide leading-none transition-colors duration-200 ${
           state.focused ? 'text-white drop-shadow-[0_0_8px_rgba(6,182,212,0.3)]' : 'text-slate-400'
         }`}>
           {state.title}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           {state.minimizable && (
             <button
-              className="p-1.5 rounded-lg hover:bg-slate-700/60 text-slate-400 hover:text-cyan-300 transition-all duration-200 hover:shadow-lg hover:shadow-cyan-500/20"
+              className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-slate-700/60 text-slate-400 hover:text-cyan-300 transition-all duration-200 hover:shadow-lg hover:shadow-cyan-500/20"
               onClick={onMinimize}
               title="Minimize"
             >
@@ -200,7 +200,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
           )}
           {state.maximizable && (
             <button
-              className="p-1.5 rounded-lg hover:bg-slate-700/60 text-slate-400 hover:text-cyan-300 transition-all duration-200 hover:shadow-lg hover:shadow-cyan-500/20"
+              className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-slate-700/60 text-slate-400 hover:text-cyan-300 transition-all duration-200 hover:shadow-lg hover:shadow-cyan-500/20"
               onClick={isMax ? onRestore : onMaximize}
               title={isMax ? "Restore" : "Maximize"}
             >
@@ -208,7 +208,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
             </button>
           )}
           <button
-            className="p-1.5 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-all duration-200 hover:shadow-lg hover:shadow-red-500/20"
+            className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-all duration-200 hover:shadow-lg hover:shadow-red-500/20"
             onClick={onClose}
             title="Close"
           >
@@ -217,7 +217,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
         </div>
       </div>
 
-      <div className="h-[calc(100%-44px)] bg-slate-950/50 text-white overflow-hidden">{children}</div>
+      <div className="h-[calc(100%-40px)] bg-slate-950/50 text-white overflow-hidden">{children}</div>
 
       {/* Resize handles */}
       {!isMax && !isMin && (

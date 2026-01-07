@@ -56,9 +56,10 @@ interface OpenWithModalState {
 }
 
 export const Shell: React.FC<ShellProps> = () => {
+  const BOOT_STORAGE_KEY = 'rb:shell:booted:v1';
   const [booted, setBooted] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
-    return localStorage.getItem('rb:shell:booted') === '1';
+    return localStorage.getItem(BOOT_STORAGE_KEY) === '1';
   });
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [systemSearchOpen, setSystemSearchOpen] = useState(false);
@@ -853,7 +854,7 @@ export const Shell: React.FC<ShellProps> = () => {
     hasInitializedRef.current = true;
 
     try {
-      localStorage.setItem('rb:shell:booted', '1');
+      localStorage.setItem(BOOT_STORAGE_KEY, '1');
     } catch {}
 
     // Demo mode: Show onboarding modal instead of welcome screen

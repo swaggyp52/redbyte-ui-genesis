@@ -11,34 +11,34 @@ interface BootScreenProps {
 
 const BootScreen: React.FC<BootScreenProps> = ({ onComplete }) => {
   const [progress, setProgress] = useState(0);
-  const [stage, setStage] = useState(0);
+  const [stageIndex, setStageIndex] = useState(0);
 
+  const BOOT_DURATION_MS = 1200;
   const stages = [
-    'Initializing system',
-    'Loading components',
-    'Starting workspace',
-    'Ready',
+    { at: 0, label: 'Powering workspace' },
+    { at: 35, label: 'Loading logic core' },
+    { at: 70, label: 'Calibrating instruments' },
+    { at: 100, label: 'Ready' },
   ];
 
   useEffect(() => {
-    // Faster boot: 1.5s instead of 3s
+    const start = Date.now();
     const interval = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 100) return 100;
-        const newProgress = p + 6.67; // 100% / 15 ticks = ~1.5s
+      const elapsed = Date.now() - start;
+      const nextProgress = Math.min(100, Math.round((elapsed / BOOT_DURATION_MS) * 100));
 
-        // Update stage based on progress
-        if (newProgress >= 75) setStage(3);
-        else if (newProgress >= 50) setStage(2);
-        else if (newProgress >= 25) setStage(1);
+      setProgress(nextProgress);
 
-        return newProgress;
-      });
-    }, 100);
+      const nextStageIndex = stages.reduce((acc, stage, index) => (
+        nextProgress >= stage.at ? index : acc
+      ), 0);
+
+      setStageIndex(nextStageIndex);
+    }, 50);
 
     const timeout = setTimeout(() => {
       onComplete();
-    }, 1600); // Faster completion
+    }, BOOT_DURATION_MS + 150);
 
     return () => {
       clearInterval(interval);
@@ -48,34 +48,48 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete }) => {
 
   return (
     <div className="flex h-screen w-screen flex-col items-center justify-center bg-slate-950 text-white overflow-hidden relative">
-      {/* Subtle grid background - no animation */}
-      <div className="absolute inset-0 opacity-[0.02]" style={{
-        backgroundImage: 'linear-gradient(#00ffff 1px, transparent 1px), linear-gradient(90deg, #00ffff 1px, transparent 1px)',
-        backgroundSize: '50px 50px'
-      }} />
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(900px circle at 20% 20%, rgba(14,116,144,0.18), transparent 60%),' +
+            'radial-gradient(700px circle at 80% 35%, rgba(34,211,238,0.12), transparent 60%),' +
+            'linear-gradient(180deg, rgba(2,6,23,0.98), rgba(2,6,23,0.9))',
+        }}
+      />
+      <div
+        className="absolute inset-0 opacity-[0.06]"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(148,163,184,0.5) 1px, transparent 1px), ' +
+            'linear-gradient(90deg, rgba(148,163,184,0.5) 1px, transparent 1px)',
+          backgroundSize: '80px 80px',
+        }}
+      />
 
-      {/* Logo and title */}
-      <div className="relative z-10 flex flex-col items-center">
-        <div className="mb-6">
-          <NeonWaveIcon width={64} height={64} className="text-cyan-400" />
+      <div className="relative z-10 flex flex-col items-center text-center">
+        <div className="mb-5 flex items-center gap-3">
+          <NeonWaveIcon width={40} height={40} className="text-cyan-300" />
+          <div className="text-left">
+            <div className="text-lg font-semibold tracking-wide text-slate-100">RedByte</div>
+            <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Digital Logic Workspace</div>
+          </div>
         </div>
 
-        <h1 className="text-4xl font-bold mb-1 text-white">
-          RedByte OS
-        </h1>
-        <p className="text-sm text-slate-500 tracking-wide mb-10">Digital Logic Workspace</p>
-
-        {/* Status */}
-        <div className="text-xs text-slate-400 mb-4 min-h-[16px] font-mono">
-          {stages[stage]}
+        <div className="text-xs text-slate-400 mb-6 min-h-[16px] font-mono">
+          {stages[stageIndex].label}
         </div>
 
-        {/* Progress bar - simple, clean */}
-        <div className="w-80 h-1 rounded-full bg-slate-800 overflow-hidden">
-          <div
-            className="h-full bg-cyan-500 transition-all duration-150 ease-out"
-            style={{ width: `${progress}%` }}
-          />
+        <div className="w-72">
+          <div className="h-[2px] rounded-full bg-slate-800 overflow-hidden">
+            <div
+              className="h-full bg-cyan-400 transition-all duration-100 ease-out"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+        <div className="mt-3 text-[10px] uppercase tracking-[0.3em] text-slate-500">
+          RedByte — Digital Logic Workspace
         </div>
       </div>
     </div>

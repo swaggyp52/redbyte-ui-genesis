@@ -5,12 +5,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { RedByteApp } from '../types';
 import { listExamples, type ExampleId } from '../examples';
-import { useSettingsStore } from '@redbyte/rb-utils';
+import { useSettingsStore, type ThemeVariant } from '@redbyte/rb-utils';
+import { useWindowStore } from '@redbyte/rb-windowing';
+import { getApp } from '../AppRegistry';
 import { deleteFile, getFile, listFiles } from '../stores/filesStore';
 
 interface TerminalProps {
   onOpenApp?: (appId: string, props?: any) => void;
-  onThemeChange?: (theme: string) => void;
+  onThemeChange?: (theme: ThemeVariant) => void;
   onTickRateChange?: (rate: number) => void;
 }
 
@@ -41,6 +43,26 @@ const TerminalComponent: React.FC<TerminalProps> = ({
     setLines((prev) => [...prev, { type, text }]);
   };
 
+  const isThemeVariant = (value: string | undefined): value is ThemeVariant =>
+    value === 'light' || value === 'dark' || value === 'system';
+
+  const listRunningApps = () => {
+    const windows = useWindowStore.getState().windows;
+    const active = windows.filter((w) => w.mode !== 'minimized');
+
+    if (active.length === 0) {
+      addLine('No running apps.');
+      return;
+    }
+
+    addLine('Running apps:');
+    active.forEach((window) => {
+      const app = getApp(window.contentId);
+      const name = app?.manifest.name ?? window.contentId;
+      addLine(`  ${name} (${window.contentId})`);
+    });
+  };
+
   const handleCommand = (cmd: string) => {
     addLine(`> ${cmd}`, 'input');
 
@@ -53,7 +75,9 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         addLine('Available commands:');
         addLine('  help                        - Show this help message');
         addLine('  clear                       - Clear terminal screen');
-        addLine('  about                       - About RedByte Genesis');
+        addLine('  about                       - About RedByte OS');
+        addLine('  status                      - Show system status');
+        addLine('  apps list                   - List running apps');
         addLine('  theme list|current|set <variant>');
         addLine('  wallpaper set <id>          - Set wallpaper (neon-circuit | frost-grid | solid)');
         addLine('  files list                  - List saved circuit files');
@@ -74,6 +98,29 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         addLine(`Tick Rate: ${useSettingsStore.getState().tickRate} Hz`);
         break;
 
+      case 'status': {
+        const settings = useSettingsStore.getState();
+        const windows = useWindowStore.getState().windows;
+        const active = windows.filter((w) => w.mode !== 'minimized');
+        addLine('System Status:');
+        addLine(`  Theme: ${settings.themeVariant}`);
+        addLine(`  Wallpaper: ${settings.wallpaperId}`);
+        addLine(`  Tick Rate: ${settings.tickRate} Hz`);
+        addLine(`  Open Windows: ${windows.length}`);
+        addLine(`  Active Apps: ${active.length}`);
+        break;
+      }
+
+      case 'apps': {
+        const sub = args[0];
+        if (!sub || sub === 'list') {
+          listRunningApps();
+          break;
+        }
+        addLine('Usage: apps list', 'error');
+        break;
+      }
+
       case 'clear':
         setLines([]);
         break;
@@ -81,7 +128,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
       case 'theme': {
         const sub = args[0];
         if (!sub || sub === 'list') {
-          addLine('Available themes: dark-neon, light-frost');
+          addLine('Available themes: light, dark, system');
           break;
         }
         if (sub === 'current') {
@@ -90,12 +137,12 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         }
         if (sub === 'set') {
           const variant = args[1];
-          if (variant === 'dark-neon' || variant === 'light-frost') {
+          if (isThemeVariant(variant)) {
             addLine(`Theme set to: ${variant}`);
             useSettingsStore.getState().setThemeVariant(variant);
             onThemeChange?.(variant);
           } else {
-            addLine('Valid themes: dark-neon, light-frost', 'error');
+            addLine('Valid themes: light, dark, system', 'error');
           }
           break;
         }
@@ -208,6 +255,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
       case 'restart': {
         try {
           localStorage.removeItem('rb:shell:booted');
+          localStorage.removeItem('rb:shell:booted:v1');
         } catch {}
         addLine('Restarting RedByte OS…');
         setTimeout(() => window.location.reload(), 300);
@@ -263,6 +311,8 @@ const TerminalComponent: React.FC<TerminalProps> = ({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             className="flex-1 bg-transparent outline-none text-white"
+            aria-label="Terminal command input"
+            placeholder="Enter a command"
             autoFocus
             spellCheck={false}
           />

@@ -32,10 +32,14 @@ interface DesktopIconData {
   y: number;
 }
 
-const ICON_SIZE = 80;
-const GRID_SPACING = 120;
-const GRID_START_X = 48;
-const GRID_START_Y = 48;
+const ICON_BOX_SIZE = 72;
+const ICON_LABEL_GAP = 8;
+const ICON_LABEL_HEIGHT = 20;
+const ICON_CELL_WIDTH = 120;
+const ICON_CELL_HEIGHT = ICON_BOX_SIZE + ICON_LABEL_GAP + ICON_LABEL_HEIGHT;
+const GRID_SPACING = 128;
+const GRID_START_X = 56;
+const GRID_START_Y = 56;
 
 const iconComponents: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> = {
   terminal: TerminalIcon,
@@ -67,6 +71,11 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
   const desktopRef = useRef<HTMLDivElement>(null);
 
   const wallpaperStyle = useMemo(() => getWallpaperStyle(wallpaperId, themeVariant), [wallpaperId, themeVariant]);
+  const resolvedTheme = useMemo(() => {
+    if (themeVariant !== 'system') return themeVariant;
+    if (typeof window === 'undefined') return 'dark';
+    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }, [themeVariant]);
 
   useEffect(() => {
     desktopRef.current?.focus();
@@ -75,7 +84,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
   useEffect(() => {
     if (!selectionBox) return;
     const rectIntersect = (icon: DesktopIconData) => {
-      const rect = { x: icon.x, y: icon.y, w: ICON_SIZE, h: ICON_SIZE + 20 };
+    const rect = { x: icon.x, y: icon.y, w: ICON_CELL_WIDTH, h: ICON_CELL_HEIGHT };
       return !(
         rect.x > selectionBox.x + selectionBox.w ||
         rect.x + rect.w < selectionBox.x ||
@@ -149,8 +158,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
     }
   };
 
-  const isLightMode = themeVariant === 'light';
-  const isMidnight = themeVariant === 'midnight';
+  const isLightMode = resolvedTheme === 'light';
 
   return (
     <div
@@ -178,9 +186,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
                   right: 0,
                   background: isLightMode
                     ? 'linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.3), transparent)'
-                    : isMidnight
-                      ? 'linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.6), transparent)'
-                      : 'linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.6), transparent)',
+                    : 'linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.6), transparent)',
                   animation: `circuit-flow-h ${8 + i}s linear infinite`,
                   animationDelay: `${i * 0.5}s`,
                 }}
@@ -200,9 +206,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
                   bottom: 0,
                   background: isLightMode
                     ? 'linear-gradient(180deg, transparent, rgba(6, 182, 212, 0.3), transparent)'
-                    : isMidnight
-                      ? 'linear-gradient(180deg, transparent, rgba(139, 92, 246, 0.6), transparent)'
-                      : 'linear-gradient(180deg, transparent, rgba(6, 182, 212, 0.6), transparent)',
+                    : 'linear-gradient(180deg, transparent, rgba(6, 182, 212, 0.6), transparent)',
                   animation: `circuit-flow-v ${6 + i}s linear infinite`,
                   animationDelay: `${i * 0.3}s`,
                 }}
@@ -223,14 +227,10 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
                   height: Math.random() * 8 + 4 + 'px',
                   background: isLightMode
                     ? 'rgba(6, 182, 212, 0.5)'
-                    : isMidnight
-                      ? 'rgba(139, 92, 246, 0.9)'
-                      : 'rgba(6, 182, 212, 0.9)',
+                    : 'rgba(6, 182, 212, 0.9)',
                   boxShadow: isLightMode
                     ? '0 0 12px rgba(6, 182, 212, 0.3)'
-                    : isMidnight
-                      ? '0 0 20px rgba(139, 92, 246, 0.7)'
-                      : '0 0 20px rgba(6, 182, 212, 0.7)',
+                    : '0 0 20px rgba(6, 182, 212, 0.7)',
                   animation: `circuit-pulse ${2 + Math.random() * 3}s ease-in-out infinite`,
                   animationDelay: `${Math.random() * 2}s`,
                 }}
@@ -250,11 +250,8 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
               backgroundImage: isLightMode
                 ? `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(6, 182, 212, 0.25) 40px, rgba(6, 182, 212, 0.25) 41px),
                    repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(6, 182, 212, 0.25) 40px, rgba(6, 182, 212, 0.25) 41px)`
-                : isMidnight
-                  ? `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(139, 92, 246, 0.4) 40px, rgba(139, 92, 246, 0.4) 41px),
-                     repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(139, 92, 246, 0.4) 40px, rgba(139, 92, 246, 0.4) 41px)`
-                  : `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(6, 182, 212, 0.4) 40px, rgba(6, 182, 212, 0.4) 41px),
-                     repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(6, 182, 212, 0.4) 40px, rgba(6, 182, 212, 0.4) 41px)`,
+                : `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(6, 182, 212, 0.4) 40px, rgba(6, 182, 212, 0.4) 41px),
+                   repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(6, 182, 212, 0.4) 40px, rgba(6, 182, 212, 0.4) 41px)`,
               animation: 'grid-shift-diagonal 30s linear infinite',
             }}
           />
@@ -265,9 +262,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
             style={{
               background: isLightMode
                 ? 'linear-gradient(110deg, transparent 30%, rgba(6, 182, 212, 0.1) 50%, transparent 70%)'
-                : isMidnight
-                  ? 'linear-gradient(110deg, transparent 30%, rgba(139, 92, 246, 0.2) 50%, transparent 70%)'
-                  : 'linear-gradient(110deg, transparent 30%, rgba(6, 182, 212, 0.2) 50%, transparent 70%)',
+                : 'linear-gradient(110deg, transparent 30%, rgba(6, 182, 212, 0.2) 50%, transparent 70%)',
               backgroundSize: '200% 100%',
               animation: 'shimmer-sweep 8s ease-in-out infinite',
             }}
@@ -286,14 +281,10 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
                   height: Math.random() * 3 + 1 + 'px',
                   background: isLightMode
                     ? 'rgba(6, 182, 212, 0.6)'
-                    : isMidnight
-                      ? 'rgba(139, 92, 246, 1)'
-                      : 'rgba(6, 182, 212, 1)',
+                    : 'rgba(6, 182, 212, 1)',
                   boxShadow: isLightMode
                     ? '0 0 8px rgba(6, 182, 212, 0.4)'
-                    : isMidnight
-                      ? '0 0 10px rgba(139, 92, 246, 0.8)'
-                      : '0 0 10px rgba(6, 182, 212, 0.8)',
+                    : '0 0 10px rgba(6, 182, 212, 0.8)',
                   animation: `frost-twinkle ${1 + Math.random() * 2}s ease-in-out infinite`,
                   animationDelay: `${Math.random() * 3}s`,
                 }}
@@ -311,49 +302,58 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
         const IconComponent = iconComponents[icon.iconId] ?? FolderIcon;
         const isSelected = selected.includes(icon.id);
         const isFlagship = icon.id === 'logic'; // Logic Playground is the flagship
+        const iconSize = isFlagship ? 36 : 30;
 
         return (
           <div
             key={icon.id}
-            className={`flex flex-col items-center text-xs cursor-pointer select-none transition-all duration-150 ${
-              isSelected ? 'scale-105' : 'hover:scale-102'
-            }`}
-            style={{ position: 'absolute', left: `${icon.x}px`, top: `${icon.y}px` }}
+            className="flex flex-col items-center text-xs cursor-pointer select-none transition-colors duration-150"
+            style={{
+              position: 'absolute',
+              left: `${icon.x}px`,
+              top: `${icon.y}px`,
+              width: `${ICON_CELL_WIDTH}px`,
+              height: `${ICON_CELL_HEIGHT}px`,
+            }}
             onMouseDown={(e) => onIconMouseDown(e, icon)}
             onClick={() => handleIconClick(icon)}
           >
-          <div
-            className={`flex items-center justify-center rounded-lg border transition-all duration-150 ${
-              isFlagship
-                ? 'h-20 w-20 border-cyan-500/60 bg-cyan-500/10 hover:bg-cyan-500/20 hover:border-cyan-400 shadow-lg shadow-cyan-500/20'
-                : isSelected
-                  ? isLightMode
-                    ? 'h-16 w-16 border-gray-400/80 bg-white/60'
-                    : 'h-16 w-16 border-cyan-400/60 bg-cyan-500/10'
-                  : isLightMode
-                    ? 'h-16 w-16 border-gray-300/40 bg-white/30 hover:border-gray-400/60 hover:bg-white/50'
-                    : 'h-16 w-16 border-white/10 bg-black/20 hover:border-white/20 hover:bg-black/30'
-            } backdrop-blur-sm`}
-          >
-            <IconComponent
-              width={isFlagship ? 40 : 28}
-              height={isFlagship ? 40 : 28}
-              className={
+            <div
+              className={`flex items-center justify-center rounded-xl border transition-colors duration-150 backdrop-blur-sm ${
                 isFlagship
-                  ? 'text-cyan-400'
+                  ? 'border-cyan-400/70 bg-cyan-500/10 shadow-[0_10px_24px_rgba(6,182,212,0.25)]'
+                  : isSelected
+                    ? isLightMode
+                      ? 'border-slate-400/80 bg-white/70'
+                      : 'border-cyan-400/60 bg-cyan-500/10'
+                    : isLightMode
+                      ? 'border-slate-300/50 bg-white/40 hover:border-slate-400/70 hover:bg-white/60'
+                      : 'border-white/10 bg-black/20 hover:border-white/20 hover:bg-black/30'
+              }`}
+              style={{ width: `${ICON_BOX_SIZE}px`, height: `${ICON_BOX_SIZE}px` }}
+            >
+              <IconComponent
+                width={iconSize}
+                height={iconSize}
+                className={
+                  isFlagship
+                    ? 'text-cyan-300'
+                    : isLightMode
+                      ? 'text-gray-700'
+                      : 'text-slate-300'
+                }
+              />
+            </div>
+            <div
+              className={`w-full text-center text-[11px] font-medium tracking-wide ${
+                isFlagship
+                  ? 'text-cyan-300'
                   : isLightMode
-                    ? 'text-gray-700'
+                    ? 'text-gray-900'
                     : 'text-slate-300'
-              }
-            />
-          </div>
-            <div className={`mt-2 px-2.5 py-1 rounded-md text-center backdrop-blur-sm font-medium ${
-              isFlagship
-                ? 'text-cyan-400 font-semibold'
-                : isLightMode
-                  ? 'text-gray-900'
-                  : 'text-slate-300'
-            }`}>
+              }`}
+              style={{ marginTop: ICON_LABEL_GAP, minHeight: ICON_LABEL_HEIGHT }}
+            >
               {icon.title}
             </div>
           </div>

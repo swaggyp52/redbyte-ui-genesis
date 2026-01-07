@@ -425,6 +425,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   probedPorts,
   probeWireHighlights,
   highlightedPort,
+  isReplayMode,
   onHelpOpen,
 }) => {
   // Safety check: ensure engine and circuit are defined

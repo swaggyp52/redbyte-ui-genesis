@@ -593,8 +593,8 @@ const LogicHelpComponent: React.FC<LogicHelpProps> = ({ onDispatchIntent }) => {
     // Fallback for unimplemented lessons
     return (
       <div className="text-center py-12 text-gray-400">
-        <h2 className="text-2xl mb-4">{lessonId}: Content Coming Soon</h2>
-        <p>This lesson is being migrated to the new component system.</p>
+        <h2 className="text-2xl mb-4">{lessonId}: Lesson Unavailable</h2>
+        <p>This lesson is not available in this build. Choose another lesson from the index.</p>
       </div>
     );
   };

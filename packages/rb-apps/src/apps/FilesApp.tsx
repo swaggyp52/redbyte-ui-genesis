@@ -453,6 +453,15 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
               <tbody>
                 {entries.map((entry, index) => {
                   const isSelected = index === selectedIndex;
+                  const eligibleTargets = entry.type === 'file' ? getFileActionTargets(entry) : [];
+                  const hasTargets = eligibleTargets.length > 0;
+                  const extension = entry.name.includes('.') ? entry.name.split('.').pop() || '' : '';
+                  const defaultTargetId = hasTargets
+                    ? resolveDefaultTarget(entry.type, extension, eligibleTargets)
+                    : null;
+                  const defaultTarget = hasTargets
+                    ? eligibleTargets.find((target) => target.id === defaultTargetId) ?? eligibleTargets[0]
+                    : null;
                   return (
                     <tr
                       key={entry.id}
@@ -473,11 +482,19 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleOpenWith(entry, 'logic-playground');
+                              if (defaultTarget) {
+                                handleOpenWith(entry, defaultTarget.appId);
+                              }
                             }}
-                            className="text-xs px-2 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white"
+                            className={`text-xs px-2 py-1 rounded transition-colors ${
+                              defaultTarget
+                                ? 'bg-cyan-600 hover:bg-cyan-500 text-white'
+                                : 'bg-slate-800 text-slate-400 cursor-not-allowed'
+                            }`}
+                            disabled={!defaultTarget}
+                            title={defaultTarget ? `Open in ${defaultTarget.name}` : 'No compatible app for this file'}
                           >
-                            Open in Playground
+                            {defaultTarget ? `Open in ${defaultTarget.name}` : 'Unavailable'}
                           </button>
                         )}
                       </td>

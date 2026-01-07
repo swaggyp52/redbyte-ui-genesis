@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import type { RedByteApp } from '../types';
-import { useSettingsStore, type ThemeVariant, type AccentColor, type WallpaperId } from '@redbyte/rb-utils';
+import { useSettingsStore, type ThemeVariant, type WallpaperId } from '@redbyte/rb-utils';
 import { FileAssociationsPanel } from './settings/FileAssociationsPanel';
 import { FilesystemDataPanel } from './settings/FilesystemDataPanel';
 import { SessionPanel } from './settings/SessionPanel';
@@ -29,10 +29,10 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
   const {
     themeVariant,
     wallpaperId,
-    accentColor,
     setThemeVariant,
     setWallpaperId,
-    setAccentColor,
+    tickRate,
+    setTickRate,
   } = useSettingsStore();
 
   useEffect(() => {
@@ -111,7 +111,7 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
                   {[
                     { value: 'light', label: 'Light', desc: 'Bright theme', icon: '☀️' },
                     { value: 'dark', label: 'Dark', desc: 'Dark theme', icon: '🌙' },
-                    { value: 'midnight', label: 'Midnight', desc: 'Deep purple', icon: '🌌' },
+                    { value: 'system', label: 'System', desc: 'Match OS preference', icon: 'SYS' },
                   ].map((theme) => (
                     <button
                       key={theme.value}
@@ -200,13 +200,31 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
                 <div className="flex items-start gap-4">
                   <div className="text-3xl">⚙️</div>
                   <div className="flex-1">
-                    <h4 className="text-base font-semibold text-white mb-2">System Configuration</h4>
+                    <h4 className="text-base font-semibold text-white mb-2">Simulation Timing</h4>
                     <p className="text-slate-400 mb-4">
-                      Advanced system settings for power users will be available in future releases.
+                      Sets the default tick rate for new and live-running circuits.
                     </p>
-                    <p className="text-sm text-slate-500">
-                      Currently, you can customize appearance, manage file associations, and control session behavior using the other panels.
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min={1}
+                        max={60}
+                        value={tickRate}
+                        onChange={(e) => setTickRate(parseInt(e.target.value, 10))}
+                        className="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                        aria-label="Simulation tick rate"
+                      />
+                      <input
+                        type="number"
+                        min={1}
+                        max={60}
+                        value={tickRate}
+                        onChange={(e) => setTickRate(parseInt(e.target.value, 10))}
+                        className="w-20 px-2 py-1 bg-slate-900 border border-slate-700 rounded text-white text-sm font-mono"
+                        aria-label="Simulation tick rate value"
+                      />
+                      <span className="text-xs text-slate-400">Hz</span>
+                    </div>
                   </div>
                 </div>
               </div>

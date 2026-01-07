@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React from 'react';
+import type { PerspectiveId } from '../stores/layoutStore';
 
 /**
  * Logic Playground vNext Top Command Bar
@@ -47,8 +48,8 @@ interface TopCommandBarProps {
   onResetTickCount?: () => void;
 
   // Layout + Help
-  perspective: string; // PerspectiveId from layoutStore
-  onPerspectiveChange: (perspective: string) => void;
+  perspective: PerspectiveId;
+  onPerspectiveChange: (perspective: PerspectiveId) => void;
   schematicMiniEnabled?: boolean;
   onToggleSchematicMini?: () => void;
   onHelp: () => void;
@@ -259,6 +260,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             value={tickRate}
             onChange={(e) => onTickRateChange(parseInt(e.target.value, 10))}
             className="w-20 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+            aria-label="Tick rate"
             title="Tick rate"
           />
           <span className="text-sm font-mono text-cyan-400 w-11 text-right">{tickRate}Hz</span>
@@ -312,7 +314,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {/* Layout Selector - Dropdown */}
         <select
           value={perspective}
-          onChange={(e) => onPerspectiveChange(e.target.value)}
+          onChange={(e) => onPerspectiveChange(e.target.value as PerspectiveId)}
           className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 focus:border-cyan-500 focus:outline-none transition-colors cursor-pointer"
           title="Switch layout (1-5, Shift+1-4)"
         >

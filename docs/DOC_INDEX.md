@@ -1,6 +1,6 @@
 # Documentation Index
 
-**Last Updated:** 2026-01-06
+**Last Updated:** 2026-01-07
 
 This file is your navigation hub for all documentation in the RedByte OS Genesis project.
 
@@ -64,6 +64,14 @@ This project follows these documentation principles:
 ---
 
 ### docs/ Folder (Technical Deep Dives)
+
+#### [V1.md](./V1.md)
+**Purpose:** Canonical RedByte V1 definition
+**Read this if:** You need the formal V1 product statement
+**Contains:**
+- Determinism definition in plain English
+- V1 scope and intent
+- Non-negotiable product statement
 
 #### [ARCHITECTURE.md](./ARCHITECTURE.md)
 **Purpose:** Deep dive into system architecture
@@ -315,5 +323,5 @@ Update documentation when you:
 
 ---
 
-*Last updated: 2026-01-06*
+*Last updated: 2026-01-07*
 *Maintained by: AI Agents + Connor Angiel*

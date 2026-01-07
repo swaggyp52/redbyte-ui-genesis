@@ -4,7 +4,7 @@
 
 import { create } from 'zustand';
 
-export type ThemeVariant = 'light' | 'dark' | 'midnight';
+export type ThemeVariant = 'light' | 'dark' | 'system';
 export type WallpaperId = 'default' | 'neon-circuit' | 'frost-grid' | 'solid';
 
 const ACCENT_COLORS = ['cyan', 'purple', 'green', 'orange', 'pink'] as const;
@@ -54,7 +54,7 @@ function loadSettings(): SettingsState {
     const VALID_WALLPAPERS: WallpaperId[] = ['default', 'neon-circuit', 'frost-grid', 'solid'];
 
     return {
-      themeVariant: ['light', 'dark', 'midnight'].includes(parsed.themeVariant)
+      themeVariant: ['light', 'dark', 'system'].includes(parsed.themeVariant)
         ? parsed.themeVariant
         : DEFAULT_SETTINGS.themeVariant,
       wallpaperId: VALID_WALLPAPERS.includes(parsed.wallpaperId)
@@ -102,6 +102,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   },
 
   setTickRate: (rate) => {
+    if (!Number.isFinite(rate)) return;
     // Clamp to valid range
     const clampedRate = Math.max(1, Math.min(60, rate));
     set({ tickRate: clampedRate });

@@ -16,6 +16,7 @@ describe('Settings app lifecycle', () => {
       themeVariant: 'dark',
       wallpaperId: 'default',
       accentColor: 'cyan',
+      tickRate: 20,
     });
   });
 
@@ -31,7 +32,7 @@ describe('Settings app lifecycle', () => {
 
     expect(screen.getByRole('button', { name: /Light/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Dark/i })).toBeTruthy();
-    expect(screen.getByRole('button', { name: /Midnight/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /System/i })).toBeTruthy();
   });
 
   it('changes theme when button is clicked', () => {
@@ -60,7 +61,7 @@ describe('Settings app lifecycle', () => {
     const systemButton = screen.getByRole('button', { name: /System/ });
     fireEvent.click(systemButton);
 
-    expect(screen.getByText(/System settings coming soon/i)).toBeTruthy();
+    expect(screen.getByText(/Simulation Timing/i)).toBeTruthy();
   });
 
 

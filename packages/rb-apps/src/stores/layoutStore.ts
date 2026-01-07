@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import type { SplitScreenMode, ViewMode } from './viewStateStore';
 import type { RightDockState, RightDockTab } from '../components/RightDock';
+import type { HelpSectionId } from '../components/HelpDock';
 
 export type PerspectiveId =
   | 'build'           // Circuit + RightDock
@@ -30,7 +31,7 @@ interface LayoutState {
   rightDockState: RightDockState;
   rightDockTab: RightDockTab;
   showHelpDock: boolean;
-  helpDockSection: string | null;
+  helpDockSection: HelpSectionId | null;
   schematicMiniEnabled: boolean;
 }
 
@@ -39,7 +40,7 @@ interface LayoutActions {
   setRightDockState: (state: RightDockState) => void;
   setRightDockTab: (tab: RightDockTab) => void;
   setShowHelpDock: (visible: boolean) => void;
-  setHelpDockSection: (section: string | null) => void;
+  setHelpDockSection: (section: HelpSectionId | null) => void;
   setSplitRatio: (ratio: number) => void;
   toggleSchematicMini: () => void;
   resetLayout: () => void;

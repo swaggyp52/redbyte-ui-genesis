@@ -5270,6 +5270,16 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+\### 2026-01-07
+\- Added OS-to-Playground launch integration test and end-to-end-ish circuit flow test; objectives unchanged; phase unchanged
+\- Refreshed boot screen, desktop grid/icon alignment, and shell window chrome; updated boot storage key; objectives unchanged; phase unchanged
+\- Updated Terminal, Files, Settings, and Text Viewer to reflect real OS state and file content; extended filesystem seed content; objectives unchanged; phase unchanged
+\- Added V1 definition doc plus docs contract and index links; objectives unchanged; phase unchanged
+\- Removed "coming soon" help fallback copy and guarded tick-rate updates against non-finite input; objectives unchanged; phase unchanged
+\- Moved OS launch + Playground flow tests into rb-apps for release verification and removed extra a11y-only shell test; objectives unchanged; phase unchanged
+\- Reverted out-of-scope CI/tooling/README changes to keep V1 release-candidate diff minimal; objectives unchanged; phase unchanged
+\- Fixed Logic Playground init ordering, replay prop wiring, and layout/help types to eliminate runtime/TypeScript errors; objectives unchanged; phase unchanged
+
 \### 2026-01-06
 \- Fixed SplitViewLayout to forward probe toggle state across view renderers and avoid undefined access; objectives unchanged; phase unchanged
 \- Added selection mapping helper for Logic3DScene and simplified 3D selection sync test to avoid React DOM warnings; objectives unchanged; phase unchanged
@@ -5490,6 +5500,7 @@ After completing work, an AI agent MUST:
 - Added deterministic project export format plus netlist/Verilog/debug bundle exporters and wired project save/open/export actions into Logic Playground UI + command palette; objectives unchanged; phase unchanged
 - Persisted oscilloscope time window and tick-guide settings in store for project save/load and added probe restore support; objectives unchanged; phase unchanged
 - Added exporter tests and adjusted circuit HUD test matcher; clarified test command reminder for rb-logic-view test location; objectives unchanged; phase unchanged
+- Aligned theme variants to light/dark/system across settings, terminal, theme provider, and desktop/wallpaper styling; added missing input labels/associations for accessibility; updated settings test coverage for system theme option; objectives unchanged; phase unchanged
 ### 2026-01-06
 - Updated replay scrubbing to reset/rebuild replay engine on rewind and drive interval stepping from replay context so playhead + engine stay aligned; determinism UI now updates circuit snapshots and debug signals without mutating persistent state outside replay; objectives unchanged; phase unchanged
 - Locked replay mutation entry points: passed replay mode into palette and inspector, disabled Quick Add selections and inspector edits with replay tooltips, and guarded node/connection mutations during replay; objectives unchanged; phase unchanged

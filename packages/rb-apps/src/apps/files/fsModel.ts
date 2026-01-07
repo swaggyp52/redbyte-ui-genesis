@@ -18,7 +18,13 @@ export function createInitialFsState(): FileSystemState {
           { id: 'desktop-link', name: 'Desktop', type: 'folder', modified: '2025-12-16 10:00' },
           { id: 'documents-link', name: 'Documents', type: 'folder', modified: '2025-12-16 10:00' },
           { id: 'downloads-link', name: 'Downloads', type: 'folder', modified: '2025-12-16 10:00' },
-          { id: 'circuit', name: 'circuit.rblogic', type: 'file', modified: '2025-12-18 14:00' },
+          {
+            id: 'circuit',
+            name: 'circuit.rblogic',
+            type: 'file',
+            modified: '2025-12-18 14:00',
+            content: '{"version":"1","nodes":[],"connections":[]}',
+          },
         ],
       },
       desktop: {
@@ -26,7 +32,13 @@ export function createInitialFsState(): FileSystemState {
         name: 'Desktop',
         entries: [
           { id: 'project1', name: 'Project Files', type: 'folder', modified: '2025-12-15 14:30' },
-          { id: 'notes', name: 'Notes.txt', type: 'file', modified: '2025-12-16 09:15' },
+          {
+            id: 'notes',
+            name: 'Notes.txt',
+            type: 'file',
+            modified: '2025-12-16 09:15',
+            content: 'RedByte Notes\n\n- Logic Playground is the core workspace.\n- Files manages project artifacts.\n- Determinism is a product feature, not a demo.',
+          },
         ],
       },
       documents: {
@@ -34,15 +46,33 @@ export function createInitialFsState(): FileSystemState {
         name: 'Documents',
         entries: [
           { id: 'reports', name: 'Reports', type: 'folder', modified: '2025-12-14 16:20' },
-          { id: 'readme', name: 'README.md', type: 'file', modified: '2025-12-13 11:45' },
-          { id: 'config', name: 'config.json', type: 'file', modified: '2025-12-12 08:30' },
+          {
+            id: 'readme',
+            name: 'README.md',
+            type: 'file',
+            modified: '2025-12-13 11:45',
+            content: '# RedByte OS Files\n\nThis folder holds exported projects and reference notes.\n',
+          },
+          {
+            id: 'config',
+            name: 'config.json',
+            type: 'file',
+            modified: '2025-12-12 08:30',
+            content: '{\"workspace\":\"redbyte\",\"tickRate\":20}',
+          },
         ],
       },
       downloads: {
         id: 'downloads',
         name: 'Downloads',
         entries: [
-          { id: 'archive', name: 'archive.zip', type: 'file', modified: '2025-12-11 15:00' },
+          {
+            id: 'archive',
+            name: 'archive.zip',
+            type: 'file',
+            modified: '2025-12-11 15:00',
+            content: '',
+          },
         ],
       },
       project1: {
