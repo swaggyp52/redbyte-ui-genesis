@@ -1,4 +1,31 @@
 import '@testing-library/jest-dom';
+import { afterEach, beforeEach, vi } from 'vitest';
+
+// Mock requestAnimationFrame to prevent uiTickStore animation loops in tests
+const originalRAF = globalThis.requestAnimationFrame;
+const originalCAF = globalThis.cancelAnimationFrame;
+
+beforeEach(() => {
+  // Replace RAF with a no-op that returns a valid ID
+  globalThis.requestAnimationFrame = vi.fn(() => 0);
+  globalThis.cancelAnimationFrame = vi.fn();
+});
+
+afterEach(async () => {
+  // Restore original RAF
+  globalThis.requestAnimationFrame = originalRAF;
+  globalThis.cancelAnimationFrame = originalCAF;
+
+  // Stop uiTickStore animation loop after each test
+  try {
+    const { useUiTickStore } = await import('@redbyte/rb-utils');
+    useUiTickStore.getState().stop();
+    // Reset to initial state
+    useUiTickStore.setState({ uiTick: 0, running: false });
+  } catch {
+    // Module may not be loaded in all tests
+  }
+});
 
 // Suppress Three.js multiple instances warning in tests
 // This occurs because rb-logic-3d and other packages import Three.js independently

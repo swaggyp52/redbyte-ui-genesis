@@ -13,7 +13,11 @@ const UserManualComponent = UserManualApp.component;
 describe('UserManualApp', () => {
   it('renders a known manual heading', () => {
     render(<UserManualComponent />);
-    expect(screen.getByRole('heading', { name: /What RedByte Is/i })).toBeInTheDocument();
+    // Use getAllByRole since "What RedByte Is" appears in both
+    // "1. What RedByte Is" and "13. What RedByte Is Not"
+    const headings = screen.getAllByRole('heading', { name: /What RedByte Is/i });
+    expect(headings.length).toBeGreaterThan(0);
+    expect(headings[0]).toBeInTheDocument();
   });
 
   it('opens a demo link with confirmation', async () => {

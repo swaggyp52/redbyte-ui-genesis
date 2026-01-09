@@ -2,12 +2,11 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import { useRef } from 'react';
-
 const isDev = import.meta.env.DEV;
 
 const measureBuckets = new Map<string, number[]>();
 const renderCounts = new Map<string, number>();
+const componentRenderCounts = new Map<string, number>();
 let perfLoggerInterval: number | null = null;
 
 const MAX_SAMPLES = 120;
@@ -92,13 +91,16 @@ export const stopPerfSummaryLogger = () => {
   perfLoggerInterval = null;
 };
 
+/**
+ * Track render counts for a component. Call this at the top of a component.
+ * This is a plain function that doesn't use React hooks - it just increments
+ * a global counter for the component name.
+ */
 export const trackRender = (name: string) => {
-  const renderRef = useRef(0);
-  renderRef.current += 1;
-
-  if (isDev) {
-    renderCounts.set(name, renderRef.current);
-  }
+  if (!isDev) return;
+  const count = (componentRenderCounts.get(name) ?? 0) + 1;
+  componentRenderCounts.set(name, count);
+  renderCounts.set(name, count);
 };
 
 export const getRenderCounts = () => {

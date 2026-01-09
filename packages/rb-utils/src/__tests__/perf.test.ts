@@ -6,8 +6,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mark, measure, startPerfSummaryLogger, stopPerfSummaryLogger } from '../debug/perf';
 
 describe('perf summary logging', () => {
+  const originalLocation = window.location;
+
   beforeEach(() => {
-    window.history.replaceState({}, '', 'http://localhost/');
+    // Mock window.location.search for perf flag detection
+    Object.defineProperty(window, 'location', {
+      value: { ...originalLocation, search: '' },
+      writable: true,
+    });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, 'location', {
+      value: originalLocation,
+      writable: true,
+    });
   });
 
   afterEach(() => {
