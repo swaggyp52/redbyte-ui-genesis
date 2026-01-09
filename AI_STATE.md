@@ -5271,6 +5271,8 @@ After completing work, an AI agent MUST:
 \## Change Log
 
 \### 2026-01-07
+\- Replaced custom switch/radio aria usage with native checkbox/radio inputs and corrected PropertyInspector position updates; objectives unchanged; phase unchanged
+\- Corrected PropertyInspector switch semantics and SaveChipModal layer selector roles to resolve aria-valid-attr-value warnings without UX changes; objectives unchanged; phase unchanged
 \- Added OS-to-Playground launch integration test and end-to-end-ish circuit flow test; objectives unchanged; phase unchanged
 \- Refreshed boot screen, desktop grid/icon alignment, and shell window chrome; updated boot storage key; objectives unchanged; phase unchanged
 \- Updated Terminal, Files, Settings, and Text Viewer to reflect real OS state and file content; extended filesystem seed content; objectives unchanged; phase unchanged

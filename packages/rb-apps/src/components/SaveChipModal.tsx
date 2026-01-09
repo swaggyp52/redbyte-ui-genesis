@@ -134,26 +134,31 @@ export const SaveChipModal: React.FC<SaveChipModalProps> = ({
           </div>
 
           {/* Layer */}
-          <div>
-            <label className="block text-sm text-slate-300 mb-2">Layer</label>
+          <fieldset className="border-0 p-0 m-0">
+            <legend className="block text-sm text-slate-300 mb-2">Layer</legend>
             <div className="flex gap-2">
               {[0, 1, 2, 3, 4, 5, 6].map((l) => (
-                <button
+                <label
                   key={l}
-                  onClick={() => setLayer(l)}
-                  className={`px-3 py-1 rounded text-sm font-semibold transition-all ${
+                  className={`px-3 py-1 rounded text-sm font-semibold transition-all cursor-pointer ${
                     layer === l
                       ? `${layerColors[l]} text-white`
                       : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                   }`}
-                  aria-label={`Layer ${l}`}
-                  aria-pressed={layer === l}
                 >
+                  <input
+                    type="radio"
+                    name="chip-layer"
+                    value={l}
+                    checked={layer === l}
+                    onChange={() => setLayer(l)}
+                    className="sr-only"
+                  />
                   {l}
-                </button>
+                </label>
               ))}
             </div>
-          </div>
+          </fieldset>
 
           {/* Port Summary */}
           <div>

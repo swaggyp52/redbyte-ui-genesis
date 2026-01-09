@@ -77,7 +77,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
 
   const handlePositionChange = (nodeId: string, x: number, y: number) => {
     if (!onNodeUpdate || isReplayMode) return;
-    onNodeUpdate(nodeId, { x, y });
+    onNodeUpdate(nodeId, { position: { x, y } });
   };
 
   // Render nothing selected state
@@ -176,64 +176,66 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
             <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/50">
               <div className="text-xs font-semibold text-gray-300 mb-3">SETTINGS</div>
               <div className="space-y-3">
-                {Object.entries(node.config).map(([key, value]) => (
-                  <div key={key}>
-                    <label className="block text-gray-400 mb-1.5 text-xs capitalize">
-                      {key.replace(/([A-Z])/g, ' $1').trim()}
-                    </label>
-                    {typeof value === 'boolean' ? (
-                      <label
-                        className={`flex items-center gap-3 bg-gray-800/50 rounded px-3 py-2 transition-colors ${
-                          isReplayMode ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-700/50'
-                        }`}
-                        title={isReplayMode ? lockMessage : undefined}
-                        aria-disabled={isReplayMode || undefined}
-                      >
-                        <div className={`w-10 h-5 rounded-full transition-all ${value ? 'bg-cyan-500' : 'bg-gray-600'}`}>
-                          <div className={`w-4 h-4 bg-white rounded-full mt-0.5 transition-transform ${value ? 'ml-5' : 'ml-0.5'}`}></div>
+                {Object.entries(node.config).map(([key, value]) => {
+                  const labelText = key.replace(/([A-Z])/g, ' $1').trim() || 'Setting';
+
+                  return (
+                    <div key={key}>
+                      <div className="block text-gray-400 mb-1.5 text-xs capitalize">{labelText}</div>
+                      {typeof value === 'boolean' ? (
+                        <label
+                          className={`flex items-center gap-3 bg-gray-800/50 rounded px-3 py-2 transition-colors ${
+                            isReplayMode ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-700/50'
+                          }`}
+                          title={isReplayMode ? lockMessage : undefined}
+                        >
+                          <span className="sr-only">{labelText}</span>
+                          <input
+                            type="checkbox"
+                            checked={value}
+                            onChange={(e) => handleConfigChange(node.id, key, e.target.checked)}
+                            className="sr-only"
+                            disabled={isReplayMode}
+                          />
+                          <div className={`w-10 h-5 rounded-full transition-all ${value ? 'bg-cyan-500' : 'bg-gray-600'}`}>
+                            <div className={`w-4 h-4 bg-white rounded-full mt-0.5 transition-transform ${value ? 'ml-5' : 'ml-0.5'}`}></div>
+                          </div>
+                          <span className="text-white text-sm font-medium">{value ? 'Enabled' : 'Disabled'}</span>
+                        </label>
+                      ) : typeof value === 'number' ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={value}
+                            onChange={(e) => handleConfigChange(node.id, key, parseFloat(e.target.value) || 0)}
+                            className="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                            disabled={isReplayMode}
+                            title={isReplayMode ? lockMessage : undefined}
+                          />
+                          <input
+                            type="number"
+                            value={value}
+                            onChange={(e) => handleConfigChange(node.id, key, parseFloat(e.target.value) || 0)}
+                            className="w-16 px-2 py-1 bg-gray-800 rounded border border-gray-600 text-white text-sm font-mono"
+                            disabled={isReplayMode}
+                            title={isReplayMode ? lockMessage : undefined}
+                          />
                         </div>
-                        <span className="text-white text-sm font-medium">{value ? 'Enabled' : 'Disabled'}</span>
+                      ) : (
                         <input
-                          type="checkbox"
-                          checked={value}
-                          onChange={(e) => handleConfigChange(node.id, key, e.target.checked)}
-                          className="hidden"
-                          disabled={isReplayMode}
-                        />
-                      </label>
-                    ) : typeof value === 'number' ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={value}
-                          onChange={(e) => handleConfigChange(node.id, key, parseFloat(e.target.value) || 0)}
-                          className="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                          type="text"
+                          value={String(value)}
+                          onChange={(e) => handleConfigChange(node.id, key, e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-800/50 rounded border border-gray-600 text-white text-sm"
                           disabled={isReplayMode}
                           title={isReplayMode ? lockMessage : undefined}
                         />
-                        <input
-                          type="number"
-                          value={value}
-                          onChange={(e) => handleConfigChange(node.id, key, parseFloat(e.target.value) || 0)}
-                          className="w-16 px-2 py-1 bg-gray-800 rounded border border-gray-600 text-white text-sm font-mono"
-                          disabled={isReplayMode}
-                          title={isReplayMode ? lockMessage : undefined}
-                        />
-                      </div>
-                    ) : (
-                      <input
-                        type="text"
-                        value={String(value)}
-                        onChange={(e) => handleConfigChange(node.id, key, e.target.value)}
-                        className="w-full px-3 py-2 bg-gray-800/50 rounded border border-gray-600 text-white text-sm"
-                        disabled={isReplayMode}
-                        title={isReplayMode ? lockMessage : undefined}
-                      />
-                    )}
-                  </div>
-                ))}
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
