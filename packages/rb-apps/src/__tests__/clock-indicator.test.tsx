@@ -27,6 +27,7 @@ describe('clock indicator', () => {
 
     rerender(<TopCommandBar {...props} isRunning tickCount={4} />);
     expect(screen.getByText('T+4')).toBeInTheDocument();
-    expect(screen.getByText('10Hz')).toBeInTheDocument();
+    // When running, Hz is shown in multiple places - verify at least one exists
+    expect(screen.getAllByText('10Hz').length).toBeGreaterThan(0);
   });
 });

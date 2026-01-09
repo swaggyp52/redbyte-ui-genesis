@@ -27,7 +27,9 @@ const createCircuit = (): Circuit => ({
 const createMockTickEngine = () =>
   ({
     getTraceRecorder: () => null,
-    startTracing: vi.fn(),
+    enableTracing: vi.fn(),
+    getTickCount: () => 0,
+    getTickRate: () => 20,
   }) as any;
 
 const getCanvas = () => screen.getByTestId('oscilloscope-canvas');

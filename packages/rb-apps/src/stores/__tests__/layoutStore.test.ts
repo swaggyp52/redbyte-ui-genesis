@@ -14,7 +14,7 @@ describe('Playground Layout Store', () => {
   it('persists perspective selection to localStorage', () => {
     useLayoutStore.getState().setPerspective('debug');
 
-    const raw = localStorage.getItem('rb:playground-layout');
+    const raw = localStorage.getItem('rb.playground.layout');
     expect(raw).toBeTruthy();
 
     const parsed = JSON.parse(raw!);
@@ -23,7 +23,7 @@ describe('Playground Layout Store', () => {
 
   it('loads persisted layout state', () => {
     localStorage.setItem(
-      'rb:playground-layout',
+      'rb.playground.layout',
       JSON.stringify({ perspective: 'learn', splitRatio: 0.6, schematicMiniEnabled: false })
     );
 

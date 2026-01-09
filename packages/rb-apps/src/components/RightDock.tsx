@@ -456,7 +456,7 @@ export const RightDock: React.FC<RightDockProps> = ({
                       onClick={onStep}
                       className="px-2 py-1 text-[10px] rounded border border-blue-500/50 text-blue-200 hover:bg-blue-500/20"
                       type="button"
-                      title="Step once"
+                      title="Advance one tick"
                     >
                       Step
                     </button>

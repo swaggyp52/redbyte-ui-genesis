@@ -372,27 +372,22 @@ describe('PHASE_V: Back/Forward navigation', () => {
 });
 
 describe('PHASE_V: Open With workflow', () => {
-  it('Open in Playground button is visible for files', () => {
+  it('Open in Logic Playground button is visible for files', () => {
     render(<FilesComponent />);
 
-    // Navigate to Documents to see files
-    const documentsButton = getSidebarButton('Documents');
-    fireEvent.click(documentsButton!);
-
-    const openButtons = screen.getAllByText('Open in Playground');
+    // Home folder contains circuit.rblogic which is eligible for Logic Playground
+    // The app opens at Home by default
+    const openButtons = screen.getAllByText('Open in Logic Playground');
     expect(openButtons.length).toBeGreaterThan(0);
   });
 
-  it('Open in Playground button dispatches correct intent', () => {
+  it('Open in Logic Playground button dispatches correct intent', () => {
     const onDispatchIntent = vi.fn();
     render(<FilesComponent onDispatchIntent={onDispatchIntent} />);
 
-    // Navigate to Documents
-    const documentsButton = getSidebarButton('Documents');
-    fireEvent.click(documentsButton!);
-
-    // Click "Open in Playground" for first file
-    const openButtons = screen.getAllByText('Open in Playground');
+    // Home folder contains circuit.rblogic - app opens at Home by default
+    // Click "Open in Logic Playground" for the rblogic file
+    const openButtons = screen.getAllByText('Open in Logic Playground');
     fireEvent.click(openButtons[0]);
 
     expect(onDispatchIntent).toHaveBeenCalledTimes(1);
@@ -462,7 +457,7 @@ describe('PHASE_V: Open With workflow', () => {
     expect(onDispatchIntent).not.toHaveBeenCalled();
   });
 
-  it('Open in Playground only shown for .rblogic files, not other types', () => {
+  it('Open in Logic Playground only shown for .rblogic files, not other types', () => {
     render(<FilesComponent />);
 
     // Navigate to Home and verify circuit.rblogic shows "Open With..."
@@ -470,7 +465,7 @@ describe('PHASE_V: Open With workflow', () => {
 
     // Home has circuit.rblogic which is eligible for Logic Playground
     // Desktop/Documents/Downloads links are folders (ineligible)
-    // In PHASE_Z, "Open in Playground" button was replaced by "Open With..." modal
+    // In PHASE_Z, "Open in Logic Playground" button was replaced by "Open With..." modal
     // This test verifies the file action system works - we can't easily test modal contents
     // without more complex interaction, but the eligibility tests cover that
     expect(table).toBeTruthy();
