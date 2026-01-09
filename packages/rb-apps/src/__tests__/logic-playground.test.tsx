@@ -82,8 +82,13 @@ vi.mock('@redbyte/rb-logic-view', async (importOriginal) => {
   };
 });
 
-// TODO: Fix infinite update loop in LogicPlaygroundApp with React 19
-// The stores' useSyncExternalStore integration triggers "Maximum update depth exceeded"
+// FIXME: React 19 + Zustand infinite loop issue
+// Root cause: viewStateStore uses Set objects (selectedNodeIds, selectedWireIds, autoProbedNodes)
+// which fail Zustand's `shallow` comparison (uses Object.is() - compares references not contents).
+// Each store update creates new Set instances, triggering re-renders even when contents match.
+// Additionally, probeStore.setActiveProbe() calls viewStateStore.selectNodes() synchronously,
+// causing cascading updates. Fix requires refactoring stores to use arrays or custom equality.
+// See: packages/rb-apps/src/stores/viewStateStore.ts lines 53-94
 describe.skip('LogicPlaygroundApp - Circuit Persistence', () => {
   beforeEach(() => {
     // Clear localStorage and reset filesystem

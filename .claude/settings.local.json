@@ -92,7 +92,8 @@
       "Bash(tree:*)",
       "Bash(pnpm run lint:*)",
       "Bash(pnpm -w run lint:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(npx vitest:*)"
     ],
     "deny": [],
     "ask": []
