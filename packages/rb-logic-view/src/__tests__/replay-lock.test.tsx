@@ -16,14 +16,46 @@ vi.mock('@redbyte/rb-utils', async (importOriginal) => {
     ...actual,
     useUiTickStore: (selector?: (state: typeof mockUiTickState) => unknown) =>
       selector ? selector(mockUiTickState) : mockUiTickState,
+    trackRender: vi.fn(),
   };
 });
 
-// TODO: Fix infinite update loop caused by useUiTickStore in React 19
-// The store's useSyncExternalStore integration triggers "Maximum update depth exceeded"
-// when tests render components that use the store. Needs investigation into proper
-// mocking strategy or store implementation fix for React 19 compatibility.
-describe.skip('replay lock', () => {
+// Mock useLogicViewStore to prevent infinite loops from selection state changes
+vi.mock('../useLogicViewStore', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../useLogicViewStore')>();
+  // All mock state must be inside factory due to vi.mock hoisting
+  const mockSelection = { nodes: new Set<string>(), wires: new Set<string>() };
+  const mockCamera = { x: 0, y: 0, zoom: 1 };
+  const mockEditingState = { isDragging: false };
+  const mockState = {
+    camera: mockCamera,
+    setCamera: vi.fn(),
+    pan: vi.fn(),
+    zoom: vi.fn(),
+    selection: mockSelection,
+    selectNode: vi.fn(),
+    selectWire: vi.fn(),
+    clearSelection: vi.fn(),
+    selectMultipleNodes: vi.fn(),
+    toolMode: 'select' as const,
+    setToolMode: vi.fn(),
+    editingState: mockEditingState,
+    setEditingState: vi.fn(),
+    startWire: vi.fn(),
+    endWire: vi.fn(),
+    snapToGrid: true,
+    toggleSnapToGrid: vi.fn(),
+    gridSize: 16,
+  };
+  return {
+    ...actual,
+    useLogicViewStore: (selector?: (state: typeof mockState) => unknown) =>
+      selector ? selector(mockState) : mockState,
+    getGlobalViewStateStore: () => null,
+  };
+});
+
+describe('replay lock', () => {
   it('blocks switch toggle events during replay', () => {
     const engine = new TickEngine({
       nodes: [

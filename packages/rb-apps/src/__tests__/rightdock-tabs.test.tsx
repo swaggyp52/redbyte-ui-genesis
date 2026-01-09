@@ -7,22 +7,48 @@ import { render, fireEvent, screen } from '@testing-library/react';
 import { CircuitEngine, type Circuit } from '@redbyte/rb-logic-core';
 import { RightDock } from '../components/RightDock';
 
+// Stable mock state objects - MUST be defined outside vi.mock for referential stability
+const mockUiTickState = { uiTick: 0, running: false, start: vi.fn(), stop: vi.fn() };
+const mockSelection = { nodes: new Set<string>(), wires: new Set<string>() };
+const mockProbeState = {
+  probes: [],
+  activeProbeId: null,
+  addProbe: vi.fn(),
+  removeProbe: vi.fn(),
+  renameProbe: vi.fn(),
+  toggleProbe: vi.fn(),
+  setActiveProbe: vi.fn(),
+  reorderProbes: vi.fn(),
+};
+
 // Mock @redbyte/rb-utils to prevent useUiTickStore infinite update loops
 vi.mock('@redbyte/rb-utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@redbyte/rb-utils')>();
-  const mockUiTickState = { uiTick: 0, running: false, start: vi.fn(), stop: vi.fn() };
   return {
     ...actual,
     useUiTickStore: (selector?: (state: typeof mockUiTickState) => unknown) =>
       selector ? selector(mockUiTickState) : mockUiTickState,
+    trackRender: vi.fn(),
   };
 });
 
-// TODO: Fix infinite update loop caused by useUiTickStore in React 19
-// The store's useSyncExternalStore integration triggers "Maximum update depth exceeded"
-// when tests render components that use the store. Needs investigation into proper
-// mocking strategy or store implementation fix for React 19 compatibility.
-describe.skip('RightDock tab hit targets', () => {
+// Mock @redbyte/rb-logic-view to prevent selection object reference changes
+vi.mock('@redbyte/rb-logic-view', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@redbyte/rb-logic-view')>();
+  return {
+    ...actual,
+    useLogicViewStore: (selector?: (state: { selection: typeof mockSelection }) => unknown) =>
+      selector ? selector({ selection: mockSelection }) : { selection: mockSelection },
+  };
+});
+
+// Mock probeStore to avoid store interactions
+vi.mock('../stores/probeStore', () => ({
+  useProbeStore: (selector?: (state: typeof mockProbeState) => unknown) =>
+    selector ? selector(mockProbeState) : mockProbeState,
+}));
+
+describe('RightDock tab hit targets', () => {
   it('allows clicking tab buttons reliably', () => {
     const circuit: Circuit = { nodes: [], connections: [] };
     const engine = new CircuitEngine(circuit);

@@ -10,6 +10,20 @@ import { useFileSystemStore } from '../stores/fileSystemStore';
 import type { SerializedCircuitV1 } from '@redbyte/rb-logic-core';
 import { useWindowStore } from '@redbyte/rb-windowing';
 
+// Stable mock state objects - MUST be defined outside vi.mock for referential stability
+const mockSettingsState = {
+  themeVariant: 'dark' as const,
+  wallpaperId: 'neon-circuit' as const,
+  accentColor: 'cyan' as const,
+  tickRate: 20,
+  setThemeVariant: vi.fn(),
+  setWallpaperId: vi.fn(),
+  setAccentColor: vi.fn(),
+  setTickRate: vi.fn(),
+};
+const mockUiTickState = { uiTick: 0, running: false, start: vi.fn(), stop: vi.fn() };
+const mockSelection = { nodes: new Set<string>(), wires: new Set<string>() };
+
 // Mock dependencies
 vi.mock('@redbyte/rb-shell', () => ({
   useToastStore: () => ({ addToast: vi.fn() }),
@@ -17,23 +31,13 @@ vi.mock('@redbyte/rb-shell', () => ({
 
 vi.mock('@redbyte/rb-utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@redbyte/rb-utils')>();
-  const mockSettingsState = {
-    themeVariant: 'dark' as const,
-    wallpaperId: 'neon-circuit' as const,
-    accentColor: 'cyan' as const,
-    tickRate: 20,
-    setThemeVariant: vi.fn(),
-    setWallpaperId: vi.fn(),
-    setAccentColor: vi.fn(),
-    setTickRate: vi.fn(),
-  };
-  const mockUiTickState = { uiTick: 0, running: false, start: vi.fn(), stop: vi.fn() };
   return {
     ...actual,
     useSettingsStore: (selector?: (state: typeof mockSettingsState) => unknown) =>
       selector ? selector(mockSettingsState) : mockSettingsState,
     useUiTickStore: (selector?: (state: typeof mockUiTickState) => unknown) =>
       selector ? selector(mockUiTickState) : mockUiTickState,
+    trackRender: vi.fn(),
   };
 });
 
@@ -45,6 +49,41 @@ vi.mock('../tutorial/tutorialStore', () => ({
   useTutorialStore: () => ({ active: false, start: vi.fn() }),
 }));
 
+// Mock @redbyte/rb-logic-view to prevent selection object reference changes
+vi.mock('@redbyte/rb-logic-view', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@redbyte/rb-logic-view')>();
+  return {
+    ...actual,
+    useLogicViewStore: Object.assign(
+      (selector?: (state: any) => unknown) => {
+        const mockState = {
+          selection: mockSelection,
+          toolMode: 'select',
+          setToolMode: vi.fn(),
+          snapToGrid: true,
+          toggleSnapToGrid: vi.fn(),
+          setCamera: vi.fn(),
+          camera: { x: 0, y: 0, zoom: 1 },
+          selectNode: vi.fn(),
+          clearSelection: vi.fn(),
+        };
+        return selector ? selector(mockState) : mockState;
+      },
+      {
+        getState: () => ({
+          selection: mockSelection,
+          selectNode: vi.fn(),
+          clearSelection: vi.fn(),
+        }),
+        setState: vi.fn(),
+        subscribe: vi.fn(() => vi.fn()),
+      }
+    ),
+  };
+});
+
+// TODO: Fix infinite update loop in LogicPlaygroundApp with React 19
+// The stores' useSyncExternalStore integration triggers "Maximum update depth exceeded"
 describe.skip('LogicPlaygroundApp - Circuit Persistence', () => {
   beforeEach(() => {
     // Clear localStorage and reset filesystem
@@ -474,7 +513,7 @@ describe.skip('LogicPlaygroundApp - Circuit Persistence', () => {
     });
   });
 
-  describe.skip('Share Polish Features', () => {
+  describe('Share Polish Features', () => {
     describe('Clipboard Fallback UX', () => {
       it('should show fallback modal when clipboard write fails', async () => {
         const user = userEvent.setup();

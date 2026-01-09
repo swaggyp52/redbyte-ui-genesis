@@ -9,22 +9,28 @@ import { Shell } from '@redbyte/rb-shell';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import { useSettingsStore } from '@redbyte/rb-utils';
 
+// Stable mock state for @redbyte/rb-utils
+const mockUiTickState = { uiTick: 0, running: false, start: vi.fn(), stop: vi.fn() };
+
 // Mock @redbyte/rb-utils to prevent useUiTickStore infinite update loops
 vi.mock('@redbyte/rb-utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@redbyte/rb-utils')>();
-  const mockUiTickState = { uiTick: 0, running: false, start: vi.fn(), stop: vi.fn() };
   return {
     ...actual,
     useUiTickStore: (selector?: (state: typeof mockUiTickState) => unknown) =>
       selector ? selector(mockUiTickState) : mockUiTickState,
     startUiTickSampler: vi.fn(),
+    trackRender: vi.fn(),
   };
 });
 
-// TODO: Fix infinite update loop caused by useUiTickStore in React 19
-// The store's useSyncExternalStore integration triggers "Maximum update depth exceeded"
-// when tests render components that use the store. Needs investigation into proper
-// mocking strategy or store implementation fix for React 19 compatibility.
+// FIXME: React 19 + Zustand infinite loop issue
+// Root cause: viewStateStore uses Set objects (selectedNodeIds, selectedWireIds, autoProbedNodes)
+// which fail Zustand's `shallow` comparison (uses Object.is() - compares references not contents).
+// Each store update creates new Set instances, triggering re-renders even when contents match.
+// Additionally, probeStore.setActiveProbe() calls viewStateStore.selectNodes() synchronously,
+// causing cascading updates. Fix requires refactoring stores to use arrays or custom equality.
+// See: packages/rb-apps/src/stores/viewStateStore.ts lines 53-94
 describe.skip('OS launch integration', () => {
   beforeEach(() => {
     localStorage.clear();

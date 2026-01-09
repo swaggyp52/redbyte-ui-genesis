@@ -6,8 +6,8 @@ const originalRAF = globalThis.requestAnimationFrame;
 const originalCAF = globalThis.cancelAnimationFrame;
 
 beforeEach(() => {
-  // Replace RAF with a no-op that returns a valid ID
-  globalThis.requestAnimationFrame = vi.fn(() => 0);
+  // Replace RAF with a no-op that returns a valid ID but never invokes callback
+  globalThis.requestAnimationFrame = vi.fn(() => 1);
   globalThis.cancelAnimationFrame = vi.fn();
 });
 
@@ -16,10 +16,13 @@ afterEach(async () => {
   globalThis.requestAnimationFrame = originalRAF;
   globalThis.cancelAnimationFrame = originalCAF;
 
-  // Stop uiTickStore animation loop after each test
+  // Stop uiTickStore animation loop and reset state after each test
   try {
     const { useUiTickStore } = await import('@redbyte/rb-utils');
-    useUiTickStore.getState().stop();
+    const state = useUiTickStore.getState();
+    if (state.running) {
+      state.stop();
+    }
     // Reset to initial state
     useUiTickStore.setState({ uiTick: 0, running: false });
   } catch {

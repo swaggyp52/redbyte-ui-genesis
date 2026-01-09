@@ -6,11 +6,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { CircuitEngine, type Circuit } from '@redbyte/rb-logic-core';
 import { OscilloscopeView } from '../components/OscilloscopeView';
-import { useProbeStore } from '../stores/probeStore';
-import { useViewStateStore } from '../stores/viewStateStore';
-import { useOscilloscopeStore } from '../stores/oscilloscopeStore';
 
-// Mock @redbyte/rb-utils to prevent useUiTickStore infinite update loops
+// Mock @redbyte/rb-utils to prevent useUiTickStore RAF loop
+// All mock state MUST be inside factory due to vi.mock hoisting
 vi.mock('@redbyte/rb-utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@redbyte/rb-utils')>();
   const mockUiTickState = { uiTick: 0, running: false, start: vi.fn(), stop: vi.fn() };
@@ -18,8 +16,213 @@ vi.mock('@redbyte/rb-utils', async (importOriginal) => {
     ...actual,
     useUiTickStore: (selector?: (state: typeof mockUiTickState) => unknown) =>
       selector ? selector(mockUiTickState) : mockUiTickState,
+    trackRender: vi.fn(),
   };
 });
+
+// Mock viewStateStore - uses Set objects which can trigger React 19 snapshot issues
+vi.mock('../stores/viewStateStore', () => {
+  // Stable references created once in factory
+  const selectedNodeIds = new Set<string>();
+  const selectedWireIds = new Set<string>();
+  const autoProbedNodes = new Set<string>();
+  const mockViewState = {
+    selectedNodeIds,
+    selectedWireIds,
+    hoveredNodeId: null as string | null,
+    highlightedNodeId: null as string | null,
+    focusNodeId: null as string | null,
+    focusRequestId: 0,
+    autoProbedNodes,
+    autoProbeEnabled: false,
+    highlightProbePaths: true,
+    splitScreenMode: 'single' as const,
+    activeViews: ['circuit'] as ('circuit' | 'schematic' | 'oscilloscope' | '3d')[],
+    circuitViewSize: null as { width: number; height: number } | null,
+    selectNodes: vi.fn(),
+    selectWires: vi.fn(),
+    clearSelection: vi.fn(),
+    setHoveredNode: vi.fn(),
+    setHighlightedNode: vi.fn(),
+    requestFocusNode: vi.fn(),
+    toggleAutoProbe: vi.fn(),
+    setAutoProbeEnabled: vi.fn(),
+    setHighlightProbePaths: vi.fn(),
+    clearAutoProbes: vi.fn(),
+    setSplitScreenMode: vi.fn(),
+    setActiveViews: vi.fn(),
+    setCircuitViewSize: vi.fn(),
+  };
+  return {
+    useViewStateStore: Object.assign(
+      (selector?: (state: typeof mockViewState) => unknown, _equalityFn?: unknown) =>
+        selector ? selector(mockViewState) : mockViewState,
+      {
+        getState: () => mockViewState,
+        setState: vi.fn((partial: Partial<typeof mockViewState>) => {
+          Object.assign(mockViewState, partial);
+        }),
+        subscribe: vi.fn(() => vi.fn()),
+      }
+    ),
+  };
+});
+
+// Mock probeStore - depends on viewStateStore, creates arrays
+vi.mock('../stores/probeStore', () => {
+  interface Probe {
+    id: string;
+    nodeId: string;
+    portName: string;
+    label: string;
+    color: string;
+    enabled: boolean;
+  }
+  let probes: Probe[] = [];
+  let activeProbeId: string | null = null;
+  let probeIdCounter = 0;
+
+  const mockProbeState = {
+    get probes() {
+      return probes;
+    },
+    get activeProbeId() {
+      return activeProbeId;
+    },
+    addProbe: vi.fn(({ nodeId, portName, label }: { nodeId: string; portName: string; label: string }) => {
+      const id = `probe-${++probeIdCounter}`;
+      probes = [...probes, { id, nodeId, portName, label, color: '#00ffff', enabled: true }];
+      activeProbeId = id;
+      return id;
+    }),
+    removeProbe: vi.fn((id: string) => {
+      probes = probes.filter((p) => p.id !== id);
+      if (activeProbeId === id) activeProbeId = null;
+    }),
+    renameProbe: vi.fn(),
+    toggleProbe: vi.fn((id: string) => {
+      probes = probes.map((p) => (p.id === id ? { ...p, enabled: !p.enabled } : p));
+    }),
+    setActiveProbe: vi.fn((id: string | null) => {
+      activeProbeId = id;
+    }),
+    clearProbes: vi.fn(() => {
+      probes = [];
+      activeProbeId = null;
+    }),
+    setProbes: vi.fn(),
+    toggleProbeForPort: vi.fn(),
+    hasProbe: vi.fn(() => false),
+    reorderProbes: vi.fn(),
+  };
+
+  const resetMockState = () => {
+    probes = [];
+    activeProbeId = null;
+    probeIdCounter = 0;
+  };
+
+  return {
+    useProbeStore: Object.assign(
+      (selector?: (state: typeof mockProbeState) => unknown, _equalityFn?: unknown) =>
+        selector ? selector(mockProbeState) : mockProbeState,
+      {
+        getState: () => mockProbeState,
+        setState: vi.fn((partial: Partial<{ probes: Probe[]; activeProbeId: string | null }>) => {
+          if (partial.probes !== undefined) probes = partial.probes;
+          if (partial.activeProbeId !== undefined) activeProbeId = partial.activeProbeId;
+        }),
+        subscribe: vi.fn(() => vi.fn()),
+        _reset: resetMockState,
+      }
+    ),
+  };
+});
+
+// Mock oscilloscopeStore
+vi.mock('../stores/oscilloscopeStore', () => {
+  let pauseScroll = false;
+  let showTimeCursor = true;
+  let timeWindowSec = 10;
+  let showTickGuides = true;
+  let clearRequestId = 0;
+
+  const mockOscilloscopeState = {
+    get pauseScroll() {
+      return pauseScroll;
+    },
+    get showTimeCursor() {
+      return showTimeCursor;
+    },
+    get timeWindowSec() {
+      return timeWindowSec;
+    },
+    get showTickGuides() {
+      return showTickGuides;
+    },
+    get clearRequestId() {
+      return clearRequestId;
+    },
+    setPauseScroll: vi.fn((enabled: boolean) => {
+      pauseScroll = enabled;
+    }),
+    togglePauseScroll: vi.fn(() => {
+      pauseScroll = !pauseScroll;
+    }),
+    setShowTimeCursor: vi.fn((enabled: boolean) => {
+      showTimeCursor = enabled;
+    }),
+    toggleTimeCursor: vi.fn(() => {
+      showTimeCursor = !showTimeCursor;
+    }),
+    setTimeWindowSec: vi.fn((seconds: number) => {
+      timeWindowSec = Math.max(1, Math.min(10, Math.round(seconds)));
+    }),
+    setShowTickGuides: vi.fn((enabled: boolean) => {
+      showTickGuides = enabled;
+    }),
+    requestClear: vi.fn(() => {
+      clearRequestId++;
+    }),
+  };
+
+  const resetMockState = () => {
+    pauseScroll = false;
+    showTimeCursor = true;
+    timeWindowSec = 10;
+    showTickGuides = true;
+    clearRequestId = 0;
+  };
+
+  return {
+    useOscilloscopeStore: Object.assign(
+      (selector?: (state: typeof mockOscilloscopeState) => unknown, _equalityFn?: unknown) =>
+        selector ? selector(mockOscilloscopeState) : mockOscilloscopeState,
+      {
+        getState: () => mockOscilloscopeState,
+        setState: vi.fn(
+          (
+            partial: Partial<{
+              pauseScroll: boolean;
+              showTimeCursor: boolean;
+              clearRequestId: number;
+            }>
+          ) => {
+            if (partial.pauseScroll !== undefined) pauseScroll = partial.pauseScroll;
+            if (partial.showTimeCursor !== undefined) showTimeCursor = partial.showTimeCursor;
+            if (partial.clearRequestId !== undefined) clearRequestId = partial.clearRequestId;
+          }
+        ),
+        subscribe: vi.fn(() => vi.fn()),
+        _reset: resetMockState,
+      }
+    ),
+  };
+});
+
+// Import mocked stores after vi.mock declarations
+import { useProbeStore } from '../stores/probeStore';
+import { useOscilloscopeStore } from '../stores/oscilloscopeStore';
 
 const createCircuit = (): Circuit => ({
   nodes: [
@@ -47,12 +250,7 @@ const getCanvas = () => screen.getByTestId('oscilloscope-canvas');
 
 const getNumericAttr = (attr: string) => Number(getCanvas().getAttribute(attr));
 
-// TODO: Fix infinite update loop caused by useUiTickStore in React 19
-// The store's useSyncExternalStore integration triggers "Maximum update depth exceeded"
-// when tests render components that use the store. Needs investigation into proper
-// mocking strategy or store implementation fix for React 19 compatibility.
-
-describe.skip('Oscilloscope controls', () => {
+describe('Oscilloscope controls', () => {
   const originalGetContext = HTMLCanvasElement.prototype.getContext;
 
   beforeEach(() => {
@@ -76,20 +274,9 @@ describe.skip('Oscilloscope controls', () => {
 
     HTMLCanvasElement.prototype.getContext = vi.fn(() => mockCtx as any);
 
-    useProbeStore.setState({ probes: [], activeProbeId: null });
-    useOscilloscopeStore.setState({ pauseScroll: false, showTimeCursor: true, clearRequestId: 0 });
-    useViewStateStore.setState({
-      selectedNodeIds: new Set(),
-      selectedWireIds: new Set(),
-      hoveredNodeId: null,
-      highlightedNodeId: null,
-      focusNodeId: null,
-      focusRequestId: 0,
-      autoProbedNodes: new Set(),
-      autoProbeEnabled: false,
-      splitScreenMode: 'single',
-      activeViews: ['circuit'],
-    });
+    // Reset mocked stores
+    (useProbeStore as any)._reset?.();
+    (useOscilloscopeStore as any)._reset?.();
   });
 
   afterEach(() => {
