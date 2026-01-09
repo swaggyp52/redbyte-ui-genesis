@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "description": "Cloudflare Pages SPA routing - static assets excluded, all other routes serve index.html",
+  "include": ["/*"],
+  "exclude": [
+    "/assets/*",
+    "/favicon.svg",
+    "/favicon.ico",
+    "/apple-touch-icon.png",
+    "/icon-*.png",
+    "/og-image.svg",
+    "/wallpaper.jpg",
+    "/wallpapers/*",
+    "/_headers",
+    "/CNAME",
+    "/robots.txt",
+    "/sitemap.xml"
+  ]
+}

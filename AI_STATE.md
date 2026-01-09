@@ -669,6 +669,8 @@ Continuous Integration enforces quality gates at the repository level:
 
 \- **Cache optimization**: pnpm store cached to minimize install time
 
+\- **Lockfile alignment**: CI uses `pnpm install --frozen-lockfile` which fails if `pnpm-lock.yaml` does not match `package.json`. When adding or updating dependencies, always run `pnpm install` locally and commit the updated lockfile. Never use `--no-frozen-lockfile` as a workaround.
+
 \- **No bypass**: Merge blocked if CI fails
 
 Release discipline:
