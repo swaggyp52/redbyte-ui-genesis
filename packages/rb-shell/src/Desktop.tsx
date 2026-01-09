@@ -14,6 +14,7 @@ import {
   CpuIcon,
   ChipIcon,
   PowerButtonIcon,
+  DocumentIcon,
 } from '@redbyte/rb-icons';
 import { getWallpaperStyle } from './wallpapers';
 
@@ -51,6 +52,7 @@ const iconComponents: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> = 
   cpu: CpuIcon,
   chip: ChipIcon,
   'power-button': PowerButtonIcon,
+  document: DocumentIcon,
 };
 
 export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeVariant }) => {
@@ -61,6 +63,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
       { id: 'files', title: 'Files', appId: 'files', iconId: 'files', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING },
       { id: 'settings', title: 'Settings', appId: 'settings', iconId: 'settings', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 2 },
       { id: 'terminal', title: 'Terminal', appId: 'terminal', iconId: 'terminal', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 3 },
+      { id: 'user-manual', title: 'User Manual', appId: 'user-manual', iconId: 'document', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 4 },
     ];
     return base;
   });

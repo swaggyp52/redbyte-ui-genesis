@@ -25,6 +25,9 @@ Global keyboard shortcuts for RedByte OS.
 | `Ctrl/Cmd+S` | Save Circuit | Saves to current file or shows Save As modal |
 | `Ctrl/Cmd+Shift+S` | Save As | Creates new file with custom name |
 | `Ctrl/Cmd+Shift+C` | Share Circuit | Copies compressed URL to clipboard |
+| `Ctrl/Cmd+1..6` | Switch Right Dock Tabs | 1=Inspector, 2=Health, 3=Learn, 4=Probes, 5=Record, 6=Chips |
+| `Shift+P` | Open Probes Tab | Opens Right Dock in Probes view |
+| `?` | Show Keyboard Shortcuts | Toggles the shortcuts overlay |
 
 ### Files App
 
@@ -36,5 +39,5 @@ Global keyboard shortcuts for RedByte OS.
 
 ---
 
-**Last Updated**: 2025-12-24
+**Last Updated**: 2026-01-08
 **Version**: v0.1.0-preview

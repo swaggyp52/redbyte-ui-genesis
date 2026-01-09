@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { shallow } from 'zustand/shallow';
 import type { Circuit, CircuitEngine } from '@redbyte/rb-logic-core';
 import type { ProofPack } from '../recording/runRecord';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
@@ -12,6 +13,7 @@ import { LearnModePanel } from './LearnModePanel';
 import { RunRecorderPanel } from './RunRecorderPanel';
 import type { GuidedExample } from '../logic/learnMode';
 import { useProbeStore } from '../stores/probeStore';
+import { trackRender, useUiTickStore } from '@redbyte/rb-utils';
 
 /**
  * Logic Playground vNext Right Dock
@@ -129,6 +131,7 @@ export const RightDock: React.FC<RightDockProps> = ({
   onStateChange,
   onTabChange,
 }) => {
+  trackRender('RightDock');
   const [activeTab, setActiveTab] = useState<RightDockTab>(initialTab);
   const [dockState, setDockState] = useState<RightDockState>(initialState);
   const selection = useLogicViewStore((state) => state.selection);
@@ -141,7 +144,20 @@ export const RightDock: React.FC<RightDockProps> = ({
     toggleProbe,
     setActiveProbe,
     reorderProbes,
-  } = useProbeStore();
+  } = useProbeStore(
+    (state) => ({
+      probes: state.probes,
+      activeProbeId: state.activeProbeId,
+      addProbe: state.addProbe,
+      removeProbe: state.removeProbe,
+      renameProbe: state.renameProbe,
+      toggleProbe: state.toggleProbe,
+      setActiveProbe: state.setActiveProbe,
+      reorderProbes: state.reorderProbes,
+    }),
+    shallow
+  );
+  const uiTick = useUiTickStore((state) => state.uiTick);
   const [selectedNodeId, setSelectedNodeId] = useState<string>('');
   const [selectedPortName, setSelectedPortName] = useState<string>('out');
   const [probeValues, setProbeValues] = useState<Record<string, number>>({});
@@ -183,21 +199,30 @@ export const RightDock: React.FC<RightDockProps> = ({
       setProbeValues({});
       return;
     }
+    if (isRunning) return;
+    const nextValues: Record<string, number> = {};
+    probes.forEach((probe) => {
+      const outputs = engine.getNodeOutputs(probe.nodeId);
+      const value = outputs[probe.portName] ?? 0;
+      nextValues[probe.id] = value;
+    });
+    setProbeValues(nextValues);
+  }, [engine, probes, isRunning]);
 
-    const updateValues = () => {
-      const nextValues: Record<string, number> = {};
-      probes.forEach((probe) => {
-        const outputs = engine.getNodeOutputs(probe.nodeId);
-        const value = outputs[probe.portName] ?? 0;
-        nextValues[probe.id] = value;
-      });
-      setProbeValues(nextValues);
-    };
-
-    updateValues();
-    const interval = window.setInterval(updateValues, 200);
-    return () => window.clearInterval(interval);
-  }, [engine, probes]);
+  useEffect(() => {
+    if (!isRunning) return;
+    if (probes.length === 0) {
+      setProbeValues({});
+      return;
+    }
+    const nextValues: Record<string, number> = {};
+    probes.forEach((probe) => {
+      const outputs = engine.getNodeOutputs(probe.nodeId);
+      const value = outputs[probe.portName] ?? 0;
+      nextValues[probe.id] = value;
+    });
+    setProbeValues(nextValues);
+  }, [engine, probes, isRunning, uiTick]);
 
   React.useEffect(() => {
     setActiveTab(initialTab);

@@ -779,6 +779,34 @@ After completing ANY work on this project, add an entry here with:
 
 ---
 
+### 2026-01-08T22:11:02Z - Codex (OpenAI)
+
+**Task:** User Manual app integration
+
+**What was done:**
+- Added a User Manual app with offline markdown rendering, search highlighting, and demo link handling
+- Wired OS entry points via Desktop icon, Command Palette/System Search command, and Logic Playground top bar
+- Added a NOT gate example and demo section in the manual, plus minimal manual app tests
+
+**Files touched:**
+- `packages/rb-apps/src/apps/UserManualApp.tsx`
+- `packages/rb-apps/src/examples/15_not-gate.json`
+- `packages/rb-apps/src/examples/index.ts`
+- `packages/rb-apps/src/components/TopCommandBar.tsx`
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+- `packages/rb-apps/src/index.ts`
+- `packages/rb-apps/src/apps/AppStoreApp.tsx`
+- `packages/rb-apps/src/__tests__/user-manual.test.tsx`
+- `packages/rb-shell/src/Desktop.tsx`
+- `packages/rb-shell/src/CommandPalette.tsx`
+- `packages/rb-shell/src/Shell.tsx`
+- `packages/rb-shell/src/searchRegistry.ts`
+- `REDBYTE_USER_MANUAL.md`
+- `PROJECT_CHRONICLE.md`
+- `AI_STATE.md`
+
+**Signature:** Codex (OpenAI)
+
 ### 2026-01-07T18:30:00Z - Codex (OpenAI)
 
 **Task:** V1 Release Candidate wrap-up
@@ -914,6 +942,40 @@ After completing ANY work on this project, add an entry here with:
 
 **Instructions:**
 This section is a high-level timeline of major changes. After completing significant work, add an entry here in reverse chronological order (newest first).
+
+---
+
+### 2026-01-08 - User Manual App Wiring
+
+**What:** Added a first-class User Manual app with offline markdown rendering, entry points in the OS surface, and demo links into Logic Playground examples.
+
+**Why:**
+- Make the RedByte manual discoverable inside the OS without requiring external docs
+- Provide quick, guided entry points that align with the core learning flow
+
+**Impact:**
+- Manual opens from Desktop, System Search/Command Palette, and the Logic Playground top bar
+- Markdown content renders with headings, lists, tables, and code blocks, with search highlighting
+- Demo links load curated examples with a confirmation step to protect user work
+
+**Files:**
+- `packages/rb-apps/src/apps/UserManualApp.tsx`
+- `packages/rb-apps/src/examples/15_not-gate.json`
+- `packages/rb-apps/src/examples/index.ts`
+- `packages/rb-apps/src/components/TopCommandBar.tsx`
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+- `packages/rb-apps/src/index.ts`
+- `packages/rb-apps/src/apps/AppStoreApp.tsx`
+- `packages/rb-apps/src/__tests__/user-manual.test.tsx`
+- `packages/rb-shell/src/Desktop.tsx`
+- `packages/rb-shell/src/CommandPalette.tsx`
+- `packages/rb-shell/src/Shell.tsx`
+- `packages/rb-shell/src/searchRegistry.ts`
+- `REDBYTE_USER_MANUAL.md`
+- `PROJECT_CHRONICLE.md`
+- `AI_STATE.md`
+
+**By:** Codex (OpenAI)
 
 ---
 
@@ -1179,7 +1241,7 @@ This section is a high-level timeline of major changes. After completing signifi
 
 ---
 
-### 2025-10-XX — Usability Hardening Sprint
+### 2025-10-XX – Usability Hardening Sprint
 
 **What:** Comprehensive usability review and fixes across the platform
 
@@ -1193,6 +1255,21 @@ This section is a high-level timeline of major changes. After completing signifi
 - Accessibility improvements
 
 **Commit:** 7e08290d (sprint report)
+
+---
+
+### 2026-01-08 – Perf + Ergonomics Stabilization
+
+**What:** Added perf markers for `oscilloscope-draw`, `schematic-wire-layout`, and `probe-wire-highlights`; enforced render-only culling invariants; added regression tests for perf logging defaults, culling stability, and probe-toggle immediacy; added a manual CI perf soak workflow; kept prior perf toolkit, UI sampling, and ergonomics changes.
+
+**Why:**
+- Make long sessions stay responsive without touching engine semantics
+- Provide quick visibility into render hot spots and memory growth
+
+**Impact:**
+- Fewer unnecessary React updates and reduced SVG/Canvas churn
+- New profiling flags: `?perf=1` (perf HUD + top-5 summary), `?wdyr=1` (render diff allowlist)
+- Dev helper: `pnpm perf:soak` and manual CI workflow for quick memory-growth checks
 
 ---
 
@@ -1277,7 +1354,7 @@ Keywords: architecture, testing, state management, circuit simulation, recording
 
 ---
 
-*Last updated: 2026-01-07*
+*Last updated: 2026-01-08*
 *Document version: 1.0.0*
 *Maintained by: AI Agents + Connor Angiel*
 *Status: Living Document — Update After Every Significant Change*

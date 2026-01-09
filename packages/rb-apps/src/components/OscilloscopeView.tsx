@@ -3,10 +3,12 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { shallow } from 'zustand/shallow';
 import type { CircuitEngine, Node, TickEngine } from '@redbyte/rb-logic-core';
 import { useViewStateStore } from '../stores/viewStateStore';
 import { useProbeStore } from '../stores/probeStore';
 import { useOscilloscopeStore } from '../stores/oscilloscopeStore';
+import { mark, measure, trackRender } from '@redbyte/rb-utils';
 import {
   calculateMeasurements,
   type SignalSample,
@@ -63,8 +65,10 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   onHelp,
   debugTick,
 }) => {
+  trackRender('OscilloscopeView');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const pendingDrawRef = useRef<number | null>(null);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 600 });
   const {
     probes,
@@ -73,7 +77,17 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     removeProbe,
     toggleProbe,
     setActiveProbe,
-  } = useProbeStore();
+  } = useProbeStore(
+    (state) => ({
+      probes: state.probes,
+      activeProbeId: state.activeProbeId,
+      addProbe: state.addProbe,
+      removeProbe: state.removeProbe,
+      toggleProbe: state.toggleProbe,
+      setActiveProbe: state.setActiveProbe,
+    }),
+    shallow
+  );
   const [probeData, setProbeData] = useState<Map<string, ProbeData>>(new Map());
   const [voltageScale, setVoltageScale] = useState(1.5); // vertical scale
   const [viewEndTime, setViewEndTime] = useState(0);
@@ -106,21 +120,45 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   const samplingIntervalRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
   const measurementUpdateRef = useRef<number | null>(null);
-  const pauseScroll = useOscilloscopeStore((state) => state.pauseScroll);
-  const setPauseScroll = useOscilloscopeStore((state) => state.setPauseScroll);
-  const togglePauseScroll = useOscilloscopeStore((state) => state.togglePauseScroll);
-  const showTimeCursor = useOscilloscopeStore((state) => state.showTimeCursor);
-  const toggleTimeCursor = useOscilloscopeStore((state) => state.toggleTimeCursor);
-  const timeWindowSec = useOscilloscopeStore((state) => state.timeWindowSec);
-  const setTimeWindowSec = useOscilloscopeStore((state) => state.setTimeWindowSec);
-  const showTickGuides = useOscilloscopeStore((state) => state.showTickGuides);
-  const setShowTickGuides = useOscilloscopeStore((state) => state.setShowTickGuides);
-  const clearRequestId = useOscilloscopeStore((state) => state.clearRequestId);
-  const requestClear = useOscilloscopeStore((state) => state.requestClear);
+  const {
+    pauseScroll,
+    setPauseScroll,
+    togglePauseScroll,
+    showTimeCursor,
+    toggleTimeCursor,
+    timeWindowSec,
+    setTimeWindowSec,
+    showTickGuides,
+    setShowTickGuides,
+    clearRequestId,
+    requestClear,
+  } = useOscilloscopeStore(
+    (state) => ({
+      pauseScroll: state.pauseScroll,
+      setPauseScroll: state.setPauseScroll,
+      togglePauseScroll: state.togglePauseScroll,
+      showTimeCursor: state.showTimeCursor,
+      toggleTimeCursor: state.toggleTimeCursor,
+      timeWindowSec: state.timeWindowSec,
+      setTimeWindowSec: state.setTimeWindowSec,
+      showTickGuides: state.showTickGuides,
+      setShowTickGuides: state.setShowTickGuides,
+      clearRequestId: state.clearRequestId,
+      requestClear: state.requestClear,
+    }),
+    shallow
+  );
   const pauseScrollRef = useRef(pauseScroll);
 
   // Get global selection state for auto-probe
-  const { selectedNodeIds, autoProbeEnabled, setAutoProbeEnabled } = useViewStateStore();
+  const { selectedNodeIds, autoProbeEnabled, setAutoProbeEnabled } = useViewStateStore(
+    (state) => ({
+      selectedNodeIds: state.selectedNodeIds,
+      autoProbeEnabled: state.autoProbeEnabled,
+      setAutoProbeEnabled: state.setAutoProbeEnabled,
+    }),
+    shallow
+  );
   const getCurrentTime = useCallback(() => (Date.now() - startTimeRef.current) / 1000, []);
 
   useEffect(() => {
@@ -362,13 +400,14 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     });
   }, [measurementUpdateCounter, isRunning]);
 
-  // Render waveforms
-  useEffect(() => {
+  const drawWaveforms = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    mark('oscilloscope-draw-start');
 
     const renderWidth = canvasDimensions.width;
     const renderHeight = canvasDimensions.height;
@@ -569,6 +608,9 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       const x = (i / 10) * renderWidth;
       ctx.fillText(`${time.toFixed(1)}s`, x + 2, renderHeight - 5);
     }
+
+    mark('oscilloscope-draw-end');
+    measure('oscilloscope-draw', 'oscilloscope-draw-start', 'oscilloscope-draw-end');
   }, [
     probes,
     probeData,
@@ -583,7 +625,27 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     viewEndTime,
     showTickGuides,
     tickEngine,
+    debugTick,
   ]);
+
+  const scheduleDraw = useCallback(() => {
+    if (pendingDrawRef.current !== null) return;
+    pendingDrawRef.current = window.requestAnimationFrame(() => {
+      pendingDrawRef.current = null;
+      drawWaveforms();
+    });
+  }, [drawWaveforms]);
+
+  // Render waveforms
+  useEffect(() => {
+    scheduleDraw();
+    return () => {
+      if (pendingDrawRef.current !== null) {
+        window.cancelAnimationFrame(pendingDrawRef.current);
+        pendingDrawRef.current = null;
+      }
+    };
+  }, [scheduleDraw]);
 
   // Add probe
   const handleAddProbe = () => {

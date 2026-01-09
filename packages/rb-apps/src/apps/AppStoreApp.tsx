@@ -14,6 +14,7 @@ import {
   CpuIcon,
   ChipIcon,
   FolderIcon,
+  DocumentIcon,
 } from '@redbyte/rb-icons';
 
 interface AppStoreProps {
@@ -87,6 +88,8 @@ function iconFor(app: RedByteApp) {
       return <CpuIcon width={size} height={size} />;
     case 'chip':
       return <ChipIcon width={size} height={size} />;
+    case 'document':
+      return <DocumentIcon width={size} height={size} />;
     default:
       return <FolderIcon width={size} height={size} />;
   }

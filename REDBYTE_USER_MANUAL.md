@@ -24,6 +24,18 @@
 
 ---
 
+## Quick Demos (Start Here)
+
+Try a few guided demos that map directly to the RedByte learning path:
+
+- [Open Demo: NOT Gate](rb://demo/not-gate)
+- [Open Demo: AND Gate](rb://demo/and-gate)
+- [Open Demo: Half Adder](rb://demo/half-adder)
+
+Each demo opens in Logic Playground and replaces the current circuit. Save any work first.
+
+---
+
 ## 1. What RedByte Is
 
 RedByte is an **interactive digital logic circuit simulation platform** that runs entirely in a web browser. It is a tool for learning how computers work from first principles—starting with basic logic gates and building upward to working processors.

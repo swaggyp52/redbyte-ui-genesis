@@ -7,7 +7,7 @@ import { Desktop } from './Desktop';
 import { Dock } from './Dock';
 import { ShellWindow } from './ShellWindow';
 import { applyTheme } from '@redbyte/rb-theme';
-import { useSettingsStore } from '@redbyte/rb-utils';
+import { isPerfDebugEnabled, startPerfSummaryLogger, startUiTickSampler, useSettingsStore } from '@redbyte/rb-utils';
 import {
   getApp,
   type RedByteApp,
@@ -32,6 +32,7 @@ import { NarrativeOverlay } from './narrative/NarrativeOverlay';
 import type { Intent } from './intent-types';
 import { getVersionString } from './version';
 import './styles.css';
+import { PerfHud } from './debug/PerfHud';
 
 // Dev-only imports (gated by import.meta.env.DEV)
 import { DeterminismPanel, useDeterminismRecorder } from './dev';
@@ -71,6 +72,7 @@ export const Shell: React.FC<ShellProps> = () => {
   const [determinismPanelOpen, setDeterminismPanelOpen] = useState(false);
   const [onboardingModalOpen, setOnboardingModalOpen] = useState(false);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
+  const [showPerfHud, setShowPerfHud] = useState(() => isPerfDebugEnabled());
 
   const hasShownWelcomeRef = useRef(false);
   const hasInitializedRef = useRef(false);
@@ -552,6 +554,11 @@ export const Shell: React.FC<ShellProps> = () => {
           break;
         }
 
+        case 'open-user-manual': {
+          openWindow('user-manual');
+          break;
+        }
+
         case 'playground-layout-build':
         case 'playground-layout-analyze':
         case 'playground-layout-explain':
@@ -584,6 +591,7 @@ export const Shell: React.FC<ShellProps> = () => {
       dispatchPlaygroundCommand,
       focusWindow,
       handleClose,
+      openWindow,
       toggleMinimize,
       snapWindow,
       centerWindow,
@@ -751,6 +759,12 @@ export const Shell: React.FC<ShellProps> = () => {
       if (!(event.ctrlKey || event.metaKey)) return;
       if (isEditable) return;
 
+      if (import.meta.env.DEV && event.shiftKey && event.key.toLowerCase() === 'h') {
+        event.preventDefault();
+        setShowPerfHud((prev) => !prev);
+        return;
+      }
+
       // Cmd/Ctrl+Space: Open System Search
       if (event.key === ' ') {
         event.preventDefault();
@@ -847,6 +861,11 @@ export const Shell: React.FC<ShellProps> = () => {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [hasSettings, openWindow, executeCommand, isDemoMode]);
+
+  useEffect(() => {
+    startUiTickSampler();
+    startPerfSummaryLogger();
+  }, []);
 
   useEffect(() => {
     if (!booted || hasInitializedRef.current) return;
@@ -1032,6 +1051,10 @@ export const Shell: React.FC<ShellProps> = () => {
           canNavigateForward={determinismRecorder.canNavigateForward()}
           canNavigateBackward={determinismRecorder.canNavigateBackward()}
         />
+      )}
+
+      {import.meta.env.DEV && showPerfHud && (
+        <PerfHud onClose={() => setShowPerfHud(false)} />
       )}
 
       {/* Footer: Version Info (hidden in demo mode) */}

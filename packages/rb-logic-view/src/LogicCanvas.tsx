@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React from 'react';
+import { shallow } from 'zustand/shallow';
 import type { TickEngine, Node, Connection } from '@redbyte/rb-logic-core';
 import { useLogicViewStore, getGlobalViewStateStore } from './useLogicViewStore';
 import { NodeView, type ChipMetadata } from './components/NodeView';
@@ -11,6 +12,7 @@ import { Toolbar } from './components/Toolbar';
 import { renderGrid } from './tools/grid';
 import { snapToGrid, calculateFitToView } from './tools/panzoom';
 import { isValidConnection, normalizeConnection, isInputPort } from './tools/wireValidation';
+import { trackRender, useUiTickStore } from '@redbyte/rb-utils';
 
 export interface LogicCanvasProps {
   engine: TickEngine;
@@ -67,6 +69,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   tickRate = 0,
   tickCount = 0,
 }) => {
+  trackRender('LogicCanvas');
+  const uiTick = useUiTickStore((state) => state.uiTick);
   const {
     camera,
     setCamera,
@@ -85,7 +89,28 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     selectMultipleNodes,
     toolMode,
     setToolMode,
-  } = useLogicViewStore();
+  } = useLogicViewStore(
+    (state) => ({
+      camera: state.camera,
+      setCamera: state.setCamera,
+      pan: state.pan,
+      zoom: state.zoom,
+      selection: state.selection,
+      selectNode: state.selectNode,
+      selectWire: state.selectWire,
+      clearSelection: state.clearSelection,
+      snapToGrid: state.snapToGrid,
+      toggleSnapToGrid: state.toggleSnapToGrid,
+      gridSize: state.gridSize,
+      editingState: state.editingState,
+      startWire: state.startWire,
+      endWire: state.endWire,
+      selectMultipleNodes: state.selectMultipleNodes,
+      toolMode: state.toolMode,
+      setToolMode: state.setToolMode,
+    }),
+    shallow
+  );
 
   // Use external circuit if provided, otherwise poll from engine
   const [internalCircuit, setInternalCircuit] = React.useState(engine.getCircuit());
@@ -108,6 +133,36 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       setShowHud(false);
     }, 2400);
   }, []);
+
+  const viewBounds = React.useMemo(() => {
+    const margin = 200;
+    const left = (-camera.x) / camera.zoom - margin;
+    const top = (-camera.y) / camera.zoom - margin;
+    const right = (width - camera.x) / camera.zoom + margin;
+    const bottom = (height - camera.y) / camera.zoom + margin;
+    return { left, top, right, bottom };
+  }, [camera.x, camera.y, camera.zoom, width, height]);
+
+  // Viewport culling is render-only; selection and interaction use the full circuit model.
+  const visibleNodes = React.useMemo(
+    () =>
+      circuit.nodes.filter((node) => {
+        const x = node.position.x;
+        const y = node.position.y;
+        return x >= viewBounds.left && x <= viewBounds.right && y >= viewBounds.top && y <= viewBounds.bottom;
+      }),
+    [circuit.nodes, viewBounds]
+  );
+
+  const visibleNodeIds = React.useMemo(() => new Set(visibleNodes.map((node) => node.id)), [visibleNodes]);
+
+  const visibleConnections = React.useMemo(
+    () =>
+      circuit.connections.filter(
+        (connection) => visibleNodeIds.has(connection.from.nodeId) || visibleNodeIds.has(connection.to.nodeId)
+      ),
+    [circuit.connections, visibleNodeIds]
+  );
 
   // Invariant: controlled mode requires onCircuitChange callback
   if (import.meta.env.DEV) {
@@ -181,53 +236,17 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     }
   }, [circuit.nodes.length, width, height, setCamera]);
 
-  // Subscribe to engine updates with aggressive syncing (only if no external circuit provided)
+  // Sample engine state on UI ticks (keeps UI responsive without per-tick churn)
   React.useEffect(() => {
-    // If external circuit is provided, skip polling (parent handles updates)
-    if (externalCircuit) {
-      // Still sync signals for live updates
-      const interval = setInterval(() => {
-        setSignals(engine.getEngine().getAllSignals());
-      }, 16);
-      return () => clearInterval(interval);
+    if (!engine) return;
+
+    if (!externalCircuit) {
+      const nextCircuit = engine.getCircuit();
+      setInternalCircuit(nextCircuit);
     }
 
-    // Otherwise, poll circuit from engine (legacy behavior)
-    const syncCircuit = () => {
-      const newCircuit = engine.getCircuit();
-      setInternalCircuit(newCircuit);
-      setSignals(engine.getEngine().getAllSignals());
-    };
-
-    // Immediate first sync
-    syncCircuit();
-
-    // Track intervals for cleanup
-    let fastInterval: NodeJS.Timeout | null = null;
-    let slowInterval: NodeJS.Timeout | null = null;
-    let fastPollCount = 0;
-    const maxFastPolls = 200; // 1 second of 5ms polling
-
-    // Start with fast polling
-    fastInterval = setInterval(() => {
-      syncCircuit();
-      fastPollCount++;
-
-      // After initial burst, slow down to 60fps
-      if (fastPollCount >= maxFastPolls && fastInterval) {
-        clearInterval(fastInterval);
-        fastInterval = null;
-        // Start slow polling
-        slowInterval = setInterval(syncCircuit, 16);
-      }
-    }, 5);
-
-    // Cleanup both intervals on unmount
-    return () => {
-      if (fastInterval) clearInterval(fastInterval);
-      if (slowInterval) clearInterval(slowInterval);
-    };
-  }, [engine, externalCircuit]);
+    setSignals(engine.getEngine().getAllSignals());
+  }, [engine, externalCircuit, uiTick]);
 
   const focusNode = React.useCallback(
     (nodeId: string) => {
@@ -773,7 +792,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         })}
 
         {/* Wires */}
-        {circuit.connections.map((conn, idx) => {
+        {visibleConnections.map((conn) => {
           const wireId = `${conn.from.nodeId}.${conn.from.portName}-${conn.to.nodeId}.${conn.to.portName}`;
           const signal = renderSignals.get(`${conn.from.nodeId}.${conn.from.portName}`);
           const probeColors = probeWireHighlights?.get(wireId);
@@ -830,7 +849,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         })()}
 
         {/* Nodes */}
-        {circuit.nodes.map((node) => (
+        {visibleNodes.map((node) => (
           <NodeView
             key={node.id}
             node={node}

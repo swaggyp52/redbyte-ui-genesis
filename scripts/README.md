@@ -38,3 +38,19 @@ Edit `capture-screenshots.ts` to:
 
 - Playwright must be installed: `pnpm install -D @playwright/test`
 - Dev server must be running on http://localhost:5173 (or set `BASE_URL` env var)
+
+## Perf Soak
+
+Run a lightweight tick soak to sanity-check memory growth in Node.
+
+### Usage
+
+```bash
+pnpm perf:soak
+```
+
+### Options
+
+- `PERF_SOAK_TICKS` (default: 20000)
+- `PERF_SOAK_REPORT_EVERY` (default: 2000)
+- `PERF_SOAK_EXAMPLE` (default: `packages/rb-apps/src/examples/01_wire-lamp.json`)

@@ -4,6 +4,7 @@
 // v1.0.1 - Multi-view enhancement with null safety
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { shallow } from 'zustand/shallow';
 import type { RedByteApp } from '../types';
 import {
   CircuitEngine,
@@ -21,13 +22,12 @@ import {
 import { LogicCanvas } from '@redbyte/rb-logic-view';
 import { ViewAdapter } from '@redbyte/rb-logic-adapter';
 import { Logic3DScene } from '@redbyte/rb-logic-3d';
-import { useSettingsStore } from '@redbyte/rb-utils';
+import { useSettingsStore, useUiTickStore } from '@redbyte/rb-utils';
 import { toast } from '@redbyte/rb-primitives';
 import type { ToastKind } from '@redbyte/rb-primitives';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import { loadExample, listExamples, listExamplesByLayer, getLayerDescription, type ExampleId, type CircuitLayer } from '../examples';
 import { useFileSystemStore } from '../stores/fileSystemStore';
-import { useHistoryStore } from '../stores/historyStore';
 import { useChipStore } from '../stores/chipStore';
 import type { ChipPort } from '../stores/chipStore';
 import { useCircuitStore } from '../stores/circuitStore';
@@ -106,6 +106,7 @@ interface LogicPlaygroundProps {
   initialExampleId?: ExampleId;
   resourceId?: string;
   resourceType?: 'file' | 'folder';
+  onOpenApp?: (appId: string, props?: Record<string, unknown>) => void;
   // Determinism recording (Milestone D - optional, dev-only)
   registerStateAccessor?: (windowId: string, accessor: { getCircuit?: () => any }) => void;
   unregisterStateAccessor?: (windowId: string) => void;
@@ -118,21 +119,41 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   initialExampleId,
   resourceId,
   resourceType,
+  onOpenApp,
   registerStateAccessor,
   unregisterStateAccessor,
   determinismRecorder,
 }) => {
-  const { tickRate } = useSettingsStore();
+  const tickRate = useSettingsStore((state) => state.tickRate);
   const addToast = useCallback(
     (message: string, kind: ToastKind = 'info', duration?: number) => {
       toast[kind]({ message, duration });
     },
     []
   );
-  const { active: tutorialActive, start: startTutorial } = useTutorialStore();
-  const { setWindowTitle } = useWindowStore();
-  const { getAllFiles, getFile, updateFileContent, createFile } = useFileSystemStore();
-  const { saveChipFromPattern, getAllChips, getChip, deleteChip } = useChipStore();
+  const { active: tutorialActive, start: startTutorial } = useTutorialStore(
+    (state) => ({ active: state.active, start: state.start }),
+    shallow
+  );
+  const setWindowTitle = useWindowStore((state) => state.setWindowTitle);
+  const { getAllFiles, getFile, updateFileContent, createFile } = useFileSystemStore(
+    (state) => ({
+      getAllFiles: state.getAllFiles,
+      getFile: state.getFile,
+      updateFileContent: state.updateFileContent,
+      createFile: state.createFile,
+    }),
+    shallow
+  );
+  const { saveChipFromPattern, getAllChips, getChip, deleteChip } = useChipStore(
+    (state) => ({
+      saveChipFromPattern: state.saveChipFromPattern,
+      getAllChips: state.getAllChips,
+      getChip: state.getChip,
+      deleteChip: state.deleteChip,
+    }),
+    shallow
+  );
   const {
     stack: hierarchyStack,
     currentCircuit: hierarchyCircuit,
@@ -142,7 +163,19 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setCurrentCircuit: setHierarchyCircuit,
     isEditMode,
     toggleEditMode,
-  } = useHierarchyStore();
+  } = useHierarchyStore(
+    (state) => ({
+      stack: state.stack,
+      currentCircuit: state.currentCircuit,
+      enterChip: state.enterChip,
+      exitToParent: state.exitToParent,
+      exitToTop: state.exitToTop,
+      setCurrentCircuit: state.setCurrentCircuit,
+      isEditMode: state.isEditMode,
+      toggleEditMode: state.toggleEditMode,
+    }),
+    shallow
+  );
 
   // Get stable circuit mutation methods from store (NO closures)
   const storeAddNode = useCircuitStore((state) => state.addNode);
@@ -191,33 +224,101 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     setRightDockTab,
     setShowHelpDock,
     setHelpDockSection,
-  } = useLayoutStore();
-  const { probes, toggleProbeForPort } = useProbeStore();
-  const highlightProbePaths = useViewStateStore((state) => state.highlightProbePaths);
-  const setHighlightProbePaths = useViewStateStore((state) => state.setHighlightProbePaths);
-  const oscilloscopePauseScroll = useOscilloscopeStore((state) => state.pauseScroll);
-  const oscilloscopeTimeWindowSec = useOscilloscopeStore((state) => state.timeWindowSec);
-  const oscilloscopeShowTickGuides = useOscilloscopeStore((state) => state.showTickGuides);
-  const recorderMode = useRunRecorderStore((state) => state.mode);
-  const record = useRunRecorderStore((state) => state.record);
-  const verificationStatus = useRunRecorderStore((state) => state.verificationStatus);
-  const recordEvent = useRunRecorderStore((state) => state.recordEvent);
-  const replayRecord = useRunRecorderStore((state) => state.replay?.record ?? null);
-  const replayPaused = useRunRecorderStore((state) => state.replayPaused);
-  const pendingStepTicks = useRunRecorderStore((state) => state.pendingStepTicks);
-  const pendingJumpTick = useRunRecorderStore((state) => state.pendingJumpTick);
-  const playheadTick = useRunRecorderStore((state) => state.playheadTick);
-  const setReplayPaused = useRunRecorderStore((state) => state.setReplayPaused);
-  const stepReplay = useRunRecorderStore((state) => state.stepReplay);
-  const jumpReplay = useRunRecorderStore((state) => state.jumpReplay);
-  const armRunRecorder = useRunRecorderStore((state) => state.arm);
-  const startRunRecording = useRunRecorderStore((state) => state.startRecording);
-  const stopRunRecording = useRunRecorderStore((state) => state.stopRecording);
-  const startRunReplay = useRunRecorderStore((state) => state.startReplay);
-  const stopRunReplay = useRunRecorderStore((state) => state.stopReplay);
-  const verifyRunReplay = useRunRecorderStore((state) => state.verifyReplay);
-  const resetRunRecorder = useRunRecorderStore((state) => state.reset);
-  const setDebugOverlay = useRunRecorderStore((state) => state.setDebugOverlay);
+  } = useLayoutStore(
+    (state) => ({
+      splitScreenMode: state.splitScreenMode,
+      activeViews: state.activeViews,
+      perspective: state.perspective,
+      setPerspective: state.setPerspective,
+      splitRatio: state.splitRatio,
+      setSplitRatio: state.setSplitRatio,
+      rightDockState: state.rightDockState,
+      rightDockTab: state.rightDockTab,
+      showHelpDock: state.showHelpDock,
+      helpDockSection: state.helpDockSection,
+      schematicMiniEnabled: state.schematicMiniEnabled,
+      toggleSchematicMini: state.toggleSchematicMini,
+      setRightDockState: state.setRightDockState,
+      setRightDockTab: state.setRightDockTab,
+      setShowHelpDock: state.setShowHelpDock,
+      setHelpDockSection: state.setHelpDockSection,
+    }),
+    shallow
+  );
+  const { probes, toggleProbeForPort } = useProbeStore(
+    (state) => ({
+      probes: state.probes,
+      toggleProbeForPort: state.toggleProbeForPort,
+    }),
+    shallow
+  );
+  const { highlightProbePaths, setHighlightProbePaths } = useViewStateStore(
+    (state) => ({
+      highlightProbePaths: state.highlightProbePaths,
+      setHighlightProbePaths: state.setHighlightProbePaths,
+    }),
+    shallow
+  );
+  const {
+    pauseScroll: oscilloscopePauseScroll,
+    timeWindowSec: oscilloscopeTimeWindowSec,
+    showTickGuides: oscilloscopeShowTickGuides,
+  } = useOscilloscopeStore(
+    (state) => ({
+      pauseScroll: state.pauseScroll,
+      timeWindowSec: state.timeWindowSec,
+      showTickGuides: state.showTickGuides,
+    }),
+    shallow
+  );
+  const {
+    mode: recorderMode,
+    record,
+    verificationStatus,
+    recordEvent,
+    replay: replayState,
+    replayPaused,
+    pendingStepTicks,
+    pendingJumpTick,
+    playheadTick,
+    setReplayPaused,
+    stepReplay,
+    jumpReplay,
+    arm: armRunRecorder,
+    startRecording: startRunRecording,
+    stopRecording: stopRunRecording,
+    startReplay: startRunReplay,
+    stopReplay: stopRunReplay,
+    verifyReplay: verifyRunReplay,
+    reset: resetRunRecorder,
+    setDebugOverlay,
+  } = useRunRecorderStore(
+    (state) => ({
+      mode: state.mode,
+      record: state.record,
+      verificationStatus: state.verificationStatus,
+      recordEvent: state.recordEvent,
+      replay: state.replay,
+      replayPaused: state.replayPaused,
+      pendingStepTicks: state.pendingStepTicks,
+      pendingJumpTick: state.pendingJumpTick,
+      playheadTick: state.playheadTick,
+      setReplayPaused: state.setReplayPaused,
+      stepReplay: state.stepReplay,
+      jumpReplay: state.jumpReplay,
+      arm: state.arm,
+      startRecording: state.startRecording,
+      stopRecording: state.stopRecording,
+      startReplay: state.startReplay,
+      stopReplay: state.stopReplay,
+      verifyReplay: state.verifyReplay,
+      reset: state.reset,
+      setDebugOverlay: state.setDebugOverlay,
+    }),
+    shallow
+  );
+  const replayRecord = replayState?.record ?? null;
+  const uiTick = useUiTickStore((state) => state.uiTick);
   const isReplayMode = recorderMode === 'replaying';
   const [isRunning, setIsRunning] = useState(false);
   const [currentHz, setCurrentHz] = useState(tickRate);
@@ -678,6 +779,15 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const inputFocused = isInputFocused();
+      if (inputFocused) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          if (showKeyboardHelp) setShowKeyboardHelp(false);
+          if (showQuickAdd) setShowQuickAdd(false);
+        }
+        return;
+      }
       // Ctrl+Z or Cmd+Z for Undo
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
         e.preventDefault();
@@ -719,22 +829,22 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         exitToParent();
       }
       // Backspace to exit hierarchy (alternative)
-      if (e.key === 'Backspace' && hierarchyStack.length > 0 && !isInputFocused()) {
+      if (e.key === 'Backspace' && hierarchyStack.length > 0) {
         e.preventDefault();
         exitToParent();
       }
       // E to toggle edit mode when inside a chip
-      if (e.key === 'e' && hierarchyStack.length > 0 && !isInputFocused()) {
+      if (e.key === 'e' && hierarchyStack.length > 0) {
         e.preventDefault();
         toggleEditMode();
       }
       // ? to show keyboard shortcuts help
-      if (e.key === '?' && !isInputFocused()) {
+      if (e.key === '?') {
         e.preventDefault();
         setShowKeyboardHelp(true);
       }
       // Space to show quick add palette
-      if (e.key === ' ' && !isInputFocused() && !showQuickAdd && !isReplayMode) {
+      if (e.key === ' ' && !showQuickAdd && !isReplayMode) {
         e.preventDefault();
         setShowQuickAdd(true);
       }
@@ -743,10 +853,13 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         e.preventDefault();
         if (showKeyboardHelp) setShowKeyboardHelp(false);
         if (showQuickAdd) setShowQuickAdd(false);
+        if (!showKeyboardHelp && !showQuickAdd && hierarchyStack.length === 0) {
+          canvasAreaRef.current?.focus();
+        }
       }
 
       // Shift+P to open Probes tab
-      if (e.key === 'P' && e.shiftKey && !e.ctrlKey && !e.metaKey && !isInputFocused()) {
+      if (e.key === 'P' && e.shiftKey && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         setRightDockTab('probes');
         if (rightDockState === 'collapsed') {
@@ -754,53 +867,88 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         }
       }
 
-      // Layout shortcuts (only when NOT typing in inputs/textareas)
-      if (!isInputFocused()) {
-        // Number keys 1-5 for single-view layouts
-        if (e.key === '1' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      // Ctrl/Cmd+1..6: dock tabs
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+        if (e.key === '1') {
           e.preventDefault();
-          setPerspective('circuit-only');
+          setRightDockTab('inspector');
+          if (rightDockState === 'collapsed') setRightDockState('peek');
         }
-        if (e.key === '2' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        if (e.key === '2') {
           e.preventDefault();
-          setPerspective('schematic-only');
+          setRightDockTab('health');
+          if (rightDockState === 'collapsed') setRightDockState('peek');
         }
-        if (e.key === '3' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        if (e.key === '3') {
           e.preventDefault();
-          setPerspective('scope-only');
+          setRightDockTab('learn');
+          if (rightDockState === 'collapsed') setRightDockState('peek');
         }
-        if (e.key === '4' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        if (e.key === '4') {
           e.preventDefault();
-          setPerspective('3d-only');
+          setRightDockTab('probes');
+          if (rightDockState === 'collapsed') setRightDockState('peek');
         }
-        if (e.key === '5' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        if (e.key === '5') {
           e.preventDefault();
-          setPerspective('quad');
+          setRightDockTab('record');
+          if (rightDockState === 'collapsed') setRightDockState('peek');
         }
+        if (e.key === '6') {
+          e.preventDefault();
+          setRightDockTab('chips');
+          if (rightDockState === 'collapsed') setRightDockState('peek');
+        }
+      }
 
-        // Shift+Number for workflow layouts
-        if (e.key === '!' && e.shiftKey) { // Shift+1
-          e.preventDefault();
-          setPerspective('build');
-        }
-        if (e.key === '@' && e.shiftKey) { // Shift+2
-          e.preventDefault();
-          setPerspective('explain');
-        }
-        if (e.key === '#' && e.shiftKey) { // Shift+3
-          e.preventDefault();
-          setPerspective('analyze');
-        }
-        if (e.key === '$' && e.shiftKey) { // Shift+4
-          e.preventDefault();
-          setPerspective('explore');
-        }
+      // Number keys 1-5 for single-view layouts
+      if (e.key === '1' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setPerspective('circuit-only');
+      }
+      if (e.key === '2' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setPerspective('schematic-only');
+      }
+      if (e.key === '3' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setPerspective('scope-only');
+      }
+      if (e.key === '4' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setPerspective('3d-only');
+      }
+      if (e.key === '5' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setPerspective('quad');
+      }
+
+      // Shift+Number for workflow layouts
+      if (e.key === '!' && e.shiftKey) { // Shift+1
+        e.preventDefault();
+        setPerspective('build');
+      }
+      if (e.key === '@' && e.shiftKey) { // Shift+2
+        e.preventDefault();
+        setPerspective('explain');
+      }
+      if (e.key === '#' && e.shiftKey) { // Shift+3
+        e.preventDefault();
+        setPerspective('analyze');
+      }
+      if (e.key === '$' && e.shiftKey) { // Shift+4
+        e.preventDefault();
+        setPerspective('explore');
       }
     };
 
     const isInputFocused = () => {
       const active = document.activeElement;
-      return active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT');
+      if (!active) return false;
+      if (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT') {
+        return true;
+      }
+      return (active as HTMLElement).isContentEditable;
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -951,11 +1099,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   // Track tick count for UI display
   useEffect(() => {
     setTickCount(tickEngine.getTickCount());
-    const interval = window.setInterval(() => {
-      setTickCount(tickEngine.getTickCount());
-    }, 200);
-    return () => window.clearInterval(interval);
-  }, [tickEngine]);
+  }, [tickEngine, uiTick]);
 
   useEffect(() => {
     setLastTickAt(Date.now());
@@ -2346,6 +2490,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         onPerspectiveChange={setPerspective}
         schematicMiniEnabled={schematicMiniEnabled}
         onToggleSchematicMini={toggleSchematicMini}
+        onManual={() => onOpenApp?.('user-manual')}
         onHelp={() => setShowKeyboardHelp(true)}
       />
 

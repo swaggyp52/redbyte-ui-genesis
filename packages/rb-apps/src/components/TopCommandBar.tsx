@@ -53,6 +53,7 @@ interface TopCommandBarProps {
   schematicMiniEnabled?: boolean;
   onToggleSchematicMini?: () => void;
   onHelp: () => void;
+  onManual?: () => void;
 }
 
 export const TopCommandBar: React.FC<TopCommandBarProps> = ({
@@ -85,6 +86,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   schematicMiniEnabled,
   onToggleSchematicMini,
   onHelp,
+  onManual,
 }) => {
   return (
     <div className="h-12 border-b border-gray-700 bg-gray-900 px-4 flex items-center justify-between gap-6">
@@ -354,6 +356,15 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         )}
 
         {/* Help */}
+        {onManual && (
+          <button
+            onClick={onManual}
+            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs font-semibold transition-all"
+            title="Open User Manual"
+          >
+            Manual
+          </button>
+        )}
         <button
           onClick={onHelp}
           className="px-3 py-2 bg-purple-700 hover:bg-purple-600 rounded font-bold transition-all"

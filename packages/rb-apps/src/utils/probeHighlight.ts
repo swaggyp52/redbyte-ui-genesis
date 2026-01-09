@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import type { Circuit, Connection } from '@redbyte/rb-logic-core';
+import { mark, measure } from '@redbyte/rb-utils';
 
 export interface ProbeHighlight {
   nodeId: string;
@@ -18,6 +19,7 @@ export const buildProbeWireHighlights = (
   circuit: Circuit,
   probes: ProbeHighlight[]
 ) => {
+  mark('probe-wire-highlights-start');
   const portToColors = new Map<string, string[]>();
   probes.forEach((probe) => {
     if (!probe.enabled) return;
@@ -39,5 +41,7 @@ export const buildProbeWireHighlights = (
     }
   });
 
+  mark('probe-wire-highlights-end');
+  measure('probe-wire-highlights', 'probe-wire-highlights-start', 'probe-wire-highlights-end');
   return wireHighlights;
 };

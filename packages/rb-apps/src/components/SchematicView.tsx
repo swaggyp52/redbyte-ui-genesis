@@ -3,11 +3,13 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useMemo, useState, useRef } from 'react';
+import { shallow } from 'zustand/shallow';
 import type { Circuit, Node, Connection, Signal, PortRef } from '@redbyte/rb-logic-core';
 import { CircuitEngine } from '@redbyte/rb-logic-core';
 import { useViewStateStore } from '../stores/viewStateStore';
 import { useCircuitStore } from '../stores/circuitStore';
 import { getPortPositions, findNearestPort, type PortPosition } from './schematic/SchematicPortDetector';
+import { mark, measure, trackRender, useUiTickStore } from '@redbyte/rb-utils';
 
 interface SchematicViewProps {
   circuit: Circuit;
@@ -45,6 +47,32 @@ interface SchematicWire {
   probeColors?: string[];
   mismatchColors?: string[];
 }
+
+export const getSchematicViewBounds = (
+  camera: { x: number; y: number; zoom: number },
+  width: number,
+  height: number,
+  margin = 200
+) => {
+  const left = (-camera.x) / camera.zoom - margin;
+  const top = (-camera.y) / camera.zoom - margin;
+  const right = (width - camera.x) / camera.zoom + margin;
+  const bottom = (height - camera.y) / camera.zoom + margin;
+  return { left, top, right, bottom };
+};
+
+export const getVisibleSchematicNodes = (
+  nodes: Array<{ id: string; x: number; y: number }>,
+  bounds: ReturnType<typeof getSchematicViewBounds>
+) =>
+  nodes.filter((node) => {
+    return (
+      node.x >= bounds.left &&
+      node.x <= bounds.right &&
+      node.y >= bounds.top &&
+      node.y <= bounds.bottom
+    );
+  });
 
 /**
  * IEEE/ANSI standard logic gate symbols
@@ -293,6 +321,8 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   debugTick,
   isReplayMode = false,
 }) => {
+  trackRender('SchematicView');
+  const uiTick = useUiTickStore((state) => state.uiTick);
   const [signals, setSignals] = React.useState<Map<string, Signal>>(new Map());
   const renderSignals = debugSignals ?? signals;
   const updateCircuit = useCircuitStore((state) => state.updateCircuit);
@@ -338,22 +368,23 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Get global selection state
-  const { selectedNodeIds, selectNodes } = useViewStateStore();
+  const { selectedNodeIds, selectNodes } = useViewStateStore(
+    (state) => ({
+      selectedNodeIds: state.selectedNodeIds,
+      selectNodes: state.selectNodes,
+    }),
+    shallow
+  );
 
-  // Update signals in real-time
+  // Update signals on UI ticks
   React.useEffect(() => {
     if (debugSignals) return;
     if (!isRunning) {
       setSignals(new Map());
       return;
     }
-
-    const interval = setInterval(() => {
-      setSignals(engine.getAllSignals());
-    }, 50);
-
-    return () => clearInterval(interval);
-  }, [isRunning, engine, debugSignals]);
+    setSignals(engine.getAllSignals());
+  }, [uiTick, isRunning, engine, debugSignals]);
 
   // Non-passive wheel event listener for zooming (React 19 compatibility)
   React.useEffect(() => {
@@ -466,6 +497,19 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
     }));
   }, [circuit.nodes]);
 
+  const viewBounds = useMemo(
+    () => getSchematicViewBounds(camera, width, height),
+    [camera, width, height]
+  );
+
+  // Viewport culling is render-only; interaction/selection always uses full schematicNodes.
+  const visibleNodes = useMemo(
+    () => getVisibleSchematicNodes(schematicNodes, viewBounds),
+    [schematicNodes, viewBounds]
+  );
+
+  const visibleNodeIds = useMemo(() => new Set(visibleNodes.map((node) => node.id)), [visibleNodes]);
+
   const fitToView = React.useCallback(() => {
     if (circuit.nodes.length === 0) return;
 
@@ -520,39 +564,54 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
 
   // Route wires between nodes
   const schematicWires = useMemo<SchematicWire[]>(() => {
-    return circuit.connections.map((conn) => {
-      const wireId = `${conn.from.nodeId}.${conn.from.portName}-${conn.to.nodeId}.${conn.to.portName}`;
-      const fromNode = schematicNodes.find((n) => n.id === conn.from.nodeId);
-      const toNode = schematicNodes.find((n) => n.id === conn.to.nodeId);
+    mark('schematic-wire-layout-start');
+    const wires = circuit.connections
+      .filter(
+        (conn) => visibleNodeIds.has(conn.from.nodeId) || visibleNodeIds.has(conn.to.nodeId)
+      )
+      .map((conn) => {
+        const wireId = `${conn.from.nodeId}.${conn.from.portName}-${conn.to.nodeId}.${conn.to.portName}`;
+        const fromNode = schematicNodes.find((n) => n.id === conn.from.nodeId);
+        const toNode = schematicNodes.find((n) => n.id === conn.to.nodeId);
 
-      if (!fromNode || !toNode) {
+        if (!fromNode || !toNode) {
+          return {
+            id: wireId,
+            from: { x: 0, y: 0 },
+            to: { x: 0, y: 0 },
+            signal: 0,
+            points: [],
+          };
+        }
+
+        // Output port on right side, input port on left side
+        const from = { x: fromNode.x + 60, y: fromNode.y + 20 };
+        const to = { x: toNode.x - 10, y: toNode.y + 20 };
+
+        const signalKey = `${conn.from.nodeId}.${conn.from.portName}`;
+        const signal = renderSignals.get(signalKey) ?? 0;
+
         return {
           id: wireId,
-          from: { x: 0, y: 0 },
-          to: { x: 0, y: 0 },
-          signal: 0,
-          points: [],
+          from,
+          to,
+          signal,
+          points: routeWire(from, to),
+          probeColors: probeWireHighlights?.get(wireId),
+          mismatchColors: mismatchWireHighlights?.get(wireId),
         };
-      }
-
-      // Output port on right side, input port on left side
-      const from = { x: fromNode.x + 60, y: fromNode.y + 20 };
-      const to = { x: toNode.x - 10, y: toNode.y + 20 };
-
-      const signalKey = `${conn.from.nodeId}.${conn.from.portName}`;
-      const signal = renderSignals.get(signalKey) ?? 0;
-
-      return {
-        id: wireId,
-        from,
-        to,
-        signal,
-        points: routeWire(from, to),
-        probeColors: probeWireHighlights?.get(wireId),
-        mismatchColors: mismatchWireHighlights?.get(wireId),
-      };
-    });
-  }, [circuit.connections, schematicNodes, renderSignals, probeWireHighlights, mismatchWireHighlights]);
+      });
+    mark('schematic-wire-layout-end');
+    measure('schematic-wire-layout', 'schematic-wire-layout-start', 'schematic-wire-layout-end');
+    return wires;
+  }, [
+    circuit.connections,
+    schematicNodes,
+    visibleNodeIds,
+    renderSignals,
+    probeWireHighlights,
+    mismatchWireHighlights,
+  ]);
 
   return (
     <div className="w-full h-full bg-gray-900 flex flex-col overflow-hidden">
@@ -711,7 +770,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
 
             {/* Render components */}
             <g className="components">
-              {schematicNodes.map((node) => {
+              {visibleNodes.map((node) => {
                 const outputSignal =
                   renderSignals.get(`${node.id}.out`) ??
                   renderSignals.get(`${node.id}.in`) ??

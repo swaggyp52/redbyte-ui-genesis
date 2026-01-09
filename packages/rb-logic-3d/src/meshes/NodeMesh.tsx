@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useRef, useMemo, useState } from 'react';
+import React, { useRef, useMemo, useState, useEffect } from 'react';
 import { useFrame, ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { createNeonMaterial, NODE_COLORS } from '../materials/neonMaterial';
@@ -44,6 +44,13 @@ export const NodeMesh: React.FC<NodeMeshProps> = ({
   const geometry = useMemo(() => createNodeGeometry(type), [type]);
   const rotation = useMemo(() => getGeometryRotation(type), [type]);
   const scale = useMemo(() => getGeometryScale(type), [type]);
+
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+      material.dispose();
+    };
+  }, [geometry, material]);
 
   useFrame(() => {
     if (meshRef.current) {

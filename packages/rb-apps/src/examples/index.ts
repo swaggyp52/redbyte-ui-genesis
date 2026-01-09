@@ -17,6 +17,7 @@ import example11 from './11_d-flipflop.json';
 import example12 from './12_2to4-decoder.json';
 import example13 from './13_4to1-mux.json';
 import example14 from './14_4bit-register.json';
+import example15 from './15_not-gate.json';
 
 export type ExampleId =
   | '01_wire-lamp'
@@ -32,7 +33,8 @@ export type ExampleId =
   | '11_d-flipflop'
   | '12_2to4-decoder'
   | '13_4to1-mux'
-  | '14_4bit-register';
+  | '14_4bit-register'
+  | '15_not-gate';
 
 export type CircuitLayer = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -62,6 +64,16 @@ const examples: Record<ExampleId, { data: SerializedCircuitV1; metadata: Example
       id: '02_and-gate',
       name: 'AND Gate',
       description: 'Two switches controlling a lamp through an AND gate',
+      layer: 0,
+      difficulty: 'beginner',
+    },
+  },
+  '15_not-gate': {
+    data: example15 as SerializedCircuitV1,
+    metadata: {
+      id: '15_not-gate',
+      name: 'NOT Gate',
+      description: 'A switch, inverter, and lamp to show signal inversion',
       layer: 0,
       difficulty: 'beginner',
     },

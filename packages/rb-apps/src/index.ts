@@ -20,6 +20,7 @@ export { WelcomeApp } from './apps/WelcomeApp';
 export { LauncherApp } from './apps/LauncherApp';
 export { TextViewerApp } from './apps/TextViewerApp';
 export { default as LogicHelpApp } from './apps/LogicHelpApp';
+export { UserManualApp } from './apps/UserManualApp';
 
 // Auto-register all apps
 import { registerApp } from './AppRegistry';
@@ -32,6 +33,7 @@ import { WelcomeApp } from './apps/WelcomeApp';
 import { LauncherApp } from './apps/LauncherApp';
 import { TextViewerApp } from './apps/TextViewerApp';
 import LogicHelpApp from './apps/LogicHelpApp';
+import { UserManualApp } from './apps/UserManualApp';
 
 registerApp(TerminalApp);
 registerApp(SettingsApp);
@@ -42,3 +44,4 @@ registerApp(WelcomeApp);
 registerApp(LauncherApp);
 registerApp(TextViewerApp);
 registerApp(LogicHelpApp);
+registerApp(UserManualApp);

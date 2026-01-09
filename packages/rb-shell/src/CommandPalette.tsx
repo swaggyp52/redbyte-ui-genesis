@@ -17,6 +17,7 @@ export type Command =
   | 'switch-workspace'
   | 'delete-workspace'
   | 'run-macro'
+  | 'open-user-manual'
   | 'playground-layout-build'
   | 'playground-layout-analyze'
   | 'playground-layout-explain'
@@ -107,6 +108,11 @@ const COMMANDS: CommandItem[] = [
     id: 'run-macro',
     label: 'Run Macro',
     description: 'Execute a saved macro sequence',
+  },
+  {
+    id: 'open-user-manual',
+    label: 'Open User Manual',
+    description: 'Help, documentation, and getting-started guide',
   },
   {
     id: 'playground-project-new',

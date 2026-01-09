@@ -35,6 +35,10 @@ export const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({ is
       { keys: 'Scroll', description: 'Zoom in/out' },
       { keys: 'Shift+Drag', description: 'Pan view' },
     ]},
+    { category: 'Dock & Panels', items: [
+      { keys: `${modKey}+1..6`, description: 'Switch right dock tabs' },
+      { keys: 'Shift+P', description: 'Open Probes tab' },
+    ]},
     { category: 'Circuit Interaction', items: [
       { keys: 'Click port → Click port', description: 'Connect components' },
       { keys: 'Drag node', description: 'Move component' },

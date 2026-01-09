@@ -81,6 +81,12 @@ const COMMANDS: CommandSearchResult[] = [
   },
   {
     type: 'command',
+    id: 'open-user-manual',
+    name: 'Open User Manual',
+    description: 'Help, documentation, user guide, and getting started',
+  },
+  {
+    type: 'command',
     id: 'playground-project-new',
     name: 'Playground: New Project',
     description: 'Start a new Logic Playground project',

@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React from 'react';
+import { shallow } from 'zustand/shallow';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { ProofPack } from '../recording/runRecord';
 import { useRunRecorderStore } from '../stores/runRecorderStore';
@@ -64,6 +65,7 @@ export const RunRecorderPanel: React.FC<RunRecorderPanelProps> = ({
   const {
     mode,
     stimulus,
+    trace,
     record,
     verificationStatus,
     playheadTick,
@@ -72,7 +74,22 @@ export const RunRecorderPanel: React.FC<RunRecorderPanelProps> = ({
     setRecord,
     applyEditedEvents,
     normalizeEvents,
-  } = useRunRecorderStore();
+  } = useRunRecorderStore(
+    (state) => ({
+      mode: state.mode,
+      stimulus: state.stimulus,
+      trace: state.trace,
+      record: state.record,
+      verificationStatus: state.verificationStatus,
+      playheadTick: state.playheadTick,
+      replayPaused: state.replayPaused,
+      setPlayheadTick: state.setPlayheadTick,
+      setRecord: state.setRecord,
+      applyEditedEvents: state.applyEditedEvents,
+      normalizeEvents: state.normalizeEvents,
+    }),
+    shallow
+  );
   const [importError, setImportError] = React.useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = React.useState<number | null>(null);
@@ -82,6 +99,9 @@ export const RunRecorderPanel: React.FC<RunRecorderPanelProps> = ({
   const timelineRef = React.useRef<HTMLDivElement>(null);
 
   const events = record ? record.stimulus : stimulus;
+  const traceSampleCount = record ? record.trace.length : trace.length;
+  const TRACE_WARN_THRESHOLD = 20000;
+  const showTraceWarning = traceSampleCount > TRACE_WARN_THRESHOLD;
   const durationTicks = record?.summary.durationTicks ?? record?.summary.tickCount ?? 0;
   const startTick = record?.summary.startTick ?? 0;
   const maxTick = Math.max(durationTicks, 1);
@@ -209,6 +229,11 @@ export const RunRecorderPanel: React.FC<RunRecorderPanelProps> = ({
           </span>
         </div>
       </div>
+      {showTraceWarning && (
+        <div className="rounded border border-amber-500/40 bg-amber-900/20 px-2 py-1 text-[11px] text-amber-200">
+          Large trace buffer: {traceSampleCount} samples. Stop recording to cap memory usage.
+        </div>
+      )}
 
       <div className="grid grid-cols-4 gap-2 text-[11px]">
         <button

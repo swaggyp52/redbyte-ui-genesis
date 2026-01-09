@@ -19,9 +19,11 @@
         "perf": "pnpm -r --if-present run test:perf",
         "coverage": "vitest run --coverage --passWithNoTests",
         "capture:screenshots": "tsx scripts/capture-screenshots.ts",
-        "release:gate": "pnpm lint && pnpm test && pnpm build"
+        "perf:soak": "tsx scripts/perf-soak.ts",
+        "release:gate": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
     },
     "devDependencies": {
+        "@welldone-software/why-did-you-render": "^8.0.3",
         "@playwright/test": "^1.50.1",
         "@testing-library/jest-dom": "^6.6.3",
         "@testing-library/react": "^16.1.0",

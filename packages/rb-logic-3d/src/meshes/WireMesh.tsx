@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 
 interface WireMeshProps {
@@ -22,12 +22,21 @@ export const WireMesh: React.FC<WireMeshProps> = ({
   probeColors,
   mismatchColors,
 }) => {
-  const points = [new THREE.Vector3(...from), new THREE.Vector3(...to)];
-  const curve = new THREE.CatmullRomCurve3(points);
-  const tubeGeometry = new THREE.TubeGeometry(curve, 10, 0.05, 8, false);
-  const glowGeometry = new THREE.TubeGeometry(curve, 10, 0.08, 8, false);
+  const curve = useMemo(() => {
+    const points = [new THREE.Vector3(...from), new THREE.Vector3(...to)];
+    return new THREE.CatmullRomCurve3(points);
+  }, [from[0], from[1], from[2], to[0], to[1], to[2]]);
+  const tubeGeometry = useMemo(() => new THREE.TubeGeometry(curve, 10, 0.05, 8, false), [curve]);
+  const glowGeometry = useMemo(() => new THREE.TubeGeometry(curve, 10, 0.08, 8, false), [curve]);
   const pulseBoost = pulse * 0.6;
   const emissiveIntensity = (isActive ? 0.6 : 0.1) + pulseBoost;
+
+  useEffect(() => {
+    return () => {
+      tubeGeometry.dispose();
+      glowGeometry.dispose();
+    };
+  }, [tubeGeometry, glowGeometry]);
 
   return (
     <>

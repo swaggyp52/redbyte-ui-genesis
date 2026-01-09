@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@redbyte/rb-logic-core": "workspace:*",
+    "@redbyte/rb-utils": "workspace:*",
     "zustand": "^5.0.9"
   },
   "peerDependencies": {
