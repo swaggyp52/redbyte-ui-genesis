@@ -308,7 +308,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     if (isRunning) {
       // Start trace recording if not already active
       if (!traceRecorder) {
-        tickEngine.startTracing(2000); // Keep last 2000 ticks
+        tickEngine.enableTracing(2000); // Keep last 2000 ticks
       } else if (!traceRecorder.isActive()) {
         traceRecorder.start();
       }
@@ -698,7 +698,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       y,
       width: canvasDimensions.width,
       height: canvasDimensions.height,
-      timeWindowSec,
+      timeScale: timeWindowSec,
       voltageScale,
       windowEndTime,
       probes,
@@ -832,6 +832,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
               value={timeWindowSec}
               onChange={(e) => setTimeWindowSec(Number(e.target.value))}
               className="px-1.5 py-0.5 bg-gray-800 rounded border border-gray-700 text-xs"
+              title="Time window"
             >
               <option value={1}>1s</option>
               <option value={2}>2s</option>
@@ -846,6 +847,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
               value={voltageScale}
               onChange={(e) => setVoltageScale(Number(e.target.value))}
               className="px-1.5 py-0.5 bg-gray-800 rounded border border-gray-700 text-xs"
+              title="Voltage scale"
             >
               <option value={0.5}>0.5</option>
               <option value={1}>1</option>
@@ -1122,6 +1124,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
               value={selectedNodeId}
               onChange={(e) => setSelectedNodeId(e.target.value)}
               className="w-full px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
+              title="Select node to probe"
             >
               <option value="">Select node...</option>
               {circuit.nodes.map((node) => (

@@ -187,7 +187,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                           isReplayMode ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-700/50'
                         }`}
                         title={isReplayMode ? lockMessage : undefined}
-                        aria-disabled={isReplayMode}
+                        aria-disabled={isReplayMode ? 'true' : 'false'}
                       >
                         <div className={`w-10 h-5 rounded-full transition-all ${value ? 'bg-cyan-500' : 'bg-gray-600'}`}>
                           <div className={`w-4 h-4 bg-white rounded-full mt-0.5 transition-transform ${value ? 'ml-5' : 'ml-0.5'}`}></div>
