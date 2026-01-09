@@ -58,7 +58,7 @@ describe('Probe Store', () => {
     expect(useProbeStore.getState().probes[0].enabled).toBe(false);
   });
 
-  it('selects a probe for highlighting', () => {
+  it('selects a probe for highlighting', async () => {
     const id = useProbeStore.getState().addProbe({
       nodeId: 'node-5',
       portName: 'out',
@@ -67,6 +67,9 @@ describe('Probe Store', () => {
 
     useProbeStore.getState().setActiveProbe(id);
     expect(useProbeStore.getState().activeProbeId).toBe(id);
+
+    // Wait for queueMicrotask to complete the cross-store sync
+    await new Promise((resolve) => queueMicrotask(resolve));
     expect(useViewStateStore.getState().selectedNodeIds.has('node-5')).toBe(true);
   });
 });

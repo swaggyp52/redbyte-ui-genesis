@@ -122,7 +122,10 @@ export const useProbeStore = create<ProbeStore>((set, get) => ({
     if (id) {
       const probe = get().probes.find((item) => item.id === id);
       if (probe) {
-        useViewStateStore.getState().selectNodes([probe.nodeId], false);
+        // Use queueMicrotask to break synchronous update chain
+        queueMicrotask(() => {
+          useViewStateStore.getState().selectNodes([probe.nodeId], false);
+        });
       }
     }
   },

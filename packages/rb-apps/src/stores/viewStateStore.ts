@@ -7,6 +7,24 @@ import { create } from 'zustand';
 export type SplitScreenMode = 'single' | 'horizontal' | 'vertical' | 'quad';
 export type ViewMode = 'circuit' | 'schematic' | 'oscilloscope' | '3d';
 
+// Helper to check if two Sets have the same contents
+function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {
+  if (a.size !== b.size) return false;
+  for (const item of a) {
+    if (!b.has(item)) return false;
+  }
+  return true;
+}
+
+// Helper to create a new Set only if contents differ
+function createSetIfDifferent<T>(current: Set<T>, newItems: T[]): Set<T> {
+  const newSet = new Set(newItems);
+  if (setsEqual(current, newSet)) {
+    return current; // Return same reference if contents match
+  }
+  return newSet;
+}
+
 interface ViewStateStore {
   // Selection state
   selectedNodeIds: Set<string>;
@@ -66,32 +84,60 @@ export const useViewStateStore = create<ViewStateStore>((set, get) => ({
   // Selection actions
   selectNodes: (nodeIds: string[], additive = false) =>
     set((state) => {
-      const newSelection = additive
-        ? new Set([...state.selectedNodeIds, ...nodeIds])
-        : new Set(nodeIds);
+      const targetItems = additive
+        ? [...state.selectedNodeIds, ...nodeIds]
+        : nodeIds;
+      const newNodeIds = createSetIfDifferent(state.selectedNodeIds, targetItems);
+
+      // Only clear wires if not additive and actually changing nodes
+      const newWireIds = additive
+        ? state.selectedWireIds
+        : (state.selectedWireIds.size === 0 ? state.selectedWireIds : new Set<string>());
+
+      // Return same state if nothing changed
+      if (newNodeIds === state.selectedNodeIds && newWireIds === state.selectedWireIds) {
+        return state;
+      }
 
       return {
-        selectedNodeIds: newSelection,
-        selectedWireIds: additive ? state.selectedWireIds : new Set(),
+        selectedNodeIds: newNodeIds,
+        selectedWireIds: newWireIds,
       };
     }),
 
   selectWires: (wireIds: string[], additive = false) =>
     set((state) => {
-      const newSelection = additive
-        ? new Set([...state.selectedWireIds, ...wireIds])
-        : new Set(wireIds);
+      const targetItems = additive
+        ? [...state.selectedWireIds, ...wireIds]
+        : wireIds;
+      const newWireIds = createSetIfDifferent(state.selectedWireIds, targetItems);
+
+      // Only clear nodes if not additive and actually changing wires
+      const newNodeIds = additive
+        ? state.selectedNodeIds
+        : (state.selectedNodeIds.size === 0 ? state.selectedNodeIds : new Set<string>());
+
+      // Return same state if nothing changed
+      if (newWireIds === state.selectedWireIds && newNodeIds === state.selectedNodeIds) {
+        return state;
+      }
 
       return {
-        selectedWireIds: newSelection,
-        selectedNodeIds: additive ? state.selectedNodeIds : new Set(),
+        selectedWireIds: newWireIds,
+        selectedNodeIds: newNodeIds,
       };
     }),
 
   clearSelection: () =>
-    set({
-      selectedNodeIds: new Set(),
-      selectedWireIds: new Set(),
+    set((state) => {
+      // Return same state if already empty
+      if (state.selectedNodeIds.size === 0 && state.selectedWireIds.size === 0) {
+        return state;
+      }
+      return {
+        selectedNodeIds: new Set(),
+        selectedWireIds: new Set(),
+      };
     }),
 
   setHoveredNode: (nodeId: string | null) =>
@@ -130,18 +176,21 @@ export const useViewStateStore = create<ViewStateStore>((set, get) => ({
     }),
 
   setAutoProbeEnabled: (enabled: boolean) =>
-    set({
-      autoProbeEnabled: enabled,
+    set((state) => {
+      if (state.autoProbeEnabled === enabled) return state;
+      return { autoProbeEnabled: enabled };
     }),
 
   setHighlightProbePaths: (enabled: boolean) =>
-    set({
-      highlightProbePaths: enabled,
+    set((state) => {
+      if (state.highlightProbePaths === enabled) return state;
+      return { highlightProbePaths: enabled };
     }),
 
   clearAutoProbes: () =>
-    set({
-      autoProbedNodes: new Set(),
+    set((state) => {
+      if (state.autoProbedNodes.size === 0) return state;
+      return { autoProbedNodes: new Set() };
     }),
 
   // Split-screen actions
