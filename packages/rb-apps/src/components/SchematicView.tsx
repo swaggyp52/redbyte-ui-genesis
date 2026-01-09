@@ -297,6 +297,17 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   const renderSignals = debugSignals ?? signals;
   const updateCircuit = useCircuitStore((state) => state.updateCircuit);
 
+  // Camera state for pan/zoom
+  const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [lastMouse, setLastMouse] = useState({ x: 0, y: 0 });
+
+  // Editing state - must be declared before useMemo hooks that reference hoveredNodeId
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [wireStartPort, setWireStartPort] = useState<PortRef | null>(null);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+
   const debugPortValues = useMemo(() => {
     if (!debugSignals || !hoveredNodeId) return null;
     const entries = Array.from(debugSignals.entries())
@@ -323,17 +334,6 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
   }, [mismatchPortKeys]);
 
   const isOutputPort = (portName: string) => /^(out|q|y)/i.test(portName);
-
-  // Camera state for pan/zoom
-  const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [lastMouse, setLastMouse] = useState({ x: 0, y: 0 });
-
-  // Editing state
-  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [wireStartPort, setWireStartPort] = useState<PortRef | null>(null);
-  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
 

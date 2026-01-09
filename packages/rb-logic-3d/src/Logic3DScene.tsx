@@ -27,6 +27,8 @@ interface Logic3DSceneProps {
   mismatchNodeIds?: Set<string> | null;
   mismatchPortKeys?: Set<string> | null;
   debugSignals?: Map<string, 0 | 1> | null;
+  /** Optional chip metadata lookup for custom node rendering */
+  getChipMetadata?: (nodeType: string) => any;
 }
 
 export const buildSelectionMap = (

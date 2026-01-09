@@ -541,6 +541,7 @@ export const RightDock: React.FC<RightDockProps> = ({
                 value={selectedNodeId}
                 onChange={(e) => setSelectedNodeId(e.target.value)}
                 className="w-full px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
+                aria-label="Select node to probe"
               >
                 <option value="">Select node...</option>
                 {selectableNodes.map((node) => (
@@ -554,6 +555,7 @@ export const RightDock: React.FC<RightDockProps> = ({
                 value={selectedPortName}
                 onChange={(e) => setSelectedPortName(e.target.value)}
                 className="w-full px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
+                aria-label="Select port to probe"
               >
                 {portOptions.map((port) => (
                   <option key={port} value={port}>
@@ -647,6 +649,7 @@ export const RightDock: React.FC<RightDockProps> = ({
                             onChange={(e) => renameProbe(probe.id, e.target.value)}
                             onClick={(e) => e.stopPropagation()}
                             className="w-full bg-transparent text-sm font-medium text-white outline-none"
+                            aria-label="Probe label"
                           />
                           <div className="text-[10px] text-gray-400 font-mono truncate">
                             {probe.nodeId} - {probe.portName}

@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { analyzeCircuitHealth, getTracePath } from '../logic/circuitHealth';
 import type { Circuit } from '@redbyte/rb-logic-core';
+import { createTestNode } from './testUtils';
 
 describe('Circuit Health Analysis', () => {
   describe('analyzeCircuitHealth', () => {
@@ -25,7 +26,7 @@ describe('Circuit Health Analysis', () => {
     it('should detect unconnected inputs', () => {
       const circuit: Circuit = {
         nodes: [
-          { id: 'and1', type: 'AND', position: { x: 0, y: 0 } },
+          createTestNode('and1', 'AND', { x: 0, y: 0 }),
         ],
         connections: [],
       };
@@ -44,7 +45,7 @@ describe('Circuit Health Analysis', () => {
     it('should detect floating outputs', () => {
       const circuit: Circuit = {
         nodes: [
-          { id: 'switch1', type: 'Switch', position: { x: 0, y: 0 } },
+          createTestNode('switch1', 'Switch', { x: 0, y: 0 }),
         ],
         connections: [],
       };
@@ -60,8 +61,8 @@ describe('Circuit Health Analysis', () => {
     it('should detect missing input sources', () => {
       const circuit: Circuit = {
         nodes: [
-          { id: 'and1', type: 'AND', position: { x: 0, y: 0 } },
-          { id: 'lamp1', type: 'Lamp', position: { x: 100, y: 0 } },
+          createTestNode('and1', 'AND', { x: 0, y: 0 }),
+          createTestNode('lamp1', 'Lamp', { x: 100, y: 0 }),
         ],
         connections: [
           { from: { nodeId: 'and1', portName: 'out' }, to: { nodeId: 'lamp1', portName: 'in' } },
@@ -79,8 +80,8 @@ describe('Circuit Health Analysis', () => {
     it('should detect missing outputs', () => {
       const circuit: Circuit = {
         nodes: [
-          { id: 'switch1', type: 'Switch', position: { x: 0, y: 0 } },
-          { id: 'and1', type: 'AND', position: { x: 100, y: 0 } },
+          createTestNode('switch1', 'Switch', { x: 0, y: 0 }),
+          createTestNode('and1', 'AND', { x: 100, y: 0 }),
         ],
         connections: [
           { from: { nodeId: 'switch1', portName: 'out' }, to: { nodeId: 'and1', portName: 'in1' } },
@@ -98,10 +99,10 @@ describe('Circuit Health Analysis', () => {
     it('should report healthy for properly connected circuit', () => {
       const circuit: Circuit = {
         nodes: [
-          { id: 'switch1', type: 'Switch', position: { x: 0, y: 0 } },
-          { id: 'switch2', type: 'Switch', position: { x: 0, y: 50 } },
-          { id: 'and1', type: 'AND', position: { x: 100, y: 25 } },
-          { id: 'lamp1', type: 'Lamp', position: { x: 200, y: 25 } },
+          createTestNode('switch1', 'Switch', { x: 0, y: 0 }),
+          createTestNode('switch2', 'Switch', { x: 0, y: 50 }),
+          createTestNode('and1', 'AND', { x: 100, y: 25 }),
+          createTestNode('lamp1', 'Lamp', { x: 200, y: 25 }),
         ],
         connections: [
           { from: { nodeId: 'switch1', portName: 'out' }, to: { nodeId: 'and1', portName: 'in1' } },
@@ -121,8 +122,8 @@ describe('Circuit Health Analysis', () => {
     it('should not flag PowerSource and Switch as having unconnected inputs', () => {
       const circuit: Circuit = {
         nodes: [
-          { id: 'power1', type: 'PowerSource', position: { x: 0, y: 0 } },
-          { id: 'switch1', type: 'Switch', position: { x: 0, y: 50 } },
+          createTestNode('power1', 'PowerSource', { x: 0, y: 0 }),
+          createTestNode('switch1', 'Switch', { x: 0, y: 50 }),
         ],
         connections: [],
       };
@@ -136,8 +137,8 @@ describe('Circuit Health Analysis', () => {
     it('should not flag Lamp and OUTPUT as having floating outputs', () => {
       const circuit: Circuit = {
         nodes: [
-          { id: 'lamp1', type: 'Lamp', position: { x: 0, y: 0 } },
-          { id: 'output1', type: 'OUTPUT', position: { x: 0, y: 50 } },
+          createTestNode('lamp1', 'Lamp', { x: 0, y: 0 }),
+          createTestNode('output1', 'OUTPUT', { x: 0, y: 50 }),
         ],
         connections: [],
       };
@@ -152,10 +153,10 @@ describe('Circuit Health Analysis', () => {
   describe('getTracePath', () => {
     const circuit: Circuit = {
       nodes: [
-        { id: 'switch1', type: 'Switch', position: { x: 0, y: 0 } },
-        { id: 'and1', type: 'AND', position: { x: 100, y: 0 } },
-        { id: 'not1', type: 'NOT', position: { x: 200, y: 0 } },
-        { id: 'lamp1', type: 'Lamp', position: { x: 300, y: 0 } },
+        createTestNode('switch1', 'Switch', { x: 0, y: 0 }),
+        createTestNode('and1', 'AND', { x: 100, y: 0 }),
+        createTestNode('not1', 'NOT', { x: 200, y: 0 }),
+        createTestNode('lamp1', 'Lamp', { x: 300, y: 0 }),
       ],
       connections: [
         { from: { nodeId: 'switch1', portName: 'out' }, to: { nodeId: 'and1', portName: 'in1' } },

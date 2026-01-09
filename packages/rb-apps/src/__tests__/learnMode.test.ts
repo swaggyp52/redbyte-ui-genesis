@@ -10,6 +10,7 @@ import {
   validateCurrentStep,
 } from '../logic/learnMode';
 import type { Circuit } from '@redbyte/rb-logic-core';
+import { createTestNode } from './testUtils';
 
 describe('Learn Mode', () => {
   describe('GUIDED_EXAMPLES', () => {
@@ -93,7 +94,7 @@ describe('Learn Mode', () => {
       };
 
       const circuitWithSwitch: Circuit = {
-        nodes: [{ id: 'sw1', type: 'Switch', position: { x: 0, y: 0 } }],
+        nodes: [createTestNode('sw1', 'Switch', { x: 0, y: 0 })],
         connections: [],
       };
 
@@ -108,14 +109,14 @@ describe('Learn Mode', () => {
       const completedSteps = new Set<string>(['add-switch']);
 
       const circuitWithoutNOT: Circuit = {
-        nodes: [{ id: 'sw1', type: 'Switch', position: { x: 0, y: 0 } }],
+        nodes: [createTestNode('sw1', 'Switch', { x: 0, y: 0 })],
         connections: [],
       };
 
       const circuitWithNOT: Circuit = {
         nodes: [
-          { id: 'sw1', type: 'Switch', position: { x: 0, y: 0 } },
-          { id: 'not1', type: 'NOT', position: { x: 100, y: 0 } },
+          createTestNode('sw1', 'Switch', { x: 0, y: 0 }),
+          createTestNode('not1', 'NOT', { x: 100, y: 0 }),
         ],
         connections: [],
       };
@@ -130,18 +131,18 @@ describe('Learn Mode', () => {
 
       const circuitUnwired: Circuit = {
         nodes: [
-          { id: 'sw1', type: 'Switch', position: { x: 0, y: 0 } },
-          { id: 'not1', type: 'NOT', position: { x: 100, y: 0 } },
-          { id: 'lamp1', type: 'Lamp', position: { x: 200, y: 0 } },
+          createTestNode('sw1', 'Switch', { x: 0, y: 0 }),
+          createTestNode('not1', 'NOT', { x: 100, y: 0 }),
+          createTestNode('lamp1', 'Lamp', { x: 200, y: 0 }),
         ],
         connections: [],
       };
 
       const circuitWired: Circuit = {
         nodes: [
-          { id: 'sw1', type: 'Switch', position: { x: 0, y: 0 } },
-          { id: 'not1', type: 'NOT', position: { x: 100, y: 0 } },
-          { id: 'lamp1', type: 'Lamp', position: { x: 200, y: 0 } },
+          createTestNode('sw1', 'Switch', { x: 0, y: 0 }),
+          createTestNode('not1', 'NOT', { x: 100, y: 0 }),
+          createTestNode('lamp1', 'Lamp', { x: 200, y: 0 }),
         ],
         connections: [
           { from: { nodeId: 'sw1', portName: 'out' }, to: { nodeId: 'not1', portName: 'in' } },
@@ -159,14 +160,14 @@ describe('Learn Mode', () => {
       const completedSteps = new Set<string>();
 
       const circuitWithOneSwitch: Circuit = {
-        nodes: [{ id: 'sw1', type: 'Switch', position: { x: 0, y: 0 } }],
+        nodes: [createTestNode('sw1', 'Switch', { x: 0, y: 0 })],
         connections: [],
       };
 
       const circuitWithTwoSwitches: Circuit = {
         nodes: [
-          { id: 'sw1', type: 'Switch', position: { x: 0, y: 0 } },
-          { id: 'sw2', type: 'Switch', position: { x: 0, y: 50 } },
+          createTestNode('sw1', 'Switch', { x: 0, y: 0 }),
+          createTestNode('sw2', 'Switch', { x: 0, y: 50 }),
         ],
         connections: [],
       };
@@ -190,20 +191,20 @@ describe('Learn Mode', () => {
 
       const circuitUnwired: Circuit = {
         nodes: [
-          { id: 'sw1', type: 'Switch', position: { x: 0, y: 0 } },
-          { id: 'sw2', type: 'Switch', position: { x: 0, y: 50 } },
-          { id: 'xor1', type: 'XOR', position: { x: 100, y: 25 } },
-          { id: 'and1', type: 'AND', position: { x: 100, y: 75 } },
+          createTestNode('sw1', 'Switch', { x: 0, y: 0 }),
+          createTestNode('sw2', 'Switch', { x: 0, y: 50 }),
+          createTestNode('xor1', 'XOR', { x: 100, y: 25 }),
+          createTestNode('and1', 'AND', { x: 100, y: 75 }),
         ],
         connections: [],
       };
 
       const circuitWired: Circuit = {
         nodes: [
-          { id: 'sw1', type: 'Switch', position: { x: 0, y: 0 } },
-          { id: 'sw2', type: 'Switch', position: { x: 0, y: 50 } },
-          { id: 'xor1', type: 'XOR', position: { x: 100, y: 25 } },
-          { id: 'and1', type: 'AND', position: { x: 100, y: 75 } },
+          createTestNode('sw1', 'Switch', { x: 0, y: 0 }),
+          createTestNode('sw2', 'Switch', { x: 0, y: 50 }),
+          createTestNode('xor1', 'XOR', { x: 100, y: 25 }),
+          createTestNode('and1', 'AND', { x: 100, y: 75 }),
         ],
         connections: [
           { from: { nodeId: 'sw1', portName: 'out' }, to: { nodeId: 'xor1', portName: 'in1' } },

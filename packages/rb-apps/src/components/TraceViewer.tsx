@@ -140,6 +140,7 @@ export const TraceViewer: React.FC<TraceViewerProps> = ({
             value={tickToShow}
             onChange={(e) => handleSeek(parseInt(e.target.value))}
             className="flex-1"
+            aria-label="Timeline tick position"
           />
           <button
             onClick={() => handleSeek(Math.min(tickRange.max, tickToShow + 1))}
@@ -164,6 +165,7 @@ export const TraceViewer: React.FC<TraceViewerProps> = ({
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter by node type or ID..."
             className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm placeholder-gray-500"
+            aria-label="Filter by node type or ID"
           />
         </div>
 

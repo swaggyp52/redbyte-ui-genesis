@@ -5,14 +5,15 @@
 import { describe, it, expect } from 'vitest';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { buildSuspectSet } from '../utils/mismatchLocalization';
+import { createTestNode } from './testUtils';
 
 describe('mismatch localization', () => {
   it('returns a suspect fan-in set for a simple circuit', () => {
     const circuit: Circuit = {
       nodes: [
-        { id: 'sw1', type: 'Switch', position: { x: 0, y: 0 } },
-        { id: 'and1', type: 'AND', position: { x: 0, y: 0 } },
-        { id: 'lamp1', type: 'Lamp', position: { x: 0, y: 0 } },
+        createTestNode('sw1', 'Switch', { x: 0, y: 0 }),
+        createTestNode('and1', 'AND', { x: 0, y: 0 }),
+        createTestNode('lamp1', 'Lamp', { x: 0, y: 0 }),
       ],
       connections: [
         { from: { nodeId: 'sw1', portName: 'out' }, to: { nodeId: 'and1', portName: 'in1' } },
