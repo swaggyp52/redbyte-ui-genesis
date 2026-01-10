@@ -5,7 +5,7 @@
 import React from 'react';
 import { shallow } from 'zustand/shallow';
 import type { TickEngine, Node, Connection } from '@redbyte/rb-logic-core';
-import { useLogicViewStore, getGlobalViewStateStore } from './useLogicViewStore';
+import { useLogicViewStore, getGlobalViewStateStore, type LogicViewState } from './useLogicViewStore';
 import { NodeView, type ChipMetadata } from './components/NodeView';
 import { WireView } from './components/WireView';
 import { Toolbar } from './components/Toolbar';
@@ -71,26 +71,11 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 }) => {
   trackRender('LogicCanvas');
   const uiTick = useUiTickStore((state) => state.uiTick);
-  const {
-    camera,
-    setCamera,
-    pan,
-    zoom: zoomFn,
-    selection,
-    selectNode,
-    selectWire,
-    clearSelection,
-    snapToGrid: shouldSnap,
-    toggleSnapToGrid,
-    gridSize,
-    editingState,
-    startWire,
-    endWire,
-    selectMultipleNodes,
-    toolMode,
-    setToolMode,
-  } = useLogicViewStore(
-    (state) => ({
+  
+  // Memoize selector to prevent infinite loop in Zustand's useSyncExternalStore
+  // (unstable function references cause re-subscription, triggering re-render)
+  const logicViewSelector = React.useCallback(
+    (state: LogicViewState) => ({
       camera: state.camera,
       setCamera: state.setCamera,
       pan: state.pan,
@@ -109,8 +94,28 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       toolMode: state.toolMode,
       setToolMode: state.setToolMode,
     }),
-    shallow
+    []
   );
+
+  const {
+    camera,
+    setCamera,
+    pan,
+    zoom: zoomFn,
+    selection,
+    selectNode,
+    selectWire,
+    clearSelection,
+    snapToGrid: shouldSnap,
+    toggleSnapToGrid,
+    gridSize,
+    editingState,
+    startWire,
+    endWire,
+    selectMultipleNodes,
+    toolMode,
+    setToolMode,
+  } = useLogicViewStore(logicViewSelector, shallow);
 
   // Use external circuit if provided, otherwise poll from engine
   const [internalCircuit, setInternalCircuit] = React.useState(engine.getCircuit());
