@@ -69,6 +69,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   tickRate = 0,
   tickCount = 0,
 }) => {
+  console.log("LOGICCANVAS LOADED 2026-01-10 (selector split fix)");
   trackRender('LogicCanvas');
   const uiTick = useUiTickStore((state) => state.uiTick);
   
