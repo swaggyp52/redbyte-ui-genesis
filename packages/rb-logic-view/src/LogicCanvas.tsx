@@ -72,50 +72,28 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   trackRender('LogicCanvas');
   const uiTick = useUiTickStore((state) => state.uiTick);
   
-  // Memoize selector to prevent infinite loop in Zustand's useSyncExternalStore
-  // (unstable function references cause re-subscription, triggering re-render)
-  const logicViewSelector = React.useCallback(
-    (state: LogicViewState) => ({
-      camera: state.camera,
-      setCamera: state.setCamera,
-      pan: state.pan,
-      zoom: state.zoom,
-      selection: state.selection,
-      selectNode: state.selectNode,
-      selectWire: state.selectWire,
-      clearSelection: state.clearSelection,
-      snapToGrid: state.snapToGrid,
-      toggleSnapToGrid: state.toggleSnapToGrid,
-      gridSize: state.gridSize,
-      editingState: state.editingState,
-      startWire: state.startWire,
-      endWire: state.endWire,
-      selectMultipleNodes: state.selectMultipleNodes,
-      toolMode: state.toolMode,
-      setToolMode: state.setToolMode,
-    }),
-    []
-  );
-
-  const {
-    camera,
-    setCamera,
-    pan,
-    zoom: zoomFn,
-    selection,
-    selectNode,
-    selectWire,
-    clearSelection,
-    snapToGrid: shouldSnap,
-    toggleSnapToGrid,
-    gridSize,
-    editingState,
-    startWire,
-    endWire,
-    selectMultipleNodes,
-    toolMode,
-    setToolMode,
-  } = useLogicViewStore(logicViewSelector);
+  // Split selectors into primitives to ensure stable snapshots
+  // (object literals are new each render, even if fields are the same)
+  const camera = useLogicViewStore((state) => state.camera);
+  const setCamera = useLogicViewStore((state) => state.setCamera);
+  const pan = useLogicViewStore((state) => state.pan);
+  const zoom = useLogicViewStore((state) => state.zoom);
+  const selection = useLogicViewStore((state) => state.selection);
+  const selectNode = useLogicViewStore((state) => state.selectNode);
+  const selectWire = useLogicViewStore((state) => state.selectWire);
+  const clearSelection = useLogicViewStore((state) => state.clearSelection);
+  const snapToGrid = useLogicViewStore((state) => state.snapToGrid);
+  const toggleSnapToGrid = useLogicViewStore((state) => state.toggleSnapToGrid);
+  const gridSize = useLogicViewStore((state) => state.gridSize);
+  const editingState = useLogicViewStore((state) => state.editingState);
+  const startWire = useLogicViewStore((state) => state.startWire);
+  const endWire = useLogicViewStore((state) => state.endWire);
+  const selectMultipleNodes = useLogicViewStore((state) => state.selectMultipleNodes);
+  const toolMode = useLogicViewStore((state) => state.toolMode);
+  const setToolMode = useLogicViewStore((state) => state.setToolMode);
+  
+  const zoomFn = zoom;
+  const shouldSnap = snapToGrid;
 
   // Use external circuit if provided, otherwise poll from engine
   const [internalCircuit, setInternalCircuit] = React.useState(engine.getCircuit());
