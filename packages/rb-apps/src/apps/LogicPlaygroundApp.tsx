@@ -3,7 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 // v1.0.1 - Multi-view enhancement with null safety
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { shallow } from 'zustand/shallow';
 import type { RedByteApp } from '../types';
 import {
