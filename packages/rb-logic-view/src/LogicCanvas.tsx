@@ -555,7 +555,31 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     setCamera({ x: 0, y: 0, zoom: 1 });
   }, [setCamera]);
 
-  // Keyboard handlers
+  // Refs for keyboard handler callbacks (stable references to avoid re-registering listeners)
+  const handleDeleteRef = React.useRef(handleDelete);
+  handleDeleteRef.current = handleDelete;
+  const clearSelectionRef = React.useRef(clearSelection);
+  clearSelectionRef.current = clearSelection;
+  const endWireRef = React.useRef(endWire);
+  endWireRef.current = endWire;
+  const setToolModeRef = React.useRef(setToolMode);
+  setToolModeRef.current = setToolMode;
+  const toggleSnapToGridRef = React.useRef(toggleSnapToGrid);
+  toggleSnapToGridRef.current = toggleSnapToGrid;
+  const fitToViewRef = React.useRef(fitToView);
+  fitToViewRef.current = fitToView;
+  const resetViewRef = React.useRef(resetView);
+  resetViewRef.current = resetView;
+  const setCameraRef = React.useRef(setCamera);
+  setCameraRef.current = setCamera;
+  const cameraRef = React.useRef(camera);
+  cameraRef.current = camera;
+  const toolModeRef = React.useRef(toolMode);
+  toolModeRef.current = toolMode;
+  const editingStateRef = React.useRef(editingState);
+  editingStateRef.current = editingState;
+
+  // Keyboard handlers - uses refs to avoid re-registering on every render
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't handle keyboard events if focus is in an input
@@ -572,45 +596,45 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         // Alt: Temporarily disable snap
         setIsAltPressed(true);
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
-        handleDelete();
+        handleDeleteRef.current();
       } else if (e.key === 'Escape') {
-        clearSelection();
-        if (editingState.wireStartPort) {
-          endWire();
+        clearSelectionRef.current();
+        if (editingStateRef.current.wireStartPort) {
+          endWireRef.current();
         }
       } else if (e.key === 'w' || e.key === 'W') {
         // W: Toggle wire mode
-        if (editingState.wireStartPort) {
+        if (editingStateRef.current.wireStartPort) {
           // Cancel active wire
-          endWire();
+          endWireRef.current();
         } else {
           // Toggle wire mode on/off
-          setToolMode(toolMode === 'wire' ? 'select' : 'wire');
+          setToolModeRef.current(toolModeRef.current === 'wire' ? 'select' : 'wire');
         }
       } else if (e.key === 'g' || e.key === 'G') {
         // G: Toggle snap to grid
-        toggleSnapToGrid();
+        toggleSnapToGridRef.current();
       } else if (e.key === 'f' || e.key === 'F') {
         if (e.ctrlKey || e.metaKey) {
           // Ctrl/Cmd+F: Fit to view
           e.preventDefault();
-          fitToView();
+          fitToViewRef.current();
         } else {
           // F: Fit to view
-          fitToView();
+          fitToViewRef.current();
         }
       } else if (e.key === 'r' && (e.ctrlKey || e.metaKey)) {
         // Ctrl/Cmd+R: Reset view
         e.preventDefault();
-        resetView();
+        resetViewRef.current();
       } else if (e.key === '0') {
         if (e.ctrlKey || e.metaKey) {
           // Ctrl/Cmd+0: Reset zoom to 100%
           e.preventDefault();
-          setCamera({ ...camera, zoom: 1 });
+          setCameraRef.current({ ...cameraRef.current, zoom: 1 });
         } else {
           // 0: Reset view
-          resetView();
+          resetViewRef.current();
         }
       }
     };
@@ -632,7 +656,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  });
+  }, []); // Empty deps - uses refs for all callbacks
 
   React.useEffect(() => {
     bumpHud();
