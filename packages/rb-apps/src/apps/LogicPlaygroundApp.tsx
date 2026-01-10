@@ -965,28 +965,44 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   // Use refs to track last synced values and prevent infinite loops
   const lastSyncedHierarchyRef = useRef<Circuit | null>(null);
   const lastSyncedCircuitRef = useRef<Circuit | null>(null);
+  const hierarchyCircuitRef = useRef<Circuit | null>(hierarchyCircuit);
+  const circuitRef = useRef<Circuit>(circuit);
+
+  // Keep refs in sync with state without triggering the main effect
+  useEffect(() => {
+    hierarchyCircuitRef.current = hierarchyCircuit;
+  }, [hierarchyCircuit]);
 
   useEffect(() => {
+    circuitRef.current = circuit;
+  }, [circuit]);
+
+  useEffect(() => {
+    // Only trigger on hierarchyStack changes, not on circuit/hierarchyCircuit changes
+    // Read current values from refs to avoid circular updates
+    const currentHierarchyCircuit = hierarchyCircuitRef.current;
+    const currentCircuit = circuitRef.current;
+    
     if (hierarchyStack.length > 0) {
       // We're inside a chip - use hierarchy circuit
       // Only sync if hierarchyCircuit actually changed (reference check)
-      if (hierarchyCircuit && hierarchyCircuit !== lastSyncedHierarchyRef.current) {
-        lastSyncedHierarchyRef.current = hierarchyCircuit;
+      if (currentHierarchyCircuit && currentHierarchyCircuit !== lastSyncedHierarchyRef.current) {
+        lastSyncedHierarchyRef.current = currentHierarchyCircuit;
         // Only update if circuit is actually different
-        if (circuit !== hierarchyCircuit) {
-          setCircuit(hierarchyCircuit);
-          engine.setCircuit(hierarchyCircuit);
+        if (currentCircuit !== currentHierarchyCircuit) {
+          setCircuit(currentHierarchyCircuit);
+          engine.setCircuit(currentHierarchyCircuit);
         }
       }
     } else {
       // We're at top level - sync hierarchy with main
       // Only sync if circuit reference changed and hierarchy needs updating
-      if (circuit !== lastSyncedCircuitRef.current && circuit !== hierarchyCircuit) {
-        lastSyncedCircuitRef.current = circuit;
-        setHierarchyCircuit(circuit);
+      if (currentCircuit !== lastSyncedCircuitRef.current && currentCircuit !== currentHierarchyCircuit) {
+        lastSyncedCircuitRef.current = currentCircuit;
+        setHierarchyCircuit(currentCircuit);
       }
     }
-  }, [hierarchyStack.length, hierarchyCircuit, circuit, engine]);
+  }, [hierarchyStack.length, engine]);
 
   // Load circuit from URL if present
   useEffect(() => {
