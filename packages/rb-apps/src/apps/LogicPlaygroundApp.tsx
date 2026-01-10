@@ -403,11 +403,13 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const tickEngineRef = useRef<TickEngine>(tickEngine);
 
   // Keep refs in sync with state
+  // NOTE: Do NOT include setCircuit, setEngine, setTickEngine in dependencies!
+  // These are state setters that change on every render, causing infinite loops.
   useEffect(() => {
     setCircuitRef.current = setCircuit;
     engineRef.current = engine;
     tickEngineRef.current = tickEngine;
-  }, [setCircuit, engine, tickEngine]);
+  }, [engine, tickEngine]);
 
   // Sync circuit store with engine instances
   useEffect(() => {
@@ -984,7 +986,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         setHierarchyCircuit(circuit);
       }
     }
-  }, [hierarchyStack.length, hierarchyCircuit, circuit, engine, setHierarchyCircuit]);
+  }, [hierarchyStack.length, hierarchyCircuit, circuit, engine]);
 
   // Load circuit from URL if present
   useEffect(() => {
@@ -1435,7 +1437,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       setTickCount(newTickEngine.getTickCount());
       setIsDirty(true);
     },
-    [setCircuit, setEngine, setTickEngine, setCurrentHz, setIsRunning, setTickCount, setIsDirty]
+    [record, appVersion, currentHz]
   );
 
   const handleRunReplayStart = useCallback(() => {
