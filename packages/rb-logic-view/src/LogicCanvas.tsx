@@ -115,7 +115,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     selectMultipleNodes,
     toolMode,
     setToolMode,
-  } = useLogicViewStore(logicViewSelector, shallow);
+  } = useLogicViewStore(logicViewSelector);
 
   // Use external circuit if provided, otherwise poll from engine
   const [internalCircuit, setInternalCircuit] = React.useState(engine.getCircuit());
