@@ -959,7 +959,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [circuit, currentFileId, showKeyboardHelp, showQuickAdd, setPerspective, isReplayMode]);
+  }, [showKeyboardHelp, showQuickAdd, setPerspective, isReplayMode]);
 
   // Sync hierarchy circuit with main circuit
   // Use refs to track last synced values and prevent infinite loops
