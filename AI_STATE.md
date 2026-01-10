@@ -5272,6 +5272,9 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+\### 2026-01-10 (Root Cause Identified)
+\- **ACTUAL ROOT CAUSE of React Error #185 found in LogicCanvas.tsx**: Zustand selector was inline arrow function recreated on every render, causing unstable function reference passed to useSyncExternalStore; React error: "The result of getSnapshot should be cached to avoid an infinite loop" (react-dom-client.development.js:8129); fix: wrapped selector in React.useCallback with empty deps to memoize function reference; this prevents re-subscription loop. Previous LogicPlaygroundApp fixes addressed secondary cascade symptoms but root cause was in LogicCanvas selector instability; all 705 tests pass; objectives unchanged; phase unchanged
+
 \### 2026-01-10
 \- Fixed React Error #185 "Maximum update depth exceeded" by eliminating state object dependencies in LogicPlaygroundApp.tsx effects; replaced 8 locations using `engine` or `tickEngine` state variables with ref-based access (engineRef.current, tickEngineRef.current); removed problematic state dependencies from 4 effect dependency arrays (registerStateAccessor, stepOnce wrapper, hierarchy sync, loadLearnExample); state objects cause effects to re-run on every render cycle, triggering rapid cascades of updates; all 705 tests pass; addresses production error that persisted across 3 previous fix attempts; objectives unchanged; phase unchanged
 
