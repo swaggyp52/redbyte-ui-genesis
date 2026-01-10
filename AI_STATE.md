@@ -5272,6 +5272,9 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+\### 2026-01-10
+\- Fixed React Error #185 "Maximum update depth exceeded" by eliminating state object dependencies in LogicPlaygroundApp.tsx effects; replaced 8 locations using `engine` or `tickEngine` state variables with ref-based access (engineRef.current, tickEngineRef.current); removed problematic state dependencies from 4 effect dependency arrays (registerStateAccessor, stepOnce wrapper, hierarchy sync, loadLearnExample); state objects cause effects to re-run on every render cycle, triggering rapid cascades of updates; all 705 tests pass; addresses production error that persisted across 3 previous fix attempts; objectives unchanged; phase unchanged
+
 \### 2026-01-09 (Final)
 \- Fixed React Error #185 infinite loops in LogicPlaygroundApp.tsx via three critical fixes: (1) removed state setters from effect/callback dependencies, (2) broke circular dependency in hierarchy sync effect using ref-based state tracking, (3) removed circuit/currentFileId from keyboard handler effect dependencies - handlers don't need specific values since they read state directly; all 705 tests pass; deployed to main; objectives unchanged; phase unchanged
 
