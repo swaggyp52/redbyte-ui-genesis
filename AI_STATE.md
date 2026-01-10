@@ -5272,8 +5272,8 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
-\### 2026-01-09
-\- Fixed React Error #185 infinite loops by removing state setter functions from effect/callback dependency arrays in LogicPlaygroundApp.tsx; identified 3 critical issues: setCircuit in ref sync effect, setHierarchyCircuit in hierarchy sync effect, and state setters in handleRunRecorderImportProofPack callback; all 705 tests pass with zero regressions; deployed to main via Cloudflare Pages auto-deploy; objectives unchanged; phase unchanged
+\### 2026-01-09 (Updated)
+\- Fixed React Error #185 infinite loops in LogicPlaygroundApp.tsx; identified circular dependency in hierarchy sync effect where both circuit and hierarchyCircuit in dependencies caused cascading updates; implemented fix using separate ref-sync effects to break the cycle; main sync effect now depends only on [hierarchyStack.length, engine]; validated with all 705 tests passing; deployed to main; objectives unchanged; phase unchanged
 
 \### 2026-01-08
 \- Added User Manual app with offline markdown rendering, demo links into Logic Playground, and OS entry points (Desktop icon, Command Palette/System Search command, top bar button); added NOT gate example and manual tests; objectives unchanged; phase unchanged
