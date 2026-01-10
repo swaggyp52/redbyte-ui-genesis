@@ -960,16 +960,27 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   }, [circuit, currentFileId, showKeyboardHelp, showQuickAdd, setPerspective, isReplayMode]);
 
   // Sync hierarchy circuit with main circuit
+  // Use refs to track last synced values and prevent infinite loops
+  const lastSyncedHierarchyRef = useRef<Circuit | null>(null);
+  const lastSyncedCircuitRef = useRef<Circuit | null>(null);
+
   useEffect(() => {
     if (hierarchyStack.length > 0) {
       // We're inside a chip - use hierarchy circuit
-      if (hierarchyCircuit && JSON.stringify(hierarchyCircuit) !== JSON.stringify(circuit)) {
-        setCircuit(hierarchyCircuit);
-        engine.setCircuit(hierarchyCircuit);
+      // Only sync if hierarchyCircuit actually changed (reference check)
+      if (hierarchyCircuit && hierarchyCircuit !== lastSyncedHierarchyRef.current) {
+        lastSyncedHierarchyRef.current = hierarchyCircuit;
+        // Only update if circuit is actually different
+        if (circuit !== hierarchyCircuit) {
+          setCircuit(hierarchyCircuit);
+          engine.setCircuit(hierarchyCircuit);
+        }
       }
     } else {
       // We're at top level - sync hierarchy with main
-      if (JSON.stringify(hierarchyCircuit) !== JSON.stringify(circuit)) {
+      // Only sync if circuit reference changed and hierarchy needs updating
+      if (circuit !== lastSyncedCircuitRef.current && circuit !== hierarchyCircuit) {
+        lastSyncedCircuitRef.current = circuit;
         setHierarchyCircuit(circuit);
       }
     }
