@@ -5272,6 +5272,9 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+\### 2026-01-10 (Root Cause + Proper Fix)
+\- **FINAL FIX**: Root cause was not memoization, but returning new object from selector. Even with useCallback-wrapped selector function, the returned object `{ camera, pan, ... }` is new each render, causing Zustand's internal useSyncExternalStore to see "changed snapshot" repeatedly. React error: "The result of getSnapshot should be cached to avoid an infinite loop". Solution: split object selector into 21 separate primitive selectors (each field gets its own useLogicViewStore call). Each primitive/object reference is stable in store, breaking the feedback loop. All 705 tests pass; objectives unchanged; phase unchanged
+
 \### 2026-01-10 (Root Cause Identified)
 \- **ACTUAL ROOT CAUSE of React Error #185 found in LogicCanvas.tsx**: Zustand selector was inline arrow function recreated on every render, causing unstable function reference passed to useSyncExternalStore; React error: "The result of getSnapshot should be cached to avoid an infinite loop" (react-dom-client.development.js:8129); fix: wrapped selector in React.useCallback with empty deps to memoize function reference; this prevents re-subscription loop. Previous LogicPlaygroundApp fixes addressed secondary cascade symptoms but root cause was in LogicCanvas selector instability; all 705 tests pass; objectives unchanged; phase unchanged
 
