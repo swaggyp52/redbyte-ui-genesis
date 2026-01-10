@@ -461,7 +461,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           if (shouldRestore) {
             const restored = deserialize(backup.circuit);
             setCircuit(restored);
-            engine.setCircuit(restored);
+            engineRef.current.setCircuit(restored);
             setIsDirty(true);
 
             // Milestone D: Record circuit loaded event
@@ -484,7 +484,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
     // Register a function that returns the current circuit
     registerStateAccessor(windowId, {
-      getCircuit: () => engine.getCircuit(),
+      getCircuit: () => engineRef.current.getCircuit(),
     });
 
     // Cleanup on unmount
@@ -493,7 +493,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         unregisterStateAccessor(windowId);
       }
     };
-  }, [windowId, registerStateAccessor, unregisterStateAccessor, engine]);
+  }, [windowId, registerStateAccessor, unregisterStateAccessor]);
 
   // Wrap TickEngine.stepOnce to record ticks and probe samples during recording/replay
   useEffect(() => {
@@ -503,9 +503,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       recorderMode === 'replaying';
     if (!shouldWrap) return;
 
-    const originalStepOnce = tickEngine.stepOnce.bind(tickEngine);
+    const engine = tickEngineRef.current;
+    const originalStepOnce = engine.stepOnce.bind(engine);
 
-    tickEngine.stepOnce = function(this: TickEngine) {
+    engine.stepOnce = function(this: TickEngine) {
       const prevTick = this.getTickCount();
       originalStepOnce();
       const newTick = this.getTickCount();
@@ -540,9 +541,9 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     };
 
     return () => {
-      tickEngine.stepOnce = originalStepOnce;
+      engine.stepOnce = originalStepOnce;
     };
-  }, [tickEngine, determinismRecorder, determinismRecorder?.isRecording, recorderMode]);
+  }, [determinismRecorder, determinismRecorder?.isRecording, recorderMode]);
 
   useEffect(() => {
     if (recorderMode !== 'replaying' || !replayRecord) {
@@ -991,7 +992,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         // Only update if circuit is actually different
         if (currentCircuit !== currentHierarchyCircuit) {
           setCircuit(currentHierarchyCircuit);
-          engine.setCircuit(currentHierarchyCircuit);
+          engineRef.current.setCircuit(currentHierarchyCircuit);
         }
       }
     } else {
@@ -1002,7 +1003,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         setHierarchyCircuit(currentCircuit);
       }
     }
-  }, [hierarchyStack.length, engine]);
+  }, [hierarchyStack.length]);
 
   // Load circuit from URL if present
   useEffect(() => {
@@ -1255,7 +1256,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       nodes: circuit.nodes.map((n) => (n.id === nodeId ? { ...n, ...updates } : n)),
     };
     setCircuit(updatedCircuit);
-    engine.setCircuit(updatedCircuit);
+    engineRef.current.setCircuit(updatedCircuit);
     setIsDirty(true);
   };
 
@@ -1278,7 +1279,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       ),
     };
     setCircuit(updatedCircuit);
-    engine.setCircuit(updatedCircuit);
+    engineRef.current.setCircuit(updatedCircuit);
     setIsDirty(true);
     addToast('Connection deleted', 'info');
   };
@@ -1295,10 +1296,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     // Load the example's initial circuit
     const newCircuit = example.initialCircuit || { nodes: [], connections: [] };
     setCircuit(newCircuit);
-    engine.setCircuit(newCircuit);
+    engineRef.current.setCircuit(newCircuit);
     setIsDirty(false);
     addToast(`Loaded: ${example.title}`, 'success');
-  }, [engine, addToast]);
+  }, [addToast]);
 
   const handleExitLearnMode = useCallback(() => {
     // Just a placeholder - user can manually clear or load a file
@@ -1700,7 +1701,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     };
 
     setCircuit(updatedCircuit);
-    engine.setCircuit(updatedCircuit);
+    engineRef.current.setCircuit(updatedCircuit);
     setIsDirty(true);
     addToast(`Added ${draggingNodeType}`, 'success');
 
