@@ -121,6 +121,11 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const lastSyncedSelection = React.useRef<Set<string>>(new Set());
   const lastCircuitNodeCount = React.useRef(0);
   const lastFocusRequestId = React.useRef<number>(-1);
+
+  // Stable refs for functions used in subscriptions (prevents infinite loops)
+  const selectMultipleNodesRef = React.useRef(selectMultipleNodes);
+  selectMultipleNodesRef.current = selectMultipleNodes;
+  const focusNodeRef = React.useRef<((nodeId: string) => void) | null>(null);
   const [highlightedNodeId, setHighlightedNodeId] = React.useState<string | null>(null);
   const [showHud, setShowHud] = React.useState(true);
   const hudTimerRef = React.useRef<number | null>(null);
@@ -262,7 +267,11 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     [camera.zoom, circuit.nodes, setCamera, width, height]
   );
 
+  // Keep focusNode ref updated
+  focusNodeRef.current = focusNode;
+
   // Subscribe to global selection changes from other views
+  // Uses refs for callbacks to prevent re-subscription on every render
   React.useEffect(() => {
     const globalStore = getGlobalViewStateStore();
     if (!globalStore) return;
@@ -281,7 +290,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         if (isDifferent) {
           lastSyncedSelection.current = new Set(globalNodeIds);
           // Pass syncToGlobal: false to prevent circular updates
-          selectMultipleNodes(Array.from(globalNodeIds), false);
+          selectMultipleNodesRef.current(Array.from(globalNodeIds), false);
         }
 
         const nextHighlight = state.highlightedNodeId ?? null;
@@ -292,15 +301,15 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           state.focusRequestId !== lastFocusRequestId.current
         ) {
           lastFocusRequestId.current = state.focusRequestId;
-          if (state.focusNodeId) {
-            focusNode(state.focusNodeId);
+          if (state.focusNodeId && focusNodeRef.current) {
+            focusNodeRef.current(state.focusNodeId);
           }
         }
       }
     );
 
     return unsubscribe;
-  }, [focusNode, selectMultipleNodes]);
+  }, []); // Empty deps - subscription is stable, uses refs for callbacks
 
   // Non-passive wheel event listener for zooming (React 19 compatibility)
   React.useEffect(() => {

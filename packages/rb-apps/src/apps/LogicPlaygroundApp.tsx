@@ -676,14 +676,18 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     );
   }, [recorderMode]);
 
+  // Use ref to track debugSignals for overlay updates without causing loops
+  const debugSignalsRef = useRef<Map<string, 0 | 1> | null>(null);
+  debugSignalsRef.current = debugSignals;
+
   useEffect(() => {
-    if (recorderMode === 'replaying' && debugSignals) {
+    if (recorderMode === 'replaying' && debugSignalsRef.current) {
       const tick = debugTick ?? playheadTick;
-      setDebugOverlay(buildDebugOverlayFromSignals(debugSignals, tick, currentHz));
+      setDebugOverlay(buildDebugOverlayFromSignals(debugSignalsRef.current, tick, currentHz));
       return;
     }
     setDebugOverlay(null);
-  }, [recorderMode, debugSignals, debugTick, playheadTick, currentHz, setDebugOverlay]);
+  }, [recorderMode, debugTick, playheadTick, currentHz, setDebugOverlay]);
 
   useEffect(() => {
     if (recorderMode !== 'replaying' || !replayRecord) return;
@@ -1489,10 +1493,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     [record, handleRunRecorderFocus, circuit]
   );
 
-  useEffect(() => {
+  // Memoize mismatch data to avoid recreating objects on every render
+  // Only recalculate when verification status actually changes
+  const verificationMismatchData = useMemo(() => {
     if (!record || verificationStatus.status !== 'fail' || !verificationStatus.mismatch) {
-      setMismatchPortKeys(null);
-      return;
+      return null;
     }
 
     const mismatchPorts = new Set<string>();
@@ -1513,10 +1518,30 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       highlightMap.set(wireId, ['#f97316']);
     });
 
-    setMismatchPortKeys(mismatchPorts);
-    setMismatchNodeIds(combinedNodes);
-    setMismatchWireHighlights(highlightMap);
-  }, [record, verificationStatus, circuit]);
+    return { mismatchPorts, combinedNodes, highlightMap };
+  }, [record, verificationStatus.status, verificationStatus.mismatch, circuit]);
+
+  // Track last set mismatch data to only update state when actually different
+  const lastMismatchDataRef = useRef<typeof verificationMismatchData>(null);
+
+  useEffect(() => {
+    // Only update state if the computed data actually changed
+    if (verificationMismatchData === lastMismatchDataRef.current) {
+      return;
+    }
+    lastMismatchDataRef.current = verificationMismatchData;
+
+    if (!verificationMismatchData) {
+      setMismatchPortKeys(null);
+      setMismatchNodeIds(null);
+      setMismatchWireHighlights(null);
+      return;
+    }
+
+    setMismatchPortKeys(verificationMismatchData.mismatchPorts);
+    setMismatchNodeIds(verificationMismatchData.combinedNodes);
+    setMismatchWireHighlights(verificationMismatchData.highlightMap);
+  }, [verificationMismatchData]);
 
   const handleInputToggled = useCallback(
     (nodeId: string, portName: string, newValue: 0 | 1) => {
