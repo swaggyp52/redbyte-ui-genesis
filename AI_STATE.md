@@ -5272,8 +5272,8 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
-\### 2026-01-09 (Updated)
-\- Fixed React Error #185 infinite loops in LogicPlaygroundApp.tsx; identified circular dependency in hierarchy sync effect where both circuit and hierarchyCircuit in dependencies caused cascading updates; implemented fix using separate ref-sync effects to break the cycle; main sync effect now depends only on [hierarchyStack.length, engine]; validated with all 705 tests passing; deployed to main; objectives unchanged; phase unchanged
+\### 2026-01-09 (Final)
+\- Fixed React Error #185 infinite loops in LogicPlaygroundApp.tsx via three critical fixes: (1) removed state setters from effect/callback dependencies, (2) broke circular dependency in hierarchy sync effect using ref-based state tracking, (3) removed circuit/currentFileId from keyboard handler effect dependencies - handlers don't need specific values since they read state directly; all 705 tests pass; deployed to main; objectives unchanged; phase unchanged
 
 \### 2026-01-08
 \- Added User Manual app with offline markdown rendering, demo links into Logic Playground, and OS entry points (Desktop icon, Command Palette/System Search command, top bar button); added NOT gate example and manual tests; objectives unchanged; phase unchanged
