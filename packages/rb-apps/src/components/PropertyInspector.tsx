@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useMemo } from 'react';
+import { shallow } from 'zustand/shallow';
 import { REPLAY_LOCK_MESSAGE } from '../utils/replayLock';
 import type { Circuit, Node, Connection, Signal } from '@redbyte/rb-logic-core';
 import { CircuitEngine } from '@redbyte/rb-logic-core';
@@ -26,7 +27,8 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
   onNodeUpdate,
   onConnectionDelete,
 }) => {
-  const selection = useLogicViewStore((s) => s.selection);
+  // Use shallow comparison to prevent re-renders when selection object reference changes but content is the same
+  const selection = useLogicViewStore((s) => s.selection, shallow);
   const addProbe = useProbeStore((s) => s.addProbe);
   const lockMessage = REPLAY_LOCK_MESSAGE;
 
