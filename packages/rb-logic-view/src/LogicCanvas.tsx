@@ -10,7 +10,7 @@ import { NodeView, type ChipMetadata } from './components/NodeView';
 import { WireView } from './components/WireView';
 import { Toolbar } from './components/Toolbar';
 import { renderGrid } from './tools/grid';
-import { snapToGrid, calculateFitToView } from './tools/panzoom';
+import { snapToGrid as snapPointToGrid, calculateFitToView } from './tools/panzoom';
 import { isValidConnection, normalizeConnection, isInputPort } from './tools/wireValidation';
 import { trackRender, useUiTickStore } from '@redbyte/rb-utils';
 
@@ -69,31 +69,16 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   tickRate = 0,
   tickCount = 0,
 }) => {
-  console.log("LOGICCANVAS LOADED 2026-01-12 (all object selectors use shallow equality)");
   trackRender('LogicCanvas');
   const uiTick = useUiTickStore((state) => state.uiTick);
-  
-  // Use shallow comparison for selectors that return objects to prevent re-renders on unchanged data
-  // This fixes React Error #185 by ensuring stable references when object contents haven't changed
-  const {
-    camera,
-    selection,
-    editingState,
-    snapToGrid,
-    toolMode,
-    gridSize,
-  } = useLogicViewStore(
-    (state) => ({
-      camera: state.camera,
-      selection: state.selection,
-      editingState: state.editingState,
-      snapToGrid: state.snapToGrid,
-      toolMode: state.toolMode,
-      gridSize: state.gridSize,
-    }),
-    shallow
-  );
-  
+
+  const camera = useLogicViewStore((state) => state.camera, shallow);
+  const selection = useLogicViewStore((state) => state.selection, shallow);
+  const editingState = useLogicViewStore((state) => state.editingState, shallow);
+  const snapToGridEnabled = useLogicViewStore((state) => state.snapToGrid);
+  const toolMode = useLogicViewStore((state) => state.toolMode);
+  const gridSize = useLogicViewStore((state) => state.gridSize);
+
   // Get action functions separately (these are stable)
   const setCamera = useLogicViewStore((state) => state.setCamera);
   const pan = useLogicViewStore((state) => state.pan);
@@ -108,7 +93,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const setToolMode = useLogicViewStore((state) => state.setToolMode);
   
   const zoomFn = zoom;
-  const shouldSnap = snapToGrid;
+  const shouldSnap = snapToGridEnabled;
 
   // Use external circuit if provided, otherwise poll from engine
   const [internalCircuit, setInternalCircuit] = React.useState(engine.getCircuit());
@@ -381,8 +366,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     if (isReplayMode) return;
     // Alt temporarily disables snap
     const snapEnabled = shouldSnap && !isAltPressed;
-    const newX = snapEnabled ? snapToGrid(x, gridSize) : x;
-    const newY = snapEnabled ? snapToGrid(y, gridSize) : y;
+    const newX = snapEnabled ? snapPointToGrid(x, gridSize) : x;
+    const newY = snapEnabled ? snapPointToGrid(y, gridSize) : y;
 
     // Calculate delta for the dragged node
     const draggedNode = circuit.nodes.find(n => n.id === nodeId);
@@ -407,8 +392,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           return {
             ...n,
             position: {
-              x: snapEnabled ? snapToGrid(n.position.x + dx, gridSize) : n.position.x + dx,
-              y: snapEnabled ? snapToGrid(n.position.y + dy, gridSize) : n.position.y + dy,
+              x: snapEnabled ? snapPointToGrid(n.position.x + dx, gridSize) : n.position.x + dx,
+              y: snapEnabled ? snapPointToGrid(n.position.y + dy, gridSize) : n.position.y + dy,
             },
           };
         }
