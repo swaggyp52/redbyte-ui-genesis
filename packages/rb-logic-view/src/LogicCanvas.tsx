@@ -69,28 +69,42 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   tickRate = 0,
   tickCount = 0,
 }) => {
-  console.log("LOGICCANVAS LOADED 2026-01-10 (selector split fix)");
+  console.log("LOGICCANVAS LOADED 2026-01-12 (selector with shallow equality)");
   trackRender('LogicCanvas');
   const uiTick = useUiTickStore((state) => state.uiTick);
   
-  // Split selectors into primitives to ensure stable snapshots
-  // (object literals are new each render, even if fields are the same)
-  const camera = useLogicViewStore((state) => state.camera);
+  // Use shallow comparison for selectors that return objects to prevent re-renders on unchanged data
+  // This fixes React Error #185 by ensuring stable references when object contents haven't changed
+  const {
+    camera,
+    selection,
+    editingState,
+    snapToGrid,
+    toolMode,
+    gridSize,
+  } = useLogicViewStore(
+    (state) => ({
+      camera: state.camera,
+      selection: state.selection,
+      editingState: state.editingState,
+      snapToGrid: state.snapToGrid,
+      toolMode: state.toolMode,
+      gridSize: state.gridSize,
+    }),
+    shallow
+  );
+  
+  // Get action functions separately (these are stable)
   const setCamera = useLogicViewStore((state) => state.setCamera);
   const pan = useLogicViewStore((state) => state.pan);
   const zoom = useLogicViewStore((state) => state.zoom);
-  const selection = useLogicViewStore((state) => state.selection);
   const selectNode = useLogicViewStore((state) => state.selectNode);
   const selectWire = useLogicViewStore((state) => state.selectWire);
   const clearSelection = useLogicViewStore((state) => state.clearSelection);
-  const snapToGrid = useLogicViewStore((state) => state.snapToGrid);
   const toggleSnapToGrid = useLogicViewStore((state) => state.toggleSnapToGrid);
-  const gridSize = useLogicViewStore((state) => state.gridSize);
-  const editingState = useLogicViewStore((state) => state.editingState);
   const startWire = useLogicViewStore((state) => state.startWire);
   const endWire = useLogicViewStore((state) => state.endWire);
   const selectMultipleNodes = useLogicViewStore((state) => state.selectMultipleNodes);
-  const toolMode = useLogicViewStore((state) => state.toolMode);
   const setToolMode = useLogicViewStore((state) => state.setToolMode);
   
   const zoomFn = zoom;
