@@ -125,6 +125,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   unregisterStateAccessor,
   determinismRecorder,
 }) => {
+  console.log('[LogicPlayground] Component rendering', { windowId });
+
   const debugFlags = React.useMemo(() => {
     if (!import.meta.env.DEV) return new Set<string>();
     const raw = localStorage.getItem('rb-debug-playground') || '';
@@ -3172,6 +3174,9 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   );
 };
 
+// Explicitly export component for better HMR
+export { LogicPlaygroundComponent };
+
 export const LogicPlaygroundApp: RedByteApp = {
   manifest: {
     id: 'logic-playground',
@@ -3183,3 +3188,9 @@ export const LogicPlaygroundApp: RedByteApp = {
   },
   component: LogicPlaygroundComponent,
 };
+
+console.log('[LogicPlayground] App exported', {
+  hasComponent: !!LogicPlaygroundApp.component,
+  componentType: typeof LogicPlaygroundApp.component,
+});
+

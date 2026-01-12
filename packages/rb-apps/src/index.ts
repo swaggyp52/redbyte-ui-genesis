@@ -38,6 +38,11 @@ import { UserManualApp } from './apps/UserManualApp';
 registerApp(TerminalApp);
 registerApp(SettingsApp);
 registerApp(FilesApp);
+console.log('[AppRegistry] Registering LogicPlaygroundApp', {
+  hasApp: !!LogicPlaygroundApp,
+  hasComponent: !!LogicPlaygroundApp?.component,
+  componentType: typeof LogicPlaygroundApp?.component,
+});
 registerApp(LogicPlaygroundApp);
 registerApp(AppStoreApp);
 registerApp(WelcomeApp);
