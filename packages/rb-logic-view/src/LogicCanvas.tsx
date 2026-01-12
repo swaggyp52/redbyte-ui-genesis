@@ -69,7 +69,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   tickRate = 0,
   tickCount = 0,
 }) => {
-  console.log("LOGICCANVAS LOADED 2026-01-12 (selector with shallow equality)");
+  console.log("LOGICCANVAS LOADED 2026-01-12 (all object selectors use shallow equality)");
   trackRender('LogicCanvas');
   const uiTick = useUiTickStore((state) => state.uiTick);
   

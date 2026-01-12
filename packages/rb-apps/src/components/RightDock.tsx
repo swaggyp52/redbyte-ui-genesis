@@ -134,7 +134,8 @@ export const RightDock: React.FC<RightDockProps> = ({
   trackRender('RightDock');
   const [activeTab, setActiveTab] = useState<RightDockTab>(initialTab);
   const [dockState, setDockState] = useState<RightDockState>(initialState);
-  const selection = useLogicViewStore((state) => state.selection);
+  // Use shallow comparison to prevent re-renders when selection object reference changes but content is the same
+  const selection = useLogicViewStore((state) => state.selection, shallow);
   const {
     probes,
     activeProbeId,
