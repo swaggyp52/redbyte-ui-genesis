@@ -6,6 +6,7 @@ import React from 'react';
 import { shallow } from 'zustand/shallow';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { calculateFitToView, useLogicViewStore } from '@redbyte/rb-logic-view';
+import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 
 interface CircuitToolStripProps {
   circuit: Circuit;
@@ -26,6 +27,16 @@ export const CircuitToolStrip: React.FC<CircuitToolStripProps> = ({
   onUndo,
   onRedo,
 }) => {
+  if (
+    import.meta.env.DEV &&
+    typeof window !== 'undefined' &&
+    (localStorage.getItem('rb-debug-playground') || '').includes('disable-toolstrip')
+  ) {
+    return null;
+  }
+
+  useRenderStormDetector('CircuitToolStrip');
+
   // Use shallow comparison to only re-render when the selected state actually changes
   const {
     toolMode,

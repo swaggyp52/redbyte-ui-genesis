@@ -52,6 +52,7 @@ interface SplitViewLayoutProps {
   highlightedPort?: { nodeId: string; portName: string } | null;
   isReplayMode?: boolean;
   onHelpOpen?: (section: HelpSectionId) => void;
+  disableToolStrip?: boolean;
 }
 
 interface ViewRendererProps {
@@ -138,6 +139,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   highlightedPort,
   isReplayMode,
   onHelpOpen,
+  disableToolStrip = false,
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = React.useState({ width: 800, height: 600 });
@@ -287,7 +289,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               debugSignals={debugSignals}
               debugTick={debugTick}
             />
-            {onUndo && onRedo && (
+            {onUndo && onRedo && !disableToolStrip && (
               <CircuitToolStrip
                 circuit={circuit}
                 width={dimensions.width}

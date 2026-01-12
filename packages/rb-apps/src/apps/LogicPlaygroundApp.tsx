@@ -72,6 +72,7 @@ import { TopCommandBar } from '../components/TopCommandBar';
 import { RightDock, type RightDockTab } from '../components/RightDock';
 import { EnhancedPalette } from '../components/EnhancedPalette';
 import { HelpDock } from '../components/HelpDock';
+import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 
 // Primitive node types (built-in gates) organized by category
 const PRIMITIVE_NODES = {
@@ -124,6 +125,31 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   unregisterStateAccessor,
   determinismRecorder,
 }) => {
+  const debugFlags = React.useMemo(() => {
+    if (!import.meta.env.DEV) return new Set<string>();
+    const raw = localStorage.getItem('rb-debug-playground') || '';
+    return new Set(
+      raw
+        .split(',')
+        .map((f) => f.trim())
+        .filter(Boolean)
+    );
+  }, []);
+  const disableToolStrip = debugFlags.has('disable-toolstrip');
+  const disableRightDock = debugFlags.has('disable-rightdock');
+  const disablePlaygroundView = debugFlags.has('disable-playground-view');
+  const disableSplitView = debugFlags.has('disable-splitview');
+
+  useRenderStormDetector('LogicPlaygroundApp');
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.info('[playground-debug] flags', Array.from(debugFlags));
+  }
+
+  if (disablePlaygroundView) {
+    return <div data-testid="playground-debug-disabled">Playground view disabled by debug flag.</div>;
+  }
+
   const tickRate = useSettingsStore((state) => state.tickRate);
   const addToast = useCallback(
     (message: string, kind: ToastKind = 'info', duration?: number) => {
@@ -2620,47 +2646,54 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             </div>
           )}
 
-          <SplitViewLayout
-            mode={splitScreenMode}
-            views={activeViews}
-            splitRatio={splitRatio}
-            engine={engine}
-            tickEngine={tickEngine}
-            circuit={circuit}
-            isRunning={isRunning}
-            tickCount={tickCount}
-            debugSignals={debugSignals}
-            debugTick={debugTick}
-            mismatchWireHighlights={mismatchWireHighlights}
-            mismatchNodeIds={mismatchNodeIds}
-            mismatchPortKeys={mismatchPortKeys}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            onUndo={handleUndo}
-            onRedo={handleRedo}
-            getChipMetadata={getChipMetadataForNode}
-            onNodeDoubleClick={handleEnterChip}
-            showCircuitHints={false}
-            onDismissCircuitHints={() => setShowCircuitHints(false)}
-            showSchematicHints={false}
-            onDismissSchematicHints={() => setShowSchematicHints(false)}
-            show3DHints={false}
-            onDismiss3DHints={() => setShow3DHints(false)}
-            showOscilloscopeHints={false}
-            onDismissOscilloscopeHints={() => setShowOscilloscopeHints(false)}
-            onInputToggled={handleInputToggled}
-            onCircuitChange={handleCircuitChange}
-            viewStateStore={useViewStateStore}
-            onProbeToggle={handleProbeToggle}
-            probedPorts={probedPorts}
-            probeWireHighlights={probeWireHighlights}
-            highlightedPort={highlightedPort}
-            isReplayMode={isReplayMode}
-            onHelpOpen={(section) => {
-              setHelpDockSection(section);
-              setShowHelpDock(true);
-            }}
-          />
+          {disableSplitView ? (
+            <div className="flex h-full items-center justify-center text-sm text-gray-300">
+              Split view disabled by debug flag.
+            </div>
+          ) : (
+            <SplitViewLayout
+              mode={splitScreenMode}
+              views={activeViews}
+              splitRatio={splitRatio}
+              engine={engine}
+              tickEngine={tickEngine}
+              circuit={circuit}
+              isRunning={isRunning}
+              tickCount={tickCount}
+              debugSignals={debugSignals}
+              debugTick={debugTick}
+              mismatchWireHighlights={mismatchWireHighlights}
+              mismatchNodeIds={mismatchNodeIds}
+              mismatchPortKeys={mismatchPortKeys}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              getChipMetadata={getChipMetadataForNode}
+              onNodeDoubleClick={handleEnterChip}
+              showCircuitHints={false}
+              onDismissCircuitHints={() => setShowCircuitHints(false)}
+              showSchematicHints={false}
+              onDismissSchematicHints={() => setShowSchematicHints(false)}
+              show3DHints={false}
+              onDismiss3DHints={() => setShow3DHints(false)}
+              showOscilloscopeHints={false}
+              onDismissOscilloscopeHints={() => setShowOscilloscopeHints(false)}
+              onInputToggled={handleInputToggled}
+              onCircuitChange={handleCircuitChange}
+              viewStateStore={useViewStateStore}
+              onProbeToggle={handleProbeToggle}
+              probedPorts={probedPorts}
+              probeWireHighlights={probeWireHighlights}
+              highlightedPort={highlightedPort}
+              isReplayMode={isReplayMode}
+              onHelpOpen={(section) => {
+                setHelpDockSection(section);
+                setShowHelpDock(true);
+              }}
+              disableToolStrip={disableToolStrip}
+            />
+          )}
           {isReplayMode && (
             <div className="absolute inset-0 z-30 pointer-events-none">
               <div className="absolute top-3 right-3 bg-gray-900/80 border border-gray-700 rounded px-2 py-2 text-[10px] text-cyan-300 font-mono pointer-events-auto">
@@ -2754,7 +2787,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
               }
             }}
           />
-        ) : (
+        ) : !disableRightDock ? (
           <RightDock
             circuit={circuit}
             engine={engine}
@@ -2803,7 +2836,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             onStateChange={setRightDockState}
             onTabChange={setRightDockTab}
           />
-        )}
+        ) : null}
       </div>
 
       {/* Loading Overlay */}
