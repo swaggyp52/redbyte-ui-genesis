@@ -3,247 +3,223 @@
 [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
 [LOG] [LogicPlayground] App exported {hasComponent: true, componentType: function}
 [LOG] [AppRegistry] Registering LogicPlaygroundApp {hasApp: true, hasComponent: true, componentType: function}
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
 [LOG] [LogicPlayground] Readiness signal dispatched
 [LOG] [LogicPlayground] Readiness signal dispatched
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
 [WARNING] [render-storm] LogicPlaygroundApp {renders: 62, stack: Error
     at http://localhost:5173/@fs/C:/Users/co….vite/deps/chunk-Z4UYQWUI.js?v=02278664:11201:13)}
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
-[INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
-[INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
-[INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
-[INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
-[INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
-[INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
-[INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
-[INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
-[INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
-[INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
-[INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
-[INFO] [playground-debug] flags []
-[LOG] [LogicPlayground] Component rendering {windowId: 9ed1805b-27e2-474f-a75f-36ab66c40eef}
+[LOG] [LogicPlayground] Component rendering {windowId: 1023941a-ef85-4da9-ae21-2cd02964e080}
 [INFO] [playground-debug] flags []
