@@ -170,9 +170,6 @@ const assertNoReact185 = (errors: string[]) => {
 // ============ MATRIX TESTS ============
 
 test.describe('VIEW/WINDOW MATRIX: React #185 Eradication Suite', () => {
-  // Enable trace capture for debugging
-  test.use({ trace: 'on-first-retry' });
-
   test('[M1] Load CE mode without crashes', async ({ page }, testInfo) => {
     const { logs, errors, react185Signatures } = setupLogging(page);
 
@@ -470,5 +467,139 @@ test.describe('CE MODE: Persistence & Recovery', () => {
     saveArtifacts(testInfo, logs, errors, metrics);
 
     expect(errors).toHaveLength(0);
+  });
+});
+
+// ============ ISSUE REPRO TESTS (CE SHIPPING BLOCKERS) ============
+
+test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
+  test('[ISSUE-A] Quad View perspective without React #185', async ({ page }, testInfo) => {
+    const { logs, errors, react185Signatures } = setupLogging(page);
+
+    await page.goto(CE_MODE_URL, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1500);
+
+    await createMinimalCircuit(page);
+    await startSimulation(page);
+
+    // Switch to Quad perspective (multi-view layout)
+    await switchPerspective(page, 'quad', 1000);
+
+    // Give it time to stabilize
+    await page.waitForTimeout(2000);
+
+    const metrics = await getDebugMetrics(page);
+    saveArtifacts(testInfo, logs, errors, metrics);
+
+    // Assert no React #185
+    assertNoReact185(errors);
+    expect(errors).toHaveLength(0);
+  });
+
+  test('[ISSUE-B] RightDock controls are clickable', async ({ page }, testInfo) => {
+    const { logs, errors } = setupLogging(page);
+
+    await page.goto(CE_MODE_URL, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1500);
+
+    await createMinimalCircuit(page);
+    await page.waitForTimeout(500); // Let RightDock render
+
+    // Try to click RightDock tab buttons (these are reported as hard to click)
+    // Try multiple selectors since CE mode might differ
+    let tabButtons = page.locator('button[title="Inspector"], button[title="Health"], button[title="Probes"], button[title="Record"], button[title="Chips"]');
+    let tabCount = await tabButtons.count();
+    
+    if (tabCount === 0) {
+      // Try alternative: look for the buttons by text content
+      tabButtons = page.locator('button:has-text("Inspector"), button:has-text("Health"), button:has-text("Probes"), button:has-text("Record"), button:has-text("Chips")');
+      tabCount = await tabButtons.count();
+    }
+    
+    console.log(`[TEST] Found ${tabCount} tab buttons`);
+
+    let clickSucceeded = 0;
+    let clickFailed = 0;
+
+    for (let i = 0; i < Math.min(tabCount, 6); i++) {
+      try {
+        const btn = tabButtons.nth(i);
+        const title = await btn.getAttribute('title').catch(() => 'N/A');
+        const text = await btn.innerText().catch(() => '');
+        console.log(`[TEST] Attempting to click button ${i}: title="${title}", text="${text}"`);
+        
+        // Try to click WITHOUT force flag (natural clickability test)
+        await btn.click({ timeout: 3000 });
+        clickSucceeded++;
+        console.log(`[TEST] Successfully clicked button ${i}`);
+        await page.waitForTimeout(300);
+      } catch (e) {
+        clickFailed++;
+        const title = await tabButtons.nth(i).getAttribute('title').catch(() => '');
+        const text = await tabButtons.nth(i).innerText().catch(() => '');
+        const errorMsg = `Tab ${i} (title="${title}", text="${text}") click failed: ${e.message || e}`;
+        console.log(`[TEST ERROR] ${errorMsg}`);
+        errors.push(errorMsg);
+      }
+    }
+
+    console.log(`[TEST] Click results: ${clickSucceeded} succeeded, ${clickFailed} failed out of ${tabCount} total`);
+
+    const metrics = await getDebugMetrics(page);
+    saveArtifacts(testInfo, logs, errors, metrics);
+
+    // Assert at least half the tabs are clickable naturally
+    expect(clickSucceeded).toBeGreaterThan(0);
+    expect(clickFailed).toBeLessThanOrEqual(tabCount / 2);
+  });
+
+  test('[ISSUE-C] CPU example loads without stack overflow', async ({ page }, testInfo) => {
+    const { logs, errors, react185Signatures } = setupLogging(page);
+
+    // Add specific listener for "Maximum call stack" errors
+    const stackOverflowErrors: string[] = [];
+    page.on('pageerror', (e: any) => {
+      const msg = String(e);
+      if (msg.includes('Maximum call stack') || msg.includes('stack overflow')) {
+        stackOverflowErrors.push(msg);
+      }
+    });
+
+    await page.goto(CE_MODE_URL, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1500);
+
+    // Try to load CPU example via example selector or query param
+    // First check if there's an Examples button
+    const examplesBtn = page.locator('button:has-text("Examples"), [data-testid*="examples"]');
+    if (await examplesBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await examplesBtn.click();
+      await page.waitForTimeout(1000);
+
+      // Look for CPU example in gallery
+      const cpuExample = page.locator('button:has-text("CPU"), button:has-text("cpu")').first();
+      if (await cpuExample.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await cpuExample.click();
+        await page.waitForTimeout(2000);
+      }
+    } else {
+      // Fallback: Try direct example load via dropdown or URL param
+      // Check for example dropdown in TopCommandBar
+      const exampleDropdown = page.locator('select[data-testid*="example"]');
+      if (await exampleDropdown.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await exampleDropdown.selectOption({ label: /CPU|cpu/i }).catch(() => {});
+        await page.waitForTimeout(2000);
+      }
+    }
+
+    const metrics = await getDebugMetrics(page);
+    saveArtifacts(testInfo, logs, errors, metrics);
+
+    // Assert no stack overflow
+    expect(stackOverflowErrors).toHaveLength(0);
+    expect(errors.filter(e => e.includes('Maximum call stack'))).toHaveLength(0);
+
+    // Page should still be responsive (no fatal crash)
+    const bodyVisible = await page.locator('body').isVisible();
+    expect(bodyVisible).toBe(true);
   });
 });
