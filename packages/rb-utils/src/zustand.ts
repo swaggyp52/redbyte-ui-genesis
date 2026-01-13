@@ -13,10 +13,6 @@ type ReadonlyStoreApi<T> = Pick<StoreApi<T>, 'getState' | 'getInitialState' | 's
 const identity = <T,>(arg: T) => arg;
 const refEquality = <T,>(a: T, b: T) => a === b;
 
-// DEV-only unstable snapshot detector
-let unstableSnapshotCount = 0;
-const MAX_UNSTABLE_LOGS = 3;
-
 export function useStore<S extends ReadonlyStoreApi<unknown>>(api: S): ExtractState<S>;
 export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
   api: S,
@@ -34,8 +30,7 @@ export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
   const cacheRef = React.useRef<{
     lastState: ExtractState<S> | undefined;
     lastSnapshot: U | undefined;
-    callCount: number;
-  }>({ lastState: undefined, lastSnapshot: undefined, callCount: 0 });
+  }>({ lastState: undefined, lastSnapshot: undefined });
 
   // Update refs on every render to capture latest closures
   selectorRef.current = selector;
@@ -45,55 +40,33 @@ export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
   const getSnapshot = React.useCallback((): U => {
     const state = api.getState();
     const cache = cacheRef.current;
-    cache.callCount++;
     
-    // Compute snapshot
-    const snapshot = selectorRef.current(state);
+    // Compute the new snapshot
+    const newSnapshot = selectorRef.current(state);
     
-    // First call or state changed
-    if (cache.lastState !== state) {
+    // Initialize on first call
+    if (cache.lastState === undefined && cache.lastSnapshot === undefined) {
       cache.lastState = state;
-      
-      // Check if equality function would consider these equal
-      if (cache.lastSnapshot !== undefined && equalityRef.current(snapshot, cache.lastSnapshot)) {
-        // Contents are equal, return cached reference
-        if (import.meta.env.DEV && snapshot !== cache.lastSnapshot) {
-          if (unstableSnapshotCount < MAX_UNSTABLE_LOGS) {
-            unstableSnapshotCount++;
-            console.warn('[SNAPSHOT EQUALITY SAVED] Using equality fn to prevent re-render', {
-              selectorHint: selectorRef.current.toString().slice(0, 100),
-            });
-          }
-        }
-        return cache.lastSnapshot;
-      }
-      
-      cache.lastSnapshot = snapshot;
-      return snapshot;
+      cache.lastSnapshot = newSnapshot;
+      return newSnapshot;
     }
     
-    // State hasn't changed - but getSnapshot was called again
-    // This is the critical check: if we return a different reference, React will think state changed
-    if (snapshot !== cache.lastSnapshot) {
-      if (import.meta.env.DEV && unstableSnapshotCount < MAX_UNSTABLE_LOGS) {
-        unstableSnapshotCount++;
-        console.error('[UNSTABLE SNAPSHOT - SAME STATE, DIFFERENT SNAPSHOT]', {
-          callCount: cache.callCount,
-          selectorHint: selectorRef.current.toString().slice(0, 100),
-          equalityCheckResult: equalityRef.current(snapshot, cache.lastSnapshot),
-          hasEqualityFn: equalityRef.current !== refEquality,
-        });
-        console.trace('Unstable snapshot occurred here');
-      }
-      // This is the bug: we're about to return a different snapshot
-      // Try to apply equality one more time
-      if (cache.lastSnapshot !== undefined && equalityRef.current(snapshot, cache.lastSnapshot)) {
-        return cache.lastSnapshot;
-      }
-      cache.lastSnapshot = snapshot;
+    // If state hasn't changed, MUST return the cached snapshot reference
+    if (state === cache.lastState) {
+      return cache.lastSnapshot;
     }
     
-    return cache.lastSnapshot as U;
+    // State changed - compute new snapshot and check equality
+    cache.lastState = state;
+    
+    // If new snapshot is equal to previous (by equality fn), return cached ref
+    if (cache.lastSnapshot !== undefined && equalityRef.current(newSnapshot, cache.lastSnapshot)) {
+      return cache.lastSnapshot;
+    }
+    
+    // Snapshot is different - update cache and return
+    cache.lastSnapshot = newSnapshot;
+    return newSnapshot;
   }, [api]);
 
   const getServerSnapshot = React.useCallback((): U => {
