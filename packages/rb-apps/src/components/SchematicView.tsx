@@ -367,14 +367,10 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
 
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Get global selection state
-  const { selectedNodeIds, selectNodes } = useViewStateStore(
-    (state) => ({
-      selectedNodeIds: state.selectedNodeIds,
-      selectNodes: state.selectNodes,
-    }),
-    shallow
-  );
+  // Get global selection state (per-field selectors to avoid unstable object refs)
+  // selector-ok: per-field selectors, stable refs, no object literals
+  const selectedNodeIds = useViewStateStore((state) => state.selectedNodeIds);
+  const selectNodes = useViewStateStore((state) => state.selectNodes);
 
   // Update signals on UI ticks
   React.useEffect(() => {
