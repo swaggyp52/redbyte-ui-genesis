@@ -178,6 +178,52 @@ export const RightDock: React.FC<RightDockProps> = ({
     }
   }, [portOptions, selectedPortName]);
 
+  // PHASE 1.5: DEV-only fault injection for ISSUE-C validation (pointer events)
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+
+    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+    const faultType = params.get('fault');
+
+    if (faultType === 'pointer-block') {
+      // Block pointer events on tab buttons to make them un-clickable
+      console.warn('[FAULT INJECTION] ISSUE-C: pointer-block - expect tab clicks to fail');
+
+      const style = document.createElement('style');
+      style.textContent = `
+        [data-testid^="rightdock-tab-"] {
+          pointer-events: none !important;
+        }
+      `;
+      document.head.appendChild(style);
+
+      return () => {
+        document.head.removeChild(style);
+      };
+    }
+
+    if (faultType === 'hitbox-small') {
+      // Make hit box for tab text too small (only icon clickable)
+      console.warn('[FAULT INJECTION] ISSUE-C: hitbox-small - expect tab text clicks to fail');
+
+      const style = document.createElement('style');
+      style.textContent = `
+        [data-testid^="rightdock-tab-"] span {
+          width: 8px;
+          height: 8px;
+          display: block;
+          overflow: hidden;
+        }
+      `;
+      document.head.appendChild(style);
+
+      return () => {
+        document.head.removeChild(style);
+      };
+    }
+  }, []);
+
+
   useEffect(() => {
     const firstSelected = Array.from(selection.nodes)[0];
     if (!firstSelected) return;

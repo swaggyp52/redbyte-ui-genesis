@@ -22,7 +22,7 @@ import {
 import { LogicCanvas } from '@redbyte/rb-logic-view';
 import { ViewAdapter } from '@redbyte/rb-logic-adapter';
 import { Logic3DScene } from '@redbyte/rb-logic-3d';
-import { useSettingsStore, useUiTickStore } from '@redbyte/rb-utils';
+import { useSettingsStore, useUiTickStore, enableWatchdog } from '@redbyte/rb-utils';
 import { toast } from '@redbyte/rb-primitives';
 import type { ToastKind } from '@redbyte/rb-primitives';
 import { useWindowStore } from '@redbyte/rb-windowing';
@@ -465,6 +465,9 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       
       // Dispatch window event for test automation
       window.dispatchEvent(new Event('rb:logic-playground-ready'));
+      
+      // Enable runaway loop watchdog for crash detection
+      enableWatchdog();
       
       if (import.meta.env.DEV) {
         console.log('[LogicPlayground] Readiness signal dispatched');
@@ -1808,6 +1811,33 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       isHydratingRef.current = true;
       const exampleData = await loadExample(exampleId);
       const loadedCircuit = deserialize(exampleData);
+      
+      // PHASE 1.5: DEV-only fault injection for ISSUE-B validation (stack overflow)
+      if (import.meta.env.DEV) {
+        const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+        if (params.get('fault') === 'deep-recursion') {
+          // Intentional deep recursion to trigger "Maximum call stack size exceeded"
+          console.warn('[FAULT INJECTION] ISSUE-B: deep-recursion - expect stack overflow');
+          
+          // Recursive function that will exceed stack depth
+          const deepRecurse = (depth: number): any => {
+            if (depth > 5000) {
+              // If we somehow reach this, return empty node
+              return {};
+            }
+            // Each call gets deeper, guaranteeing stack overflow
+            return deepRecurse(depth + 1);
+          };
+          
+          try {
+            deepRecurse(0); // This will throw before reaching 5000
+          } catch (e) {
+            console.error(`RB_RUNAWAY_LOOP_DETECTED: DEEP_RECURSION ${String(e)}`);
+            throw e;
+          }
+        }
+      }
+      
       setCircuit(loadedCircuit);
       const newEngine = new CircuitEngine(loadedCircuit);
       setEngine(newEngine);

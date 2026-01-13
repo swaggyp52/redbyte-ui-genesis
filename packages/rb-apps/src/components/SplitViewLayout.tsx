@@ -445,6 +445,24 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
     );
   }
 
+  // PHASE 1.5: DEV-only fault injection for ISSUE-A validation
+  // When ?fault=selector-object is added, use unstable Zustand selector to trigger React #185
+  if (import.meta.env.DEV) {
+    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+    if (params.get('fault') === 'selector-object') {
+      // This violates Zustand's selector contract: returns new object every render
+      // Expected to trigger React #185 "Maximum update depth exceeded"
+      const _unstableValue = useLogicViewStore((state) => ({
+        toolMode: state.toolMode,
+        timestamp: Date.now(), // NEW object every render = infinite loop
+      }));
+      
+      if (import.meta.env.DEV) {
+        console.warn('[FAULT INJECTION] ISSUE-A: unstable selector - expect React #185');
+      }
+    }
+  }
+
   // Single view mode
   if (mode === 'single') {
     return (
