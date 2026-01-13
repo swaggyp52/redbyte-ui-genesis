@@ -3,21 +3,22 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   resolve: {
-    alias: {
-      '@redbyte/rb-apps': path.resolve(__dirname, 'packages/rb-apps/src'),
-      '@redbyte/rb-windowing': path.resolve(__dirname, 'packages/rb-windowing/src'),
-      '@redbyte/rb-shell': path.resolve(__dirname, 'packages/rb-shell/src'),
-      '@redbyte/rb-theme': path.resolve(__dirname, 'packages/rb-theme/src'),
-      '@redbyte/rb-tokens': path.resolve(__dirname, 'packages/rb-tokens/src'),
-      '@redbyte/rb-icons': path.resolve(__dirname, 'packages/rb-icons/src'),
-      '@redbyte/rb-utils': path.resolve(__dirname, 'packages/rb-utils/src'),
-      '@redbyte/rb-primitives': path.resolve(__dirname, 'packages/rb-primitives/src'),
-      '@redbyte/rb-logic-3d': path.resolve(__dirname, 'packages/rb-logic-3d/src'),
-      '@redbyte/rb-logic-adapter': path.resolve(__dirname, 'packages/rb-logic-adapter/src'),
-      '@redbyte/rb-logic-core': path.resolve(__dirname, 'packages/rb-logic-core/src'),
-      '@redbyte/rb-logic-view': path.resolve(__dirname, 'packages/rb-logic-view/src'),
-      '@redbyte/rb-playground': path.resolve(__dirname, 'packages/rb-playground/src'),
-    },
+    alias: [
+      { find: /^zustand$/, replacement: path.resolve(__dirname, 'packages/rb-utils/src/zustand.ts') },
+      { find: '@redbyte/rb-apps', replacement: path.resolve(__dirname, 'packages/rb-apps/src') },
+      { find: '@redbyte/rb-windowing', replacement: path.resolve(__dirname, 'packages/rb-windowing/src') },
+      { find: '@redbyte/rb-shell', replacement: path.resolve(__dirname, 'packages/rb-shell/src') },
+      { find: '@redbyte/rb-theme', replacement: path.resolve(__dirname, 'packages/rb-theme/src') },
+      { find: '@redbyte/rb-tokens', replacement: path.resolve(__dirname, 'packages/rb-tokens/src') },
+      { find: '@redbyte/rb-icons', replacement: path.resolve(__dirname, 'packages/rb-icons/src') },
+      { find: '@redbyte/rb-utils', replacement: path.resolve(__dirname, 'packages/rb-utils/src') },
+      { find: '@redbyte/rb-primitives', replacement: path.resolve(__dirname, 'packages/rb-primitives/src') },
+      { find: '@redbyte/rb-logic-3d', replacement: path.resolve(__dirname, 'packages/rb-logic-3d/src') },
+      { find: '@redbyte/rb-logic-adapter', replacement: path.resolve(__dirname, 'packages/rb-logic-adapter/src') },
+      { find: '@redbyte/rb-logic-core', replacement: path.resolve(__dirname, 'packages/rb-logic-core/src') },
+      { find: '@redbyte/rb-logic-view', replacement: path.resolve(__dirname, 'packages/rb-logic-view/src') },
+      { find: '@redbyte/rb-playground', replacement: path.resolve(__dirname, 'packages/rb-playground/src') }
+    ],
   },
   test: {
     environment: 'jsdom',

@@ -5,12 +5,13 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
-      '@redbyte/rb-apps': path.resolve(__dirname, 'packages/rb-apps/src'),
-      '@redbyte/rb-windowing': path.resolve(__dirname, 'packages/rb-windowing/src'),
-      '@redbyte/rb-shell': path.resolve(__dirname, 'packages/rb-shell/src'),
-      '@redbyte/rb-theme': path.resolve(__dirname, 'packages/rb-theme/src'),
-      '@redbyte/rb-tokens': path.resolve(__dirname, 'packages/rb-tokens/src')
-    }
+    alias: [
+      { find: /^zustand$/, replacement: path.resolve(__dirname, 'packages/rb-utils/src/zustand.ts') },
+      { find: '@redbyte/rb-apps', replacement: path.resolve(__dirname, 'packages/rb-apps/src') },
+      { find: '@redbyte/rb-windowing', replacement: path.resolve(__dirname, 'packages/rb-windowing/src') },
+      { find: '@redbyte/rb-shell', replacement: path.resolve(__dirname, 'packages/rb-shell/src') },
+      { find: '@redbyte/rb-theme', replacement: path.resolve(__dirname, 'packages/rb-theme/src') },
+      { find: '@redbyte/rb-tokens', replacement: path.resolve(__dirname, 'packages/rb-tokens/src') }
+    ]
   }
 })

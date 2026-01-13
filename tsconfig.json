@@ -13,6 +13,7 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "paths": {
+      "zustand": ["packages/rb-utils/src/zustand.ts"],
       "@redbyte/*": ["packages/*/src"]
     }
   },
