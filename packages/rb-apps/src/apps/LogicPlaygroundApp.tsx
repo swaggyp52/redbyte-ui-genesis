@@ -428,7 +428,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         unregisterStateAccessor(windowId);
       }
     };
-  }, [windowId, registerStateAccessor, unregisterStateAccessor]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [windowId]);
+  // registerStateAccessor and unregisterStateAccessor are stable callbacks from Shell
+  // and should NOT be in deps - they don't need to trigger re-registration
 
   // Wrap TickEngine.stepOnce to record ticks and probe samples during recording/replay
   useEffect(() => {
