@@ -14,6 +14,16 @@ const PATTERN3 = String.raw`use\w*Store\s*\(\s*\(?\s*\w+\s*=>\s*\[`;
 const PATTERN4 = String.raw`use\w*Store\s*\(\s*\(?\s*\w+\s*=>\s*\{\s*(?:\/\/|\/\*)?[^}]*\breturn\s*\[`;
 const PATTERN5 = String.raw`use\w*Store\s*\(\s*\(?\s*\w+\s*=>\s*\(\s*\{\\s*\.\.\.`;
 
+// New patterns for derived allocations:
+// PATTERN6: selectors returning new arrays via .map() / .filter() / .slice()
+const PATTERN6 = String.raw`use\w*Store\s*\(\s*\(?\s*\w+\s*=>\s*[^)]*\.(map|filter|slice|concat|spread)\(`;
+
+// PATTERN7: selectors returning new Set/Map objects
+const PATTERN7 = String.raw`use\w*Store\s*\(\s*\(?\s*\w+\s*=>\s*(?:new\s+)?(?:Set|Map)\s*\(`;
+
+// PATTERN8: shallow with object/array literal (known to be insufficient)
+const PATTERN8 = String.raw`use\w*Store\s*\(.*\{.*\}.*\),\s*shallow`;
+
 const globs = [
   "-n",
   "--glob", "**/*.{ts,tsx,js,jsx}",
@@ -34,10 +44,13 @@ const rg2 = run("rg", [...globs, PATTERN2, "."]);
 const rg3 = run("rg", [...globs, PATTERN3, "."]);
 const rg4 = run("rg", [...globs, PATTERN4, "."]);
 const rg5 = run("rg", [...globs, PATTERN5, "."]);
+const rg6 = run("rg", [...globs, PATTERN6, "."]);
+const rg7 = run("rg", [...globs, PATTERN7, "."]);
+const rg8 = run("rg", [...globs, PATTERN8, "."]);
 const rg = {
-  ok: rg1.ok && rg2.ok && rg3.ok && rg4.ok && rg5.ok,
-  err: rg1.err || rg2.err || rg3.err || rg4.err || rg5.err,
-  out: [rg1.out, rg2.out, rg3.out, rg4.out, rg5.out]
+  ok: rg1.ok && rg2.ok && rg3.ok && rg4.ok && rg5.ok && rg6.ok && rg7.ok && rg8.ok,
+  err: rg1.err || rg2.err || rg3.err || rg4.err || rg5.err || rg6.err || rg7.err || rg8.err,
+  out: [rg1.out, rg2.out, rg3.out, rg4.out, rg5.out, rg6.out, rg7.out, rg8.out]
     .map(s => s.trim())
     .filter(Boolean)
     .join("\n"),
@@ -80,14 +93,23 @@ const lines = rg.out
   .filter(l => {
     const idx = l.indexOf("use");
     const c = l.indexOf("//");
-    return c === -1 || idx < c;
+    // Also filter out allowlist comments: // selector-ok: reason
+    const allowIdx = l.indexOf("selector-ok:");
+    return (c === -1 || idx < c) && allowIdx === -1;
   });
 
 if (lines.length) {
-  console.error("⚠️  Found potentially unstable Zustand object-literal selectors:\n");
+  console.error("⚠️  Found potentially unstable Zustand selectors:\n");
   for (const l of lines) console.error("  " + l);
-  console.error("\nFix: replace grouped object selectors with per-field selectors.");
+  console.error("\nDetected patterns:");
+  console.error("  1. Object/array literals in selectors: { a, b }, [ x, y ]");
+  console.error("  2. Derived allocations: .map(), .filter(), .slice() in selector");
+  console.error("  3. new Set/Map() allocations in selector");
+  console.error("  4. shallow with object/array literals (insufficient)");
+  console.error("\nFix: replace with per-field selectors or add justification comment.");
   console.error("See docs/zustand-selectors.md for the pattern and Rule 1.");
+  console.error("\nTo allowlist a selector, add comment above it:");
+  console.error("  // selector-ok: stable memoized ref / immutable object / ..."
   process.exit(1);
 }
 
