@@ -13,6 +13,7 @@
         "build:os": "pnpm -w build && pnpm -F redbyte-ui-genesis build",
         "preview": "pnpm build && vite preview --host --port 4173 --open",
         "lint": "pnpm -r --if-present run lint",
+        "lint:selectors": "node ./scripts/lint-zustand-selectors.js",
         "typecheck": "pnpm -r --if-present run typecheck",
         "test": "vitest run",
         "test:smoke": "playwright test",
