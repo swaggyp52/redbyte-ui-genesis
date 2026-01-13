@@ -41,20 +41,23 @@ export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
     const state = api.getState();
     const cache = cacheRef.current;
     
-    if (state === cache.lastState && cache.lastSnapshot !== undefined) {
-      return cache.lastSnapshot;
+    // Always compute new snapshot when state changes
+    if (state !== cache.lastState) {
+      cache.lastState = state;
+      const snapshot = selectorRef.current(state);
+      
+      // Apply equality check before updating cache
+      if (cache.lastSnapshot !== undefined && equalityRef.current(snapshot, cache.lastSnapshot)) {
+        // Snapshot is equal to previous - return cached reference
+        return cache.lastSnapshot;
+      }
+      
+      cache.lastSnapshot = snapshot;
+      return snapshot;
     }
     
-    cache.lastState = state;
-    const snapshot = selectorRef.current(state);
-    
-    // Apply equality check to prevent unnecessary updates
-    if (cache.lastSnapshot !== undefined && equalityRef.current(snapshot, cache.lastSnapshot)) {
-      return cache.lastSnapshot;
-    }
-    
-    cache.lastSnapshot = snapshot;
-    return snapshot;
+    // State hasn't changed - return cached snapshot
+    return cache.lastSnapshot as U;
   }, [api]);
 
   const getServerSnapshot = React.useCallback((): U => {
