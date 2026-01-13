@@ -5,3 +5,4 @@
 export * from './settingsStore';
 export * from './uiTickStore';
 export * from './debug/perf';
+export * from './storeInstrumentation';
