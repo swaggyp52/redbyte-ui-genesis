@@ -41,37 +41,52 @@ export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
     const state = api.getState();
     const cache = cacheRef.current;
     
-    // [DEBUG] Critical: Track what's happening on EVERY call
-    const callCount = (cache as any).callCount ?? 0;
-    (cache as any).callCount = callCount + 1;
+    // [DEBUG] Track state reference changes explicitly
+    if ((cache as any).lastStateRef === undefined) {
+      (cache as any).lastStateRef = state;
+      (cache as any).stateChangeCount = 0;
+      (cache as any).snapshotCallCount = 0;
+    }
+    
+    (cache as any).snapshotCallCount = ((cache as any).snapshotCallCount ?? 0) + 1;
+    const callNum = (cache as any).snapshotCallCount;
+    
+    const stateChanged = state !== (cache as any).lastStateRef;
+    if (stateChanged) {
+      (cache as any).stateChangeCount = ((cache as any).stateChangeCount ?? 0) + 1;
+    }
+    
+    // Log EVERY call to diagnose the problem
+    console.warn(`[getSnapshot#${callNum}] stateRef=${stateChanged ? 'CHANGED' : 'SAME'} (changes: ${(cache as any).stateChangeCount})`);
     
     const newSnapshot = selectorRef.current(state);
     
-    // FIRST EVER CALL
+    // Initialize on first call
     if (cache.lastState === undefined && cache.lastSnapshot === undefined) {
       cache.lastState = state;
       cache.lastSnapshot = newSnapshot;
-      console.warn(`[getSnapshot::INIT] Call #${callCount}: Initialized cache. Returning new snapshot.`);
+      (cache as any).lastStateRef = state;
+      console.warn(`[getSnapshot#${callNum}] → INIT: Cached snapshot`);
       return newSnapshot;
     }
     
-    // STATE UNCHANGED
+    // State unchanged
     if (state === cache.lastState) {
-      const same = newSnapshot === cache.lastSnapshot;
-      console.warn(`[getSnapshot::STABLE] Call #${callCount}: State ref same, cached snapshot ${same ? 'IS SAME OBJECT' : 'IS DIFFERENT OBJECT'}, returning cached`);
+      console.warn(`[getSnapshot#${callNum}] → STATE SAME: Returning cached snapshot`);
       return cache.lastSnapshot;
     }
     
-    // STATE CHANGED
-    console.warn(`[getSnapshot::MUTATE] Call #${callCount}: State ref CHANGED from previous`);
+    // State changed
+    console.warn(`[getSnapshot#${callNum}] → STATE CHANGED: Computing new snapshot`);
     cache.lastState = state;
+    (cache as any).lastStateRef = state;
     
     if (cache.lastSnapshot !== undefined && equalityRef.current(newSnapshot, cache.lastSnapshot)) {
-      console.warn(`[getSnapshot::MUTATE] → Snapshots EQUAL by equalityFn, returning cached`);
+      console.warn(`[getSnapshot#${callNum}] → EQUAL by fn: Returning cached`);
       return cache.lastSnapshot;
     }
     
-    console.warn(`[getSnapshot::MUTATE] → Snapshots DIFFERENT, caching new snapshot`);
+    console.warn(`[getSnapshot#${callNum}] → DIFFERENT: Caching and returning new`);
     cache.lastSnapshot = newSnapshot;
     return newSnapshot;
   }, [api]);
