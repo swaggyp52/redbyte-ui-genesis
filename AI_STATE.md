@@ -5554,3 +5554,5 @@ After completing work, an AI agent MUST:
 
 ### 2026-01-09
 - Fixed zustand.ts React import dependency issue: changed hard `import React from 'react'` to dynamic `require('react')` inside useStore() function; this prevents import resolution failures in non-React packages that import 'zustand' via the vite/vitest path alias. The custom useStore hook was previously blocked from loading in rb-utils, causing 4 test files to fail during test setup. Dynamic require makes React an optional runtime dependency rather than module-level requirement. All 705 tests now pass; objectives unchanged; phase unchanged
+### 2026-01-13
+- Fixed React error #185 (Maximum update depth exceeded) in LogicPlaygroundApp: removed registerStateAccessor and unregisterStateAccessor from useEffect dependency array; these stable callbacks from Shell were causing infinite re-registration loop (effect runs → writes to store → Shell re-renders → effect sees 'changed' deps → repeats); now only windowId is a dependency; all 705 tests pass; objectives unchanged; phase unchanged
