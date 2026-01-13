@@ -1,85 +1,53 @@
-import fs from "node:fs";
-import path from "node:path";
+import { spawnSync } from "node:child_process";
 
-const ROOT = process.cwd();
-const TARGET_DIRS = ["apps", "packages", "src"];
-const EXT = new Set([".ts", ".tsx"]);
-
-const offenders = [];
-
-function walk(dir) {
-  if (!fs.existsSync(dir)) return;
-  for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
-    const p = path.join(dir, ent.name);
-    if (ent.isDirectory()) {
-      if (
-        ent.name === "node_modules" ||
-        ent.name === "dist" ||
-        ent.name === "build" ||
-        ent.name === "playwright-report" ||
-        ent.name === "test-results" ||
-        ent.name === ".next" ||
-        ent.name === ".vite" ||
-        ent.name === "__tests__"
-      )
-        return;
-      walk(p);
-    } else if (ent.isFile() && EXT.has(path.extname(ent.name))) {
-      // Skip test files and non-existent references
-      if (ent.name.endsWith(".test.tsx") || ent.name.endsWith(".test.ts"))
-        return;
-
-      if (!fs.existsSync(p)) return;
-
-      const txt = fs.readFileSync(p, "utf8");
-
-      // More precise pattern: useXxxStore directly followed by object literal
-      // Match: useXxxStore((state) => ({ or useStore(s => ({
-      // But exclude lines starting with // or * (comments)
-      const lines = txt.split("\n");
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        // Skip comment lines
-        if (line.trim().startsWith("//") || line.trim().startsWith("*"))
-          continue;
-        // Look for the pattern: use*Store followed by selector opening with {
-        if (
-          line.includes("use") &&
-          line.match(/use\w*Store\(\s*[\w()]*\s*=>\s*\{/)
-        ) {
-          // Double-check it's not a code comment by checking context
-          if (!line.includes("//") && !line.includes("/*")) {
-            offenders.push({ file: p, line: i + 1, text: line.trim() });
-            break;
-          }
-        }
-      }
-    }
-  }
+function run(cmd, args) {
+  const r = spawnSync(cmd, args, { encoding: "utf8" });
+  if (r.error) return { ok: false, err: r.error.message, out: "" };
+  return { ok: r.status === 0 || r.status === 1, err: "", out: (r.stdout || "") + (r.stderr || "") };
 }
 
-for (const d of TARGET_DIRS) {
-  walk(path.join(ROOT, d));
+// Pattern: store hooks returning object literal
+// This catches: useXxxStore(s => ({ ... }))
+// We intentionally do NOT match comments-only lines by relying on rg's line output + later filtering.
+const PATTERN = String.raw`use\w*Store\s*\(\s*\(?\s*\w+\s*=>\s*\(\s*\{`;
+
+const rg = run("rg", [
+  "-n",
+  "--glob", "!**/node_modules/**",
+  "--glob", "!**/dist/**",
+  "--glob", "!**/build/**",
+  "--glob", "!**/test-results/**",
+  "--glob", "!**/playwright-report/**",
+  "--glob", "!**/.next/**",
+  "--glob", "!**/__tests__/**",
+  PATTERN,
+  "."
+]);
+
+if (!rg.ok && rg.err.includes("not found")) {
+  console.error("lint:selectors: ripgrep (rg) is required but not found.");
+  console.error("Install it: https://github.com/BurntSushi/ripgrep#installation");
+  process.exit(2);
 }
 
-if (offenders.length) {
-  console.error(
-    "⚠️  Found possible unstable Zustand object-literal selectors in React components:\n"
-  );
-  for (const off of offenders) {
-    console.error(
-      `   ${path.relative(ROOT, off.file)}:${off.line}`
-    );
-    console.error(`      ${off.text.substring(0, 80)}\n`);
-  }
-  console.error(
-    "See docs/zustand-selectors.md for why this pattern causes React #185."
-  );
-  console.error(
-    "Replace with individual per-field selectors like: const a = useStore(s => s.a)"
-  );
+const lines = rg.out
+  .split("\n")
+  .map(l => l.trim())
+  .filter(Boolean)
+  // crude comment filter: ignore lines where match is after // (still not perfect, but helps)
+  .filter(l => {
+    const idx = l.indexOf("use");
+    const c = l.indexOf("//");
+    return c === -1 || idx < c;
+  });
+
+if (lines.length) {
+  console.error("⚠️  Found potentially unstable Zustand object-literal selectors:\n");
+  for (const l of lines) console.error("  " + l);
+  console.error("\nFix: replace grouped object selectors with per-field selectors.");
+  console.error("See docs/zustand-selectors.md for the pattern and Rule 1.");
   process.exit(1);
-} else {
-  console.log("✓ No obvious Zustand object-literal selectors found.");
-  process.exit(0);
 }
+
+console.log("✓ OK: no obvious Zustand object-literal selectors found.");
+process.exit(0);
