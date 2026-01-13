@@ -41,30 +41,37 @@ export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
     const state = api.getState();
     const cache = cacheRef.current;
     
-    // Compute the new snapshot
+    // [DEBUG] Critical: Track what's happening on EVERY call
+    const callCount = (cache as any).callCount ?? 0;
+    (cache as any).callCount = callCount + 1;
+    
     const newSnapshot = selectorRef.current(state);
     
-    // Initialize on first call
+    // FIRST EVER CALL
     if (cache.lastState === undefined && cache.lastSnapshot === undefined) {
       cache.lastState = state;
       cache.lastSnapshot = newSnapshot;
+      console.warn(`[getSnapshot::INIT] Call #${callCount}: Initialized cache. Returning new snapshot.`);
       return newSnapshot;
     }
     
-    // If state hasn't changed, MUST return the cached snapshot reference
+    // STATE UNCHANGED
     if (state === cache.lastState) {
+      const same = newSnapshot === cache.lastSnapshot;
+      console.warn(`[getSnapshot::STABLE] Call #${callCount}: State ref same, cached snapshot ${same ? 'IS SAME OBJECT' : 'IS DIFFERENT OBJECT'}, returning cached`);
       return cache.lastSnapshot;
     }
     
-    // State changed - compute new snapshot and check equality
+    // STATE CHANGED
+    console.warn(`[getSnapshot::MUTATE] Call #${callCount}: State ref CHANGED from previous`);
     cache.lastState = state;
     
-    // If new snapshot is equal to previous (by equality fn), return cached ref
     if (cache.lastSnapshot !== undefined && equalityRef.current(newSnapshot, cache.lastSnapshot)) {
+      console.warn(`[getSnapshot::MUTATE] → Snapshots EQUAL by equalityFn, returning cached`);
       return cache.lastSnapshot;
     }
     
-    // Snapshot is different - update cache and return
+    console.warn(`[getSnapshot::MUTATE] → Snapshots DIFFERENT, caching new snapshot`);
     cache.lastSnapshot = newSnapshot;
     return newSnapshot;
   }, [api]);
