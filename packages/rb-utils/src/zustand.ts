@@ -24,40 +24,50 @@ export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
   selector: (state: ExtractState<S>) => U = identity as (state: ExtractState<S>) => U,
   equalityFn: (a: U, b: U) => boolean = refEquality
 ): U {
-  const lastStateRef = React.useRef<ExtractState<S> | undefined>(undefined);
-  const lastSnapshotRef = React.useRef<U | undefined>(undefined);
+  // Stable refs that persist across renders
   const selectorRef = React.useRef(selector);
   const equalityRef = React.useRef(equalityFn);
+  const cacheRef = React.useRef<{
+    lastState: ExtractState<S> | undefined;
+    lastSnapshot: U | undefined;
+  }>({ lastState: undefined, lastSnapshot: undefined });
 
-  // Always update refs to capture latest closures
+  // Update refs on every render to capture latest closures
   selectorRef.current = selector;
   equalityRef.current = equalityFn;
 
-  const getSnapshot = React.useCallback(() => {
+  // Stable getSnapshot function that only depends on api
+  const getSnapshot = React.useCallback((): U => {
     const state = api.getState();
-    if (state === lastStateRef.current && lastSnapshotRef.current !== undefined) {
-      return lastSnapshotRef.current as U;
+    const cache = cacheRef.current;
+    
+    if (state === cache.lastState && cache.lastSnapshot !== undefined) {
+      return cache.lastSnapshot;
     }
-    lastStateRef.current = state;
+    
+    cache.lastState = state;
     const snapshot = selectorRef.current(state);
     
     // Apply equality check to prevent unnecessary updates
-    if (lastSnapshotRef.current !== undefined && equalityRef.current(snapshot, lastSnapshotRef.current)) {
-      return lastSnapshotRef.current as U;
+    if (cache.lastSnapshot !== undefined && equalityRef.current(snapshot, cache.lastSnapshot)) {
+      return cache.lastSnapshot;
     }
     
-    lastSnapshotRef.current = snapshot;
+    cache.lastSnapshot = snapshot;
     return snapshot;
   }, [api]);
 
-  const getServerSnapshot = React.useCallback(() => {
+  const getServerSnapshot = React.useCallback((): U => {
     const state = api.getInitialState();
-    if (state === lastStateRef.current && lastSnapshotRef.current !== undefined) {
-      return lastSnapshotRef.current as U;
+    const cache = cacheRef.current;
+    
+    if (state === cache.lastState && cache.lastSnapshot !== undefined) {
+      return cache.lastSnapshot;
     }
-    lastStateRef.current = state;
+    
+    cache.lastState = state;
     const snapshot = selectorRef.current(state);
-    lastSnapshotRef.current = snapshot;
+    cache.lastSnapshot = snapshot;
     return snapshot;
   }, [api]);
 
