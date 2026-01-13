@@ -13,6 +13,10 @@ type ReadonlyStoreApi<T> = Pick<StoreApi<T>, 'getState' | 'getInitialState' | 's
 const identity = <T,>(arg: T) => arg;
 const refEquality = <T,>(a: T, b: T) => a === b;
 
+// DEV-only unstable snapshot detector
+let unstableSnapshotCount = 0;
+const MAX_UNSTABLE_LOGS = 3;
+
 export function useStore<S extends ReadonlyStoreApi<unknown>>(api: S): ExtractState<S>;
 export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
   api: S,
@@ -30,7 +34,8 @@ export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
   const cacheRef = React.useRef<{
     lastState: ExtractState<S> | undefined;
     lastSnapshot: U | undefined;
-  }>({ lastState: undefined, lastSnapshot: undefined });
+    callCount: number;
+  }>({ lastState: undefined, lastSnapshot: undefined, callCount: 0 });
 
   // Update refs on every render to capture latest closures
   selectorRef.current = selector;
@@ -40,6 +45,7 @@ export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
   const getSnapshot = React.useCallback((): U => {
     const state = api.getState();
     const cache = cacheRef.current;
+    cache.callCount++;
     
     // Always compute new snapshot when state changes
     if (state !== cache.lastState) {
@@ -54,6 +60,22 @@ export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
       
       cache.lastSnapshot = snapshot;
       return snapshot;
+    }
+    
+    // State hasn't changed BUT getSnapshot was called again
+    // This means React thinks the snapshot might have changed
+    if (import.meta.env.DEV && unstableSnapshotCount < MAX_UNSTABLE_LOGS) {
+      const currentSnapshot = selectorRef.current(state);
+      if (currentSnapshot !== cache.lastSnapshot && !equalityRef.current(currentSnapshot, cache.lastSnapshot)) {
+        unstableSnapshotCount++;
+        console.error('[UNSTABLE SNAPSHOT DETECTED]', {
+          callCount: cache.callCount,
+          selectorHint: selectorRef.current.toString().slice(0, 120),
+          snapshotType: Array.isArray(currentSnapshot) ? 'Array' : typeof currentSnapshot === 'object' ? 'Object' : typeof currentSnapshot,
+          hasEqualityFn: equalityRef.current !== refEquality,
+        });
+        console.trace('Unstable snapshot callsite');
+      }
     }
     
     // State hasn't changed - return cached snapshot
