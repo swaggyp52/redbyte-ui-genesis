@@ -23,35 +23,32 @@ export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
 ): U {
   const lastStateRef = React.useRef<ExtractState<S> | undefined>(undefined);
   const lastSnapshotRef = React.useRef<U | undefined>(undefined);
-  const lastSelectorRef = React.useRef(selector);
+  const selectorRef = React.useRef(selector);
 
-  if (lastSelectorRef.current !== selector) {
-    lastSelectorRef.current = selector;
-    lastStateRef.current = undefined;
-    lastSnapshotRef.current = undefined;
-  }
+  // Always update the selector ref to capture the latest closure
+  selectorRef.current = selector;
 
   const getSnapshot = React.useCallback(() => {
     const state = api.getState();
-    if (state === lastStateRef.current) {
+    if (state === lastStateRef.current && lastSnapshotRef.current !== undefined) {
       return lastSnapshotRef.current as U;
     }
     lastStateRef.current = state;
-    const snapshot = selector(state);
+    const snapshot = selectorRef.current(state);
     lastSnapshotRef.current = snapshot;
     return snapshot;
-  }, [api, selector]);
+  }, [api]);
 
   const getServerSnapshot = React.useCallback(() => {
     const state = api.getInitialState();
-    if (state === lastStateRef.current) {
+    if (state === lastStateRef.current && lastSnapshotRef.current !== undefined) {
       return lastSnapshotRef.current as U;
     }
     lastStateRef.current = state;
-    const snapshot = selector(state);
+    const snapshot = selectorRef.current(state);
     lastSnapshotRef.current = snapshot;
     return snapshot;
-  }, [api, selector]);
+  }, [api]);
 
   const slice = React.useSyncExternalStore(api.subscribe, getSnapshot, getServerSnapshot);
   React.useDebugValue(slice);
