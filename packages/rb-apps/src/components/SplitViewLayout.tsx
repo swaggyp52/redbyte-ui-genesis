@@ -152,11 +152,17 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
 
   React.useEffect(() => {
     const updateDimensions = () => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        // Account for header height
-        setDimensions({ width: rect.width, height: rect.height - 32 });
-      }
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const nextWidth = rect.width;
+      const nextHeight = rect.height - 32;
+      // Avoid re-renders when the measured size has not changed.
+      setDimensions((prev) => {
+        if (prev.width === nextWidth && prev.height === nextHeight) {
+          return prev;
+        }
+        return { width: nextWidth, height: nextHeight };
+      });
     };
 
     updateDimensions();

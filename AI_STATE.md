@@ -5272,6 +5272,9 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+\### 2026-01-12 (CircuitToolStrip Update Loop Guard)
+\- Guarded SplitViewLayout dimension updates to avoid redundant re-renders and stop the CircuitToolStrip update loop; added toolstrip update-loop report; objectives unchanged; phase unchanged
+
 \### 2026-01-12 (React Error #185 Wrapper Cache)
 \- Added cached Zustand wrapper and aliased `zustand` imports to stabilize useSyncExternalStore snapshots; added root-cause report; objectives unchanged; phase unchanged
 
