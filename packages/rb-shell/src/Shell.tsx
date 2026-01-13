@@ -876,6 +876,16 @@ export const Shell: React.FC<ShellProps> = () => {
       localStorage.setItem(BOOT_STORAGE_KEY, '1');
     } catch {}
 
+    // Dev-only: Auto-open app from query param for automation testing
+    if (import.meta.env.DEV) {
+      const params = new URLSearchParams(window.location.search);
+      const openApp = params.get('openApp');
+      if (openApp && getApp(openApp)) {
+        const timer = setTimeout(() => openWindow(openApp), 300);
+        return () => clearTimeout(timer);
+      }
+    }
+
     // Demo mode: Show onboarding modal instead of welcome screen
     if (isDemoMode) {
       const onboardingDismissed = localStorage.getItem('rb:onboarding:dismissed');
