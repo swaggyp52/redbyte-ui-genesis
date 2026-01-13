@@ -159,10 +159,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     },
     []
   );
-  const { active: tutorialActive, start: startTutorial } = useTutorialStore(
-    (state) => ({ active: state.active, start: state.start }),
-    shallow
-  );
+  const tutorialActive = useTutorialStore((state) => state.active);
+  const startTutorial = useTutorialStore((state) => state.start);
   const setWindowTitle = useWindowStore((state) => state.setWindowTitle);
   const { getAllFiles, getFile, updateFileContent, createFile } = useFileSystemStore(
     (state) => ({
@@ -3193,4 +3191,3 @@ console.log('[LogicPlayground] App exported', {
   hasComponent: !!LogicPlaygroundApp.component,
   componentType: typeof LogicPlaygroundApp.component,
 });
-
