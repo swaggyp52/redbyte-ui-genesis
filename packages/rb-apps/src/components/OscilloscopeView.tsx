@@ -3,7 +3,6 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { shallow } from 'zustand/shallow';
 import type { CircuitEngine, Node, TickEngine } from '@redbyte/rb-logic-core';
 import { useViewStateStore } from '../stores/viewStateStore';
 import { useProbeStore } from '../stores/probeStore';
@@ -70,24 +69,12 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const pendingDrawRef = useRef<number | null>(null);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 600 });
-  const {
-    probes,
-    activeProbeId,
-    addProbe,
-    removeProbe,
-    toggleProbe,
-    setActiveProbe,
-  } = useProbeStore(
-    (state) => ({
-      probes: state.probes,
-      activeProbeId: state.activeProbeId,
-      addProbe: state.addProbe,
-      removeProbe: state.removeProbe,
-      toggleProbe: state.toggleProbe,
-      setActiveProbe: state.setActiveProbe,
-    }),
-    shallow
-  );
+  const probes = useProbeStore((state) => state.probes);
+  const activeProbeId = useProbeStore((state) => state.activeProbeId);
+  const addProbe = useProbeStore((state) => state.addProbe);
+  const removeProbe = useProbeStore((state) => state.removeProbe);
+  const toggleProbe = useProbeStore((state) => state.toggleProbe);
+  const setActiveProbe = useProbeStore((state) => state.setActiveProbe);
   const [probeData, setProbeData] = useState<Map<string, ProbeData>>(new Map());
   const [voltageScale, setVoltageScale] = useState(1.5); // vertical scale
   const [viewEndTime, setViewEndTime] = useState(0);
@@ -120,45 +107,23 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   const samplingIntervalRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
   const measurementUpdateRef = useRef<number | null>(null);
-  const {
-    pauseScroll,
-    setPauseScroll,
-    togglePauseScroll,
-    showTimeCursor,
-    toggleTimeCursor,
-    timeWindowSec,
-    setTimeWindowSec,
-    showTickGuides,
-    setShowTickGuides,
-    clearRequestId,
-    requestClear,
-  } = useOscilloscopeStore(
-    (state) => ({
-      pauseScroll: state.pauseScroll,
-      setPauseScroll: state.setPauseScroll,
-      togglePauseScroll: state.togglePauseScroll,
-      showTimeCursor: state.showTimeCursor,
-      toggleTimeCursor: state.toggleTimeCursor,
-      timeWindowSec: state.timeWindowSec,
-      setTimeWindowSec: state.setTimeWindowSec,
-      showTickGuides: state.showTickGuides,
-      setShowTickGuides: state.setShowTickGuides,
-      clearRequestId: state.clearRequestId,
-      requestClear: state.requestClear,
-    }),
-    shallow
-  );
+  const pauseScroll = useOscilloscopeStore((state) => state.pauseScroll);
+  const setPauseScroll = useOscilloscopeStore((state) => state.setPauseScroll);
+  const togglePauseScroll = useOscilloscopeStore((state) => state.togglePauseScroll);
+  const showTimeCursor = useOscilloscopeStore((state) => state.showTimeCursor);
+  const toggleTimeCursor = useOscilloscopeStore((state) => state.toggleTimeCursor);
+  const timeWindowSec = useOscilloscopeStore((state) => state.timeWindowSec);
+  const setTimeWindowSec = useOscilloscopeStore((state) => state.setTimeWindowSec);
+  const showTickGuides = useOscilloscopeStore((state) => state.showTickGuides);
+  const setShowTickGuides = useOscilloscopeStore((state) => state.setShowTickGuides);
+  const clearRequestId = useOscilloscopeStore((state) => state.clearRequestId);
+  const requestClear = useOscilloscopeStore((state) => state.requestClear);
   const pauseScrollRef = useRef(pauseScroll);
 
   // Get global selection state for auto-probe
-  const { selectedNodeIds, autoProbeEnabled, setAutoProbeEnabled } = useViewStateStore(
-    (state) => ({
-      selectedNodeIds: state.selectedNodeIds,
-      autoProbeEnabled: state.autoProbeEnabled,
-      setAutoProbeEnabled: state.setAutoProbeEnabled,
-    }),
-    shallow
-  );
+  const selectedNodeIds = useViewStateStore((state) => state.selectedNodeIds);
+  const autoProbeEnabled = useViewStateStore((state) => state.autoProbeEnabled);
+  const setAutoProbeEnabled = useViewStateStore((state) => state.setAutoProbeEnabled);
   const getCurrentTime = useCallback(() => (Date.now() - startTimeRef.current) / 1000, []);
 
   useEffect(() => {

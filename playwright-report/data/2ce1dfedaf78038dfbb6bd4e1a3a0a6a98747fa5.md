@@ -1,0 +1,62 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [active] [ref=e4]:
+    - generic [ref=e5] [cursor=pointer]:
+      - img [ref=e7]
+      - generic [ref=e13]: Logic Playground
+    - generic [ref=e14] [cursor=pointer]:
+      - img [ref=e16]
+      - generic [ref=e20]: Files
+    - generic [ref=e21] [cursor=pointer]:
+      - img [ref=e23]
+      - generic [ref=e26]: Settings
+    - generic [ref=e27] [cursor=pointer]:
+      - img [ref=e29]
+      - generic [ref=e32]: Terminal
+    - generic [ref=e33] [cursor=pointer]:
+      - img [ref=e35]
+      - generic [ref=e38]: User Manual
+    - generic:
+      - generic: © 2025 Connor Angiel — RedByte OS Genesis
+  - generic "Alt+Arrow keys to reorder (when focused)" [ref=e39]:
+    - button "Launcher (Ctrl+K / Cmd+K)" [ref=e40] [cursor=pointer]:
+      - img [ref=e41]
+    - button "Terminal" [ref=e46] [cursor=pointer]:
+      - img [ref=e47]
+    - button "Files" [ref=e50] [cursor=pointer]:
+      - img [ref=e51]
+    - button "Settings" [ref=e55] [cursor=pointer]:
+      - img [ref=e56]
+    - button "Logic Playground" [ref=e59] [cursor=pointer]:
+      - img [ref=e60]
+    - button "App Store" [ref=e66] [cursor=pointer]:
+      - img [ref=e67]
+  - generic [ref=e72]:
+    - generic [ref=e73]:
+      - generic [ref=e74]: Welcome to RedByte OS Genesis
+      - generic [ref=e75]:
+        - button "Minimize" [ref=e76] [cursor=pointer]:
+          - img [ref=e77]
+        - button "Maximize" [ref=e79] [cursor=pointer]:
+          - img [ref=e80]
+        - button "Close" [ref=e82] [cursor=pointer]:
+          - img [ref=e83]
+    - generic [ref=e87]:
+      - paragraph [ref=e88]: RedByte is a visual logic circuit simulator. Build digital circuits, simulate behavior in real-time, and understand how logic gates work — all in your browser.
+      - paragraph [ref=e89]:
+        - strong [ref=e90]: Build • Simulate • Understand
+      - paragraph [ref=e91]: Get started by exploring the Studio environment or jumping straight into the Logic Playground to build your first circuit.
+      - generic [ref=e92]:
+        - button "Explore Studio" [ref=e93] [cursor=pointer]
+        - button "Open Logic Playground" [ref=e94] [cursor=pointer]
+      - generic [ref=e96] [cursor=pointer]:
+        - checkbox "Don't show again" [ref=e97]
+        - generic [ref=e98]: Don't show again
+  - generic [ref=e107]:
+    - generic [ref=e108]:
+      - generic [ref=e109]: V1.0
+      - generic [ref=e110]: v1.0.0 (dev)
+    - generic [ref=e111]: RedByte OS
+```
