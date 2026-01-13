@@ -5551,3 +5551,6 @@ After completing work, an AI agent MUST:
 - Added debug overlay construction helpers, mismatch entry mapping, and replay restore utility; replay exit now restores camera/selection plus run-replay HUD exposes pause/step/exit controls; objectives unchanged; phase unchanged
 - Added proof-pack export/import helpers and UI wiring for trace explorer; mismatch forensics list now shows labels/ports with fan-in hints; objectives unchanged; phase unchanged
 - Added tests for debug overlay generation, mismatch forensics entries, proof-pack round-trip, and replay exit restore helper; objectives unchanged; phase unchanged
+
+### 2026-01-09
+- Fixed zustand.ts React import dependency issue: changed hard `import React from 'react'` to dynamic `require('react')` inside useStore() function; this prevents import resolution failures in non-React packages that import 'zustand' via the vite/vitest path alias. The custom useStore hook was previously blocked from loading in rb-utils, causing 4 test files to fail during test setup. Dynamic require makes React an optional runtime dependency rather than module-level requirement. All 705 tests now pass; objectives unchanged; phase unchanged
