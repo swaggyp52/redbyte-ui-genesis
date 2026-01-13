@@ -452,6 +452,26 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   // registerStateAccessor and unregisterStateAccessor are stable callbacks from Shell
   // and should NOT be in deps - they don't need to trigger re-registration
 
+  // PHASE 0: Dispatch readiness signal after all critical UI components have mounted
+  useEffect(() => {
+    // Check if root element is ready (TopCommandBar + RightDock + main view mounted)
+    const rootEl = document.querySelector('[data-testid="logic-playground-root"]');
+    const topBarEl = document.querySelector('[data-testid="top-command-bar"]');
+    const rightDockEl = document.querySelector('[data-testid="right-dock"]');
+    
+    if (rootEl && topBarEl && rightDockEl) {
+      // Mark root as ready
+      rootEl.setAttribute('data-ready', 'true');
+      
+      // Dispatch window event for test automation
+      window.dispatchEvent(new Event('rb:logic-playground-ready'));
+      
+      if (import.meta.env.DEV) {
+        console.log('[LogicPlayground] Readiness signal dispatched');
+      }
+    }
+  }, []); // Only once after initial render
+
   // Wrap TickEngine.stepOnce to record ticks and probe samples during recording/replay
   useEffect(() => {
     const shouldWrap =

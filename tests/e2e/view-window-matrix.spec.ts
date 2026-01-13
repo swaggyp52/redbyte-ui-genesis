@@ -96,7 +96,7 @@ const saveArtifacts = (
   logs: string[],
   errors: string[],
   metrics?: DebugMetrics,
-  trace?: boolean
+  page?: any,
 ) => {
   // Console log (last 1000 lines)
   const consoleOut = testInfo.outputPath('console.log');
@@ -114,7 +114,20 @@ const saveArtifacts = (
     fs.writeFileSync(metricsOut, JSON.stringify(metrics, null, 2), 'utf8');
   }
 
-  // Note: Playwright trace is captured via test.use({ trace: 'on-first-retry' })
+  // DOM snapshot on failure
+  if (page && (errors.length > 0 || testInfo.status === 'failed')) {
+    page.evaluate(() => {
+      const root = document.querySelector('[data-testid="logic-playground-root"]');
+      return root?.outerHTML || '<no-root>';
+    }).then((html: string) => {
+      const uiSnapshot = testInfo.outputPath('ui-snapshot.html');
+      fs.writeFileSync(uiSnapshot, html, 'utf8');
+    }).catch(() => {
+      // Silently ignore if page closed
+    });
+  }
+
+  // Note: Playwright trace is auto-captured via playwright.config.ts: trace: 'retain-on-failure'
 };
 
 const createMinimalCircuit = async (page: any) => {
@@ -128,6 +141,30 @@ const createMinimalCircuit = async (page: any) => {
     }
   }
   await page.waitForTimeout(500);
+};
+
+const waitForReadySignal = async (page: any, timeoutMs = 10000) => {
+  // PHASE 0: Wait for logic-playground-ready event or data-ready attribute
+  try {
+    await page.waitForFunction(
+      () => {
+        const root = document.querySelector('[data-testid="logic-playground-root"]');
+        return root && root.getAttribute('data-ready') === 'true';
+      },
+      { timeout: timeoutMs }
+    );
+  } catch {
+    // Fallback: App might have loaded before signal listener attached
+    // Check if data-ready is already set
+    const isReady = await page.evaluate(() => {
+      const root = document.querySelector('[data-testid="logic-playground-root"]');
+      return root && root.getAttribute('data-ready') === 'true';
+    });
+    if (!isReady) {
+      console.warn('[TEST] Readiness signal not detected, proceeding with fallback wait');
+      await page.waitForTimeout(2000);
+    }
+  }
 };
 
 const startSimulation = async (page: any) => {
@@ -177,7 +214,7 @@ test.describe('VIEW/WINDOW MATRIX: React #185 Eradication Suite', () => {
     await page.waitForTimeout(2500);
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics, true);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     expect(errors).toHaveLength(0);
     expect(react185Signatures).toHaveLength(0);
@@ -194,7 +231,7 @@ test.describe('VIEW/WINDOW MATRIX: React #185 Eradication Suite', () => {
     await switchPerspective(page, 'build', 600);
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics, true);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     assertNoReact185(errors);
   });
@@ -210,7 +247,7 @@ test.describe('VIEW/WINDOW MATRIX: React #185 Eradication Suite', () => {
     await switchPerspective(page, 'analyze', 800);
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics, true);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     assertNoReact185(errors);
   });
@@ -233,7 +270,7 @@ test.describe('VIEW/WINDOW MATRIX: React #185 Eradication Suite', () => {
     }
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics, true);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     assertNoReact185(errors);
     // Check that store churn didn't explode
@@ -259,7 +296,7 @@ test.describe('VIEW/WINDOW MATRIX: React #185 Eradication Suite', () => {
     await switchPerspective(page, 'explain', 600);
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics, true);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     assertNoReact185(errors);
   });
@@ -295,7 +332,7 @@ test.describe('VIEW/WINDOW MATRIX: React #185 Eradication Suite', () => {
     }
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics, true);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     assertNoReact185(errors);
   });
@@ -317,7 +354,7 @@ test.describe('VIEW/WINDOW MATRIX: React #185 Eradication Suite', () => {
     }
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics, true);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     assertNoReact185(errors);
   });
@@ -347,7 +384,7 @@ test.describe('VIEW/WINDOW MATRIX: React #185 Eradication Suite', () => {
     }
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics, true);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     assertNoReact185(errors);
   });
@@ -384,7 +421,7 @@ test.describe('VIEW/WINDOW MATRIX: React #185 Eradication Suite', () => {
     await switchPerspective(page, 'analyze', 600);
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics, true);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     assertNoReact185(errors);
   });
@@ -406,7 +443,7 @@ test.describe('VIEW/WINDOW MATRIX: React #185 Eradication Suite', () => {
     }
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics, true);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     assertNoReact185(errors);
     // Verify store churn stayed bounded
@@ -439,7 +476,7 @@ test.describe('CE MODE: Persistence & Recovery', () => {
     const itemCount = await paletteItems.count().catch(() => 0);
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     expect(errors).toHaveLength(0);
     expect(itemCount).toBeGreaterThan(0);
@@ -468,7 +505,7 @@ test.describe('CE MODE: Persistence & Recovery', () => {
     }
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     expect(errors).toHaveLength(0);
   });
@@ -481,7 +518,7 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
     const { logs, errors, react185Signatures } = setupLogging(page);
 
     await page.goto(CE_MODE_URL, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1500);
+    await waitForReadySignal(page);
 
     await createMinimalCircuit(page);
     await startSimulation(page);
@@ -493,7 +530,7 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
     await page.waitForTimeout(2000);
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     // Assert no React #185
     assertNoReact185(errors);
@@ -504,7 +541,7 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
     const { logs, errors } = setupLogging(page);
 
     await page.goto(CE_MODE_URL, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1500);
+    await waitForReadySignal(page);
 
     await createMinimalCircuit(page);
     await page.waitForTimeout(500); // Let RightDock render
@@ -550,7 +587,7 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
     console.log(`[TEST] Click results: ${clickSucceeded} succeeded, ${clickFailed} failed out of ${tabCount} total`);
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     // Assert at least half the tabs are clickable naturally
     expect(clickSucceeded).toBeGreaterThan(0);
@@ -570,7 +607,7 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
     });
 
     await page.goto(CE_MODE_URL, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1500);
+    await waitForReadySignal(page);
 
     // Try to load CPU example via example selector or query param
     // First check if there's an Examples button
@@ -596,7 +633,7 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
     }
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     // Assert no stack overflow
     expect(stackOverflowErrors).toHaveLength(0);
@@ -635,7 +672,7 @@ test.describe('CE MODE: Classroom Workflows', () => {
     console.log(`[CE-WF2] Examples buttons found: ${examplesCount}, visible: ${examplesVisible}`);
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     // At least one CE button should be visible
     expect(resetVisible || examplesVisible).toBeTruthy();
@@ -661,7 +698,7 @@ test.describe('CE MODE: Classroom Workflows', () => {
     console.log(`[TEST] Help overlay opened: ${helpOpened}`);
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     // "?" key should be bindable (test passes if no crash)
     expect(errors.filter(e => e.includes('error'))).toHaveLength(0);
@@ -683,7 +720,7 @@ test.describe('CE MODE: Classroom Workflows', () => {
     console.log(`[TEST] Export button visible: ${exportVisible}`);
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     // Export button should exist
     expect(exportVisible).toBeTruthy();
@@ -710,7 +747,7 @@ test.describe('CE MODE: Classroom Workflows', () => {
     const bodyVisible = await page.locator('body').isVisible({ timeout: 2000 });
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     // Should load without crashing
     expect(bodyVisible).toBe(true);
@@ -741,7 +778,7 @@ test.describe('CE MODE: Classroom Workflows', () => {
     console.log(`[TEST] CE buttons - Examples: ${examplesVisible}, Reset: ${resetVisible}, Export: ${exportVisible}`);
 
     const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics);
+    saveArtifacts(testInfo, logs, errors, metrics, page);
 
     // All CE buttons should be visible in CE mode
     expect(examplesVisible).toBeTruthy();

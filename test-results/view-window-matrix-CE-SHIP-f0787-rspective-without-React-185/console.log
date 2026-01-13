@@ -1,0 +1,994 @@
+[DEBUG] [vite] connecting...
+[DEBUG] [vite] connected.
+[INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[LOG] [LogicPlayground] App exported {hasComponent: true, componentType: function}
+[LOG] [AppRegistry] Registering LogicPlaygroundApp {hasApp: true, hasComponent: true, componentType: function}
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Readiness signal dispatched
+[LOG] [LogicPlayground] Readiness signal dispatched
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[WARNING] [render-storm] LogicPlaygroundApp {renders: 62, stack: Error
+    at http://localhost:5173/@fs/C:/Users/co….vite/deps/chunk-Z4UYQWUI.js?v=02278664:11201:13)}
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[WARNING] [render-storm] LogicPlaygroundApp {renders: 62, stack: Error
+    at http://localhost:5173/@fs/C:/Users/co….vite/deps/chunk-Z4UYQWUI.js?v=02278664:11201:13)}
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[WARNING] [render-storm] CircuitToolStrip {renders: 62, stack: Error
+    at http://localhost:5173/@fs/C:/Users/co….vite/deps/chunk-Z4UYQWUI.js?v=02278664:11201:13)}
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[WARNING] [GroupMarkerNotSet(crbug.com/242999)!:A830190024020000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader (about:flags#enable-unsafe-swiftshader) flag to opt in to lower security guarantees for trusted content.
+[WARNING] [.WebGL-0x316400a99b00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[WARNING] [.WebGL-0x316400a99b00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[WARNING] [.WebGL-0x316400a99b00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[WARNING] [.WebGL-0x316400a99b00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[WARNING] [render-storm] CircuitToolStrip {renders: 62, stack: Error
+    at http://localhost:5173/@fs/C:/Users/co….vite/deps/chunk-Z4UYQWUI.js?v=02278664:11201:13)}
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[WARNING] [render-storm] LogicPlaygroundApp {renders: 62, stack: Error
+    at http://localhost:5173/@fs/C:/Users/co….vite/deps/chunk-Z4UYQWUI.js?v=02278664:11201:13)}
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[WARNING] [render-storm] CircuitToolStrip {renders: 62, stack: Error
+    at http://localhost:5173/@fs/C:/Users/co….vite/deps/chunk-Z4UYQWUI.js?v=02278664:11201:13)}
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[WARNING] [render-storm] LogicPlaygroundApp {renders: 62, stack: Error
+    at http://localhost:5173/@fs/C:/Users/co….vite/deps/chunk-Z4UYQWUI.js?v=02278664:11201:13)}
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[WARNING] [render-storm] CircuitToolStrip {renders: 62, stack: Error
+    at http://localhost:5173/@fs/C:/Users/co….vite/deps/chunk-Z4UYQWUI.js?v=02278664:11201:13)}
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[WARNING] [render-storm] LogicPlaygroundApp {renders: 62, stack: Error
+    at http://localhost:5173/@fs/C:/Users/co….vite/deps/chunk-Z4UYQWUI.js?v=02278664:11201:13)}
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []
+[LOG] [LogicPlayground] Component rendering {windowId: d5146416-e484-44ed-acd2-387db9c0859a}
+[INFO] [playground-debug] flags []

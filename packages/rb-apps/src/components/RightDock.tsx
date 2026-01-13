@@ -337,7 +337,7 @@ export const RightDock: React.FC<RightDockProps> = ({
   const width = dockState === 'peek' ? 'w-80' : 'w-96';
 
   return (
-    <div className={`${width} border-l border-gray-700 bg-gray-900 flex flex-col transition-all duration-200`}>
+    <div className={`${width} border-l border-gray-700 bg-gray-900 flex flex-col transition-all duration-200`} data-testid="right-dock">
       {/* Tab Bar */}
       <div className="h-12 border-b border-gray-700 bg-gray-850 flex items-stretch px-2 gap-1">
         <button
