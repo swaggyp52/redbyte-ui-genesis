@@ -162,46 +162,22 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const tutorialActive = useTutorialStore((state) => state.active);
   const startTutorial = useTutorialStore((state) => state.start);
   const setWindowTitle = useWindowStore((state) => state.setWindowTitle);
-  const { getAllFiles, getFile, updateFileContent, createFile } = useFileSystemStore(
-    (state) => ({
-      getAllFiles: state.getAllFiles,
-      getFile: state.getFile,
-      updateFileContent: state.updateFileContent,
-      createFile: state.createFile,
-    }),
-    shallow
-  );
-  const { saveChipFromPattern, getAllChips, getChip, deleteChip } = useChipStore(
-    (state) => ({
-      saveChipFromPattern: state.saveChipFromPattern,
-      getAllChips: state.getAllChips,
-      getChip: state.getChip,
-      deleteChip: state.deleteChip,
-    }),
-    shallow
-  );
-  const {
-    stack: hierarchyStack,
-    currentCircuit: hierarchyCircuit,
-    enterChip,
-    exitToParent,
-    exitToTop,
-    setCurrentCircuit: setHierarchyCircuit,
-    isEditMode,
-    toggleEditMode,
-  } = useHierarchyStore(
-    (state) => ({
-      stack: state.stack,
-      currentCircuit: state.currentCircuit,
-      enterChip: state.enterChip,
-      exitToParent: state.exitToParent,
-      exitToTop: state.exitToTop,
-      setCurrentCircuit: state.setCurrentCircuit,
-      isEditMode: state.isEditMode,
-      toggleEditMode: state.toggleEditMode,
-    }),
-    shallow
-  );
+  const getAllFiles = useFileSystemStore((state) => state.getAllFiles);
+  const getFile = useFileSystemStore((state) => state.getFile);
+  const updateFileContent = useFileSystemStore((state) => state.updateFileContent);
+  const createFile = useFileSystemStore((state) => state.createFile);
+  const saveChipFromPattern = useChipStore((state) => state.saveChipFromPattern);
+  const getAllChips = useChipStore((state) => state.getAllChips);
+  const getChip = useChipStore((state) => state.getChip);
+  const deleteChip = useChipStore((state) => state.deleteChip);
+  const hierarchyStack = useHierarchyStore((state) => state.stack);
+  const hierarchyCircuit = useHierarchyStore((state) => state.currentCircuit);
+  const enterChip = useHierarchyStore((state) => state.enterChip);
+  const exitToParent = useHierarchyStore((state) => state.exitToParent);
+  const exitToTop = useHierarchyStore((state) => state.exitToTop);
+  const setHierarchyCircuit = useHierarchyStore((state) => state.setCurrentCircuit);
+  const isEditMode = useHierarchyStore((state) => state.isEditMode);
+  const toggleEditMode = useHierarchyStore((state) => state.toggleEditMode);
 
   // Get stable circuit mutation methods from store (NO closures)
   const storeAddNode = useCircuitStore((state) => state.addNode);

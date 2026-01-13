@@ -37,23 +37,12 @@ export const CircuitToolStrip: React.FC<CircuitToolStripProps> = ({
 
   useRenderStormDetector('CircuitToolStrip');
 
-  // Use shallow comparison to only re-render when the selected state actually changes
-  const {
-    toolMode,
-    setToolMode,
-    snapToGrid,
-    toggleSnapToGrid,
-    setCamera,
-  } = useLogicViewStore(
-    (state) => ({
-      toolMode: state.toolMode,
-      setToolMode: state.setToolMode,
-      snapToGrid: state.snapToGrid,
-      toggleSnapToGrid: state.toggleSnapToGrid,
-      setCamera: state.setCamera,
-    }),
-    shallow
-  );
+  // Use primitive selectors to avoid creating new object references on every render
+  const toolMode = useLogicViewStore((state) => state.toolMode);
+  const setToolMode = useLogicViewStore((state) => state.setToolMode);
+  const snapToGrid = useLogicViewStore((state) => state.snapToGrid);
+  const toggleSnapToGrid = useLogicViewStore((state) => state.toggleSnapToGrid);
+  const setCamera = useLogicViewStore((state) => state.setCamera);
 
   const handleFit = () => {
     if (width <= 0 || height <= 0) return;
