@@ -24,9 +24,24 @@ const rg = run("rg", [
   "."
 ]);
 
-if (!rg.ok && rg.err.includes("not found")) {
-  console.error("lint:selectors: ripgrep (rg) is required but not found.");
-  console.error("Install it: https://github.com/BurntSushi/ripgrep#installation");
+// If ripgrep is not found, fail hard
+if (rg.err.includes("not found") || rg.err.includes("command not found")) {
+  const isCI = process.env.CI === "true";
+  console.error("❌ FATAL: ripgrep (rg) is required but not found.");
+  if (isCI) {
+    console.error("In CI: ripgrep must be available. Ensure it's installed on the runner.");
+    console.error("On GitHub Actions, this is pre-installed on ubuntu-latest.");
+  } else {
+    console.error("Local install: winget install BurntSushi.ripgrep.MSVC (Windows)");
+    console.error("           or: brew install ripgrep (macOS)");
+    console.error("           or: cargo install ripgrep (any OS with Rust)");
+  }
+  process.exit(2);
+}
+
+// If rg errored for another reason, report it
+if (!rg.ok && rg.err) {
+  console.error("❌ FATAL: ripgrep failed to run:", rg.err);
   process.exit(2);
 }
 

@@ -3,7 +3,6 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React from 'react';
-import { shallow } from 'zustand/shallow';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { ProofPack } from '../recording/runRecord';
 import { useRunRecorderStore } from '../stores/runRecorderStore';
@@ -62,34 +61,17 @@ export const RunRecorderPanel: React.FC<RunRecorderPanelProps> = ({
   onMismatchSelect,
   onImportProofPack,
 }) => {
-  const {
-    mode,
-    stimulus,
-    trace,
-    record,
-    verificationStatus,
-    playheadTick,
-    replayPaused,
-    setPlayheadTick,
-    setRecord,
-    applyEditedEvents,
-    normalizeEvents,
-  } = useRunRecorderStore(
-    (state) => ({
-      mode: state.mode,
-      stimulus: state.stimulus,
-      trace: state.trace,
-      record: state.record,
-      verificationStatus: state.verificationStatus,
-      playheadTick: state.playheadTick,
-      replayPaused: state.replayPaused,
-      setPlayheadTick: state.setPlayheadTick,
-      setRecord: state.setRecord,
-      applyEditedEvents: state.applyEditedEvents,
-      normalizeEvents: state.normalizeEvents,
-    }),
-    shallow
-  );
+  const mode = useRunRecorderStore((state) => state.mode);
+  const stimulus = useRunRecorderStore((state) => state.stimulus);
+  const trace = useRunRecorderStore((state) => state.trace);
+  const record = useRunRecorderStore((state) => state.record);
+  const verificationStatus = useRunRecorderStore((state) => state.verificationStatus);
+  const playheadTick = useRunRecorderStore((state) => state.playheadTick);
+  const replayPaused = useRunRecorderStore((state) => state.replayPaused);
+  const setPlayheadTick = useRunRecorderStore((state) => state.setPlayheadTick);
+  const setRecord = useRunRecorderStore((state) => state.setRecord);
+  const applyEditedEvents = useRunRecorderStore((state) => state.applyEditedEvents);
+  const normalizeEvents = useRunRecorderStore((state) => state.normalizeEvents);
   const [importError, setImportError] = React.useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = React.useState<number | null>(null);
