@@ -293,7 +293,8 @@ test.describe('redbyte os smoke', () => {
   test('boot to desktop and open terminal', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.getByText(/redbyte os/i)).toBeVisible();
+    // Use .first() to avoid strict mode violation with multiple matches
+    await expect(page.getByText(/redbyte os/i).first()).toBeVisible();
 
     await page.waitForTimeout(800);
     await expect(page.getByText(/boot/iu).first()).toBeVisible({ timeout: 2000 }).catch(() => {});
