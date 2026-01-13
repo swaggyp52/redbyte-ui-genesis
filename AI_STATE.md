@@ -5272,6 +5272,9 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+\### 2026-01-12 (OscilloscopeView React #185 Fix - COMPLETE)
+\- **COMPLETE FIX for React #185 perspective-switching bug**: User reported that switching Logic Playground perspectives/views (e.g., from "build" to "analyze" oscilloscope view) triggered React #185 "Maximum update depth exceeded" error. Root cause: OscilloscopeView had THREE object selectors with shallow equality, returning new object references on every store update when simulation was running: (1) useProbeStore object destructuring (6 fields), (2) useOscilloscopeStore object destructuring (11 fields), (3) useViewStateStore object destructuring (3 fields). Applied same fix pattern as RightDock: replaced ALL object destructuring selectors with individual per-field selectors (e.g., `const field = useStore((state) => state.field)`). Removed unused `shallow` import. Created autonomous Playwright test that reproduces bug headlessly: runs simulation, switches perspectives, captures console errors, validates ErrorBoundary state. Test failed pre-fix (errorFound=true, boundaryError=true with "getSnapshot should be cached" console warning), passes post-fix. Added data-testid attributes to TopCommandBar (run/step/perspective selector) and ComponentPalette for autonomous testing. All 705 unit tests pass; perspective switching now works correctly; objectives unchanged; phase unchanged
+
 \### 2026-01-12 (CircuitToolStrip Update Loop Guard)
 \- Guarded SplitViewLayout dimension updates to avoid redundant re-renders and stop the CircuitToolStrip update loop; added toolstrip update-loop report; objectives unchanged; phase unchanged
 
