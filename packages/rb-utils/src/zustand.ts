@@ -47,14 +47,24 @@ export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
     const cache = cacheRef.current;
     cache.callCount++;
     
-    // Always compute new snapshot when state changes
-    if (state !== cache.lastState) {
+    // Compute snapshot
+    const snapshot = selectorRef.current(state);
+    
+    // First call or state changed
+    if (cache.lastState !== state) {
       cache.lastState = state;
-      const snapshot = selectorRef.current(state);
       
-      // Apply equality check before updating cache
+      // Check if equality function would consider these equal
       if (cache.lastSnapshot !== undefined && equalityRef.current(snapshot, cache.lastSnapshot)) {
-        // Snapshot is equal to previous - return cached reference
+        // Contents are equal, return cached reference
+        if (import.meta.env.DEV && snapshot !== cache.lastSnapshot) {
+          if (unstableSnapshotCount < MAX_UNSTABLE_LOGS) {
+            unstableSnapshotCount++;
+            console.warn('[SNAPSHOT EQUALITY SAVED] Using equality fn to prevent re-render', {
+              selectorHint: selectorRef.current.toString().slice(0, 100),
+            });
+          }
+        }
         return cache.lastSnapshot;
       }
       
@@ -62,23 +72,27 @@ export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
       return snapshot;
     }
     
-    // State hasn't changed BUT getSnapshot was called again
-    // This means React thinks the snapshot might have changed
-    if (import.meta.env.DEV && unstableSnapshotCount < MAX_UNSTABLE_LOGS) {
-      const currentSnapshot = selectorRef.current(state);
-      if (currentSnapshot !== cache.lastSnapshot && !equalityRef.current(currentSnapshot, cache.lastSnapshot)) {
+    // State hasn't changed - but getSnapshot was called again
+    // This is the critical check: if we return a different reference, React will think state changed
+    if (snapshot !== cache.lastSnapshot) {
+      if (import.meta.env.DEV && unstableSnapshotCount < MAX_UNSTABLE_LOGS) {
         unstableSnapshotCount++;
-        console.error('[UNSTABLE SNAPSHOT DETECTED]', {
+        console.error('[UNSTABLE SNAPSHOT - SAME STATE, DIFFERENT SNAPSHOT]', {
           callCount: cache.callCount,
-          selectorHint: selectorRef.current.toString().slice(0, 120),
-          snapshotType: Array.isArray(currentSnapshot) ? 'Array' : typeof currentSnapshot === 'object' ? 'Object' : typeof currentSnapshot,
+          selectorHint: selectorRef.current.toString().slice(0, 100),
+          equalityCheckResult: equalityRef.current(snapshot, cache.lastSnapshot),
           hasEqualityFn: equalityRef.current !== refEquality,
         });
-        console.trace('Unstable snapshot callsite');
+        console.trace('Unstable snapshot occurred here');
       }
+      // This is the bug: we're about to return a different snapshot
+      // Try to apply equality one more time
+      if (cache.lastSnapshot !== undefined && equalityRef.current(snapshot, cache.lastSnapshot)) {
+        return cache.lastSnapshot;
+      }
+      cache.lastSnapshot = snapshot;
     }
     
-    // State hasn't changed - return cached snapshot
     return cache.lastSnapshot as U;
   }, [api]);
 
