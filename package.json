@@ -17,6 +17,7 @@
         "typecheck": "pnpm -r --if-present run typecheck",
         "test": "vitest run",
         "test:smoke": "playwright test",
+        "test:smoke:ci": "playwright test --grep 'Logic Playground'",
         "format": "pnpm -r --if-present run format",
         "a11y": "pnpm -r --if-present run test:a11y",
         "perf": "pnpm -r --if-present run test:perf",

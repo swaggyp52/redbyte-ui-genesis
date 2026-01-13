@@ -7,11 +7,14 @@ function run(cmd, args) {
 }
 
 // Pattern: store hooks returning object literal
-// This catches: useXxxStore(s => ({ ... }))
+// This catches TWO variants:
+//   1. useXxxStore(s => ({ ... }))  — parens-wrapped return
+//   2. useXxxStore(s => { return { ... } })  — block body with return
 // We intentionally do NOT match comments-only lines by relying on rg's line output + later filtering.
-const PATTERN = String.raw`use\w*Store\s*\(\s*\(?\s*\w+\s*=>\s*\(\s*\{`;
+const PATTERN1 = String.raw`use\w*Store\s*\(\s*\(?\s*\w+\s*=>\s*\(\s*\{`;
+const PATTERN2 = String.raw`use\w*Store\s*\(\s*\(?\s*\w+\s*=>\s*\{\s*(?:\/\/|\/\*)?[^}]*\breturn\s*\{`;
 
-const rg = run("rg", [
+const globs = [
   "-n",
   "--glob", "!**/node_modules/**",
   "--glob", "!**/dist/**",
@@ -20,22 +23,36 @@ const rg = run("rg", [
   "--glob", "!**/playwright-report/**",
   "--glob", "!**/.next/**",
   "--glob", "!**/__tests__/**",
-  PATTERN,
-  "."
-]);
+];
 
-// If ripgrep is not found, fail hard
+// Run both patterns and merge results
+const rg1 = run("rg", [...globs, PATTERN1, "."]);
+const rg2 = run("rg", [...globs, PATTERN2, "."]);
+const rg = {
+  ok: rg1.ok && rg2.ok,
+  err: rg1.err || rg2.err,
+  out: (rg1.out + "\n" + rg2.out).trim(),
+};
+
+// If ripgrep is not found, fail hard with clear platform-specific guidance
 if (rg.err.includes("not found") || rg.err.includes("command not found")) {
   const isCI = process.env.CI === "true";
   console.error("❌ FATAL: ripgrep (rg) is required but not found.");
+  console.error("");
   if (isCI) {
-    console.error("In CI: ripgrep must be available. Ensure it's installed on the runner.");
-    console.error("On GitHub Actions, this is pre-installed on ubuntu-latest.");
-  } else {
-    console.error("Local install: winget install BurntSushi.ripgrep.MSVC (Windows)");
-    console.error("           or: brew install ripgrep (macOS)");
-    console.error("           or: cargo install ripgrep (any OS with Rust)");
+    console.error("🔧 CI Fix (GitHub Actions):");
+    console.error("   The ripgrep binary is pre-installed on ubuntu-latest runners.");
+    console.error("   If using a custom runner, install: apt-get install ripgrep");
+    console.error("");
   }
+  console.error("🔧 Local Install Options:");
+  console.error("   Windows:   winget install BurntSushi.ripgrep.MSVC");
+  console.error("             or: choco install ripgrep");
+  console.error("             or: scoop install ripgrep");
+  console.error("   macOS:     brew install ripgrep");
+  console.error("   Linux:     apt-get install ripgrep (or dnf/pacman equiv)");
+  console.error("   Any OS:    cargo install ripgrep (requires Rust)");
+  console.error("");
   process.exit(2);
 }
 

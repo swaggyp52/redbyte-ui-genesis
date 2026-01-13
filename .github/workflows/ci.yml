@@ -41,11 +41,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps
+
       - name: Selector tripwire (React #185 prevention)
         run: pnpm run lint:selectors
 
       - name: Smoke tests (Logic Playground - perspective switch)
-        run: pnpm test:smoke --grep "Logic Playground"
+        run: pnpm test:smoke:ci
 
       - name: Run tests
         run: pnpm test
