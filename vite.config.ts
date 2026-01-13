@@ -6,7 +6,6 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: [
-      { find: /^zustand$/, replacement: path.resolve(__dirname, 'packages/rb-utils/src/zustand.ts') },
       { find: '@redbyte/rb-apps', replacement: path.resolve(__dirname, 'packages/rb-apps/src') },
       { find: '@redbyte/rb-windowing', replacement: path.resolve(__dirname, 'packages/rb-windowing/src') },
       { find: '@redbyte/rb-shell', replacement: path.resolve(__dirname, 'packages/rb-shell/src') },
