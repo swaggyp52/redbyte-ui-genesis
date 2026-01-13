@@ -101,6 +101,7 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({ onAddNode, o
           {filteredComponents.map(comp => (
             <div
               key={comp.type}
+              data-testid={`palette-${comp.type.toLowerCase()}`}
               draggable
               onDragStart={(e) => onDragStart(comp.type, e)}
               onMouseEnter={() => setHoveredComponent(comp.type)}

@@ -223,6 +223,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {/* STEP - First-class, prominent */}
         <button
           onClick={onStep}
+          data-testid="logic-playground-step"
           className="px-5 py-2 bg-blue-600 hover:bg-blue-500 rounded font-semibold text-sm transition-all shadow-lg flex items-center gap-2"
           title="Step Once (Space)"
         >
@@ -233,6 +234,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {/* RUN/PAUSE - Secondary but still prominent */}
         <button
           onClick={isRunning ? onPause : onRun}
+          data-testid="logic-playground-run"
           className={`px-4 py-2 rounded font-medium text-sm transition-all flex items-center gap-2 ${
             isRunning
               ? 'bg-yellow-600 hover:bg-yellow-500 shadow-lg'
@@ -317,6 +319,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         <select
           value={perspective}
           onChange={(e) => onPerspectiveChange(e.target.value as PerspectiveId)}
+          data-testid="logic-playground-perspective"
           className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 focus:border-cyan-500 focus:outline-none transition-colors cursor-pointer"
           title="Switch layout (1-5, Shift+1-4)"
         >

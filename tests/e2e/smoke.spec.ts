@@ -34,6 +34,136 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
     expect(boundaryError).toBe(false);
   });
 
+  test('should create circuit, run simulation, and switch perspectives without React errors (DEV)', async ({ page }, testInfo) => {
+    const logs: string[] = [];
+
+    page.on('console', (m) => logs.push(`[console:${m.type()}] ${m.text()}`));
+    page.on('pageerror', (e) => logs.push(`[pageerror] ${String(e)}`));
+
+    let errorFound = false;
+    let boundaryError = false;
+
+    page.on('console', (m) => {
+      const t = m.text();
+      if (
+        t.includes('react.dev/errors/185') ||
+        t.includes('Maximum update depth') ||
+        t.includes('getSnapshot should be cached')
+      ) {
+        errorFound = true;
+      }
+      if (t.includes('ErrorBoundary caught error')) boundaryError = true;
+    });
+
+    // Load Logic Playground
+    await page.goto('/?openApp=logic-playground', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2000);
+
+    // Create a minimal circuit: Power source + Switch + AND gate + Lamp
+    await page.click('[data-testid="palette-powersource"]');
+    await page.waitForTimeout(300);
+    
+    await page.click('[data-testid="palette-switch"]');
+    await page.waitForTimeout(300);
+    
+    await page.click('[data-testid="palette-and"]');
+    await page.waitForTimeout(300);
+    
+    await page.click('[data-testid="palette-lamp"]');
+    await page.waitForTimeout(300);
+
+    // Run simulation
+    await page.click('[data-testid="logic-playground-run"]');
+    await page.waitForTimeout(1000);
+
+    // Switch perspective from "build" to "analyze" (oscilloscope view)
+    await page.selectOption('[data-testid="logic-playground-perspective"]', 'analyze');
+    await page.waitForTimeout(1500);
+
+    // Switch back to "build"
+    await page.selectOption('[data-testid="logic-playground-perspective"]', 'build');
+    await page.waitForTimeout(1500);
+
+    // Switch to "explore" (3D view)
+    await page.selectOption('[data-testid="logic-playground-perspective"]', 'explore');
+    await page.waitForTimeout(1500);
+
+    // Switch back to "build" again
+    await page.selectOption('[data-testid="logic-playground-perspective"]', 'build');
+    await page.waitForTimeout(1500);
+
+    const outPath = testInfo.outputPath('console.log');
+    fs.writeFileSync(outPath, logs.slice(-200).join('\n'), 'utf8');
+
+    expect(errorFound).toBe(false);
+    expect(boundaryError).toBe(false);
+  });
+
+  test('should run simulation and switch perspectives without React errors (DEV)', async ({ page }, testInfo) => {
+    const logs: string[] = [];
+
+    page.on('console', (m) => logs.push(`[console:${m.type()}] ${m.text()}`));
+    page.on('pageerror', (e) => logs.push(`[pageerror] ${String(e)}`));
+
+    let errorFound = false;
+    let boundaryError = false;
+
+    page.on('console', (m) => {
+      const t = m.text();
+      if (
+        t.includes('react.dev/errors/185') ||
+        t.includes('Maximum update depth') ||
+        t.includes('getSnapshot should be cached')
+      ) {
+        errorFound = true;
+      }
+      if (t.includes('ErrorBoundary caught error')) boundaryError = true;
+    });
+
+    // Load Logic Playground
+    await page.goto('/?openApp=logic-playground', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2000);
+
+    // Start simulation (even with empty circuit, this activates tick engine + stores)
+    const runButton = page.locator('[data-testid="logic-playground-run"]');
+    if (await runButton.isVisible()) {
+      await runButton.click();
+      await page.waitForTimeout(1000);
+    }
+
+    // Switch perspective from "build" to "analyze" (oscilloscope view)
+    const perspectiveSelector = page.locator('[data-testid="logic-playground-perspective"]');
+    
+    try {
+      if (await perspectiveSelector.isVisible({ timeout: 5000 })) {
+        await perspectiveSelector.selectOption('analyze');
+        await page.waitForTimeout(1500);
+
+        // If we get here and there's no error yet, try switching back
+        if (!errorFound && !boundaryError) {
+          await perspectiveSelector.selectOption('build', { timeout: 5000 });
+          await page.waitForTimeout(1500);
+        }
+
+        // Try more switches if still no error
+        if (!errorFound && !boundaryError) {
+          await perspectiveSelector.selectOption('explore', { timeout: 5000 });
+          await page.waitForTimeout(1500);
+        }
+      }
+    } catch (e) {
+      // Timeout is expected if ErrorBoundary caught the error
+      logs.push(`[test-note] Perspective switch timed out (likely ErrorBoundary triggered): ${String(e)}`);
+    }
+
+    // Always write logs
+    const outPath = testInfo.outputPath('console.log');
+    fs.writeFileSync(outPath, logs.slice(-200).join('\n'), 'utf8');
+
+    expect(errorFound).toBe(false);
+    expect(boundaryError).toBe(false);
+  });
+
   test('should switch Logic Playground perspectives without React errors (DEV)', async ({ page }, testInfo) => {
     const logs: string[] = [];
 
