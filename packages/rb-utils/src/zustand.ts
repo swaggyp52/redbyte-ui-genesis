@@ -31,6 +31,12 @@ export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
     lastState: ExtractState<S> | undefined;
     lastSnapshot: U | undefined;
   }>({ lastState: undefined, lastSnapshot: undefined });
+  
+  // Separate cache for server snapshots to avoid conflicts
+  const serverCacheRef = React.useRef<{
+    lastState: ExtractState<S> | undefined;
+    lastSnapshot: U | undefined;
+  }>({ lastState: undefined, lastSnapshot: undefined });
 
   // Update refs on every render to capture latest closures
   selectorRef.current = selector;
@@ -41,66 +47,60 @@ export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
     const state = api.getState();
     const cache = cacheRef.current;
     
-    // [DEBUG] Track state reference changes explicitly
-    if ((cache as any).lastStateRef === undefined) {
-      (cache as any).lastStateRef = state;
-      (cache as any).stateChangeCount = 0;
-      (cache as any).snapshotCallCount = 0;
-    }
-    
-    (cache as any).snapshotCallCount = ((cache as any).snapshotCallCount ?? 0) + 1;
-    const callNum = (cache as any).snapshotCallCount;
-    
-    const stateChanged = state !== (cache as any).lastStateRef;
-    if (stateChanged) {
-      (cache as any).stateChangeCount = ((cache as any).stateChangeCount ?? 0) + 1;
-    }
-    
-    // Log EVERY call to diagnose the problem
-    console.warn(`[getSnapshot#${callNum}] stateRef=${stateChanged ? 'CHANGED' : 'SAME'} (changes: ${(cache as any).stateChangeCount})`);
-    
     const newSnapshot = selectorRef.current(state);
     
-    // Initialize on first call
-    if (cache.lastState === undefined && cache.lastSnapshot === undefined) {
+    // On first ever call, cache both state and snapshot
+    if (cache.lastState === undefined) {
       cache.lastState = state;
       cache.lastSnapshot = newSnapshot;
-      (cache as any).lastStateRef = state;
-      console.warn(`[getSnapshot#${callNum}] → INIT: Cached snapshot`);
       return newSnapshot;
     }
     
-    // State unchanged
+    // If state reference hasn't changed, ALWAYS return cached snapshot reference
+    // This is critical for React's useSyncExternalStore contract
     if (state === cache.lastState) {
-      console.warn(`[getSnapshot#${callNum}] → STATE SAME: Returning cached snapshot`);
       return cache.lastSnapshot;
     }
     
-    // State changed
-    console.warn(`[getSnapshot#${callNum}] → STATE CHANGED: Computing new snapshot`);
+    // State has changed. Update lastState and check if snapshots are equal.
     cache.lastState = state;
-    (cache as any).lastStateRef = state;
     
+    // Apply equality function if provided
     if (cache.lastSnapshot !== undefined && equalityRef.current(newSnapshot, cache.lastSnapshot)) {
-      console.warn(`[getSnapshot#${callNum}] → EQUAL by fn: Returning cached`);
+      // Snapshots are semantically equal, return cached reference
       return cache.lastSnapshot;
     }
     
-    console.warn(`[getSnapshot#${callNum}] → DIFFERENT: Caching and returning new`);
+    // Snapshots are different, cache and return the new one
     cache.lastSnapshot = newSnapshot;
     return newSnapshot;
   }, [api]);
 
   const getServerSnapshot = React.useCallback((): U => {
     const state = api.getInitialState();
-    const cache = cacheRef.current;
+    const cache = serverCacheRef.current;
     
-    if (state === cache.lastState && cache.lastSnapshot !== undefined) {
+    // On first call, cache the snapshot
+    if (cache.lastState === undefined) {
+      const snapshot = selectorRef.current(state);
+      cache.lastState = state;
+      cache.lastSnapshot = snapshot;
+      return snapshot;
+    }
+    
+    // If state hasn't changed, return cached snapshot
+    if (state === cache.lastState) {
       return cache.lastSnapshot;
     }
     
-    cache.lastState = state;
+    // State changed, compute new snapshot and check equality
     const snapshot = selectorRef.current(state);
+    cache.lastState = state;
+    
+    if (cache.lastSnapshot !== undefined && equalityRef.current(snapshot, cache.lastSnapshot)) {
+      return cache.lastSnapshot;
+    }
+    
     cache.lastSnapshot = snapshot;
     return snapshot;
   }, [api]);
