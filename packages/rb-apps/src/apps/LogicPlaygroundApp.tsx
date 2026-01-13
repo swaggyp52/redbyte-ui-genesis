@@ -73,6 +73,7 @@ import { RightDock, type RightDockTab } from '../components/RightDock';
 import { EnhancedPalette } from '../components/EnhancedPalette';
 import { HelpDock } from '../components/HelpDock';
 import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
+import { useAutosaveCircuit, useRestoreCircuit, loadSavedCircuit } from '../utils/ceAutosave';
 
 // Primitive node types (built-in gates) organized by category
 const PRIMITIVE_NODES = {
@@ -197,6 +198,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [selectedChipId, setSelectedChipId] = useState<string>('');
 
   const [circuit, setCircuit] = useState<Circuit>(() => {
+    // Try to restore saved CE circuit first
+    const savedCircuit = loadSavedCircuit();
+    if (savedCircuit) {
+      return savedCircuit;
+    }
+
     return {
       nodes: [],
       connections: [],
@@ -356,6 +363,9 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   useEffect(() => {
     setGlobalViewStateSync(useViewStateStore);
   }, []);
+
+  // Classroom Edition: autosave circuit on mutations
+  useAutosaveCircuit();
 
   useEffect(() => {
     replayPausedRef.current = replayPaused;
