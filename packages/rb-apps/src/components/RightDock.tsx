@@ -137,31 +137,16 @@ export const RightDock: React.FC<RightDockProps> = ({
   // Use shallow comparison to prevent re-renders when selection object reference changes but content is the same
   const selection = useLogicViewStore((state) => state.selection, shallow);
   
-  // Memoize probe selector to prevent infinite getSnapshot loops with useSyncExternalStore
-  const probeSelector = useMemo(
-    () => (state: any) => ({
-      probes: state.probes,
-      activeProbeId: state.activeProbeId,
-      addProbe: state.addProbe,
-      removeProbe: state.removeProbe,
-      renameProbe: state.renameProbe,
-      toggleProbe: state.toggleProbe,
-      setActiveProbe: state.setActiveProbe,
-      reorderProbes: state.reorderProbes,
-    }),
-    []
-  );
-  
-  const {
-    probes,
-    activeProbeId,
-    addProbe,
-    removeProbe,
-    renameProbe,
-    toggleProbe,
-    setActiveProbe,
-    reorderProbes,
-  } = useProbeStore(probeSelector, shallow);
+  // Select each probe store property individually to maintain stable references
+  // (object literals in selectors create new references on every store update, breaking Zustand's getSnapshot cache)
+  const probes = useProbeStore((state) => state.probes);
+  const activeProbeId = useProbeStore((state) => state.activeProbeId);
+  const addProbe = useProbeStore((state) => state.addProbe);
+  const removeProbe = useProbeStore((state) => state.removeProbe);
+  const renameProbe = useProbeStore((state) => state.renameProbe);
+  const toggleProbe = useProbeStore((state) => state.toggleProbe);
+  const setActiveProbe = useProbeStore((state) => state.setActiveProbe);
+  const reorderProbes = useProbeStore((state) => state.reorderProbes);
   const uiTick = useUiTickStore((state) => state.uiTick);
   const [selectedNodeId, setSelectedNodeId] = useState<string>('');
   const [selectedPortName, setSelectedPortName] = useState<string>('out');
