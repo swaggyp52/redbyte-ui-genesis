@@ -209,116 +209,49 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     () => new TickEngine(circuit, { tickRate })
   );
 
-  const {
-    splitScreenMode,
-    activeViews,
-    perspective,
-    setPerspective,
-    splitRatio,
-    setSplitRatio,
-    rightDockState,
-    rightDockTab,
-    showHelpDock,
-    helpDockSection,
-    schematicMiniEnabled,
-    toggleSchematicMini,
-    setRightDockState,
-    setRightDockTab,
-    setShowHelpDock,
-    setHelpDockSection,
-  } = useLayoutStore(
-    (state) => ({
-      splitScreenMode: state.splitScreenMode,
-      activeViews: state.activeViews,
-      perspective: state.perspective,
-      setPerspective: state.setPerspective,
-      splitRatio: state.splitRatio,
-      setSplitRatio: state.setSplitRatio,
-      rightDockState: state.rightDockState,
-      rightDockTab: state.rightDockTab,
-      showHelpDock: state.showHelpDock,
-      helpDockSection: state.helpDockSection,
-      schematicMiniEnabled: state.schematicMiniEnabled,
-      toggleSchematicMini: state.toggleSchematicMini,
-      setRightDockState: state.setRightDockState,
-      setRightDockTab: state.setRightDockTab,
-      setShowHelpDock: state.setShowHelpDock,
-      setHelpDockSection: state.setHelpDockSection,
-    }),
-    shallow
-  );
-  const { probes, toggleProbeForPort } = useProbeStore(
-    (state) => ({
-      probes: state.probes,
-      toggleProbeForPort: state.toggleProbeForPort,
-    }),
-    shallow
-  );
-  const { highlightProbePaths, setHighlightProbePaths } = useViewStateStore(
-    (state) => ({
-      highlightProbePaths: state.highlightProbePaths,
-      setHighlightProbePaths: state.setHighlightProbePaths,
-    }),
-    shallow
-  );
-  const {
-    pauseScroll: oscilloscopePauseScroll,
-    timeWindowSec: oscilloscopeTimeWindowSec,
-    showTickGuides: oscilloscopeShowTickGuides,
-  } = useOscilloscopeStore(
-    (state) => ({
-      pauseScroll: state.pauseScroll,
-      timeWindowSec: state.timeWindowSec,
-      showTickGuides: state.showTickGuides,
-    }),
-    shallow
-  );
-  const {
-    mode: recorderMode,
-    record,
-    verificationStatus,
-    recordEvent,
-    replay: replayState,
-    replayPaused,
-    pendingStepTicks,
-    pendingJumpTick,
-    playheadTick,
-    setReplayPaused,
-    stepReplay,
-    jumpReplay,
-    arm: armRunRecorder,
-    startRecording: startRunRecording,
-    stopRecording: stopRunRecording,
-    startReplay: startRunReplay,
-    stopReplay: stopRunReplay,
-    verifyReplay: verifyRunReplay,
-    reset: resetRunRecorder,
-    setDebugOverlay,
-  } = useRunRecorderStore(
-    (state) => ({
-      mode: state.mode,
-      record: state.record,
-      verificationStatus: state.verificationStatus,
-      recordEvent: state.recordEvent,
-      replay: state.replay,
-      replayPaused: state.replayPaused,
-      pendingStepTicks: state.pendingStepTicks,
-      pendingJumpTick: state.pendingJumpTick,
-      playheadTick: state.playheadTick,
-      setReplayPaused: state.setReplayPaused,
-      stepReplay: state.stepReplay,
-      jumpReplay: state.jumpReplay,
-      arm: state.arm,
-      startRecording: state.startRecording,
-      stopRecording: state.stopRecording,
-      startReplay: state.startReplay,
-      stopReplay: state.stopReplay,
-      verifyReplay: state.verifyReplay,
-      reset: state.reset,
-      setDebugOverlay: state.setDebugOverlay,
-    }),
-    shallow
-  );
+  const splitScreenMode = useLayoutStore((state) => state.splitScreenMode);
+  const activeViews = useLayoutStore((state) => state.activeViews);
+  const perspective = useLayoutStore((state) => state.perspective);
+  const setPerspective = useLayoutStore((state) => state.setPerspective);
+  const splitRatio = useLayoutStore((state) => state.splitRatio);
+  const setSplitRatio = useLayoutStore((state) => state.setSplitRatio);
+  const rightDockState = useLayoutStore((state) => state.rightDockState);
+  const rightDockTab = useLayoutStore((state) => state.rightDockTab);
+  const showHelpDock = useLayoutStore((state) => state.showHelpDock);
+  const helpDockSection = useLayoutStore((state) => state.helpDockSection);
+  const schematicMiniEnabled = useLayoutStore((state) => state.schematicMiniEnabled);
+  const toggleSchematicMini = useLayoutStore((state) => state.toggleSchematicMini);
+  const setRightDockState = useLayoutStore((state) => state.setRightDockState);
+  const setRightDockTab = useLayoutStore((state) => state.setRightDockTab);
+  const setShowHelpDock = useLayoutStore((state) => state.setShowHelpDock);
+  const setHelpDockSection = useLayoutStore((state) => state.setHelpDockSection);
+  const probes = useProbeStore((state) => state.probes);
+  const toggleProbeForPort = useProbeStore((state) => state.toggleProbeForPort);
+  const highlightProbePaths = useViewStateStore((state) => state.highlightProbePaths);
+  const setHighlightProbePaths = useViewStateStore((state) => state.setHighlightProbePaths);
+  const oscilloscopePauseScroll = useOscilloscopeStore((state) => state.pauseScroll);
+  const oscilloscopeTimeWindowSec = useOscilloscopeStore((state) => state.timeWindowSec);
+  const oscilloscopeShowTickGuides = useOscilloscopeStore((state) => state.showTickGuides);
+  const recorderMode = useRunRecorderStore((state) => state.mode);
+  const record = useRunRecorderStore((state) => state.record);
+  const verificationStatus = useRunRecorderStore((state) => state.verificationStatus);
+  const recordEvent = useRunRecorderStore((state) => state.recordEvent);
+  const replayState = useRunRecorderStore((state) => state.replay);
+  const replayPaused = useRunRecorderStore((state) => state.replayPaused);
+  const pendingStepTicks = useRunRecorderStore((state) => state.pendingStepTicks);
+  const pendingJumpTick = useRunRecorderStore((state) => state.pendingJumpTick);
+  const playheadTick = useRunRecorderStore((state) => state.playheadTick);
+  const setReplayPaused = useRunRecorderStore((state) => state.setReplayPaused);
+  const stepReplay = useRunRecorderStore((state) => state.stepReplay);
+  const jumpReplay = useRunRecorderStore((state) => state.jumpReplay);
+  const armRunRecorder = useRunRecorderStore((state) => state.arm);
+  const startRunRecording = useRunRecorderStore((state) => state.startRecording);
+  const stopRunRecording = useRunRecorderStore((state) => state.stopRecording);
+  const startRunReplay = useRunRecorderStore((state) => state.startReplay);
+  const stopRunReplay = useRunRecorderStore((state) => state.stopReplay);
+  const verifyRunReplay = useRunRecorderStore((state) => state.verifyReplay);
+  const resetRunRecorder = useRunRecorderStore((state) => state.reset);
+  const setDebugOverlay = useRunRecorderStore((state) => state.setDebugOverlay);
   const replayRecord = replayState?.record ?? null;
   const uiTick = useUiTickStore((state) => state.uiTick);
   const isReplayMode = recorderMode === 'replaying';

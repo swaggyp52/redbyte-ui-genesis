@@ -1,4 +1,3 @@
-import React from 'react';
 import { createStore } from 'zustand/vanilla';
 import type {
   ExtractState,
@@ -13,6 +12,8 @@ type ReadonlyStoreApi<T> = Pick<StoreApi<T>, 'getState' | 'getInitialState' | 's
 const identity = <T,>(arg: T) => arg;
 const refEquality = <T,>(a: T, b: T) => a === b;
 
+// React-based hook - only available when imported in React context
+// This is dynamically loaded to avoid hard React dependency at module load time
 export function useStore<S extends ReadonlyStoreApi<unknown>>(api: S): ExtractState<S>;
 export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
   api: S,
@@ -24,6 +25,9 @@ export function useStore<S extends ReadonlyStoreApi<unknown>, U>(
   selector: (state: ExtractState<S>) => U = identity as (state: ExtractState<S>) => U,
   equalityFn: (a: U, b: U) => boolean = refEquality
 ): U {
+  // Dynamic import to avoid hard React dependency
+  const React = require('react');
+  
   // Stable refs that persist across renders
   const selectorRef = React.useRef(selector);
   const equalityRef = React.useRef(equalityFn);
