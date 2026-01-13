@@ -42,9 +42,14 @@ const rg = {
     .filter(Boolean)
     .join("\n"),
 };
-
 // If ripgrep is not found, fail hard with clear platform-specific guidance
-if (rg.err.includes("notis should be installed by the 'Install ripgrep' workflow step.");
+if (rg.err.includes("not found") || rg.err.includes("command not found")) {
+  const isCI = process.env.CI === "true";
+  console.error("❌ FATAL: ripgrep (rg) is required but not found.");
+  console.error("");
+  if (isCI) {
+    console.error("🔧 CI Fix (GitHub Actions):");
+    console.error("   This should be installed by the 'Install ripgrep' workflow step.");
     console.error("   If running on a custom runner, ensure ripgrep is installed.");
     console.error("");
   }
@@ -55,13 +60,7 @@ if (rg.err.includes("notis should be installed by the 'Install ripgrep' workflow
   console.error("   macOS:     brew install ripgrep");
   console.error("   Linux:     sudo apt-get install -y ripgrep (Ubuntu/Debian)");
   console.error("             or: dnf install ripgrep (Fedora)");
-  console.error("             or: pacman -S ripgrep (Arch
-  console.error("🔧 Local Install Options:");
-  console.error("   Windows:   winget install BurntSushi.ripgrep.MSVC");
-  console.error("             or: choco install ripgrep");
-  console.error("             or: scoop install ripgrep");
-  console.error("   macOS:     brew install ripgrep");
-  console.error("   Linux:     apt-get install ripgrep (or dnf/pacman equiv)");
+  console.error("             or: pacman -S ripgrep (Arch)");
   console.error("   Any OS:    cargo install ripgrep (requires Rust)");
   console.error("");
   process.exit(2);
