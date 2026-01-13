@@ -161,9 +161,16 @@ export function useRestoreCircuit(): { restored: boolean } {
  */
 export function clearAutosaveStorage(): void {
   try {
-    localStorage.removeItem(CE_STORAGE_KEY);
+    localStorage.removeItem('rb:classroom:v1'); // CE_STORAGE_KEY
     console.log('[Autosave] Cleared all saved state');
   } catch (err) {
     console.error('[Autosave] Failed to clear storage:', err);
   }
+}
+
+/**
+ * Alias for clearAutosaveStorage for explicit CE context
+ */
+export function clearSavedCircuit(): void {
+  clearAutosaveStorage();
 }

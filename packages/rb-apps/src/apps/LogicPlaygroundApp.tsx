@@ -73,7 +73,9 @@ import { RightDock, type RightDockTab } from '../components/RightDock';
 import { EnhancedPalette } from '../components/EnhancedPalette';
 import { HelpDock } from '../components/HelpDock';
 import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
-import { useAutosaveCircuit, useRestoreCircuit, loadSavedCircuit } from '../utils/ceAutosave';
+import { useAutosaveCircuit, useRestoreCircuit, loadSavedCircuit, clearSavedCircuit } from '../utils/ceAutosave';
+import { isCEMode, getCEConfig, isHeavyCircuit } from '../utils/ceMode';
+import { ResetWorkspaceModal, ExampleGalleryModal, ExportBundleModal } from '../components/CEUIComponents';
 
 // Primitive node types (built-in gates) organized by category
 const PRIMITIVE_NODES = {
@@ -293,6 +295,13 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showExamplesModal, setShowExamplesModal] = useState(false);
+  
+  // CE Mode modals
+  const [showCEResetModal, setShowCEResetModal] = useState(false);
+  const [showCEExamplesModal, setShowCEExamplesModal] = useState(false);
+  const [showCEExportModal, setShowCEExportModal] = useState(false);
+  const ceMode = isCEMode();
+  const ceConfig = getCEConfig();
   const [exampleNoteDismissed, setExampleNoteDismissed] = useState(false);
   const [highlightedPort, setHighlightedPort] = useState<{ nodeId: string; portName: string } | null>(
     null
@@ -2452,6 +2461,79 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   // Memoize chips array to avoid multiple store calls during render
   const allChips = React.useMemo(() => getAllChips(), [getAllChips]);
 
+  // ====== CE MODE HANDLERS ======
+  
+  const handleCEResetWorkspace = () => {
+    try {
+      // Clear autosave
+      clearSavedCircuit();
+      
+      // Reset circuit to empty
+      const emptyCircuit: Circuit = { nodes: [], connections: [] };
+      setCircuit(emptyCircuit);
+      engine.setCircuit(emptyCircuit);
+      tickEngine.setCircuit(emptyCircuit);
+      
+      // Reset tick count
+      tickEngine.resetTickCount();
+      setTickCount(0);
+      
+      // Stop simulation
+      if (isRunning) {
+        tickEngine.pause();
+        setIsRunning(false);
+      }
+      
+      // Reset view
+      setPerspective('build');
+      useLogicViewStore.getState().setCamera({ x: 0, y: 0, zoom: 1 });
+      
+      addToast('Workspace reset to empty circuit', 'success');
+      setShowCEResetModal(false);
+    } catch (error) {
+      console.error('Reset workspace error:', error);
+      addToast('Failed to reset workspace', 'error');
+    }
+  };
+
+  const handleCELoadExample = (example: any) => {
+    try {
+      // example is the CEExample object with circuit already loaded
+      const exampleCircuit = example.circuit || example;
+      
+      setCircuit(exampleCircuit);
+      engine.setCircuit(exampleCircuit);
+      tickEngine.setCircuit(exampleCircuit);
+      
+      // Pause simulation on load (especially for heavy circuits)
+      if (isRunning) {
+        tickEngine.pause();
+        setIsRunning(false);
+      }
+      
+      // Check if heavy and warn
+      const nodeCount = exampleCircuit.nodes.length;
+      const connCount = exampleCircuit.connections.length;
+      if (isHeavyCircuit(nodeCount, connCount)) {
+        addToast(`Large circuit loaded (${nodeCount} nodes). Simulation paused.`, 'info', 4000);
+      } else {
+        addToast(`Example loaded successfully`, 'success');
+      }
+      
+      setShowCEExamplesModal(false);
+    } catch (error) {
+      console.error('Load example error:', error);
+      addToast('Failed to load example', 'error');
+    }
+  };
+
+  const handleCEExportBundle = () => {
+    // ExportBundleModal handles the download internally
+    // Just close the modal when user confirms
+    addToast('Circuit exported successfully', 'success');
+    setShowCEExportModal(false);
+  };
+
   return (
     <div className="h-full flex flex-col bg-gray-900 text-white" data-testid="logic-playground-root">
       {/* Intent Resource Display */}
@@ -2466,13 +2548,13 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
       {/* Top Command Bar - vNext Design */}
       <TopCommandBar
-        onExamples={() => setShowExamplesModal(true)}
+        onExamples={ceMode ? () => setShowCEExamplesModal(true) : () => setShowExamplesModal(true)}
         projectName={projectName}
         onNew={handleNew}
         onNewProject={handleNewProject}
         onSaveProject={handleSaveProject}
         onOpenProject={handleOpenProject}
-        onExportProject={handleExportProject}
+        onExportProject={ceMode ? () => setShowCEExportModal(true) : handleExportProject}
         onSave={handleSave}
         onSaveAs={handleSaveAs}
         onShare={handleShare}
@@ -2489,6 +2571,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         tickRate={currentHz}
         onTickRateChange={handleHzChange}
         onResetTickCount={handleResetTickCount}
+        onReset={ceMode ? () => setShowCEResetModal(true) : undefined}
         perspective={perspective}
         onPerspectiveChange={setPerspective}
         schematicMiniEnabled={schematicMiniEnabled}
@@ -3077,6 +3160,31 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         }}
         isReplayMode={isReplayMode}
       />
+
+      {/* CE Mode Modals */}
+      {ceMode && (
+        <>
+          <ResetWorkspaceModal
+            isOpen={showCEResetModal}
+            onConfirm={handleCEResetWorkspace}
+            onCancel={() => setShowCEResetModal(false)}
+          />
+          
+          <ExampleGalleryModal
+            isOpen={showCEExamplesModal}
+            examples={[]} // TODO: Load CE example pack
+            onSelectExample={handleCELoadExample}
+            onClose={() => setShowCEExamplesModal(false)}
+          />
+          
+          <ExportBundleModal
+            isOpen={showCEExportModal}
+            circuit={circuit}
+            exampleName={projectName}
+            onClose={() => setShowCEExportModal(false)}
+          />
+        </>
+      )}
 
       {/* Status Bar */}
       <StatusBar
