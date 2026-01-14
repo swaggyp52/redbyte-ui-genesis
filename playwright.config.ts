@@ -37,6 +37,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   timeout: 30_000,  // Increased for complexity tests with many nodes
+  retries: process.env.CI ? 1 : 0,  // Get traces on first failure in CI
 
   use: {
     headless: true,

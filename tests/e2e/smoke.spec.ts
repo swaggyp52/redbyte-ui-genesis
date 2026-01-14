@@ -21,6 +21,10 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
     page.on('console', (m: any) => {
       const text = m.text();
       const type = m.type();
+      
+      // Diagnostic: log to terminal for CI debugging
+      console.log(`[browser:${type}] ${text}`);
+      
       logs.push(`[${type}] ${text}`);
       
       // Capture React #185 signature
@@ -36,12 +40,21 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
 
     page.on('pageerror', (e: any) => {
       const msg = String(e);
+      
+      // Diagnostic: log to terminal for CI debugging
+      console.log(`[pageerror] ${e?.stack || msg}`);
+      
       logs.push(`[pageerror] ${msg}`);
       errors.push(msg);
     });
 
     page.on('requestfailed', (req: any) => {
-      logs.push(`[request-failed] ${req.url()} - ${req.failure()?.errorText}`);
+      const failureText = `${req.url()} - ${req.failure()?.errorText}`;
+      
+      // Diagnostic: log to terminal for CI debugging
+      console.log(`[requestfailed] ${failureText}`);
+      
+      logs.push(`[request-failed] ${failureText}`);
     });
 
     return { logs, errors };
