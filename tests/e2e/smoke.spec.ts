@@ -93,12 +93,17 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
     }
   };
 
-  // Wait for Logic Playground to be interactive and ready for testing
-  const waitForLogicPlaygroundReady = async (page: any) => {
-    // Don't use networkidle - Vite apps may never settle to idle
-    await page.waitForLoadState('domcontentloaded');
+  // Open Logic Playground like a real user - click desktop icon
+  const openLogicPlayground = async (page: any) => {
+    // Load shell desktop
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-    // Wait for root container to be visible
+    // Wait for desktop to render and click Logic Playground icon
+    const desktopIcon = page.locator('[data-testid="desktop-icon-logic-playground"]');
+    await expect(desktopIcon).toBeVisible({ timeout: 10_000 });
+    await desktopIcon.click();
+
+    // Wait for Logic Playground root to appear
     await expect(page.locator('[data-testid="logic-playground-root"]')).toBeVisible({ timeout: 30_000 });
 
     // Give React time to settle before first interaction
@@ -108,8 +113,7 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
   test('MATRIX: Load Logic Playground without React #185', async ({ page }, testInfo) => {
     const { logs, errors } = setupLogging(page);
 
-    await page.goto('/?openApp=logic-playground', { waitUntil: 'domcontentloaded' });
-    await waitForLogicPlaygroundReady(page);
+    await openLogicPlayground(page);
 
     const metrics = await getDebugMetrics(page);
     saveArtifacts(testInfo, logs, errors, metrics);
@@ -120,8 +124,7 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
   test('MATRIX: Build circuit + run simulation + switch perspectives', async ({ page }, testInfo) => {
     const { logs, errors } = setupLogging(page);
 
-    await page.goto('/?openApp=logic-playground', { waitUntil: 'domcontentloaded' });
-    await waitForLogicPlaygroundReady(page);
+    await openLogicPlayground(page);
 
     // Create a minimal circuit
     const paletteButtons = ['palette-powersource', 'palette-switch', 'palette-and', 'palette-lamp'];
@@ -162,8 +165,7 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
   test('MATRIX: Running simulation with rapid perspective switches', async ({ page }, testInfo) => {
     const { logs, errors } = setupLogging(page);
 
-    await page.goto('/?openApp=logic-playground', { waitUntil: 'domcontentloaded' });
-    await waitForLogicPlaygroundReady(page);
+    await openLogicPlayground(page);
 
     // Start simulation
     const runBtn = page.locator('[data-testid="logic-playground-run"]');
@@ -194,8 +196,7 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
   test('MATRIX: RightDock tab switching with simulation', async ({ page }, testInfo) => {
     const { logs, errors } = setupLogging(page);
 
-    await page.goto('/?openApp=logic-playground', { waitUntil: 'domcontentloaded' });
-    await waitForLogicPlaygroundReady(page);
+    await openLogicPlayground(page);
 
     // Start simulation
     const runBtn = page.locator('[data-testid="logic-playground-run"]');
@@ -230,9 +231,8 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
   test('MATRIX: Multi-window scenario (stacked windows query params)', async ({ page }, testInfo) => {
     const { logs, errors } = setupLogging(page);
 
-    // Load Logic Playground first time
-    await page.goto('/?openApp=logic-playground&windowId=1', { waitUntil: 'domcontentloaded' });
-    await waitForLogicPlaygroundReady(page);
+    // Load Logic Playground by clicking desktop icon
+    await openLogicPlayground(page);
 
     // Start simulation
     const runBtn = page.locator('[data-testid="logic-playground-run"]');
@@ -267,8 +267,7 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
   test('MATRIX: Oscilloscope probe setup and waveform capture', async ({ page }, testInfo) => {
     const { logs, errors } = setupLogging(page);
 
-    await page.goto('/?openApp=logic-playground', { waitUntil: 'domcontentloaded' });
-    await waitForLogicPlaygroundReady(page);
+    await openLogicPlayground(page);
 
     // Create minimal circuit
     const paletteButtons = ['palette-powersource', 'palette-lamp'];

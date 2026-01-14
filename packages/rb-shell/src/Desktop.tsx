@@ -166,6 +166,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
   return (
     <div
       ref={desktopRef}
+      data-testid="shell-desktop"
       className={`absolute inset-0 overflow-hidden ${isLightMode ? 'text-gray-900' : 'text-white'}`}
       style={{ ...wallpaperStyle }}
       tabIndex={0}
@@ -310,6 +311,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
         return (
           <div
             key={icon.id}
+            data-testid={`desktop-icon-${icon.appId}`}
             className="flex flex-col items-center text-xs cursor-pointer select-none transition-colors duration-150"
             style={{
               position: 'absolute',

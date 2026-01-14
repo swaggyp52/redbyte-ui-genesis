@@ -47,7 +47,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete }) => {
   }, [onComplete]);
 
   return (
-    <div className="flex h-screen w-screen flex-col items-center justify-center bg-slate-950 text-white overflow-hidden relative">
+    <div data-testid="shell-boot-screen" className="flex h-screen w-screen flex-col items-center justify-center bg-slate-950 text-white overflow-hidden relative">
       <div
         className="absolute inset-0"
         style={{
