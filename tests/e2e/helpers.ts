@@ -22,18 +22,47 @@ export const ERROR_SIGNATURES = {
 };
 
 /**
- * Hardened failure watcher: triggers immediately on any explicit failure signal.
- * Catches: page close/crash, pageerror, console errors including RB_FATAL/RB_RUNAWAY_LOOP_DETECTED/React errors
- * Returns: { failPromise, dispose, capturedLogs }
- * 
- * failPromise rejects with an Error immediately when failure is detected.
- * Use in Promise.race to make page death a first-class failure signal.
+ * Event ring buffer entry
  */
-export function createFailureWatcher(page: any) {
+interface RingBufferEvent {
+  timestamp: number;
+  type: string;
+  data: string;
+}
+
+/**
+ * Phase 2B: Hardened failure watcher with closure autopsy.
+ * 
+ * Tracks last 200 events in a ring buffer to provide context when page closes.
+ * Detects: page close/crash, pageerror, console errors, doc-load-fail, unexpected-nav, reload-loop
+ * Returns: { failPromise, dispose, capturedLogs, ringBuffer }
+ * 
+ * failPromise rejects with Error + ring buffer context immediately when failure is detected.
+ * Use in Promise.race to make page death a first-class failure signal with autopsy.
+ */
+export function createFailureWatcher(page: any, baseURL: string = '') {
   let resolved = false;
   let rejectFn: (error: Error) => void = () => {};
   let resolveFn: (value: null) => void = () => {};
   const capturedLogs: string[] = [];
+  const ringBuffer: RingBufferEvent[] = [];
+  const MAX_RING_BUFFER = 200;
+  
+  let documentLoadCount = 0;
+  let firstDocLoadTime = 0;
+  let lastNavigationUrl = '';
+
+  const addEvent = (type: string, data: string) => {
+    ringBuffer.push({ timestamp: Date.now(), type, data });
+    if (ringBuffer.length > MAX_RING_BUFFER) {
+      ringBuffer.shift();
+    }
+  };
+
+  const formatRingBuffer = (): string => {
+    const recent = ringBuffer.slice(-50); // Last 50 events for compact output
+    return recent.map(e => `[${e.type}] ${e.data.substring(0, 150)}`).join('\n');
+  };
 
   const failPromise: Promise<{ kind: string; message: string } | null> = new Promise((resolve, reject) => {
     resolveFn = resolve;
@@ -45,6 +74,11 @@ export function createFailureWatcher(page: any) {
     page.off('pageerror', onPageError);
     page.off('close', onClose);
     page.off('crash', onCrash);
+    page.off('requestfailed', onRequestFailed);
+    page.off('response', onResponse);
+    page.off('framenavigated', onFrameNavigated);
+    page.off('load', onLoad);
+    page.off('domcontentloaded', onDOMContentLoaded);
   };
 
   const finish = (result: { kind: string; message: string } | null) => {
@@ -53,7 +87,8 @@ export function createFailureWatcher(page: any) {
     cleanup();
     
     if (result) {
-      const errorMsg = `[${result.kind.toUpperCase()}] ${result.message}`;
+      const ringBufferDump = formatRingBuffer();
+      const errorMsg = `[${result.kind.toUpperCase()}] ${result.message}\n\nLast 50 events:\n${ringBufferDump}`;
       rejectFn(new Error(errorMsg));
     } else {
       resolveFn(null);
@@ -64,7 +99,16 @@ export function createFailureWatcher(page: any) {
     const text = msg.text();
     const type = msg.type();
     
+    addEvent(`console:${type}`, text);
     capturedLogs.push(`[${type}] ${text}`);
+
+    // Track readiness and watchdog activation
+    if (text.includes('RB_READY')) {
+      addEvent('milestone', 'RB_READY signal received');
+    }
+    if (text.includes('RB_WATCHDOG_ACTIVE')) {
+      addEvent('milestone', 'RB_WATCHDOG_ACTIVE');
+    }
 
     // Check for any explicit error signatures that indicate failure
     if (text.includes('RB_FATAL:')) {
@@ -93,16 +137,90 @@ export function createFailureWatcher(page: any) {
 
   const onPageError = (e: any) => {
     const text = String(e);
+    addEvent('pageerror', text);
     capturedLogs.push(`[pageerror] ${text}`);
     finish({ kind: 'pageerror', message: text });
   };
 
+  const onRequestFailed = (request: any) => {
+    const url = request.url();
+    const failure = request.failure();
+    const failureText = failure ? failure.errorText : 'unknown';
+    
+    addEvent('requestfailed', `${url} - ${failureText}`);
+    
+    // Check if this is the main document failing to load
+    if (request.resourceType() === 'document') {
+      finish({ kind: 'doc-load-fail', message: `Document load failed: ${url} - ${failureText}` });
+    }
+  };
+
+  const onResponse = (response: any) => {
+    const url = response.url();
+    const status = response.status();
+    const resourceType = response.request().resourceType();
+    
+    // Track document and script responses
+    if (resourceType === 'document' || resourceType === 'script') {
+      addEvent('response', `${status} ${resourceType} ${url}`);
+      
+      // Track document reloads
+      if (resourceType === 'document') {
+        documentLoadCount++;
+        if (firstDocLoadTime === 0) {
+          firstDocLoadTime = Date.now();
+        }
+        
+        // Detect reload loop: >3 document loads in 5s
+        if (documentLoadCount > 3) {
+          const elapsed = Date.now() - firstDocLoadTime;
+          if (elapsed < 5000) {
+            finish({ kind: 'reload-loop', message: `Reload loop detected: ${documentLoadCount} document loads in ${elapsed}ms` });
+            return;
+          }
+        }
+      }
+      
+      // Check for failed document/script loads
+      if (status >= 400) {
+        const msg = `${status} ${resourceType} ${url}`;
+        if (resourceType === 'document') {
+          finish({ kind: 'doc-load-fail', message: msg });
+        } else {
+          addEvent('error', `Script load failed: ${msg}`);
+        }
+      }
+    }
+  };
+
+  const onFrameNavigated = (frame: any) => {
+    const url = frame.url();
+    addEvent('navigation', url);
+    
+    // Detect unexpected navigation away from baseURL
+    if (baseURL && lastNavigationUrl && url !== lastNavigationUrl && !url.startsWith(baseURL)) {
+      finish({ kind: 'unexpected-nav', message: `Unexpected navigation from ${lastNavigationUrl} to ${url}` });
+      return;
+    }
+    lastNavigationUrl = url;
+  };
+
+  const onLoad = () => {
+    addEvent('lifecycle', 'load');
+  };
+
+  const onDOMContentLoaded = () => {
+    addEvent('lifecycle', 'domcontentloaded');
+  };
+
   const onClose = () => {
+    addEvent('page-event', 'page closed');
     capturedLogs.push('[page-closed]');
     finish({ kind: 'page-closed', message: 'Page closed/crashed unexpectedly' });
   };
 
   const onCrash = () => {
+    addEvent('page-event', 'page crashed');
     capturedLogs.push('[page-crashed]');
     finish({ kind: 'page-crashed', message: 'Page process crashed' });
   };
@@ -112,6 +230,11 @@ export function createFailureWatcher(page: any) {
   page.on('pageerror', onPageError);
   page.on('close', onClose);
   page.on('crash', onCrash);
+  page.on('requestfailed', onRequestFailed);
+  page.on('response', onResponse);
+  page.on('framenavigated', onFrameNavigated);
+  page.on('load', onLoad);
+  page.on('domcontentloaded', onDOMContentLoaded);
 
   const dispose = () => {
     cleanup();
@@ -125,6 +248,7 @@ export function createFailureWatcher(page: any) {
     failPromise,
     dispose,
     capturedLogs,
+    ringBuffer,
     // Helper to wait with a timeout (race the failure promise against a timeout)
     wait: async (timeoutMs = 6000) => {
       return Promise.race([

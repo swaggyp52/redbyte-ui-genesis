@@ -471,6 +471,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       enableWatchdog();
       
       if (import.meta.env.DEV) {
+        console.log('RB_READY');
         console.log('[LogicPlayground] Readiness signal dispatched');
       }
     }

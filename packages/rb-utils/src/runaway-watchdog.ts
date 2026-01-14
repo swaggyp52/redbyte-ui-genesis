@@ -41,6 +41,7 @@ interface WatchdogState {
   detectedRunaway: boolean;
   frameThresholdStart?: number;
   microtaskThresholdStart?: number;
+  activationLogged?: boolean;
 }
 
 let watchdogState: WatchdogState = {
@@ -55,6 +56,7 @@ let watchdogState: WatchdogState = {
   detectedRunaway: false,
   frameThresholdStart: undefined,
   microtaskThresholdStart: undefined,
+  activationLogged: false,
 };
 
 // Configuration thresholds
@@ -176,6 +178,12 @@ function checkRunawayConditions() {
     const root = document.querySelector('[data-testid="logic-playground-root"]');
     if (!root || root.getAttribute('data-ready') !== 'true') {
       return; // Still in startup phase, ignore potential spikes
+    }
+    
+    // Log once when watchdog becomes active (DEV only)
+    if (import.meta && import.meta.env && import.meta.env.DEV && !watchdogState.activationLogged) {
+      console.log('RB_WATCHDOG_ACTIVE');
+      watchdogState.activationLogged = true;
     }
   }
 

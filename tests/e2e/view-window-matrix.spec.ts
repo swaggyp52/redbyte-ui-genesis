@@ -107,6 +107,7 @@ const saveArtifacts = (
   errors: string[],
   metrics?: DebugMetrics,
   page?: any,
+  ringBuffer?: any[],
 ) => {
   // Console log (last 1000 lines)
   const consoleOut = testInfo.outputPath('console.log');
@@ -122,6 +123,22 @@ const saveArtifacts = (
   if (metrics) {
     const metricsOut = testInfo.outputPath('metrics.json');
     fs.writeFileSync(metricsOut, JSON.stringify(metrics, null, 2), 'utf8');
+  }
+
+  // Ring buffer events (network, lifecycle, console)
+  if (ringBuffer && ringBuffer.length > 0) {
+    const ringOut = testInfo.outputPath('ring-buffer.json');
+    fs.writeFileSync(ringOut, JSON.stringify(ringBuffer, null, 2), 'utf8');
+    
+    // Extract network failures summary
+    const networkFailures = ringBuffer
+      .filter((e: any) => e.type === 'requestfailed' || (e.type === 'response' && e.data.startsWith('4') || e.data.startsWith('5')))
+      .map((e: any) => e.data);
+    
+    if (networkFailures.length > 0) {
+      const networkOut = testInfo.outputPath('network-failures.log');
+      fs.writeFileSync(networkOut, networkFailures.join('\n'), 'utf8');
+    }
   }
 
   // DOM snapshot on failure
@@ -530,7 +547,7 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
     const { logs, errors, react185Signatures } = setupLogging(page);
     const errorListener = setupExplicitErrorListener(page);
 
-    const failure = createFailureWatcher(page);
+    const failure = createFailureWatcher(page, CE_MODE_URL);
 
     try {
       await page.goto(CE_MODE_URL, { waitUntil: 'domcontentloaded' });
@@ -547,7 +564,7 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
       await page.waitForTimeout(2000);
 
       const metrics = await getDebugMetrics(page);
-      saveArtifacts(testInfo, logs, errors, metrics, page);
+      saveArtifacts(testInfo, logs, errors, metrics, page, failure.ringBuffer);
 
       try {
         await errorListener.assertNoExplicitErrors();
@@ -558,6 +575,11 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
 
       assertNoReact185(errors);
       expect(errors).toHaveLength(0);
+    } catch (e) {
+      const errMsg = String(e.message || e);
+      console.error('[ISSUE-A] Failure reason:', errMsg.substring(0, 500));
+      saveArtifacts(testInfo, logs, errors, undefined, page, failure.ringBuffer);
+      throw e;
     } finally {
       failure.dispose();
     }
@@ -569,11 +591,10 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
     const errorListener = setupExplicitErrorListener(page);
     const { logs, errors } = setupLogging(page);
 
-    const failure = createFailureWatcher(page);
+    const failure = createFailureWatcher(page, CE_MODE_URL);
 
     try {
-      await injectFault(page, 'selector-object', 1000);
-
+      // Navigate directly with fault parameter (don't use injectFault helper which navigates twice)
       await page.goto(CE_MODE_URL + '&fault=selector-object', { waitUntil: 'domcontentloaded' });
 
       await Promise.race([
@@ -592,10 +613,13 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
       const errMsg = String(e.message || e);
       if (errMsg.includes('[RB-') || errMsg.includes('[PAGE-') || errMsg.includes('[SIGNATURE]')) {
         console.log('[ISSUE-A-FAULT] Fast fail:', errMsg.substring(0, 100));
+        console.log('[ISSUE-A-FAULT] Full reason:', errMsg);
         failure.dispose();
-        throw e;
+        saveArtifacts(testInfo, logs, errors, undefined, page, failure.ringBuffer);
+        return; // Expected failure
       }
       failure.dispose();
+      saveArtifacts(testInfo, logs, errors, undefined, page, failure.ringBuffer);
       throw e;
     }
   });
