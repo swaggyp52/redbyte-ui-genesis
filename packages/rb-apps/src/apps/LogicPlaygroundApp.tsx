@@ -419,7 +419,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     // Calculate max fan-out
     const fanOutCounts = new Map<string, number>();
     circuit.connections.forEach((conn) => {
-      const key = `${conn.from.nodeId}:${conn.from.port}`;
+      const key = `${conn.from.nodeId}:${conn.from.portName}`;
       fanOutCounts.set(key, (fanOutCounts.get(key) || 0) + 1);
     });
     const maxFanOut = fanOutCounts.size > 0 ? Math.max(...fanOutCounts.values()) : 0;
