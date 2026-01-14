@@ -45,7 +45,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { registerAllChips, registerChip, unregisterChip } from '../utils/chipRegistry';
 import { useViewStateStore } from '../stores/viewStateStore';
 import { useProbeStore } from '../stores/probeStore';
-import { useLayoutStore } from '../stores/layoutStore';
+import { useLayoutStore, type PerspectiveId } from '../stores/layoutStore';
 import { useOscilloscopeStore } from '../stores/oscilloscopeStore';
 import { calculateFitToView, setGlobalViewStateSync, useLogicViewStore } from '@redbyte/rb-logic-view';
 import { useHierarchyStore } from '../stores/hierarchyStore';

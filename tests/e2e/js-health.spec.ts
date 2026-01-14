@@ -8,6 +8,10 @@ interface DiagnosticInfo {
   requestsFailed: Array<{ url: string; error: string; time: number }>;
 }
 
+interface TestInfo {
+  outputPath: (filename: string) => string;
+}
+
 const createDiagnosticCollector = () => {
   const diag: DiagnosticInfo = {
     pageerrors: [],

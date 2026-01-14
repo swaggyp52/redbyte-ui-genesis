@@ -36,6 +36,8 @@
         "@testing-library/jest-dom": "^6.6.3",
         "@testing-library/react": "^16.1.0",
         "@testing-library/user-event": "^14.6.1",
+        "@types/react": "^19.2.7",
+        "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "^5.1.1",
         "@vitest/coverage-v8": "^2.1.8",
         "@welldone-software/why-did-you-render": "^8.0.3",
