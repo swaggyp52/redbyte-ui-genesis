@@ -95,7 +95,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   onResetWorkspace,
   onResetLayout,
 }) => {
-  const { safeMode, setSafeMode } = useClassroomModeStore();
+  const { safeMode, setSafeMode, isComplexityWarning } = useClassroomModeStore();
   const [showResetMenu, setShowResetMenu] = React.useState(false);
 
   const handleSafeModeToggle = () => {
@@ -366,9 +366,11 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         <select
           value={perspective}
           onChange={(e) => {
-            // In Safe Mode, prevent selecting quad or 3D
-            if (safeMode && (e.target.value === 'quad' || e.target.value === '3d-only' || e.target.value === 'explore')) {
-              alert('Safe Mode: Quad and 3D views are disabled. Switch to Normal mode to use these features.');
+            // In Safe Mode or complexity warning, prevent selecting quad or 3D
+            const shouldBlock = safeMode || isComplexityWarning;
+            if (shouldBlock && (e.target.value === 'quad' || e.target.value === '3d-only' || e.target.value === 'explore')) {
+              const reason = safeMode ? 'Safe Mode' : 'Complexity warning';
+              alert(`${reason}: Quad and 3D views are disabled. Simplify your circuit or switch to Normal mode.`);
               return;
             }
             onPerspectiveChange(e.target.value as PerspectiveId);
@@ -381,14 +383,14 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             <option value="build">🔧 Build</option>
             <option value="analyze">📊 Analyze</option>
             <option value="explain">📐 Explain</option>
-            <option value="explore" disabled={safeMode}>🧊 Explore {safeMode && '(disabled)'}</option>
-            <option value="quad" disabled={safeMode}>▦ Quad {safeMode && '(disabled)'}</option>
+            <option value="explore" disabled={safeMode || isComplexityWarning}>🧊 Explore {(safeMode || isComplexityWarning) && '(disabled)'}</option>
+            <option value="quad" disabled={safeMode || isComplexityWarning}>▦ Quad {(safeMode || isComplexityWarning) && '(disabled)'}</option>
           </optgroup>
           <optgroup label="Single View">
             <option value="circuit-only">⚡ Circuit Only</option>
             <option value="schematic-only">📐 Schematic Only</option>
             <option value="scope-only">📊 Scope Only</option>
-            <option value="3d-only" disabled={safeMode}>🧊 3D Only {safeMode && '(disabled)'}</option>
+            <option value="3d-only" disabled={safeMode || isComplexityWarning}>🧊 3D Only {(safeMode || isComplexityWarning) && '(disabled)'}</option>
           </optgroup>
           <optgroup label="Legacy">
             <option value="inspect">🔍 Inspect</option>

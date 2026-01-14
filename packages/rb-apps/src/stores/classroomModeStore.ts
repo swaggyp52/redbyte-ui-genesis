@@ -14,7 +14,13 @@ interface ClassroomModeState {
 
   // Node count for guardrails
   nodeCount: number;
-  setNodeCount: (count: number) => void;
+  edgeCount: number;
+  maxFanOut: number;
+  setComplexity: (nodeCount: number, edgeCount: number, maxFanOut: number) => void;
+
+  // Complexity thresholds
+  isComplexityWarning: boolean; // ≥15 nodes
+  isComplexityBlocked: boolean; // ≥20 nodes
 
   // Auto-degrade state
   isStepOnlyMode: boolean;
@@ -57,7 +63,31 @@ export const useClassroomModeStore = create<ClassroomModeState>((set, get) => ({
   setSnapshot: (snapshot) => set({ lastKnownGoodSnapshot: snapshot }),
 
   nodeCount: 0,
-  setNodeCount: (count: number) => set({ nodeCount: count }),
+  edgeCount: 0,
+  maxFanOut: 0,
+  isComplexityWarning: false,
+  isComplexityBlocked: false,
+
+  setComplexity: (nodeCount: number, edgeCount: number, maxFanOut: number) => {
+    const isWarning = nodeCount >= 15;
+    const isBlocked = nodeCount >= 20;
+    
+    set({
+      nodeCount,
+      edgeCount,
+      maxFanOut,
+      isComplexityWarning: isWarning,
+      isComplexityBlocked: isBlocked,
+    });
+
+    // Auto-enable step-only mode at warning threshold
+    if (isWarning && !get().isStepOnlyMode) {
+      set({ isStepOnlyMode: true });
+      if (!get().metrics.nodeCountWarningTriggered) {
+        get().recordNodeCountWarning();
+      }
+    }
+  },
 
   isStepOnlyMode: false,
   setStepOnlyMode: (enabled: boolean) => set({ isStepOnlyMode: enabled }),

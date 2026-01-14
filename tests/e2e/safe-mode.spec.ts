@@ -232,3 +232,50 @@ test.describe('Reset + Recovery - Classroom Readiness', () => {
     await expect(page.locator('text=Safe Mode: Yes')).toBeVisible();
   });
 });
+
+test.describe('Complexity Guardrails - Classroom Readiness', () => {
+  test('Complexity warning banner appears at 15+ nodes', async ({ page }) => {
+    await page.goto('http://localhost:5173');
+    await page.waitForLoadState('networkidle');
+
+    // Set complexity via store
+    await page.evaluate(() => {
+      if ((window as any).useClassroomModeStore) {
+        const store = (window as any).useClassroomModeStore.getState();
+        if (store && store.setComplexity) {
+          store.setComplexity(15, 20, 3);
+        }
+      }
+    });
+
+    await page.waitForTimeout(500);
+
+    // Warning banner should appear
+    const warningBanner = page.getByTestId('complexity-warning-banner');
+    await expect(warningBanner).toBeVisible({ timeout: 3000 });
+    await expect(warningBanner).toContainText('Circuit is getting complex');
+  });
+
+  test('Complexity blocking at 20 nodes shows blocked banner', async ({ page }) => {
+    await page.goto('http://localhost:5173');
+    await page.waitForLoadState('networkidle');
+
+    // Set complexity to blocking threshold
+    await page.evaluate(() => {
+      if ((window as any).useClassroomModeStore) {
+        const store = (window as any).useClassroomModeStore.getState();
+        if (store && store.setComplexity) {
+          store.setComplexity(20, 40, 3);
+        }
+      }
+    });
+
+    await page.waitForTimeout(300);
+
+    // Blocked banner should appear
+    const blockedBanner = page.getByTestId('complexity-blocked-banner');
+    await expect(blockedBanner).toBeVisible({ timeout: 5000 });
+    await expect(blockedBanner).toContainText('Circuit limit reached (20 nodes)');
+    await expect(blockedBanner).toContainText('Simplify your circuit or reset workspace');
+  });
+});
