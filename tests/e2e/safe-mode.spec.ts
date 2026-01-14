@@ -127,3 +127,108 @@ test.describe('Safe Mode - Classroom Readiness', () => {
     expect(isDisabled).toBe(true);
   });
 });
+
+test.describe('Reset + Recovery - Classroom Readiness', () => {
+  test('Reset Workspace clears circuit and snapshots', async ({ page }) => {
+    await page.goto('http://localhost:5173');
+    await page.waitForLoadState('networkidle');
+
+    // Simulate circuit data in localStorage
+    await page.evaluate(() => {
+      localStorage.setItem('rb_circuit', JSON.stringify({ nodes: [{id: 'test-node'}], connections: [] }));
+      localStorage.setItem('rb_workspace_latest', JSON.stringify({
+        schemaVersion: 1,
+        timestamp: Date.now(),
+        reason: 'autosave',
+        payload: { circuit: {}, layout: {}, flags: { safeMode: false } }
+      }));
+    });
+
+    // Open Reset menu
+    const resetButton = page.getByTestId('reset-menu-button');
+    await expect(resetButton).toBeVisible({ timeout: 5000 });
+    await resetButton.click();
+
+    // Click Reset Workspace
+    const resetWorkspaceButton = page.getByTestId('reset-workspace-button');
+    await expect(resetWorkspaceButton).toBeVisible();
+    
+    // Mock confirm dialog
+    page.on('dialog', dialog => dialog.accept());
+    
+    await resetWorkspaceButton.click();
+    
+    // Page should reload
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(500);
+
+    // Verify circuit cleared from localStorage
+    const circuit = await page.evaluate(() => localStorage.getItem('rb_circuit'));
+    expect(circuit).toBeNull();
+  });
+
+  test('Recovery banner appears after abnormal shutdown', async ({ page }) => {
+    // Set up synthetic crash state
+    await page.goto('http://localhost:5173');
+    await page.evaluate(() => {
+      // Create snapshot
+      localStorage.setItem('rb_workspace_latest', JSON.stringify({
+        schemaVersion: 1,
+        timestamp: Date.now(),
+        reason: 'autosave',
+        payload: { 
+          circuit: { nodes: [{id: 'recovered-node', type: 'INPUT'}], connections: [] }, 
+          layout: {}, 
+          flags: { safeMode: false } 
+        }
+      }));
+      
+      // Mark abnormal shutdown
+      localStorage.setItem('rb_last_clean_shutdown', 'false');
+    });
+
+    // Reload to trigger recovery detection
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    // Recovery banner should be visible
+    const recoveryBanner = page.getByTestId('recovery-banner');
+    await expect(recoveryBanner).toBeVisible({ timeout: 5000 });
+
+    // Click Recover
+    const recoverButton = page.getByTestId('recovery-recover-button');
+    await expect(recoverButton).toBeVisible();
+    await recoverButton.click();
+
+    // Banner should disappear
+    await expect(recoveryBanner).not.toBeVisible({ timeout: 3000 });
+  });
+
+  test('Recovery banner Details button shows snapshot info', async ({ page }) => {
+    // Set up crash state with snapshot
+    await page.goto('http://localhost:5173');
+    const testTimestamp = Date.now();
+    await page.evaluate((ts) => {
+      localStorage.setItem('rb_workspace_latest', JSON.stringify({
+        schemaVersion: 1,
+        timestamp: ts,
+        reason: 'autosave',
+        payload: { circuit: {}, layout: {}, flags: { safeMode: true } }
+      }));
+      localStorage.setItem('rb_last_clean_shutdown', 'false');
+    }, testTimestamp);
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    // Click Details
+    const detailsButton = page.getByTestId('recovery-details-button');
+    await expect(detailsButton).toBeVisible({ timeout: 5000 });
+    await detailsButton.click();
+
+    // Verify details shown
+    await expect(page.locator('text=Schema: v1')).toBeVisible();
+    await expect(page.locator('text=Reason: autosave')).toBeVisible();
+    await expect(page.locator('text=Safe Mode: Yes')).toBeVisible();
+  });
+});

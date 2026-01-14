@@ -55,6 +55,10 @@ interface TopCommandBarProps {
   onToggleSchematicMini?: () => void;
   onHelp: () => void;
   onManual?: () => void;
+
+  // Classroom: Reset callbacks
+  onResetWorkspace?: () => void;
+  onResetLayout?: () => void;
 }
 
 export const TopCommandBar: React.FC<TopCommandBarProps> = ({
@@ -88,6 +92,8 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   onToggleSchematicMini,
   onHelp,
   onManual,
+  onResetWorkspace,
+  onResetLayout,
 }) => {
   const { safeMode, setSafeMode } = useClassroomModeStore();
   const [showResetMenu, setShowResetMenu] = React.useState(false);
@@ -97,16 +103,28 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   };
 
   const handleResetWorkspace = () => {
-    if (confirm('Clear all circuits and reset to blank workspace?')) {
-      localStorage.removeItem('rb_circuit');
-      localStorage.removeItem('rb_layout');
-      window.location.reload();
+    if (onResetWorkspace) {
+      onResetWorkspace();
+    } else {
+      // Fallback if parent doesn't provide callback
+      if (confirm('Clear all circuits and reset to blank workspace?')) {
+        localStorage.removeItem('rb_circuit');
+        localStorage.removeItem('rb_layout');
+        window.location.reload();
+      }
     }
+    setShowResetMenu(false);
   };
 
   const handleResetLayout = () => {
-    localStorage.removeItem('rb_layout');
-    window.location.reload();
+    if (onResetLayout) {
+      onResetLayout();
+    } else {
+      // Fallback if parent doesn't provide callback
+      localStorage.removeItem('rb_layout');
+      window.location.reload();
+    }
+    setShowResetMenu(false);
   };
 
   // PHASE 2C: Mount breadcrumb
@@ -423,20 +441,14 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             {showResetMenu && (
               <div className="absolute right-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded shadow-lg z-50">
                 <button
-                  onClick={() => {
-                    handleResetWorkspace();
-                    setShowResetMenu(false);
-                  }}
+                  onClick={handleResetWorkspace}
                   className="block w-full text-left px-4 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition-all"
                   data-testid="reset-workspace-button"
                 >
                   Reset Workspace
                 </button>
                 <button
-                  onClick={() => {
-                    handleResetLayout();
-                    setShowResetMenu(false);
-                  }}
+                  onClick={handleResetLayout}
                   className="block w-full text-left px-4 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white border-t border-gray-700 transition-all"
                   data-testid="reset-layout-button"
                 >
