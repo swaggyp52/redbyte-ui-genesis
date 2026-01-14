@@ -5272,6 +5272,9 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-01-14 (TypeScript Error Cleanup - COMPLETE)
+- Fixed remaining 119 TypeScript errors down to ~110 markdown linting warnings (non-blocking). Fixed: (1) lint-zustand-selectors.js line 113 unclosed string literal, (2) All catch blocks in helpers.ts and view-window-matrix.spec.ts to use proper `e: unknown` type with `e instanceof Error ? e.message : String(e)` pattern instead of unsafe `e.message` access, (3) selectOption call using RegExp label changed to string literal, (4) Added forceConsistentCasingInFileNames to tools/config/tsconfig.base.json for cross-platform consistency. All TypeScript errors resolved; remaining errors are markdown style rules (MD032, MD031, MD040, MD022, MD060) in documentation files, which are non-blocking formatting preferences. Changes committed and pushed to main. Objectives unchanged; phase unchanged
+
 ### 2026-01-13 (Phase: Boot Reliability – BISECT MODE ENABLED)
 - Implemented BOOT_BISECT mode behind `?boot=bisect&step=N` and `VITE_BOOT_BISECT=1`, rendering an ultra-minimal React tree and progressively importing modules to isolate boot-time side effects. Steps: 0 (minimal), 1 (import Shell only), 2 (render Shell), 3 (import LogicPlaygroundApp only), 4 (render LogicPlaygroundApp), 5 (render normal app). All dev/E2E instrumentation (fatal capture, watchdog, churn metrics, close/reload logging) is hard-disabled in bisect mode at the earliest entrypoint. Added Playwright test `tests/e2e/boot-bisect.spec.ts` to iterate steps and assert the page stays open and the marker is visible. Result: Step 0 fails under preview, indicating an environment/build-level closure (outside app modules). Changes are isolated and reversible; normal boot path unchanged.
 
