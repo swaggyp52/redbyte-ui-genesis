@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RedByte Playground</title>
+    <script>
+      // SAFETY: Defer Three.js preload until after main.tsx controls the import order
+      // This prevents temporal dead zone (TDZ) errors in Three.js minified exports
+      if (!new URLSearchParams(window.location.search).has('boot')) {
+        // Normal mode: Three.js will be loaded by full-bootstrap
+        // Preload is safe because full-bootstrap controls import order
+        document.write('<link rel="modulepreload" crossorigin href="/assets/vendor-3d-COegcR6u.js">');
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

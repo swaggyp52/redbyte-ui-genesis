@@ -5,7 +5,10 @@
 import React from 'react';
 import type { CircuitEngine, Circuit, TickEngine } from '@redbyte/rb-logic-core';
 import { LogicCanvas, calculateFitToView, useLogicViewStore } from '@redbyte/rb-logic-view';
-import { Logic3DScene } from '@redbyte/rb-logic-3d';
+// Lazy-load 3D scene to avoid loading heavy Three.js stack unless enabled
+const Logic3DSceneLazy = React.lazy(() =>
+  import('@redbyte/rb-logic-3d').then((m) => ({ default: m.Logic3DScene }))
+);
 import { SchematicView } from './SchematicView';
 import { OscilloscopeView } from './OscilloscopeView';
 import { CircuitToolStrip } from './CircuitToolStrip';
@@ -352,25 +355,47 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
         );
 
       case '3d':
-        return (
-          <div ref={containerRef} style={containerStyle}>
-            <Logic3DScene
-              engine={engine}
-              width={dimensions.width}
-              height={dimensions.height}
-              viewStateStore={viewStateStore}
-              getChipMetadata={getChipMetadata}
-              showHints={show3DHints}
-              onDismissHints={onDismiss3DHints}
-              probeWireHighlights={probeWireHighlights}
-              mismatchWireHighlights={mismatchWireHighlights}
-              mismatchNodeIds={mismatchNodeIds}
-              mismatchPortKeys={mismatchPortKeys}
-              debugSignals={debugSignals}
-              onHelp={onHelpOpen ? () => onHelpOpen('3d-controls') : undefined}
-            />
-          </div>
-        );
+        {
+          const disable3d =
+            typeof window !== 'undefined' &&
+            new URLSearchParams(window.location.search).get('disable3d') === '1';
+
+          if (disable3d) {
+            return (
+              <div ref={containerRef} style={containerStyle} className="flex items-center justify-center text-sm text-gray-300">
+                3D view disabled by flag.
+              </div>
+            );
+          }
+
+          return (
+            <div ref={containerRef} style={containerStyle}>
+              <React.Suspense
+                fallback={
+                  <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                    Loading 3D…
+                  </div>
+                }
+              >
+                <Logic3DSceneLazy
+                  engine={engine}
+                  width={dimensions.width}
+                  height={dimensions.height}
+                  viewStateStore={viewStateStore}
+                  getChipMetadata={getChipMetadata}
+                  showHints={show3DHints}
+                  onDismissHints={onDismiss3DHints}
+                  probeWireHighlights={probeWireHighlights}
+                  mismatchWireHighlights={mismatchWireHighlights}
+                  mismatchNodeIds={mismatchNodeIds}
+                  mismatchPortKeys={mismatchPortKeys}
+                  debugSignals={debugSignals}
+                  onHelp={onHelpOpen ? () => onHelpOpen('3d-controls') : undefined}
+                />
+              </React.Suspense>
+            </div>
+          );
+        }
 
       default:
         return (

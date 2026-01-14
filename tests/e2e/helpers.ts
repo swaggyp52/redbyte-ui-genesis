@@ -47,6 +47,7 @@ export function createFailureWatcher(page: any, baseURL: string = '') {
   const capturedLogs: string[] = [];
   const ringBuffer: RingBufferEvent[] = [];
   const MAX_RING_BUFFER = 200;
+  let sawErrorSig = false;
   
   let documentLoadCount = 0;
   let firstDocLoadTime = 0;
@@ -60,8 +61,8 @@ export function createFailureWatcher(page: any, baseURL: string = '') {
   };
 
   const formatRingBuffer = (): string => {
-    const recent = ringBuffer.slice(-50); // Last 50 events for compact output
-    return recent.map(e => `[${e.type}] ${e.data.substring(0, 150)}`).join('\n');
+    const recent = ringBuffer.slice(-200);
+    return recent.map(e => `[${e.type}] ${e.data.substring(0, 300)}`).join('\n');
   };
 
   const failPromise: Promise<{ kind: string; message: string } | null> = new Promise((resolve, reject) => {
@@ -112,17 +113,20 @@ export function createFailureWatcher(page: any, baseURL: string = '') {
 
     // Check for any explicit error signatures that indicate failure
     if (text.includes('RB_FATAL:')) {
+      sawErrorSig = true;
       finish({ kind: 'rb-fatal', message: text });
       return;
     }
 
     if (text.includes('RB_RUNAWAY_LOOP_DETECTED')) {
+      sawErrorSig = true;
       finish({ kind: 'rb-runaway', message: text });
       return;
     }
 
     for (const sig of Object.values(ERROR_SIGNATURES)) {
       if (text.includes(sig)) {
+        sawErrorSig = true;
         finish({ kind: 'signature', message: text });
         return;
       }
@@ -130,6 +134,7 @@ export function createFailureWatcher(page: any, baseURL: string = '') {
 
     // Treat any console error as a failure signal
     if (type === 'error') {
+      sawErrorSig = true;
       finish({ kind: 'console-error', message: text });
       return;
     }
@@ -139,6 +144,7 @@ export function createFailureWatcher(page: any, baseURL: string = '') {
     const text = String(e);
     addEvent('pageerror', text);
     capturedLogs.push(`[pageerror] ${text}`);
+    sawErrorSig = true;
     finish({ kind: 'pageerror', message: text });
   };
 
@@ -216,7 +222,11 @@ export function createFailureWatcher(page: any, baseURL: string = '') {
   const onClose = () => {
     addEvent('page-event', 'page closed');
     capturedLogs.push('[page-closed]');
-    finish({ kind: 'page-closed', message: 'Page closed/crashed unexpectedly' });
+    const elapsedSinceFirstLoad = firstDocLoadTime ? Date.now() - firstDocLoadTime : null;
+    const suspectedCrash = !sawErrorSig && elapsedSinceFirstLoad !== null && elapsedSinceFirstLoad < 5000;
+    const kind = suspectedCrash ? 'renderer-crash-suspected' : 'page-closed';
+    const msg = suspectedCrash ? 'Renderer crash suspected: closed within 5s of load with no JS error' : 'Page closed/crashed unexpectedly';
+    finish({ kind, message: msg });
   };
 
   const onCrash = () => {
@@ -251,7 +261,7 @@ export function createFailureWatcher(page: any, baseURL: string = '') {
     ringBuffer,
     /**
      * Attempt to read persisted fatal from localStorage.
-     * Call after page close to retrieve any fatal error that happened before page died.
+     * Uses a fresh page in the same context to access storage after page death.
      */
     readPersistedFatal: async () => {
       try {
@@ -267,23 +277,32 @@ export function createFailureWatcher(page: any, baseURL: string = '') {
         
         if (fatal) return fatal;
         
-        // If page is dead, try to reopen it briefly to read localStorage
+        // If page is dead or failed, create a NEW PAGE in the same context
+        // This ensures we access the SAME localStorage without clearing it
         try {
           const currentUrl = page.url();
           if (currentUrl && currentUrl !== 'about:blank') {
-            await page.goto(currentUrl, { waitUntil: 'domcontentloaded', timeout: 5000 }).catch(() => {});
-            const persisted = await page.evaluate(() => {
-              try {
-                const raw = localStorage.getItem('__RB_LAST_FATAL__');
-                return raw ? JSON.parse(raw) : null;
-              } catch (e) {
-                return null;
-              }
-            }).catch(() => null);
-            return persisted;
+            // Open fresh page in same context (shares storage)
+            const recoveryPage = await page.context().newPage();
+            try {
+              await recoveryPage.goto(currentUrl, { waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => {});
+              
+              const persisted = await recoveryPage.evaluate(() => {
+                try {
+                  const raw = localStorage.getItem('__RB_LAST_FATAL__');
+                  return raw ? JSON.parse(raw) : null;
+                } catch (e) {
+                  return null;
+                }
+              }).catch(() => null);
+              
+              return persisted;
+            } finally {
+              await recoveryPage.close().catch(() => {});
+            }
           }
         } catch (e) {
-          // Page won't reopen, return null
+          // Recovery failed, return null
         }
         
         return null;

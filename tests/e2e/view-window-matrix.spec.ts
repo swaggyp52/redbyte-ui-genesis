@@ -38,7 +38,8 @@ interface DebugMetrics {
   churnPercentage?: number;
 }
 
-const CE_MODE_URL = '/?ce=1&openApp=logic-playground';
+const EXTRA_FLAGS = process.env.E2E_FLAGS || '';
+const CE_MODE_URL = '/?ce=1&openApp=logic-playground' + (EXTRA_FLAGS ? `&${EXTRA_FLAGS}` : '');
 
 // ============ HELPERS ============
 
@@ -119,6 +120,13 @@ const saveArtifacts = (
     fs.writeFileSync(errorsOut, errors.join('\n'), 'utf8');
   }
 
+  // Close signals and navigation markers
+  const closeSignalLines = logs.filter(l => l.includes('RB_CLOSE_SIGNAL') || l.includes('RB_NAV'));
+  if (closeSignalLines.length > 0) {
+    const closeOut = testInfo.outputPath('close-signals.log');
+    fs.writeFileSync(closeOut, closeSignalLines.join('\n'), 'utf8');
+  }
+
   // Metrics JSON
   if (metrics) {
     const metricsOut = testInfo.outputPath('metrics.json');
@@ -128,7 +136,7 @@ const saveArtifacts = (
   // Ring buffer events (network, lifecycle, console)
   if (ringBuffer && ringBuffer.length > 0) {
     const ringOut = testInfo.outputPath('ring-buffer.json');
-    fs.writeFileSync(ringOut, JSON.stringify(ringBuffer, null, 2), 'utf8');
+    fs.writeFileSync(ringOut, JSON.stringify(ringBuffer.slice(-200), null, 2), 'utf8');
     
     // Extract network failures summary
     const networkFailures = ringBuffer
@@ -606,6 +614,50 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
     }
   });
 
+  test('[ISSUE-A VARIANT] Quad View with disableQuad=1', async ({ page }, testInfo) => {
+    test.setTimeout(15000);
+
+    await page.evaluate(() => {
+      try {
+        localStorage.removeItem('__RB_LAST_FATAL__');
+        localStorage.removeItem('__RB_LAST_READY__');
+        if (typeof window !== 'undefined') {
+          (window as any).__RB_MOUNT_TRACE__ = [];
+        }
+      } catch {}
+    });
+
+    const { logs, errors } = setupLogging(page);
+    const failure = createFailureWatcher(page, CE_MODE_URL + '&disableQuad=1');
+
+    try {
+      const url = CE_MODE_URL + '&disableQuad=1';
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+
+      await Promise.race([
+        waitForReadySignal(page, 10000),
+        failure.failPromise,
+      ]);
+
+      await createMinimalCircuit(page);
+      await startSimulation(page);
+
+      // Attempt quad (should be clamped to single by flag)
+      await switchPerspective(page, 'quad', 500);
+      await page.waitForTimeout(1000);
+
+      saveArtifacts(testInfo, logs, errors, undefined, page, failure.ringBuffer);
+      expect(errors).toHaveLength(0);
+    } catch (e) {
+      const errMsg = String(e.message || e);
+      console.error('[ISSUE-A VARIANT] Failure reason:', errMsg.substring(0, 500));
+      saveArtifacts(testInfo, logs, errors, undefined, page, failure.ringBuffer);
+      throw e;
+    } finally {
+      failure.dispose();
+    }
+  });
+
   test('[ISSUE-A-FAULT] Quad View with unstable selector (fault injection)', async ({ page }, testInfo) => {
     test.setTimeout(10000);
     
@@ -789,6 +841,42 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
     expect(errors.filter(e => e.includes('Maximum call stack'))).toHaveLength(0);
 
     // Page should still be responsive (no fatal crash)
+    const bodyVisible = await page.locator('body').isVisible();
+    expect(bodyVisible).toBe(true);
+  });
+
+  test('[ISSUE-C VARIANT] CPU lite mode enabled (cpuLite=1)', async ({ page }, testInfo) => {
+    const { logs, errors } = setupLogging(page);
+
+    // Capture stack overflow errors
+    const stackOverflowErrors: string[] = [];
+    page.on('pageerror', (e: any) => {
+      const msg = String(e);
+      if (msg.includes('Maximum call stack') || msg.includes('stack overflow')) {
+        stackOverflowErrors.push(msg);
+      }
+    });
+
+    const url = CE_MODE_URL + '&cpuLite=1';
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await waitForReadySignal(page);
+
+    // Load CPU via gallery when available
+    const examplesBtn = page.locator('button:has-text("Examples"), [data-testid*="examples"]');
+    if (await examplesBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await examplesBtn.click();
+      await page.waitForTimeout(1000);
+      const cpuExample = page.locator('button:has-text("CPU"), button:has-text("cpu")').first();
+      if (await cpuExample.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await cpuExample.click();
+        await page.waitForTimeout(1500);
+      }
+    }
+
+    saveArtifacts(testInfo, logs, errors, undefined, page);
+
+    expect(stackOverflowErrors).toHaveLength(0);
+    expect(errors.filter(e => e.includes('Maximum call stack'))).toHaveLength(0);
     const bodyVisible = await page.locator('body').isVisible();
     expect(bodyVisible).toBe(true);
   });

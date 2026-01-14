@@ -17,8 +17,19 @@ function getGitSha(): string {
   }
 }
 
+// Plugin to remove ALL modulepreload from HTML (for debugging)
+function removeAllModulePreload() {
+  return {
+    name: 'remove-all-modulepreload',
+    transformIndexHtml(html: string) {
+      // Remove all modulepreload links to isolate loading issues
+      return html.replace(/<link rel="modulepreload"[^>]*>/g, '');
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tsconfigPaths({ loose: true })],
+  plugins: [react(), tsconfigPaths({ loose: true }), removeAllModulePreload()],
   define: {
     __GIT_SHA__: JSON.stringify(process.env.GIT_SHA ?? process.env.CF_PAGES_COMMIT_SHA ?? 'dev'),
   },

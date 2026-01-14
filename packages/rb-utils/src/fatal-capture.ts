@@ -74,9 +74,11 @@ function persistFatal(kind: string, payload: Partial<FatalRecord>) {
 
   try {
     localStorage.setItem('__RB_LAST_FATAL__', JSON.stringify(record));
-    console.error('RB_FATAL_PERSISTED', kind, record.message);
+    // Log as JSON for watcher to pick up before page dies
+    console.error('RB_FATAL_PERSISTED', JSON.stringify(record));
   } catch (e) {
-    // localStorage may be full or unavailable, silently ignore
+    // localStorage may be full or unavailable, log anyway
+    console.error('RB_FATAL_PERSISTED_STORAGE_FAILED', kind, record.message);
   }
 }
 

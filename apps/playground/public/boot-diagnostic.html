@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Boot Diagnostic</title>
+    <script>
+      // Diagnostic: Log all script loads before they execute
+      window.__SCRIPT_LOG = [];
+      const originalFetch = window.fetch;
+      window.fetch = function(...args) {
+        window.__SCRIPT_LOG.push({ type: 'fetch', args, time: Date.now() });
+        return originalFetch.apply(this, args);
+      };
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

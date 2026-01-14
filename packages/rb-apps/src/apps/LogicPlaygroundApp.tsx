@@ -21,7 +21,6 @@ import {
 } from '@redbyte/rb-logic-core';
 import { LogicCanvas } from '@redbyte/rb-logic-view';
 import { ViewAdapter } from '@redbyte/rb-logic-adapter';
-import { Logic3DScene } from '@redbyte/rb-logic-3d';
 import { useSettingsStore, useUiTickStore, enableWatchdog, installFatalCapture, pushMount } from '@redbyte/rb-utils';
 import { toast } from '@redbyte/rb-primitives';
 import type { ToastKind } from '@redbyte/rb-primitives';
@@ -145,6 +144,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const disableRightDock = debugFlags.has('disable-rightdock');
   const disablePlaygroundView = debugFlags.has('disable-playground-view');
   const disableSplitView = debugFlags.has('disable-splitview');
+
+  // E2E flags via querystring (test-only)
+  const e2eParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const e2eDisableQuad = e2eParams.get('disableQuad') === '1';
+  const e2eCpuLite = e2eParams.get('cpuLite') === '1';
 
   useRenderStormDetector('LogicPlaygroundApp');
   if (import.meta.env.DEV) {
@@ -1830,7 +1834,14 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     try {
       // Set hydration guard to prevent marking dirty during load
       isHydratingRef.current = true;
-      const exampleData = await loadExample(exampleId);
+      let exampleToLoad: ExampleId = exampleId as ExampleId;
+      // CPU lite mode: swap heavy CPU for a lightweight counter and show a banner
+      if (exampleToLoad === '05_simple-cpu' && e2eCpuLite) {
+        console.info('RB_CPU_LITE_ENABLED', { ts: Date.now() });
+        addToast('CPU lite mode enabled for E2E', 'info');
+        exampleToLoad = '04_4bit-counter';
+      }
+      const exampleData = await loadExample(exampleToLoad);
       const loadedCircuit = deserialize(exampleData);
       
       // PHASE 1.5: DEV-only fault injection for ISSUE-B validation (stack overflow)
@@ -1885,8 +1896,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         determinismRecorder.recordCircuitLoaded(loadedCircuit);
       }
 
-      seedExampleProbes(exampleId, loadedCircuit);
-      if (exampleId === '11_d-flipflop' || exampleId === '04_4bit-counter') {
+      seedExampleProbes(exampleToLoad, loadedCircuit);
+      if (exampleToLoad === '11_d-flipflop' || exampleToLoad === '04_4bit-counter') {
         setPerspective('debug');
       }
 
@@ -1895,7 +1906,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       // Clear hydration guard after load completes
       isHydratingRef.current = false;
 
-      const exampleName = examples.current.find((ex) => ex.id === exampleId)?.name ?? exampleId;
+      const exampleName = examples.current.find((ex) => ex.id === exampleToLoad)?.name ?? exampleToLoad;
       addToast(`Loaded example: ${exampleName}`, 'success');
     } catch (error) {
       isHydratingRef.current = false;
@@ -2734,8 +2745,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             </div>
           ) : (
             <SplitViewLayout
-              mode={splitScreenMode}
-              views={activeViews}
+              mode={e2eDisableQuad && splitScreenMode === 'quad' ? 'single' : splitScreenMode}
+              views={e2eDisableQuad ? [activeViews[0] ?? 'circuit'] : activeViews}
               splitRatio={splitRatio}
               engine={engine}
               tickEngine={tickEngine}
