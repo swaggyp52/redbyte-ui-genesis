@@ -11,6 +11,8 @@ interface DebugMetrics {
 }
 
 test.describe('Logic Playground - React error #185 smoke test', () => {
+  // Bump timeout for CI - these tests do heavy lifting (build + sim + perspectives)
+  test.describe.configure({ timeout: 90_000 });
   // Helper to capture console logs comprehensively
   const setupLogging = (page: any) => {
     const logs: string[] = [];
