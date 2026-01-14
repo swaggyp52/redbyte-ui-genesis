@@ -77,6 +77,7 @@ import { useAutosaveCircuit, useRestoreCircuit, loadSavedCircuit, clearSavedCirc
 import { isCEMode, getCEConfig, isHeavyCircuit } from '../utils/ceMode';
 import { ResetWorkspaceModal, ExampleGalleryModal, ExportBundleModal } from '../components/CEUIComponents';
 import { ClassroomModeBanner } from '../components/ClassroomModeBanner';
+import { useClassroomModeStore } from '../stores/classroomModeStore';
 
 // Primitive node types (built-in gates) organized by category
 const PRIMITIVE_NODES = {
@@ -424,7 +425,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     const maxFanOut = fanOutCounts.size > 0 ? Math.max(...fanOutCounts.values()) : 0;
     
     // Update classroom mode store
-    const { setComplexity } = require('../stores/classroomModeStore').useClassroomModeStore.getState();
+    const { setComplexity } = useClassroomModeStore.getState();
     setComplexity(nodeCount, edgeCount, maxFanOut);
   }, [circuit]);
 
