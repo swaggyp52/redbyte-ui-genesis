@@ -22,6 +22,120 @@ export const ERROR_SIGNATURES = {
 };
 
 /**
+ * Hardened failure watcher: triggers immediately on any explicit failure signal.
+ * Catches: page close/crash, pageerror, console errors including RB_FATAL/RB_RUNAWAY_LOOP_DETECTED/React errors
+ * Returns: { failPromise, dispose, capturedLogs }
+ * 
+ * failPromise rejects with an Error immediately when failure is detected.
+ * Use in Promise.race to make page death a first-class failure signal.
+ */
+export function createFailureWatcher(page: any) {
+  let resolved = false;
+  let rejectFn: (error: Error) => void = () => {};
+  let resolveFn: (value: null) => void = () => {};
+  const capturedLogs: string[] = [];
+
+  const failPromise: Promise<{ kind: string; message: string } | null> = new Promise((resolve, reject) => {
+    resolveFn = resolve;
+    rejectFn = reject;
+  });
+
+  const cleanup = () => {
+    page.off('console', onConsole);
+    page.off('pageerror', onPageError);
+    page.off('close', onClose);
+    page.off('crash', onCrash);
+  };
+
+  const finish = (result: { kind: string; message: string } | null) => {
+    if (resolved) return;
+    resolved = true;
+    cleanup();
+    
+    if (result) {
+      const errorMsg = `[${result.kind.toUpperCase()}] ${result.message}`;
+      rejectFn(new Error(errorMsg));
+    } else {
+      resolveFn(null);
+    }
+  };
+
+  const onConsole = (msg: any) => {
+    const text = msg.text();
+    const type = msg.type();
+    
+    capturedLogs.push(`[${type}] ${text}`);
+
+    // Check for any explicit error signatures that indicate failure
+    if (text.includes('RB_FATAL:')) {
+      finish({ kind: 'rb-fatal', message: text });
+      return;
+    }
+
+    if (text.includes('RB_RUNAWAY_LOOP_DETECTED')) {
+      finish({ kind: 'rb-runaway', message: text });
+      return;
+    }
+
+    for (const sig of Object.values(ERROR_SIGNATURES)) {
+      if (text.includes(sig)) {
+        finish({ kind: 'signature', message: text });
+        return;
+      }
+    }
+
+    // Treat any console error as a failure signal
+    if (type === 'error') {
+      finish({ kind: 'console-error', message: text });
+      return;
+    }
+  };
+
+  const onPageError = (e: any) => {
+    const text = String(e);
+    capturedLogs.push(`[pageerror] ${text}`);
+    finish({ kind: 'pageerror', message: text });
+  };
+
+  const onClose = () => {
+    capturedLogs.push('[page-closed]');
+    finish({ kind: 'page-closed', message: 'Page closed/crashed unexpectedly' });
+  };
+
+  const onCrash = () => {
+    capturedLogs.push('[page-crashed]');
+    finish({ kind: 'page-crashed', message: 'Page process crashed' });
+  };
+
+  // Attach all listeners BEFORE test starts
+  page.on('console', onConsole);
+  page.on('pageerror', onPageError);
+  page.on('close', onClose);
+  page.on('crash', onCrash);
+
+  const dispose = () => {
+    cleanup();
+    if (!resolved) {
+      resolved = true;
+      resolveFn(null);
+    }
+  };
+
+  return { 
+    failPromise,
+    dispose,
+    capturedLogs,
+    // Helper to wait with a timeout (race the failure promise against a timeout)
+    wait: async (timeoutMs = 6000) => {
+      return Promise.race([
+        failPromise.then(() => null),
+        new Promise<null>((res) => setTimeout(() => res(null), timeoutMs)),
+      ]);
+    },
+  };
+}
+
+/**
  * Listen for explicit error signatures and fail fast.
  * 
  * Usage:
@@ -325,4 +439,49 @@ export async function assertFaultCaused(
   }
 
   await removeFault(page);
+}
+/**
+ * Wait for readiness OR fail immediately if page becomes unusable.
+ * Race the readiness signal against the failure watcher.
+ * Returns immediately with explicit cause if page dies before ready.
+ */
+export async function waitForReadyOrFail(page: any, watcher: any, timeoutMs = 10000) {
+  try {
+    const readyPromise = new Promise<boolean>((resolve) => {
+      const checkReady = async () => {
+        try {
+          const root = page.locator('[data-testid="logic-playground-root"]');
+          const isReady = await root.getAttribute('data-ready').catch(() => null);
+          if (isReady === 'true') {
+            resolve(true);
+            return;
+          }
+        } catch (e) {
+          // Page closed, let failure watcher handle it
+        }
+        if (!resolved) setTimeout(checkReady, 100);
+      };
+      const timeoutHandle = setTimeout(() => resolve(false), timeoutMs);
+      checkReady();
+    });
+
+    let resolved = false;
+    const result = await Promise.race([
+      readyPromise.then((v) => {
+        resolved = true;
+        return v;
+      }),
+      watcher.failPromise.then(() => {
+        resolved = true;
+        return false;
+      }),
+    ]);
+
+    if (!result) {
+      throw new Error('Ready signal not received');
+    }
+  } catch (e) {
+    // Failure watcher triggered or timeout
+    throw e;
+  }
 }

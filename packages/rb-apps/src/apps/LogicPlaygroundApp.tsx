@@ -42,6 +42,7 @@ import { SchematicView } from '../components/SchematicView';
 import { PropertyInspector } from '../components/PropertyInspector';
 import { TraceViewer } from '../components/TraceViewer';
 import { SplitViewLayout } from '../components/SplitViewLayout';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { registerAllChips, registerChip, unregisterChip } from '../utils/chipRegistry';
 import { useViewStateStore } from '../stores/viewStateStore';
 import { useProbeStore } from '../stores/probeStore';
@@ -2585,13 +2586,14 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-900 text-white" data-testid="logic-playground-root">
-      {/* Intent Resource Display */}
-      {resourceId && (
-        <div className="bg-cyan-900/30 border-b border-cyan-700 p-2 text-xs">
-          Opened from Files: <span className="font-semibold">{resourceId}</span> ({resourceType})
-        </div>
-      )}
+    <ErrorBoundary>
+      <div className="h-full flex flex-col bg-gray-900 text-white" data-testid="logic-playground-root">
+        {/* Intent Resource Display */}
+        {resourceId && (
+          <div className="bg-cyan-900/30 border-b border-cyan-700 p-2 text-xs">
+            Opened from Files: <span className="font-semibold">{resourceId}</span> ({resourceType})
+          </div>
+        )}
 
       {/* Hierarchy Breadcrumbs */}
       <HierarchyBreadcrumbs />
@@ -3249,6 +3251,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         viewMode={viewLabel}
       />
     </div>
+    </ErrorBoundary>
   );
 };
 

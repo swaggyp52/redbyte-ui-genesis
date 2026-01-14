@@ -31,6 +31,7 @@ interface RunawayMetrics {
 
 interface WatchdogState {
   enabled: boolean;
+  startTime: number;
   frameCount: number;
   lastFrameTime: number;
   currentSecond: number;
@@ -38,10 +39,13 @@ interface WatchdogState {
   mutationEvents: number;
   lastReportTime: number;
   detectedRunaway: boolean;
+  frameThresholdStart?: number;
+  microtaskThresholdStart?: number;
 }
 
 let watchdogState: WatchdogState = {
   enabled: false,
+  startTime: Date.now(),
   frameCount: 0,
   lastFrameTime: Date.now(),
   currentSecond: 0,
@@ -49,6 +53,8 @@ let watchdogState: WatchdogState = {
   mutationEvents: 0,
   lastReportTime: 0,
   detectedRunaway: false,
+  frameThresholdStart: undefined,
+  microtaskThresholdStart: undefined,
 };
 
 // Configuration thresholds
@@ -58,6 +64,7 @@ const CONFIG = {
   MONITORING_INTERVAL: 500, // milliseconds between checks
   DETECTION_WINDOW: 2000, // must exceed threshold for this long
   REPORT_COOLDOWN: 5000, // don't report twice within this window
+  STARTUP_GRACE_PERIOD: 2000, // ignore spikes during app bootstrap
 };
 
 /**
@@ -72,6 +79,7 @@ export function enableWatchdog() {
   }
 
   watchdogState.enabled = true;
+  watchdogState.startTime = Date.now();
   watchdogState.lastFrameTime = Date.now();
 
   // Monitor animation frame frequency (re-render storms)
@@ -162,7 +170,21 @@ function monitorMicrotasks() {
 function checkRunawayConditions() {
   if (!watchdogState.enabled) return;
 
+  // Gate: don't check for runaway until app is ready
+  // This prevents killing healthy startup and false positives during initialization
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    const root = document.querySelector('[data-testid="logic-playground-root"]');
+    if (!root || root.getAttribute('data-ready') !== 'true') {
+      return; // Still in startup phase, ignore potential spikes
+    }
+  }
+
   const now = Date.now();
+  // Ignore detection during startup grace period to avoid false positives
+  if (now - watchdogState.startTime < CONFIG.STARTUP_GRACE_PERIOD) {
+    return;
+  }
+
   const timeSinceLastReport = now - watchdogState.lastReportTime;
 
   // Don't spam repeated reports
@@ -170,29 +192,46 @@ function checkRunawayConditions() {
     return;
   }
 
-  // Check for excessive frame rate (re-render storm)
+  // Check for excessive frame rate (re-render storm) sustained over detection window
   if (watchdogState.frameCount > CONFIG.FRAME_RATE_WARNING_THRESHOLD) {
-    reportRunaway('EXCESSIVE_FRAME_RATE', {
-      framesPerSecond: watchdogState.frameCount,
-      microtasksPerSecond: watchdogState.microtaskCount,
-      detectionWindow: CONFIG.MONITORING_INTERVAL,
-    });
-    return;
+    if (!watchdogState.frameThresholdStart) {
+      watchdogState.frameThresholdStart = now;
+    }
+    const windowMs = now - watchdogState.frameThresholdStart;
+    if (windowMs >= CONFIG.DETECTION_WINDOW) {
+      reportRunaway('EXCESSIVE_FRAME_RATE', {
+        framesPerSecond: watchdogState.frameCount,
+        microtasksPerSecond: watchdogState.microtaskCount,
+        detectionWindow: windowMs,
+      });
+      return;
+    }
+  } else {
+    watchdogState.frameThresholdStart = undefined;
   }
 
-  // Check for excessive microtask rate (state mutation loop)
+  // Check for excessive microtask rate (state mutation loop) sustained over detection window
   if (watchdogState.microtaskCount > CONFIG.MICROTASK_RATE_THRESHOLD) {
-    reportRunaway('EXCESSIVE_MICROTASK_RATE', {
-      microtasksPerSecond: watchdogState.microtaskCount,
-      framesPerSecond: watchdogState.frameCount,
-      detectionWindow: CONFIG.MONITORING_INTERVAL,
-    });
-    return;
+    if (!watchdogState.microtaskThresholdStart) {
+      watchdogState.microtaskThresholdStart = now;
+    }
+    const windowMs = now - watchdogState.microtaskThresholdStart;
+    if (windowMs >= CONFIG.DETECTION_WINDOW) {
+      reportRunaway('EXCESSIVE_MICROTASK_RATE', {
+        microtasksPerSecond: watchdogState.microtaskCount,
+        framesPerSecond: watchdogState.frameCount,
+        detectionWindow: windowMs,
+      });
+      return;
+    }
+  } else {
+    watchdogState.microtaskThresholdStart = undefined;
   }
 }
 
 /**
  * Report a detected runaway condition.
+ * Throws an explicit error that React error boundary will catch.
  */
 function reportRunaway(reason: string, metrics: Partial<RunawayMetrics>) {
   const fullMetrics: RunawayMetrics = {
@@ -209,12 +248,15 @@ function reportRunaway(reason: string, metrics: Partial<RunawayMetrics>) {
     (window as any).__RB_RUNAWAY__ = fullMetrics;
   }
 
-  // Log a single-line signature that tests can detect
-  const signature = `RB_RUNAWAY_LOOP_DETECTED: ${reason} ${JSON.stringify(metrics)}`;
-  console.error(signature);
+  // Build error message with diagnostic details
+  const errorMessage = `RB_RUNAWAY_LOOP_DETECTED: ${reason}\nMetrics: ${JSON.stringify(metrics, null, 2)}`;
+  
+  // Log signature so tests can detect via console capture
+  console.error(errorMessage);
 
-  // Also console.error so it reaches the error boundary
-  console.error('Runaway loop detected. Check window.__RB_RUNAWAY__ for details.');
+  // Throw error so React error boundary catches it immediately
+  // This terminates the render loop and fails the test with explicit cause
+  throw new Error(errorMessage);
 }
 
 /**
@@ -230,6 +272,7 @@ export function getWatchdogState(): WatchdogState {
 export function resetWatchdog() {
   watchdogState = {
     enabled: false,
+    startTime: Date.now(),
     frameCount: 0,
     lastFrameTime: Date.now(),
     currentSecond: 0,
@@ -237,6 +280,8 @@ export function resetWatchdog() {
     mutationEvents: 0,
     lastReportTime: 0,
     detectedRunaway: false,
+    frameThresholdStart: undefined,
+    microtaskThresholdStart: undefined,
   };
 
   if (typeof window !== 'undefined') {

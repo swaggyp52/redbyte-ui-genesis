@@ -9,6 +9,7 @@ import {
   waitForErrorSignature,
   enableConsoleCapture,
   getCapturedLogs,
+  createFailureWatcher,
 } from './helpers';
 
 /**
@@ -524,78 +525,79 @@ test.describe('CE MODE: Persistence & Recovery', () => {
 
 test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
   test('[ISSUE-A] Quad View perspective without React #185', async ({ page }, testInfo) => {
+    test.setTimeout(15000);
+    
     const { logs, errors, react185Signatures } = setupLogging(page);
     const errorListener = setupExplicitErrorListener(page);
 
-    await page.goto(CE_MODE_URL, { waitUntil: 'domcontentloaded' });
-    await waitForReadySignal(page);
+    const failure = createFailureWatcher(page);
 
-    await createMinimalCircuit(page);
-    await startSimulation(page);
-
-    // Switch to Quad perspective (multi-view layout)
-    await switchPerspective(page, 'quad', 1000);
-
-    // Give it time to stabilize
-    await page.waitForTimeout(2000);
-
-    const metrics = await getDebugMetrics(page);
-    saveArtifacts(testInfo, logs, errors, metrics, page);
-
-    // Assert no React #185 or runaway signatures
     try {
-      await errorListener.assertNoExplicitErrors();
-    } catch (e) {
-      console.error('[ISSUE-A FAILED] Explicit error detected:', e.message);
-      throw e;
-    }
+      await page.goto(CE_MODE_URL, { waitUntil: 'domcontentloaded' });
 
-    assertNoReact185(errors);
-    expect(errors).toHaveLength(0);
+      await Promise.race([
+        waitForReadySignal(page, 10000),
+        failure.failPromise,
+      ]);
+
+      await createMinimalCircuit(page);
+      await startSimulation(page);
+
+      await switchPerspective(page, 'quad', 1000);
+      await page.waitForTimeout(2000);
+
+      const metrics = await getDebugMetrics(page);
+      saveArtifacts(testInfo, logs, errors, metrics, page);
+
+      try {
+        await errorListener.assertNoExplicitErrors();
+      } catch (e) {
+        console.error('[ISSUE-A FAILED]:', e.message);
+        throw e;
+      }
+
+      assertNoReact185(errors);
+      expect(errors).toHaveLength(0);
+    } finally {
+      failure.dispose();
+    }
   });
 
   test('[ISSUE-A-FAULT] Quad View with unstable selector (fault injection)', async ({ page }, testInfo) => {
+    test.setTimeout(10000);
+    
     const errorListener = setupExplicitErrorListener(page);
     const { logs, errors } = setupLogging(page);
 
-    // Inject fault: unstable Zustand selector
-    await injectFault(page, 'selector-object', 1000);
+    const failure = createFailureWatcher(page);
 
-    await page.goto(CE_MODE_URL + '&fault=selector-object', { waitUntil: 'domcontentloaded' });
-    await waitForReadySignal(page);
-
-    await createMinimalCircuit(page);
-    await startSimulation(page);
-
-    // Try to switch to Quad perspective
     try {
-      // Give it 5 seconds to crash
-      await switchPerspective(page, 'quad', 100);
-      await page.waitForTimeout(5000);
+      await injectFault(page, 'selector-object', 1000);
 
-      // Check if runaway was detected by watchdog
-      const runaway = await errorListener.getRunawayState();
-      if (runaway) {
-        console.log('[ISSUE-A-FAULT] Runaway detected by watchdog:', runaway);
-        expect(runaway).toBeNull(); // Force failure with clear message
-      }
+      await page.goto(CE_MODE_URL + '&fault=selector-object', { waitUntil: 'domcontentloaded' });
+
+      await Promise.race([
+        waitForReadySignal(page, 10000),
+        failure.failPromise,
+      ]);
+
+      await createMinimalCircuit(page);
+      await startSimulation(page);
+
+      await switchPerspective(page, 'quad', 100).catch(() => {});
+      await page.waitForTimeout(500).catch(() => {});
+
+      throw new Error('[ISSUE-A-FAULT] Expected runaway but reached end');
     } catch (e) {
-      // Expected: browser should crash or become unresponsive
-      console.log('[ISSUE-A-FAULT] Browser crashed as expected:', String(e).substring(0, 100));
+      const errMsg = String(e.message || e);
+      if (errMsg.includes('[RB-') || errMsg.includes('[PAGE-') || errMsg.includes('[SIGNATURE]')) {
+        console.log('[ISSUE-A-FAULT] Fast fail:', errMsg.substring(0, 100));
+        failure.dispose();
+        throw e;
+      }
+      failure.dispose();
+      throw e;
     }
-
-    const captureLogs = await getCapturedLogs(page).catch(() => logs);
-    saveArtifacts(testInfo, logs, errors, undefined, page);
-
-    // At least one signature should have appeared
-    if (errorListener.signatures.length === 0) {
-      console.warn('[ISSUE-A-FAULT] No explicit error signature detected, but browser should have crashed');
-    }
-
-    // This test is passing if we detected the fault OR the browser crashed
-    expect(
-      errorListener.signatures.length > 0 || errors.length > 0 || true // Browser crash is implicit success
-    ).toBeTruthy();
   });
 
   test('[ISSUE-B] RightDock controls are clickable', async ({ page }, testInfo) => {
