@@ -78,11 +78,23 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
     }
   };
 
+  // Wait for Logic Playground to be interactive and ready for testing
+  const waitForLogicPlaygroundReady = async (page: any) => {
+    // Don't use networkidle - Vite apps may never settle to idle
+    await page.waitForLoadState('domcontentloaded');
+
+    // Wait for root container to be visible
+    await expect(page.locator('[data-testid="logic-playground-root"]')).toBeVisible({ timeout: 30_000 });
+
+    // Give React time to settle before first interaction
+    await page.waitForTimeout(300);
+  };
+
   test('MATRIX: Load Logic Playground without React #185', async ({ page }, testInfo) => {
     const { logs, errors } = setupLogging(page);
 
     await page.goto('/?openApp=logic-playground', { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(2500);
+    await waitForLogicPlaygroundReady(page);
 
     const metrics = await getDebugMetrics(page);
     saveArtifacts(testInfo, logs, errors, metrics);
@@ -94,7 +106,7 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
     const { logs, errors } = setupLogging(page);
 
     await page.goto('/?openApp=logic-playground', { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(2000);
+    await waitForLogicPlaygroundReady(page);
 
     // Create a minimal circuit
     const paletteButtons = ['palette-powersource', 'palette-switch', 'palette-and', 'palette-lamp'];
@@ -113,14 +125,17 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
       await page.waitForTimeout(1000);
     }
 
-    // Switch through ALL perspectives: build, analyze, explain, explore, quad
-    const perspectives = ['analyze', 'explain', 'explore', 'quad', 'build'];
-    for (const perspective of perspectives) {
-      try {
-        await page.selectOption('[data-testid="logic-playground-perspective"]', perspective, { timeout: 5000 });
-        await page.waitForTimeout(1200);
-      } catch {
-        // Perspective may not exist, skip
+    // Switch through perspectives only if selector exists (may be gated by Safe Mode)
+    const perspectiveSelector = page.locator('[data-testid="logic-playground-perspective"]');
+    if (await perspectiveSelector.isVisible({ timeout: 5000 }).catch(() => false)) {
+      const perspectives = ['analyze', 'explain', 'explore', 'quad', 'build'];
+      for (const perspective of perspectives) {
+        try {
+          await page.selectOption('[data-testid="logic-playground-perspective"]', perspective, { timeout: 5000 });
+          await page.waitForTimeout(1200);
+        } catch {
+          // Perspective may not exist, skip
+        }
       }
     }
 
@@ -133,7 +148,7 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
     const { logs, errors } = setupLogging(page);
 
     await page.goto('/?openApp=logic-playground', { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(2000);
+    await waitForLogicPlaygroundReady(page);
 
     // Start simulation
     const runBtn = page.locator('[data-testid="logic-playground-run"]');
@@ -142,14 +157,17 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
       await page.waitForTimeout(1000);
     }
 
-    // Rapid perspective switching while simulation is running
-    const perspectives = ['analyze', 'build', 'explain', 'explore', 'build', 'analyze'];
-    for (const perspective of perspectives) {
-      try {
-        await page.selectOption('[data-testid="logic-playground-perspective"]', perspective, { timeout: 5000 });
-        await page.waitForTimeout(500); // Short delay between switches
-      } catch {
-        // Skip if not available
+    // Rapid perspective switching only if selector exists
+    const perspectiveSelector = page.locator('[data-testid="logic-playground-perspective"]');
+    if (await perspectiveSelector.isVisible({ timeout: 5000 }).catch(() => false)) {
+      const perspectives = ['analyze', 'build', 'explain', 'explore', 'build', 'analyze'];
+      for (const perspective of perspectives) {
+        try {
+          await page.selectOption('[data-testid="logic-playground-perspective"]', perspective, { timeout: 5000 });
+          await page.waitForTimeout(500); // Short delay between switches
+        } catch {
+          // Skip if not available
+        }
       }
     }
 
@@ -162,7 +180,7 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
     const { logs, errors } = setupLogging(page);
 
     await page.goto('/?openApp=logic-playground', { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(2000);
+    await waitForLogicPlaygroundReady(page);
 
     // Start simulation
     const runBtn = page.locator('[data-testid="logic-playground-run"]');
@@ -199,7 +217,7 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
 
     // Load Logic Playground first time
     await page.goto('/?openApp=logic-playground&windowId=1', { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1500);
+    await waitForLogicPlaygroundReady(page);
 
     // Start simulation
     const runBtn = page.locator('[data-testid="logic-playground-run"]');
@@ -235,7 +253,7 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
     const { logs, errors } = setupLogging(page);
 
     await page.goto('/?openApp=logic-playground', { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(2000);
+    await waitForLogicPlaygroundReady(page);
 
     // Create minimal circuit
     const paletteButtons = ['palette-powersource', 'palette-lamp'];
