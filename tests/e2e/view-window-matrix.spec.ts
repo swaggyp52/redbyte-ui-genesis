@@ -739,7 +739,8 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
         clickFailed++;
         const title = await tabButtons.nth(i).getAttribute('title').catch(() => '');
         const text = await tabButtons.nth(i).innerText().catch(() => '');
-        const errorMsg = `Tab ${i} (title="${title}", text="${text}") click failed: ${e.message || e}`;
+        const errMsg = e instanceof Error ? e.message : String(e);
+        const errorMsg = `Tab ${i} (title="${title}", text="${text}") click failed: ${errMsg}`;
         console.log(`[TEST ERROR] ${errorMsg}`);
         errors.push(errorMsg);
       }
@@ -829,7 +830,7 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
       // Check for example dropdown in TopCommandBar
       const exampleDropdown = page.locator('select[data-testid*="example"]');
       if (await exampleDropdown.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await exampleDropdown.selectOption({ label: /CPU|cpu/i }).catch(() => {});
+        await exampleDropdown.selectOption('CPU').catch(() => {});
         await page.waitForTimeout(2000);
       }
     }
