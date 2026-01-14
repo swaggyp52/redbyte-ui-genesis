@@ -1,20 +1,28 @@
 import { defineConfig } from '@playwright/test';
 
-// Artifact policy per run intent:
-// - local: fast iteration, no artifacts, no teardown hang
+// Artifact policy per run intent (all modes bounded to prevent teardown hangs):
+// - local: fast iteration, no artifacts
 // - ci: bounded evidence on flakes (trace/screenshot on retry)
-// - debug: full evidence capture (trace/screenshot always on)
+// - debug: bounded evidence on all failures (safe for iteration)
+// - debug-full: always-on trace (may hang, explicit opt-in only)
 const PW_MODE = process.env.PW_MODE ?? (process.env.CI ? 'ci' : 'local');
 
 const trace =
+  PW_MODE === 'local' ? 'off' :
   PW_MODE === 'ci' ? 'on-first-retry' :
-  PW_MODE === 'debug' ? 'on' :
+  PW_MODE === 'debug' ? 'on-first-retry' : // Bounded - safe
+  PW_MODE === 'debug-full' ? 'on' : // Unbounded - may hang
   'off';
 
 const screenshot =
+  PW_MODE === 'local' ? 'off' :
   PW_MODE === 'ci' ? 'only-on-failure' :
-  PW_MODE === 'debug' ? 'on' :
+  PW_MODE === 'debug' ? 'only-on-failure' : // Bounded - safe
+  PW_MODE === 'debug-full' ? 'on' : // Unbounded - may hang
   'off';
+
+const video =
+  PW_MODE === 'debug-full' ? 'on-first-retry' : 'off';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -26,7 +34,7 @@ export default defineConfig({
     headless: true,
     baseURL: 'http://127.0.0.1:4173',
     trace,
-    video: 'off', // Heavy, causes teardown hangs with preview server
+    video,
     screenshot,
   },
 
