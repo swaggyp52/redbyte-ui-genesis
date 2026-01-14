@@ -876,8 +876,9 @@ export const Shell: React.FC<ShellProps> = () => {
       localStorage.setItem(BOOT_STORAGE_KEY, '1');
     } catch {}
 
-    // Dev-only: Auto-open app from query param for automation testing
-    if (import.meta.env.DEV) {
+    // Auto-open app from query param for automation testing and E2E
+    // Enabled in dev + when navigator.webdriver is present (Playwright/Selenium)
+    if (import.meta.env.DEV || navigator.webdriver) {
       const params = new URLSearchParams(window.location.search);
       const openApp = params.get('openApp');
       if (openApp && getApp(openApp)) {
