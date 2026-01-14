@@ -589,15 +589,16 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
 
       try {
         await errorListener.assertNoExplicitErrors();
-      } catch (e) {
-        console.error('[ISSUE-A FAILED]:', e.message);
+      } catch (e: unknown) {
+        const errMsg = e instanceof Error ? e.message : String(e);
+        console.error('[ISSUE-A FAILED]:', errMsg);
         throw e;
       }
 
       assertNoReact185(errors);
       expect(errors).toHaveLength(0);
-    } catch (e) {
-      const errMsg = String(e.message || e);
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : (typeof e === 'object' && e !== null && 'message' in e ? String((e as any).message) : String(e));
       console.error('[ISSUE-A] Failure reason:', errMsg.substring(0, 500));
       
       // Try to read persisted fatal (survives page close)
@@ -648,8 +649,8 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
 
       saveArtifacts(testInfo, logs, errors, undefined, page, failure.ringBuffer);
       expect(errors).toHaveLength(0);
-    } catch (e) {
-      const errMsg = String(e.message || e);
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : (typeof e === 'object' && e !== null && 'message' in e ? String((e as any).message) : String(e));
       console.error('[ISSUE-A VARIANT] Failure reason:', errMsg.substring(0, 500));
       saveArtifacts(testInfo, logs, errors, undefined, page, failure.ringBuffer);
       throw e;
@@ -682,8 +683,8 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
       await page.waitForTimeout(500).catch(() => {});
 
       throw new Error('[ISSUE-A-FAULT] Expected runaway but reached end');
-    } catch (e) {
-      const errMsg = String(e.message || e);
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : (typeof e === 'object' && e !== null && 'message' in e ? String((e as any).message) : String(e));
       if (errMsg.includes('[RB-') || errMsg.includes('[PAGE-') || errMsg.includes('[SIGNATURE]')) {
         console.log('[ISSUE-A-FAULT] Fast fail:', errMsg.substring(0, 100));
         console.log('[ISSUE-A-FAULT] Full reason:', errMsg);
@@ -734,7 +735,7 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
         clickSucceeded++;
         console.log(`[TEST] Successfully clicked button ${i}`);
         await page.waitForTimeout(300);
-      } catch (e) {
+      } catch (e: unknown) {
         clickFailed++;
         const title = await tabButtons.nth(i).getAttribute('title').catch(() => '');
         const text = await tabButtons.nth(i).innerText().catch(() => '');

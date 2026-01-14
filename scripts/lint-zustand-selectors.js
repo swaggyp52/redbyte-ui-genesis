@@ -109,7 +109,7 @@ if (lines.length) {
   console.error("\nFix: replace with per-field selectors or add justification comment.");
   console.error("See docs/zustand-selectors.md for the pattern and Rule 1.");
   console.error("\nTo allowlist a selector, add comment above it:");
-  console.error("  // selector-ok: stable memoized ref / immutable object / ..."
+  console.error("  // selector-ok: stable memoized ref / immutable object / ...");
   process.exit(1);
 }
 

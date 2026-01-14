@@ -616,10 +616,11 @@ export async function assertFaultCaused(
 
   try {
     await waitForErrorSignature(page, expectedSignature, timeoutMs);
-  } catch (e) {
+  } catch (e: unknown) {
     await removeFault(page);
+    const errMsg = e instanceof Error ? e.message : String(e);
     throw new Error(
-      `Fault "${faultType}" did not cause expected signature "${expectedSignature}": ${e.message}`
+      `Fault "${faultType}" did not cause expected signature "${expectedSignature}": ${errMsg}`
     );
   }
 
