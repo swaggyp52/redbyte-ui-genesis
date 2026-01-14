@@ -40,7 +40,7 @@ export function ToastContainer({ position = 'top-right' }: ToastContainerProps) 
     <Portal>
       <div
         className={`fixed ${positionClasses[position]} flex flex-col gap-3`}
-        style={{ zIndex: TOAST_Z_INDEX }}
+        style={{ zIndex: TOAST_Z_INDEX, pointerEvents: 'none' }}
         role="region"
         aria-label="Notifications"
       >
