@@ -23,6 +23,7 @@ export interface LogicCanvasProps {
   getChipMetadata?: (nodeType: string) => ChipMetadata | undefined;
   onNodeDoubleClick?: (nodeId: string) => void;
   onCircuitChange?: (circuit: Circuit) => void; // Callback to propagate circuit updates
+  onSignalsUpdated?: (signals: Map<string, 0 | 1>, reason: 'input' | 'tick') => void; // Signal update notification
   showHints?: boolean;
   onDismissHints?: () => void;
   // Milestone D: Determinism recording (optional, dev-only)
@@ -52,6 +53,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   getChipMetadata,
   onNodeDoubleClick,
   onCircuitChange,
+  onSignalsUpdated,
   showHints = true,
   onDismissHints,
   onInputToggled,
@@ -99,6 +101,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const [internalCircuit, setInternalCircuit] = React.useState(engine.getCircuit());
   const circuit = externalCircuit ?? internalCircuit;
   const [signals, setSignals] = React.useState<Map<string, 0 | 1>>(new Map());
+  const [signalsVersion, setSignalsVersion] = React.useState(0);
   const renderSignals = debugSignals ?? signals;
   const svgRef = React.useRef<SVGSVGElement>(null);
   const lastSyncedSelection = React.useRef<Set<string>>(new Set());
@@ -233,8 +236,14 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       setInternalCircuit(nextCircuit);
     }
 
-    setSignals(engine.getEngine().getAllSignals());
-  }, [engine, externalCircuit, uiTick]);
+    const newSignals = engine.getEngine().getAllSignals();
+    setSignals(newSignals);
+    setSignalsVersion(v => v + 1); // Bump version on tick updates too
+    
+    if (onSignalsUpdated) {
+      onSignalsUpdated(newSignals, 'tick');
+    }
+  }, [engine, externalCircuit, uiTick, onSignalsUpdated]);
 
   const focusNode = React.useCallback(
     (nodeId: string) => {
@@ -428,8 +437,17 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     
     // CRITICAL: Immediately recompute signals after input change
     // This makes toggles interactive without waiting for next UI tick
-    setSignals(engine.getEngine().getAllSignals());
-  }, [circuit, onInputToggled, commitCircuit, isReplayMode, engine]);
+    const newSignals = engine.getEngine().getAllSignals();
+    setSignals(newSignals);
+    
+    // Bump version to trigger scope/3D updates even when stopped
+    setSignalsVersion(v => v + 1);
+    
+    // Notify parent (scope/3D can subscribe to this)
+    if (onSignalsUpdated) {
+      onSignalsUpdated(newSignals, 'input');
+    }
+  }, [circuit, onInputToggled, commitCircuit, isReplayMode, engine, onSignalsUpdated]);
 
   const handlePortClick = React.useCallback((nodeId: string, portName: string) => {
     if (isReplayMode) return;
