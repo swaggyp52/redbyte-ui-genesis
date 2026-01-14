@@ -145,7 +145,7 @@ export function useRestoreCircuit(): { restored: boolean } {
 
     const saved = loadSavedCircuit();
     if (saved) {
-      updateCircuit(saved, true); // skipHistory=true for restoration
+      updateCircuit(saved, { skipHistory: true, enforceLimits: true }); // Skip history but enforce classroom limits
       restoredRef.current = true;
       console.log('[Autosave] Circuit restored from storage');
     } else {

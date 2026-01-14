@@ -29,7 +29,7 @@ describe('Playground Stabilization', () => {
     };
 
     const store = useCircuitStore.getState();
-    store.updateCircuit(initialCircuit, true);
+    store.updateCircuit(initialCircuit, { skipHistory: true, enforceLimits: false }); // Test setup: skip both
 
     const engine = new CircuitEngine(initialCircuit);
     store.setEngine(engine);

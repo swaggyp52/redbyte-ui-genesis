@@ -1323,8 +1323,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     if (!isHydratingRef.current) {
       circuitStore.commit(updatedCircuit);
     } else {
-      // During file load, update without history
-      circuitStore.updateCircuit(updatedCircuit, true);
+      // During file load, update without history but enforce classroom limits
+      circuitStore.updateCircuit(updatedCircuit, { skipHistory: true, enforceLimits: true });
     }
 
     setIsDirty(true);

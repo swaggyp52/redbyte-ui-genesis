@@ -1,57 +1,72 @@
+// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// E2E-only debug bridge for exercising mutation guards in tests
+
+type CircuitStoreModule = typeof import('@redbyte/rb-apps/stores/circuitStore');
+
 export function installE2EBridge() {
   if (typeof window === 'undefined') return;
   const win = window as any;
   if (win.__RB_E2E__) return;
 
-  let storePromise: Promise<any> | null = null;
-  
-  const getStore = async () => {
-    if (!storePromise) {
-      storePromise = import('@redbyte/rb-apps/stores/circuitStore').then(m => m.useCircuitStore);
-    }
-    return storePromise;
+  let ready = false;
+  let mod: CircuitStoreModule | null = null;
+
+  const readyPromise: Promise<void> = import('@redbyte/rb-apps/stores/circuitStore')
+    .then((m) => {
+      mod = m as CircuitStoreModule;
+      ready = true;
+      console.info('RB_E2E_STORE_READY');
+    })
+    .catch((err) => {
+      console.error('RB_E2E_STORE_LOAD_ERROR', err);
+      // keep ready=false
+    });
+
+  const getStore = () => {
+    if (!mod) return null;
+    return mod.useCircuitStore.getState();
   };
 
-  const getNodeCount = async () => {
-    const useCircuitStore = await getStore();
-    return useCircuitStore.getState().circuit.nodes.length;
+  const getNodeCount = () => {
+    const s = getStore();
+    return s ? s.circuit.nodes.length : -1;
   };
 
-  const addNodes = async (count: number) => {
-    const useCircuitStore = await getStore();
-    const store = useCircuitStore.getState();
-    for (let i = 0; i < count; i += 1) {
-      store.addNode('NOT', { x: 80 + i * 12, y: 120 });
+  const addNodes = (count: number) => {
+    const s = getStore();
+    if (!s) return -1;
+    for (let i = 0; i < count; i++) {
+      s.addNode('NOT', { x: 80 + i * 12, y: 120 });
     }
-    return useCircuitStore.getState().circuit.nodes.length;
+    return getNodeCount();
   };
 
-  const resetWorkspace = async () => {
-    const useCircuitStore = await getStore();
-    const store = useCircuitStore.getState();
-    if (typeof store.reset === 'function') {
-      store.reset();
-    } else {
-      store.updateCircuit({ nodes: [], connections: [] }, true);
-    }
-    return useCircuitStore.getState().circuit.nodes.length;
+  const resetWorkspace = () => {
+    const s = getStore();
+    if (!s) return -1;
+    if (typeof (s as any).reset === 'function') (s as any).reset();
+    else s.updateCircuit({ nodes: [], connections: [] }, true);
+    return getNodeCount();
   };
 
-  const isReady = async () => {
-    try {
-      await getStore();
-      return true;
-    } catch {
-      return false;
-    }
+  const loadCircuitForTest = (circuit: any) => {
+    const s = getStore();
+    if (!s) return -1;
+    s.updateCircuit(circuit, true);
+    return getNodeCount();
   };
 
   win.__RB_E2E__ = {
-    addNodes,
+    // sync readiness
+    isReady: () => ready,
+    // async escape hatch if you ever want it
+    readyPromise,
+    // actions
     getNodeCount,
+    addNodes,
     resetWorkspace,
-    isReady,
+    loadCircuitForTest,
   };
 
-  console.log('RB_E2E_BRIDGE_INSTALLED');
+  console.info('RB_E2E_BRIDGE_INSTALLED');
 }

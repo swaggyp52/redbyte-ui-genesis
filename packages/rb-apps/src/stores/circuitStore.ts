@@ -19,6 +19,31 @@ function hashCircuit(circuit: Circuit): string {
   return `nodes:${circuit.nodes.length},conns:${circuit.connections.length}`;
 }
 
+// Classroom guardrail: hard limit for node count
+const HARD_LIMIT = 20;
+
+// Clamp circuit to classroom-safe limits
+function clampCircuit(circuit: Circuit, limit: number): { circuit: Circuit; clamped: boolean; dropped: number } {
+  if (circuit.nodes.length <= limit) {
+    return { circuit, clamped: false, dropped: 0 };
+  }
+
+  // Keep first N nodes (deterministic ordering)
+  const keptNodes = circuit.nodes.slice(0, limit);
+  const keptIds = new Set(keptNodes.map(n => n.id));
+
+  // Keep only connections between kept nodes
+  const keptConnections = circuit.connections.filter(c =>
+    keptIds.has(c.from.nodeId) && keptIds.has(c.to.nodeId)
+  );
+
+  return {
+    circuit: { nodes: keptNodes, connections: keptConnections },
+    clamped: true,
+    dropped: circuit.nodes.length - limit,
+  };
+}
+
 interface CircuitState {
   // Current circuit state
   circuit: Circuit;
@@ -36,7 +61,7 @@ interface CircuitState {
   setTickEngine: (tickEngine: TickEngine) => void;
 
   // Circuit mutations (all stable, no closures)
-  updateCircuit: (circuit: Circuit, skipHistory?: boolean) => void;
+  updateCircuit: (circuit: Circuit, opts?: { skipHistory?: boolean; enforceLimits?: boolean }) => void;
   commit: (circuit: Circuit) => void; // Explicit commit with history
   addNode: (nodeType: string, position: { x: number; y: number }) => void;
   updateNode: (nodeId: string, updates: Partial<Node>) => void;
@@ -70,13 +95,28 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   setTickEngine: (tickEngine) => set({ tickEngine }),
   setDirty: (dirty) => set({ isDirty: dirty }),
 
-  updateCircuit: (circuit, skipHistory = false) => {
+  updateCircuit: (incoming, opts = {}) => {
+    const { skipHistory = false, enforceLimits = true } = opts;
     const { engine, tickEngine, circuit: currentCircuit } = get();
+
+    // CHOKE POINT: Classroom guardrail - clamp incoming circuit BEFORE anything else
+    let circuit = incoming;
+    if (enforceLimits) {
+      const res = clampCircuit(incoming, HARD_LIMIT);
+      circuit = res.circuit;
+
+      if (res.clamped) {
+        console.warn(`[CircuitStore] Circuit clamped: ${incoming.nodes.length} → ${circuit.nodes.length} nodes (dropped ${res.dropped})`);
+        // TODO: Set guardrail event for banner display
+        // set((s) => ({ ...s, guardrail: { type: 'HARD_LIMIT_CLAMP', dropped: res.dropped, ts: Date.now() } }));
+      }
+    }
 
     // Debug instrumentation
     if (DEBUG_PLAYGROUND) {
       console.log('[CircuitStore] updateCircuit called', {
         skipHistory,
+        enforceLimits,
         before: hashCircuit(currentCircuit),
         after: hashCircuit(circuit),
         historyAdded: !skipHistory,
@@ -120,8 +160,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   },
 
   commit: (circuit) => {
-    // Explicit commit - always adds to history
-    get().updateCircuit(circuit, false);
+    // Explicit commit - always adds to history, enforces limits
+    get().updateCircuit(circuit, { skipHistory: false, enforceLimits: true });
   },
 
   undo: () => {
@@ -133,7 +173,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     const newFuture = [cloneCircuit(circuit), ...future];
 
     set({ past: newPast, future: newFuture });
-    get().updateCircuit(previous, true); // Skip history to avoid double-add
+    get().updateCircuit(previous, { skipHistory: true, enforceLimits: false }); // Lossless history restore
   },
 
   redo: () => {
@@ -145,14 +185,13 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     const newPast = [...past, cloneCircuit(circuit)].slice(-maxHistory);
 
     set({ past: newPast, future: newFuture });
-    get().updateCircuit(next, true); // Skip history to avoid double-add
+    get().updateCircuit(next, { skipHistory: true, enforceLimits: false }); // Lossless history restore
   },
 
   canUndo: () => get().past.length > 0,
   canRedo: () => get().future.length > 0,
 
   addNode: (nodeType, position) => {
-    const HARD_LIMIT = 20;
     const { circuit } = get();
     
     // CLASSROOM GUARDRAIL: Hard block at 20 nodes (cannot create #21)
