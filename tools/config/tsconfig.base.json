@@ -12,6 +12,7 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "types": ["vite/client"],
     "baseUrl": "../..",
     "paths": {
       "@redbyte/*": ["packages/*/src"]

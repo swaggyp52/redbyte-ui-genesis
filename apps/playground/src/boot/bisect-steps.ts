@@ -41,15 +41,9 @@ export async function runBisect(step: number) {
         break;
       }
       case 4: {
-        // Render LogicPlayground component directly in safe mode (no instrumentation)
-        const apps = await import('@redbyte/rb-apps');
-        const Cmp = (apps.LogicPlaygroundApp as any)?.component || null;
-        if (Cmp) {
-          const cmpEl = React.createElement(Cmp);
-          renderMarker(4, React.createElement('div', { style: { marginTop: 8 } }, cmpEl));
-        } else {
-          renderMarker(4);
-        }
+        // Step 4: Apps are now registered dynamically, so can't render component directly
+        // This step is now a no-op (apps are loaded via registerAllApps in normal bootstrap)
+        renderMarker(4);
         break;
       }
       case 5: {

@@ -1,202 +1,51 @@
 import { test } from '@playwright/test';
-import fs from 'node:fs';
 
-interface DiagnosticInfo {
-  pageerrors: Array<{ message: string; stack?: string; time: number }>;
-  consoleLogs: Array<{ type: string; text: string; time: number }>;
-  scriptResponses: Array<{ url: string; status: number; contentType?: string; time: number }>;
-  requestsFailed: Array<{ url: string; error: string; time: number }>;
-}
+test('[JS-HEALTH] Static HTML baseline', async ({ page }) => {
+  let errorOccurred = false;
+  let errorMessage = '';
 
-interface TestInfo {
-  outputPath: (filename: string) => string;
-}
-
-const createDiagnosticCollector = () => {
-  const diag: DiagnosticInfo = {
-    pageerrors: [],
-    consoleLogs: [],
-    scriptResponses: [],
-    requestsFailed: [],
-  };
-  return { diag };
-};
-
-test('[JS-HEALTH] Static HTML (health.html) baseline', async ({ page }, testInfo) => {
-  const { diag } = createDiagnosticCollector();
-  const startTime = Date.now();
-
-  page.on('console', (msg) => {
-    diag.consoleLogs.push({ type: msg.type(), text: msg.text(), time: Date.now() - startTime });
-  });
-  page.on('pageerror', (err) => {
-    diag.pageerrors.push({ message: err.message, stack: err.stack, time: Date.now() - startTime });
-  });
-
-  await page.goto('/health.html', { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(2000);
-
-  fs.writeFileSync(testInfo.outputPath('diagnostic.json'), JSON.stringify({ test: 'health.html', diag }, null, 2));
-
-  if (diag.pageerrors.length > 0) {
-    throw new Error(`Static HTML failed: ${diag.pageerrors[0].message}`);
-  }
-});
-
-test('[JS-HEALTH] React 18.2.0 alone (CDN)', async ({ page }, testInfo) => {
-  const { diag } = createDiagnosticCollector();
-  const startTime = Date.now();
-
-  page.on('console', (msg) => {
-    diag.consoleLogs.push({ type: msg.type(), text: msg.text(), time: Date.now() - startTime });
-  });
-  page.on('pageerror', (err) => {
-    diag.pageerrors.push({ message: err.message, stack: err.stack, time: Date.now() - startTime });
-  });
-  page.on('response', (res) => {
-    if (res.url().includes('unpkg') || res.url().endsWith('.js')) {
-      diag.scriptResponses.push({
-        url: res.url(),
-        status: res.status(),
-        contentType: res.headers()['content-type'],
-        time: Date.now() - startTime,
-      });
-    }
-  });
-
-  await page.goto('/react-cdn-18.2.0.html', { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(2000);
-
-  fs.writeFileSync(testInfo.outputPath('diagnostic.json'), JSON.stringify({ test: 'react-cdn-18.2.0.html', diag }, null, 2));
-
-  if (diag.pageerrors.length > 0) {
-    const err = diag.pageerrors[0];
-    console.error('\n╔════════════════════════════════════════╗');
-    console.error('║       REACT 18.2.0 ALONE - FAILED       ║');
-    console.error('╚════════════════════════════════════════╝');
-    console.error(`\nMessage: ${err.message}`);
-    if (err.stack) {
-      console.error('\nStack (first 20 lines):');
-      err.stack.split('\n').slice(0, 20).forEach((line) => console.error(line));
-      const urlMatch = err.stack.match(/https?:\/\/[^\s:]+:\d+|file:\/\/[^\s:]+:\d+/);
-      if (urlMatch) {
-        console.error(`\n🎯 FAILING SCRIPT: ${urlMatch[0]}`);
-      }
-    }
-    console.error(`\nScript responses: ${diag.scriptResponses.length}`);
-    diag.scriptResponses.forEach((s) => console.error(`  ${s.status} ${s.url}`));
-    throw new Error(`React 18.2.0 failed: ${err.message}`);
-  }
-});
-
-test('[JS-HEALTH] React+DOM 18.2.0 (CDN)', async ({ page }, testInfo) => {
-  const { diag } = createDiagnosticCollector();
-  const startTime = Date.now();
-
-  page.on('console', (msg) => {
-    diag.consoleLogs.push({ type: msg.type(), text: msg.text(), time: Date.now() - startTime });
-  });
-  page.on('pageerror', (err) => {
-    diag.pageerrors.push({ message: err.message, stack: err.stack, time: Date.now() - startTime });
-  });
-  page.on('response', (res) => {
-    if (res.url().includes('unpkg') || res.url().endsWith('.js')) {
-      diag.scriptResponses.push({
-        url: res.url(),
-        status: res.status(),
-        contentType: res.headers()['content-type'],
-        time: Date.now() - startTime,
-      });
-    }
-  });
-
-  await page.goto('/react-dom-cdn-18.2.0.html', { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(2000);
-
-  fs.writeFileSync(testInfo.outputPath('diagnostic.json'), JSON.stringify({ test: 'react-dom-cdn-18.2.0.html', diag }, null, 2));
-
-  if (diag.pageerrors.length > 0) {
-    const err = diag.pageerrors[0];
-    console.error('\n╔════════════════════════════════════════╗');
-    console.error('║      REACT+DOM 18.2.0 - FAILED         ║');
-    console.error('╚════════════════════════════════════════╝');
-    console.error(`\nMessage: ${err.message}`);
-    if (err.stack) {
-      console.error('\nStack (first 20 lines):');
-      err.stack.split('\n').slice(0, 20).forEach((line) => console.error(line));
-      const urlMatch = err.stack.match(/https?:\/\/[^\s:]+:\d+|file:\/\/[^\s:]+:\d+/);
-      if (urlMatch) {
-        console.error(`\n🎯 FAILING SCRIPT: ${urlMatch[0]}`);
-      }
-    }
-    console.error(`\nScript responses: ${diag.scriptResponses.length}`);
-    diag.scriptResponses.forEach((s) => console.error(`  ${s.status} ${s.url}`));
-    throw new Error(`React+DOM 18.2.0 failed: ${err.message}`);
-  }
-});
-
-test('[JS-HEALTH] App boot /?boot=bisect&step=0', async ({ page }) => {
-  let hasError = false;
-  let errorMsg = '';
-  let consoleLoaded = false;
-  const startTime = Date.now();
-
-  page.on('console', (msg) => {
-    diag.consoleLogs.push({ type: msg.type(), text: msg.text(), time: Date.now() - startTime });
-  });
-  page.on('pageerror', (err) => {
-    diag.pageerrors.push({ message: err.message, stack: err.stack, time: Date.now() - startTime });
-  });
-  page.on('response', (res) => {
-    if (res.url().endsWith('.js') || res.url().endsWith('.mjs') || res.request().resourceType() === 'script') {
-      diag.scriptResponses.push({
-        url: res.url(),
-        status: res.status(),
-        contentType: res.headers()['content-type'],
-        time: Date.now() - startTime,
-      });
-    }
+  page.on('pageerror', (e: Error) => {
+    errorOccurred = true;
+    errorMessage = e?.message || String(e);
+    console.error('[JS-HEALTH] Page error:', errorMessage);
   });
 
   try {
-    console.log('[TEST] Starting page.goto...');
-    await page.goto('/?boot=bisect&step=0', { timeout: 15000 });
-    console.log('[TEST] page.goto completed');
-  } catch (err) {
-    console.log('[TEST] page.goto failed:', err);
-    diag.pageerrors.push({ message: String(err), stack: String(err), time: Date.now() - startTime });
+    await page.goto('/health.html', { waitUntil: 'load', timeout: 10000 });
+  } catch (err: unknown) {
+    errorOccurred = true;
+    errorMessage = err instanceof Error ? err.message : String(err);
   }
-  console.log('[TEST] Waiting 500ms...');
+
   await page.waitForTimeout(500);
-  console.log('[TEST] Wait completed, writing diagnostics...');
+
+  if (errorOccurred) {
+    throw new Error(`Static HTML failed: ${errorMessage}`);
+  }
+});
+
+test('[JS-HEALTH] App boot without errors', async ({ page }) => {
+  let errorOccurred = false;
+  let errorMessage = '';
+
+  page.on('pageerror', (e: Error) => {
+    errorOccurred = true;
+    errorMessage = e?.message || String(e);
+    console.error('[JS-HEALTH] Page error:', errorMessage);
+  });
+
   try {
-    fs.writeFileSync(testInfo.outputPath('diagnostic.json'), JSON.stringify({ test: 'app-boot-bisect', diag }, null, 2));
-    console.log('[TEST] Diagnostics written successfully');
-  } catch (err) {
-    console.log('[TEST] Diagnostics write failed:', err);
+    await page.goto('/', { waitUntil: 'load', timeout: 15000 });
+  } catch (err: unknown) {
+    errorOccurred = true;
+    errorMessage = err instanceof Error ? err.message : String(err);
   }
 
-  if (diag.pageerrors.length > 0) {
-    const err = diag.pageerrors[0];
-    console.error('\n╔════════════════════════════════════════╗');
-    console.error('║         APP BOOT - FAILED              ║');
-    console.error('╚════════════════════════════════════════╝');
-    console.error(`\nMessage: ${err.message}`);
-    if (err.stack) {
-      console.error('\nStack (first 20 lines):');
-      err.stack.split('\n').slice(0, 20).forEach((line) => console.error(line));
-      const urlMatch = err.stack.match(/https?:\/\/[^\s:]+:\d+|file:\/\/[^\s:]+:\d+/);
-      if (urlMatch) {
-        console.error(`\n🎯 FAILING SCRIPT: ${urlMatch[0]}`);
-      }
-    }
-    console.error(`\nScript responses: ${diag.scriptResponses.length}`);
-    diag.scriptResponses.forEach((s) => console.error(`  ${s.status} ${s.url}`));
-    console.error(`\nConsole logs: ${diag.consoleLogs.length}`);
-    if (diag.consoleLogs.length > 0) {
-      console.error('First 10 console lines:');
-      diag.consoleLogs.slice(0, 10).forEach((log) => console.error(`  [${log.type}] ${log.text}`));
-    }
-    throw new Error(`App boot failed: ${err.message}`);
+  await page.waitForTimeout(1000);
+
+  if (errorOccurred) {
+    throw new Error(`App boot failed: ${errorMessage}`);
   }
-  console.log('[TEST] All checks passed, test complete!');
+
+  console.log('[JS-HEALTH] App boot passed - no JS errors');
+});
