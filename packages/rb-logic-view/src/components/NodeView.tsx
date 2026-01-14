@@ -712,64 +712,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         />
       )}
 
-      {/* Switch toggle control - dedicated interactive area */}
-      {isSwitch && (
-        <g style={{ pointerEvents: 'auto' }}>
-          {/* Larger hit target to avoid drag/selection conflicts */}
-          <rect
-            x={toggleHitX}
-            y={toggleHitY}
-            width={toggleHitWidth}
-            height={toggleHitHeight}
-            rx={toggleHitHeight / 2}
-            fill="transparent"
-            stroke={isToggleHovered ? '#8b5cf6' : 'transparent'}
-            strokeWidth="2"
-            strokeOpacity={isToggleHovered ? 0.5 : 0}
-            style={{ cursor: 'pointer', pointerEvents: 'all' }}
-            data-testid={`switch-toggle-${node.id}`}
-            onMouseDown={handleToggleMouseDown}
-            onClick={handleToggleClick}
-            onMouseEnter={() => setIsToggleHovered(true)}
-            onMouseLeave={() => setIsToggleHovered(false)}
-          />
-          {/* Toggle pill background */}
-          <rect
-            x={toggleX}
-            y={toggleY}
-            width={toggleWidth}
-            height={toggleHeight}
-            rx={toggleHeight / 2}
-            fill={switchState ? '#22c55e' : '#374151'}
-            stroke={isToggleHovered ? '#8b5cf6' : '#fff'}
-            strokeWidth={isToggleHovered ? 2 : 1}
-            style={{ pointerEvents: 'none', transition: 'all 0.15s ease' }}
-          />
-          {/* Toggle pill knob */}
-          <circle
-            cx={switchState ? toggleX + toggleWidth - 9 : toggleX + 9}
-            cy={toggleY + toggleHeight / 2}
-            r={6}
-            fill="#fff"
-            style={{
-              transition: 'cx 0.15s ease, fill 0.15s ease',
-              pointerEvents: 'none'
-            }}
-          />
-          {/* ON/OFF label */}
-          <text
-            x={0}
-            y={-size / 2 - 38}
-            textAnchor="middle"
-            fill={switchState ? '#22c55e' : '#9ca3af'}
-            fontSize={Math.max(8, 10 * camera.zoom)}
-            fontWeight="700"
-            style={{ pointerEvents: 'none', userSelect: 'none' }}
-          >
-            {switchState ? 'ON' : 'OFF'}
-          </text>
-        </g>
-      )}
+      {/* Switch toggle control - DISABLED: now rendered in LogicCanvas overlay layer to avoid SVG clipping */}
+      {/* Toggle is rendered in LogicCanvas.tsx <g id="rb-switch-overlay"> above all nodes */}
 
       {/* Node label */}
       <text

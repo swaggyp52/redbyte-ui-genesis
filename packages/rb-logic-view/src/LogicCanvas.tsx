@@ -890,6 +890,89 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             mismatchPortKeys={mismatchPortKeys}
           />
         ))}
+
+        {/* Switch Toggle Overlay Layer - rendered ABOVE nodes to avoid clipping */}
+        <g id="rb-switch-overlay" style={{ pointerEvents: 'none' }}>
+          {visibleNodes
+            .filter((node) => node.type === 'Switch' || node.type === 'INPUT')
+            .map((node) => {
+              const screenX = node.position.x * camera.zoom + camera.x;
+              const screenY = node.position.y * camera.zoom + camera.y;
+              const size = 48 * camera.zoom;
+              const switchState = node.state?.isOn ?? 0;
+              
+              // Toggle dimensions
+              const toggleWidth = size * 0.75;
+              const toggleHeight = 16;
+              const toggleX = -toggleWidth / 2;
+              const toggleY = -size / 2 - 22;
+              const toggleHitWidth = size * 1.0;
+              const toggleHitHeight = 28;
+              const toggleHitX = -toggleHitWidth / 2;
+              const toggleHitY = toggleY - (toggleHitHeight - toggleHeight) / 2;
+
+              return (
+                <g
+                  key={`switch-overlay-${node.id}`}
+                  transform={`translate(${screenX}, ${screenY})`}
+                >
+                  {/* Hit target - large clickable area */}
+                  <rect
+                    x={toggleHitX}
+                    y={toggleHitY}
+                    width={toggleHitWidth}
+                    height={toggleHitHeight}
+                    rx={toggleHitHeight / 2}
+                    fill="transparent"
+                    style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                    data-testid={`switch-toggle-overlay-${node.id}`}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!editingState.wireStartPort) {
+                        handleToggleSwitch(node.id);
+                      }
+                    }}
+                  />
+                  {/* Toggle pill background */}
+                  <rect
+                    x={toggleX}
+                    y={toggleY}
+                    width={toggleWidth}
+                    height={toggleHeight}
+                    rx={toggleHeight / 2}
+                    fill={switchState ? '#22c55e' : '#374151'}
+                    stroke="#fff"
+                    strokeWidth={1.5}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  {/* Toggle knob */}
+                  <circle
+                    cx={switchState ? toggleX + toggleWidth - 9 : toggleX + 9}
+                    cy={toggleY + toggleHeight / 2}
+                    r={6}
+                    fill="#fff"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  {/* ON/OFF label */}
+                  <text
+                    x={0}
+                    y={toggleY - 8}
+                    textAnchor="middle"
+                    fill={switchState ? '#22c55e' : '#9ca3af'}
+                    fontSize={Math.max(9, 11 * camera.zoom)}
+                    fontWeight="700"
+                    style={{ pointerEvents: 'none', userSelect: 'none' }}
+                  >
+                    {switchState ? 'ON' : 'OFF'}
+                  </text>
+                </g>
+              );
+            })}
+        </g>
       </svg>
     </div>
   );
