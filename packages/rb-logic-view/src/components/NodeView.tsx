@@ -166,6 +166,13 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const toggleHitHeight = 24;
   const toggleHitX = -toggleHitWidth / 2;
   const toggleHitY = toggleY - (toggleHitHeight - toggleHeight) / 2;
+  
+  // DEBUG: Log toggle state for Switch nodes
+  React.useEffect(() => {
+    if (isSwitch) {
+      console.log(`[NodeView] Switch ${node.id}: isSwitch=${isSwitch}, size=${size}, toggleY=${toggleY}, switchState=${switchState}`);
+    }
+  }, [node.id, isSwitch, size, toggleY, switchState]);
   const isIssueHighlighted = (portName: string) =>
     highlightedPort?.nodeId === node.id && highlightedPort.portName === portName;
 
