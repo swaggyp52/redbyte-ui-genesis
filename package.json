@@ -21,7 +21,7 @@
         "typecheck": "pnpm -r --if-present run typecheck",
         "test": "vitest run",
         "test:smoke": "playwright test",
-        "test:smoke:ci": "playwright test --grep 'Logic Playground'",
+        "test:smoke:ci": "pnpm run e2e:build && playwright test --grep 'Logic Playground'",
         "test:smoke:ce": "playwright test tests/e2e/view-window-matrix.spec.ts",
         "format": "pnpm -r --if-present run format",
         "a11y": "pnpm -r --if-present run test:a11y",
