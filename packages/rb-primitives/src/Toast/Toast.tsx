@@ -88,7 +88,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
         transition-all duration-300 ease-out
         ${isExiting ? 'opacity-0 transform translate-x-8' : 'opacity-100 transform translate-x-0'}
       `}
-      style={{ pointerEvents: 'auto' }}
+      style={{ pointerEvents: isExiting ? 'none' : 'auto' }}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       role="alert"

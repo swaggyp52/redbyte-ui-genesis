@@ -158,21 +158,23 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
 
   const isSwitch = node.type === 'Switch' || node.type === 'INPUT';
   const switchState = node.state?.isOn ?? 0;
-  const toggleWidth = size * 0.66;
-  const toggleHeight = 14;
+  const toggleWidth = size * 0.75; // Increased from 0.66
+  const toggleHeight = 16; // Increased from 14
   const toggleX = -toggleWidth / 2;
-  const toggleY = -size / 2 - 18;
-  const toggleHitWidth = size * 0.9;
-  const toggleHitHeight = 24;
+  const toggleY = -size / 2 - 20; // Moved slightly further up
+  const toggleHitWidth = size * 1.0; // Increased hit area
+  const toggleHitHeight = 28; // Increased hit area
   const toggleHitX = -toggleHitWidth / 2;
   const toggleHitY = toggleY - (toggleHitHeight - toggleHeight) / 2;
   
   // DEBUG: Log toggle state for Switch nodes
-  React.useEffect(() => {
-    if (isSwitch) {
-      console.log(`[NodeView] Switch ${node.id}: isSwitch=${isSwitch}, size=${size}, toggleY=${toggleY}, switchState=${switchState}`);
+  if (isSwitch && typeof window !== 'undefined') {
+    if (!window.__RB_SWITCH_LOG__) window.__RB_SWITCH_LOG__ = new Set();
+    if (!window.__RB_SWITCH_LOG__.has(node.id)) {
+      window.__RB_SWITCH_LOG__.add(node.id);
+      console.log(`[RB_SWITCH] ${node.id}: type=${node.type}, isSwitch=${isSwitch}, size=${size}, toggleY=${toggleY}, switchState=${switchState}, willRender=${isSwitch}`);
     }
-  }, [node.id, isSwitch, size, toggleY, switchState]);
+  }
   const isIssueHighlighted = (portName: string) =>
     highlightedPort?.nodeId === node.id && highlightedPort.portName === portName;
 
@@ -712,7 +714,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
 
       {/* Switch toggle control - dedicated interactive area */}
       {isSwitch && (
-        <g>
+        <g style={{ pointerEvents: 'auto' }}>
           {/* Larger hit target to avoid drag/selection conflicts */}
           <rect
             x={toggleHitX}
@@ -721,7 +723,10 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
             height={toggleHitHeight}
             rx={toggleHitHeight / 2}
             fill="transparent"
-            style={{ cursor: 'pointer' }}
+            stroke={isToggleHovered ? '#8b5cf6' : 'transparent'}
+            strokeWidth="2"
+            strokeOpacity={isToggleHovered ? 0.5 : 0}
+            style={{ cursor: 'pointer', pointerEvents: 'all' }}
             data-testid={`switch-toggle-${node.id}`}
             onMouseDown={handleToggleMouseDown}
             onClick={handleToggleClick}
@@ -742,9 +747,9 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           />
           {/* Toggle pill knob */}
           <circle
-            cx={switchState ? toggleX + toggleWidth - 8 : toggleX + 8}
+            cx={switchState ? toggleX + toggleWidth - 9 : toggleX + 9}
             cy={toggleY + toggleHeight / 2}
-            r={5}
+            r={6}
             fill="#fff"
             style={{
               transition: 'cx 0.15s ease, fill 0.15s ease',
@@ -754,11 +759,11 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           {/* ON/OFF label */}
           <text
             x={0}
-            y={-size / 2 - 25}
+            y={-size / 2 - 38}
             textAnchor="middle"
             fill={switchState ? '#22c55e' : '#9ca3af'}
-            fontSize={Math.max(7, 9 * camera.zoom)}
-            fontWeight="600"
+            fontSize={Math.max(8, 10 * camera.zoom)}
+            fontWeight="700"
             style={{ pointerEvents: 'none', userSelect: 'none' }}
           >
             {switchState ? 'ON' : 'OFF'}
