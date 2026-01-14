@@ -7,6 +7,11 @@ import { defineConfig } from '@playwright/test';
 // - debug-full: always-on trace (may hang, explicit opt-in only)
 const PW_MODE = process.env.PW_MODE ?? (process.env.CI ? 'ci' : 'local');
 
+// Guardrail: prevent unbounded artifacts in CI
+if (process.env.CI && PW_MODE === 'debug-full') {
+  throw new Error('PW_MODE=debug-full is not allowed in CI (unbounded artifacts may hang).');
+}
+
 const trace =
   PW_MODE === 'local' ? 'off' :
   PW_MODE === 'ci' ? 'on-first-retry' :
@@ -23,6 +28,9 @@ const screenshot =
 
 const video =
   PW_MODE === 'debug-full' ? 'on-first-retry' : 'off';
+
+// Mode visibility for logs/debugging
+console.log(`[PW] mode=${PW_MODE} CI=${!!process.env.CI} artifacts=trace:${trace}/screenshot:${screenshot}/video:${video}`);
 
 export default defineConfig({
   testDir: './tests/e2e',
