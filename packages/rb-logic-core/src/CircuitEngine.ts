@@ -45,12 +45,14 @@ export class CircuitEngine {
       nodes: Array.isArray(circuit.nodes) ? circuit.nodes : [],
       connections: Array.isArray(circuit.connections) ? circuit.connections : [],
     };
-    // Update node states - use node.state from circuit if provided (e.g., from toggle)
+    // Update node states - MERGE incoming state with existing to preserve other fields
     const newStates = new Map<string, Record<string, any>>();
     for (const node of this.circuit.nodes) {
+      const existingState = this.nodeStates.get(node.id) ?? {};
+      const incomingState = node.state ?? {};
       newStates.set(
         node.id,
-        node.state ?? this.nodeStates.get(node.id) ?? {}
+        { ...existingState, ...incomingState }
       );
     }
     this.nodeStates = newStates;
