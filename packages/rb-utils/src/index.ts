@@ -8,3 +8,4 @@ export * from './debug/perf';
 export * from './storeInstrumentation';
 export * from './classroomEdition';
 export * from './runaway-watchdog';
+export * from './fatal-capture';

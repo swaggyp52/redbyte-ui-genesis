@@ -88,6 +88,14 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   onHelp,
   onManual,
 }) => {
+  // PHASE 2C: Mount breadcrumb
+  if (import.meta.env.DEV || (typeof navigator !== 'undefined' && navigator.webdriver)) {
+    if (typeof window !== 'undefined' && window.__RB_MOUNT_TRACE__) {
+      const timestamp = typeof performance !== 'undefined' ? performance.now().toFixed(1) : Date.now();
+      window.__RB_MOUNT_TRACE__.push(`${timestamp} TopCommandBar:render`);
+    }
+  }
+  
   return (
     <div className="h-12 border-b border-gray-700 bg-gray-900 px-4 flex items-center justify-between gap-6" data-testid="top-command-bar">
       {/* LEFT: Project */}

@@ -154,6 +154,14 @@ export const RightDock: React.FC<RightDockProps> = ({
   const [draggedProbeIndex, setDraggedProbeIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
+  // PHASE 2C: Mount breadcrumb
+  if (import.meta.env.DEV || (typeof navigator !== 'undefined' && navigator.webdriver)) {
+    if (typeof window !== 'undefined' && window.__RB_MOUNT_TRACE__) {
+      const timestamp = typeof performance !== 'undefined' ? performance.now().toFixed(1) : Date.now();
+      window.__RB_MOUNT_TRACE__.push(`${timestamp} RightDock:render`);
+    }
+  }
+
   const selectableNodes = useMemo(
     () => circuit.nodes.map((node) => ({ id: node.id, type: node.type })),
     [circuit.nodes]

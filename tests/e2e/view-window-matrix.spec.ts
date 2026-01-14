@@ -544,6 +544,19 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
   test('[ISSUE-A] Quad View perspective without React #185', async ({ page }, testInfo) => {
     test.setTimeout(15000);
     
+    // Clear persisted fatal from previous runs
+    await page.evaluate(() => {
+      try {
+        localStorage.removeItem('__RB_LAST_FATAL__');
+        localStorage.removeItem('__RB_LAST_READY__');
+        if (typeof window !== 'undefined') {
+          window.__RB_MOUNT_TRACE__ = [];
+        }
+      } catch (e) {
+        // Ignore
+      }
+    });
+    
     const { logs, errors, react185Signatures } = setupLogging(page);
     const errorListener = setupExplicitErrorListener(page);
 
@@ -578,6 +591,14 @@ test.describe('CE SHIPPING BLOCKERS: Issue Repro Suite', () => {
     } catch (e) {
       const errMsg = String(e.message || e);
       console.error('[ISSUE-A] Failure reason:', errMsg.substring(0, 500));
+      
+      // Try to read persisted fatal (survives page close)
+      const persistedFatal = await failure.readPersistedFatal();
+      if (persistedFatal) {
+        console.error('[ISSUE-A] Persisted fatal:', JSON.stringify(persistedFatal, null, 2));
+        console.error('[ISSUE-A] Mount trace:', persistedFatal.mountTrace?.slice(-10).join('\n'));
+      }
+      
       saveArtifacts(testInfo, logs, errors, undefined, page, failure.ringBuffer);
       throw e;
     } finally {

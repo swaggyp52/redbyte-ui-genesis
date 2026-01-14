@@ -249,6 +249,48 @@ export function createFailureWatcher(page: any, baseURL: string = '') {
     dispose,
     capturedLogs,
     ringBuffer,
+    /**
+     * Attempt to read persisted fatal from localStorage.
+     * Call after page close to retrieve any fatal error that happened before page died.
+     */
+    readPersistedFatal: async () => {
+      try {
+        // Try to read from current page first (if still alive)
+        const fatal = await page.evaluate(() => {
+          try {
+            const raw = localStorage.getItem('__RB_LAST_FATAL__');
+            return raw ? JSON.parse(raw) : null;
+          } catch (e) {
+            return null;
+          }
+        }).catch(() => null);
+        
+        if (fatal) return fatal;
+        
+        // If page is dead, try to reopen it briefly to read localStorage
+        try {
+          const currentUrl = page.url();
+          if (currentUrl && currentUrl !== 'about:blank') {
+            await page.goto(currentUrl, { waitUntil: 'domcontentloaded', timeout: 5000 }).catch(() => {});
+            const persisted = await page.evaluate(() => {
+              try {
+                const raw = localStorage.getItem('__RB_LAST_FATAL__');
+                return raw ? JSON.parse(raw) : null;
+              } catch (e) {
+                return null;
+              }
+            }).catch(() => null);
+            return persisted;
+          }
+        } catch (e) {
+          // Page won't reopen, return null
+        }
+        
+        return null;
+      } catch (e) {
+        return null;
+      }
+    },
     // Helper to wait with a timeout (race the failure promise against a timeout)
     wait: async (timeoutMs = 6000) => {
       return Promise.race([

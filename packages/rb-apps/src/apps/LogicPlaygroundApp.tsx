@@ -22,7 +22,7 @@ import {
 import { LogicCanvas } from '@redbyte/rb-logic-view';
 import { ViewAdapter } from '@redbyte/rb-logic-adapter';
 import { Logic3DScene } from '@redbyte/rb-logic-3d';
-import { useSettingsStore, useUiTickStore, enableWatchdog } from '@redbyte/rb-utils';
+import { useSettingsStore, useUiTickStore, enableWatchdog, installFatalCapture, pushMount } from '@redbyte/rb-utils';
 import { toast } from '@redbyte/rb-primitives';
 import type { ToastKind } from '@redbyte/rb-primitives';
 import { useWindowStore } from '@redbyte/rb-windowing';
@@ -150,6 +150,12 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   if (import.meta.env.DEV) {
     // eslint-disable-next-line no-console
     console.info('[playground-debug] flags', Array.from(debugFlags));
+  }
+
+  // PHASE 2C: Install fatal capture + mount breadcrumb
+  if (import.meta.env.DEV || navigator.webdriver) {
+    installFatalCapture();
+    pushMount('LogicPlaygroundApp:start');
   }
 
   if (disablePlaygroundView) {
@@ -455,6 +461,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
   // PHASE 0: Dispatch readiness signal after all critical UI components have mounted
   useEffect(() => {
+    if (import.meta.env.DEV || navigator.webdriver) {
+      pushMount('RB_READY_EFFECT_FIRED');
+    }
+    
     // Check if root element is ready (TopCommandBar + RightDock + main view mounted)
     const rootEl = document.querySelector('[data-testid="logic-playground-root"]');
     const topBarEl = document.querySelector('[data-testid="top-command-bar"]');
@@ -473,6 +483,15 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       if (import.meta.env.DEV) {
         console.log('RB_READY');
         console.log('[LogicPlayground] Readiness signal dispatched');
+        
+        // Persist for post-mortem
+        try {
+          localStorage.setItem('__RB_LAST_READY__', '1');
+        } catch (e) {
+          // Ignore
+        }
+        
+        pushMount('RB_READY_DISPATCHED');
       }
     }
   }, []); // Only once after initial render
@@ -2585,6 +2604,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     addToast('Circuit exported successfully', 'success');
     setShowCEExportModal(false);
   };
+
+  // PHASE 2C: Mount breadcrumb before JSX return
+  if (import.meta.env.DEV || navigator.webdriver) {
+    pushMount('LogicPlaygroundApp:return');
+  }
 
   return (
     <ErrorBoundary>

@@ -436,6 +436,14 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   isReplayMode,
   onHelpOpen,
 }) => {
+  // PHASE 2C: Mount breadcrumb
+  if (import.meta.env.DEV || (typeof navigator !== 'undefined' && navigator.webdriver)) {
+    if (typeof window !== 'undefined' && window.__RB_MOUNT_TRACE__) {
+      const timestamp = typeof performance !== 'undefined' ? performance.now().toFixed(1) : Date.now();
+      window.__RB_MOUNT_TRACE__.push(`${timestamp} SplitViewLayout:render`);
+    }
+  }
+  
   // Safety check: ensure engine and circuit are defined
   if (!engine || !tickEngine || !circuit) {
     return (
