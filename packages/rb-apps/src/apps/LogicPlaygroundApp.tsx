@@ -76,6 +76,7 @@ import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 import { useAutosaveCircuit, useRestoreCircuit, loadSavedCircuit, clearSavedCircuit } from '../utils/ceAutosave';
 import { isCEMode, getCEConfig, isHeavyCircuit } from '../utils/ceMode';
 import { ResetWorkspaceModal, ExampleGalleryModal, ExportBundleModal } from '../components/CEUIComponents';
+import { ClassroomModeBanner } from '../components/ClassroomModeBanner';
 
 // Primitive node types (built-in gates) organized by category
 const PRIMITIVE_NODES = {
@@ -408,6 +409,24 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
     return () => clearInterval(interval);
   }, [circuit, currentFileId]);
+
+  // Track circuit complexity for classroom guardrails
+  useEffect(() => {
+    const nodeCount = circuit.nodes.length;
+    const edgeCount = circuit.connections.length;
+    
+    // Calculate max fan-out
+    const fanOutCounts = new Map<string, number>();
+    circuit.connections.forEach((conn) => {
+      const key = `${conn.from.nodeId}:${conn.from.port}`;
+      fanOutCounts.set(key, (fanOutCounts.get(key) || 0) + 1);
+    });
+    const maxFanOut = fanOutCounts.size > 0 ? Math.max(...fanOutCounts.values()) : 0;
+    
+    // Update classroom mode store
+    const { setComplexity } = require('../stores/classroomModeStore').useClassroomModeStore.getState();
+    setComplexity(nodeCount, edgeCount, maxFanOut);
+  }, [circuit]);
 
   // Crash recovery: Check for backup on mount
   useEffect(() => {
@@ -2633,6 +2652,9 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
       {/* Hierarchy Breadcrumbs */}
       <HierarchyBreadcrumbs />
+
+      {/* Classroom guardrail banners */}
+      <ClassroomModeBanner />
 
       {/* Top Command Bar - vNext Design */}
       <TopCommandBar

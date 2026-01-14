@@ -51,6 +51,10 @@ interface CircuitState {
   tickEngine: TickEngine | null;
   isDirty: boolean;
 
+  // Classroom guardrail events
+  lastClampEvent: { originalNodes: number; keptNodes: number; source: string; timestamp: number } | null;
+  clearClampEvent: () => void;
+
   // History management (PR2.3)
   past: Circuit[];
   future: Circuit[];
@@ -86,6 +90,10 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   tickEngine: null,
   isDirty: false,
 
+  // Classroom guardrail state
+  lastClampEvent: null,
+  clearClampEvent: () => set({ lastClampEvent: null }),
+
   // History state
   past: [],
   future: [],
@@ -101,14 +109,22 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
 
     // CHOKE POINT: Classroom guardrail - clamp incoming circuit BEFORE anything else
     let circuit = incoming;
+    let clampEvent: CircuitState['lastClampEvent'] = null;
+    
     if (enforceLimits) {
       const res = clampCircuit(incoming, HARD_LIMIT);
       circuit = res.circuit;
 
       if (res.clamped) {
-        console.warn(`[CircuitStore] Circuit clamped: ${incoming.nodes.length} → ${circuit.nodes.length} nodes (dropped ${res.dropped})`);
-        // TODO: Set guardrail event for banner display
-        // set((s) => ({ ...s, guardrail: { type: 'HARD_LIMIT_CLAMP', dropped: res.dropped, ts: Date.now() } }));
+        const source = skipHistory ? 'load/restore' : 'edit/paste';
+        console.warn(`[CircuitStore] Circuit clamped: ${incoming.nodes.length} → ${circuit.nodes.length} nodes (dropped ${res.dropped}, source: ${source})`);
+        
+        clampEvent = {
+          originalNodes: incoming.nodes.length,
+          keptNodes: circuit.nodes.length,
+          source,
+          timestamp: Date.now(),
+        };
       }
     }
 
@@ -148,11 +164,39 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     }
 
     // Update state
-    set({ circuit, isDirty: true });
+    set({ 
+      circuit, 
+      isDirty: true,
+      lastClampEvent: clampEvent, // Set clamp event if clamping occurred
+    });
 
     // Sync engines
     engine?.setCircuit(circuit);
     tickEngine?.setCircuit(circuit);
+
+    // Update complexity tracking for classroom guardrails
+    // (must happen after state update so new circuit is in place)
+    try {
+      const nodeCount = circuit.nodes.length;
+      const edgeCount = circuit.connections.length;
+      
+      // Calculate max fan-out
+      const fanOutCounts = new Map<string, number>();
+      circuit.connections.forEach((conn) => {
+        const key = `${conn.from.nodeId}:${conn.from.port}`;
+        fanOutCounts.set(key, (fanOutCounts.get(key) || 0) + 1);
+      });
+      const maxFanOut = fanOutCounts.size > 0 ? Math.max(...fanOutCounts.values()) : 0;
+      
+      // Notify classroom mode store (dynamic import to avoid circular dependency)
+      if (typeof window !== 'undefined' && (window as any).__RB_CLASSROOM_MODE_STORE__) {
+        const classroomStore = (window as any).__RB_CLASSROOM_MODE_STORE__;
+        classroomStore.getState().setComplexity(nodeCount, edgeCount, maxFanOut);
+      }
+    } catch (err) {
+      // Fail silently - complexity tracking is non-critical
+      if (DEBUG_PLAYGROUND) console.warn('[CircuitStore] Complexity tracking failed:', err);
+    }
 
     if (DEBUG_PLAYGROUND) {
       console.log('[CircuitStore] Engines synced with new circuit');

@@ -71,6 +71,7 @@ export const useClassroomModeStore = create<ClassroomModeState>((set, get) => ({
   setComplexity: (nodeCount: number, edgeCount: number, maxFanOut: number) => {
     const isWarning = nodeCount >= 15;
     const isBlocked = nodeCount >= 20;
+    const exceeds = nodeCount > 20; // Can happen via undo/redo or old saved circuits
     
     set({
       nodeCount,
@@ -79,6 +80,24 @@ export const useClassroomModeStore = create<ClassroomModeState>((set, get) => ({
       isComplexityWarning: isWarning,
       isComplexityBlocked: isBlocked,
     });
+
+    // Auto-degrade: force Safe Mode + Step-only when workspace exceeds hard limit
+    // (happens when undoing into old state or loading pre-guardrail saves)
+    if (exceeds) {
+      const currentState = get();
+      
+      if (!currentState.safeMode || !currentState.isStepOnlyMode) {
+        console.warn(`[ClassroomMode] Auto-degrading: workspace has ${nodeCount} nodes (limit: 20)`);
+        
+        set({ 
+          safeMode: true,
+          isStepOnlyMode: true,
+        });
+        
+        // Persist Safe Mode so it stays on across page reloads
+        localStorage.setItem('rb_safe_mode', '1');
+      }
+    }
 
     // Auto-enable step-only mode at warning threshold
     if (isWarning && !get().isStepOnlyMode) {
