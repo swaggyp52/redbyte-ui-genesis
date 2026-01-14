@@ -878,10 +878,14 @@ export const Shell: React.FC<ShellProps> = () => {
 
     // Auto-open app from query param for automation testing and E2E
     // Enabled in dev + when navigator.webdriver is present (Playwright/Selenium)
-    if (import.meta.env.DEV || navigator.webdriver) {
+    const isE2E = import.meta.env.DEV || navigator.webdriver;
+    console.log('[Shell] openApp check:', { isE2E, isDev: import.meta.env.DEV, webdriver: navigator.webdriver });
+    if (isE2E) {
       const params = new URLSearchParams(window.location.search);
       const openApp = params.get('openApp');
+      console.log('[Shell] openApp param:', openApp, 'appExists:', openApp ? !!getApp(openApp) : false);
       if (openApp && getApp(openApp)) {
+        console.log('[Shell] Opening app via query param:', openApp);
         const timer = setTimeout(() => openWindow(openApp), 300);
         return () => clearTimeout(timer);
       }
