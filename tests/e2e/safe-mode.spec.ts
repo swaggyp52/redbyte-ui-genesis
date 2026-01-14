@@ -1,72 +1,41 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 
 test.describe("Guard Verification", () => {
   test("Complexity guardrail blocks at 20 nodes", async ({ page }) => {
-    const messages: string[] = [];
-    let errorFound = false;
-
-    page.on("console", (msg) => {
-      const text = `[${msg.type()}] ${msg.text()}`;
-      messages.push(text);
-      if (msg.type() === "error") {
-        errorFound = true;
-        console.log("ERROR FOUND:", msg.text());
-      }
-    });
-
-    page.on("pageerror", (err) => {
-      errorFound = true;
-      console.log("PAGE ERROR:", err.toString());
-      messages.push(`[PAGE_CRASH] ${err.toString()}`);
-    });
-
-    console.log("Navigating to /?e2e=1");
+    // Navigate with domcontentloaded (no networkidle trap)
     await page.goto("/?e2e=1", { waitUntil: "domcontentloaded" });
-    console.log("Waiting for bridge");
-    await page.waitForFunction(() => !!(window as any).__RB_E2E__, { timeout: 5000 });
-    console.log("Bridge ready");
-    
-    // Check for heartbeat messages
-    console.log("=== CHECKING HEARTBEATS ===");
-    messages.slice(-20).forEach((m) => {
-      if (m.includes("HEARTBEAT")) console.log(m);
+
+    // Wait for DOM sentinel (real app root)
+    await expect(page.locator("#root")).toBeVisible({ timeout: 5000 });
+
+    // Wait for bridge to be ready (installed AND store loaded)
+    await page.waitForFunction(async () => {
+      const b = (window as any).__RB_E2E__;
+      if (!b || typeof b.isReady !== "function") return false;
+      return await b.isReady();
+    }, { timeout: 15000 });
+
+    // Single evaluate: reset, add nodes, verify guard
+    const res = await page.evaluate(async () => {
+      const b = (window as any).__RB_E2E__;
+      await b.resetWorkspace();
+      const beforeAdd = await b.getNodeCount();
+      await b.addNodes(20);
+      const after20 = await b.getNodeCount();
+      await b.addNodes(1); // Should be blocked by guard
+      const after21 = await b.getNodeCount();
+      return {
+        beforeAdd,
+        after20,
+        after21,
+        ready: await b.isReady(),
+      };
     });
-    console.log("=== END HEARTBEATS ===");
-    
-    await page.waitForTimeout(250);
 
-    console.log("=== PAGE MESSAGES ===");
-    messages.slice(-10).forEach((m) => console.log(m));
-    console.log("=== END ===");
-    console.log("Error found:", errorFound);
+    console.log("Results:", res);
 
-    // Use the bridge to add 20 nodes and verify guard blocks
-    console.log("Calling addNodes(20) via bridge");
-    
-    // Try a simple evaluate first
-    try {
-      const bridgeExists = await page.evaluate(() => !!(window as any).__RB_E2E__, { timeout: 2000 });
-      console.log("Bridge exists per evaluate:", bridgeExists);
-    } catch (e) {
-      console.log("Bridge check evaluate failed:", (e as Error).message);
-    }
-    
-    // Try calling addNodes
-    try {
-      const nodeCount = await page.evaluate(
-        async () => {
-          const e2e = (window as any).__RB_E2E__;
-          if (!e2e) throw new Error("Bridge not found");
-          const count = await e2e.addNodes(20);
-          return count;
-        },
-        { timeout: 5000 }
-      );
-      console.log("Node count after addNodes(20):", nodeCount);
-      expect(nodeCount).toBeLessThanOrEqual(20);
-    } catch (e) {
-      console.log("addNodes evaluate failed:", (e as Error).message);
-      throw e;
-    }
+    // Guard should prevent going beyond 20
+    expect(res.after20).toBeLessThanOrEqual(20);
+    expect(res.after21).toBe(res.after20); // Should not increment beyond hard limit
   });
 });
