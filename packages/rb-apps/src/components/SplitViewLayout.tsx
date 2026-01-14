@@ -95,6 +95,10 @@ interface ViewRendererProps {
   highlightedPort?: { nodeId: string; portName: string } | null;
   isReplayMode?: boolean;
   onHelpOpen?: (section: HelpSectionId) => void;
+  // Signal propagation for scope/3D
+  onSignalsUpdated?: (signals: Map<string, 0 | 1>, reason: 'input' | 'tick') => void;
+  latestSignals?: Map<string, 0 | 1>;
+  signalsUpdateReason?: 'input' | 'tick';
 }
 
 // View metadata for headers
@@ -143,6 +147,9 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   isReplayMode,
   onHelpOpen,
   disableToolStrip = false,
+  onSignalsUpdated,
+  latestSignals,
+  signalsUpdateReason,
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = React.useState({ width: 800, height: 600 });
@@ -297,6 +304,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               tickCount={tickCount}
               debugSignals={debugSignals}
               debugTick={debugTick}
+              onSignalsUpdated={onSignalsUpdated}
             />
             {onUndo && onRedo && !disableToolStrip && (
               <CircuitToolStrip
@@ -350,6 +358,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               onDismissHints={onDismissOscilloscopeHints}
               onHelp={onHelpOpen ? () => onHelpOpen('scope-controls') : undefined}
               debugTick={debugTick}
+              signals={latestSignals}
+              signalsUpdateReason={signalsUpdateReason}
             />
           </div>
         );
@@ -389,7 +399,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
                   mismatchWireHighlights={mismatchWireHighlights}
                   mismatchNodeIds={mismatchNodeIds}
                   mismatchPortKeys={mismatchPortKeys}
-                  debugSignals={debugSignals}
+                  debugSignals={signalsUpdateReason === 'input' ? latestSignals : debugSignals}
                   onHelp={onHelpOpen ? () => onHelpOpen('3d-controls') : undefined}
                 />
               </React.Suspense>
@@ -461,6 +471,16 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   isReplayMode,
   onHelpOpen,
 }) => {
+  // Track latest signals and update reason for scope/3D reactivity
+  const [latestSignals, setLatestSignals] = React.useState<Map<string, 0 | 1> | undefined>();
+  const [signalsUpdateReason, setSignalsUpdateReason] = React.useState<'input' | 'tick' | undefined>();
+  
+  // Handle signal updates from LogicCanvas
+  const handleSignalsUpdated = React.useCallback((signals: Map<string, 0 | 1>, reason: 'input' | 'tick') => {
+    setLatestSignals(signals);
+    setSignalsUpdateReason(reason);
+  }, []);
+
   // PHASE 2C: Mount breadcrumb
   if (import.meta.env.DEV || (typeof navigator !== 'undefined' && navigator.webdriver)) {
     if (typeof window !== 'undefined' && window.__RB_MOUNT_TRACE__) {
@@ -535,6 +555,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           highlightedPort={highlightedPort}
           isReplayMode={isReplayMode}
           onHelpOpen={onHelpOpen}
+          onSignalsUpdated={handleSignalsUpdated}
+          latestSignals={latestSignals}
+          signalsUpdateReason={signalsUpdateReason}
         />
       </div>
     );
@@ -582,6 +605,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             highlightedPort={highlightedPort}
             isReplayMode={isReplayMode}
             onHelpOpen={onHelpOpen}
+            onSignalsUpdated={handleSignalsUpdated}
+            latestSignals={latestSignals}
+            signalsUpdateReason={signalsUpdateReason}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden" style={secondaryStyle}>
@@ -619,6 +645,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             highlightedPort={highlightedPort}
             isReplayMode={isReplayMode}
             onHelpOpen={onHelpOpen}
+            onSignalsUpdated={handleSignalsUpdated}
+            latestSignals={latestSignals}
+            signalsUpdateReason={signalsUpdateReason}
           />
         </div>
       </div>
@@ -667,6 +696,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             highlightedPort={highlightedPort}
             isReplayMode={isReplayMode}
             onHelpOpen={onHelpOpen}
+            onSignalsUpdated={handleSignalsUpdated}
+            latestSignals={latestSignals}
+            signalsUpdateReason={signalsUpdateReason}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden" style={secondaryStyle}>
@@ -704,6 +736,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             highlightedPort={highlightedPort}
             isReplayMode={isReplayMode}
             onHelpOpen={onHelpOpen}
+            onSignalsUpdated={handleSignalsUpdated}
+            latestSignals={latestSignals}
+            signalsUpdateReason={signalsUpdateReason}
           />
         </div>
       </div>
@@ -750,6 +785,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             highlightedPort={highlightedPort}
             isReplayMode={isReplayMode}
             onHelpOpen={onHelpOpen}
+            onSignalsUpdated={handleSignalsUpdated}
+            latestSignals={latestSignals}
+            signalsUpdateReason={signalsUpdateReason}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden">
@@ -788,6 +826,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             highlightedPort={highlightedPort}
             isReplayMode={isReplayMode}
             onHelpOpen={onHelpOpen}
+            onSignalsUpdated={handleSignalsUpdated}
+            latestSignals={latestSignals}
+            signalsUpdateReason={signalsUpdateReason}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden">
@@ -825,6 +866,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             highlightedPort={highlightedPort}
             isReplayMode={isReplayMode}
             onHelpOpen={onHelpOpen}
+            onSignalsUpdated={handleSignalsUpdated}
+            latestSignals={latestSignals}
+            signalsUpdateReason={signalsUpdateReason}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden">
@@ -855,6 +899,9 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             probeWireHighlights={probeWireHighlights}
             highlightedPort={highlightedPort}
             onHelpOpen={onHelpOpen}
+            onSignalsUpdated={handleSignalsUpdated}
+            latestSignals={latestSignals}
+            signalsUpdateReason={signalsUpdateReason}
           />
         </div>
       </div>

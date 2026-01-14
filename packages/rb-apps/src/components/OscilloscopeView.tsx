@@ -47,6 +47,9 @@ interface OscilloscopeViewProps {
   onDismissHints?: () => void;
   onHelp?: () => void;
   debugTick?: number | null;
+  // Signal update propagation for immediate sampling on input changes
+  signals?: Map<string, 0 | 1>;
+  signalsUpdateReason?: 'input' | 'tick';
 }
 
 const MAX_SAMPLES = 500; // Maximum samples to keep in buffer
@@ -63,6 +66,8 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   onDismissHints,
   onHelp,
   debugTick,
+  signals,
+  signalsUpdateReason,
 }) => {
   trackRender('OscilloscopeView');
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -257,7 +262,8 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
 
   // Sample signals from probes
   const sampleSignals = useCallback(() => {
-    if (!isRunning) return;
+    // Sample on tick when running, or on input change when stopped
+    if (!isRunning && signalsUpdateReason !== 'input') return;
 
     const relativeTime = getCurrentTime(); // seconds
 
@@ -302,7 +308,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     if (!pauseScrollRef.current) {
       setViewEndTime(relativeTime);
     }
-  }, [isRunning, probes, circuit.nodes, engine, getCurrentTime]);
+  }, [isRunning, signalsUpdateReason, probes, circuit.nodes, engine, getCurrentTime]);
 
   // Start/stop trace recording
   useEffect(() => {
@@ -349,6 +355,13 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       }
     };
   }, [isRunning, sampleSignals, tickEngine]);
+
+  // Sample immediately on input changes (even when stopped)
+  useEffect(() => {
+    if (signalsUpdateReason === 'input' && signals) {
+      sampleSignals();
+    }
+  }, [signals, signalsUpdateReason, sampleSignals]);
 
   // Update measurements periodically
   useEffect(() => {
