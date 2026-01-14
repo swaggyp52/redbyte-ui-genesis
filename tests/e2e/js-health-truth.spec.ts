@@ -1,25 +1,26 @@
 import { test } from '@playwright/test';
 
-test('JS health step-by-step truth test', async ({ page }) => {
-  test.setTimeout(15000);
+test('JS health truth', async ({ page }) => {
+  console.log('[NODE] 1: start test');
 
-  const log = (m: string) => console.log(`[JS-HEALTH] ${m}`);
+  page.on('close', () => console.log('[NODE] page close event fired'));
+  page.on('crash', () => console.log('[NODE] page crash event fired'));
+  page.on('pageerror', (e) => console.log('[NODE] pageerror:', e?.message ?? String(e)));
 
-  log('A: attach listeners');
-  page.on('pageerror', (e: Error) => console.log('[JS-HEALTH] PAGEERROR', e?.message || e));
-  page.on('console', (msg) => console.log('[JS-HEALTH] CONSOLE', msg.type(), msg.text()));
-  page.on('close', () => console.log('[JS-HEALTH] PAGE CLOSED'));
-  page.on('crash', () => console.log('[JS-HEALTH] PAGE CRASH'));
+  console.log('[NODE] 2: before goto');
+  await page.goto('http://127.0.0.1:4173/?boot=bisect&step=0', { waitUntil: 'load', timeout: 15000 });
+  console.log('[NODE] 3: after goto');
 
-  log('B: goto');
-  await page.goto('http://127.0.0.1:4173/', { waitUntil: 'load', timeout: 10000 });
+  // Minimal wait (not page.evaluate heavy)
+  await page.waitForTimeout(250);
+  console.log('[NODE] 4: after wait');
 
-  log('C: wait 1s');
-  await page.waitForTimeout(1000);
+  await page.close({ runBeforeUnload: true }).catch(() => {});
+  console.log('[NODE] 5: after page.close');
 
-  log('D: done');
+  // This forces Playwright to flush everything it thinks it still needs
+  await page.context().close().catch(() => {});
+  console.log('[NODE] 6: after context.close');
 
-  // Force page close to break any hanging fixtures
-  await page.close();
-  log('E: page closed explicitly');
+  console.log('[NODE] 7: end test');
 });

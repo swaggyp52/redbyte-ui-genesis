@@ -1,5 +1,10 @@
 import { defineConfig } from '@playwright/test';
 
+// Artifacts: default OFF locally (fast iteration), ON in CI (evidence capture)
+const CI = !!process.env.CI;
+const PW_ARTIFACTS = process.env.PW_ARTIFACTS; // "1" enables locally
+const ARTIFACTS_ON = CI || PW_ARTIFACTS === '1';
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
@@ -9,9 +14,9 @@ export default defineConfig({
   use: {
     headless: true,
     baseURL: 'http://127.0.0.1:4173',
-    trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    trace: ARTIFACTS_ON ? 'on-first-retry' : 'off',
+    video: 'off', // Heavy, causes teardown hangs with preview server
+    screenshot: ARTIFACTS_ON ? 'only-on-failure' : 'off',
   },
 
   // Run against the production-like preview server
