@@ -152,6 +152,15 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   canRedo: () => get().future.length > 0,
 
   addNode: (nodeType, position) => {
+    const HARD_LIMIT = 20;
+    const { circuit } = get();
+    
+    // CLASSROOM GUARDRAIL: Hard block at 20 nodes (cannot create #21)
+    if (circuit.nodes.length >= HARD_LIMIT) {
+      console.warn(`[CircuitStore] Node creation blocked: limit reached (${circuit.nodes.length}/${HARD_LIMIT})`);
+      return; // Silent return; UI will show banner
+    }
+
     // Dev-mode invariant: validate node type is registered
     if (import.meta.env.DEV) {
       const validTypes = [
@@ -168,7 +177,6 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       }
     }
 
-    const { circuit } = get();
     const defaultConfig = nodeType === 'Clock' ? { period: 10 } : {};
     const newNode: Node = {
       id: `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
@@ -235,3 +243,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       isDirty: false,
     }),
 }));
+
+// E2E test hook: expose store for programmatic access (always, safe for E2E testing)
+if (typeof window !== 'undefined') {
+  (window as any).__RB_CIRCUIT_STORE__ = useCircuitStore;
+}

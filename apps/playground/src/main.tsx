@@ -6,6 +6,24 @@
 const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
 const isBisect = params.get('boot') === 'bisect' || import.meta.env.VITE_BOOT_BISECT === '1';
 const bisectStep = Number(params.get('step') || '0');
+const isE2E = params.get('e2e') === '1' || import.meta.env.VITE_E2E === '1';
+
+console.log('RB_MAIN_SEARCH_PARAMS', { isE2E, isBisect, bisectStep });
+
+// Heartbeat check to detect main thread blocking
+if (isE2E) {
+  setTimeout(() => console.log('RB_HEARTBEAT_1'), 0);
+  setTimeout(() => console.log('RB_HEARTBEAT_2'), 50);
+  setTimeout(() => console.log('RB_HEARTBEAT_3'), 100);
+}
+
+if (isE2E) {
+  // DEV/E2E-only bridge to exercise mutation guards in preview builds
+  import('./debug/e2e-bridge').then((m) => {
+    console.log('RB_E2E_BRIDGE_LOADED');
+    m.installE2EBridge?.();
+  }).catch((err) => console.error('RB_E2E_BRIDGE_ERROR', err));
+}
 
 if (isBisect && bisectStep === -1) {
   // SAFETY: Remove modulepreload links before they auto-load and trigger Three.js TDZ error

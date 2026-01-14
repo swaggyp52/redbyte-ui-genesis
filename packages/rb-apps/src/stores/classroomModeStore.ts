@@ -151,3 +151,8 @@ export function isSafeMode(): boolean {
 export function isStepOnlyMode(): boolean {
   return useClassroomModeStore.getState().isStepOnlyMode;
 }
+
+// E2E test hook: expose store for programmatic access (always, safe for E2E testing)
+if (typeof window !== 'undefined') {
+  (window as any).__RB_CLASSROOM_MODE_STORE__ = useClassroomModeStore;
+}
