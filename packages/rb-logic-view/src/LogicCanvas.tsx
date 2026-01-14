@@ -425,7 +425,11 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     };
 
     commitCircuit(updatedCircuit);
-  }, [circuit, onInputToggled, commitCircuit, isReplayMode]);
+    
+    // CRITICAL: Immediately recompute signals after input change
+    // This makes toggles interactive without waiting for next UI tick
+    setSignals(engine.getEngine().getAllSignals());
+  }, [circuit, onInputToggled, commitCircuit, isReplayMode, engine]);
 
   const handlePortClick = React.useCallback((nodeId: string, portName: string) => {
     if (isReplayMode) return;

@@ -45,12 +45,12 @@ export class CircuitEngine {
       nodes: Array.isArray(circuit.nodes) ? circuit.nodes : [],
       connections: Array.isArray(circuit.connections) ? circuit.connections : [],
     };
-    // Preserve existing states where possible
+    // Update node states - use node.state from circuit if provided (e.g., from toggle)
     const newStates = new Map<string, Record<string, any>>();
     for (const node of this.circuit.nodes) {
       newStates.set(
         node.id,
-        this.nodeStates.get(node.id) ?? node.state ?? {}
+        node.state ?? this.nodeStates.get(node.id) ?? {}
       );
     }
     this.nodeStates = newStates;
