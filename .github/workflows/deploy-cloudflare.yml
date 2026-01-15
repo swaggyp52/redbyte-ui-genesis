@@ -8,9 +8,7 @@
 name: Deploy to Cloudflare Pages
 
 on:
-  workflow_dispatch:  # Manual trigger always works
-  push:
-    branches: [main]
+  workflow_dispatch:  # Manual trigger only (keep clean during dev)
 
 jobs:
   deploy:
