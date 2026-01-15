@@ -7,6 +7,9 @@ import { evaluateCheckpoint } from '../lab/evaluator';
 import type { CheckpointDef } from '../lab/LabDefinition';
 import type { Circuit } from '../types';
 
+// Import to ensure built-ins are registered
+import '../index';
+
 describe('H0.8: Real Checkpoint Evaluator', () => {
   describe('NOT Gate Truth Table', () => {
     const notCircuit: Circuit = {
