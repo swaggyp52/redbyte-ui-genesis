@@ -5272,6 +5272,12 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-01-20 (H0.7 Ticket Prepared - READY FOR NIGHT SHIFT)
+- **PREPARED H0.7 LOGICCANVAS INTEGRATION TICKET**: Documented scope for next phase: replace LogicLabApp center panel placeholder with real LogicCanvas, wire session store ↔ circuit editor, persist circuits on reload, include circuit in export capsule. Acceptance: build circuit → refresh → intact, export contains circuit. Minimal scope (only LogicLabApp.tsx), no new architecture, must use pnpm test:ci. Ticket: H0.7-TICKET.md. Next phases locked: H0.8 (evaluator fixture tests), H0.9 (golden-path labs), no architecture changes until H0.9 complete.
+
+### 2026-01-20 (P0: Test Discovery Guard - COMPLETE)
+- **IMPLEMENTED P0 TEST DISCOVERY GUARD**: Added explicit `expectsTests: true` flag to 7 test-bearing packages (rb-apps, rb-logic-core, rb-logic-view, rb-logic-3d, rb-shell, rb-utils, rb-windowing). Created test-discovery-guard.js script that scans for workspaces with expectsTests flag or __tests__/ directory, runs vitest discovery, and fails loudly if any package has 0 discovered tests. Added canonical `pnpm test:ci` command to root package.json that runs guard before full vitest suite. Guard detects all 7 workspaces with 65 total tests (rb-apps: 40, rb-shell: 11, rb-logic-view: 5, rb-logic-core: 4, rb-logic-3d: 1, rb-utils: 1, rb-windowing: 3). This prevents the class of silent-failure bugs where test files are in the wrong path, Vitest include globs don't match, or file extensions are incorrect. Night Shift and Quality Governor must now use `pnpm test:ci` exclusively; any filtered test runs must be paired with discovery guard in the same job. Commit: a825b86c. Impact: All future agent runs and CI pipelines now have guaranteed test discovery verification.
+
 ### 2026-01-20 (Logic Core Builtins Test Discovery - COMPLETE)
 - Relocated rb-logic-core builtins tests into src/__tests__/builtins.test.ts to align with Vitest include patterns, removed legacy src/builtins.test.ts, and verified `pnpm vitest run builtins` now discovers and passes all 11 tests.
 
