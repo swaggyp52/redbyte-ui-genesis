@@ -1,23 +1,12 @@
-# CI Workflow - PHASE_S Quality Gates
+# CI Workflow - DEPRECATED in favor of quality.yml
 #
-# This workflow enforces the quality gates defined in AI_STATE.md CI/CD Contract.
-# All jobs MUST pass before code can be merged to main.
-#
-# Quality Gates:
-# ✅ All tests pass with zero warnings (test job)
-# ✅ Build succeeds for all packages (build job)
-# ✅ Node 20.19.0 + pnpm 10.24.0 version lock
-# ✅ Frozen lockfile (no dependency drift)
-# ✅ pnpm store cached for performance
+# This workflow is disabled. Use quality.yml instead.
+# Kept for reference only.
 
-name: CI
+name: CI (DISABLED)
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  workflow_dispatch:
+  workflow_dispatch:  # Manual trigger only
 
 jobs:
   test:

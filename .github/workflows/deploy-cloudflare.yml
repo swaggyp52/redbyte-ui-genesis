@@ -1,19 +1,23 @@
 # Cloudflare Pages Deployment
 #
-# Automatically deploys to redbyteapps.dev when code is pushed to main.
+# Deploys to redbyteapps.dev when:
+# - Manually triggered via workflow_dispatch, OR
+# - Pushed to main AND secrets are configured
 # Uses Cloudflare Pages Direct Upload API for full control over build process.
 
 name: Deploy to Cloudflare Pages
 
 on:
+  workflow_dispatch:  # Manual trigger always works
   push:
     branches: [main]
-  workflow_dispatch:
 
 jobs:
   deploy:
     name: Build and Deploy to CF Pages
     runs-on: ubuntu-latest
+    # Only run if secrets exist (skip on forks/clones without secrets)
+    if: github.event_name == 'workflow_dispatch' || (github.repository == 'swaggyp52/redbyte-ui-genesis' && secrets.CLOUDFLARE_API_TOKEN != '')
     permissions:
       contents: read
       deployments: write
@@ -29,7 +33,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.19.0'
+          node-version: '24.13.0'
           cache: 'pnpm'
 
       - name: Install dependencies
