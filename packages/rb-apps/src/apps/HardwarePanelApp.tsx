@@ -19,7 +19,7 @@ interface IOState {
 const BRIDGE_HTTP = "http://127.0.0.1:4242";
 const BRIDGE_WS = "ws://127.0.0.1:4243";
 
-export function HardwarePanelApp() {
+function HardwarePanelComponent() {
   const [status, setStatus] = useState<BridgeStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ioState, setIOState] = useState<IOState | null>(null);
@@ -235,5 +235,5 @@ export const HardwarePanelApp: RedByteApp = {
     defaultSize: { width: 800, height: 600 },
     minSize: { width: 600, height: 400 },
   },
-  component: HardwarePanelApp,
+  component: HardwarePanelComponent,
 };
