@@ -4,6 +4,9 @@
 
 import type { Circuit, Node, Connection, NodeInputs, Signal } from './types';
 import { NodeRegistry } from './NodeRegistry';
+import { ensureBuiltinsRegistered } from './registerBuiltins';
+
+ensureBuiltinsRegistered();
 
 /**
  * Circuit evaluation engine

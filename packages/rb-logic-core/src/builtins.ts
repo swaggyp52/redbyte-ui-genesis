@@ -4,6 +4,33 @@
 
 import type { NodeBehavior, Signal, NodeInputs, NodeOutputs } from './types';
 
+const pickInput = (inputs: NodeInputs, ...candidates: string[]): Signal => {
+  for (const name of candidates) {
+    const value = inputs[name];
+    if (value !== undefined) return value as Signal;
+  }
+  return 0;
+};
+
+const getBinaryInputs = (inputs: NodeInputs): [Signal, Signal] => {
+  const left = pickInput(inputs, 'a', 'in1', 'inA', 'in', 'input', 'left');
+  const right = pickInput(inputs, 'b', 'in2', 'inB', 'input2', 'right');
+  return [left, right];
+};
+
+/**
+ * INPUT - Source controlled by node.state.isOn
+ */
+export const INPUTBehavior: NodeBehavior = {
+  evaluate(_inputs, state) {
+    const isOn = (state.isOn ? 1 : 0) as Signal;
+    return {
+      outputs: { out: isOn },
+      state: { isOn },
+    };
+  },
+};
+
 /**
  * PowerSource - Always outputs 1
  */
@@ -21,7 +48,7 @@ export const PowerSourceBehavior: NodeBehavior = {
  */
 export const SwitchBehavior: NodeBehavior = {
   evaluate(_inputs, state) {
-    const isOn = state.isOn ?? 0;
+    const isOn = state.isOn ? 1 : 0;
     return {
       outputs: { out: isOn as Signal },
       state: { isOn },
@@ -34,7 +61,7 @@ export const SwitchBehavior: NodeBehavior = {
  */
 export const LampBehavior: NodeBehavior = {
   evaluate(inputs) {
-    const input = inputs.in ?? 0;
+    const input = pickInput(inputs, 'in', 'input', 'out');
     return {
       outputs: {},
       state: { isOn: input },
@@ -47,7 +74,7 @@ export const LampBehavior: NodeBehavior = {
  */
 export const WireBehavior: NodeBehavior = {
   evaluate(inputs) {
-    const input = inputs.in ?? 0;
+    const input = pickInput(inputs, 'in', 'input', 'out');
     return {
       outputs: { out: input as Signal },
       state: {},
@@ -60,8 +87,7 @@ export const WireBehavior: NodeBehavior = {
  */
 export const ANDBehavior: NodeBehavior = {
   evaluate(inputs) {
-    const a = inputs.a ?? 0;
-    const b = inputs.b ?? 0;
+    const [a, b] = getBinaryInputs(inputs);
     return {
       outputs: { out: (a && b ? 1 : 0) as Signal },
       state: {},
@@ -74,8 +100,7 @@ export const ANDBehavior: NodeBehavior = {
  */
 export const ORBehavior: NodeBehavior = {
   evaluate(inputs) {
-    const a = inputs.a ?? 0;
-    const b = inputs.b ?? 0;
+    const [a, b] = getBinaryInputs(inputs);
     return {
       outputs: { out: (a || b ? 1 : 0) as Signal },
       state: {},
@@ -88,7 +113,7 @@ export const ORBehavior: NodeBehavior = {
  */
 export const NOTBehavior: NodeBehavior = {
   evaluate(inputs) {
-    const input = inputs.in ?? 0;
+    const input = pickInput(inputs, 'in', 'input');
     return {
       outputs: { out: (input ? 0 : 1) as Signal },
       state: {},
@@ -101,8 +126,7 @@ export const NOTBehavior: NodeBehavior = {
  */
 export const NANDBehavior: NodeBehavior = {
   evaluate(inputs) {
-    const a = inputs.a ?? 0;
-    const b = inputs.b ?? 0;
+    const [a, b] = getBinaryInputs(inputs);
     return {
       outputs: { out: (a && b ? 0 : 1) as Signal },
       state: {},
@@ -115,11 +139,23 @@ export const NANDBehavior: NodeBehavior = {
  */
 export const XORBehavior: NodeBehavior = {
   evaluate(inputs) {
-    const a = inputs.a ?? 0;
-    const b = inputs.b ?? 0;
+    const [a, b] = getBinaryInputs(inputs);
     return {
       outputs: { out: (a !== b ? 1 : 0) as Signal },
       state: {},
+    };
+  },
+};
+
+/**
+ * OUTPUT - Pass-through sink that surfaces its input for inspection
+ */
+export const OUTPUTBehavior: NodeBehavior = {
+  evaluate(inputs) {
+    const input = pickInput(inputs, 'in', 'input', 'out');
+    return {
+      outputs: { in: input, out: input },
+      state: { isOn: input },
     };
   },
 };

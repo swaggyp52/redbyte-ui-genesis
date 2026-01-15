@@ -11,12 +11,15 @@ export { CircuitEngine } from './CircuitEngine';
 export { TickEngine } from './TickEngine';
 export { TraceRecorder } from './TraceRecorder';
 export type { TraceEntry, TraceSnapshot } from './TraceRecorder';
+export { ensureBuiltinsRegistered } from './registerBuiltins';
 
 // Serialization
 export { serialize, deserialize } from './serialization';
 
 // Built-in behaviors
 export {
+  INPUTBehavior,
+  OUTPUTBehavior,
   PowerSourceBehavior,
   SwitchBehavior,
   LampBehavior,
@@ -42,47 +45,9 @@ export {
 } from './composite-defs';
 
 // Auto-register built-in node types
-import { NodeRegistry } from './NodeRegistry';
-import {
-  PowerSourceBehavior,
-  SwitchBehavior,
-  LampBehavior,
-  WireBehavior,
-  ANDBehavior,
-  ORBehavior,
-  NOTBehavior,
-  NANDBehavior,
-  XORBehavior,
-  ClockBehavior,
-  DelayBehavior,
-} from './builtins';
-import { registerCompositeNode } from './CompositeNode';
-import {
-  RSLatchDef,
-  DFlipFlopDef,
-  JKFlipFlopDef,
-  FullAdderDef,
-  Counter4BitDef,
-} from './composite-defs';
+import { ensureBuiltinsRegistered } from './registerBuiltins';
 
-NodeRegistry.register('PowerSource', PowerSourceBehavior);
-NodeRegistry.register('Switch', SwitchBehavior);
-NodeRegistry.register('Lamp', LampBehavior);
-NodeRegistry.register('Wire', WireBehavior);
-NodeRegistry.register('AND', ANDBehavior);
-NodeRegistry.register('OR', ORBehavior);
-NodeRegistry.register('NOT', NOTBehavior);
-NodeRegistry.register('NAND', NANDBehavior);
-NodeRegistry.register('XOR', XORBehavior);
-NodeRegistry.register('Clock', ClockBehavior);
-NodeRegistry.register('Delay', DelayBehavior);
-
-// Register composite nodes
-registerCompositeNode(RSLatchDef);
-registerCompositeNode(DFlipFlopDef);
-registerCompositeNode(JKFlipFlopDef);
-registerCompositeNode(FullAdderDef);
-registerCompositeNode(Counter4BitDef);
+ensureBuiltinsRegistered();
 
 // Share utilities
 export * from './share/encoding';

@@ -20,6 +20,7 @@
         "lint:selectors": "node ./scripts/lint-zustand-selectors.js",
         "typecheck": "pnpm -r --if-present run typecheck",
         "test": "vitest run",
+        "test:ci": "node ./tools/scripts/test-discovery-guard.js && pnpm test",
         "test:smoke": "playwright test",
         "test:smoke:ci": "pnpm run e2e:build && playwright test --grep 'Logic Playground'",
         "test:smoke:ce": "playwright test tests/e2e/view-window-matrix.spec.ts",

@@ -2,16 +2,15 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { NodeRegistry } from './NodeRegistry';
-import { CircuitEngine } from './CircuitEngine';
-import type { Circuit } from './types';
+import { describe, it, expect } from 'vitest';
+import { NodeRegistry } from '../NodeRegistry';
+import { CircuitEngine } from '../CircuitEngine';
+import type { Circuit } from '../types';
 
 // Import to ensure built-ins are registered
-import './index';
+import '../index';
 
 describe('Built-in Node Behaviors', () => {
-
   describe('INPUT / OUTPUT', () => {
     it('should surface signals for evaluator-style nodes', () => {
       const circuit: Circuit = {
@@ -169,14 +168,13 @@ describe('Built-in Node Behaviors', () => {
         connections: [],
       };
       const engine = new CircuitEngine(circuit);
-      
       const outputs: number[] = [];
       for (let i = 0; i < 8; i++) {
         engine.tick();
         const signals = engine.getAllSignals();
         outputs.push(signals.get('clk1.out') ?? 0);
       }
-      
+
       // Period 4: high for 2 ticks, low for 2 ticks
       expect(outputs).toEqual([1, 1, 0, 0, 1, 1, 0, 0]);
     });
@@ -194,14 +192,13 @@ describe('Built-in Node Behaviors', () => {
         ],
       };
       const engine = new CircuitEngine(circuit);
-      
       const outputs: number[] = [];
       for (let i = 0; i < 5; i++) {
         engine.tick();
         const signals = engine.getAllSignals();
         outputs.push(signals.get('d1.out') ?? 0);
       }
-      
+
       // Delay of 2: output should be 0 for first 2 ticks, then 1
       expect(outputs).toEqual([0, 0, 1, 1, 1]);
     });
@@ -216,11 +213,11 @@ describe('Built-in Node Behaviors', () => {
         connections: [],
       };
       const engine = new CircuitEngine(circuit);
-      
+
       engine.tick();
       let signals = engine.getAllSignals();
       expect(signals.get('s1.out')).toBe(0);
-      
+
       // Toggle switch on
       engine.setNodeState('s1', { isOn: 1 });
       engine.tick();

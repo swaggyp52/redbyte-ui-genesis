@@ -26,6 +26,9 @@
     "dist",
     "src"
   ],
+  "redbyte": {
+    "expectsTests": true
+  },
   "publishConfig": {
     "access": "public"
   },
