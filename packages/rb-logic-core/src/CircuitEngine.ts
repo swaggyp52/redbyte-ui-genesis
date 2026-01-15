@@ -5,6 +5,8 @@
 import type { Circuit, Node, Connection, NodeInputs, Signal } from './types';
 import { NodeRegistry } from './NodeRegistry';
 
+// Builtins are registered in index.ts at module init — no need to call here
+
 /**
  * Circuit evaluation engine
  * Handles signal propagation through the circuit graph
