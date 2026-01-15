@@ -36,3 +36,6 @@ yarn-error.log*
 .claude/settings.local.json
 
 node_modules/
+
+# Proof logs (local-only)
+ops/proof/*.txt

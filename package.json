@@ -26,6 +26,7 @@
         "test:smoke": "playwright test",
         "test:smoke:ci": "pnpm run e2e:build && playwright test tests/e2e/smoke.spec.ts",
         "test:smoke:ce": "playwright test tests/e2e/view-window-matrix.spec.ts",
+        "playwright:install": "playwright install chromium",
         "format": "pnpm -r --if-present run format",
         "a11y": "pnpm -r --if-present run test:a11y",
         "perf": "pnpm -r --if-present run test:perf",
