@@ -35,4 +35,7 @@ yarn-error.log*
 # Claude local settings
 .claude/settings.local.json
 
+# Night Shift proof artifacts (screenshots, patches, logs)
+ops/proof/
+
 node_modules/
