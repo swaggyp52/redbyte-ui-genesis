@@ -1,4 +1,7 @@
 packages:
-  - "packages/*"
-  - "apps/*"
-  - "tools/*"
+  - packages/*
+  - apps/*
+  - tools/*
+
+onlyBuiltDependencies:
+  - '@serialport/bindings-cpp'

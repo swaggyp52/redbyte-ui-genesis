@@ -8,6 +8,7 @@ const HTTP_PORT = Number(process.env.RB_FPGA_HTTP_PORT || 4242);
 const WS_PORT = Number(process.env.RB_FPGA_WS_PORT || 4243);
 const BAUD = Number(process.env.RB_FPGA_BAUD || 115200);
 const OVERRIDE_PORT = process.env.REDBYTE_FPGA_PORT || ""; // e.g. "COM5"
+const MOCK_MODE = process.env.RB_FPGA_MOCK === "1" || process.env.RB_FPGA_MOCK === "true";
 
 function scorePort(p) {
   const name = (p.friendlyName || p.manufacturer || p.path || "").toLowerCase();
@@ -161,10 +162,47 @@ wss.on("connection", (ws) => {
 });
 
 (async () => {
+  if (MOCK_MODE) {
+    console.log("[fpga-bridge] ⚠️  MOCK MODE - simulating Basys3 board");
+    state.connected = true;
+    state.port = "MOCK";
+    broadcast({ type: "status", ...state });
+    
+    // Simulate hardware updates
+    let tick = 0;
+    let sw = 0;
+    let led = 0;
+    
+    setInterval(() => {
+      // Simulate switch changes and LED mirrors
+      sw = Math.floor(Math.random() * 0xFFFF);
+      led = sw; // Mirror switches to LEDs
+      const btn = Math.floor(Math.random() * 0b11111);
+      
+      const msg = {
+        type: "uart",
+        raw: `RB1 SW=${sw.toString(2).padStart(16, '0')} BTN=${btn.toString(2).padStart(5, '0')} LED=${led.toString(2).padStart(16, '0')} TICK=${tick}`,
+        SW: sw.toString(2).padStart(16, '0'),
+        BTN: btn.toString(2).padStart(5, '0'),
+        LED: led.toString(2).padStart(16, '0'),
+        TICK: String(tick),
+        ts: Date.now(),
+      };
+      
+      state.lastMsgTs = msg.ts;
+      state.lastMsg = msg;
+      broadcast(msg);
+      tick++;
+    }, 100); // 10Hz updates
+    
+    return;
+  }
+  
   try {
     await connectToFpga(null);
   } catch (e) {
     console.log("[fpga-bridge] Auto-connect failed:", String(e));
     console.log("[fpga-bridge] Run: curl http://localhost:4242/ports then POST /connect with a chosen port.");
+    console.log("[fpga-bridge] Or set RB_FPGA_MOCK=1 to run in simulation mode.");
   }
 })();
