@@ -49,6 +49,7 @@ interface OscilloscopeViewProps {
   debugTick?: number | null;
   // Signal update propagation for immediate sampling on input changes
   signals?: Map<string, 0 | 1>;
+  signalsVersion?: number;
   signalsUpdateReason?: 'input' | 'tick';
 }
 
@@ -67,12 +68,23 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   onHelp,
   debugTick,
   signals,
+  signalsVersion,
   signalsUpdateReason,
 }) => {
   trackRender('OscilloscopeView');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const pendingDrawRef = useRef<number | null>(null);
+  
+  // Guardrail 1: Version-based sampling to prevent cascades
+  const lastSampledVersionRef = useRef<number>(-1);
+  
+  // Guardrail 2: RAF batching for spam-click prevention
+  const rafRef = useRef<number | null>(null);
+  const pendingInputSampleRef = useRef<{
+    version: number;
+    reason: 'input' | 'tick';
+  } | null>(null);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 600 });
   const probes = useProbeStore((state) => state.probes);
   const activeProbeId = useProbeStore((state) => state.activeProbeId);
@@ -356,12 +368,40 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     };
   }, [isRunning, sampleSignals, tickEngine]);
 
-  // Sample immediately on input changes (even when stopped)
+  // Guardrails: Version-based sampling + RAF batching for input changes
   useEffect(() => {
-    if (signalsUpdateReason === 'input' && signals) {
+    // Only batch input changes; tick changes are handled by interval
+    const isInputChange = signalsUpdateReason === 'input' && !isRunning;
+    if (!isInputChange) return;
+    if (signalsVersion === undefined) return;
+
+    // Store pending sample with latest version
+    pendingInputSampleRef.current = { version: signalsVersion, reason: 'input' };
+
+    // If RAF already scheduled, don't double-schedule
+    if (rafRef.current !== null) return;
+
+    // Schedule sampling at next frame
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      const pending = pendingInputSampleRef.current;
+      pendingInputSampleRef.current = null;
+      if (!pending) return;
+
+      // Prevent double-sampling same version
+      if (lastSampledVersionRef.current === pending.version) return;
+      lastSampledVersionRef.current = pending.version;
+
       sampleSignals();
-    }
-  }, [signals, signalsUpdateReason, sampleSignals]);
+    });
+
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [signalsVersion, signalsUpdateReason, isRunning, sampleSignals]);
 
   // Update measurements periodically
   useEffect(() => {

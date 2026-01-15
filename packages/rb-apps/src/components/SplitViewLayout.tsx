@@ -359,6 +359,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               onHelp={onHelpOpen ? () => onHelpOpen('scope-controls') : undefined}
               debugTick={debugTick}
               signals={latestSignals}
+              signalsVersion={signalsVersion}
               signalsUpdateReason={signalsUpdateReason}
             />
           </div>
@@ -474,11 +475,13 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   // Track latest signals and update reason for scope/3D reactivity
   const [latestSignals, setLatestSignals] = React.useState<Map<string, 0 | 1> | undefined>();
   const [signalsUpdateReason, setSignalsUpdateReason] = React.useState<'input' | 'tick' | undefined>();
+  const [signalsVersion, setSignalsVersion] = React.useState(0);
   
   // Handle signal updates from LogicCanvas
   const handleSignalsUpdated = React.useCallback((signals: Map<string, 0 | 1>, reason: 'input' | 'tick') => {
     setLatestSignals(signals);
     setSignalsUpdateReason(reason);
+    setSignalsVersion(v => v + 1);
   }, []);
 
   // PHASE 2C: Mount breadcrumb
