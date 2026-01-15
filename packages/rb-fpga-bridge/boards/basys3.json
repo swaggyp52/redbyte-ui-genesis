@@ -1,0 +1,48 @@
+{
+  "board": "Basys3",
+  "manufacturer": "Digilent",
+  "fpga": "Xilinx Artix-7 XC7A35T-1CPG236C",
+  "clock": "100MHz",
+  "inputs": {
+    "SW": {
+      "count": 16,
+      "description": "Slide switches SW0-SW15"
+    },
+    "BTN": {
+      "count": 5,
+      "names": ["BTNC", "BTNU", "BTND", "BTNL", "BTNR"],
+      "description": "Push buttons (center, up, down, left, right)"
+    }
+  },
+  "outputs": {
+    "LED": {
+      "count": 16,
+      "description": "LEDs LD0-LD15"
+    },
+    "SEG7": {
+      "count": 4,
+      "description": "4-digit 7-segment display"
+    }
+  },
+  "interfaces": {
+    "uart": {
+      "baud": 115200,
+      "protocol": "RB1",
+      "description": "FTDI USB-UART for telemetry"
+    },
+    "jtag": {
+      "description": "USB-JTAG for programming (Vivado)"
+    },
+    "vga": {
+      "description": "VGA output connector"
+    },
+    "pmod": {
+      "description": "PMOD expansion ports"
+    }
+  },
+  "telemetry": {
+    "format": "RB1 SW={16bit} BTN={5bit} LED={16bit} TICK={counter}",
+    "rate_ms": 50,
+    "description": "Live hardware state streaming over UART"
+  }
+}
