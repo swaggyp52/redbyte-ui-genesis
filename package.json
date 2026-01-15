@@ -21,6 +21,7 @@
         "typecheck": "pnpm -r --if-present run typecheck",
         "test:ci": "node -e \"const fs=require('fs'); const p='./tools/scripts/test-discovery-guard.js'; if (fs.existsSync(p)) require(p);\" && pnpm -r --workspace-concurrency=1 vitest run",
         "test": "vitest run",
+        "quality": "pnpm run build && pnpm run test:ci && pnpm run lint",
         "test:smoke": "playwright test",
         "test:smoke:ci": "pnpm run e2e:build && playwright test --grep 'Logic Playground'",
         "test:smoke:ce": "playwright test tests/e2e/view-window-matrix.spec.ts",
