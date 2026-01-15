@@ -41,9 +41,9 @@ describe('ECE Lab H0.6: LogicLabApp UI Shell', () => {
     it('displays lab session info in toolbar', () => {
       render(<LogicLabApp />);
       
-      // The toolbar shows lab-default and Student
-      expect(screen.getByText(/lab-default/)).toBeTruthy();
-      expect(screen.getByText(/student/i)).toBeTruthy();
+      // The toolbar shows the first lab name (Hello Gates) and Student
+      const toolbar = screen.getByText(/Student/i);
+      expect(toolbar.textContent).toMatch(/Hello|Gates/i);
     });
 
     it('renders toolbar with Run Checks, Export, Import buttons', () => {
@@ -61,9 +61,10 @@ describe('ECE Lab H0.6: LogicLabApp UI Shell', () => {
       const panel = screen.getByTestId('instructions-panel');
       expect(panel).toBeTruthy();
       
-      // Check for "Instructions" heading in the panel
-      const heading = panel.querySelector('h3');
-      expect(heading?.textContent).toBe('Instructions');
+      // Check for "Lab Selection" heading in the panel (now first heading)
+      const headings = panel.querySelectorAll('h3');
+      expect(headings.length).toBeGreaterThan(0);
+      expect(headings[0].textContent).toBe('Lab Selection');
     });
 
     it('displays keyboard shortcuts', () => {
@@ -93,7 +94,10 @@ describe('ECE Lab H0.6: LogicLabApp UI Shell', () => {
     it('displays message when no checkpoints attempted', () => {
       render(<LogicLabApp />);
       const panel = screen.getByTestId('checkpoint-panel');
-      expect(panel.textContent).toContain('No checkpoints attempted');
+      // Checkpoints are now displayed from the current lab (Hello Gates)
+      // so they will be shown with NOT-ATTEMPTED status
+      expect(panel.textContent).toContain('Checkpoints');
+      expect(panel.textContent).toMatch(/AND|OR|NOT/);
     });
 
     it('Run Checks button handles click without error', async () => {
@@ -175,8 +179,9 @@ describe('ECE Lab H0.6: LogicLabApp UI Shell', () => {
     it('initializes session on mount', () => {
       render(<LogicLabApp />);
       
-      // Session should be created with lab-default
-      expect(screen.getByText(/lab-default/)).toBeTruthy();
+      // Session should be created with first default lab
+      const instructionsPanel = screen.getByTestId('instructions-panel');
+      expect(instructionsPanel.textContent).toContain('Lab Selection');
     });
 
     it('displays student name from session', () => {

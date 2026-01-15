@@ -3,7 +3,13 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { getGlobalLabSessionStore, evaluateCheckpoint, type CapsuleV1 } from '@redbyte/rb-logic-core';
+import { 
+  getGlobalLabSessionStore, 
+  evaluateCheckpoint, 
+  type CapsuleV1,
+  getDefaultLabs,
+  type LabDef,
+} from '@redbyte/rb-logic-core';
 
 /**
  * ECE Lab Phase H0.6: LogicLabApp UI Shell
@@ -24,6 +30,26 @@ const LogicLabApp = () => {
   const createSession = sessionStore.getState().createSession;
   
   const [isRunning, setIsRunning] = useState(false);
+  const [selectedLabId, setSelectedLabId] = useState<string | null>(null);
+  const [currentLab, setCurrentLab] = useState<LabDef | null>(null);
+  const [labs, setLabs] = useState<LabDef[]>([]);
+
+  // Load available labs
+  useEffect(() => {
+    const defaultLabs = getDefaultLabs();
+    setLabs(defaultLabs);
+    if (defaultLabs.length > 0 && !selectedLabId) {
+      setSelectedLabId(defaultLabs[0].id);
+    }
+  }, [selectedLabId]);
+
+  // Update current lab when selection changes
+  useEffect(() => {
+    if (selectedLabId) {
+      const lab = labs.find((l) => l.id === selectedLabId);
+      setCurrentLab(lab || null);
+    }
+  }, [selectedLabId, labs]);
 
   // Subscribe to store changes
   useEffect(() => {
@@ -37,9 +63,12 @@ const LogicLabApp = () => {
   // Initialize lab session on mount
   useEffect(() => {
     if (!sessionState || !sessionState.labId) {
-      createSession('lab-default');
+      const labToUse = currentLab || labs[0];
+      if (labToUse) {
+        createSession(labToUse.id);
+      }
     }
-  }, [sessionState?.labId, createSession]);
+  }, [sessionState?.labId, createSession, currentLab, labs]);
 
   // Handle Run Checks button
   const handleRunChecks = useCallback(async () => {
@@ -195,7 +224,7 @@ const LogicLabApp = () => {
         </button>
 
         <div style={{ marginLeft: 'auto', fontSize: '12px', opacity: 0.7 }}>
-          {sessionState?.labId || 'Lab'} • {sessionState?.studentName || 'Student'}
+          {currentLab?.name || 'Lab'} • {sessionState?.studentName || 'Student'}
         </div>
       </div>
 
@@ -211,11 +240,44 @@ const LogicLabApp = () => {
           backgroundColor: '#1a1a1a',
         }}
       >
+        <h3 style={{ marginTop: 0 }}>Lab Selection</h3>
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', fontSize: '12px', marginBottom: '8px', opacity: 0.8 }}>
+            Choose a Lab:
+          </label>
+          <select
+            value={selectedLabId || ''}
+            onChange={(e) => setSelectedLabId(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '6px 8px',
+              backgroundColor: '#333',
+              color: '#fff',
+              border: '1px solid #555',
+              borderRadius: '4px',
+              fontSize: '12px',
+            }}
+          >
+            {labs.map((lab) => (
+              <option key={lab.id} value={lab.id}>
+                {lab.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <hr style={{ borderColor: '#333', marginTop: '16px', marginBottom: '16px' }} />
+
         <h3 style={{ marginTop: 0 }}>Instructions</h3>
-        <p style={{ fontSize: '12px', lineHeight: '1.5', opacity: 0.8 }}>
-          Design a circuit that satisfies all checkpoint requirements. Use the Logic Canvas to build your circuit.
-        </p>
-        <div style={{ marginTop: '16px', fontSize: '11px', opacity: 0.6 }}>
+        {currentLab ? (
+          <div style={{ fontSize: '12px', lineHeight: '1.5', opacity: 0.85 }}>
+            <p style={{ whiteSpace: 'pre-wrap' }}>{currentLab.instructions}</p>
+          </div>
+        ) : (
+          <p style={{ fontSize: '12px', opacity: 0.6 }}>No lab selected</p>
+        )}
+
+        <div style={{ marginTop: '24px', fontSize: '11px', opacity: 0.6 }}>
           <p>
             <strong>Keyboard Shortcuts:</strong>
             <br />
@@ -264,17 +326,18 @@ const LogicLabApp = () => {
         }}
       >
         <h3 style={{ marginTop: 0 }}>Checkpoints</h3>
-        {sessionState && Object.keys(sessionState.checkpointResults).length > 0 ? (
+        {currentLab && currentLab.checkpoints.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {Object.entries(sessionState.checkpointResults).map(([cpId, result]) => {
-              const status = result.status || 'not-attempted';
+            {currentLab.checkpoints.map((checkpoint) => {
+              const result = sessionState?.checkpointResults[checkpoint.id];
+              const status = result?.status || 'not-attempted';
               const bgColor =
                 status === 'passed' ? '#006633' : status === 'failed' ? '#663333' : '#333';
 
               return (
                 <div
-                  key={cpId}
-                  data-testid={`checkpoint-${cpId}`}
+                  key={checkpoint.id}
+                  data-testid={`checkpoint-${checkpoint.id}`}
                   style={{
                     padding: '8px',
                     backgroundColor: bgColor,
@@ -286,10 +349,12 @@ const LogicLabApp = () => {
                   }}
                 >
                   <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                    {cpId}
+                    {checkpoint.name}
                   </div>
-                  <div style={{ opacity: 0.8 }}>{status.toUpperCase()}</div>
-                  {result.passedAt && (
+                  <div style={{ opacity: 0.8, fontSize: '10px' }}>
+                    {status.toUpperCase()} ({checkpoint.testVectors.length} tests)
+                  </div>
+                  {result?.passedAt && (
                     <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '4px' }}>
                       {new Date(result.passedAt).toLocaleTimeString()}
                     </div>
@@ -299,7 +364,7 @@ const LogicLabApp = () => {
             })}
           </div>
         ) : (
-          <p style={{ fontSize: '12px', opacity: 0.6 }}>No checkpoints attempted</p>
+          <p style={{ fontSize: '12px', opacity: 0.6 }}>No checkpoints for this lab</p>
         )}
       </div>
     </main>

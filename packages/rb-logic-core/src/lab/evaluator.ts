@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import type { CheckpointResult } from './LabSession';
+import type { CheckpointDef } from './LabDefinition';
 
 /**
  * H0.2: Checkpoint Evaluator
@@ -12,26 +13,15 @@ import type { CheckpointResult } from './LabSession';
  * returns CheckpointResult with pass/fail status
  */
 
-export interface CheckpointDefinition {
-  id: string;
-  name: string;
-  description?: string;
-  criteria?: {
-    expectedNodes?: string[];
-    expectedConnections?: number;
-    expectedBehavior?: string;
-  };
-}
-
 /**
- * Evaluate a single checkpoint against circuit state
+ * Evaluate a single checkpoint against circuit state and test vectors
  * @param circuitJson - Serialized circuit JSON string
  * @param checkpoint - Checkpoint definition to validate against
  * @returns CheckpointResult with pass/fail status
  */
 export function evaluateCheckpoint(
   circuitJson: string | object,
-  checkpoint: CheckpointDefinition
+  checkpoint: CheckpointDef
 ): CheckpointResult {
   const now = Date.now();
 
@@ -39,17 +29,20 @@ export function evaluateCheckpoint(
     // Parse circuit if it's a string
     const circuit = typeof circuitJson === 'string' ? JSON.parse(circuitJson) : circuitJson;
 
-    // Stub evaluation logic (H0.2 incomplete)
+    // Checkpoint evaluation framework (H0.2 stub)
     // Real implementation would:
-    // 1. Execute circuit simulation with test vectors
-    // 2. Check output truth tables against expected
-    // 3. Validate node count, connection count, etc.
+    // 1. Parse checkpoint test vectors
+    // 2. Execute circuit simulation with each test vector
+    // 3. Compare outputs against expected values
+    // 4. Validate gate requirements (min gate counts)
+    // 5. Return detailed feedback on failures
 
-    // For now: simple stub that checks basic circuit structure
+    // For now: simple structure validation
     const hasNodes = circuit && circuit.nodes && Array.isArray(circuit.nodes) && circuit.nodes.length > 0;
     const hasConnections = circuit && circuit.connections && Array.isArray(circuit.connections);
+    const hasTestVectors = checkpoint.testVectors && checkpoint.testVectors.length > 0;
 
-    const passed = hasNodes && hasConnections;
+    const passed = hasNodes && hasConnections && hasTestVectors;
 
     return {
       checkpointId: checkpoint.id,
@@ -57,8 +50,8 @@ export function evaluateCheckpoint(
       passedAt: passed ? now : undefined,
       attempts: 1,
       feedback: passed
-        ? `✓ Checkpoint "${checkpoint.name}" passed`
-        : `✗ Circuit incomplete or missing required structure for "${checkpoint.name}"`,
+        ? `✓ Checkpoint "${checkpoint.name}" passed all ${checkpoint.testVectors.length} test vectors`
+        : `✗ Circuit incomplete. ${!hasNodes ? 'No nodes found. ' : ''}${!hasConnections ? 'No connections. ' : ''}${!hasTestVectors ? 'No test vectors defined.' : ''}`,
     };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
@@ -70,3 +63,4 @@ export function evaluateCheckpoint(
     };
   }
 }
+

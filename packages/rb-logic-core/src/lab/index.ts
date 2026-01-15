@@ -21,3 +21,8 @@ export type { LabSessionStoreType } from './sessionStore';
 // H0.3-H0.4: Capsule schema and validation
 export { validateCapsule, parseCapsuleJSON, parseCapsuleFile } from './CapsuleV1';
 export type { CapsuleV1, CheckpointResult, CapsuleImportResult } from './CapsuleV1';
+
+// H0.7: Lab definitions and examples
+export { createTestVector, createCheckpoint, createLabDef } from './LabDefinition';
+export type { TestVector, CheckpointDef, LabDef, LabLibrary } from './LabDefinition';
+export { getDefaultLab, getDefaultLabs, defaultLabLibrary } from './exampleLabs';
