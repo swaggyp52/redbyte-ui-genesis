@@ -4,9 +4,8 @@
 
 import type { Circuit, Node, Connection, NodeInputs, Signal } from './types';
 import { NodeRegistry } from './NodeRegistry';
-import { ensureBuiltinsRegistered } from './registerBuiltins';
 
-ensureBuiltinsRegistered();
+// Builtins are registered in index.ts at module init — no need to call here
 
 /**
  * Circuit evaluation engine
