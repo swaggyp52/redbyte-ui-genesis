@@ -5,6 +5,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useFileSystemStore } from '@redbyte/rb-apps';
 import { getAllSearchableFiles, filterSearchResults } from '../searchRegistry';
+import { registerAllApps } from '@redbyte/rb-apps';
+
+beforeAll(async () => {
+  // Ensure registry is populated for file search tests
+  await registerAllApps();
+});
 
 describe('PHASE_AD: System Search Files Provider', () => {
   beforeEach(() => {

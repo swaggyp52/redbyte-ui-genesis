@@ -2,8 +2,14 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { filterSearchResults } from '../searchRegistry';
+import { registerAllApps } from '@redbyte/rb-apps';
+
+beforeAll(async () => {
+  // Initialize app registry for all search tests
+  await registerAllApps();
+});
 
 describe('System Search', () => {
   describe('Search filtering', () => {
