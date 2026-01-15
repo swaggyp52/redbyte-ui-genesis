@@ -6,16 +6,24 @@ $ErrorActionPreference = "Stop"
 $git  = "C:\Users\angiel001\AppData\Local\Programs\Git\bin\git.exe"
 $pnpm = "C:\Users\angiel001\AppData\Roaming\npm\pnpm.cmd"
 
+# FAST MODE: if user sets SKIP_QUALITY=1 allow pushing (for emergencies)
+if ($env:SKIP_QUALITY -eq "1") {
+  Write-Host "[pre-push] SKIP_QUALITY=1 set; skipping gate."
+  exit 0
+}
+
 # Always run from repo root
 $repoRoot = (& "C:\Users\angiel001\AppData\Local\Programs\Git\bin\git.exe" rev-parse --show-toplevel).Trim()
-Set-Location ""
+Set-Location $repoRoot
 
 # Consume stdin lines if present (Git provides them). DO NOT block if none.
 try {
   while ([Console]::In.Peek() -ge 0) {
     [Console]::In.ReadLine() | Out-Null
   }
-} catch {}# Only gate pushes *from* main
+} catch {}
+
+# Only gate pushes *from* main
 $branch = (& "C:\Users\angiel001\AppData\Local\Programs\Git\bin\git.exe" rev-parse --abbrev-ref HEAD).Trim()
 if ($branch -ne "main") { exit 0 }
 

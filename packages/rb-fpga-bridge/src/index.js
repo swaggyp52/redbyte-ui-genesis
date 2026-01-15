@@ -83,6 +83,21 @@ let state = {
   lastMsg: null,
 };
 
+let eventSeq = 0;
+
+function createEvent(type, data = {}) {
+  return {
+    type,
+    seq: eventSeq++,
+    timestamp: Date.now(),
+    ...data,
+  };
+}
+
+// Main API endpoint
+app.get("/api/health", (_req, res) => res.json({ ok: true, ...state }));
+
+// Backward compat
 app.get("/health", (_req, res) => res.json({ ok: true, ...state }));
 
 app.get("/ports", async (_req, res) => {
@@ -138,11 +153,11 @@ async function connectToFpga(forcedPortPath) {
   sp.on("close", () => {
     state.connected = false;
     console.log("[fpga-bridge] Serial port closed");
-    broadcast({ type: "status", ...state });
+    broadcast(createEvent("status", { ...state }));
   });
   sp.on("error", (err) => {
     console.log("[fpga-bridge] Serial error:", err);
-    broadcast({ type: "error", error: String(err) });
+    broadcast(createEvent("error", { error: String(err) }));
   });
 
   parser.on("data", (line) => {
@@ -150,15 +165,16 @@ async function connectToFpga(forcedPortPath) {
     if (!msg) return;
     state.lastMsgTs = msg.ts;
     state.lastMsg = msg;
-    broadcast(msg);
+    broadcast(createEvent("uart:rx", msg));
   });
 
-  broadcast({ type: "status", ...state });
+  broadcast(createEvent("status", { ...state }));
   console.log("[fpga-bridge] Connected.");
 }
 
 wss.on("connection", (ws) => {
-  ws.send(JSON.stringify({ type: "status", ...state }));
+  const statusEvent = createEvent("status", { ...state });
+  ws.send(JSON.stringify(statusEvent));
 });
 
 (async () => {
@@ -166,7 +182,7 @@ wss.on("connection", (ws) => {
     console.log("[fpga-bridge] ⚠️  MOCK MODE - simulating Basys3 board");
     state.connected = true;
     state.port = "MOCK";
-    broadcast({ type: "status", ...state });
+    broadcast(createEvent("device:connected"));
     
     // Simulate hardware updates
     let tick = 0;
@@ -179,17 +195,15 @@ wss.on("connection", (ws) => {
       led = sw; // Mirror switches to LEDs
       const btn = Math.floor(Math.random() * 0b11111);
       
-      const msg = {
-        type: "uart",
-        raw: `RB1 SW=${sw.toString(2).padStart(16, '0')} BTN=${btn.toString(2).padStart(5, '0')} LED=${led.toString(2).padStart(16, '0')} TICK=${tick}`,
-        SW: sw.toString(2).padStart(16, '0'),
-        BTN: btn.toString(2).padStart(5, '0'),
-        LED: led.toString(2).padStart(16, '0'),
+      const msg = createEvent("io:update", {
+        source: "device",
+        SW: sw.toString(2).padStart(16, "0"),
+        BTN: btn.toString(2).padStart(5, "0"),
+        LED: led.toString(2).padStart(16, "0"),
         TICK: String(tick),
-        ts: Date.now(),
-      };
+      });
       
-      state.lastMsgTs = msg.ts;
+      state.lastMsgTs = msg.timestamp;
       state.lastMsg = msg;
       broadcast(msg);
       tick++;
