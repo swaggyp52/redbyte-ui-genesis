@@ -86,3 +86,9 @@ registerCompositeNode(Counter4BitDef);
 
 // Share utilities
 export * from './share/encoding';
+
+// Lab module (ECE Lab MVP)
+export { createLabSessionStore, getGlobalLabSessionStore, resetGlobalLabSessionStore } from './lab/sessionStore';
+export { evaluateCheckpoint } from './lab/evaluator';
+export type { CapsuleV1, CheckpointResult } from './lab/CapsuleV1';
+export { validateCapsule, parseCapsuleJSON, parseCapsuleFile } from './lab/CapsuleV1';
