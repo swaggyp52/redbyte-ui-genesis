@@ -37,20 +37,28 @@ if (!Array.isArray(proof.events)) {
 } else {
   for (let i = 0; i < proof.events.length; i++) {
     const evt = proof.events[i];
-    if (typeof evt.seq !== "number") errors.push(`Event ${i}: missing seq`);
-    if (typeof evt.timestamp !== "number") errors.push(`Event ${i}: missing timestamp`);
-    if (typeof evt.type !== "string") errors.push(`Event ${i}: missing type`);
+    
+    // Required fields
+    if (typeof evt.seq !== "number") errors.push(`Event ${i}: missing or invalid seq (must be number)`);
+    if (typeof evt.timestamp !== "number") errors.push(`Event ${i}: missing or invalid timestamp (must be number, got ${typeof evt.timestamp})`);
+    if (typeof evt.type !== "string") errors.push(`Event ${i}: missing or invalid type (must be string)`);
+    
+    // Optional fields
+    if (evt.ts_offset_ms !== undefined && (typeof evt.ts_offset_ms !== "number" || evt.ts_offset_ms < 0)) {
+      errors.push(`Event ${i}: ts_offset_ms must be non-negative number, got ${evt.ts_offset_ms}`);
+    }
   }
 }
 
-// 2. Monotonic seq ordering
+// 2. Seq validation (contiguous starting from 1)
 if (proof.events && proof.events.length > 0) {
-  for (let i = 1; i < proof.events.length; i++) {
-    const prev = proof.events[i - 1];
+  let expectedSeq = 1;
+  for (let i = 0; i < proof.events.length; i++) {
     const curr = proof.events[i];
-    if (curr.seq <= prev.seq) {
-      errors.push(`Event ${i}: seq ${curr.seq} not greater than previous ${prev.seq}`);
+    if (curr.seq !== expectedSeq) {
+      errors.push(`Event ${i}: seq ${curr.seq} is not contiguous (expected ${expectedSeq})`);
     }
+    expectedSeq = curr.seq + 1;
   }
 }
 

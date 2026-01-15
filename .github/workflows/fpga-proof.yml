@@ -70,6 +70,7 @@ jobs:
             ops/proof/fpga-proof-*.json
             ops/proof/fpga-proof-*.txt
             ops/proof/fpga-events-*.ndjson
+            ops/proof/artifact-index-*.txt
           retention-days: 30
 
       - name: Proof Summary

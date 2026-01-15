@@ -128,7 +128,7 @@ async function testWebSocket() {
           lastSeq = event.seq;
         }
 
-        log(`[PROOF]   Event ${eventCount}: type=${event.type}, seq=${event.seq}, ts=${event.ts}`);
+        log(`[PROOF]   Event ${eventCount}: type=${event.type}, seq=${event.seq}, ts=${event.timestamp}`);
 
         if (eventCount >= 3) {
           clearTimeout(timeout);
@@ -259,8 +259,12 @@ async function runProof() {
     });
     log(`[PROOF] ✅ NDJSON events: ${proofNdjson}`);
 
-    // Enhanced text summary
+    // Enhanced text summary with correct timestamps
     const ioUpdates = wsResult.events.filter((e) => e.type === "io:update").slice(-5);
+    const firstTs = wsResult.events[0]?.timestamp;
+    const lastTs = wsResult.events[wsResult.events.length - 1]?.timestamp;
+    const durationSec = firstTs && lastTs ? Math.round((lastTs - firstTs) / 1000) : "?";
+    
     const summaryText = [
       "════════════════════════════════════════",
       "[PROOF] === FPGA Bridge Proof Runner ===",
@@ -270,15 +274,16 @@ async function runProof() {
       "[PROOF SUMMARY]",
       `✅ Status: ${testsFailed === 0 ? "PASS" : "FAIL"}`,
       `📊 Events: ${wsResult.events.length} total (seq ${wsResult.events[0]?.seq || "?"} to ${wsResult.events[wsResult.events.length - 1]?.seq || "?"})`,
+      `⏱️  Timestamps: ${firstTs} to ${lastTs} (${durationSec}s)`,
       `🔐 Stream Hash: sha256:${streamHash.slice(0, 16)}...`,
       ...(secret ? [`🔑 Signature: hmac-sha256:${proofCapsule.signature.slice(0, 16)}...`] : []),
       "",
       "[RECENT I/O UPDATES]",
       ...ioUpdates.map((e, i) => 
-        `${i + 1}. seq=${e.seq} LED:${e.LED} BTN:${e.BTN} SW:${e.SW}`
+        `${i + 1}. seq=${e.seq} ts=${e.timestamp} LED:${e.LED} BTN:${e.BTN} SW:${e.SW}`
       ),
       "",
-      `[SUCCESS] Bridge ran for ~${Math.round((wsResult.events[wsResult.events.length - 1]?.timestamp - wsResult.events[0]?.timestamp) / 1000)}s, captured ${wsResult.events.length} events, proof valid.`,
+      `[SUCCESS] Bridge ran for ${durationSec}s, captured ${wsResult.events.length} events, proof valid.`,
       "════════════════════════════════════════",
     ].join("\n");
 
@@ -290,6 +295,38 @@ async function runProof() {
       fs.on("error", reject);
     });
     log(`[PROOF] ✅ Text log: ${proofLog}`);
+
+    // Write artifact index
+    const indexText = [
+      "Proof Artifacts Index",
+      "====================",
+      "",
+      `Generated: ${new Date().toISOString()}`,
+      `Session: ${proofCapsule.session_id}`,
+      "",
+      "Files:",
+      `1. fpga-proof-${timestamp}.json (${(JSON.stringify(proofCapsule).length / 1024).toFixed(2)} KB)`,
+      `   - Proof capsule with events, stream hash, HMAC signature`,
+      `2. fpga-proof-${timestamp}.txt (${(summaryText.length / 1024).toFixed(2)} KB)`,
+      `   - Human-readable summary with timestamps and I/O state`,
+      `3. fpga-events-${timestamp}.ndjson (NDJSON lines)`,
+      `   - Canonical event log, one JSON per line`,
+      "",
+      "Verification:",
+      "- All events have seq (integer), timestamp (unix ms), type (string)",
+      "- Seq is contiguous starting from 1",
+      "- HMAC signature (if present) is valid with RB_FPGA_HMAC_SECRET",
+      "- Stream hash is deterministic for same event set",
+    ].join("\n");
+
+    await new Promise((resolve, reject) => {
+      const fs = createWriteStream(`${PROOF_DIR}/artifact-index-${timestamp}.txt`);
+      fs.write(indexText);
+      fs.end();
+      fs.on("finish", resolve);
+      fs.on("error", reject);
+    });
+    log(`[PROOF] ✅ Artifact index: ${PROOF_DIR}/artifact-index-${timestamp}.txt`);
 
     log("════════════════════════════════════════");
     log(`[PROOF] Results: ${testsPassed} passed, ${testsFailed} failed`);
