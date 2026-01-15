@@ -43,10 +43,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Create proof directory
+        run: mkdir -p ops/proof
+
       - name: Run FPGA Bridge Proof
         env:
           RB_FPGA_HMAC_SECRET: ci-test-secret-do-not-use-in-production
         run: pnpm --filter @redbyte/fpga-bridge proof:run
+
+      - name: Verify proof artifacts
+        env:
+          RB_FPGA_HMAC_SECRET: ci-test-secret-do-not-use-in-production
+        run: |
+          if [ -f ops/proof/fpga-proof-*.json ]; then
+            node packages/rb-fpga-bridge/scripts/proof-verify.js ops/proof/fpga-proof-*.json
+          else
+            echo "No proof artifacts found" && exit 1
+          fi
 
       - name: Upload proof artifacts
         if: always()
@@ -56,6 +69,7 @@ jobs:
           path: |
             ops/proof/fpga-proof-*.json
             ops/proof/fpga-proof-*.txt
+            ops/proof/fpga-events-*.ndjson
           retention-days: 30
 
       - name: Proof Summary

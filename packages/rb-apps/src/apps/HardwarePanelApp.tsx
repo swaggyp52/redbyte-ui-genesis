@@ -25,6 +25,9 @@ function HardwarePanelComponent() {
   const [ioState, setIOState] = useState<IOState | null>(null);
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [events, setEvents] = useState<any[]>([]);
+  const [lastSeq, setLastSeq] = useState<number>(-1);
+  const [mockMode, setMockMode] = useState(false);
+  const [localIO, setLocalIO] = useState({ SW: 0, BTN: 0 }); // For mock toggles
 
   // Check bridge health
   const checkHealth = useCallback(async () => {
@@ -33,6 +36,7 @@ function HardwarePanelComponent() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setStatus(data);
+      setMockMode(data.port === "MOCK");
       setError(null);
     } catch (e: any) {
       setError(e.message || "Bridge not detected");
@@ -55,6 +59,7 @@ function HardwarePanelComponent() {
         try {
           const msg = JSON.parse(event.data);
           setEvents((prev) => [...prev.slice(-20), msg]); // Keep last 20
+          setLastSeq(msg.seq);
 
           if (msg.type === "io:update") {
             setIOState({
@@ -105,6 +110,15 @@ function HardwarePanelComponent() {
     }
   };
 
+  // Toggle I/O bit (mock mode only)
+  const toggleBit = (field: "SW" | "BTN", bit: number) => {
+    if (!mockMode) return;
+    const current = localIO[field];
+    const updated = current ^ (1 << bit);
+    setLocalIO({ ...localIO, [field]: updated });
+    // In real implementation, would emit control:io-toggle event to bridge
+  };
+
   useEffect(() => {
     checkHealth();
     const interval = setInterval(checkHealth, 5000);
@@ -127,6 +141,21 @@ function HardwarePanelComponent() {
     <div style={{ padding: "20px", fontFamily: "monospace", color: "#fff" }}>
       <h2>🔧 Hardware Panel</h2>
       
+      {/* Connection Status */}
+      <div style={{ marginBottom: "20px", padding: "10px", background: "#1a1a2e", borderRadius: "4px", border: "1px solid #16213e" }}>
+        <strong>Connection Status:</strong>{" "}
+        {ws ? (
+          <>
+            <span style={{ color: "#0f0" }}>● WS Connected</span>
+            <span style={{ marginLeft: "20px", fontSize: "12px", color: "#888" }}>Last seq: {lastSeq}</span>
+          </>
+        ) : (
+          <>
+            <span style={{ color: "#f00" }}>● WS Disconnected</span>
+          </>
+        )}
+      </div>
+
       {/* Bridge Status */}
       <div style={{ marginBottom: "20px", padding: "10px", background: status?.ok ? "#0a3a0a" : "#3a0a0a", borderRadius: "4px" }}>
         <strong>Bridge Status:</strong>{" "}
@@ -134,7 +163,7 @@ function HardwarePanelComponent() {
           <>
             <span style={{ color: "#0f0" }}>● Connected</span>
             <div style={{ marginTop: "8px", fontSize: "12px" }}>
-              Port: {status.port} | Baud: {status.baud} | Mode: {status.mode || (status.port === "MOCK" ? "MOCK" : "UART")}
+              Port: {status.port} | Baud: {status.baud} | Mode: {mockMode ? "MOCK" : "UART"}
             </div>
           </>
         ) : (
@@ -152,18 +181,50 @@ function HardwarePanelComponent() {
         <div style={{ marginBottom: "20px" }}>
           <h3>I/O State (Live)</h3>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-            <div style={{ padding: "10px", background: "#222", borderRadius: "4px" }}>
-              <div><strong>Switches (SW)</strong></div>
-              <div style={{ fontSize: "14px", color: "#0ff", fontFamily: "monospace" }}>{ioState.SW}</div>
+            {/* Switches (Toggleable in mock) */}
+            <div style={{ padding: "10px", background: "#222", borderRadius: "4px", opacity: mockMode ? 1 : 0.7 }}>
+              <div><strong>Switches (SW)</strong> {mockMode && <span style={{ fontSize: "10px", color: "#888" }}>[mock mode - clickable]</span>}</div>
+              <div style={{ fontSize: "14px", color: "#0ff", fontFamily: "monospace", userSelect: "none" }}>
+                {ioState.SW.split("").map((bit, i) => (
+                  <span
+                    key={i}
+                    onClick={() => mockMode && toggleBit("SW", i)}
+                    style={{
+                      cursor: mockMode ? "pointer" : "default",
+                      background: mockMode ? (i % 4 === 0 ? "#333" : "transparent") : "transparent",
+                      padding: "2px 4px",
+                    }}
+                  >
+                    {bit}
+                  </span>
+                ))}
+              </div>
             </div>
+            {/* LEDs (Read-only) */}
             <div style={{ padding: "10px", background: "#222", borderRadius: "4px" }}>
               <div><strong>LEDs</strong></div>
               <div style={{ fontSize: "14px", color: "#ff0", fontFamily: "monospace" }}>{ioState.LED}</div>
             </div>
-            <div style={{ padding: "10px", background: "#222", borderRadius: "4px" }}>
-              <div><strong>Buttons (BTN)</strong></div>
-              <div style={{ fontSize: "14px", color: "#0f0", fontFamily: "monospace" }}>{ioState.BTN}</div>
+            {/* Buttons (Toggleable in mock) */}
+            <div style={{ padding: "10px", background: "#222", borderRadius: "4px", opacity: mockMode ? 1 : 0.7 }}>
+              <div><strong>Buttons (BTN)</strong> {mockMode && <span style={{ fontSize: "10px", color: "#888" }}>[mock mode - clickable]</span>}</div>
+              <div style={{ fontSize: "14px", color: "#0f0", fontFamily: "monospace", userSelect: "none" }}>
+                {ioState.BTN.split("").map((bit, i) => (
+                  <span
+                    key={i}
+                    onClick={() => mockMode && toggleBit("BTN", i)}
+                    style={{
+                      cursor: mockMode ? "pointer" : "default",
+                      background: mockMode ? (bit === "1" ? "#0f0" : "transparent") : "transparent",
+                      padding: "2px 4px",
+                    }}
+                  >
+                    {bit}
+                  </span>
+                ))}
+              </div>
             </div>
+            {/* TICK */}
             <div style={{ padding: "10px", background: "#222", borderRadius: "4px" }}>
               <div><strong>Tick</strong></div>
               <div style={{ fontSize: "14px", color: "#fff" }}>{ioState.TICK}</div>

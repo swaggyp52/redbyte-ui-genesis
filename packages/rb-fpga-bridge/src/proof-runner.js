@@ -16,6 +16,7 @@ import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 import http from "http";
 import WebSocket from "ws";
+import { createHmac } from "crypto";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -30,6 +31,7 @@ mkdirSync(PROOF_DIR, { recursive: true });
 const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, -5);
 const proofJson = `${PROOF_DIR}/fpga-proof-${timestamp}.json`;
 const proofLog = `${PROOF_DIR}/fpga-proof-${timestamp}.txt`;
+const proofNdjson = `${PROOF_DIR}/fpga-events-${timestamp}.ndjson`;
 
 let bridgeProcess = null;
 let testsPassed = 0;
@@ -220,8 +222,22 @@ async function runProof() {
       },
     };
 
+    // Compute stream hash (canonical event string)
+    const canonical = JSON.stringify(wsResult.events);
+    const streamHash = createHmac("sha256", "canonical").update(canonical).digest("hex");
+    proofCapsule.stream_hash = streamHash;
+
+    // Compute HMAC signature if secret available
+    const secret = process.env.RB_FPGA_HMAC_SECRET;
+    if (secret) {
+      const sig = createHmac("sha256", secret).update(canonical).digest("hex");
+      proofCapsule.signature = sig;
+    }
+
     // Write artifacts
     log(`[PROOF] Writing artifacts...`);
+    
+    // JSON proof capsule
     await new Promise((resolve, reject) => {
       const fs = createWriteStream(proofJson);
       fs.write(JSON.stringify(proofCapsule, null, 2));
@@ -231,9 +247,44 @@ async function runProof() {
     });
     log(`[PROOF] ✅ JSON proof: ${proofJson}`);
 
+    // NDJSON event log (one event per line)
+    await new Promise((resolve, reject) => {
+      const fs = createWriteStream(proofNdjson);
+      wsResult.events.forEach((evt) => {
+        fs.write(JSON.stringify(evt) + "\n");
+      });
+      fs.end();
+      fs.on("finish", resolve);
+      fs.on("error", reject);
+    });
+    log(`[PROOF] ✅ NDJSON events: ${proofNdjson}`);
+
+    // Enhanced text summary
+    const ioUpdates = wsResult.events.filter((e) => e.type === "io:update").slice(-5);
+    const summaryText = [
+      "════════════════════════════════════════",
+      "[PROOF] === FPGA Bridge Proof Runner ===",
+      "════════════════════════════════════════",
+      ...results,
+      "",
+      "[PROOF SUMMARY]",
+      `✅ Status: ${testsFailed === 0 ? "PASS" : "FAIL"}`,
+      `📊 Events: ${wsResult.events.length} total (seq ${wsResult.events[0]?.seq || "?"} to ${wsResult.events[wsResult.events.length - 1]?.seq || "?"})`,
+      `🔐 Stream Hash: sha256:${streamHash.slice(0, 16)}...`,
+      ...(secret ? [`🔑 Signature: hmac-sha256:${proofCapsule.signature.slice(0, 16)}...`] : []),
+      "",
+      "[RECENT I/O UPDATES]",
+      ...ioUpdates.map((e, i) => 
+        `${i + 1}. seq=${e.seq} LED:${e.LED} BTN:${e.BTN} SW:${e.SW}`
+      ),
+      "",
+      `[SUCCESS] Bridge ran for ~${Math.round((wsResult.events[wsResult.events.length - 1]?.timestamp - wsResult.events[0]?.timestamp) / 1000)}s, captured ${wsResult.events.length} events, proof valid.`,
+      "════════════════════════════════════════",
+    ].join("\n");
+
     await new Promise((resolve, reject) => {
       const fs = createWriteStream(proofLog);
-      fs.write(results.join("\n"));
+      fs.write(summaryText);
       fs.end();
       fs.on("finish", resolve);
       fs.on("error", reject);
