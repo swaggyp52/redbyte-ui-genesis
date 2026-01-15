@@ -1,0 +1,322 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FPGA Bridge WebSocket Events",
+  "description": "Unified event format for hardware (UART, simulator, JTAG backends)",
+  "type": "object",
+  "oneOf": [
+    {
+      "$ref": "#/definitions/device-connected"
+    },
+    {
+      "$ref": "#/definitions/device-disconnected"
+    },
+    {
+      "$ref": "#/definitions/io-update"
+    },
+    {
+      "$ref": "#/definitions/uart-rx"
+    },
+    {
+      "$ref": "#/definitions/uart-tx"
+    },
+    {
+      "$ref": "#/definitions/sample-frame"
+    },
+    {
+      "$ref": "#/definitions/proof-capsule"
+    },
+    {
+      "$ref": "#/definitions/error"
+    }
+  ],
+  "definitions": {
+    "timestamp": {
+      "type": "integer",
+      "description": "Unix milliseconds (wall-clock, informational)"
+    },
+    "seq": {
+      "type": "integer",
+      "description": "Event sequence number (monotonically increasing, authoritative for replay ordering)"
+    },
+    "device-connected": {
+      "type": "object",
+      "required": ["type", "seq", "timestamp", "device"],
+      "properties": {
+        "type": {
+          "const": "device:connected"
+        },
+        "seq": {
+          "$ref": "#/definitions/seq"
+        },
+        "timestamp": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "device": {
+          "type": "object",
+          "required": ["id", "board", "backend", "contract"],
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Unique device identifier (e.g., 'ftdi-1234-5678', 'simulator-default')"
+            },
+            "board": {
+              "type": "string",
+              "description": "Board name (e.g., 'Basys3')"
+            },
+            "backend": {
+              "type": "string",
+              "enum": ["uart", "simulator", "jtag", "remote"]
+            },
+            "port": {
+              "type": ["string", "null"],
+              "description": "Port identifier (COM5, sim://default, etc)"
+            },
+            "serialNumber": {
+              "type": ["string", "null"]
+            },
+            "contract": {
+              "type": "object",
+              "required": ["protocol", "format", "io"],
+              "properties": {
+                "protocol": {
+                  "type": "string",
+                  "enum": ["UART", "JTAG", "Ethernet"]
+                },
+                "baudrate": {
+                  "type": ["integer", "null"],
+                  "description": "Only for UART protocol"
+                },
+                "format": {
+                  "type": "string",
+                  "description": "Message format (e.g., 'RB1')"
+                },
+                "io": {
+                  "type": "object",
+                  "properties": {
+                    "inputs": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "count": {"type": "integer"},
+                          "type": {"type": "string"}
+                        }
+                      }
+                    },
+                    "outputs": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "count": {"type": "integer"},
+                          "type": {"type": "string"}
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "device-disconnected": {
+      "type": "object",
+      "required": ["type", "seq", "timestamp"],
+      "properties": {
+        "type": {
+          "const": "device:disconnected"
+        },
+        "seq": {
+          "$ref": "#/definitions/seq"
+        },
+        "timestamp": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "reason": {
+          "type": "string",
+          "enum": ["user_disconnect", "port_closed", "error", "reconnect"]
+        },
+        "error": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "io-update": {
+      "type": "object",
+      "required": ["type", "seq", "timestamp", "changes"],
+      "properties": {
+        "type": {
+          "const": "io:update"
+        },
+        "seq": {
+          "$ref": "#/definitions/seq"
+        },
+        "timestamp": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["device", "user_input"],
+          "description": "Where the change originated"
+        },
+        "changes": {
+          "type": "object",
+          "description": "I/O state deltas (only changed fields)",
+          "additionalProperties": {
+            "type": "string",
+            "description": "Bit string (e.g., '0000000010110011')"
+          }
+        },
+        "tick": {
+          "type": ["integer", "null"],
+          "description": "Hardware cycle counter (if available)"
+        }
+      }
+    },
+    "uart-rx": {
+      "type": "object",
+      "required": ["type", "seq", "timestamp", "raw"],
+      "properties": {
+        "type": {
+          "const": "uart:rx"
+        },
+        "seq": {
+          "$ref": "#/definitions/seq"
+        },
+        "timestamp": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "raw": {
+          "type": "string",
+          "description": "Raw UART line as received"
+        },
+        "parsed": {
+          "type": "object",
+          "description": "Parsed fields (if RB1 format)"
+        }
+      }
+    },
+    "uart-tx": {
+      "type": "object",
+      "required": ["type", "seq", "timestamp", "raw"],
+      "properties": {
+        "type": {
+          "const": "uart:tx"
+        },
+        "seq": {
+          "$ref": "#/definitions/seq"
+        },
+        "timestamp": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "raw": {
+          "type": "string",
+          "description": "Command/data sent to device"
+        }
+      }
+    },
+    "sample-frame": {
+      "type": "object",
+      "required": ["type", "seq", "timestamp", "tick", "signals"],
+      "properties": {
+        "type": {
+          "const": "sample:frame"
+        },
+        "seq": {
+          "$ref": "#/definitions/seq"
+        },
+        "timestamp": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "tick": {
+          "type": "integer",
+          "description": "Hardware cycle at sample time"
+        },
+        "sample_rate": {
+          "type": "integer",
+          "description": "Hz (e.g., 100000000 for 100MHz JTAG)"
+        },
+        "duration_ns": {
+          "type": "integer",
+          "description": "Nanoseconds of captured waveform"
+        },
+        "signals": {
+          "type": "object",
+          "description": "Signal name -> array of sampled values",
+          "additionalProperties": {
+            "type": "array"
+          }
+        }
+      }
+    },
+    "proof-capsule": {
+      "type": "object",
+      "required": ["type", "seq", "timestamp", "session_id", "signature"],
+      "properties": {
+        "type": {
+          "const": "proof:capsule"
+        },
+        "seq": {
+          "$ref": "#/definitions/seq"
+        },
+        "timestamp": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "session_id": {
+          "type": "string",
+          "description": "Session identifier (e.g., 'sess-2026-01-15-abc123')"
+        },
+        "signature": {
+          "type": "string",
+          "description": "HMAC-SHA256 of canonical events JSON"
+        },
+        "hash": {
+          "type": ["string", "null"],
+          "description": "Optional: legacy SHA256 checksum (deprecated, use signature)"
+        },
+        "device_snapshot": {
+          "type": "object",
+          "description": "Device state at proof export time"
+        },
+        "event_count": {
+          "type": "integer"
+        },
+        "start_time": {
+          "type": "integer"
+        },
+        "end_time": {
+          "type": "integer"
+        },
+        "duration_ms": {
+          "type": "integer"
+        },
+        "bundle_url": {
+          "type": "string",
+          "description": "/api/proof/sess-YYYY-MM-DD-xxx.json"
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "required": ["type", "seq", "timestamp"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "pattern": "^error:",
+          "description": "error:*, e.g., error:port_not_found"
+        },
+        "seq": {
+          "$ref": "#/definitions/seq"
+        },
+        "timestamp": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
