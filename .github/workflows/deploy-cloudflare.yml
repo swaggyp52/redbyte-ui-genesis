@@ -16,8 +16,8 @@ jobs:
   deploy:
     name: Build and Deploy to CF Pages
     runs-on: ubuntu-latest
-    # Only run if secrets exist (skip on forks/clones without secrets)
-    if: github.event_name == 'workflow_dispatch' || (github.repository == 'swaggyp52/redbyte-ui-genesis' && secrets.CLOUDFLARE_API_TOKEN != '')
+    # Only deploy on main branch or manual trigger with secrets present
+    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch' && secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != ''
     permissions:
       contents: read
       deployments: write
