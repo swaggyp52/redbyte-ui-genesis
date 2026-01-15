@@ -1,208 +1,293 @@
 import express from "express";
 import cors from "cors";
 import { WebSocketServer } from "ws";
-import { SerialPort } from "serialport";
-import { ReadlineParser } from "@serialport/parser-readline";
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+import crypto from "crypto";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const HTTP_PORT = Number(process.env.RB_FPGA_HTTP_PORT || 4242);
 const WS_PORT = Number(process.env.RB_FPGA_WS_PORT || 4243);
-const BAUD = Number(process.env.RB_FPGA_BAUD || 115200);
-const OVERRIDE_PORT = process.env.REDBYTE_FPGA_PORT || ""; // e.g. "COM5"
-const MOCK_MODE = process.env.RB_FPGA_MOCK === "1" || process.env.RB_FPGA_MOCK === "true";
+const BRIDGE_SECRET = process.env.RB_FPGA_SECRET || "dev-secret-key";
 
-function scorePort(p) {
-  const name = (p.friendlyName || p.manufacturer || p.path || "").toLowerCase();
-  const pnp = (p.pnpId || "").toLowerCase();
+// Load schemas for validation
+const fpgaEventsSchema = JSON.parse(
+  readFileSync(join(__dirname, "../schemas/fpga-events.schema.json"), "utf8")
+);
 
-  // FTDI VID is commonly 0403. Basys3 UART is often FTDI-based.
-  let score = 0;
-  if (name.includes("ftdi")) score += 50;
-  if (name.includes("usb serial")) score += 25;
-  if (pnp.includes("vid_0403")) score += 40;
-  if (pnp.includes("ftdi")) score += 20;
-  if (p.path?.toLowerCase().startsWith("com")) score += 5;
-  return score;
+// ============================================================================
+// State
+// ============================================================================
+
+let state = {
+  deviceConnected: false,
+  sessionId: generateSessionId(),
+  events: [],
+  seq: 0,
+};
+
+function generateSessionId() {
+  const now = new Date();
+  const dateStr = now.toISOString().split("T")[0];
+  const random = Math.random().toString(36).substr(2, 8);
+  return `sess-${dateStr}-${random}`;
 }
 
-async function listPorts() {
-  const ports = await SerialPort.list();
-  return ports.map((p) => ({
-    path: p.path,
-    friendlyName: p.friendlyName,
-    manufacturer: p.manufacturer,
-    serialNumber: p.serialNumber,
-    vendorId: p.vendorId,
-    productId: p.productId,
-    pnpId: p.pnpId,
-    score: scorePort(p),
-  })).sort((a,b) => b.score - a.score);
+// ============================================================================
+// Event Management
+// ============================================================================
+
+function createEvent(type, data = {}) {
+  const event = {
+    type,
+    seq: state.seq++,
+    timestamp: Date.now(),
+    ...data,
+  };
+  return event;
 }
 
-async function selectPort() {
-  const ports = await listPorts();
-  if (OVERRIDE_PORT) {
-    const hit = ports.find((p) => p.path?.toLowerCase() === OVERRIDE_PORT.toLowerCase());
-    if (hit) return { selected: hit, ports };
-    return { selected: { path: OVERRIDE_PORT, note: "override (not found in list yet)" }, ports };
+function canonical(obj) {
+  return JSON.stringify(obj, Object.keys(obj).sort());
+}
+
+function computeSignature(events) {
+  const canonical_json = canonical(events);
+  return (
+    "hmac-sha256:" +
+    crypto
+      .createHmac("sha256", BRIDGE_SECRET)
+      .update(canonical_json)
+      .digest("hex")
+  );
+}
+
+function broadcastEvent(event) {
+  if (!event.type || typeof event.seq !== "number" || !event.timestamp) {
+    console.error("[bridge] Invalid event structure:", event);
+    return;
   }
-  const best = ports[0];
-  if (!best || best.score < 10) return { selected: null, ports };
-  return { selected: best, ports };
-}
 
-// Simple line protocol:
-// RB1 SW=0011... LED=... BTN=... TICK=1234
-function parseLine(line) {
-  const raw = line.trim();
-  if (!raw) return null;
+  state.events.push(event);
 
-  // Pass through if not in our format, but still loggable
-  const obj = { raw, ts: Date.now(), type: "uart" };
-
-  // Try key=value parsing
-  const parts = raw.split(/\s+/);
-  for (const part of parts) {
-    const m = part.match(/^([A-Z0-9_]+)=(.+)$/i);
-    if (!m) continue;
-    const k = m[1].toUpperCase();
-    const v = m[2];
-    obj[k] = v;
+  const msg = JSON.stringify(event);
+  for (const client of wss.clients) {
+    if (client.readyState === 1) {
+      client.send(msg);
+    }
   }
-  return obj;
 }
+
+// ============================================================================
+// HTTP API
+// ============================================================================
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-let state = {
-  connected: false,
-  port: null,
-  baud: BAUD,
-  lastMsgTs: null,
-  lastMsg: null,
-};
-
-app.get("/health", (_req, res) => res.json({ ok: true, ...state }));
-
-app.get("/ports", async (_req, res) => {
-  const ports = await listPorts();
-  res.json({ ports });
+app.get("/api/health", (_req, res) => {
+  res.json({
+    ok: true,
+    version: "0.1.0",
+    deviceConnected: state.deviceConnected,
+    wsPort: WS_PORT,
+  });
 });
 
-app.post("/connect", async (req, res) => {
-  // optionally allow selecting a port from UI
-  const { port } = req.body || {};
-  try {
-    await connectToFpga(port || null);
-    res.json({ ok: true, ...state });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: String(e) });
-  }
+app.post("/api/export-proof", (_req, res) => {
+  const proof = {
+    session_id: state.sessionId,
+    device: {
+      id: "simulator-default",
+      board: "Basys3",
+      backend: "simulator",
+      port: "sim://default",
+    },
+    created_at: Date.now(),
+    start_time: state.events.length > 0 ? state.events[0].timestamp : Date.now(),
+    end_time: Date.now(),
+    duration_ms:
+      state.events.length > 0
+        ? Date.now() - state.events[0].timestamp
+        : 0,
+    event_count: state.events.length,
+    events: state.events,
+    signature: computeSignature(state.events),
+    signature_alg: "hmac-sha256",
+  };
+
+  res.json({
+    success: true,
+    proof,
+    bundle_url: `/api/proof/${state.sessionId}.json`,
+  });
 });
 
 const server = app.listen(HTTP_PORT, () => {
   console.log(`[fpga-bridge] HTTP on http://localhost:${HTTP_PORT}`);
 });
 
+// ============================================================================
+// WebSocket
+// ============================================================================
+
 const wss = new WebSocketServer({ port: WS_PORT });
 console.log(`[fpga-bridge] WS on ws://localhost:${WS_PORT}`);
 
-function broadcast(msg) {
-  const s = JSON.stringify(msg);
-  for (const client of wss.clients) {
-    if (client.readyState === 1) client.send(s);
-  }
-}
-
-async function connectToFpga(forcedPortPath) {
-  const { selected, ports } = await selectPort();
-  const portPath = forcedPortPath || selected?.path;
-
-  if (!portPath) {
-    console.log("[fpga-bridge] No suitable serial port found. Ports:");
-    console.table(ports.map(p => ({ path: p.path, score: p.score, name: p.friendlyName || p.manufacturer })));
-    throw new Error("No suitable FPGA serial port found. Plug in board or select port via /ports and /connect.");
-  }
-
-  console.log(`[fpga-bridge] Connecting to ${portPath} @ ${BAUD}...`);
-
-  const sp = new SerialPort({ path: portPath, baudRate: BAUD, autoOpen: false });
-  await new Promise((resolve, reject) => sp.open((err) => err ? reject(err) : resolve()));
-
-  const parser = sp.pipe(new ReadlineParser({ delimiter: "\n" }));
-
-  state.connected = true;
-  state.port = portPath;
-
-  sp.on("close", () => {
-    state.connected = false;
-    console.log("[fpga-bridge] Serial port closed");
-    broadcast({ type: "status", ...state });
-  });
-  sp.on("error", (err) => {
-    console.log("[fpga-bridge] Serial error:", err);
-    broadcast({ type: "error", error: String(err) });
-  });
-
-  parser.on("data", (line) => {
-    const msg = parseLine(line);
-    if (!msg) return;
-    state.lastMsgTs = msg.ts;
-    state.lastMsg = msg;
-    broadcast(msg);
-  });
-
-  broadcast({ type: "status", ...state });
-  console.log("[fpga-bridge] Connected.");
-}
-
 wss.on("connection", (ws) => {
-  ws.send(JSON.stringify({ type: "status", ...state }));
+  if (state.deviceConnected) {
+    ws.send(
+      JSON.stringify({
+        type: "device:connected",
+        seq: 0,
+        timestamp: Date.now(),
+        device: {
+          id: "simulator-default",
+          board: "Basys3",
+          backend: "simulator",
+          port: "sim://default",
+          contract: {
+            protocol: "UART",
+            baudrate: 115200,
+            format: "RB1",
+            io: {
+              inputs: { SW: { count: 16, type: "switch" }, BTN: { count: 5, type: "button" } },
+              outputs: { LED: { count: 16, type: "led" } },
+            },
+          },
+        },
+      })
+    );
+  }
 });
 
-(async () => {
-  if (MOCK_MODE) {
-    console.log("[fpga-bridge] ⚠️  MOCK MODE - simulating Basys3 board");
-    state.connected = true;
-    state.port = "MOCK";
-    broadcast({ type: "status", ...state });
-    
-    // Simulate hardware updates
-    let tick = 0;
-    let sw = 0;
-    let led = 0;
-    
-    setInterval(() => {
-      // Simulate switch changes and LED mirrors
-      sw = Math.floor(Math.random() * 0xFFFF);
-      led = sw; // Mirror switches to LEDs
-      const btn = Math.floor(Math.random() * 0b11111);
-      
-      const msg = {
-        type: "uart",
-        raw: `RB1 SW=${sw.toString(2).padStart(16, '0')} BTN=${btn.toString(2).padStart(5, '0')} LED=${led.toString(2).padStart(16, '0')} TICK=${tick}`,
-        SW: sw.toString(2).padStart(16, '0'),
-        BTN: btn.toString(2).padStart(5, '0'),
-        LED: led.toString(2).padStart(16, '0'),
-        TICK: String(tick),
-        ts: Date.now(),
+// ============================================================================
+// Simulator
+// ============================================================================
+
+let simulatorRunning = false;
+let simulatorInterval = null;
+
+function startSimulator() {
+  if (simulatorRunning) return;
+  simulatorRunning = true;
+
+  state.sessionId = generateSessionId();
+  state.events = [];
+  state.seq = 0;
+  state.deviceConnected = true;
+
+  const deviceConnected = createEvent("device:connected", {
+    device: {
+      id: "simulator-default",
+      board: "Basys3",
+      backend: "simulator",
+      port: "sim://default",
+      contract: {
+        protocol: "UART",
+        baudrate: 115200,
+        format: "RB1",
+        io: {
+          inputs: { SW: { count: 16, type: "switch" }, BTN: { count: 5, type: "button" } },
+          outputs: { LED: { count: 16, type: "led" } },
+        },
+      },
+    },
+  });
+  broadcastEvent(deviceConnected);
+
+  const pattern = [
+    "0000000000000001",
+    "0000000000000011",
+    "0000000000000111",
+    "0000000000001111",
+    "0000000000011111",
+    "0000000000111111",
+    "0000000001111111",
+    "0000000011111111",
+  ];
+
+  let patternIdx = 0;
+  let eventCount = 0;
+  const maxEvents = 50;
+
+  simulatorInterval = setInterval(() => {
+    if (eventCount >= maxEvents) {
+      clearInterval(simulatorInterval);
+
+      const proof = {
+        session_id: state.sessionId,
+        device: {
+          id: "simulator-default",
+          board: "Basys3",
+          backend: "simulator",
+          port: "sim://default",
+        },
+        created_at: Date.now(),
+        start_time: state.events[0].timestamp,
+        end_time: Date.now(),
+        duration_ms: Date.now() - state.events[0].timestamp,
+        event_count: state.events.length,
+        events: state.events,
+        signature: computeSignature(state.events),
+        signature_alg: "hmac-sha256",
       };
+
+      const proofEvent = createEvent("proof:capsule", {
+        session_id: state.sessionId,
+        signature: proof.signature,
+        device_snapshot: proof.device,
+        event_count: proof.event_count,
+        start_time: proof.start_time,
+        end_time: proof.end_time,
+        duration_ms: proof.duration_ms,
+        bundle_url: `/api/proof/${state.sessionId}.json`,
+      });
+      broadcastEvent(proofEvent);
+
+      const deviceDisconnected = createEvent("device:disconnected", {
+        reason: "simulator_finished",
+      });
+      broadcastEvent(deviceDisconnected);
+
+      state.deviceConnected = false;
+      simulatorRunning = false;
+
+      console.log(
+        `[fpga-bridge] Simulator finished. Generated ${state.events.length} events.`
+      );
+      console.log(`[fpga-bridge] Proof signature: ${proof.signature}`);
       
-      state.lastMsgTs = msg.ts;
-      state.lastMsg = msg;
-      broadcast(msg);
-      tick++;
-    }, 100); // 10Hz updates
-    
-    return;
-  }
-  
-  try {
-    await connectToFpga(null);
-  } catch (e) {
-    console.log("[fpga-bridge] Auto-connect failed:", String(e));
-    console.log("[fpga-bridge] Run: curl http://localhost:4242/ports then POST /connect with a chosen port.");
-    console.log("[fpga-bridge] Or set RB_FPGA_MOCK=1 to run in simulation mode.");
-  }
-})();
+      // Note: Server continues running, ready to restart simulator or export proof
+      return;
+    }
+
+    const sw = pattern[patternIdx % pattern.length];
+    patternIdx++;
+
+    const ioUpdate = createEvent("io:update", {
+      source: "device",
+      changes: {
+        SW: sw,
+        LED: sw,
+      },
+      tick: eventCount,
+    });
+    broadcastEvent(ioUpdate);
+    eventCount++;
+  }, 100);
+}
+
+// ============================================================================
+// Startup
+// ============================================================================
+
+console.log(`[fpga-bridge] starting simulator backend...`);
+startSimulator();
+console.log(
+  `[fpga-bridge] listening on http://localhost:${HTTP_PORT} and ws://localhost:${WS_PORT}`
+);
