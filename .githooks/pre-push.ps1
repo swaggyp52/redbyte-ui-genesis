@@ -2,15 +2,27 @@
 
 $ErrorActionPreference = "Stop"
 
-$branch = (git rev-parse --abbrev-ref HEAD).Trim()
+# Absolute tool paths (hooks do NOT inherit your interactive PATH reliably)
+$git  = "C:\Users\angiel001\AppData\Local\Programs\Git\bin\git.exe"
+$pnpm = "C:\Users\angiel001\AppData\Roaming\npm\pnpm.cmd"
+
+# Always run from repo root
+$repoRoot = (& "C:\Users\angiel001\AppData\Local\Programs\Git\bin\git.exe" rev-parse --show-toplevel).Trim()
+Set-Location ""
+
+# Consume stdin so Git doesn't hang
+try { [Console]::In.ReadToEnd() | Out-Null } catch {}
+
+# Only gate pushes *from* main
+$branch = (& "C:\Users\angiel001\AppData\Local\Programs\Git\bin\git.exe" rev-parse --abbrev-ref HEAD).Trim()
 if ($branch -ne "main") { exit 0 }
 
-Write-Host "[pre-push] main push detected. Running pnpm test..."
-pnpm test
-if ($LASTEXITCODE -ne 0) {
-  Write-Host "[pre-push] BLOCKED: tests failed."
-  exit $LASTEXITCODE
+Write-Host "[pre-push] main push detected -> running: pnpm quality"
+
+if (-not (Test-Path "C:\Users\angiel001\AppData\Roaming\npm\pnpm.cmd")) {
+  Write-Host "[pre-push] pnpm not found at: "C:\Users\angiel001\AppData\Roaming\npm\pnpm.cmd""
+  exit 1
 }
 
-Write-Host "[pre-push] OK: tests passed."
-exit 0
+& "C:\Users\angiel001\AppData\Roaming\npm\pnpm.cmd" quality
+exit $LASTEXITCODE
