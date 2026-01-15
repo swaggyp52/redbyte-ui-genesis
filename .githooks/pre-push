@@ -1,29 +1,4 @@
-﻿#!/usr/bin/env pwsh
-param()
-
-$ErrorActionPreference = "Stop"
-
-# Consume stdin so Git doesn't hang
-$null = [Console]::In.ReadToEnd()
-
-$branch = (git rev-parse --abbrev-ref HEAD).Trim()
-if ($branch -ne "main") { exit 0 }
-
-Write-Host "[pre-push] main push detected  running canonical gate: pnpm quality" -ForegroundColor Cyan
-
-$pnpm = "C:\Users\angiel001\AppData\Roaming\npm\pnpm.cmd"
-if (-not (Test-Path $pnpm)) {
-  Write-Host "[pre-push] pnpm not found at $pnpm" -ForegroundColor Red
-  exit 1
-}
-
-& $pnpm quality
-$code = $LASTEXITCODE
-
-if ($code -ne 0) {
-  Write-Host "[pre-push]  BLOCKED: pnpm quality failed." -ForegroundColor Red
-  exit $code
-}
-
-Write-Host "[pre-push]  OK: pnpm quality passed." -ForegroundColor Green
-exit 0
+@echo off
+setlocal
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0pre-push.ps1"
+exit /b %ERRORLEVEL%
