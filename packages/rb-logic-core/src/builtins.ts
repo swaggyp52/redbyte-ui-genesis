@@ -60,10 +60,11 @@ export const WireBehavior: NodeBehavior = {
  */
 export const ANDBehavior: NodeBehavior = {
   evaluate(inputs) {
-    const a = inputs.a ?? 0;
-    const b = inputs.b ?? 0;
+    // Support both 'a'/'b' and 'in1'/'in2' naming conventions
+    const in1 = inputs.in1 ?? inputs.a ?? 0;
+    const in2 = inputs.in2 ?? inputs.b ?? 0;
     return {
-      outputs: { out: (a && b ? 1 : 0) as Signal },
+      outputs: { out: (in1 && in2 ? 1 : 0) as Signal },
       state: {},
     };
   },
@@ -74,10 +75,11 @@ export const ANDBehavior: NodeBehavior = {
  */
 export const ORBehavior: NodeBehavior = {
   evaluate(inputs) {
-    const a = inputs.a ?? 0;
-    const b = inputs.b ?? 0;
+    // Support both 'a'/'b' and 'in1'/'in2' naming conventions
+    const in1 = inputs.in1 ?? inputs.a ?? 0;
+    const in2 = inputs.in2 ?? inputs.b ?? 0;
     return {
-      outputs: { out: (a || b ? 1 : 0) as Signal },
+      outputs: { out: (in1 || in2 ? 1 : 0) as Signal },
       state: {},
     };
   },
@@ -101,10 +103,11 @@ export const NOTBehavior: NodeBehavior = {
  */
 export const NANDBehavior: NodeBehavior = {
   evaluate(inputs) {
-    const a = inputs.a ?? 0;
-    const b = inputs.b ?? 0;
+    // Support both 'a'/'b' and 'in1'/'in2' naming conventions
+    const in1 = inputs.in1 ?? inputs.a ?? 0;
+    const in2 = inputs.in2 ?? inputs.b ?? 0;
     return {
-      outputs: { out: (a && b ? 0 : 1) as Signal },
+      outputs: { out: (in1 && in2 ? 0 : 1) as Signal },
       state: {},
     };
   },
@@ -115,10 +118,11 @@ export const NANDBehavior: NodeBehavior = {
  */
 export const XORBehavior: NodeBehavior = {
   evaluate(inputs) {
-    const a = inputs.a ?? 0;
-    const b = inputs.b ?? 0;
+    // Support both 'a'/'b' and 'in1'/'in2' naming conventions
+    const in1 = inputs.in1 ?? inputs.a ?? 0;
+    const in2 = inputs.in2 ?? inputs.b ?? 0;
     return {
-      outputs: { out: (a !== b ? 1 : 0) as Signal },
+      outputs: { out: (in1 !== in2 ? 1 : 0) as Signal },
       state: {},
     };
   },
@@ -166,6 +170,32 @@ export const DelayBehavior: NodeBehavior = {
     return {
       outputs: { out: output },
       state: { buffer },
+    };
+  },
+};
+
+/**
+ * INPUT - external input source (state-based)
+ */
+export const INPUTBehavior: NodeBehavior = {
+  evaluate(_inputs, state) {
+    const isOn = state.isOn ?? 0;
+    return {
+      outputs: { out: isOn as Signal },
+      state: { isOn },
+    };
+  },
+};
+
+/**
+ * OUTPUT - terminal sink (stores input in state)
+ */
+export const OUTPUTBehavior: NodeBehavior = {
+  evaluate(inputs) {
+    const input = inputs.in ?? 0;
+    return {
+      outputs: {},
+      state: { isOn: input },
     };
   },
 };

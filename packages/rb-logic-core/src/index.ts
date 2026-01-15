@@ -55,6 +55,8 @@ import {
   XORBehavior,
   ClockBehavior,
   DelayBehavior,
+  INPUTBehavior,
+  OUTPUTBehavior,
 } from './builtins';
 import { registerCompositeNode } from './CompositeNode';
 import {
@@ -76,6 +78,8 @@ NodeRegistry.register('NAND', NANDBehavior);
 NodeRegistry.register('XOR', XORBehavior);
 NodeRegistry.register('Clock', ClockBehavior);
 NodeRegistry.register('Delay', DelayBehavior);
+NodeRegistry.register('INPUT', INPUTBehavior);
+NodeRegistry.register('OUTPUT', OUTPUTBehavior);
 
 // Register composite nodes
 registerCompositeNode(RSLatchDef);

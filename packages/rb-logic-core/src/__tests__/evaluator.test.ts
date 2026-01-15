@@ -183,7 +183,7 @@ describe('H0.8: Real Checkpoint Evaluator', () => {
 
       const result = evaluateCheckpoint('invalid json', checkpoint);
       expect(result.status).toBe('failed');
-      expect(result.feedback).toContain('Error evaluating checkpoint');
+      expect(result.feedback).toContain('Circuit is empty or invalid');
     });
 
     it('handles missing test vectors', () => {
