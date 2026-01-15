@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   getGlobalLabSessionStore, 
   evaluateCheckpoint, 
@@ -11,7 +11,10 @@ import {
   type LabDef,
   getBridgeClient,
   type BridgeClient,
+  type Circuit,
+  getGlobalTickEngine,
 } from '@redbyte/rb-logic-core';
+import { LogicCanvas, type LogicCanvasProps } from '@redbyte/rb-logic-view';
 
 /**
  * ECE Lab Phase H0.6: LogicLabApp UI Shell
@@ -36,6 +39,11 @@ const LogicLabApp = () => {
   const [currentLab, setCurrentLab] = useState<LabDef | null>(null);
   const [labs, setLabs] = useState<LabDef[]>([]);
   const [bridgeClient, setBridgeClient] = useState<BridgeClient | null>(null);
+
+  // H0.7: Circuit editor state and debounce
+  const [circuit, setCircuit] = useState<Circuit | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const tickEngine = getGlobalTickEngine();
 
   // Load available labs
   useEffect(() => {
@@ -87,6 +95,24 @@ const LogicLabApp = () => {
     return () => unsubscribe();
   }, [sessionStore]);
 
+  // H0.7: Load circuit from session store when it changes
+  useEffect(() => {
+    if (sessionState?.currentCircuit) {
+      try {
+        // Safe parse: currentCircuit is stored as JSON string
+        const parsedCircuit = JSON.parse(sessionState.currentCircuit) as Circuit;
+        setCircuit(parsedCircuit);
+      } catch (error) {
+        console.warn('Failed to parse circuit from session store:', error);
+        // Fallback: create empty circuit if parsing fails
+        setCircuit({ nodes: [], connections: [] });
+      }
+    } else {
+      // No circuit in store yet; initialize empty
+      setCircuit({ nodes: [], connections: [] });
+    }
+  }, [sessionState?.currentCircuit]);
+
   // Initialize lab session on mount
   useEffect(() => {
     if (!sessionState || !sessionState.labId) {
@@ -96,6 +122,37 @@ const LogicLabApp = () => {
       }
     }
   }, [sessionState?.labId, createSession, currentLab, labs]);
+
+  // H0.7: Handle circuit changes from LogicCanvas with debounce
+  const handleCircuitChange = useCallback((updatedCircuit: Circuit) => {
+    // Update local state immediately for UI responsiveness
+    setCircuit(updatedCircuit);
+
+    // Debounce the store update (500ms)
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      try {
+        // Persist to session store as JSON string
+        const circuitJson = JSON.stringify(updatedCircuit);
+        sessionStore.getState().setCircuit(circuitJson);
+        console.log('Circuit persisted to session store');
+      } catch (error) {
+        console.error('Failed to persist circuit to session store:', error);
+      }
+    }, 500); // 500ms debounce
+  }, [sessionStore]);
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   // Handle Run Checks button
   const handleRunChecks = useCallback(async () => {
@@ -356,19 +413,31 @@ const LogicLabApp = () => {
           overflow: 'hidden',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100%',
-            color: '#666',
-            fontSize: '12px',
-          }}
-        >
-          [Circuit Editor - Placeholder] <br />
-          In production, this will render LogicCanvas with full interactivity
-        </div>
+        {/* H0.7: LogicCanvas Integration */}
+        {circuit && tickEngine ? (
+          <LogicCanvas
+            engine={tickEngine}
+            circuit={circuit}
+            onCircuitChange={handleCircuitChange}
+            showToolbar={true}
+            width={800}
+            height={600}
+            isRunning={isRunning}
+          />
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              color: '#666',
+              fontSize: '12px',
+            }}
+          >
+            Loading circuit editor...
+          </div>
+        )}
       </div>
 
       {/* Right Panel: Checkpoints */}
