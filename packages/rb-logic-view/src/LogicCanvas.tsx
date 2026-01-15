@@ -947,7 +947,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                     rx={toggleHitHeight / 2}
                     fill="transparent"
                     style={{ cursor: 'pointer', pointerEvents: 'all' }}
-                    data-testid={`switch-toggle-overlay-${node.id}`}
+                    data-testid={`switch-toggle-${node.id}`}
+                    // Preserve overlay identifier for debugging
+                    data-overlay-testid={`switch-toggle-overlay-${node.id}`}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
