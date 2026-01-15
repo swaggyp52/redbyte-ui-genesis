@@ -38,4 +38,4 @@ yarn-error.log*
 node_modules/
 
 # Proof logs (local-only)
-ops/proof/*.txt
+ops/proof/*
