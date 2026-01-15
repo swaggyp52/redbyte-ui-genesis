@@ -61,6 +61,16 @@ jobs:
             echo "No proof artifacts found" && exit 1
           fi
 
+      - name: Replay proof events
+        env:
+          RB_FPGA_HMAC_SECRET: ci-test-secret-do-not-use-in-production
+        run: |
+          if [ -f ops/proof/fpga-proof-*.json ]; then
+            pnpm --filter @redbyte/fpga-bridge proof:replay ops/proof/fpga-proof-*.json
+          else
+            echo "No proof found for replay" && exit 1
+          fi
+
       - name: Upload proof artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -71,6 +81,8 @@ jobs:
             ops/proof/fpga-proof-*.txt
             ops/proof/fpga-events-*.ndjson
             ops/proof/artifact-index-*.txt
+            ops/proof/proof-replay-*.md
+            ops/proof/proof-replay-*.json
           retention-days: 30
 
       - name: Proof Summary

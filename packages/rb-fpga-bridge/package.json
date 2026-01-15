@@ -10,6 +10,7 @@
     "smoke": "node src/smoke.js",
     "proof:run": "node src/proof-runner.js",
     "proof:verify": "node scripts/proof-verify.js",
+    "proof:replay": "node scripts/proof-replay.js",
     "start": "node src/index.js"
   },
   "dependencies": {
