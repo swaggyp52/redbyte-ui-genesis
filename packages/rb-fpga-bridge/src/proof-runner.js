@@ -161,8 +161,13 @@ async function runProof() {
     // Start bridge
     log("[PROOF] Starting bridge in MOCK mode...");
     const bridgePath = resolve(__dirname, "index.js");
+    const bridgeEnv = {
+      ...process.env,
+      RB_FPGA_MOCK: "1",
+      RB_FPGA_HMAC_SECRET: process.env.RB_FPGA_HMAC_SECRET || "local-dev-secret-changeme",
+    };
     bridgeProcess = spawn("node", [bridgePath], {
-      env: { ...process.env, RB_FPGA_MOCK: "1" },
+      env: bridgeEnv,
       stdio: "pipe",
     });
 

@@ -38,6 +38,7 @@ export async function registerAllApps() {
   const { TextViewerApp } = await import('./apps/TextViewerApp');
   const LogicHelpApp = (await import('./apps/LogicHelpApp')).default;
   const { UserManualApp } = await import('./apps/UserManualApp');
+  const { HardwarePanelApp } = await import('./apps/HardwarePanelApp');
 
   registerApp(TerminalApp);
   registerApp(SettingsApp);
@@ -54,4 +55,5 @@ export async function registerAllApps() {
   registerApp(TextViewerApp);
   registerApp(LogicHelpApp);
   registerApp(UserManualApp);
+  registerApp(HardwarePanelApp);
 }
