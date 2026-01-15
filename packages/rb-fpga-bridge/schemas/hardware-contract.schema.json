@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Hardware Board Contract",
+  "description": "Board specification: detection rules + protocols + I/O layout",
+  "type": "object",
+  "required": ["name", "manufacturer", "fpga", "detection", "protocols", "io"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Human-readable board name (e.g., 'Basys3')"
+    },
+    "manufacturer": {
+      "type": "string",
+      "description": "Manufacturer name (e.g., 'Digilent')"
+    },
+    "fpga": {
+      "type": "string",
+      "description": "FPGA chip (e.g., 'Xilinx Artix-7 XC7A35T')"
+    },
+    "detection": {
+      "type": "object",
+      "description": "Rules for auto-detecting this board over USB/serial",
+      "properties": {
+        "vid_pid": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": ["USB VID:PID pairs (e.g., ['0403:6010'])"]
+        },
+        "manufacturer_string": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": ["Strings to match in USB manufacturer field"]
+        },
+        "friendly_name_contains": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": ["Strings to match in serial port friendly name"]
+        },
+        "pnp_device_id_pattern": {
+          "type": "string",
+          "description": "Regex pattern for Windows PNP Device ID"
+        }
+      }
+    },
+    "protocols": {
+      "type": "array",
+      "items": {"type": "string"},
+      "enum": ["UART", "JTAG", "Ethernet"],
+      "description": "Supported communication protocols"
+    },
+    "uart": {
+      "type": "object",
+      "description": "UART protocol configuration (if 'UART' in protocols)",
+      "properties": {
+        "baudrate": {
+          "type": "integer",
+          "description": "Default baud rate (e.g., 115200)"
+        },
+        "format": {
+          "type": "string",
+          "description": "Message format (e.g., 'RB1')"
+        },
+        "message_schema": {
+          "type": "string",
+          "description": "Example format: 'RB1 SW=<16bit> BTN=<5bit> LED=<16bit> TICK=<counter>'"
+        }
+      }
+    },
+    "io": {
+      "type": "object",
+      "required": ["inputs", "outputs"],
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "description": "Input I/O (switches, buttons, etc)",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["count", "type"],
+            "properties": {
+              "count": {
+                "type": "integer",
+                "description": "Number of this I/O type"
+              },
+              "type": {
+                "type": "string",
+                "enum": ["switch", "button", "potentiometer", "dip"],
+                "description": "I/O type"
+              },
+              "labels": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional: human names (e.g., ['SW0', 'SW1', ..., 'SW15'])"
+              }
+            }
+          }
+        },
+        "outputs": {
+          "type": "object",
+          "description": "Output I/O (LEDs, displays, etc)",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["count", "type"],
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "type": {
+                "type": "string",
+                "enum": ["led", "7segment", "vga", "pmod"],
+                "description": "Output type"
+              },
+              "labels": {
+                "type": "array",
+                "items": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "clocks": {
+      "type": "object",
+      "description": "Available clock signals",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["freq_mhz"],
+        "properties": {
+          "freq_mhz": {"type": "number"},
+          "name": {"type": "string"}
+        }
+      }
+    },
+    "features": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Board capabilities (e.g., ['UART', 'GPIO', 'VGA', 'JTAG'])"
+    },
+    "constraints": {
+      "type": "object",
+      "description": "Optional: design constraints for this board",
+      "properties": {
+        "max_power_watts": {"type": "number"},
+        "max_io_voltage": {"type": "string"},
+        "notes": {"type": "string"}
+      }
+    }
+  }
+}
