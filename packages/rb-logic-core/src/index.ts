@@ -95,3 +95,7 @@ export { validateCapsule, parseCapsuleJSON, parseCapsuleFile } from './lab/Capsu
 export { createTestVector, createCheckpoint, createLabDef } from './lab/LabDefinition';
 export type { TestVector, CheckpointDef, LabDef, LabLibrary } from './lab/LabDefinition';
 export { getDefaultLab, getDefaultLabs, defaultLabLibrary } from './lab/exampleLabs';
+
+// FPGA Bridge (H2)
+export { BridgeClient, getBridgeClient, resetBridgeClient } from './bridge/BridgeClient';
+export type { BridgeConfig, EvaluateCheckpointRequest, EvaluateCheckpointResponse, ErrorResponse, BridgeMessage } from './bridge/BridgeClient';

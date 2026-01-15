@@ -9,6 +9,8 @@ import {
   type CapsuleV1,
   getDefaultLabs,
   type LabDef,
+  getBridgeClient,
+  type BridgeClient,
 } from '@redbyte/rb-logic-core';
 
 /**
@@ -33,6 +35,7 @@ const LogicLabApp = () => {
   const [selectedLabId, setSelectedLabId] = useState<string | null>(null);
   const [currentLab, setCurrentLab] = useState<LabDef | null>(null);
   const [labs, setLabs] = useState<LabDef[]>([]);
+  const [bridgeClient, setBridgeClient] = useState<BridgeClient | null>(null);
 
   // Load available labs
   useEffect(() => {
@@ -42,6 +45,30 @@ const LogicLabApp = () => {
       setSelectedLabId(defaultLabs[0].id);
     }
   }, [selectedLabId]);
+
+  // Initialize FPGA Bridge connection
+  useEffect(() => {
+    const initBridge = async () => {
+      try {
+        const client = getBridgeClient({ url: 'ws://localhost:3001' });
+        await client.connect();
+        setBridgeClient(client);
+        console.log('Connected to FPGA Bridge');
+      } catch (error) {
+        console.warn('Failed to connect to FPGA Bridge:', error);
+        // Graceful fallback: use local evaluator without bridge
+      }
+    };
+
+    initBridge();
+
+    return () => {
+      // Cleanup: disconnect bridge on unmount
+      if (bridgeClient && bridgeClient.isConnected()) {
+        bridgeClient.disconnect();
+      }
+    };
+  }, [bridgeClient]);
 
   // Update current lab when selection changes
   useEffect(() => {
@@ -74,12 +101,42 @@ const LogicLabApp = () => {
   const handleRunChecks = useCallback(async () => {
     setIsRunning(true);
     try {
-      // Placeholder: In real implementation, would evaluate checkpoints
-      console.log('Running checks for:', sessionState?.labId);
+      if (!currentLab) {
+        console.warn('No lab selected');
+        return;
+      }
+
+      console.log(`Running checks for: ${currentLab.name}`);
+
+      // Evaluate each checkpoint
+      for (const checkpoint of currentLab.checkpoints) {
+        try {
+          let result;
+
+          // Prefer bridge evaluation if connected, fallback to local
+          if (bridgeClient && bridgeClient.isConnected()) {
+            console.log(`[Bridge] Evaluating checkpoint: ${checkpoint.id}`);
+            result = await bridgeClient.evaluateCheckpoint(
+              currentLab.circuit,
+              checkpoint
+            );
+          } else {
+            console.log(`[Local] Evaluating checkpoint: ${checkpoint.id}`);
+            result = evaluateCheckpoint(currentLab.circuit, checkpoint);
+          }
+
+          // Store result in session
+          sessionStore.getState().setCheckpointResult(checkpoint.id, result);
+          
+          console.log(`Checkpoint ${checkpoint.id}: ${result.passed ? 'PASS' : 'FAIL'}`);
+        } catch (error) {
+          console.error(`Error evaluating checkpoint ${checkpoint.id}:`, error);
+        }
+      }
     } finally {
       setIsRunning(false);
     }
-  }, [sessionState]);
+  }, [currentLab, bridgeClient, sessionStore]);
 
   // Handle Export button
   const handleExport = useCallback(() => {
