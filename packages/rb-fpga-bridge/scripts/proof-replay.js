@@ -95,13 +95,34 @@ if (!inputArg) {
   process.exit(1);
 }
 
-// Resolve input path relative to repo root
-const resolvedInputPath = path.isAbsolute(inputArg) 
-  ? inputArg 
-  : path.join(REPO_ROOT, inputArg);
+// Helpers to ensure paths stay under repo root regardless of CWD
+function resolveUnderRepo(input) {
+  if (!input) return REPO_ROOT;
+  if (path.isAbsolute(input)) return input;
+  // Normalize separators and split into segments
+  const segs = input
+    .replace(/[\/]+/g, path.sep)
+    .split(path.sep)
+    .filter(Boolean)
+    .filter((s) => s !== ".");
+  // Drop any leading ".." to prevent escaping above repo root
+  let i = 0;
+  while (i < segs.length && segs[i] === "..") i++;
+  const cleaned = segs.slice(i);
+  const joined = path.join(REPO_ROOT, ...cleaned);
+  return path.normalize(joined);
+}
 
-// Self-check: validate path resolution
-if (inputArg.startsWith("ops/proof/") && !resolvedInputPath.includes(REPO_ROOT)) {
+function isWithinRepoRoot(p) {
+  const rel = path.relative(REPO_ROOT, p);
+  return rel && !rel.startsWith("..") && !path.isAbsolute(rel);
+}
+
+// Resolve input path relative to repo root (treat all relatives as under repo root)
+const resolvedInputPath = resolveUnderRepo(inputArg);
+
+// Self-check: validate path resolution remains within repo root
+if (inputArg && !path.isAbsolute(inputArg) && !isWithinRepoRoot(resolvedInputPath)) {
   console.error("[REPLAY] ERROR: Path resolution failed. Expected repo-root-relative behavior.");
   console.error(`  Input: ${inputArg}`);
   console.error(`  Resolved: ${resolvedInputPath}`);
@@ -109,14 +130,15 @@ if (inputArg.startsWith("ops/proof/") && !resolvedInputPath.includes(REPO_ROOT))
   process.exit(1);
 }
 
-// Resolve outdir
+// Resolve outdir (also constrained under repo root when relative)
 if (!outdir) {
   outdir = path.join(REPO_ROOT, "ops", "proof");
 } else if (!path.isAbsolute(outdir)) {
-  outdir = path.join(REPO_ROOT, outdir);
+  outdir = resolveUnderRepo(outdir);
 }
 
 // Log resolved paths
+console.log(`[REPLAY] repoRoot: ${REPO_ROOT}`);
 console.log(`[REPLAY] input: ${inputArg}`);
 console.log(`[REPLAY] resolved: ${resolvedInputPath}`);
 console.log(`[REPLAY] outdir: ${outdir}`);
@@ -173,7 +195,47 @@ try {
   } else if (resolvedInputPath.endsWith(".json")) {
     // Parse JSON capsule and extract events
     const capsule = JSON.parse(content);
-    events = capsule.events || [];
+    
+    // New format: events pointer with path
+    if (capsule.events && typeof capsule.events === 'object' && capsule.events.path) {
+      const eventsPath = capsule.events.path;
+      log(`[REPLAY] Loading events from: ${eventsPath}`);
+      
+      if (!fs.existsSync(eventsPath)) {
+        logError(`[REPLAY] ERROR: Events file not found: ${eventsPath}`);
+        process.exit(1);
+      }
+      
+      const eventsContent = fs.readFileSync(eventsPath, 'utf8');
+      
+      // Verify hash if present
+      if (capsule.events.sha256) {
+        const actualHash = createHash('sha256').update(eventsContent).digest('hex');
+        if (actualHash !== capsule.events.sha256) {
+          logError(`[REPLAY] ERROR: Events file hash mismatch`);
+          logError(`  Expected: ${capsule.events.sha256}`);
+          logError(`  Actual: ${actualHash}`);
+          if (strict) process.exit(1);
+        }
+      }
+      
+      // Parse NDJSON
+      events = eventsContent
+        .split('\n')
+        .filter(line => line.trim())
+        .map(line => JSON.parse(line));
+      
+      log(`[REPLAY] Loaded ${events.length} events from NDJSON`);
+    }
+    // Legacy format: events inline
+    else if (Array.isArray(capsule.events)) {
+      events = capsule.events;
+      log(`[REPLAY] Using inline events (legacy format)`);
+    }
+    // No events found
+    else {
+      events = [];
+    }
   } else {
     logError(`[REPLAY] ERROR: Unknown file format: ${resolvedInputPath}`);
     process.exit(1);
@@ -214,13 +276,13 @@ for (let i = 0; i < Math.min(events.length, maxEvents); i++) {
     failures.push("timestamp is not a number");
   } else {
     if (firstTs === null) firstTs = event.timestamp;
-    lastTs = event.timestamp;
-    
-    if (event.timestamp < (lastTs || 0)) {
+    const prevTs = lastTs;
+    if (prevTs !== null && typeof prevTs === "number" && event.timestamp < prevTs) {
       failures.push(`timestamp ${event.timestamp} not monotonic`);
     } else {
       checks.push("timestamp_monotonic");
     }
+    lastTs = event.timestamp;
   }
 
   // Check 3: event type is valid
@@ -367,5 +429,9 @@ log(`Replay Hash: sha256:${replayHashHex.slice(0, 16)}...`);
 log(`Failures: ${failureCount}`);
 log(`Status: ${status}`);
 log("");
+
+// Machine-parsable summary for CI
+const verdict = failureCount === 0 ? 'PASS' : 'FAIL';
+log(`[REPLAY] events=${totalEvents} verdict=${verdict} out=${replayMd}`);
 
 process.exit(failureCount === 0 ? 0 : 1);

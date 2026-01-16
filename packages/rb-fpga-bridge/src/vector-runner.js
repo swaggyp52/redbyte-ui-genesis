@@ -350,7 +350,12 @@ async function main() {
     // Run tests
     const { bridge, board, passed, failed, results } = runTests(registry, boardId, vectorsSpec, dutMode);
 
-    // Build capsule
+    // Write events NDJSON first to compute hash
+    writeEventsNdjson(eventsNdjsonPath, bridge.events);
+    const eventsContent = readFileSync(eventsNdjsonPath, 'utf8');
+    const eventsHash = sha256(eventsContent);
+
+    // Build capsule with events pointer
     const capsule = {
       session_id: `vector-run-${timestamp}`,
       timestamp: new Date().toISOString(),
@@ -374,7 +379,12 @@ async function main() {
         observed: r.observed,
         mismatch: r.mismatch || null
       })),
-      events_ndjson_path: eventsNdjsonPath
+      events: {
+        format: 'ndjson',
+        path: eventsNdjsonPath,
+        sha256: eventsHash,
+        count: bridge.events.length
+      }
     };
 
     // Build report
@@ -395,9 +405,8 @@ async function main() {
     report += `Event stream: ${eventsNdjsonPath}\n`;
     report += `Proof capsule: ${proofJsonPath}\n`;
 
-    // Write outputs
+    // Write outputs (events already written before capsule build)
     writeProofCapsule(proofJsonPath, capsule);
-    writeEventsNdjson(eventsNdjsonPath, bridge.events);
     writeReport(reportPath, report);
 
     // Output summary
@@ -422,13 +431,6 @@ async function main() {
       await new Promise((resolve, reject) => {
         replayProcess.on('exit', code => {
           if (code === 0) {
-            // Look for replay report
-            const replayReport = readFileSync(reportPath, 'utf8');
-            // Extract replay path from output or construct it
-            const replayPath = `${PROOF_DIR}/proof-replay-${timestamp}.md`;
-            if (!readFileSync(replayPath, 'utf8')) {
-              console.log(`[REPLAY] report=${replayPath}`);
-            }
             resolve();
           } else {
             reject(new Error(`Replay exited with code ${code}`));
