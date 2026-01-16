@@ -15,6 +15,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { parseArgs } from 'util';
+import { Readable } from 'stream';
+import unzipper from 'unzipper';
 import {
   parseCapsule,
   loadEventsNdjson,
@@ -38,8 +40,118 @@ const EXIT_CODES = {
 };
 
 /**
- * Load submission from folder (stub for ZIP support later)
+ * Load submission from either folder OR ZIP file
  */
+async function loadSubmission(submissionPath) {
+  const isZip = submissionPath.endsWith('.zip') || submissionPath.endsWith('.rb-lab.zip');
+
+  if (isZip) {
+    return loadSubmissionZip(submissionPath);
+  } else {
+    return loadSubmissionFolder(submissionPath);
+  }
+}
+
+/**
+ * Load submission from ZIP file
+ */
+async function loadSubmissionZip(zipPath) {
+  let zipBuffer;
+  try {
+    zipBuffer = await fs.readFile(zipPath);
+  } catch (e) {
+    throw new Error(`Failed to read ZIP file: ${e.message}`);
+  }
+
+  const filesIndex = new Map();
+  let manifestText = '';
+  let capsuleJsonText = '';
+  let eventsNdjsonText = '';
+
+  // Extract files from ZIP
+  await new Promise((resolve, reject) => {
+    Readable.from(zipBuffer)
+      .pipe(unzipper.Parse())
+      .on('entry', (entry) => {
+        const fileName = entry.path;
+        const chunks = [];
+
+        entry.on('data', (chunk) => {
+          chunks.push(chunk);
+        });
+
+        entry.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+          filesIndex.set(fileName, buffer);
+
+          if (fileName === 'manifest.json') {
+            manifestText = buffer.toString('utf8');
+          } else if (fileName.startsWith('proofs/') && fileName.endsWith('capsule.json')) {
+            capsuleJsonText = buffer.toString('utf8');
+          } else if (fileName.startsWith('proofs/') && fileName.endsWith('events.ndjson')) {
+            eventsNdjsonText = buffer.toString('utf8');
+          }
+        });
+
+        entry.on('error', (err) => {
+          reject(new Error(`Failed to read entry ${fileName}: ${err.message}`));
+        });
+      })
+      .on('error', (err) => {
+        reject(new Error(`ZIP parsing error: ${err.message}`));
+      })
+      .on('finish', () => {
+        resolve();
+      });
+  });
+
+  // Validate manifest
+  if (!manifestText) {
+    throw new Error('manifest.json not found in ZIP');
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(manifestText);
+  } catch (e) {
+    throw new Error(`Invalid manifest.json: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  // Validate manifest schema
+  const manifestErrors = [];
+  if (!manifest.schema_version) manifestErrors.push('Missing schema_version');
+  if (manifest.schema_version !== 'v1') manifestErrors.push(`Unsupported schema_version: ${manifest.schema_version}`);
+  if (!manifest.lab_id) manifestErrors.push('Missing lab_id');
+  if (!manifest.student?.id) manifestErrors.push('Missing student.id');
+  if (!manifest.student?.name) manifestErrors.push('Missing student.name');
+  if (!manifest.created_at) manifestErrors.push('Missing created_at');
+  if (!manifest.proof?.capsule_path) manifestErrors.push('Missing proof.capsule_path');
+
+  if (manifestErrors.length > 0) {
+    throw new Error(`Manifest validation failed: ${manifestErrors.join('; ')}`);
+  }
+
+  // Load capsule using path from manifest
+  const capsulePath = manifest.proof.capsule_path;
+  if (!filesIndex.has(capsulePath)) {
+    throw new Error(`Capsule file not found at ${capsulePath}`);
+  }
+  capsuleJsonText = filesIndex.get(capsulePath).toString('utf8');
+
+  // Load events using path from manifest (optional)
+  if (manifest.proof.events_path && filesIndex.has(manifest.proof.events_path)) {
+    eventsNdjsonText = filesIndex.get(manifest.proof.events_path).toString('utf8');
+  }
+
+  let capsule;
+  try {
+    capsule = JSON.parse(capsuleJsonText);
+  } catch (e) {
+    throw new Error(`Failed to parse capsule.json from ZIP: ${e.message}`);
+  }
+
+  return { manifest, capsule, eventsText: eventsNdjsonText };
+}
 async function loadSubmissionFolder(submissionPath) {
   const manifestPath = path.join(submissionPath, 'manifest.json');
   const capsulePath = path.join(submissionPath, 'proofs', 'capsule.json');
@@ -167,7 +279,7 @@ async function main() {
     const runId = `run-${Date.now()}`;
 
     console.log(`[1/4] Loading submission...`);
-    const { manifest, capsule, eventsText } = await loadSubmissionFolder(
+    const { manifest, capsule, eventsText } = await loadSubmission(
       args.submission
     );
 
