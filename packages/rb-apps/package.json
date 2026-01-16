@@ -17,6 +17,7 @@
     "test": "echo \"Tests run at root. This package has no direct tests.\""
   },
   "dependencies": {
+    "@redbyte/rb-fpga-proof-core": "workspace:*",
     "@redbyte/rb-icons": "workspace:*",
     "@redbyte/rb-logic-3d": "workspace:*",
     "@redbyte/rb-logic-adapter": "workspace:*",

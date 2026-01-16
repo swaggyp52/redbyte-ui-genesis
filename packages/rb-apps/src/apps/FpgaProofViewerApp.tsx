@@ -1,6 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { RedByteApp } from '../types';
 import { useFileSystemStore } from '../stores/fileSystemStore';
+import {
+  parseCapsule,
+  loadEventsNdjson,
+  computeVectorVerdicts,
+  buildTimelineRows,
+  summarizeCapsule,
+  type Capsule,
+  type ProofEvent,
+} from '@redbyte/rb-fpga-proof-core';
 
 interface CapsuleResult {
   name: string;
@@ -53,18 +62,10 @@ interface IoUpdateEvent {
   [key: string]: unknown;
 }
 
+// Use core library's loadEventsNdjson instead of local parseNdjson
+// Kept for backward compatibility with existing code that may call this
 function parseNdjson(raw: string): any[] {
-  return raw
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      try {
-        return JSON.parse(line);
-      } catch (error) {
-        return { type: 'parse-error', raw: line };
-      }
-    });
+  return loadEventsNdjson(raw) as any[];
 }
 
 function summarizeInputs(inputs?: Record<string, number>): string {
@@ -129,7 +130,8 @@ const FpgaProofViewerComponent: React.FC<ProofViewerProps> = ({ resourceId, reso
     setLoading(true);
     setError(null);
     try {
-      const parsed: CapsuleDoc = JSON.parse(text);
+      // Use core library to parse capsule (supports both schemas)
+      const parsed = parseCapsule(text) as Capsule & Record<string, any>;
       setCapsule(parsed);
       setCapsuleSource(name);
 
@@ -138,7 +140,9 @@ const FpgaProofViewerComponent: React.FC<ProofViewerProps> = ({ resourceId, reso
         eventsText = await loadEventsContent(parsed.events);
       }
       setEventsRaw(eventsText);
-      setEvents(eventsText ? parseNdjson(eventsText) : []);
+      // Use core library to parse NDJSON events
+      const parsedEvents = loadEventsNdjson(eventsText);
+      setEvents(parsedEvents as ProofEvent[]);
       setActiveTab('overview');
     } catch (err) {
       setCapsule(null);
