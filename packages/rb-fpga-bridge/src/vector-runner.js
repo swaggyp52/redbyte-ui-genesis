@@ -353,7 +353,7 @@ async function main() {
       summary: {
         passed,
         failed,
-        total_events: eventCount
+        total_events: bridge.events.length
       },
       results: results.map(r => ({
         name: r.name,
