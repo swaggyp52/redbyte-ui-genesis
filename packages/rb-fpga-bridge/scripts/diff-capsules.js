@@ -90,8 +90,8 @@ for (const [field, label] of metadataFields) {
 console.log('\n[DIFF] Test Summary');
 console.log('='.repeat(60));
 
-const summaryA = capA.test_summary;
-const summaryB = capB.test_summary;
+const summaryA = capA.summary;
+const summaryB = capB.summary;
 
 const totalDiff = summaryB.total - summaryA.total;
 const passedDiff = summaryB.passed - summaryA.passed;
