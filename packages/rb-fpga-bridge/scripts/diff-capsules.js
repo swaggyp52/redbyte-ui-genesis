@@ -153,18 +153,33 @@ for (const [field, label] of metadataFields) {
   console.log(`${match} ${label.padEnd(20)} A: ${valA}  B: ${valB}`);
 }
 
-// Compare test summary
+// Compare test summary with schema flexibility
 console.log('\n[DIFF] Test Summary');
 console.log('='.repeat(60));
 
-const summaryA = capA.summary;
-const summaryB = capB.summary;
+// Try multiple field names (capsule-type agnostic)
+let summaryA = capA.summary || capA.test_summary;
+let summaryB = capB.summary || capB.test_summary;
 
-const totalDiff = summaryB.total_events - summaryA.total_events;
+// If summary is missing, create a stub to avoid crashes
+if (!summaryA) {
+  console.log('[DIFF] Warning: capsule A has no summary field');
+  summaryA = { passed: 0, failed: 0, total_events: eventsA.length, total: eventsA.length };
+}
+if (!summaryB) {
+  console.log('[DIFF] Warning: capsule B has no summary field');
+  summaryB = { passed: 0, failed: 0, total_events: eventsB.length, total: eventsB.length };
+}
+
+// Normalize field names (fpga-proof uses total_events, vector-run uses total)
+const totalA = summaryA.total_events ?? summaryA.total ?? eventsA.length;
+const totalB = summaryB.total_events ?? summaryB.total ?? eventsB.length;
+
+const totalDiff = totalB - totalA;
 const passedDiff = summaryB.passed - summaryA.passed;
 const failedDiff = summaryB.failed - summaryA.failed;
 
-console.log(`Total Vectors:  A: ${summaryA.total_events.toString().padStart(3)}  B: ${summaryB.total_events.toString().padStart(3)}  Δ: ${totalDiff >= 0 ? '+' : ''}${totalDiff}`);
+console.log(`Total Vectors:  A: ${totalA.toString().padStart(3)}  B: ${totalB.toString().padStart(3)}  Δ: ${totalDiff >= 0 ? '+' : ''}${totalDiff}`);
 console.log(`Passed:         A: ${summaryA.passed.toString().padStart(3)}  B: ${summaryB.passed.toString().padStart(3)}  Δ: ${passedDiff >= 0 ? '+' : ''}${passedDiff}`);
 console.log(`Failed:         A: ${summaryA.failed.toString().padStart(3)}  B: ${summaryB.failed.toString().padStart(3)}  Δ: ${failedDiff >= 0 ? '+' : ''}${failedDiff}`);
 
@@ -364,6 +379,9 @@ const hasDifferences =
   mismatchedVectors.length > 0 || 
   firstDivergence !== null ||
   eventCountDiff !== 0;
+
+// Debug: show the decision factors
+//console.log(`[DEBUG] verdictA=${verdictA}, verdictB=${verdictB}, mismatchedVectors=${mismatchedVectors.length}, firstDivergence=${firstDivergence !== null}, eventCountDiff=${eventCountDiff}`);
 
 if (!hasDifferences) {
   console.log('✓ Capsules are functionally identical');
