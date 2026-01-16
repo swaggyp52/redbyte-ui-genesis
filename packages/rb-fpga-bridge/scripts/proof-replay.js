@@ -20,54 +20,10 @@ import path from "path";
 import { createHash } from "crypto";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import { findRepoRoot, resolveRepoPath } from '../src/path-utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// Find repo root by walking upward from script directory
-function findRepoRoot() {
-  let current = __dirname;
-  let levels = 0;
-  const maxLevels = 10;
-
-  while (levels < maxLevels) {
-    // Check for pnpm-workspace.yaml (preferred)
-    if (fs.existsSync(path.join(current, "pnpm-workspace.yaml"))) {
-      return current;
-    }
-    // Check for .git (acceptable)
-    if (fs.existsSync(path.join(current, ".git"))) {
-      return current;
-    }
-    // Move up
-    const parent = path.dirname(current);
-    if (parent === current) break; // reached filesystem root
-    current = parent;
-    levels++;
-  }
-
-  // Fallback: walk from process.cwd()
-  current = process.cwd();
-  levels = 0;
-  while (levels < maxLevels) {
-    if (fs.existsSync(path.join(current, "pnpm-workspace.yaml"))) {
-      return current;
-    }
-    if (fs.existsSync(path.join(current, ".git"))) {
-      return current;
-    }
-    const parent = path.dirname(current);
-    if (parent === current) break;
-    current = parent;
-    levels++;
-  }
-
-  // Still not found - this is an error
-  throw new Error(
-    "[REPLAY] ERROR: Could not find repo root (looked for pnpm-workspace.yaml or .git). " +
-    "Make sure this script is run from within a repo."
-  );
-}
 
 const REPO_ROOT = findRepoRoot();
 
@@ -95,46 +51,15 @@ if (!inputArg) {
   process.exit(1);
 }
 
-// Helpers to ensure paths stay under repo root regardless of CWD
-function resolveUnderRepo(input) {
-  if (!input) return REPO_ROOT;
-  if (path.isAbsolute(input)) return input;
-  // Normalize separators and split into segments
-  const segs = input
-    .replace(/[\/]+/g, path.sep)
-    .split(path.sep)
-    .filter(Boolean)
-    .filter((s) => s !== ".");
-  // Drop any leading ".." to prevent escaping above repo root
-  let i = 0;
-  while (i < segs.length && segs[i] === "..") i++;
-  const cleaned = segs.slice(i);
-  const joined = path.join(REPO_ROOT, ...cleaned);
-  return path.normalize(joined);
-}
-
-function isWithinRepoRoot(p) {
-  const rel = path.relative(REPO_ROOT, p);
-  return rel && !rel.startsWith("..") && !path.isAbsolute(rel);
-}
 
 // Resolve input path relative to repo root (treat all relatives as under repo root)
-const resolvedInputPath = resolveUnderRepo(inputArg);
-
-// Self-check: validate path resolution remains within repo root
-if (inputArg && !path.isAbsolute(inputArg) && !isWithinRepoRoot(resolvedInputPath)) {
-  console.error("[REPLAY] ERROR: Path resolution failed. Expected repo-root-relative behavior.");
-  console.error(`  Input: ${inputArg}`);
-  console.error(`  Resolved: ${resolvedInputPath}`);
-  console.error(`  Repo Root: ${REPO_ROOT}`);
-  process.exit(1);
-}
+const resolvedInputPath = resolveRepoPath(inputArg);
 
 // Resolve outdir (also constrained under repo root when relative)
 if (!outdir) {
   outdir = path.join(REPO_ROOT, "ops", "proof");
 } else if (!path.isAbsolute(outdir)) {
-  outdir = resolveUnderRepo(outdir);
+  outdir = resolveRepoPath(outdir);
 }
 
 // Log resolved paths
