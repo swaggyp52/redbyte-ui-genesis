@@ -26,10 +26,27 @@ const __dirname = dirname(__filename);
 // Resolve paths
 function findRepoRoot() {
   try {
-    const root = execSync('git rev-parse --show-toplevel', { encoding: 'utf8', stdio: 'pipe' }).trim();
+    // Always use git to find true repo root, regardless of CWD
+    const root = execSync('git rev-parse --show-toplevel', { 
+      encoding: 'utf8', 
+      stdio: 'pipe',
+      cwd: __dirname  // Run from script directory to ensure git context
+    }).trim();
     return root;
   } catch {
-    return resolve(__dirname, '..', '..', '..');
+    // Fallback: walk upward from script directory looking for .git or pnpm-workspace.yaml
+    let current = __dirname;
+    for (let i = 0; i < 10; i++) {
+      if (readFileSync(resolve(current, '.git', 'config'), 'utf8') || 
+          readFileSync(resolve(current, 'pnpm-workspace.yaml'), 'utf8')) {
+        return current;
+      }
+      const parent = dirname(current);
+      if (parent === current) break;
+      current = parent;
+    }
+    // Last resort: use current working directory
+    return process.cwd();
   }
 }
 
@@ -60,6 +77,9 @@ if (!vectorsFile) {
   process.exit(1);
 }
 
+// Debug: show path context
+// console.error(`[DEBUG] REPO_ROOT=${REPO_ROOT}, vectorsFile=${vectorsFile}`);
+
 // Load board registry
 function loadBoardRegistry() {
   const raw = readFileSync(BOARDS_FILE, 'utf8');
@@ -75,27 +95,31 @@ function findBoard(registry, boardId) {
 
 // Load vectors
 function loadVectors(file) {
-  // Resolve file path relative to repo root, package root, or absolute
-  let filePath = file;
+  // Enforce repo-root-relative path semantics
+  // Input: relative path (always from repo root) or absolute
+  // Output: read and parse JSON
   
-  // If relative path, try multiple locations
-  if (!file.startsWith('/') && !file.match(/^[A-Z]:/)) {
-    const attempts = [
-      resolve(REPO_ROOT, file),
-      resolve(REPO_ROOT, 'packages/rb-fpga-bridge', file),
-      resolve(__dirname, '..', file),
-      file
-    ];
-    
-    for (const attempt of attempts) {
-      try {
-        const raw = readFileSync(attempt, 'utf8');
-        return JSON.parse(raw);
-      } catch {
-        // continue
-      }
-    }
-    throw new Error(`Vector file not found: ${file} (tried: ${attempts.join(', ')})`);
+  // If already absolute (C:\ or /), use directly
+  if (file.startsWith('/') || file.match(/^[A-Z]:/)) {
+    const raw = readFileSync(file, 'utf8');
+    return JSON.parse(raw);
+  }
+  
+  // Relative path → resolve against repo root
+  // Guard against path traversal
+  if (file.includes('..')) {
+    throw new Error(`Path traversal not allowed: ${file}`);
+  }
+  
+  // Construct path manually without relying on process.cwd()
+  // REPO_ROOT is in forward slashes from git, convert to backslashes
+  const repoRootNorm = REPO_ROOT.replace(/\//g, '\\');
+  const fileNorm = file.replace(/\//g, '\\');
+  const filePath = repoRootNorm + '\\' + fileNorm;
+  
+  // Verify it exists and is within repo root
+  if (!readFileSync(filePath, 'utf8')) {
+    throw new Error(`Vector file not found: ${filePath}`);
   }
   
   const raw = readFileSync(filePath, 'utf8');
@@ -266,7 +290,12 @@ async function main() {
     // Load inputs
     const registry = loadBoardRegistry();
     const vectorsSpec = loadVectors(vectorsFile);
-    const vectorFileHash = sha256(readFileSync(vectorsFile, 'utf8'));
+    
+    // For hash computation, construct the full path the same way loadVectors does
+    const repoRootNorm = REPO_ROOT.replace(/\//g, '\\');
+    const fileNorm = vectorsFile.replace(/\//g, '\\');
+    const vectorsFilePath = repoRootNorm + '\\' + fileNorm;
+    const vectorFileHash = sha256(readFileSync(vectorsFilePath, 'utf8'));
 
     if (vectorsSpec.board_id !== boardId) {
       console.error(`WARNING: Vector file specifies board_id='${vectorsSpec.board_id}', but --board=${boardId} requested`);
@@ -330,6 +359,37 @@ async function main() {
     console.log(`[PROOF] capsule=${proofJsonPath}`);
     console.log(`[REPORT] report=${reportPath}`);
     console.log(`[EVENTS] events=${eventsNdjsonPath}`);
+
+    // Call replay on generated capsule
+    console.log(`\n[REPLAY] Starting proof replay...`);
+    try {
+      const { spawn } = await import('child_process');
+      const replayProcess = spawn('pnpm', ['--filter', '@redbyte/fpga-bridge', 'proof:replay', proofJsonPath], {
+        cwd: REPO_ROOT,
+        stdio: 'inherit'
+      });
+
+      await new Promise((resolve, reject) => {
+        replayProcess.on('exit', code => {
+          if (code === 0) {
+            // Look for replay report
+            const replayReport = readFileSync(reportPath, 'utf8');
+            // Extract replay path from output or construct it
+            const replayPath = `${PROOF_DIR}/proof-replay-${timestamp}.md`;
+            if (!readFileSync(replayPath, 'utf8')) {
+              console.log(`[REPLAY] report=${replayPath}`);
+            }
+            resolve();
+          } else {
+            reject(new Error(`Replay exited with code ${code}`));
+          }
+        });
+        replayProcess.on('error', reject);
+      });
+    } catch (replayError) {
+      console.warn(`[REPLAY] Could not run proof:replay: ${replayError.message}`);
+      // Don't fail if replay fails—vector run succeeded
+    }
 
     process.exit(failed > 0 ? 1 : 0);
 

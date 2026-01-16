@@ -48,3 +48,6 @@ test-health*.js
 PHASE_*.md
 BRIDGE_CONTRACT.md
 pr-description.txt
+
+# Unignore fpga bridge contract (part of official spec)
+!packages/rb-fpga-bridge/BRIDGE_CONTRACT.md
