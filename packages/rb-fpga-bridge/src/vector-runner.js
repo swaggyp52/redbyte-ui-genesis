@@ -50,6 +50,39 @@ function findRepoRoot() {
   }
 }
 
+/**
+ * Resolve a path to absolute form, enforcing repo-root-relative semantics.
+ * Non-negotiable invariant: all file IO uses resolved absolute paths.
+ * @param {string} input - Raw path (may have quotes, forward/backslashes)
+ * @returns {string} Absolute path
+ */
+function resolveRepoPath(input) {
+  // Strip surrounding quotes
+  let clean = input.trim();
+  if ((clean.startsWith('"') && clean.endsWith('"')) ||
+      (clean.startsWith("'") && clean.endsWith("'"))) {
+    clean = clean.slice(1, -1);
+  }
+
+  // Reject path traversal
+  if (clean.includes('..')) {
+    throw new Error(`Path traversal not allowed: ${clean}`);
+  }
+
+  // Normalize slashes to backslashes (Windows)
+  const normalized = clean.replace(/\//g, '\\');
+
+  // If already absolute (has drive letter), return as-is
+  if (/^[A-Za-z]:/.test(normalized)) {
+    return normalized;
+  }
+
+  // Otherwise, treat as repo-root-relative
+  const REPO_ROOT = findRepoRoot();
+  const repoRootNorm = REPO_ROOT.replace(/\//g, '\\');
+  return repoRootNorm + '\\' + normalized;
+}
+
 const REPO_ROOT = findRepoRoot();
 const PROOF_DIR = resolve(REPO_ROOT, 'ops', 'proof');
 const BOARDS_FILE = resolve(__dirname, '..', 'boards', 'registry.json');
@@ -66,14 +99,24 @@ const eventsNdjsonPath = `${PROOF_DIR}/vector-events-${timestamp}.ndjson`;
 const args = process.argv.slice(2);
 let boardId = 'basys3';
 let vectorsFile = null;
+let dutMode = 'passthrough';
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--board') boardId = args[i + 1];
   if (args[i] === '--vectors') vectorsFile = args[i + 1];
+  if (args[i] === '--dut') dutMode = args[i + 1];
 }
 
 if (!vectorsFile) {
   console.error('ERROR: --vectors <file> required');
+  console.error('Usage: node vector-runner.js --board <board-id> --vectors <path> [--dut <mode>]');
+  console.error('  DUT modes: passthrough (default), invert, xor, counter');
+  process.exit(1);
+}
+
+const validDutModes = ['passthrough', 'invert', 'xor', 'counter'];
+if (!validDutModes.includes(dutMode)) {
+  console.error(`ERROR: Invalid DUT mode '${dutMode}'. Valid modes: ${validDutModes.join(', ')}`);
   process.exit(1);
 }
 
@@ -95,33 +138,7 @@ function findBoard(registry, boardId) {
 
 // Load vectors
 function loadVectors(file) {
-  // Enforce repo-root-relative path semantics
-  // Input: relative path (always from repo root) or absolute
-  // Output: read and parse JSON
-  
-  // If already absolute (C:\ or /), use directly
-  if (file.startsWith('/') || file.match(/^[A-Z]:/)) {
-    const raw = readFileSync(file, 'utf8');
-    return JSON.parse(raw);
-  }
-  
-  // Relative path → resolve against repo root
-  // Guard against path traversal
-  if (file.includes('..')) {
-    throw new Error(`Path traversal not allowed: ${file}`);
-  }
-  
-  // Construct path manually without relying on process.cwd()
-  // REPO_ROOT is in forward slashes from git, convert to backslashes
-  const repoRootNorm = REPO_ROOT.replace(/\//g, '\\');
-  const fileNorm = file.replace(/\//g, '\\');
-  const filePath = repoRootNorm + '\\' + fileNorm;
-  
-  // Verify it exists and is within repo root
-  if (!readFileSync(filePath, 'utf8')) {
-    throw new Error(`Vector file not found: ${filePath}`);
-  }
-  
+  const filePath = resolveRepoPath(file);
   const raw = readFileSync(filePath, 'utf8');
   return JSON.parse(raw);
 }
@@ -134,8 +151,9 @@ function intToBitstring(val, width) {
 
 // Mock bridge simulation
 class MockBridge {
-  constructor(board) {
+  constructor(board, dutMode = 'passthrough') {
     this.board = board;
+    this.dutMode = dutMode;
     this.seq = 1;
     this.startTime = Date.now();
     this.events = [];
@@ -166,8 +184,38 @@ class MockBridge {
   applyInputs(sw, btn) {
     this.state.SW = intToBitstring(sw, this.board.widths.SW);
     this.state.BTN = intToBitstring(btn, this.board.widths.BTN);
-    // Mock behavior: LED mirrors SW
-    this.state.LED = this.state.SW;
+    
+    // DUT logic based on mode
+    const swInt = parseInt(this.state.SW, 2);
+    let ledInt = 0;
+    
+    switch (this.dutMode) {
+      case 'passthrough':
+        // LED mirrors SW
+        ledInt = swInt;
+        break;
+      
+      case 'invert':
+        // LED is bitwise NOT of SW
+        ledInt = (~swInt) & ((1 << this.board.widths.LED) - 1);
+        break;
+      
+      case 'xor':
+        // LED[0] = SW[0] XOR SW[1], rest = 0
+        ledInt = (swInt & 1) ^ ((swInt >> 1) & 1);
+        break;
+      
+      case 'counter':
+        // LED shows TICK value (mod 2^LED_WIDTH)
+        const tick = parseInt(this.state.TICK || '0', 10);
+        ledInt = tick & ((1 << this.board.widths.LED) - 1);
+        break;
+      
+      default:
+        ledInt = swInt;
+    }
+    
+    this.state.LED = intToBitstring(ledInt, this.board.widths.LED);
     this.state.TICK = (parseInt(this.state.TICK || '0', 10) + 1).toString();
   }
 
@@ -203,9 +251,9 @@ function validateVector(vec, board) {
 }
 
 // Run tests
-function runTests(registry, boardId, vectorsSpec) {
+function runTests(registry, boardId, vectorsSpec, dutMode) {
   const board = findBoard(registry, boardId);
-  const bridge = new MockBridge(board);
+  const bridge = new MockBridge(board, dutMode);
   
   const results = [];
   let passed = 0;
@@ -291,10 +339,8 @@ async function main() {
     const registry = loadBoardRegistry();
     const vectorsSpec = loadVectors(vectorsFile);
     
-    // For hash computation, construct the full path the same way loadVectors does
-    const repoRootNorm = REPO_ROOT.replace(/\//g, '\\');
-    const fileNorm = vectorsFile.replace(/\//g, '\\');
-    const vectorsFilePath = repoRootNorm + '\\' + fileNorm;
+    // Use resolveRepoPath for hash computation
+    const vectorsFilePath = resolveRepoPath(vectorsFile);
     const vectorFileHash = sha256(readFileSync(vectorsFilePath, 'utf8'));
 
     if (vectorsSpec.board_id !== boardId) {
@@ -302,7 +348,7 @@ async function main() {
     }
 
     // Run tests
-    const { bridge, board, passed, failed, results } = runTests(registry, boardId, vectorsSpec);
+    const { bridge, board, passed, failed, results } = runTests(registry, boardId, vectorsSpec, dutMode);
 
     // Build capsule
     const capsule = {
@@ -359,6 +405,10 @@ async function main() {
     console.log(`[PROOF] capsule=${proofJsonPath}`);
     console.log(`[REPORT] report=${reportPath}`);
     console.log(`[EVENTS] events=${eventsNdjsonPath}`);
+    
+    // Machine-parsable summary for CI/logging
+    const verdict = failed === 0 ? 'PASS' : 'FAIL';
+    console.log(`[RUN] task=vectors board=${boardId} dut=${dutMode} vectors=${passed + failed} verdict=${verdict} capsule=${proofJsonPath}`);
 
     // Call replay on generated capsule
     console.log(`\n[REPLAY] Starting proof replay...`);

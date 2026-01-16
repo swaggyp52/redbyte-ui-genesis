@@ -1,0 +1,26 @@
+{
+  "board_id": "basys3",
+  "description": "Test invert DUT mode - LED should be bitwise NOT of SW",
+  "vectors": [
+    {
+      "name": "All zeros → all ones",
+      "inputs": { "SW": 0, "BTN": 0 },
+      "expect": { "LED": 65535 }
+    },
+    {
+      "name": "All ones → all zeros",
+      "inputs": { "SW": 65535, "BTN": 0 },
+      "expect": { "LED": 0 }
+    },
+    {
+      "name": "Alternating bits (0xAAAA) → 0x5555",
+      "inputs": { "SW": 43690, "BTN": 0 },
+      "expect": { "LED": 21845 }
+    },
+    {
+      "name": "Single bit SW[0]=1 → 0xFFFE",
+      "inputs": { "SW": 1, "BTN": 0 },
+      "expect": { "LED": 65534 }
+    }
+  ]
+}

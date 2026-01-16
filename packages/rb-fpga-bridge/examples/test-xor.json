@@ -1,0 +1,31 @@
+{
+  "board_id": "basys3",
+  "description": "Test XOR DUT mode - LED[0] = SW[0] XOR SW[1], rest = 0",
+  "vectors": [
+    {
+      "name": "SW[0]=0, SW[1]=0 → LED=0",
+      "inputs": { "SW": 0, "BTN": 0 },
+      "expect": { "LED": 0 }
+    },
+    {
+      "name": "SW[0]=1, SW[1]=0 → LED=1",
+      "inputs": { "SW": 1, "BTN": 0 },
+      "expect": { "LED": 1 }
+    },
+    {
+      "name": "SW[0]=0, SW[1]=1 → LED=1",
+      "inputs": { "SW": 2, "BTN": 0 },
+      "expect": { "LED": 1 }
+    },
+    {
+      "name": "SW[0]=1, SW[1]=1 → LED=0",
+      "inputs": { "SW": 3, "BTN": 0 },
+      "expect": { "LED": 0 }
+    },
+    {
+      "name": "Higher bits irrelevant → LED depends only on SW[0:1]",
+      "inputs": { "SW": 65535, "BTN": 0 },
+      "expect": { "LED": 0 }
+    }
+  ]
+}

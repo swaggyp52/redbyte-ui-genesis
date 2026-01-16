@@ -1,0 +1,26 @@
+{
+  "board_id": "basys3",
+  "description": "Test counter DUT mode - LED shows TICK value (independent of SW)",
+  "vectors": [
+    {
+      "name": "First vector → TICK=0 initially",
+      "inputs": { "SW": 0, "BTN": 0 },
+      "expect": { "LED": 0 }
+    },
+    {
+      "name": "Second vector → TICK=1",
+      "inputs": { "SW": 100, "BTN": 0 },
+      "expect": { "LED": 1 }
+    },
+    {
+      "name": "Third vector → TICK=2",
+      "inputs": { "SW": 0, "BTN": 0 },
+      "expect": { "LED": 2 }
+    },
+    {
+      "name": "Fourth vector → TICK=3",
+      "inputs": { "SW": 65535, "BTN": 0 },
+      "expect": { "LED": 3 }
+    }
+  ]
+}
