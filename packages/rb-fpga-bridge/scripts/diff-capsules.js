@@ -47,10 +47,10 @@ function loadCapsule(capsulePath) {
   const content = fs.readFileSync(resolvedPath, 'utf8');
   const capsule = JSON.parse(content);
   
-  // Load events (reference or inline)
+  // Load events with multi-schema support
   let events = [];
   if (capsule.events && typeof capsule.events === 'object' && capsule.events.path) {
-    // Events reference format
+    // Events reference format (NDJSON)
     const eventsPath = resolveRepoPath(capsule.events.path);
     if (!fs.existsSync(eventsPath)) {
       throw new Error(`Events file not found: ${eventsPath}`);
@@ -58,11 +58,78 @@ function loadCapsule(capsulePath) {
     const eventsContent = fs.readFileSync(eventsPath, 'utf8');
     events = eventsContent.split('\n').filter(line => line.trim()).map(line => JSON.parse(line));
   } else if (Array.isArray(capsule.events)) {
-    // Inline events (legacy)
+    // Inline events array
     events = capsule.events;
+  } else if (Array.isArray(capsule.event_stream)) {
+    // Fallback: event_stream field
+    events = capsule.event_stream;
   }
   
   return { capsule, events };
+}
+
+/**
+ * Normalize an event to canonical form for schema-agnostic comparison.
+ * Handles different capsule types (fpga-proof, vector-run, etc).
+ * @param {object} e - Raw event from capsule
+ * @param {number} index - Position in event stream (for seq fallback)
+ * @returns {object} Normalized event with stable fields
+ */
+function normalizeEvent(e, index) {
+  // Derive seq from multiple possible sources
+  const seq = Number(
+    e.seq ?? 
+    e.sequence ?? 
+    e.i ?? 
+    (index + 1)
+  );
+  
+  // Derive tick from multiple possible sources
+  const tick = Number(
+    e.TICK ?? 
+    e.tick ?? 
+    e.payload?.TICK ?? 
+    e.state?.TICK ?? 
+    0
+  );
+  
+  // Normalize type
+  const type = String(e.type ?? e.kind ?? e.event ?? 'unknown').toLowerCase();
+  
+  // Extract IO fields (nested under payload or at top level)
+  const SW = e.SW ?? e.payload?.SW ?? null;
+  const BTN = e.BTN ?? e.payload?.BTN ?? null;
+  const LED = e.LED ?? e.payload?.LED ?? null;
+  
+  return {
+    seq,
+    tick,
+    type,
+    SW,
+    BTN,
+    LED,
+    // Preserve original for debugging
+    _raw: e
+  };
+}
+
+/**
+ * Get a stable comparison key for an event.
+ * Used to detect meaningful divergences.
+ */
+function getEventKey(normalized) {
+  // For status/heartbeat events, just compare type
+  if (normalized.type === 'status' || normalized.type === 'heartbeat') {
+    return `${normalized.type}`;
+  }
+  
+  // For io:update events, include IO state
+  if (normalized.type === 'io:update') {
+    return `${normalized.type}:SW=${normalized.SW},BTN=${normalized.BTN},LED=${normalized.LED}`;
+  }
+  
+  // Generic: type + tick
+  return `${normalized.type}:tick=${normalized.tick}`;
 }
 
 console.log('[DIFF] Loading capsules...');
@@ -208,28 +275,47 @@ if (firstMismatch) {
   }
 }
 
-// Compare event streams (first divergence)
+// Compare event streams (first divergence) with normalization
 console.log('\n[DIFF] Event Stream Divergence');
 console.log('='.repeat(60));
 
 let firstDivergence = null;
 
-for (let i = 0; i < Math.min(eventsA.length, eventsB.length); i++) {
-  const eA = eventsA[i];
-  const eB = eventsB[i];
+// Normalize all events once
+const normalizedA = eventsA.map((e, i) => normalizeEvent(e, i));
+const normalizedB = eventsB.map((e, i) => normalizeEvent(e, i));
+
+for (let i = 0; i < Math.min(normalizedA.length, normalizedB.length); i++) {
+  const nA = normalizedA[i];
+  const nB = normalizedB[i];
   
-  // Compare key fields
-  if (eA.type !== eB.type || eA.seq !== eB.seq) {
-    firstDivergence = { index: i, eA, eB, reason: 'Type or seq mismatch' };
+  // Compare types first (must match)
+  if (nA.type !== nB.type) {
+    firstDivergence = { 
+      index: i, 
+      eA: eventsA[i], 
+      eB: eventsB[i], 
+      nA, 
+      nB,
+      reason: `Type mismatch: ${nA.type} vs ${nB.type}` 
+    };
     break;
   }
   
-  // Compare io fields for io:update events
-  if (eA.type === 'io:update' && eB.type === 'io:update') {
-    if (eA.SW !== eB.SW || eA.BTN !== eB.BTN || eA.LED !== eB.LED || eA.TICK !== eB.TICK) {
-      firstDivergence = { index: i, eA, eB, reason: 'IO state divergence' };
-      break;
-    }
+  // Get comparison keys
+  const keyA = getEventKey(nA);
+  const keyB = getEventKey(nB);
+  
+  if (keyA !== keyB) {
+    firstDivergence = { 
+      index: i, 
+      eA: eventsA[i], 
+      eB: eventsB[i], 
+      nA, 
+      nB,
+      reason: 'IO state or timing divergence' 
+    };
+    break;
   }
 }
 
@@ -247,23 +333,24 @@ if (!firstDivergence) {
 } else {
   console.log(`✗ First divergence at event ${firstDivergence.index}: ${firstDivergence.reason}`);
   
-  if (firstDivergence.eA && firstDivergence.eB) {
-    console.log(`\nA (seq=${firstDivergence.eA.seq}):`);
-    console.log(`  type: ${firstDivergence.eA.type}`);
-    if (firstDivergence.eA.type === 'io:update') {
-      console.log(`  SW:   ${firstDivergence.eA.SW}`);
-      console.log(`  BTN:  ${firstDivergence.eA.BTN}`);
-      console.log(`  LED:  ${firstDivergence.eA.LED}`);
-      console.log(`  TICK: ${firstDivergence.eA.TICK}`);
+  if (firstDivergence.nA && firstDivergence.nB) {
+    const nA = firstDivergence.nA;
+    const nB = firstDivergence.nB;
+    
+    console.log(`\nA (normalized seq=${nA.seq}, tick=${nA.tick}):`);
+    console.log(`  type: ${nA.type}`);
+    if (nA.type === 'io:update') {
+      console.log(`  SW:   ${nA.SW}`);
+      console.log(`  BTN:  ${nA.BTN}`);
+      console.log(`  LED:  ${nA.LED}`);
     }
     
-    console.log(`\nB (seq=${firstDivergence.eB.seq}):`);
-    console.log(`  type: ${firstDivergence.eB.type}`);
-    if (firstDivergence.eB.type === 'io:update') {
-      console.log(`  SW:   ${firstDivergence.eB.SW}`);
-      console.log(`  BTN:  ${firstDivergence.eB.BTN}`);
-      console.log(`  LED:  ${firstDivergence.eB.LED}`);
-      console.log(`  TICK: ${firstDivergence.eB.TICK}`);
+    console.log(`\nB (normalized seq=${nB.seq}, tick=${nB.tick}):`);
+    console.log(`  type: ${nB.type}`);
+    if (nB.type === 'io:update') {
+      console.log(`  SW:   ${nB.SW}`);
+      console.log(`  BTN:  ${nB.BTN}`);
+      console.log(`  LED:  ${nB.LED}`);
     }
   }
 }
