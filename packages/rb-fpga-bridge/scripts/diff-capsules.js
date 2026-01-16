@@ -170,17 +170,15 @@ for (const [field, label] of metadataFields) {
 console.log('\n[DIFF] Test Summary');
 console.log('='.repeat(60));
 
-// Try multiple field names (capsule-type agnostic)
+// Prefer 'summary' (fpga-proof standard), fallback to 'test_summary' (legacy vector-run)
 let summaryA = capA.summary || capA.test_summary;
 let summaryB = capB.summary || capB.test_summary;
 
-// If summary is missing, create a stub to avoid crashes
+// Stub if still missing (defensive)
 if (!summaryA) {
-  console.log('[DIFF] Warning: capsule A has no summary field');
   summaryA = { passed: 0, failed: 0, total_events: eventsA.length, total: eventsA.length };
 }
 if (!summaryB) {
-  console.log('[DIFF] Warning: capsule B has no summary field');
   summaryB = { passed: 0, failed: 0, total_events: eventsB.length, total: eventsB.length };
 }
 
