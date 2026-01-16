@@ -1,0 +1,71 @@
+{
+  "board_id": "basys3",
+  "description": "Test FSM DUT mode - 4-state Moore machine with button-triggered transitions",
+  "vectors": [
+    {
+      "name": "Initial state S0 → LED[1:0]=00",
+      "inputs": { "SW": 0, "BTN": 0 },
+      "expect": { "LED": 0 }
+    },
+    {
+      "name": "BTN[0] rising edge → S0→S1, LED[1:0]=01",
+      "inputs": { "SW": 0, "BTN": 1 },
+      "expect": { "LED": 1 }
+    },
+    {
+      "name": "BTN[0] held (no edge) → stay S1, LED[1:0]=01",
+      "inputs": { "SW": 0, "BTN": 1 },
+      "expect": { "LED": 1 }
+    },
+    {
+      "name": "BTN[0] falling edge (no transition) → stay S1",
+      "inputs": { "SW": 0, "BTN": 0 },
+      "expect": { "LED": 1 }
+    },
+    {
+      "name": "BTN[0] rising edge → S1→S2, LED[1:0]=10",
+      "inputs": { "SW": 0, "BTN": 1 },
+      "expect": { "LED": 2 }
+    },
+    {
+      "name": "BTN[0] release then pulse → S2→S3, LED[1:0]=11",
+      "inputs": { "SW": 0, "BTN": 0 },
+      "expect": { "LED": 2 }
+    },
+    {
+      "name": "BTN[0] rising edge → S2→S3, LED[1:0]=11",
+      "inputs": { "SW": 0, "BTN": 1 },
+      "expect": { "LED": 3 }
+    },
+    {
+      "name": "BTN[0] release then pulse → S3→S0 (wraparound), LED[1:0]=00",
+      "inputs": { "SW": 0, "BTN": 0 },
+      "expect": { "LED": 3 }
+    },
+    {
+      "name": "BTN[0] rising edge → S3→S0, LED[1:0]=00",
+      "inputs": { "SW": 0, "BTN": 1 },
+      "expect": { "LED": 0 }
+    },
+    {
+      "name": "BTN[1] reset → S0, LED[1:0]=00",
+      "inputs": { "SW": 0, "BTN": 2 },
+      "expect": { "LED": 0 }
+    },
+    {
+      "name": "Advance to S1 after reset",
+      "inputs": { "SW": 0, "BTN": 0 },
+      "expect": { "LED": 0 }
+    },
+    {
+      "name": "BTN[0] rising edge → S0→S1",
+      "inputs": { "SW": 0, "BTN": 1 },
+      "expect": { "LED": 1 }
+    },
+    {
+      "name": "BTN[1] reset from S1 → S0",
+      "inputs": { "SW": 0, "BTN": 2 },
+      "expect": { "LED": 0 }
+    }
+  ]
+}

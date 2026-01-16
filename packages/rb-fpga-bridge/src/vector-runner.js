@@ -100,21 +100,32 @@ const args = process.argv.slice(2);
 let boardId = 'basys3';
 let vectorsFile = null;
 let dutMode = 'passthrough';
+let replayEnabled = false;
 
+// Parse CLI args
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--board') boardId = args[i + 1];
   if (args[i] === '--vectors') vectorsFile = args[i + 1];
   if (args[i] === '--dut') dutMode = args[i + 1];
+  if (args[i] === '--replay') replayEnabled = true;
+  if (args[i] === '--no-replay') replayEnabled = false;
+}
+
+// Replay policy: env var RB_FPGA_REPLAY=1 enables, or --replay flag
+// Default: OFF for local dev (fast), ON in CI (set env)
+if (process.env.RB_FPGA_REPLAY === '1' && replayEnabled === false) {
+  replayEnabled = true;
 }
 
 if (!vectorsFile) {
   console.error('ERROR: --vectors <file> required');
-  console.error('Usage: node vector-runner.js --board <board-id> --vectors <path> [--dut <mode>]');
-  console.error('  DUT modes: passthrough (default), invert, xor, counter');
+  console.error('Usage: node vector-runner.js --board <board-id> --vectors <path> [--dut <mode>] [--replay | --no-replay]');
+  console.error('  DUT modes: passthrough (default), invert, xor, counter, fsm');
+  console.error('  Replay: controlled by RB_FPGA_REPLAY=1 env or --replay flag (default: OFF)');
   process.exit(1);
 }
 
-const validDutModes = ['passthrough', 'invert', 'xor', 'counter'];
+const validDutModes = ['passthrough', 'invert', 'xor', 'counter', 'fsm'];
 if (!validDutModes.includes(dutMode)) {
   console.error(`ERROR: Invalid DUT mode '${dutMode}'. Valid modes: ${validDutModes.join(', ')}`);
   process.exit(1);
@@ -163,6 +174,9 @@ class MockBridge {
       LED: '0'.repeat(board.widths.LED),
       TICK: '0'
     };
+    // FSM state: 4-state Moore machine (S0=00, S1=01, S2=10, S3=11)
+    this.fsmState = 0;
+    this.prevBtn0 = 0; // For edge detection
   }
 
   emitStatusEvent() {
@@ -187,6 +201,7 @@ class MockBridge {
     
     // DUT logic based on mode
     const swInt = parseInt(this.state.SW, 2);
+    const btnInt = parseInt(this.state.BTN, 2);
     let ledInt = 0;
     
     switch (this.dutMode) {
@@ -209,6 +224,28 @@ class MockBridge {
         // LED shows TICK value (mod 2^LED_WIDTH)
         const tick = parseInt(this.state.TICK || '0', 10);
         ledInt = tick & ((1 << this.board.widths.LED) - 1);
+        break;
+      
+      case 'fsm':
+        // 4-state Moore machine (LED[1:0] = state encoding)
+        // BTN[0] = advance (rising edge)
+        // BTN[1] = reset to S0
+        const btn0 = btnInt & 1;
+        const btn1 = (btnInt >> 1) & 1;
+        
+        // Reset takes priority
+        if (btn1 === 1) {
+          this.fsmState = 0;
+        }
+        // Rising edge detection on BTN[0]
+        else if (btn0 === 1 && this.prevBtn0 === 0) {
+          this.fsmState = (this.fsmState + 1) % 4;
+        }
+        
+        this.prevBtn0 = btn0;
+        
+        // LED[1:0] = state encoding, rest = 0
+        ledInt = this.fsmState;
         break;
       
       default:
@@ -419,29 +456,44 @@ async function main() {
     const verdict = failed === 0 ? 'PASS' : 'FAIL';
     console.log(`[RUN] task=vectors board=${boardId} dut=${dutMode} vectors=${passed + failed} verdict=${verdict} capsule=${proofJsonPath}`);
 
-    // Call replay on generated capsule
-    console.log(`\n[REPLAY] Starting proof replay...`);
-    try {
-      const { spawn } = await import('child_process');
-      const replayProcess = spawn('pnpm', ['--filter', '@redbyte/fpga-bridge', 'proof:replay', proofJsonPath], {
-        cwd: REPO_ROOT,
-        stdio: 'inherit'
-      });
-
-      await new Promise((resolve, reject) => {
-        replayProcess.on('exit', code => {
-          if (code === 0) {
-            resolve();
-          } else {
-            reject(new Error(`Replay exited with code ${code}`));
-          }
+    let replayVerdict = 'SKIPPED';
+    
+    // Call replay on generated capsule (if enabled)
+    if (replayEnabled) {
+      console.log(`\n[REPLAY] Starting proof replay...`);
+      try {
+        const { spawn } = await import('child_process');
+        const replayProcess = spawn('pnpm', ['--filter', '@redbyte/fpga-bridge', 'proof:replay', proofJsonPath], {
+          cwd: REPO_ROOT,
+          stdio: 'inherit'
         });
-        replayProcess.on('error', reject);
-      });
-    } catch (replayError) {
-      console.warn(`[REPLAY] Could not run proof:replay: ${replayError.message}`);
-      // Don't fail if replay fails—vector run succeeded
+
+        await new Promise((resolve, reject) => {
+          replayProcess.on('exit', code => {
+            if (code === 0) {
+              replayVerdict = 'PASS';
+              resolve();
+            } else {
+              replayVerdict = 'FAIL';
+              reject(new Error(`Replay exited with code ${code}`));
+            }
+          });
+          replayProcess.on('error', reject);
+        });
+      } catch (replayError) {
+        console.warn(`[REPLAY] Could not run proof:replay: ${replayError.message}`);
+        replayVerdict = 'FAIL';
+        // Don't fail if replay fails—vector run succeeded
+      }
+    } else {
+      console.log(`\n[REPLAY] Skipped (use --replay or RB_FPGA_REPLAY=1 to enable)`);
     }
+
+    // Final summary (always last line, CI can parse this)
+    const finalVerdict = (verdict === 'PASS' && (replayVerdict === 'PASS' || replayVerdict === 'SKIPPED')) ? 'PASS' : 'FAIL';
+    const failReason = verdict === 'FAIL' ? 'vectors_failed' : (replayVerdict === 'FAIL' ? 'replay_failed' : null);
+    
+    console.log(`[FINAL] task=vectors verdict=${finalVerdict}${failReason ? ' reason=' + failReason : ''} capsule=${proofJsonPath}`);
 
     process.exit(failed > 0 ? 1 : 0);
 
