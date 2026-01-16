@@ -1,0 +1,29 @@
+{
+  "schema_version": "v1",
+  "session_id": "session-traffic-light-001",
+  "created_at": "2026-01-16T14:30:00Z",
+  "tool": {
+    "app": "redbyteapps.dev",
+    "git_sha": "8ad5adab"
+  },
+  "vectors": [
+    {
+      "id": "0",
+      "name": "Test 1: Red light on",
+      "pass": true,
+      "duration_ticks": 100
+    },
+    {
+      "id": "1",
+      "name": "Test 2: Yellow light transitions",
+      "pass": true,
+      "duration_ticks": 100
+    },
+    {
+      "id": "2",
+      "name": "Test 3: Green light final",
+      "pass": true,
+      "duration_ticks": 100
+    }
+  ]
+}

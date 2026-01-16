@@ -37,6 +37,7 @@
         "agent:status": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/agent-status.ps1",
         "agent:verify": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/agent-verify.ps1",
         "agent:plan": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/agent-plan.ps1",
+        "agent:lab": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/agent-lab.ps1",
         "bless:artifacts": "node ./scripts/bless-latest-artifacts.js"
     },
     "devDependencies": {
