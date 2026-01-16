@@ -39,3 +39,12 @@ node_modules/
 
 # Proof logs (local-only)
 ops/proof/*
+
+# CI artifact downloads (local-only)
+_ci_artifacts*/
+
+# Temporary test files (local-only)
+test-health*.js
+PHASE_*.md
+BRIDGE_CONTRACT.md
+pr-description.txt
