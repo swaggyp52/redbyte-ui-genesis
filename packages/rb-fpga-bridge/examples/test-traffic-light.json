@@ -1,0 +1,19 @@
+{
+  "board_id": "basys3",
+  "vectors": [
+    { "name": "t0 GREEN",  "inputs": { "SW": 0, "BTN": 0 }, "expect": { "LED": 0 } },
+    { "name": "t1 GREEN",  "inputs": { "SW": 0, "BTN": 0 }, "expect": { "LED": 0 } },
+    { "name": "t2 GREEN",  "inputs": { "SW": 0, "BTN": 0 }, "expect": { "LED": 0 } },
+    { "name": "t3 GREEN",  "inputs": { "SW": 0, "BTN": 0 }, "expect": { "LED": 0 } },
+    { "name": "t4 GREEN",  "inputs": { "SW": 0, "BTN": 0 }, "expect": { "LED": 0 } },
+
+    { "name": "t5 YELLOW", "inputs": { "SW": 0, "BTN": 0 }, "expect": { "LED": 1 } },
+    { "name": "t6 YELLOW", "inputs": { "SW": 0, "BTN": 0 }, "expect": { "LED": 1 } },
+
+    { "name": "t7 RED",    "inputs": { "SW": 0, "BTN": 0 }, "expect": { "LED": 2 } },
+    { "name": "t8 RED",    "inputs": { "SW": 0, "BTN": 0 }, "expect": { "LED": 2 } },
+
+    { "name": "Reset forces GREEN immediately", "inputs": { "SW": 0, "BTN": 2 }, "expect": { "LED": 0 } },
+    { "name": "Post-reset continues timed cycle", "inputs": { "SW": 0, "BTN": 0 }, "expect": { "LED": 2 } }
+  ]
+}

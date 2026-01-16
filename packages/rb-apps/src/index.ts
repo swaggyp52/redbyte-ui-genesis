@@ -39,6 +39,7 @@ export async function registerAllApps() {
   const LogicHelpApp = (await import('./apps/LogicHelpApp')).default;
   const { UserManualApp } = await import('./apps/UserManualApp');
   const { HardwarePanelApp } = await import('./apps/HardwarePanelApp');
+  const { FpgaProofViewerApp } = await import('./apps/FpgaProofViewerApp');
 
   registerApp(TerminalApp);
   registerApp(SettingsApp);
@@ -56,4 +57,5 @@ export async function registerAllApps() {
   registerApp(LogicHelpApp);
   registerApp(UserManualApp);
   registerApp(HardwarePanelApp);
+  registerApp(FpgaProofViewerApp);
 }

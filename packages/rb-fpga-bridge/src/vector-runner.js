@@ -61,12 +61,12 @@ if (process.env.RB_FPGA_REPLAY === '1' && replayEnabled === false) {
 if (!vectorsFile) {
   console.error('ERROR: --vectors <file> required');
   console.error('Usage: node vector-runner.js --board <board-id> --vectors <path> [--dut <mode>] [--replay | --no-replay]');
-  console.error('  DUT modes: passthrough (default), invert, xor, counter, fsm');
+  console.error('  DUT modes: passthrough (default), invert, xor, counter, traffic_light_fsm (alias: fsm), traffic_light_stateful');
   console.error('  Replay: controlled by RB_FPGA_REPLAY=1 env or --replay flag (default: OFF)');
   process.exit(1);
 }
 
-const validDutModes = ['passthrough', 'invert', 'xor', 'counter', 'fsm'];
+const validDutModes = ['passthrough', 'invert', 'xor', 'counter', 'traffic_light_fsm', 'traffic_light_stateful', 'fsm'];
 if (!validDutModes.includes(dutMode)) {
   console.error(`ERROR: Invalid DUT mode '${dutMode}'. Valid modes: ${validDutModes.join(', ')}`);
   process.exit(1);
@@ -101,6 +101,14 @@ function intToBitstring(val, width) {
   return val.toString(2).padStart(width, '0');
 }
 
+// Timed traffic light: GREEN 5 ticks, YELLOW 2 ticks, RED 5 ticks (period 12)
+function trafficLightStateFromTick(tick) {
+  const phase = tick % 12;
+  if (phase < 5) return 0; // GREEN -> 00
+  if (phase < 7) return 1; // YELLOW -> 01
+  return 2;                // RED   -> 10
+}
+
 // Mock bridge simulation
 class MockBridge {
   constructor(board, dutMode = 'passthrough') {
@@ -118,6 +126,9 @@ class MockBridge {
     // FSM state: 4-state Moore machine (S0=00, S1=01, S2=10, S3=11)
     this.fsmState = 0;
     this.prevBtn0 = 0; // For edge detection
+    // Stateful traffic light (GREEN/YELLOW/RED with phase counter)
+    this.tlState = 0; // 0=GREEN,1=YELLOW,2=RED
+    this.tlPhase = 0;
   }
 
   emitStatusEvent() {
@@ -162,32 +173,46 @@ class MockBridge {
         break;
       
       case 'counter':
-        // LED shows TICK value (mod 2^LED_WIDTH)
+        // LED shows TICK value (mod 2^LED_WIDTH), BTN[1]=reset forces LED=0 for this step
+        const ledWidth = this.board.widths.LED;
+        const mask = ledWidth >= 32 ? 0xFFFFFFFF : ((1 << ledWidth) - 1);
         const tick = parseInt(this.state.TICK || '0', 10);
-        ledInt = tick & ((1 << this.board.widths.LED) - 1);
+        const reset = ((btnInt >> 1) & 1) === 1;
+        ledInt = reset ? 0 : (tick & mask);
         break;
       
-      case 'fsm':
-        // 4-state Moore machine (LED[1:0] = state encoding)
-        // BTN[0] = advance (rising edge)
-        // BTN[1] = reset to S0
-        const btn0 = btnInt & 1;
-        const btn1 = (btnInt >> 1) & 1;
-        
-        // Reset takes priority
-        if (btn1 === 1) {
-          this.fsmState = 0;
-        }
-        // Rising edge detection on BTN[0]
-        else if (btn0 === 1 && this.prevBtn0 === 0) {
-          this.fsmState = (this.fsmState + 1) % 4;
-        }
-        
-        this.prevBtn0 = btn0;
-        
-        // LED[1:0] = state encoding, rest = 0
-        ledInt = this.fsmState;
+      case 'traffic_light_fsm':
+      case 'fsm': {
+        // Timed Moore machine driven by TICK: GREEN 5, YELLOW 2, RED 5 (period 12)
+        const tick = parseInt(this.state.TICK || '0', 10);
+        const reset = ((btnInt >> 1) & 1) === 1;
+        const state = reset ? 0 : trafficLightStateFromTick(tick);
+        ledInt = (state & 0b11) >>> 0; // encode into LED[1:0], rest zero
         break;
+      }
+
+      case 'traffic_light_stateful': {
+        // Stateful timed FSM: durations GREEN=5, YELLOW=2, RED=5; reset restarts cycle
+        const reset = ((btnInt >> 1) & 1) === 1;
+        const durations = [5, 2, 5];
+        if (reset) {
+          this.tlState = 0;
+          this.tlPhase = 0;
+        }
+
+        // Output reflects current state before advancing phase
+        ledInt = (this.tlState & 0b11) >>> 0; // encode into LED[1:0]
+
+        // Advance phase/state for next tick (if not reset)
+        if (!reset) {
+          this.tlPhase += 1;
+          if (this.tlPhase >= durations[this.tlState]) {
+            this.tlState = (this.tlState + 1) % 3;
+            this.tlPhase = 0;
+          }
+        }
+        break;
+      }
       
       default:
         ledInt = swInt;

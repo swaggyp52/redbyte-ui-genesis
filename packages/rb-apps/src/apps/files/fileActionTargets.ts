@@ -35,6 +35,17 @@ export const FILE_ACTION_TARGETS: FileActionTarget[] = [
     isEligible: (type, name) =>
       type === 'file' && (name.endsWith('.txt') || name.endsWith('.md')),
   },
+  {
+    id: 'fpga-proof-viewer',
+    name: 'FPGA Proof Viewer',
+    appId: 'fpga-proof-viewer',
+    isEligible: (type, name) =>
+      type === 'file' && (
+        name.endsWith('.capsule.json') ||
+        (name.startsWith('vector-run-') && name.endsWith('.json')) ||
+        name.endsWith('.events.ndjson')
+      ),
+  },
 ];
 
 /**

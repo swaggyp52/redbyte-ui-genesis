@@ -1,0 +1,248 @@
+{
+  "session_id": "vector-run-2026-01-16T04-17-16",
+  "timestamp": "2026-01-16T04:17:16.387Z",
+  "board_id": "basys3",
+  "board_snapshot": {
+    "id": "basys3",
+    "name": "Basys3",
+    "description": "Artix-7 based board with 16-bit switches, 16 LEDs, 5 buttons",
+    "widths": {
+      "LED": 16,
+      "SW": 16,
+      "BTN": 5
+    },
+    "labels": {
+      "LED": [
+        "LD15",
+        "LD14",
+        "LD13",
+        "LD12",
+        "LD11",
+        "LD10",
+        "LD9",
+        "LD8",
+        "LD7",
+        "LD6",
+        "LD5",
+        "LD4",
+        "LD3",
+        "LD2",
+        "LD1",
+        "LD0"
+      ],
+      "SW": [
+        "SW15",
+        "SW14",
+        "SW13",
+        "SW12",
+        "SW11",
+        "SW10",
+        "SW9",
+        "SW8",
+        "SW7",
+        "SW6",
+        "SW5",
+        "SW4",
+        "SW3",
+        "SW2",
+        "SW1",
+        "SW0"
+      ],
+      "BTN": [
+        "BTNC",
+        "BTNU",
+        "BTNL",
+        "BTNR",
+        "BTND"
+      ]
+    }
+  },
+  "vector_file_hash": "4f4db7fc104fb4ea73e36ef68590ced94496bb45cf9a70637f6b7a9bf6f14981",
+  "git_sha": "a0648fd1",
+  "node_version": "v25.3.0",
+  "started_at": "2026-01-16T04:17:16.386Z",
+  "ended_at": "2026-01-16T04:17:16.424Z",
+  "test_summary": {
+    "total": 15,
+    "passed": 15,
+    "failed": 0
+  },
+  "summary": {
+    "passed": 15,
+    "failed": 0,
+    "total_events": 16
+  },
+  "results": [
+    {
+      "name": "t0 GREEN",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000000",
+      "observed": "0000000000000000",
+      "mismatch": null
+    },
+    {
+      "name": "t1 GREEN",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000000",
+      "observed": "0000000000000000",
+      "mismatch": null
+    },
+    {
+      "name": "t2 GREEN",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000000",
+      "observed": "0000000000000000",
+      "mismatch": null
+    },
+    {
+      "name": "t3 GREEN",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000000",
+      "observed": "0000000000000000",
+      "mismatch": null
+    },
+    {
+      "name": "t4 GREEN",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000000",
+      "observed": "0000000000000000",
+      "mismatch": null
+    },
+    {
+      "name": "t5 YELLOW",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000001",
+      "observed": "0000000000000001",
+      "mismatch": null
+    },
+    {
+      "name": "t6 YELLOW",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000001",
+      "observed": "0000000000000001",
+      "mismatch": null
+    },
+    {
+      "name": "t7 RED",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000010",
+      "observed": "0000000000000010",
+      "mismatch": null
+    },
+    {
+      "name": "t8 RED",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000010",
+      "observed": "0000000000000010",
+      "mismatch": null
+    },
+    {
+      "name": "t9 RED",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000010",
+      "observed": "0000000000000010",
+      "mismatch": null
+    },
+    {
+      "name": "t10 RED",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000010",
+      "observed": "0000000000000010",
+      "mismatch": null
+    },
+    {
+      "name": "t11 RED",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000010",
+      "observed": "0000000000000010",
+      "mismatch": null
+    },
+    {
+      "name": "t12 RESET -> GREEN",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 2
+      },
+      "expected": "0000000000000000",
+      "observed": "0000000000000000",
+      "mismatch": null
+    },
+    {
+      "name": "t13 GREEN after reset",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000000",
+      "observed": "0000000000000000",
+      "mismatch": null
+    },
+    {
+      "name": "t14 GREEN after reset",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000000",
+      "observed": "0000000000000000",
+      "mismatch": null
+    }
+  ],
+  "events": {
+    "format": "ndjson",
+    "path": "/examples/fpga-proof/traffic-light-stateful.events.ndjson",
+    "sha256": "807bf580cc9dea1d0733b3bb79db10a787def1d8414e0e6955aebcf7581ccf1c",
+    "count": 16
+  }
+}

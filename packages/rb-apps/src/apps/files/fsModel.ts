@@ -46,6 +46,7 @@ export function createInitialFsState(): FileSystemState {
         name: 'Documents',
         entries: [
           { id: 'reports', name: 'Reports', type: 'folder', modified: '2025-12-14 16:20' },
+          { id: 'proofs', name: 'Proofs', type: 'folder', modified: '2026-01-16 04:17' },
           {
             id: 'readme',
             name: 'README.md',
@@ -90,6 +91,290 @@ export function createInitialFsState(): FileSystemState {
           { id: 'q4', name: 'Q4-2024.pdf', type: 'file', modified: '2025-12-14 16:20' },
         ],
       },
+      proofs: {
+        id: 'proofs',
+        name: 'Proofs',
+        entries: [
+          {
+            id: 'proof-capsule',
+            name: 'traffic-light-stateful.capsule.json',
+            type: 'file',
+            modified: '2026-01-16 04:17',
+            content: `{
+  "session_id": "vector-run-2026-01-16T04-17-16",
+  "timestamp": "2026-01-16T04:17:16.387Z",
+  "board_id": "basys3",
+  "board_snapshot": {
+    "id": "basys3",
+    "name": "Basys3",
+    "description": "Artix-7 based board with 16-bit switches, 16 LEDs, 5 buttons",
+    "widths": {
+      "LED": 16,
+      "SW": 16,
+      "BTN": 5
+    },
+    "labels": {
+      "LED": [
+        "LD15",
+        "LD14",
+        "LD13",
+        "LD12",
+        "LD11",
+        "LD10",
+        "LD9",
+        "LD8",
+        "LD7",
+        "LD6",
+        "LD5",
+        "LD4",
+        "LD3",
+        "LD2",
+        "LD1",
+        "LD0"
+      ],
+      "SW": [
+        "SW15",
+        "SW14",
+        "SW13",
+        "SW12",
+        "SW11",
+        "SW10",
+        "SW9",
+        "SW8",
+        "SW7",
+        "SW6",
+        "SW5",
+        "SW4",
+        "SW3",
+        "SW2",
+        "SW1",
+        "SW0"
+      ],
+      "BTN": [
+        "BTNC",
+        "BTNU",
+        "BTNL",
+        "BTNR",
+        "BTND"
+      ]
+    }
+  },
+  "vector_file_hash": "4f4db7fc104fb4ea73e36ef68590ced94496bb45cf9a70637f6b7a9bf6f14981",
+  "git_sha": "a0648fd1",
+  "node_version": "v25.3.0",
+  "started_at": "2026-01-16T04:17:16.386Z",
+  "ended_at": "2026-01-16T04:17:16.424Z",
+  "test_summary": {
+    "total": 15,
+    "passed": 15,
+    "failed": 0
+  },
+  "summary": {
+    "passed": 15,
+    "failed": 0,
+    "total_events": 16
+  },
+  "results": [
+    {
+      "name": "t0 GREEN",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000000",
+      "observed": "0000000000000000",
+      "mismatch": null
+    },
+    {
+      "name": "t1 GREEN",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000000",
+      "observed": "0000000000000000",
+      "mismatch": null
+    },
+    {
+      "name": "t2 GREEN",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000000",
+      "observed": "0000000000000000",
+      "mismatch": null
+    },
+    {
+      "name": "t3 GREEN",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000000",
+      "observed": "0000000000000000",
+      "mismatch": null
+    },
+    {
+      "name": "t4 GREEN",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000000",
+      "observed": "0000000000000000",
+      "mismatch": null
+    },
+    {
+      "name": "t5 YELLOW",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000001",
+      "observed": "0000000000000001",
+      "mismatch": null
+    },
+    {
+      "name": "t6 YELLOW",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000001",
+      "observed": "0000000000000001",
+      "mismatch": null
+    },
+    {
+      "name": "t7 RED",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000010",
+      "observed": "0000000000000010",
+      "mismatch": null
+    },
+    {
+      "name": "t8 RED",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000010",
+      "observed": "0000000000000010",
+      "mismatch": null
+    },
+    {
+      "name": "t9 RED",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000010",
+      "observed": "0000000000000010",
+      "mismatch": null
+    },
+    {
+      "name": "t10 RED",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000010",
+      "observed": "0000000000000010",
+      "mismatch": null
+    },
+    {
+      "name": "t11 RED",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000010",
+      "observed": "0000000000000010",
+      "mismatch": null
+    },
+    {
+      "name": "t12 RESET -> GREEN",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 2
+      },
+      "expected": "0000000000000000",
+      "observed": "0000000000000000",
+      "mismatch": null
+    },
+    {
+      "name": "t13 GREEN after reset",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000000",
+      "observed": "0000000000000000",
+      "mismatch": null
+    },
+    {
+      "name": "t14 GREEN after reset",
+      "result": "PASS",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expected": "0000000000000000",
+      "observed": "0000000000000000",
+      "mismatch": null
+    }
+  ],
+  "events": {
+    "format": "ndjson",
+    "path": "traffic-light-stateful.events.ndjson",
+    "sha256": "807bf580cc9dea1d0733b3bb79db10a787def1d8414e0e6955aebcf7581ccf1c",
+    "count": 16
+  }
+}
+`,
+          },
+          {
+            id: 'proof-events',
+            name: 'traffic-light-stateful.events.ndjson',
+            type: 'file',
+            modified: '2026-01-16 04:17',
+            content: `{"type":"status","seq":1,"timestamp":1768537036386,"source":"mock","connected":true,"port":"MOCK","baud":115200,"lastMsgTs":null,"lastMsg":null}
+{"type":"io:update","seq":2,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000000","TICK":"1","ts_offset_ms":1}
+{"type":"io:update","seq":3,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000000","TICK":"2","ts_offset_ms":1}
+{"type":"io:update","seq":4,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000000","TICK":"3","ts_offset_ms":1}
+{"type":"io:update","seq":5,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000000","TICK":"4","ts_offset_ms":1}
+{"type":"io:update","seq":6,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000000","TICK":"5","ts_offset_ms":1}
+{"type":"io:update","seq":7,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000001","TICK":"6","ts_offset_ms":1}
+{"type":"io:update","seq":8,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000001","TICK":"7","ts_offset_ms":1}
+{"type":"io:update","seq":9,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000010","TICK":"8","ts_offset_ms":1}
+{"type":"io:update","seq":10,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000010","TICK":"9","ts_offset_ms":1}
+{"type":"io:update","seq":11,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000010","TICK":"10","ts_offset_ms":1}
+{"type":"io:update","seq":12,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000010","TICK":"11","ts_offset_ms":1}
+{"type":"io:update","seq":13,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000010","TICK":"12","ts_offset_ms":1}
+{"type":"io:update","seq":14,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00010","LED":"0000000000000000","TICK":"13","ts_offset_ms":1}
+{"type":"io:update","seq":15,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000000","TICK":"14","ts_offset_ms":1}
+{"type":"io:update","seq":16,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000000","TICK":"15","ts_offset_ms":1}
+`,
+          },
+        ],
+      },
     },
     nextId: 1,
     roots: ['home', 'desktop', 'documents'],
@@ -115,6 +400,7 @@ const FOLDER_PARENTS: Record<string, string | null> = {
   downloads: 'home',
   project1: 'desktop',
   reports: 'documents',
+  proofs: 'documents',
 };
 
 /**

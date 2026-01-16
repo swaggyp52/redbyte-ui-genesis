@@ -1,0 +1,16 @@
+{"type":"status","seq":1,"timestamp":1768537036386,"source":"mock","connected":true,"port":"MOCK","baud":115200,"lastMsgTs":null,"lastMsg":null}
+{"type":"io:update","seq":2,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000000","TICK":"1","ts_offset_ms":1}
+{"type":"io:update","seq":3,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000000","TICK":"2","ts_offset_ms":1}
+{"type":"io:update","seq":4,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000000","TICK":"3","ts_offset_ms":1}
+{"type":"io:update","seq":5,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000000","TICK":"4","ts_offset_ms":1}
+{"type":"io:update","seq":6,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000000","TICK":"5","ts_offset_ms":1}
+{"type":"io:update","seq":7,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000001","TICK":"6","ts_offset_ms":1}
+{"type":"io:update","seq":8,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000001","TICK":"7","ts_offset_ms":1}
+{"type":"io:update","seq":9,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000010","TICK":"8","ts_offset_ms":1}
+{"type":"io:update","seq":10,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000010","TICK":"9","ts_offset_ms":1}
+{"type":"io:update","seq":11,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000010","TICK":"10","ts_offset_ms":1}
+{"type":"io:update","seq":12,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000010","TICK":"11","ts_offset_ms":1}
+{"type":"io:update","seq":13,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000010","TICK":"12","ts_offset_ms":1}
+{"type":"io:update","seq":14,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00010","LED":"0000000000000000","TICK":"13","ts_offset_ms":1}
+{"type":"io:update","seq":15,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000000","TICK":"14","ts_offset_ms":1}
+{"type":"io:update","seq":16,"timestamp":1768537036387,"source":"mock","SW":"0000000000000000","BTN":"00000","LED":"0000000000000000","TICK":"15","ts_offset_ms":1}

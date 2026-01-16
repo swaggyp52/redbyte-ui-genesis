@@ -13,6 +13,11 @@
     "proof:replay": "node scripts/proof-replay.js",
     "diff:capsules": "node scripts/diff-capsules.js",
     "test:vectors": "node src/vector-runner.js",
+    "bless:capsule": "node scripts/bless-capsule.js",
+    "check:golden": "node scripts/check-golden.js",
+    "visualize:capsule": "node scripts/visualize-capsule.js",
+    "test:all": "node scripts/test-all.js",
+    "selftest:golden": "node scripts/selftest-golden.js",
     "start": "node src/index.js"
   },
   "dependencies": {

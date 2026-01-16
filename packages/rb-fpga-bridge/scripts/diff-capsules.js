@@ -6,8 +6,11 @@
  * This is the "offline FPGA" engineering tool for hardware-agnostic verification.
  * 
  * Usage:
- *   pnpm diff:capsules -- --a <capsuleA.json> --b <capsuleB.json>
+ *   pnpm diff:capsules -- --a <capsuleA.json> --b <capsuleB.json> [--strict-hash]
  *   node scripts/diff-capsules.js --a ops/proof/vector-run-A.json --b ops/proof/vector-run-B.json
+ * 
+ * Environment:
+ *   RB_FPGA_STRICT_HASH=1  Enable strict hash checking (exit 2 on hash mismatch)
  * 
  * Exit codes:
  *   0: capsules identical (MATCH)
@@ -28,12 +31,15 @@ const EXIT_INVALID = 2;
 const args = process.argv.slice(2);
 let capsuleA = null;
 let capsuleB = null;
+let strictHash = process.env.RB_FPGA_STRICT_HASH === '1';
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--a' && args[i + 1]) {
     capsuleA = args[++i];
   } else if (args[i] === '--b' && args[i + 1]) {
     capsuleB = args[++i];
+  } else if (args[i] === '--strict-hash') {
+    strictHash = true;
   }
 }
 
@@ -216,6 +222,16 @@ if (capA.events?.sha256 && capB.events?.sha256) {
   if (!sameHash) {
     console.log(`  A: ${capA.events.sha256.slice(0, 16)}...`);
     console.log(`  B: ${capB.events.sha256.slice(0, 16)}...`);
+    
+    if (strictHash) {
+      console.error('\n[DIFF] STRICT HASH MODE: Event hash mismatch detected.');
+      console.error('[DIFF] Different event files cannot be trusted for comparison.');
+      console.error('[DIFF] verdict=INVALID');
+      process.exit(EXIT_INVALID);
+    } else {
+      console.warn('\n⚠️  WARNING: Event hashes differ but comparison will continue using normalized content.');
+      console.warn('⚠️  Set RB_FPGA_STRICT_HASH=1 or use --strict-hash to treat this as INVALID.');
+    }
   }
 }
 
