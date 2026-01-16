@@ -93,11 +93,11 @@ console.log('='.repeat(60));
 const summaryA = capA.summary;
 const summaryB = capB.summary;
 
-const totalDiff = summaryB.total - summaryA.total;
+const totalDiff = summaryB.total_events - summaryA.total_events;
 const passedDiff = summaryB.passed - summaryA.passed;
 const failedDiff = summaryB.failed - summaryA.failed;
 
-console.log(`Total Vectors:  A: ${summaryA.total.toString().padStart(3)}  B: ${summaryB.total.toString().padStart(3)}  Δ: ${totalDiff >= 0 ? '+' : ''}${totalDiff}`);
+console.log(`Total Vectors:  A: ${summaryA.total_events.toString().padStart(3)}  B: ${summaryB.total_events.toString().padStart(3)}  Δ: ${totalDiff >= 0 ? '+' : ''}${totalDiff}`);
 console.log(`Passed:         A: ${summaryA.passed.toString().padStart(3)}  B: ${summaryB.passed.toString().padStart(3)}  Δ: ${passedDiff >= 0 ? '+' : ''}${passedDiff}`);
 console.log(`Failed:         A: ${summaryA.failed.toString().padStart(3)}  B: ${summaryB.failed.toString().padStart(3)}  Δ: ${failedDiff >= 0 ? '+' : ''}${failedDiff}`);
 
