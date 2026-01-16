@@ -1,0 +1,96 @@
+﻿{
+    "commit":  "8e232f0f0200f135f58a2862781a1b145222e2fb",
+    "changed_files":  [
+                          ".github/workflows/fpga-proof.yml",
+                          ".gitignore",
+                          "packages/rb-fpga-bridge/package.json",
+                          "packages/rb-fpga-bridge/scripts/proof-replay.js"
+                      ],
+    "commit_short":  "8e232f0f",
+    "timestamp":  "2026-01-15T21:11:03.0371937-05:00",
+    "git_status":  [
+                       " M packages/rb-fpga-bridge/scripts/proof-replay.js",
+                       "?? .claude/README.md",
+                       "?? .claude/system.md",
+                       "?? COST_DISCIPLINE_SYSTEM.md",
+                       "?? _ci_phase4_artifacts/",
+                       "?? _ci_phase4_fixed/",
+                       "?? debug_test.md",
+                       "?? debug_test3.md",
+                       "?? ops/claude/",
+                       "?? scripts/ai-run.ps1",
+                       "?? scripts/claude-analyze.ps1",
+                       "?? scripts/claude-audit-proof.ps1",
+                       "?? scripts/claude-ci-gate.ps1",
+                       "?? scripts/claude_decide.ps1",
+                       "?? scripts/claude_exec.ps1",
+                       "?? scripts/claude_mapreduce.ps1",
+                       "?? scripts/context_pack.ps1",
+                       "?? scripts/run-claude-audit.md",
+                       "?? test-audit-3.md",
+                       "?? test-audit.md",
+                       "?? test-direct.md",
+                       "?? test1.md",
+                       "?? test2.md",
+                       "?? verify1.md"
+                   ],
+    "branch":  "main",
+    "local_checks":  {
+                         "proof_run":  {
+                                           "pass":  true,
+                                           "last_lines":  [
+                                                              "",
+                                                              "\u003e @redbyte/fpga-bridge@0.1.0 proof:run C:\\lab\\redbyte-ui\\packages\\rb-fpga-bridge",
+                                                              "\u003e node src/proof-runner.js",
+                                                              "",
+                                                              "ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ",
+                                                              "[PROOF] === FPGA Bridge Proof Runner ===",
+                                                              "ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ",
+                                                              "[PROOF] Starting bridge in MOCK mode...",
+                                                              "[PROOF] Waiting for /api/health...",
+                                                              "[BRIDGE] [fpga-bridge] WS on ws://localhost:4243",
+                                                              "[BRIDGE] [fpga-bridge] ΓÜá∩╕Å  MOCK MODE - simulating Basys3 board (seed=1)",
+                                                              "[BRIDGE] [fpga-bridge] HTTP on http://localhost:4242",
+                                                              "[PROOF] Γ£à Health endpoint responding: {\"ok\":true,\"connected\":true,\"port\":\"MOCK\",\"baud\":115200,\"lastMsgTs\":null,\"lastMsg\":null}",
+                                                              "[PROOF] Testing WebSocket events...",
+                                                              "[PROOF] WS connected, waiting for events...",
+                                                              "[PROOF]   Event 1: type=status, seq=1, ts=1768529488054",
+                                                              "[PROOF]   Event 2: type=io:update, seq=2, ts=1768529488163",
+                                                              "[PROOF]   Event 3: type=io:update, seq=3, ts=1768529488269",
+                                                              "[PROOF] Γ£à Received 3+ events with valid seq ordering",
+                                                              "[PROOF] Writing artifacts...",
+                                                              "[PROOF] Γ£à JSON proof: C:\\lab\\redbyte-ui\\ops\\proof/fpga-proof-2026-01-16T02-11-27.json",
+                                                              "[PROOF] Γ£à NDJSON events: C:\\lab\\redbyte-ui\\ops\\proof/fpga-events-2026-01-16T02-11-27.ndjson",
+                                                              "[PROOF] Γ£à Text log: C:\\lab\\redbyte-ui\\ops\\proof/fpga-proof-2026-01-16T02-11-27.txt",
+                                                              "[PROOF] Γ£à Artifact index: C:\\lab\\redbyte-ui\\ops\\proof/artifact-index-2026-01-16T02-11-27.txt",
+                                                              "ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ",
+                                                              "[PROOF] Results: 2 passed, 0 failed",
+                                                              "ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ",
+                                                              "[PROOF] Cleaning up bridge process..."
+                                                          ],
+                                           "exit_code":  0
+                                       },
+                         "quality":  {
+                                         "pass":  true,
+                                         "last_lines":  [
+                                                            "E2E: SKIPPED (run pnpm quality:full to include Playwright)"
+                                                        ],
+                                         "exit_code":  0
+                                     },
+                         "proof_artifacts":  {
+                                                 "count":  107,
+                                                 "files":  [
+                                                               "C:\\lab\\redbyte-ui\\ops\\proof\\artifact-index-2026-01-15T23-30-24.txt",
+                                                               "C:\\lab\\redbyte-ui\\ops\\proof\\artifact-index-2026-01-16T02-03-37.txt",
+                                                               "C:\\lab\\redbyte-ui\\ops\\proof\\artifact-index-2026-01-16T02-04-10.txt",
+                                                               "C:\\lab\\redbyte-ui\\ops\\proof\\artifact-index-2026-01-16T02-04-42.txt",
+                                                               "C:\\lab\\redbyte-ui\\ops\\proof\\artifact-index-2026-01-16T02-05-19.txt",
+                                                               "C:\\lab\\redbyte-ui\\ops\\proof\\artifact-index-2026-01-16T02-07-15.txt",
+                                                               "C:\\lab\\redbyte-ui\\ops\\proof\\artifact-index-2026-01-16T02-07-49.txt",
+                                                               "C:\\lab\\redbyte-ui\\ops\\proof\\artifact-index-2026-01-16T02-08-23.txt",
+                                                               "C:\\lab\\redbyte-ui\\ops\\proof\\artifact-index-2026-01-16T02-08-52.txt",
+                                                               "C:\\lab\\redbyte-ui\\ops\\proof\\artifact-index-2026-01-16T02-09-23.txt"
+                                                           ]
+                                             }
+                     }
+}

@@ -1,0 +1,35 @@
+════════════════════════════════════════
+[PROOF] === FPGA Bridge Proof Runner ===
+════════════════════════════════════════
+════════════════════════════════════════
+[PROOF] === FPGA Bridge Proof Runner ===
+════════════════════════════════════════
+[PROOF] Starting bridge in MOCK mode...
+[PROOF] Waiting for /api/health...
+[BRIDGE] [fpga-bridge] WS on ws://localhost:4243
+[BRIDGE] [fpga-bridge] ⚠️  MOCK MODE - simulating Basys3 board (seed=1)
+[BRIDGE] [fpga-bridge] HTTP on http://localhost:4242
+[PROOF] ✅ Health endpoint responding: {"ok":true,"connected":true,"port":"MOCK","baud":115200,"lastMsgTs":null,"lastMsg":null}
+[PROOF] Testing WebSocket events...
+[PROOF] WS connected, waiting for events...
+[PROOF]   Event 1: type=status, seq=1, ts=1768521932678
+[PROOF]   Event 2: type=io:update, seq=2, ts=1768521932691
+[PROOF]   Event 3: type=io:update, seq=3, ts=1768521932791
+[PROOF] ✅ Received 3+ events with valid seq ordering
+[PROOF] Writing artifacts...
+[PROOF] ✅ JSON proof: /home/runner/work/redbyte-ui-genesis/redbyte-ui-genesis/ops/proof/fpga-proof-2026-01-16T00-05-32.json
+[PROOF] ✅ NDJSON events: /home/runner/work/redbyte-ui-genesis/redbyte-ui-genesis/ops/proof/fpga-events-2026-01-16T00-05-32.ndjson
+
+[PROOF SUMMARY]
+✅ Status: PASS
+📊 Events: 3 total (seq 1 to 3)
+⏱️  Timestamps: 1768521932678 to 1768521932791 (0s)
+🔐 Stream Hash: sha256:b922d4b6fd09790a...
+🔑 Signature: hmac-sha256:0596854de2787148...
+
+[RECENT I/O UPDATES]
+1. seq=2 ts=1768521932691 LED:0010110011111101 BTN:00100 SW:0010110011111101
+2. seq=3 ts=1768521932791 LED:0010010101110001 BTN:01000 SW:0010010101110001
+
+[SUCCESS] Bridge ran for 0s, captured 3 events, proof valid.
+════════════════════════════════════════

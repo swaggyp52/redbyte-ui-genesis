@@ -1,0 +1,3 @@
+{"type":"status","seq":1,"timestamp":1768521595709,"connected":true,"port":"MOCK","baud":115200,"lastMsgTs":null,"lastMsg":null}
+{"type":"io:update","seq":2,"timestamp":1768521595736,"source":"device","SW":"0010110011111101","BTN":"00100","LED":"0010110011111101","TICK":"0","ts_offset_ms":100}
+{"type":"io:update","seq":3,"timestamp":1768521595836,"source":"device","SW":"0010010101110001","BTN":"01000","LED":"0010010101110001","TICK":"1","ts_offset_ms":100}

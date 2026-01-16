@@ -16,11 +16,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { resolveRepoPath } from '../src/path-utils.js';
 
 // Parse CLI args
 const args = process.argv.slice(2);
@@ -40,20 +36,22 @@ if (!capsuleA || !capsuleB) {
   process.exit(1);
 }
 
-// Load capsules
+// Load capsules with shared path resolution
 function loadCapsule(capsulePath) {
-  if (!fs.existsSync(capsulePath)) {
-    throw new Error(`Capsule not found: ${capsulePath}`);
+  const resolvedPath = resolveRepoPath(capsulePath);
+  
+  if (!fs.existsSync(resolvedPath)) {
+    throw new Error(`Capsule not found: ${resolvedPath}`);
   }
   
-  const content = fs.readFileSync(capsulePath, 'utf8');
+  const content = fs.readFileSync(resolvedPath, 'utf8');
   const capsule = JSON.parse(content);
   
   // Load events (reference or inline)
   let events = [];
   if (capsule.events && typeof capsule.events === 'object' && capsule.events.path) {
     // Events reference format
-    const eventsPath = capsule.events.path;
+    const eventsPath = resolveRepoPath(capsule.events.path);
     if (!fs.existsSync(eventsPath)) {
       throw new Error(`Events file not found: ${eventsPath}`);
     }

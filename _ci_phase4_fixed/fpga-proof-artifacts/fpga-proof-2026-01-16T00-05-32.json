@@ -1,0 +1,50 @@
+{
+  "session_id": "proof-2026-01-16T00-05-32",
+  "timestamp": "2026-01-16T00:05:32.793Z",
+  "test_suite": {
+    "health_endpoint": true,
+    "websocket_events": true,
+    "seq_ordering": true
+  },
+  "events": [
+    {
+      "type": "status",
+      "seq": 1,
+      "timestamp": 1768521932678,
+      "connected": true,
+      "port": "MOCK",
+      "baud": 115200,
+      "lastMsgTs": null,
+      "lastMsg": null
+    },
+    {
+      "type": "io:update",
+      "seq": 2,
+      "timestamp": 1768521932691,
+      "source": "device",
+      "SW": "0010110011111101",
+      "BTN": "00100",
+      "LED": "0010110011111101",
+      "TICK": "0",
+      "ts_offset_ms": 100
+    },
+    {
+      "type": "io:update",
+      "seq": 3,
+      "timestamp": 1768521932791,
+      "source": "device",
+      "SW": "0010010101110001",
+      "BTN": "01000",
+      "LED": "0010010101110001",
+      "TICK": "1",
+      "ts_offset_ms": 100
+    }
+  ],
+  "summary": {
+    "passed": 2,
+    "failed": 0,
+    "total_events": 3
+  },
+  "stream_hash": "b922d4b6fd09790a7e5c6be1452778631a3ed02160e4539a71774e85ca13dc9a",
+  "signature": "0596854de27871486ebbbe0a96eb6703a3f7025718eb2fd1f11023479e38a1ac"
+}

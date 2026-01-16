@@ -1,0 +1,66 @@
+{
+  "status": "PASS",
+  "timestamp": "2026-01-15T23:59:56.738Z",
+  "summary": {
+    "total_events": 3,
+    "first_timestamp": 1768521595709,
+    "last_timestamp": 1768521595836,
+    "duration_sec": 0,
+    "seq_range": {
+      "start": 1,
+      "end": 3
+    },
+    "replay_hash": "sha256:7655e6a0778952dd21ed77b0f289cea65de44c4f1807c80b5879964f033580f9",
+    "failure_count": 0
+  },
+  "board_contract": {
+    "SW": 16,
+    "BTN": 5,
+    "LED": 16
+  },
+  "events": [
+    {
+      "seq": 1,
+      "type": "status",
+      "timestamp": 1768521595709,
+      "checks_passed": [
+        "seq_contiguous",
+        "timestamp_monotonic",
+        "type_status",
+        "status_event_ok"
+      ],
+      "checks_failed": [],
+      "valid": true
+    },
+    {
+      "seq": 2,
+      "type": "io:update",
+      "timestamp": 1768521595736,
+      "checks_passed": [
+        "seq_contiguous",
+        "timestamp_monotonic",
+        "type_io:update",
+        "sw_width_valid",
+        "btn_width_valid",
+        "led_width_valid"
+      ],
+      "checks_failed": [],
+      "valid": true
+    },
+    {
+      "seq": 3,
+      "type": "io:update",
+      "timestamp": 1768521595836,
+      "checks_passed": [
+        "seq_contiguous",
+        "timestamp_monotonic",
+        "type_io:update",
+        "sw_width_valid",
+        "btn_width_valid",
+        "led_width_valid"
+      ],
+      "checks_failed": [],
+      "valid": true
+    }
+  ]
+}

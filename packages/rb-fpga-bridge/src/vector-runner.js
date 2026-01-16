@@ -19,70 +19,12 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createHash, createHmac, randomBytes } from 'crypto';
 import { execSync } from 'child_process';
+import { findRepoRoot, resolveRepoPath } from './path-utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Resolve paths
-function findRepoRoot() {
-  try {
-    // Always use git to find true repo root, regardless of CWD
-    const root = execSync('git rev-parse --show-toplevel', { 
-      encoding: 'utf8', 
-      stdio: 'pipe',
-      cwd: __dirname  // Run from script directory to ensure git context
-    }).trim();
-    return root;
-  } catch {
-    // Fallback: walk upward from script directory looking for .git or pnpm-workspace.yaml
-    let current = __dirname;
-    for (let i = 0; i < 10; i++) {
-      if (readFileSync(resolve(current, '.git', 'config'), 'utf8') || 
-          readFileSync(resolve(current, 'pnpm-workspace.yaml'), 'utf8')) {
-        return current;
-      }
-      const parent = dirname(current);
-      if (parent === current) break;
-      current = parent;
-    }
-    // Last resort: use current working directory
-    return process.cwd();
-  }
-}
-
-/**
- * Resolve a path to absolute form, enforcing repo-root-relative semantics.
- * Non-negotiable invariant: all file IO uses resolved absolute paths.
- * @param {string} input - Raw path (may have quotes, forward/backslashes)
- * @returns {string} Absolute path
- */
-function resolveRepoPath(input) {
-  // Strip surrounding quotes
-  let clean = input.trim();
-  if ((clean.startsWith('"') && clean.endsWith('"')) ||
-      (clean.startsWith("'") && clean.endsWith("'"))) {
-    clean = clean.slice(1, -1);
-  }
-
-  // Reject path traversal
-  if (clean.includes('..')) {
-    throw new Error(`Path traversal not allowed: ${clean}`);
-  }
-
-  // Normalize slashes to backslashes (Windows)
-  const normalized = clean.replace(/\//g, '\\');
-
-  // If already absolute (has drive letter), return as-is
-  if (/^[A-Za-z]:/.test(normalized)) {
-    return normalized;
-  }
-
-  // Otherwise, treat as repo-root-relative
-  const REPO_ROOT = findRepoRoot();
-  const repoRootNorm = REPO_ROOT.replace(/\//g, '\\');
-  return repoRootNorm + '\\' + normalized;
-}
-
+// Resolve paths using shared utility
 const REPO_ROOT = findRepoRoot();
 const PROOF_DIR = resolve(REPO_ROOT, 'ops', 'proof');
 const BOARDS_FILE = resolve(__dirname, '..', 'boards', 'registry.json');
@@ -102,7 +44,6 @@ let vectorsFile = null;
 let dutMode = 'passthrough';
 let replayEnabled = false;
 
-// Parse CLI args
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--board') boardId = args[i + 1];
   if (args[i] === '--vectors') vectorsFile = args[i + 1];
@@ -489,13 +430,28 @@ async function main() {
       console.log(`\n[REPLAY] Skipped (use --replay or RB_FPGA_REPLAY=1 to enable)`);
     }
 
-    // Final summary (always last line, CI can parse this)
-    const finalVerdict = (verdict === 'PASS' && (replayVerdict === 'PASS' || replayVerdict === 'SKIPPED')) ? 'PASS' : 'FAIL';
-    const failReason = verdict === 'FAIL' ? 'vectors_failed' : (replayVerdict === 'FAIL' ? 'replay_failed' : null);
+    // Final summary (always last line, stable key-value order, CI-parsable)
+    // Non-fatal when skipped: only vector failures flip verdict
+    // Required (--replay or RB_FPGA_REPLAY=1): can fail the run
+    let finalVerdict = 'PASS';
+    let failReason = '';
     
-    console.log(`[FINAL] task=vectors verdict=${finalVerdict}${failReason ? ' reason=' + failReason : ''} capsule=${proofJsonPath}`);
+    if (verdict === 'FAIL') {
+      finalVerdict = 'FAIL';
+      failReason = 'vectors_failed';
+    } else if (replayEnabled && replayVerdict === 'FAIL') {
+      // Only fail if replay was explicitly enabled and it failed
+      finalVerdict = 'FAIL';
+      failReason = 'replay_failed';
+    }
+    // If replay was skipped (not enabled), PASS stays PASS
+    
+    const exitCode = verdict === 'FAIL' ? 1 : (replayEnabled && replayVerdict === 'FAIL' ? 1 : 0);
+    
+    // Stable format: no spaces in values, deterministic key order
+    console.log(`[FINAL] task=vectors verdict=${finalVerdict} board=${boardId} dut=${dutMode} vectors=${passed + failed} replay=${replayVerdict.toLowerCase()} capsule=${proofJsonPath}${failReason ? ' reason=' + failReason : ''}`);
 
-    process.exit(failed > 0 ? 1 : 0);
+    process.exit(exitCode);
 
   } catch (error) {
     console.error(`[ERROR] ${error.message}`);

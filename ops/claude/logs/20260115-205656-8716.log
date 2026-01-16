@@ -1,0 +1,21 @@
+[2026-01-15 20:56:56.882] [EXEC] claude_exec started
+[2026-01-15 20:56:56.882] [DEBUG] Prompt length: 475 chars
+[2026-01-15 20:56:56.894] [DEBUG] TimeoutSec: 45, MaxChars: 1800, MaxRetries: 2
+[2026-01-15 20:56:56.903] [INFO] Attempt 1 of 3
+[2026-01-15 20:56:56.915] [INFO] Launching claude with timeout 45s
+[2026-01-15 20:57:00.094] [DEBUG] Claude exited with code 1
+[2026-01-15 20:57:00.094] [WARN] Claude error: 
+[2026-01-15 20:57:00.102] [ERROR] Exception: Claude failed (exit 1): 
+[2026-01-15 20:57:00.110] [INFO] Retrying...
+[2026-01-15 20:57:01.129] [INFO] Attempt 2 of 3
+[2026-01-15 20:57:01.143] [INFO] Launching claude with timeout 45s
+[2026-01-15 20:57:03.767] [DEBUG] Claude exited with code 1
+[2026-01-15 20:57:03.769] [WARN] Claude error: 
+[2026-01-15 20:57:03.771] [ERROR] Exception: Claude failed (exit 1): 
+[2026-01-15 20:57:03.773] [INFO] Retrying...
+[2026-01-15 20:57:04.781] [INFO] Attempt 3 of 3
+[2026-01-15 20:57:04.784] [INFO] Launching claude with timeout 45s
+[2026-01-15 20:57:07.918] [DEBUG] Claude exited with code 1
+[2026-01-15 20:57:07.921] [WARN] Claude error: 
+[2026-01-15 20:57:07.923] [ERROR] Exception: Claude failed (exit 1): 
+[2026-01-15 20:57:07.925] [ERROR] All retries exhausted - giving up

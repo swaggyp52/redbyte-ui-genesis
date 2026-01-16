@@ -1,0 +1,19 @@
+Proof Artifacts Index
+====================
+
+Generated: 2026-01-16T00:05:32.796Z
+Session: proof-2026-01-16T00-05-32
+
+Files:
+1. fpga-proof-2026-01-16T00-05-32.json (0.83 KB)
+   - Proof capsule with events, stream hash, HMAC signature
+2. fpga-proof-2026-01-16T00-05-32.txt (1.66 KB)
+   - Human-readable summary with timestamps and I/O state
+3. fpga-events-2026-01-16T00-05-32.ndjson (NDJSON lines)
+   - Canonical event log, one JSON per line
+
+Verification:
+- All events have seq (integer), timestamp (unix ms), type (string)
+- Seq is contiguous starting from 1
+- HMAC signature (if present) is valid with RB_FPGA_HMAC_SECRET
+- Stream hash is deterministic for same event set
