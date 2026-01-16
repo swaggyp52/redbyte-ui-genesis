@@ -11,6 +11,7 @@
     "proof:run": "node src/proof-runner.js",
     "proof:verify": "node scripts/proof-verify.js",
     "proof:replay": "node scripts/proof-replay.js",
+    "test:vectors": "node src/vector-runner.js",
     "start": "node src/index.js"
   },
   "dependencies": {

@@ -1,0 +1,56 @@
+{
+  "board_id": "basys3",
+  "description": "Basic vector test suite for Basys3",
+  "vectors": [
+    {
+      "name": "All zeros",
+      "inputs": {
+        "SW": 0,
+        "BTN": 0
+      },
+      "expect": {
+        "LED": 0
+      }
+    },
+    {
+      "name": "SW[0]=1",
+      "inputs": {
+        "SW": 1,
+        "BTN": 0
+      },
+      "expect": {
+        "LED": 1
+      }
+    },
+    {
+      "name": "SW[1]=1",
+      "inputs": {
+        "SW": 2,
+        "BTN": 0
+      },
+      "expect": {
+        "LED": 2
+      }
+    },
+    {
+      "name": "SW[0:3]=7",
+      "inputs": {
+        "SW": 7,
+        "BTN": 0
+      },
+      "expect": {
+        "LED": 7
+      }
+    },
+    {
+      "name": "All switches on",
+      "inputs": {
+        "SW": 65535,
+        "BTN": 0
+      },
+      "expect": {
+        "LED": 65535
+      }
+    }
+  ]
+}
