@@ -7,8 +7,8 @@
  * - proof-replay-<ts>.json (structured results)
  *
  * Usage:
- *   node proof-replay.js fpga-proof-*.json [--outdir <path>] [--strict] [--max-events N]
- *   node proof-replay.js fpga-events-*.ndjson [--outdir <path>] [--strict] [--max-events N]
+ *   pnpm proof:replay ops/proof/fpga-proof-*.json [--outdir <path>] [--strict]
+ *   node scripts/proof-replay.js ops/proof/fpga-proof-*.json [--outdir <path>]
  *
  * Exit codes:
  *   0: replay successful, all events valid
@@ -24,10 +24,57 @@ import { dirname } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Find repo root by walking upward from script directory
+function findRepoRoot() {
+  let current = __dirname;
+  let levels = 0;
+  const maxLevels = 10;
+
+  while (levels < maxLevels) {
+    // Check for pnpm-workspace.yaml (preferred)
+    if (fs.existsSync(path.join(current, "pnpm-workspace.yaml"))) {
+      return current;
+    }
+    // Check for .git (acceptable)
+    if (fs.existsSync(path.join(current, ".git"))) {
+      return current;
+    }
+    // Move up
+    const parent = path.dirname(current);
+    if (parent === current) break; // reached filesystem root
+    current = parent;
+    levels++;
+  }
+
+  // Fallback: walk from process.cwd()
+  current = process.cwd();
+  levels = 0;
+  while (levels < maxLevels) {
+    if (fs.existsSync(path.join(current, "pnpm-workspace.yaml"))) {
+      return current;
+    }
+    if (fs.existsSync(path.join(current, ".git"))) {
+      return current;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+    levels++;
+  }
+
+  // Still not found - this is an error
+  throw new Error(
+    "[REPLAY] ERROR: Could not find repo root (looked for pnpm-workspace.yaml or .git). " +
+    "Make sure this script is run from within a repo."
+  );
+}
+
+const REPO_ROOT = findRepoRoot();
+
 // Parse CLI args
 const args = process.argv.slice(2);
-let inputPath = null;
-let outdir = path.resolve(__dirname, "../../..", "ops", "proof");
+let inputArg = null;
+let outdir = null;
 let strict = false;
 let maxEvents = Infinity;
 
@@ -39,19 +86,40 @@ for (let i = 0; i < args.length; i++) {
   } else if (args[i] === "--max-events" && args[i + 1]) {
     maxEvents = parseInt(args[++i], 10);
   } else if (!args[i].startsWith("--")) {
-    inputPath = args[i];
+    inputArg = args[i];
   }
 }
 
-if (!inputPath) {
-  console.error("[REPLAY] ❌ Usage: proof-replay.js <fpga-proof.json or fpga-events.ndjson> [--outdir <path>] [--strict]");
+if (!inputArg) {
+  console.error("[REPLAY] ERROR: Usage: proof-replay.js <proof.json or proof.ndjson> [--outdir <path>] [--strict]");
   process.exit(1);
 }
 
-// Resolve input path (relative or absolute)
-const resolvedInputPath = path.isAbsolute(inputPath) 
-  ? inputPath 
-  : path.resolve(__dirname, "..", "..", "..", inputPath);
+// Resolve input path relative to repo root
+const resolvedInputPath = path.isAbsolute(inputArg) 
+  ? inputArg 
+  : path.join(REPO_ROOT, inputArg);
+
+// Self-check: validate path resolution
+if (inputArg.startsWith("ops/proof/") && !resolvedInputPath.includes(REPO_ROOT)) {
+  console.error("[REPLAY] ERROR: Path resolution failed. Expected repo-root-relative behavior.");
+  console.error(`  Input: ${inputArg}`);
+  console.error(`  Resolved: ${resolvedInputPath}`);
+  console.error(`  Repo Root: ${REPO_ROOT}`);
+  process.exit(1);
+}
+
+// Resolve outdir
+if (!outdir) {
+  outdir = path.join(REPO_ROOT, "ops", "proof");
+} else if (!path.isAbsolute(outdir)) {
+  outdir = path.join(REPO_ROOT, outdir);
+}
+
+// Log resolved paths
+console.log(`[REPLAY] input: ${inputArg}`);
+console.log(`[REPLAY] resolved: ${resolvedInputPath}`);
+console.log(`[REPLAY] outdir: ${outdir}`);
 
 // Create outdir
 fs.mkdirSync(outdir, { recursive: true });
@@ -87,7 +155,6 @@ let lastSeq = 0;
 // Parse input
 let events = [];
 try {
-  // Resolve path (relative to CWD or absolute)
   const content = fs.readFileSync(resolvedInputPath, "utf8");
   
   if (resolvedInputPath.endsWith(".ndjson")) {
@@ -99,7 +166,7 @@ try {
         try {
           return JSON.parse(line);
         } catch (e) {
-          logError(`[REPLAY] ❌ Failed to parse NDJSON line: ${line}`);
+          logError(`[REPLAY] ERROR: Failed to parse NDJSON line: ${line}`);
           throw e;
         }
       });
@@ -108,20 +175,20 @@ try {
     const capsule = JSON.parse(content);
     events = capsule.events || [];
   } else {
-    logError(`[REPLAY] ❌ Unknown file format: ${resolvedInputPath}`);
+    logError(`[REPLAY] ERROR: Unknown file format: ${resolvedInputPath}`);
     process.exit(1);
   }
 } catch (e) {
-  logError(`[REPLAY] ❌ Failed to load proof file: ${e.message}`);
+  logError(`[REPLAY] ERROR: Failed to load proof file: ${e.message}`);
   process.exit(1);
 }
 
 if (events.length === 0) {
-  logError(`[REPLAY] ❌ No events found in proof`);
+  logError(`[REPLAY] ERROR: No events found in proof`);
   process.exit(1);
 }
 
-log(`[REPLAY] 📖 Replaying ${Math.min(events.length, maxEvents)} events...`);
+log(`[REPLAY] Replaying ${Math.min(events.length, maxEvents)} events...`);
 
 // Replay each event
 const normalizedEvents = [];
@@ -227,7 +294,7 @@ const status = failureCount === 0 ? "PASS" : "FAIL";
 const mdLines = [
   "# Proof Replay Report",
   "",
-  `**Status:** ${status === "PASS" ? "✅ PASS" : "❌ FAIL"}`,
+  `**Status:** ${status}`,
   `**Generated:** ${new Date().toISOString()}`,
   "",
   "## Summary",
@@ -246,7 +313,7 @@ const mdLines = [
 ];
 
 for (const result of eventResults) {
-  const status_icon = result.valid ? "✅" : "❌";
+  const status_icon = result.valid ? "OK" : "FAIL";
   const checks_str = result.checks_passed.join(", ") || "(none)";
   const failures_str = result.checks_failed.length > 0 ? result.checks_failed.join("; ") : "–";
   mdLines.push(`| ${result.seq} | ${result.type} | ${result.timestamp} | ${status_icon} | ${checks_str} | ${failures_str} |`);
@@ -282,23 +349,23 @@ const jsonReport = {
 // Write artifacts
 try {
   fs.writeFileSync(replayMd, mdContent, "utf8");
-  log(`[REPLAY] ✅ Report: ${replayMd}`);
+  log(`[REPLAY] OK Report: ${replayMd}`);
 
   fs.writeFileSync(replayJson, JSON.stringify(jsonReport, null, 2), "utf8");
-  log(`[REPLAY] ✅ JSON: ${replayJson}`);
+  log(`[REPLAY] OK JSON: ${replayJson}`);
 } catch (e) {
-  logError(`[REPLAY] ❌ Failed to write artifacts: ${e.message}`);
+  logError(`[REPLAY] ERROR: Failed to write artifacts: ${e.message}`);
   process.exit(1);
 }
 
 // Summary
 log("");
 log("[REPLAY SUMMARY]");
-log(`📊 Events: ${totalEvents} replayed`);
-log(`⏱️  Duration: ${durationSec}s`);
-log(`🔗 Replay Hash: sha256:${replayHashHex.slice(0, 16)}...`);
-log(`🚨 Failures: ${failureCount}`);
-log(`✅ Status: ${status}`);
+log(`Events: ${totalEvents} replayed`);
+log(`Duration: ${durationSec}s`);
+log(`Replay Hash: sha256:${replayHashHex.slice(0, 16)}...`);
+log(`Failures: ${failureCount}`);
+log(`Status: ${status}`);
 log("");
 
 process.exit(failureCount === 0 ? 0 : 1);
