@@ -10,13 +10,19 @@
  *   node scripts/diff-capsules.js --a ops/proof/vector-run-A.json --b ops/proof/vector-run-B.json
  * 
  * Exit codes:
- *   0: capsules identical or acceptable differences
- *   1: significant differences detected (regressions, mismatches)
+ *   0: capsules identical (MATCH)
+ *   1: capsules have differences (DIVERGED - regressions detected)
+ *   2: invalid input / unable to load / parse error (INVALID)
  */
 
 import fs from 'fs';
 import path from 'path';
 import { resolveRepoPath } from '../src/path-utils.js';
+
+// Exit code constants
+const EXIT_MATCH = 0;
+const EXIT_DIVERGED = 1;
+const EXIT_INVALID = 2;
 
 // Parse CLI args
 const args = process.argv.slice(2);
@@ -33,7 +39,7 @@ for (let i = 0; i < args.length; i++) {
 
 if (!capsuleA || !capsuleB) {
   console.error('[DIFF] ERROR: Usage: diff-capsules.js --a <capsuleA.json> --b <capsuleB.json>');
-  process.exit(1);
+  process.exit(EXIT_INVALID);
 }
 
 // Load capsules with shared path resolution
@@ -133,8 +139,15 @@ function getEventKey(normalized) {
 }
 
 console.log('[DIFF] Loading capsules...');
-const { capsule: capA, events: eventsA } = loadCapsule(capsuleA);
-const { capsule: capB, events: eventsB } = loadCapsule(capsuleB);
+
+let capA, capB, eventsA, eventsB;
+try {
+  ({ capsule: capA, events: eventsA } = loadCapsule(capsuleA));
+  ({ capsule: capB, events: eventsB } = loadCapsule(capsuleB));
+} catch (err) {
+  console.error(`[DIFF] ERROR: ${err.message}`);
+  process.exit(EXIT_INVALID);
+}
 
 // Compare metadata
 console.log('\n[DIFF] Metadata Comparison');
@@ -386,7 +399,7 @@ const hasDifferences =
 if (!hasDifferences) {
   console.log('✓ Capsules are functionally identical');
   console.log('[DIFF] verdict=MATCH');
-  process.exit(0);
+  process.exit(EXIT_MATCH);
 } else {
   console.log('✗ Significant differences detected:');
   if (verdictA !== verdictB) console.log(`  - Verdict changed: ${verdictA} → ${verdictB}`);
@@ -394,5 +407,5 @@ if (!hasDifferences) {
   if (firstDivergence) console.log(`  - Event stream divergence at index ${firstDivergence.index}`);
   if (eventCountDiff !== 0) console.log(`  - Event count changed by ${eventCountDiff}`);
   console.log('[DIFF] verdict=DIVERGED');
-  process.exit(1);
+  process.exit(EXIT_DIVERGED);
 }
