@@ -349,6 +349,12 @@ async function main() {
         passed,
         failed
       },
+      // Compat mirror: for schema uniformity with fpga-proof capsules
+      summary: {
+        passed,
+        failed,
+        total_events: eventCount
+      },
       results: results.map(r => ({
         name: r.name,
         result: r.result,
