@@ -38,6 +38,11 @@
         "agent:verify": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/agent-verify.ps1",
         "agent:plan": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/agent-plan.ps1",
         "agent:lab": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/agent-lab.ps1",
+        "ops:server": "node api/server.mjs",
+        "ops:smoke": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-smoke.ps1",
+        "ops:make-bundle": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-make-bundle.ps1",
+        "ops:ingest-test": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-ingest-test.ps1",
+        "ops:student-export-fixture-test": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-student-export-fixture-test.ps1",
         "bless:artifacts": "node ./scripts/bless-latest-artifacts.js"
     },
     "devDependencies": {

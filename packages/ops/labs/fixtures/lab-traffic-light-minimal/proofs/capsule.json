@@ -1,0 +1,22 @@
+{
+  "session_id": "fixture-minimal-test",
+  "timestamp": "2026-01-17T00:00:00Z",
+  "board_id": "test",
+  "board_snapshot": {
+    "id": "test",
+    "name": "Test Board",
+    "widths": {}
+  },
+  "netlist": {
+    "modules": []
+  },
+  "vectors": [
+    {
+      "vector_id": "1",
+      "timestamp": "2026-01-17T00:00:00Z",
+      "inputs": {},
+      "outputs": {},
+      "duration_ns": 1000
+    }
+  ]
+}
