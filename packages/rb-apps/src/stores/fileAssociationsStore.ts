@@ -102,8 +102,12 @@ function loadInitialState(): FileAssociationsState {
   };
 }
 
-export const useFileAssociationsStore = create<FileAssociationsStore>((set, get) => ({
-  ...loadInitialState(),
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _store: ReturnType<typeof createFileAssociationsStore> | null = null;
+
+function createFileAssociationsStore() {
+  return create<FileAssociationsStore>((set, get) => ({
+    ...loadInitialState(),
 
   getDefaultTarget: (resourceType, extension) => {
     const normalized = normalizeExtension(extension);
@@ -278,6 +282,28 @@ export const useFileAssociationsStore = create<FileAssociationsStore>((set, get)
     }
   },
 }));
+}
+
+// Export lazy-initialized store with same API as direct Zustand hook
+export const useFileAssociationsStore: ReturnType<typeof createFileAssociationsStore> = ((...args: any[]) => {
+  if (!_store) _store = createFileAssociationsStore();
+  return (_store as any)(...args);
+}) as any;
+
+(useFileAssociationsStore as any).getState = () => {
+  if (!_store) _store = createFileAssociationsStore();
+  return (_store as any).getState();
+};
+
+(useFileAssociationsStore as any).setState = (...a: any[]) => {
+  if (!_store) _store = createFileAssociationsStore();
+  return (_store as any).setState(...a);
+};
+
+(useFileAssociationsStore as any).subscribe = (...a: any[]) => {
+  if (!_store) _store = createFileAssociationsStore();
+  return (_store as any).subscribe(...a);
+};
 
 /**
  * Resolve default target for a file type with deterministic fallback.

@@ -130,16 +130,16 @@ function persistState(state: FileSystemState): void {
   localStorage.setItem(STORAGE_KEY, json);
 }
 
-/**
- * Global filesystem store for Files app and search provider.
- * Provides centralized access to filesystem state with persistence.
- */
-export const useFileSystemStore = create<FileSystemStore>((set, get) => {
-  // Load persisted state or fall back to default seed
-  const persistedState = loadPersistedState();
-  const initialState = persistedState || createInitialFsState();
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _store: ReturnType<typeof createFileSystemStore> | null = null;
 
-  return {
+function createFileSystemStore() {
+  return create<FileSystemStore>((set, get) => {
+    // Load persisted state or fall back to default seed
+    const persistedState = loadPersistedState();
+    const initialState = persistedState || createInitialFsState();
+
+    return {
     ...initialState,
 
     createFolder: (parentId, name) => {
@@ -327,4 +327,30 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => {
       set(seed);
     },
   };
-});
+  });
+}
+
+/**
+ * Global filesystem store for Files app and search provider.
+ * Provides centralized access to filesystem state with persistence.
+ * Lazy-initialized to prevent TDZ crash from circular imports.
+ */
+export const useFileSystemStore: ReturnType<typeof createFileSystemStore> = ((...args: any[]) => {
+  if (!_store) _store = createFileSystemStore();
+  return (_store as any)(...args);
+}) as any;
+
+(useFileSystemStore as any).getState = () => {
+  if (!_store) _store = createFileSystemStore();
+  return (_store as any).getState();
+};
+
+(useFileSystemStore as any).setState = (...a: any[]) => {
+  if (!_store) _store = createFileSystemStore();
+  return (_store as any).setState(...a);
+};
+
+(useFileSystemStore as any).subscribe = (...a: any[]) => {
+  if (!_store) _store = createFileSystemStore();
+  return (_store as any).subscribe(...a);
+};
