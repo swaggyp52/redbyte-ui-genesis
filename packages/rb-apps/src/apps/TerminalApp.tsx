@@ -7,7 +7,6 @@ import type { RedByteApp } from '../types';
 import { listExamples, type ExampleId } from '../examples';
 import { useSettingsStore, type ThemeVariant } from '@redbyte/rb-utils';
 import { useWindowStore } from '@redbyte/rb-windowing';
-import { getApp } from '../AppRegistry';
 import { deleteFile, getFile, listFiles } from '../stores/filesStore';
 
 interface TerminalProps {
@@ -46,7 +45,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
   const isThemeVariant = (value: string | undefined): value is ThemeVariant =>
     value === 'light' || value === 'dark' || value === 'system';
 
-  const listRunningApps = () => {
+  const listRunningApps = async () => {
     const windows = useWindowStore.getState().windows;
     const active = windows.filter((w) => w.mode !== 'minimized');
 
@@ -56,6 +55,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
     }
 
     addLine('Running apps:');
+    const { getApp } = await import('../AppRegistry');
     active.forEach((window) => {
       const app = getApp(window.contentId);
       const name = app?.manifest.name ?? window.contentId;
@@ -114,7 +114,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
       case 'apps': {
         const sub = args[0];
         if (!sub || sub === 'list') {
-          listRunningApps();
+          listRunningApps().catch(err => addLine(`Error: ${err.message}`, 'error'));
           break;
         }
         addLine('Usage: apps list', 'error');

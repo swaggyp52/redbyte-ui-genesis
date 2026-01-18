@@ -2,9 +2,8 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React from 'react';
-import { listApps, type RedByteApp } from '../AppRegistry';
-import type { RedByteApp as RedByteAppType } from '../types';
+import React, { useEffect, useState } from 'react';
+import type { RedByteApp } from '../types';
 import {
   TerminalIcon,
   SettingsIcon,
@@ -22,7 +21,15 @@ interface AppStoreProps {
 }
 
 const AppStoreComponent: React.FC<AppStoreProps> = ({ onOpenApp }) => {
-  const apps = listApps();
+  const [apps, setApps] = useState<RedByteApp[]>([]);
+
+  // Lazy load apps from registry to avoid circular import
+  useEffect(() => {
+    (async () => {
+      const { listApps } = await import('../AppRegistry');
+      setApps(listApps());
+    })();
+  }, []);
 
   const openApp = (app: RedByteApp) => {
     onOpenApp?.(app.manifest.id);
