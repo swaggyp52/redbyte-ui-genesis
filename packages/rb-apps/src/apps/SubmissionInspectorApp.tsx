@@ -14,7 +14,7 @@ interface BundleData {
   hardware?: Record<string, any>;
   grade?: {
     json?: Record<string, any>;
-    md?: string;
+    md?: string | null;
   };
 }
 
@@ -94,16 +94,16 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = () => {
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    e.currentTarget.style.background = 'rgba(0, 135, 255, 0.1)';
+    (e.currentTarget as HTMLElement).style.background = 'rgba(0, 135, 255, 0.1)';
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
-    e.currentTarget.style.background = '';
+    (e.currentTarget as HTMLElement).style.background = '';
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    e.currentTarget.style.background = '';
+    (e.currentTarget as HTMLElement).style.background = '';
     const file = e.dataTransfer.files?.[0];
     if (file && file.name.endsWith('.rb-lab.zip')) {
       parseBundle(file);
@@ -139,6 +139,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = () => {
             accept=".rb-lab.zip"
             onChange={handleFileSelect}
             style={{ display: 'none' }}
+            aria-label="Upload submission file"
           />
         </div>
 
