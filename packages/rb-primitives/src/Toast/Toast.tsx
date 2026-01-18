@@ -45,6 +45,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
   const remainingTimeRef = useRef<number>(toast.duration || 0);
 
   const style = kindStyles[toast.kind];
+  const ariaLive = toast.kind === 'error' ? 'assertive' : 'polite';
 
   useEffect(() => {
     if (!toast.duration) return;
@@ -92,7 +93,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       role="alert"
-      aria-live={toast.kind === 'error' ? 'assertive' : 'polite'}
+      aria-live={ariaLive}
       aria-atomic="true"
     >
       <div className="flex items-start gap-3">
