@@ -124,7 +124,11 @@ function setWithInvariants(
   assertWindowInvariants(state.windows);
 }
 
-export const useWindowStore = create<WindowManagerStore>((set, get) => ({
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _store: ReturnType<typeof createWindowStore> | null = null;
+
+function createWindowStore() {
+  return create<WindowManagerStore>((set, get) => ({
   // State
   windows: [],
   nextZIndex: 1,
@@ -426,8 +430,47 @@ export const useWindowStore = create<WindowManagerStore>((set, get) => ({
     return [...get().windows].sort((a, b) => a.zIndex - b.zIndex);
   },
 }));
+}
 
-// Auto-persist session on window state changes
-useWindowStore.subscribe((state) => {
-  saveSession(state.windows, state.nextZIndex);
-});
+// Export lazy-initialized store with same API as direct Zustand hook
+export const useWindowStore: ReturnType<typeof createWindowStore> = ((...args: any[]) => {
+  if (!_store) {
+    _store = createWindowStore();
+    // Auto-persist session on window state changes
+    _store.subscribe((state) => {
+      saveSession(state.windows, state.nextZIndex);
+    });
+  }
+  return (_store as any)(...args);
+}) as any;
+
+// Forward Zustand store methods so external code works
+(useWindowStore as any).getState = () => {
+  if (!_store) {
+    _store = createWindowStore();
+    _store.subscribe((state) => {
+      saveSession(state.windows, state.nextZIndex);
+    });
+  }
+  return (_store as any).getState();
+};
+
+(useWindowStore as any).setState = (...a: any[]) => {
+  if (!_store) {
+    _store = createWindowStore();
+    _store.subscribe((state) => {
+      saveSession(state.windows, state.nextZIndex);
+    });
+  }
+  return (_store as any).setState(...a);
+};
+
+(useWindowStore as any).subscribe = (...a: any[]) => {
+  if (!_store) {
+    _store = createWindowStore();
+    _store.subscribe((state) => {
+      saveSession(state.windows, state.nextZIndex);
+    });
+  }
+  return (_store as any).subscribe(...a);
+};
