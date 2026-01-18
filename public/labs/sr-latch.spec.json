@@ -1,0 +1,17 @@
+{
+  "lab_id": "sr-latch",
+  "title": "SR Latch",
+  "description": "Build a set-reset latch using NOR gates. This lab tests your understanding of state-holding memory elements and cross-coupled gates.",
+  "constraints": {
+    "allowedGates": ["NOR", "NAND", "NOT"],
+    "maxGates": 8,
+    "requiredInputs": ["SET", "RESET"],
+    "requiredOutputs": ["Q", "Q_BAR"]
+  },
+  "studentVectors": [
+    {"id": "sv-1", "name": "Initial state", "inputs": {"SET": 0, "RESET": 0}},
+    {"id": "sv-2", "name": "Set Q high", "inputs": {"SET": 1, "RESET": 0}},
+    {"id": "sv-3", "name": "Release SET", "inputs": {"SET": 0, "RESET": 0}},
+    {"id": "sv-4", "name": "Reset Q low", "inputs": {"SET": 0, "RESET": 1}}
+  ]
+}

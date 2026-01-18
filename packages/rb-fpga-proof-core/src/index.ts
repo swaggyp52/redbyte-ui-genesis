@@ -3,7 +3,21 @@
  * Pure functions: no side effects, works in browser and Node.js
  */
 
-import {
+// Re-export all types for consumers
+export type {
+  Capsule,
+  ProofEvent,
+  NormalizedEvent,
+  VectorResult,
+  VerifyResult,
+  DiffResult,
+  VectorRow,
+  TimelineRow,
+  SummaryCardModel,
+  GradeReport,
+} from './types';
+
+import type {
   Capsule,
   ProofEvent,
   NormalizedEvent,
@@ -48,12 +62,12 @@ export function parseCapsule(input: string | object): Capsule {
   }
 
   // Dual schema: accept either summary or test_summary
-  const summary = (obj.summary || obj.test_summary) as SummaryCardModel | undefined;
+  const summary = (capsule.summary || (capsule as any).test_summary) as SummaryCardModel | undefined;
   if (!summary) {
     // Graceful fallback: compute from vectors
-    const vectors = obj.vectors as VectorResult[];
+    const vectors = capsule.vectors as VectorResult[];
     const pass = vectors.filter((v) => v.pass).length;
-    obj.summary = {
+    (capsule as any).summary = {
       total: vectors.length,
       pass,
       fail: vectors.length - pass,
@@ -216,8 +230,8 @@ export function buildTimelineRows(events: ProofEvent[]): TimelineRow[] {
 export function summarizeCapsule(capsule: Capsule): SummaryCardModel {
   // Prefer explicit summary
   if (capsule.summary) return capsule.summary;
-  if ((capsule as Record<string, unknown>).test_summary) {
-    return (capsule as Record<string, unknown>).test_summary as SummaryCardModel;
+  if ((capsule as any).test_summary) {
+    return (capsule as any).test_summary as SummaryCardModel;
   }
 
   // Compute from vectors
@@ -253,8 +267,8 @@ export function diffCapsules(
       };
     }
 
-    const summaryA = a.summary || (a as Record<string, unknown>).test_summary;
-    const summaryB = b.summary || (b as Record<string, unknown>).test_summary;
+    const summaryA = a.summary || (a as any).test_summary;
+    const summaryB = b.summary || (b as any).test_summary;
 
     if (!summaryA || !summaryB) {
       return {

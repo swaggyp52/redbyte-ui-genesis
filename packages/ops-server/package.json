@@ -1,0 +1,24 @@
+{
+  "name": "ops-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node -e \"console.log('ops-server: skipped (using api/server.mjs)')\"",
+    "start": "node -e \"console.log('ops-server: skipped (using api/server.mjs)')\"",
+    "build": "node -e \"console.log('ops-server: skipped (using api/server.mjs)')\""
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^20.10.6",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0"
+  }
+}

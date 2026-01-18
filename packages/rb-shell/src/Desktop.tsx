@@ -60,10 +60,12 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
     // Grid-aligned icons with Logic Playground featured
     const base: DesktopIconData[] = [
       { id: 'logic', title: 'Logic Playground', appId: 'logic-playground', iconId: 'logic', x: GRID_START_X, y: GRID_START_Y },
-      { id: 'files', title: 'Files', appId: 'files', iconId: 'files', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING },
-      { id: 'settings', title: 'Settings', appId: 'settings', iconId: 'settings', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 2 },
-      { id: 'terminal', title: 'Terminal', appId: 'terminal', iconId: 'terminal', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 3 },
-      { id: 'user-manual', title: 'User Manual', appId: 'user-manual', iconId: 'document', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 4 },
+      { id: 'student-lab', title: 'Lab Workbench', appId: 'student-lab', iconId: 'chip', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING },
+      { id: 'submission-inspector', title: 'Submission Inspector', appId: 'submission-inspector', iconId: 'folder', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 2 },
+      { id: 'files', title: 'Files', appId: 'files', iconId: 'files', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 3 },
+      { id: 'settings', title: 'Settings', appId: 'settings', iconId: 'settings', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 4 },
+      { id: 'terminal', title: 'Terminal', appId: 'terminal', iconId: 'terminal', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 5 },
+      { id: 'user-manual', title: 'User Manual', appId: 'user-manual', iconId: 'document', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 6 },
     ];
     return base;
   });

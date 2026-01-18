@@ -1,0 +1,15 @@
+{
+  "lab_id": "sr-latch",
+  "presets": [
+    {
+      "id": "no_memory",
+      "name": "No Memory",
+      "description": "Latch doesn't hold state when SET/RESET released. Expected: FAIL",
+      "vectors": [
+        {"id": "sv-1", "name": "Initial state", "pass": true},
+        {"id": "sv-2", "name": "Set Q high", "pass": true},
+        {"id": "sv-3", "name": "Release SET", "pass": false, "error": "Q should stay 1 but went to 0"}
+      ]
+    }
+  ]
+}

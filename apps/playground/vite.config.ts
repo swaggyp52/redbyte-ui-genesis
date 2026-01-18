@@ -52,6 +52,10 @@ export default defineConfig({
       },
     },
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        lab: path.resolve(__dirname, 'lab.html'),
+      },
       output: {
         manualChunks(id) {
   // Ensure Zustand + use-sync-external-store load with React to avoid prod init-order crash

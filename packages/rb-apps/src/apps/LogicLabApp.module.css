@@ -1,0 +1,1387 @@
+/* LogicLabApp - OLED Luxury Styling */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #0a0a0a;
+  color: #f8fafc;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #222;
+  background: #111;
+}
+
+.title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #22d3ee;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.labId {
+  margin: 0;
+  font-size: 0.875rem;
+  font-family: 'Courier New', monospace;
+  color: #94a3b8;
+}
+
+/* Attempt Info (shown during attempt phase) */
+.attemptInfo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.attemptBadge {
+  background: rgba(34, 211, 238, 0.15);
+  color: #22d3ee;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.attemptMeta {
+  font-size: 0.75rem;
+  font-family: 'Courier New', monospace;
+  color: #64748b;
+}
+
+/* ============================================================================
+   Lab Selection Phase
+   ============================================================================ */
+
+.selectContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.section {
+  margin-bottom: 2.5rem;
+}
+
+.sectionTitle {
+  margin: 0 0 1.25rem 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.inputGroup {
+  margin-bottom: 1rem;
+}
+
+.label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.required {
+  color: #f43f5e;
+}
+
+.optional {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.input {
+  width: 100%;
+  max-width: 400px;
+  padding: 0.75rem 1rem;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #f8fafc;
+  font-size: 0.875rem;
+  transition: border-color 0.2s;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #22d3ee;
+}
+
+.input::placeholder {
+  color: #64748b;
+}
+
+/* Lab Selection Grid */
+.labGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.labCard {
+  background: #111;
+  border: 2px solid #222;
+  border-radius: 8px;
+  padding: 1.25rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.labCard:hover {
+  border-color: #333;
+  background: #151515;
+}
+
+.labCardSelected {
+  border-color: #22d3ee;
+  background: rgba(34, 211, 238, 0.05);
+}
+
+.labCardTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f8fafc;
+  margin-bottom: 0.25rem;
+}
+
+.labCardId {
+  font-size: 0.75rem;
+  font-family: 'Courier New', monospace;
+  color: #64748b;
+  margin-bottom: 0.75rem;
+}
+
+.labCardDesc {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+/* Start Section */
+.startSection {
+  text-align: center;
+  padding-top: 1rem;
+}
+
+.startButton {
+  background: #22d3ee;
+  color: #0a0a0a;
+  border: none;
+  padding: 1rem 2.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.startButton:hover:not(:disabled) {
+  background: #06b6d4;
+}
+
+.startButtonDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hint {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.loadingText {
+  color: #94a3b8;
+  margin-bottom: 1rem;
+}
+
+.errorText {
+  color: #f43f5e;
+  margin-bottom: 1rem;
+}
+
+/* ============================================================================
+   Tabs (Attempt Phase)
+   ============================================================================ */
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #222;
+  background: #0a0a0a;
+  padding: 0 2rem;
+}
+
+.tab {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tab:hover {
+  color: #f8fafc;
+  background: rgba(34, 211, 238, 0.05);
+}
+
+.tabActive {
+  color: #22d3ee;
+  border-bottom-color: #22d3ee;
+}
+
+.tabBadge {
+  background: rgba(34, 211, 238, 0.15);
+  color: #22d3ee;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-family: 'Courier New', monospace;
+}
+
+/* ============================================================================
+   Content Panels
+   ============================================================================ */
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+.panel {
+  max-width: 900px;
+}
+
+.panelTitle {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.description {
+  margin: 0 0 2rem 0;
+  line-height: 1.6;
+  color: #94a3b8;
+}
+
+/* Constraints */
+.constraints {
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 6px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.constraints h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #22d3ee;
+}
+
+.constraint {
+  display: flex;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.constraint:last-child {
+  border-bottom: none;
+}
+
+.constraintLabel {
+  font-weight: 500;
+  color: #94a3b8;
+  min-width: 150px;
+}
+
+.constraintValue {
+  font-family: 'Courier New', monospace;
+  color: #f8fafc;
+}
+
+/* Vectors */
+.vectors {
+  margin-top: 2rem;
+}
+
+.vectors h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #22d3ee;
+}
+
+.vector {
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.vectorName {
+  font-weight: 500;
+  color: #f8fafc;
+  margin-bottom: 0.5rem;
+}
+
+.vectorInputs {
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+/* Coming Soon (Build placeholder) */
+.comingSoon {
+  padding: 3rem;
+  text-align: center;
+  background: #111;
+  border: 1px dashed #333;
+  border-radius: 8px;
+}
+
+.comingSoonIcon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.comingSoonTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #f8fafc;
+  margin-bottom: 1rem;
+}
+
+.comingSoonText {
+  color: #94a3b8;
+  line-height: 1.6;
+  max-width: 500px;
+  margin: 0 auto 1rem;
+}
+
+.comingSoonNote {
+  font-size: 0.875rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* ============================================================================
+   Build Tab - Preset Selector (Option B)
+   ============================================================================ */
+
+.buildInfo {
+  color: #94a3b8;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.presetGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.presetCard {
+  background: #111;
+  border: 2px solid #222;
+  border-radius: 8px;
+  padding: 1.25rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.presetCard:hover {
+  border-color: #333;
+  background: #151515;
+}
+
+.presetCardSelected {
+  border-color: #22d3ee;
+  background: rgba(34, 211, 238, 0.05);
+}
+
+.presetCardTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f8fafc;
+  margin-bottom: 0.5rem;
+}
+
+.presetCardDesc {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  line-height: 1.4;
+  margin-bottom: 0.75rem;
+}
+
+.presetCardVectors {
+  font-size: 0.75rem;
+  font-family: 'Courier New', monospace;
+  color: #64748b;
+  padding-top: 0.75rem;
+  border-top: 1px solid #222;
+}
+
+.selectedPresetInfo {
+  background: rgba(34, 211, 238, 0.05);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: 6px;
+  padding: 1.25rem;
+  margin-top: 1rem;
+}
+
+.selectedPresetInfo h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #22d3ee;
+}
+
+.selectedPresetInfo p {
+  margin: 0 0 1rem 0;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
+
+.nextStepHint {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.nextStepHint strong {
+  color: #22d3ee;
+}
+
+/* ============================================================================
+   Self-Check
+   ============================================================================ */
+
+.selfCheckInfo {
+  color: #94a3b8;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.noPresetWarning {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  color: #fbbf24;
+  font-size: 0.875rem;
+}
+
+.noPresetWarning strong {
+  color: #fbbf24;
+}
+
+.presetIndicator {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.presetIndicator strong {
+  color: #22d3ee;
+}
+
+.checkButton {
+  background: #22d3ee;
+  color: #0a0a0a;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.checkButton:hover:not(:disabled) {
+  background: #06b6d4;
+}
+
+.checkButtonDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.selfCheckSummary {
+  margin-top: 2rem;
+}
+
+.summaryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #222;
+}
+
+.summaryScore {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.summaryTime {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.results {
+  margin-top: 1rem;
+}
+
+.result {
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.resultPass {
+  border-left: 3px solid #22d3ee;
+}
+
+.resultFail {
+  border-left: 3px solid #f43f5e;
+}
+
+.resultHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.resultName {
+  font-weight: 500;
+  color: #f8fafc;
+}
+
+.badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+}
+
+.badgePass {
+  background: rgba(34, 211, 238, 0.15);
+  color: #22d3ee;
+}
+
+.badgeFail {
+  background: rgba(244, 63, 94, 0.15);
+  color: #f43f5e;
+}
+
+.mismatch {
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  background: #0a0a0a;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-family: 'Courier New', monospace;
+  color: #94a3b8;
+}
+
+/* ============================================================================
+   Export Tab
+   ============================================================================ */
+
+.exportSummary {
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 6px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.exportSummary h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #22d3ee;
+}
+
+.summaryRow {
+  display: flex;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.summaryLabel {
+  font-weight: 500;
+  color: #64748b;
+  min-width: 100px;
+}
+
+.summaryValue {
+  font-family: 'Courier New', monospace;
+  color: #f8fafc;
+}
+
+.warningBanner {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  color: #fbbf24;
+  font-size: 0.875rem;
+}
+
+.exportRequirements {
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 6px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.exportRequirements h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #f43f5e;
+}
+
+.exportRequirements ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.requirementItem {
+  color: #94a3b8;
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.exportButton {
+  background: #22d3ee;
+  color: #0a0a0a;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.exportButton:hover:not(:disabled) {
+  background: #06b6d4;
+}
+
+.exportButtonDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.exportInfo {
+  margin-bottom: 1.5rem;
+  color: #94a3b8;
+}
+
+/* ============================================================================
+   Modal
+   ============================================================================ */
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 450px;
+  width: 90%;
+}
+
+.modalTitle {
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.modalText {
+  color: #94a3b8;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+.modalText strong {
+  color: #f8fafc;
+}
+
+.modalButtons {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.modalCancel {
+  background: transparent;
+  border: 1px solid #333;
+  color: #94a3b8;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modalCancel:hover {
+  border-color: #444;
+  color: #f8fafc;
+}
+
+.modalConfirm {
+  background: #22d3ee;
+  color: #0a0a0a;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modalConfirm:hover {
+  background: #06b6d4;
+}
+
+/* ============================================================================
+   Exported Success Phase
+   ============================================================================ */
+
+.exportedContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.successIcon {
+  width: 80px;
+  height: 80px;
+  background: rgba(34, 211, 238, 0.15);
+  border: 2px solid #22d3ee;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  color: #22d3ee;
+  margin-bottom: 1.5rem;
+}
+
+.successTitle {
+  margin: 0 0 2rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.exportDetails {
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 8px;
+  padding: 1.5rem 2rem;
+  text-align: left;
+  margin-bottom: 2rem;
+  min-width: 400px;
+}
+
+.exportDetailRow {
+  display: flex;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.exportDetailRow:last-child {
+  border-bottom: none;
+}
+
+.exportDetailLabel {
+  font-weight: 500;
+  color: #64748b;
+  min-width: 100px;
+}
+
+.exportDetailValue {
+  font-family: 'Courier New', monospace;
+  color: #f8fafc;
+  word-break: break-all;
+}
+
+.exportInstructions {
+  color: #94a3b8;
+  max-width: 400px;
+  line-height: 1.5;
+  margin-bottom: 2rem;
+}
+
+.newAttemptButton {
+  background: transparent;
+  border: 1px solid #333;
+  color: #94a3b8;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.newAttemptButton:hover {
+  border-color: #22d3ee;
+  color: #22d3ee;
+}
+
+/* ============================================================================
+   Loading / Error States
+   ============================================================================ */
+
+.loading,
+.error {
+  padding: 3rem;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.error {
+  color: #f43f5e;
+}
+
+.placeholder {
+  padding: 3rem;
+  text-align: center;
+  color: #94a3b8;
+  background: #111;
+  border: 1px dashed #222;
+  border-radius: 6px;
+}
+
+.status {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 4px;
+  color: #94a3b8;
+}
+
+/* ============================================================================
+   Progress Indicator
+   ============================================================================ */
+
+.progressBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  background: #0a0a0a;
+  border-bottom: 1px solid #222;
+}
+
+.progressStep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+}
+
+.progressStepNumber {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #1a1a1a;
+  border: 2px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+  transition: all 0.2s;
+}
+
+.progressStepLabel {
+  font-size: 0.75rem;
+  color: #64748b;
+  transition: all 0.2s;
+}
+
+.progressStepActive .progressStepNumber {
+  background: rgba(34, 211, 238, 0.15);
+  border-color: #22d3ee;
+  color: #22d3ee;
+}
+
+.progressStepActive .progressStepLabel {
+  color: #22d3ee;
+  font-weight: 600;
+}
+
+.progressStepComplete .progressStepNumber {
+  background: rgba(34, 211, 238, 0.1);
+  border-color: #22d3ee;
+  color: #22d3ee;
+}
+
+.progressStepComplete .progressStepLabel {
+  color: #94a3b8;
+}
+
+/* ============================================================================
+   Receipt Screen
+   ============================================================================ */
+
+.receiptContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.receiptCard {
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 8px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.receiptSection {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.receiptSection:last-child {
+  border-bottom: none;
+}
+
+.receiptSectionTitle {
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #22d3ee;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.receiptRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  gap: 2rem;
+}
+
+.receiptLabel {
+  font-size: 0.875rem;
+  color: #64748b;
+  min-width: 120px;
+}
+
+.receiptValue {
+  font-size: 0.875rem;
+  color: #f8fafc;
+  text-align: right;
+  word-break: break-word;
+}
+
+.receiptValueMono {
+  font-size: 0.75rem;
+  font-family: 'Courier New', monospace;
+  color: #f8fafc;
+  text-align: right;
+  word-break: break-all;
+}
+
+.receiptActions {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  justify-content: center;
+}
+
+.receiptActionButton {
+  background: #22d3ee;
+  color: #0a0a0a;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.receiptActionButton:hover {
+  background: #06b6d4;
+}
+
+.receiptInstructions {
+  text-align: center;
+  color: #94a3b8;
+  margin-bottom: 2rem;
+  line-height: 1.5;
+}
+
+/* ============================================================================
+   Error Banner
+   ============================================================================ */
+
+.errorBanner {
+  background: rgba(244, 63, 94, 0.1);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  color: #f43f5e;
+  font-size: 0.875rem;
+}
+
+/* Hardware Tab Styles */
+.hardwareInfo {
+  margin-bottom: 1.5rem;
+  font-size: 0.9375rem;
+  color: #94a3b8;
+}
+
+.hardwareStatus {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.statusCard {
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.statusLabel {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.statusValue {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.statusOnline {
+  color: #10b981;
+}
+
+.statusOffline {
+  color: #6b7280;
+}
+
+.statusDetail {
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  margin-top: 0.375rem;
+}
+
+.statusHint {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+.statusHint code {
+  display: block;
+  margin-top: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  color: #22d3ee;
+}
+
+.hardwareActions {
+  margin-bottom: 2rem;
+}
+
+.captureButton {
+  background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+  color: #000;
+  border: none;
+  padding: 0.875rem 1.75rem;
+  border-radius: 6px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.captureButton:hover {
+  transform: translateY(-1px);
+}
+
+.actionHint {
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.snapshotsList {
+  margin-top: 2rem;
+}
+
+.snapshotsList h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f8fafc;
+  margin: 0 0 1rem 0;
+}
+
+.emptySnapshots {
+  padding: 2rem;
+  text-align: center;
+  background: #111;
+  border: 1px dashed #333;
+  border-radius: 8px;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.snapshotCard {
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.snapshotHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #222;
+}
+
+.snapshotTime {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  font-family: 'Courier New', monospace;
+}
+
+.snapshotSource {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.sourceBridge {
+  background: rgba(34, 211, 238, 0.15);
+  color: #22d3ee;
+  border: 1px solid rgba(34, 211, 238, 0.3);
+}
+
+.sourceManual {
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.snapshotData {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.snapshotDataRow {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.snapshotDataLabel {
+  color: #64748b;
+  font-weight: 500;
+  min-width: 60px;
+}
+
+.snapshotDataValue {
+  color: #f8fafc;
+  font-family: 'Courier New', monospace;
+  flex: 1;
+}
+
+/* Manual Snapshot Modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 480px;
+  width: 90%;
+}
+
+.modalTitle {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.modalInfo {
+  margin: 0 0 1.5rem 0;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.modalField {
+  margin-bottom: 1.25rem;
+}
+
+.modalLabel {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #cbd5e1;
+}
+
+.modalInput {
+  width: 100%;
+  padding: 0.75rem;
+  background: #0a0a0a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #f8fafc;
+  font-size: 0.875rem;
+  font-family: 'Courier New', monospace;
+}
+
+.modalInput:focus {
+  outline: none;
+  border-color: #22d3ee;
+}
+
+.modalActions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.modalButtonSecondary {
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modalButtonSecondary:hover {
+  border-color: #525252;
+  color: #f8fafc;
+}
+
+.modalButtonPrimary {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+  border: none;
+  border-radius: 6px;
+  color: #000;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.modalButtonPrimary:hover {
+  transform: translateY(-1px);
+}

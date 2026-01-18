@@ -40,6 +40,10 @@ node_modules/
 # Proof logs (local-only)
 ops/proof/*
 
+# Lab run outputs (local-only)
+packages/ops/labs/runs/
+packages/ops/labs/tmp/
+
 # CI artifact downloads (local-only)
 _ci_artifacts*/
 
@@ -51,3 +55,6 @@ pr-description.txt
 
 # Unignore fpga bridge contract (part of official spec)
 !packages/rb-fpga-bridge/BRIDGE_CONTRACT.md
+
+# Lab run outputs (local-only)
+packages/ops/labs/runs/

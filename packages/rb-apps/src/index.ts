@@ -40,6 +40,11 @@ export async function registerAllApps() {
   const { UserManualApp } = await import('./apps/UserManualApp');
   const { HardwarePanelApp } = await import('./apps/HardwarePanelApp');
   const { FpgaProofViewerApp } = await import('./apps/FpgaProofViewerApp');
+  const LabExaminerAppRegistry = (await import('./apps/LabExaminerAppRegistry')).default;
+  const { InstructorApp } = await import('./apps/InstructorApp');
+  const { InstructorRunDetailApp } = await import('./apps/InstructorRunDetailApp');
+  const { StudentLabApp } = await import('./apps/StudentLabApp');
+  const { SubmissionInspectorApp } = await import('./apps/SubmissionInspectorApp');
 
   registerApp(TerminalApp);
   registerApp(SettingsApp);
@@ -58,4 +63,9 @@ export async function registerAllApps() {
   registerApp(UserManualApp);
   registerApp(HardwarePanelApp);
   registerApp(FpgaProofViewerApp);
+  registerApp(LabExaminerAppRegistry);
+  registerApp(InstructorApp);
+  registerApp(InstructorRunDetailApp);
+  registerApp(StudentLabApp);
+  registerApp(SubmissionInspectorApp);
 }

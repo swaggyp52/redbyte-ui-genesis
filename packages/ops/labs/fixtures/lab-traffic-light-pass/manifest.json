@@ -1,0 +1,13 @@
+{
+  "schema_version": "v1",
+  "lab_id": "lab-traffic-light-pass",
+  "student": {
+    "id": "test-fixture-student-pass",
+    "name": "Test Fixture Pass"
+  },
+  "created_at": "2026-01-18T00:00:00Z",
+  "proof": {
+    "capsule_path": "proofs/capsule.json",
+    "events_path": "proofs/events.ndjson"
+  }
+}

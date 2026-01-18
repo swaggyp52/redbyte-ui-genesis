@@ -93,7 +93,10 @@
       "Bash(pnpm run lint:*)",
       "Bash(pnpm -w run lint:*)",
       "Bash(git stash:*)",
-      "Bash(npx vitest:*)"
+      "Bash(npx vitest:*)",
+      "Bash(Select-String \"ops:|agent:\")",
+      "Bash(node scripts/generate-student-export.js:*)",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-liveness.ps1:*)"
     ],
     "deny": [],
     "ask": []

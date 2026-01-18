@@ -25,9 +25,11 @@
     "@redbyte/rb-logic-view": "workspace:*",
     "@redbyte/rb-theme": "workspace:*",
     "@redbyte/rb-utils": "workspace:*",
+    "jszip": "^3.10.1",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@types/jszip": "^3.4.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.0.6",
     "jsdom": "^27.2.0",

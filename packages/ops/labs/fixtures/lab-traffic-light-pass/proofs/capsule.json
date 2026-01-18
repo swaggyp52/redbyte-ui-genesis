@@ -1,0 +1,28 @@
+{
+  "session_id": "fixture-pass",
+  "timestamp": "2026-01-18T00:00:00Z",
+  "board_id": "test",
+  "board_snapshot": {
+    "id": "test",
+    "name": "Test Board",
+    "widths": {}
+  },
+  "netlist": {
+    "modules": []
+  },
+  "vectors": [
+    {
+      "id": "v1",
+      "name": "pass-vector",
+      "inputs": {},
+      "outputs": {},
+      "duration_ns": 1000,
+      "pass": true
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "pass": 1,
+    "fail": 0
+  }
+}

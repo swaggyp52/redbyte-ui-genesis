@@ -71,7 +71,7 @@ export interface DiffResult {
   exitCode: 0 | 1 | 2;
   summary: string;
   firstMismatch?: {
-    vectorId: string;
+    vectorId?: string;
     tick?: number;
     detail: string;
   };

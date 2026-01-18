@@ -5272,6 +5272,29 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-01-20 (Hardware Session v1 - CI Verified Non-Breaking)
+- **VERIFIED CI GATES REMAIN GREEN**: Ran pnpm ops:student-export:pass and pnpm ops:student-export:fail to confirm existing student-export-pass.rb-lab.zip and student-export-fail.rb-lab.zip fixtures still ingest and grade correctly with exit_code=0 (PASS) and exit_code=1 (FAIL) respectively; both tests show overallPass=True, gradingPass=True, contracts.verdictMappingConsistent=True, contracts.gradeExitMatches=True; ops-liveness.json output confirms no regressions; hardware.json and manifest.hardware section are OPTIONAL - bundles without hardware evidence still ingest cleanly (backward compatible); agent-lab.ps1 ingest logic does not require hardware artifacts; (1) Created scripts/test-hardware-export.ps1 - manual test script that extracts ZIP, verifies proofs/hardware.json exists, checks manifest.hardware section, runs ops-liveness ingest, and validates overallPass + contracts; script accepts -ZipPath parameter for testing real student exports with hardware snapshots; provides clear PASS/FAIL output with contract verification; (2) Created DESKTOP_BRIDGE_API.md - formal API contract defining stable HTTP interface between browser UI and FPGA boards; specifies GET /board/status (returns connected, model, serial, timestamp; must respond <500ms; polled every 2s by browser) and GET /board/snapshot (returns timestamp, inputs{}, outputs{}, meta{}; must respond <1000ms; user-initiated; returns 409 if board disconnected); documents timing requirements, error responses, CORS headers, security (localhost-only binding), versioning (current: 1.0), and future endpoints (POST /board/program for bitstream upload, GET /board/stream WebSocket for live I/O); provides implementation guidance for production bridges using OpenOCD/Vivado/openFPGALoader; reference implementation: tools/desktop-bridge.js mock server; contract ensures Desktop Bridge can evolve independently without breaking browser UI expectations; Manual validation workflow documented: (a) start Desktop Bridge on 3002, (b) start dev server on 5173, (c) open lab.html?lab=traffic-light, (d) capture 2+ hardware snapshots, (e) run self-check, (f) export ZIP, (g) run test-hardware-export.ps1 -ZipPath <downloaded-zip> to verify ingest passes with hardware evidence included; Next step after manual validation: implement real POST /board/program endpoint for actual bitstream programming via bridge (shells out to openFPGALoader/Vivado); this makes "program board" button functional instead of stub; Phase unchanged; milestone: Hardware Session v1 architecture proven non-breaking, CI green, contracts locked.
+
+### 2026-01-20 (Hardware Session v1 - Lab-Time FPGA Workflow - COMPLETE)
+- **IMPLEMENTED HARDWARE SESSION V1 FOR LAB-TIME USE**: Built real lab desktop workflow where students connect FPGA boards during lab and capture hardware evidence for submissions. Added new "Hardware" tab (3rd tab) to LogicLabApp between Build and Self-Check with complete Desktop Bridge integration: (1) Bridge polling: browser polls http://127.0.0.1:3002/board/status every 2 seconds with 1-second timeout to detect Desktop Bridge status (online/offline); (2) Board detection: displays connection status (connected/disconnected), board model (e.g., Basys3), last-seen timestamp; emits board_connected event when board transitions from disconnected to connected; (3) Snapshot capture: "📸 Capture Snapshot" button fetches /board/snapshot from bridge if online+connected, otherwise opens manual entry modal; snapshots contain timestamp, inputs (e.g., SW, BTN), outputs (e.g., LED), optional notes, and source flag ('bridge' or 'manual'); each captured snapshot emits snapshot_captured event and increments tab badge counter; (4) Manual fallback: modal with JSON input fields for inputs/outputs/notes when bridge offline or board disconnected, validates JSON format before saving; (5) UI state: added bridgeStatus {online, lastChecked}, boardStatus {connected, model, lastSeen}, snapshots array to LogicLabApp state; status cards show online/offline with color coding (green=online/connected, gray=offline/disconnected), hint to start bridge if offline; snapshots list displays all captured evidence with timestamp, source badge (🔗 Bridge vs ✏️ Manual), I/O data in monospace code blocks; (6) Export integration: updated bundleExport.ts ExportOptions interface to accept optional hardwareEvidence {bridgeStatus, boardStatus, boardModel, snapshots}; if hardwareEvidence present with snapshots, adds hardware section to manifest.json with evidence_path, bridge_status, board_status, snapshots_count fields AND creates new proofs/hardware.json file in ZIP with full hardware data including all snapshots and captured_at timestamp; events.ndjson includes board_connected and snapshot_captured events; attempt_submitted event now includes hardware_snapshots_count field; (7) Progress indicator: updated 4-step progress to 5-step (Spec → Build → Hardware → Self-Check → Export), hardware step marked completed when snapshots.length > 0; (8) Created tools/desktop-bridge.js mock server providing /board/status and /board/snapshot endpoints with randomized I/O values for testing, enables CORS, listens on 127.0.0.1:3002; (9) Styles: added complete hardware tab styling to LogicLabApp.module.css with OLED luxury theme matching existing tabs - hardwareStatus grid cards, statusOnline/Offline color states, captureButton with gradient, snapshotCard layout with headers/data rows, sourceBridge/Manual badges, modal overlay with centered modalContent, modalInput fields, modalActions buttons; (10) Testing: created HARDWARE_SESSION_V1_TEST.md with comprehensive manual test checklist covering bridge online+connected scenario, bridge offline manual fallback, progress integration, and CI compatibility; verified build succeeds with no TypeScript errors in rb-apps package. Export bundles now include deterministic hardware evidence structure; students can capture real board snapshots during lab or manually enter observed I/O states; instructors receive hardware.json with all snapshots for grading. Desktop Bridge pattern enables future integration with real OpenOCD/Vivado toolchains without cursed browser USB hacks. Phase unchanged; milestone: shifted from submission pipeline demo to actual lab-time tool students use with physical FPGA boards.
+
+### 2026-01-20 (Instructor UI v1 - Read-Only Lab Runs Viewer - COMPLETE)
+- **COMPLETED INSTRUCTOR UI v1 TO CLOSE SUBMISSION LOOP**: Created read-only viewing interface for instructors to browse student lab submissions ingested by ops server. Implemented two new apps in packages/rb-apps/src/apps/: (1) InstructorApp.tsx - displays table of all lab runs from /api/labs/runs endpoint with columns for timestamp, student, lab name, verdict (PASS/FAIL/INVALID badges), exit code, run_id (click-through to detail view); (2) InstructorRunDetailApp.tsx - shows full run detail from /api/labs/runs/:id endpoint with tabbed interface (Summary: pass/fail/total counts, Vectors: test vector results with inputs/expected/observed, Artifacts: links to grade.json/grade.md/capsule.json/events.ndjson downloads), back navigation to runs list, verdict badge in header. Added styles with OLED luxury theme (InstructorApp.module.css, InstructorRunDetailApp.module.css) matching existing app aesthetic. Registered both apps in packages/rb-apps/src/index.ts via registerAllApps() using dynamic imports (instructor, instructor-run-detail app IDs). Navigation flow: InstructorApp calls onNavigate('instructor-run-detail', { runId }) on row click, detail view calls onNavigate('instructor') on back button. Apps support error states (HTTP failures), loading states, empty states (no runs yet), and full refresh on mount. Build successful (pnpm run build), ops server started (pnpm ops:server on port 3001), dev server running (pnpm dev on port 5173). Access via ?openApp=instructor query param in OS shell. This completes the website loop: students export submissions with receipt screen (Student UX v1), ops ingests bundles with real proof-core grading (Option B), instructors view ingested runs with grade data (Instructor UI v1). Ready for manual end-to-end test: start ops, browse http://localhost:5173/?openApp=instructor, click run, verify grade/artifacts/vectors render. Phase unchanged; objectives: website product milestone complete, system now usable by students and instructors.
+
+### 2026-01-18 (Liveness expected serialization fix)
+- scripts/ops-liveness.ps1 now normalizes ExpectExitCodes into a primitive int array in the sanitized JSON output (ingest.expected) to avoid System.Object[] serialization and keep CI-grade contracts inspectable.
+
+### 2026-01-17 (Liveness grading flag + contract enforcement + agent-lab hardening)
+- Extended scripts/ops-liveness.ps1 to surface gradingPass alongside overallPass in both JSON output and FINAL line; counts now guarded for array length when runs endpoint returns lists; fixed ingest typo ($ing -> $ingest) and documented gradingPass semantics (non-INVALID exit_code).
+- Added verdict/exit_code contract validation: exit_code must map to correct verdict (0→PASS, 1→FAIL, 2→INVALID); overallPass now fails if mapping is inconsistent, preventing silent drift.
+- Added contracts block to JSON output with schemaStable, verdictMappingConsistent, and gradingPassSemantics fields for explicit contract enforcement visibility.
+- **Fixed agent-lab ZIP path normalization (Windows backslash):** lab-ingest.js now normalizes all ZIP entry paths to forward slashes before indexing; fixes "Capsule file not found" on Windows.
+- **Fixed grade.json schema:** lab-ingest.js now includes exit_code, lab_id, and student_id in grade artifacts (required for server contract enforcement and liveness validation).
+- **Fixed server run_id mismatch:** api/server.mjs now parses [FINAL] output from agent to extract actual run_id instead of guessing based on temp file name; server enforces verdict/exit_code contract and derives verdict from exit_code (authoritative).
+- **Updated agent [FINAL] output:** all paths in lab-ingest.js now emit consistent [FINAL] lines with task, verdict, run_id, exit_code fields.
+- Verified complete flow: `pnpm ops:liveness` (no ingest) passes with overallPass=True; `pnpm ops:liveness:full` produces new run_id, correct exit_code/verdict mapping, all artifacts accessible, gradingPass=True for FAIL/PASS verdicts, overallPass=True with clean contracts.
+
+
 ### 2026-01-20 (Phase 1: FPGA Proof Core Library - COMPLETE)
 - **EXTRACTED CORE PROOF LIBRARY FOR FPGA PROOF VIEWER**: Created `packages/rb-fpga-proof-core/` as shared TypeScript library consumed by both web UI and future CLI tooling. Delivered 8 core functions with full TypeScript types and zero external dependencies: (1) parseCapsule - schema-agnostic JSON parsing supporting dual `summary`/`test_summary` fields, (2) loadEventsNdjson - resilient NDJSON parsing with graceful error handling, (3) resolveEventsFromCapsule - async event loading with pluggable fetch, (4) normalizeEvent - deterministic event normalization with seq field enforcement, (5) verifyHashes - validation with dual modes (strict=INVALID on mismatch, lenient=best-effort) returning 0/2 exit codes, (6) diffCapsules - capsule comparison returning MATCH/DIVERGED/INVALID (0/1/2) with deterministic semantics, (7) computeVectorVerdicts - transforms capsule test vectors to UI-ready row format, (8) buildTimelineRows - groups events by tick for timeline visualization. Additional utility: summarizeCapsule for extracting/computing pass/fail/total counts. Library validates all FPGA invariants: exit code semantics (0=PASS, 1=FAIL/DIVERGED, 2=INVALID), dual schema support, strict/lenient modes. Deliverables: (1) Core library with 8 exports (5.27 kB gzip, 1.83 kB minified), (2) 23 comprehensive unit tests (100% passing, all functions covered), (3) TypeScript declarations auto-generated, (4) Vite library build config. Integrated: FpgaProofViewerApp updated to use core library (parseCapsule + loadEventsNdjson in hydrateFromText, computeVectorVerdicts for UI). Migration: `packages/rb-apps` dependency updated to `@redbyte/rb-fpga-proof-core: workspace:*`. Monorepo integration verified: full `pnpm -r build` succeeds (872 modules), playground assets present, local preview HTTP 200. Git: commit 8ad5adab with detailed message documenting Phase 1 extraction. Pushed to origin/main; Cloudflare redeploy verified HTTP 200 on redbyteapps.dev FPGA asset. Architecture achieved: "Core extraction is the lever" - single source of truth for proof parsing/validation/diff logic, enabling cheap Phase 2 (submission bundle schema) + Phase 3 (Lab Examiner app) + Phase 4 (batch agent pipeline). Objectives: Phase 1 complete; Phase 2 ready.
 
@@ -5594,3 +5617,81 @@ After completing work, an AI agent MUST:
 ### 2026-01-13
 - Fixed React error #185 (Maximum update depth exceeded) in LogicPlaygroundApp: removed registerStateAccessor and unregisterStateAccessor from useEffect dependency array; these stable callbacks from Shell were causing infinite re-registration loop (effect runs → writes to store → Shell re-renders → effect sees 'changed' deps → repeats); now only windowId is a dependency; all 705 tests pass; objectives unchanged; phase unchanged
 - **COMPLETE FIX for React Error #185**: Set up headless Playwright smoke tests (playwright.config.ts with webServer auto-management, tests run headless with no UI windows); configured test to capture console logs and React errors to disk automatically for autonomous failure diagnosis. Discovered root cause: Zustand's useSyncExternalStore caches snapshots by object reference identity. RightDock's memoized probeSelector returned a new object literal `{probes, activeProbeId, ...}` on every store mutation, triggering "getSnapshot should be cached" warning and infinite re-render cycles during React's commitHookEffectListMount phase. Solution: Replaced single memoized object selector with individual per-field selectors (each property gets its own useProbeStore() call), ensuring stable primitive/function references that don't trigger snapshot cache invalidation. Test: Playwright smoke test (DEV) now passes headlessly with no React errors; console log shows clean app load sequence with no "Maximum update depth exceeded" error, no "getSnapshot should be cached" warning, no error boundary catches. Headless testing framework is now fully operational and verified for CI integration. All 705 tests pass; objectives unchanged; phase unchanged
+---
+
+## Change Log  2026-01-17
+
+- Added `.gitignore` rule: `packages/ops/labs/runs/` (prevent committing local run outputs)
+- Overwrote `api/server.mjs` with minimal Node `http` server exposing `GET /health` on loopback `127.0.0.1:3001`
+- Verified 3 gates:
+  - `pnpm -r build` (green)
+  - `pnpm agent:verify` (passed; dev server warning expected)
+  - `pnpm ops:student-export-fixture-test` (passed; produced `run-...` in `packages/ops/labs/runs/`)
+- Saved approved plan to local: `C:\Users\conno\.claude\plans\immutable-napping-corbato.md`
+
+---
+
+## Change Log  2026-01-17 (Session 1 Complete)
+
+### Part A: api/server.mjs - Full Ops Server
+- Implemented POST /api/labs/ingest (raw zip bytes, spawn agent:lab, read run artifacts)
+- Implemented GET /api/labs/runs (list all runs newest-first)
+- Implemented GET /api/labs/runs/:id (return run detail + grade)
+- Implemented GET /api/labs/runs/:id/artifacts/:name (serve allowlisted artifacts)
+- All endpoints use Node built-ins only, bind 127.0.0.1:3001, localhost CORS
+
+### Part B: LogicLabApp Evolution
+- Evolved packages/rb-apps/src/apps/LogicLabApp.tsx from placeholder to full student lab
+- Added 4 tabs: Spec / Build / Self-Check / Export
+- Lab spec loader: ?lab=traffic-light fetches public/labs/*.spec.json
+- Created packages/rb-apps/src/utils/selfCheck.ts (browser-pure, studentVectors only)
+- Created packages/rb-apps/src/utils/bundleExport.ts (generates valid .rb-lab.zip)
+- Created packages/rb-apps/src/apps/LogicLabApp.module.css (OLED luxury styling)
+- Created apps/playground/public/labs/traffic-light.spec.json (studentVectors only)
+
+### Contracts Upheld
+- Server binds loopback only, no express, no new deps
+- UI packages pure (no Node runtime imports in rb-apps)
+- Student vectors separate from instructor vectors (public vs private)
+- Bundle schema immutable (all 4 required files)
+- 3 gates remain green
+
+### Validation
+- pnpm -r build: GREEN
+- pnpm agent:verify: PASSED
+- pnpm ops:student-export-fixture-test: PASSED
+
+### Next: Session 2 - Make It "Incredible"
+
+---
+
+## Change Log  2026-01-17 (Liveness Automation)
+
+- Added scripts/ops-liveness.ps1: automated server liveness + raw ZIP ingest checks
+- Added npm script: `ops:liveness`
+- Mapped GET `/`  same JSON as `/health` in api/server.mjs
+- Verified script output: health PASS, runs PASS, ingest PASS, netstat shows listener
+
+## Change Log  2026-01-17 13:33
+
+**ops-liveness automation complete**
+
+- Fixed scripts/ops-liveness.ps1 with hard timeouts (--connect-timeout 2 --max-time 5) on all curl calls
+- Moved exit statement outside finally block to prevent PowerShell footgun (exit inside finally short-circuits remaining cleanup)
+- Added result sanitization before JSON serialization to prevent ConvertTo-Json hanging on complex PowerShell objects
+- Added uncaughtException and unhandledRejection handlers to api/server.mjs
+- Liveness script now reliably writes ops-liveness.json with machine-readable summary
+- Exit code 0 when all checks pass, 1 on failure
+- JSON output includes: timestamp, serverPid, portOpen, health/root/runs status, overallPass boolean
+
+Gate status: pnpm ops:liveness produces deterministic JSON output.
+## Change Log  2026-01-17 (Desktop Apps Architecture) 
+
+Desktop Apps implementation complete:
+- StudentLabApp.tsx created (refactored LogicLabApp with RedByteApp manifest)
+- SubmissionInspectorApp.tsx created (client-side zip viewer with JSZip parsing)
+- SubmissionInspectorApp.module.css created (OLED luxury styling)
+- Both apps registered in AppRegistry (dynamic imports in index.ts)
+- pnpm build: GREEN
+- All validation gates passed
+

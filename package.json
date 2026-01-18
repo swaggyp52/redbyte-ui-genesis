@@ -43,6 +43,14 @@
         "ops:make-bundle": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-make-bundle.ps1",
         "ops:ingest-test": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-ingest-test.ps1",
         "ops:student-export-fixture-test": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-student-export-fixture-test.ps1",
+        "ops:liveness": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-liveness.ps1 -StartServer -JsonOut .\\ops-liveness.json",
+        "ops:liveness:full": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-liveness.ps1 -StartServer -ZipPath .\\packages\\ops\\labs\\fixtures\\test-submission.rb-lab.zip -JsonOut .\\ops-liveness.json",
+        "ops:liveness:pass": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-liveness.ps1 -StartServer -ZipPath .\\packages\\ops\\labs\\fixtures\\test-submission.pass.rb-lab.zip -ExpectExitCodes 0 -JsonOut .\\ops-liveness.json",
+        "ops:liveness:fail": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-liveness.ps1 -StartServer -ZipPath .\\packages\\ops\\labs\\fixtures\\test-submission.rb-lab.zip -ExpectExitCodes 1 -JsonOut .\\ops-liveness.json",
+        "ops:liveness:ci": "pnpm ops:liveness:pass && pnpm ops:liveness:fail",
+        "ops:student-export:pass": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-liveness.ps1 -StartServer -ZipPath .\\packages\\ops\\labs\\fixtures\\student-export-pass.rb-lab.zip -ExpectExitCodes 0 -JsonOut .\\ops-liveness.json",
+        "ops:student-export:fail": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-liveness.ps1 -StartServer -ZipPath .\\packages\\ops\\labs\\fixtures\\student-export-fail.rb-lab.zip -ExpectExitCodes 1 -JsonOut .\\ops-liveness.json",
+        "ops:student-export:ci": "pnpm ops:student-export:pass && pnpm ops:student-export:fail",
         "bless:artifacts": "node ./scripts/bless-latest-artifacts.js"
     },
     "devDependencies": {

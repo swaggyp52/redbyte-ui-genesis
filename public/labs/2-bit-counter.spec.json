@@ -1,0 +1,18 @@
+{
+  "lab_id": "2-bit-counter",
+  "title": "2-Bit Counter",
+  "description": "Design a sequential counter that cycles through binary states 00→01→10→11→00. This lab tests your ability to combine flip-flops for counting applications.",
+  "constraints": {
+    "allowedGates": ["DFF", "AND", "OR", "NOT"],
+    "maxGates": 12,
+    "requiredInputs": ["CLK", "RESET"],
+    "requiredOutputs": ["Q0", "Q1"]
+  },
+  "studentVectors": [
+    {"id": "sv-1", "name": "Reset to 00", "inputs": {"CLK": 0, "RESET": 1}},
+    {"id": "sv-2", "name": "Count to 01", "inputs": {"CLK": 1, "RESET": 0}},
+    {"id": "sv-3", "name": "Count to 10", "inputs": {"CLK": 1, "RESET": 0}},
+    {"id": "sv-4", "name": "Count to 11", "inputs": {"CLK": 1, "RESET": 0}},
+    {"id": "sv-5", "name": "Wrap to 00", "inputs": {"CLK": 1, "RESET": 0}}
+  ]
+}

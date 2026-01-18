@@ -1,0 +1,15 @@
+{
+  "lab_id": "2-bit-counter",
+  "presets": [
+    {
+      "id": "stuck",
+      "name": "Stuck at 01",
+      "description": "Counter gets stuck and doesn't increment. Expected: FAIL",
+      "vectors": [
+        {"id": "sv-1", "name": "Reset to 00", "pass": true},
+        {"id": "sv-2", "name": "Count to 01", "pass": true},
+        {"id": "sv-3", "name": "Count to 10", "pass": false, "error": "Counter stuck at 01, expected 10"}
+      ]
+    }
+  ]
+}
