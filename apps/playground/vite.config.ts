@@ -35,8 +35,6 @@ export default defineConfig({
     __GIT_SHA__: JSON.stringify(process.env.GIT_SHA ?? process.env.CF_PAGES_COMMIT_SHA ?? 'dev'),
   },
   build: {
-    // Temporarily enable sourcemaps to debug production bundle TDZ crashes
-    sourcemap: true,
     // Increase chunk size warning threshold to 750kB to accommodate vendor-3d (Three.js)
     // This chunk is only loaded when user opens Logic Playground, not on cold load
     chunkSizeWarningLimit: 750,
