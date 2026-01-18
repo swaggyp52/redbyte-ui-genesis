@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Launcher } from '../Launcher';
 import { getAppsForLauncher } from '../launcherData';
 import type { RedByteApp } from '../types';
@@ -24,7 +24,15 @@ const LauncherComponent: React.FC<LauncherComponentProps> = ({
   onTogglePin,
   runningAppIds,
 }) => {
-  const apps = useMemo(() => getAppsForLauncher(), []);
+  const [apps, setApps] = useState<Array<{ id: string; name: string }>>([]);
+
+  // Lazy load app list from registry to avoid circular imports
+  useEffect(() => {
+    (async () => {
+      const launcherApps = await getAppsForLauncher();
+      setApps(launcherApps);
+    })();
+  }, []);
 
   const recentApps = useMemo(() => {
     if (!recentAppIds?.length) return [];

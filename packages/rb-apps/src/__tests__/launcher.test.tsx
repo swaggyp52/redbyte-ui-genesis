@@ -343,7 +343,7 @@ describe('Launcher data', () => {
     registerApp(terminalApp);
     registerApp(filesApp);
 
-    const apps = getAppsForLauncher();
+    const apps = await getAppsForLauncher();
     const ids = apps.map((app) => app.id);
 
     expect(ids).toContain('terminal');
