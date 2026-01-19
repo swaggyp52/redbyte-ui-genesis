@@ -45,115 +45,145 @@ interface ClassroomModeState {
   recordTimeToFirstSim: (ms: number) => void;
 }
 
-export const useClassroomModeStore = create<ClassroomModeState>((set, get) => ({
-  safeMode: (() => {
-    if (typeof window === 'undefined') return false;
-    const param = new URLSearchParams(window.location.search).get('safe');
-    if (param === '1') return true;
-    if (param === '0') return false;
-    return localStorage.getItem('rb_safe_mode') === '1';
-  })(),
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _store: ReturnType<typeof createClassroomModeStore> | null = null;
 
-  setSafeMode: (enabled: boolean) => {
-    localStorage.setItem('rb_safe_mode', enabled ? '1' : '0');
-    set({ safeMode: enabled });
-  },
+function createClassroomModeStore() {
+  return create<ClassroomModeState>((set, get) => ({
+    safeMode: (() => {
+      if (typeof window === 'undefined') return false;
+      const param = new URLSearchParams(window.location.search).get('safe');
+      if (param === '1') return true;
+      if (param === '0') return false;
+      return localStorage.getItem('rb_safe_mode') === '1';
+    })(),
 
-  lastKnownGoodSnapshot: null,
-  setSnapshot: (snapshot) => set({ lastKnownGoodSnapshot: snapshot }),
+    setSafeMode: (enabled: boolean) => {
+      localStorage.setItem('rb_safe_mode', enabled ? '1' : '0');
+      set({ safeMode: enabled });
+    },
 
-  nodeCount: 0,
-  edgeCount: 0,
-  maxFanOut: 0,
-  isComplexityWarning: false,
-  isComplexityBlocked: false,
+    lastKnownGoodSnapshot: null,
+    setSnapshot: (snapshot) => set({ lastKnownGoodSnapshot: snapshot }),
 
-  setComplexity: (nodeCount: number, edgeCount: number, maxFanOut: number) => {
-    const isWarning = nodeCount >= 15;
-    const isBlocked = nodeCount >= 20;
-    const exceeds = nodeCount > 20; // Can happen via undo/redo or old saved circuits
-    
-    set({
-      nodeCount,
-      edgeCount,
-      maxFanOut,
-      isComplexityWarning: isWarning,
-      isComplexityBlocked: isBlocked,
-    });
+    nodeCount: 0,
+    edgeCount: 0,
+    maxFanOut: 0,
+    isComplexityWarning: false,
+    isComplexityBlocked: false,
 
-    // Auto-degrade: force Safe Mode + Step-only when workspace exceeds hard limit
-    // (happens when undoing into old state or loading pre-guardrail saves)
-    if (exceeds) {
-      const currentState = get();
-      
-      if (!currentState.safeMode || !currentState.isStepOnlyMode) {
-        console.warn(`[ClassroomMode] Auto-degrading: workspace has ${nodeCount} nodes (limit: 20)`);
-        
-        set({ 
-          safeMode: true,
-          isStepOnlyMode: true,
-        });
-        
-        // Persist Safe Mode so it stays on across page reloads
-        localStorage.setItem('rb_safe_mode', '1');
+    setComplexity: (nodeCount: number, edgeCount: number, maxFanOut: number) => {
+      const isWarning = nodeCount >= 15;
+      const isBlocked = nodeCount >= 20;
+      const exceeds = nodeCount > 20; // Can happen via undo/redo or old saved circuits
+
+      set({
+        nodeCount,
+        edgeCount,
+        maxFanOut,
+        isComplexityWarning: isWarning,
+        isComplexityBlocked: isBlocked,
+      });
+
+      // Auto-degrade: force Safe Mode + Step-only when workspace exceeds hard limit
+      // (happens when undoing into old state or loading pre-guardrail saves)
+      if (exceeds) {
+        const currentState = get();
+
+        if (!currentState.safeMode || !currentState.isStepOnlyMode) {
+          console.warn(`[ClassroomMode] Auto-degrading: workspace has ${nodeCount} nodes (limit: 20)`);
+
+          set({
+            safeMode: true,
+            isStepOnlyMode: true,
+          });
+
+          // Persist Safe Mode so it stays on across page reloads
+          localStorage.setItem('rb_safe_mode', '1');
+        }
       }
-    }
 
-    // Auto-enable step-only mode at warning threshold
-    if (isWarning && !get().isStepOnlyMode) {
-      set({ isStepOnlyMode: true });
-      if (!get().metrics.nodeCountWarningTriggered) {
-        get().recordNodeCountWarning();
+      // Auto-enable step-only mode at warning threshold
+      if (isWarning && !get().isStepOnlyMode) {
+        set({ isStepOnlyMode: true });
+        if (!get().metrics.nodeCountWarningTriggered) {
+          get().recordNodeCountWarning();
+        }
       }
-    }
-  },
+    },
 
-  isStepOnlyMode: false,
-  setStepOnlyMode: (enabled: boolean) => set({ isStepOnlyMode: enabled }),
+    isStepOnlyMode: false,
+    setStepOnlyMode: (enabled: boolean) => set({ isStepOnlyMode: enabled }),
 
-  lastErrorCode: null,
-  setLastErrorCode: (code: string | null) => set({ lastErrorCode: code }),
+    lastErrorCode: null,
+    setLastErrorCode: (code: string | null) => set({ lastErrorCode: code }),
 
-  metrics: {
-    resetCount: 0,
-    saveCount: 0,
-    loadCount: 0,
-    nodeCountWarningTriggered: false,
-    timeToFirstSim: null,
-  },
+    metrics: {
+      resetCount: 0,
+      saveCount: 0,
+      loadCount: 0,
+      nodeCountWarningTriggered: false,
+      timeToFirstSim: null,
+    },
 
-  recordReset: () => {
-    set((state) => ({
-      metrics: { ...state.metrics, resetCount: state.metrics.resetCount + 1 },
-    }));
-  },
+    recordReset: () => {
+      set((state) => ({
+        metrics: { ...state.metrics, resetCount: state.metrics.resetCount + 1 },
+      }));
+    },
 
-  recordSave: () => {
-    set((state) => ({
-      metrics: { ...state.metrics, saveCount: state.metrics.saveCount + 1 },
-    }));
-  },
+    recordSave: () => {
+      set((state) => ({
+        metrics: { ...state.metrics, saveCount: state.metrics.saveCount + 1 },
+      }));
+    },
 
-  recordLoad: () => {
-    set((state) => ({
-      metrics: { ...state.metrics, loadCount: state.metrics.loadCount + 1 },
-    }));
-  },
+    recordLoad: () => {
+      set((state) => ({
+        metrics: { ...state.metrics, loadCount: state.metrics.loadCount + 1 },
+      }));
+    },
 
-  recordNodeCountWarning: () => {
-    set((state) => ({
-      metrics: { ...state.metrics, nodeCountWarningTriggered: true },
-    }));
-  },
+    recordNodeCountWarning: () => {
+      set((state) => ({
+        metrics: { ...state.metrics, nodeCountWarningTriggered: true },
+      }));
+    },
 
-  recordTimeToFirstSim: (ms: number) => {
-    set((state) => ({
-      metrics: { ...state.metrics, timeToFirstSim: ms },
-    }));
-  },
-}));
+    recordTimeToFirstSim: (ms: number) => {
+      set((state) => ({
+        metrics: { ...state.metrics, timeToFirstSim: ms },
+      }));
+    },
+  }));
+}
+
+/**
+ * Classroom mode store for runtime flags and Safe Mode management.
+ * Lazy-initialized to prevent TDZ crash from circular imports.
+ */
+export const useClassroomModeStore: ReturnType<typeof createClassroomModeStore> = ((...args: any[]) => {
+  if (!_store) _store = createClassroomModeStore();
+  return (_store as any)(...args);
+}) as any;
+
+(useClassroomModeStore as any).getState = () => {
+  if (!_store) _store = createClassroomModeStore();
+  return (_store as any).getState();
+};
+
+(useClassroomModeStore as any).setState = (...a: any[]) => {
+  if (!_store) _store = createClassroomModeStore();
+  return (_store as any).setState(...a);
+};
+
+(useClassroomModeStore as any).subscribe = (...a: any[]) => {
+  if (!_store) _store = createClassroomModeStore();
+  return (_store as any).subscribe(...a);
+};
 
 // Expose metrics to window for classroom tracking (non-invasive)
+// Uses lazy-init to ensure store is created first
 if (typeof window !== 'undefined') {
   Object.defineProperty(window, '__RB_CLASSROOM_METRICS__', {
     get: () => useClassroomModeStore.getState().metrics,
@@ -172,6 +202,7 @@ export function isStepOnlyMode(): boolean {
 }
 
 // E2E test hook: expose store for programmatic access (always, safe for E2E testing)
+// Uses lazy-init wrapper so store is created on first access
 if (typeof window !== 'undefined') {
   (window as any).__RB_CLASSROOM_MODE_STORE__ = useClassroomModeStore;
 }

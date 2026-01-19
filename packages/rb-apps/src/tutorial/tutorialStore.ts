@@ -131,38 +131,67 @@ export interface TutorialState {
   goToStep: (step: number) => void;
 }
 
-export const useTutorialStore = create<TutorialState>((set, get) => ({
-  step: 0,
-  active: false,
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _store: ReturnType<typeof createTutorialStore> | null = null;
 
-  start: () => {
-    set({ active: true, step: 0 });
-  },
+function createTutorialStore() {
+  return create<TutorialState>((set, get) => ({
+    step: 0,
+    active: false,
 
-  next: () => {
-    const { step } = get();
-    if (step < TUTORIAL_STEPS.length - 1) {
-      set({ step: step + 1 });
-    } else {
-      // End of tutorial
+    start: () => {
+      set({ active: true, step: 0 });
+    },
+
+    next: () => {
+      const { step } = get();
+      if (step < TUTORIAL_STEPS.length - 1) {
+        set({ step: step + 1 });
+      } else {
+        // End of tutorial
+        set({ active: false, step: 0 });
+      }
+    },
+
+    prev: () => {
+      const { step } = get();
+      if (step > 0) {
+        set({ step: step - 1 });
+      }
+    },
+
+    stop: () => {
       set({ active: false, step: 0 });
-    }
-  },
+    },
 
-  prev: () => {
-    const { step } = get();
-    if (step > 0) {
-      set({ step: step - 1 });
-    }
-  },
+    goToStep: (step: number) => {
+      if (step >= 0 && step < TUTORIAL_STEPS.length) {
+        set({ step });
+      }
+    },
+  }));
+}
 
-  stop: () => {
-    set({ active: false, step: 0 });
-  },
+/**
+ * Tutorial store for managing tutorial state.
+ * Lazy-initialized to prevent TDZ crash from circular imports.
+ */
+export const useTutorialStore: ReturnType<typeof createTutorialStore> = ((...args: any[]) => {
+  if (!_store) _store = createTutorialStore();
+  return (_store as any)(...args);
+}) as any;
 
-  goToStep: (step: number) => {
-    if (step >= 0 && step < TUTORIAL_STEPS.length) {
-      set({ step });
-    }
-  },
-}));
+(useTutorialStore as any).getState = () => {
+  if (!_store) _store = createTutorialStore();
+  return (_store as any).getState();
+};
+
+(useTutorialStore as any).setState = (...a: any[]) => {
+  if (!_store) _store = createTutorialStore();
+  return (_store as any).setState(...a);
+};
+
+(useTutorialStore as any).subscribe = (...a: any[]) => {
+  if (!_store) _store = createTutorialStore();
+  return (_store as any).subscribe(...a);
+};

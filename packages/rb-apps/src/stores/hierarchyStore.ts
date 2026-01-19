@@ -42,82 +42,107 @@ interface HierarchyState {
   reset: () => void;
 }
 
-export const useHierarchyStore = create<HierarchyState>((set, get) => ({
-  stack: [],
-  currentCircuit: { nodes: [], connections: [] },
-  currentChip: null,
-  isEditMode: false,
-  probedSignals: new Set(),
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _store: ReturnType<typeof createHierarchyStore> | null = null;
 
-  enterChip: (chip, parentNodeId) => {
-    const current = get().currentCircuit;
-    const currentChipDef = get().currentChip;
-    set((state) => ({
-      stack: [
-        ...state.stack,
-        {
-          name: state.stack.length === 0 ? 'Top Circuit' : state.stack[state.stack.length - 1].name,
-          circuit: current,
-          chipDefinition: currentChipDef || undefined,
-          parentNodeId,
-        },
-      ],
-      currentCircuit: chip.subcircuit,
-      currentChip: chip,
-      isEditMode: false, // Start in view mode
-    }));
-  },
+function createHierarchyStore() {
+  return create<HierarchyState>((set, get) => ({
+    stack: [],
+    currentCircuit: { nodes: [], connections: [] },
+    currentChip: null,
+    isEditMode: false,
+    probedSignals: new Set(),
 
-  exitToParent: () => {
-    const { stack } = get();
-    if (stack.length === 0) return;
+    enterChip: (chip, parentNodeId) => {
+      const current = get().currentCircuit;
+      const currentChipDef = get().currentChip;
+      set((state) => ({
+        stack: [
+          ...state.stack,
+          {
+            name: state.stack.length === 0 ? 'Top Circuit' : state.stack[state.stack.length - 1].name,
+            circuit: current,
+            chipDefinition: currentChipDef || undefined,
+            parentNodeId,
+          },
+        ],
+        currentCircuit: chip.subcircuit,
+        currentChip: chip,
+        isEditMode: false, // Start in view mode
+      }));
+    },
 
-    const parent = stack[stack.length - 1];
-    set({
-      stack: stack.slice(0, -1),
-      currentCircuit: parent.circuit,
-      currentChip: parent.chipDefinition || null,
-      isEditMode: false,
-    });
-  },
+    exitToParent: () => {
+      const { stack } = get();
+      if (stack.length === 0) return;
 
-  exitToTop: () => {
-    const { stack } = get();
-    if (stack.length === 0) return;
+      const parent = stack[stack.length - 1];
+      set({
+        stack: stack.slice(0, -1),
+        currentCircuit: parent.circuit,
+        currentChip: parent.chipDefinition || null,
+        isEditMode: false,
+      });
+    },
 
-    const top = stack[0];
-    set({
-      stack: [],
-      currentCircuit: top.circuit,
-      currentChip: null,
-      isEditMode: false,
-    });
-  },
+    exitToTop: () => {
+      const { stack } = get();
+      if (stack.length === 0) return;
 
-  setCurrentCircuit: (circuit) => set({ currentCircuit: circuit }),
+      const top = stack[0];
+      set({
+        stack: [],
+        currentCircuit: top.circuit,
+        currentChip: null,
+        isEditMode: false,
+      });
+    },
 
-  toggleEditMode: () => set((state) => ({ isEditMode: !state.isEditMode })),
+    setCurrentCircuit: (circuit) => set({ currentCircuit: circuit }),
 
-  addProbe: (signalPath) =>
-    set((state) => ({
-      probedSignals: new Set([...state.probedSignals, signalPath]),
-    })),
+    toggleEditMode: () => set((state) => ({ isEditMode: !state.isEditMode })),
 
-  removeProbe: (signalPath) =>
-    set((state) => {
-      const newProbes = new Set(state.probedSignals);
-      newProbes.delete(signalPath);
-      return { probedSignals: newProbes };
-    }),
+    addProbe: (signalPath) =>
+      set((state) => ({
+        probedSignals: new Set([...state.probedSignals, signalPath]),
+      })),
 
-  clearProbes: () => set({ probedSignals: new Set() }),
+    removeProbe: (signalPath) =>
+      set((state) => {
+        const newProbes = new Set(state.probedSignals);
+        newProbes.delete(signalPath);
+        return { probedSignals: newProbes };
+      }),
 
-  reset: () =>
-    set({
-      stack: [],
-      currentCircuit: { nodes: [], connections: [] },
-      currentChip: null,
-      isEditMode: false,
-      probedSignals: new Set(),
-    }),
-}));
+    clearProbes: () => set({ probedSignals: new Set() }),
+
+    reset: () =>
+      set({
+        stack: [],
+        currentCircuit: { nodes: [], connections: [] },
+        currentChip: null,
+        isEditMode: false,
+        probedSignals: new Set(),
+      }),
+  }));
+}
+
+export const useHierarchyStore: ReturnType<typeof createHierarchyStore> = ((...args: any[]) => {
+  if (!_store) _store = createHierarchyStore();
+  return (_store as any)(...args);
+}) as any;
+
+(useHierarchyStore as any).getState = () => {
+  if (!_store) _store = createHierarchyStore();
+  return (_store as any).getState();
+};
+
+(useHierarchyStore as any).setState = (...a: any[]) => {
+  if (!_store) _store = createHierarchyStore();
+  return (_store as any).setState(...a);
+};
+
+(useHierarchyStore as any).subscribe = (...a: any[]) => {
+  if (!_store) _store = createHierarchyStore();
+  return (_store as any).subscribe(...a);
+};

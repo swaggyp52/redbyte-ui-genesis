@@ -83,29 +83,54 @@ function persistSettings(settings: SettingsState): void {
   }
 }
 
-export const useSettingsStore = create<SettingsStore>((set, get) => ({
-  ...loadSettings(),
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _store: ReturnType<typeof createSettingsStore> | null = null;
 
-  setThemeVariant: (variant) => {
-    set({ themeVariant: variant });
-    persistSettings(get());
-  },
+function createSettingsStore() {
+  return create<SettingsStore>((set, get) => ({
+    ...loadSettings(),
 
-  setWallpaperId: (id) => {
-    set({ wallpaperId: id });
-    persistSettings(get());
-  },
+    setThemeVariant: (variant) => {
+      set({ themeVariant: variant });
+      persistSettings(get());
+    },
 
-  setAccentColor: (color) => {
-    set({ accentColor: color });
-    persistSettings(get());
-  },
+    setWallpaperId: (id) => {
+      set({ wallpaperId: id });
+      persistSettings(get());
+    },
 
-  setTickRate: (rate) => {
-    if (!Number.isFinite(rate)) return;
-    // Clamp to valid range
-    const clampedRate = Math.max(1, Math.min(60, rate));
-    set({ tickRate: clampedRate });
-    persistSettings(get());
-  },
-}));
+    setAccentColor: (color) => {
+      set({ accentColor: color });
+      persistSettings(get());
+    },
+
+    setTickRate: (rate) => {
+      if (!Number.isFinite(rate)) return;
+      // Clamp to valid range
+      const clampedRate = Math.max(1, Math.min(60, rate));
+      set({ tickRate: clampedRate });
+      persistSettings(get());
+    },
+  }));
+}
+
+export const useSettingsStore: ReturnType<typeof createSettingsStore> = ((...args: any[]) => {
+  if (!_store) _store = createSettingsStore();
+  return (_store as any)(...args);
+}) as any;
+
+(useSettingsStore as any).getState = () => {
+  if (!_store) _store = createSettingsStore();
+  return (_store as any).getState();
+};
+
+(useSettingsStore as any).setState = (...a: any[]) => {
+  if (!_store) _store = createSettingsStore();
+  return (_store as any).setState(...a);
+};
+
+(useSettingsStore as any).subscribe = (...a: any[]) => {
+  if (!_store) _store = createSettingsStore();
+  return (_store as any).subscribe(...a);
+};

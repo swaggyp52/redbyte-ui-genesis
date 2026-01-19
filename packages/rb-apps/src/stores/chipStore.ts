@@ -124,10 +124,10 @@ function getCurrentTimestamp(): string {
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
-/**
- * Chip store for managing saved composite nodes
- */
-export const useChipStore = create<ChipStoreState>((set, get) => {
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _store: ReturnType<typeof createChipStore> | null = null;
+
+function createChipStore() {
   const initialChips = loadPersistedChips();
 
   // Calculate next ID based on existing chips
@@ -137,7 +137,7 @@ export const useChipStore = create<ChipStoreState>((set, get) => {
   });
   const initialNextId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
 
-  return {
+  return create<ChipStoreState>((set, get) => ({
     chips: initialChips,
     nextId: initialNextId,
 
@@ -246,5 +246,29 @@ export const useChipStore = create<ChipStoreState>((set, get) => {
         localStorage.removeItem(STORAGE_KEY);
       }
     },
-  };
-});
+  }));
+}
+
+/**
+ * Chip store for managing saved composite nodes.
+ * Lazy-initialized to prevent TDZ crash from circular imports.
+ */
+export const useChipStore: ReturnType<typeof createChipStore> = ((...args: any[]) => {
+  if (!_store) _store = createChipStore();
+  return (_store as any)(...args);
+}) as any;
+
+(useChipStore as any).getState = () => {
+  if (!_store) _store = createChipStore();
+  return (_store as any).getState();
+};
+
+(useChipStore as any).setState = (...a: any[]) => {
+  if (!_store) _store = createChipStore();
+  return (_store as any).setState(...a);
+};
+
+(useChipStore as any).subscribe = (...a: any[]) => {
+  if (!_store) _store = createChipStore();
+  return (_store as any).subscribe(...a);
+};

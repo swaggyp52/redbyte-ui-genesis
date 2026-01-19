@@ -85,75 +85,100 @@ function loadInitialState(): WorkspaceState {
   };
 }
 
-export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
-  ...loadInitialState(),
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _store: ReturnType<typeof createWorkspaceStore> | null = null;
 
-  createWorkspace: (name, snapshot) => {
-    const id = crypto.randomUUID();
-    const workspace: Workspace = {
-      id,
-      name,
-      snapshot,
-    };
+function createWorkspaceStore() {
+  return create<WorkspaceStore>((set, get) => ({
+    ...loadInitialState(),
 
-    set((state) => {
-      const newWorkspaces = [...state.workspaces, workspace];
-      saveWorkspaces(newWorkspaces, state.activeWorkspaceId);
-      return {
-        workspaces: newWorkspaces,
+    createWorkspace: (name, snapshot) => {
+      const id = crypto.randomUUID();
+      const workspace: Workspace = {
+        id,
+        name,
+        snapshot,
       };
-    });
 
-    return id;
-  },
+      set((state) => {
+        const newWorkspaces = [...state.workspaces, workspace];
+        saveWorkspaces(newWorkspaces, state.activeWorkspaceId);
+        return {
+          workspaces: newWorkspaces,
+        };
+      });
 
-  switchWorkspace: (id) => {
-    const workspace = get().workspaces.find((w) => w.id === id);
-    if (!workspace) return null;
+      return id;
+    },
 
-    set((state) => {
-      saveWorkspaces(state.workspaces, id);
-      return {
-        activeWorkspaceId: id,
-      };
-    });
+    switchWorkspace: (id) => {
+      const workspace = get().workspaces.find((w) => w.id === id);
+      if (!workspace) return null;
 
-    return workspace.snapshot;
-  },
+      set((state) => {
+        saveWorkspaces(state.workspaces, id);
+        return {
+          activeWorkspaceId: id,
+        };
+      });
 
-  deleteWorkspace: (id) => {
-    set((state) => {
-      const newWorkspaces = state.workspaces.filter((w) => w.id !== id);
-      const newActiveId = state.activeWorkspaceId === id ? null : state.activeWorkspaceId;
+      return workspace.snapshot;
+    },
 
-      saveWorkspaces(newWorkspaces, newActiveId);
+    deleteWorkspace: (id) => {
+      set((state) => {
+        const newWorkspaces = state.workspaces.filter((w) => w.id !== id);
+        const newActiveId = state.activeWorkspaceId === id ? null : state.activeWorkspaceId;
 
-      return {
-        workspaces: newWorkspaces,
-        activeWorkspaceId: newActiveId,
-      };
-    });
-  },
+        saveWorkspaces(newWorkspaces, newActiveId);
 
-  renameWorkspace: (id, name) => {
-    set((state) => {
-      const newWorkspaces = state.workspaces.map((w) =>
-        w.id === id ? { ...w, name } : w
-      );
+        return {
+          workspaces: newWorkspaces,
+          activeWorkspaceId: newActiveId,
+        };
+      });
+    },
 
-      saveWorkspaces(newWorkspaces, state.activeWorkspaceId);
+    renameWorkspace: (id, name) => {
+      set((state) => {
+        const newWorkspaces = state.workspaces.map((w) =>
+          w.id === id ? { ...w, name } : w
+        );
 
-      return {
-        workspaces: newWorkspaces,
-      };
-    });
-  },
+        saveWorkspaces(newWorkspaces, state.activeWorkspaceId);
 
-  getWorkspace: (id) => {
-    return get().workspaces.find((w) => w.id === id) || null;
-  },
+        return {
+          workspaces: newWorkspaces,
+        };
+      });
+    },
 
-  listWorkspaces: () => {
-    return get().workspaces;
-  },
-}));
+    getWorkspace: (id) => {
+      return get().workspaces.find((w) => w.id === id) || null;
+    },
+
+    listWorkspaces: () => {
+      return get().workspaces;
+    },
+  }));
+}
+
+export const useWorkspaceStore: ReturnType<typeof createWorkspaceStore> = ((...args: any[]) => {
+  if (!_store) _store = createWorkspaceStore();
+  return (_store as any)(...args);
+}) as any;
+
+(useWorkspaceStore as any).getState = () => {
+  if (!_store) _store = createWorkspaceStore();
+  return (_store as any).getState();
+};
+
+(useWorkspaceStore as any).setState = (...a: any[]) => {
+  if (!_store) _store = createWorkspaceStore();
+  return (_store as any).setState(...a);
+};
+
+(useWorkspaceStore as any).subscribe = (...a: any[]) => {
+  if (!_store) _store = createWorkspaceStore();
+  return (_store as any).subscribe(...a);
+};

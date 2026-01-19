@@ -66,146 +66,171 @@ interface ViewStateStore {
   setActiveViews: (views: ViewMode[]) => void;
 }
 
-export const useViewStateStore = create<ViewStateStore>((set, get) => ({
-  // Initial state
-  selectedNodeIds: new Set<string>(),
-  selectedWireIds: new Set<string>(),
-  hoveredNodeId: null,
-  highlightedNodeId: null,
-  focusNodeId: null,
-  focusRequestId: 0,
-  autoProbedNodes: new Set<string>(),
-  autoProbeEnabled: true,
-  highlightProbePaths: true,
-  splitScreenMode: 'single',
-  activeViews: ['circuit'],
-  circuitViewSize: null,
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _store: ReturnType<typeof createViewStateStore> | null = null;
 
-  // Selection actions
-  selectNodes: (nodeIds: string[], additive = false) =>
-    set((state) => {
-      const targetItems = additive
-        ? [...state.selectedNodeIds, ...nodeIds]
-        : nodeIds;
-      const newNodeIds = createSetIfDifferent(state.selectedNodeIds, targetItems);
+function createViewStateStore() {
+  return create<ViewStateStore>((set, get) => ({
+    // Initial state
+    selectedNodeIds: new Set<string>(),
+    selectedWireIds: new Set<string>(),
+    hoveredNodeId: null,
+    highlightedNodeId: null,
+    focusNodeId: null,
+    focusRequestId: 0,
+    autoProbedNodes: new Set<string>(),
+    autoProbeEnabled: true,
+    highlightProbePaths: true,
+    splitScreenMode: 'single',
+    activeViews: ['circuit'],
+    circuitViewSize: null,
 
-      // Only clear wires if not additive and actually changing nodes
-      const newWireIds = additive
-        ? state.selectedWireIds
-        : (state.selectedWireIds.size === 0 ? state.selectedWireIds : new Set<string>());
+    // Selection actions
+    selectNodes: (nodeIds: string[], additive = false) =>
+      set((state) => {
+        const targetItems = additive
+          ? [...state.selectedNodeIds, ...nodeIds]
+          : nodeIds;
+        const newNodeIds = createSetIfDifferent(state.selectedNodeIds, targetItems);
 
-      // Return same state if nothing changed
-      if (newNodeIds === state.selectedNodeIds && newWireIds === state.selectedWireIds) {
-        return state;
-      }
+        // Only clear wires if not additive and actually changing nodes
+        const newWireIds = additive
+          ? state.selectedWireIds
+          : (state.selectedWireIds.size === 0 ? state.selectedWireIds : new Set<string>());
 
-      return {
-        selectedNodeIds: newNodeIds,
-        selectedWireIds: newWireIds,
-      };
-    }),
-
-  selectWires: (wireIds: string[], additive = false) =>
-    set((state) => {
-      const targetItems = additive
-        ? [...state.selectedWireIds, ...wireIds]
-        : wireIds;
-      const newWireIds = createSetIfDifferent(state.selectedWireIds, targetItems);
-
-      // Only clear nodes if not additive and actually changing wires
-      const newNodeIds = additive
-        ? state.selectedNodeIds
-        : (state.selectedNodeIds.size === 0 ? state.selectedNodeIds : new Set<string>());
-
-      // Return same state if nothing changed
-      if (newWireIds === state.selectedWireIds && newNodeIds === state.selectedNodeIds) {
-        return state;
-      }
-
-      return {
-        selectedWireIds: newWireIds,
-        selectedNodeIds: newNodeIds,
-      };
-    }),
-
-  clearSelection: () =>
-    set((state) => {
-      // Return same state if already empty
-      if (state.selectedNodeIds.size === 0 && state.selectedWireIds.size === 0) {
-        return state;
-      }
-      return {
-        selectedNodeIds: new Set(),
-        selectedWireIds: new Set(),
-      };
-    }),
-
-  setHoveredNode: (nodeId: string | null) =>
-    set({
-      hoveredNodeId: nodeId,
-    }),
-
-  setHighlightedNode: (nodeId: string | null, durationMs: number = 1200) => {
-    set({ highlightedNodeId: nodeId });
-    if (nodeId && durationMs > 0) {
-      const current = nodeId;
-      window.setTimeout(() => {
-        if (get().highlightedNodeId === current) {
-          set({ highlightedNodeId: null });
+        // Return same state if nothing changed
+        if (newNodeIds === state.selectedNodeIds && newWireIds === state.selectedWireIds) {
+          return state;
         }
-      }, durationMs);
-    }
-  },
 
-  requestFocusNode: (nodeId: string) =>
-    set((state) => ({
-      focusNodeId: nodeId,
-      focusRequestId: state.focusRequestId + 1,
-    })),
+        return {
+          selectedNodeIds: newNodeIds,
+          selectedWireIds: newWireIds,
+        };
+      }),
 
-  // Auto-probe actions
-  toggleAutoProbe: (nodeId: string) =>
-    set((state) => {
-      const newProbes = new Set(state.autoProbedNodes);
-      if (newProbes.has(nodeId)) {
-        newProbes.delete(nodeId);
-      } else {
-        newProbes.add(nodeId);
+    selectWires: (wireIds: string[], additive = false) =>
+      set((state) => {
+        const targetItems = additive
+          ? [...state.selectedWireIds, ...wireIds]
+          : wireIds;
+        const newWireIds = createSetIfDifferent(state.selectedWireIds, targetItems);
+
+        // Only clear nodes if not additive and actually changing wires
+        const newNodeIds = additive
+          ? state.selectedNodeIds
+          : (state.selectedNodeIds.size === 0 ? state.selectedNodeIds : new Set<string>());
+
+        // Return same state if nothing changed
+        if (newWireIds === state.selectedWireIds && newNodeIds === state.selectedNodeIds) {
+          return state;
+        }
+
+        return {
+          selectedWireIds: newWireIds,
+          selectedNodeIds: newNodeIds,
+        };
+      }),
+
+    clearSelection: () =>
+      set((state) => {
+        // Return same state if already empty
+        if (state.selectedNodeIds.size === 0 && state.selectedWireIds.size === 0) {
+          return state;
+        }
+        return {
+          selectedNodeIds: new Set(),
+          selectedWireIds: new Set(),
+        };
+      }),
+
+    setHoveredNode: (nodeId: string | null) =>
+      set({
+        hoveredNodeId: nodeId,
+      }),
+
+    setHighlightedNode: (nodeId: string | null, durationMs: number = 1200) => {
+      set({ highlightedNodeId: nodeId });
+      if (nodeId && durationMs > 0) {
+        const current = nodeId;
+        window.setTimeout(() => {
+          if (get().highlightedNodeId === current) {
+            set({ highlightedNodeId: null });
+          }
+        }, durationMs);
       }
-      return { autoProbedNodes: newProbes };
-    }),
+    },
 
-  setAutoProbeEnabled: (enabled: boolean) =>
-    set((state) => {
-      if (state.autoProbeEnabled === enabled) return state;
-      return { autoProbeEnabled: enabled };
-    }),
+    requestFocusNode: (nodeId: string) =>
+      set((state) => ({
+        focusNodeId: nodeId,
+        focusRequestId: state.focusRequestId + 1,
+      })),
 
-  setHighlightProbePaths: (enabled: boolean) =>
-    set((state) => {
-      if (state.highlightProbePaths === enabled) return state;
-      return { highlightProbePaths: enabled };
-    }),
+    // Auto-probe actions
+    toggleAutoProbe: (nodeId: string) =>
+      set((state) => {
+        const newProbes = new Set(state.autoProbedNodes);
+        if (newProbes.has(nodeId)) {
+          newProbes.delete(nodeId);
+        } else {
+          newProbes.add(nodeId);
+        }
+        return { autoProbedNodes: newProbes };
+      }),
 
-  clearAutoProbes: () =>
-    set((state) => {
-      if (state.autoProbedNodes.size === 0) return state;
-      return { autoProbedNodes: new Set() };
-    }),
+    setAutoProbeEnabled: (enabled: boolean) =>
+      set((state) => {
+        if (state.autoProbeEnabled === enabled) return state;
+        return { autoProbeEnabled: enabled };
+      }),
 
-  // Split-screen actions
-  setSplitScreenMode: (mode: SplitScreenMode) =>
-    set({
-      splitScreenMode: mode,
-    }),
+    setHighlightProbePaths: (enabled: boolean) =>
+      set((state) => {
+        if (state.highlightProbePaths === enabled) return state;
+        return { highlightProbePaths: enabled };
+      }),
 
-  setActiveViews: (views: ViewMode[]) =>
-    set({
-      activeViews: views,
-    }),
+    clearAutoProbes: () =>
+      set((state) => {
+        if (state.autoProbedNodes.size === 0) return state;
+        return { autoProbedNodes: new Set() };
+      }),
 
-  setCircuitViewSize: (size) =>
-    set({
-      circuitViewSize: size,
-    }),
-}));
+    // Split-screen actions
+    setSplitScreenMode: (mode: SplitScreenMode) =>
+      set({
+        splitScreenMode: mode,
+      }),
+
+    setActiveViews: (views: ViewMode[]) =>
+      set({
+        activeViews: views,
+      }),
+
+    setCircuitViewSize: (size) =>
+      set({
+        circuitViewSize: size,
+      }),
+  }));
+}
+
+export const useViewStateStore: ReturnType<typeof createViewStateStore> = ((...args: any[]) => {
+  if (!_store) _store = createViewStateStore();
+  return (_store as any)(...args);
+}) as any;
+
+(useViewStateStore as any).getState = () => {
+  if (!_store) _store = createViewStateStore();
+  return (_store as any).getState();
+};
+
+(useViewStateStore as any).setState = (...a: any[]) => {
+  if (!_store) _store = createViewStateStore();
+  return (_store as any).setState(...a);
+};
+
+(useViewStateStore as any).subscribe = (...a: any[]) => {
+  if (!_store) _store = createViewStateStore();
+  return (_store as any).subscribe(...a);
+};

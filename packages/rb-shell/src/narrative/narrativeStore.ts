@@ -27,46 +27,71 @@ interface NarrativeState {
   reset: () => void; // For dev/testing
 }
 
-export const useNarrativeStore = create<NarrativeState>()(
-  persist(
-    (set, get) => ({
-      shownEvents: {},
-      lastShownAt: null,
-      dismissedCount: 0,
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _store: ReturnType<typeof createNarrativeStore> | null = null;
 
-      markAsShown: (eventId) => {
-        const now = new Date().toISOString();
-        set((state) => ({
-          shownEvents: {
-            ...state.shownEvents,
-            [eventId]: now,
-          },
-          lastShownAt: now,
-        }));
-      },
+function createNarrativeStore() {
+  return create<NarrativeState>()(
+    persist(
+      (set, get) => ({
+        shownEvents: {},
+        lastShownAt: null,
+        dismissedCount: 0,
 
-      hasBeenShown: (eventId) => {
-        return eventId in get().shownEvents;
-      },
+        markAsShown: (eventId) => {
+          const now = new Date().toISOString();
+          set((state) => ({
+            shownEvents: {
+              ...state.shownEvents,
+              [eventId]: now,
+            },
+            lastShownAt: now,
+          }));
+        },
 
-      updateLastShown: () => {
-        set({ lastShownAt: new Date().toISOString() });
-      },
+        hasBeenShown: (eventId) => {
+          return eventId in get().shownEvents;
+        },
 
-      incrementDismissed: () => {
-        set((state) => ({ dismissedCount: state.dismissedCount + 1 }));
-      },
+        updateLastShown: () => {
+          set({ lastShownAt: new Date().toISOString() });
+        },
 
-      reset: () => {
-        set({
-          shownEvents: {},
-          lastShownAt: null,
-          dismissedCount: 0,
-        });
-      },
-    }),
-    {
-      name: STORAGE_KEY,
-    }
-  )
-);
+        incrementDismissed: () => {
+          set((state) => ({ dismissedCount: state.dismissedCount + 1 }));
+        },
+
+        reset: () => {
+          set({
+            shownEvents: {},
+            lastShownAt: null,
+            dismissedCount: 0,
+          });
+        },
+      }),
+      {
+        name: STORAGE_KEY,
+      }
+    )
+  );
+}
+
+export const useNarrativeStore: ReturnType<typeof createNarrativeStore> = ((...args: any[]) => {
+  if (!_store) _store = createNarrativeStore();
+  return (_store as any)(...args);
+}) as any;
+
+(useNarrativeStore as any).getState = () => {
+  if (!_store) _store = createNarrativeStore();
+  return (_store as any).getState();
+};
+
+(useNarrativeStore as any).setState = (...a: any[]) => {
+  if (!_store) _store = createNarrativeStore();
+  return (_store as any).setState(...a);
+};
+
+(useNarrativeStore as any).subscribe = (...a: any[]) => {
+  if (!_store) _store = createNarrativeStore();
+  return (_store as any).subscribe(...a);
+};

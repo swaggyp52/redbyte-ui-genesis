@@ -21,84 +21,109 @@ interface HistoryState {
 
 const MAX_HISTORY_SIZE = 50;
 
-export const useHistoryStore = create<HistoryState>((set, get) => ({
-  past: [],
-  present: null,
-  future: [],
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _store: ReturnType<typeof createHistoryStore> | null = null;
 
-  pushState: (circuit: Circuit) => {
-    const { past, present } = get();
+function createHistoryStore() {
+  return create<HistoryState>((set, get) => ({
+    past: [],
+    present: null,
+    future: [],
 
-    // Deep clone the circuit to prevent mutations
-    const clonedCircuit = JSON.parse(JSON.stringify(circuit)) as Circuit;
+    pushState: (circuit: Circuit) => {
+      const { past, present } = get();
 
-    const newPast = present ? [...past, present] : past;
+      // Deep clone the circuit to prevent mutations
+      const clonedCircuit = JSON.parse(JSON.stringify(circuit)) as Circuit;
 
-    // Limit history size
-    const trimmedPast = newPast.length > MAX_HISTORY_SIZE
-      ? newPast.slice(newPast.length - MAX_HISTORY_SIZE)
-      : newPast;
+      const newPast = present ? [...past, present] : past;
 
-    set({
-      past: trimmedPast,
-      present: clonedCircuit,
-      future: [], // Clear future when new state is pushed
-    });
-  },
+      // Limit history size
+      const trimmedPast = newPast.length > MAX_HISTORY_SIZE
+        ? newPast.slice(newPast.length - MAX_HISTORY_SIZE)
+        : newPast;
 
-  undo: () => {
-    const { past, present, future } = get();
+      set({
+        past: trimmedPast,
+        present: clonedCircuit,
+        future: [], // Clear future when new state is pushed
+      });
+    },
 
-    if (past.length === 0) {
-      return null;
-    }
+    undo: () => {
+      const { past, present, future } = get();
 
-    const previous = past[past.length - 1];
-    const newPast = past.slice(0, past.length - 1);
-    const newFuture = present ? [present, ...future] : future;
+      if (past.length === 0) {
+        return null;
+      }
 
-    set({
-      past: newPast,
-      present: previous,
-      future: newFuture,
-    });
+      const previous = past[past.length - 1];
+      const newPast = past.slice(0, past.length - 1);
+      const newFuture = present ? [present, ...future] : future;
 
-    return previous;
-  },
+      set({
+        past: newPast,
+        present: previous,
+        future: newFuture,
+      });
 
-  redo: () => {
-    const { past, present, future } = get();
+      return previous;
+    },
 
-    if (future.length === 0) {
-      return null;
-    }
+    redo: () => {
+      const { past, present, future } = get();
 
-    const next = future[0];
-    const newFuture = future.slice(1);
-    const newPast = present ? [...past, present] : past;
+      if (future.length === 0) {
+        return null;
+      }
 
-    set({
-      past: newPast,
-      present: next,
-      future: newFuture,
-    });
+      const next = future[0];
+      const newFuture = future.slice(1);
+      const newPast = present ? [...past, present] : past;
 
-    return next;
-  },
+      set({
+        past: newPast,
+        present: next,
+        future: newFuture,
+      });
 
-  clear: () => {
-    set({
-      past: [],
-      present: null,
-      future: [],
-    });
-  },
+      return next;
+    },
 
-  canUndo: () => {
-    return get().past.length > 0;
-  },
+    clear: () => {
+      set({
+        past: [],
+        present: null,
+        future: [],
+      });
+    },
 
-  canRedo: () => {
-    return get().future.length > 0;
-  },
-}));
+    canUndo: () => {
+      return get().past.length > 0;
+    },
+
+    canRedo: () => {
+      return get().future.length > 0;
+    },
+  }));
+}
+
+export const useHistoryStore: ReturnType<typeof createHistoryStore> = ((...args: any[]) => {
+  if (!_store) _store = createHistoryStore();
+  return (_store as any)(...args);
+}) as any;
+
+(useHistoryStore as any).getState = () => {
+  if (!_store) _store = createHistoryStore();
+  return (_store as any).getState();
+};
+
+(useHistoryStore as any).setState = (...a: any[]) => {
+  if (!_store) _store = createHistoryStore();
+  return (_store as any).setState(...a);
+};
+
+(useHistoryStore as any).subscribe = (...a: any[]) => {
+  if (!_store) _store = createHistoryStore();
+  return (_store as any).subscribe(...a);
+};

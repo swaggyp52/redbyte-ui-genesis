@@ -233,58 +233,83 @@ function loadInitialState(): LayoutState {
   return applyPreset(perspective, splitRatio, schematicMiniEnabled);
 }
 
-export const useLayoutStore = create<LayoutStore>((set, get) => ({
-  ...loadInitialState(),
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _store: ReturnType<typeof createLayoutStore> | null = null;
 
-  setPerspective: (perspective) => {
-    set((state) => {
-      const next = applyPreset(perspective, state.splitRatio, state.schematicMiniEnabled);
+function createLayoutStore() {
+  return create<LayoutStore>((set, get) => ({
+    ...loadInitialState(),
+
+    setPerspective: (perspective) => {
+      set((state) => {
+        const next = applyPreset(perspective, state.splitRatio, state.schematicMiniEnabled);
+        saveLayoutState(next);
+        return next;
+      });
+    },
+
+    setRightDockState: (state) => {
+      set((current) => {
+        const next = { ...current, rightDockState: state };
+        saveLayoutState(next);
+        return next;
+      });
+    },
+
+    setRightDockTab: (tab) => {
+      set((current) => ({ ...current, rightDockTab: tab }));
+    },
+
+    setShowHelpDock: (visible) => {
+      set((current) => ({ ...current, showHelpDock: visible }));
+    },
+
+    setHelpDockSection: (section) => {
+      set((current) => ({ ...current, helpDockSection: section }));
+    },
+
+    setSplitRatio: (ratio) => {
+      const clamped = Math.min(Math.max(ratio, 0.2), 0.8);
+      set((current) => {
+        const next = { ...current, splitRatio: clamped };
+        saveLayoutState(next);
+        return next;
+      });
+    },
+
+    toggleSchematicMini: () => {
+      set((current) => {
+        const nextMini = !current.schematicMiniEnabled;
+        const next = applyPreset('schematic', current.splitRatio, nextMini);
+        saveLayoutState(next);
+        return next;
+      });
+    },
+
+    resetLayout: () => {
+      const next = applyPreset('build', DEFAULT_SPLIT_RATIO, true);
       saveLayoutState(next);
-      return next;
-    });
-  },
+      set(next);
+    },
+  }));
+}
 
-  setRightDockState: (state) => {
-    set((current) => {
-      const next = { ...current, rightDockState: state };
-      saveLayoutState(next);
-      return next;
-    });
-  },
+export const useLayoutStore: ReturnType<typeof createLayoutStore> = ((...args: any[]) => {
+  if (!_store) _store = createLayoutStore();
+  return (_store as any)(...args);
+}) as any;
 
-  setRightDockTab: (tab) => {
-    set((current) => ({ ...current, rightDockTab: tab }));
-  },
+(useLayoutStore as any).getState = () => {
+  if (!_store) _store = createLayoutStore();
+  return (_store as any).getState();
+};
 
-  setShowHelpDock: (visible) => {
-    set((current) => ({ ...current, showHelpDock: visible }));
-  },
+(useLayoutStore as any).setState = (...a: any[]) => {
+  if (!_store) _store = createLayoutStore();
+  return (_store as any).setState(...a);
+};
 
-  setHelpDockSection: (section) => {
-    set((current) => ({ ...current, helpDockSection: section }));
-  },
-
-  setSplitRatio: (ratio) => {
-    const clamped = Math.min(Math.max(ratio, 0.2), 0.8);
-    set((current) => {
-      const next = { ...current, splitRatio: clamped };
-      saveLayoutState(next);
-      return next;
-    });
-  },
-
-  toggleSchematicMini: () => {
-    set((current) => {
-      const nextMini = !current.schematicMiniEnabled;
-      const next = applyPreset('schematic', current.splitRatio, nextMini);
-      saveLayoutState(next);
-      return next;
-    });
-  },
-
-  resetLayout: () => {
-    const next = applyPreset('build', DEFAULT_SPLIT_RATIO, true);
-    saveLayoutState(next);
-    set(next);
-  },
-}));
+(useLayoutStore as any).subscribe = (...a: any[]) => {
+  if (!_store) _store = createLayoutStore();
+  return (_store as any).subscribe(...a);
+};

@@ -69,63 +69,88 @@ function loadInitialState(): MacroState {
   };
 }
 
-export const useMacroStore = create<MacroStore>((set, get) => ({
-  ...loadInitialState(),
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _store: ReturnType<typeof createMacroStore> | null = null;
 
-  createMacro: (name, steps) => {
-    const id = crypto.randomUUID();
-    const macro: Macro = {
-      id,
-      name,
-      steps,
-    };
+function createMacroStore() {
+  return create<MacroStore>((set, get) => ({
+    ...loadInitialState(),
 
-    set((state) => {
-      const newMacros = [...state.macros, macro];
-      saveMacros(newMacros);
-      return {
-        macros: newMacros,
+    createMacro: (name, steps) => {
+      const id = crypto.randomUUID();
+      const macro: Macro = {
+        id,
+        name,
+        steps,
       };
-    });
 
-    return id;
-  },
+      set((state) => {
+        const newMacros = [...state.macros, macro];
+        saveMacros(newMacros);
+        return {
+          macros: newMacros,
+        };
+      });
 
-  deleteMacro: (id) => {
-    set((state) => {
-      const newMacros = state.macros.filter((m) => m.id !== id);
-      saveMacros(newMacros);
-      return {
-        macros: newMacros,
-      };
-    });
-  },
+      return id;
+    },
 
-  renameMacro: (id, name) => {
-    set((state) => {
-      const newMacros = state.macros.map((m) => (m.id === id ? { ...m, name } : m));
-      saveMacros(newMacros);
-      return {
-        macros: newMacros,
-      };
-    });
-  },
+    deleteMacro: (id) => {
+      set((state) => {
+        const newMacros = state.macros.filter((m) => m.id !== id);
+        saveMacros(newMacros);
+        return {
+          macros: newMacros,
+        };
+      });
+    },
 
-  updateMacroSteps: (id, steps) => {
-    set((state) => {
-      const newMacros = state.macros.map((m) => (m.id === id ? { ...m, steps } : m));
-      saveMacros(newMacros);
-      return {
-        macros: newMacros,
-      };
-    });
-  },
+    renameMacro: (id, name) => {
+      set((state) => {
+        const newMacros = state.macros.map((m) => (m.id === id ? { ...m, name } : m));
+        saveMacros(newMacros);
+        return {
+          macros: newMacros,
+        };
+      });
+    },
 
-  getMacro: (id) => {
-    return get().macros.find((m) => m.id === id) || null;
-  },
+    updateMacroSteps: (id, steps) => {
+      set((state) => {
+        const newMacros = state.macros.map((m) => (m.id === id ? { ...m, steps } : m));
+        saveMacros(newMacros);
+        return {
+          macros: newMacros,
+        };
+      });
+    },
 
-  listMacros: () => {
-    return get().macros;
-  },
-}));
+    getMacro: (id) => {
+      return get().macros.find((m) => m.id === id) || null;
+    },
+
+    listMacros: () => {
+      return get().macros;
+    },
+  }));
+}
+
+export const useMacroStore: ReturnType<typeof createMacroStore> = ((...args: any[]) => {
+  if (!_store) _store = createMacroStore();
+  return (_store as any)(...args);
+}) as any;
+
+(useMacroStore as any).getState = () => {
+  if (!_store) _store = createMacroStore();
+  return (_store as any).getState();
+};
+
+(useMacroStore as any).setState = (...a: any[]) => {
+  if (!_store) _store = createMacroStore();
+  return (_store as any).setState(...a);
+};
+
+(useMacroStore as any).subscribe = (...a: any[]) => {
+  if (!_store) _store = createMacroStore();
+  return (_store as any).subscribe(...a);
+};
