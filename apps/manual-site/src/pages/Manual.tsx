@@ -163,17 +163,6 @@ export default function Guide() {
   );
 }
 
-function slugify(children: React.ReactNode): string {
-  let text = '';
-  if (Array.isArray(children)) {
-    text = children.map(child => (typeof child === 'string' ? child : '')).join(' ');
-  } else if (typeof children === 'string') {
-    text = children;
-  } else {
-    text = String(children);
-  }
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-}
 
 
 // React 19 + react-markdown compatibility
