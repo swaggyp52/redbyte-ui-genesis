@@ -1,4 +1,16 @@
+
 # RedByte Manual Site
+
+## Download or Clone
+
+This site is open source. To get the latest version:
+
+```bash
+git clone https://github.com/swaggyp52/redbyte-ui-genesis.git
+cd redbyte-ui-genesis/apps/manual-site
+```
+
+Or browse the repo on GitHub: [swaggyp52/redbyte-ui-genesis](https://github.com/swaggyp52/redbyte-ui-genesis)
 
 Documentation and showcase website for RedByte, deployed to [redbyteapps.dev](https://redbyteapps.dev).
 
