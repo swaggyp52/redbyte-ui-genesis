@@ -1,6 +1,6 @@
-# Cloudflare Pages Deployment
+# Cloudflare Pages Deployment - Manual Site Only
 #
-# Deploys to redbyteapps.dev when:
+# Deploys apps/manual-site to redbyteapps.dev when:
 # - Manually triggered via workflow_dispatch, OR
 # - Pushed to main AND secrets are configured
 # Uses Cloudflare Pages Direct Upload API for full control over build process.
