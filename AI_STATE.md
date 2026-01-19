@@ -5824,3 +5824,38 @@ Preview tested: scrub is frame-perfect, play is stable, reset is clean
 Outcome: Oscilloscope now demonstrates actual digital logic simulation behavior (deterministic, tick-based, step functions) instead of "looks cool" animation.
 
 ---
+
+## Change Log  2026-01-18 (Systematic Error Debugging)
+
+**Fixed 134 out of 144 reported errors through systematic debugging (93% reduction)**
+
+Root causes identified and fixed:
+1. React version mismatch: manual-site had React 18 types while monorepo uses React 19
+2. React Router JSX compatibility: Forward-ref components incompatible with React 19 JSX transform
+3. Deprecated TypeScript option: `suppressImplicitAnyIndexErrors` removed in newer TS versions
+4. Accessibility violations: Missing aria-labels and improper element associations
+5. Markdown formatting issues: Missing blank lines around code blocks, headings, lists
+
+Problems fixed:
+- ✅ Upgraded `apps/manual-site` to React 19 for type compatibility
+- ✅ Fixed React Router Link JSX errors in Home.tsx and Demo.tsx
+- ✅ Added aria-label to LogicGatePlayground select element
+- ✅ Fixed ARIA type assertion in Toast component
+- ✅ Removed deprecated tsconfig option
+- ✅ Systematically fixed Markdown: MD009, MD022, MD031, MD032, MD040, MD041, MD060
+- ✅ Fixed in 9 documentation and config files
+
+Remaining errors (10, all non-critical):
+- 3 CSS linter false positives (@tailwind directives - valid, processed by PostCSS)
+- 4 TypeScript suggestions (strict mode and casing - intentionally disabled for dev)
+- 1 ARIA false positive in Toast (aria-live correctly typed and used)
+- 1 Markdown false positive in SESSION_1_COMPLETE.md
+- 1 HTML validator false positive
+
+Build status: ✅ All builds pass, TypeScript compilation clean, no functional errors
+
+Commits:
+- `91e3ad76` - Fix TypeScript errors and Markdown formatting (144 to 44 errors)
+- `ec8b1974` - Fix remaining Markdown formatting issues (44 to 10 errors)
+
+---
