@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import Markdown from 'react-markdown';
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/`/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 function extractHeadings(markdown: string) {
   const lines = markdown.split('\n');
   const headings = [];
@@ -9,7 +17,7 @@ function extractHeadings(markdown: string) {
     if (match) {
       const level = match[1].length;
       const text = match[2].replace(/`/g, '');
-      const id = text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const id = slugify(text);
       if (level <= 3) headings.push({ id, text, level });
     }
   }
@@ -48,6 +56,14 @@ export default function Guide() {
                     <a
                       href={`#${h.id}`}
                       className="block py-1 px-2 rounded hover:bg-rb-surface/50 text-rb-muted hover:text-rb-text"
+                      onClick={e => {
+                        e.preventDefault();
+                        const el = document.getElementById(h.id);
+                        if (el) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          el.focus?.();
+                        }
+                      }}
                     >
                       {h.text}
                     </a>
