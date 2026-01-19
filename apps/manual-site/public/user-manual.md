@@ -1,3 +1,63 @@
+# RedByte User Manual (Version 1)
+
+**An Interactive Digital Logic Circuit Platform**
+
+---
+
+## Table of Contents
+
+1. [What RedByte Is](#1-what-redbyte-is)
+2. [How RedByte Thinks](#2-how-redbyte-thinks)
+3. [The RedByte OS](#3-the-redbyte-os)
+4. [The Logic Playground](#4-the-logic-playground)
+5. [Getting Started: First Circuit](#5-getting-started-first-circuit)
+6. [Time, Simulation, and Control](#6-time-simulation-and-control)
+7. [Probes and the Oscilloscope](#7-probes-and-the-oscilloscope)
+8. [Recording, Replay, and Verification](#8-recording-replay-and-verification)
+9. [Saving, Loading, and Exporting Work](#9-saving-loading-and-exporting-work)
+10. [The Terminal](#10-the-terminal)
+11. [Files and Settings](#11-files-and-settings)
+12. [How to Learn Effectively With RedByte](#12-how-to-learn-effectively-with-redbyte)
+13. [What RedByte Is Not](#13-what-redbyte-is-not)
+14. [Why RedByte Exists](#14-why-redbyte-exists)
+15. [Where to Go Next](#15-where-to-go-next)
+
+---
+
+## Quick Demos (Start Here)
+
+Try a few guided demos that map directly to the RedByte learning path:
+
+- [Open Demo: NOT Gate](rb://demo/not-gate)
+- [Open Demo: AND Gate](rb://demo/and-gate)
+- [Open Demo: Half Adder](rb://demo/half-adder)
+
+Each demo opens in Logic Playground and replaces the current circuit. Save any work first.
+
+---
+
+## 1. What RedByte Is
+
+RedByte is an **interactive digital logic circuit simulation platform** that runs entirely in a web browser. It is a tool for learning how computers work from first principles—starting with basic logic gates and building upward to working processors.
+
+### What Problems It Solves
+
+Learning computer architecture traditionally requires choosing between abstraction and depth. Textbooks provide diagrams but no interaction. Physical kits offer hands-on experience but limited scale. Hardware description languages demand programming expertise. Simulators exist but often obscure the very mechanisms they simulate.
+
+RedByte solves this by providing:
+
+- **Immediate visual feedback** — Click a switch, see the result propagate through gates in real time
+- **Complete transparency** — Every signal value is visible at every moment
+- **Unlimited scale** — Build from single gates to complete processors without physical constraints
+- **Reproducible behavior** — Circuits behave identically every time, enabling systematic debugging
+- **Progressive complexity** — Start simple, build upward using proven components
+
+### What Makes It Different
+
+Most circuit simulators are designed for engineers validating professional designs. RedByte is designed for learners building understanding.
+
+The platform provides:
+
 1. **Multiple synchronized views** of the same circuit — schematic diagram, 3D visualization, timing diagram, structural netlist
 2. **Pattern recognition** that celebrates when the user builds known circuits
 3. **Time-travel debugging** through recording and replay
@@ -66,7 +126,7 @@ Example of a minimal circuit:
 
 ```
 [Switch] ───> [NOT Gate] ───> [Lamp]
-	 0            1              ON
+   0            1              ON
 ```
 
 When the switch is off (0), the NOT gate inverts it to 1, and the lamp turns on.
@@ -124,7 +184,7 @@ Consider a two-input AND gate connected to a lamp:
 
 ```
 [Switch A] ──┐
-						 ├──> [AND Gate] ───> [Lamp]
+             ├──> [AND Gate] ───> [Lamp]
 [Switch B] ──┘
 ```
 
@@ -343,10 +403,10 @@ A **chip** is a saved circuit that can be reused as a component in other circuit
 For example, the user might build a Half Adder from gates:
 
 ```
-	 A ──┬──> [XOR] ──> Sum
-			 │
-			 └──> [AND] ──> Carry
-	 B ──┘
+   A ──┬──> [XOR] ──> Sum
+       │
+       └──> [AND] ──> Carry
+   B ──┘
 ```
 
 After verifying it works, the user can save it as a chip named "HalfAdder". From that point forward, the HalfAdder appears in the component palette and can be placed like a primitive gate.
@@ -679,12 +739,12 @@ Example oscilloscope view:
 
 ```
 Clock   ┐ ┌─┐ ┌─┐ ┌─┐ ┌─┐
-				└─┘ └─┘ └─┘ └─┘ └─
+        └─┘ └─┘ └─┘ └─┘ └─
 
 Output  ──┐     ┌───────┐
-					└─────┘       └──
+          └─────┘       └──
 
-				0   1   2   3   4   5   (ticks)
+        0   1   2   3   4   5   (ticks)
 ```
 
 In this example:
@@ -704,12 +764,12 @@ Example: A delayed signal
 
 ```
 Input   ┐ ┌───────────
-				└─┘
+        └─┘
 
 Delayed ──┐ ┌─────────
-					└─┘
+          └─┘
 
-				0 1 2 3 4 5  (ticks)
+        0 1 2 3 4 5  (ticks)
 ```
 
 The **Delayed** signal copies the **Input** signal but one tick later. This is the behavior of a buffer or delay gate.
@@ -972,16 +1032,16 @@ Example netlist excerpt:
 
 ```json
 {
-	"nodes": [
-		{ "id": "n1", "type": "Switch", "position": [0, 0] },
-		{ "id": "n2", "type": "AND", "position": [2, 0] },
-		{ "id": "n3", "type": "Lamp", "position": [4, 0] }
-	],
-	"connections": [
-		{ "from": "n1.Out", "to": "n2.A" },
-		{ "from": "n1.Out", "to": "n2.B" },
-		{ "from": "n2.Out", "to": "n3.In" }
-	]
+  "nodes": [
+    { "id": "n1", "type": "Switch", "position": [0, 0] },
+    { "id": "n2", "type": "AND", "position": [2, 0] },
+    { "id": "n3", "type": "Lamp", "position": [4, 0] }
+  ],
+  "connections": [
+    { "from": "n1.Out", "to": "n2.A" },
+    { "from": "n1.Out", "to": "n2.B" },
+    { "from": "n2.Out", "to": "n3.In" }
+  ]
 }
 ```
 
@@ -1001,15 +1061,15 @@ Example Verilog export:
 
 ```verilog
 module Circuit (
-	input wire A,
-	input wire B,
-	output wire Out
+  input wire A,
+  input wire B,
+  output wire Out
 );
 
-	wire n1_out;
+  wire n1_out;
 
-	AND gate1 (.A(A), .B(B), .Out(n1_out));
-	Lamp lamp1 (.In(n1_out));
+  AND gate1 (.A(A), .B(B), .Out(n1_out));
+  Lamp lamp1 (.In(n1_out));
 
 endmodule
 ```
@@ -1088,18 +1148,18 @@ Tick rate set to 10 Hz.
 
 $ examples
 Available examples:
-	01_wire-lamp
-	02_and-gate
-	03_half-adder
-	...
+  01_wire-lamp
+  02_and-gate
+  03_half-adder
+  ...
 
 $ load 03_half-adder
 Loaded example: Half Adder
 
 $ apps list
 Running applications:
-	- Logic Playground (id: lp-1)
-	- Terminal (id: term-1)
+  - Logic Playground (id: lp-1)
+  - Terminal (id: term-1)
 ```
 
 ### How It Relates to the Rest of the System
@@ -1549,4 +1609,3 @@ The platform is ready. The question is: What will the user build?
 ---
 
 **End of RedByte User Manual (Version 1)**
-
