@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "prebuild": "node write-build-sha.cjs",
+    "build": "npm run prebuild && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
