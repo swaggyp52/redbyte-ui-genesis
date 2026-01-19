@@ -55,7 +55,7 @@ export default function Header() {
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
             <a
-              href="https://github.com/your-repo/redbyte"
+              href="https://github.com/swaggyp52/redbyte-ui-genesis"
               target="_blank"
               rel="noopener noreferrer"
               className="p-2 text-rb-muted hover:text-rb-text transition-colors"

@@ -21,6 +21,9 @@
 13. [What RedByte Is Not](#13-what-redbyte-is-not)
 14. [Why RedByte Exists](#14-why-redbyte-exists)
 15. [Where to Go Next](#15-where-to-go-next)
+16. [From Logic to Bitstream](#16-from-logic-to-bitstream)
+17. [Analog Simulation](#17-analog-simulation)
+18. [Troubleshooting](#18-troubleshooting)
 
 ---
 
@@ -78,7 +81,7 @@ RedByte is for anyone who wants to understand how computers work at the physical
 
 RedByte is not for:
 
-- Professional electronic design automation (it does not model voltage, timing margins, or physical layout)
+- Professional electronic design automation (it does not model full voltage margins, timing closure, or physical layout; analog models are simplified)
 - Real-time embedded system development (it is a teaching tool, not a production environment)
 - Users seeking quick answers without building understanding
 - Those expecting AI assistance or automatic circuit generation
@@ -101,11 +104,30 @@ These states correspond to:
 - **Boolean values** — false (0) and true (1)
 - **Logical conditions** — off (0) and on (1)
 
-RedByte does not simulate voltage or current. It simulates only the logical states and how they transform as they pass through components.
+RedByte's core engine simulates logical states and how they transform as they pass through components. It also includes a small set of simplified analog models that use numeric values for voltage and resistance.
 
 ### What Signals Are
 
-A **signal** is a value carried by a wire at a specific moment in time. In RedByte, every signal is either **0** or **1**. There are no intermediate values, no undefined states, and no analog voltages.
+A **signal** is a value carried by a wire at a specific moment in time. In RedByte, most signals are either **0** or **1**. Analog nodes use numeric values (volts, ohms) on specific ports. There are no undefined or tri-state values.
+
+### Analog Components (Limited)
+
+RedByte includes a small set of deterministic analog models for lab-style experiments. These are not transistor-accurate simulations; they are simplified, stable models intended for learning.
+
+Supported analog models:
+
+- **VoltageSource** — Outputs a constant voltage for supply or reference
+- **LDR** — Light-dependent resistor that outputs resistance based on light level
+- **FixedResistor** — Constant resistance value
+- **VoltageDivider** — Computes Vout from Vin, R1, and R2
+- **LM358** — Comparator that outputs 1 when V+ > V-
+
+Analog values propagate through the same tick-based engine as digital signals, so changes appear on the next tick.
+
+To drive analog inputs:
+
+- Select an **LDR** node and adjust **Light Level** in the inspector
+- Select a **VoltageSource** node and adjust **Voltage (V)** to set supply or reference levels
 
 When the user adds a probe to a circuit, the platform tracks that signal over time, recording its value at each tick.
 
@@ -1605,6 +1627,66 @@ Mastery develops through iteration:
 RedByte provides visibility, feedback, and tools. The user provides curiosity, patience, and effort.
 
 The platform is ready. The question is: What will the user build?
+
+---
+
+## 16. From Logic to Bitstream
+
+RedByte can move beyond simulation and create FPGA-ready outputs for Basys 3 boards. The flow is deterministic and mirrors standard FPGA toolchains:
+
+1. **Build a digital circuit** in Logic Playground (analog nodes are simulation-only).
+2. **Export a netlist** from the circuit graph.
+3. **Generate synthesizable Verilog** plus the RedByte primitive library.
+4. **Generate an XDC constraints file** for Basys 3 switch and LED pins.
+5. **Run synthesis** in Vivado batch mode to produce a `.bit` file.
+6. **Program the board** with Vivado or openFPGALoader.
+
+The Hardware Panel shows toolchain detection status and provides synth/program controls once Vivado is available.
+
+---
+
+## 17. Analog Simulation
+
+Analog models are simplified and deterministic. They are intended for teaching lab concepts (comparators, sensors, and references) rather than transistor-level accuracy.
+
+**Example: LDR + Voltage Divider + LM358**
+
+1. Place an **LDR**, **FixedResistor**, **VoltageDivider**, **LM358**, and **Lamp**.
+2. Feed **VoltageSource** into `VoltageDivider.v_in`.
+3. Wire `FixedResistor.resistance` to `VoltageDivider.r1`.
+4. Wire `LDR.resistance` to `VoltageDivider.r2`.
+5. Wire `VoltageDivider.v_out` to `LM358.V_plus`.
+6. Provide a `VoltageSource` reference to `LM358.V_minus`.
+7. Wire `LM358.out` to the Lamp input.
+
+As light increases, the LDR resistance drops, lowering the divider output. The comparator toggles when `V_plus` crosses `V_minus`.
+
+Analog values appear in the Inspector under **Analog Readings**, showing inputs, outputs, and their source connections.
+
+---
+
+## 18. Troubleshooting
+
+**Vivado not found**
+
+- Install AMD Vivado WebPACK and ensure the Vivado binary is on your PATH.
+- Reopen the Hardware Panel to refresh toolchain detection.
+
+**Board not detected**
+
+- Confirm Basys 3 USB connection and power.
+- On Windows, check FTDI drivers and COM port availability.
+
+**UI unresponsive**
+
+- Refresh the page and reopen the Logic Playground.
+- Close unused windows to reduce render load.
+
+**Simulator does not tick**
+
+- Ensure simulation is running (Space).
+- Verify tick rate is above 0.
+- Exit replay mode to resume live ticks.
 
 ---
 

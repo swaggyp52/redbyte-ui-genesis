@@ -5859,3 +5859,21 @@ Commits:
 - `ec8b1974` - Fix remaining Markdown formatting issues (44 to 10 errors)
 
 ---
+
+## Change Log  2026-01-19
+
+- Rebuilt `CircuitEngine` for clean signal propagation (restored class structure, fixed syntax, deterministic tick logging toggle), widened `Signal` to numeric values, and registered analog nodes (including new `VoltageSource`) through `@redbyte/rb-analog-sim`
+- Updated analog simulation tests: new VDD/Vref sources, light=0.1/0.9 vectors, and added an LM358 comparator inline snapshot test for toggle behavior
+- Added analog nodes to the Logic Playground palette metadata and port memoization; added inspector sliders for LDR light level and VoltageSource voltage; extended circuit store validation list
+- Documented analog models and input sliders in `apps/manual-site/public/user-manual.md`; fixed Files app Ctrl+Enter test selection to target a real file row
+- Added `@redbyte/rb-analog-sim` as a workspace dependency for `rb-logic-core` and synced `pnpm-lock.yaml` via `pnpm install`
+- Added Vitest aliases for `@redbyte/rb-analog-sim` and `@redbyte/rb-fpga-toolchain`; verified analog tests with `pnpm exec vitest run packages/rb-logic-core/src/__tests__/analog-evaluator.test.ts packages/rb-logic-core/src/__tests__/analog-comparator.test.ts`
+
+## Change Log  2026-01-19
+
+- Guarded analog signal propagation defaults in `CircuitEngine` and analog models; added debug-only missing-signal logging and clarified Vivado missing-toolchain error text
+- Expanded Logic Playground inspector with analog input/output readouts and debounced analog slider updates to avoid heavy recompute
+- Added `.rbproj.zip` export option (project JSON + circuit file + README) to Logic Playground
+- Updated manual-site Home/Getting Started copy, embedded live demo, added analog/FPGA docs, and refreshed GitHub links
+- Updated README with instructor workflow and FPGA programming notes (UTF-16LE preserved)
+- Updated `@redbyte/rb-analog-sim` and `@redbyte/rb-fpga-toolchain` test scripts to pass when no tests exist; validated `pnpm -r build` and `pnpm -r test` successfully

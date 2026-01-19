@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import GuidedTour from '../components/GuidedTour';
+import LogicGatePlayground from '../components/examples/LogicGatePlayground';
 
 // Type workaround for React 19 compatibility
 const Link = RouterLink as React.ComponentType<{ to: string; className?: string; children: React.ReactNode }>;
@@ -15,14 +16,22 @@ export default function Home() {
         <div className="content-container px-6 py-20 md:py-28">
           <div className="max-w-2xl">
             <h1 className="text-display text-rb-text mb-6">
-              Learn digital logic by building it.
+              RedByte OS: a local FPGA + analog lab for digital logic.
             </h1>
-            <p className="text-lg text-rb-muted mb-8 leading-relaxed">
-              RedByte is a browser-based environment for learning and teaching digital logic.
-              Build circuits with gates and wires, simulate them tick-by-tick, and debug timing
-              with a real-time oscilloscope. Deterministic by design—same inputs always produce
-              same outputs.
+            <p className="text-lg text-rb-muted mb-6 leading-relaxed">
+              RedByte OS is a single-environment platform that mirrors Vivado-style workflows without
+              the overhead. Build circuits, simulate analog components, export Verilog + XDC, and
+              program Basys 3 boards. Everything runs locally in your browser—no accounts, no cloud,
+              no setup surprises.
             </p>
+            <div className="bg-rb-surface border border-rb-border rounded-md p-4 mb-8">
+              <div className="text-xs uppercase tracking-wide text-rb-dim mb-2">Hardware Kit</div>
+              <ul className="text-sm text-rb-muted space-y-1">
+                <li>Basys 3 (Artix-7), USB cable</li>
+                <li>LM358 comparators, LDR sensors</li>
+                <li>Breadboard, jump wires, basic resistors</li>
+              </ul>
+            </div>
 
             <div className="flex flex-wrap gap-3">
               <a href="#download" className="btn btn-primary">
@@ -41,7 +50,7 @@ export default function Home() {
             </div>
 
             <p className="text-sm text-rb-dim mt-6">
-              Free and open source. Runs entirely in your browser—no account required.
+              Open-source, local-first, and deterministic. Works on Windows, macOS, and Linux.
             </p>
           </div>
         </div>
@@ -60,7 +69,7 @@ export default function Home() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             <FeatureCard
               title="Deterministic Simulation"
-              description="Every simulation is reproducible. Step forward and backward through time to debug circuits. Same inputs always yield identical outputs."
+              description="Every run is reproducible. Step through ticks to debug timing. Same inputs always yield the same outputs."
               tag="Core"
             />
             <FeatureCard
@@ -74,20 +83,44 @@ export default function Home() {
               tag="Core"
             />
             <FeatureCard
+              title="Analog Lab Models"
+              description="LM358 comparators, LDRs, voltage dividers, and references built into the simulator for mixed-signal labs."
+              tag="Analog"
+            />
+            <FeatureCard
+              title="FPGA Toolchain"
+              description="Export synthesizable Verilog + XDC, then program Basys 3 boards with Vivado or openFPGALoader."
+              tag="FPGA"
+            />
+            <FeatureCard
               title="Lab Workbench"
               description="Structured labs with presets for learning. Work through assignments step-by-step with built-in validation."
               tag="Education"
             />
             <FeatureCard
-              title="Keyboard-First UX"
-              description="Command palette, window snapping, and shortcuts for everything. Designed for efficiency, not just clicking."
-              tag="Workflow"
-            />
-            <FeatureCard
               title="Export & Inspect"
-              description="Export circuit designs as artifacts. Submission inspector lets educators review student work."
+              description="Export circuits, debug bundles, and project archives for instructor review and LMS submission."
               tag="Education"
             />
+          </div>
+        </div>
+      </section>
+
+      {/* Live Demo */}
+      <section className="py-20 border-b border-rb-border">
+        <div className="content-container px-6">
+          <div className="mb-8">
+            <h2 className="text-h1 text-rb-text mb-4">Live Demo</h2>
+            <p className="text-rb-muted max-w-2xl">
+              A read-only example of the simulation engine. Try toggling inputs to see deterministic
+              logic behavior, then jump into the full playground for the complete OS experience.
+            </p>
+          </div>
+          <div className="bg-rb-surface border border-rb-border rounded-md p-6">
+            <LogicGatePlayground />
+          </div>
+          <div className="mt-4 text-sm text-rb-muted">
+            Want the full OS? <Link to="/getting-started" className="text-rb-info underline">Install locally</Link>.
           </div>
         </div>
       </section>
@@ -153,17 +186,24 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20">
+      <section id="download" className="py-20">
         <div className="content-container px-6">
           <div className="bg-rb-surface border border-rb-border rounded-lg p-10 md:p-14 text-center">
             <h2 className="text-h1 text-rb-text mb-4">Ready to Build?</h2>
             <p className="text-rb-muted mb-8 max-w-lg mx-auto">
-              Download RedByte and start building circuits. No account, no cloud, no telemetry.
-              Just open it and go.
+              Clone the repo, install dependencies, and launch the desktop environment locally.
             </p>
+            <div className="max-w-xl mx-auto text-left mb-8">
+              <CodeBlock
+                code={`git clone https://github.com/swaggyp52/redbyte-ui-genesis.git\ncd redbyte-ui-genesis\npnpm install\npnpm --filter @redbyte/playground dev`}
+              />
+              <p className="text-xs text-rb-dim mt-3">
+                Optional FPGA flow: install AMD Vivado WebPACK for synthesis and programming.
+              </p>
+            </div>
             <div className="flex flex-wrap justify-center gap-4">
-              <a href="#download" className="btn btn-primary">
-                Download RedByte
+              <a href="https://github.com/swaggyp52/redbyte-ui-genesis" className="btn btn-primary">
+                Open GitHub Repo
               </a>
               <Link to="/getting-started" className="btn btn-secondary">
                 Read Getting Started Guide
@@ -199,6 +239,14 @@ function WorkflowStep({ number, title, description }: { number: number; title: s
       <h3 className="text-h3 text-rb-text mb-2">{title}</h3>
       <p className="text-sm text-rb-muted leading-relaxed">{description}</p>
     </div>
+  );
+}
+
+function CodeBlock({ code }: { code: string }) {
+  return (
+    <pre className="bg-rb-raised border border-rb-border rounded-md p-4 overflow-x-auto">
+      <code className="text-sm text-rb-text font-mono">{code}</code>
+    </pre>
   );
 }
 

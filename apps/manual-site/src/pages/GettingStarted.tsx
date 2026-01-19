@@ -30,6 +30,10 @@ export default function GettingStarted() {
                   <span className="text-rb-accent mt-1">•</span>
                   <span><strong className="text-rb-text">Modern browser</strong> — Chrome, Firefox, Safari, or Edge (latest versions)</span>
                 </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-rb-accent mt-1">ƒ?›</span>
+                  <span><strong className="text-rb-text">Optional hardware kit</strong> ƒ?" Basys 3 (Artix-7), LM358, LDRs, breadboard, USB cable</span>
+                </li>
               </ul>
             </div>
           </section>
@@ -127,6 +131,25 @@ cd redbyte-ui-genesis`} />
             </div>
           </section>
 
+          {/* FPGA Toolchain */}
+          <section className="mb-16">
+            <h2 className="text-h2 text-rb-text mb-6">FPGA Toolchain (Optional)</h2>
+            <p className="text-rb-muted mb-6">
+              RedByte can synthesize and program Basys 3 boards with AMD Vivado WebPACK or
+              openFPGALoader. This is optional for simulation-only work.
+            </p>
+            <div className="space-y-4">
+              <TroubleshootItem
+                question="Vivado not found"
+                answer="Install AMD Vivado WebPACK and ensure the Vivado binary is on your PATH. The Hardware Panel will show toolchain status once detected."
+              />
+              <TroubleshootItem
+                question="Board not detected"
+                answer="Confirm the Basys 3 is connected over USB and powered. On Windows, verify the FTDI driver is installed and the COM port appears."
+              />
+            </div>
+          </section>
+
           {/* Keyboard Shortcuts */}
           <section className="mb-16">
             <h2 className="text-h2 text-rb-text mb-6">Keyboard Shortcuts</h2>
@@ -183,6 +206,11 @@ cd redbyte-ui-genesis`} />
               <TroubleshootItem
                 question="Simulation isn't responding"
                 answer="Make sure simulation is not paused (press Space). Check that all inputs and outputs are wired correctly—floating inputs can cause unexpected behavior."
+              />
+
+              <TroubleshootItem
+                question="Simulator doesn't tick"
+                answer="Verify the tick rate is above zero and the simulation is running. If you're in replay mode, exit replay to resume live ticks."
               />
 
               <TroubleshootItem

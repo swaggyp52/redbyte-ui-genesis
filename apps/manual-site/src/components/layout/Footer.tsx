@@ -59,7 +59,7 @@ export default function Footer() {
               </li>
               <li>
                 <a
-                  href="https://github.com/your-repo/redbyte"
+                  href="https://github.com/swaggyp52/redbyte-ui-genesis"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-rb-muted hover:text-rb-text transition-colors"
