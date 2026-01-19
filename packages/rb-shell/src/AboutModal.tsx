@@ -52,8 +52,8 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
           <h2 className="text-xl text-cyan-300 mb-3">What This Is Not</h2>
           <p className="text-gray-300 leading-relaxed">
             This is <strong>not a professional EDA tool</strong> for designing real hardware, nor a replacement
-            for industry-standard circuit simulators like Verilog/VHDL environments. It does not model analog
-            circuits, timing constraints, or physical properties of real silicon. It is a <strong>pedagogical
+            for industry-standard circuit simulators like Verilog/VHDL environments. It does not model full analog
+            behavior beyond simplified lab models, timing constraints, or physical properties of real silicon. It is a <strong>pedagogical
             and experimental platform</strong> focused on clarity, determinism, and interactive learning—not
             production chip design. If you need industrial-strength simulation, use tools like Quartus, Vivado,
             or ModelSim.
@@ -65,7 +65,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
           <h2 className="text-xl text-cyan-300 mb-3">Learn More</h2>
           <div className="space-y-3">
             <a
-              href="https://github.com/connorturlan/redbyte-ui"
+              href="https://github.com/swaggyp52/redbyte-ui-genesis"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 p-3 bg-slate-800 hover:bg-slate-700 rounded border border-slate-600 transition-colors group"

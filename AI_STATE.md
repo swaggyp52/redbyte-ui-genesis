@@ -5877,3 +5877,9 @@ Commits:
 - Updated manual-site Home/Getting Started copy, embedded live demo, added analog/FPGA docs, and refreshed GitHub links
 - Updated README with instructor workflow and FPGA programming notes (UTF-16LE preserved)
 - Updated `@redbyte/rb-analog-sim` and `@redbyte/rb-fpga-toolchain` test scripts to pass when no tests exist; validated `pnpm -r build` and `pnpm -r test` successfully
+
+## Change Log  2026-01-19
+
+- Updated Guide surfaces: added analog/FPGA callout in manual site Guide page, synced OS guide manual with FPGA/analog/troubleshooting sections, and refreshed User Manual hero badges
+- Fixed public GitHub link placeholders (manual site About and OS About modal) to point at the repo
+- Re-ran `pnpm -r build` and `pnpm -r test` after guide/link updates (manual site build SHA updated)

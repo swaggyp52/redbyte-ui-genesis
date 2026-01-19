@@ -141,18 +141,18 @@ export default function About() {
             <h2 className="text-h2 text-rb-text mb-6">Contact & Repository</h2>
             <div className="bg-rb-surface border border-rb-border rounded-md p-6">
               <p className="text-rb-muted mb-4">
-                RedByte is built by Connor Angiel. The source code will be available on GitHub.
+                RedByte is built by Connor Angiel. The source code is available on GitHub.
               </p>
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-3">
                   <span className="text-rb-dim w-20">GitHub:</span>
                   <a
-                    href="https://github.com/your-repo/redbyte"
+                    href="https://github.com/swaggyp52/redbyte-ui-genesis"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-rb-accent hover:underline"
                   >
-                    github.com/your-repo/redbyte
+                    github.com/swaggyp52/redbyte-ui-genesis
                   </a>
                 </div>
                 <div className="flex items-center gap-3">
