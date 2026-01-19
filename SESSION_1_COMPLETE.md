@@ -39,6 +39,7 @@ node api/server.mjs
 ```powershell
 curl http://127.0.0.1:3001/health
 ```
+
 Expected: `{"status":"ok","timestamp":...}`
 
 ### 3. Test List Runs
@@ -46,6 +47,7 @@ Expected: `{"status":"ok","timestamp":...}`
 ```powershell
 curl http://127.0.0.1:3001/api/labs/runs
 ```
+
 Expected: JSON array of existing runs
 
 ### 4. Test LogicLab UI
@@ -70,6 +72,7 @@ Expected:
 # In repo root
 pnpm agent:lab -- --submission packages/ops/labs/fixtures/student-export-fixture.rb-lab.zip
 ```
+
 Check: packages/ops/labs/runs/run-*/grade.json created
 
 ## Status: ✅ SESSION 1 BACKBONE COMPLETE

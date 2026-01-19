@@ -122,6 +122,7 @@ Ripgrep missing error now includes:
    ```typescript
    useFooStore(s => s.list.map(x => x.id))  // new array, still allowed
    ```
+
    → Addressed by: Smoke tests covering hot paths, code review, docs
 
 2. **Helper function returns**
@@ -129,6 +130,7 @@ Ripgrep missing error now includes:
    ```typescript
    useFooStore(s => makeViewModel(s))  // if makeViewModel returns new object
    ```
+
    → Addressed by: Manual code review (helper stability check), docs Rule 2
 
 3. **Complex destructuring**
@@ -136,6 +138,7 @@ Ripgrep missing error now includes:
    ```typescript
    useFooStore(({a, b}) => ({a, b}))  // param-level destructuring
    ```
+
    → Addressed by: Code review (rare pattern in codebase)
 
 4. **Map/Set/Date constructors**
@@ -143,12 +146,13 @@ Ripgrep missing error now includes:
    ```typescript
    useFooStore(s => new Map(s.entries))  // new instance each time
    ```
+
    → Addressed by: Code review + optional future pattern (PATTERN6)
 
 ## Holes Closed in This Session
 
 | Hole | Status | Evidence |
-|------|--------|----------|
+| --- | --- | --- |
 | rg missing → silent pass | ✅ Closed | Exit code 2, hard fail |
 | rg not installed in CI | ✅ Closed | `sudo apt-get install -y ripgrep` in step 2 |
 | Vague error messages | ✅ Closed | Platform-specific guidance added |
@@ -169,6 +173,7 @@ For **branch protection** to actually block merges:
 5. ✅ Require branches to be up to date
 
 Once configured, any PR with:
+
 - Object selector → lint fails → merge blocked ✅
 - Array selector → lint fails → merge blocked ✅
 - React #185 error → smoke test fails → merge blocked ✅
@@ -176,7 +181,7 @@ Once configured, any PR with:
 
 ## Commit History
 
-```
+```text
 64918eb2 Fix: correct syntax error in error message block
 81081c84 Close remaining enforcement holes: ripgrep install in CI, expanded patterns, explicit file globs
 3184a647 Harden React #185 enforcement: dual regex patterns, Playwright browser install, CI-safe smoke tests
@@ -188,6 +193,7 @@ Once configured, any PR with:
 ✅ **Enforcement is now production-ready.**
 
 The system includes:
+
 1. **5 regex patterns** covering objects, arrays, spread operators
 2. **Explicit CI ripgrep install** (not assumed)
 3. **Deterministic green smoke tests** (flaky tests isolated)

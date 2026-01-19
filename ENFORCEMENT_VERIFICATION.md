@@ -53,6 +53,7 @@ Local Install Options:
 ### CI Verification Status
 
 #### 4. CI Job Steps Order
+
 Location: [.github/workflows/ci.yml](ci.yml#L40-L51)
 
 ```yaml
@@ -159,7 +160,8 @@ Once enabled: any PR with object selectors → lint fails → merge blocked.
 ### Commit History
 
 Latest enforcement hardening commit:
-```
+
+```text
 3184a647 Harden React #185 enforcement: dual regex patterns, Playwright browser install, CI-safe smoke tests
 ```
 

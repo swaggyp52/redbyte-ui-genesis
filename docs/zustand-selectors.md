@@ -3,12 +3,14 @@
 ## Rule 1 — No object literals returned from selectors in React components
 
 **Avoid:**
+
 ```typescript
 useStore(s => ({ a: s.a, b: s.b }))
 useStore(s => ({ ... }), shallow)  // in React components
 ```
 
 **Prefer:**
+
 ```typescript
 // Per-field selectors:
 const a = useStore(s => s.a)
@@ -21,6 +23,7 @@ Or split into multiple small components that each select what they need.
 React's `useSyncExternalStore` expects `getSnapshot()` to be **referentially stable** when the underlying snapshot hasn't changed. Returning new object literals breaks that assumption and can trigger **React #185 "Maximum update depth exceeded"** infinite loop.
 
 ### Real example (React #185)
+
 ```typescript
 // ❌ WRONG - causes infinite loop on perspective switch
 const { probes, addProbe, setActiveProbe } = useProbeStore(
@@ -41,6 +44,7 @@ const setActiveProbe = useProbeStore((state) => state.setActiveProbe);
 ## Rule 2 — If you truly need grouped selects, use a stable helper
 
 Only allowed if you can **guarantee stable references**:
+
 - Pre-memoized selectors at store definition time
 - Store-level derived selectors that return stable references
 - Explicit memoization keyed by relevant fields (rare, document it)
@@ -50,6 +54,7 @@ If you can't prove stability, **do not group**.
 ## Rule 3 — "Perspective switches" are a hot path
 
 Anything mounted/unmounted when switching views must be extra strict:
+
 - No unstable selectors
 - No effects that write to stores on mount without guards
 - Avoid "derive state then setState" loops
