@@ -875,6 +875,52 @@ export const Shell: React.FC<ShellProps> = () => {
     startPerfSummaryLogger();
   }, []);
 
+  // SAFETY: Warn users before closing tab with open windows (potential unsaved work)
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      // Only warn if there are open application windows (excluding launcher)
+      const hasOpenWork = windows.some(
+        (w) => w.contentId !== 'launcher' && w.mode !== 'minimized'
+      );
+
+      if (hasOpenWork) {
+        // Standard way to trigger browser's "Are you sure?" dialog
+        event.preventDefault();
+        // Legacy support for older browsers
+        event.returnValue = 'You have unsaved work. Are you sure you want to leave?';
+        return event.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [windows]);
+
+  // SAFETY: Listen for storage errors and show toast notifications
+  useEffect(() => {
+    const handleStorageError = (event: CustomEvent<{ type: string; message: string }>) => {
+      if (event.detail?.type === 'quota-exceeded') {
+        toast.error({
+          title: 'Storage Full',
+          message: event.detail.message,
+          duration: 15000, // Show for 15 seconds - this is important
+          actions: [
+            {
+              label: 'Learn More',
+              onClick: () => {
+                // Could open help or settings
+                openWindow('settings');
+              },
+            },
+          ],
+        });
+      }
+    };
+
+    window.addEventListener('rb:storage-error', handleStorageError as EventListener);
+    return () => window.removeEventListener('rb:storage-error', handleStorageError as EventListener);
+  }, [openWindow]);
+
   useEffect(() => {
     if (!booted || hasInitializedRef.current) return;
 

@@ -18,6 +18,60 @@ export interface Circuit {
   metadata?: Record<string, any>;
 }
 
+export interface CircuitValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+/**
+ * Validate a circuit object has the expected structure
+ * Returns validation result with specific error messages
+ */
+export function validateCircuit(circuit: unknown): CircuitValidationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  if (!circuit || typeof circuit !== 'object') {
+    return { valid: false, errors: ['Circuit must be an object'], warnings: [] };
+  }
+
+  const c = circuit as Record<string, unknown>;
+
+  // Required arrays
+  if (!Array.isArray(c.gates)) {
+    errors.push("Missing or invalid 'gates' array");
+  }
+  if (!Array.isArray(c.wires)) {
+    errors.push("Missing or invalid 'wires' array");
+  }
+  if (!Array.isArray(c.inputs)) {
+    errors.push("Missing or invalid 'inputs' array");
+  }
+  if (!Array.isArray(c.outputs)) {
+    errors.push("Missing or invalid 'outputs' array");
+  }
+
+  // Warnings for potential issues
+  if (Array.isArray(c.gates) && c.gates.length === 0 && Array.isArray(c.wires) && c.wires.length === 0) {
+    warnings.push('Circuit is empty (no gates or wires)');
+  }
+
+  if (Array.isArray(c.gates) && c.gates.length > 500) {
+    warnings.push(`Circuit has ${c.gates.length} gates - may impact performance`);
+  }
+
+  if (Array.isArray(c.wires) && c.wires.length > 2000) {
+    warnings.push(`Circuit has ${c.wires.length} wires - may impact performance`);
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+  };
+}
+
 /**
  * Encode a circuit to a URL-safe base64 string (legacy uncompressed format)
  * For compressed encoding, use encoding.compressed.ts (lazy-loaded)
@@ -76,7 +130,20 @@ export function decodeCircuit(encoded: string): Circuit {
       base64 += '=';
     }
     const json = atob(base64);
-    return JSON.parse(json);
+    const circuit = JSON.parse(json);
+
+    // Validate the decoded circuit structure
+    const validation = validateCircuit(circuit);
+    if (!validation.valid) {
+      throw new Error(`Invalid circuit structure: ${validation.errors.join(', ')}`);
+    }
+
+    // Log warnings for potential issues
+    if (validation.warnings.length > 0) {
+      console.warn('[Circuit] Validation warnings:', validation.warnings.join(', '));
+    }
+
+    return circuit;
   } catch (error) {
     throw new Error(`Failed to decode circuit: ${error instanceof Error ? error.message : String(error)}`);
   }

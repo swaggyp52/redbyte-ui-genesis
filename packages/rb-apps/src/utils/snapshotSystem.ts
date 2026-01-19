@@ -52,7 +52,25 @@ export function saveSnapshot(
       // Save new latest
       localStorage.setItem(SNAPSHOT_KEYS.LATEST, JSON.stringify(snapshot));
     } catch (err) {
-      console.warn('[Snapshot] Failed to save:', err);
+      // Check if this is a quota exceeded error
+      const isQuotaError =
+        err instanceof DOMException &&
+        (err.name === 'QuotaExceededError' || err.code === 22);
+
+      if (isQuotaError) {
+        console.error('[Snapshot] Storage quota exceeded! Your work may not be saved.');
+        // Dispatch event that UI can listen for
+        window.dispatchEvent(
+          new CustomEvent('rb:storage-error', {
+            detail: {
+              type: 'quota-exceeded',
+              message: 'Browser storage is full. Please export your work to avoid data loss.',
+            },
+          })
+        );
+      } else {
+        console.warn('[Snapshot] Failed to save:', err);
+      }
     }
   };
 
