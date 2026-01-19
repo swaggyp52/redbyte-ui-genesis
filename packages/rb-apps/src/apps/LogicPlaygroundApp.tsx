@@ -54,6 +54,7 @@ import { useRunRecorderStore } from '../stores/runRecorderStore';
 import { encodeRunRecord, indexStimulusByTick, type RunStimulusEvent, type ProofPack } from '../recording/runRecord';
 import { buildProofPack, encodeProofPack } from '../recording/proofPack';
 import { applyStimulusEvents } from '../recording/stimulus';
+import JSZip from 'jszip';
 import { buildSuspectSet } from '../utils/mismatchLocalization';
 import { buildDebugOverlayFromSignals } from '../recording/runRecordUtils';
 import { restoreReplayState } from '../utils/replayRestore';
@@ -84,6 +85,7 @@ const PRIMITIVE_NODES = {
   'Basic I/O': ['PowerSource', 'Switch', 'INPUT', 'Lamp', 'OUTPUT', 'Wire'],
   'Logic Gates': ['AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR', 'XNOR'],
   'Timing': ['Clock', 'Delay'],
+  'Analog': ['VoltageSource', 'LDR', 'FixedResistor', 'VoltageDivider', 'LM358'],
 } as const;
 
 // Composite node types (built-in multi-gate circuits)
@@ -2115,6 +2117,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       XNOR: 'TRUE if inputs are same | Truth: 0,0→1 | 0,1→0 | 1,0→0 | 1,1→1',
       Clock: 'Oscillates between HIGH/LOW periodically',
       Delay: 'Delays signal by configured number of ticks',
+      VoltageSource: 'Analog supply - outputs a constant voltage (set in state/config)',
+      LDR: 'Light-dependent resistor - outputs resistance based on light level',
+      FixedResistor: 'Fixed resistor - outputs a constant resistance value',
+      VoltageDivider: 'Computes Vout from Vin, R1, and R2',
+      LM358: 'Comparator - outputs 1 when V+ > V-',
       RSLatch: 'Set-Reset memory latch - remembers 1 bit using feedback',
       DFlipFlop: 'D Flip-Flop - captures data on clock edge',
       JKFlipFlop: 'JK Flip-Flop - versatile flip-flop with toggle capability',
@@ -2154,6 +2161,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       XNOR: { inputs: [{ id: 'a', name: 'a' }, { id: 'b', name: 'b' }], outputs: [{ id: 'out', name: 'out' }], layer: 1, color: '#10b981' },
       Clock: { inputs: [], outputs: [{ id: 'out', name: 'out' }], layer: 0, color: '#f59e0b' },
       Delay: { inputs: [{ id: 'in', name: 'in' }], outputs: [{ id: 'out', name: 'out' }], layer: 0, color: '#6b7280' },
+      VoltageSource: { inputs: [], outputs: [{ id: 'out', name: 'out' }], layer: 2, color: '#38bdf8' },
+      LDR: { inputs: [], outputs: [{ id: 'resistance', name: 'resistance' }, { id: 'v_out', name: 'v_out' }], layer: 2, color: '#facc15' },
+      FixedResistor: { inputs: [], outputs: [{ id: 'resistance', name: 'resistance' }], layer: 2, color: '#cbd5f5' },
+      VoltageDivider: { inputs: [{ id: 'v_in', name: 'v_in' }, { id: 'r1', name: 'r1' }, { id: 'r2', name: 'r2' }], outputs: [{ id: 'v_out', name: 'v_out' }], layer: 2, color: '#60a5fa' },
+      LM358: { inputs: [{ id: 'V_plus', name: 'V+' }, { id: 'V_minus', name: 'V-' }], outputs: [{ id: 'out', name: 'out' }], layer: 2, color: '#fb7185' },
       // Composite nodes
       RSLatch: { inputs: [{ id: 'R', name: 'R' }, { id: 'S', name: 'S' }], outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q̅' }], layer: 3, color: '#ec4899' },
       DFlipFlop: { inputs: [{ id: 'D', name: 'D' }, { id: 'CLK', name: 'CLK' }], outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q̅' }], layer: 3, color: '#ec4899' },
@@ -2224,8 +2236,22 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     addToast('Circuit reset', 'info');
   };
 
+  const sanitizeFilename = useCallback((name: string) => {
+    const trimmed = name.trim() || 'rb-project';
+    return trimmed.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9._-]/g, '_');
+  }, []);
+
   const downloadText = useCallback((filename: string, text: string, type = 'application/json') => {
     const blob = new Blob([text], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const downloadBlob = useCallback((filename: string, blob: Blob) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -2369,6 +2395,22 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     downloadText('rb-project.json', encodeRBProject(project));
     addToast('Project exported', 'success');
   }, [buildProject, downloadText, addToast]);
+
+  const handleSaveProjectArchive = useCallback(async () => {
+    const project = buildProject();
+    const zip = new JSZip();
+    zip.file('rb-project.json', encodeRBProject(project));
+    zip.file('circuit.rblogic', JSON.stringify(serialize(project.circuit), null, 2));
+    zip.file(
+      'README.txt',
+      'RedByte project archive. Import rb-project.json from the Logic Playground to restore full state.'
+    );
+
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const safeName = sanitizeFilename(project.name ?? 'rb-project');
+    downloadBlob(`${safeName}.rbproj.zip`, blob);
+    addToast('Project archive exported', 'success');
+  }, [buildProject, downloadBlob, sanitizeFilename, addToast]);
 
   const handleOpenProject = useCallback(() => {
     projectFileInputRef.current?.click();
@@ -3054,6 +3096,15 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
                 className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
               >
                 Project (rb-project.json)
+              </button>
+              <button
+                onClick={() => {
+                  void handleSaveProjectArchive();
+                  setShowExportModal(false);
+                }}
+                className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
+              >
+                Project Archive (.rbproj.zip)
               </button>
               <button
                 onClick={() => {

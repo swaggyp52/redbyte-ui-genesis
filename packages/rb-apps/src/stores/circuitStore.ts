@@ -254,6 +254,7 @@ function createCircuitStore() {
           'PowerSource', 'Switch', 'INPUT', 'Lamp', 'OUTPUT', 'Wire',
           'AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR', 'XNOR',
           'Clock', 'Delay',
+          'VoltageSource', 'LDR', 'FixedResistor', 'VoltageDivider', 'LM358',
           'RSLatch', 'DFlipFlop', 'JKFlipFlop', 'FullAdder', 'Counter4Bit',
         ];
         if (!validTypes.includes(nodeType)) {

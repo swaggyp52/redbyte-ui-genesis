@@ -46,23 +46,69 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
 
   // Get real-time signals for selected nodes
   const [nodeSignals, setNodeSignals] = React.useState<Map<string, Record<string, Signal>>>(new Map());
+  const [nodeInputs, setNodeInputs] = React.useState<
+    Map<string, Record<string, { value: Signal; source?: string }>>
+  >(new Map());
+  const [analogUiState, setAnalogUiState] = React.useState<Record<string, number>>({});
+  const analogCommitTimerRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
     if (!isRunning || selectedNodes.length === 0) {
       setNodeSignals(new Map());
+      setNodeInputs(new Map());
       return;
     }
 
     const interval = setInterval(() => {
       const signals = new Map<string, Record<string, Signal>>();
+      const inputs = new Map<string, Record<string, { value: Signal; source?: string }>>();
+      const allSignals = engine.getAllSignals();
       for (const node of selectedNodes) {
         signals.set(node.id, engine.getNodeOutputs(node.id));
+        const inputValues: Record<string, { value: Signal; source?: string }> = {};
+        for (const connection of circuit.connections) {
+          if (connection.to.nodeId !== node.id) continue;
+          const sourceKey = `${connection.from.nodeId}.${connection.from.portName}`;
+          const value = allSignals.get(sourceKey) ?? 0;
+          inputValues[connection.to.portName] = { value, source: sourceKey };
+        }
+        inputs.set(node.id, inputValues);
       }
       setNodeSignals(signals);
+      setNodeInputs(inputs);
     }, 200); // Reduced from 50ms to 200ms for better performance
 
     return () => clearInterval(interval);
-  }, [isRunning, selectedNodes, engine]);
+  }, [isRunning, selectedNodes, engine, circuit.connections]);
+
+  React.useEffect(() => {
+    if (selectedNodes.length === 0) {
+      setAnalogUiState({});
+      return;
+    }
+    const node = selectedNodes[0];
+    if (node.type === 'LDR') {
+      const light = typeof node.state?.light === 'number' ? node.state.light : 0.5;
+      setAnalogUiState({ light });
+      return;
+    }
+    if (node.type === 'VoltageSource') {
+      const voltage = typeof node.state?.voltage === 'number'
+        ? node.state.voltage
+        : (node.config?.voltage ?? 5);
+      setAnalogUiState({ voltage });
+      return;
+    }
+    setAnalogUiState({});
+  }, [selectedNodes]);
+
+  React.useEffect(() => {
+    return () => {
+      if (analogCommitTimerRef.current) {
+        window.clearTimeout(analogCommitTimerRef.current);
+      }
+    };
+  }, []);
 
   // Handle property changes
   const handleConfigChange = (nodeId: string, configKey: string, value: any) => {
@@ -75,6 +121,43 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
         [configKey]: value,
       },
     });
+  };
+
+  const handleStateChange = (nodeId: string, stateKey: string, value: any) => {
+    const node = selectedNodes.find((n) => n.id === nodeId);
+    if (!node || !onNodeUpdate || isReplayMode) return;
+
+    onNodeUpdate(nodeId, {
+      state: {
+        ...(node.state ?? {}),
+        [stateKey]: value,
+      },
+    });
+  };
+
+  const handleAnalogStateChange = (nodeId: string, stateKey: string, value: number) => {
+    const node = selectedNodes.find((n) => n.id === nodeId);
+    if (!node || isReplayMode) return;
+
+    const nextAnalogState = { ...analogUiState, [stateKey]: value };
+    setAnalogUiState(nextAnalogState);
+
+    const engineState = engine.getNodeState(nodeId) ?? {};
+    engine.setNodeState(nodeId, { ...engineState, [stateKey]: value });
+
+    if (!onNodeUpdate) return;
+
+    if (analogCommitTimerRef.current) {
+      window.clearTimeout(analogCommitTimerRef.current);
+    }
+    analogCommitTimerRef.current = window.setTimeout(() => {
+      onNodeUpdate(nodeId, {
+        state: {
+          ...(node.state ?? {}),
+          ...nextAnalogState,
+        },
+      });
+    }, 120);
   };
 
   const handlePositionChange = (nodeId: string, x: number, y: number) => {
@@ -111,7 +194,40 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
   if (selectedNodes.length > 0) {
     const node = selectedNodes[0]; // Show first selected node
     const signals = nodeSignals.get(node.id) ?? {};
-    const state = engine.getNodeState(node.id) ?? {};
+    const inputSignals = nodeInputs.get(node.id) ?? {};
+    const engineState = engine.getNodeState(node.id) ?? {};
+    const uiState = node.state ?? {};
+    const analogControls = [
+      node.type === 'LDR'
+        ? {
+            key: 'light',
+            label: 'Light Level',
+            min: 0,
+            max: 1,
+            step: 0.01,
+            value: analogUiState.light ?? uiState.light ?? 0.5,
+          }
+        : null,
+      node.type === 'VoltageSource'
+        ? {
+            key: 'voltage',
+            label: 'Voltage (V)',
+            min: 0,
+            max: 5,
+            step: 0.1,
+            value: analogUiState.voltage ?? uiState.voltage ?? node.config?.voltage ?? 5,
+          }
+        : null,
+    ].filter(Boolean) as Array<{ key: string; label: string; min: number; max: number; step: number; value: number }>;
+
+    const analogPortsByType: Record<string, { inputs: string[]; outputs: string[] }> = {
+      VoltageSource: { inputs: [], outputs: ['out'] },
+      LDR: { inputs: [], outputs: ['resistance', 'v_out'] },
+      FixedResistor: { inputs: [], outputs: ['resistance'] },
+      VoltageDivider: { inputs: ['v_in', 'r1', 'r2'], outputs: ['v_out'] },
+      LM358: { inputs: ['V_plus', 'V_minus'], outputs: ['out'] },
+    };
+    const analogPorts = analogPortsByType[node.type];
 
     return (
       <div className="flex flex-col h-full overflow-hidden">
@@ -170,6 +286,99 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Analog inputs */}
+          {analogControls.length > 0 && (
+            <div className="bg-cyan-900/10 rounded-lg p-3 border border-cyan-500/20">
+              <div className="text-xs font-semibold text-cyan-300 mb-2">SIM INPUTS</div>
+              <div className="space-y-3">
+                {analogControls.map((control) => (
+                  <div key={control.key}>
+                    <div className="block text-gray-400 mb-1.5 text-xs">{control.label}</div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min={control.min}
+                        max={control.max}
+                        step={control.step}
+                        value={control.value}
+                        onChange={(e) =>
+                          handleAnalogStateChange(
+                            node.id,
+                            control.key,
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                        className="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                        disabled={isReplayMode}
+                        title={isReplayMode ? lockMessage : undefined}
+                      />
+                      <input
+                        type="number"
+                        min={control.min}
+                        max={control.max}
+                        step={control.step}
+                        value={control.value}
+                        onChange={(e) =>
+                          handleAnalogStateChange(
+                            node.id,
+                            control.key,
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                        className="w-20 px-2 py-1 bg-gray-800 rounded border border-gray-600 text-white text-sm font-mono"
+                        disabled={isReplayMode}
+                        title={isReplayMode ? lockMessage : undefined}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Analog readings */}
+          {isRunning && analogPorts && (analogPorts.inputs.length > 0 || analogPorts.outputs.length > 0) && (
+            <div className="bg-slate-900/30 rounded-lg p-3 border border-slate-600/40">
+              <div className="text-xs font-semibold text-slate-300 mb-2">ANALOG READINGS</div>
+              {analogPorts.inputs.length > 0 && (
+                <div className="mb-3">
+                  <div className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Inputs</div>
+                  <div className="space-y-1.5">
+                    {analogPorts.inputs.map((port) => {
+                      const entry = inputSignals[port];
+                      const value = entry?.value ?? 0;
+                      return (
+                        <div key={port} className="flex items-center justify-between gap-2 text-sm">
+                          <span className="text-slate-200">{port}</span>
+                          <span className="text-slate-400 text-xs flex-1 truncate text-right">
+                            {entry?.source ? `<- ${entry.source}` : 'unconnected'}
+                          </span>
+                          <span className="text-slate-100 font-mono">{value}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {analogPorts.outputs.length > 0 && (
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Outputs</div>
+                  <div className="space-y-1.5">
+                    {analogPorts.outputs.map((port) => {
+                      const value = signals[port] ?? 0;
+                      return (
+                        <div key={port} className="flex items-center justify-between gap-2 text-sm">
+                          <span className="text-slate-200">{port}</span>
+                          <span className="text-slate-100 font-mono">{value}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -243,11 +452,11 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
           )}
 
           {/* State (read-only) */}
-          {state && Object.keys(state).length > 0 && (
+          {engineState && Object.keys(engineState).length > 0 && (
             <div className="bg-purple-900/10 rounded-lg p-3 border border-purple-500/20">
               <div className="text-xs font-semibold text-purple-300 mb-2">INTERNAL STATE</div>
               <div className="space-y-1.5">
-                {Object.entries(state).map(([key, value]) => (
+                {Object.entries(engineState).map(([key, value]) => (
                   <div key={key} className="flex justify-between items-center">
                     <span className="text-gray-300 text-sm capitalize">
                       {key.replace(/([A-Z])/g, ' $1').trim()}
