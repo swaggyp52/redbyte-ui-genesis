@@ -65,7 +65,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
       { id: 'files', title: 'Files', appId: 'files', iconId: 'files', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 3 },
       { id: 'settings', title: 'Settings', appId: 'settings', iconId: 'settings', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 4 },
       { id: 'terminal', title: 'Terminal', appId: 'terminal', iconId: 'terminal', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 5 },
-      { id: 'user-manual', title: 'User Manual', appId: 'user-manual', iconId: 'document', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 6 },
+      { id: 'user-manual', title: 'Guide', appId: 'user-manual', iconId: 'document', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 6 },
     ];
     return base;
   });

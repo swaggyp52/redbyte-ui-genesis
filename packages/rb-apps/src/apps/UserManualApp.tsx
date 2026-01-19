@@ -347,17 +347,15 @@ export const UserManualAppComponent: React.FC<UserManualProps> = ({ onOpenApp })
   const [pendingDemo, setPendingDemo] = useState<null | { id: ExampleId; label: string }>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // --- Handlers ---
   const handleLinkClick = useCallback((event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     if (href.startsWith('rb://demo/')) {
       event.preventDefault();
       const slug = href.replace('rb://demo/', '');
       const demo = DEMO_LINKS[slug];
-      if (demo) {
-        setPendingDemo(demo);
-      }
+      if (demo) setPendingDemo(demo);
       return;
     }
-
     if (href.startsWith('#')) {
       event.preventDefault();
       const target = document.getElementById(href.slice(1));
@@ -382,14 +380,65 @@ export const UserManualAppComponent: React.FC<UserManualProps> = ({ onOpenApp })
     [searchQuery, copiedId, handleLinkClick, handleCopy]
   );
 
+  // --- Custom Hero Section ---
+  const Hero = (
+    <section className="w-full bg-gradient-to-br from-cyan-900/80 to-slate-900/90 rounded-b-2xl shadow-lg px-6 py-10 mb-8 flex flex-col items-center text-center">
+      <div className="flex flex-col items-center gap-4 max-w-2xl">
+        <div className="flex items-center gap-3">
+          <span className="inline-block bg-cyan-600 rounded-full p-2">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#06b6d4"/><path d="M10 22V10h12v12H10zm2-2h8V12h-8v8z" fill="#fff"/></svg>
+          </span>
+          <h1 className="text-3xl font-bold text-cyan-100 tracking-tight">Welcome to Redbyte</h1>
+        </div>
+        <p className="text-lg text-slate-200 mt-2">
+          <span className="font-semibold text-cyan-300">Redbyte</span> is a next-generation digital logic playground and circuit design OS.<br/>
+          Build, simulate, and share digital circuits—right in your browser.
+        </p>
+        <ul className="flex flex-wrap justify-center gap-4 mt-4 text-slate-300 text-base">
+          <li className="bg-slate-800/80 rounded px-4 py-2">Visual Circuit Editor</li>
+          <li className="bg-slate-800/80 rounded px-4 py-2">Instant Simulation</li>
+          <li className="bg-slate-800/80 rounded px-4 py-2">Shareable Demos</li>
+          <li className="bg-slate-800/80 rounded px-4 py-2">Educational & Professional</li>
+        </ul>
+      </div>
+    </section>
+  );
+
+  // --- Redesigned Table of Contents ---
+  const TOC = (
+    <nav aria-label="Guide table of contents" className="space-y-1 text-sm">
+      {toc.length === 0 ? (
+        <span className="text-slate-500">No sections found.</span>
+      ) : (
+        toc.map((item) => (
+          <a
+            key={item.id}
+            href={`#${item.id}`}
+            onClick={(event) => handleLinkClick(event, `#${item.id}`)}
+            className={`block rounded px-2 py-1 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-400 ${
+              item.level === 1
+                ? 'font-semibold text-cyan-200 hover:bg-cyan-900/30'
+                : item.level === 2
+                ? 'pl-4 text-cyan-100 hover:bg-cyan-800/20'
+                : 'pl-8 text-slate-400 hover:bg-slate-800/30 text-xs'
+            }`}
+          >
+            {item.text}
+          </a>
+        ))
+      )}
+    </nav>
+  );
+
+  // --- Main Layout ---
   return (
     <div className="h-full bg-slate-900 text-white flex flex-col">
       <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
         <div className="flex items-center gap-3">
           <div className="text-xl">dY","</div>
           <div>
-            <div className="text-sm font-semibold text-slate-100">User Manual</div>
-            <div className="text-xs text-slate-500">RedByte OS Guide</div>
+            <div className="text-sm font-semibold text-slate-100">Redbyte Guide</div>
+            <div className="text-xs text-slate-500">Digital Circuit Playground</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -403,7 +452,7 @@ export const UserManualAppComponent: React.FC<UserManualProps> = ({ onOpenApp })
             onChange={(event) => setSearchQuery(event.target.value)}
             className="px-3 py-1.5 text-sm bg-slate-900 border border-slate-700 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
             placeholder="Find topics"
-            aria-label="Search the manual"
+            aria-label="Search the guide"
           />
         </div>
       </div>
@@ -412,29 +461,17 @@ export const UserManualAppComponent: React.FC<UserManualProps> = ({ onOpenApp })
         <div className="h-full grid grid-cols-1 lg:grid-cols-[260px,1fr]">
           <aside className="hidden lg:block border-r border-slate-800 bg-slate-950/40">
             <div className="sticky top-0 px-4 py-4">
-              <div className="text-xs uppercase tracking-wide text-slate-500 mb-3">Contents</div>
-              <nav aria-label="Manual table of contents" className="space-y-2 text-sm">
-                {toc.map((item) => (
-                  <a
-                    key={item.id}
-                    href={`#${item.id}`}
-                    onClick={(event) => handleLinkClick(event, `#${item.id}`)}
-                    className={`block text-slate-300 hover:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-400 rounded px-2 py-1 ${
-                      item.level === 1 ? 'font-semibold' : item.level === 2 ? 'pl-4' : 'pl-6 text-xs'
-                    }`}
-                  >
-                    {item.text}
-                  </a>
-                ))}
-              </nav>
+              <div className="text-xs uppercase tracking-wide text-slate-500 mb-3">Sections</div>
+              {TOC}
             </div>
           </aside>
 
           <main
             tabIndex={0}
             className="overflow-y-auto px-6 py-6 lg:px-10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-            aria-label="User manual content"
+            aria-label="Guide content"
           >
+            {Hero}
             <div className="max-w-3xl space-y-6">{blocks}</div>
           </main>
         </div>

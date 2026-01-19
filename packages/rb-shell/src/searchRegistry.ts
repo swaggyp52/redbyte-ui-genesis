@@ -82,7 +82,7 @@ const COMMANDS: CommandSearchResult[] = [
   {
     type: 'command',
     id: 'open-user-manual',
-    name: 'Open User Manual',
+    name: 'Open Guide',
     description: 'Help, documentation, user guide, and getting started',
   },
   {

@@ -466,9 +466,9 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           <button
             onClick={onManual}
             className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs font-semibold transition-all"
-            title="Open User Manual"
+            title="Open Guide"
           >
-            Manual
+            Guide
           </button>
         )}
         <button

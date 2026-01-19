@@ -111,7 +111,7 @@ const COMMANDS: CommandItem[] = [
   },
   {
     id: 'open-user-manual',
-    label: 'Open User Manual',
+    label: 'Open Guide',
     description: 'Help, documentation, and getting-started guide',
   },
   {
