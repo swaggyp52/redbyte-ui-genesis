@@ -109,6 +109,14 @@ export const Shell: React.FC<ShellProps> = () => {
 
     try {
       const raw = localStorage.getItem('rb:shell:pinnedApps');
+      
+      // Demo mode: Auto-pin demo apps if no pins exist
+      if (!raw && isDemoMode) {
+        const demoApps = ['logic-playground', 'student-lab', 'submission-inspector'];
+        localStorage.setItem('rb:shell:pinnedApps', JSON.stringify(demoApps));
+        return demoApps;
+      }
+      
       if (!raw) return [];
 
       const parsed = JSON.parse(raw);
