@@ -6,6 +6,7 @@ import GettingStarted from './pages/GettingStarted';
 import Examples from './pages/Examples';
 import Guide from './pages/Manual';
 import Walkthrough from './pages/Walkthrough';
+import ManualRedirect from './pages/ManualRedirect';
 import About from './pages/About';
 import Demo from './pages/Demo';
 
@@ -22,6 +23,7 @@ function App() {
             <Route path="/examples" element={<Examples />} />
             <Route path="/guide" element={<Guide />} />
             <Route path="/guide/walkthrough" element={<Walkthrough />} />
+            <Route path="/manual" element={<ManualRedirect />} />
             <Route path="/about" element={<About />} />
           </Routes>
         </main>

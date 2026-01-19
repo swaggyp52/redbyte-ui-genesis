@@ -5,7 +5,7 @@ const navLinks = [
   { to: '/', label: 'Home' },
   { to: '/getting-started', label: 'Getting Started' },
   { to: '/examples', label: 'Examples' },
-  { to: '/manual', label: 'Manual' },
+  { to: '/guide', label: 'Guide' },
   { to: '/demo', label: 'For Educators' },
   { to: '/about', label: 'About' },
 ];
