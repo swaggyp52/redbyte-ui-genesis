@@ -49,6 +49,7 @@ export default function LogicGatePlayground() {
             <div className="flex items-center justify-between">
               <span className="font-mono text-rb-muted">Input A:</span>
               <button
+                aria-label="Toggle Input A"
                 onClick={() => setInputA(!inputA)}
                 className={`w-20 h-10 rounded border-2 transition-colors font-mono ${
                   inputA 
@@ -63,6 +64,7 @@ export default function LogicGatePlayground() {
             <div className="flex items-center justify-between">
               <span className="font-mono text-rb-muted">Input B:</span>
               <button
+                aria-label="Toggle Input B"
                 onClick={() => setInputB(!inputB)}
                 className={`w-20 h-10 rounded border-2 transition-colors font-mono ${
                   inputB 

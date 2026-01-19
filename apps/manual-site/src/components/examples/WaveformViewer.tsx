@@ -188,12 +188,14 @@ export default function WaveformViewer() {
       <div className="flex flex-col gap-4 mb-6">
         <div className="flex gap-4">
           <button
+            aria-label={isPlaying ? 'Pause playback' : 'Play waveform'}
             onClick={handlePlayPause}
             className="px-6 py-2 bg-rb-accent text-rb-bg font-medium rounded hover:bg-rb-accent-dim transition-colors"
           >
             {isPlaying ? '⏸ Pause' : '▶ Play'}
           </button>
           <button
+            aria-label="Reset to tick 0"
             onClick={handleReset}
             className="px-6 py-2 bg-rb-bg border border-rb-border text-rb-text font-medium rounded hover:border-rb-accent transition-colors"
           >
@@ -211,6 +213,7 @@ export default function WaveformViewer() {
           <span className="text-sm text-rb-muted">Time:</span>
           <input
             type="range"
+            aria-label="Scrub through waveform time"
             min="0"
             max={TOTAL_TICKS - 1}
             value={timeIndex}
