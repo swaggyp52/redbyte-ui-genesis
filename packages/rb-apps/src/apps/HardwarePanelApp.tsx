@@ -1,13 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import type { RedByteApp } from "../types";
-
-interface BridgeStatus {
-  ok: boolean;
-  connected: boolean;
-  port: string;
-  baud: number;
-  mode?: string;
-}
+import { hardwareClient, type ConnectionState } from "../services/hardwareClient";
 
 interface IOState {
   SW: string;
@@ -16,89 +9,48 @@ interface IOState {
   TICK: string;
 }
 
-const BRIDGE_HTTP = "http://127.0.0.1:4242";
-const BRIDGE_WS = "ws://127.0.0.1:4243";
-
 function HardwarePanelComponent() {
-  const [status, setStatus] = useState<BridgeStatus | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [connectionState, setConnectionState] = useState<ConnectionState>(hardwareClient.getState());
   const [ioState, setIOState] = useState<IOState | null>(null);
-  const [ws, setWs] = useState<WebSocket | null>(null);
   const [events, setEvents] = useState<any[]>([]);
   const [lastSeq, setLastSeq] = useState<number>(-1);
-  const [mockMode, setMockMode] = useState(false);
-  const [localIO, setLocalIO] = useState({ SW: 0, BTN: 0 }); // For mock toggles
+  const [hwMode, setHwMode] = useState<'auto' | 'on' | 'off'>('auto');
 
-  // Check bridge health
-  const checkHealth = useCallback(async () => {
-    try {
-      const res = await fetch(`${BRIDGE_HTTP}/api/health`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setStatus(data);
-      setMockMode(data.port === "MOCK");
-      setError(null);
-    } catch (e: any) {
-      setError(e.message || "Bridge not detected");
-      setStatus(null);
-    }
-  }, []);
+  // Subscribe to hardware client state changes
+  useEffect(() => {
+    const unsubscribe = hardwareClient.subscribe((state) => {
+      setConnectionState(state);
 
-  // Connect to WebSocket
-  const connectWS = useCallback(() => {
-    if (ws) return;
+      // Set up WebSocket message listener when connected
+      if (state.status === 'connected' && state.ws) {
+        state.ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            setEvents((prev) => [...prev.slice(-20), msg]); // Keep last 20
+            setLastSeq(msg.seq);
 
-    try {
-      const socket = new WebSocket(BRIDGE_WS);
-
-      socket.onopen = () => {
-        console.log("[Hardware Panel] WS connected");
-      };
-
-      socket.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data);
-          setEvents((prev) => [...prev.slice(-20), msg]); // Keep last 20
-          setLastSeq(msg.seq);
-
-          if (msg.type === "io:update") {
-            setIOState({
-              SW: msg.SW || "0000000000000000",
-              BTN: msg.BTN || "00000",
-              LED: msg.LED || "0000000000000000",
-              TICK: msg.TICK || "0",
-            });
+            if (msg.type === "io:update") {
+              setIOState({
+                SW: msg.SW || "0000000000000000",
+                BTN: msg.BTN || "00000",
+                LED: msg.LED || "0000000000000000",
+                TICK: msg.TICK || "0",
+              });
+            }
+          } catch (e) {
+            console.error("[Hardware Panel] Failed to parse WS message", e);
           }
-        } catch (e) {
-          console.error("[Hardware Panel] Failed to parse WS message", e);
-        }
-      };
+        };
+      }
+    });
 
-      socket.onerror = (e) => {
-        console.error("[Hardware Panel] WS error", e);
-        setError("WebSocket connection failed");
-      };
-
-      socket.onclose = () => {
-        console.log("[Hardware Panel] WS closed");
-        setWs(null);
-        setTimeout(() => connectWS(), 2000); // Reconnect after 2s
-      };
-
-      setWs(socket);
-    } catch (e: any) {
-      setError(e.message);
-    }
-  }, [ws]);
+    return unsubscribe;
+  }, []);
 
   // Export proof capsule
   const exportProof = async () => {
     try {
-      const res = await fetch(`${BRIDGE_HTTP}/api/proof`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const proof = await res.json();
-      
-      const blob = new Blob([JSON.stringify(proof, null, 2)], { type: "application/json" });
+      const blob = await hardwareClient.exportProof();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -110,69 +62,77 @@ function HardwarePanelComponent() {
     }
   };
 
-  // Toggle I/O bit (mock mode only)
-  const toggleBit = (field: "SW" | "BTN", bit: number) => {
-    if (!mockMode) return;
-    const current = localIO[field];
-    const updated = current ^ (1 << bit);
-    setLocalIO({ ...localIO, [field]: updated });
-    // In real implementation, would emit control:io-toggle event to bridge
+  const handleModeChange = (mode: 'auto' | 'on' | 'off') => {
+    setHwMode(mode);
+    hardwareClient.setMode(mode);
   };
 
-  useEffect(() => {
-    checkHealth();
-    const interval = setInterval(checkHealth, 5000);
-    return () => clearInterval(interval);
-  }, [checkHealth]);
-
-  useEffect(() => {
-    if (status?.ok && !ws) {
-      connectWS();
-    }
-    return () => {
-      if (ws) {
-        ws.close();
-        setWs(null);
-      }
-    };
-  }, [status, ws, connectWS]);
+  const isConnected = connectionState.status === 'connected';
+  const ws = connectionState.status === 'connected' ? connectionState.ws : null;
+  const mockMode = connectionState.status === 'connected' && connectionState.bridge.port === 'MOCK';
 
   return (
     <div style={{ padding: "20px", fontFamily: "monospace", color: "#fff" }}>
       <h2>🔧 Hardware Panel</h2>
       
-      {/* Connection Status */}
+      {/* Hardware Mode Toggle */}
       <div style={{ marginBottom: "20px", padding: "10px", background: "#1a1a2e", borderRadius: "4px", border: "1px solid #16213e" }}>
-        <strong>Connection Status:</strong>{" "}
-        {ws ? (
-          <>
-            <span style={{ color: "#0f0" }}>● WS Connected</span>
-            <span style={{ marginLeft: "20px", fontSize: "12px", color: "#888" }}>Last seq: {lastSeq}</span>
-          </>
-        ) : (
-          <>
-            <span style={{ color: "#f00" }}>● WS Disconnected</span>
-          </>
-        )}
+        <div style={{ marginBottom: "8px" }}><strong>Hardware Integration:</strong></div>
+        <div style={{ display: "flex", gap: "10px" }}>
+          {(['off', 'auto', 'on'] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => handleModeChange(mode)}
+              style={{
+                padding: "6px 12px",
+                background: hwMode === mode ? "#0a5a0a" : "#333",
+                color: "#fff",
+                border: "1px solid " + (hwMode === mode ? "#0f0" : "#555"),
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "12px",
+              }}
+            >
+              {mode === 'off' ? '⭕ OFF' : mode === 'auto' ? '🔄 AUTO' : '✅ ON'}
+            </button>
+          ))}
+        </div>
+        <div style={{ marginTop: "8px", fontSize: "11px", color: "#888" }}>
+          {hwMode === 'off' && 'Demo mode - hardware disabled'}
+          {hwMode === 'auto' && 'Auto-detect - falls back to demo if unavailable'}
+          {hwMode === 'on' && 'Force hardware connection - keeps retrying'}
+        </div>
       </div>
 
-      {/* Bridge Status */}
-      <div style={{ marginBottom: "20px", padding: "10px", background: status?.ok ? "#0a3a0a" : "#3a0a0a", borderRadius: "4px" }}>
-        <strong>Bridge Status:</strong>{" "}
-        {status ? (
-          <>
+      {/* Connection Status */}
+      <div style={{ marginBottom: "20px", padding: "10px", background: "#1a1a2e", borderRadius: "4px", border: "1px solid #16213e" }}>
+        <strong>Status:</strong>{" "}
+        {connectionState.status === 'offline' && (
+          <div>
+            <span style={{ color: "#f90" }}>● Offline</span>
+            <div style={{ marginTop: "8px", fontSize: "12px", color: "#aaa" }}>
+              {connectionState.message}
+            </div>
+          </div>
+        )}
+        {connectionState.status === 'connecting' && (
+          <div>
+            <span style={{ color: "#ff0" }}>● Connecting...</span>
+            <div style={{ marginTop: "8px", fontSize: "12px", color: "#aaa" }}>
+              {connectionState.message}
+            </div>
+          </div>
+        )}
+        {connectionState.status === 'connected' && (
+          <div>
             <span style={{ color: "#0f0" }}>● Connected</span>
             <div style={{ marginTop: "8px", fontSize: "12px" }}>
-              Port: {status.port} | Baud: {status.baud} | Mode: {mockMode ? "MOCK" : "UART"}
+              Port: {connectionState.bridge.port} | Baud: {connectionState.bridge.baud} | Mode: {mockMode ? "MOCK" : "UART"}
             </div>
-          </>
-        ) : (
-          <>
-            <span style={{ color: "#f00" }}>● No local bridge detected</span>
-            <div style={{ marginTop: "8px", fontSize: "12px", color: "#aaa" }}>
-              {error || "Start bridge: pnpm --filter @redbyte/fpga-bridge dev:mock"}
+            <div style={{ marginTop: "4px", fontSize: "11px", color: ws ? "#0f0" : "#f90" }}>
+              WebSocket: {ws ? `Connected (seq: ${lastSeq})` : 'Disconnected'}
             </div>
-          </>
+          </div>
         )}
       </div>
 
@@ -181,47 +141,23 @@ function HardwarePanelComponent() {
         <div style={{ marginBottom: "20px" }}>
           <h3>I/O State (Live)</h3>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-            {/* Switches (Toggleable in mock) */}
-            <div style={{ padding: "10px", background: "#222", borderRadius: "4px", opacity: mockMode ? 1 : 0.7 }}>
-              <div><strong>Switches (SW)</strong> {mockMode && <span style={{ fontSize: "10px", color: "#888" }}>[mock mode - clickable]</span>}</div>
-              <div style={{ fontSize: "14px", color: "#0ff", fontFamily: "monospace", userSelect: "none" }}>
-                {ioState.SW.split("").map((bit, i) => (
-                  <span
-                    key={i}
-                    onClick={() => mockMode && toggleBit("SW", i)}
-                    style={{
-                      cursor: mockMode ? "pointer" : "default",
-                      background: mockMode ? (i % 4 === 0 ? "#333" : "transparent") : "transparent",
-                      padding: "2px 4px",
-                    }}
-                  >
-                    {bit}
-                  </span>
-                ))}
+            {/* Switches */}
+            <div style={{ padding: "10px", background: "#222", borderRadius: "4px" }}>
+              <div><strong>Switches (SW)</strong></div>
+              <div style={{ fontSize: "14px", color: "#0ff", fontFamily: "monospace" }}>
+                {ioState.SW}
               </div>
             </div>
-            {/* LEDs (Read-only) */}
+            {/* LEDs */}
             <div style={{ padding: "10px", background: "#222", borderRadius: "4px" }}>
               <div><strong>LEDs</strong></div>
               <div style={{ fontSize: "14px", color: "#ff0", fontFamily: "monospace" }}>{ioState.LED}</div>
             </div>
-            {/* Buttons (Toggleable in mock) */}
-            <div style={{ padding: "10px", background: "#222", borderRadius: "4px", opacity: mockMode ? 1 : 0.7 }}>
-              <div><strong>Buttons (BTN)</strong> {mockMode && <span style={{ fontSize: "10px", color: "#888" }}>[mock mode - clickable]</span>}</div>
-              <div style={{ fontSize: "14px", color: "#0f0", fontFamily: "monospace", userSelect: "none" }}>
-                {ioState.BTN.split("").map((bit, i) => (
-                  <span
-                    key={i}
-                    onClick={() => mockMode && toggleBit("BTN", i)}
-                    style={{
-                      cursor: mockMode ? "pointer" : "default",
-                      background: mockMode ? (bit === "1" ? "#0f0" : "transparent") : "transparent",
-                      padding: "2px 4px",
-                    }}
-                  >
-                    {bit}
-                  </span>
-                ))}
+            {/* Buttons */}
+            <div style={{ padding: "10px", background: "#222", borderRadius: "4px" }}>
+              <div><strong>Buttons (BTN)</strong></div>
+              <div style={{ fontSize: "14px", color: "#0f0", fontFamily: "monospace" }}>
+                {ioState.BTN}
               </div>
             </div>
             {/* TICK */}
@@ -237,21 +173,21 @@ function HardwarePanelComponent() {
       <div style={{ marginBottom: "20px" }}>
         <button
           onClick={exportProof}
-          disabled={!status?.ok}
+          disabled={!isConnected}
           style={{
             padding: "10px 20px",
-            background: status?.ok ? "#0a5a0a" : "#555",
+            background: isConnected ? "#0a5a0a" : "#555",
             color: "#fff",
             border: "none",
             borderRadius: "4px",
-            cursor: status?.ok ? "pointer" : "not-allowed",
+            cursor: isConnected ? "pointer" : "not-allowed",
             marginRight: "10px",
           }}
         >
           📦 Export Proof Capsule
         </button>
         <button
-          onClick={checkHealth}
+          onClick={() => hardwareClient.connect()}
           style={{
             padding: "10px 20px",
             background: "#0a3a5a",
@@ -261,7 +197,7 @@ function HardwarePanelComponent() {
             cursor: "pointer",
           }}
         >
-          🔄 Refresh Status
+          🔄 Reconnect
         </button>
       </div>
 
