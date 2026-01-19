@@ -412,9 +412,11 @@ describe('PHASE_V: Open With workflow', () => {
     const documentsButton = getSidebarButton('Documents');
     fireEvent.click(documentsButton!);
 
-    // Select first file via arrow down
+    // Select a file row
+    const readmeRow = screen.getByText('README.md');
+    fireEvent.click(readmeRow);
+
     const mainContainer = container.querySelector('[tabIndex="0"]');
-    fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
 
     // Press Cmd+Enter
     fireEvent.keyDown(mainContainer!, { key: 'Enter', metaKey: true });
@@ -432,9 +434,11 @@ describe('PHASE_V: Open With workflow', () => {
     const documentsButton = getSidebarButton('Documents');
     fireEvent.click(documentsButton!);
 
-    // Select second item (first file, since first item is Reports folder)
+    // Select a file row
+    const readmeRow = screen.getByText('README.md');
+    fireEvent.click(readmeRow);
+
     const mainContainer = container.querySelector('[tabIndex="0"]');
-    fireEvent.keyDown(mainContainer!, { key: 'ArrowDown' });
 
     // Press Ctrl+Enter
     fireEvent.keyDown(mainContainer!, { key: 'Enter', ctrlKey: true });

@@ -972,6 +972,11 @@ export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => 
         if (nodeType === 'AND' || nodeType === 'NAND') return ['a', 'b', 'out'];
         if (nodeType === 'OR' || nodeType === 'NOR' || nodeType === 'XOR' || nodeType === 'XNOR') return ['a', 'b', 'out'];
         if (nodeType === 'NOT') return ['in', 'out'];
+        if (nodeType === 'VoltageSource') return ['out'];
+        if (nodeType === 'LDR') return ['resistance', 'v_out'];
+        if (nodeType === 'FixedResistor') return ['resistance'];
+        if (nodeType === 'VoltageDivider') return ['v_in', 'r1', 'r2', 'v_out'];
+        if (nodeType === 'LM358') return ['V_plus', 'V_minus', 'out'];
         return ['in', 'out'];
       };
 
