@@ -46,6 +46,13 @@ function Verify-LiveSiteSha([string]$siteUrl, [string]$expectedSha) {
       if ($null -ne $resp -and $null -ne $resp.Content) { $live = [string]$resp.Content }
       $live = $live.Trim()
 
+      # Sanity check: reject HTML responses
+      if ($live -match '^\s*<!doctype|^\s*<html') {
+        Warn "Got HTML instead of build.txt (route/caching). (attempt $i/$maxAttempts)"
+        Start-Sleep -Seconds $sleepSeconds
+        continue
+      }
+
       if (-not [string]::IsNullOrWhiteSpace($live)) {
         Info "Live SHA:     $live"
         Info "Expected SHA: $expectedSha"
@@ -151,8 +158,9 @@ if ($VerifyLive) {
   } else {
     Info ""
     Info "== Live-site verification =="
-    $expectedSha = Get-HeadSha
-    Verify-LiveSiteSha -siteUrl "https://redbyteapps.dev" -expectedSha $expectedSha
+    Exec "git fetch origin $Branch"
+    $expectedSha = (git rev-parse "origin/$Branch").Trim()
+    Verify-LiveSiteSha -siteUrl "https://redbyteapps.dev/guide" -expectedSha $expectedSha
   }
 }
 
