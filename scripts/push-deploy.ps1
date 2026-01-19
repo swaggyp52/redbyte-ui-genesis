@@ -32,7 +32,7 @@ function Get-HeadSha() {
 }
 
 function Verify-LiveSiteSha([string]$siteUrl, [string]$expectedSha) {
-  $url = $siteUrl.TrimEnd("/") + "/build.txt"
+  $url = $siteUrl.TrimEnd("/") + "/build.txt?t=" + [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
   Info "Checking live build SHA at: $url"
 
   $maxAttempts = 60
@@ -158,9 +158,9 @@ if ($VerifyLive) {
   } else {
     Info ""
     Info "== Live-site verification =="
-    Exec "git fetch origin $Branch"
-    $expectedSha = (git rev-parse "origin/$Branch").Trim()
-    Verify-LiveSiteSha -siteUrl "https://redbyteapps.dev/guide" -expectedSha $expectedSha
+    Exec "git fetch origin main"
+    $expectedSha = (git rev-parse "origin/main").Trim()
+    Verify-LiveSiteSha -siteUrl "https://redbyteapps.dev" -expectedSha $expectedSha
   }
 }
 
