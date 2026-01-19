@@ -1,35 +1,35 @@
 import { useState, useEffect, useRef } from 'react';
 
 const TOTAL_TICKS = 64;
-const SIGNALS = ['CLK', 'A', 'B', 'OUT'];
-const TICK_PERIOD_MS = 33; // ~30 ticks/sec
-const COLORS = {
-  CLK: '#3ff0c8',
-  A: '#6ba3ff',
-  B: '#9b6bff',
-  OUT: '#ff6b95'
-};
+const TICK_PERIOD_MS = 50;
 
-// Pre-generate deterministic signal data for all ticks
+// Signal definitions with colors from design system
+const SIGNALS = [
+  { name: 'CLK', color: '#5ce8c8' },   // rb-signal-clk (teal)
+  { name: 'A', color: '#5c8ce8' },     // rb-signal-a (blue)
+  { name: 'B', color: '#a85ce8' },     // rb-signal-b (purple)
+  { name: 'OUT', color: '#e8a85c' },   // rb-signal-out (orange)
+];
+
+// Pre-generate deterministic signal data
 function generateSignalData() {
-  const data: Record<string, number[]> = {
-    CLK: [],
-    A: [],
-    B: [],
-    OUT: []
-  };
+  const data: Record<string, number[]> = {};
+
+  SIGNALS.forEach(({ name }) => {
+    data[name] = [];
+  });
 
   for (let tick = 0; tick < TOTAL_TICKS; tick++) {
     // CLK: square wave with period of 8 ticks
     data.CLK.push(Math.floor(tick / 4) % 2);
-    
+
     // A: changes every 16 ticks
     data.A.push(Math.floor(tick / 16) % 2);
-    
+
     // B: changes every 12 ticks
     data.B.push(Math.floor(tick / 12) % 2);
-    
-    // OUT: XOR of A and B (combinational logic)
+
+    // OUT: XOR of A and B
     data.OUT.push(data.A[tick] ^ data.B[tick]);
   }
 
@@ -44,17 +44,16 @@ export default function WaveformViewer() {
   const lastTickRef = useRef<number>(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Stable tick loop using requestAnimationFrame
+  // Stable tick loop
   useEffect(() => {
     if (isPlaying) {
       let animationId: number;
-      
+
       const tick = (timestamp: number) => {
         if (!lastTickRef.current) lastTickRef.current = timestamp;
-        
+
         const elapsed = timestamp - lastTickRef.current;
-        
-        // Advance by 1 tick when enough time has passed
+
         if (elapsed >= TICK_PERIOD_MS) {
           lastTickRef.current = timestamp;
           setTimeIndex((prev) => {
@@ -65,10 +64,10 @@ export default function WaveformViewer() {
             return prev + 1;
           });
         }
-        
+
         animationId = requestAnimationFrame(tick);
       };
-      
+
       animationId = requestAnimationFrame(tick);
       return () => cancelAnimationFrame(animationId);
     } else {
@@ -76,7 +75,7 @@ export default function WaveformViewer() {
     }
   }, [isPlaying]);
 
-  // Draw waveforms on canvas
+  // Draw waveforms
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -84,20 +83,27 @@ export default function WaveformViewer() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const width = rect.width;
+    const height = rect.height;
     const signalHeight = height / SIGNALS.length;
     const tickWidth = width / TOTAL_TICKS;
 
-    // Clear canvas
-    ctx.fillStyle = '#0f1620';
+    // Clear
+    ctx.fillStyle = '#13161c'; // rb-surface
     ctx.fillRect(0, 0, width, height);
 
-    // Draw grid lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
     ctx.lineWidth = 1;
-    
-    // Vertical grid lines (every 8 ticks)
+
+    // Vertical grid (every 8 ticks)
     for (let i = 0; i <= TOTAL_TICKS; i += 8) {
       const x = i * tickWidth;
       ctx.beginPath();
@@ -106,7 +112,7 @@ export default function WaveformViewer() {
       ctx.stroke();
     }
 
-    // Horizontal grid lines (between signals)
+    // Horizontal grid (signal separators)
     for (let i = 1; i < SIGNALS.length; i++) {
       const y = i * signalHeight;
       ctx.beginPath();
@@ -115,45 +121,42 @@ export default function WaveformViewer() {
       ctx.stroke();
     }
 
-    // Draw waveforms as step functions
+    // Draw waveforms
     SIGNALS.forEach((signal, signalIdx) => {
       const yBase = signalIdx * signalHeight;
       const yHigh = yBase + signalHeight * 0.2;
       const yLow = yBase + signalHeight * 0.8;
 
-      ctx.strokeStyle = COLORS[signal as keyof typeof COLORS];
+      ctx.strokeStyle = signal.color;
       ctx.lineWidth = 2;
       ctx.beginPath();
 
       for (let tick = 0; tick < TOTAL_TICKS; tick++) {
         const x = tick * tickWidth;
-        const value = SIGNAL_DATA[signal][tick];
+        const value = SIGNAL_DATA[signal.name][tick];
         const y = value === 1 ? yHigh : yLow;
 
         if (tick === 0) {
           ctx.moveTo(x, y);
         } else {
-          // Draw step function: horizontal then vertical
-          const prevValue = SIGNAL_DATA[signal][tick - 1];
+          const prevValue = SIGNAL_DATA[signal.name][tick - 1];
           const prevY = prevValue === 1 ? yHigh : yLow;
-          
+
           if (prevValue !== value) {
-            // Vertical transition
             ctx.lineTo(x, prevY);
             ctx.lineTo(x, y);
           }
         }
-        
-        // Horizontal line to next tick
+
         ctx.lineTo(x + tickWidth, y);
       }
 
       ctx.stroke();
     });
 
-    // Draw time cursor
+    // Time cursor
     const cursorX = timeIndex * tickWidth;
-    ctx.strokeStyle = '#3ff0c8';
+    ctx.strokeStyle = '#e85c5c'; // rb-accent
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
@@ -164,105 +167,170 @@ export default function WaveformViewer() {
 
   }, [timeIndex]);
 
-  const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
-  };
-
+  const handlePlayPause = () => setIsPlaying(!isPlaying);
   const handleReset = () => {
     setTimeIndex(0);
     setIsPlaying(false);
     lastTickRef.current = 0;
   };
-
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newIndex = parseInt(e.target.value, 10);
-    setTimeIndex(newIndex);
+    setTimeIndex(parseInt(e.target.value, 10));
     setIsPlaying(false);
+  };
+  const handleStep = (delta: number) => {
+    setIsPlaying(false);
+    setTimeIndex(prev => Math.max(0, Math.min(TOTAL_TICKS - 1, prev + delta)));
   };
 
   return (
-    <div className="bg-rb-surface rounded-lg p-8 border border-rb-border">
-      <h3 className="text-2xl font-bold mb-6 text-rb-text">Waveform Viewer</h3>
-      
-      {/* Controls */}
-      <div className="flex flex-col gap-4 mb-6">
-        <div className="flex gap-4">
+    <div className="bg-rb-surface border border-rb-border rounded-md overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-rb-border">
+        <h3 className="text-h3 text-rb-text">Waveform Viewer</h3>
+        <p className="text-sm text-rb-muted mt-1">
+          Oscilloscope-style view. Scrub through time to debug signal timing.
+        </p>
+      </div>
+
+      <div className="p-6 space-y-4">
+        {/* Controls */}
+        <div className="flex flex-wrap items-center gap-3">
           <button
-            aria-label={isPlaying ? 'Pause playback' : 'Play waveform'}
+            type="button"
+            aria-label={isPlaying ? 'Pause' : 'Play'}
             onClick={handlePlayPause}
-            className="px-6 py-2 bg-rb-accent text-rb-bg font-medium rounded hover:bg-rb-accent-dim transition-colors"
+            className="btn btn-primary"
           >
-            {isPlaying ? '⏸ Pause' : '▶ Play'}
+            {isPlaying ? (
+              <>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className="mr-2">
+                  <rect x="3" y="2" width="4" height="12" />
+                  <rect x="9" y="2" width="4" height="12" />
+                </svg>
+                Pause
+              </>
+            ) : (
+              <>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className="mr-2">
+                  <path d="M4 2l10 6-10 6V2z" />
+                </svg>
+                Play
+              </>
+            )}
           </button>
+
           <button
-            aria-label="Reset to tick 0"
+            type="button"
+            aria-label="Step backward"
+            onClick={() => handleStep(-1)}
+            className="btn btn-secondary px-3"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M10 12L4 8l6-4v8zM12 4v8h-2V4h2z" />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            aria-label="Step forward"
+            onClick={() => handleStep(1)}
+            className="btn btn-secondary px-3"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M6 4l6 4-6 4V4zM4 4v8h2V4H4z" />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            aria-label="Reset"
             onClick={handleReset}
-            className="px-6 py-2 bg-rb-bg border border-rb-border text-rb-text font-medium rounded hover:border-rb-accent transition-colors"
+            className="btn btn-secondary"
           >
             Reset
           </button>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-rb-muted">Tick:</span>
-            <span className="text-rb-text font-mono font-bold">{timeIndex}</span>
-            <span className="text-rb-muted">/ {TOTAL_TICKS - 1}</span>
+
+          <div className="flex items-center gap-2 ml-auto text-sm font-mono">
+            <span className="text-rb-dim">Tick:</span>
+            <span className="text-rb-text font-semibold tabular-nums">{timeIndex}</span>
+            <span className="text-rb-dim">/ {TOTAL_TICKS - 1}</span>
           </div>
         </div>
 
         {/* Time scrubber */}
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-rb-muted">Time:</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-rb-dim font-mono">0</span>
           <input
             type="range"
-            aria-label="Scrub through waveform time"
+            aria-label="Scrub timeline"
             min="0"
             max={TOTAL_TICKS - 1}
             value={timeIndex}
             onChange={handleSliderChange}
-            className="flex-1 h-2 bg-rb-bg rounded-lg appearance-none cursor-pointer
-                     [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 
-                     [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-rb-accent
-                     [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 
-                     [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-rb-accent [&::-moz-range-thumb]:border-0"
+            className="flex-1 h-1.5 bg-rb-raised rounded-full appearance-none cursor-pointer
+                     [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3
+                     [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-rb-accent [&::-webkit-slider-thumb]:cursor-pointer
+                     [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3
+                     [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-rb-accent [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
           />
+          <span className="text-xs text-rb-dim font-mono">{TOTAL_TICKS - 1}</span>
         </div>
-      </div>
 
-      {/* Waveform Canvas */}
-      <div className="bg-rb-bg rounded-lg p-4 mb-6">
-        <canvas
-          ref={canvasRef}
-          width={800}
-          height={240}
-          className="w-full"
-        />
-      </div>
-
-      {/* Signal Values */}
-      <div className="grid grid-cols-4 gap-4">
-        {SIGNALS.map((signal) => {
-          const value = SIGNAL_DATA[signal][timeIndex];
-          const color = COLORS[signal as keyof typeof COLORS];
-          return (
-            <div key={signal} className="bg-rb-bg rounded p-4 border border-rb-border">
-              <div className="flex items-center gap-2 mb-2">
-                <div 
-                  className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: color }}
+        {/* Waveform display */}
+        <div className="flex gap-4">
+          {/* Signal labels */}
+          <div className="flex flex-col justify-around py-2 pr-2 border-r border-rb-border">
+            {SIGNALS.map((signal) => (
+              <div key={signal.name} className="flex items-center gap-2">
+                <div
+                  className="w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: signal.color }}
                 />
-                <span className="text-sm font-semibold text-rb-text">{signal}</span>
+                <span className="text-xs font-mono text-rb-muted">{signal.name}</span>
               </div>
-              <div className="text-2xl font-mono font-bold" style={{ color }}>
-                {value}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            ))}
+          </div>
 
-      <p className="text-sm text-rb-muted mt-6 leading-relaxed">
-        <span className="text-rb-accent">💡 Deterministic behavior:</span> Scrub through time to see the exact state at any tick. 
-        Same inputs always produce same outputs—perfect for debugging.
-      </p>
+          {/* Canvas */}
+          <div className="flex-1 bg-rb-surface rounded overflow-hidden">
+            <canvas
+              ref={canvasRef}
+              className="w-full"
+              style={{ height: `${SIGNALS.length * 50}px` }}
+            />
+          </div>
+        </div>
+
+        {/* Signal values at current tick */}
+        <div className="grid grid-cols-4 gap-3">
+          {SIGNALS.map((signal) => {
+            const value = SIGNAL_DATA[signal.name][timeIndex];
+            return (
+              <div key={signal.name} className="bg-rb-raised border border-rb-border rounded-md p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: signal.color }}
+                  />
+                  <span className="text-xs font-semibold text-rb-muted">{signal.name}</span>
+                </div>
+                <div
+                  className="text-2xl font-mono font-bold"
+                  style={{ color: signal.color }}
+                >
+                  {value}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Info */}
+        <p className="text-xs text-rb-dim leading-relaxed">
+          <span className="text-rb-accent font-medium">Deterministic:</span>{' '}
+          Every tick produces the same output. Step backward and forward to see exact signal states at any moment—ideal for debugging timing issues.
+        </p>
+      </div>
     </div>
   );
 }

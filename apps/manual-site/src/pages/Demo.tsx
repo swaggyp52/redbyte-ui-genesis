@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import GuidedTour from '../components/GuidedTour';
 
-const Link = RouterLink as any;
+const Link = RouterLink as React.ComponentType<{ to: string; className?: string; children: React.ReactNode }>;
 
 export default function Demo() {
   const [showTour, setShowTour] = useState(false);
@@ -10,35 +10,38 @@ export default function Demo() {
   return (
     <div className="py-16 bg-rb-bg">
       <div className="content-container px-6">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl">
           {/* Header */}
           <div className="mb-12">
-            <h1 className="text-4xl font-bold mb-4 text-rb-text">Professor Demo</h1>
+            <h1 className="text-h1 text-rb-text mb-4">For Educators</h1>
             <p className="text-lg text-rb-muted leading-relaxed">
-              A 60-second overview of RedByte as a digital logic teaching platform.
+              A quick overview of RedByte as a digital logic teaching platform.
             </p>
           </div>
 
           {/* 60-Second Overview */}
           <section className="mb-16">
-            <h2 className="text-2xl font-bold mb-6 text-rb-text">Overview</h2>
-            <div className="bg-rb-surface border border-rb-border rounded-lg p-6 space-y-4">
+            <h2 className="text-h2 text-rb-text mb-6">60-Second Overview</h2>
+            <div className="bg-rb-surface border border-rb-border rounded-md p-6 space-y-4">
               <p className="text-rb-text leading-relaxed">
-                <strong>RedByte</strong> is a deterministic digital logic simulator and FPGA development environment 
-                designed for education. It runs entirely in the browser—no installation, no backend, no cloud dependency.
+                <strong>RedByte</strong> is a browser-based environment for teaching digital logic.
+                Students build circuits visually, simulate them deterministically (step forward/backward
+                through time), and debug with an oscilloscope view. No installation required—runs
+                entirely in the browser with no backend or cloud dependency.
               </p>
               <p className="text-rb-muted leading-relaxed">
-                Students build circuits visually, simulate them deterministically (step forward/backward through time), 
-                and export to Verilog for real hardware. The platform includes a Lab Workbench for assignments, 
-                automatic grading, and submission inspection.
+                The platform includes a Lab Workbench for structured assignments and a Submission
+                Inspector for reviewing student work. All data stays local—no accounts, no telemetry.
               </p>
               <p className="text-rb-muted leading-relaxed">
-                <strong className="text-rb-text">Key differentiator:</strong> Full determinism means every simulation is 
-                reproducible. Perfect for teaching, debugging, and automated testing.
+                <strong className="text-rb-text">Key differentiator:</strong> Full determinism.
+                Every simulation run is perfectly reproducible, making debugging and grading
+                straightforward.
               </p>
               <button
+                type="button"
                 onClick={() => setShowTour(true)}
-                className="mt-4 px-6 py-2 bg-rb-accent text-rb-bg font-medium rounded hover:bg-rb-accent-dim transition-colors"
+                className="mt-2 btn btn-primary"
               >
                 Start Guided Tour
               </button>
@@ -47,103 +50,91 @@ export default function Demo() {
 
           {/* Demo Scenes */}
           <section className="mb-16">
-            <h2 className="text-2xl font-bold mb-6 text-rb-text">Demo Scenes</h2>
-            <div className="grid md:grid-cols-3 gap-6">
+            <h2 className="text-h2 text-rb-text mb-6">What to Show</h2>
+            <div className="grid md:grid-cols-3 gap-4">
               <DemoSceneCard
                 number={1}
                 title="Logic Playground"
-                description="Visual circuit editor, simulation controls, real-time debugging"
-                link="/examples"
-                linkText="Try Examples"
+                items={[
+                  'Add gates from palette',
+                  'Wire components together',
+                  'Run simulation (Space)',
+                  'Step through time (arrows)',
+                ]}
               />
               <DemoSceneCard
                 number={2}
-                title="Lab Workbench"
-                description="Student assignments, self-check tools, export for grading"
-                link="/getting-started"
-                linkText="See Workflow"
+                title="Oscilloscope"
+                items={[
+                  'Probe any wire',
+                  'See waveforms over time',
+                  'Scrub timeline',
+                  'Debug timing issues',
+                ]}
               />
               <DemoSceneCard
                 number={3}
-                title="Submission Inspector"
-                description="Instructor tool for viewing student submissions and grades"
-                link="/manual"
-                linkText="Read Manual"
+                title="Lab Workbench"
+                items={[
+                  'Structured assignments',
+                  'Built-in validation',
+                  'Export submissions',
+                  'Inspector for grading',
+                ]}
               />
             </div>
           </section>
 
-          {/* Implementation Status */}
+          {/* Implementation Status - HONEST */}
           <section className="mb-16">
-            <h2 className="text-2xl font-bold mb-6 text-rb-text">Implementation Status</h2>
+            <h2 className="text-h2 text-rb-text mb-6">Implementation Status</h2>
+            <p className="text-rb-muted mb-6">
+              RedByte is under active development. Here's an honest assessment of what works today
+              versus what's planned.
+            </p>
+
             <div className="grid md:grid-cols-2 gap-6">
-              {/* Implemented */}
-              <div className="bg-rb-surface border border-rb-border rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-4 text-rb-accent">✓ Implemented Now</h3>
-                <ul className="space-y-2 text-sm text-rb-muted">
-                  <li className="flex items-start gap-2">
-                    <span className="text-rb-accent mt-0.5">✓</span>
-                    <span>Visual circuit editor with gates, wires, chips</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-rb-accent mt-0.5">✓</span>
-                    <span>Deterministic simulation engine (forward/backward)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-rb-accent mt-0.5">✓</span>
-                    <span>Real-time oscilloscope with signal probing</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-rb-accent mt-0.5">✓</span>
-                    <span>Custom chip library system</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-rb-accent mt-0.5">✓</span>
-                    <span>Lab Workbench (student assignments)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-rb-accent mt-0.5">✓</span>
-                    <span>Automatic grading with test vectors</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-rb-accent mt-0.5">✓</span>
-                    <span>Submission Inspector (instructor tool)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-rb-accent mt-0.5">✓</span>
-                    <span>Export to Verilog/VHDL</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-rb-accent mt-0.5">✓</span>
-                    <span>Keyboard-driven workflow</span>
-                  </li>
+              {/* Working Now */}
+              <div className="bg-rb-surface border border-rb-border rounded-md overflow-hidden">
+                <div className="px-5 py-4 bg-rb-raised border-b border-rb-border">
+                  <h3 className="text-base font-semibold text-rb-accent flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.78 5.28l-5 6a.75.75 0 01-1.06.06l-2.5-2.25a.75.75 0 111-1.12l1.94 1.75 4.5-5.38a.75.75 0 111.12.94z" />
+                    </svg>
+                    Working Now
+                  </h3>
+                </div>
+                <ul className="p-5 space-y-2.5 text-sm">
+                  <StatusItem status="done">Desktop shell with windowing</StatusItem>
+                  <StatusItem status="done">Logic designer (add/remove gates, manage state)</StatusItem>
+                  <StatusItem status="done">Deterministic tick-based simulation</StatusItem>
+                  <StatusItem status="done">Oscilloscope infrastructure</StatusItem>
+                  <StatusItem status="done">Learning context with progress tracking</StatusItem>
+                  <StatusItem status="done">File explorer and terminal</StatusItem>
+                  <StatusItem status="done">Keyboard shortcuts (Ctrl+K, etc.)</StatusItem>
+                  <StatusItem status="done">Settings and preferences</StatusItem>
                 </ul>
               </div>
 
-              {/* Roadmap */}
-              <div className="bg-rb-surface border border-rb-border rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-4 text-rb-text">→ Next</h3>
-                <ul className="space-y-2 text-sm text-rb-muted">
-                  <li className="flex items-start gap-2">
-                    <span className="text-rb-muted mt-0.5">→</span>
-                    <span>Hardware Bridge (upload to FPGA)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-rb-muted mt-0.5">→</span>
-                    <span>Advanced waveform analysis tools</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-rb-muted mt-0.5">→</span>
-                    <span>Collaborative design features</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-rb-muted mt-0.5">→</span>
-                    <span>Lab template library</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-rb-muted mt-0.5">→</span>
-                    <span>Gradebook integration</span>
-                  </li>
+              {/* In Progress / Planned */}
+              <div className="bg-rb-surface border border-rb-border rounded-md overflow-hidden">
+                <div className="px-5 py-4 bg-rb-raised border-b border-rb-border">
+                  <h3 className="text-base font-semibold text-rb-muted flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.5 9h-7a.5.5 0 010-1h7a.5.5 0 010 1z" />
+                    </svg>
+                    In Progress / Planned
+                  </h3>
+                </div>
+                <ul className="p-5 space-y-2.5 text-sm">
+                  <StatusItem status="wip">Visual canvas editor (table UI exists, canvas pending)</StatusItem>
+                  <StatusItem status="wip">Oscilloscope visualization polish</StatusItem>
+                  <StatusItem status="wip">Circuit export formats</StatusItem>
+                  <StatusItem status="planned">Hierarchical chips (reusable components)</StatusItem>
+                  <StatusItem status="planned">HDL export (Verilog/VHDL)</StatusItem>
+                  <StatusItem status="planned">FPGA bridge for hardware deployment</StatusItem>
+                  <StatusItem status="planned">Lab template library</StatusItem>
+                  <StatusItem status="planned">Gradebook integration</StatusItem>
                 </ul>
               </div>
             </div>
@@ -151,81 +142,91 @@ export default function Demo() {
 
           {/* Course Integration */}
           <section className="mb-16">
-            <h2 className="text-2xl font-bold mb-6 text-rb-text">Course Integration</h2>
-            <div className="bg-rb-surface border border-rb-border rounded-lg p-6 space-y-4">
-              <p className="text-rb-text leading-relaxed">
-                <strong>How RedByte fits a digital logic course:</strong>
+            <h2 className="text-h2 text-rb-text mb-6">Course Integration Ideas</h2>
+            <div className="bg-rb-surface border border-rb-border rounded-md p-6">
+              <p className="text-rb-text mb-6">
+                A suggested 12-week integration for a digital logic course:
               </p>
-              
-              <div className="space-y-3 text-rb-muted">
-                <div>
-                  <strong className="text-rb-text">Week 1-4: Combinational Logic</strong>
-                  <p className="text-sm mt-1">Students build basic gates, truth tables, multiplexers. Lab assignments use the Lab Workbench with auto-grading.</p>
-                </div>
-                
-                <div>
-                  <strong className="text-rb-text">Week 5-8: Sequential Logic</strong>
-                  <p className="text-sm mt-1">Registers, counters, state machines. Students debug timing with the oscilloscope and step through simulation states.</p>
-                </div>
-                
-                <div>
-                  <strong className="text-rb-text">Week 9-12: Custom Chips & Projects</strong>
-                  <p className="text-sm mt-1">Students create reusable components (adders, ALUs) and build a final project (e.g., simple CPU). Export to Verilog for optional FPGA deployment.</p>
-                </div>
+
+              <div className="space-y-4">
+                <CourseWeek
+                  weeks="1–4"
+                  title="Combinational Logic"
+                  description="Students build basic gates, truth tables, multiplexers. Lab assignments with auto-validation."
+                />
+                <CourseWeek
+                  weeks="5–8"
+                  title="Sequential Logic"
+                  description="Registers, counters, state machines. Debug timing with the oscilloscope, step through states."
+                />
+                <CourseWeek
+                  weeks="9–12"
+                  title="Projects"
+                  description="Build adders, ALUs, simple CPUs. Create custom chips for reuse. Optional hardware deployment."
+                />
               </div>
 
               <div className="mt-6 pt-6 border-t border-rb-border">
-                <p className="text-sm text-rb-muted">
-                  <strong className="text-rb-text">Instructor benefits:</strong> No VM setup, no license costs, runs on any platform. 
-                  Students submit .rb-lab.zip files—instructors use Submission Inspector to view circuits and grades.
-                </p>
+                <h4 className="text-sm font-semibold text-rb-text mb-2">Instructor Benefits</h4>
+                <ul className="text-sm text-rb-muted space-y-1.5">
+                  <li>• No VM setup or license costs—runs on any platform with a browser</li>
+                  <li>• Students submit .rb-lab.zip bundles for consistent grading</li>
+                  <li>• Deterministic simulation means reproducible test cases</li>
+                  <li>• Submission Inspector for viewing student circuits and results</li>
+                </ul>
               </div>
             </div>
           </section>
 
-          {/* Keyboard Shortcuts Quick Reference */}
-          <section>
-            <h2 className="text-2xl font-bold mb-6 text-rb-text">Keyboard-First UX</h2>
-            <div className="bg-rb-surface border border-rb-border rounded-lg p-6">
-              <p className="text-sm text-rb-muted mb-4">
-                RedByte uses an OS-style interface with keyboard shortcuts for power users:
-              </p>
-              <div className="grid md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <strong className="text-rb-text block mb-2">OS Navigation</strong>
-                  <div className="space-y-1 text-rb-muted">
-                    <div className="flex justify-between">
-                      <span>Command Palette</span>
-                      <kbd className="px-2 py-0.5 bg-rb-bg rounded border border-rb-border font-mono text-xs">Ctrl+K</kbd>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Close Window</span>
-                      <kbd className="px-2 py-0.5 bg-rb-bg rounded border border-rb-border font-mono text-xs">Ctrl+W</kbd>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>New Circuit</span>
-                      <kbd className="px-2 py-0.5 bg-rb-bg rounded border border-rb-border font-mono text-xs">Ctrl+N</kbd>
-                    </div>
+          {/* Quick Reference */}
+          <section className="mb-16">
+            <h2 className="text-h2 text-rb-text mb-6">Keyboard-First UX</h2>
+            <p className="text-rb-muted mb-4">
+              RedByte is designed for efficiency. Key shortcuts for your demo:
+            </p>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="bg-rb-surface border border-rb-border rounded-md p-4">
+                <h4 className="text-sm font-semibold text-rb-text mb-3">Navigation</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-rb-muted">Command Palette</span>
+                    <kbd>Ctrl+K</kbd>
                   </div>
-                </div>
-                <div>
-                  <strong className="text-rb-text block mb-2">Simulation</strong>
-                  <div className="space-y-1 text-rb-muted">
-                    <div className="flex justify-between">
-                      <span>Play/Pause</span>
-                      <kbd className="px-2 py-0.5 bg-rb-bg rounded border border-rb-border font-mono text-xs">Space</kbd>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Step Forward</span>
-                      <kbd className="px-2 py-0.5 bg-rb-bg rounded border border-rb-border font-mono text-xs">→</kbd>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Step Backward</span>
-                      <kbd className="px-2 py-0.5 bg-rb-bg rounded border border-rb-border font-mono text-xs">←</kbd>
-                    </div>
+                  <div className="flex justify-between">
+                    <span className="text-rb-muted">Close Window</span>
+                    <kbd>Ctrl+W</kbd>
                   </div>
                 </div>
               </div>
+              <div className="bg-rb-surface border border-rb-border rounded-md p-4">
+                <h4 className="text-sm font-semibold text-rb-text mb-3">Simulation</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-rb-muted">Play/Pause</span>
+                    <kbd>Space</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-rb-muted">Step Forward/Back</span>
+                    <kbd>→ / ←</kbd>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Links */}
+          <section>
+            <h2 className="text-h2 text-rb-text mb-6">Try It</h2>
+            <div className="flex flex-wrap gap-4">
+              <Link to="/examples" className="btn btn-primary">
+                Interactive Examples
+              </Link>
+              <Link to="/getting-started" className="btn btn-secondary">
+                Getting Started Guide
+              </Link>
+              <Link to="/manual" className="btn btn-secondary">
+                Full Manual
+              </Link>
             </div>
           </section>
         </div>
@@ -236,30 +237,52 @@ export default function Demo() {
   );
 }
 
-function DemoSceneCard({ number, title, description, link, linkText }: {
-  number: number;
-  title: string;
-  description: string;
-  link: string;
-  linkText: string;
-}) {
+function DemoSceneCard({ number, title, items }: { number: number; title: string; items: string[] }) {
   return (
-    <div className="bg-rb-surface border border-rb-border rounded-lg p-6 hover:border-rb-accent transition-colors">
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-8 h-8 rounded-full bg-rb-accent text-rb-bg font-bold flex items-center justify-center text-sm">
+    <div className="bg-rb-surface border border-rb-border rounded-md p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-7 h-7 rounded-full bg-rb-accent text-rb-bg font-bold text-sm flex items-center justify-center">
           {number}
         </div>
-        <h3 className="text-lg font-semibold text-rb-text">{title}</h3>
+        <h3 className="font-semibold text-rb-text">{title}</h3>
       </div>
-      <p className="text-sm text-rb-muted mb-4 leading-relaxed">
-        {description}
-      </p>
-      <Link
-        to={link}
-        className="text-sm text-rb-accent hover:text-rb-accent-dim transition-colors"
-      >
-        {linkText} →
-      </Link>
+      <ul className="space-y-1.5 text-sm text-rb-muted">
+        {items.map((item, i) => (
+          <li key={i} className="flex items-center gap-2">
+            <span className="text-rb-dim">•</span>
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function StatusItem({ status, children }: { status: 'done' | 'wip' | 'planned'; children: React.ReactNode }) {
+  const styles = {
+    done: { icon: '✓', color: 'text-rb-accent' },
+    wip: { icon: '◐', color: 'text-rb-info' },
+    planned: { icon: '○', color: 'text-rb-dim' },
+  };
+
+  const { icon, color } = styles[status];
+
+  return (
+    <li className="flex items-start gap-2">
+      <span className={`${color} mt-0.5`}>{icon}</span>
+      <span className={status === 'planned' ? 'text-rb-dim' : 'text-rb-muted'}>{children}</span>
+    </li>
+  );
+}
+
+function CourseWeek({ weeks, title, description }: { weeks: string; title: string; description: string }) {
+  return (
+    <div>
+      <div className="flex items-baseline gap-3 mb-1">
+        <span className="text-xs font-mono text-rb-dim">Week {weeks}</span>
+        <h4 className="text-sm font-semibold text-rb-text">{title}</h4>
+      </div>
+      <p className="text-sm text-rb-muted pl-16">{description}</p>
     </div>
   );
 }

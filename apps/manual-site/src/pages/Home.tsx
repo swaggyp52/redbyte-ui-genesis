@@ -2,45 +2,47 @@ import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import GuidedTour from '../components/GuidedTour';
 
-const Link = RouterLink as any;
+// Type workaround for React 19 compatibility
+const Link = RouterLink as React.ComponentType<{ to: string; className?: string; children: React.ReactNode }>;
 
 export default function Home() {
   const [showTour, setShowTour] = useState(false);
 
   return (
-    <div className="bg-rb-bg text-rb-text">
+    <div className="bg-rb-bg">
       {/* Hero Section */}
       <section className="border-b border-rb-border">
-        <div className="content-container px-6 py-20">
-          <div className="max-w-3xl">
-            <h1 className="text-5xl font-bold mb-4 text-rb-text">
-              RedByte
+        <div className="content-container px-6 py-20 md:py-28">
+          <div className="max-w-2xl">
+            <h1 className="text-display text-rb-text mb-6">
+              Learn digital logic by building it.
             </h1>
-            <p className="text-xl text-rb-muted mb-8 leading-relaxed">
-              A deterministic digital logic simulator and FPGA development environment. 
-              Build circuits visually, debug with real-time waveforms, and export to hardware.
+            <p className="text-lg text-rb-muted mb-8 leading-relaxed">
+              RedByte is a browser-based environment for learning and teaching digital logic.
+              Build circuits with gates and wires, simulate them tick-by-tick, and debug timing
+              with a real-time oscilloscope. Deterministic by design—same inputs always produce
+              same outputs.
             </p>
-            
+
             <div className="flex flex-wrap gap-3">
-              <a
-                href="#download"
-                className="px-6 py-3 bg-rb-accent text-rb-bg font-medium rounded hover:bg-rb-accent-dim transition-colors"
-              >
+              <a href="#download" className="btn btn-primary">
                 Download RedByte
               </a>
-              <Link
-                to="/examples"
-                className="px-6 py-3 border border-rb-border text-rb-text font-medium rounded hover:border-rb-accent hover:text-rb-accent transition-colors"
-              >
-                Try Examples
+              <Link to="/examples" className="btn btn-secondary">
+                Try Interactive Examples
               </Link>
               <button
+                type="button"
                 onClick={() => setShowTour(true)}
-                className="px-6 py-3 border border-rb-border text-rb-text font-medium rounded hover:border-rb-accent hover:text-rb-accent transition-colors"
+                className="btn btn-secondary"
               >
-                Start Tour
+                Take a Tour
               </button>
             </div>
+
+            <p className="text-sm text-rb-dim mt-6">
+              Free and open source. Runs entirely in your browser—no account required.
+            </p>
           </div>
         </div>
       </section>
@@ -48,95 +50,126 @@ export default function Home() {
       {/* Features Grid */}
       <section className="py-20 border-b border-rb-border">
         <div className="content-container px-6">
-          <h2 className="text-3xl font-bold mb-12 text-rb-text">
-            Core Features
-          </h2>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="mb-12">
+            <h2 className="text-h1 text-rb-text mb-4">Core Features</h2>
+            <p className="text-rb-muted max-w-xl">
+              Everything you need to understand how digital circuits work, from basic gates to complex state machines.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             <FeatureCard
-              icon="⏱"
               title="Deterministic Simulation"
-              description="Step forward and backward through time. Same inputs always produce the same outputs."
+              description="Every simulation is reproducible. Step forward and backward through time to debug circuits. Same inputs always yield identical outputs."
+              tag="Core"
             />
             <FeatureCard
-              icon="🎨"
               title="Visual Circuit Design"
-              description="Build circuits with gates, chips, and wires. Drag-and-drop interface with keyboard shortcuts."
+              description="Build circuits with gates, wires, and components. OS-style desktop interface with windows and a command palette."
+              tag="Core"
             />
             <FeatureCard
-              icon="📊"
-              title="Real-Time Oscilloscope"
-              description="Probe any signal and watch waveforms live. Debug timing issues visually."
+              title="Oscilloscope View"
+              description="Probe signals and watch waveforms. See exactly when signals change and debug timing issues visually."
+              tag="Core"
             />
             <FeatureCard
-              icon="💾"
-              title="Export to Hardware"
-              description="Generate Verilog or VHDL from your designs. Deploy to real FPGA hardware."
+              title="Lab Workbench"
+              description="Structured labs with presets for learning. Work through assignments step-by-step with built-in validation."
+              tag="Education"
             />
             <FeatureCard
-              icon="🧩"
-              title="Custom Chip Libraries"
-              description="Create reusable components. Build complex systems modularly."
+              title="Keyboard-First UX"
+              description="Command palette, window snapping, and shortcuts for everything. Designed for efficiency, not just clicking."
+              tag="Workflow"
             />
             <FeatureCard
-              icon="⌨️"
-              title="Keyboard-Driven"
-              description="Power user shortcuts for every action. Maximize productivity."
+              title="Export & Inspect"
+              description="Export circuit designs as artifacts. Submission inspector lets educators review student work."
+              tag="Education"
             />
           </div>
         </div>
       </section>
 
-      {/* Quick Demo */}
+      {/* How It Works */}
       <section className="py-20 border-b border-rb-border">
         <div className="content-container px-6">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold mb-8 text-rb-text">
-              Workflow
-            </h2>
-            
-            <div className="bg-rb-surface rounded-lg border border-rb-border p-8">
-              <div className="aspect-video bg-rb-bg rounded border border-rb-border flex items-center justify-center text-rb-muted mb-6">
-                <div className="text-center">
-                  <div className="text-5xl mb-3">🎬</div>
-                  <p className="text-lg">Demo Video</p>
-                  <p className="text-sm mt-1">Visual circuit building • Live simulation • Export</p>
-                </div>
-              </div>
-              
-              <div className="grid md:grid-cols-3 gap-4 text-sm">
-                <div className="bg-rb-bg p-4 rounded border border-rb-border">
-                  <div className="font-semibold text-rb-accent mb-2">1. Design</div>
-                  <p className="text-rb-muted">Build circuits visually with gates and wires</p>
-                </div>
-                <div className="bg-rb-bg p-4 rounded border border-rb-border">
-                  <div className="font-semibold text-rb-accent mb-2">2. Simulate</div>
-                  <p className="text-rb-muted">Run deterministic simulations in real-time</p>
-                </div>
-                <div className="bg-rb-bg p-4 rounded border border-rb-border">
-                  <div className="font-semibold text-rb-accent mb-2">3. Export</div>
-                  <p className="text-rb-muted">Generate Verilog for real hardware</p>
-                </div>
-              </div>
+            <h2 className="text-h1 text-rb-text mb-4 text-center">How It Works</h2>
+            <p className="text-rb-muted text-center mb-12 max-w-xl mx-auto">
+              RedByte uses a tick-based simulation model. Every clock cycle is deterministic
+              and reproducible.
+            </p>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              <WorkflowStep
+                number={1}
+                title="Design"
+                description="Add logic gates (AND, OR, XOR, etc.) and wire them together. Use the component palette or keyboard shortcuts."
+              />
+              <WorkflowStep
+                number={2}
+                title="Simulate"
+                description="Run the simulation tick-by-tick. Step forward, step backward, or let it run continuously. Watch signals propagate."
+              />
+              <WorkflowStep
+                number={3}
+                title="Debug"
+                description="Open the oscilloscope to probe any signal. See waveforms over time. Find exactly where behavior diverges from expectation."
+              />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Screenshots Section */}
+      <section className="py-20 border-b border-rb-border">
+        <div className="content-container px-6">
+          <h2 className="text-h1 text-rb-text mb-4">See It In Action</h2>
+          <p className="text-rb-muted mb-10 max-w-xl">
+            A desktop-style interface with windows, a launcher, and multiple tools working together.
+          </p>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <ScreenshotPlaceholder
+              label="Desktop & Launcher"
+              description="OS-style desktop with app windows and quick launcher"
+            />
+            <ScreenshotPlaceholder
+              label="Logic Playground"
+              description="Visual circuit editor with gates and simulation controls"
+            />
+            <ScreenshotPlaceholder
+              label="Oscilloscope"
+              description="Real-time waveform viewer for debugging signals"
+            />
+            <ScreenshotPlaceholder
+              label="Lab Workbench"
+              description="Structured assignments with step-by-step guidance"
+            />
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
       <section className="py-20">
-        <div className="content-container px-6 text-center">
-          <h2 className="text-3xl font-bold mb-4 text-rb-text">Ready to Build?</h2>
-          <p className="text-lg text-rb-muted mb-8 max-w-2xl mx-auto">
-            Download RedByte and start designing deterministic digital circuits.
-          </p>
-          <a
-            href="#download"
-            className="inline-block px-8 py-3 bg-rb-accent text-rb-bg font-medium rounded hover:bg-rb-accent-dim transition-colors"
-          >
-            Download Now
-          </a>
-          <p className="text-sm text-rb-muted mt-4">Free • Open Development • Cross-Platform</p>
+        <div className="content-container px-6">
+          <div className="bg-rb-surface border border-rb-border rounded-lg p-10 md:p-14 text-center">
+            <h2 className="text-h1 text-rb-text mb-4">Ready to Build?</h2>
+            <p className="text-rb-muted mb-8 max-w-lg mx-auto">
+              Download RedByte and start building circuits. No account, no cloud, no telemetry.
+              Just open it and go.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4">
+              <a href="#download" className="btn btn-primary">
+                Download RedByte
+              </a>
+              <Link to="/getting-started" className="btn btn-secondary">
+                Read Getting Started Guide
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -145,12 +178,48 @@ export default function Home() {
   );
 }
 
-function FeatureCard({ icon, title, description }: { icon: string; title: string; description: string }) {
+function FeatureCard({ title, description, tag }: { title: string; description: string; tag: string }) {
   return (
-    <div className="bg-rb-surface rounded-lg p-6 border border-rb-border hover:border-rb-accent transition-colors">
-      <div className="text-3xl mb-3">{icon}</div>
-      <h3 className="text-lg font-semibold mb-2 text-rb-text">{title}</h3>
+    <div className="bg-rb-surface border border-rb-border rounded-md p-6 hover:border-rb-border-strong transition-colors">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs font-medium text-rb-dim uppercase tracking-wider">{tag}</span>
+      </div>
+      <h3 className="text-h3 text-rb-text mb-2">{title}</h3>
       <p className="text-sm text-rb-muted leading-relaxed">{description}</p>
+    </div>
+  );
+}
+
+function WorkflowStep({ number, title, description }: { number: number; title: string; description: string }) {
+  return (
+    <div className="text-center">
+      <div className="w-10 h-10 rounded-full bg-rb-accent text-rb-bg font-bold flex items-center justify-center mx-auto mb-4">
+        {number}
+      </div>
+      <h3 className="text-h3 text-rb-text mb-2">{title}</h3>
+      <p className="text-sm text-rb-muted leading-relaxed">{description}</p>
+    </div>
+  );
+}
+
+function ScreenshotPlaceholder({ label, description }: { label: string; description: string }) {
+  return (
+    <div className="bg-rb-surface border border-rb-border rounded-md overflow-hidden">
+      <div className="aspect-video bg-rb-raised flex items-center justify-center">
+        <div className="text-center p-6">
+          <div className="w-12 h-12 rounded bg-rb-border mx-auto mb-3 flex items-center justify-center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-rb-dim">
+              <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+              <path d="M21 15l-5-5L5 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <p className="text-sm font-medium text-rb-muted">{label}</p>
+        </div>
+      </div>
+      <div className="p-4 border-t border-rb-border">
+        <p className="text-xs text-rb-dim">{description}</p>
+      </div>
     </div>
   );
 }
