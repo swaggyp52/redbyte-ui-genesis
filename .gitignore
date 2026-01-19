@@ -58,3 +58,5 @@ pr-description.txt
 
 # Lab run outputs (local-only)
 packages/ops/labs/runs/
+apps/playground_bak2/
+nul
