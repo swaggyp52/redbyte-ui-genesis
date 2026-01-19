@@ -75,13 +75,17 @@ export interface LogicViewState {
   gridSize: number;
 }
 
-const useLogicViewStoreInternal = create<LogicViewState>((set, get) => ({
-  // Initial camera state
-  camera: {
-    x: 0,
-    y: 0,
-    zoom: 1,
-  },
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _storeInternal: ReturnType<typeof createLogicViewStore> | null = null;
+
+function createLogicViewStore() {
+  return create<LogicViewState>((set, get) => ({
+    // Initial camera state
+    camera: {
+      x: 0,
+      y: 0,
+      zoom: 1,
+    },
 
   setCamera: (camera) =>
     set((state) => ({
@@ -264,34 +268,41 @@ const useLogicViewStoreInternal = create<LogicViewState>((set, get) => ({
   snapToGrid: true,
   toggleSnapToGrid: () => set((state) => ({ snapToGrid: !state.snapToGrid })),
   gridSize: 16,
-}));
+  }));
+}
 
 // Dev-only storm detector to surface runaway store updates.
-if (import.meta.env.DEV && typeof window !== 'undefined') {
-  const api = useLogicViewStoreInternal as any;
-  if (!window.__rbLogicViewStorePatched) {
-    window.__rbLogicViewStorePatched = true;
-    const originalSetState = api.setState.bind(api);
-    let tickStart = performance.now();
-    let updateCount = 0;
-    api.setState = (partial: any, replace?: boolean) => {
-      const now = performance.now();
-      if (now - tickStart > 1000) {
-        tickStart = now;
-        updateCount = 0;
-      }
-      updateCount += 1;
-      if (updateCount > 5 && !window.__rbLogicViewStoreStorm) {
-        window.__rbLogicViewStoreStorm = true;
-        // eslint-disable-next-line no-console
-        console.warn('[logic-view] store update storm', { updateCount, stack: new Error().stack });
-        window.setTimeout(() => {
-          window.__rbLogicViewStoreStorm = false;
-        }, 1000);
-      }
-      return originalSetState(partial, replace);
-    };
+function useLogicViewStoreInternal() {
+  if (!_storeInternal) _storeInternal = createLogicViewStore();
+  const api = _storeInternal as any;
+  
+  if (import.meta.env.DEV && typeof window !== 'undefined') {
+    if (!window.__rbLogicViewStorePatched) {
+      window.__rbLogicViewStorePatched = true;
+      const originalSetState = api.setState.bind(api);
+      let tickStart = performance.now();
+      let updateCount = 0;
+      api.setState = (partial: any, replace?: boolean) => {
+        const now = performance.now();
+        if (now - tickStart > 1000) {
+          tickStart = now;
+          updateCount = 0;
+        }
+        updateCount += 1;
+        if (updateCount > 5 && !window.__rbLogicViewStoreStorm) {
+          window.__rbLogicViewStoreStorm = true;
+          // eslint-disable-next-line no-console
+          console.warn('[logic-view] store update storm', { updateCount, stack: new Error().stack });
+          window.setTimeout(() => {
+            window.__rbLogicViewStoreStorm = false;
+          }, 1000);
+        }
+        return originalSetState(partial, replace);
+      };
+    }
   }
+  
+  return _storeInternal;
 }
 
 export const useLogicViewStore = useLogicViewStoreInternal;

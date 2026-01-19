@@ -168,9 +168,13 @@ function getParentDir(
   return { dir: cur, name };
 }
 
-export const useVfsStore = create<VfsState>((set, get) => ({
-  root: loadFs(),
-  cwd: "/home/1642",
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _store: ReturnType<typeof createVfsStore> | null = null;
+
+function createVfsStore() {
+  return create<VfsState>((set, get) => ({
+    root: loadFs(),
+    cwd: "/home/1642",
 
   list(path) {
     const state = get();
@@ -267,4 +271,25 @@ export const useVfsStore = create<VfsState>((set, get) => ({
     set({ cwd: abs });
     return true;
   },
-}));
+  }));
+}
+
+export const useVfsStore: ReturnType<typeof createVfsStore> = ((...args: any[]) => {
+  if (!_store) _store = createVfsStore();
+  return (_store as any)(...args);
+}) as any;
+
+(useVfsStore as any).getState = () => {
+  if (!_store) _store = createVfsStore();
+  return (_store as any).getState();
+};
+
+(useVfsStore as any).setState = (...a: any[]) => {
+  if (!_store) _store = createVfsStore();
+  return (_store as any).setState(...a);
+};
+
+(useVfsStore as any).subscribe = (...a: any[]) => {
+  if (!_store) _store = createVfsStore();
+  return (_store as any).subscribe(...a);
+};

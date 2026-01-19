@@ -33,16 +33,20 @@ interface WindowStore {
   applyLayout: (bounds: LayoutBounds) => void;
 }
 
-export const useWindowStore = create<WindowStore>((set, get) => ({
-  windows: [],
-  layout: "free",
-  zCounter: 1,
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _store: ReturnType<typeof createWindowStore> | null = null;
 
-  openWindow: ({ appId, title }) => {
-    set((state) => {
-      const nextZ = state.zCounter + 1;
-      const idx = state.windows.length;
-      const baseX = 220 + idx * 32;
+function createWindowStore() {
+  return create<WindowStore>((set, get) => ({
+    windows: [],
+    layout: "free",
+    zCounter: 1,
+
+    openWindow: ({ appId, title }) => {
+      set((state) => {
+        const nextZ = state.zCounter + 1;
+        const idx = state.windows.length;
+        const baseX = 220 + idx * 32;
       const baseY = 80 + idx * 26;
 
       const win: WindowState = {
@@ -136,4 +140,25 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
 
     set({ windows: nextWindows });
   },
-}));
+  }));
+}
+
+export const useWindowStore: ReturnType<typeof createWindowStore> = ((...args: any[]) => {
+  if (!_store) _store = createWindowStore();
+  return (_store as any)(...args);
+}) as any;
+
+(useWindowStore as any).getState = () => {
+  if (!_store) _store = createWindowStore();
+  return (_store as any).getState();
+};
+
+(useWindowStore as any).setState = (...a: any[]) => {
+  if (!_store) _store = createWindowStore();
+  return (_store as any).setState(...a);
+};
+
+(useWindowStore as any).subscribe = (...a: any[]) => {
+  if (!_store) _store = createWindowStore();
+  return (_store as any).subscribe(...a);
+};

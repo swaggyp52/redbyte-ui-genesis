@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 /* ============================================================
-   RedByte OS • Global + User Settings Store
+   RedByte OS ï¿½ Global + User Settings Store
    Fully rewritten to fix missing exports + boot logic
 ============================================================ */
 
@@ -42,16 +42,20 @@ const DEFAULT_ADMIN: UserAccount = {
 };
 
 // ---------- Zustand Store ----------
-export const useSettings = create<RedByteSettingsState>((set, get) => ({
-  global: {
-    bootMode: "cinematic",
-  },
+// Lazy-init singleton to prevent TDZ crash from circular imports
+let _store: ReturnType<typeof createSettingsStore> | null = null;
 
-  users: {
-    [DEFAULT_ADMIN.id]: DEFAULT_ADMIN,
-  },
+function createSettingsStore() {
+  return create<RedByteSettingsState>((set, get) => ({
+    global: {
+      bootMode: "cinematic",
+    },
 
-  currentUserId: null,
+    users: {
+      [DEFAULT_ADMIN.id]: DEFAULT_ADMIN,
+    },
+
+    currentUserId: null,
 
   // ------- Global settings -------
   loadGlobalSettings: () => get().global,
@@ -94,5 +98,26 @@ export const useSettings = create<RedByteSettingsState>((set, get) => ({
   },
 
   logout: () => set({ currentUserId: null }),
-}));
+  }));
+}
+
+export const useSettings: ReturnType<typeof createSettingsStore> = ((...args: any[]) => {
+  if (!_store) _store = createSettingsStore();
+  return (_store as any)(...args);
+}) as any;
+
+(useSettings as any).getState = () => {
+  if (!_store) _store = createSettingsStore();
+  return (_store as any).getState();
+};
+
+(useSettings as any).setState = (...a: any[]) => {
+  if (!_store) _store = createSettingsStore();
+  return (_store as any).setState(...a);
+};
+
+(useSettings as any).subscribe = (...a: any[]) => {
+  if (!_store) _store = createSettingsStore();
+  return (_store as any).subscribe(...a);
+};
 
