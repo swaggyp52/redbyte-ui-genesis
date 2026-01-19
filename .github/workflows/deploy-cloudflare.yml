@@ -8,14 +8,15 @@
 name: Deploy to Cloudflare Pages
 
 on:
-  workflow_dispatch:  # Manual trigger only (keep clean during dev)
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   deploy:
     name: Build and Deploy to CF Pages
     runs-on: ubuntu-latest
-    # Only deploy on main branch or manual trigger with secrets present
-    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
       deployments: write
