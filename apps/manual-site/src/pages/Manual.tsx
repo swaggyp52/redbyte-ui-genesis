@@ -102,6 +102,26 @@ export default function Guide() {
                 </div>
               </div>
             </section>
+            {/* What's new */}
+            <section className="mb-10">
+              <div className="bg-rb-surface border border-rb-border rounded-xl p-6">
+                <h2 className="text-xl font-semibold text-rb-text mb-2">What is covered here</h2>
+                <p className="text-sm text-rb-muted mb-4">
+                  The guide now includes analog simulation, project archives, and the full FPGA flow.
+                </p>
+                <ul className="grid gap-3 md:grid-cols-3 text-sm text-rb-muted">
+                  <li className="bg-rb-bg/40 border border-rb-border rounded-lg p-3">
+                    Analog sliders and live readouts in the Inspector (LDR light, VoltageSource)
+                  </li>
+                  <li className="bg-rb-bg/40 border border-rb-border rounded-lg p-3">
+                    Project archive export (.rbproj.zip) for LMS submissions
+                  </li>
+                  <li className="bg-rb-bg/40 border border-rb-border rounded-lg p-3">
+                    FPGA flow: netlist to Verilog to Vivado synth and board program
+                  </li>
+                </ul>
+              </div>
+            </section>
             {/* Compare Table */}
             <section id="compare-table" className="my-12">
               <h2 className="text-2xl font-bold text-cyan-200 mb-4">Compare to what you already know</h2>

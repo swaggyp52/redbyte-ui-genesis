@@ -396,9 +396,9 @@ export const UserManualAppComponent: React.FC<UserManualProps> = ({ onOpenApp })
         </p>
         <ul className="flex flex-wrap justify-center gap-4 mt-4 text-slate-300 text-base">
           <li className="bg-slate-800/80 rounded px-4 py-2">Visual Circuit Editor</li>
-          <li className="bg-slate-800/80 rounded px-4 py-2">Instant Simulation</li>
-          <li className="bg-slate-800/80 rounded px-4 py-2">Shareable Demos</li>
-          <li className="bg-slate-800/80 rounded px-4 py-2">Educational & Professional</li>
+          <li className="bg-slate-800/80 rounded px-4 py-2">Analog Lab Models</li>
+          <li className="bg-slate-800/80 rounded px-4 py-2">FPGA Synthesis Flow</li>
+          <li className="bg-slate-800/80 rounded px-4 py-2">Project Archive Export</li>
         </ul>
       </div>
     </section>
