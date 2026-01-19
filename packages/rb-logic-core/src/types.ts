@@ -3,9 +3,10 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 /**
- * Signal state in the circuit (binary)
+ * Signal state in the circuit (digital or analog).
+ * Digital nodes use 0/1, analog nodes use numeric values.
  */
-export type Signal = 0 | 1;
+export type Signal = number;
 
 /**
  * Port connection identifier
@@ -68,7 +69,8 @@ export interface NodeBehavior {
   evaluate(
     inputs: NodeInputs,
     state: Record<string, any>,
-    config: Record<string, any>
+    config: Record<string, any>,
+    node?: Node
   ): {
     outputs: NodeOutputs;
     state: Record<string, any>;

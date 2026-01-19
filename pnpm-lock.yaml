@@ -165,6 +165,18 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
+  packages/rb-analog-sim:
+    devDependencies:
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+      vite:
+        specifier: ^7.2.6
+        version: 7.2.6(@types/node@24.10.1)(jiti@1.21.7)(tsx@4.21.0)
+      vitest:
+        specifier: ^1.4.0
+        version: 1.6.1(@types/node@24.10.1)(jsdom@27.2.0)
+
   packages/rb-apps:
     dependencies:
       '@redbyte/rb-fpga-proof-core':
@@ -257,6 +269,18 @@ importers:
         specifier: ^1.4.0
         version: 1.6.1(@types/node@24.10.1)(jsdom@27.2.0)
 
+  packages/rb-fpga-toolchain:
+    devDependencies:
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+      vite:
+        specifier: ^7.2.6
+        version: 7.2.6(@types/node@24.10.1)(jiti@1.21.7)(tsx@4.21.0)
+      vitest:
+        specifier: ^1.4.0
+        version: 1.6.1(@types/node@24.10.1)(jsdom@27.2.0)
+
   packages/rb-icons:
     devDependencies:
       react:
@@ -315,6 +339,9 @@ importers:
 
   packages/rb-logic-core:
     dependencies:
+      '@redbyte/rb-analog-sim':
+        specifier: workspace:*
+        version: link:../rb-analog-sim
       pako:
         specifier: ^2.1.0
         version: 2.1.0

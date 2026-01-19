@@ -4,7 +4,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   resolve: {
     alias: [
+      { find: '@redbyte/rb-analog-sim', replacement: path.resolve(__dirname, 'packages/rb-analog-sim/src') },
       { find: '@redbyte/rb-apps', replacement: path.resolve(__dirname, 'packages/rb-apps/src') },
+      { find: '@redbyte/rb-fpga-toolchain', replacement: path.resolve(__dirname, 'packages/rb-fpga-toolchain/src') },
       { find: '@redbyte/rb-windowing', replacement: path.resolve(__dirname, 'packages/rb-windowing/src') },
       { find: '@redbyte/rb-shell', replacement: path.resolve(__dirname, 'packages/rb-shell/src') },
       { find: '@redbyte/rb-theme', replacement: path.resolve(__dirname, 'packages/rb-theme/src') },

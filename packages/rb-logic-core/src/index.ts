@@ -66,6 +66,7 @@ import {
   FullAdderDef,
   Counter4BitDef,
 } from './composite-defs';
+import { registerAnalogNodes } from './analog';
 
 NodeRegistry.register('PowerSource', PowerSourceBehavior);
 NodeRegistry.register('Switch', SwitchBehavior);
@@ -87,6 +88,9 @@ registerCompositeNode(DFlipFlopDef);
 registerCompositeNode(JKFlipFlopDef);
 registerCompositeNode(FullAdderDef);
 registerCompositeNode(Counter4BitDef);
+
+// Register analog nodes
+registerAnalogNodes();
 
 // Share utilities
 export * from './share/encoding';

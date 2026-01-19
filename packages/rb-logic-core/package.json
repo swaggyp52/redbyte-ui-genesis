@@ -17,6 +17,7 @@
     "test": "echo \"Tests run at root. This package has no direct tests.\""
   },
   "dependencies": {
+    "@redbyte/rb-analog-sim": "workspace:*",
     "pako": "^2.1.0"
   },
   "devDependencies": {

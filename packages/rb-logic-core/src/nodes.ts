@@ -203,4 +203,115 @@ export function registerBuiltinNodeDefinitions(registry: NodeRegistry): void {
       return { q, qBar: q ? 0 : 1 };
     },
   });
+
+  // --- Analog Nodes ---
+  // Import simulation logic from @redbyte/rb-analog-sim
+  // These require @redbyte/rb-analog-sim as a dependency in rb-logic-core's package.json
+  let analogSim: any;
+  try {
+    // Dynamically require to avoid breaking browser builds if analog sim is not present
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    analogSim = require('@redbyte/rb-analog-sim');
+  } catch (e) {
+    analogSim = null;
+  }
+  if (analogSim) {
+    // Register analog nodes using NodeBehavior interface
+    registry.register({
+      type: 'FixedResistor',
+      evaluate(_inputs, state, config, node) {
+        const analogNode = {
+          id: node?.id ?? '',
+          type: 'FixedResistor',
+          config: config || {},
+          inputs: {},
+          outputs: { resistance: 0 },
+          state: state || {},
+        };
+        const result = analogSim.simulateFixedResistor(analogNode);
+        // eslint-disable-next-line no-console
+        console.log('[AnalogSim] FixedResistor', analogNode, result);
+        return {
+          outputs: { resistance: result.outputs.resistance },
+          state: result.state,
+        };
+      },
+    });
+
+    registry.register({
+      type: 'LM358',
+      evaluate(inputs, state, config, node) {
+        const analogNode = {
+          id: node?.id ?? '',
+          type: 'LM358',
+          inputs: {
+            V_plus: inputs['V_plus'] ?? 0,
+            V_minus: inputs['V_minus'] ?? 0,
+          },
+          outputs: { out: 0 },
+          state: state || {},
+          config: config || {},
+        };
+        const result = analogSim.simulateComparator(analogNode);
+        // eslint-disable-next-line no-console
+        console.log('[AnalogSim] LM358', analogNode, result);
+        return {
+          outputs: { out: result.outputs.out },
+          state: result.state,
+        };
+      },
+    });
+
+    registry.register({
+      type: 'LDR',
+      evaluate(inputs, state, config, node) {
+        const analogNode = {
+          id: node?.id ?? '',
+          type: 'LDR',
+          inputs: {
+            light: inputs['light'] ?? 0,
+            v_in: inputs['v_in'] ?? 0,
+          },
+          outputs: { resistance: 0, v_out: 0 },
+          state: state || {},
+          config: config || {},
+        };
+        const result = analogSim.simulateLdr(analogNode);
+        // eslint-disable-next-line no-console
+        console.log('[AnalogSim] LDR', analogNode, result);
+        return {
+          outputs: {
+            resistance: result.outputs.resistance,
+            v_out: result.outputs.v_out,
+          },
+          state: result.state,
+        };
+      },
+    });
+
+    registry.register({
+      type: 'VoltageDivider',
+      evaluate(inputs, state, config, node) {
+        const analogNode = {
+          id: node?.id ?? '',
+          type: 'VoltageDivider',
+          inputs: {
+            v_in: inputs['v_in'] ?? 0,
+            r1: inputs['r1'] ?? 0,
+            r2: inputs['r2'] ?? 0,
+          },
+          outputs: { v_out: 0 },
+          state: state || {},
+          config: config || {},
+        };
+        const result = analogSim.simulateVoltageDivider(analogNode);
+        // eslint-disable-next-line no-console
+        console.log('[AnalogSim] VoltageDivider', analogNode, result);
+        return {
+          outputs: { v_out: result.outputs.v_out },
+          state: result.state,
+        };
+      },
+    });
+  }
 }

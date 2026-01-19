@@ -5,7 +5,7 @@
 export interface TestVector {
   id: string;
   name: string;
-  inputs: Record<string, 0 | 1>;
+  inputs: Record<string, 0 | 1 | Record<string, unknown>>;
   expectedOutputs: Record<string, 0 | 1>;
 }
 

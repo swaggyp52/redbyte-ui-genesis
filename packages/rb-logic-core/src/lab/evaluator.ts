@@ -26,10 +26,16 @@ export function evaluateCheckpoint(circuit: unknown, checkpoint: CheckpointDef):
     for (const vector of checkpoint.testVectors) {
       const engine = new CircuitEngine(circuit);
 
-      // Apply inputs: set state.isOn for input node IDs
+      // Apply inputs: set state for input node IDs
       for (const [nodeId, value] of Object.entries(vector.inputs)) {
         const prev = engine.getNodeState(nodeId) ?? {};
-        engine.setNodeState(nodeId, { ...prev, isOn: value });
+        if (typeof value === 'object' && value !== null) {
+          // Analog or multi-input node: assign all properties
+          engine.setNodeState(nodeId, { ...prev, ...value });
+        } else {
+          // Digital: assign to isOn
+          engine.setNodeState(nodeId, { ...prev, isOn: value });
+        }
       }
 
       // Stabilize

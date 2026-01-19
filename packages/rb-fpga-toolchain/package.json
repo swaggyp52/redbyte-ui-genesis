@@ -1,0 +1,30 @@
+{
+  "name": "@redbyte/rb-fpga-toolchain",
+  "version": "1.0.0",
+  "description": "FPGA synthesis and programming toolchain orchestration for RedByte",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "constraints"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./constraints/*": "./constraints/*"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vite": "^7.2.6",
+    "vitest": "^1.4.0"
+  }
+}
