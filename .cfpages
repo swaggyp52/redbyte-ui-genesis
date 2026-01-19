@@ -1,7 +1,7 @@
 # Cloudflare Pages Build Configuration
-# Build command: pnpm install && cd apps/playground && pnpm run build
-# Build output directory: apps/playground/dist
+# Build command: pnpm install && pnpm --filter @redbyte/manual-site build
+# Build output directory: apps/manual-site/dist
 # Root directory: /
 
-# Environment variables to set in Cloudflare Pages dashboard:
-# VITE_PUBLIC_DEMO=true
+# This deploys the showcase/documentation site (manual-site), NOT the OS (playground)
+# To deploy the OS instead, use: apps/playground/dist with build command: pnpm install && pnpm --filter @redbyte/playground build
