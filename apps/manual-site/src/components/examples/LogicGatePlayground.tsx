@@ -33,8 +33,9 @@ export default function LogicGatePlayground() {
         {/* Interactive Circuit */}
         <div className="space-y-6">
           <div>
-            <label className="block mb-2 text-sm font-medium text-rb-text">Gate Type</label>
+            <label htmlFor="gate-type" className="block mb-2 text-sm font-medium text-rb-text">Gate Type</label>
             <select 
+              id="gate-type"
               value={gateType} 
               onChange={(e) => setGateType(e.target.value as GateType)}
               className="w-full bg-rb-bg border border-rb-border rounded px-4 py-2 text-rb-text focus:border-rb-accent focus:outline-none"

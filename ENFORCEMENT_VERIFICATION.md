@@ -1,22 +1,26 @@
+# Enforcement Verification
+
 ## Enforcement Verification Checklist
 
 ### Local Verification Status
 
 #### 1. Test Script Wiring
-```
+
+```text
 ✅ VERIFIED: test:smoke:ci script exists and correct
 Location: package.json line 20
 Value: "playwright test --grep 'Logic Playground'"
 ```
 
-```
+```text
 ✅ VERIFIED: lint:selectors script exists and correct
 Location: package.json line 16
 Value: "node ./scripts/lint-zustand-selectors.js"
 ```
 
 #### 2. Lint Script Hard Fail (rg missing)
-```
+
+```text
 Command: pnpm run lint:selectors
 Exit Code: 2 (CONFIRMED)
 Output: ❌ FATAL: ripgrep failed to run: spawnSync rg ENOENT
@@ -25,8 +29,10 @@ Output: ❌ FATAL: ripgrep failed to run: spawnSync rg ENOENT
 **Pass Condition Met**: Script exits with code 2 when ripgrep is unavailable. This is fail-closed, not silent pass.
 
 #### 3. Lint Script Error Message Guidance
+
 The error message block in [scripts/lint-zustand-selectors.js](scripts/lint-zustand-selectors.js#L39-L57) includes:
-```
+
+```text
 CI Fix (GitHub Actions):
   The ripgrep binary is pre-installed on ubuntu-latest runners.
   If using a custom runner, install: apt-get install ripgrep
@@ -66,25 +72,29 @@ Location: [.github/workflows/ci.yml](ci.yml#L40-L51)
   run: pnpm test
 ```
 
-**Pass Condition Met**: 
+**Pass Condition Met**:
+
 - ✅ Playwright browsers installed BEFORE smoke tests
 - ✅ Lint tripwire runs BEFORE smoke tests
 - ✅ CI-safe smoke command runs (only Logic Playground subset)
 - ✅ Unit tests run after smoke
 
 #### 5. Test:smoke:ci Isolation
-```
+
+```text
 Command: pnpm test:smoke:ci
 Expands to: playwright test --grep 'Logic Playground'
 Effect: Only runs tests with "Logic Playground" in describe() block
 ```
 
 Tests that run:
+
 - ✅ "should load Logic Playground without Maximum update depth exceeded error"
 - ✅ "should run simulation and switch perspectives without React errors"
 - ✅ "should switch Logic Playground perspectives without React errors"
 
 Tests that do NOT run:
+
 - ❌ Circuit creation test (flaky, kept separate in test:smoke)
 
 **Pass Condition Met**: CI-safe command is actually isolated, not running full suite.
@@ -101,6 +111,7 @@ const PATTERN2 = String.raw`use\w*Store\s*\(\s*\(?\s*\w+\s*=>\s*\{\s*(?:\/\/|\/\
 ```
 
 Catches:
+
 - ✅ `useStore(s => ({ a: s.a }))` — PATTERN1
 - ✅ `useStore(s => { return { a: s.a } })` — PATTERN2
 - ✅ Both patterns run independently and results merge
@@ -110,7 +121,9 @@ Catches:
 ### Known Limitations (Not Theater, But Acknowledged)
 
 #### A. Pattern Coverage Gaps
+
 The current regex does NOT catch:
+
 - ❌ Array literals: `useStore(s => ([s.a, s.b]))`
 - ❌ Map/Set returns: `useStore(s => new Map([[...]]))`
 - ❌ Destructured params: `useStore(({a, b}) => ({a, b}))`
@@ -118,6 +131,7 @@ The current regex does NOT catch:
 **Current approach**: Objects only. Sufficient for React #185 (object selectors are 80% of the footgun). Array/Map patterns can be added later if regressions appear.
 
 #### B. Smoke Test Timeouts
+
 Current state: Tests use `waitForTimeout(2500)` in some paths.
 **Risk**: Fixed timeouts can flake on slow CI runners.
 **Recommendation for next pass**: Replace with waits for `data-testid` sentinels (e.g., `await page.waitForSelector('[data-testid="waveform-view"]')`).
@@ -129,7 +143,8 @@ Current state: Tests use `waitForTimeout(2500)` in some paths.
 **Not automated — requires GitHub UI.**
 
 To enable final gate:
-```
+
+```text
 GitHub → Settings → Branches → Branch protection rules → main
 ✅ Require status checks to pass before merging
 ✅ Select the "Test Suite (Zero Warnings)" job
@@ -149,6 +164,7 @@ Latest enforcement hardening commit:
 ```
 
 Changes in that commit:
+
 1. Dual regex patterns in lint script (PATTERN1 + PATTERN2)
 2. Platform-specific install guidance
 3. Playwright browser install step in CI (`pnpm exec playwright install --with-deps`)
@@ -159,7 +175,7 @@ Changes in that commit:
 ### Summary
 
 | Check | Status | Evidence |
-|-------|--------|----------|
+| --- | --- | --- |
 | test:smoke:ci exists | ✅ | package.json line 20 |
 | lint:selectors exists | ✅ | package.json line 16 |
 | Lint fails hard (exit 2) on rg missing | ✅ | Actual command execution |

@@ -25,6 +25,7 @@ Student app exports `.rb-lab.zip` containing the following **exact** file struct
 ```
 
 **Validation in ingest**:
+
 - `schema_version` MUST be `"v1"`
 - `lab_id` REQUIRED
 - `student.id` REQUIRED
@@ -51,6 +52,7 @@ Student app exports `.rb-lab.zip` containing the following **exact** file struct
 ```
 
 **Notes**:
+
 - `vectors` array: populated when self-check runs occur (initially empty for submission)
 - `summary`: counts of pass/fail test vectors; initially all zeros
 - Used for grading + instructor timeline
@@ -60,12 +62,14 @@ Student app exports `.rb-lab.zip` containing the following **exact** file struct
 **Always present** (can be empty or 0 bytes).
 
 Example (populated):
-```
+
+```json
 {"type":"step_completed","tick":10,"timestamp":"2026-01-18T...","data":{"node_id":"switch_1","action":"toggled"}}
 {"type":"attempt_started","timestamp":"2026-01-18T...","data":{"lab_id":"traffic-light"}}
 ```
 
 **Notes**:
+
 - NDJSON = newline-delimited JSON (one JSON object per line, no array wrapper)
 - Can be empty file if no events recorded yet
 - Used by instructor to track student progress + timeline
@@ -98,6 +102,7 @@ Example (populated):
 ## No More Changes to This Schema
 
 Once this contract is locked, the student app export MUST:
+
 - Always write all 3 files
 - Never omit or rename files
 - Keep manifest fields stable

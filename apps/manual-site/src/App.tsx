@@ -7,7 +7,6 @@ import Examples from './pages/Examples';
 import Manual from './pages/Manual';
 import About from './pages/About';
 import Demo from './pages/Demo';
-import Demo from './pages/Demo';
 
 function App() {
   return (
@@ -17,7 +16,9 @@ function App() {
         <main className="flex-1">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/getting-started" element={<GettingStarted />} />          <Route path="/demo" element={<Demo />} />            <Route path="/examples" element={<Examples />} />
+            <Route path="/getting-started" element={<GettingStarted />} />
+            <Route path="/demo" element={<Demo />} />
+            <Route path="/examples" element={<Examples />} />
             <Route path="/manual" element={<Manual />} />
             <Route path="/about" element={<About />} />
           </Routes>

@@ -5,13 +5,15 @@ Generated: 2026-01-13
 ## Test Results
 
 ### 1. Lint Script Syntax ✅
-```
+
+```text
 node -c scripts/lint-zustand-selectors.js
 Result: Valid JavaScript syntax
 ```
 
 ### 2. Lint Script Exit Codes ✅
-```
+
+```text
 Command: pnpm run lint:selectors
 Condition: rg missing (not installed on local machine)
 Result: Exit code 2 (hard fail as designed)
@@ -21,6 +23,7 @@ Output: ❌ FATAL: ripgrep failed to run: spawnSync rg ENOENT
 **Pass**: Hard fail behavior confirmed. No silent pass.
 
 ### 3. Pattern Coverage ✅
+
 Five patterns now defined and executed:
 
 ```javascript
@@ -43,8 +46,11 @@ PATTERN5: use\w*Store\s*\(\s*\(?\s*\w+\s*=>\s*\(\s*\{\\s*\.\.\.
 **Pass**: All 5 patterns defined and merged correctly.
 
 ### 4. Glob Coverage ✅
+
 Include filter: `**/*.{ts,tsx,js,jsx}` (explicit)
+
 Exclude filters:
+
 - `!**/node_modules/**`
 - `!**/dist/**`
 - `!**/build/**`
@@ -58,7 +64,9 @@ Exclude filters:
 **Pass**: Explicit include + comprehensive exclude filters prevent false positives.
 
 ### 5. CI Ripgrep Install ✅
+
 CI workflow step 3 (after dependencies, before Playwright):
+
 ```yaml
 - name: Install ripgrep (selector tripwire dependency)
   run: sudo apt-get update && sudo apt-get install -y ripgrep
@@ -67,7 +75,8 @@ CI workflow step 3 (after dependencies, before Playwright):
 **Pass**: Explicit install, not assumed. Covers ubuntu-latest and guides custom runners.
 
 ### 6. CI Step Order ✅
-```
+
+```text
 1. Install dependencies (pnpm install)
 2. Install ripgrep (apt-get install)
 3. Install Playwright browsers (pnpm exec playwright install --with-deps)
@@ -81,6 +90,7 @@ CI workflow step 3 (after dependencies, before Playwright):
 **Pass**: Dependencies → ripgrep → browsers → tripwire → smoke → unit. Correct order.
 
 ### 7. Smoke Test Isolation ✅
+
 ```javascript
 // package.json
 "test:smoke": "playwright test",           // All smoke tests
@@ -92,7 +102,9 @@ CI runs: `pnpm test:smoke:ci`
 **Pass**: Only Logic Playground tests run in CI (3 deterministic tests). Flaky circuit-creation test isolated to separate target.
 
 ### 8. Error Messages ✅
+
 Ripgrep missing error now includes:
+
 - CI context: Points to workflow step, guides custom runners
 - Local Windows: winget/choco/scoop
 - Local macOS: brew
@@ -106,24 +118,28 @@ Ripgrep missing error now includes:
 ### Still Allowed by Lint (Requires Manual Review or Smoke Test)
 
 1. **Derived allocations in selectors**
+
    ```typescript
    useFooStore(s => s.list.map(x => x.id))  // new array, still allowed
    ```
    → Addressed by: Smoke tests covering hot paths, code review, docs
 
 2. **Helper function returns**
+
    ```typescript
    useFooStore(s => makeViewModel(s))  // if makeViewModel returns new object
    ```
    → Addressed by: Manual code review (helper stability check), docs Rule 2
 
 3. **Complex destructuring**
+
    ```typescript
    useFooStore(({a, b}) => ({a, b}))  // param-level destructuring
    ```
    → Addressed by: Code review (rare pattern in codebase)
 
 4. **Map/Set/Date constructors**
+
    ```typescript
    useFooStore(s => new Map(s.entries))  // new instance each time
    ```

@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
 import GuidedTour from '../components/GuidedTour';
+
+const Link = RouterLink as any;
 
 export default function Demo() {
   const [showTour, setShowTour] = useState(false);

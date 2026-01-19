@@ -10,7 +10,7 @@ This is a modern, interactive website that explains what RedByte is, how to use 
 
 - **Home Page**: Hero section with feature highlights
 - **Getting Started**: Step-by-step tutorial for new users
-- **Interactive Examples**: 
+- **Interactive Examples**:
   - Logic Gate Playground (AND, OR, XOR, etc.)
   - 4-Bit Counter Circuit
   - Waveform Viewer with time scrubbing
@@ -48,6 +48,7 @@ Visit [http://localhost:5173](http://localhost:5173) during development.
 The site is automatically deployed to Cloudflare Pages on push to `main`. The workflow builds this app instead of the RedByte OS.
 
 **Cloudflare Build Settings:**
+
 - Build command: `pnpm install --frozen-lockfile && pnpm --filter @redbyte/manual-site build`
 - Output directory: `apps/manual-site/dist`
 - Project: `redbyte-ui-genesis`
@@ -64,7 +65,7 @@ To switch back to deploying the OS instead of the manual site, update `.github/w
 
 ## Structure
 
-```
+```text
 apps/manual-site/
 ├── src/
 │   ├── components/
@@ -103,6 +104,7 @@ apps/manual-site/
 ## Contributing
 
 The manual site follows the same development workflow as the main repo:
+
 - Terminal-first development
 - Small, reversible commits
 - Update `AI_STATE.md` for meaningful changes

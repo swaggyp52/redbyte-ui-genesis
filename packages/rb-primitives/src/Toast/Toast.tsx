@@ -93,7 +93,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       role="alert"
-      aria-live={ariaLive}
+      aria-live={ariaLive as 'polite' | 'assertive'}
       aria-atomic="true"
     >
       <div className="flex items-start gap-3">
