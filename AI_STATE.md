@@ -5698,3 +5698,129 @@ Desktop Apps implementation complete:
 - pnpm build: GREEN
 - All validation gates passed
 
+---
+
+## Change Log  2026-01-18 (Manual Site Deployment Switch)
+
+**Production deployment switched from RedByte OS to marketing/manual site**
+
+- Created apps/manual-site: new Vite + React 18 + Tailwind marketing site
+- Built 5 pages: Home (hero + features), Getting Started (tutorial), Examples (interactive), Manual (docs), About (project info)
+- Implemented 3 fully functional interactive examples:
+  - LogicGatePlayground: toggle inputs, select gate type, live truth table
+  - CounterCircuit: 4-bit counter with clock pulse, binary display, history
+  - WaveformViewer: multi-signal waveforms with time scrubbing
+- Updated .github/workflows/deploy-cloudflare.yml: build target changed from apps/playground/dist to apps/manual-site/dist
+- Added root package.json scripts: dev:manual, build:manual
+- Created apps/manual-site/README.md with dev/deploy instructions
+- Design: dark-first aesthetic, neon cyan/green accents, responsive, sub-2s load
+- Hash routing for Cloudflare Pages SPA compatibility
+- RedByte OS code unchanged; still runs locally via pnpm dev
+- Production at redbyteapps.dev now serves manual site instead of OS
+- Build verified: manual site dist builds cleanly (216.40 kB JS, 17.94 kB CSS)
+- Preview tested: site functional at localhost:4174
+
+Architectural note: This is a reversible config change—switching back to OS deployment requires only updating the workflow YAML build target.
+
+---
+
+## Change Log  2026-01-18 (Manual Site Redesign - De-vibecode Pass)
+
+**Redesigned manual site from "AI neon landing page" to clean, human-made docs aesthetic**
+
+Design philosophy shift:
+- Removed gradient backgrounds, glow effects, neon outlines
+- Flat color palette: single teal accent (#3ff0c8) on dark backgrounds
+- Typography and spacing-driven hierarchy
+- Docs site aesthetic (Linear/Stripe/Vercel style) vs marketing page
+
+Changes made:
+- Updated tailwind.config.js: new color system (rb-bg, rb-surface, rb-border, rb-text, rb-muted, rb-accent)
+- Updated index.css: removed glow utilities, cleaner base styles, added content-container utility
+- Redesigned Header: simpler nav, smaller logo, subtle hover states
+- Redesigned Footer: cleaner typography, consistent spacing
+- Redesigned Home page: removed gradient hero, simplified feature cards, clean CTA sections
+- Updated interactive examples: removed neon glow, cleaner borders, docs-like controls
+  - LogicGatePlayground: clean truth table, subtle button states
+  - CounterCircuit: flat LED indicators, clean history timeline
+  - WaveformViewer: solid waveform display, minimal controls
+- Updated Examples page: removed gradient backgrounds, cleaner layout
+- Color palette reduction: removed purple/cyan/gradient colors, single teal accent only
+- Removed all hover scale transforms, glow shadows, and excessive animation
+
+Build verified: 215.92 kB JS (smaller), 14.55 kB CSS (smaller from 17.94 kB)
+Preview tested: clean, intentional aesthetic at localhost:4175
+
+Design outcome: Site now looks human-designed and professional rather than AI-generated landing page template.
+
+---
+
+## Change Log  2026-01-18 (Professor Demo Page + Guided Tour)
+
+**Added two high-impact features for educational demo/presentation context**
+
+New features:
+1. Professor Demo page (/demo route)
+   - 60-second overview section explaining RedByte as education platform
+   - 3 clickable "Demo Scenes" cards (Logic Playground, Lab Workbench, Submission Inspector)
+   - Implementation status checklist: "✓ Implemented Now" vs "→ Next" 
+   - Course integration section: Week 1-12 progression for digital logic course
+   - Keyboard shortcuts quick reference (command palette, simulation controls)
+   - Start Tour button included
+
+2. Guided Tour mode (GuidedTour.tsx component)
+   - 5-step overlay walkthrough with progress bar
+   - Auto-navigates to Examples page on step 3
+   - Clean modal design, no external dependencies
+   - Accessible from Home and Demo pages via "Start Tour" button
+   - Explains RedByte value prop in structured narrative
+
+Files created:
+- src/components/GuidedTour.tsx (tour overlay component)
+- src/pages/Demo.tsx (professor demo page)
+
+Files modified:
+- src/App.tsx: added /demo route
+- src/components/layout/Header.tsx: added Demo nav link
+- src/pages/Home.tsx: added Start Tour button to hero
+- tailwind.config.js: added rb-accent-dim color for hover states
+
+Build verified: 230.50 kB JS, 16.19 kB CSS (adds 13 kB total for both features)
+
+Purpose: Transform site from "nice docs" to "real product for educators" with guided demo flow.
+
+---
+
+## Change Log  2026-01-18 (Oscilloscope Fix - Deterministic Waveform Viewer)
+
+**Rebuilt WaveformViewer from scratch to behave like real digital oscilloscope**
+
+Problems fixed:
+- Float time drift: replaced with integer tick index (0-63)
+- Inconsistent playback: stable 30 ticks/sec loop using requestAnimationFrame
+- Non-deterministic signals: pre-generated full signal history (64 ticks)
+- Smooth curves: replaced with proper digital step functions
+- Unclear time scale: added grid with major ticks every 8 ticks
+- Pause inconsistency: locks at exact tick, stops playback cleanly
+- Reset ambiguity: returns to tick 0, clears play state
+
+Technical implementation:
+- Pre-generated signal data at init: CLK (8-tick period), A (16-tick), B (12-tick), OUT (A XOR B)
+- Canvas-based waveform rendering with step function drawing
+- Tick-based time model: slider maps 1:1 to timeIndex (0 to TOTAL_TICKS-1)
+- Stable playback loop: requestAnimationFrame with TICK_PERIOD_MS (33ms) cap
+- Current values display: 4 cards showing live signal values at cursor position
+- Deterministic guarantee: same tick always shows same values
+
+Files modified:
+- src/components/examples/WaveformViewer.tsx (complete rewrite)
+  - New architecture: pre-computed signal arrays, canvas rendering, integer tick model
+  - Added tick counter display, determinism explanation text
+  - Removed float time, smooth animations, SVG rendering
+
+Build verified: 230.50 kB JS, 16.19 kB CSS
+Preview tested: scrub is frame-perfect, play is stable, reset is clean
+
+Outcome: Oscilloscope now demonstrates actual digital logic simulation behavior (deterministic, tick-based, step functions) instead of "looks cool" animation.
+
+---

@@ -37,8 +37,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build playground app
-        run: pnpm -w build
+      - name: Build manual site
+        run: pnpm --filter @redbyte/manual-site build
         env:
           GIT_SHA: ${{ github.sha }}
 
@@ -48,6 +48,6 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: redbyte-ui-genesis
-          directory: apps/playground/dist
+          directory: apps/manual-site/dist
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: main

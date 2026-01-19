@@ -9,8 +9,10 @@
     ],
     "scripts": {
         "dev": "pnpm --filter @redbyte/playground dev",
+        "dev:manual": "pnpm --filter @redbyte/manual-site dev",
         "build": "pnpm -r run build",
         "build:os": "pnpm -w build && pnpm -F redbyte-ui-genesis build",
+        "build:manual": "pnpm --filter @redbyte/manual-site build",
         "preview": "pnpm build && vite preview --host --port 4173 --open",
         "e2e:build": "pnpm build",
         "e2e:serve": "pnpm --filter @redbyte/playground exec vite preview --host 127.0.0.1 --port 4173 --strictPort",
