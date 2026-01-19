@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MarkdownHooks } from 'react-markdown';
+import Markdown from 'react-markdown';
 
 function extractHeadings(markdown: string) {
   const lines = markdown.split('\n');
@@ -78,23 +78,26 @@ function slugify(children: React.ReactNode): string {
 }
 
 
-// React 19 + react-markdown v10+ compatibility: render as a function component
+// React 19 + react-markdown compatibility
 function ManualMarkdown({ markdown }: { markdown: string }) {
-  return MarkdownHooks({
-    children: markdown,
-    components: {
-      h1: ({node, ...props}: any) => <h1 id={slugify(props.children)} className="text-h1 text-rb-text mt-12 mb-6 scroll-mt-24">{props.children as React.ReactNode}</h1>,
-      h2: ({node, ...props}: any) => <h2 id={slugify(props.children)} className="text-h2 text-rb-text mt-10 mb-4 scroll-mt-24">{props.children as React.ReactNode}</h2>,
-      h3: ({node, ...props}: any) => <h3 id={slugify(props.children)} className="text-h3 text-rb-text mt-8 mb-3 scroll-mt-24">{props.children as React.ReactNode}</h3>,
-      code: ({node, inline, className, children, ...props}: any) =>
-        !inline ? (
-          <pre className="bg-rb-surface border border-rb-border rounded p-4 overflow-x-auto my-4">
-            <code>{children as React.ReactNode}</code>
-          </pre>
-        ) : (
-          <code className="bg-rb-surface px-1 rounded text-rb-accent text-sm">{children as React.ReactNode}</code>
-        ),
-      a: ({node, ...props}: any) => <a {...props} className="text-rb-info underline hover:text-rb-accent" />,
-    }
-  });
+  return (
+    <Markdown
+      components={{
+        h1: ({node, ...props}: any) => <h1 id={slugify(props.children)} className="text-h1 text-rb-text mt-12 mb-6 scroll-mt-24">{props.children as React.ReactNode}</h1>,
+        h2: ({node, ...props}: any) => <h2 id={slugify(props.children)} className="text-h2 text-rb-text mt-10 mb-4 scroll-mt-24">{props.children as React.ReactNode}</h2>,
+        h3: ({node, ...props}: any) => <h3 id={slugify(props.children)} className="text-h3 text-rb-text mt-8 mb-3 scroll-mt-24">{props.children as React.ReactNode}</h3>,
+        code: ({node, inline, className, children, ...props}: any) =>
+          !inline ? (
+            <pre className="bg-rb-surface border border-rb-border rounded p-4 overflow-x-auto my-4">
+              <code>{children as React.ReactNode}</code>
+            </pre>
+          ) : (
+            <code className="bg-rb-surface px-1 rounded text-rb-accent text-sm">{children as React.ReactNode}</code>
+          ),
+        a: ({node, ...props}: any) => <a {...props} className="text-rb-info underline hover:text-rb-accent" />,
+      }}
+    >
+      {markdown}
+    </Markdown>
+  );
 }
