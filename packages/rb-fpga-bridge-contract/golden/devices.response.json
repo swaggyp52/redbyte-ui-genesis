@@ -1,0 +1,27 @@
+{
+  "schema_version": "bridge_v1",
+  "devices": [
+    {
+      "id": "ftdi-0403:6010-1234",
+      "name": "Basys3 FPGA",
+      "model_id": "basys3",
+      "board": "Basys3",
+      "transport": "uart",
+      "port": "COM5",
+      "serial": "1234",
+      "vid_pid": "0403:6010",
+      "detected_via": "vid_pid"
+    },
+    {
+      "id": "sim-default",
+      "name": "Simulated Basys3",
+      "model_id": "basys3",
+      "board": "Basys3",
+      "transport": "sim",
+      "port": null,
+      "serial": null,
+      "vid_pid": null,
+      "detected_via": "env"
+    }
+  ]
+}

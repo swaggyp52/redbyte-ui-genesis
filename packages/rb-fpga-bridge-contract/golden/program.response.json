@@ -1,0 +1,5 @@
+{
+  "schema_version": "bridge_v1",
+  "ok": true,
+  "log_path": ".redbyte/tmp/vivado-program.log"
+}

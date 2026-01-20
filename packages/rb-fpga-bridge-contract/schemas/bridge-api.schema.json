@@ -1,0 +1,177 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RedByte FPGA Bridge API",
+  "description": "Hardware bridge API contract (HTTP + WebSocket).",
+  "type": "object",
+  "definitions": {
+    "bridge_schema_version": {
+      "type": "string",
+      "enum": ["bridge_v1"]
+    },
+    "bridge_transport": {
+      "type": "string",
+      "enum": ["uart", "jtag", "sim"]
+    },
+    "bridge_device": {
+      "type": "object",
+      "required": ["id", "name", "model_id", "board", "transport"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "model_id": { "type": "string" },
+        "board": { "type": "string" },
+        "transport": { "$ref": "#/definitions/bridge_transport" },
+        "port": { "type": ["string", "null"] },
+        "serial": { "type": ["string", "null"] },
+        "vid_pid": { "type": ["string", "null"] },
+        "detected_via": { "type": ["string", "null"] }
+      }
+    },
+    "devices_response": {
+      "type": "object",
+      "required": ["schema_version", "devices"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "$ref": "#/definitions/bridge_schema_version" },
+        "devices": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/bridge_device" }
+        }
+      }
+    },
+    "program_request": {
+      "type": "object",
+      "required": ["schema_version", "device_id", "board_model_id", "bitstream"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "$ref": "#/definitions/bridge_schema_version" },
+        "device_id": { "type": "string" },
+        "board_model_id": { "type": "string" },
+        "bitstream": {
+          "type": "object",
+          "required": ["encoding", "data"],
+          "additionalProperties": false,
+          "properties": {
+            "encoding": { "type": "string", "enum": ["base64"] },
+            "data": { "type": "string" }
+          }
+        }
+      }
+    },
+    "program_response": {
+      "type": "object",
+      "required": ["schema_version", "ok"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "$ref": "#/definitions/bridge_schema_version" },
+        "ok": { "type": "boolean" },
+        "log_path": { "type": "string" },
+        "error": { "type": "string" }
+      }
+    },
+    "run_request": {
+      "type": "object",
+      "required": ["schema_version", "device_id", "board_model_id", "mode"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "$ref": "#/definitions/bridge_schema_version" },
+        "device_id": { "type": "string" },
+        "board_model_id": { "type": "string" },
+        "mode": { "type": "string", "enum": ["sim", "hardware"] },
+        "bin_size_ms": { "type": "number" }
+      }
+    },
+    "run_response": {
+      "type": "object",
+      "required": ["schema_version", "ok", "run_id", "started_at_ms"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "$ref": "#/definitions/bridge_schema_version" },
+        "ok": { "type": "boolean" },
+        "run_id": { "type": "string" },
+        "started_at_ms": { "type": "number" }
+      }
+    },
+    "stop_request": {
+      "type": "object",
+      "required": ["schema_version", "run_id"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "$ref": "#/definitions/bridge_schema_version" },
+        "run_id": { "type": "string" }
+      }
+    },
+    "stop_response": {
+      "type": "object",
+      "required": ["schema_version", "ok", "stopped_at_ms"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "$ref": "#/definitions/bridge_schema_version" },
+        "ok": { "type": "boolean" },
+        "stopped_at_ms": { "type": "number" }
+      }
+    },
+    "stream_io_state": {
+      "type": "object",
+      "required": ["inputs", "outputs"],
+      "additionalProperties": false,
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "outputs": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "stream_sample_event": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "type",
+        "run_id",
+        "board_model_id",
+        "hw_tick",
+        "mono_seq",
+        "ts_wall_ms",
+        "io"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "$ref": "#/definitions/bridge_schema_version" },
+        "type": { "type": "string", "enum": ["sample"] },
+        "run_id": { "type": "string" },
+        "board_model_id": { "type": "string" },
+        "hw_tick": { "type": "number" },
+        "mono_seq": { "type": "number" },
+        "ts_wall_ms": { "type": "number" },
+        "io": { "$ref": "#/definitions/stream_io_state" }
+      }
+    },
+    "stream_status_event": {
+      "type": "object",
+      "required": ["schema_version", "type", "run_id", "state", "ts_wall_ms"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "$ref": "#/definitions/bridge_schema_version" },
+        "type": { "type": "string", "enum": ["status"] },
+        "run_id": { "type": "string" },
+        "state": {
+          "type": "string",
+          "enum": ["starting", "running", "stopped", "error"]
+        },
+        "ts_wall_ms": { "type": "number" },
+        "error": { "type": "string" }
+      }
+    },
+    "stream_event": {
+      "oneOf": [
+        { "$ref": "#/definitions/stream_sample_event" },
+        { "$ref": "#/definitions/stream_status_event" }
+      ]
+    }
+  }
+}

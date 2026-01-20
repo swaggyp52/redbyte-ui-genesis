@@ -1,0 +1,9 @@
+{
+  "schema_version": "bridge_v1",
+  "device_id": "ftdi-0403:6010-1234",
+  "board_model_id": "basys3",
+  "bitstream": {
+    "encoding": "base64",
+    "data": "AAECAwQFBgcICQ=="
+  }
+}

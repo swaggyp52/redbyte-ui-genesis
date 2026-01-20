@@ -1,0 +1,15 @@
+{
+  "name": "@redbyte/rb-fpga-bridge-contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "files": [
+    "schemas",
+    "golden",
+    "src"
+  ],
+  "scripts": {
+    "test": "pnpm -w exec vitest run --config vitest.config.ts packages/rb-fpga-bridge-contract/src/__tests__/bridge-contract.test.ts"
+  }
+}

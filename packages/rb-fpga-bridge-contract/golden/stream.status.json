@@ -1,0 +1,7 @@
+{
+  "schema_version": "bridge_v1",
+  "type": "status",
+  "run_id": "run-2026-01-20-0001",
+  "state": "running",
+  "ts_wall_ms": 1760000000050
+}
