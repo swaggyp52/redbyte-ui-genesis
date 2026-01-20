@@ -38,7 +38,37 @@
         "kind": { "type": "string", "enum": ["uart", "sim"] },
         "port": { "type": ["string", "null"] },
         "baud_default": { "type": "number" },
-        "status": { "$ref": "#/definitions/runtime_status" }
+        "status": { "$ref": "#/definitions/runtime_status" },
+        "diagnostics": { "$ref": "#/definitions/runtime_diagnostics" }
+      }
+    },
+    "runtime_diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "error": { "type": ["string", "null"] },
+        "fix": { "type": ["string", "null"] }
+      }
+    },
+    "device_diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "serial_port": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "path": { "type": ["string", "null"] },
+            "manufacturer": { "type": ["string", "null"] },
+            "vendor_id": { "type": ["string", "null"] },
+            "product_id": { "type": ["string", "null"] },
+            "serial_number": { "type": ["string", "null"] },
+            "pnp_id": { "type": ["string", "null"] },
+            "location_id": { "type": ["string", "null"] },
+            "friendly_name": { "type": ["string", "null"] }
+          }
+        },
+        "runtime": { "$ref": "#/definitions/runtime_diagnostics" }
       }
     },
     "bridge_device": {
@@ -75,7 +105,8 @@
         "reasons": {
           "type": "array",
           "items": { "type": "string" }
-        }
+        },
+        "diagnostics": { "$ref": "#/definitions/device_diagnostics" }
       }
     },
     "devices_response": {

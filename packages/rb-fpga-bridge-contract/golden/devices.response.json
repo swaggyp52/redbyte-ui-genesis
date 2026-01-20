@@ -23,6 +23,18 @@
         "baud_default": 115200,
         "status": "ready"
       },
+      "diagnostics": {
+        "serial_port": {
+          "path": "COM5",
+          "manufacturer": "Digilent",
+          "vendor_id": "0403",
+          "product_id": "6010",
+          "serial_number": "2100001234",
+          "pnp_id": "VID_0403&PID_6010",
+          "location_id": null,
+          "friendly_name": "Digilent USB UART"
+        }
+      },
       "confidence": 0.9,
       "reasons": ["vid_pid:0403:6010", "friendly_name:Basys3"]
     },

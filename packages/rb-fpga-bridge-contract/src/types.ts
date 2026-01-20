@@ -16,6 +16,26 @@ export type RuntimeInfo = {
   port?: string | null;
   baud_default: number;
   status: RuntimeStatus;
+  diagnostics?: RuntimeDiagnostics;
+};
+
+export type RuntimeDiagnostics = {
+  error?: string | null;
+  fix?: string | null;
+};
+
+export type DeviceDiagnostics = {
+  serial_port?: {
+    path?: string | null;
+    manufacturer?: string | null;
+    vendor_id?: string | null;
+    product_id?: string | null;
+    serial_number?: string | null;
+    pnp_id?: string | null;
+    location_id?: string | null;
+    friendly_name?: string | null;
+  };
+  runtime?: RuntimeDiagnostics;
 };
 
 export type BridgeDevice = {
@@ -34,6 +54,7 @@ export type BridgeDevice = {
   runtime: RuntimeInfo;
   confidence: number;
   reasons: string[];
+  diagnostics?: DeviceDiagnostics;
 };
 
 export type DevicesResponse = {

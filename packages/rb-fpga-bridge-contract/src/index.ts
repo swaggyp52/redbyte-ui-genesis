@@ -5,6 +5,8 @@ export type {
   RuntimeStatus,
   ProgrammingInfo,
   RuntimeInfo,
+  RuntimeDiagnostics,
+  DeviceDiagnostics,
   BridgeDevice,
   DevicesResponse,
   ProgramRequest,

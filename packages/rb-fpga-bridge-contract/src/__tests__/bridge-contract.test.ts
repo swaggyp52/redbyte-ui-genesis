@@ -93,6 +93,9 @@ describe('bridge api golden payloads', () => {
       expect(typeof device.runtime, 'device.runtime').toBe('object');
       assertNumber(device.confidence, 'device.confidence');
       assertStringArray(device.reasons, 'device.reasons');
+      if (device.diagnostics) {
+        expect(typeof device.diagnostics, 'device.diagnostics').toBe('object');
+      }
     }
   });
 
