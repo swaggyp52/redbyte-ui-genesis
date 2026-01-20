@@ -5947,3 +5947,4 @@ Commits:
 ## Change Log  2026-01-20
 
 - Added discovery diagnostics fields to the FPGA bridge contract and implemented discovery MVP in rb-fpga-bridge: /devices + /api/devices endpoints, serial enumeration with VID/PID allowlist, confidence/reasons scoring, runtime probe with permission/busy diagnostics, SIM device entry, and unit test for synthesis pipeline; objectives unchanged; phase unchanged.
+- Fixed device discovery isLikelyDigilent flag to return boolean; device-discovery test now passes; objectives unchanged; phase unchanged.
