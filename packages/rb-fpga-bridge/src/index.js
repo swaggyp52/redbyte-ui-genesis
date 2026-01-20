@@ -3,6 +3,11 @@ import cors from "cors";
 import { WebSocketServer } from "ws";
 import { SerialPort } from "serialport";
 import { ReadlineParser } from "@serialport/parser-readline";
+import { BinaryPacketParser } from "./parsers/binary-packet.js";
+import { crc16_ccitt_false } from "./parsers/crc16.js";
+import { TraceRecorder } from "./trace/recorder.js";
+import { createTimeBinner } from "./trace/binning.js";
+import { programBitstream } from "./vivado/programBitstream.js";
 import { exec } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs";
@@ -16,7 +21,12 @@ const WS_PORT = Number(process.env.RB_FPGA_WS_PORT || 4243);
 const BAUD = Number(process.env.RB_FPGA_BAUD || 115200);
 const OVERRIDE_PORT = process.env.REDBYTE_FPGA_PORT || ""; // e.g. "COM5"
 const MOCK_MODE = process.env.RB_FPGA_MOCK === "1" || process.env.RB_FPGA_MOCK === "true";
+const SIM_MODE = process.env.RB_FPGA_SIM === "1" || process.env.RB_FPGA_SIM === "true";
 const MOCK_SEED = parseInt(process.env.RB_FPGA_SEED || "1");
+const BIN_SIZE_MS = Number(process.env.RB_FPGA_BIN_MS || 20);
+const TRACE_ENABLED = process.env.RB_FPGA_TRACE === "1" || process.env.RB_FPGA_TRACE === "true";
+const TRACE_PATH = process.env.RB_FPGA_TRACE_PATH || path.join(process.cwd(), "trace", "hw_trace.ndjson");
+const PACKET_RATE_WINDOW_MS = 1000;
 
 // Deterministic seeded PRNG (simple LCG)
 class SeededRandom {
@@ -44,7 +54,7 @@ function scorePort(p) {
   return score;
 }
 
-async function listPorts() {
+async function listPortsWithScores() {
   const ports = await SerialPort.list();
   return ports.map((p) => ({
     path: p.path,
@@ -58,8 +68,20 @@ async function listPorts() {
   })).sort((a,b) => b.score - a.score);
 }
 
+async function listPortsForApi() {
+  const ports = await SerialPort.list();
+  return ports
+    .map((p) => ({
+      path: p.path,
+      manufacturer: p.manufacturer || null,
+      vendorId: p.vendorId || null,
+      productId: p.productId || null,
+    }))
+    .sort((a, b) => a.path.localeCompare(b.path, undefined, { sensitivity: "base" }));
+}
+
 async function selectPort() {
-  const ports = await listPorts();
+  const ports = await listPortsWithScores();
   if (OVERRIDE_PORT) {
     const hit = ports.find((p) => p.path?.toLowerCase() === OVERRIDE_PORT.toLowerCase());
     if (hit) return { selected: hit, ports };
@@ -257,9 +279,31 @@ let state = {
   baud: BAUD,
   lastMsgTs: null,
   lastMsg: null,
+  last_packet_ts: null,
+  crc_fail_count: 0,
+  resync_count: 0,
+  frames_ok_count: 0,
+  program_status: "idle",
+  program_last_error: null,
+  program_last_log_path: null,
+  trace_recording_enabled: false,
+  conn_state: "disconnected",
+  conn_port: null,
+  conn_baud: BAUD,
+  last_error: null,
+  last_transition_ts_wall: Date.now(),
 };
 
 let eventSeq = 0;
+let programInFlight = false;
+let activePort = null;
+let packetTimestamps = [];
+let vivadoPathCache = null;
+let vivadoPathCacheTime = 0;
+const VIVADO_PATH_CACHE_TTL = 60000;
+let simInterval = null;
+let simParser = null;
+let simTraceRecorder = null;
 
 function createEvent(type, data = {}) {
   return {
@@ -270,25 +314,268 @@ function createEvent(type, data = {}) {
   };
 }
 
+function setConnState(nextState, options = {}) {
+  state.conn_state = nextState;
+  state.last_transition_ts_wall = Date.now();
+  if (options.error !== undefined) {
+    state.last_error = options.error;
+  }
+  if (options.port !== undefined) {
+    state.conn_port = options.port;
+  }
+  if (options.baud !== undefined) {
+    state.conn_baud = options.baud;
+  }
+  state.connected = nextState === "connected";
+  state.port = state.conn_port;
+  state.baud = state.conn_baud;
+}
+
+function recordPacket(ts) {
+  state.last_packet_ts = ts;
+  packetTimestamps.push(ts);
+  const cutoff = ts - PACKET_RATE_WINDOW_MS;
+  while (packetTimestamps.length > 0 && packetTimestamps[0] < cutoff) {
+    packetTimestamps.shift();
+  }
+}
+
+function getPacketsPerSec(now) {
+  const cutoff = now - PACKET_RATE_WINDOW_MS;
+  while (packetTimestamps.length > 0 && packetTimestamps[0] < cutoff) {
+    packetTimestamps.shift();
+  }
+  return packetTimestamps.length;
+}
+
+function getLastPacketAgeMs(now) {
+  if (!state.last_packet_ts) return null;
+  return Math.max(0, now - state.last_packet_ts);
+}
+
+function buildBinaryPacket({ sequence, flags, digital, analog }) {
+  const buf = Buffer.alloc(28);
+  buf[0] = 0x52;
+  buf[1] = 0x42;
+  buf[2] = 0x01;
+  buf[3] = flags & 0xff;
+  buf.writeUInt32BE(sequence >>> 0, 4);
+  buf.writeUInt16BE(digital & 0xffff, 8);
+  for (let i = 0; i < 8; i += 1) {
+    buf.writeUInt16BE((analog[i] ?? 0) & 0xffff, 10 + i * 2);
+  }
+  const crc = crc16_ccitt_false(buf.subarray(0, 26));
+  buf.writeUInt16BE(crc, 26);
+  return buf;
+}
+
+function createBinaryPipeline() {
+  const parser = new BinaryPacketParser();
+  const timeBinner = createTimeBinner({ binSizeMs: BIN_SIZE_MS, nowFn: () => Date.now() });
+  let traceRecorder = null;
+
+  if (TRACE_ENABLED) {
+    traceRecorder = new TraceRecorder({ outPath: TRACE_PATH, fs });
+    state.trace_recording_enabled = true;
+  }
+
+  parser.on("crc_fail", (count = 1) => {
+    state.crc_fail_count += count;
+  });
+  parser.on("resync", (count = 1) => {
+    state.resync_count += count;
+  });
+  parser.on("frame_ok", (count = 1) => {
+    state.frames_ok_count += count;
+  });
+  parser.on("data", (packet) => {
+    const tsWall = timeBinner.now();
+    const hwTick = timeBinner.compute(tsWall);
+    const event = {
+      hw_tick: hwTick,
+      mono_seq: packet.sequence,
+      digital: packet.digital,
+      analog: packet.analog,
+      ts_wall: tsWall,
+    };
+    state.lastMsgTs = tsWall;
+    state.lastMsg = event;
+    recordPacket(tsWall);
+    broadcast(createEvent("uart:rx", event));
+    if (traceRecorder) {
+      traceRecorder.writeEvent(event);
+    }
+  });
+
+  return { parser, traceRecorder };
+}
+
+function stopSimStream() {
+  if (simInterval) {
+    clearInterval(simInterval);
+    simInterval = null;
+  }
+  if (simParser) {
+    simParser.end();
+    simParser = null;
+  }
+  if (simTraceRecorder) {
+    simTraceRecorder.close().catch(() => {});
+    simTraceRecorder = null;
+  }
+  state.trace_recording_enabled = false;
+}
+
+function startSimStream() {
+  if (simInterval) return;
+  const { parser, traceRecorder } = createBinaryPipeline();
+  simParser = parser;
+  simTraceRecorder = traceRecorder;
+  state.trace_recording_enabled = TRACE_ENABLED;
+  setConnState("connected", { port: "SIM", baud: BAUD, error: null });
+
+  let seq = 0;
+  let tick = 0;
+  simInterval = setInterval(() => {
+    const digital = 1 << (tick % 16);
+    const analog = Array.from({ length: 8 }, (_, i) => (tick * (i + 1) * 17) % 65535);
+    const packet = buildBinaryPacket({
+      sequence: seq,
+      flags: 0,
+      digital,
+      analog,
+    });
+    parser.write(packet);
+    seq += 1;
+    tick += 1;
+  }, 100);
+}
+
+async function getVivadoPath() {
+  const now = Date.now();
+  if (vivadoPathCache && now - vivadoPathCacheTime < VIVADO_PATH_CACHE_TTL) {
+    return vivadoPathCache;
+  }
+  try {
+    const capabilities = await getCachedToolchain();
+    vivadoPathCache = capabilities.vivado?.path || null;
+    vivadoPathCacheTime = now;
+    return vivadoPathCache;
+  } catch {
+    return null;
+  }
+}
+
+async function buildHealthPayload() {
+  const now = Date.now();
+  const vivadoPath = await getVivadoPath();
+  const packetsPerSec = getPacketsPerSec(now);
+  return {
+    ok: true,
+    ...state,
+    connected_port: state.port || null,
+    packets_per_sec: packetsPerSec,
+    last_packet_age_ms: getLastPacketAgeMs(now),
+    trace_recording_enabled: state.trace_recording_enabled,
+    trace_path: state.trace_recording_enabled ? TRACE_PATH : null,
+    vivado_path: vivadoPath,
+    sim_mode: SIM_MODE,
+  };
+}
+
 // Main API endpoint
-app.get("/api/health", (_req, res) => res.json({ ok: true, ...state }));
+app.get("/api/health", async (_req, res) => res.json(await buildHealthPayload()));
 
 // Backward compat
-app.get("/health", (_req, res) => res.json({ ok: true, ...state }));
+app.get("/health", async (_req, res) => res.json(await buildHealthPayload()));
 
 app.get("/ports", async (_req, res) => {
-  const ports = await listPorts();
+  const ports = await listPortsForApi();
   res.json({ ports });
 });
 
 app.post("/connect", async (req, res) => {
   // optionally allow selecting a port from UI
-  const { port } = req.body || {};
+  const { port, portPath, baud } = req.body || {};
   try {
-    await connectToFpga(port || null);
-    res.json({ ok: true, ...state });
+    if (SIM_MODE) {
+      startSimStream();
+      return res.json({ ...(await buildHealthPayload()), message: "SIM MODE" });
+    }
+    await connectToFpga(portPath || port || null, baud);
+    res.json(await buildHealthPayload());
   } catch (e) {
+    setConnState("error", { error: String(e) });
     res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
+app.post("/disconnect", async (_req, res) => {
+  try {
+    if (SIM_MODE) {
+      stopSimStream();
+      setConnState("disconnected", { port: null, baud: BAUD, error: null });
+      return res.json(await buildHealthPayload());
+    }
+    await closeActivePort();
+    setConnState("disconnected", { port: null, baud: BAUD, error: null });
+    state.trace_recording_enabled = false;
+    res.json(await buildHealthPayload());
+  } catch (e) {
+    setConnState("error", { error: String(e) });
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
+app.post("/program", async (req, res) => {
+  const { bitPath } = req.body || {};
+  if (!bitPath || typeof bitPath !== "string") {
+    return res.status(400).json({
+      ok: false,
+      error: "Missing bitPath in request body.",
+      logPath: state.program_last_log_path,
+    });
+  }
+
+  if (programInFlight) {
+    return res.status(409).json({
+      ok: false,
+      error: "Programming already in progress.",
+      logPath: state.program_last_log_path,
+    });
+  }
+
+  programInFlight = true;
+  state.program_status = "running";
+  state.program_last_error = null;
+  state.program_last_log_path = null;
+  broadcast(createEvent("program:status", { status: state.program_status }));
+
+  try {
+    const result = await programBitstream(bitPath);
+    state.program_status = result.ok ? "success" : "failed";
+    state.program_last_error = result.ok ? null : result.error || "Programming failed.";
+    state.program_last_log_path = result.logPath;
+    programInFlight = false;
+    broadcast(
+      createEvent("program:status", {
+        status: state.program_status,
+        error: state.program_last_error,
+        logPath: state.program_last_log_path,
+      })
+    );
+
+    if (result.ok) {
+      return res.json({ ok: true, logPath: result.logPath });
+    }
+    return res.status(500).json({ ok: false, error: state.program_last_error, logPath: result.logPath });
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    state.program_status = "failed";
+    state.program_last_error = error;
+    programInFlight = false;
+    broadcast(createEvent("program:status", { status: state.program_status, error }));
+    return res.status(500).json({ ok: false, error, logPath: state.program_last_log_path });
   }
 });
 
@@ -336,7 +623,6 @@ import { randomUUID } from "crypto";
 
 // Job storage
 const synthesisJobs = new Map();
-const programJobs = new Map();
 const JOB_TTL = 3600000; // 1 hour
 
 // Cleanup old jobs periodically
@@ -349,11 +635,6 @@ setInterval(() => {
         fs.rmSync(job.tempDir, { recursive: true, force: true });
       }
       synthesisJobs.delete(id);
-    }
-  }
-  for (const [id, job] of programJobs) {
-    if (now - job.startedAt > JOB_TTL) {
-      programJobs.delete(id);
     }
   }
 }, 300000); // Every 5 minutes
@@ -568,193 +849,6 @@ app.get("/api/synthesize/:jobId/bitstream", (req, res) => {
   res.send(buffer);
 });
 
-// Program FPGA
-app.post("/api/program", async (req, res) => {
-  try {
-    const { bitstream, method = "auto" } = req.body;
-
-    if (!bitstream) {
-      return res.status(400).json({ ok: false, error: "Missing bitstream (base64)" });
-    }
-
-    const capabilities = await getCachedToolchain();
-    const tool = method === "auto"
-      ? (capabilities.vivado?.canProgram ? "vivado" : capabilities.openFPGALoader ? "openFPGALoader" : null)
-      : method;
-
-    if (!tool) {
-      return res.status(400).json({
-        ok: false,
-        error: "Vivado not found. Please install AMD Vivado WebPACK and ensure it is on your PATH, or install openFPGALoader for programming.",
-      });
-    }
-
-    const jobId = randomUUID();
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "rb-program-"));
-    const bitstreamPath = path.join(tempDir, "circuit.bit");
-
-    // Write bitstream to temp file
-    const buffer = Buffer.from(bitstream, "base64");
-    fs.writeFileSync(bitstreamPath, buffer);
-
-    const job = {
-      jobId,
-      status: "queued",
-      progress: 0,
-      logs: [],
-      startedAt: Date.now(),
-      tempDir,
-    };
-    programJobs.set(jobId, job);
-
-    job.logs.push(`Programming with ${tool}...`);
-    job.status = "connecting";
-    job.progress = 10;
-
-    broadcast(createEvent("program:start", { jobId, tool }));
-
-    if (tool === "vivado") {
-      // Generate Vivado programming script
-      const tclFile = path.join(tempDir, "program.tcl");
-      const tclScript = `
-open_hw_manager
-connect_hw_server
-open_hw_target
-current_hw_device [lindex [get_hw_devices] 0]
-set_property PROGRAM.FILE {${bitstreamPath.replace(/\\/g, '/')}} [current_hw_device]
-program_hw_devices [current_hw_device]
-close_hw_manager
-puts "Programming complete!"
-exit
-`;
-      fs.writeFileSync(tclFile, tclScript);
-
-      const vivadoPath = capabilities.vivado.path;
-      const proc = spawn(`"${vivadoPath}"`, ["-mode", "batch", "-source", tclFile], {
-        cwd: tempDir,
-        shell: true,
-      });
-
-      proc.stdout?.on("data", (data) => {
-        const text = data.toString();
-        job.logs.push(text.trim());
-
-        if (text.includes("connect_hw_server")) {
-          job.progress = 20;
-        } else if (text.includes("open_hw_target")) {
-          job.status = "connecting";
-          job.progress = 40;
-        } else if (text.includes("program_hw_devices")) {
-          job.status = "uploading";
-          job.progress = 70;
-        } else if (text.includes("Programming complete")) {
-          job.status = "complete";
-          job.progress = 100;
-        }
-
-        broadcast(createEvent("program:progress", { jobId, status: job.status, progress: job.progress }));
-      });
-
-      proc.stderr?.on("data", (data) => {
-        job.logs.push(`[STDERR] ${data.toString().trim()}`);
-      });
-
-      proc.on("close", (code) => {
-        if (code === 0) {
-          job.status = "complete";
-          job.progress = 100;
-          job.completedAt = Date.now();
-          job.logs.push("Programming complete!");
-        } else {
-          job.status = "failed";
-          job.error = `Vivado exited with code ${code}`;
-        }
-        broadcast(createEvent("program:complete", { jobId, status: job.status, success: job.status === "complete" }));
-
-        // Cleanup
-        fs.rmSync(tempDir, { recursive: true, force: true });
-      });
-
-      proc.on("error", (err) => {
-        job.status = "failed";
-        job.error = err.message;
-        broadcast(createEvent("program:error", { jobId, error: err.message }));
-      });
-
-    } else if (tool === "openFPGALoader") {
-      const loaderPath = capabilities.openFPGALoader.path;
-      const proc = spawn(loaderPath, ["-b", "basys3", bitstreamPath], { shell: true });
-
-      proc.stdout?.on("data", (data) => {
-        const text = data.toString();
-        job.logs.push(text.trim());
-        job.status = "uploading";
-        job.progress = 50;
-        broadcast(createEvent("program:progress", { jobId, status: job.status, progress: job.progress }));
-      });
-
-      proc.stderr?.on("data", (data) => {
-        const text = data.toString();
-        job.logs.push(text.trim());
-
-        // Parse percentage
-        const match = text.match(/(\d+)%/);
-        if (match) {
-          const percent = parseInt(match[1]);
-          job.progress = Math.min(90, 30 + percent * 0.6);
-          broadcast(createEvent("program:progress", { jobId, status: job.status, progress: job.progress }));
-        }
-      });
-
-      proc.on("close", (code) => {
-        if (code === 0) {
-          job.status = "complete";
-          job.progress = 100;
-          job.completedAt = Date.now();
-          job.logs.push("Programming complete!");
-        } else {
-          job.status = "failed";
-          job.error = `openFPGALoader exited with code ${code}`;
-        }
-        broadcast(createEvent("program:complete", { jobId, status: job.status, success: job.status === "complete" }));
-
-        // Cleanup
-        fs.rmSync(tempDir, { recursive: true, force: true });
-      });
-
-      proc.on("error", (err) => {
-        job.status = "failed";
-        job.error = err.message;
-        broadcast(createEvent("program:error", { jobId, error: err.message }));
-      });
-    }
-
-    res.json({ ok: true, jobId, tool });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: String(e) });
-  }
-});
-
-// Get programming job status
-app.get("/api/program/:jobId", (req, res) => {
-  const job = programJobs.get(req.params.jobId);
-  if (!job) {
-    return res.status(404).json({ ok: false, error: "Job not found" });
-  }
-
-  res.json({
-    ok: true,
-    job: {
-      jobId: job.jobId,
-      status: job.status,
-      progress: job.progress,
-      logs: job.logs.slice(-50),
-      error: job.error,
-      startedAt: job.startedAt,
-      completedAt: job.completedAt,
-    },
-  });
-});
 
 const server = app.listen(HTTP_PORT, () => {
   console.log(`[fpga-bridge] HTTP on http://localhost:${HTTP_PORT}`);
@@ -770,42 +864,110 @@ function broadcast(msg) {
   }
 }
 
-async function connectToFpga(forcedPortPath) {
+async function closeActivePort() {
+  if (!activePort) return;
+  if (!activePort.isOpen) {
+    activePort = null;
+    return;
+  }
+  await new Promise((resolve) => activePort.close(() => resolve()));
+  activePort = null;
+}
+
+async function connectToFpga(forcedPortPath, baudOverride) {
+  await closeActivePort();
   const { selected, ports } = await selectPort();
   const portPath = forcedPortPath || selected?.path;
 
   if (!portPath) {
     console.log("[fpga-bridge] No suitable serial port found. Ports:");
     console.table(ports.map(p => ({ path: p.path, score: p.score, name: p.friendlyName || p.manufacturer })));
+    setConnState("error", { error: "No suitable FPGA serial port found. Plug in board or select port via /ports and /connect.", port: null });
     throw new Error("No suitable FPGA serial port found. Plug in board or select port via /ports and /connect.");
   }
 
-  console.log(`[fpga-bridge] Connecting to ${portPath} @ ${BAUD}...`);
+  const baudRate = Number(baudOverride || BAUD);
+  setConnState("connecting", { port: portPath, baud: baudRate, error: null });
+  console.log(`[fpga-bridge] Connecting to ${portPath} @ ${baudRate}...`);
 
-  const sp = new SerialPort({ path: portPath, baudRate: BAUD, autoOpen: false });
-  await new Promise((resolve, reject) => sp.open((err) => err ? reject(err) : resolve()));
+  const sp = new SerialPort({ path: portPath, baudRate: baudRate, autoOpen: false });
+  try {
+    await new Promise((resolve, reject) => sp.open((err) => err ? reject(err) : resolve()));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    setConnState("error", { error: msg, port: portPath, baud: baudRate });
+    throw err;
+  }
+  activePort = sp;
 
-  const parser = sp.pipe(new ReadlineParser({ delimiter: "\n" }));
+  state.crc_fail_count = 0;
+  state.resync_count = 0;
+  state.frames_ok_count = 0;
+  state.baud = baudRate;
+  state.last_packet_ts = null;
+  state.trace_recording_enabled = false;
+  packetTimestamps = [];
 
-  state.connected = true;
-  state.port = portPath;
+  let parser = null;
+  let traceRecorder = null;
+  let decided = false;
+  let pending = Buffer.alloc(0);
+
+  const attachTextParser = () => {
+    state.trace_recording_enabled = false;
+    parser = new ReadlineParser({ delimiter: "\n" });
+    parser.on("data", (line) => {
+      const msg = parseLine(line);
+      if (!msg) return;
+      state.lastMsgTs = msg.ts;
+      state.lastMsg = msg;
+      recordPacket(msg.ts);
+      broadcast(createEvent("uart:rx", msg));
+    });
+  };
+
+  const attachBinaryParser = () => {
+    const pipeline = createBinaryPipeline();
+    parser = pipeline.parser;
+    traceRecorder = pipeline.traceRecorder;
+  };
+
+  setConnState("connected", { port: portPath, baud: baudRate, error: null });
 
   sp.on("close", () => {
-    state.connected = false;
+    state.last_packet_ts = null;
+    state.trace_recording_enabled = false;
+    packetTimestamps = [];
+    setConnState("disconnected", { port: null, error: null });
     console.log("[fpga-bridge] Serial port closed");
     broadcast(createEvent("status", { ...state }));
+    if (parser) parser.end();
+    if (traceRecorder) {
+      traceRecorder.close().catch(() => {});
+      traceRecorder = null;
+    }
   });
   sp.on("error", (err) => {
     console.log("[fpga-bridge] Serial error:", err);
+    setConnState("error", { error: String(err) });
     broadcast(createEvent("error", { error: String(err) }));
   });
 
-  parser.on("data", (line) => {
-    const msg = parseLine(line);
-    if (!msg) return;
-    state.lastMsgTs = msg.ts;
-    state.lastMsg = msg;
-    broadcast(createEvent("uart:rx", msg));
+  sp.on("data", (chunk) => {
+    if (!decided) {
+      pending = Buffer.concat([pending, chunk]);
+      if (pending.length < 2) return;
+      if (pending[0] === 0x52 && pending[1] === 0x42) {
+        attachBinaryParser();
+      } else {
+        attachTextParser();
+      }
+      decided = true;
+      parser.write(pending);
+      pending = Buffer.alloc(0);
+      return;
+    }
+    parser.write(chunk);
   });
 
   broadcast(createEvent("status", { ...state }));
@@ -818,10 +980,14 @@ wss.on("connection", (ws) => {
 });
 
 (async () => {
+  if (SIM_MODE) {
+    console.log("[fpga-bridge] SIM MODE - generating RB binary packets internally.");
+    startSimStream();
+    return;
+  }
   if (MOCK_MODE) {
-    console.log(`[fpga-bridge] ⚠️  MOCK MODE - simulating Basys3 board (seed=${MOCK_SEED})`);
-    state.connected = true;
-    state.port = "MOCK";
+    console.log(`[fpga-bridge] MOCK MODE - simulating Basys3 board (seed=${MOCK_SEED})`);
+    setConnState("connected", { port: "MOCK", baud: BAUD, error: null });
     broadcast(createEvent("device:connected"));
     
     // Deterministic simulation using seeded RNG
@@ -859,6 +1025,7 @@ wss.on("connection", (ws) => {
   } catch (e) {
     console.log("[fpga-bridge] Auto-connect failed:", String(e));
     console.log("[fpga-bridge] Run: curl http://localhost:4242/ports then POST /connect with a chosen port.");
-    console.log("[fpga-bridge] Or set RB_FPGA_MOCK=1 to run in simulation mode.");
+    console.log("[fpga-bridge] Or set RB_FPGA_SIM=1 for hardware-free simulation.");
+    console.log("[fpga-bridge] RB_FPGA_MOCK=1 keeps the legacy text mock mode.");
   }
 })();

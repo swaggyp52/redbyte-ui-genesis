@@ -1,8 +1,9 @@
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
-// Bundle export utility: generates .rb-lab.zip with all required files
-// Schema: STUDENT_EXPORT_SCHEMA.md (IMMUTABLE v1)
+// Bundle export utility: generates .rb-lab.zip bundles
+// Schema: STUDENT_EXPORT_SCHEMA.md (v1 + v2)
 
 import JSZip from 'jszip';
+import { buildCapsule, normalizeCapsulePath } from '@redbyte/rb-fpga-signing';
 
 interface EventEntry {
   type: string;
@@ -55,6 +56,28 @@ export interface ExportResult {
   timestamp: string;
 }
 
+export interface BoardProfile {
+  board: string;
+  uart_baud: number;
+  digital_signals: Record<string, string>;
+  analog_signals: Record<string, string>;
+}
+
+export interface ExportV2Options {
+  labId: string;
+  labVersion?: string;
+  scaffoldHash?: string;
+  studentId?: string;
+  redbyteVersion?: string;
+  board?: string;
+  binSizeMs?: number;
+  traceNdjson?: string;
+  traceEventCount?: number;
+  crcFailures?: number;
+  bitstreamBytes?: Uint8Array | Blob;
+  boardProfile?: BoardProfile;
+}
+
 /**
  * Compute SHA-256 hash of a blob
  */
@@ -70,6 +93,24 @@ async function computeHash(blob: Blob): Promise<string | undefined> {
   }
 }
 
+function countNdjsonEvents(ndjson: string): number {
+  return ndjson
+    .split('\n')
+    .filter((line) => line.trim())
+    .length;
+}
+
+async function toUint8Array(input: string | Uint8Array | Blob): Promise<Uint8Array> {
+  if (typeof input === 'string') {
+    return new TextEncoder().encode(input);
+  }
+  if (input instanceof Uint8Array) {
+    return input;
+  }
+  const buffer = await input.arrayBuffer();
+  return new Uint8Array(buffer);
+}
+
 /**
  * Trigger download of a blob
  */
@@ -82,6 +123,97 @@ export function downloadBlob(blob: Blob, filename: string): void {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Export a valid .rb-lab.zip bundle with schema v2:
+ * - manifest.json
+ * - trace/hw_trace.ndjson
+ * - bitstream/design.bit (optional)
+ * - meta/board_profile.json
+ * - integrity/capsule.json (always)
+ * - integrity/signature.sig (optional, not created here)
+ */
+export async function exportV2Bundle(options: ExportV2Options): Promise<ExportResult> {
+  const timestamp = new Date().toISOString();
+  const redbyteVersion =
+    options.redbyteVersion ??
+    (import.meta as ImportMeta & { env?: { VITE_APP_VERSION?: string } }).env?.VITE_APP_VERSION ??
+    'dev';
+
+  const board = options.board ?? 'basys3';
+  const binSizeMs = options.binSizeMs ?? 20;
+  const traceNdjson = options.traceNdjson ?? '';
+  const traceEventCount = options.traceEventCount ?? countNdjsonEvents(traceNdjson);
+  const crcFailures = options.crcFailures ?? 0;
+  const bitstreamPresent = !!options.bitstreamBytes;
+
+  const manifest = {
+    schema_version: 'v2',
+    redbyte_version: redbyteVersion,
+    lab_id: options.labId,
+    lab_version: options.labVersion ?? 'unversioned',
+    scaffold_hash: options.scaffoldHash ?? 'unknown',
+    board,
+    bin_size_ms: binSizeMs,
+    trace_summary: {
+      events: traceEventCount,
+      crc_failures: crcFailures,
+    },
+    bitstream_present: bitstreamPresent,
+  };
+
+  const boardProfile: BoardProfile = options.boardProfile ?? {
+    board,
+    uart_baud: 115200,
+    digital_signals: {
+      "0": "SW0",
+      "1": "SW1",
+      "2": "BTN0",
+    },
+    analog_signals: {
+      "0": "ComparatorOut",
+      "1": "LDR_Level",
+    },
+  };
+
+  const zip = new JSZip();
+  const capsuleFiles: Array<{ path: string; bytes: Uint8Array }> = [];
+
+  const addFile = async (path: string, data: string | Uint8Array | Blob) => {
+    const normalizedPath = normalizeCapsulePath(path);
+    const bytes = await toUint8Array(data);
+    zip.file(normalizedPath, bytes);
+    capsuleFiles.push({ path: normalizedPath, bytes });
+  };
+
+  await addFile('manifest.json', JSON.stringify(manifest, null, 2));
+  await addFile('trace/hw_trace.ndjson', traceNdjson);
+  await addFile('meta/board_profile.json', JSON.stringify(boardProfile, null, 2));
+
+  if (options.bitstreamBytes) {
+    await addFile('bitstream/design.bit', options.bitstreamBytes);
+  }
+
+  const { capsuleJsonUtf8 } = await buildCapsule(capsuleFiles);
+  zip.file('integrity/capsule.json', capsuleJsonUtf8);
+
+  const safeTimestamp = timestamp.replace(/[:.]/g, '-');
+  const filename = options.studentId
+    ? `${options.labId}-${options.studentId}-${safeTimestamp}.rb-lab.zip`
+    : `${options.labId}-${safeTimestamp}.rb-lab.zip`;
+
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const hash = await computeHash(blob);
+
+  downloadBlob(blob, filename);
+
+  return {
+    filename,
+    blob,
+    hash,
+    timestamp,
+  };
 }
 
 /**

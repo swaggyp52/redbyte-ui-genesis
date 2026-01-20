@@ -1,0 +1,28 @@
+{
+  "name": "@redbyte/rb-fpga-signing",
+  "version": "1.0.0",
+  "description": "Ed25519 signing utilities for RedByte FPGA bundles",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist", "bin"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "bin": {
+    "rb-sign": "./bin/rb-sign.js",
+    "rb-keygen": "./bin/rb-keygen.js"
+  },
+  "dependencies": {
+    "@noble/ed25519": "2.1.0",
+    "@noble/hashes": "1.4.0",
+    "jszip": "3.10.1"
+  },
+  "devDependencies": {
+    "@types/jszip": "3.4.1",
+    "@types/node": "24.10.1",
+    "typescript": "5.3.3",
+    "vitest": "1.4.0"
+  }
+}

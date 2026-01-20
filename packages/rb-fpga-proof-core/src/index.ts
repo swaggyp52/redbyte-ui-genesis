@@ -5,6 +5,9 @@
 
 // Re-export all types for consumers
 export type {
+  HardwareTraceEvent,
+  BoardProfile,
+  BundleManifestV2,
   Capsule,
   ProofEvent,
   NormalizedEvent,
@@ -28,6 +31,10 @@ import type {
   TimelineRow,
   SummaryCardModel,
 } from './types';
+
+export { replayHardwareTrace } from './replay';
+export { evaluateChecks } from './checks';
+export type { LabCheck, LabTemplateWithChecks, CheckResult } from './checks';
 
 /**
  * Parse capsule JSON (accepts both object and string)

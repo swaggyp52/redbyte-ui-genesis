@@ -3,6 +3,36 @@
  * Browser + Node.js compatible
  */
 
+export type HardwareTraceEvent = {
+  hw_tick: number;
+  mono_seq: number;
+  digital: number;
+  analog: number[];
+  ts_wall: number;
+};
+
+export type BoardProfile = {
+  board: string;
+  uart_baud: number;
+  digital_signals: Record<string, string>;
+  analog_signals: Record<string, string>;
+};
+
+export type BundleManifestV2 = {
+  schema_version: 'v2';
+  redbyte_version: string;
+  lab_id: string;
+  lab_version: string;
+  scaffold_hash: string;
+  board: string;
+  bin_size_ms: number;
+  trace_summary: {
+    events: number;
+    crc_failures: number;
+  };
+  bitstream_present?: boolean;
+};
+
 export interface Capsule {
   session_id: string;
   lab_id?: string;

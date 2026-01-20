@@ -17,6 +17,7 @@
     "test": "echo \"Tests run at root. This package has no direct tests.\""
   },
   "dependencies": {
+    "@redbyte/rb-fpga-signing": "workspace:*",
     "@redbyte/rb-fpga-proof-core": "workspace:*",
     "@redbyte/rb-icons": "workspace:*",
     "@redbyte/rb-logic-3d": "workspace:*",
@@ -25,17 +26,17 @@
     "@redbyte/rb-logic-view": "workspace:*",
     "@redbyte/rb-theme": "workspace:*",
     "@redbyte/rb-utils": "workspace:*",
-    "jszip": "^3.10.1",
-    "zustand": "^5.0.9"
+    "jszip": "3.10.1",
+    "zustand": "5.0.9"
   },
   "devDependencies": {
-    "@types/jszip": "^3.4.1",
-    "@types/node": "^24.10.1",
-    "@types/react": "^19.0.6",
-    "jsdom": "^27.2.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "vitest": "^2.1.8"
+    "@types/jszip": "3.4.1",
+    "@types/node": "24.10.1",
+    "@types/react": "19.0.6",
+    "jsdom": "27.2.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "vitest": "2.1.8"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",

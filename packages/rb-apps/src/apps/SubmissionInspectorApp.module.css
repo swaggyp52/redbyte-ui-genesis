@@ -172,6 +172,33 @@
   color: #f8fafc;
 }
 
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.sectionHeader .sectionTitle {
+  margin: 0;
+}
+
+.exportButton {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  color: #e2e8f0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.exportButton:hover {
+  border-color: #22d3ee;
+  color: #f8fafc;
+}
+
 .empty {
   padding: 2rem;
   text-align: center;
@@ -244,6 +271,49 @@
   font-size: 1.5rem;
   font-weight: 700;
   color: #f8fafc;
+}
+
+.checkList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.checkItem {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.checkStatus {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.checkLabel {
+  font-size: 0.875rem;
+  color: #e2e8f0;
+}
+
+.checkMessage {
+  grid-column: 2 / span 1;
+  font-size: 0.8125rem;
+  color: #94a3b8;
+}
+
+.checkPass {
+  color: #10b981;
+}
+
+.checkFail {
+  color: #ef4444;
 }
 
 /* Vectors */
@@ -430,6 +500,20 @@
   font-family: 'Courier New', monospace;
 }
 
+.missingSection {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  background: rgba(251, 191, 36, 0.1);
+  border-radius: 6px;
+  color: #fbbf24;
+  font-size: 0.875rem;
+}
+
+.missingItem + .missingItem {
+  margin-top: 0.25rem;
+}
+
 /* Files */
 .filesList {
   display: flex;
@@ -450,6 +534,11 @@
 .fileItem:hover {
   border-color: rgba(34, 211, 238, 0.3);
   background: rgba(34, 211, 238, 0.05);
+}
+
+.fileMissing {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.4);
 }
 
 /* Code Block */

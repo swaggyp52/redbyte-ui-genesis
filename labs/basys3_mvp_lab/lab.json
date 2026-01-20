@@ -1,0 +1,38 @@
+{
+  "lab_id": "basys3_mvp_lab",
+  "lab_version": "1.0.0",
+  "board": "basys3",
+  "bin_size_ms": 20,
+  "required_artifacts": {
+    "trace": true,
+    "bitstream": true
+  },
+  "signal_names": {
+    "digital": {
+      "0": "SW0",
+      "1": "SW1",
+      "2": "BTN0"
+    },
+    "analog": {
+      "0": "ComparatorOut",
+      "1": "LDR_Level"
+    }
+  },
+  "checks": [
+    {
+      "id": "trace_min_events",
+      "type": "min_events",
+      "min": 50
+    },
+    {
+      "id": "trace_min_duration_ticks",
+      "type": "min_hw_ticks",
+      "min": 20
+    },
+    {
+      "id": "digital_bit_toggled",
+      "type": "digital_toggled",
+      "bit": 0
+    }
+  ]
+}

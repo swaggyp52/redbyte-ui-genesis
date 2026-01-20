@@ -6,11 +6,35 @@ import React, { useState, useRef } from 'react';
 import type { RedByteApp } from '../types';
 import styles from './SubmissionInspectorApp.module.css';
 import JSZip from 'jszip';
+import {
+  replayHardwareTrace,
+  evaluateChecks,
+  type HardwareTraceEvent,
+  type CheckResult,
+} from '@redbyte/rb-fpga-proof-core';
+import { verifyBundleSignature, type SignatureStatus } from '../utils/bundleSignature';
+import { getLabTemplate, type LabTemplate } from '../utils/labTemplates';
 
 interface BundleData {
   manifest: Record<string, any>;
-  capsule: Record<string, any>;
+  capsule: Record<string, any> | null;
   events: Array<Record<string, any>>;
+  schemaVersion?: 'v1' | 'v2';
+  signatureStatus?: SignatureStatus;
+  traceEvents?: HardwareTraceEvent[];
+  traceReplay?: HardwareTraceEvent[];
+  traceFilePresent?: boolean;
+  bitstreamFilePresent?: boolean;
+  labTemplate?: LabTemplate | null;
+  checkResults?: CheckResult[];
+  checksPass?: boolean;
+  traceStats?: {
+    event_count: number;
+    hw_tick_min: number | null;
+    hw_tick_max: number | null;
+    mono_seq_nondecreasing: boolean;
+  };
+  missingArtifacts?: string[];
   hardware?: Record<string, any>;
   grade?: {
     json?: Record<string, any>;
@@ -29,6 +53,8 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'summary' | 'vectors' | 'events' | 'hardware' | 'files'>('summary');
   const [demoMode, setDemoMode] = useState(false);
+  const [traceCursor, setTraceCursor] = useState(0);
+  const [traceCurrent, setTraceCurrent] = useState<HardwareTraceEvent | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const parseBundle = async (zipFile: File) => {
@@ -36,29 +62,73 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = () => {
     setError(null);
     
     try {
+      const zipBytes = new Uint8Array(await zipFile.arrayBuffer());
       const zip = new JSZip();
-      const loaded = await zip.loadAsync(zipFile);
+      const loaded = await zip.loadAsync(zipBytes);
 
       // Parse manifest
       const manifestFile = loaded.file('manifest.json');
       if (!manifestFile) throw new Error('manifest.json not found');
       const manifest = JSON.parse(await manifestFile.async('string'));
+      const schemaVersion = manifest.schema_version === 'v2' ? 'v2' : 'v1';
 
-      // Parse capsule
-      const capsuleFile = loaded.file('proofs/capsule.json');
+      // Parse capsule (v1 proof capsule only)
+      const capsulePath = schemaVersion === 'v2' ? null : 'proofs/capsule.json';
+      const capsuleFile = capsulePath ? loaded.file(capsulePath) : null;
       const capsule = capsuleFile ? JSON.parse(await capsuleFile.async('string')) : null;
 
       // Parse events (NDJSON)
-      const eventsFile = loaded.file('proofs/events.ndjson');
-      const events = eventsFile
-        ? (await eventsFile.async('string'))
-            .split('\n')
-            .filter((line) => line.trim())
-            .map((line) => JSON.parse(line))
-        : [];
+      let events: Array<Record<string, any>> = [];
+      let traceEvents: HardwareTraceEvent[] = [];
+      let traceFilePresent = false;
+      let bitstreamFilePresent = false;
+      let traceStats: BundleData['traceStats'] = undefined;
+      let missingArtifacts: string[] = [];
+      if (schemaVersion === 'v2') {
+        const traceFile = loaded.file('trace/hw_trace.ndjson');
+        const traceText = traceFile ? await traceFile.async('string') : '';
+        traceFilePresent = !!traceFile;
+        traceEvents = traceText
+          .split('\n')
+          .filter((line) => line.trim())
+          .map((line) => JSON.parse(line))
+          .filter((event) => typeof event?.hw_tick === 'number' && typeof event?.mono_seq === 'number');
+        bitstreamFilePresent = !!loaded.file('bitstream/design.bit');
+        if (!traceFilePresent) missingArtifacts.push('trace/hw_trace.ndjson');
+        if (!bitstreamFilePresent) missingArtifacts.push('bitstream/design.bit');
+
+        let minTick: number | null = null;
+        let maxTick: number | null = null;
+        let monoNondecreasing = true;
+        let prevSeq: number | null = null;
+        for (const event of traceEvents) {
+          if (minTick === null || event.hw_tick < minTick) minTick = event.hw_tick;
+          if (maxTick === null || event.hw_tick > maxTick) maxTick = event.hw_tick;
+          if (prevSeq !== null && event.mono_seq < prevSeq) {
+            monoNondecreasing = false;
+          }
+          prevSeq = event.mono_seq;
+        }
+
+        traceStats = {
+          event_count: traceEvents.length,
+          hw_tick_min: minTick,
+          hw_tick_max: maxTick,
+          mono_seq_nondecreasing: monoNondecreasing,
+        };
+      } else {
+        const eventsFile = loaded.file('proofs/events.ndjson');
+        events = eventsFile
+          ? (await eventsFile.async('string'))
+              .split('\n')
+              .filter((line) => line.trim())
+              .map((line) => JSON.parse(line))
+          : [];
+      }
 
       // Parse hardware if present
-      const hardwareFile = loaded.file('proofs/hardware.json');
+      const hardwarePath = schemaVersion === 'v2' ? null : 'proofs/hardware.json';
+      const hardwareFile = hardwarePath ? loaded.file(hardwarePath) : null;
       const hardware = hardwareFile ? JSON.parse(await hardwareFile.async('string')) : null;
 
       // Parse grade artifacts if present
@@ -69,13 +139,31 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = () => {
         md: gradeMdFile ? await gradeMdFile.async('string') : null,
       };
 
+      const signatureStatus = await verifyBundleSignature(zipBytes);
+      const traceReplay = traceEvents.length > 0 ? Array.from(replayHardwareTrace(traceEvents)) : [];
+      const labTemplate = manifest?.lab_id ? getLabTemplate(String(manifest.lab_id)) : null;
+      const checkEvaluation = evaluateChecks(labTemplate, traceReplay);
+
       setBundle({
         manifest,
         capsule,
         events,
+        schemaVersion,
+        signatureStatus,
+        traceEvents,
+        traceReplay,
+        traceFilePresent,
+        bitstreamFilePresent,
+        labTemplate,
+        checkResults: checkEvaluation.results,
+        checksPass: checkEvaluation.pass,
+        traceStats,
+        missingArtifacts,
         hardware,
         grade,
       });
+      setTraceCursor(0);
+      setTraceCurrent(null);
       setActiveTab('summary');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to parse bundle');
@@ -108,6 +196,45 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = () => {
     if (file && file.name.endsWith('.rb-lab.zip')) {
       parseBundle(file);
     }
+  };
+
+  const handleTraceStep = () => {
+    if (!bundle?.traceReplay || bundle.traceReplay.length === 0) return;
+    if (traceCursor >= bundle.traceReplay.length) return;
+    const next = bundle.traceReplay[traceCursor];
+    setTraceCurrent(next);
+    setTraceCursor(traceCursor + 1);
+  };
+
+  const handleExportGradingReport = () => {
+    if (!bundle) return;
+    const report = {
+      schema_version: 'grade_v1',
+      bundle: {
+        lab_id: bundle.manifest?.lab_id ?? null,
+        lab_version: bundle.manifest?.lab_version ?? null,
+        signature_status: bundle.signatureStatus ?? 'Unsigned',
+        event_count: bundle.traceStats?.event_count ?? 0,
+        hw_tick_min: bundle.traceStats?.hw_tick_min ?? null,
+        hw_tick_max: bundle.traceStats?.hw_tick_max ?? null,
+        mono_seq_monotonic: bundle.traceStats?.mono_seq_nondecreasing ?? null,
+      },
+      checks: bundle.checkResults ?? [],
+      overall_pass: bundle.checksPass ?? true,
+      generated_ts_wall: Date.now(),
+      redbyte_version: bundle.manifest?.redbyte_version ?? 'unknown',
+    };
+    const json = JSON.stringify(report, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const labId = bundle.manifest?.lab_id ?? 'lab';
+    link.href = url;
+    link.download = `${labId}_grading_report.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   };
 
   if (!bundle) {
@@ -314,12 +441,27 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = () => {
         {/* Summary Tab */}
         {activeTab === 'summary' && (
           <div className={styles.panel}>
-            <h2 className={styles.sectionTitle}>Submission Summary</h2>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Submission Summary</h2>
+              <button className={styles.exportButton} onClick={handleExportGradingReport}>
+                Export Grading Report
+              </button>
+            </div>
             
             <div className={styles.summaryGrid}>
               <div className={styles.summaryCard}>
                 <div className={styles.summaryLabel}>Lab ID</div>
                 <div className={styles.summaryValue}>{bundle.manifest.lab_id}</div>
+              </div>
+
+              <div className={styles.summaryCard}>
+                <div className={styles.summaryLabel}>Schema</div>
+                <div className={styles.summaryValue}>{bundle.schemaVersion || 'unknown'}</div>
+              </div>
+
+              <div className={styles.summaryCard}>
+                <div className={styles.summaryLabel}>Lab Version</div>
+                <div className={styles.summaryValue}>{bundle.manifest.lab_version || 'N/A'}</div>
               </div>
 
               <div className={styles.summaryCard}>
@@ -338,7 +480,41 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = () => {
                   {new Date(bundle.manifest.created_at).toLocaleString()}
                 </div>
               </div>
+
+              <div className={styles.summaryCard}>
+                <div className={styles.summaryLabel}>Signature</div>
+                <div className={styles.summaryValue}>{bundle.signatureStatus || 'Unsigned'}</div>
+              </div>
+
+              {bundle.schemaVersion === 'v2' && (
+                <>
+                  <div className={styles.summaryCard}>
+                    <div className={styles.summaryLabel}>Trace</div>
+                    <div className={styles.summaryValue}>
+                      {bundle.traceFilePresent
+                        ? `${bundle.traceReplay?.length ?? 0} events`
+                        : 'Missing'}
+                    </div>
+                  </div>
+                  <div className={styles.summaryCard}>
+                    <div className={styles.summaryLabel}>Bitstream</div>
+                    <div className={styles.summaryValue}>
+                      {bundle.bitstreamFilePresent ? 'Present' : 'Missing'}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
+
+            {bundle.schemaVersion === 'v2' && bundle.missingArtifacts && bundle.missingArtifacts.length > 0 && (
+              <div className={styles.missingSection}>
+                {bundle.missingArtifacts.map((artifact) => (
+                  <div key={artifact} className={styles.missingItem}>
+                    Missing: {artifact}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {bundle.capsule && (
               <div className={styles.summarySection}>
@@ -360,6 +536,107 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = () => {
                     <span className={styles.statLabel}>Total</span>
                     <span className={styles.statValue}>{bundle.capsule.summary?.total || 0}</span>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {bundle.schemaVersion === 'v2' && (
+              <div className={styles.summarySection}>
+                <h3>Hardware Trace</h3>
+                {bundle.traceReplay && bundle.traceReplay.length > 0 ? (
+                  <>
+                    <div className={styles.summaryStats}>
+                      <div className={styles.stat}>
+                        <span className={styles.statLabel}>Events</span>
+                        <span className={styles.statValue}>{bundle.traceReplay.length}</span>
+                      </div>
+                      <div className={styles.stat}>
+                        <span className={styles.statLabel}>First hw_tick</span>
+                        <span className={styles.statValue}>{bundle.traceReplay[0]?.hw_tick ?? 0}</span>
+                      </div>
+                      <div className={styles.stat}>
+                        <span className={styles.statLabel}>Last hw_tick</span>
+                        <span className={styles.statValue}>
+                          {bundle.traceReplay[bundle.traceReplay.length - 1]?.hw_tick ?? 0}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      className={styles.closeButton}
+                      onClick={handleTraceStep}
+                      disabled={traceCursor >= bundle.traceReplay.length}
+                    >
+                      Next Trace Event
+                    </button>
+                    {traceCurrent && (
+                      <pre className={styles.codeBlock}>{JSON.stringify(traceCurrent, null, 2)}</pre>
+                    )}
+                  </>
+                ) : (
+                  <div className={styles.empty}>No hardware trace in bundle</div>
+                )}
+              </div>
+            )}
+
+            {bundle.schemaVersion === 'v2' && bundle.traceStats && (
+              <div className={styles.summarySection}>
+                <h3>Bundle Health</h3>
+                <div className={styles.summaryStats}>
+                  <div className={styles.stat}>
+                    <span className={styles.statLabel}>Event Count</span>
+                    <span className={styles.statValue}>{bundle.traceStats.event_count}</span>
+                  </div>
+                  <div className={styles.stat}>
+                    <span className={styles.statLabel}>hw_tick Min</span>
+                    <span className={styles.statValue}>
+                      {bundle.traceStats.hw_tick_min ?? 'N/A'}
+                    </span>
+                  </div>
+                  <div className={styles.stat}>
+                    <span className={styles.statLabel}>hw_tick Max</span>
+                    <span className={styles.statValue}>
+                      {bundle.traceStats.hw_tick_max ?? 'N/A'}
+                    </span>
+                  </div>
+                  <div className={styles.stat}>
+                    <span className={styles.statLabel}>mono_seq OK</span>
+                    <span className={styles.statValue}>
+                      {bundle.traceStats.mono_seq_nondecreasing ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {bundle.checkResults && bundle.checkResults.length > 0 && (
+              <div className={styles.summarySection}>
+                <h3>Checks</h3>
+                <div className={styles.summaryStats}>
+                  <div className={styles.stat}>
+                    <span className={styles.statLabel}>Overall</span>
+                    <span
+                      className={`${styles.statValue} ${
+                        bundle.checksPass ? styles.checkPass : styles.checkFail
+                      }`}
+                    >
+                      {bundle.checksPass ? 'PASS' : 'FAIL'}
+                    </span>
+                  </div>
+                </div>
+                <div className={styles.checkList}>
+                  {bundle.checkResults.map((result) => (
+                    <div key={result.id} className={styles.checkItem}>
+                      <span
+                        className={`${styles.checkStatus} ${
+                          result.pass ? styles.checkPass : styles.checkFail
+                        }`}
+                      >
+                        {result.pass ? 'PASS' : 'FAIL'}
+                      </span>
+                      <span className={styles.checkLabel}>{result.id}</span>
+                      <span className={styles.checkMessage}>{result.message}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -489,12 +766,29 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = () => {
           <div className={styles.panel}>
             <h2 className={styles.sectionTitle}>Bundle Contents</h2>
             <div className={styles.filesList}>
-              <div className={styles.fileItem}>manifest.json</div>
-              <div className={styles.fileItem}>proofs/capsule.json</div>
-              <div className={styles.fileItem}>proofs/events.ndjson</div>
-              {bundle.hardware && <div className={styles.fileItem}>proofs/hardware.json</div>}
-              {bundle.grade?.json && <div className={styles.fileItem}>grade.json</div>}
-              {bundle.grade?.md && <div className={styles.fileItem}>grade.md</div>}
+              {bundle.schemaVersion === 'v2' ? (
+                <>
+                  <div className={styles.fileItem}>manifest.json</div>
+                  <div className={`${styles.fileItem} ${!bundle.traceFilePresent ? styles.fileMissing : ''}`}>
+                    trace/hw_trace.ndjson
+                  </div>
+                  <div className={`${styles.fileItem} ${!bundle.bitstreamFilePresent ? styles.fileMissing : ''}`}>
+                    bitstream/design.bit
+                  </div>
+                  <div className={styles.fileItem}>meta/board_profile.json</div>
+                  <div className={styles.fileItem}>integrity/capsule.json</div>
+                  <div className={styles.fileItem}>integrity/signature.sig</div>
+                </>
+              ) : (
+                <>
+                  <div className={styles.fileItem}>manifest.json</div>
+                  <div className={styles.fileItem}>proofs/capsule.json</div>
+                  <div className={styles.fileItem}>proofs/events.ndjson</div>
+                  {bundle.hardware && <div className={styles.fileItem}>proofs/hardware.json</div>}
+                  {bundle.grade?.json && <div className={styles.fileItem}>grade.json</div>}
+                  {bundle.grade?.md && <div className={styles.fileItem}>grade.md</div>}
+                </>
+              )}
             </div>
           </div>
         )}
