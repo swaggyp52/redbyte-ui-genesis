@@ -151,23 +151,18 @@ export async function identifyPort(options) {
 
   const start = Date.now();
   const portInstance = createPortInstance(portFactory, port, baud);
-  const bufferState = {
+  const state = {
     buffer: Buffer.alloc(0),
     frames: [],
     pendingResolve: null,
   };
 
   const takeFrame = () => {
-    const index = bufferState.frames.findIndex((f) => f.type === IDENTIFY_TYPE_RESP);
+    const index = state.frames.findIndex((f) => f.type === IDENTIFY_TYPE_RESP);
     if (index === -1) return null;
-    return bufferState.frames.splice(index, 1)[0];
+    return state.frames.splice(index, 1)[0];
   };
-
-  const state = {
-    ...bufferState,
-    takeFrame,
-    pendingResolve: null,
-  };
+  state.takeFrame = takeFrame;
 
   const onData = (data) => {
     state.buffer = Buffer.concat([state.buffer, data]);
