@@ -1,0 +1,43 @@
+{
+  "id": "spartan3e-starter",
+  "name": "Spartan-3E Starter Kit",
+  "manufacturer": "Digilent",
+  "fpga": {
+    "family": "Spartan-3E",
+    "part": "XC3S500E / XC3S1200E"
+  },
+  "toolchain": "ise",
+  "clock": {
+    "name": "CLK_50MHZ",
+    "frequency_hz": 50000000,
+    "port": "clk",
+    "pin": "C9"
+  },
+  "io": {
+    "inputs": {
+      "switches": {
+        "count": 4,
+        "labels": ["SW0", "SW1", "SW2", "SW3"],
+        "port": "sw",
+        "pins": ["L13", "L14", "H18", "N17"]
+      },
+      "buttons": {
+        "count": 4,
+        "labels": ["BTN_EAST", "BTN_NORTH", "BTN_SOUTH", "BTN_WEST"],
+        "port": "btn",
+        "pins": ["H13", "V4", "K17", "D18"]
+      }
+    },
+    "outputs": {
+      "leds": {
+        "count": 8,
+        "labels": ["LD0", "LD1", "LD2", "LD3", "LD4", "LD5", "LD6", "LD7"],
+        "port": "led",
+        "pins": ["F12", "E12", "E11", "F11", "C11", "D11", "E9", "F9"]
+      }
+    }
+  },
+  "pinmap": {
+    "ise_ucf": "pinmap.ise.ucf"
+  }
+}

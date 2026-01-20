@@ -28,7 +28,7 @@ export type BoardModel = {
     };
     outputs: {
       leds: BoardIoGroup;
-      seven_seg: {
+      seven_seg?: {
         segments: BoardIoGroup;
         anodes: BoardIoGroup;
       };

@@ -1,0 +1,35 @@
+# Spartan-3E Starter Kit Constraints for RedByte
+# Source: Xilinx UG230 Appendix B
+# Part: XC3S500E / XC3S1200E (kit variants)
+
+# Clock (50 MHz)
+NET "clk" LOC = "C9" | IOSTANDARD = LVCMOS33;
+TIMESPEC "TS_clk" = PERIOD "clk" 20 ns HIGH 50%;
+
+# Switches
+NET "sw<0>" LOC = "L13" | IOSTANDARD = LVCMOS33;
+NET "sw<1>" LOC = "L14" | IOSTANDARD = LVCMOS33;
+NET "sw<2>" LOC = "H18" | IOSTANDARD = LVCMOS33;
+NET "sw<3>" LOC = "N17" | IOSTANDARD = LVCMOS33;
+
+# Buttons (east, north, south, west)
+NET "btn<0>" LOC = "H13" | IOSTANDARD = LVCMOS33; # BTN_EAST
+NET "btn<1>" LOC = "V4" | IOSTANDARD = LVCMOS33;  # BTN_NORTH
+NET "btn<2>" LOC = "K17" | IOSTANDARD = LVCMOS33; # BTN_SOUTH
+NET "btn<3>" LOC = "D18" | IOSTANDARD = LVCMOS33; # BTN_WEST
+
+# LEDs
+NET "led<0>" LOC = "F12" | IOSTANDARD = LVCMOS33;
+NET "led<1>" LOC = "E12" | IOSTANDARD = LVCMOS33;
+NET "led<2>" LOC = "E11" | IOSTANDARD = LVCMOS33;
+NET "led<3>" LOC = "F11" | IOSTANDARD = LVCMOS33;
+NET "led<4>" LOC = "C11" | IOSTANDARD = LVCMOS33;
+NET "led<5>" LOC = "D11" | IOSTANDARD = LVCMOS33;
+NET "led<6>" LOC = "E9" | IOSTANDARD = LVCMOS33;
+NET "led<7>" LOC = "F9" | IOSTANDARD = LVCMOS33;
+
+# RS-232 (optional, for runtime bridge)
+NET "rs232_dce_rxd" LOC = "R7" | IOSTANDARD = LVCMOS33;
+NET "rs232_dce_txd" LOC = "M14" | IOSTANDARD = LVCMOS33;
+NET "rs232_dte_rxd" LOC = "U8" | IOSTANDARD = LVCMOS33;
+NET "rs232_dte_txd" LOC = "M13" | IOSTANDARD = LVCMOS33;
