@@ -1185,7 +1185,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
                 {hoverInfo.label}
               </div>
               <div className="text-gray-400">
-                t={hoverInfo.time.toFixed(3)}s ƒ?› v={hoverInfo.value}
+                t={hoverInfo.time.toFixed(3)}s, v={hoverInfo.value}
               </div>
             </div>
           )}
