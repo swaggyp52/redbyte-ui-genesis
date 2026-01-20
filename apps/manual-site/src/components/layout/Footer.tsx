@@ -50,6 +50,11 @@ export default function Footer() {
                   For Educators
                 </Link>
               </li>
+              <li>
+                <Link to="/instructors" className="text-rb-muted hover:text-rb-text transition-colors">
+                  Instructors
+                </Link>
+              </li>
             </ul>
           </div>
 

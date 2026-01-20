@@ -8,6 +8,7 @@ const navLinks = [
   { to: '/examples', label: 'Examples' },
   { to: '/guide', label: 'Guide' },
   { to: '/demo', label: 'For Educators' },
+  { to: '/instructors', label: 'Instructors' },
   { to: '/about', label: 'About' },
 ];
 

@@ -4,6 +4,7 @@ import Footer from './components/layout/Footer';
 import Home from './pages/Home';
 import GettingStarted from './pages/GettingStarted';
 import Install from './pages/Install';
+import Instructors from './pages/Instructors';
 import Examples from './pages/Examples';
 import Guide from './pages/Manual';
 import Walkthrough from './pages/Walkthrough';
@@ -20,6 +21,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/install" element={<Install />} />
+            <Route path="/instructors" element={<Instructors />} />
             <Route path="/getting-started" element={<GettingStarted />} />
             <Route path="/demo" element={<Demo />} />
             <Route path="/examples" element={<Examples />} />
