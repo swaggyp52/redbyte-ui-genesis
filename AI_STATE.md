@@ -5965,3 +5965,7 @@ Commits:
 ## Change Log  2026-01-20
 
 - Added djtgcfg programming support for /program with device-id selection, bitstream path/base64 handling, identify recheck for pinmap mismatch, and JTAG program helper tests; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Added /log endpoint for program diagnostics retrieval with safe tmp-dir scoping and log retention cleanup; objectives unchanged; phase unchanged.

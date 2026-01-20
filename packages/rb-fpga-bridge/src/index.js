@@ -31,6 +31,8 @@ const TRACE_ENABLED = process.env.RB_FPGA_TRACE === "1" || process.env.RB_FPGA_T
 const TRACE_PATH = process.env.RB_FPGA_TRACE_PATH || path.join(process.cwd(), "trace", "hw_trace.ndjson");
 const PACKET_RATE_WINDOW_MS = 1000;
 const PROGRAM_TIMEOUT_MS = Number(process.env.RB_FPGA_PROGRAM_TIMEOUT_MS || 120000);
+const PROGRAM_LOG_KEEP = Number(process.env.RB_FPGA_PROGRAM_LOG_KEEP || 50);
+const PROGRAM_LOG_TAIL = Number(process.env.RB_FPGA_PROGRAM_LOG_TAIL || 200);
 
 function getRepoRoot() {
   try {
@@ -92,6 +94,58 @@ function createProgramLogger(logPath) {
       logStream.end(() => resolve());
     });
   return { writeLine, close };
+}
+
+function listProgramLogs(tmpDir) {
+  try {
+    const entries = fs.readdirSync(tmpDir);
+    return entries
+      .filter((entry) => entry.startsWith("program-") && entry.endsWith(".log"))
+      .map((entry) => {
+        const fullPath = path.join(tmpDir, entry);
+        let stat = null;
+        try {
+          stat = fs.statSync(fullPath);
+        } catch {
+          return null;
+        }
+        return {
+          name: entry,
+          path: fullPath,
+          mtimeMs: stat?.mtimeMs || 0,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.mtimeMs - a.mtimeMs);
+  } catch {
+    return [];
+  }
+}
+
+function pruneProgramLogs(tmpDir, keep = PROGRAM_LOG_KEEP) {
+  if (keep <= 0) return;
+  const logs = listProgramLogs(tmpDir);
+  const excess = logs.slice(keep);
+  for (const entry of excess) {
+    try {
+      fs.unlinkSync(entry.path);
+    } catch {
+      // ignore cleanup failures
+    }
+  }
+}
+
+function resolveLogPath(tmpDir, inputPath) {
+  if (!inputPath) return null;
+  const clean = String(inputPath).trim();
+  if (!clean) return null;
+  const resolved = path.isAbsolute(clean) ? clean : path.join(tmpDir, clean);
+  const normalized = path.resolve(resolved);
+  const normalizedTmp = path.resolve(tmpDir) + path.sep;
+  if (!normalized.startsWith(normalizedTmp)) {
+    return null;
+  }
+  return normalized;
 }
 
 // Deterministic seeded PRNG (simple LCG)
@@ -655,6 +709,7 @@ app.post("/program", async (req, res) => {
     state.program_last_error = ok ? null : error || "Programming failed.";
     state.program_last_log_path = logPath;
     programInFlight = false;
+    pruneProgramLogs(tmpDir, PROGRAM_LOG_KEEP);
     broadcast(
       createEvent("program:status", {
         status: state.program_status,
@@ -777,6 +832,36 @@ app.post("/program", async (req, res) => {
     logger.writeLine(`[rb-fpga] ERROR: ${error}`);
     return finish(false, error);
   }
+});
+
+app.get("/log", (req, res) => {
+  const repoRoot = getRepoRoot();
+  const tmpDir = ensureTmpDir(repoRoot);
+  const requested = req.query?.path || req.query?.id || null;
+  const resolved = resolveLogPath(tmpDir, requested);
+  if (!resolved) {
+    return res.status(400).json({ ok: false, error: "invalid_log_path" });
+  }
+  if (!fs.existsSync(resolved)) {
+    return res.status(404).json({ ok: false, error: "log_not_found" });
+  }
+
+  let content = "";
+  try {
+    content = fs.readFileSync(resolved, "utf8");
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err?.message || "log_read_failed" });
+  }
+
+  const lines = content.split(/\r?\n/);
+  const tail = Math.max(1, Number(req.query?.tail || PROGRAM_LOG_TAIL));
+  const slice = lines.slice(-tail);
+  return res.json({
+    ok: true,
+    path: resolved,
+    lines: slice.length,
+    content: slice.join("\n"),
+  });
 });
 
 // ============================================================
