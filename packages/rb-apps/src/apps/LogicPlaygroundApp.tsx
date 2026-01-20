@@ -58,6 +58,7 @@ import JSZip from 'jszip';
 import { buildSuspectSet } from '../utils/mismatchLocalization';
 import { buildDebugOverlayFromSignals } from '../recording/runRecordUtils';
 import { restoreReplayState } from '../utils/replayRestore';
+import { assertAppOutput, registerAppInvariants } from '../utils/appInvariants';
 import { analyzeCircuitHealth } from '../logic/circuitHealth';
 import { buildDebugBundle } from '../export/debugBundle';
 import { netlistFromCircuit } from '../export/netlistExport';
@@ -79,6 +80,22 @@ import { isCEMode, getCEConfig, isHeavyCircuit } from '../utils/ceMode';
 import { ResetWorkspaceModal, ExampleGalleryModal, ExportBundleModal } from '../components/CEUIComponents';
 import { ClassroomModeBanner } from '../components/ClassroomModeBanner';
 import { useClassroomModeStore } from '../stores/classroomModeStore';
+
+const LOGIC_PLAYGROUND_INVARIANTS = {
+  reads: ['circuit_store', 'probe_store', 'file_system', 'examples', 'settings'],
+  writes: ['circuit_store', 'probe_store', 'file_system', 'settings.tick_rate', 'layout', 'oscilloscope', 'run_recorder'],
+  outputs: [
+    'rb-project.json',
+    'rbproj.zip',
+    'netlist.json',
+    'circuit.v',
+    'rb-debug-bundle.json',
+    'run-record.json',
+    'proof-pack.json',
+  ],
+};
+
+registerAppInvariants('logic-playground', LOGIC_PLAYGROUND_INVARIANTS);
 
 // Primitive node types (built-in gates) organized by category
 const PRIMITIVE_NODES = {
@@ -1439,6 +1456,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
   const handleRunRecorderExport = useCallback(() => {
     if (!record) return;
+    assertAppOutput('logic-playground', 'run-record.json');
     const json = encodeRunRecord(record);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1451,6 +1469,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
   const handleRunRecorderExportProof = useCallback(() => {
     if (!record) return;
+    assertAppOutput('logic-playground', 'proof-pack.json');
     const proofPack = buildProofPack(record, circuit, {
       appVersion,
       tickRate: currentHz,
@@ -2392,12 +2411,14 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
   const handleSaveProject = useCallback(() => {
     const project = buildProject();
+    assertAppOutput('logic-playground', 'rb-project.json');
     downloadText('rb-project.json', encodeRBProject(project));
     addToast('Project exported', 'success');
   }, [buildProject, downloadText, addToast]);
 
   const handleSaveProjectArchive = useCallback(async () => {
     const project = buildProject();
+    assertAppOutput('logic-playground', 'rbproj.zip');
     const zip = new JSZip();
     zip.file('rb-project.json', encodeRBProject(project));
     zip.file('circuit.rblogic', JSON.stringify(serialize(project.circuit), null, 2));
@@ -2444,12 +2465,14 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
   const handleExportNetlist = useCallback(() => {
     const netlist = netlistFromCircuit(circuit);
+    assertAppOutput('logic-playground', 'netlist.json');
     downloadText('netlist.json', stableStringify(netlist));
   }, [circuit, downloadText]);
 
   const handleExportVerilog = useCallback(() => {
     const netlist = netlistFromCircuit(circuit);
     const verilog = verilogFromNetlist(netlist);
+    assertAppOutput('logic-playground', 'circuit.v');
     downloadText('circuit.v', verilog, 'text/plain');
   }, [circuit, downloadText]);
 
@@ -2466,6 +2489,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       health,
       runRecord: record ?? undefined,
     });
+    assertAppOutput('logic-playground', 'rb-debug-bundle.json');
     downloadText('rb-debug-bundle.json', stableStringify(bundle));
   }, [buildProject, circuit, record, appVersion, currentHz, downloadText]);
 

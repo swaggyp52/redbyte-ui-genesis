@@ -13,6 +13,15 @@ import {
   type SelfCheckResult,
 } from '../utils/selfCheck';
 import { exportBundle, downloadBlob, type ExportResult } from '../utils/bundleExport';
+import { assertAppOutput, registerAppInvariants } from '../utils/appInvariants';
+
+const STUDENT_LAB_INVARIANTS = {
+  reads: ['lab_templates', 'bridge_telemetry', 'trace_events'],
+  writes: ['connection_state', 'trace_recording'],
+  outputs: ['rb-lab.zip'],
+};
+
+registerAppInvariants('student-lab', STUDENT_LAB_INVARIANTS);
 
 // ============================================================================
 // Types
@@ -499,6 +508,7 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
         return vector;
       });
 
+      assertAppOutput('student-lab', 'rb-lab.zip');
       const result = await exportBundle({
         labId: spec.lab_id,
         studentId: studentId,
@@ -624,6 +634,7 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
 
   if (phase === 'exported' && exportResult && spec && attempt && selectedPreset && selfCheckSummary) {
     const handleDownloadAgain = () => {
+      assertAppOutput('student-lab', 'rb-lab.zip');
       downloadBlob(exportResult.blob, exportResult.filename);
     };
 

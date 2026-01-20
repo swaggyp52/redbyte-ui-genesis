@@ -14,6 +14,15 @@ import {
 } from '@redbyte/rb-fpga-proof-core';
 import { verifyBundleSignature, type SignatureStatus } from '../utils/bundleSignature';
 import { getLabTemplate, type LabTemplate } from '../utils/labTemplates';
+import { assertAppOutput, registerAppInvariants } from '../utils/appInvariants';
+
+const INSPECTOR_INVARIANTS = {
+  reads: ['bundle', 'lab_templates'],
+  writes: ['replay_cursor'],
+  outputs: ['grading-report.json'],
+};
+
+registerAppInvariants('submission-inspector', INSPECTOR_INVARIANTS);
 
 interface BundleData {
   manifest: Record<string, any>;
@@ -234,6 +243,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
 
   const handleExportGradingReport = () => {
     if (!bundle) return;
+    assertAppOutput('submission-inspector', 'grading-report.json');
     const report = {
       schema_version: 'grade_v1',
       bundle: {
