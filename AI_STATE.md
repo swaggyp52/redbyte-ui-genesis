@@ -5957,3 +5957,7 @@ Commits:
 ## Change Log  2026-01-20
 
 - Extended hardware bridge contract programming info with tool/endpoint/serial fields and added programming + merge diagnostics to the schema and golden devices payload; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Added JTAG enumeration via djtgcfg with UART/JTAG merge logic in FPGA bridge discovery, plus merge diagnostics and JTAG parsing tests; objectives unchanged; phase unchanged.

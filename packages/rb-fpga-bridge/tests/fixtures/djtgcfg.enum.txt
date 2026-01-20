@@ -1,0 +1,5 @@
+Found 2 device(s)
+Device: Basys3
+Device Serial: 2100001234
+Device: Spartan3E
+Device Serial: 0400005678

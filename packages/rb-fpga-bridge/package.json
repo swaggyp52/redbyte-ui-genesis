@@ -18,6 +18,7 @@
     "test:trace": "node tests/trace-recorder.test.js",
     "test:devices": "node tests/device-discovery.test.js",
     "test:identify": "node tests/identify.test.js",
+    "test:jtag": "node tests/jtag.test.js",
     "test:sim": "node tests/sim-mode.test.js",
     "test:vivado": "node tests/vivado.test.js",
     "bless:capsule": "node scripts/bless-capsule.js",

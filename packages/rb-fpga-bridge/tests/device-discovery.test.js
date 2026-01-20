@@ -183,6 +183,184 @@ function run() {
   assert.equal(deniedDevices[0].runtime.status, "permission_denied");
   assert.equal(deniedDevices[0].runtime.diagnostics.error, "Access denied");
 
+  const jtagSummary = {
+    ok: true,
+    tool: "djtgcfg",
+    raw: "Found 1 device(s)\nDevice: Basys3\nDevice Serial: 2100001234",
+    devices: [
+      {
+        tool: "djtgcfg",
+        endpoint_id: "djtgcfg:2100001234",
+        serial_number: "2100001234",
+        product: "Basys3",
+      },
+    ],
+  };
+
+  const mergedDevices = synthesizeDevicesFromCandidates(
+    [
+      {
+        kind: "uart",
+        path: "COM12",
+        manufacturer: "Digilent",
+        vendorId: "0403",
+        productId: "6010",
+        serialNumber: "2100001234",
+        pnpId: "VID_0403&PID_6010",
+        locationId: null,
+        friendlyName: "Digilent USB UART",
+        confidence: 0.9,
+        reasons: ["vid_pid:0403:6010"],
+        isLikelyDigilent: true,
+        detectedVia: "vid_pid",
+        runtimeStatus: "ready",
+        runtimeDiagnostics: null,
+      },
+      {
+        kind: "jtag",
+        tool: "djtgcfg",
+        driver: "djtgcfg",
+        endpointId: "djtgcfg:2100001234",
+        serialNumber: "2100001234",
+        product: "Basys3",
+      },
+    ],
+    { includeSim: false, baudDefault: 115200, jtagSummary }
+  );
+
+  assert.equal(mergedDevices.length, 1);
+  assert.equal(mergedDevices[0].programming.status, "ready");
+  assert.equal(mergedDevices[0].diagnostics.merge.status, "merged");
+  assert.equal(mergedDevices[0].diagnostics.merge.reason, "serial_match");
+
+  const fallbackDevices = synthesizeDevicesFromCandidates(
+    [
+      {
+        kind: "uart",
+        path: "COM14",
+        manufacturer: "Digilent",
+        vendorId: "0403",
+        productId: "6010",
+        serialNumber: null,
+        pnpId: "VID_0403&PID_6010",
+        locationId: null,
+        friendlyName: "Digilent USB UART",
+        confidence: 0.92,
+        reasons: ["vid_pid:0403:6010"],
+        isLikelyDigilent: true,
+        detectedVia: "vid_pid",
+        runtimeStatus: "ready",
+        runtimeDiagnostics: null,
+      },
+      {
+        kind: "jtag",
+        tool: "djtgcfg",
+        driver: "djtgcfg",
+        endpointId: "djtgcfg:index:0",
+        serialNumber: null,
+        product: "Digilent JTAG",
+      },
+    ],
+    { includeSim: false, baudDefault: 115200, jtagSummary }
+  );
+
+  assert.equal(fallbackDevices.length, 1);
+  assert.equal(fallbackDevices[0].diagnostics.merge.reason, "fallback:singletons");
+  assert.equal(fallbackDevices[0].confidence <= 0.75, true);
+
+  const ambiguousDevices = synthesizeDevicesFromCandidates(
+    [
+      {
+        kind: "uart",
+        path: "COM16",
+        manufacturer: "Digilent",
+        vendorId: "0403",
+        productId: "6010",
+        serialNumber: null,
+        pnpId: "VID_0403&PID_6010",
+        locationId: null,
+        friendlyName: "Digilent USB UART",
+        confidence: 0.7,
+        reasons: ["vid_pid:0403:6010"],
+        isLikelyDigilent: true,
+        detectedVia: "vid_pid",
+        runtimeStatus: "ready",
+        runtimeDiagnostics: null,
+      },
+      {
+        kind: "uart",
+        path: "COM17",
+        manufacturer: "Digilent",
+        vendorId: "0403",
+        productId: "6010",
+        serialNumber: null,
+        pnpId: "VID_0403&PID_6010",
+        locationId: null,
+        friendlyName: "Digilent USB UART",
+        confidence: 0.7,
+        reasons: ["vid_pid:0403:6010"],
+        isLikelyDigilent: true,
+        detectedVia: "vid_pid",
+        runtimeStatus: "ready",
+        runtimeDiagnostics: null,
+      },
+      {
+        kind: "jtag",
+        tool: "djtgcfg",
+        driver: "djtgcfg",
+        endpointId: "djtgcfg:index:0",
+        serialNumber: null,
+        product: "Digilent JTAG",
+      },
+      {
+        kind: "jtag",
+        tool: "djtgcfg",
+        driver: "djtgcfg",
+        endpointId: "djtgcfg:index:1",
+        serialNumber: null,
+        product: "Digilent JTAG",
+      },
+    ],
+    { includeSim: false, baudDefault: 115200, jtagSummary }
+  );
+
+  assert.equal(ambiguousDevices.length, 4);
+  assert.equal(
+    ambiguousDevices.every((device) => device.diagnostics.merge.status === "ambiguous"),
+    true
+  );
+
+  const missingToolDevices = synthesizeDevicesFromCandidates(
+    [
+      {
+        kind: "uart",
+        path: "COM18",
+        manufacturer: "Digilent",
+        vendorId: "0403",
+        productId: "6010",
+        serialNumber: "NOJTAG",
+        pnpId: "VID_0403&PID_6010",
+        locationId: null,
+        friendlyName: "Digilent USB UART",
+        confidence: 0.7,
+        reasons: ["vid_pid:0403:6010"],
+        isLikelyDigilent: true,
+        detectedVia: "vid_pid",
+        runtimeStatus: "ready",
+        runtimeDiagnostics: null,
+      },
+    ],
+    {
+      includeSim: false,
+      baudDefault: 115200,
+      jtagSummary: { ok: false, tool: "djtgcfg", error: "missing_tool", raw: null, devices: [] },
+    }
+  );
+
+  assert.equal(missingToolDevices.length, 1);
+  assert.equal(missingToolDevices[0].programming.status, "missing_driver");
+  assert.equal(missingToolDevices[0].diagnostics.programming.error, "missing_tool");
+
   console.log("[TEST] device discovery synthesis passed");
 }
 
