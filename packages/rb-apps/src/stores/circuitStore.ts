@@ -8,6 +8,21 @@ import type { TickEngine } from '@redbyte/rb-logic-core';
 
 // Debug flag for instrumentation (DEV-only)
 const DEBUG_PLAYGROUND = import.meta.env.DEV && false; // Set to true to enable debug logs
+const NODE_ID_PREFIX = 'node-v2-';
+const NODE_ID_RE = /^node-v2-(\d+)$/;
+
+function getNextNodeId(circuit: Circuit): string {
+  let max = 0;
+  for (const node of circuit.nodes) {
+    const match = NODE_ID_RE.exec(node.id);
+    if (!match) continue;
+    const value = parseInt(match[1], 10);
+    if (Number.isFinite(value)) {
+      max = Math.max(max, value);
+    }
+  }
+  return `${NODE_ID_PREFIX}${max + 1}`;
+}
 
 // Deep clone circuit to avoid mutation leaks in history
 function cloneCircuit(circuit: Circuit): Circuit {
@@ -267,7 +282,7 @@ function createCircuitStore() {
 
       const defaultConfig = nodeType === 'Clock' ? { period: 10 } : {};
       const newNode: Node = {
-        id: `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+        id: getNextNodeId(circuit),
         type: nodeType,
         position,
         state: {},

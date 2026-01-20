@@ -50,6 +50,8 @@ const PROBE_COLORS = [
   '#ff0088',
   '#00ff88',
 ];
+const PROBE_ID_PREFIX = 'probe-v2-';
+const PROBE_ID_RE = /^probe-v2-(\d+)$/;
 
 const hashProbeId = (id: string) => {
   let hash = 0;
@@ -57,6 +59,19 @@ const hashProbeId = (id: string) => {
     hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
   }
   return hash;
+};
+
+const getNextProbeId = (probes: Probe[]): string => {
+  let max = 0;
+  for (const probe of probes) {
+    const match = PROBE_ID_RE.exec(probe.id);
+    if (!match) continue;
+    const value = parseInt(match[1], 10);
+    if (Number.isFinite(value)) {
+      max = Math.max(max, value);
+    }
+  }
+  return `${PROBE_ID_PREFIX}${max + 1}`;
 };
 
 // Lazy-init singleton to prevent TDZ crash from circular imports
@@ -76,7 +91,7 @@ function createProbeStore() {
         return existing.id;
       }
 
-      const id = `probe-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const id = getNextProbeId(get().probes);
       const color = PROBE_COLORS[hashProbeId(id) % PROBE_COLORS.length];
       const nextProbe: Probe = {
         id,
