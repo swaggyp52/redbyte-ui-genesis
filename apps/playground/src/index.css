@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 @import "../../../packages/rb-apps/src/styles/os-tokens.css";
+@import "../../../packages/rb-apps/src/styles/os-controls.css";
 
 * {
   margin: 0;

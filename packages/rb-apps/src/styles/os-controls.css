@@ -1,0 +1,122 @@
+.rbPanel {
+  background: var(--rb-panel);
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius-md);
+  padding: var(--rb-pad-lg);
+  box-shadow: var(--rb-shadow-sm);
+}
+
+.rbButtonPrimary {
+  background: var(--rb-accent);
+  color: var(--rb-bg);
+  border: 1px solid var(--rb-accent);
+  border-radius: var(--rb-radius-sm);
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.rbButtonPrimary:hover {
+  background: rgba(34, 211, 238, 0.9);
+}
+
+.rbButtonSecondary {
+  background: var(--rb-panel-2);
+  color: var(--rb-text);
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius-sm);
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.rbButtonSecondary:hover {
+  border-color: var(--rb-border-strong);
+  background: rgba(15, 26, 45, 0.9);
+}
+
+.rbButtonGhost {
+  background: transparent;
+  color: var(--rb-muted);
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius-sm);
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.rbButtonGhost:hover {
+  color: var(--rb-text);
+  border-color: var(--rb-border-strong);
+  background: rgba(226, 232, 240, 0.06);
+}
+
+.rbInput {
+  background: var(--rb-panel-2);
+  color: var(--rb-text);
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius-sm);
+  padding: 0.6rem 0.75rem;
+  font-family: var(--rb-font-sans);
+}
+
+.rbInput:focus {
+  outline: none;
+  border-color: var(--rb-accent-strong);
+  box-shadow: 0 0 0 1px var(--rb-accent-weak);
+}
+
+.rbCodeBlock {
+  display: inline-block;
+  background: var(--rb-panel-2);
+  color: var(--rb-accent);
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius-sm);
+  padding: 0.25rem 0.5rem;
+  font-family: var(--rb-font-mono);
+  font-size: 0.75rem;
+}
+
+.rbBannerWarn {
+  background: var(--rb-warn-bg);
+  border: 1px solid var(--rb-warn-border);
+  border-radius: var(--rb-radius-sm);
+  color: var(--rb-text);
+  padding: 0.75rem 0.9rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.rbEmptyState {
+  background: var(--rb-panel);
+  border: 1px dashed var(--rb-border);
+  border-radius: var(--rb-radius-md);
+  color: var(--rb-muted);
+  padding: var(--rb-pad-lg);
+  text-align: center;
+}
+
+.rbEmptyStateTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--rb-text);
+  margin-bottom: 0.5rem;
+}
+
+.rbEmptyStateBody {
+  font-size: 0.875rem;
+  color: var(--rb-muted);
+}
+
+.rbKbdHint {
+  display: inline-block;
+  font-family: var(--rb-font-mono);
+  background: var(--rb-panel-2);
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius-sm);
+  padding: 0.2rem 0.4rem;
+  color: var(--rb-muted);
+  font-size: 0.75rem;
+}
