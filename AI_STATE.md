@@ -5865,6 +5865,9 @@ Commits:
 ## Change Log  2026-01-20
 
 - Added `docs/RB_FPGA_MVP_SPEC.md` with the deterministic FPGA bridge MVP contract text supplied for implementation alignment.
+- Updated StudentLabApp bridge offline instructions with current pnpm commands and SIM mode guidance.
+- Dark-themed Welcome app with CSS module styles to match OS chrome.
+- Added Start Here onboarding app and pinned it in the Dock for first-boot discoverability.
 ## Change Log  2026-01-19
 
 - Added `docs/VERSIONS.md` plus deterministic bootstrap and doctor scripts (`scripts/bootstrap.ps1`, `scripts/doctor.ps1`) for the FPGA MVP setup workflow; objectives unchanged; phase unchanged.
