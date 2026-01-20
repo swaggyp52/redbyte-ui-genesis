@@ -5939,3 +5939,7 @@ Commits:
 
 - Added Spartan-3E Starter Kit board model (UG230 UCF pinmap, switches/buttons/LEDs/clock) and exported it from the board-models package.
 - Added @redbyte/rb-fpga-bridge-contract package defining hardware bridge API types, JSON schema, and golden payload tests; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Extended hardware bridge device discovery contract with display_name/vendor/serial_number plus programming/runtime status, confidence, and reasons fields; updated schema, golden payload, and tests; objectives unchanged; phase unchanged.
