@@ -20,6 +20,69 @@ interface TerminalLine {
   text: string;
 }
 
+interface CommandLogEntry {
+  seq: number;
+  ts_wall: string;
+  command: string;
+}
+
+const COMMAND_LOG_KEY = 'rb:terminal:log:v1';
+const COMMAND_SEQ_KEY = 'rb:terminal:log:seq:v1';
+const MAX_LOG_ENTRIES = 200;
+let fallbackCommandSeq = 1;
+
+function loadCommandLog(): CommandLogEntry[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(COMMAND_LOG_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCommandLog(entries: CommandLogEntry[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(COMMAND_LOG_KEY, JSON.stringify(entries));
+  } catch {
+    // Ignore persistence failures
+  }
+}
+
+function getNextCommandSeq(): number {
+  if (typeof window === 'undefined') {
+    const next = fallbackCommandSeq;
+    fallbackCommandSeq += 1;
+    return next;
+  }
+
+  try {
+    const raw = localStorage.getItem(COMMAND_SEQ_KEY);
+    const parsed = raw ? parseInt(raw, 10) : 1;
+    const next = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+    localStorage.setItem(COMMAND_SEQ_KEY, String(next + 1));
+    return next;
+  } catch {
+    const next = fallbackCommandSeq;
+    fallbackCommandSeq += 1;
+    return next;
+  }
+}
+
+function appendCommandLog(command: string): void {
+  const entry: CommandLogEntry = {
+    seq: getNextCommandSeq(),
+    ts_wall: new Date().toISOString(),
+    command,
+  };
+  const log = loadCommandLog();
+  const nextLog = [...log, entry].slice(-MAX_LOG_ENTRIES);
+  saveCommandLog(nextLog);
+}
+
 const TerminalComponent: React.FC<TerminalProps> = ({
   onOpenApp,
   onThemeChange,
@@ -64,9 +127,12 @@ const TerminalComponent: React.FC<TerminalProps> = ({
   };
 
   const handleCommand = (cmd: string) => {
+    const trimmed = cmd.trim();
     addLine(`> ${cmd}`, 'input');
 
-    const parts = cmd.trim().split(/\s+/);
+    appendCommandLog(trimmed);
+
+    const parts = trimmed.split(/\s+/);
     const command = parts[0].toLowerCase();
     const args = parts.slice(1);
 
@@ -86,6 +152,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         addLine('  examples list               - List available example circuits');
         addLine('  examples load <exampleId>   - Open an example circuit');
         addLine('  ticks set <number>          - Set logic simulation tick rate (1-60)');
+        addLine('  log [count]                 - Show recent terminal commands');
         addLine('  restart                     - Restart RedByte OS (replays boot)');
         break;
 
@@ -108,6 +175,24 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         addLine(`  Tick Rate: ${settings.tickRate} Hz`);
         addLine(`  Open Windows: ${windows.length}`);
         addLine(`  Active Apps: ${active.length}`);
+        break;
+      }
+
+      case 'log': {
+        const count = args[0] ? parseInt(args[0], 10) : 10;
+        if (args[0] && (isNaN(count) || count < 1)) {
+          addLine('Usage: log [count]', 'error');
+          break;
+        }
+        const entries = loadCommandLog();
+        if (entries.length === 0) {
+          addLine('No command log entries.');
+          break;
+        }
+        addLine('Command log:');
+        entries.slice(-count).forEach((entry) => {
+          addLine(`  [${entry.seq}] ${entry.ts_wall} ${entry.command}`);
+        });
         break;
       }
 
