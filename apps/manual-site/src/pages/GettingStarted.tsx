@@ -126,7 +126,7 @@ cd redbyte-ui-genesis`} />
               <WalkthroughStep
                 number={8}
                 title="Step through time"
-                content="Press Space to pause. Use the arrow keys to step forward (→) and backward (←) through the simulation. This is deterministic—same state every time."
+                content="Press Space to pause. Use the arrow keys to step forward (->) and backward (<-) through the simulation. This is deterministic - same state every time."
               />
             </div>
           </section>
@@ -167,8 +167,8 @@ cd redbyte-ui-genesis`} />
 
               <ShortcutGroup title="Simulation">
                 <Shortcut keys="Space" action="Play / Pause" />
-                <Shortcut keys="→" action="Step forward" />
-                <Shortcut keys="←" action="Step backward" />
+                <Shortcut keys="->" action="Step forward" />
+                <Shortcut keys="<-" action="Step backward" />
                 <Shortcut keys="R" action="Reset to tick 0" />
               </ShortcutGroup>
 
@@ -205,7 +205,7 @@ cd redbyte-ui-genesis`} />
 
               <TroubleshootItem
                 question="Simulation isn't responding"
-                answer="Make sure simulation is not paused (press Space). Check that all inputs and outputs are wired correctly—floating inputs can cause unexpected behavior."
+                answer="Make sure simulation is not paused (press Space). Check that all inputs and outputs are wired correctly - floating inputs can cause unexpected behavior."
               />
 
               <TroubleshootItem
@@ -215,7 +215,7 @@ cd redbyte-ui-genesis`} />
 
               <TroubleshootItem
                 question="Can't connect wires between components"
-                answer="Enter wire mode first (press W). Wires connect outputs to inputs only—you can't wire two outputs together or two inputs together."
+                answer="Enter wire mode first (press W). Wires connect outputs to inputs only - you can't wire two outputs together or two inputs together."
               />
             </div>
           </section>
@@ -226,21 +226,21 @@ cd redbyte-ui-genesis`} />
             <div className="bg-rb-surface border border-rb-border rounded-md p-6">
               <ul className="space-y-4">
                 <li className="flex items-start gap-3">
-                  <span className="text-rb-accent">→</span>
+                  <span className="text-rb-accent">-></span>
                   <span className="text-rb-muted">
                     <Link to="/examples" className="text-rb-text hover:text-rb-accent transition-colors">Try the interactive examples</Link>
                     {' '}to see logic gates, counters, and waveforms in action
                   </span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-rb-accent">→</span>
+                  <span className="text-rb-accent">-></span>
                   <span className="text-rb-muted">
                     <Link to="/manual" className="text-rb-text hover:text-rb-accent transition-colors">Read the manual</Link>
                     {' '}for detailed documentation on all features
                   </span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-rb-accent">→</span>
+                  <span className="text-rb-accent">-></span>
                   <span className="text-rb-muted">
                     <Link to="/demo" className="text-rb-text hover:text-rb-accent transition-colors">See the educator overview</Link>
                     {' '}if you're considering RedByte for a course

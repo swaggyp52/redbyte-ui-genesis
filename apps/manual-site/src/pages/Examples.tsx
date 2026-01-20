@@ -11,7 +11,7 @@ export default function Examples() {
           <h1 className="text-h1 text-rb-text mb-4">Interactive Examples</h1>
           <p className="text-lg text-rb-muted leading-relaxed">
             Try these demos directly in your browser. Each demonstrates a core concept
-            of digital logic design—no installation required.
+            of digital logic design - no installation required.
           </p>
         </div>
 
@@ -22,7 +22,7 @@ export default function Examples() {
             <LogicGatePlayground />
             <ExampleNote
               concept="Combinational Logic"
-              description="Basic gates (AND, OR, XOR, etc.) produce outputs instantly based on current inputs. No memory, no state—just pure logic."
+              description="Basic gates (AND, OR, XOR, etc.) produce outputs instantly based on current inputs. No memory, no state - just pure logic."
             />
           </section>
 
@@ -31,7 +31,7 @@ export default function Examples() {
             <CounterCircuit />
             <ExampleNote
               concept="Sequential Logic"
-              description="Registers store state across clock cycles. The counter remembers its value and increments on each clock pulse—this is how memory works."
+              description="Registers store state across clock cycles. The counter remembers its value and increments on each clock pulse - this is how memory works."
             />
           </section>
 
@@ -40,7 +40,7 @@ export default function Examples() {
             <WaveformViewer />
             <ExampleNote
               concept="Signal Timing"
-              description="The oscilloscope shows how signals change over time. Scrub through ticks to see the exact moment values change—essential for debugging."
+              description="The oscilloscope shows how signals change over time. Scrub through ticks to see the exact moment values change - essential for debugging."
             />
           </section>
         </div>

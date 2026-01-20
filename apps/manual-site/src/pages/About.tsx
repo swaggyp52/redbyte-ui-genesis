@@ -123,7 +123,7 @@ export default function About() {
               />
               <AudienceCard
                 title="Educators"
-                description="Structured lab assignments with auto-validation. Submission inspector for grading. No VMs or licenses—works in any browser."
+                description="Structured lab assignments with auto-validation. Submission inspector for grading. No VMs or licenses - works in any browser."
               />
               <AudienceCard
                 title="Hobbyists"
@@ -208,7 +208,7 @@ function RoadmapMilestone({
         <ul className="space-y-1 text-sm text-rb-muted">
           {items.map((item, i) => (
             <li key={i} className="flex items-center gap-2">
-              <span className="text-rb-dim">•</span>
+              <span className="text-rb-dim">-</span>
               {item}
             </li>
           ))}

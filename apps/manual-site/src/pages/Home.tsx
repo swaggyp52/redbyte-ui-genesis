@@ -21,7 +21,7 @@ export default function Home() {
             <p className="text-lg text-rb-muted mb-6 leading-relaxed">
               RedByte OS is a single-environment platform that mirrors Vivado-style workflows without
               the overhead. Build circuits, simulate analog components, export Verilog + XDC, and
-              program Basys 3 boards. Everything runs locally in your browser—no accounts, no cloud,
+              program Basys 3 boards. Everything runs locally in your browser - no accounts, no cloud,
               no setup surprises.
             </p>
             <div className="bg-rb-surface border border-rb-border rounded-md p-4 mb-8">

@@ -11,7 +11,7 @@ interface TourStep {
 const tourSteps: TourStep[] = [
   {
     title: "Welcome to RedByte",
-    content: "RedByte is a browser-based environment for learning and building digital logic. Every simulation is deterministic—same inputs always produce same outputs, and you can step backward through time.",
+    content: "RedByte is a browser-based environment for learning and building digital logic. Every simulation is deterministic - same inputs always produce same outputs, and you can step backward through time.",
     highlight: "Deterministic simulation makes debugging circuits straightforward.",
   },
   {
@@ -21,13 +21,13 @@ const tourSteps: TourStep[] = [
   },
   {
     title: "Try the Interactive Examples",
-    content: "Before downloading, try the demos on this site. Toggle logic gates, step through a counter, and scrub through waveforms—all running live in your browser.",
+    content: "Before downloading, try the demos on this site. Toggle logic gates, step through a counter, and scrub through waveforms - all running live in your browser.",
     action: { label: "Go to Examples", route: "/examples" },
   },
   {
     title: "Built for Education",
     content: "RedByte includes a Lab Workbench for structured assignments, automatic validation, and submission export. Instructors can use the Submission Inspector to review student work.",
-    highlight: "No accounts, no cloud—everything stays local.",
+    highlight: "No accounts, no cloud - everything stays local.",
   },
   {
     title: "Ready to Start?",

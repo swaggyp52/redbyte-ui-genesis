@@ -328,7 +328,7 @@ export default function WaveformViewer() {
         {/* Info */}
         <p className="text-xs text-rb-dim leading-relaxed">
           <span className="text-rb-accent font-medium">Deterministic:</span>{' '}
-          Every tick produces the same output. Step backward and forward to see exact signal states at any moment—ideal for debugging timing issues.
+          Every tick produces the same output. Step backward and forward to see exact signal states at any moment - ideal for debugging timing issues.
         </p>
       </div>
     </div>

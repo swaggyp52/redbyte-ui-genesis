@@ -26,12 +26,12 @@ export default function Demo() {
               <p className="text-rb-text leading-relaxed">
                 <strong>RedByte</strong> is a browser-based environment for teaching digital logic.
                 Students build circuits visually, simulate them deterministically (step forward/backward
-                through time), and debug with an oscilloscope view. No installation required—runs
+                through time), and debug with an oscilloscope view. No installation required - runs
                 entirely in the browser with no backend or cloud dependency.
               </p>
               <p className="text-rb-muted leading-relaxed">
                 The platform includes a Lab Workbench for structured assignments and a Submission
-                Inspector for reviewing student work. All data stays local—no accounts, no telemetry.
+                Inspector for reviewing student work. All data stays local - no accounts, no telemetry.
               </p>
               <p className="text-rb-muted leading-relaxed">
                 <strong className="text-rb-text">Key differentiator:</strong> Full determinism.
@@ -150,17 +150,17 @@ export default function Demo() {
 
               <div className="space-y-4">
                 <CourseWeek
-                  weeks="1–4"
+                  weeks="1-4"
                   title="Combinational Logic"
                   description="Students build basic gates, truth tables, multiplexers. Lab assignments with auto-validation."
                 />
                 <CourseWeek
-                  weeks="5–8"
+                  weeks="5-8"
                   title="Sequential Logic"
                   description="Registers, counters, state machines. Debug timing with the oscilloscope, step through states."
                 />
                 <CourseWeek
-                  weeks="9–12"
+                  weeks="9-12"
                   title="Projects"
                   description="Build adders, ALUs, simple CPUs. Create custom chips for reuse. Optional hardware deployment."
                 />
@@ -169,10 +169,10 @@ export default function Demo() {
               <div className="mt-6 pt-6 border-t border-rb-border">
                 <h4 className="text-sm font-semibold text-rb-text mb-2">Instructor Benefits</h4>
                 <ul className="text-sm text-rb-muted space-y-1.5">
-                  <li>• No VM setup or license costs—runs on any platform with a browser</li>
-                  <li>• Students submit .rb-lab.zip bundles for consistent grading</li>
-                  <li>• Deterministic simulation means reproducible test cases</li>
-                  <li>• Submission Inspector for viewing student circuits and results</li>
+                  <li>- No VM setup or license costs - runs on any platform with a browser</li>
+                  <li>- Students submit .rb-lab.zip bundles for consistent grading</li>
+                  <li>- Deterministic simulation means reproducible test cases</li>
+                  <li>- Submission Inspector for viewing student circuits and results</li>
                 </ul>
               </div>
             </div>
@@ -207,7 +207,7 @@ export default function Demo() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-rb-muted">Step Forward/Back</span>
-                    <kbd>→ / ←</kbd>
+                    <kbd>-> / <-</kbd>
                   </div>
                 </div>
               </div>
@@ -249,7 +249,7 @@ function DemoSceneCard({ number, title, items }: { number: number; title: string
       <ul className="space-y-1.5 text-sm text-rb-muted">
         {items.map((item, i) => (
           <li key={i} className="flex items-center gap-2">
-            <span className="text-rb-dim">•</span>
+            <span className="text-rb-dim">-</span>
             {item}
           </li>
         ))}
@@ -260,9 +260,9 @@ function DemoSceneCard({ number, title, items }: { number: number; title: string
 
 function StatusItem({ status, children }: { status: 'done' | 'wip' | 'planned'; children: React.ReactNode }) {
   const styles = {
-    done: { icon: '✓', color: 'text-rb-accent' },
-    wip: { icon: '◐', color: 'text-rb-info' },
-    planned: { icon: '○', color: 'text-rb-dim' },
+    done: { icon: 'OK', color: 'text-rb-accent' },
+    wip: { icon: 'WIP', color: 'text-rb-info' },
+    planned: { icon: 'TBD', color: 'text-rb-dim' },
   };
 
   const { icon, color } = styles[status];
