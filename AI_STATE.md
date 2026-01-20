@@ -5853,7 +5853,6 @@ Commits:
 ## Change Log  2026-01-20
 
 - Added `docs/RB_FPGA_MVP_SPEC.md` with the deterministic FPGA bridge MVP contract text supplied for implementation alignment.
-
 ## Change Log  2026-01-19
 
 - Added `docs/VERSIONS.md` plus deterministic bootstrap and doctor scripts (`scripts/bootstrap.ps1`, `scripts/doctor.ps1`) for the FPGA MVP setup workflow; objectives unchanged; phase unchanged.
