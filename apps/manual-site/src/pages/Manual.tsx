@@ -122,6 +122,22 @@ export default function Guide() {
                 </ul>
               </div>
             </section>
+
+            {/* RB Zip v2 Schema */}
+            <section id="student-export-schema" className="mb-10">
+              <div className="bg-rb-surface border border-rb-border rounded-xl p-6">
+                <h2 className="text-h2 text-rb-text mb-2">RB Zip v2 schema</h2>
+                <p className="text-sm text-rb-muted mb-4">
+                  Student submissions are deterministic bundles that capture trace evidence and integrity.
+                </p>
+                <ul className="grid gap-3 md:grid-cols-2 text-sm text-rb-muted">
+                  <li className="bg-rb-bg/40 border border-rb-border rounded-lg p-3">manifest.json (lab_id, board, bin size)</li>
+                  <li className="bg-rb-bg/40 border border-rb-border rounded-lg p-3">trace/hw_trace.ndjson (events, ticks)</li>
+                  <li className="bg-rb-bg/40 border border-rb-border rounded-lg p-3">integrity/capsule.json (sha256 file list)</li>
+                  <li className="bg-rb-bg/40 border border-rb-border rounded-lg p-3">integrity/signature.sig (optional)</li>
+                </ul>
+              </div>
+            </section>
             {/* Compare Table */}
             <section id="compare-table" className="my-12">
               <h2 className="text-h2 text-rb-text mb-4">Compare to what you already know</h2>

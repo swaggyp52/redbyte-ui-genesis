@@ -188,31 +188,64 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Screenshots Section */}
       <section className="py-20 border-b border-rb-border">
         <div className="content-container px-6">
-          <h2 className="text-h1 text-rb-text mb-4">See It In Action</h2>
-          <p className="text-rb-muted mb-10 max-w-xl">
-            A desktop-style interface with windows, a launcher, and multiple tools working together.
+          <h2 className="text-h1 text-rb-text mb-4">Proof of Readiness</h2>
+          <p className="text-rb-muted mb-10 max-w-2xl">
+            Concrete artifacts you can run and verify today. No screenshots required.
           </p>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <ScreenshotPlaceholder
-              label="Desktop & Launcher"
-              description="OS-style desktop with app windows and quick launcher"
-            />
-            <ScreenshotPlaceholder
-              label="Logic Playground"
-              description="Visual circuit editor with gates and simulation controls"
-            />
-            <ScreenshotPlaceholder
-              label="Oscilloscope"
-              description="Real-time waveform viewer for debugging signals"
-            />
-            <ScreenshotPlaceholder
-              label="Lab Workbench"
-              description="Structured assignments with step-by-step guidance"
-            />
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="bg-rb-surface border border-rb-border rounded-md p-6 space-y-4">
+              <h3 className="text-h3 text-rb-text">One-command Install (Pinned)</h3>
+              <p className="text-sm text-rb-muted">
+                Deterministic bootstrap with a pinned release tag.
+              </p>
+              <CodeBlock
+                code={`powershell -NoProfile -ExecutionPolicy Bypass -Command \"git clone https://github.com/swaggyp52/redbyte-ui-genesis.git; cd redbyte-ui-genesis; .\\\\scripts\\\\bootstrap.ps1\"`}
+              />
+              <p className="text-xs text-rb-dim">
+                Override the pin with <code className="text-rb-accent">RB_GIT_REF</code>:
+              </p>
+              <CodeBlock
+                code={`$env:RB_GIT_REF=\"fpga-mvp-0.1.0\"\npowershell -NoProfile -ExecutionPolicy Bypass -File .\\\\scripts\\\\bootstrap.ps1`}
+              />
+            </div>
+
+            <div className="bg-rb-surface border border-rb-border rounded-md p-6 space-y-4">
+              <h3 className="text-h3 text-rb-text">Hardware-free Demo (SIM Mode)</h3>
+              <p className="text-sm text-rb-muted">
+                Generates real RB binary frames and a deterministic trace without hardware.
+              </p>
+              <CodeBlock
+                code={`RB_FPGA_SIM=1 pnpm --filter @redbyte/fpga-bridge dev`}
+              />
+              <CodeBlock
+                code={`$env:RB_FPGA_SIM=\"1\"\npowershell -NoProfile -ExecutionPolicy Bypass -File .\\\\scripts\\\\smoke_fpga.ps1`}
+              />
+            </div>
+
+            <div className="bg-rb-surface border border-rb-border rounded-md p-6 space-y-4">
+              <h3 className="text-h3 text-rb-text">Deterministic Submission Bundle (v2)</h3>
+              <ul className="text-sm text-rb-muted space-y-2">
+                <li className="flex gap-2"><span className="text-rb-accent">-</span>manifest.json</li>
+                <li className="flex gap-2"><span className="text-rb-accent">-</span>trace/hw_trace.ndjson</li>
+                <li className="flex gap-2"><span className="text-rb-accent">-</span>integrity capsule + signature status</li>
+              </ul>
+              <Link to="/manual#student-export-schema" className="text-sm text-rb-info underline">
+                View RB Zip v2 schema
+              </Link>
+            </div>
+
+            <div className="bg-rb-surface border border-rb-border rounded-md p-6 space-y-4">
+              <h3 className="text-h3 text-rb-text">Grading and Replay</h3>
+              <p className="text-sm text-rb-muted">
+                Inspector loads a bundle, runs checks, and exports a grading report JSON.
+              </p>
+              <Link to="/instructors" className="text-sm text-rb-info underline">
+                Instructor day-1 workflow
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -279,27 +312,5 @@ function CodeBlock({ code }: { code: string }) {
     <pre className="bg-rb-raised border border-rb-border rounded-md p-4 overflow-x-auto">
       <code className="text-sm text-rb-text font-mono">{code}</code>
     </pre>
-  );
-}
-
-function ScreenshotPlaceholder({ label, description }: { label: string; description: string }) {
-  return (
-    <div className="bg-rb-surface border border-rb-border rounded-md overflow-hidden">
-      <div className="aspect-video bg-rb-raised flex items-center justify-center">
-        <div className="text-center p-6">
-          <div className="w-12 h-12 rounded bg-rb-border mx-auto mb-3 flex items-center justify-center">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-rb-dim">
-              <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
-              <path d="M21 15l-5-5L5 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <p className="text-sm font-medium text-rb-muted">{label}</p>
-        </div>
-      </div>
-      <div className="p-4 border-t border-rb-border">
-        <p className="text-xs text-rb-dim">{description}</p>
-      </div>
-    </div>
   );
 }
