@@ -1,5 +1,6 @@
 import { Link as RouterLink } from 'react-router-dom';
 import CodeBlock from '../components/CodeBlock';
+import { mvpFacts } from '../content/mvpFacts';
 
 const Link = RouterLink as React.ComponentType<{ to: string; className?: string; children: React.ReactNode }>;
 
@@ -27,15 +28,9 @@ export default function Instructors() {
           <section className="mb-12">
             <h2 className="text-h2 text-rb-text mb-4">SIM-first commands</h2>
             <div className="bg-rb-surface border border-rb-border rounded-md p-6 space-y-4">
-              <CodeBlock
-                code={`powershell -NoProfile -ExecutionPolicy Bypass -Command \"git clone https://github.com/swaggyp52/redbyte-ui-genesis.git; cd redbyte-ui-genesis; .\\\\scripts\\\\bootstrap.ps1\"`}
-              />
-              <CodeBlock
-                code={`RB_FPGA_SIM=1 pnpm --filter @redbyte/fpga-bridge dev`}
-              />
-              <CodeBlock
-                code={`$env:RB_FPGA_SIM=\"1\"\npowershell -NoProfile -ExecutionPolicy Bypass -File .\\\\scripts\\\\smoke_fpga.ps1`}
-              />
+              <CodeBlock code={mvpFacts.bootstrapCommand} />
+              <CodeBlock code={mvpFacts.bridgeCommandSim} />
+              <CodeBlock code={mvpFacts.smokeSimCommand} />
               <p className="text-xs text-rb-dim">
                 Override the pinned tag with <code className="text-rb-accent">RB_GIT_REF</code> when issuing updates.
               </p>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import GuidedTour from '../components/GuidedTour';
 import CodeBlock from '../components/CodeBlock';
+import { mvpFacts } from '../content/mvpFacts';
 import LogicGatePlayground from '../components/examples/LogicGatePlayground';
 
 // Type workaround for React 19 compatibility
@@ -202,15 +203,11 @@ export default function Home() {
               <p className="text-sm text-rb-muted">
                 Deterministic bootstrap with a pinned release tag.
               </p>
-              <CodeBlock
-                code={`powershell -NoProfile -ExecutionPolicy Bypass -Command \"git clone https://github.com/swaggyp52/redbyte-ui-genesis.git; cd redbyte-ui-genesis; .\\\\scripts\\\\bootstrap.ps1\"`}
-              />
+              <CodeBlock code={mvpFacts.bootstrapCommand} />
               <p className="text-xs text-rb-dim">
                 Override the pin with <code className="text-rb-accent">RB_GIT_REF</code>:
               </p>
-              <CodeBlock
-                code={`$env:RB_GIT_REF=\"fpga-mvp-0.1.0\"\npowershell -NoProfile -ExecutionPolicy Bypass -File .\\\\scripts\\\\bootstrap.ps1`}
-              />
+              <CodeBlock code={mvpFacts.bootstrapOverrideCommand} />
             </div>
 
             <div className="bg-rb-surface border border-rb-border rounded-md p-6 space-y-4">
@@ -218,16 +215,12 @@ export default function Home() {
               <p className="text-sm text-rb-muted">
                 Generates real RB binary frames and a deterministic trace without hardware.
               </p>
-              <CodeBlock
-                code={`RB_FPGA_SIM=1 pnpm --filter @redbyte/fpga-bridge dev`}
-              />
-              <CodeBlock
-                code={`$env:RB_FPGA_SIM=\"1\"\npowershell -NoProfile -ExecutionPolicy Bypass -File .\\\\scripts\\\\smoke_fpga.ps1`}
-              />
+              <CodeBlock code={mvpFacts.bridgeCommandSim} />
+              <CodeBlock code={mvpFacts.smokeSimCommand} />
             </div>
 
             <div className="bg-rb-surface border border-rb-border rounded-md p-6 space-y-4">
-              <h3 className="text-h3 text-rb-text">Deterministic Submission Bundle (v2)</h3>
+              <h3 className="text-h3 text-rb-text">Deterministic Submission Bundle ({mvpFacts.bundleSchemaVersion})</h3>
               <ul className="text-sm text-rb-muted space-y-2">
                 <li className="flex gap-2"><span className="text-rb-accent">-</span>manifest.json</li>
                 <li className="flex gap-2"><span className="text-rb-accent">-</span>trace/hw_trace.ndjson</li>
@@ -260,9 +253,7 @@ export default function Home() {
               Use the pinned bootstrap flow for deterministic setup on lab machines.
             </p>
             <div className="max-w-xl mx-auto text-left mb-8">
-              <CodeBlock
-                code={`powershell -NoProfile -ExecutionPolicy Bypass -Command \"git clone https://github.com/swaggyp52/redbyte-ui-genesis.git; cd redbyte-ui-genesis; .\\\\scripts\\\\bootstrap.ps1\"`}
-              />
+              <CodeBlock code={mvpFacts.bootstrapCommand} />
               <p className="text-xs text-rb-dim mt-3">
                 SIM mode works without Vivado. Install Vivado 2024.1 only for hardware programming.
               </p>

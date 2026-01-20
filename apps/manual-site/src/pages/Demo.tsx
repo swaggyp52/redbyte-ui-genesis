@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import GuidedTour from '../components/GuidedTour';
+import { mvpFacts } from '../content/mvpFacts';
 import LogicGatePlayground from '../components/examples/LogicGatePlayground';
 
 const Link = RouterLink as React.ComponentType<{ to: string; className?: string; children: React.ReactNode }>;
@@ -32,7 +33,7 @@ export default function Demo() {
               </p>
               <p className="text-rb-muted leading-relaxed">
                 The platform includes a Lab Workbench for structured assignments and a Submission
-                Inspector for reviewing student work. Students export .rb-lab.zip v2 bundles with
+                Inspector for reviewing student work. Students export .rb-lab.zip {mvpFacts.bundleSchemaVersion} bundles with
                 manifest, trace, and integrity capsule; the Inspector runs checks and exports a grading
                 report. All data stays local - no accounts, no telemetry.
               </p>
@@ -234,7 +235,7 @@ export default function Demo() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-rb-muted">Step Forward/Back</span>
-                    <kbd>-> / <-</kbd>
+                    <kbd>{'->'} / {'<-'}</kbd>
                   </div>
                 </div>
               </div>

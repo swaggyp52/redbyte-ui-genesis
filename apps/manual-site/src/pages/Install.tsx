@@ -1,5 +1,6 @@
 import { Link as RouterLink } from 'react-router-dom';
 import CodeBlock from '../components/CodeBlock';
+import { mvpFacts } from '../content/mvpFacts';
 
 const Link = RouterLink as React.ComponentType<{ to: string; className?: string; children: React.ReactNode }>;
 
@@ -20,9 +21,7 @@ export default function Install() {
               <p className="text-sm text-rb-muted">
                 Runs the pinned bootstrap script from a clean clone.
               </p>
-              <CodeBlock
-                code={`powershell -NoProfile -ExecutionPolicy Bypass -Command \"git clone https://github.com/swaggyp52/redbyte-ui-genesis.git; cd redbyte-ui-genesis; .\\\\scripts\\\\bootstrap.ps1\"`}
-              />
+              <CodeBlock code={mvpFacts.bootstrapCommand} />
               <p className="text-xs text-rb-dim">
                 Default pin: <code className="text-rb-accent">fpga-mvp-0.1.0</code>. Override with <code className="text-rb-accent">RB_GIT_REF</code> if needed.
               </p>
@@ -35,9 +34,7 @@ export default function Install() {
               <p className="text-sm text-rb-muted">
                 Use a tag or commit SHA for a specific class release.
               </p>
-              <CodeBlock
-                code={`$env:RB_GIT_REF=\"fpga-mvp-0.1.0\"\npowershell -NoProfile -ExecutionPolicy Bypass -File .\\\\scripts\\\\bootstrap.ps1`}
-              />
+              <CodeBlock code={mvpFacts.bootstrapOverrideCommand} />
             </div>
           </section>
 
@@ -65,9 +62,7 @@ export default function Install() {
               </div>
               <div>
                 <div className="text-sm text-rb-muted mb-2">SIM smoke test (no hardware)</div>
-                <CodeBlock
-                  code={`$env:RB_FPGA_SIM=\"1\"\npowershell -NoProfile -ExecutionPolicy Bypass -File .\\\\scripts\\\\smoke_fpga.ps1`}
-                />
+                <CodeBlock code={mvpFacts.smokeSimCommand} />
               </div>
             </div>
           </section>

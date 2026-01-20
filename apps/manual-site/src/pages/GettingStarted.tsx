@@ -226,21 +226,21 @@ cd redbyte-ui-genesis`} />
             <div className="bg-rb-surface border border-rb-border rounded-md p-6">
               <ul className="space-y-4">
                 <li className="flex items-start gap-3">
-                  <span className="text-rb-accent">-></span>
+                  <span className="text-rb-accent">{'->'}</span>
                   <span className="text-rb-muted">
                     <Link to="/examples" className="text-rb-text hover:text-rb-accent transition-colors">Try the interactive examples</Link>
                     {' '}to see logic gates, counters, and waveforms in action
                   </span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-rb-accent">-></span>
+                  <span className="text-rb-accent">{'->'}</span>
                   <span className="text-rb-muted">
                     <Link to="/manual" className="text-rb-text hover:text-rb-accent transition-colors">Read the manual</Link>
                     {' '}for detailed documentation on all features
                   </span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-rb-accent">-></span>
+                  <span className="text-rb-accent">{'->'}</span>
                   <span className="text-rb-muted">
                     <Link to="/demo" className="text-rb-text hover:text-rb-accent transition-colors">See the educator overview</Link>
                     {' '}if you're considering RedByte for a course
