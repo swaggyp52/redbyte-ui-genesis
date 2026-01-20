@@ -19,20 +19,20 @@ export default function GettingStarted() {
             <div className="bg-rb-surface border border-rb-border rounded-md p-6">
               <ul className="space-y-3 text-rb-muted">
                 <li className="flex items-start gap-3">
-                  <span className="text-rb-accent mt-1">•</span>
-                  <span><strong className="text-rb-text">Node.js 20.19.0+</strong> — Required for running the development server</span>
+                  <span className="text-rb-accent mt-1">&gt;</span>
+                  <span><strong className="text-rb-text">Node.js 20.19.0+</strong> - Required for running the development server</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-rb-accent mt-1">•</span>
-                  <span><strong className="text-rb-text">pnpm 10.24.0+</strong> — Package manager (install with <code className="text-rb-accent">npm install -g pnpm</code>)</span>
+                  <span className="text-rb-accent mt-1">&gt;</span>
+                  <span><strong className="text-rb-text">pnpm 10.24.0+</strong> - Package manager (install with <code className="text-rb-accent">npm install -g pnpm</code>)</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-rb-accent mt-1">•</span>
-                  <span><strong className="text-rb-text">Modern browser</strong> — Chrome, Firefox, Safari, or Edge (latest versions)</span>
+                  <span className="text-rb-accent mt-1">&gt;</span>
+                  <span><strong className="text-rb-text">Modern browser</strong> - Chrome, Firefox, Safari, or Edge (latest versions)</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-rb-accent mt-1">ƒ?›</span>
-                  <span><strong className="text-rb-text">Optional hardware kit</strong> ƒ?" Basys 3 (Artix-7), LM358, LDRs, breadboard, USB cable</span>
+                  <span className="text-rb-accent mt-1">&gt;</span>
+                  <span><strong className="text-rb-text">Optional hardware kit</strong> - Basys 3 (Artix-7), LM358, LDRs, breadboard, USB cable</span>
                 </li>
               </ul>
             </div>

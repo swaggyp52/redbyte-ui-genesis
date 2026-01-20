@@ -129,8 +129,8 @@ export default function Guide() {
                 <table className="min-w-[400px] w-full border border-cyan-700 text-base text-left">
                   <thead className="bg-cyan-900/60">
                     <tr>
-                      <th className="px-4 py-2 text-cyan-100">If you’ve used…</th>
-                      <th className="px-4 py-2 text-cyan-100">RedByte feels different because…</th>
+                      <th className="px-4 py-2 text-cyan-100">If you've used...</th>
+                      <th className="px-4 py-2 text-cyan-100">RedByte feels different because...</th>
                     </tr>
                   </thead>
                   <tbody className="bg-slate-950">
@@ -170,7 +170,7 @@ export default function Guide() {
             {/* Example callout sprinkled in */}
             <section className="my-12">
               <div className="p-4 bg-yellow-900/40 border-l-4 border-yellow-500 rounded text-yellow-100 mb-4">
-                <strong>Common mistake:</strong> If your output “looks right” but fails later, it’s usually because you skipped stepping through time.
+                <strong>Common mistake:</strong> If your output "looks right" but fails later, it's usually because you skipped stepping through time.
               </div>
             </section>
 
