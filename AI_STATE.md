@@ -5921,3 +5921,7 @@ Commits:
 ## Change Log  2026-01-20
 
 - Enforced file system metadata on logic file writes, added terminal command registry with declared effects, registered app invariants for core apps, introduced determinism audit mode with audit export + state transition logging, and expanded manual-site sanity checks to validate OS contract alignment; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Added proof suite command (`test:proof`), audit determinism + contract enforcement tests for rb-apps, and a CI-friendly smoke command (`quality:smoke`); objectives unchanged; phase unchanged.
