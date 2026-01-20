@@ -16,7 +16,12 @@ describe('FilesApp Store', () => {
       connections: [],
     };
 
-    const file = createFile('Test Circuit', circuit);
+    const file = createFile('Test Circuit', circuit, {
+      kind: 'source',
+      schema_version: 'v1',
+      created_by: 'test',
+      derived_from: null,
+    });
 
     expect(file.name).toBe('Test Circuit');
     expect(file.circuit).toEqual(circuit);
@@ -35,7 +40,12 @@ describe('FilesApp Store', () => {
       connections: [],
     };
 
-    const file = createFile('To Delete', circuit);
+    const file = createFile('To Delete', circuit, {
+      kind: 'source',
+      schema_version: 'v1',
+      created_by: 'test',
+      derived_from: null,
+    });
     expect(listFiles()).toHaveLength(1);
 
     deleteFile(file.id);
@@ -51,7 +61,12 @@ describe('FilesApp Store', () => {
       connections: [],
     };
 
-    createFile('Persistent', circuit);
+    createFile('Persistent', circuit, {
+      kind: 'source',
+      schema_version: 'v1',
+      created_by: 'test',
+      derived_from: null,
+    });
 
     const stored = localStorage.getItem('rb:files:rblogic:v1');
     expect(stored).toBeTruthy();
