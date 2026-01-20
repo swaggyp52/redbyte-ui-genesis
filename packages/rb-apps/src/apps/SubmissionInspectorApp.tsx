@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useState, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { RedByteApp } from '../types';
 import styles from './SubmissionInspectorApp.module.css';
 import JSZip from 'jszip';
@@ -45,9 +45,10 @@ interface BundleData {
 interface InspectorProps {
   // Props injected by shell if opening with file
   filePath?: string;
+  loadSample?: boolean;
 }
 
-export const SubmissionInspectorAppContent: React.FC<InspectorProps> = () => {
+export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSample }) => {
   const [bundle, setBundle] = useState<BundleData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,9 +56,10 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = () => {
   const [demoMode, setDemoMode] = useState(false);
   const [traceCursor, setTraceCursor] = useState(0);
   const [traceCurrent, setTraceCurrent] = useState<HardwareTraceEvent | null>(null);
+  const hasAutoLoadedSample = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const parseBundle = async (zipFile: File) => {
+  const parseBundle = useCallback(async (zipFile: File) => {
     setLoading(true);
     setError(null);
     
@@ -171,7 +173,31 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  const handleLoadSample = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/samples/basys3_mvp_sample.rb-lab.zip');
+      if (!response.ok) {
+        throw new Error('Sample bundle not found');
+      }
+      const buffer = await response.arrayBuffer();
+      const file = new File([buffer], 'basys3_mvp_sample.rb-lab.zip', { type: 'application/zip' });
+      await parseBundle(file);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load sample bundle');
+      setLoading(false);
+    }
+  }, [parseBundle]);
+
+  useEffect(() => {
+    if (!loadSample || hasAutoLoadedSample.current) return;
+    hasAutoLoadedSample.current = true;
+    handleLoadSample();
+  }, [handleLoadSample, loadSample]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.currentTarget.files?.[0];
@@ -259,6 +285,14 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = () => {
             onClick={() => fileInputRef.current?.click()}
           >
             Browse for File
+          </button>
+          <div className={styles.dropZoneOr}>or</div>
+          <button
+            className={styles.browseButton}
+            onClick={handleLoadSample}
+            type="button"
+          >
+            Load Sample Submission
           </button>
           <input
             ref={fileInputRef}
