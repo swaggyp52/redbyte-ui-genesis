@@ -24,6 +24,14 @@ export type RuntimeDiagnostics = {
   fix?: string | null;
 };
 
+export type IdentifyDiagnostics = {
+  ok: boolean;
+  attempts: number;
+  rtt_ms?: number | null;
+  error?: string | null;
+  payload?: Record<string, unknown>;
+};
+
 export type DeviceDiagnostics = {
   serial_port?: {
     path?: string | null;
@@ -36,6 +44,7 @@ export type DeviceDiagnostics = {
     friendly_name?: string | null;
   };
   runtime?: RuntimeDiagnostics;
+  identify?: IdentifyDiagnostics;
 };
 
 export type BridgeDevice = {

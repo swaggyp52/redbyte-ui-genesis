@@ -6,6 +6,7 @@ export type {
   ProgrammingInfo,
   RuntimeInfo,
   RuntimeDiagnostics,
+  IdentifyDiagnostics,
   DeviceDiagnostics,
   BridgeDevice,
   DevicesResponse,

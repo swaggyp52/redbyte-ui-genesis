@@ -68,7 +68,20 @@
             "friendly_name": { "type": ["string", "null"] }
           }
         },
-        "runtime": { "$ref": "#/definitions/runtime_diagnostics" }
+        "runtime": { "$ref": "#/definitions/runtime_diagnostics" },
+        "identify": { "$ref": "#/definitions/identify_diagnostics" }
+      }
+    },
+    "identify_diagnostics": {
+      "type": "object",
+      "required": ["ok", "attempts"],
+      "additionalProperties": false,
+      "properties": {
+        "ok": { "type": "boolean" },
+        "attempts": { "type": "number" },
+        "rtt_ms": { "type": ["number", "null"] },
+        "error": { "type": ["string", "null"] },
+        "payload": { "type": "object" }
       }
     },
     "bridge_device": {
