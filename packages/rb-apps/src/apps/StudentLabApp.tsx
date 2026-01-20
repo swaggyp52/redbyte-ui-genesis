@@ -73,6 +73,13 @@ interface BridgeStatus {
   lastChecked: string;
 }
 
+type StudentLabTab = 'spec' | 'build' | 'hardware' | 'self-check' | 'export';
+
+interface StudentLabAppProps {
+  initialTab?: StudentLabTab;
+  simGuide?: boolean;
+}
+
 // ============================================================================
 // Hardcoded Lab List (expand as specs are added)
 // ============================================================================
@@ -130,7 +137,8 @@ function generateStudentId(): string {
 // Main Component
 // ============================================================================
 
-const StudentLabAppContent = () => {
+const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGuide }) => {
+  const initialTabValue: StudentLabTab = initialTab ?? (simGuide ? 'hardware' : 'spec');
   // App phase: 'select' | 'attempt' | 'exported'
   const [phase, setPhase] = useState<'select' | 'attempt' | 'exported'>('select');
 
@@ -161,7 +169,7 @@ const StudentLabAppContent = () => {
   const [eventLog, setEventLog] = useState<EventEntry[]>([]);
 
   // Active tab during attempt
-  const [activeTab, setActiveTab] = useState<'spec' | 'build' | 'hardware' | 'self-check' | 'export'>('spec');
+  const [activeTab, setActiveTab] = useState<StudentLabTab>(initialTabValue);
 
   // Hardware state
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus>({ online: false, lastChecked: new Date().toISOString() });
@@ -994,6 +1002,13 @@ const StudentLabAppContent = () => {
             <p className={styles.hardwareInfo}>
               Connect your FPGA board and capture hardware evidence for your submission.
             </p>
+            {simGuide && (
+              <div className={styles.warningBanner}>
+                <strong>SIM mode:</strong> Start the bridge with simulated telemetry, then click Connect.
+                <br />
+                <code>RB_FPGA_SIM=1 pnpm --filter @redbyte/fpga-bridge dev</code>
+              </div>
+            )}
 
             {/* Bridge Status */}
             <div className={styles.hardwareStatus}>
