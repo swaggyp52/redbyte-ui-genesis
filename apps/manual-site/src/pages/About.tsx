@@ -78,6 +78,10 @@ export default function About() {
                   'Deterministic simulation engine',
                   'Basic oscilloscope infrastructure',
                   'Learning and progress tracking',
+                  'FPGA bridge (SIM mode + Basys 3 programming)',
+                  'RB Zip v2 export (manifest, trace, integrity capsule)',
+                  'Submission Inspector checks and grading report export',
+                  'Lab template checks (baseline)',
                 ]}
               />
               <RoadmapMilestone
@@ -86,7 +90,6 @@ export default function About() {
                 items={[
                   'Canvas-based circuit editor',
                   'Oscilloscope visualization improvements',
-                  'Circuit export formats',
                   'Lab workbench content',
                 ]}
               />
@@ -96,7 +99,6 @@ export default function About() {
                 items={[
                   'Hierarchical chips (save subcircuits as components)',
                   'HDL export (Verilog/VHDL generation)',
-                  'FPGA bridge for hardware deployment',
                   'Automated testing framework',
                 ]}
               />
@@ -104,7 +106,6 @@ export default function About() {
                 status="future"
                 title="Education Tools"
                 items={[
-                  'Lab template library',
                   'Gradebook integration',
                   'Collaborative editing (future)',
                   'LMS export (LTI)',

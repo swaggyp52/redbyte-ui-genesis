@@ -31,7 +31,9 @@ export default function Demo() {
               </p>
               <p className="text-rb-muted leading-relaxed">
                 The platform includes a Lab Workbench for structured assignments and a Submission
-                Inspector for reviewing student work. All data stays local - no accounts, no telemetry.
+                Inspector for reviewing student work. Students export .rb-lab.zip v2 bundles with
+                manifest, trace, and integrity capsule; the Inspector runs checks and exports a grading
+                report. All data stays local - no accounts, no telemetry.
               </p>
               <p className="text-rb-muted leading-relaxed">
                 <strong className="text-rb-text">Key differentiator:</strong> Full determinism.
@@ -113,6 +115,10 @@ export default function Demo() {
                   <StatusItem status="done">File explorer and terminal</StatusItem>
                   <StatusItem status="done">Keyboard shortcuts (Ctrl+K, etc.)</StatusItem>
                   <StatusItem status="done">Settings and preferences</StatusItem>
+                  <StatusItem status="done">FPGA bridge (SIM mode + Basys 3 programming)</StatusItem>
+                  <StatusItem status="done">RB Zip v2 export (manifest, trace, integrity capsule)</StatusItem>
+                  <StatusItem status="done">Submission Inspector checks and grading report export</StatusItem>
+                  <StatusItem status="done">Lab template checks (baseline)</StatusItem>
                 </ul>
               </div>
 
@@ -129,11 +135,8 @@ export default function Demo() {
                 <ul className="p-5 space-y-2.5 text-sm">
                   <StatusItem status="wip">Visual canvas editor (table UI exists, canvas pending)</StatusItem>
                   <StatusItem status="wip">Oscilloscope visualization polish</StatusItem>
-                  <StatusItem status="wip">Circuit export formats</StatusItem>
                   <StatusItem status="planned">Hierarchical chips (reusable components)</StatusItem>
                   <StatusItem status="planned">HDL export (Verilog/VHDL)</StatusItem>
-                  <StatusItem status="planned">FPGA bridge for hardware deployment</StatusItem>
-                  <StatusItem status="planned">Lab template library</StatusItem>
                   <StatusItem status="planned">Gradebook integration</StatusItem>
                 </ul>
               </div>
@@ -173,6 +176,7 @@ export default function Demo() {
                   <li>- Students submit .rb-lab.zip bundles for consistent grading</li>
                   <li>- Deterministic simulation means reproducible test cases</li>
                   <li>- Submission Inspector for viewing student circuits and results</li>
+                  <li>- Inspector checks and grading report export for assessment</li>
                 </ul>
               </div>
             </div>

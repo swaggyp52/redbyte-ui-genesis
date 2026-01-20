@@ -107,17 +107,17 @@ export default function Guide() {
               <div className="bg-rb-surface border border-rb-border rounded-xl p-6">
                 <h2 className="text-xl font-semibold text-rb-text mb-2">What is covered here</h2>
                 <p className="text-sm text-rb-muted mb-4">
-                  The guide now includes analog simulation, project archives, and the full FPGA flow.
+                  The guide now includes analog simulation, deterministic submissions, and the full FPGA flow.
                 </p>
                 <ul className="grid gap-3 md:grid-cols-3 text-sm text-rb-muted">
                   <li className="bg-rb-bg/40 border border-rb-border rounded-lg p-3">
                     Analog sliders and live readouts in the Inspector (LDR light, VoltageSource)
                   </li>
                   <li className="bg-rb-bg/40 border border-rb-border rounded-lg p-3">
-                    Project archive export (.rbproj.zip) for LMS submissions
+                    RB Zip v2 export with manifest, trace, integrity capsule, and signature status
                   </li>
                   <li className="bg-rb-bg/40 border border-rb-border rounded-lg p-3">
-                    FPGA flow: netlist to Verilog to Vivado synth and board program
+                    FPGA bridge workflow: SIM mode, UART telemetry, Vivado batch programming
                   </li>
                 </ul>
               </div>

@@ -135,8 +135,8 @@ cd redbyte-ui-genesis`} />
           <section className="mb-16">
             <h2 className="text-h2 text-rb-text mb-6">FPGA Toolchain (Optional)</h2>
             <p className="text-rb-muted mb-6">
-              RedByte can synthesize and program Basys 3 boards with AMD Vivado WebPACK or
-              openFPGALoader. This is optional for simulation-only work.
+              RedByte programs Basys 3 boards through the FPGA Bridge using AMD Vivado WebPACK in batch mode.
+              SIM mode works without Vivado, and UART telemetry uses CRC-checked binary frames for reliable capture.
             </p>
             <div className="space-y-4">
               <TroubleshootItem

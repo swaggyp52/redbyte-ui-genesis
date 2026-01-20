@@ -89,7 +89,7 @@ export default function Home() {
             />
             <FeatureCard
               title="FPGA Toolchain"
-              description="Export synthesizable Verilog + XDC, then program Basys 3 boards with Vivado or openFPGALoader."
+              description="Export synthesizable Verilog + XDC, then program Basys 3 boards via the FPGA Bridge using Vivado batch mode."
               tag="FPGA"
             />
             <FeatureCard
