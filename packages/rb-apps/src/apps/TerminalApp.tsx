@@ -18,6 +18,7 @@ interface TerminalProps {
 interface TerminalLine {
   type: 'input' | 'output' | 'error';
   text: string;
+  title?: string;
 }
 
 interface CommandLogEntry {
@@ -26,10 +27,161 @@ interface CommandLogEntry {
   command: string;
 }
 
+interface CommandSpec {
+  description: string;
+  reads: string[];
+  writes: string[];
+  produces: string[];
+}
+
 const COMMAND_LOG_KEY = 'rb:terminal:log:v1';
 const COMMAND_SEQ_KEY = 'rb:terminal:log:seq:v1';
 const MAX_LOG_ENTRIES = 200;
 let fallbackCommandSeq = 1;
+
+const COMMAND_SPECS: Record<string, CommandSpec> = {
+  help: {
+    description: 'Show this help message',
+    reads: ['command_registry'],
+    writes: [],
+    produces: [],
+  },
+  clear: {
+    description: 'Clear terminal screen',
+    reads: [],
+    writes: ['terminal_buffer'],
+    produces: [],
+  },
+  about: {
+    description: 'About RedByte OS',
+    reads: ['settings'],
+    writes: [],
+    produces: [],
+  },
+  status: {
+    description: 'Show system status',
+    reads: ['settings', 'window_store'],
+    writes: [],
+    produces: [],
+  },
+  'apps list': {
+    description: 'List running apps',
+    reads: ['window_store', 'app_registry'],
+    writes: [],
+    produces: [],
+  },
+  'theme list': {
+    description: 'List available themes',
+    reads: ['settings'],
+    writes: [],
+    produces: [],
+  },
+  'theme current': {
+    description: 'Show current theme',
+    reads: ['settings'],
+    writes: [],
+    produces: [],
+  },
+  'theme set': {
+    description: 'Set theme variant',
+    reads: ['settings'],
+    writes: ['settings.theme'],
+    produces: [],
+  },
+  'wallpaper set': {
+    description: 'Set wallpaper',
+    reads: ['settings'],
+    writes: ['settings.wallpaper'],
+    produces: [],
+  },
+  'files list': {
+    description: 'List saved circuit files',
+    reads: ['logic_files'],
+    writes: [],
+    produces: [],
+  },
+  'files open': {
+    description: 'Open a saved circuit',
+    reads: ['logic_files'],
+    writes: ['window_store'],
+    produces: [],
+  },
+  'files delete': {
+    description: 'Delete a saved circuit',
+    reads: ['logic_files'],
+    writes: ['logic_files'],
+    produces: [],
+  },
+  'examples list': {
+    description: 'List available example circuits',
+    reads: ['examples'],
+    writes: [],
+    produces: [],
+  },
+  'examples load': {
+    description: 'Open an example circuit',
+    reads: ['examples'],
+    writes: ['window_store'],
+    produces: [],
+  },
+  'ticks set': {
+    description: 'Set simulation tick rate',
+    reads: ['settings'],
+    writes: ['settings.tick_rate'],
+    produces: [],
+  },
+  log: {
+    description: 'Show recent terminal commands',
+    reads: ['command_log'],
+    writes: [],
+    produces: [],
+  },
+  restart: {
+    description: 'Restart RedByte OS',
+    reads: [],
+    writes: ['session'],
+    produces: [],
+  },
+};
+
+const COMMAND_USAGE: Record<string, string> = {
+  apps: 'Usage: apps list',
+  theme: 'Usage: theme list | theme current | theme set <variant>',
+  wallpaper: 'Usage: wallpaper set <neon-circuit | frost-grid | solid>',
+  files: 'Usage: files list | files open <id> | files delete <id>',
+  examples: 'Usage: examples list | examples load <id>',
+  ticks: 'Usage: ticks set <number>',
+};
+
+const resolveCommandKey = (command: string, args: string[]): string | null => {
+  if (!command) return null;
+  switch (command) {
+    case 'apps':
+      return args[0] ? `apps ${args[0]}` : 'apps list';
+    case 'theme':
+      if (!args[0] || args[0] === 'list') return 'theme list';
+      if (args[0] === 'current') return 'theme current';
+      if (args[0] === 'set') return 'theme set';
+      return null;
+    case 'wallpaper':
+      return args[0] === 'set' ? 'wallpaper set' : null;
+    case 'files':
+      return args[0] ? `files ${args[0]}` : 'files list';
+    case 'examples':
+      return args[0] ? `examples ${args[0]}` : 'examples list';
+    case 'ticks':
+      return args[0] === 'set' ? 'ticks set' : null;
+    default:
+      return command;
+  }
+};
+
+const formatCommandEffects = (spec: CommandSpec): string => {
+  const reads = spec.reads.length > 0 ? spec.reads.join(', ') : 'none';
+  const writes = spec.writes.length > 0 ? spec.writes.join(', ') : 'none';
+  const produces = spec.produces.length > 0 ? spec.produces.join(', ') : 'none';
+  return `reads: ${reads} | writes: ${writes} | produces: ${produces}`;
+};
 
 function loadCommandLog(): CommandLogEntry[] {
   if (typeof window === 'undefined') return [];
@@ -101,8 +253,12 @@ const TerminalComponent: React.FC<TerminalProps> = ({
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [lines]);
 
-  const addLine = (text: string, type: TerminalLine['type'] = 'output') => {
-    setLines((prev) => [...prev, { type, text }]);
+  const addLine = (
+    text: string,
+    type: TerminalLine['type'] = 'output',
+    title?: string
+  ) => {
+    setLines((prev) => [...prev, { type, text, title }]);
   };
 
   const isThemeVariant = (value: string | undefined): value is ThemeVariant =>
@@ -130,30 +286,108 @@ const TerminalComponent: React.FC<TerminalProps> = ({
     const trimmed = cmd.trim();
     addLine(`> ${cmd}`, 'input');
 
-    appendCommandLog(trimmed);
+    if (/[;&|]/.test(trimmed)) {
+      addLine('Shell escapes are not supported.', 'error');
+      addLine('');
+      return;
+    }
 
     const parts = trimmed.split(/\s+/);
     const command = parts[0].toLowerCase();
     const args = parts.slice(1);
+    const commandKey = resolveCommandKey(command, args);
+    const spec = commandKey ? COMMAND_SPECS[commandKey] : null;
+
+    if (!commandKey || !spec) {
+      if (command && COMMAND_USAGE[command]) {
+        addLine(COMMAND_USAGE[command], 'error');
+      } else if (command) {
+        addLine('Command not found. Type "help".', 'error');
+      }
+      addLine('');
+      return;
+    }
+
+    appendCommandLog(trimmed);
 
     switch (command) {
       case 'help':
         addLine('Available commands:');
-        addLine('  help                        - Show this help message');
-        addLine('  clear                       - Clear terminal screen');
-        addLine('  about                       - About RedByte OS');
-        addLine('  status                      - Show system status');
-        addLine('  apps list                   - List running apps');
-        addLine('  theme list|current|set <variant>');
-        addLine('  wallpaper set <id>          - Set wallpaper (neon-circuit | frost-grid | solid)');
-        addLine('  files list                  - List saved circuit files');
-        addLine('  files open <fileId>         - Open a saved circuit');
-        addLine('  files delete <fileId>       - Delete a saved circuit');
-        addLine('  examples list               - List available example circuits');
-        addLine('  examples load <exampleId>   - Open an example circuit');
-        addLine('  ticks set <number>          - Set logic simulation tick rate (1-60)');
-        addLine('  log [count]                 - Show recent terminal commands');
-        addLine('  restart                     - Restart RedByte OS (replays boot)');
+        addLine(
+          '  help                        - Show this help message',
+          'output',
+          formatCommandEffects(COMMAND_SPECS.help)
+        );
+        addLine(
+          '  clear                       - Clear terminal screen',
+          'output',
+          formatCommandEffects(COMMAND_SPECS.clear)
+        );
+        addLine(
+          '  about                       - About RedByte OS',
+          'output',
+          formatCommandEffects(COMMAND_SPECS.about)
+        );
+        addLine(
+          '  status                      - Show system status',
+          'output',
+          formatCommandEffects(COMMAND_SPECS.status)
+        );
+        addLine(
+          '  apps list                   - List running apps',
+          'output',
+          formatCommandEffects(COMMAND_SPECS['apps list'])
+        );
+        addLine(
+          '  theme list|current|set <variant>',
+          'output',
+          formatCommandEffects(COMMAND_SPECS['theme list'])
+        );
+        addLine(
+          '  wallpaper set <id>          - Set wallpaper (neon-circuit | frost-grid | solid)',
+          'output',
+          formatCommandEffects(COMMAND_SPECS['wallpaper set'])
+        );
+        addLine(
+          '  files list                  - List saved circuit files',
+          'output',
+          formatCommandEffects(COMMAND_SPECS['files list'])
+        );
+        addLine(
+          '  files open <fileId>         - Open a saved circuit',
+          'output',
+          formatCommandEffects(COMMAND_SPECS['files open'])
+        );
+        addLine(
+          '  files delete <fileId>       - Delete a saved circuit',
+          'output',
+          formatCommandEffects(COMMAND_SPECS['files delete'])
+        );
+        addLine(
+          '  examples list               - List available example circuits',
+          'output',
+          formatCommandEffects(COMMAND_SPECS['examples list'])
+        );
+        addLine(
+          '  examples load <exampleId>   - Open an example circuit',
+          'output',
+          formatCommandEffects(COMMAND_SPECS['examples load'])
+        );
+        addLine(
+          '  ticks set <number>          - Set logic simulation tick rate (1-60)',
+          'output',
+          formatCommandEffects(COMMAND_SPECS['ticks set'])
+        );
+        addLine(
+          '  log [count]                 - Show recent terminal commands',
+          'output',
+          formatCommandEffects(COMMAND_SPECS.log)
+        );
+        addLine(
+          '  restart                     - Restart RedByte OS (replays boot)',
+          'output',
+          formatCommandEffects(COMMAND_SPECS.restart)
+        );
         break;
 
       case 'about':
@@ -191,7 +425,15 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         }
         addLine('Command log:');
         entries.slice(-count).forEach((entry) => {
-          addLine(`  [${entry.seq}] ${entry.ts_wall} ${entry.command}`);
+          const parsed = entry.command.trim().split(/\s+/);
+          const entryKey = resolveCommandKey(parsed[0]?.toLowerCase() ?? '', parsed.slice(1));
+          const entrySpec = entryKey ? COMMAND_SPECS[entryKey] : null;
+          const effects = entrySpec ? ` | ${formatCommandEffects(entrySpec)}` : '';
+          addLine(
+            `  [${entry.seq}] ${entry.ts_wall} ${entry.command}${effects}`,
+            'output',
+            entrySpec ? formatCommandEffects(entrySpec) : undefined
+          );
         });
         break;
       }
@@ -299,7 +541,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
             addLine('Saved circuits:');
             files.forEach((file) =>
               addLine(
-                `  ${file.id} - ${file.name} (updated ${new Date(file.updatedAt).toLocaleString()})`
+                `  ${file.id} - ${file.name} (updated ${new Date(file.updated_at).toLocaleString()})`
               )
             );
           }
@@ -381,7 +623,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         onClick={() => inputRef.current?.focus()}
       >
         {lines.map((line, i) => (
-          <div key={i} className={getLineColor(line.type)}>
+          <div key={i} className={getLineColor(line.type)} title={line.title}>
             {line.text || '\u00A0'}
           </div>
         ))}
