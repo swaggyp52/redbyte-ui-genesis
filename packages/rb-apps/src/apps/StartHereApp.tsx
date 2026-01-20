@@ -11,8 +11,10 @@ interface StartHereAppProps {
 }
 
 export const StartHereAppContent: React.FC<StartHereAppProps> = ({ onOpenApp }) => {
+  const playgroundExampleId = '04_4bit-counter';
+
   const handleOpenPlayground = () => {
-    onOpenApp?.('logic-playground', { initialExampleId: '04_4bit-counter' });
+    onOpenApp?.('logic-playground', { initialExampleId: playgroundExampleId });
   };
 
   const handleOpenLab = () => {
@@ -35,7 +37,9 @@ export const StartHereAppContent: React.FC<StartHereAppProps> = ({ onOpenApp }) 
       <div className={styles.grid}>
         <button type="button" className={styles.card} onClick={handleOpenPlayground}>
           <div className={styles.cardTitle}>Try Logic Playground (Simulation)</div>
-          <p className={styles.cardBody}>Build and simulate logic instantly -- no hardware required.</p>
+          <p className={styles.cardBody}>
+            Build and simulate logic instantly -- no hardware required. Loads the 4-bit counter example.
+          </p>
           <div className={styles.cardAction}>Open Playground</div>
         </button>
 
