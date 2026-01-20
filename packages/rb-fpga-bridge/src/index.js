@@ -7,8 +7,10 @@ import { BinaryPacketParser } from "./parsers/binary-packet.js";
 import { crc16_ccitt_false } from "./parsers/crc16.js";
 import { TraceRecorder } from "./trace/recorder.js";
 import { createTimeBinner } from "./trace/binning.js";
-import { programBitstream } from "./vivado/programBitstream.js";
-import { discoverDevices } from "./discovery.js";
+import { discoverDevices, getPinmapHash } from "./discovery.js";
+import { enumerateJtagDevices, programJtagBitstream, resolveDjtgcfgPath, selectJtagTarget } from "./jtag.js";
+import { identifyPort } from "./proto/identify.js";
+import { findRepoRoot, resolveRepoPath } from "./path-utils.js";
 import { exec } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs";
@@ -28,6 +30,69 @@ const BIN_SIZE_MS = Number(process.env.RB_FPGA_BIN_MS || 20);
 const TRACE_ENABLED = process.env.RB_FPGA_TRACE === "1" || process.env.RB_FPGA_TRACE === "true";
 const TRACE_PATH = process.env.RB_FPGA_TRACE_PATH || path.join(process.cwd(), "trace", "hw_trace.ndjson");
 const PACKET_RATE_WINDOW_MS = 1000;
+const PROGRAM_TIMEOUT_MS = Number(process.env.RB_FPGA_PROGRAM_TIMEOUT_MS || 120000);
+
+function getRepoRoot() {
+  try {
+    return findRepoRoot();
+  } catch {
+    return process.cwd();
+  }
+}
+
+function ensureTmpDir(repoRoot) {
+  const tmpDir = path.join(repoRoot, ".redbyte", "tmp");
+  if (!fs.existsSync(tmpDir)) {
+    fs.mkdirSync(tmpDir, { recursive: true });
+  }
+  return tmpDir;
+}
+
+function sanitizePathSegment(value) {
+  if (!value) return "unknown";
+  return String(value).replace(/[^a-z0-9_-]/gi, "_");
+}
+
+function decodeBase64Payload(payload) {
+  if (!payload) return null;
+  const trimmed = payload.trim();
+  const cleaned = trimmed.replace(/^data:.*;base64,/, "");
+  return Buffer.from(cleaned, "base64");
+}
+
+function resolveBitstreamPath({ bitstreamPath, bitstreamBase64, deviceId }) {
+  const repoRoot = getRepoRoot();
+  const tmpDir = ensureTmpDir(repoRoot);
+
+  if (bitstreamBase64) {
+    const buffer = decodeBase64Payload(bitstreamBase64);
+    if (!buffer || !buffer.length) {
+      throw new Error("bitstream_base64 is empty or invalid.");
+    }
+    const safeId = sanitizePathSegment(deviceId);
+    const outPath = path.join(tmpDir, `program-${safeId}.bit`);
+    fs.writeFileSync(outPath, buffer);
+    return outPath;
+  }
+
+  if (bitstreamPath) {
+    return resolveRepoPath(bitstreamPath);
+  }
+
+  throw new Error("Missing bitstream_path or bitstream_base64.");
+}
+
+function createProgramLogger(logPath) {
+  const logStream = fs.createWriteStream(logPath, { flags: "w", encoding: "utf8" });
+  const writeLine = (line) => {
+    logStream.write(`${line}\n`);
+  };
+  const close = () =>
+    new Promise((resolve) => {
+      logStream.end(() => resolve());
+    });
+  return { writeLine, close };
+}
 
 // Deterministic seeded PRNG (simple LCG)
 class SeededRandom {
@@ -549,20 +614,27 @@ app.post("/disconnect", async (_req, res) => {
 });
 
 app.post("/program", async (req, res) => {
-  const { bitPath } = req.body || {};
-  if (!bitPath || typeof bitPath !== "string") {
+  const body = req.body || {};
+  const schemaVersion = "bridge_v1";
+  const deviceId = body.device_id || body.deviceId || null;
+  const boardModelId = body.board_model_id || body.boardModelId || null;
+  const bitstreamPath = body.bitstream_path || body.bitstreamPath || body.bitPath || null;
+  const bitstreamBase64 = body.bitstream_base64 || body.bitstreamBase64 || body.bitstream?.data || null;
+
+  if (!deviceId) {
     return res.status(400).json({
+      schema_version: schemaVersion,
       ok: false,
-      error: "Missing bitPath in request body.",
-      logPath: state.program_last_log_path,
+      error: "device_id is required.",
     });
   }
 
   if (programInFlight) {
     return res.status(409).json({
+      schema_version: schemaVersion,
       ok: false,
-      error: "Programming already in progress.",
-      logPath: state.program_last_log_path,
+      error: "program_in_progress",
+      log_path: state.program_last_log_path,
     });
   }
 
@@ -572,11 +644,16 @@ app.post("/program", async (req, res) => {
   state.program_last_log_path = null;
   broadcast(createEvent("program:status", { status: state.program_status }));
 
-  try {
-    const result = await programBitstream(bitPath);
-    state.program_status = result.ok ? "success" : "failed";
-    state.program_last_error = result.ok ? null : result.error || "Programming failed.";
-    state.program_last_log_path = result.logPath;
+  const repoRoot = getRepoRoot();
+  const tmpDir = ensureTmpDir(repoRoot);
+  const logPath = path.join(tmpDir, `program-${sanitizePathSegment(deviceId)}.log`);
+  const logger = createProgramLogger(logPath);
+
+  const finish = async (ok, error) => {
+    await logger.close();
+    state.program_status = ok ? "success" : "failed";
+    state.program_last_error = ok ? null : error || "Programming failed.";
+    state.program_last_log_path = logPath;
     programInFlight = false;
     broadcast(
       createEvent("program:status", {
@@ -585,18 +662,120 @@ app.post("/program", async (req, res) => {
         logPath: state.program_last_log_path,
       })
     );
-
-    if (result.ok) {
-      return res.json({ ok: true, logPath: result.logPath });
+    if (ok) {
+      return res.json({ schema_version: schemaVersion, ok: true, log_path: logPath });
     }
-    return res.status(500).json({ ok: false, error: state.program_last_error, logPath: result.logPath });
+    return res.status(500).json({ schema_version: schemaVersion, ok: false, error: state.program_last_error, log_path: logPath });
+  };
+
+  try {
+    const bitPath = resolveBitstreamPath({
+      bitstreamPath,
+      bitstreamBase64,
+      deviceId,
+    });
+    if (path.extname(bitPath).toLowerCase() !== ".bit") {
+      return finish(false, `invalid_bitstream: ${bitPath}`);
+    }
+    if (!fs.existsSync(bitPath)) {
+      return finish(false, `bitstream_not_found: ${bitPath}`);
+    }
+
+    const devices = await discoverDevices({ includeSim: false, baudDefault: BAUD });
+    const device = devices.find((d) => d.id === deviceId);
+    if (!device) {
+      return finish(false, "invalid_device");
+    }
+
+    if (boardModelId && device.model_id !== "unknown-digilent" && device.model_id !== boardModelId) {
+      return finish(false, "invalid_device:board_model_mismatch");
+    }
+
+    if (!device.programming || device.programming.status !== "ready" || device.programming.driver !== "djtgcfg") {
+      const status = device.programming?.status || "missing_driver";
+      return finish(false, status === "missing_driver" ? "missing_driver" : "programmer_unavailable");
+    }
+
+    const jtagResult = enumerateJtagDevices({ timeoutMs: 2000 });
+    if (!jtagResult.ok) {
+      const status = jtagResult.error === "missing_tool" ? "missing_tool" : "program_failed";
+      logger.writeLine(`[rb-fpga] jtag_enumeration_failed: ${jtagResult.error || "unknown"}`);
+      return finish(false, status);
+    }
+
+    const target = selectJtagTarget({ device, jtagDevices: jtagResult.devices });
+    if (!target) {
+      logger.writeLine("[rb-fpga] jtag_target_missing");
+      return finish(false, "invalid_device");
+    }
+
+    const toolPath = jtagResult.toolPath || resolveDjtgcfgPath();
+    logger.writeLine(JSON.stringify({
+      type: "program",
+      device_id: deviceId,
+      board_model_id: boardModelId,
+      selector: target.selector,
+      selector_type: target.selectorType,
+      tool: jtagResult.tool,
+      tool_path: toolPath,
+      bitstream: bitPath,
+      started_at_ms: Date.now(),
+    }));
+
+    const programResult = await programJtagBitstream({
+      toolPath,
+      selector: target.selector,
+      selectorType: target.selectorType,
+      bitPath,
+      timeoutMs: PROGRAM_TIMEOUT_MS,
+    });
+
+    logger.writeLine(`[rb-fpga] command: ${programResult.command || "unknown"}`);
+    if (programResult.stdout) logger.writeLine(programResult.stdout.trim());
+    if (programResult.stderr) logger.writeLine(`[STDERR] ${programResult.stderr.trim()}`);
+    logger.writeLine(JSON.stringify({
+      type: "program_result",
+      ok: programResult.ok,
+      exit_code: programResult.exitCode,
+      error: programResult.error,
+      elapsed_ms: programResult.elapsedMs,
+    }));
+
+    if (!programResult.ok) {
+      const status = programResult.error === "missing_tool" ? "missing_tool" : "program_failed";
+      return finish(false, status);
+    }
+
+    if (device.runtime?.status === "ready" && device.runtime?.port) {
+      const identifyResult = await identifyPort({
+        port: device.runtime.port,
+        baud: device.runtime.baud_default || BAUD,
+        timeoutMs: 250,
+        retries: 2,
+        backoffMs: [100, 200],
+        maxTotalMs: 800,
+      });
+      logger.writeLine(JSON.stringify({
+        type: "identify_after_program",
+        ok: identifyResult.ok,
+        attempts: identifyResult.attempts,
+        rtt_ms: identifyResult.rttMs ?? null,
+        error: identifyResult.error || identifyResult.lastError || null,
+      }));
+
+      if (identifyResult.ok && identifyResult.payload?.pinmap_hash) {
+        const expected = getPinmapHash(identifyResult.payload.board_model_id);
+        if (expected && identifyResult.payload.pinmap_hash !== expected) {
+          return finish(false, "pinmap_mismatch");
+        }
+      }
+    }
+
+    return finish(true, null);
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
-    state.program_status = "failed";
-    state.program_last_error = error;
-    programInFlight = false;
-    broadcast(createEvent("program:status", { status: state.program_status, error }));
-    return res.status(500).json({ ok: false, error, logPath: state.program_last_log_path });
+    logger.writeLine(`[rb-fpga] ERROR: ${error}`);
+    return finish(false, error);
   }
 });
 

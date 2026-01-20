@@ -5961,3 +5961,7 @@ Commits:
 ## Change Log  2026-01-20
 
 - Added JTAG enumeration via djtgcfg with UART/JTAG merge logic in FPGA bridge discovery, plus merge diagnostics and JTAG parsing tests; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Added djtgcfg programming support for /program with device-id selection, bitstream path/base64 handling, identify recheck for pinmap mismatch, and JTAG program helper tests; objectives unchanged; phase unchanged.

@@ -21,9 +21,11 @@ function run() {
   assert.equal(devices[0].product, "Basys3");
   assert.equal(devices[0].serial_number, "2100001234");
   assert.equal(devices[0].endpoint_id, "djtgcfg:2100001234");
+  assert.equal(devices[0].index, 0);
   assert.equal(devices[1].product, "Spartan3E");
   assert.equal(devices[1].serial_number, "0400005678");
   assert.equal(devices[1].endpoint_id, "djtgcfg:0400005678");
+  assert.equal(devices[1].index, 1);
 
   console.log("[TEST] jtag enum parsing passed");
 }
