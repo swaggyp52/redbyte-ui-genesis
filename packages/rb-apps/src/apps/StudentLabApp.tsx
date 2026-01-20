@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { toast } from '@redbyte/rb-primitives';
 import type { RedByteApp } from '../types';
 import styles from './StudentLabApp.module.css';
 import {
@@ -12,7 +13,8 @@ import {
   type PresetsFile,
   type SelfCheckResult,
 } from '../utils/selfCheck';
-import { exportBundle, downloadBlob, type ExportResult } from '../utils/bundleExport';
+import { exportV2Bundle, downloadBlob, type ExportResult } from '../utils/bundleExport';
+import { getLabTemplate } from '../utils/labTemplates';
 
 // ============================================================================
 // Types
@@ -73,6 +75,19 @@ interface BridgeStatus {
   lastChecked: string;
 }
 
+interface PortInfo {
+  path: string;
+  manufacturer: string | null;
+  vendorId: string | null;
+  productId: string | null;
+}
+
+interface FpgaHealth {
+  connected_port: string | null;
+  packets_per_sec: number;
+  last_packet_age_ms: number | null;
+}
+
 // ============================================================================
 // Hardcoded Lab List (expand as specs are added)
 // ============================================================================
@@ -99,6 +114,9 @@ const AVAILABLE_LABS: Array<{ lab_id: string; title: string; description: string
     description: 'Design a sequential counter that counts 0→1→2→3→0.',
   },
 ];
+
+const FPGA_BRIDGE_URL = 'http://127.0.0.1:4242';
+const LOCAL_STORAGE_FPGA_PORT = 'rb_fpga_last_port';
 
 // ============================================================================
 // Local Storage Helpers
@@ -171,6 +189,18 @@ const StudentLabAppContent = () => {
   const [manualInputs, setManualInputs] = useState('');
   const [manualOutputs, setManualOutputs] = useState('');
   const [manualNotes, setManualNotes] = useState('');
+  const [bitstreamPath, setBitstreamPath] = useState('');
+  const [programStatus, setProgramStatus] = useState<'idle' | 'running' | 'success' | 'failed'>('idle');
+  const [programError, setProgramError] = useState<string | null>(null);
+  const [programLogPath, setProgramLogPath] = useState<string | null>(null);
+  const [fpgaPorts, setFpgaPorts] = useState<PortInfo[]>([]);
+  const [selectedPortPath, setSelectedPortPath] = useState('');
+  const [fpgaBridgeOnline, setFpgaBridgeOnline] = useState(false);
+  const [fpgaHealth, setFpgaHealth] = useState<FpgaHealth>({
+    connected_port: null,
+    packets_per_sec: 0,
+    last_packet_age_ms: null,
+  });
 
   // Export state
   const [showExportConfirm, setShowExportConfirm] = useState(false);
@@ -199,6 +229,17 @@ const StudentLabAppContent = () => {
     if (stored) {
       setStudentName(stored.name);
       setStudentId(stored.id);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const storedPort = localStorage.getItem(LOCAL_STORAGE_FPGA_PORT);
+      if (storedPort) {
+        setSelectedPortPath(storedPort);
+      }
+    } catch {
+      // Ignore storage errors
     }
   }, []);
 
@@ -260,6 +301,60 @@ const StudentLabAppContent = () => {
 
     return () => clearInterval(intervalId);
   }, [phase, boardStatus.connected, emitEvent]);
+
+  useEffect(() => {
+    if (phase !== 'attempt' || activeTab !== 'hardware') return;
+
+    let cancelled = false;
+    const fetchPorts = async () => {
+      try {
+        const response = await fetch(`${FPGA_BRIDGE_URL}/ports`);
+        if (!response.ok) throw new Error('ports');
+        const data = await response.json();
+        if (cancelled) return;
+        setFpgaPorts(Array.isArray(data.ports) ? data.ports : []);
+        setFpgaBridgeOnline(true);
+      } catch {
+        if (cancelled) return;
+        setFpgaBridgeOnline(false);
+      }
+    };
+
+    const fetchHealth = async () => {
+      try {
+        const response = await fetch(`${FPGA_BRIDGE_URL}/health`);
+        if (!response.ok) throw new Error('health');
+        const data = await response.json();
+        if (cancelled) return;
+        setFpgaHealth({
+          connected_port: data.connected_port ?? null,
+          packets_per_sec: typeof data.packets_per_sec === 'number' ? data.packets_per_sec : 0,
+          last_packet_age_ms:
+            typeof data.last_packet_age_ms === 'number' ? data.last_packet_age_ms : null,
+        });
+        setFpgaBridgeOnline(true);
+      } catch {
+        if (cancelled) return;
+        setFpgaBridgeOnline(false);
+      }
+    };
+
+    fetchPorts();
+    fetchHealth();
+    const portsInterval = setInterval(fetchPorts, 5000);
+    const healthInterval = setInterval(fetchHealth, 1000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(portsInterval);
+      clearInterval(healthInterval);
+    };
+  }, [phase, activeTab]);
+
+  useEffect(() => {
+    if (selectedPortPath || fpgaPorts.length === 0) return;
+    setSelectedPortPath(fpgaPorts[0].path);
+  }, [fpgaPorts, selectedPortPath]);
 
   // ============================================================================
   // Start Attempt
@@ -364,6 +459,38 @@ const StudentLabAppContent = () => {
     setShowManualSnapshotModal(true);
   };
 
+  const handleConnectPort = async () => {
+    const trimmed = selectedPortPath.trim();
+    if (!trimmed) {
+      toast.error({ message: 'Select a COM port before connecting.' });
+      return;
+    }
+    try {
+      const response = await fetch(`${FPGA_BRIDGE_URL}/connect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ portPath: trimmed, baud: 115200 }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) {
+        const error = data.error || 'Bridge connect failed.';
+        toast.error({ message: error });
+        return;
+      }
+      setFpgaHealth({
+        connected_port: data.connected_port ?? trimmed,
+        packets_per_sec: typeof data.packets_per_sec === 'number' ? data.packets_per_sec : 0,
+        last_packet_age_ms:
+          typeof data.last_packet_age_ms === 'number' ? data.last_packet_age_ms : null,
+      });
+      localStorage.setItem(LOCAL_STORAGE_FPGA_PORT, trimmed);
+      toast.success({ message: `Connected to ${trimmed}.` });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : 'Bridge connect failed.';
+      toast.error({ message: error });
+    }
+  };
+
   const handleSaveManualSnapshot = () => {
     try {
       const inputs = manualInputs.trim() ? JSON.parse(manualInputs) : {};
@@ -392,6 +519,45 @@ const StudentLabAppContent = () => {
       setShowManualSnapshotModal(false);
     } catch (err) {
       alert('Invalid JSON format. Use {"SW":1,"BTN":0} format.');
+    }
+  };
+
+  const handleProgramBoard = async () => {
+    const trimmedPath = bitstreamPath.trim();
+    if (!trimmedPath) {
+      toast.error({ message: 'Enter a .bit path before programming.' });
+      return;
+    }
+
+    setProgramStatus('running');
+    setProgramError(null);
+    setProgramLogPath(null);
+
+    try {
+      const response = await fetch('http://127.0.0.1:4242/program', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bitPath: trimmedPath }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data.ok) {
+        setProgramStatus('success');
+        setProgramLogPath(data.logPath ?? null);
+        toast.success({ message: 'Programming complete.' });
+        return;
+      }
+
+      const error = data.error || 'Programming failed.';
+      setProgramStatus('failed');
+      setProgramError(error);
+      setProgramLogPath(data.logPath ?? null);
+      toast.error({ message: error });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : 'Programming failed.';
+      setProgramStatus('failed');
+      setProgramError(error);
+      toast.error({ message: error });
     }
   };
 
@@ -491,25 +657,15 @@ const StudentLabAppContent = () => {
         return vector;
       });
 
-      const result = await exportBundle({
-        labId: spec.lab_id,
+      const labTemplate = getLabTemplate(spec.lab_id);
+      const result = await exportV2Bundle({
+        labId: labTemplate?.lab_id ?? spec.lab_id,
+        labVersion: labTemplate?.lab_version ?? 'unversioned',
+        scaffoldHash: 'unknown',
         studentId: studentId,
-        studentName: studentName.trim(),
-        eventLog: finalEventLog,
-        capsuleVectors,
-        selfCheckSummary: {
-          pass: selfCheckSummary.passCount,
-          fail: selfCheckSummary.totalCount - selfCheckSummary.passCount,
-          total: selfCheckSummary.totalCount,
-        },
-        presetId: selectedPreset.id,
-        presetName: selectedPreset.name,
-        hardwareEvidence: {
-          bridgeStatus: bridgeStatus.online ? 'online' : 'offline',
-          boardStatus: boardStatus.connected ? 'connected' : 'disconnected',
-          boardModel: boardStatus.model,
-          snapshots,
-        },
+        traceNdjson: '',
+        traceEventCount: 0,
+        crcFailures: 0,
       });
 
       setExportResult(result);
@@ -1007,9 +1163,14 @@ const StudentLabAppContent = () => {
                 </div>
                 {!bridgeStatus.online && (
                   <div className={styles.statusHint}>
-                    Start the Desktop Bridge to enable automatic board detection.
+                    Start the FPGA Bridge to enable automatic board detection.
                     <br />
-                    <code>node tools/desktop-bridge.js</code>
+                    <code>pnpm --filter @redbyte/fpga-bridge dev</code>
+                    <br />
+                    <code>RB_FPGA_SIM=1 pnpm --filter @redbyte/fpga-bridge dev</code>
+                    <div className={styles.statusHintNote}>
+                      Then return here and click Connect (ports refresh automatically).
+                    </div>
                   </div>
                 )}
               </div>
@@ -1030,6 +1191,63 @@ const StudentLabAppContent = () => {
               </div>
             </div>
 
+            <div className={styles.bridgePanel}>
+              <h3>FPGA Bridge</h3>
+              <div className={styles.bridgeRow}>
+                <span className={styles.bridgeLabel}>Status:</span>
+                <span className={styles.bridgeValue}>
+                  {fpgaBridgeOnline ? 'Online' : 'Offline'}
+                </span>
+              </div>
+              <div className={styles.bridgeRow}>
+                <span className={styles.bridgeLabel}>Connected Port:</span>
+                <span className={styles.bridgeValue}>
+                  {fpgaHealth.connected_port || 'None'}
+                </span>
+              </div>
+              <div className={styles.bridgeRow}>
+                <span className={styles.bridgeLabel}>Packets/sec:</span>
+                <span className={styles.bridgeValue}>{fpgaHealth.packets_per_sec}</span>
+              </div>
+              <div className={styles.bridgeRow}>
+                <span className={styles.bridgeLabel}>Last Update Age:</span>
+                <span
+                  className={`${styles.bridgeValue} ${
+                    fpgaHealth.last_packet_age_ms !== null && fpgaHealth.last_packet_age_ms > 1000
+                      ? styles.bridgeWarning
+                      : ''
+                  }`}
+                >
+                  {fpgaHealth.last_packet_age_ms !== null ? `${fpgaHealth.last_packet_age_ms} ms` : 'N/A'}
+                </span>
+              </div>
+              <div className={styles.bridgeRow}>
+                <label className={styles.bridgeLabel} htmlFor="fpga-port-select">
+                  COM Port:
+                </label>
+                <select
+                  id="fpga-port-select"
+                  className={styles.bridgeSelect}
+                  value={selectedPortPath}
+                  onChange={(e) => setSelectedPortPath(e.target.value)}
+                >
+                  <option value="">Select a port</option>
+                  {fpgaPorts.map((port) => (
+                    <option key={port.path} value={port.path}>
+                      {port.manufacturer ? `${port.path} (${port.manufacturer})` : port.path}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className={styles.bridgeButton}
+                  onClick={handleConnectPort}
+                >
+                  Connect
+                </button>
+              </div>
+            </div>
+
             {/* Capture Snapshot Button */}
             <div className={styles.hardwareActions}>
               <button
@@ -1043,6 +1261,55 @@ const StudentLabAppContent = () => {
                   ? 'Snapshot will capture current board I/O state'
                   : 'Manual entry will be used (no bridge/board detected)'}
               </div>
+            </div>
+
+            <div className={styles.programSection}>
+              <h3>Program Board</h3>
+              <div className={styles.programRow}>
+                <input
+                  type="text"
+                  className={styles.programInput}
+                  placeholder="C:\\path\\to\\design.bit"
+                  value={bitstreamPath}
+                  onChange={(e) => setBitstreamPath(e.target.value)}
+                />
+                <button
+                  className={styles.programButton}
+                  onClick={handleProgramBoard}
+                  disabled={programStatus === 'running'}
+                >
+                  {programStatus === 'running' ? 'Programming...' : 'Program Board'}
+                </button>
+              </div>
+              <div className={styles.programHint}>
+                Uses the FPGA bridge <code>/program</code> endpoint.
+              </div>
+              {programStatus !== 'idle' && (
+                <div className={styles.programStatus}>
+                  <div className={styles.programStatusRow}>
+                    Status: {programStatus}
+                  </div>
+                  {programError && (
+                    <div className={styles.programError}>
+                      Error: {programError}
+                    </div>
+                  )}
+                  {programLogPath && (
+                    <div className={styles.programLog}>
+                      <span>Log:</span>
+                      <a
+                        className={styles.programLogLink}
+                        href={`file:///${programLogPath.replace(/\\/g, '/')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open log
+                      </a>
+                      <code>{programLogPath}</code>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Snapshots List */}
