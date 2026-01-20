@@ -5929,3 +5929,8 @@ Commits:
 ## Change Log  2026-01-20
 
 - Fixed rb-apps audit test discovery, corrected manual-site sanity script location, and resolved rb-fpga-signing sha512Sync typing error; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Added course portal audit report at docs/audits/course-portal-audit.md.
+- Added @redbyte/rb-board-models package with Basys3 board model schema and Vivado XDC pinmap copy; objectives unchanged; phase unchanged.
