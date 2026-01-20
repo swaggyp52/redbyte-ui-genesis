@@ -4,7 +4,7 @@
  */
 
 import assert from "assert/strict";
-import { scorePortCandidate, synthesizeDevicesFromCandidates } from "../src/discovery.js";
+import { getPinmapHash, scorePortCandidate, synthesizeDevicesFromCandidates } from "../src/discovery.js";
 
 function run() {
   const usbIds = {
@@ -62,6 +62,96 @@ function run() {
   assert.ok(sim);
   assert.equal(sim.confidence, 1);
   assert.equal(sim.runtime.status, "ready");
+
+  const basysHash = getPinmapHash("basys3");
+  const identified = synthesizeDevicesFromCandidates(
+    [
+      {
+        kind: "uart",
+        path: "COM9",
+        manufacturer: "Digilent",
+        vendorId: "0403",
+        productId: "6010",
+        serialNumber: "ABC",
+        pnpId: "VID_0403&PID_6010",
+        locationId: null,
+        friendlyName: "Digilent USB UART",
+        confidence: 0.6,
+        reasons: ["vid_pid:0403:6010"],
+        isLikelyDigilent: true,
+        detectedVia: "vid_pid",
+        runtimeStatus: "ready",
+        runtimeDiagnostics: null,
+        identify: {
+          ok: true,
+          attempts: 1,
+          rttMs: 12,
+          payload: {
+            kind: "identify",
+            board_model_id: "basys3",
+            bridge_proto: 1,
+            wrapper_version: "0.1.0",
+            pinmap_hash: basysHash,
+            features: ["io_stream_v1"],
+            design: {
+              design_hash: "sha256:deadbeef",
+              build_id: "spring26.0",
+            },
+          },
+        },
+      },
+    ],
+    { includeSim: false, baudDefault: 115200 }
+  );
+
+  assert.equal(identified.length, 1);
+  assert.equal(identified[0].model_id, "basys3");
+  assert.equal(identified[0].display_name, "Basys 3");
+  assert.equal(identified[0].confidence >= 0.95, true);
+
+  const mismatched = synthesizeDevicesFromCandidates(
+    [
+      {
+        kind: "uart",
+        path: "COM10",
+        manufacturer: "Digilent",
+        vendorId: "0403",
+        productId: "6010",
+        serialNumber: "XYZ",
+        pnpId: "VID_0403&PID_6010",
+        locationId: null,
+        friendlyName: "Digilent USB UART",
+        confidence: 0.6,
+        reasons: ["vid_pid:0403:6010"],
+        isLikelyDigilent: true,
+        detectedVia: "vid_pid",
+        runtimeStatus: "ready",
+        runtimeDiagnostics: null,
+        identify: {
+          ok: true,
+          attempts: 1,
+          rttMs: 10,
+          payload: {
+            kind: "identify",
+            board_model_id: "basys3",
+            bridge_proto: 1,
+            wrapper_version: "0.1.0",
+            pinmap_hash: "sha256:deadbeef",
+            features: ["io_stream_v1"],
+            design: {
+              design_hash: "sha256:deadbeef",
+              build_id: "spring26.0",
+            },
+          },
+        },
+      },
+    ],
+    { includeSim: false, baudDefault: 115200 }
+  );
+
+  assert.equal(mismatched.length, 1);
+  assert.equal(mismatched[0].runtime.status, "error");
+  assert.equal(mismatched[0].reasons.includes("pinmap:mismatch"), true);
 
   const deniedDevices = synthesizeDevicesFromCandidates(
     [

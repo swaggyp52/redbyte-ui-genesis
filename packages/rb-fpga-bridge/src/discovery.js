@@ -1,12 +1,26 @@
 import { SerialPort } from "serialport";
+import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import os from "os";
 import { fileURLToPath } from "url";
+import { identifyPort } from "./proto/identify.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const USB_ID_PATH = path.resolve(__dirname, "..", "boards", "usb-ids.json");
+const BOARD_MODELS = {
+  basys3: {
+    name: "Basys 3",
+    board: "Basys3",
+    pinmap: path.resolve(__dirname, "..", "..", "board-models", "basys3", "pinmap.vivado.xdc"),
+  },
+  "spartan3e-starter": {
+    name: "Spartan-3E Starter Kit",
+    board: "Spartan-3E",
+    pinmap: path.resolve(__dirname, "..", "..", "board-models", "spartan3e-starter", "pinmap.ise.ucf"),
+  },
+};
 
 const DEFAULT_USB_IDS = { devices: [] };
 
@@ -30,6 +44,21 @@ export function loadUsbIdTable() {
     // fall through
   }
   return DEFAULT_USB_IDS;
+}
+
+export function getPinmapHash(boardModelId) {
+  const entry = BOARD_MODELS[boardModelId];
+  if (!entry || !entry.pinmap) return null;
+  if (!fs.existsSync(entry.pinmap)) return null;
+  const raw = fs.readFileSync(entry.pinmap);
+  const hash = crypto.createHash("sha256").update(raw).digest("hex");
+  return `sha256:${hash}`;
+}
+
+function resolveBoardDisplay(boardModelId) {
+  const entry = BOARD_MODELS[boardModelId];
+  if (!entry) return null;
+  return { displayName: entry.name, board: entry.board };
 }
 
 function formatVidPid(vendorId, productId) {
@@ -164,11 +193,56 @@ export function synthesizeDevicesFromCandidates(candidates, options = {}) {
       ? "Digilent"
       : candidate.manufacturer || "Unknown";
 
-    const displayName = vendor === "Digilent"
+    let displayName = vendor === "Digilent"
       ? "Digilent FPGA board (unidentified)"
       : "Serial device (unidentified)";
 
-    const modelId = vendor === "Digilent" ? "unknown-digilent" : "unknown-serial";
+    let modelId = vendor === "Digilent" ? "unknown-digilent" : "unknown-serial";
+    let board = "Unknown";
+    let confidence = candidate.confidence;
+    const reasons = [...candidate.reasons];
+    let runtimeStatus = candidate.runtimeStatus;
+    let runtimeDiagnostics = candidate.runtimeDiagnostics;
+    let identifyDiagnostics = null;
+
+    if (candidate.identify?.ok && candidate.identify.payload?.board_model_id) {
+      const boardModelId = candidate.identify.payload.board_model_id;
+      const resolved = resolveBoardDisplay(boardModelId);
+      if (resolved) {
+        modelId = boardModelId;
+        displayName = resolved.displayName;
+        board = resolved.board;
+        confidence = Math.max(confidence, 0.95);
+        reasons.push(`identify:matched:${boardModelId}`);
+      }
+
+      const localHash = getPinmapHash(boardModelId);
+      const reportedHash = candidate.identify.payload.pinmap_hash;
+      if (localHash && reportedHash && localHash !== reportedHash) {
+        runtimeStatus = "error";
+        runtimeDiagnostics = {
+          error: "Pinmap hash mismatch",
+          fix: "Update RedByte OS or board pack to match the board firmware.",
+        };
+        reasons.push("pinmap:mismatch");
+      } else if (localHash && reportedHash) {
+        reasons.push("pinmap:match");
+      }
+
+      identifyDiagnostics = {
+        ok: true,
+        attempts: candidate.identify.attempts,
+        rtt_ms: candidate.identify.rttMs ?? null,
+        payload: candidate.identify.payload,
+      };
+    } else if (candidate.identify) {
+      reasons.push("identify:no_response");
+      identifyDiagnostics = {
+        ok: false,
+        attempts: candidate.identify.attempts,
+        error: candidate.identify.error || candidate.identify.lastError || "no_response",
+      };
+    }
 
     const vidPid = formatVidPid(candidate.vendorId, candidate.productId);
     const serial = candidate.serialNumber || null;
@@ -180,7 +254,7 @@ export function synthesizeDevicesFromCandidates(candidates, options = {}) {
       vendor,
       serial_number: serial,
       model_id: modelId,
-      board: "Unknown",
+      board,
       transport: "uart",
       port: candidate.path,
       serial,
@@ -195,11 +269,11 @@ export function synthesizeDevicesFromCandidates(candidates, options = {}) {
         kind: "uart",
         port: candidate.path,
         baud_default: baudDefault,
-        status: candidate.runtimeStatus,
-        diagnostics: candidate.runtimeDiagnostics,
+        status: runtimeStatus,
+        diagnostics: runtimeDiagnostics,
       },
-      confidence: candidate.confidence,
-      reasons: candidate.reasons,
+      confidence,
+      reasons,
       diagnostics: {
         serial_port: {
           path: candidate.path,
@@ -212,6 +286,7 @@ export function synthesizeDevicesFromCandidates(candidates, options = {}) {
           friendly_name: candidate.friendlyName || null,
         },
         runtime: candidate.runtimeDiagnostics || undefined,
+        identify: identifyDiagnostics || undefined,
       },
     });
   }
@@ -252,6 +327,13 @@ export async function discoverDevices(options = {}) {
   const usbIds = options.usbIds ?? loadUsbIdTable();
   const baudDefault = options.baudDefault ?? 115200;
   const includeSim = options.includeSim ?? true;
+  const identifyEnabled = options.identify ?? true;
+  const identifyTimeoutMs = options.identifyTimeoutMs ?? 250;
+  const identifyRetries = options.identifyRetries ?? 3;
+  const identifyBackoffMs = options.identifyBackoffMs ?? [100, 200, 400];
+  const identifyBudgetMs = options.identifyBudgetMs ?? 1500;
+  const identifyPortBudgetMs = options.identifyPortBudgetMs ?? 800;
+  const identifyStart = Date.now();
 
   const ports = await SerialPort.list();
   const candidates = [];
@@ -276,6 +358,31 @@ export async function discoverDevices(options = {}) {
       ? { error: probe.diagnostics.error, fix: probe.diagnostics.fix }
       : null;
 
+    let identifyResult = null;
+    if (identifyEnabled && probe.status === "ready") {
+      const elapsed = Date.now() - identifyStart;
+      const remaining = identifyBudgetMs - elapsed;
+      const perPortBudget = Math.min(identifyPortBudgetMs, remaining);
+
+      if (perPortBudget >= identifyTimeoutMs) {
+        identifyResult = await identifyPort({
+          port: port.path,
+          baud: baudDefault,
+          timeoutMs: identifyTimeoutMs,
+          retries: identifyRetries,
+          backoffMs: identifyBackoffMs,
+          maxTotalMs: perPortBudget,
+        });
+      } else {
+        identifyResult = {
+          ok: false,
+          attempts: 0,
+          error: "identify_skipped_budget",
+          lastError: null,
+        };
+      }
+    }
+
     candidates.push({
       kind: "uart",
       path: port.path,
@@ -292,6 +399,7 @@ export async function discoverDevices(options = {}) {
       detectedVia,
       runtimeStatus: probe.status,
       runtimeDiagnostics,
+      identify: identifyResult,
     });
   }
 
