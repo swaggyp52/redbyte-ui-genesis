@@ -5934,3 +5934,8 @@ Commits:
 
 - Added course portal audit report at docs/audits/course-portal-audit.md.
 - Added @redbyte/rb-board-models package with Basys3 board model schema and Vivado XDC pinmap copy; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Added Spartan-3E Starter Kit board model (UG230 UCF pinmap, switches/buttons/LEDs/clock) and exported it from the board-models package.
+- Added @redbyte/rb-fpga-bridge-contract package defining hardware bridge API types, JSON schema, and golden payload tests; objectives unchanged; phase unchanged.
