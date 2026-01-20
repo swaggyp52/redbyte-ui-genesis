@@ -34,6 +34,7 @@ export async function registerAllApps() {
   const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundApp');
   const { AppStoreApp } = await import('./apps/AppStoreApp');
   const { WelcomeApp } = await import('./apps/WelcomeApp');
+  const { StartHereApp } = await import('./apps/StartHereApp');
   const { LauncherApp } = await import('./apps/LauncherApp');
   const { TextViewerApp } = await import('./apps/TextViewerApp');
   const LogicHelpApp = (await import('./apps/LogicHelpApp')).default;
@@ -57,6 +58,7 @@ export async function registerAllApps() {
   registerApp(LogicPlaygroundApp);
   registerApp(AppStoreApp);
   registerApp(WelcomeApp);
+  registerApp(StartHereApp);
   registerApp(LauncherApp);
   registerApp(TextViewerApp);
   registerApp(LogicHelpApp);
