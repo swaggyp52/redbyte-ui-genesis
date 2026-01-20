@@ -5849,7 +5849,3 @@ Commits:
 - Updated Guide surfaces: added analog/FPGA callout in manual site Guide page, synced OS guide manual with FPGA/analog/troubleshooting sections, and refreshed User Manual hero badges
 - Fixed public GitHub link placeholders (manual site About and OS About modal) to point at the repo
 - Re-ran `pnpm -r build` and `pnpm -r test` after guide/link updates (manual site build SHA updated)
-
-## Change Log  2026-01-20
-
-- Added `docs/RB_FPGA_MVP_SPEC.md` with the deterministic FPGA bridge MVP contract text supplied for implementation alignment.
