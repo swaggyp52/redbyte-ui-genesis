@@ -19,10 +19,8 @@ export default function Home() {
               RedByte OS: a local FPGA + analog lab for digital logic.
             </h1>
             <p className="text-lg text-rb-muted mb-6 leading-relaxed">
-              RedByte OS is a single-environment platform that mirrors Vivado-style workflows without
-              the overhead. Build circuits, simulate analog components, export Verilog + XDC, and
-              program Basys 3 boards. Everything runs locally in your browser - no accounts, no cloud,
-              no setup surprises.
+              RedByte is a local-first lab OS for digital logic and FPGA courses that produces deterministic,
+              replayable evidence bundles for grading.
             </p>
             <div className="bg-rb-surface border border-rb-border rounded-md p-4 mb-8">
               <div className="text-xs uppercase tracking-wide text-rb-dim mb-2">Hardware Kit</div>
@@ -34,24 +32,54 @@ export default function Home() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <a href="#download" className="btn btn-primary">
-                Download RedByte
-              </a>
-              <Link to="/examples" className="btn btn-secondary">
-                Try Interactive Examples
+              <Link to="/examples" className="btn btn-primary">
+                Try Demo
               </Link>
-              <button
-                type="button"
-                onClick={() => setShowTour(true)}
-                className="btn btn-secondary"
-              >
-                Take a Tour
-              </button>
+              <Link to="/install" className="btn btn-secondary">
+                Install OS
+              </Link>
             </div>
 
             <p className="text-sm text-rb-dim mt-6">
               Open-source, local-first, and deterministic. Works on Windows, macOS, and Linux.
             </p>
+            <button
+              type="button"
+              onClick={() => setShowTour(true)}
+              className="mt-3 text-sm text-rb-muted hover:text-rb-text underline"
+            >
+              Take a tour of the OS
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 60-Second Overview */}
+      <section className="py-16 border-b border-rb-border">
+        <div className="content-container px-6">
+          <div className="max-w-3xl">
+            <h2 className="text-h1 text-rb-text mb-4">In 60 seconds</h2>
+            <p className="text-rb-muted mb-6">
+              What RedByte delivers for modern digital logic labs:
+            </p>
+            <ul className="grid gap-3 md:grid-cols-2 text-rb-muted">
+              <li className="flex gap-2">
+                <span className="text-rb-accent">-</span>
+                <span>Deterministic tick-based simulation and replay.</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-rb-accent">-</span>
+                <span>SIM mode for hardware-free labs plus Basys 3 programming via the FPGA Bridge.</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-rb-accent">-</span>
+                <span>RB Zip v2 bundles with manifest, trace, integrity capsule, and signature status.</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-rb-accent">-</span>
+                <span>Submission Inspector checks and grading report export.</span>
+              </li>
+            </ul>
           </div>
         </div>
       </section>
@@ -120,36 +148,40 @@ export default function Home() {
             <LogicGatePlayground />
           </div>
           <div className="mt-4 text-sm text-rb-muted">
-            Want the full OS? <Link to="/getting-started" className="text-rb-info underline">Install locally</Link>.
+            Want the full OS? <Link to="/install" className="text-rb-info underline">Install locally</Link>.
           </div>
         </div>
       </section>
 
-      {/* How It Works */}
+      {/* How Labs Work */}
       <section className="py-20 border-b border-rb-border">
         <div className="content-container px-6">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-h1 text-rb-text mb-4 text-center">How It Works</h2>
+            <h2 className="text-h1 text-rb-text mb-4 text-center">How Labs Work</h2>
             <p className="text-rb-muted text-center mb-12 max-w-xl mx-auto">
-              RedByte uses a tick-based simulation model. Every clock cycle is deterministic
-              and reproducible.
+              Build, run, export evidence, then grade with deterministic replay.
             </p>
 
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               <WorkflowStep
                 number={1}
-                title="Design"
-                description="Add logic gates (AND, OR, XOR, etc.) and wire them together. Use the component palette or keyboard shortcuts."
+                title="Build"
+                description="Create the circuit or lab assignment inside the OS using the palette, editor, and shortcuts."
               />
               <WorkflowStep
                 number={2}
-                title="Simulate"
-                description="Run the simulation tick-by-tick. Step forward, step backward, or let it run continuously. Watch signals propagate."
+                title="Run (SIM or Hardware)"
+                description="Use SIM mode for fast validation or connect Basys 3 hardware for live UART telemetry."
               />
               <WorkflowStep
                 number={3}
-                title="Debug"
-                description="Open the oscilloscope to probe any signal. See waveforms over time. Find exactly where behavior diverges from expectation."
+                title="Export .rb-lab.zip"
+                description="Bundle manifest, trace, and integrity capsule into a deterministic submission zip."
+              />
+              <WorkflowStep
+                number={4}
+                title="Grade in Inspector"
+                description="Replay deterministically, run checks, and export a grading report."
               />
             </div>
           </div>
@@ -189,25 +221,25 @@ export default function Home() {
       <section id="download" className="py-20">
         <div className="content-container px-6">
           <div className="bg-rb-surface border border-rb-border rounded-lg p-10 md:p-14 text-center">
-            <h2 className="text-h1 text-rb-text mb-4">Ready to Build?</h2>
+            <h2 className="text-h1 text-rb-text mb-4">Install RedByte OS</h2>
             <p className="text-rb-muted mb-8 max-w-lg mx-auto">
-              Clone the repo, install dependencies, and launch the desktop environment locally.
+              Use the pinned bootstrap flow for deterministic setup on lab machines.
             </p>
             <div className="max-w-xl mx-auto text-left mb-8">
               <CodeBlock
-                code={`git clone https://github.com/swaggyp52/redbyte-ui-genesis.git\ncd redbyte-ui-genesis\npnpm install\npnpm --filter @redbyte/playground dev`}
+                code={`powershell -NoProfile -ExecutionPolicy Bypass -Command \"git clone https://github.com/swaggyp52/redbyte-ui-genesis.git; cd redbyte-ui-genesis; .\\\\scripts\\\\bootstrap.ps1\"`}
               />
               <p className="text-xs text-rb-dim mt-3">
-                Optional FPGA flow: install AMD Vivado WebPACK for synthesis and programming.
+                SIM mode works without Vivado. Install Vivado 2024.1 only for hardware programming.
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-4">
-              <a href="https://github.com/swaggyp52/redbyte-ui-genesis" className="btn btn-primary">
+              <Link to="/install" className="btn btn-primary">
+                Install OS
+              </Link>
+              <a href="https://github.com/swaggyp52/redbyte-ui-genesis" className="btn btn-secondary">
                 Open GitHub Repo
               </a>
-              <Link to="/getting-started" className="btn btn-secondary">
-                Read Getting Started Guide
-              </Link>
             </div>
           </div>
         </div>
