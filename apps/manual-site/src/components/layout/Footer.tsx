@@ -26,6 +26,11 @@ export default function Footer() {
             <h4 className="text-xs font-semibold uppercase tracking-wider text-rb-dim mb-4">Documentation</h4>
             <ul className="space-y-2.5 text-sm">
               <li>
+                <Link to="/install" className="text-rb-muted hover:text-rb-text transition-colors">
+                  Install
+                </Link>
+              </li>
+              <li>
                 <Link to="/getting-started" className="text-rb-muted hover:text-rb-text transition-colors">
                   Getting Started
                 </Link>
@@ -68,12 +73,9 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <a
-                  href="#download"
-                  className="text-rb-muted hover:text-rb-text transition-colors"
-                >
-                  Download
-                </a>
+                <Link to="/install" className="text-rb-muted hover:text-rb-text transition-colors">
+                  Install OS
+                </Link>
               </li>
             </ul>
           </div>

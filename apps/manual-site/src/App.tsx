@@ -3,6 +3,7 @@ import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import Home from './pages/Home';
 import GettingStarted from './pages/GettingStarted';
+import Install from './pages/Install';
 import Examples from './pages/Examples';
 import Guide from './pages/Manual';
 import Walkthrough from './pages/Walkthrough';
@@ -18,6 +19,7 @@ function App() {
         <main className="flex-1">
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/install" element={<Install />} />
             <Route path="/getting-started" element={<GettingStarted />} />
             <Route path="/demo" element={<Demo />} />
             <Route path="/examples" element={<Examples />} />
