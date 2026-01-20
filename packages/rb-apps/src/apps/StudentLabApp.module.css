@@ -1169,6 +1169,11 @@
   color: #22d3ee;
 }
 
+.statusHintNote {
+  margin-top: 0.5rem;
+  color: #cbd5f5;
+}
+
 .hardwareActions {
   margin-bottom: 2rem;
 }

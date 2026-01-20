@@ -1007,9 +1007,14 @@ const StudentLabAppContent = () => {
                 </div>
                 {!bridgeStatus.online && (
                   <div className={styles.statusHint}>
-                    Start the Desktop Bridge to enable automatic board detection.
+                    Start the FPGA Bridge to enable automatic board detection.
                     <br />
-                    <code>node tools/desktop-bridge.js</code>
+                    <code>pnpm --filter @redbyte/fpga-bridge dev</code>
+                    <br />
+                    <code>RB_FPGA_SIM=1 pnpm --filter @redbyte/fpga-bridge dev</code>
+                    <div className={styles.statusHintNote}>
+                      Then return here and click Connect (ports refresh automatically).
+                    </div>
                   </div>
                 )}
               </div>
