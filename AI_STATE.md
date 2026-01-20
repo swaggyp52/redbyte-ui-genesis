@@ -5917,3 +5917,7 @@ Commits:
 ## Change Log  2026-01-20
 
 - Added file system and terminal contracts, deterministic IDs for logic files/circuit nodes/probes, terminal command log, and app/website invariant docs; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Enforced file system metadata on logic file writes, added terminal command registry with declared effects, registered app invariants for core apps, introduced determinism audit mode with audit export + state transition logging, and expanded manual-site sanity checks to validate OS contract alignment; objectives unchanged; phase unchanged.
