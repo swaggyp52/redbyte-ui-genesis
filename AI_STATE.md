@@ -5913,3 +5913,7 @@ Commits:
 ## Change Log  2026-01-20
 
 - Added manual-site MVP facts/constants and a route/anchor sanity check script; verified manual-site dev server starts and sanity script passes; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Added file system and terminal contracts, deterministic IDs for logic files/circuit nodes/probes, terminal command log, and app/website invariant docs; objectives unchanged; phase unchanged.
