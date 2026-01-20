@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const repoRoot = path.join(__dirname, '..', '..', '..');
-const srcRoot = path.join(__dirname, '..', 'src');
+const repoRoot = path.join(__dirname, '..', '..');
+const srcRoot = path.join(__dirname, 'src');
 
 const files = {
   app: path.join(srcRoot, 'App.tsx'),
