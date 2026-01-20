@@ -126,9 +126,7 @@ function waitForResponse(state, timeoutMs) {
 
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
-      if (state.pendingResolve === resolve) {
-        state.pendingResolve = null;
-      }
+      state.pendingResolve = null;
       resolve({ ok: false, error: "timeout" });
     }, timeoutMs);
 
@@ -219,9 +217,11 @@ export async function identifyPort(options) {
 
       const reqFrame = buildIdentifyRequestFrame();
       const attemptStart = Date.now();
+      state.frames = [];
+      const responsePromise = waitForResponse(state, timeoutMs);
       portInstance.write(reqFrame);
 
-      const response = await waitForResponse(state, timeoutMs);
+      const response = await responsePromise;
       if (response.ok) {
         const parsed = parseIdentifyPayload(response.frame.payload);
         if (!parsed.ok) {
