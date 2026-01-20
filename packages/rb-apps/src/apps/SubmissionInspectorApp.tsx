@@ -272,7 +272,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
         </div>
 
         <div
-          className={styles.dropZone}
+          className={`${styles.dropZone} rbEmptyState`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -281,14 +281,14 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
           <div className={styles.dropZoneTitle}>Drop .rb-lab.zip file here</div>
           <div className={styles.dropZoneOr}>or</div>
           <button
-            className={styles.browseButton}
+            className={`${styles.browseButton} rbButtonPrimary`}
             onClick={() => fileInputRef.current?.click()}
           >
             Browse for File
           </button>
           <div className={styles.dropZoneOr}>or</div>
           <button
-            className={styles.browseButton}
+            className={`${styles.browseButton} rbButtonPrimary`}
             onClick={handleLoadSample}
             type="button"
           >

@@ -109,21 +109,21 @@
   width: 100%;
   max-width: 400px;
   padding: 0.75rem 1rem;
-  background: #111;
-  border: 1px solid #333;
-  border-radius: 6px;
-  color: #f8fafc;
+  background: var(--rb-panel-2);
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius-sm);
+  color: var(--rb-text);
   font-size: 0.875rem;
   transition: border-color 0.2s;
 }
 
 .input:focus {
   outline: none;
-  border-color: #22d3ee;
+  border-color: var(--rb-accent);
 }
 
 .input::placeholder {
-  color: #64748b;
+  color: var(--rb-faint);
 }
 
 /* Lab Selection Grid */
@@ -656,12 +656,12 @@
 }
 
 .warningBanner {
-  background: rgba(251, 191, 36, 0.1);
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  border-radius: 6px;
+  background: var(--rb-warn-bg);
+  border: 1px solid var(--rb-warn-border);
+  border-radius: var(--rb-radius-sm);
   padding: 1rem;
   margin-bottom: 1.5rem;
-  color: #fbbf24;
+  color: var(--rb-text);
   font-size: 0.875rem;
 }
 
@@ -1150,11 +1150,11 @@
 .statusHint {
   margin-top: 0.75rem;
   padding: 0.75rem;
-  background: rgba(59, 130, 246, 0.05);
-  border: 1px solid rgba(59, 130, 246, 0.15);
-  border-radius: 4px;
+  background: var(--rb-panel-2);
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius-sm);
   font-size: 0.8125rem;
-  color: #94a3b8;
+  color: var(--rb-muted);
   line-height: 1.5;
 }
 
@@ -1162,16 +1162,16 @@
   display: block;
   margin-top: 0.5rem;
   padding: 0.375rem 0.5rem;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 3px;
-  font-family: 'Courier New', monospace;
+  background: var(--rb-panel);
+  border-radius: var(--rb-radius-sm);
+  font-family: var(--rb-font-mono);
   font-size: 0.75rem;
-  color: #22d3ee;
+  color: var(--rb-accent);
 }
 
 .statusHintNote {
   margin-top: 0.5rem;
-  color: #cbd5f5;
+  color: var(--rb-text);
 }
 
 .hardwareActions {

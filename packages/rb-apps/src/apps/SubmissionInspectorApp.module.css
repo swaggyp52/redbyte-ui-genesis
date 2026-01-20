@@ -4,9 +4,9 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #0a0a0a;
-  color: #f8fafc;
-  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--rb-bg);
+  color: var(--rb-text);
+  font-family: var(--rb-font-sans);
 }
 
 .header {
@@ -14,27 +14,27 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem 2rem;
-  border-bottom: 1px solid #222;
-  background: #111;
+  border-bottom: 1px solid var(--rb-border);
+  background: var(--rb-panel);
 }
 
 .title {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 600;
-  color: #22d3ee;
+  color: var(--rb-accent);
 }
 
 .subtitle {
   margin: 0;
   font-size: 0.875rem;
-  color: #94a3b8;
+  color: var(--rb-muted);
 }
 
 .closeButton {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #94a3b8;
+  background: var(--rb-panel-2);
+  border: 1px solid var(--rb-border);
+  color: var(--rb-muted);
   padding: 0.5rem 1rem;
   border-radius: 6px;
   font-size: 0.875rem;
@@ -43,8 +43,8 @@
 }
 
 .closeButton:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f8fafc;
+  background: var(--rb-panel);
+  color: var(--rb-text);
 }
 
 /* Drop Zone */
@@ -55,18 +55,18 @@
   align-items: center;
   justify-content: center;
   margin: 2rem;
-  border: 2px dashed rgba(34, 211, 238, 0.3);
-  border-radius: 12px;
+  border: 2px dashed var(--rb-border-strong);
+  border-radius: var(--rb-radius-lg);
   padding: 3rem;
   text-align: center;
-  background: rgba(34, 211, 238, 0.03);
+  background: var(--rb-panel);
   transition: all 0.15s ease;
   cursor: pointer;
 }
 
 .dropZone:hover {
-  border-color: rgba(34, 211, 238, 0.5);
-  background: rgba(34, 211, 238, 0.08);
+  border-color: var(--rb-accent-strong);
+  background: var(--rb-panel-2);
 }
 
 .dropZoneIcon {
@@ -77,20 +77,20 @@
 .dropZoneTitle {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #f8fafc;
+  color: var(--rb-text);
   margin-bottom: 0.75rem;
 }
 
 .dropZoneOr {
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--rb-faint);
   margin: 1.5rem 0;
 }
 
 .browseButton {
-  background: linear-gradient(135deg, #0ea5e9, #22d3ee);
-  color: #000;
-  border: none;
+  background: var(--rb-accent);
+  color: var(--rb-bg);
+  border: 1px solid var(--rb-accent);
   padding: 0.875rem 2rem;
   border-radius: 6px;
   font-size: 0.9375rem;
@@ -107,10 +107,10 @@
 .error {
   margin: 1.5rem 2rem;
   padding: 1rem;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: var(--rb-danger-bg);
+  border: 1px solid var(--rb-danger-border);
   border-radius: 6px;
-  color: #ef4444;
+  color: var(--rb-text);
   font-size: 0.875rem;
 }
 
@@ -119,7 +119,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  color: var(--rb-muted);
   font-size: 0.9375rem;
 }
 

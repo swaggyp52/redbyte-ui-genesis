@@ -556,7 +556,7 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
               </label>
               <input
                 type="text"
-                className={styles.input}
+                className={`${styles.input} rbInput`}
                 placeholder="Enter your name"
                 value={studentName}
                 onChange={(e) => setStudentName(e.target.value)}
@@ -568,7 +568,7 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
               </label>
               <input
                 type="text"
-                className={styles.input}
+                className={`${styles.input} rbInput`}
                 placeholder="e.g., student-001"
                 value={studentId}
                 onChange={(e) => setStudentId(e.target.value)}
@@ -600,7 +600,7 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
             {specLoading && <div className={styles.loadingText}>Loading lab...</div>}
             {specError && <div className={styles.errorText}>Error: {specError}</div>}
             <button
-              className={`${styles.startButton} ${!canStart ? styles.startButtonDisabled : ''}`}
+              className={`${styles.startButton} ${!canStart ? styles.startButtonDisabled : ''} rbButtonPrimary`}
               onClick={handleStartAttempt}
               disabled={!canStart || specLoading}
             >
@@ -751,10 +751,10 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
 
           {/* Actions */}
           <div className={styles.receiptActions}>
-            <button type="button" className={styles.receiptActionButton} onClick={handleDownloadAgain}>
+            <button type="button" className={`${styles.receiptActionButton} rbButtonSecondary`} onClick={handleDownloadAgain}>
               Download Again
             </button>
-            <button type="button" className={styles.receiptActionButton} onClick={handleCopyReceipt}>
+            <button type="button" className={`${styles.receiptActionButton} rbButtonSecondary`} onClick={handleCopyReceipt}>
               Copy Receipt
             </button>
           </div>
@@ -765,7 +765,7 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
 
           <button
             type="button"
-            className={styles.newAttemptButton}
+            className={`${styles.newAttemptButton} rbButtonSecondary`}
             onClick={() => {
               setPhase('select');
               setAttempt(null);
@@ -1003,10 +1003,10 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
               Connect your FPGA board and capture hardware evidence for your submission.
             </p>
             {simGuide && (
-              <div className={styles.warningBanner}>
+              <div className={`${styles.warningBanner} rbBannerWarn`}>
                 <strong>SIM mode:</strong> Start the bridge with simulated telemetry, then click Connect.
                 <br />
-                <code>RB_FPGA_SIM=1 pnpm --filter @redbyte/fpga-bridge dev</code>
+                <code className="rbCodeBlock">RB_FPGA_SIM=1 pnpm --filter @redbyte/fpga-bridge dev</code>
               </div>
             )}
 
@@ -1024,9 +1024,9 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
                   <div className={styles.statusHint}>
                     Start the FPGA Bridge to enable automatic board detection.
                     <br />
-                    <code>pnpm --filter @redbyte/fpga-bridge dev</code>
+                    <code className="rbCodeBlock">pnpm --filter @redbyte/fpga-bridge dev</code>
                     <br />
-                    <code>RB_FPGA_SIM=1 pnpm --filter @redbyte/fpga-bridge dev</code>
+                    <code className="rbCodeBlock">RB_FPGA_SIM=1 pnpm --filter @redbyte/fpga-bridge dev</code>
                     <div className={styles.statusHintNote}>
                       Then return here and click Connect (ports refresh automatically).
                     </div>
@@ -1053,7 +1053,7 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
             {/* Capture Snapshot Button */}
             <div className={styles.hardwareActions}>
               <button
-                className={styles.captureButton}
+                className={`${styles.captureButton} rbButtonPrimary`}
                 onClick={handleCaptureSnapshot}
               >
                 📸 Capture Snapshot
@@ -1069,7 +1069,7 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
             <div className={styles.snapshotsList}>
               <h3>Hardware Evidence ({snapshots.length})</h3>
               {snapshots.length === 0 && (
-                <div className={styles.emptySnapshots}>
+                <div className={`${styles.emptySnapshots} rbEmptyState`}>
                   No snapshots captured yet. Capture at least one snapshot to include hardware evidence in your submission.
                 </div>
               )}
@@ -1086,11 +1086,11 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
                   <div className={styles.snapshotData}>
                     <div className={styles.snapshotDataRow}>
                       <span className={styles.snapshotDataLabel}>Inputs:</span>
-                      <code className={styles.snapshotDataValue}>{JSON.stringify(snapshot.inputs)}</code>
+                      <code className={`${styles.snapshotDataValue} rbCodeBlock`}>{JSON.stringify(snapshot.inputs)}</code>
                     </div>
                     <div className={styles.snapshotDataRow}>
                       <span className={styles.snapshotDataLabel}>Outputs:</span>
-                      <code className={styles.snapshotDataValue}>{JSON.stringify(snapshot.outputs)}</code>
+                      <code className={`${styles.snapshotDataValue} rbCodeBlock`}>{JSON.stringify(snapshot.outputs)}</code>
                     </div>
                     {snapshot.notes && (
                       <div className={styles.snapshotDataRow}>
@@ -1181,7 +1181,7 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
             )}
 
             <button
-              className={`${styles.checkButton} ${!selectedPreset ? styles.checkButtonDisabled : ''}`}
+              className={`${styles.checkButton} ${!selectedPreset ? styles.checkButtonDisabled : ''} rbButtonPrimary`}
               onClick={handleSelfCheck}
               disabled={!selectedPreset}
             >
@@ -1262,7 +1262,7 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
 
             {/* Warnings */}
             {selfCheckSummary && selfCheckSummary.passCount < selfCheckSummary.totalCount && (
-              <div className={styles.warningBanner}>
+              <div className={`${styles.warningBanner} rbBannerWarn`}>
                 Warning: Not all self-check tests passed ({selfCheckSummary.passCount}/{selfCheckSummary.totalCount}).
                 You can still export, but your submission may not receive full credit.
               </div>
@@ -1290,7 +1290,7 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
             {/* Export button */}
             <button
               type="button"
-              className={`${styles.exportButton} ${!canExport() ? styles.exportButtonDisabled : ''}`}
+              className={`${styles.exportButton} ${!canExport() ? styles.exportButtonDisabled : ''} rbButtonPrimary`}
               onClick={handleExportClick}
               disabled={!canExport()}
             >
@@ -1309,10 +1309,10 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
                     This will download a .rb-lab.zip file that you can submit to your instructor.
                   </p>
                   <div className={styles.modalButtons}>
-                    <button type="button" className={styles.modalCancel} onClick={handleExportCancel}>
+                    <button type="button" className={`${styles.modalCancel} rbButtonSecondary`} onClick={handleExportCancel}>
                       Cancel
                     </button>
-                    <button type="button" className={styles.modalConfirm} onClick={handleExportConfirm}>
+                    <button type="button" className={`${styles.modalConfirm} rbButtonPrimary`} onClick={handleExportConfirm}>
                       Confirm Export
                     </button>
                   </div>

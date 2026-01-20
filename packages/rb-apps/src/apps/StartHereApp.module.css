@@ -1,8 +1,8 @@
 .container {
   height: 100%;
   padding: 1.75rem;
-  color: #e2e8f0;
-  background: #0b1120;
+  color: var(--rb-text);
+  background: var(--rb-bg);
   overflow-y: auto;
 }
 
@@ -14,14 +14,14 @@
   margin: 0 0 0.5rem 0;
   font-size: 1.5rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--rb-text);
 }
 
 .subtitle {
   margin: 0;
   font-size: 0.9375rem;
   line-height: 1.6;
-  color: #94a3b8;
+  color: var(--rb-muted);
 }
 
 .grid {
@@ -32,21 +32,21 @@
 .card {
   text-align: left;
   padding: 1.25rem;
-  border-radius: 12px;
-  border: 1px solid #1f2937;
-  background: #0f172a;
+  border-radius: var(--rb-radius-md);
+  border: 1px solid var(--rb-border);
+  background: var(--rb-panel);
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
 }
 
 .card:hover {
-  border-color: #38bdf8;
-  background: #0b1221;
+  border-color: var(--rb-accent-strong);
+  background: var(--rb-panel-2);
   transform: translateY(-1px);
 }
 
 .card:focus-visible {
-  outline: 2px solid #38bdf8;
+  outline: 2px solid var(--rb-accent-strong);
   outline-offset: 2px;
 }
 
@@ -54,18 +54,18 @@
   font-size: 1.05rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
-  color: #e2e8f0;
+  color: var(--rb-text);
 }
 
 .cardBody {
   margin: 0 0 0.75rem 0;
   font-size: 0.9rem;
   line-height: 1.6;
-  color: #94a3b8;
+  color: var(--rb-muted);
 }
 
 .cardAction {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #38bdf8;
+  color: var(--rb-accent);
 }
