@@ -5869,6 +5869,7 @@ Commits:
 - Dark-themed Welcome app with CSS module styles to match OS chrome.
 - Added Start Here onboarding app and pinned it in the Dock for first-boot discoverability.
 - Added deterministic sample v2 bundle and wired Submission Inspector to load it from the empty state.
+- Wired Start Here actions to open the Logic Playground demo example and launch the FPGA lab in SIM-guided hardware mode.
 ## Change Log  2026-01-19
 
 - Added `docs/VERSIONS.md` plus deterministic bootstrap and doctor scripts (`scripts/bootstrap.ps1`, `scripts/doctor.ps1`) for the FPGA MVP setup workflow; objectives unchanged; phase unchanged.
