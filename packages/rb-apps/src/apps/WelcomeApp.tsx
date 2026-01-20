@@ -46,7 +46,7 @@ export const WelcomeAppContent: React.FC<WelcomeAppProps> = ({ onClose, onNaviga
         </p>
 
         <p className={styles.tagline}>
-          <strong>Build -> Simulate -> Understand</strong>
+          <strong>Build -&gt; Simulate -&gt; Understand</strong>
         </p>
 
         <p className={styles.subtle}>
