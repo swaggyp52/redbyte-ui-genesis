@@ -5849,3 +5849,41 @@ Commits:
 - Updated Guide surfaces: added analog/FPGA callout in manual site Guide page, synced OS guide manual with FPGA/analog/troubleshooting sections, and refreshed User Manual hero badges
 - Fixed public GitHub link placeholders (manual site About and OS About modal) to point at the repo
 - Re-ran `pnpm -r build` and `pnpm -r test` after guide/link updates (manual site build SHA updated)
+
+## Change Log  2026-01-20
+
+- Added `docs/RB_FPGA_MVP_SPEC.md` with the deterministic FPGA bridge MVP contract text supplied for implementation alignment.
+
+## Change Log  2026-01-19
+
+- Added `docs/VERSIONS.md` plus deterministic bootstrap and doctor scripts (`scripts/bootstrap.ps1`, `scripts/doctor.ps1`) for the FPGA MVP setup workflow; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-19
+
+- Pinned root dependency ranges (removed caret/tilde) and added rb-fpga-bridge binary UART parser + CRC with tests, auto-detect wiring, and FPGA toolchain HDL scaffolds (`rb_crc16.v`, `rb_uart_telemetry.v`); objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-19
+
+- Added `@redbyte/rb-fpga-signing` package (Ed25519 sign/verify, keygen, rb-sign CLI, trusted key placeholder, tests) and wired RB Zip v2 export + signature verification plumbing with deterministic capsule hashing, plus new `docs/STUDENT_EXPORT_SCHEMA.md`; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-19
+
+- Added deterministic replay core + hardware trace types in `rb-fpga-proof-core`, bin-stubbed signing CLIs to avoid install warnings, deterministic trace recorder/binning in `rb-fpga-bridge`, and minimal v2 trace replay plumbing in Submission Inspector with install verification script; objectives unchanged; phase unchanged.
+- Added Vivado batch programming utilities with deterministic `.redbyte/tmp` logs, new `/program` bridge endpoint + Lab apps wiring, updated doctor Vivado discovery, and Vivado detection/programmer tests for dry-run validation; objectives unchanged; phase unchanged.
+- Added FPGA hardening updates: /health telemetry, stable /ports + /connect wiring, smoke test script, UI COM-port selection with packet age/rate warnings, v2 bundle completeness reporting, and baseline lab template with export integration; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-19
+
+- Added FPGA bridge connection state machine with `/disconnect` and hardware-free SIM loopback mode (`RB_FPGA_SIM=1`), plus updated auto-connect guidance; objectives unchanged; phase unchanged.
+- Expanded smoke test diagnostics and added SIM mode smoke test coverage (`test:sim`) for the bridge; objectives unchanged; phase unchanged.
+- Strengthened Submission Inspector bundle health stats (event count, hw_tick range, mono_seq monotonic check) and added `docs/STUDENT_WORKFLOW.md`; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-19
+
+- Added lab-template checks (min events, min hw_tick span, digital toggle) and proof-core evaluator with tests, plus inspector UI for check results and grading report export; objectives unchanged; phase unchanged.
+- Updated baseline lab template to include checks and expanded student workflow doc with instructor review/export steps; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-19
+
+- Added instructor quickstart doc, MVP test runner (`test:mvp`), and bootstrap ref pinning with `RB_GIT_REF` override; objectives unchanged; phase unchanged.
+- Made smoke/doctor scripts SIM-aware (skip Vivado checks) and fixed PowerShell compatibility in smoke and findVivado eval; objectives unchanged; phase unchanged.
