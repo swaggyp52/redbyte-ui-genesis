@@ -74,7 +74,7 @@ export function scorePortCandidate(port, usbIds) {
 
   if (confidence > 1) confidence = 1;
 
-  const isLikelyDigilent = match || manufacturer.includes("digilent") || friendly.includes("digilent") || friendly.includes("ftdi");
+  const isLikelyDigilent = !!match || manufacturer.includes("digilent") || friendly.includes("digilent") || friendly.includes("ftdi");
 
   return { confidence, reasons, isLikelyDigilent };
 }
