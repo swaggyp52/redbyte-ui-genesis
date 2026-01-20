@@ -5925,3 +5925,7 @@ Commits:
 ## Change Log  2026-01-20
 
 - Added proof suite command (`test:proof`), audit determinism + contract enforcement tests for rb-apps, and a CI-friendly smoke command (`quality:smoke`); objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Fixed rb-apps audit test discovery, corrected manual-site sanity script location, and resolved rb-fpga-signing sha512Sync typing error; objectives unchanged; phase unchanged.
