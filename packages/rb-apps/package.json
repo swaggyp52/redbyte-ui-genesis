@@ -14,7 +14,8 @@
   },
   "scripts": {
     "build": "vite build -c ../../tools/config/vite.lib.config.ts",
-    "test": "echo \"Tests run at root. This package has no direct tests.\""
+    "test": "echo \"Tests run at root. This package has no direct tests.\"",
+    "test:audit": "pnpm exec vitest run --config ../../vitest.config.ts src/__tests__/audit-determinism.test.ts src/__tests__/contract-enforcement.test.tsx"
   },
   "dependencies": {
     "@redbyte/rb-fpga-signing": "workspace:*",
