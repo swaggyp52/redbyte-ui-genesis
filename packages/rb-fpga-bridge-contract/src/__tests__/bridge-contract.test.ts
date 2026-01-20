@@ -32,6 +32,13 @@ function assertRecordOfString(value: unknown, label: string): void {
   }
 }
 
+function assertStringArray(value: unknown, label: string): void {
+  expect(Array.isArray(value), label).toBe(true);
+  for (const [index, entry] of (value as unknown[]).entries()) {
+    assertString(entry, `${label}[${index}]`);
+  }
+}
+
 function assertSchemaVersion(value: unknown): void {
   expect(value).toBe('bridge_v1');
 }
@@ -74,10 +81,18 @@ describe('bridge api golden payloads', () => {
 
     for (const device of payload.devices) {
       assertString(device.id, 'device.id');
-      assertString(device.name, 'device.name');
+      assertString(device.display_name, 'device.display_name');
+      assertString(device.vendor, 'device.vendor');
       assertString(device.model_id, 'device.model_id');
       assertString(device.board, 'device.board');
-      assertString(device.transport, 'device.transport');
+      if (device.transport !== undefined) {
+        assertString(device.transport, 'device.transport');
+      }
+      expect(device.serial_number === null || typeof device.serial_number === 'string').toBe(true);
+      expect(typeof device.programming, 'device.programming').toBe('object');
+      expect(typeof device.runtime, 'device.runtime').toBe('object');
+      assertNumber(device.confidence, 'device.confidence');
+      assertStringArray(device.reasons, 'device.reasons');
     }
   });
 

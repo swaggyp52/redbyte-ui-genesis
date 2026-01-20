@@ -2,16 +2,38 @@ export type BridgeSchemaVersion = 'bridge_v1';
 
 export type BridgeTransport = 'uart' | 'jtag' | 'sim';
 
+export type ProgrammingStatus = 'ready' | 'missing_driver' | 'busy' | 'error';
+export type RuntimeStatus = 'ready' | 'permission_denied' | 'busy' | 'not_present' | 'error';
+
+export type ProgrammingInfo = {
+  kind: 'jtag' | 'sim';
+  driver: string;
+  status: ProgrammingStatus;
+};
+
+export type RuntimeInfo = {
+  kind: 'uart' | 'sim';
+  port?: string | null;
+  baud_default: number;
+  status: RuntimeStatus;
+};
+
 export type BridgeDevice = {
   id: string;
-  name: string;
+  display_name: string;
+  vendor: string;
+  serial_number: string | null;
   model_id: string;
   board: string;
-  transport: BridgeTransport;
+  transport?: BridgeTransport;
   port?: string | null;
   serial?: string | null;
   vid_pid?: string | null;
   detected_via?: string | null;
+  programming: ProgrammingInfo;
+  runtime: RuntimeInfo;
+  confidence: number;
+  reasons: string[];
 };
 
 export type DevicesResponse = {

@@ -12,20 +12,70 @@
       "type": "string",
       "enum": ["uart", "jtag", "sim"]
     },
+    "programming_status": {
+      "type": "string",
+      "enum": ["ready", "missing_driver", "busy", "error"]
+    },
+    "runtime_status": {
+      "type": "string",
+      "enum": ["ready", "permission_denied", "busy", "not_present", "error"]
+    },
+    "programming_info": {
+      "type": "object",
+      "required": ["kind", "driver", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string", "enum": ["jtag", "sim"] },
+        "driver": { "type": "string" },
+        "status": { "$ref": "#/definitions/programming_status" }
+      }
+    },
+    "runtime_info": {
+      "type": "object",
+      "required": ["kind", "baud_default", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string", "enum": ["uart", "sim"] },
+        "port": { "type": ["string", "null"] },
+        "baud_default": { "type": "number" },
+        "status": { "$ref": "#/definitions/runtime_status" }
+      }
+    },
     "bridge_device": {
       "type": "object",
-      "required": ["id", "name", "model_id", "board", "transport"],
+      "required": [
+        "id",
+        "display_name",
+        "vendor",
+        "serial_number",
+        "model_id",
+        "board",
+        "programming",
+        "runtime",
+        "confidence",
+        "reasons"
+      ],
       "additionalProperties": false,
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
+        "display_name": { "type": "string" },
+        "vendor": { "type": "string" },
+        "serial_number": { "type": ["string", "null"] },
         "model_id": { "type": "string" },
         "board": { "type": "string" },
         "transport": { "$ref": "#/definitions/bridge_transport" },
         "port": { "type": ["string", "null"] },
         "serial": { "type": ["string", "null"] },
         "vid_pid": { "type": ["string", "null"] },
-        "detected_via": { "type": ["string", "null"] }
+        "detected_via": { "type": ["string", "null"] },
+        "programming": { "$ref": "#/definitions/programming_info" },
+        "runtime": { "$ref": "#/definitions/runtime_info" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
       }
     },
     "devices_response": {

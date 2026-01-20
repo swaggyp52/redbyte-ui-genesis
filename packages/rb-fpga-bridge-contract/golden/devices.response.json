@@ -3,25 +3,53 @@
   "devices": [
     {
       "id": "ftdi-0403:6010-1234",
-      "name": "Basys3 FPGA",
+      "display_name": "Basys 3",
+      "vendor": "Digilent",
+      "serial_number": "2100001234",
       "model_id": "basys3",
       "board": "Basys3",
       "transport": "uart",
       "port": "COM5",
-      "serial": "1234",
       "vid_pid": "0403:6010",
-      "detected_via": "vid_pid"
+      "detected_via": "vid_pid",
+      "programming": {
+        "kind": "jtag",
+        "driver": "vivado-hwserver",
+        "status": "ready"
+      },
+      "runtime": {
+        "kind": "uart",
+        "port": "COM5",
+        "baud_default": 115200,
+        "status": "ready"
+      },
+      "confidence": 0.9,
+      "reasons": ["vid_pid:0403:6010", "friendly_name:Basys3"]
     },
     {
       "id": "sim-default",
-      "name": "Simulated Basys3",
+      "display_name": "Basys 3 (SIM)",
+      "vendor": "RedByte",
+      "serial_number": null,
       "model_id": "basys3",
       "board": "Basys3",
       "transport": "sim",
       "port": null,
-      "serial": null,
       "vid_pid": null,
-      "detected_via": "env"
+      "detected_via": "env",
+      "programming": {
+        "kind": "sim",
+        "driver": "sim",
+        "status": "ready"
+      },
+      "runtime": {
+        "kind": "sim",
+        "port": null,
+        "baud_default": 115200,
+        "status": "ready"
+      },
+      "confidence": 1,
+      "reasons": ["env:RB_FPGA_SIM"]
     }
   ]
 }

@@ -1,6 +1,10 @@
 export type {
   BridgeSchemaVersion,
   BridgeTransport,
+  ProgrammingStatus,
+  RuntimeStatus,
+  ProgrammingInfo,
+  RuntimeInfo,
   BridgeDevice,
   DevicesResponse,
   ProgramRequest,
