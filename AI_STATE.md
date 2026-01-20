@@ -5909,3 +5909,7 @@ Commits:
 ## Change Log  2026-01-20
 
 - Updated manual site (redbyteapps.dev): fixed corrupted glyphs and ASCII normalization, added Install and Instructors pages, replaced screenshot gallery with proof-of-readiness block, added copy buttons for install/SIM commands, aligned demo and guide content to current FPGA MVP, and tightened the Demo page with an interactive path; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Added manual-site MVP facts/constants and a route/anchor sanity check script; verified manual-site dev server starts and sanity script passes; objectives unchanged; phase unchanged.
