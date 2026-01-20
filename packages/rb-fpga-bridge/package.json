@@ -20,6 +20,7 @@
     "test:identify": "node tests/identify.test.js",
     "test:jtag": "node tests/jtag.test.js",
     "test:program": "node tests/jtag-program.test.js",
+    "test:stream": "node tests/run-stream.test.js",
     "test:sim": "node tests/sim-mode.test.js",
     "test:vivado": "node tests/vivado.test.js",
     "bless:capsule": "node scripts/bless-capsule.js",

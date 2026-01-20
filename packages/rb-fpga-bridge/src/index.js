@@ -33,6 +33,8 @@ const PACKET_RATE_WINDOW_MS = 1000;
 const PROGRAM_TIMEOUT_MS = Number(process.env.RB_FPGA_PROGRAM_TIMEOUT_MS || 120000);
 const PROGRAM_LOG_KEEP = Number(process.env.RB_FPGA_PROGRAM_LOG_KEEP || 50);
 const PROGRAM_LOG_TAIL = Number(process.env.RB_FPGA_PROGRAM_LOG_TAIL || 200);
+const PROGRAM_LOG_TAIL_MAX = Number(process.env.RB_FPGA_PROGRAM_LOG_TAIL_MAX || 2000);
+const PROGRAM_LOG_MAX_BYTES = Number(process.env.RB_FPGA_PROGRAM_LOG_MAX_BYTES || 262144);
 
 function getRepoRoot() {
   try {
@@ -148,6 +150,16 @@ function resolveLogPath(tmpDir, inputPath) {
   return normalized;
 }
 
+function trimLogContent(content, maxBytes) {
+  if (!content) return { content: "", truncated: false };
+  const size = Buffer.byteLength(content, "utf8");
+  if (size <= maxBytes) {
+    return { content, truncated: false };
+  }
+  const slice = content.slice(-maxBytes);
+  return { content: slice, truncated: true };
+}
+
 // Deterministic seeded PRNG (simple LCG)
 class SeededRandom {
   constructor(seed) {
@@ -158,6 +170,15 @@ class SeededRandom {
     this.state = (this.state * 1103515245 + 12345) & 0x7fffffff;
     return this.state / 0x7fffffff;
   }
+}
+
+function hashSeed(value) {
+  const str = String(value || "");
+  let hash = 0;
+  for (let i = 0; i < str.length; i += 1) {
+    hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return hash || 1;
 }
 
 function scorePort(p) {
@@ -424,6 +445,9 @@ const VIVADO_PATH_CACHE_TTL = 60000;
 let simInterval = null;
 let simParser = null;
 let simTraceRecorder = null;
+let runCounter = 0;
+const activeRuns = new Map();
+const deviceRunIndex = new Map();
 
 function createEvent(type, data = {}) {
   return {
@@ -471,6 +495,79 @@ function getPacketsPerSec(now) {
 function getLastPacketAgeMs(now) {
   if (!state.last_packet_ts) return null;
   return Math.max(0, now - state.last_packet_ts);
+}
+
+function createRunId() {
+  runCounter += 1;
+  return `run-${Date.now()}-${runCounter}`;
+}
+
+function buildMockIo(run) {
+  const delta = Math.floor(run.rng.next() * 7) + 1;
+  run.sw = (run.sw + delta) & 0xffff;
+  run.btn = run.tick % 20 === 0 ? 1 : 0;
+  const btnMask = run.btn ? 0xffff : 0;
+  const led = run.sw ^ btnMask;
+  return { sw: run.sw, btn: run.btn, led, seg: null };
+}
+
+function emitRunSample(run) {
+  const io = buildMockIo(run);
+  const sample = {
+    t_ms: run.tick * run.periodMs,
+    device_id: run.deviceId,
+    io,
+  };
+  const payload = `event: sample\ndata: ${JSON.stringify(sample)}\n\n`;
+  for (const client of run.clients) {
+    if (!client.writableEnded) {
+      client.write(payload);
+    }
+  }
+  run.tick += 1;
+}
+
+function startMockRun({ deviceId, hz, seed }) {
+  const periodMs = Math.max(1, Math.round(1000 / hz));
+  const runId = createRunId();
+  const rng = new SeededRandom(seed);
+  const run = {
+    id: runId,
+    deviceId,
+    mode: "mock",
+    startedAt: Date.now(),
+    hz,
+    periodMs,
+    tick: 0,
+    sw: 0,
+    btn: 0,
+    rng,
+    clients: new Set(),
+  };
+  run.interval = setInterval(() => emitRunSample(run), periodMs);
+  activeRuns.set(runId, run);
+  deviceRunIndex.set(deviceId, runId);
+  return run;
+}
+
+function stopRun(runId) {
+  const run = activeRuns.get(runId);
+  if (!run) return null;
+  if (run.interval) {
+    clearInterval(run.interval);
+  }
+  for (const client of run.clients) {
+    try {
+      client.end();
+    } catch {
+      // ignore
+    }
+  }
+  activeRuns.delete(runId);
+  if (deviceRunIndex.get(run.deviceId) === runId) {
+    deviceRunIndex.delete(run.deviceId);
+  }
+  return run;
 }
 
 function buildBinaryPacket({ sequence, flags, digital, analog }) {
@@ -850,18 +947,110 @@ app.get("/log", (req, res) => {
   try {
     content = fs.readFileSync(resolved, "utf8");
   } catch (err) {
-    return res.status(500).json({ ok: false, error: err?.message || "log_read_failed" });
+    return res.status(500).json({ ok: false, error: "log_read_failed" });
   }
 
   const lines = content.split(/\r?\n/);
-  const tail = Math.max(1, Number(req.query?.tail || PROGRAM_LOG_TAIL));
+  const requestedTail = Number(req.query?.tail || PROGRAM_LOG_TAIL);
+  const tail = Math.max(1, Math.min(requestedTail, PROGRAM_LOG_TAIL_MAX));
   const slice = lines.slice(-tail);
+  const joined = slice.join("\n");
+  const trimmed = trimLogContent(joined, PROGRAM_LOG_MAX_BYTES);
   return res.json({
     ok: true,
-    path: resolved,
+    id: path.basename(resolved),
     lines: slice.length,
-    content: slice.join("\n"),
+    truncated: trimmed.truncated,
+    content: trimmed.content,
   });
+});
+
+app.get("/logs", (_req, res) => {
+  const repoRoot = getRepoRoot();
+  const tmpDir = ensureTmpDir(repoRoot);
+  const limit = Math.max(1, Math.min(50, Number(_req.query?.limit || 10)));
+  const logs = listProgramLogs(tmpDir)
+    .slice(0, limit)
+    .map((entry) => ({
+      id: entry.name,
+      mtime_ms: entry.mtimeMs,
+    }));
+  res.json({ ok: true, logs });
+});
+
+app.post("/run", async (req, res) => {
+  const body = req.body || {};
+  const schemaVersion = "bridge_v1";
+  const deviceId = body.device_id || body.deviceId || null;
+  const mode = body.mode || "mock";
+  const hzRaw = Number(body.hz || body.rate_hz || 20);
+  const hz = Number.isFinite(hzRaw) ? Math.min(Math.max(hzRaw, 1), 200) : 20;
+
+  if (!deviceId) {
+    return res.status(400).json({ schema_version: schemaVersion, ok: false, error: "device_id_required" });
+  }
+
+  if (deviceRunIndex.has(deviceId)) {
+    return res.status(409).json({ schema_version: schemaVersion, ok: false, error: "device_busy" });
+  }
+
+  if (!["mock", "sim"].includes(mode)) {
+    return res.status(400).json({ schema_version: schemaVersion, ok: false, error: "unsupported_mode" });
+  }
+
+  const devices = await discoverDevices({ includeSim: true, baudDefault: BAUD });
+  const device = devices.find((entry) => entry.id === deviceId);
+  if (!device) {
+    return res.status(404).json({ schema_version: schemaVersion, ok: false, error: "invalid_device" });
+  }
+
+  const seedRaw = body.seed;
+  const seed = Number.isFinite(Number(seedRaw)) ? Number(seedRaw) : hashSeed(deviceId);
+  const run = startMockRun({ deviceId, hz, seed });
+  return res.json({
+    schema_version: schemaVersion,
+    ok: true,
+    run_id: run.id,
+    started_at_ms: run.startedAt,
+  });
+});
+
+app.get("/stream", (req, res) => {
+  const runId = req.query?.run_id || req.query?.runId;
+  if (!runId) {
+    return res.status(400).json({ ok: false, error: "run_id_required" });
+  }
+
+  const run = activeRuns.get(runId);
+  if (!run) {
+    return res.status(404).json({ ok: false, error: "run_not_found" });
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+  });
+  res.write(`event: status\ndata: ${JSON.stringify({ run_id: runId, state: "running" })}\n\n`);
+
+  run.clients.add(res);
+  req.on("close", () => {
+    run.clients.delete(res);
+  });
+});
+
+app.post("/stop", (req, res) => {
+  const body = req.body || {};
+  const schemaVersion = "bridge_v1";
+  const runId = body.run_id || body.runId || null;
+  if (!runId) {
+    return res.status(400).json({ schema_version: schemaVersion, ok: false, error: "run_id_required" });
+  }
+  const run = stopRun(runId);
+  if (!run) {
+    return res.status(404).json({ schema_version: schemaVersion, ok: false, error: "run_not_found" });
+  }
+  return res.json({ schema_version: schemaVersion, ok: true, stopped_at_ms: Date.now() });
 });
 
 // ============================================================

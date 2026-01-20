@@ -5969,3 +5969,7 @@ Commits:
 ## Change Log  2026-01-20
 
 - Added /log endpoint for program diagnostics retrieval with safe tmp-dir scoping and log retention cleanup; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Tightened /log responses to return log ids only, added /logs index and tail/output caps, and implemented mock run/stream/stop SSE endpoints with deterministic samples plus stream tests; objectives unchanged; phase unchanged.
