@@ -30,6 +30,7 @@ function removeAllModulePreload() {
 
 export default defineConfig({
   plugins: [react(), tsconfigPaths({ loose: true }), removeAllModulePreload()],
+  envPrefix: ['VITE_', 'RB_'],
   publicDir: path.resolve(__dirname, '../../public'),
   define: {
     __GIT_SHA__: JSON.stringify(process.env.GIT_SHA ?? process.env.CF_PAGES_COMMIT_SHA ?? 'dev'),

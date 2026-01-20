@@ -4,6 +4,7 @@
 
 import { create } from 'zustand';
 import { useViewStateStore } from './viewStateStore';
+import { recordAuditTransition } from '../utils/audit';
 
 export interface Probe {
   id: string;
@@ -91,7 +92,8 @@ function createProbeStore() {
         return existing.id;
       }
 
-      const id = getNextProbeId(get().probes);
+      const before = get().probes;
+      const id = getNextProbeId(before);
       const color = PROBE_COLORS[hashProbeId(id) % PROBE_COLORS.length];
       const nextProbe: Probe = {
         id,
@@ -102,42 +104,78 @@ function createProbeStore() {
         enabled: true,
       };
 
+      const nextProbes = [...before, nextProbe];
       set((state) => ({
-        probes: [...state.probes, nextProbe],
+        probes: nextProbes,
         activeProbeId: id,
       }));
+
+      recordAuditTransition({
+        scope: 'probe_store',
+        action: 'add',
+        before,
+        after: nextProbes,
+      });
 
       return id;
     },
 
     removeProbe: (id) => {
-      set((state) => ({
-        probes: state.probes.filter((probe) => probe.id !== id),
-        activeProbeId: state.activeProbeId === id ? null : state.activeProbeId,
-      }));
+      const before = get().probes;
+      const nextProbes = before.filter((probe) => probe.id !== id);
+      const nextActive = get().activeProbeId === id ? null : get().activeProbeId;
+      set({
+        probes: nextProbes,
+        activeProbeId: nextActive,
+      });
+      recordAuditTransition({
+        scope: 'probe_store',
+        action: 'remove',
+        before,
+        after: nextProbes,
+      });
     },
 
     renameProbe: (id, label) => {
       const nextLabel = label.trim();
       if (!nextLabel) return;
 
-      set((state) => ({
-        probes: state.probes.map((probe) =>
-          probe.id === id ? { ...probe, label: nextLabel } : probe
-        ),
-      }));
+      const before = get().probes;
+      const nextProbes = before.map((probe) =>
+        probe.id === id ? { ...probe, label: nextLabel } : probe
+      );
+      set({ probes: nextProbes });
+      recordAuditTransition({
+        scope: 'probe_store',
+        action: 'rename',
+        before,
+        after: nextProbes,
+      });
     },
 
     toggleProbe: (id) => {
-      set((state) => ({
-        probes: state.probes.map((probe) =>
-          probe.id === id ? { ...probe, enabled: !probe.enabled } : probe
-        ),
-      }));
+      const before = get().probes;
+      const nextProbes = before.map((probe) =>
+        probe.id === id ? { ...probe, enabled: !probe.enabled } : probe
+      );
+      set({ probes: nextProbes });
+      recordAuditTransition({
+        scope: 'probe_store',
+        action: 'toggle',
+        before,
+        after: nextProbes,
+      });
     },
 
     setActiveProbe: (id) => {
+      const before = get().probes;
       set({ activeProbeId: id });
+      recordAuditTransition({
+        scope: 'probe_store',
+        action: 'activate',
+        before,
+        after: before,
+      });
       if (id) {
         const probe = get().probes.find((item) => item.id === id);
         if (probe) {
@@ -150,12 +188,26 @@ function createProbeStore() {
     },
 
     clearProbes: () => {
+      const before = get().probes;
       set({ probes: [], activeProbeId: null });
+      recordAuditTransition({
+        scope: 'probe_store',
+        action: 'clear',
+        before,
+        after: [],
+      });
     },
 
     setProbes: (probes) => {
+      const before = get().probes;
       const nextActive = probes.length > 0 ? probes[0].id : null;
       set({ probes: [...probes], activeProbeId: nextActive });
+      recordAuditTransition({
+        scope: 'probe_store',
+        action: 'set',
+        before,
+        after: [...probes],
+      });
     },
 
     toggleProbeForPort: (nodeId, portName, label) => {
@@ -183,10 +235,17 @@ function createProbeStore() {
     },
 
     reorderProbes: (fromIndex, toIndex) => {
-      set((state) => {
-        const newProbes = [...state.probes];
+      const before = get().probes;
+      set(() => {
+        const newProbes = [...before];
         const [movedProbe] = newProbes.splice(fromIndex, 1);
         newProbes.splice(toIndex, 0, movedProbe);
+        recordAuditTransition({
+          scope: 'probe_store',
+          action: 'reorder',
+          before,
+          after: newProbes,
+        });
         return { probes: newProbes };
       });
     },

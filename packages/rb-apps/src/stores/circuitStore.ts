@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import type { Circuit, CircuitEngine, Node, Connection, PortRef } from '@redbyte/rb-logic-core';
 import type { TickEngine } from '@redbyte/rb-logic-core';
+import { recordAuditTransition } from '../utils/audit';
 
 // Debug flag for instrumentation (DEV-only)
 const DEBUG_PLAYGROUND = import.meta.env.DEV && false; // Set to true to enable debug logs
@@ -187,6 +188,13 @@ function createCircuitStore() {
         circuit,
         isDirty: true,
         lastClampEvent: clampEvent, // Set clamp event if clamping occurred
+      });
+
+      recordAuditTransition({
+        scope: 'circuit_store',
+        action: skipHistory ? 'restore' : 'update',
+        before: currentCircuit,
+        after: circuit,
       });
 
       // Sync engines

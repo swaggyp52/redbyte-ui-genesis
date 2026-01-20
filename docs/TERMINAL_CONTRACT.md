@@ -31,4 +31,5 @@ fixed allowlist of synchronous commands and cannot execute arbitrary programs.
 - examples list|load <exampleId>
 - ticks set <number>
 - log [count]
+- audit export
 - restart

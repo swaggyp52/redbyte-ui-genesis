@@ -8,6 +8,7 @@ import { listExamples, type ExampleId } from '../examples';
 import { useSettingsStore, type ThemeVariant } from '@redbyte/rb-utils';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import { deleteFile, getFile, listFiles } from '../stores/filesStore';
+import { exportAuditLog } from '../utils/audit';
 
 interface TerminalProps {
   onOpenApp?: (appId: string, props?: any) => void;
@@ -142,6 +143,12 @@ const COMMAND_SPECS: Record<string, CommandSpec> = {
     writes: ['session'],
     produces: [],
   },
+  'audit export': {
+    description: 'Export determinism audit log',
+    reads: ['audit_log'],
+    writes: [],
+    produces: ['audit_artifact'],
+  },
 };
 
 const COMMAND_USAGE: Record<string, string> = {
@@ -151,6 +158,7 @@ const COMMAND_USAGE: Record<string, string> = {
   files: 'Usage: files list | files open <id> | files delete <id>',
   examples: 'Usage: examples list | examples load <id>',
   ticks: 'Usage: ticks set <number>',
+  audit: 'Usage: audit export',
 };
 
 const resolveCommandKey = (command: string, args: string[]): string | null => {
@@ -171,6 +179,8 @@ const resolveCommandKey = (command: string, args: string[]): string | null => {
       return args[0] ? `examples ${args[0]}` : 'examples list';
     case 'ticks':
       return args[0] === 'set' ? 'ticks set' : null;
+    case 'audit':
+      return args[0] === 'export' ? 'audit export' : null;
     default:
       return command;
   }
@@ -384,6 +394,11 @@ const TerminalComponent: React.FC<TerminalProps> = ({
           formatCommandEffects(COMMAND_SPECS.log)
         );
         addLine(
+          '  audit export                - Export determinism audit log',
+          'output',
+          formatCommandEffects(COMMAND_SPECS['audit export'])
+        );
+        addLine(
           '  restart                     - Restart RedByte OS (replays boot)',
           'output',
           formatCommandEffects(COMMAND_SPECS.restart)
@@ -435,6 +450,16 @@ const TerminalComponent: React.FC<TerminalProps> = ({
             entrySpec ? formatCommandEffects(entrySpec) : undefined
           );
         });
+        break;
+      }
+
+      case 'audit': {
+        if (args[0] !== 'export') {
+          addLine('Usage: audit export', 'error');
+          break;
+        }
+        exportAuditLog();
+        addLine('Audit log exported.');
         break;
       }
 

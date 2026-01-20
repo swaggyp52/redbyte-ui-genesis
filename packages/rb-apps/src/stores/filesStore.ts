@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import type { SerializedCircuitV1 } from '@redbyte/rb-logic-core';
+import { recordAuditTransition } from '../utils/audit';
 
 type LogicFileKind = 'source' | 'artifact' | 'derived';
 type LogicFileSchemaVersion = 'v1';
@@ -172,6 +173,12 @@ export function createFile(
   };
   const nextFiles = [...files, newFile];
   saveFiles(nextFiles);
+  recordAuditTransition({
+    scope: 'logic_files',
+    action: 'create',
+    before: files,
+    after: nextFiles,
+  });
   return newFile;
 }
 
@@ -179,9 +186,16 @@ export function renameFile(id: string, newName: string): void {
   const files = loadFiles();
   const file = files.find((f) => f.id === id);
   if (file) {
+    const before = [...files];
     file.name = newName;
     file.updated_at = new Date().toISOString();
     saveFiles(files);
+    recordAuditTransition({
+      scope: 'logic_files',
+      action: 'rename',
+      before,
+      after: files,
+    });
   }
 }
 
@@ -189,6 +203,12 @@ export function deleteFile(id: string): void {
   const files = loadFiles();
   const filtered = files.filter((f) => f.id !== id);
   saveFiles(filtered);
+  recordAuditTransition({
+    scope: 'logic_files',
+    action: 'delete',
+    before: files,
+    after: filtered,
+  });
 }
 
 export function getFile(id: string): LogicFile | null {
@@ -205,6 +225,7 @@ export function updateFile(
   const files = loadFiles();
   const file = files.find((f) => f.id === id);
   if (file) {
+    const before = [...files];
     file.circuit = circuit;
     file.updated_at = new Date().toISOString();
     file.kind = metadata.kind;
@@ -212,5 +233,11 @@ export function updateFile(
     file.created_by = metadata.created_by;
     file.derived_from = metadata.derived_from ?? null;
     saveFiles(files);
+    recordAuditTransition({
+      scope: 'logic_files',
+      action: 'overwrite',
+      before,
+      after: files,
+    });
   }
 }

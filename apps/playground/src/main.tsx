@@ -2,11 +2,16 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
+import { installAuditGuards, isAuditEnabled } from './boot/audit-guards';
+
 // SAFETY: Prevent modulepreload of Three.js in boot-bisect mode to avoid temporal dead zone errors
 const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
 const isBisect = params.get('boot') === 'bisect' || import.meta.env.VITE_BOOT_BISECT === '1';
 const bisectStep = Number(params.get('step') || '0');
 const isE2E = params.get('e2e') === '1' || import.meta.env.VITE_E2E === '1';
+const isAudit = isAuditEnabled(params);
+
+installAuditGuards(isAudit);
 
 console.log('RB_MAIN_SEARCH_PARAMS', { isE2E, isBisect, bisectStep });
 

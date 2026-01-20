@@ -15,6 +15,7 @@ import {
   resolveFolderLink as fsResolveFolderLink,
   getFallbackFolderId as fsGetFallbackFolderId,
 } from '../apps/files/fsModel';
+import { recordAuditTransition } from '../utils/audit';
 
 const STORAGE_KEY = 'rb:file-system';
 
@@ -144,16 +145,38 @@ function createFileSystemStore() {
 
     createFolder: (parentId, name) => {
       const fs = get();
+      const before: FileSystemState = {
+        folders: fs.folders,
+        roots: fs.roots,
+        nextId: fs.nextId,
+      };
       const newFs = fsCreateFolder(parentId, name, fs);
       set(newFs);
       persistState(newFs);
+      recordAuditTransition({
+        scope: 'file_system',
+        action: 'create_folder',
+        before,
+        after: newFs,
+      });
     },
 
     createFile: (parentId, name, content?) => {
       const fs = get();
+      const before: FileSystemState = {
+        folders: fs.folders,
+        roots: fs.roots,
+        nextId: fs.nextId,
+      };
       const newFs = fsCreateFile(parentId, name, fs, content);
       set(newFs);
       persistState(newFs);
+      recordAuditTransition({
+        scope: 'file_system',
+        action: 'create_file',
+        before,
+        after: newFs,
+      });
 
       // Return the new file ID (format: file-{nextId})
       return `file-${fs.nextId}`;
@@ -161,16 +184,38 @@ function createFileSystemStore() {
 
     renameEntry: (id, newName) => {
       const fs = get();
+      const before: FileSystemState = {
+        folders: fs.folders,
+        roots: fs.roots,
+        nextId: fs.nextId,
+      };
       const newFs = fsRenameEntry(id, newName, fs);
       set(newFs);
       persistState(newFs);
+      recordAuditTransition({
+        scope: 'file_system',
+        action: 'rename_entry',
+        before,
+        after: newFs,
+      });
     },
 
     deleteEntry: (id) => {
       const fs = get();
+      const before: FileSystemState = {
+        folders: fs.folders,
+        roots: fs.roots,
+        nextId: fs.nextId,
+      };
       const newFs = fsDeleteEntry(id, fs);
       set(newFs);
       persistState(newFs);
+      recordAuditTransition({
+        scope: 'file_system',
+        action: 'delete_entry',
+        before,
+        after: newFs,
+      });
     },
 
     getChildren: (parentId) => {
@@ -235,6 +280,11 @@ function createFileSystemStore() {
 
     updateFileContent: (fileId, content) => {
       const fs = get();
+      const before: FileSystemState = {
+        folders: fs.folders,
+        roots: fs.roots,
+        nextId: fs.nextId,
+      };
 
       // Find the parent folder containing this file
       let parentFolderId: string | null = null;
@@ -277,6 +327,12 @@ function createFileSystemStore() {
 
       set(newFs);
       persistState(newFs);
+      recordAuditTransition({
+        scope: 'file_system',
+        action: 'update_file',
+        before,
+        after: newFs,
+      });
     },
 
     exportJson: () => {
@@ -315,16 +371,38 @@ function createFileSystemStore() {
       }
 
       // Replace state atomically
+      const before: FileSystemState = {
+        folders: get().folders,
+        roots: get().roots,
+        nextId: get().nextId,
+      };
       set(envelope.state);
       persistState(envelope.state);
+      recordAuditTransition({
+        scope: 'file_system',
+        action: 'import',
+        before,
+        after: envelope.state,
+      });
     },
 
     resetAll: () => {
       if (typeof window !== 'undefined') {
         localStorage.removeItem(STORAGE_KEY);
       }
+      const before: FileSystemState = {
+        folders: get().folders,
+        roots: get().roots,
+        nextId: get().nextId,
+      };
       const seed = createInitialFsState();
       set(seed);
+      recordAuditTransition({
+        scope: 'file_system',
+        action: 'reset',
+        before,
+        after: seed,
+      });
     },
   };
   });
