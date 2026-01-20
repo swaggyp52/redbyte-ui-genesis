@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import GuidedTour from '../components/GuidedTour';
+import CodeBlock from '../components/CodeBlock';
 import LogicGatePlayground from '../components/examples/LogicGatePlayground';
 
 // Type workaround for React 19 compatibility
@@ -304,13 +305,5 @@ function WorkflowStep({ number, title, description }: { number: number; title: s
       <h3 className="text-h3 text-rb-text mb-2">{title}</h3>
       <p className="text-sm text-rb-muted leading-relaxed">{description}</p>
     </div>
-  );
-}
-
-function CodeBlock({ code }: { code: string }) {
-  return (
-    <pre className="bg-rb-raised border border-rb-border rounded-md p-4 overflow-x-auto">
-      <code className="text-sm text-rb-text font-mono">{code}</code>
-    </pre>
   );
 }

@@ -1,4 +1,5 @@
 import { Link as RouterLink } from 'react-router-dom';
+import CodeBlock from '../components/CodeBlock';
 
 const Link = RouterLink as React.ComponentType<{ to: string; className?: string; children: React.ReactNode }>;
 
@@ -98,13 +99,5 @@ export default function Install() {
         </div>
       </div>
     </div>
-  );
-}
-
-function CodeBlock({ code }: { code: string }) {
-  return (
-    <pre className="bg-rb-raised border border-rb-border rounded-md p-4 overflow-x-auto">
-      <code className="text-sm text-rb-text font-mono">{code}</code>
-    </pre>
   );
 }
