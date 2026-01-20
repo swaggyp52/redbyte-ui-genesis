@@ -1,0 +1,6 @@
+{
+  "name": "@redbyte/rb-board-models",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module"
+}

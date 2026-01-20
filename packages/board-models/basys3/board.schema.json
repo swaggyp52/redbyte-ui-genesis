@@ -1,0 +1,93 @@
+{
+  "id": "basys3",
+  "name": "Basys3",
+  "manufacturer": "Digilent",
+  "fpga": {
+    "family": "Artix-7",
+    "part": "XC7A35T-1CPG236C"
+  },
+  "toolchain": "vivado",
+  "clock": {
+    "name": "CLK100MHZ",
+    "frequency_hz": 100000000,
+    "port": "clk",
+    "pin": "W5"
+  },
+  "io": {
+    "inputs": {
+      "switches": {
+        "count": 16,
+        "labels": [
+          "SW0", "SW1", "SW2", "SW3", "SW4", "SW5", "SW6", "SW7",
+          "SW8", "SW9", "SW10", "SW11", "SW12", "SW13", "SW14", "SW15"
+        ],
+        "port": "sw",
+        "pins": [
+          "V17", "V16", "W16", "W17", "W15", "V15", "W14", "W13",
+          "V2", "T3", "T2", "R3", "W2", "U1", "T1", "R2"
+        ]
+      },
+      "buttons": {
+        "count": 5,
+        "labels": ["BTNC", "BTNU", "BTNL", "BTNR", "BTND"],
+        "port": "btn",
+        "pins": ["U18", "T18", "W19", "T17", "U17"]
+      }
+    },
+    "outputs": {
+      "leds": {
+        "count": 16,
+        "labels": [
+          "LD0", "LD1", "LD2", "LD3", "LD4", "LD5", "LD6", "LD7",
+          "LD8", "LD9", "LD10", "LD11", "LD12", "LD13", "LD14", "LD15"
+        ],
+        "port": "led",
+        "pins": [
+          "U16", "E19", "U19", "V19", "W18", "U15", "U14", "V14",
+          "V13", "V3", "W3", "U3", "P3", "N3", "P1", "L1"
+        ]
+      },
+      "seven_seg": {
+        "segments": {
+          "count": 8,
+          "labels": ["A", "B", "C", "D", "E", "F", "G", "DP"],
+          "port": "seg",
+          "pins": ["W7", "W6", "U8", "V8", "U5", "V5", "U7", "V7"],
+          "active_low": true
+        },
+        "anodes": {
+          "count": 4,
+          "labels": ["AN0", "AN1", "AN2", "AN3"],
+          "port": "an",
+          "pins": ["U2", "U4", "V4", "W4"],
+          "active_low": true
+        }
+      }
+    },
+    "expansion": {
+      "pmod": {
+        "JA": {
+          "count": 8,
+          "labels": ["JA0", "JA1", "JA2", "JA3", "JA4", "JA5", "JA6", "JA7"],
+          "port": "ja",
+          "pins": ["J1", "L2", "J2", "G2", "H1", "K2", "H2", "G3"]
+        },
+        "JB": {
+          "count": 8,
+          "labels": ["JB0", "JB1", "JB2", "JB3", "JB4", "JB5", "JB6", "JB7"],
+          "port": "jb",
+          "pins": ["A14", "A16", "B15", "B16", "A15", "A17", "C15", "C16"]
+        },
+        "JC": {
+          "count": 8,
+          "labels": ["JC0", "JC1", "JC2", "JC3", "JC4", "JC5", "JC6", "JC7"],
+          "port": "jc",
+          "pins": ["K17", "M18", "N17", "P18", "L17", "M19", "P17", "R18"]
+        }
+      }
+    }
+  },
+  "pinmap": {
+    "vivado_xdc": "pinmap.vivado.xdc"
+  }
+}
