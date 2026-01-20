@@ -8,6 +8,7 @@ import { crc16_ccitt_false } from "./parsers/crc16.js";
 import { TraceRecorder } from "./trace/recorder.js";
 import { createTimeBinner } from "./trace/binning.js";
 import { programBitstream } from "./vivado/programBitstream.js";
+import { discoverDevices } from "./discovery.js";
 import { exec } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs";
@@ -492,6 +493,26 @@ app.get("/health", async (_req, res) => res.json(await buildHealthPayload()));
 app.get("/ports", async (_req, res) => {
   const ports = await listPortsForApi();
   res.json({ ports });
+});
+
+app.get("/devices", async (_req, res) => {
+  try {
+    const devices = await discoverDevices({ includeSim: true, baudDefault: BAUD });
+    res.json({ schema_version: "bridge_v1", devices });
+  } catch (e) {
+    console.error("[fpga-bridge] /devices error:", e);
+    res.status(500).json({ schema_version: "bridge_v1", devices: [] });
+  }
+});
+
+app.get("/api/devices", async (_req, res) => {
+  try {
+    const devices = await discoverDevices({ includeSim: true, baudDefault: BAUD });
+    res.json({ schema_version: "bridge_v1", devices });
+  } catch (e) {
+    console.error("[fpga-bridge] /api/devices error:", e);
+    res.status(500).json({ schema_version: "bridge_v1", devices: [] });
+  }
 });
 
 app.post("/connect", async (req, res) => {

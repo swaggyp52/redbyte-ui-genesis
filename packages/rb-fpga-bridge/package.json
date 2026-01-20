@@ -16,6 +16,7 @@
     "test:parsers": "node tests/binary-packet.test.js",
     "test:binning": "node tests/time-binning.test.js",
     "test:trace": "node tests/trace-recorder.test.js",
+    "test:devices": "node tests/device-discovery.test.js",
     "test:sim": "node tests/sim-mode.test.js",
     "test:vivado": "node tests/vivado.test.js",
     "bless:capsule": "node scripts/bless-capsule.js",

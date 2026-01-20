@@ -1,0 +1,14 @@
+{
+  "devices": [
+    {
+      "vid": "0403",
+      "pid": "6010",
+      "label": "FTDI FT2232 (Digilent-class)"
+    },
+    {
+      "vid": "0403",
+      "pid": "6001",
+      "label": "FTDI FT232 (common USB-UART)"
+    }
+  ]
+}
