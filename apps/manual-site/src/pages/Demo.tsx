@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import GuidedTour from '../components/GuidedTour';
+import LogicGatePlayground from '../components/examples/LogicGatePlayground';
 
 const Link = RouterLink as React.ComponentType<{ to: string; className?: string; children: React.ReactNode }>;
 
@@ -47,6 +48,28 @@ export default function Demo() {
               >
                 Start Guided Tour
               </button>
+              <a href="#demo-playground" className="mt-2 btn btn-secondary">
+                Start Demo
+              </a>
+            </div>
+          </section>
+
+          {/* Interactive Demo */}
+          <section id="demo-playground" className="mb-16">
+            <h2 className="text-h2 text-rb-text mb-4">Interactive demo</h2>
+            <p className="text-rb-muted mb-6">
+              Use the live logic playground to show deterministic behavior in seconds.
+            </p>
+            <div className="bg-rb-surface border border-rb-border rounded-md p-6">
+              <LogicGatePlayground />
+            </div>
+            <div className="mt-4 bg-rb-raised border border-rb-border rounded-md p-4">
+              <div className="text-sm font-semibold text-rb-text mb-2">Try this now</div>
+              <ul className="text-sm text-rb-muted space-y-1.5">
+                <li className="flex gap-2"><span className="text-rb-accent">-</span>Toggle inputs and watch outputs update instantly.</li>
+                <li className="flex gap-2"><span className="text-rb-accent">-</span>Switch gate types to show how truth tables change.</li>
+                <li className="flex gap-2"><span className="text-rb-accent">-</span>Point out that identical inputs always yield identical outputs.</li>
+              </ul>
             </div>
           </section>
 
@@ -230,6 +253,20 @@ export default function Demo() {
               </Link>
               <Link to="/manual" className="btn btn-secondary">
                 Full Manual
+              </Link>
+            </div>
+          </section>
+
+          <section className="mt-12">
+            <div className="bg-rb-surface border border-rb-border rounded-md p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h3 className="text-h3 text-rb-text mb-2">Ready for labs?</h3>
+                <p className="text-sm text-rb-muted">
+                  Install RedByte OS to use the FPGA Bridge, trace recorder, and Submission Inspector.
+                </p>
+              </div>
+              <Link to="/install" className="btn btn-primary">
+                Install OS
               </Link>
             </div>
           </section>
