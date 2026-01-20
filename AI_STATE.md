@@ -1,6 +1,5 @@
 \# RedByte OS Genesis — AI State Ledger
-
-
+# AI State
 
 This file is the single authoritative source of truth for:
 
@@ -15,7 +14,6 @@ This file is the single authoritative source of truth for:
 \- Completed milestones
 
 
-
 ALL AI agents (ChatGPT, Claude, Codex, others) MUST:
 
 1\. Read this file before proposing or executing work
@@ -25,13 +23,10 @@ ALL AI agents (ChatGPT, Claude, Codex, others) MUST:
 3\. Update this file after completing any task or phase
 
 
-
 ---
 
 
-
 \## Project Identity
-
 
 
 Name: RedByte OS Genesis  
@@ -45,13 +40,10 @@ Stack: TypeScript, React, Vite, pnpm, Cloudflare Pages
 Canonical Branch: `main`
 
 
-
 ---
 
 
-
 \## Development Philosophy
-
 
 
 \- Terminal-first development only
@@ -65,17 +57,13 @@ Canonical Branch: `main`
 \- No global changes without explicit authorization
 
 
-
 ---
-
 
 
 \## Architectural Invariants (DO NOT BREAK)
 
 
-
 These rules are permanent unless changed here:
-
 
 
 \- OS metaphor is canonical (boot → desktop → apps)
@@ -91,7 +79,6 @@ These rules are permanent unless changed here:
 \- Cloudflare Pages auto-deploys from `main`
 
 \- No AI agent may introduce automation bots without approval
-
 
 
 \### Launcher Contract
@@ -112,7 +99,6 @@ The Launcher is the canonical OS entry point with these enforced behaviors:
 
 \- Shell.openWindow enforces singleton + focus behavior for all singleton apps
 
-
 \### Window \& Shell Lifecycle Contract
 
 Focus surface and interaction rules:
@@ -131,7 +117,6 @@ Focus surface and interaction rules:
 
 \- Focusing a window raises its z-index above all others
 
-
 Dock interaction rules:
 
 \- Clicking Dock icon for singleton app restores minimized window + focuses
@@ -141,7 +126,6 @@ Dock interaction rules:
 \- Dock never creates duplicate singleton windows
 
 \- Dock running indicator shows only non-minimized windows
-
 
 Keyboard semantics (OS-level):
 
@@ -154,7 +138,6 @@ Keyboard semantics (OS-level):
 \- Escape in Desktop clears icon selection
 
 \- Cmd/Ctrl+W closes focused window (not implemented)
-
 
 \### Files App Contract
 
@@ -175,7 +158,6 @@ Files is the first real multi-window workflow proving the OS substrate:
 \- Title updates do NOT trigger focus/z-index side effects
 
 \- Keyboard navigation: Arrow keys move selection, Enter opens folder, Escape closes window
-
 
 ### Settings App Contract
 
@@ -203,7 +185,6 @@ Settings is the canonical system configuration interface with strict singleton s
 
 \- Keyboard navigation: Arrow keys move selection, Enter activates, Escape closes window
 
-
 ### Intent System Contract
 
 Intents enable explicit app-to-app interaction without breaking isolation:
@@ -223,7 +204,6 @@ Intents enable explicit app-to-app interaction without breaking isolation:
 \- Intents must be visible and intentional (button, menu, or keyboard shortcut)
 
 \- No hidden side effects (all intent actions are explicit user choices)
-
 
 ### Command System Contract
 
@@ -245,7 +225,6 @@ Commands are system-level actions for power-user workflows without adding global
 
 \- Commands reuse existing window store functions (no new primitives unless required)
 
-
 Available commands:
 
 \- **focus-next-window**: Cycle to next non-minimized window by descending zIndex (wraps around)
@@ -258,7 +237,6 @@ Available commands:
 
 \- **restore-last-minimized**: Restore most recently minimized window (not implemented yet)
 
-
 Keyboard shortcuts:
 
 \- Cmd/Ctrl+\` (backtick): focus-next-window
@@ -268,7 +246,6 @@ Keyboard shortcuts:
 \- Cmd/Ctrl+M: minimize-focused-window
 
 \- Cmd/Ctrl+Shift+P: Open Command Palette (lists available commands)
-
 
 ### System Search Contract
 
@@ -284,7 +261,6 @@ System Search is the unified discovery surface for apps, commands, and intent ta
 
 \- System Search is for SPEED and DISCOVERY (not persistence or history)
 
-
 Search result types (priority order):
 
 \- **Apps**: Registered apps from rb-apps registry (Launcher, Files, Settings, Playground, etc.)
@@ -292,7 +268,6 @@ Search result types (priority order):
 \- **Commands**: Available commands from Command System (focus-next-window, close-focused-window, etc.)
 
 \- **Intent Targets**: Intent-capable actions (e.g. "Open in Playground")
-
 
 Search behavior:
 
@@ -304,7 +279,6 @@ Search behavior:
 
 \- Results grouped by section (Apps, Commands, Intent Targets)
 
-
 Keyboard behavior:
 
 \- Cmd/Ctrl+Space: Open System Search
@@ -315,7 +289,6 @@ Keyboard behavior:
 
 \- Escape: Close search without side effects
 
-
 Execution behavior:
 
 \- App → openWindow(appId)
@@ -324,7 +297,6 @@ Execution behavior:
 
 \- Intent Target → dispatchIntent via Shell
 
-
 Focus and safety:
 
 \- Search does NOT trigger inside text inputs (respects editable targets)
@@ -332,7 +304,6 @@ Focus and safety:
 \- Closing search restores previous focus
 
 \- Search does NOT open windows until Enter is pressed
-
 
 ### Layout Contract
 
@@ -348,7 +319,6 @@ Window layouts are explicit spatial commands for efficient multi-window workflow
 
 \- Layouts set window position + size directly (no animation required initially)
 
-
 Available layout actions:
 
 \- **Snap Left**: Position window at left half of desktop (x: 0, y: 0, w: 50%, h: 100%)
@@ -360,7 +330,6 @@ Available layout actions:
 \- **Snap Bottom**: Position window at bottom half of desktop (x: 0, y: 50%, w: 100%, h: 50%)
 
 \- **Center**: Center window on desktop with default dimensions (400x300 if not specified)
-
 
 Keyboard shortcuts:
 
@@ -374,7 +343,6 @@ Keyboard shortcuts:
 
 \- Cmd/Ctrl+Alt+C: Center
 
-
 Behavior semantics:
 
 \- Layout commands operate on focused window only (no-op if no focused window)
@@ -385,7 +353,6 @@ Behavior semantics:
 
 \- Layout commands are synchronous (no async side effects)
 
-
 ### Session Contract
 
 Session restore preserves workspace continuity across browser reloads:
@@ -395,7 +362,6 @@ Session restore preserves workspace continuity across browser reloads:
 \- Session restore is AUTOMATIC on boot (no user confirmation or UI)
 
 \- Session restore is TRANSPARENT (appears instant, no loading UI required)
-
 
 What gets restored:
 

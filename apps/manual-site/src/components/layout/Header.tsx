@@ -79,7 +79,7 @@ export default function Header() {
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="md:hidden p-2 text-rb-muted hover:text-rb-text transition-colors"
             aria-label="Toggle menu"
-            aria-expanded={mobileMenuOpen ? "true" : "false"}
+            aria-expanded={!!mobileMenuOpen}
           >
             {mobileMenuOpen ? (
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

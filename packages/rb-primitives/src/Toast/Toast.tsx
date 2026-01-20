@@ -40,7 +40,7 @@ const kindStyles = {
 export function Toast({ toast, onDismiss }: ToastProps) {
   const [isPaused, setIsPaused] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startTimeRef = useRef<number>(Date.now());
   const remainingTimeRef = useRef<number>(toast.duration || 0);
 
@@ -93,7 +93,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       role="alert"
-      aria-live={ariaLive as 'polite' | 'assertive'}
+      aria-live={toast.kind === 'error' ? 'assertive' : 'polite'}
       aria-atomic="true"
     >
       <div className="flex items-start gap-3">
