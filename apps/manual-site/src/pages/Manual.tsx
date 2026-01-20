@@ -77,24 +77,24 @@ export default function Guide() {
           <main className="flex-1 min-w-0 prose prose-invert prose-rb max-w-none text-rb-muted leading-relaxed">
             {/* Start Here Card */}
             <section className="mb-10">
-              <div className="bg-cyan-900/80 border border-cyan-700 rounded-2xl shadow-lg px-8 py-8 flex flex-col items-center text-center">
-                <h1 className="text-3xl font-bold text-cyan-100 mb-2">RedByte Guide</h1>
-                <p className="text-lg text-slate-200 mb-4">Turn confusion into confidence. Start building in RedByte in under 10 minutes.</p>
+              <div className="bg-rb-surface border border-rb-border rounded-lg shadow-card px-8 py-8 flex flex-col items-center text-center">
+                <h1 className="text-h1 text-rb-text mb-2">RedByte Guide</h1>
+                <p className="text-lg text-rb-muted mb-4">Turn confusion into confidence. Start building in RedByte in under 10 minutes.</p>
                 <div className="flex flex-col md:flex-row gap-4 w-full max-w-xl justify-center">
                   <button
-                    className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-3 px-6 rounded-lg text-lg transition"
+                    className="btn btn-primary flex-1 flex-col items-start gap-1 text-left"
                     onClick={() => navigate('/guide/walkthrough')}
                   >
                     New to RedByte? <span className="block text-xs font-normal">10-Minute Walkthrough</span>
                   </button>
                   <button
-                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-cyan-200 font-semibold py-3 px-6 rounded-lg text-lg transition"
+                    className="btn btn-secondary flex-1"
                     onClick={() => document.getElementById('build-circuit')?.scrollIntoView({behavior:'smooth'})}
                   >
                     I want to build a circuit
                   </button>
                   <button
-                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-cyan-200 font-semibold py-3 px-6 rounded-lg text-lg transition"
+                    className="btn btn-secondary flex-1"
                     onClick={() => document.getElementById('compare-table')?.scrollIntoView({behavior:'smooth'})}
                   >
                     How is this different?
@@ -124,16 +124,16 @@ export default function Guide() {
             </section>
             {/* Compare Table */}
             <section id="compare-table" className="my-12">
-              <h2 className="text-2xl font-bold text-cyan-200 mb-4">Compare to what you already know</h2>
+              <h2 className="text-h2 text-rb-text mb-4">Compare to what you already know</h2>
               <div className="overflow-x-auto">
-                <table className="min-w-[400px] w-full border border-cyan-700 text-base text-left">
-                  <thead className="bg-cyan-900/60">
+                <table className="min-w-[400px] w-full border border-rb-border text-base text-left">
+                  <thead className="bg-rb-raised">
                     <tr>
-                      <th className="px-4 py-2 text-cyan-100">If you've used...</th>
-                      <th className="px-4 py-2 text-cyan-100">RedByte feels different because...</th>
+                      <th className="px-4 py-2 text-rb-text">If you've used...</th>
+                      <th className="px-4 py-2 text-rb-text">RedByte feels different because...</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-slate-950">
+                  <tbody className="bg-rb-bg">
                     <tr>
                       <td className="px-4 py-2">Logisim</td>
                       <td className="px-4 py-2">Time is explicit and replayable</td>
@@ -149,27 +149,27 @@ export default function Guide() {
                   </tbody>
                 </table>
               </div>
-              <div className="mt-4 p-4 bg-cyan-900/40 border-l-4 border-cyan-500 rounded text-cyan-100">
+              <div className="mt-4 p-4 bg-rb-info-bg border-l-4 border-rb-info rounded text-rb-text">
                 <strong>Why this matters:</strong> Anchoring new concepts to familiar tools helps you get productive faster.
               </div>
             </section>
 
             {/* What RedByte is not */}
             <section id="what-redbyte-is-not" className="my-12">
-              <h2 className="text-2xl font-bold text-cyan-200 mb-4">What RedByte is <span className="text-red-400">not</span></h2>
-              <ul className="list-disc pl-6 text-lg text-slate-200 space-y-2">
+              <h2 className="text-h2 text-rb-text mb-4">What RedByte is <span className="text-rb-accent">not</span></h2>
+              <ul className="list-disc pl-6 text-lg text-rb-text space-y-2">
                 <li>Not a replacement for professional FPGA toolchains</li>
                 <li>Not a game</li>
                 <li>Not a black-box simulator</li>
               </ul>
-              <div className="mt-4 p-4 bg-red-900/40 border-l-4 border-red-500 rounded text-red-100">
+              <div className="mt-4 p-4 bg-rb-accent-bg border-l-4 border-rb-accent rounded text-rb-text">
                 <strong>Why this matters:</strong> Clear boundaries build trust and set expectations for students and instructors.
               </div>
             </section>
 
             {/* Example callout sprinkled in */}
             <section className="my-12">
-              <div className="p-4 bg-yellow-900/40 border-l-4 border-yellow-500 rounded text-yellow-100 mb-4">
+              <div className="p-4 bg-rb-info-bg border-l-4 border-rb-info rounded text-rb-text mb-4">
                 <strong>Common mistake:</strong> If your output "looks right" but fails later, it's usually because you skipped stepping through time.
               </div>
             </section>
