@@ -5953,3 +5953,7 @@ Commits:
 
 - Added IDENTIFY handshake framing module with tests, extended bridge contract for identify diagnostics, and wired discovery to probe identify responses with time-budgeted retries, board model upgrade, and pinmap hash validation; objectives unchanged; phase unchanged.
 - Fixed identify frame queue handling to avoid missed responses; identify tests now pass; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Extended hardware bridge contract programming info with tool/endpoint/serial fields and added programming + merge diagnostics to the schema and golden devices payload; objectives unchanged; phase unchanged.

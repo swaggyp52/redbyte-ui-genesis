@@ -9,6 +9,9 @@ export type ProgrammingInfo = {
   kind: 'jtag' | 'sim';
   driver: string;
   status: ProgrammingStatus;
+  tool?: string | null;
+  endpoint_id?: string | null;
+  serial_number?: string | null;
 };
 
 export type RuntimeInfo = {
@@ -45,6 +48,16 @@ export type DeviceDiagnostics = {
   };
   runtime?: RuntimeDiagnostics;
   identify?: IdentifyDiagnostics;
+  programming?: {
+    tool?: string | null;
+    enumeration_raw?: string | null;
+    error?: string | null;
+  };
+  merge?: {
+    status: 'merged' | 'ambiguous' | 'uart_only' | 'jtag_only';
+    reason?: string | null;
+    confidence?: number | null;
+  };
 };
 
 export type BridgeDevice = {

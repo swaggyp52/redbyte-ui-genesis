@@ -15,7 +15,10 @@
       "programming": {
         "kind": "jtag",
         "driver": "vivado-hwserver",
-        "status": "ready"
+        "status": "ready",
+        "tool": "djtgcfg",
+        "endpoint_id": "djtgcfg:2100001234",
+        "serial_number": "2100001234"
       },
       "runtime": {
         "kind": "uart",
@@ -33,6 +36,15 @@
           "pnp_id": "VID_0403&PID_6010",
           "location_id": null,
           "friendly_name": "Digilent USB UART"
+        },
+        "programming": {
+          "tool": "djtgcfg",
+          "enumeration_raw": "Found 1 device(s)\\nDevice: Basys3\\nDevice Serial: 2100001234"
+        },
+        "merge": {
+          "status": "merged",
+          "reason": "serial_match",
+          "confidence": 0.95
         }
       },
       "confidence": 0.9,

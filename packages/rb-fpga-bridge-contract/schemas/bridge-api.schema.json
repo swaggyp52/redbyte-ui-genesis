@@ -27,7 +27,10 @@
       "properties": {
         "kind": { "type": "string", "enum": ["jtag", "sim"] },
         "driver": { "type": "string" },
-        "status": { "$ref": "#/definitions/programming_status" }
+        "status": { "$ref": "#/definitions/programming_status" },
+        "tool": { "type": ["string", "null"] },
+        "endpoint_id": { "type": ["string", "null"] },
+        "serial_number": { "type": ["string", "null"] }
       }
     },
     "runtime_info": {
@@ -69,7 +72,28 @@
           }
         },
         "runtime": { "$ref": "#/definitions/runtime_diagnostics" },
-        "identify": { "$ref": "#/definitions/identify_diagnostics" }
+        "identify": { "$ref": "#/definitions/identify_diagnostics" },
+        "programming": { "$ref": "#/definitions/programming_diagnostics" },
+        "merge": { "$ref": "#/definitions/merge_diagnostics" }
+      }
+    },
+    "programming_diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tool": { "type": ["string", "null"] },
+        "enumeration_raw": { "type": ["string", "null"] },
+        "error": { "type": ["string", "null"] }
+      }
+    },
+    "merge_diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": { "type": "string", "enum": ["merged", "ambiguous", "uart_only", "jtag_only"] },
+        "reason": { "type": ["string", "null"] },
+        "confidence": { "type": ["number", "null"] }
       }
     },
     "identify_diagnostics": {
