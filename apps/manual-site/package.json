@@ -8,6 +8,7 @@
     "prebuild": "node write-build-sha.cjs",
     "build": "npm run prebuild && vite build",
     "preview": "vite preview",
+    "sanity": "node ./site-sanity-check.cjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
