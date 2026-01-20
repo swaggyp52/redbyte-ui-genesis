@@ -126,9 +126,14 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
 
   return (
     <div
-      className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-end gap-2 rounded-2xl bg-slate-900/95 px-4 py-3 backdrop-blur-xl border border-cyan-500/30 shadow-2xl shadow-cyan-500/20"
+      className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-end gap-2 rounded-2xl px-4 py-3 backdrop-blur-xl"
       title="Alt+Arrow keys to reorder (when focused)"
       onMouseLeave={() => setHoveredId(null)}
+      style={{
+        background: 'var(--rb-panel)',
+        border: '1px solid var(--rb-border)',
+        boxShadow: 'var(--rb-shadow-sm)',
+      }}
     >
       {dockItems.map((dock, index) => {
         const Icon = dock.component;
@@ -171,20 +176,23 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
             style={{
               transform: `scale(${scale}) translateY(${isHovered ? '-8px' : '0px'})`,
               transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+              background: isRunning ? 'var(--rb-panel-2)' : 'var(--rb-panel)',
+              border: isRunning ? '1px solid var(--rb-accent-strong)' : '1px solid var(--rb-border)',
+              boxShadow: isRunning ? 'var(--rb-shadow-sm)' : 'none',
             }}
-            className={`relative h-14 w-14 rounded-xl flex items-center justify-center ${
-              isRunning
-                ? 'bg-gradient-to-br from-cyan-500/15 to-blue-500/15 hover:from-cyan-500/25 hover:to-blue-500/25 border border-cyan-500/40 shadow-lg shadow-cyan-500/20'
-                : 'bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/50'
-            }`}
+            className="relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200"
           >
             <Icon
               width={28}
               height={28}
-              className={`transition-all duration-300 ${isRunning ? 'text-cyan-300 drop-shadow-[0_0_6px_rgba(6,182,212,0.6)]' : 'text-slate-300'}`}
+              style={{ color: isRunning ? 'var(--rb-accent)' : 'var(--rb-muted)' }}
+              className="transition-colors duration-200"
             />
             {isRunning && (
-              <span className="absolute -bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/80 animate-pulse" />
+              <span
+                className="absolute -bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full animate-pulse"
+                style={{ background: 'var(--rb-accent)' }}
+              />
             )}
           </button>
         );

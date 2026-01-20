@@ -150,15 +150,11 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
       opacity,
       transform,
       transition: animating,
-      background: focused
-        ? 'linear-gradient(135deg, rgba(15, 23, 42, 0.97) 0%, rgba(15, 23, 42, 0.95) 50%, rgba(6, 182, 212, 0.02) 100%)'
-        : 'rgba(15, 23, 42, 0.95)',
-      border: focused ? '1px solid rgba(6, 182, 212, 0.4)' : '1px solid rgba(71, 85, 105, 0.3)',
-      borderRadius: 12,
+      background: focused ? 'var(--rb-panel-2)' : 'var(--rb-panel)',
+      border: focused ? '1px solid var(--rb-border-strong)' : '1px solid var(--rb-border)',
+      borderRadius: 'var(--rb-radius-lg)',
       overflow: 'hidden',
-      boxShadow: focused
-        ? '0 25px 70px rgba(6, 182, 212, 0.2), 0 10px 30px rgba(6, 182, 212, 0.1), 0 0 0 1px rgba(6, 182, 212, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
-        : '0 15px 50px rgba(0, 0, 0, 0.5), 0 5px 20px rgba(0, 0, 0, 0.3)',
+      boxShadow: focused ? 'var(--rb-shadow-md)' : 'var(--rb-shadow-sm)',
       backdropFilter: 'blur(24px)',
       display: isMin ? 'none' : 'block',
     } as React.CSSProperties;
@@ -174,24 +170,26 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
       onMouseDown={onFocus}
     >
       <div
-        className={`flex h-10 items-center gap-3 px-3 text-sm select-none border-b transition-all duration-200 ${
-          state.focused
-            ? 'bg-gradient-to-r from-slate-800/95 via-slate-900/95 to-slate-800/95 border-cyan-500/30 shadow-[0_1px_10px_rgba(6,182,212,0.1)]'
-            : 'bg-slate-900/70 border-slate-700/30'
-        }`}
-        style={{ cursor: isMax ? 'default' : 'grab' }}
+        className="flex h-10 items-center gap-3 px-3 text-sm select-none border-b transition-colors duration-200"
+        style={{
+          cursor: isMax ? 'default' : 'grab',
+          background: state.focused ? 'var(--rb-panel-2)' : 'var(--rb-panel)',
+          borderColor: state.focused ? 'var(--rb-border-strong)' : 'var(--rb-border)',
+        }}
         onMouseDown={isMax ? undefined : startDrag}
         onDoubleClick={isMax ? onRestore : onMaximize}
       >
-        <div className={`flex-1 truncate font-semibold tracking-wide leading-none transition-colors duration-200 ${
-          state.focused ? 'text-white drop-shadow-[0_0_8px_rgba(6,182,212,0.3)]' : 'text-slate-400'
-        }`}>
+        <div
+          className="flex-1 truncate font-semibold tracking-wide leading-none transition-colors duration-200"
+          style={{ color: state.focused ? 'var(--rb-text)' : 'var(--rb-muted)' }}
+        >
           {state.title}
         </div>
         <div className="flex items-center gap-1.5">
           {state.minimizable && (
             <button
-              className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-slate-700/60 text-slate-400 hover:text-cyan-300 transition-all duration-200 hover:shadow-lg hover:shadow-cyan-500/20"
+              className="h-7 w-7 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-white/5"
+              style={{ color: 'var(--rb-muted)' }}
               onClick={onMinimize}
               title="Minimize"
             >
@@ -200,7 +198,8 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
           )}
           {state.maximizable && (
             <button
-              className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-slate-700/60 text-slate-400 hover:text-cyan-300 transition-all duration-200 hover:shadow-lg hover:shadow-cyan-500/20"
+              className="h-7 w-7 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-white/5"
+              style={{ color: 'var(--rb-muted)' }}
               onClick={isMax ? onRestore : onMaximize}
               title={isMax ? "Restore" : "Maximize"}
             >
@@ -208,7 +207,8 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
             </button>
           )}
           <button
-            className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-all duration-200 hover:shadow-lg hover:shadow-red-500/20"
+            className="h-7 w-7 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-red-500/20"
+            style={{ color: 'var(--rb-muted)' }}
             onClick={onClose}
             title="Close"
           >
@@ -217,7 +217,9 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
         </div>
       </div>
 
-      <div className="h-[calc(100%-40px)] bg-slate-950/50 text-white overflow-hidden">{children}</div>
+      <div className="h-[calc(100%-40px)] overflow-hidden" style={{ background: 'var(--rb-bg)', color: 'var(--rb-text)' }}>
+        {children}
+      </div>
 
       {/* Resize handles */}
       {!isMax && !isMin && (
