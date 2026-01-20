@@ -1,4 +1,3 @@
-\# RedByte OS Genesis — AI State Ledger
 # AI State
 
 This file is the single authoritative source of truth for:
@@ -159,7 +158,7 @@ Files is the first real multi-window workflow proving the OS substrate:
 
 \- Keyboard navigation: Arrow keys move selection, Enter opens folder, Escape closes window
 
-### Settings App Contract
+## Settings App Contract
 
 Settings is the canonical system configuration interface with strict singleton semantics:
 
@@ -512,10 +511,15 @@ Macro structure:
 \- Macro = { id: string, name: string, steps: MacroStep[] }
 
 \- MacroStep is one of:
-  - { type: 'command', commandId: string }
-  - { type: 'openApp', appId: string, props?: Record<string, unknown> }
-  - { type: 'intent', intent: OpenWithIntent }
-  - { type: 'switchWorkspace', workspaceId: string }
+* { type: 'command', commandId: string }
+* { type: 'openApp', appId: string, props?: Record<string, unknown> }
+* { type: 'intent', intent: OpenWithIntent }
+* { type: 'switchWorkspace', workspaceId: string }
+
+
+
+
+
 
 
 Execution semantics:
@@ -685,10 +689,10 @@ Before creating a release tag or pushing to main:
 
 **Post-push checklist:**
 
-7. \[ \] Verify CI passes on GitHub (all jobs green)
-8. \[ \] Create milestone tag: `git tag phase-{letter}-complete && git push origin phase-{letter}-complete`
-9. \[ \] Verify tag appears on GitHub releases page
-10. \[ \] Document phase completion in AI\_STATE.md Completed Phases section
+1. \[ \] Verify CI passes on GitHub (all jobs green)
+2. \[ \] Create milestone tag: `git tag phase-{letter}-complete && git push origin phase-{letter}-complete`
+3. \[ \] Verify tag appears on GitHub releases page
+4. \[ \] Document phase completion in AI_STATE.md Completed Phases section
 
 **Emergency rollback procedure:**
 
@@ -1138,13 +1142,19 @@ Transform file selection into actionable intents that can launch/route to other 
 **File Action Semantics:**
 
 1. **Action Triggers**:
-   - UI button click (e.g., "Open in Playground")
-   - Keyboard shortcut (e.g., Cmd/Ctrl+Enter for default, Cmd/Ctrl+Shift+Enter for "Open With...")
-   - Command Palette selection (if Files focused + file selected)
-   - System Search action (if Files focused + file selected)
 
-2. **Action Payload**:
-   ```typescript
+* UI button click (e.g., "Open in Playground")
+* Keyboard shortcut (e.g., Cmd/Ctrl+Enter for default, Cmd/Ctrl+Shift+Enter for "Open With...")
+* Command Palette selection (if Files focused + file selected)
+* System Search action (if Files focused + file selected)
+
+
+1. **Action Payload**:
+
+
+
+   
+  ```typescript
    interface FileActionIntent {
      type: 'open-with';
      payload: {
@@ -1157,10 +1167,12 @@ Transform file selection into actionable intents that can launch/route to other 
    }
    ```
 
-3. **Action Availability**:
-   - Actions shown only when valid (file vs folder type check)
-   - Folder-only actions vs file-only actions clearly separated
-   - No actions available when no entry selected
+2. **Action Availability**:
+
+
+* Actions shown only when valid (file vs folder type check)
+* Folder-only actions vs file-only actions clearly separated
+* No actions available when no entry selected
    - No actions fire during modal (PHASE_W guard applies)
 
 **Implementation Contracts:**
