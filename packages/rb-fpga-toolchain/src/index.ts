@@ -50,3 +50,6 @@ export {
 
 // Wrapper generator
 export { WRAPPER_VERSION, buildSampleTemplate, generateWrapperVerilog, hashText } from './wrapper.js';
+
+// Interface checker
+export { checkTopInterface, getRequiredInterface } from './interface-checker.js';
