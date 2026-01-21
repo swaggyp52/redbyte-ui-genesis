@@ -5977,3 +5977,7 @@ Commits:
 ## Change Log  2026-01-20
 
 - Added UART-backed run/stream support with RBHB stream framing, stream parser, hardware run lifecycle (start/stop/no-data status), and stream parser tests; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Added Basys 3 and Spartan-3E UART smoke fixture HDL sources and build notes under tools/fixtures, plus board-model UART README guidance; objectives unchanged; phase unchanged.
