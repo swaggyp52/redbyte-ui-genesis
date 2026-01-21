@@ -47,3 +47,6 @@ export {
   detectBoardsWithOpenFPGALoader,
   writeFpgaFlashWithOpenFPGALoader,
 } from './openfpgaloader';
+
+// Wrapper generator
+export { WRAPPER_VERSION, buildSampleTemplate, generateWrapperVerilog, hashText } from './wrapper.js';
