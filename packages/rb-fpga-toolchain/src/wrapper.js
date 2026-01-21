@@ -2,6 +2,21 @@ import crypto from "crypto";
 
 export const WRAPPER_VERSION = "0.1.0";
 
+const BOARD_DEFAULTS = {
+  basys3: {
+    clockHz: 100_000_000,
+    uartRxPort: "RsRx",
+    uartTxPort: "RsTx",
+    btnMode: "split",
+  },
+  "spartan3e-starter": {
+    clockHz: 50_000_000,
+    uartRxPort: "rs232_dce_rxd",
+    uartTxPort: "rs232_dce_txd",
+    btnMode: "bus4",
+  },
+};
+
 function hexByte(value) {
   return value.toString(16).padStart(2, "0");
 }
@@ -44,7 +59,19 @@ export function generateWrapperVerilog(options) {
     designHash,
     buildId,
     wrapperVersion = WRAPPER_VERSION,
+    clockHz,
+    uartRxPort,
+    uartTxPort,
+    btnMode,
+    sampleHz,
   } = options;
+
+  const defaults = BOARD_DEFAULTS[boardModelId] || BOARD_DEFAULTS.basys3;
+  const resolvedClockHz = clockHz || defaults.clockHz;
+  const resolvedUartRx = uartRxPort || defaults.uartRxPort;
+  const resolvedUartTx = uartTxPort || defaults.uartTxPort;
+  const resolvedBtnMode = btnMode || defaults.btnMode;
+  const resolvedSampleHz = sampleHz || 20;
 
   const identifyPayload = JSON.stringify({
     kind: "identify",
@@ -86,6 +113,16 @@ export function generateWrapperVerilog(options) {
     `    sample_payload[${ledPositions[2]}] = hex_char(led_value[7:4]);`,
     `    sample_payload[${ledPositions[3]}] = hex_char(led_value[3:0]);`,
   ].join("\n");
+
+  const buttonPorts =
+    resolvedBtnMode === "split"
+      ? "  input  wire btnC,\n  input  wire btnU,\n  input  wire btnD,\n  input  wire btnL,\n  input  wire btnR,\n"
+      : "  input  wire [3:0] btn,\n";
+
+  const buttonBus =
+    resolvedBtnMode === "split"
+      ? "  wire [4:0] btn_bus = {btnR, btnL, btnD, btnU, btnC};\n"
+      : "  wire [4:0] btn_bus = {1'b0, btn};\n";
 
   return `// Auto-generated RedByte wrapper (do not edit by hand)
 // board_model_id: ${boardModelId}
@@ -249,22 +286,17 @@ endmodule
 module rb_wrapper_top (
   input  wire clk,
   input  wire [15:0] sw,
-  input  wire btnC,
-  input  wire btnU,
-  input  wire btnD,
-  input  wire btnL,
-  input  wire btnR,
-  output wire [15:0] led,
+${buttonPorts}  output wire [15:0] led,
   output wire [6:0] seg,
   output wire [3:0] an,
   output wire dp,
-  input  wire RsRx,
-  output wire RsTx
+  input  wire ${resolvedUartRx},
+  output wire ${resolvedUartTx}
 );
-  localparam integer CLK_HZ = 100_000_000;
+  localparam integer CLK_HZ = ${resolvedClockHz};
   localparam integer BAUD = 115200;
   localparam integer CLKS_PER_BIT = CLK_HZ / BAUD;
-  localparam integer SAMPLE_HZ = 20;
+  localparam integer SAMPLE_HZ = ${resolvedSampleHz};
   localparam integer SAMPLE_TICKS = CLK_HZ / SAMPLE_HZ;
   localparam integer HEADER_LEN = 8;
   localparam integer CRC_LEN = 4;
@@ -273,7 +305,7 @@ module rb_wrapper_top (
   localparam integer IDENT_FRAME_LEN = HEADER_LEN + IDENT_LEN + CRC_LEN;
   localparam integer SAMPLE_FRAME_LEN = HEADER_LEN + SAMPLE_LEN + CRC_LEN;
 
-  wire [4:0] btn_bus = {btnR, btnL, btnD, btnU, btnC};
+${buttonBus}
 
   wire [15:0] led_wire;
   wire [6:0] seg_wire;
@@ -298,7 +330,7 @@ module rb_wrapper_top (
   rb_uart_rx #(.CLKS_PER_BIT(CLKS_PER_BIT)) uart_rx (
     .clk(clk),
     .reset(1'b0),
-    .rx_line(RsRx),
+    .rx_line(${resolvedUartRx}),
     .rx_data(rx_data),
     .rx_valid(rx_valid)
   );
@@ -309,7 +341,7 @@ module rb_wrapper_top (
     .tx_data(tx_data),
     .tx_valid(tx_valid),
     .tx_ready(tx_ready),
-    .tx_line(RsTx)
+    .tx_line(${resolvedUartTx})
   );
 
   reg streaming_enabled = 1'b0;

@@ -7,6 +7,11 @@ export interface WrapperOptions {
   designHash: string;
   buildId: string;
   wrapperVersion?: string;
+  clockHz?: number;
+  uartRxPort?: string;
+  uartTxPort?: string;
+  btnMode?: "split" | "bus4";
+  sampleHz?: number;
 }
 
 export interface SampleTemplate {

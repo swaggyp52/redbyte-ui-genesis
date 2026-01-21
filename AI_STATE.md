@@ -5997,3 +5997,7 @@ Commits:
 ## Change Log  2026-01-20
 
 - Hardened toolchain wrapper build with student top interface checks, deterministic manifest/tcl outputs, pinmap hash gating, lab.json support, and build tests for determinism/interface/pinmap errors; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Added Spartan-3E stub generator support in rb-fpga-toolchain (ISE project skeleton, constraints copy, deterministic outputs) with tests; objectives unchanged; phase unchanged.

@@ -16,16 +16,34 @@ const BOARD_CONFIG = {
     boardModelId: "basys3",
     part: "xc7a35tcpg236-1",
     pinmap: path.join(repoRoot, "packages", "board-models", "basys3", "pinmap.vivado.xdc"),
+    toolchain: "vivado",
+    constraintsExt: "xdc",
+  },
+  "spartan3e-starter": {
+    boardModelId: "spartan3e-starter",
+    part: "xc3s500e-4ft256",
+    pinmap: path.join(repoRoot, "packages", "board-models", "spartan3e-starter", "pinmap.ise.ucf"),
+    toolchain: "ise",
+    constraintsExt: "ucf",
   },
 };
 
 function usage() {
   console.log("rb-fpga-toolchain build --board basys3 --src <dir> --top <name> --out <dir>");
-  console.log("Optional: --lab <lab.json> --skip-vivado");
+  console.log("Optional: --lab <lab.json> --skip-vivado --skip-ise");
 }
 
 function parseArgs(argv) {
-  const args = { command: null, board: null, src: null, top: null, out: null, skipVivado: false, lab: null };
+  const args = {
+    command: null,
+    board: null,
+    src: null,
+    top: null,
+    out: null,
+    skipVivado: false,
+    skipIse: false,
+    lab: null,
+  };
   const list = [...argv];
   args.command = list.shift() || null;
   while (list.length) {
@@ -36,6 +54,7 @@ function parseArgs(argv) {
     else if (next === "--out") args.out = list.shift();
     else if (next === "--lab") args.lab = list.shift();
     else if (next === "--skip-vivado") args.skipVivado = true;
+    else if (next === "--skip-ise") args.skipIse = true;
   }
   return args;
 }
@@ -105,6 +124,42 @@ function writeLog(logPath, lines) {
   fs.writeFileSync(logPath, normalizeNewlines(lines.join("\n") + "\n"), "utf8");
 }
 
+function toProjectPath(projectDir, filePath) {
+  const rel = path.relative(projectDir, filePath);
+  return rel.split(path.sep).join("/");
+}
+
+function writeIseProject({ outDir, wrapperPath, sources, constraintsPath, part }) {
+  const projectDir = path.join(outDir, "project");
+  fs.mkdirSync(projectDir, { recursive: true });
+
+  const prjLines = [];
+  prjLines.push(`verilog work "${toProjectPath(projectDir, wrapperPath)}"`);
+  for (const src of sources) {
+    prjLines.push(`verilog work "${toProjectPath(projectDir, src)}"`);
+  }
+
+  const prjPath = path.join(projectDir, "files.prj");
+  fs.writeFileSync(prjPath, normalizeNewlines(prjLines.join("\n") + "\n"), "utf8");
+
+  const readmePath = path.join(projectDir, "README_ise_build.md");
+  const readme = `# Spartan-3E ISE build (manual)\n\n` +
+    `ISE build automation is not implemented yet. Use this project skeleton to build manually.\n\n` +
+    `## Steps\n\n` +
+    `1. Open ISE and create a new project for the Spartan-3E Starter Kit.\n` +
+    `2. Select the correct device (e.g. ${part} or your kit's part).\n` +
+    `3. Add sources:\n` +
+    `   - ${toProjectPath(projectDir, wrapperPath)}\n` +
+    sources.map((src) => `   - ${toProjectPath(projectDir, src)}`).join("\n") +
+    `\n` +
+    `4. Add constraints: ${toProjectPath(projectDir, constraintsPath)}\n` +
+    `5. Run Synthesize → Implement → Generate Programming File.\n` +
+    `6. Export the .bit file and use the RedByte bridge /program endpoint.\n`;
+  fs.writeFileSync(readmePath, normalizeNewlines(readme), "utf8");
+
+  return { projectDir, prjPath, readmePath };
+}
+
 async function build() {
   const args = parseArgs(process.argv.slice(2));
   if (args.command !== "build") {
@@ -169,6 +224,9 @@ async function build() {
   let wrapperHash = null;
   let tclPath = null;
   let vivadoInfo = null;
+  let constraintsPath = null;
+  let projectInfo = null;
+  let toolchainInfo = null;
 
   const logPath = path.join(outDir, "build.log");
   const logLines = [];
@@ -211,60 +269,89 @@ async function build() {
     fs.writeFileSync(wrapperPath, normalizeNewlines(wrapper), "utf8");
     wrapperHash = `sha256:${hashText(wrapper)}`;
 
-    tclPath = path.join(outDir, "build_vivado.tcl");
-    const tcl = writeTcl({
-      outputDir: outDir,
-      wrapperPath,
-      sources,
-      pinmapPath,
-      topModule: "rb_wrapper_top",
-      part: cfg.part,
-    });
-    fs.writeFileSync(tclPath, tcl, "utf8");
-
     logLines.push(`wrapper=${wrapperPath}`);
-    logLines.push(`tcl=${tclPath}`);
 
-    const vivado = resolveVivado();
-    vivadoInfo = vivado ? { path: vivado.path, version: vivado.version || null } : null;
-    const vivadoCmd = `${vivado?.path || "vivado"} -mode batch -source ${tclPath}`;
+    if (cfg.toolchain === "ise") {
+      constraintsPath = path.join(outDir, `constraints.${cfg.constraintsExt}`);
+      const pinmapRaw = fs.readFileSync(pinmapPath, "utf8");
+      fs.writeFileSync(constraintsPath, normalizeNewlines(pinmapRaw), "utf8");
 
-    if (args.skipVivado) {
+      projectInfo = writeIseProject({
+        outDir,
+        wrapperPath,
+        sources,
+        constraintsPath,
+        part: cfg.part,
+      });
+
+      logLines.push("ISE build is not automated yet.");
+      logLines.push(`constraints=${constraintsPath}`);
+      logLines.push(`project=${projectInfo.projectDir}`);
+      logLines.push(`project_readme=${projectInfo.readmePath}`);
+      logLines.push(`project_files=${projectInfo.prjPath}`);
+
       status = "skipped";
       errorCode = null;
-      logLines.push("Vivado execution skipped by --skip-vivado.");
-      logLines.push(`Vivado command: ${vivadoCmd}`);
-    } else if (!vivado) {
-      status = "missing_vivado";
-      errorCode = "missing_vivado";
-      logLines.push("Vivado not found. Set VIVADO_PATH or add vivado to PATH.");
-      logLines.push(`Vivado command: ${vivadoCmd}`);
-    } else {
-      logLines.push(`Vivado: ${vivado.path}`);
-      if (vivado.version) {
-        logLines.push(`Vivado version: ${vivado.version}`);
+      toolchainInfo = { kind: "ise", status: "skipped", reason: "skip_ise" };
+      if (!args.skipIse) {
+        logLines.push("Use --skip-ise to acknowledge manual ISE build steps.");
       }
-      logLines.push(`Vivado command: ${vivadoCmd}`);
-      const proc = spawnSync(vivado.path, ["-mode", "batch", "-source", tclPath], {
-        cwd: outDir,
-        shell: true,
-        encoding: "utf8",
+    } else {
+      tclPath = path.join(outDir, "build_vivado.tcl");
+      const tcl = writeTcl({
+        outputDir: outDir,
+        wrapperPath,
+        sources,
+        pinmapPath,
+        topModule: "rb_wrapper_top",
+        part: cfg.part,
       });
-      logLines.push(proc.stdout || "");
-      logLines.push(proc.stderr || "");
-      if (proc.error || proc.status !== 0) {
-        status = "build_failed";
-        errorCode = "vivado_failed";
+      fs.writeFileSync(tclPath, tcl, "utf8");
+
+      logLines.push(`tcl=${tclPath}`);
+
+      const vivado = resolveVivado();
+      vivadoInfo = vivado ? { path: vivado.path, version: vivado.version || null } : null;
+      const vivadoCmd = `${vivado?.path || "vivado"} -mode batch -source ${tclPath}`;
+
+      if (args.skipVivado) {
+        status = "skipped";
+        errorCode = null;
+        logLines.push("Vivado execution skipped by --skip-vivado.");
+        logLines.push(`Vivado command: ${vivadoCmd}`);
+      } else if (!vivado) {
+        status = "missing_vivado";
+        errorCode = "missing_vivado";
+        logLines.push("Vivado not found. Set VIVADO_PATH or add vivado to PATH.");
+        logLines.push(`Vivado command: ${vivadoCmd}`);
       } else {
-        bitstreamPath = path.join(outDir, "bitstream.bit");
-        if (fs.existsSync(bitstreamPath)) {
-          status = "ok";
-          errorCode = null;
-        } else {
+        logLines.push(`Vivado: ${vivado.path}`);
+        if (vivado.version) {
+          logLines.push(`Vivado version: ${vivado.version}`);
+        }
+        logLines.push(`Vivado command: ${vivadoCmd}`);
+        const proc = spawnSync(vivado.path, ["-mode", "batch", "-source", tclPath], {
+          cwd: outDir,
+          shell: true,
+          encoding: "utf8",
+        });
+        logLines.push(proc.stdout || "");
+        logLines.push(proc.stderr || "");
+        if (proc.error || proc.status !== 0) {
           status = "build_failed";
-          errorCode = "bitstream_missing";
+          errorCode = "vivado_failed";
+        } else {
+          bitstreamPath = path.join(outDir, "bitstream.bit");
+          if (fs.existsSync(bitstreamPath)) {
+            status = "ok";
+            errorCode = null;
+          } else {
+            status = "build_failed";
+            errorCode = "bitstream_missing";
+          }
         }
       }
+      toolchainInfo = { vivado: vivadoInfo };
     }
   }
 
@@ -287,6 +374,9 @@ async function build() {
       : null,
     wrapper_version: WRAPPER_VERSION,
     pinmap_hash: pinmapHash,
+    pinmap: pinmapHash
+      ? { path: path.basename(pinmapPath), sha256: pinmapHash }
+      : { path: path.basename(pinmapPath), sha256: null },
     design_hash: designHash,
     build_id: buildId,
     wrapper_hash: wrapperHash,
@@ -295,9 +385,12 @@ async function build() {
       wrapper: wrapperPath ? path.basename(wrapperPath) : null,
       tcl: tclPath ? path.basename(tclPath) : null,
       bitstream: bitstreamPath ? path.basename(bitstreamPath) : null,
+      constraints: constraintsPath ? path.basename(constraintsPath) : null,
+      project_readme: projectInfo ? path.relative(outDir, projectInfo.readmePath).split(path.sep).join("/") : null,
+      project_files: projectInfo ? path.relative(outDir, projectInfo.prjPath).split(path.sep).join("/") : null,
       log: path.basename(logPath),
     },
-    toolchain: { vivado: vivadoInfo },
+    toolchain: toolchainInfo || { vivado: vivadoInfo },
     status,
     error_code: errorCode,
   };
