@@ -1,0 +1,6 @@
+{
+  "board_model_id": "basys3",
+  "top_name": "student_top",
+  "interface": "basys3_v1",
+  "expected_stream_hz": 20
+}

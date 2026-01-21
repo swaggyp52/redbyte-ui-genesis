@@ -5993,3 +5993,7 @@ Commits:
 ## Change Log  2026-01-20
 
 - Added deterministic wrapper generator with tests and a rb-fpga-toolchain build script to emit wrapper/Tcl/manifest and optionally run Vivado for Basys 3; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Hardened toolchain wrapper build with student top interface checks, deterministic manifest/tcl outputs, pinmap hash gating, lab.json support, and build tests for determinism/interface/pinmap errors; objectives unchanged; phase unchanged.
