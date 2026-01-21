@@ -5985,3 +5985,7 @@ Commits:
 ## Change Log  2026-01-20
 
 - Added Ticket 8 smoke script and usage notes under tools/smoke for end-to-end /devices->/program->/run->/stream->/stop verification; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Added smoke script preflight retry and bridge URL hints to reduce false failures when the bridge is not yet running; objectives unchanged; phase unchanged.

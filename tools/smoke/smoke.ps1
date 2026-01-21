@@ -53,6 +53,19 @@ function PostJson([string]$url, [hashtable]$body) {
   return Invoke-RestMethod -Method Post -Uri $url -ContentType "application/json" -Body $json
 }
 
+function GetDevicesWithRetry([string]$url, [int]$attempts = 10, [int]$delayMs = 200) {
+  $lastError = ""
+  for ($i = 1; $i -le $attempts; $i++) {
+    try {
+      return @{ ok = $true; data = (GetJson $url) }
+    } catch {
+      $lastError = $_.Exception.Message
+      Start-Sleep -Milliseconds $delayMs
+    }
+  }
+  return @{ ok = $false; error = $lastError }
+}
+
 function RepoRootFromHere() {
   $p = Split-Path -Parent $PSScriptRoot
   return Split-Path -Parent $p
@@ -185,7 +198,15 @@ function ReadSseSamples([string]$url, [int]$want, [int]$timeoutMs) {
 # ------------------ Smoke flow ------------------
 
 Step "Step 0: Query /devices"
-$devicesResp = GetJson "$BridgeUrl/devices"
+Write-Host ("Bridge URL: {0}" -f $BridgeUrl)
+$devicesResult = GetDevicesWithRetry "$BridgeUrl/devices"
+if (-not $devicesResult.ok) {
+  Fail ("Unable to reach bridge at {0}/devices" -f $BridgeUrl)
+  Write-Host "Start bridge: pnpm --filter @redbyte/fpga-bridge dev"
+  Write-Host "Or pass -BridgeUrl http://127.0.0.1:XXXX"
+  ExitFail ("Bridge not reachable. {0}" -f $devicesResult.error) 3
+}
+$devicesResp = $devicesResult.data
 if (-not $devicesResp -or -not $devicesResp.devices) {
   ExitFail "Invalid /devices response." 3
 }
