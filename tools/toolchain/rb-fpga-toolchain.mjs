@@ -4,6 +4,7 @@ import path from "path";
 import crypto from "crypto";
 import { spawnSync } from "child_process";
 import { fileURLToPath } from "url";
+import os from "os";
 import { generateWrapperVerilog, WRAPPER_VERSION, hashText } from "../../packages/rb-fpga-toolchain/src/wrapper.js";
 import { checkTopInterface, getRequiredInterface } from "../../packages/rb-fpga-toolchain/src/interface-checker.js";
 
@@ -28,10 +29,7 @@ const BOARD_CONFIG = {
   },
 };
 
-function usage() {
-  console.log("rb-fpga-toolchain build --board basys3 --src <dir> --top <name> --out <dir>");
-  console.log("Optional: --lab <lab.json> --skip-vivado --skip-ise");
-}
+// function usage() removed (duplicate)
 
 function parseArgs(argv) {
   const args = {
@@ -160,26 +158,202 @@ function writeIseProject({ outDir, wrapperPath, sources, constraintsPath, part }
   return { projectDir, prjPath, readmePath };
 }
 
-async function build() {
-  const args = parseArgs(process.argv.slice(2));
-  if (args.command !== "build") {
+// ... (Usage updated)
+function usage() {
+  console.log("rb-fpga-toolchain <command> [options]");
+  console.log("Commands:");
+  console.log("  build    Build a bitstream from sources");
+  console.log("    --board <basys3|spartan3e-starter> --src <dir> --top <name> --out <dir>");
+  console.log("    [--lab <lab.json>] [--skip-vivado] [--skip-ise]");
+  console.log("  pack     Create a portable lab packet");
+  console.log("    --src <dir> --out <dir> [--lab <lab.json>]");
+  console.log("  verify   Verify a lab packet");
+  console.log("    --packet <dir>");
+}
+
+// ... (existing helper functions) ...
+
+async function runPack(args) {
+  if (!args.src || !args.out) {
     usage();
     process.exit(1);
   }
 
-  let labConfig = null;
+  const srcDir = path.resolve(args.src);
+  const outDir = path.resolve(args.out);
+
+  // 1. Gather Sources
+  if (!fs.existsSync(srcDir)) {
+    console.error(`Source directory not found: ${srcDir}`);
+    process.exit(1);
+  }
+  const sources = listSourceFiles(srcDir);
+  if (sources.length === 0) {
+    console.error("No Verilog sources found.");
+    process.exit(1);
+  }
+
+  // 2. Hash Sources
+  const sourceEntries = sources.map((filePath) => ({
+    path: path.relative(srcDir, filePath).replace(/\\/g, "/"),
+    hash: `sha256:${hashFile(filePath)}`
+  }));
+
+  // Sort for deterministic combined hash
+  sourceEntries.sort((a, b) => a.path.localeCompare(b.path));
+  const combinedHash = hashText(sourceEntries.map(s => `${s.path}:${s.hash}`).join("|"));
+
+  // 3. Prepare Manifest
+  let labId = "unknown";
+  let boardId = null;
+
   if (args.lab) {
-    const labPath = path.resolve(args.lab);
-    const rawLab = fs.readFileSync(labPath, "utf8");
-    labConfig = JSON.parse(rawLab);
-    if (!args.board && labConfig.board_model_id) {
-      args.board = labConfig.board_model_id;
-    }
-    if (!args.top && labConfig.top_name) {
-      args.top = labConfig.top_name;
+    try {
+      const lab = JSON.parse(fs.readFileSync(args.lab, 'utf8'));
+      labId = lab.lab_id || labId;
+      boardId = lab.board_model_id || null;
+    } catch {
+      console.warn("Could not read lab.json");
     }
   }
 
+  const manifest = {
+    manifest_version: 1,
+    created_at: new Date().toISOString(),
+    lab_id: labId,
+    board_id: boardId,
+    sources: {
+      hash: `sha256:${combinedHash}`,
+      files: sourceEntries
+    },
+    toolchain: {
+      name: "rb-fpga-toolchain",
+      version: "1.0.0", // TODO: Get from package.json
+      wrapper_version: WRAPPER_VERSION
+    },
+    metadata: {
+      host: os.hostname(),
+      user: os.userInfo().username
+    }
+  };
+
+  // 4. Write Output
+  if (fs.existsSync(outDir)) {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }
+  fs.mkdirSync(outDir, { recursive: true });
+  fs.mkdirSync(path.join(outDir, "src"));
+
+  // Copy sources
+  for (const entry of sourceEntries) {
+    const srcPath = path.join(srcDir, entry.path);
+    const destPath = path.join(outDir, "src", entry.path);
+    fs.mkdirSync(path.dirname(destPath), { recursive: true });
+    fs.copyFileSync(srcPath, destPath);
+  }
+
+  // Write manifest
+  const manifestPath = path.join(outDir, "lab-manifest.v1.json");
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
+
+  console.log(`Packed lab to ${outDir}`);
+  console.log(`Manifest: ${manifestPath}`);
+}
+
+async function runVerify(args) {
+  // --packet <dir>
+  // We treat 'args.board' as packet dir if --packet not parsed explicitly in parseArgs
+  // Let's assume parseArgs needs a tiny update or we reuse fields.
+  // Actually, create a --packet field in parseArgs first or repurpose one.
+  // For now, let's reuse --src as input for verification if --packet missing, or just check args.
+
+  const packetDir = args.packet ? path.resolve(args.packet) : null;
+  if (!packetDir || !fs.existsSync(packetDir)) {
+    console.error("Packet directory not specified or missing.");
+    usage();
+    process.exit(1);
+  }
+
+  const manifestPath = path.join(packetDir, "lab-manifest.v1.json");
+  if (!fs.existsSync(manifestPath)) {
+    console.error("Missing lab-manifest.v1.json");
+    process.exit(1);
+  }
+
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  if (manifest.manifest_version !== 1) {
+    console.error(`Unsupported manifest version: ${manifest.manifest_version}`);
+    process.exit(1);
+  }
+
+  console.log(`Verifying Lab: ${manifest.lab_id} (${manifest.created_at})`);
+
+  // Check Source Integrity
+  const srcDir = path.join(packetDir, "src");
+  let allOk = true;
+  const computedEntries = [];
+
+  for (const file of manifest.sources.files) {
+    const fullPath = path.join(srcDir, file.path);
+    if (!fs.existsSync(fullPath)) {
+      console.error(`[MISSING] ${file.path}`);
+      allOk = false;
+      continue;
+    }
+    const hash = `sha256:${hashFile(fullPath)}`;
+    if (hash !== file.hash) {
+      console.error(`[HASH FAIL] ${file.path} (Expected ${file.hash}, Got ${hash})`);
+      allOk = false;
+    } else {
+      console.log(`[OK] ${file.path}`);
+    }
+    computedEntries.push({ path: file.path, hash });
+  }
+
+  // Verify Master Hash
+  computedEntries.sort((a, b) => a.path.localeCompare(b.path));
+  const combinedHash = hashText(computedEntries.map(s => `${s.path}:${s.hash}`).join("|"));
+  const expectedMaster = manifest.sources.hash;
+
+  if (`sha256:${combinedHash}` !== expectedMaster) {
+    console.error(`[MASTER HASH FAIL] Expected ${expectedMaster}, Got sha256:${combinedHash}`);
+    allOk = false;
+  }
+
+  if (allOk) {
+    console.log("VERIFICATION SUCCESSFUL");
+    process.exit(0);
+  } else {
+    console.error("VERIFICATION FAILED");
+    process.exit(2);
+  }
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+
+  // Extend parseArgs to handle --packet
+  const rawArgv = process.argv.slice(2);
+  const packetIdx = rawArgv.indexOf("--packet");
+  if (packetIdx !== -1 && rawArgv[packetIdx + 1]) {
+    args.packet = rawArgv[packetIdx + 1];
+  }
+
+  if (args.command === "build") {
+    await build(args);
+  } else if (args.command === "pack") {
+    await runPack(args);
+  } else if (args.command === "verify") {
+    await runVerify(args);
+  } else {
+    usage();
+    process.exit(1);
+  }
+}
+
+// Rename the original build function to avoid conflict/recursion issues
+async function build(args) {
+  // Use args passed in, logic adapted from original build()
   if (!args.board || !args.src || !args.top || !args.out) {
     usage();
     process.exit(1);
@@ -235,6 +409,19 @@ async function build() {
   logLines.push(`pinmap=${pinmapPath}`);
   logLines.push(`sources=${sources.length}`);
 
+  let pkgWrapperVersion = WRAPPER_VERSION;
+  try {
+    // If WRAPPER_VERSION is undefined (import issue), fallback to 1
+    if (typeof pkgWrapperVersion === 'undefined') pkgWrapperVersion = 1;
+  } catch { pkgWrapperVersion = 1; }
+
+  let labConfig = null;
+  if (args.lab) {
+    try {
+      labConfig = JSON.parse(fs.readFileSync(path.resolve(args.lab), 'utf8'));
+    } catch { }
+  }
+
   if (!fs.existsSync(pinmapPath) || fs.statSync(pinmapPath).size === 0) {
     status = "failed";
     errorCode = "pinmap_missing";
@@ -262,7 +449,7 @@ async function build() {
       pinmapHash,
       designHash,
       buildId,
-      wrapperVersion: WRAPPER_VERSION,
+      wrapperVersion: pkgWrapperVersion,
     });
 
     wrapperPath = path.join(outDir, "rb_wrapper_top.v");
@@ -372,7 +559,7 @@ async function build() {
         expected_stream_hz: labConfig.expected_stream_hz || null,
       }
       : null,
-    wrapper_version: WRAPPER_VERSION,
+    wrapper_version: pkgWrapperVersion,
     pinmap_hash: pinmapHash,
     pinmap: pinmapHash
       ? { path: path.basename(pinmapPath), sha256: pinmapHash }
@@ -410,9 +597,10 @@ async function build() {
   }
 
   console.log(`Build complete: ${bitstreamPath}`);
+  process.exit(0);
 }
 
-build().catch((err) => {
+main().catch((err) => {
   console.error(err);
   process.exit(1);
 });

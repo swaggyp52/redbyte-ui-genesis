@@ -308,16 +308,20 @@ if ($samples.Count -lt $SampleCount) {
 
 $prev = -1
 for ($i=0; $i -lt $samples.Count; $i++) {
-  $t = [int]$samples[$i].t_ms
+  $rawT = $samples[$i].t_ms
+  if ($null -eq $rawT) {
+    ExitFail "Sample missing t_ms (timestamp). Wrapper protocol mismatch?" 13
+  }
+  
+  $t = [int]$rawT
+
   if ($t -lt $prev) {
-    Warn "Non-monotonic t_ms detected."
-    break
+    ExitFail ("Non-monotonic t_ms detected: {0} -> {1}" -f $prev, $t) 14
   }
   $prev = $t
 
   if (-not $samples[$i].io -or ($null -eq $samples[$i].io.sw) -or ($null -eq $samples[$i].io.btn) -or ($null -eq $samples[$i].io.led)) {
-    Warn "Sample missing expected io fields."
-    break
+    ExitFail "Sample missing expected io fields." 15
   }
 }
 

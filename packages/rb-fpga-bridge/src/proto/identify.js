@@ -1,14 +1,20 @@
 import { SerialPort } from "serialport";
 import { EventEmitter } from "events";
+import {
+  RBHB_MAGIC_HEADER_BUFFER,
+  RBHB_VERSION_V1,
+  RBHB_TYPE_IDENTIFY,
+  RBHB_TYPE_IDENTIFY_RESP,
+  RBHB_HEADER_LEN,
+  RBHB_CRC_LEN,
+  RBHB_MIN_FRAME_LEN,
+} from "./protocol.js";
 
-export const IDENTIFY_MAGIC = Buffer.from("RBHB", "ascii");
-export const IDENTIFY_VERSION = 0x01;
-export const IDENTIFY_TYPE_REQ = 0x01;
-export const IDENTIFY_TYPE_RESP = 0x02;
-
-const HEADER_LEN = 4 + 1 + 1 + 2;
-const CRC_LEN = 4;
-const MIN_FRAME_LEN = HEADER_LEN + CRC_LEN;
+// Legacy exports for compatibility (will be deprecated)
+export const IDENTIFY_MAGIC = RBHB_MAGIC_HEADER_BUFFER;
+export const IDENTIFY_VERSION = RBHB_VERSION_V1;
+export const IDENTIFY_TYPE_REQ = RBHB_TYPE_IDENTIFY;
+export const IDENTIFY_TYPE_RESP = RBHB_TYPE_IDENTIFY_RESP;
 
 function readUInt16LE(buf, offset) {
   return buf.readUInt16LE(offset);
@@ -28,30 +34,30 @@ function writeUInt32LE(buf, value, offset) {
 
 export function encodeIdentifyFrame(type, payloadObj, options = {}) {
   const payload = Buffer.from(JSON.stringify(payloadObj), "utf8");
-  const buf = Buffer.alloc(HEADER_LEN + payload.length + CRC_LEN);
+  const buf = Buffer.alloc(RBHB_HEADER_LEN + payload.length + RBHB_CRC_LEN);
 
-  IDENTIFY_MAGIC.copy(buf, 0);
-  buf[4] = IDENTIFY_VERSION;
+  RBHB_MAGIC_HEADER_BUFFER.copy(buf, 0);
+  buf[4] = RBHB_VERSION_V1;
   buf[5] = type;
   writeUInt16LE(buf, payload.length, 6);
-  payload.copy(buf, HEADER_LEN);
+  payload.copy(buf, RBHB_HEADER_LEN);
 
   const crcValue = options.crc32 ?? 0;
-  writeUInt32LE(buf, crcValue, HEADER_LEN + payload.length);
+  writeUInt32LE(buf, crcValue, RBHB_HEADER_LEN + payload.length);
 
   return buf;
 }
 
 export function buildIdentifyRequestFrame() {
-  return encodeIdentifyFrame(IDENTIFY_TYPE_REQ, { kind: "identify" });
+  return encodeIdentifyFrame(RBHB_TYPE_IDENTIFY, { kind: "identify" });
 }
 
 export function decodeIdentifyFrames(buffer) {
   let offset = 0;
   const frames = [];
 
-  while (offset + MIN_FRAME_LEN <= buffer.length) {
-    const magicIndex = buffer.indexOf(IDENTIFY_MAGIC, offset);
+  while (offset + RBHB_MIN_FRAME_LEN <= buffer.length) {
+    const magicIndex = buffer.indexOf(RBHB_MAGIC_HEADER_BUFFER, offset);
     if (magicIndex === -1) {
       const keep = buffer.slice(Math.max(buffer.length - 3, 0));
       return { frames, remainder: keep };
@@ -61,21 +67,21 @@ export function decodeIdentifyFrames(buffer) {
       offset = magicIndex;
     }
 
-    if (offset + HEADER_LEN > buffer.length) {
+    if (offset + RBHB_HEADER_LEN > buffer.length) {
       break;
     }
 
     const version = buffer[offset + 4];
     const type = buffer[offset + 5];
     const length = readUInt16LE(buffer, offset + 6);
-    const totalLen = HEADER_LEN + length + CRC_LEN;
+    const totalLen = RBHB_HEADER_LEN + length + RBHB_CRC_LEN;
 
     if (offset + totalLen > buffer.length) {
       break;
     }
 
-    const payload = buffer.slice(offset + HEADER_LEN, offset + HEADER_LEN + length);
-    const crc = readUInt32LE(buffer, offset + HEADER_LEN + length);
+    const payload = buffer.slice(offset + RBHB_HEADER_LEN, offset + RBHB_HEADER_LEN + length);
+    const crc = readUInt32LE(buffer, offset + RBHB_HEADER_LEN + length);
 
     frames.push({
       version,
@@ -158,7 +164,7 @@ export async function identifyPort(options) {
   };
 
   const takeFrame = () => {
-    const index = state.frames.findIndex((f) => f.type === IDENTIFY_TYPE_RESP);
+    const index = state.frames.findIndex((f) => f.type === RBHB_TYPE_IDENTIFY_RESP);
     if (index === -1) return null;
     return state.frames.splice(index, 1)[0];
   };
@@ -263,11 +269,11 @@ export function createMockPortResponder(options) {
   };
   responder.write = (data) => {
     const decoded = decodeIdentifyFrames(data);
-    const request = decoded.frames.find((frame) => frame.type === IDENTIFY_TYPE_REQ);
+    const request = decoded.frames.find((frame) => frame.type === RBHB_TYPE_IDENTIFY);
     if (!request) return;
 
     const payload = options.payload;
-    const responseFrame = encodeIdentifyFrame(IDENTIFY_TYPE_RESP, payload);
+    const responseFrame = encodeIdentifyFrame(RBHB_TYPE_IDENTIFY_RESP, payload);
     if (options.split) {
       for (const chunk of options.split(responseFrame)) {
         responder.emit("data", chunk);
@@ -280,3 +286,4 @@ export function createMockPortResponder(options) {
 
   return responder;
 }
+

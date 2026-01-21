@@ -17,10 +17,10 @@ const repoRoot = resolveRepoPath('.');
 
 const suites = [
   { name: 'passthrough', vector: 'packages/rb-fpga-bridge/examples/test-basic.json', dut: 'passthrough' },
-  { name: 'invert',      vector: 'packages/rb-fpga-bridge/examples/test-invert.json', dut: 'invert' },
-  { name: 'xor',         vector: 'packages/rb-fpga-bridge/examples/test-xor.json', dut: 'xor' },
-  { name: 'counter',     vector: 'packages/rb-fpga-bridge/examples/test-counter.json', dut: 'counter' },
-  { name: 'traffic',     vector: 'packages/rb-fpga-bridge/examples/test-traffic-light.json', dut: 'traffic_light_fsm' },
+  { name: 'invert', vector: 'packages/rb-fpga-bridge/examples/test-invert.json', dut: 'invert' },
+  { name: 'xor', vector: 'packages/rb-fpga-bridge/examples/test-xor.json', dut: 'xor' },
+  { name: 'counter', vector: 'packages/rb-fpga-bridge/examples/test-counter.json', dut: 'counter' },
+  { name: 'traffic', vector: 'packages/rb-fpga-bridge/examples/test-traffic-light.json', dut: 'traffic_light_fsm' },
   { name: 'traffic_stateful', vector: 'packages/rb-fpga-bridge/examples/test-traffic-light-stateful.json', dut: 'traffic_light_stateful' }
 ];
 
@@ -29,7 +29,8 @@ let fail = 0;
 
 function runSuite(suite) {
   const args = ['--filter', '@redbyte/fpga-bridge', 'test:vectors', '--', '--board', 'basys3', '--vectors', suite.vector, '--dut', suite.dut, '--no-replay'];
-  const result = spawnSync('pnpm', args, { cwd: repoRoot, stdio: 'inherit' });
+  const cmd = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+  const result = spawnSync(cmd, args, { cwd: repoRoot, stdio: 'inherit', shell: true });
 
   if (result.error) {
     console.error(`[SUITE] ERROR spawning ${suite.name}: ${result.error.message}`);

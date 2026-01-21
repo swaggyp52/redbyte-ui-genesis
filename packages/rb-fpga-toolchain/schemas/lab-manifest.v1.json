@@ -1,0 +1,89 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "RedByte Lab Manifest V1",
+    "type": "object",
+    "required": [
+        "manifest_version",
+        "created_at",
+        "lab_id",
+        "board_id",
+        "sources",
+        "toolchain"
+    ],
+    "properties": {
+        "manifest_version": {
+            "type": "integer",
+            "const": 1
+        },
+        "created_at": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "lab_id": {
+            "type": "string",
+            "description": "ID of the lab (e.g. from lab.json)"
+        },
+        "board_id": {
+            "type": "string",
+            "enum": [
+                "basys3",
+                "spartan3e-starter"
+            ]
+        },
+        "sources": {
+            "type": "object",
+            "required": [
+                "hash",
+                "files"
+            ],
+            "properties": {
+                "hash": {
+                    "type": "string",
+                    "description": "SHA-256 hash of all source file contents sorted by name"
+                },
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "path",
+                            "hash"
+                        ],
+                        "properties": {
+                            "path": {
+                                "type": "string"
+                            },
+                            "hash": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "toolchain": {
+            "type": "object",
+            "required": [
+                "name",
+                "version",
+                "wrapper_version"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "const": "rb-fpga-toolchain"
+                },
+                "version": {
+                    "type": "string"
+                },
+                "wrapper_version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "metadata": {
+            "type": "object",
+            "description": "Optional extra metadata (user, host, etc.)"
+        }
+    }
+}

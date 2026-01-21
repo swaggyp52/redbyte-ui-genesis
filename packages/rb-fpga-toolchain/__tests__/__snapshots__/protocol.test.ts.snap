@@ -1,0 +1,749 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Protocol Golden Fixtures > generates wrapper with constant determinism (Snapshot) 1`] = `
+"// Auto-generated RedByte wrapper (do not edit by hand)
+// board_model_id: basys3
+// wrapper_version: 0.1.0
+// pinmap_hash: sha256:dummy
+// design_hash: sha256:design
+
+module rb_uart_tx #(
+  parameter CLKS_PER_BIT = 868
+) (
+  input  wire clk,
+  input  wire reset,
+  input  wire [7:0] tx_data,
+  input  wire tx_valid,
+  output reg  tx_ready,
+  output reg  tx_line
+);
+  localparam STATE_IDLE  = 2'd0;
+  localparam STATE_START = 2'd1;
+  localparam STATE_DATA  = 2'd2;
+  localparam STATE_STOP  = 2'd3;
+
+  reg [1:0] state = STATE_IDLE;
+  reg [15:0] clk_count = 0;
+  reg [2:0] bit_index = 0;
+  reg [7:0] data_reg = 8'h00;
+
+  always @(posedge clk) begin
+    if (reset) begin
+      state <= STATE_IDLE;
+      clk_count <= 0;
+      bit_index <= 0;
+      tx_line <= 1'b1;
+      tx_ready <= 1'b1;
+    end else begin
+      case (state)
+        STATE_IDLE: begin
+          tx_line <= 1'b1;
+          tx_ready <= 1'b1;
+          clk_count <= 0;
+          bit_index <= 0;
+          if (tx_valid) begin
+            data_reg <= tx_data;
+            tx_ready <= 1'b0;
+            tx_line <= 1'b0;
+            state <= STATE_START;
+          end
+        end
+        STATE_START: begin
+          if (clk_count == CLKS_PER_BIT - 1) begin
+            clk_count <= 0;
+            state <= STATE_DATA;
+            bit_index <= 0;
+          end else begin
+            clk_count <= clk_count + 1;
+          end
+        end
+        STATE_DATA: begin
+          tx_line <= data_reg[bit_index];
+          if (clk_count == CLKS_PER_BIT - 1) begin
+            clk_count <= 0;
+            if (bit_index == 3'd7) begin
+              state <= STATE_STOP;
+            end else begin
+              bit_index <= bit_index + 1;
+            end
+          end else begin
+            clk_count <= clk_count + 1;
+          end
+        end
+        STATE_STOP: begin
+          tx_line <= 1'b1;
+          if (clk_count == CLKS_PER_BIT - 1) begin
+            clk_count <= 0;
+            state <= STATE_IDLE;
+          end else begin
+            clk_count <= clk_count + 1;
+          end
+        end
+        default: state <= STATE_IDLE;
+      endcase
+    end
+  end
+endmodule
+
+module rb_uart_rx #(
+  parameter CLKS_PER_BIT = 868
+) (
+  input  wire clk,
+  input  wire reset,
+  input  wire rx_line,
+  output reg  [7:0] rx_data,
+  output reg  rx_valid
+);
+  localparam STATE_IDLE  = 2'd0;
+  localparam STATE_START = 2'd1;
+  localparam STATE_DATA  = 2'd2;
+  localparam STATE_STOP  = 2'd3;
+
+  reg [1:0] state = STATE_IDLE;
+  reg [15:0] clk_count = 0;
+  reg [2:0] bit_index = 0;
+
+  always @(posedge clk) begin
+    if (reset) begin
+      state <= STATE_IDLE;
+      clk_count <= 0;
+      bit_index <= 0;
+      rx_data <= 8'h00;
+      rx_valid <= 1'b0;
+    end else begin
+      rx_valid <= 1'b0;
+      case (state)
+        STATE_IDLE: begin
+          if (rx_line == 1'b0) begin
+            clk_count <= 0;
+            state <= STATE_START;
+          end
+        end
+        STATE_START: begin
+          if (clk_count == (CLKS_PER_BIT / 2)) begin
+            if (rx_line == 1'b0) begin
+              clk_count <= 0;
+              bit_index <= 0;
+              state <= STATE_DATA;
+            end else begin
+              state <= STATE_IDLE;
+            end
+          end else begin
+            clk_count <= clk_count + 1;
+          end
+        end
+        STATE_DATA: begin
+          if (clk_count == CLKS_PER_BIT - 1) begin
+            clk_count <= 0;
+            rx_data[bit_index] <= rx_line;
+            if (bit_index == 3'd7) begin
+              state <= STATE_STOP;
+            end else begin
+              bit_index <= bit_index + 1;
+            end
+          end else begin
+            clk_count <= clk_count + 1;
+          end
+        end
+        STATE_STOP: begin
+          if (clk_count == CLKS_PER_BIT - 1) begin
+            rx_valid <= 1'b1;
+            state <= STATE_IDLE;
+            clk_count <= 0;
+          end else begin
+            clk_count <= clk_count + 1;
+          end
+        end
+        default: state <= STATE_IDLE;
+      endcase
+    end
+  end
+endmodule
+
+module rb_wrapper_top (
+  input  wire clk,
+  input  wire [15:0] sw,
+  input  wire btnC,
+  input  wire btnU,
+  input  wire btnD,
+  input  wire btnL,
+  input  wire btnR,
+  output wire [15:0] led,
+  output wire [6:0] seg,
+  output wire [3:0] an,
+  output wire dp,
+  input  wire RsRx,
+  output wire RsTx
+);
+  localparam integer CLK_HZ = 100000000;
+  localparam integer BAUD = 115200;
+  localparam integer CLKS_PER_BIT = CLK_HZ / BAUD;
+  localparam integer SAMPLE_HZ = 20;
+  localparam integer SAMPLE_TICKS = CLK_HZ / SAMPLE_HZ;
+  localparam integer HEADER_LEN = 8;
+  localparam integer CRC_LEN = 4;
+  localparam integer IDENT_LEN = 209;
+  localparam integer SAMPLE_LEN = 91;
+  localparam integer IDENT_FRAME_LEN = HEADER_LEN + IDENT_LEN + CRC_LEN;
+  localparam integer SAMPLE_FRAME_LEN = HEADER_LEN + SAMPLE_LEN + CRC_LEN;
+
+  wire [4:0] btn_bus = {btnR, btnL, btnD, btnU, btnC};
+
+
+  wire [15:0] led_wire;
+  wire [6:0] seg_wire;
+  wire [3:0] an_wire;
+  wire dp_wire;
+
+  assign led = led_wire;
+  assign seg = seg_wire;
+  assign an = an_wire;
+  assign dp = dp_wire;
+
+  student_top student_top (
+    .clk(clk),
+    .sw(sw),
+    .btn(btn_bus),
+    .led(led_wire),
+    .seg(seg_wire),
+    .an(an_wire),
+    .dp(dp_wire)
+  );
+
+  rb_uart_rx #(.CLKS_PER_BIT(CLKS_PER_BIT)) uart_rx (
+    .clk(clk),
+    .reset(1'b0),
+    .rx_line(RsRx),
+    .rx_data(rx_data),
+    .rx_valid(rx_valid)
+  );
+
+  rb_uart_tx #(.CLKS_PER_BIT(CLKS_PER_BIT)) uart_tx (
+    .clk(clk),
+    .reset(1'b0),
+    .tx_data(tx_data),
+    .tx_valid(tx_valid),
+    .tx_ready(tx_ready),
+    .tx_line(RsTx)
+  );
+
+  reg streaming_enabled = 1'b0;
+  reg identify_pending = 1'b0;
+
+  reg [31:0] sample_count = 0;
+
+  wire rx_valid;
+  wire [7:0] rx_data;
+
+  reg tx_valid = 1'b0;
+  reg [7:0] tx_data = 8'h00;
+  wire tx_ready;
+
+  // RBHB frame parser for START/STOP/IDENTIFY
+  localparam RX_WAIT = 2'd0;
+  localparam RX_HEADER = 2'd1;
+  localparam RX_SKIP = 2'd2;
+
+  reg [1:0] rx_state = RX_WAIT;
+  reg [1:0] header_index = 0;
+  reg [7:0] rx_type = 8'h00;
+  reg [15:0] payload_len = 16'd0;
+  reg [15:0] skip_count = 16'd0;
+  reg [31:0] magic_shift = 32'h00000000;
+
+  always @(posedge clk) begin
+    if (rx_valid) begin
+      case (rx_state)
+        RX_WAIT: begin
+          magic_shift <= { magic_shift[23:0], rx_data };
+          if ({ magic_shift[23:0], rx_data } == 32'h52424842) begin
+            rx_state <= RX_HEADER;
+            header_index <= 0;
+          end
+        end
+        RX_HEADER: begin
+          header_index <= header_index + 1;
+          if (header_index == 1) begin
+            rx_type <= rx_data;
+          end else if (header_index == 2) begin
+            payload_len[7:0] <= rx_data;
+          end else if (header_index == 3) begin
+            payload_len[15:8] <= rx_data;
+            skip_count <= { rx_data, payload_len[7:0] } + 16'd4; // Length + CRC
+            rx_state <= RX_SKIP;
+            header_index <= 0;
+            if (rx_type == 8'h10) begin
+              streaming_enabled <= 1'b1;
+            end else if (rx_type == 8'h11) begin
+              streaming_enabled <= 1'b0;
+            end else if (rx_type == 8'h01) begin
+              identify_pending <= 1'b1;
+            end
+          end
+        end
+        RX_SKIP: begin
+          if (skip_count > 0) begin
+            skip_count <= skip_count - 1;
+          end
+          if (skip_count == 1) begin
+            rx_state <= RX_WAIT;
+          end
+        end
+        default: rx_state <= RX_WAIT;
+      endcase
+    end
+  end
+
+  // Payload buffers
+  reg [7:0] identify_payload [0:IDENT_LEN-1];
+  reg [7:0] sample_payload [0:SAMPLE_LEN-1];
+  integer init_index;
+
+  initial begin
+        identify_payload[0] = 8'h7b;
+    identify_payload[1] = 8'h22;
+    identify_payload[2] = 8'h6b;
+    identify_payload[3] = 8'h69;
+    identify_payload[4] = 8'h6e;
+    identify_payload[5] = 8'h64;
+    identify_payload[6] = 8'h22;
+    identify_payload[7] = 8'h3a;
+    identify_payload[8] = 8'h22;
+    identify_payload[9] = 8'h69;
+    identify_payload[10] = 8'h64;
+    identify_payload[11] = 8'h65;
+    identify_payload[12] = 8'h6e;
+    identify_payload[13] = 8'h74;
+    identify_payload[14] = 8'h69;
+    identify_payload[15] = 8'h66;
+    identify_payload[16] = 8'h79;
+    identify_payload[17] = 8'h22;
+    identify_payload[18] = 8'h2c;
+    identify_payload[19] = 8'h22;
+    identify_payload[20] = 8'h62;
+    identify_payload[21] = 8'h6f;
+    identify_payload[22] = 8'h61;
+    identify_payload[23] = 8'h72;
+    identify_payload[24] = 8'h64;
+    identify_payload[25] = 8'h5f;
+    identify_payload[26] = 8'h6d;
+    identify_payload[27] = 8'h6f;
+    identify_payload[28] = 8'h64;
+    identify_payload[29] = 8'h65;
+    identify_payload[30] = 8'h6c;
+    identify_payload[31] = 8'h5f;
+    identify_payload[32] = 8'h69;
+    identify_payload[33] = 8'h64;
+    identify_payload[34] = 8'h22;
+    identify_payload[35] = 8'h3a;
+    identify_payload[36] = 8'h22;
+    identify_payload[37] = 8'h62;
+    identify_payload[38] = 8'h61;
+    identify_payload[39] = 8'h73;
+    identify_payload[40] = 8'h79;
+    identify_payload[41] = 8'h73;
+    identify_payload[42] = 8'h33;
+    identify_payload[43] = 8'h22;
+    identify_payload[44] = 8'h2c;
+    identify_payload[45] = 8'h22;
+    identify_payload[46] = 8'h62;
+    identify_payload[47] = 8'h72;
+    identify_payload[48] = 8'h69;
+    identify_payload[49] = 8'h64;
+    identify_payload[50] = 8'h67;
+    identify_payload[51] = 8'h65;
+    identify_payload[52] = 8'h5f;
+    identify_payload[53] = 8'h70;
+    identify_payload[54] = 8'h72;
+    identify_payload[55] = 8'h6f;
+    identify_payload[56] = 8'h74;
+    identify_payload[57] = 8'h6f;
+    identify_payload[58] = 8'h22;
+    identify_payload[59] = 8'h3a;
+    identify_payload[60] = 8'h31;
+    identify_payload[61] = 8'h2c;
+    identify_payload[62] = 8'h22;
+    identify_payload[63] = 8'h77;
+    identify_payload[64] = 8'h72;
+    identify_payload[65] = 8'h61;
+    identify_payload[66] = 8'h70;
+    identify_payload[67] = 8'h70;
+    identify_payload[68] = 8'h65;
+    identify_payload[69] = 8'h72;
+    identify_payload[70] = 8'h5f;
+    identify_payload[71] = 8'h76;
+    identify_payload[72] = 8'h65;
+    identify_payload[73] = 8'h72;
+    identify_payload[74] = 8'h73;
+    identify_payload[75] = 8'h69;
+    identify_payload[76] = 8'h6f;
+    identify_payload[77] = 8'h6e;
+    identify_payload[78] = 8'h22;
+    identify_payload[79] = 8'h3a;
+    identify_payload[80] = 8'h22;
+    identify_payload[81] = 8'h30;
+    identify_payload[82] = 8'h2e;
+    identify_payload[83] = 8'h31;
+    identify_payload[84] = 8'h2e;
+    identify_payload[85] = 8'h30;
+    identify_payload[86] = 8'h22;
+    identify_payload[87] = 8'h2c;
+    identify_payload[88] = 8'h22;
+    identify_payload[89] = 8'h70;
+    identify_payload[90] = 8'h69;
+    identify_payload[91] = 8'h6e;
+    identify_payload[92] = 8'h6d;
+    identify_payload[93] = 8'h61;
+    identify_payload[94] = 8'h70;
+    identify_payload[95] = 8'h5f;
+    identify_payload[96] = 8'h68;
+    identify_payload[97] = 8'h61;
+    identify_payload[98] = 8'h73;
+    identify_payload[99] = 8'h68;
+    identify_payload[100] = 8'h22;
+    identify_payload[101] = 8'h3a;
+    identify_payload[102] = 8'h22;
+    identify_payload[103] = 8'h73;
+    identify_payload[104] = 8'h68;
+    identify_payload[105] = 8'h61;
+    identify_payload[106] = 8'h32;
+    identify_payload[107] = 8'h35;
+    identify_payload[108] = 8'h36;
+    identify_payload[109] = 8'h3a;
+    identify_payload[110] = 8'h64;
+    identify_payload[111] = 8'h75;
+    identify_payload[112] = 8'h6d;
+    identify_payload[113] = 8'h6d;
+    identify_payload[114] = 8'h79;
+    identify_payload[115] = 8'h22;
+    identify_payload[116] = 8'h2c;
+    identify_payload[117] = 8'h22;
+    identify_payload[118] = 8'h66;
+    identify_payload[119] = 8'h65;
+    identify_payload[120] = 8'h61;
+    identify_payload[121] = 8'h74;
+    identify_payload[122] = 8'h75;
+    identify_payload[123] = 8'h72;
+    identify_payload[124] = 8'h65;
+    identify_payload[125] = 8'h73;
+    identify_payload[126] = 8'h22;
+    identify_payload[127] = 8'h3a;
+    identify_payload[128] = 8'h5b;
+    identify_payload[129] = 8'h22;
+    identify_payload[130] = 8'h69;
+    identify_payload[131] = 8'h6f;
+    identify_payload[132] = 8'h5f;
+    identify_payload[133] = 8'h73;
+    identify_payload[134] = 8'h74;
+    identify_payload[135] = 8'h72;
+    identify_payload[136] = 8'h65;
+    identify_payload[137] = 8'h61;
+    identify_payload[138] = 8'h6d;
+    identify_payload[139] = 8'h5f;
+    identify_payload[140] = 8'h76;
+    identify_payload[141] = 8'h31;
+    identify_payload[142] = 8'h22;
+    identify_payload[143] = 8'h5d;
+    identify_payload[144] = 8'h2c;
+    identify_payload[145] = 8'h22;
+    identify_payload[146] = 8'h64;
+    identify_payload[147] = 8'h65;
+    identify_payload[148] = 8'h73;
+    identify_payload[149] = 8'h69;
+    identify_payload[150] = 8'h67;
+    identify_payload[151] = 8'h6e;
+    identify_payload[152] = 8'h22;
+    identify_payload[153] = 8'h3a;
+    identify_payload[154] = 8'h7b;
+    identify_payload[155] = 8'h22;
+    identify_payload[156] = 8'h64;
+    identify_payload[157] = 8'h65;
+    identify_payload[158] = 8'h73;
+    identify_payload[159] = 8'h69;
+    identify_payload[160] = 8'h67;
+    identify_payload[161] = 8'h6e;
+    identify_payload[162] = 8'h5f;
+    identify_payload[163] = 8'h68;
+    identify_payload[164] = 8'h61;
+    identify_payload[165] = 8'h73;
+    identify_payload[166] = 8'h68;
+    identify_payload[167] = 8'h22;
+    identify_payload[168] = 8'h3a;
+    identify_payload[169] = 8'h22;
+    identify_payload[170] = 8'h73;
+    identify_payload[171] = 8'h68;
+    identify_payload[172] = 8'h61;
+    identify_payload[173] = 8'h32;
+    identify_payload[174] = 8'h35;
+    identify_payload[175] = 8'h36;
+    identify_payload[176] = 8'h3a;
+    identify_payload[177] = 8'h64;
+    identify_payload[178] = 8'h65;
+    identify_payload[179] = 8'h73;
+    identify_payload[180] = 8'h69;
+    identify_payload[181] = 8'h67;
+    identify_payload[182] = 8'h6e;
+    identify_payload[183] = 8'h22;
+    identify_payload[184] = 8'h2c;
+    identify_payload[185] = 8'h22;
+    identify_payload[186] = 8'h62;
+    identify_payload[187] = 8'h75;
+    identify_payload[188] = 8'h69;
+    identify_payload[189] = 8'h6c;
+    identify_payload[190] = 8'h64;
+    identify_payload[191] = 8'h5f;
+    identify_payload[192] = 8'h69;
+    identify_payload[193] = 8'h64;
+    identify_payload[194] = 8'h22;
+    identify_payload[195] = 8'h3a;
+    identify_payload[196] = 8'h22;
+    identify_payload[197] = 8'h62;
+    identify_payload[198] = 8'h75;
+    identify_payload[199] = 8'h69;
+    identify_payload[200] = 8'h6c;
+    identify_payload[201] = 8'h64;
+    identify_payload[202] = 8'h2d;
+    identify_payload[203] = 8'h31;
+    identify_payload[204] = 8'h32;
+    identify_payload[205] = 8'h33;
+    identify_payload[206] = 8'h22;
+    identify_payload[207] = 8'h7d;
+    identify_payload[208] = 8'h7d;
+        sample_payload[0] = 8'h7b;
+    sample_payload[1] = 8'h22;
+    sample_payload[2] = 8'h74;
+    sample_payload[3] = 8'h5f;
+    sample_payload[4] = 8'h6d;
+    sample_payload[5] = 8'h73;
+    sample_payload[6] = 8'h22;
+    sample_payload[7] = 8'h3a;
+    sample_payload[8] = 8'h22;
+    sample_payload[9] = 8'h30;
+    sample_payload[10] = 8'h78;
+    sample_payload[11] = 8'h30;
+    sample_payload[12] = 8'h30;
+    sample_payload[13] = 8'h30;
+    sample_payload[14] = 8'h30;
+    sample_payload[15] = 8'h30;
+    sample_payload[16] = 8'h30;
+    sample_payload[17] = 8'h30;
+    sample_payload[18] = 8'h30;
+    sample_payload[19] = 8'h22;
+    sample_payload[20] = 8'h2c;
+    sample_payload[21] = 8'h22;
+    sample_payload[22] = 8'h69;
+    sample_payload[23] = 8'h6f;
+    sample_payload[24] = 8'h22;
+    sample_payload[25] = 8'h3a;
+    sample_payload[26] = 8'h7b;
+    sample_payload[27] = 8'h22;
+    sample_payload[28] = 8'h73;
+    sample_payload[29] = 8'h77;
+    sample_payload[30] = 8'h22;
+    sample_payload[31] = 8'h3a;
+    sample_payload[32] = 8'h22;
+    sample_payload[33] = 8'h30;
+    sample_payload[34] = 8'h78;
+    sample_payload[35] = 8'h30;
+    sample_payload[36] = 8'h30;
+    sample_payload[37] = 8'h30;
+    sample_payload[38] = 8'h30;
+    sample_payload[39] = 8'h22;
+    sample_payload[40] = 8'h2c;
+    sample_payload[41] = 8'h22;
+    sample_payload[42] = 8'h62;
+    sample_payload[43] = 8'h74;
+    sample_payload[44] = 8'h6e;
+    sample_payload[45] = 8'h22;
+    sample_payload[46] = 8'h3a;
+    sample_payload[47] = 8'h22;
+    sample_payload[48] = 8'h30;
+    sample_payload[49] = 8'h78;
+    sample_payload[50] = 8'h30;
+    sample_payload[51] = 8'h30;
+    sample_payload[52] = 8'h22;
+    sample_payload[53] = 8'h2c;
+    sample_payload[54] = 8'h22;
+    sample_payload[55] = 8'h6c;
+    sample_payload[56] = 8'h65;
+    sample_payload[57] = 8'h64;
+    sample_payload[58] = 8'h22;
+    sample_payload[59] = 8'h3a;
+    sample_payload[60] = 8'h22;
+    sample_payload[61] = 8'h30;
+    sample_payload[62] = 8'h78;
+    sample_payload[63] = 8'h30;
+    sample_payload[64] = 8'h30;
+    sample_payload[65] = 8'h30;
+    sample_payload[66] = 8'h30;
+    sample_payload[67] = 8'h22;
+    sample_payload[68] = 8'h2c;
+    sample_payload[69] = 8'h22;
+    sample_payload[70] = 8'h73;
+    sample_payload[71] = 8'h65;
+    sample_payload[72] = 8'h67;
+    sample_payload[73] = 8'h22;
+    sample_payload[74] = 8'h3a;
+    sample_payload[75] = 8'h6e;
+    sample_payload[76] = 8'h75;
+    sample_payload[77] = 8'h6c;
+    sample_payload[78] = 8'h6c;
+    sample_payload[79] = 8'h2c;
+    sample_payload[80] = 8'h22;
+    sample_payload[81] = 8'h61;
+    sample_payload[82] = 8'h6e;
+    sample_payload[83] = 8'h22;
+    sample_payload[84] = 8'h3a;
+    sample_payload[85] = 8'h6e;
+    sample_payload[86] = 8'h75;
+    sample_payload[87] = 8'h6c;
+    sample_payload[88] = 8'h6c;
+    sample_payload[89] = 8'h7d;
+    sample_payload[90] = 8'h7d;
+  end
+
+  // Clock-derived Millisecond Counter
+  localparam integer CYCLES_PER_MS = CLK_HZ / 1000;
+  reg [31:0] ms_counter = 0;
+  reg [31:0] cycle_div = 0;
+
+  always @(posedge clk) begin
+    if (cycle_div == CYCLES_PER_MS - 1) begin
+      cycle_div <= 0;
+      ms_counter <= ms_counter + 1;
+    end else begin
+      cycle_div <= cycle_div + 1;
+    end
+  end
+
+  // SAMPLE timer
+  wire sample_tick = (sample_count == SAMPLE_TICKS - 1);
+
+  always @(posedge clk) begin
+    if (!streaming_enabled) begin
+      sample_count <= 0;
+    end else begin
+      if (sample_tick) begin
+        sample_count <= 0;
+      end else begin
+        sample_count <= sample_count + 1;
+      end
+    end
+  end
+
+  function [7:0] hex_char;
+    input [3:0] nib;
+    begin
+      case (nib)
+        4'h0: hex_char = 8'h30;
+        4'h1: hex_char = 8'h31;
+        4'h2: hex_char = 8'h32;
+        4'h3: hex_char = 8'h33;
+        4'h4: hex_char = 8'h34;
+        4'h5: hex_char = 8'h35;
+        4'h6: hex_char = 8'h36;
+        4'h7: hex_char = 8'h37;
+        4'h8: hex_char = 8'h38;
+        4'h9: hex_char = 8'h39;
+        4'hA: hex_char = 8'h41;
+        4'hB: hex_char = 8'h42;
+        4'hC: hex_char = 8'h43;
+        4'hD: hex_char = 8'h44;
+        4'hE: hex_char = 8'h45;
+        4'hF: hex_char = 8'h46;
+      endcase
+    end
+  endfunction
+
+  task update_sample_payload;
+    reg [15:0] sw_value;
+    reg [15:0] led_value;
+    reg [7:0] btn_value;
+    reg [31:0] time_ms;
+    begin
+      sw_value = sw;
+      led_value = led_wire;
+      btn_value = {3'b000, btn_bus};
+      time_ms = ms_counter;
+    sample_payload[35] = hex_char(sw_value[15:12]);
+    sample_payload[36] = hex_char(sw_value[11:8]);
+    sample_payload[37] = hex_char(sw_value[7:4]);
+    sample_payload[38] = hex_char(sw_value[3:0]);
+    sample_payload[50] = hex_char(btn_value[7:4]);
+    sample_payload[51] = hex_char(btn_value[3:0]);
+    sample_payload[63] = hex_char(led_value[15:12]);
+    sample_payload[64] = hex_char(led_value[11:8]);
+    sample_payload[65] = hex_char(led_value[7:4]);
+    sample_payload[66] = hex_char(led_value[3:0]);
+      sample_payload[46] = hex_char(time_ms[31:28]);
+      sample_payload[47] = hex_char(time_ms[27:24]);
+      sample_payload[48] = hex_char(time_ms[23:20]);
+      sample_payload[49] = hex_char(time_ms[19:16]);
+      sample_payload[50] = hex_char(time_ms[15:12]);
+      sample_payload[51] = hex_char(time_ms[11:8]);
+      sample_payload[52] = hex_char(time_ms[7:4]);
+      sample_payload[53] = hex_char(time_ms[3:0]);
+    end
+  endtask
+
+  localparam MODE_SAMPLE = 1'b0;
+  localparam MODE_IDENT = 1'b1;
+  reg send_mode = MODE_SAMPLE;
+  reg sending = 1'b0;
+  reg [15:0] frame_index = 0;
+  reg [15:0] active_len = 0;
+  reg [15:0] active_total = 0;
+  reg [7:0] active_type = 8'h12;
+
+  always @(posedge clk) begin
+    tx_valid <= 1'b0;
+
+    if (!sending) begin
+      if (identify_pending) begin
+        identify_pending <= 1'b0;
+        send_mode <= MODE_IDENT;
+        active_len <= IDENT_LEN;
+        active_total <= IDENT_FRAME_LEN;
+        active_type <= 8'h02;
+        frame_index <= 0;
+        sending <= 1'b1;
+      end else if (streaming_enabled && sample_tick) begin
+        update_sample_payload();
+        send_mode <= MODE_SAMPLE;
+        active_len <= SAMPLE_LEN;
+        active_total <= SAMPLE_FRAME_LEN;
+        active_type <= 8'h12;
+        frame_index <= 0;
+        sending <= 1'b1;
+      end
+    end else begin
+      if (tx_ready) begin
+        if (frame_index == 0) tx_data <= 8'h52;
+        else if (frame_index == 1) tx_data <= 8'h42;
+        else if (frame_index == 2) tx_data <= 8'h48;
+        else if (frame_index == 3) tx_data <= 8'h42;
+        else if (frame_index == 4) tx_data <= 8'h01;
+        else if (frame_index == 5) tx_data <= active_type;
+        else if (frame_index == 6) tx_data <= active_len[7:0];
+        else if (frame_index == 7) tx_data <= active_len[15:8];
+        else if (frame_index < HEADER_LEN + active_len) begin
+          if (send_mode == MODE_IDENT) begin
+            tx_data <= identify_payload[frame_index - HEADER_LEN];
+          end else begin
+            tx_data <= sample_payload[frame_index - HEADER_LEN];
+          end
+        end else begin
+          tx_data <= 8'h00;
+        end
+        tx_valid <= 1'b1;
+        if (frame_index == active_total - 1) begin
+          sending <= 1'b0;
+        end else begin
+          frame_index <= frame_index + 1;
+        end
+      end
+    end
+  end
+endmodule
+"
+`;

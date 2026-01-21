@@ -1,0 +1,29 @@
+{
+    "session_id": "test-session-123",
+    "vectors": [
+        {
+            "id": "test-vector-1",
+            "name": "Test Vector 1",
+            "pass": true
+        }
+    ],
+    "events": [
+        {
+            "tick": 0,
+            "signal": "A",
+            "old": 0,
+            "new": 1
+        },
+        {
+            "tick": 10,
+            "signal": "B",
+            "old": 0,
+            "new": 1
+        }
+    ],
+    "summary": {
+        "total": 1,
+        "pass": 1,
+        "fail": 0
+    }
+}

@@ -21,12 +21,12 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
     page.on('console', (m: any) => {
       const text = m.text();
       const type = m.type();
-      
+
       // Diagnostic: log to terminal for CI debugging
       console.log(`[browser:${type}] ${text}`);
-      
+
       logs.push(`[${type}] ${text}`);
-      
+
       // Capture React #185 signature
       if (
         text.includes('react.dev/errors/185') ||
@@ -40,20 +40,20 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
 
     page.on('pageerror', (e: any) => {
       const msg = String(e);
-      
+
       // Diagnostic: log to terminal for CI debugging
       console.log(`[pageerror] ${e?.stack || msg}`);
-      
+
       logs.push(`[pageerror] ${msg}`);
       errors.push(msg);
     });
 
     page.on('requestfailed', (req: any) => {
       const failureText = `${req.url()} - ${req.failure()?.errorText}`;
-      
+
       // Diagnostic: log to terminal for CI debugging
       console.log(`[requestfailed] ${failureText}`);
-      
+
       logs.push(`[request-failed] ${failureText}`);
     });
 
@@ -98,9 +98,12 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
     // Load shell desktop
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
+    // Wait for boot sequence to finish
+    await expect(page.locator('[data-testid="shell-boot-screen"]')).toBeHidden({ timeout: 30_000 });
+
     // Wait for desktop to render and click Logic Playground icon
-    const desktopIcon = page.locator('[data-testid="desktop-icon-logic-playground"]');
-    await expect(desktopIcon).toBeVisible({ timeout: 10_000 });
+    const desktopIcon = page.getByText('Logic Playground');
+    await expect(desktopIcon).toBeVisible({ timeout: 30_000 });
     await desktopIcon.click();
 
     // Wait for Logic Playground root to appear
@@ -131,7 +134,7 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
     for (const btn of paletteButtons) {
       const locator = page.locator(`[data-testid="${btn}"]`);
       if (await locator.isVisible().catch(() => false)) {
-        await locator.click().catch(() => {});
+        await locator.click().catch(() => { });
         await page.waitForTimeout(200);
       }
     }
@@ -274,7 +277,7 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
     for (const btn of paletteButtons) {
       const locator = page.locator(`[data-testid="${btn}"]`);
       if (await locator.isVisible().catch(() => false)) {
-        await locator.click().catch(() => {});
+        await locator.click().catch(() => { });
         await page.waitForTimeout(200);
       }
     }
@@ -300,7 +303,7 @@ test.describe('Logic Playground - React error #185 smoke test', () => {
     if (controlCount > 0) {
       for (let i = 0; i < Math.min(controlCount, 3); i++) {
         try {
-          await scopeControls.nth(i).click().catch(() => {});
+          await scopeControls.nth(i).click().catch(() => { });
           await page.waitForTimeout(400);
         } catch {
           // Skip if interaction fails
@@ -329,19 +332,19 @@ test.describe('redbyte os smoke', () => {
     await expect(page.getByText(/redbyte os/i).first()).toBeVisible();
 
     await page.waitForTimeout(800);
-    await expect(page.getByText(/boot/iu).first()).toBeVisible({ timeout: 2000 }).catch(() => {});
+    await expect(page.getByText(/boot/iu).first()).toBeVisible({ timeout: 2000 }).catch(() => { });
 
     await expect(page.getByRole('button', { name: /terminal/i })).toBeVisible();
     await page.getByRole('button', { name: /terminal/i }).click();
 
     // Wait for terminal or timeout gracefully
     const terminalWindow = page.getByText(/Genesis Terminal|Terminal/i).first();
-    await expect(terminalWindow).toBeVisible({ timeout: 3000 }).catch(() => {});
+    await expect(terminalWindow).toBeVisible({ timeout: 3000 }).catch(() => { });
 
     const input = page.getByRole('textbox').last();
-    await input.click().catch(() => {});
-    await input.fill('help').catch(() => {});
-    await input.press('Enter').catch(() => {});
+    await input.click().catch(() => { });
+    await input.fill('help').catch(() => { });
+    await input.press('Enter').catch(() => { });
 
     // Terminal content may vary, just verify we can interact
     await expect(page.locator('body')).toBeVisible();

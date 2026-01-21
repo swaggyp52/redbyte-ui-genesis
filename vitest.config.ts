@@ -4,6 +4,13 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   resolve: {
     alias: [
+      // Force single React instance for all packages
+      // Zustand's React adapter needs React to be available, so ensure it resolves correctly
+      { find: /^react$/, replacement: path.resolve(__dirname, 'packages/rb-apps/node_modules/react') },
+      { find: /^react-dom$/, replacement: path.resolve(__dirname, 'packages/rb-apps/node_modules/react-dom') },
+      { find: /^react\/jsx-runtime$/, replacement: path.resolve(__dirname, 'packages/rb-apps/node_modules/react/jsx-runtime') },
+      { find: /^react\/jsx-dev-runtime$/, replacement: path.resolve(__dirname, 'packages/rb-apps/node_modules/react/jsx-dev-runtime') },
+      // Package aliases
       { find: '@redbyte/rb-analog-sim', replacement: path.resolve(__dirname, 'packages/rb-analog-sim/src') },
       { find: '@redbyte/rb-apps', replacement: path.resolve(__dirname, 'packages/rb-apps/src') },
       { find: '@redbyte/rb-fpga-toolchain', replacement: path.resolve(__dirname, 'packages/rb-fpga-toolchain/src') },
@@ -18,13 +25,28 @@ export default defineConfig({
       { find: '@redbyte/rb-logic-adapter', replacement: path.resolve(__dirname, 'packages/rb-logic-adapter/src') },
       { find: '@redbyte/rb-logic-core', replacement: path.resolve(__dirname, 'packages/rb-logic-core/src') },
       { find: '@redbyte/rb-logic-view', replacement: path.resolve(__dirname, 'packages/rb-logic-view/src') },
-      { find: '@redbyte/rb-playground', replacement: path.resolve(__dirname, 'packages/rb-playground/src') }
+      { find: '@redbyte/rb-playground', replacement: path.resolve(__dirname, 'packages/rb-playground/src') },
+      // Force single React instance by aliasing to root node_modules
+      { find: 'react', replacement: path.resolve(__dirname, 'node_modules/react') },
+      { find: 'react-dom', replacement: path.resolve(__dirname, 'node_modules/react-dom') },
+      { find: 'react/jsx-runtime', replacement: path.resolve(__dirname, 'node_modules/react/jsx-runtime') },
+      { find: 'react/jsx-dev-runtime', replacement: path.resolve(__dirname, 'node_modules/react/jsx-dev-runtime') }
     ],
   },
   test: {
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
+    deps: {
+      optimizer: {
+        web: {
+          enabled: true,
+        },
+        ssr: {
+          enabled: true,
+        },
+      },
+    },
     include: [
       'packages/**/__tests__/**/*.test.ts',
       'packages/**/__tests__/**/*.test.tsx',

@@ -413,7 +413,7 @@ describe('PHASE_V: Open With workflow', () => {
     fireEvent.click(documentsButton!);
 
     // Select a file row
-    const readmeRow = screen.getByText('README.md');
+    const readmeRow = screen.getByText(/README.md/);
     fireEvent.click(readmeRow);
 
     const mainContainer = container.querySelector('[tabIndex="0"]');
@@ -435,7 +435,7 @@ describe('PHASE_V: Open With workflow', () => {
     fireEvent.click(documentsButton!);
 
     // Select a file row
-    const readmeRow = screen.getByText('README.md');
+    const readmeRow = screen.getByText(/README.md/);
     fireEvent.click(readmeRow);
 
     const mainContainer = container.querySelector('[tabIndex="0"]');

@@ -7,6 +7,11 @@ Also follow:
 - `docs/ai-usage-rules.md` (AI contribution rules)
 - `docs/legal-attribution.md` (canonical attribution guidance; reference Connor Angiel only)
 
+For FPGA-related work, also read:
+- `docs/00-canon/08-fpga-agent-bootstrap.md` (quick reference for FPGA agents)
+- `docs/00-canon/07-fpga-laboratory-constitution.md` (complete FPGA platform constitution)
+- `docs/fpga-merge-review-checklist.md` (pre-merge verification checklist)
+
 Process reminders (as defined in `AI_STATE.md`):
 - Terminal-first workflow
 - One logical change per commit

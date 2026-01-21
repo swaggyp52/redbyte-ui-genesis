@@ -1,0 +1,43 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "RedByte Evidence Capsule V1",
+    "type": "object",
+    "required": [
+        "capsule_version",
+        "created_at",
+        "session_id",
+        "lab_manifest",
+        "trace_hash",
+        "integrity_hash"
+    ],
+    "properties": {
+        "capsule_version": {
+            "type": "integer",
+            "const": 1
+        },
+        "created_at": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "session_id": {
+            "type": "string",
+            "description": "Unique ID of the hardware run session"
+        },
+        "lab_manifest": {
+            "type": "object",
+            "description": "Embedded lab manifest (the code that was run)"
+        },
+        "trace_hash": {
+            "type": "string",
+            "description": "SHA-256 hash of the full trace.ndjson content"
+        },
+        "integrity_hash": {
+            "type": "string",
+            "description": "SHA-256 hash of (session_id + trace_hash + JSON.stringify(lab_manifest))"
+        },
+        "metadata": {
+            "type": "object",
+            "description": "Optional host/user metadata"
+        }
+    }
+}

@@ -20,6 +20,13 @@ export type {
   GradeReport,
 } from './types';
 
+// Export Assignment Schema Types
+export type {
+  AssignmentV1,
+  VerificationSpec,
+  HelperGateConstraint,
+} from './types/assignment';
+
 import type {
   Capsule,
   ProofEvent,
@@ -69,19 +76,19 @@ export function parseCapsule(input: string | object): Capsule {
   }
 
   // Dual schema: accept either summary or test_summary
-  const summary = (capsule.summary || (capsule as any).test_summary) as SummaryCardModel | undefined;
+  const summary = (obj.summary || obj.test_summary) as SummaryCardModel | undefined;
   if (!summary) {
     // Graceful fallback: compute from vectors
-    const vectors = capsule.vectors as VectorResult[];
+    const vectors = obj.vectors as VectorResult[];
     const pass = vectors.filter((v) => v.pass).length;
-    (capsule as any).summary = {
+    obj.summary = {
       total: vectors.length,
       pass,
       fail: vectors.length - pass,
     };
   }
 
-  return obj as Capsule;
+  return obj as unknown as Capsule;
 }
 
 /**

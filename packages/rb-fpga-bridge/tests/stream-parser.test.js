@@ -39,7 +39,21 @@ function run() {
   assert.equal(samples[1].t_ms, 10);
   assert.equal(samples[2].t_ms, 20);
 
-  console.log("[TEST] stream parser passed");
+  console.log("[TEST] binary t_ms parser passed");
+
+  // Test Hex String Timestamp
+  const frameC = buildSampleFrame({ t_ms: "0x64", io: { sw: 3, btn: 0, led: 3, seg: null } });
+  parser.write(frameC);
+  assert.equal(samples.length, 4);
+  assert.equal(samples[3].t_ms, 100);
+
+  // Test Decimal String Timestamp
+  const frameD = buildSampleFrame({ t_ms: "200", io: { sw: 4, btn: 0, led: 4, seg: null } });
+  parser.write(frameD);
+  assert.equal(samples.length, 5);
+  assert.equal(samples[4].t_ms, 200);
+
+  console.log("[TEST] string t_ms parser passed");
 }
 
 try {

@@ -23,6 +23,7 @@
     "test:stream-parser": "node tests/stream-parser.test.js",
     "test:stream": "node tests/run-stream.test.js",
     "test:sim": "node tests/sim-mode.test.js",
+    "test:soak": "node tests/soak.test.js",
     "test:vivado": "node tests/vivado.test.js",
     "bless:capsule": "node scripts/bless-capsule.js",
     "check:golden": "node scripts/check-golden.js",

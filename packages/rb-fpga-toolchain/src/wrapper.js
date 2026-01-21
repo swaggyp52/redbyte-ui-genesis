@@ -1,4 +1,15 @@
 import crypto from "crypto";
+import {
+  RBHB_MAGIC_HEADER_Val,
+  RBHB_VERSION_V1,
+  RBHB_TYPE_IDENTIFY,
+  RBHB_TYPE_IDENTIFY_RESP,
+  RBHB_TYPE_STREAM_START,
+  RBHB_TYPE_STREAM_STOP,
+  RBHB_TYPE_SAMPLE,
+  RBHB_HEADER_LEN,
+  RBHB_CRC_LEN,
+} from "./protocol.js";
 
 export const WRAPPER_VERSION = "0.1.0";
 
@@ -30,7 +41,7 @@ function buildPayloadInitLines(varName, payload) {
 }
 
 export function buildSampleTemplate() {
-  const template = '{"io":{"sw":"0x0000","btn":"0x00","led":"0x0000","seg":null,"an":null}}';
+  const template = '{"t_ms":"0x00000000","io":{"sw":"0x0000","btn":"0x00","led":"0x0000","seg":null,"an":null}}';
   const swMarker = '"sw":"0x';
   const btnMarker = '"btn":"0x';
   const ledMarker = '"led":"0x';
@@ -76,7 +87,7 @@ export function generateWrapperVerilog(options) {
   const identifyPayload = JSON.stringify({
     kind: "identify",
     board_model_id: boardModelId,
-    bridge_proto: 1,
+    bridge_proto: RBHB_VERSION_V1,
     wrapper_version: wrapperVersion,
     pinmap_hash: pinmapHash,
     features: ["io_stream_v1"],
@@ -123,6 +134,16 @@ export function generateWrapperVerilog(options) {
     resolvedBtnMode === "split"
       ? "  wire [4:0] btn_bus = {btnR, btnL, btnD, btnU, btnC};\n"
       : "  wire [4:0] btn_bus = {1'b0, btn};\n";
+
+  // Verilog constants derived from JS constants
+  // Magic: 32'h52424842
+  const vMagic = `32'h${RBHB_MAGIC_HEADER_Val.toString(16)}`;
+  // Types: 8'h01, etc.
+  const vTypeIdentify = `8'h${hexByte(RBHB_TYPE_IDENTIFY)}`;
+  const vTypeIdentifyResp = `8'h${hexByte(RBHB_TYPE_IDENTIFY_RESP)}`;
+  const vTypeStreamStart = `8'h${hexByte(RBHB_TYPE_STREAM_START)}`;
+  const vTypeStreamStop = `8'h${hexByte(RBHB_TYPE_STREAM_STOP)}`;
+  const vTypeSample = `8'h${hexByte(RBHB_TYPE_SAMPLE)}`;
 
   return `// Auto-generated RedByte wrapper (do not edit by hand)
 // board_model_id: ${boardModelId}
@@ -298,8 +319,8 @@ ${buttonPorts}  output wire [15:0] led,
   localparam integer CLKS_PER_BIT = CLK_HZ / BAUD;
   localparam integer SAMPLE_HZ = ${resolvedSampleHz};
   localparam integer SAMPLE_TICKS = CLK_HZ / SAMPLE_HZ;
-  localparam integer HEADER_LEN = 8;
-  localparam integer CRC_LEN = 4;
+  localparam integer HEADER_LEN = ${RBHB_HEADER_LEN};
+  localparam integer CRC_LEN = ${RBHB_CRC_LEN};
   localparam integer IDENT_LEN = ${identifyPayload.length};
   localparam integer SAMPLE_LEN = ${sampleTemplate.length};
   localparam integer IDENT_FRAME_LEN = HEADER_LEN + IDENT_LEN + CRC_LEN;
@@ -348,7 +369,6 @@ ${buttonBus}
   reg identify_pending = 1'b0;
 
   reg [31:0] sample_count = 0;
-  reg [31:0] tick = 0;
 
   wire rx_valid;
   wire [7:0] rx_data;
@@ -374,7 +394,7 @@ ${buttonBus}
       case (rx_state)
         RX_WAIT: begin
           magic_shift <= { magic_shift[23:0], rx_data };
-          if ({ magic_shift[23:0], rx_data } == 32'h52424842) begin
+          if ({ magic_shift[23:0], rx_data } == ${vMagic}) begin
             rx_state <= RX_HEADER;
             header_index <= 0;
           end
@@ -387,14 +407,14 @@ ${buttonBus}
             payload_len[7:0] <= rx_data;
           end else if (header_index == 3) begin
             payload_len[15:8] <= rx_data;
-            skip_count <= { rx_data, payload_len[7:0] } + 16'd4;
+            skip_count <= { rx_data, payload_len[7:0] } + 16'd${RBHB_CRC_LEN}; // Length + CRC
             rx_state <= RX_SKIP;
             header_index <= 0;
-            if (rx_type == 8'h10) begin
+            if (rx_type == ${vTypeStreamStart}) begin
               streaming_enabled <= 1'b1;
-            end else if (rx_type == 8'h11) begin
+            end else if (rx_type == ${vTypeStreamStop}) begin
               streaming_enabled <= 1'b0;
-            end else if (rx_type == 8'h01) begin
+            end else if (rx_type == ${vTypeIdentify}) begin
               identify_pending <= 1'b1;
             end
           end
@@ -412,23 +432,6 @@ ${buttonBus}
     end
   end
 
-  // SAMPLE timer
-  wire sample_tick = (sample_count == SAMPLE_TICKS - 1);
-
-  always @(posedge clk) begin
-    if (!streaming_enabled) begin
-      sample_count <= 0;
-      tick <= 0;
-    end else begin
-      if (sample_tick) begin
-        sample_count <= 0;
-        tick <= tick + 1;
-      end else begin
-        sample_count <= sample_count + 1;
-      end
-    end
-  end
-
   // Payload buffers
   reg [7:0] identify_payload [0:IDENT_LEN-1];
   reg [7:0] sample_payload [0:SAMPLE_LEN-1];
@@ -437,6 +440,35 @@ ${buttonBus}
   initial begin
     ${identifyInit}
     ${sampleInit}
+  end
+
+  // Clock-derived Millisecond Counter
+  localparam integer CYCLES_PER_MS = CLK_HZ / 1000;
+  reg [31:0] ms_counter = 0;
+  reg [31:0] cycle_div = 0;
+
+  always @(posedge clk) begin
+    if (cycle_div == CYCLES_PER_MS - 1) begin
+      cycle_div <= 0;
+      ms_counter <= ms_counter + 1;
+    end else begin
+      cycle_div <= cycle_div + 1;
+    end
+  end
+
+  // SAMPLE timer
+  wire sample_tick = (sample_count == SAMPLE_TICKS - 1);
+
+  always @(posedge clk) begin
+    if (!streaming_enabled) begin
+      sample_count <= 0;
+    end else begin
+      if (sample_tick) begin
+        sample_count <= 0;
+      end else begin
+        sample_count <= sample_count + 1;
+      end
+    end
   end
 
   function [7:0] hex_char;
@@ -467,13 +499,23 @@ ${buttonBus}
     reg [15:0] sw_value;
     reg [15:0] led_value;
     reg [7:0] btn_value;
+    reg [31:0] time_ms;
     begin
       sw_value = sw;
       led_value = led_wire;
       btn_value = {3'b000, btn_bus};
+      time_ms = ms_counter;
 ${swUpdate}
 ${btnUpdate}
 ${ledUpdate}
+      sample_payload[${swPositions[3] + 8}] = hex_char(time_ms[31:28]);
+      sample_payload[${swPositions[3] + 9}] = hex_char(time_ms[27:24]);
+      sample_payload[${swPositions[3] + 10}] = hex_char(time_ms[23:20]);
+      sample_payload[${swPositions[3] + 11}] = hex_char(time_ms[19:16]);
+      sample_payload[${swPositions[3] + 12}] = hex_char(time_ms[15:12]);
+      sample_payload[${swPositions[3] + 13}] = hex_char(time_ms[11:8]);
+      sample_payload[${swPositions[3] + 14}] = hex_char(time_ms[7:4]);
+      sample_payload[${swPositions[3] + 15}] = hex_char(time_ms[3:0]);
     end
   endtask
 
@@ -484,7 +526,7 @@ ${ledUpdate}
   reg [15:0] frame_index = 0;
   reg [15:0] active_len = 0;
   reg [15:0] active_total = 0;
-  reg [7:0] active_type = 8'h12;
+  reg [7:0] active_type = ${vTypeSample};
 
   always @(posedge clk) begin
     tx_valid <= 1'b0;
@@ -495,7 +537,7 @@ ${ledUpdate}
         send_mode <= MODE_IDENT;
         active_len <= IDENT_LEN;
         active_total <= IDENT_FRAME_LEN;
-        active_type <= 8'h02;
+        active_type <= ${vTypeIdentifyResp};
         frame_index <= 0;
         sending <= 1'b1;
       end else if (streaming_enabled && sample_tick) begin
@@ -503,17 +545,17 @@ ${ledUpdate}
         send_mode <= MODE_SAMPLE;
         active_len <= SAMPLE_LEN;
         active_total <= SAMPLE_FRAME_LEN;
-        active_type <= 8'h12;
+        active_type <= ${vTypeSample};
         frame_index <= 0;
         sending <= 1'b1;
       end
     end else begin
       if (tx_ready) begin
-        if (frame_index == 0) tx_data <= 8'h52;
-        else if (frame_index == 1) tx_data <= 8'h42;
-        else if (frame_index == 2) tx_data <= 8'h48;
-        else if (frame_index == 3) tx_data <= 8'h42;
-        else if (frame_index == 4) tx_data <= 8'h01;
+        if (frame_index == 0) tx_data <= 8'h${(RBHB_MAGIC_HEADER_Val >> 24).toString(16)};
+        else if (frame_index == 1) tx_data <= 8'h${((RBHB_MAGIC_HEADER_Val >> 16) & 0xFF).toString(16)};
+        else if (frame_index == 2) tx_data <= 8'h${((RBHB_MAGIC_HEADER_Val >> 8) & 0xFF).toString(16)};
+        else if (frame_index == 3) tx_data <= 8'h${(RBHB_MAGIC_HEADER_Val & 0xFF).toString(16)};
+        else if (frame_index == 4) tx_data <= 8'h${hexByte(RBHB_VERSION_V1)};
         else if (frame_index == 5) tx_data <= active_type;
         else if (frame_index == 6) tx_data <= active_len[7:0];
         else if (frame_index == 7) tx_data <= active_len[15:8];

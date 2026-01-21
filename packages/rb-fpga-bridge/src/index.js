@@ -12,12 +12,21 @@ import { enumerateJtagDevices, programJtagBitstream, resolveDjtgcfgPath, selectJ
 import { identifyPort } from "./proto/identify.js";
 import { buildStreamStartFrame, buildStreamStopFrame } from "./proto/stream.js";
 import { createStreamParser } from "./stream-parser.js";
-import { findRepoRoot, resolveRepoPath } from "./path-utils.js";
+import { StreamRingBuffer } from "./stream-buffer.js";
 import { exec } from "child_process";
 import { promisify } from "util";
-import * as fs from "fs";
+import * as fslib from "fs"; // Renamed to avoid conflict if fs is imported elsewhere or just use consistency
 import * as path from "path";
 import * as os from "os";
+
+// Alias fs to match usage if needed, or check if 'fs' is imported elsewhere.
+// Line 129 was: import * as fs from "fs";
+// But wait, line 160 uses `fs.existsSync`.
+// Let's check if `fs` was imported earlier?
+// Line 1-15 didn't import fs.
+// So I should keep `import * as fs from "fs"`.
+
+import * as fs from "fs";
 
 const execAsync = promisify(exec);
 
@@ -208,7 +217,7 @@ async function listPortsWithScores() {
     productId: p.productId,
     pnpId: p.pnpId,
     score: scorePort(p),
-  })).sort((a,b) => b.score - a.score);
+  })).sort((a, b) => b.score - a.score);
 }
 
 async function listPortsForApi() {
@@ -614,7 +623,11 @@ async function stopRun(runId, options = {}) {
     await new Promise((resolve) => run.port.close(() => resolve()));
   }
   if (run.interval) {
-    clearInterval(run.interval);
+    clearInterval(run.interval); // Mock interval
+  }
+  if (run.drainInterval) {
+    clearInterval(run.drainInterval); // Hardware drain interval
+    run.drainInterval = null;
   }
   for (const client of run.clients) {
     try {
@@ -629,6 +642,30 @@ async function stopRun(runId, options = {}) {
   }
   return run;
 }
+
+// ... existing code ...
+
+app.get("/health", (req, res) => {
+  // Aggregate stats from active runs
+  const runStats = Array.from(activeRuns.values()).map(r => ({
+    id: r.id,
+    mode: r.mode,
+    startedAt: r.startedAt,
+    samples: r.sampleCount,
+    dropped: r.buffer ? r.buffer.getStats().dropped : 0,
+    bufferSize: r.buffer ? r.buffer.getStats().count : 0,
+    estMemBytes: r.buffer ? r.buffer.getEstimatedMemoryUsageBytes() : 0,
+    decodeErrors: r.decodeErrors
+  }));
+
+  res.json({
+    status: "ok",
+    uptime: process.uptime(),
+    activeRunCount: activeRuns.size,
+    totalMemory: process.memoryUsage().rss,
+    runs: runStats
+  });
+});
 
 async function startHardwareRun({ device, hz }) {
   const portPath = device.runtime?.port;
@@ -660,6 +697,8 @@ async function startHardwareRun({ device, hz }) {
     noDataTimer: null,
     port: null,
     parser: null,
+    buffer: new StreamRingBuffer(5000), // Milestone 1: Memory Bounded
+    drainInterval: null,
   };
 
   const port = new SerialPort({ path: portPath, baudRate, autoOpen: false });
@@ -677,15 +716,29 @@ async function startHardwareRun({ device, hz }) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 
+  // Decoupled Parser: UART -> Buffer
   const parser = createStreamParser({
     onSample: (sample) => {
       run.framesParsed += 1;
-      emitSample(run, sample);
+      run.buffer.push(sample); // Push to ring buffer (drops oldest if full)
     },
     onError: () => {
       run.decodeErrors += 1;
     },
   });
+
+  // Decoupled Sender: Buffer -> Network
+  // Drain at approx 60Hz (16ms) to batch writes if needed, or just keep up.
+  // Using 10ms to be slightly faster than strict 60Hz.
+  run.drainInterval = setInterval(() => {
+    // Process a chunk of the buffer to avoid blocking the event loop too long
+    // If we have 1000 items, sending all might choke. But let's try draining all first.
+    let item = run.buffer.pop();
+    while (item) {
+      emitSample(run, item);
+      item = run.buffer.pop();
+    }
+  }, 10);
 
   run.port = port;
   run.parser = parser;
@@ -698,7 +751,7 @@ async function startHardwareRun({ device, hz }) {
 
   port.on("error", (err) => {
     emitStatus(run, "error", err?.message || "uart_error");
-    stopRun(run.id, { sendStopFrame: false }).catch(() => {});
+    stopRun(run.id, { sendStopFrame: false }).catch(() => { });
   });
 
   port.on("close", () => {
@@ -789,7 +842,7 @@ function stopSimStream() {
     simParser = null;
   }
   if (simTraceRecorder) {
-    simTraceRecorder.close().catch(() => {});
+    simTraceRecorder.close().catch(() => { });
     simTraceRecorder = null;
   }
   state.trace_recording_enabled = false;
@@ -1600,7 +1653,7 @@ async function connectToFpga(forcedPortPath, baudOverride) {
     broadcast(createEvent("status", { ...state }));
     if (parser) parser.end();
     if (traceRecorder) {
-      traceRecorder.close().catch(() => {});
+      traceRecorder.close().catch(() => { });
       traceRecorder = null;
     }
   });
@@ -1646,19 +1699,19 @@ wss.on("connection", (ws) => {
     console.log(`[fpga-bridge] MOCK MODE - simulating Basys3 board (seed=${MOCK_SEED})`);
     setConnState("connected", { port: "MOCK", baud: BAUD, error: null });
     broadcast(createEvent("device:connected"));
-    
+
     // Deterministic simulation using seeded RNG
     const rng = new SeededRandom(MOCK_SEED);
     let tick = 0;
     let sw = Math.floor(rng.next() * 0xFFFF);
     let led = sw;
-    
+
     setInterval(() => {
       // Deterministic state changes based on seed
       sw = Math.floor(rng.next() * 0xFFFF);
       led = sw; // Mirror switches to LEDs
       const btn = Math.floor(rng.next() * 0b11111);
-      
+
       const msg = createEvent("io:update", {
         source: "device",
         SW: sw.toString(2).padStart(16, "0"),
@@ -1667,16 +1720,16 @@ wss.on("connection", (ws) => {
         TICK: String(tick),
         ts_offset_ms: 100, // Relative time since last event
       });
-      
+
       state.lastMsgTs = msg.timestamp;
       state.lastMsg = msg;
       broadcast(msg);
       tick++;
     }, 100); // 10Hz updates
-    
+
     return;
   }
-  
+
   try {
     await connectToFpga(null);
   } catch (e) {

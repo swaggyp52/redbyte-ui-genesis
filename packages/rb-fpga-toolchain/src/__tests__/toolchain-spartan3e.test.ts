@@ -3,6 +3,10 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import { spawnSync } from "child_process";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const validSource = `
 module student_top (
@@ -23,7 +27,9 @@ function writeSource(dir: string, content: string) {
 }
 
 function runBuild(args: string[], env?: NodeJS.ProcessEnv) {
-  const scriptPath = path.resolve(process.cwd(), "tools", "toolchain", "rb-fpga-toolchain.mjs");
+  // Locate the script in the repo root tools/ directory
+  // __dirname is packages/rb-fpga-toolchain/src/__tests__
+  const scriptPath = path.resolve(__dirname, "../../../../tools", "toolchain", "rb-fpga-toolchain.mjs");
   return spawnSync(process.execPath, [scriptPath, "build", ...args], {
     encoding: "utf8",
     env: env || process.env,

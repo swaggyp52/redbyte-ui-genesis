@@ -1,0 +1,7 @@
+{
+    "lab_id": "lab-mock-01",
+    "title": "Mock Lab",
+    "board_model_id": "basys3",
+    "top_name": "top",
+    "interface_id": "basys3_v1"
+}

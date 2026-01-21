@@ -87,5 +87,11 @@
         "node": ">=20.19.0",
         "pnpm": ">=10.24.0"
     },
+    "pnpm": {
+        "overrides": {
+            "react": "19.2.1",
+            "react-dom": "19.2.1"
+        }
+    },
     "packageManager": "pnpm@10.24.0"
 }

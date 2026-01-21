@@ -1611,18 +1611,62 @@ The platform is ready. The question is: What will the user build?
 
 ---
 
-## 16. From Logic to Bitstream
+## 16. The Hardware Lab Workflow (Pack -> Run -> Prove)
 
-RedByte can move beyond simulation and create FPGA-ready outputs for Basys 3 boards. The flow is deterministic and mirrors standard FPGA toolchains:
+RedByte v1 introduces a deterministic "One-Command" workflow for moving from browser simulation to hardware execution on Basys 3 FPGA boards.
 
-1. **Build a digital circuit** in Logic Playground (analog nodes are simulation-only).
-2. **Export a netlist** from the circuit graph.
-3. **Generate synthesizable Verilog** plus the RedByte primitive library.
-4. **Generate an XDC constraints file** for Basys 3 switch and LED pins.
-5. **Run synthesis** in Vivado batch mode to produce a `.bit` file.
-6. **Program the board** with Vivado or openFPGALoader.
+### Phase 1: Pack (The Lab Artifact)
 
-The Hardware Panel shows toolchain detection status and provides synth/program controls once Vivado is available.
+Once your circuit is working in the Logic Playground:
+
+1. **Save your project** (e.g., `my-counter.json`).
+2. **Open the Terminal** app in RedByte.
+3. **Run the pack command** (simulated):
+
+    ```bash
+    pack my-counter
+    ```
+
+    *(Note: On your local machine, use `rb-fpga-toolchain pack ./my-counter-project`)*.
+
+This creates a **Lab Packet**—a sealed bundle containing:
+
+- Your circuit's netlist and source code
+- A cryptographic manifest (`lab-manifest.v1.json`)
+- The required constraints and pinmap
+
+### Phase 2: Run (The One Command)
+
+To execute your packet on hardware, you do not need to install Vivado manually or manage bitstreams. Use the **One-Command Lab Runner**:
+
+```powershell
+./run.ps1 -Packet my-counter.packet
+```
+
+**What the Runner Does:**
+
+1. **Verifies** the packet integrity (checks hashes against the manifest).
+2. **Programs** the FPGA (automatically handles JTAG).
+3. **Streams** sample data from the board back to your computer.
+4. **Records** the run into a Trace File.
+
+If you do not have hardware connected, add the `-Mock` flag to simulate the hardware board:
+
+```powershell
+./run.ps1 -Packet my-counter.packet -Mock
+```
+
+### Phase 3: Prove (Evidence Generation)
+
+The Runner automatically "Blesses" your run at the end, generating an **Evidence Capsule** (`evidence.json`).
+
+This capsule contains:
+
+- The **Lab Artifact** (what you built).
+- The **Trace Data** (what happened on hardware).
+- A **Cryptographic Signature** (proof of integrity).
+
+**You submit this `evidence.json` file for grading.** Your instructor uses it to mathematically verify your circuit's behavior.
 
 ---
 
@@ -1668,6 +1712,29 @@ Analog values appear in the Inspector under **Analog Readings**, showing inputs,
 - Ensure simulation is running (Space).
 - Verify tick rate is above 0.
 - Exit replay mode to resume live ticks.
+
+---
+
+## 19. Evidence & Grading
+
+RedByte prioritizes **Verifiable Truth**. When you submit an assignment, you are not just submitting code; you are submitting proof that your code executed correctly on the reference hardware.
+
+### The Evidence Capsule
+
+An `evidence.json` file is a tamper-evident record. It includes:
+
+- **Trace Hash:** A SHA-256 fingerprint of the signal data.
+- **Integrity Hash:** A signature binding the trace to the specific lab manifest.
+
+### Grading Process
+
+Instructors use the **Batch Verifier** tool to grade submissions. This tool:
+
+1. Replays your `evidence.json` trace.
+2. Compares it against a "Golden Trace" (the perfect solution).
+3. Checks for monotonically increasing timestamps (detects spliced/faked data).
+
+**Pass** means your output matches the Golden Trace bit-for-bit.
 
 ---
 

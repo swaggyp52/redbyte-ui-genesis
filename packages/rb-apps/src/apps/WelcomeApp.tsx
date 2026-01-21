@@ -40,13 +40,13 @@ export const WelcomeAppContent: React.FC<WelcomeAppProps> = ({ onClose, onNaviga
     <div className={styles.container}>
       <div className={styles.body}>
         <p className={styles.lead}>
-          RedByte is a visual logic circuit simulator. Build digital circuits,
-          simulate behavior in real-time, and understand how logic gates work --
-          all in your browser.
+          The Operating System for Computer Engineering Education.
+          <br /><br />
+          <strong>Design -&gt; Pack -&gt; Run -&gt; Prove</strong>
         </p>
 
         <p className={styles.tagline}>
-          <strong>Build -&gt; Simulate -&gt; Understand</strong>
+          Verify your logic on real hardware with a single command.
         </p>
 
         <p className={styles.subtle}>

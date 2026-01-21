@@ -5,7 +5,7 @@ import { afterEach, beforeEach, vi } from 'vitest';
 // This allows searchRegistry.ts to find apps via listApps()
 async function registerTestApps() {
   try {
-    const { registerAllApps } = await import('@redbyte/rb-apps');
+    const { registerAllApps } = await import('./packages/rb-apps/src/index.ts');
     await registerAllApps();
   } catch {
     // Module may not be loaded in all tests
@@ -19,7 +19,7 @@ const originalCAF = globalThis.cancelAnimationFrame;
 beforeEach(async () => {
   // Pre-register apps for search/launcher tests
   await registerTestApps();
-  
+
   // Replace RAF with a no-op that returns a valid ID but never invokes callback
   globalThis.requestAnimationFrame = vi.fn(() => 1);
   globalThis.cancelAnimationFrame = vi.fn();
@@ -32,13 +32,21 @@ afterEach(async () => {
 
   // Stop uiTickStore animation loop and reset state after each test
   try {
-    const { useUiTickStore } = await import('@redbyte/rb-utils');
+    const { useUiTickStore } = await import('./packages/rb-utils/src/index.ts');
     const state = useUiTickStore.getState();
     if (state.running) {
       state.stop();
     }
     // Reset to initial state
     useUiTickStore.setState({ uiTick: 0, running: false });
+  } catch {
+    // Module may not be loaded in all tests
+  }
+
+  // Reset fileSystemStore to prevent test pollution
+  try {
+    const { useFileSystemStore } = await import('./packages/rb-apps/src/index.ts');
+    useFileSystemStore.getState().resetAll();
   } catch {
     // Module may not be loaded in all tests
   }

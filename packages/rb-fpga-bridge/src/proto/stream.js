@@ -1,14 +1,20 @@
-import { IDENTIFY_MAGIC, IDENTIFY_VERSION } from "./identify.js";
+import {
+  RBHB_MAGIC_HEADER_BUFFER,
+  RBHB_VERSION_V1,
+  RBHB_TYPE_STREAM_START,
+  RBHB_TYPE_STREAM_STOP,
+  RBHB_TYPE_SAMPLE,
+  RBHB_HEADER_LEN,
+  RBHB_CRC_LEN,
+  RBHB_MIN_FRAME_LEN,
+} from "./protocol.js";
 
-export const STREAM_MAGIC = IDENTIFY_MAGIC;
-export const STREAM_VERSION = IDENTIFY_VERSION;
-export const STREAM_TYPE_START = 0x10;
-export const STREAM_TYPE_STOP = 0x11;
-export const STREAM_TYPE_SAMPLE = 0x12;
-
-const HEADER_LEN = 4 + 1 + 1 + 2;
-const CRC_LEN = 4;
-const MIN_FRAME_LEN = HEADER_LEN + CRC_LEN;
+// Legacy exports for compatibility
+export const STREAM_MAGIC = RBHB_MAGIC_HEADER_BUFFER;
+export const STREAM_VERSION = RBHB_VERSION_V1;
+export const STREAM_TYPE_START = RBHB_TYPE_STREAM_START;
+export const STREAM_TYPE_STOP = RBHB_TYPE_STREAM_STOP;
+export const STREAM_TYPE_SAMPLE = RBHB_TYPE_SAMPLE;
 
 function readUInt16LE(buf, offset) {
   return buf.readUInt16LE(offset);
@@ -28,34 +34,34 @@ function writeUInt32LE(buf, value, offset) {
 
 export function encodeStreamFrame(type, payloadObj, options = {}) {
   const payload = Buffer.from(JSON.stringify(payloadObj), "utf8");
-  const buf = Buffer.alloc(HEADER_LEN + payload.length + CRC_LEN);
+  const buf = Buffer.alloc(RBHB_HEADER_LEN + payload.length + RBHB_CRC_LEN);
 
-  STREAM_MAGIC.copy(buf, 0);
-  buf[4] = STREAM_VERSION;
+  RBHB_MAGIC_HEADER_BUFFER.copy(buf, 0);
+  buf[4] = RBHB_VERSION_V1;
   buf[5] = type;
   writeUInt16LE(buf, payload.length, 6);
-  payload.copy(buf, HEADER_LEN);
+  payload.copy(buf, RBHB_HEADER_LEN);
 
   const crcValue = options.crc32 ?? 0;
-  writeUInt32LE(buf, crcValue, HEADER_LEN + payload.length);
+  writeUInt32LE(buf, crcValue, RBHB_HEADER_LEN + payload.length);
 
   return buf;
 }
 
 export function buildStreamStartFrame({ hz } = {}) {
-  return encodeStreamFrame(STREAM_TYPE_START, { kind: "start", hz: hz ?? null });
+  return encodeStreamFrame(RBHB_TYPE_STREAM_START, { kind: "start", hz: hz ?? null });
 }
 
 export function buildStreamStopFrame() {
-  return encodeStreamFrame(STREAM_TYPE_STOP, { kind: "stop" });
+  return encodeStreamFrame(RBHB_TYPE_STREAM_STOP, { kind: "stop" });
 }
 
 export function decodeStreamFrames(buffer) {
   let offset = 0;
   const frames = [];
 
-  while (offset + MIN_FRAME_LEN <= buffer.length) {
-    const magicIndex = buffer.indexOf(STREAM_MAGIC, offset);
+  while (offset + RBHB_MIN_FRAME_LEN <= buffer.length) {
+    const magicIndex = buffer.indexOf(RBHB_MAGIC_HEADER_BUFFER, offset);
     if (magicIndex === -1) {
       const keep = buffer.slice(Math.max(buffer.length - 3, 0));
       return { frames, remainder: keep };
@@ -65,21 +71,21 @@ export function decodeStreamFrames(buffer) {
       offset = magicIndex;
     }
 
-    if (offset + HEADER_LEN > buffer.length) {
+    if (offset + RBHB_HEADER_LEN > buffer.length) {
       break;
     }
 
     const version = buffer[offset + 4];
     const type = buffer[offset + 5];
     const length = readUInt16LE(buffer, offset + 6);
-    const totalLen = HEADER_LEN + length + CRC_LEN;
+    const totalLen = RBHB_HEADER_LEN + length + RBHB_CRC_LEN;
 
     if (offset + totalLen > buffer.length) {
       break;
     }
 
-    const payload = buffer.slice(offset + HEADER_LEN, offset + HEADER_LEN + length);
-    const crc = readUInt32LE(buffer, offset + HEADER_LEN + length);
+    const payload = buffer.slice(offset + RBHB_HEADER_LEN, offset + RBHB_HEADER_LEN + length);
+    const crc = readUInt32LE(buffer, offset + RBHB_HEADER_LEN + length);
 
     frames.push({
       version,
@@ -115,6 +121,13 @@ export function parseStreamSample(payloadBuffer) {
   let tMs = null;
   if (typeof payload.t_ms === "number") {
     tMs = payload.t_ms;
+  } else if (typeof payload.t_ms === "string") {
+    if (payload.t_ms.startsWith("0x")) {
+      tMs = parseInt(payload.t_ms, 16);
+    } else {
+      tMs = parseInt(payload.t_ms, 10);
+    }
+    if (isNaN(tMs)) tMs = null;
   } else if (typeof payload.t_us === "number") {
     tMs = Math.floor(payload.t_us / 1000);
   }
