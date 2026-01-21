@@ -10,6 +10,8 @@ import { createTimeBinner } from "./trace/binning.js";
 import { discoverDevices, getPinmapHash } from "./discovery.js";
 import { enumerateJtagDevices, programJtagBitstream, resolveDjtgcfgPath, selectJtagTarget } from "./jtag.js";
 import { identifyPort } from "./proto/identify.js";
+import { buildStreamStartFrame, buildStreamStopFrame } from "./proto/stream.js";
+import { createStreamParser } from "./stream-parser.js";
 import { findRepoRoot, resolveRepoPath } from "./path-utils.js";
 import { exec } from "child_process";
 import { promisify } from "util";
@@ -511,20 +513,50 @@ function buildMockIo(run) {
   return { sw: run.sw, btn: run.btn, led, seg: null };
 }
 
-function emitRunSample(run) {
-  const io = buildMockIo(run);
-  const sample = {
-    t_ms: run.tick * run.periodMs,
-    device_id: run.deviceId,
-    io,
-  };
-  const payload = `event: sample\ndata: ${JSON.stringify(sample)}\n\n`;
+function emitStatus(run, state, hint = null) {
+  run.status = state;
+  run.statusHint = hint;
+  const payload = `event: status\ndata: ${JSON.stringify({
+    run_id: run.id,
+    state,
+    hint: hint || undefined,
+  })}\n\n`;
   for (const client of run.clients) {
     if (!client.writableEnded) {
       client.write(payload);
     }
   }
-  run.tick += 1;
+}
+
+function emitSample(run, sample) {
+  if (run.noDataTimer) {
+    clearTimeout(run.noDataTimer);
+    run.noDataTimer = null;
+  }
+  if (run.status !== "running") {
+    emitStatus(run, "running");
+  }
+  run.sampleCount += 1;
+  run.lastSampleAt = Date.now();
+  const normalized = {
+    t_ms: typeof sample.t_ms === "number" ? sample.t_ms : 0,
+    device_id: run.deviceId,
+    io: sample.io,
+  };
+  const payload = `event: sample\ndata: ${JSON.stringify(normalized)}\n\n`;
+  for (const client of run.clients) {
+    if (!client.writableEnded) {
+      client.write(payload);
+    }
+  }
+}
+
+function scheduleNoData(run) {
+  run.noDataTimer = setTimeout(() => {
+    if (run.sampleCount === 0) {
+      emitStatus(run, "running_no_data", "Design may not include RedByte stream wrapper.");
+    }
+  }, 500);
 }
 
 function startMockRun({ deviceId, hz, seed }) {
@@ -543,16 +575,44 @@ function startMockRun({ deviceId, hz, seed }) {
     btn: 0,
     rng,
     clients: new Set(),
+    status: "running",
+    statusHint: null,
+    sampleCount: 0,
+    lastSampleAt: null,
+    bytesRead: 0,
+    framesParsed: 0,
+    decodeErrors: 0,
+    noDataTimer: null,
   };
-  run.interval = setInterval(() => emitRunSample(run), periodMs);
+  run.interval = setInterval(() => {
+    const io = buildMockIo(run);
+    emitSample(run, { t_ms: run.tick * run.periodMs, io });
+    run.tick += 1;
+  }, periodMs);
+  scheduleNoData(run);
   activeRuns.set(runId, run);
   deviceRunIndex.set(deviceId, runId);
   return run;
 }
 
-function stopRun(runId) {
+async function stopRun(runId, options = {}) {
   const run = activeRuns.get(runId);
   if (!run) return null;
+  if (run.noDataTimer) {
+    clearTimeout(run.noDataTimer);
+    run.noDataTimer = null;
+  }
+  emitStatus(run, "stopped");
+  if (run.port && run.port.isOpen) {
+    if (options.sendStopFrame !== false) {
+      try {
+        run.port.write(buildStreamStopFrame());
+      } catch {
+        // ignore
+      }
+    }
+    await new Promise((resolve) => run.port.close(() => resolve()));
+  }
   if (run.interval) {
     clearInterval(run.interval);
   }
@@ -568,6 +628,98 @@ function stopRun(runId) {
     deviceRunIndex.delete(run.deviceId);
   }
   return run;
+}
+
+async function startHardwareRun({ device, hz }) {
+  const portPath = device.runtime?.port;
+  const baudRate = device.runtime?.baud_default || BAUD;
+  if (!portPath) {
+    return { ok: false, error: "runtime_unavailable" };
+  }
+
+  const runId = createRunId();
+  const run = {
+    id: runId,
+    deviceId: device.id,
+    mode: "hardware",
+    startedAt: Date.now(),
+    hz,
+    periodMs: Math.max(1, Math.round(1000 / hz)),
+    tick: 0,
+    sw: 0,
+    btn: 0,
+    rng: null,
+    clients: new Set(),
+    status: "running",
+    statusHint: null,
+    sampleCount: 0,
+    lastSampleAt: null,
+    bytesRead: 0,
+    framesParsed: 0,
+    decodeErrors: 0,
+    noDataTimer: null,
+    port: null,
+    parser: null,
+  };
+
+  const port = new SerialPort({ path: portPath, baudRate, autoOpen: false });
+  const openPort = () =>
+    new Promise((resolve, reject) => {
+      port.open((err) => {
+        if (err) return reject(err);
+        resolve();
+      });
+    });
+
+  try {
+    await openPort();
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+
+  const parser = createStreamParser({
+    onSample: (sample) => {
+      run.framesParsed += 1;
+      emitSample(run, sample);
+    },
+    onError: () => {
+      run.decodeErrors += 1;
+    },
+  });
+
+  run.port = port;
+  run.parser = parser;
+  scheduleNoData(run);
+
+  port.on("data", (chunk) => {
+    run.bytesRead += chunk.length;
+    parser.write(chunk);
+  });
+
+  port.on("error", (err) => {
+    emitStatus(run, "error", err?.message || "uart_error");
+    stopRun(run.id, { sendStopFrame: false }).catch(() => {});
+  });
+
+  port.on("close", () => {
+    if (activeRuns.has(run.id)) {
+      emitStatus(run, "stopped");
+      activeRuns.delete(run.id);
+      if (deviceRunIndex.get(run.deviceId) === run.id) {
+        deviceRunIndex.delete(run.deviceId);
+      }
+    }
+  });
+
+  try {
+    port.write(buildStreamStartFrame({ hz }));
+  } catch {
+    // ignore write errors; stream may still start
+  }
+
+  activeRuns.set(runId, run);
+  deviceRunIndex.set(run.deviceId, runId);
+  return { ok: true, run };
 }
 
 function buildBinaryPacket({ sequence, flags, digital, analog }) {
@@ -982,7 +1134,7 @@ app.post("/run", async (req, res) => {
   const body = req.body || {};
   const schemaVersion = "bridge_v1";
   const deviceId = body.device_id || body.deviceId || null;
-  const mode = body.mode || "mock";
+  let mode = body.mode || null;
   const hzRaw = Number(body.hz || body.rate_hz || 20);
   const hz = Number.isFinite(hzRaw) ? Math.min(Math.max(hzRaw, 1), 200) : 20;
 
@@ -994,14 +1146,38 @@ app.post("/run", async (req, res) => {
     return res.status(409).json({ schema_version: schemaVersion, ok: false, error: "device_busy" });
   }
 
-  if (!["mock", "sim"].includes(mode)) {
-    return res.status(400).json({ schema_version: schemaVersion, ok: false, error: "unsupported_mode" });
-  }
-
   const devices = await discoverDevices({ includeSim: true, baudDefault: BAUD });
   const device = devices.find((entry) => entry.id === deviceId);
   if (!device) {
     return res.status(404).json({ schema_version: schemaVersion, ok: false, error: "invalid_device" });
+  }
+
+  if (!mode) {
+    mode = device.transport === "sim" ? "mock" : "hardware";
+  }
+
+  if (!["mock", "sim", "hardware"].includes(mode)) {
+    return res.status(400).json({ schema_version: schemaVersion, ok: false, error: "unsupported_mode" });
+  }
+
+  if (mode === "hardware") {
+    if (device.transport === "sim") {
+      return res.status(400).json({ schema_version: schemaVersion, ok: false, error: "invalid_device_mode" });
+    }
+    if (device.runtime?.status !== "ready") {
+      return res.status(400).json({ schema_version: schemaVersion, ok: false, error: "runtime_not_ready" });
+    }
+
+    const started = await startHardwareRun({ device, hz });
+    if (!started.ok) {
+      return res.status(500).json({ schema_version: schemaVersion, ok: false, error: started.error || "run_failed" });
+    }
+    return res.json({
+      schema_version: schemaVersion,
+      ok: true,
+      run_id: started.run.id,
+      started_at_ms: started.run.startedAt,
+    });
   }
 
   const seedRaw = body.seed;
@@ -1031,7 +1207,13 @@ app.get("/stream", (req, res) => {
     "Cache-Control": "no-cache, no-transform",
     Connection: "keep-alive",
   });
-  res.write(`event: status\ndata: ${JSON.stringify({ run_id: runId, state: "running" })}\n\n`);
+  res.write(
+    `event: status\ndata: ${JSON.stringify({
+      run_id: runId,
+      state: run.status || "running",
+      hint: run.statusHint || undefined,
+    })}\n\n`
+  );
 
   run.clients.add(res);
   req.on("close", () => {
@@ -1046,11 +1228,12 @@ app.post("/stop", (req, res) => {
   if (!runId) {
     return res.status(400).json({ schema_version: schemaVersion, ok: false, error: "run_id_required" });
   }
-  const run = stopRun(runId);
-  if (!run) {
-    return res.status(404).json({ schema_version: schemaVersion, ok: false, error: "run_not_found" });
-  }
-  return res.json({ schema_version: schemaVersion, ok: true, stopped_at_ms: Date.now() });
+  return stopRun(runId).then((run) => {
+    if (!run) {
+      return res.status(404).json({ schema_version: schemaVersion, ok: false, error: "run_not_found" });
+    }
+    return res.json({ schema_version: schemaVersion, ok: true, stopped_at_ms: Date.now() });
+  });
 });
 
 // ============================================================

@@ -5973,3 +5973,7 @@ Commits:
 ## Change Log  2026-01-20
 
 - Tightened /log responses to return log ids only, added /logs index and tail/output caps, and implemented mock run/stream/stop SSE endpoints with deterministic samples plus stream tests; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Added UART-backed run/stream support with RBHB stream framing, stream parser, hardware run lifecycle (start/stop/no-data status), and stream parser tests; objectives unchanged; phase unchanged.
