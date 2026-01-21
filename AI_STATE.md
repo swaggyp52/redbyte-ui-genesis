@@ -5989,3 +5989,7 @@ Commits:
 ## Change Log  2026-01-20
 
 - Added smoke script preflight retry and bridge URL hints to reduce false failures when the bridge is not yet running; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-20
+
+- Added deterministic wrapper generator with tests and a rb-fpga-toolchain build script to emit wrapper/Tcl/manifest and optionally run Vivado for Basys 3; objectives unchanged; phase unchanged.
