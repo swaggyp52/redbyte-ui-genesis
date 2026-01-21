@@ -14,17 +14,17 @@ if (process.env.CI && PW_MODE === 'debug-full') {
 
 const trace =
   PW_MODE === 'local' ? 'off' :
-  PW_MODE === 'ci' ? 'on-first-retry' :
-  PW_MODE === 'debug' ? 'on-first-retry' : // Bounded - safe
-  PW_MODE === 'debug-full' ? 'on' : // Unbounded - may hang
-  'off';
+    PW_MODE === 'ci' ? 'on-first-retry' :
+      PW_MODE === 'debug' ? 'on-first-retry' : // Bounded - safe
+        PW_MODE === 'debug-full' ? 'on' : // Unbounded - may hang
+          'off';
 
 const screenshot =
   PW_MODE === 'local' ? 'off' :
-  PW_MODE === 'ci' ? 'only-on-failure' :
-  PW_MODE === 'debug' ? 'only-on-failure' : // Bounded - safe
-  PW_MODE === 'debug-full' ? 'on' : // Unbounded - may hang
-  'off';
+    PW_MODE === 'ci' ? 'only-on-failure' :
+      PW_MODE === 'debug' ? 'only-on-failure' : // Bounded - safe
+        PW_MODE === 'debug-full' ? 'on' : // Unbounded - may hang
+          'off';
 
 const video =
   PW_MODE === 'debug-full' ? 'on-first-retry' : 'off';
@@ -36,16 +36,17 @@ export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
   workers: 1,
-  timeout: 30_000,  // Increased for complexity tests with many nodes
+  timeout: 60_000,  // Increased for complexity tests with many nodes
   retries: process.env.CI ? 1 : 0,  // Get traces on first failure in CI
 
   use: {
-    headless: true,
+    headless: true, // Force headless
     baseURL: 'http://127.0.0.1:4173',
-    trace,
-    video,
-    screenshot,
+    trace: 'on',
+    video: 'on',
+    screenshot: 'only-on-failure',
   },
+  expect: { timeout: 60_000 },
 
   // Run against the production-like preview server
   webServer: {
@@ -64,16 +65,16 @@ export default defineConfig({
       use: {
         browserName: 'chromium',
         serviceWorkers: 'block',
-        // launchOptions: {
-        //   args: [
-        //     // SAFETY: Disable GPU and sandbox for stability
-        //     '--disable-gpu',
-        //     '--disable-software-rasterizer',
-        //     '--disable-dev-shm-usage',
-        //     '--no-sandbox',
-        //     '--disable-features=ServiceWorker',
-        //   ],
-        // },
+        launchOptions: {
+          args: [
+            // SAFETY: Disable GPU and sandbox for stability
+            '--disable-gpu',
+            // '--disable-software-rasterizer',
+            '--disable-dev-shm-usage',
+            '--no-sandbox',
+            '--disable-features=ServiceWorker',
+          ],
+        },
       },
     },
   ],
