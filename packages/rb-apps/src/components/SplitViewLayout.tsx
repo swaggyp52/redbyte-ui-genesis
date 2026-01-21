@@ -99,6 +99,7 @@ interface ViewRendererProps {
   onSignalsUpdated?: (signals: Map<string, 0 | 1>, reason: 'input' | 'tick') => void;
   latestSignals?: Map<string, 0 | 1>;
   signalsUpdateReason?: 'input' | 'tick';
+  signalsVersion?: number;
 }
 
 // View metadata for headers
@@ -150,6 +151,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   onSignalsUpdated,
   latestSignals,
   signalsUpdateReason,
+  signalsVersion,
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = React.useState({ width: 800, height: 600 });
@@ -202,11 +204,10 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
       <div className="ml-3 flex items-center gap-1.5" data-testid="circuit-micro-toolbar">
         <button
           onClick={() => setToolMode('select')}
-          className={`px-2 py-1 rounded text-[10px] border ${
-            toolMode === 'select'
+          className={`px-2 py-1 rounded text-[10px] border ${toolMode === 'select'
               ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
               : 'border-gray-600 text-gray-300 hover:bg-gray-800/60'
-          }`}
+            }`}
           title="Select tool"
           type="button"
         >
@@ -214,11 +215,10 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
         </button>
         <button
           onClick={() => setToolMode(toolMode === 'wire' ? 'select' : 'wire')}
-          className={`px-2 py-1 rounded text-[10px] border ${
-            toolMode === 'wire'
+          className={`px-2 py-1 rounded text-[10px] border ${toolMode === 'wire'
               ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
               : 'border-gray-600 text-gray-300 hover:bg-gray-800/60'
-          }`}
+            }`}
           title="Wire tool"
           type="button"
         >
@@ -226,11 +226,10 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
         </button>
         <button
           onClick={toggleSnapToGrid}
-          className={`px-2 py-1 rounded text-[10px] border ${
-            snapToGrid
+          className={`px-2 py-1 rounded text-[10px] border ${snapToGrid
               ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
               : 'border-gray-600 text-gray-300 hover:bg-gray-800/60'
-          }`}
+            }`}
           title="Toggle snap to grid"
           type="button"
         >
@@ -476,7 +475,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   const [latestSignals, setLatestSignals] = React.useState<Map<string, 0 | 1> | undefined>();
   const [signalsUpdateReason, setSignalsUpdateReason] = React.useState<'input' | 'tick' | undefined>();
   const [signalsVersion, setSignalsVersion] = React.useState(0);
-  
+
   // Handle signal updates from LogicCanvas
   const handleSignalsUpdated = React.useCallback((signals: Map<string, 0 | 1>, reason: 'input' | 'tick') => {
     setLatestSignals(signals);
@@ -491,7 +490,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
       window.__RB_MOUNT_TRACE__.push(`${timestamp} SplitViewLayout:render`);
     }
   }
-  
+
   // Safety check: ensure engine and circuit are defined
   if (!engine || !tickEngine || !circuit) {
     return (
@@ -512,7 +511,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
         toolMode: state.toolMode,
         timestamp: Date.now(), // NEW object every render = infinite loop
       }));
-      
+
       if (import.meta.env.DEV) {
         console.warn('[FAULT INJECTION] ISSUE-A: unstable selector - expect React #185');
       }
@@ -576,20 +575,20 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           <ViewRenderer
             view={views[0] || 'circuit'}
             engine={engine}
-          tickEngine={tickEngine}
-          circuit={circuit}
-          isRunning={isRunning}
-          tickCount={tickCount}
-          debugSignals={debugSignals}
-          debugTick={debugTick}
-          mismatchWireHighlights={mismatchWireHighlights}
-          mismatchNodeIds={mismatchNodeIds}
-          mismatchPortKeys={mismatchPortKeys}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onUndo={onUndo}
-          onRedo={onRedo}
-          onCircuitChange={onCircuitChange}
+            tickEngine={tickEngine}
+            circuit={circuit}
+            isRunning={isRunning}
+            tickCount={tickCount}
+            debugSignals={debugSignals}
+            debugTick={debugTick}
+            mismatchWireHighlights={mismatchWireHighlights}
+            mismatchNodeIds={mismatchNodeIds}
+            mismatchPortKeys={mismatchPortKeys}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            onCircuitChange={onCircuitChange}
             onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
@@ -611,26 +610,27 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onSignalsUpdated={handleSignalsUpdated}
             latestSignals={latestSignals}
             signalsUpdateReason={signalsUpdateReason}
+            signalsVersion={signalsVersion}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden" style={secondaryStyle}>
           <ViewRenderer
             view={views[1] || 'schematic'}
             engine={engine}
-          tickEngine={tickEngine}
-          circuit={circuit}
-          isRunning={isRunning}
-          tickCount={tickCount}
-          debugSignals={debugSignals}
-          debugTick={debugTick}
-          mismatchWireHighlights={mismatchWireHighlights}
-          mismatchNodeIds={mismatchNodeIds}
-          mismatchPortKeys={mismatchPortKeys}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onUndo={onUndo}
-          onRedo={onRedo}
-          onCircuitChange={onCircuitChange}
+            tickEngine={tickEngine}
+            circuit={circuit}
+            isRunning={isRunning}
+            tickCount={tickCount}
+            debugSignals={debugSignals}
+            debugTick={debugTick}
+            mismatchWireHighlights={mismatchWireHighlights}
+            mismatchNodeIds={mismatchNodeIds}
+            mismatchPortKeys={mismatchPortKeys}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            onCircuitChange={onCircuitChange}
             onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
@@ -651,6 +651,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onSignalsUpdated={handleSignalsUpdated}
             latestSignals={latestSignals}
             signalsUpdateReason={signalsUpdateReason}
+            signalsVersion={signalsVersion}
           />
         </div>
       </div>
@@ -667,20 +668,20 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           <ViewRenderer
             view={views[0] || 'circuit'}
             engine={engine}
-          tickEngine={tickEngine}
-          circuit={circuit}
-          isRunning={isRunning}
-          tickCount={tickCount}
-          debugSignals={debugSignals}
-          debugTick={debugTick}
-          mismatchWireHighlights={mismatchWireHighlights}
-          mismatchNodeIds={mismatchNodeIds}
-          mismatchPortKeys={mismatchPortKeys}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onUndo={onUndo}
-          onRedo={onRedo}
-          onCircuitChange={onCircuitChange}
+            tickEngine={tickEngine}
+            circuit={circuit}
+            isRunning={isRunning}
+            tickCount={tickCount}
+            debugSignals={debugSignals}
+            debugTick={debugTick}
+            mismatchWireHighlights={mismatchWireHighlights}
+            mismatchNodeIds={mismatchNodeIds}
+            mismatchPortKeys={mismatchPortKeys}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            onCircuitChange={onCircuitChange}
             onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
@@ -702,26 +703,27 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onSignalsUpdated={handleSignalsUpdated}
             latestSignals={latestSignals}
             signalsUpdateReason={signalsUpdateReason}
+            signalsVersion={signalsVersion}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden" style={secondaryStyle}>
           <ViewRenderer
             view={views[1] || 'oscilloscope'}
             engine={engine}
-          tickEngine={tickEngine}
-          circuit={circuit}
-          isRunning={isRunning}
-          tickCount={tickCount}
-          debugSignals={debugSignals}
-          debugTick={debugTick}
-          mismatchWireHighlights={mismatchWireHighlights}
-          mismatchNodeIds={mismatchNodeIds}
-          mismatchPortKeys={mismatchPortKeys}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onUndo={onUndo}
-          onRedo={onRedo}
-          onCircuitChange={onCircuitChange}
+            tickEngine={tickEngine}
+            circuit={circuit}
+            isRunning={isRunning}
+            tickCount={tickCount}
+            debugSignals={debugSignals}
+            debugTick={debugTick}
+            mismatchWireHighlights={mismatchWireHighlights}
+            mismatchNodeIds={mismatchNodeIds}
+            mismatchPortKeys={mismatchPortKeys}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            onCircuitChange={onCircuitChange}
             onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
@@ -742,6 +744,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onSignalsUpdated={handleSignalsUpdated}
             latestSignals={latestSignals}
             signalsUpdateReason={signalsUpdateReason}
+            signalsVersion={signalsVersion}
           />
         </div>
       </div>
@@ -756,20 +759,20 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           <ViewRenderer
             view={views[0] || 'circuit'}
             engine={engine}
-          tickEngine={tickEngine}
-          circuit={circuit}
-          isRunning={isRunning}
-          tickCount={tickCount}
-          debugSignals={debugSignals}
-          debugTick={debugTick}
-          mismatchWireHighlights={mismatchWireHighlights}
-          mismatchNodeIds={mismatchNodeIds}
-          mismatchPortKeys={mismatchPortKeys}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onUndo={onUndo}
-          onRedo={onRedo}
-          onCircuitChange={onCircuitChange}
+            tickEngine={tickEngine}
+            circuit={circuit}
+            isRunning={isRunning}
+            tickCount={tickCount}
+            debugSignals={debugSignals}
+            debugTick={debugTick}
+            mismatchWireHighlights={mismatchWireHighlights}
+            mismatchNodeIds={mismatchNodeIds}
+            mismatchPortKeys={mismatchPortKeys}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            onCircuitChange={onCircuitChange}
             onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
@@ -791,26 +794,27 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onSignalsUpdated={handleSignalsUpdated}
             latestSignals={latestSignals}
             signalsUpdateReason={signalsUpdateReason}
+            signalsVersion={signalsVersion}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden">
           <ViewRenderer
             view={views[1] || 'schematic'}
             engine={engine}
-          tickEngine={tickEngine}
-          circuit={circuit}
-          isRunning={isRunning}
-          tickCount={tickCount}
-          debugSignals={debugSignals}
-          debugTick={debugTick}
-          mismatchWireHighlights={mismatchWireHighlights}
-          mismatchNodeIds={mismatchNodeIds}
-          mismatchPortKeys={mismatchPortKeys}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onUndo={onUndo}
-          onRedo={onRedo}
-          onCircuitChange={onCircuitChange}
+            tickEngine={tickEngine}
+            circuit={circuit}
+            isRunning={isRunning}
+            tickCount={tickCount}
+            debugSignals={debugSignals}
+            debugTick={debugTick}
+            mismatchWireHighlights={mismatchWireHighlights}
+            mismatchNodeIds={mismatchNodeIds}
+            mismatchPortKeys={mismatchPortKeys}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            onCircuitChange={onCircuitChange}
             onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
@@ -832,25 +836,26 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onSignalsUpdated={handleSignalsUpdated}
             latestSignals={latestSignals}
             signalsUpdateReason={signalsUpdateReason}
+            signalsVersion={signalsVersion}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden">
           <ViewRenderer
             view={views[2] || '3d'}
             engine={engine}
-          tickEngine={tickEngine}
-          circuit={circuit}
-          isRunning={isRunning}
-          tickCount={tickCount}
-          debugSignals={debugSignals}
-          debugTick={debugTick}
-          mismatchWireHighlights={mismatchWireHighlights}
-          mismatchNodeIds={mismatchNodeIds}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onUndo={onUndo}
-          onRedo={onRedo}
-          onCircuitChange={onCircuitChange}
+            tickEngine={tickEngine}
+            circuit={circuit}
+            isRunning={isRunning}
+            tickCount={tickCount}
+            debugSignals={debugSignals}
+            debugTick={debugTick}
+            mismatchWireHighlights={mismatchWireHighlights}
+            mismatchNodeIds={mismatchNodeIds}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            onCircuitChange={onCircuitChange}
             onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
@@ -872,20 +877,21 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onSignalsUpdated={handleSignalsUpdated}
             latestSignals={latestSignals}
             signalsUpdateReason={signalsUpdateReason}
+            signalsVersion={signalsVersion}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden">
           <ViewRenderer
             view={views[3] || 'oscilloscope'}
             engine={engine}
-          tickEngine={tickEngine}
-          circuit={circuit}
-          isRunning={isRunning}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onUndo={onUndo}
-          onRedo={onRedo}
-          onCircuitChange={onCircuitChange}
+            tickEngine={tickEngine}
+            circuit={circuit}
+            isRunning={isRunning}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            onCircuitChange={onCircuitChange}
             onNodeDoubleClick={onNodeDoubleClick}
             viewStateStore={viewStateStore}
             getChipMetadata={getChipMetadata}
@@ -905,6 +911,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             onSignalsUpdated={handleSignalsUpdated}
             latestSignals={latestSignals}
             signalsUpdateReason={signalsUpdateReason}
+            signalsVersion={signalsVersion}
           />
         </div>
       </div>

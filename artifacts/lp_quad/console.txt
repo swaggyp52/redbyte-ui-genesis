@@ -1,0 +1,5 @@
+[log] [LogicPlayground] Component rendering {windowId: ...}
+[info] [playground-debug] flags []
+...
+Uncaught ReferenceError: signalsVersion is not defined
+    at QuadMode.tsx:14

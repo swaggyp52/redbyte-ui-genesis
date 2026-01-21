@@ -33,6 +33,8 @@ import type { Intent } from './intent-types';
 import { getVersionString } from './version';
 import './styles.css';
 import { PerfHud } from './debug/PerfHud';
+import { HitTestDebugHUD } from './debug/HitTestDebugHUD';
+import { RenderStormMonitor } from './debug/RenderStormMonitor';
 
 // Dev-only imports (gated by import.meta.env.DEV)
 import { DeterminismPanel, useDeterminismRecorder } from './dev';
@@ -73,6 +75,7 @@ export const Shell: React.FC<ShellProps> = () => {
   const [onboardingModalOpen, setOnboardingModalOpen] = useState(false);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
   const [showPerfHud, setShowPerfHud] = useState(() => isPerfDebugEnabled());
+  const [showJankHud, setShowJankHud] = useState(false);
 
   const hasShownWelcomeRef = useRef(false);
   const hasInitializedRef = useRef(false);
@@ -109,21 +112,21 @@ export const Shell: React.FC<ShellProps> = () => {
 
     try {
       const raw = localStorage.getItem('rb:shell:pinnedApps');
-      
+
       // Demo mode: Auto-pin demo apps if no pins exist
       if (!raw && isDemoMode) {
         const demoApps = ['logic-playground', 'student-lab', 'submission-inspector'];
         localStorage.setItem('rb:shell:pinnedApps', JSON.stringify(demoApps));
         return demoApps;
       }
-      
+
       if (!raw) return [];
 
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
         return parsed.filter((id): id is string => typeof id === 'string');
       }
-    } catch {}
+    } catch { }
 
     return [];
   });
@@ -148,7 +151,7 @@ export const Shell: React.FC<ShellProps> = () => {
 
       try {
         localStorage.setItem('rb:shell:pinnedApps', JSON.stringify(next));
-      } catch {}
+      } catch { }
 
       return next;
     });
@@ -773,6 +776,12 @@ export const Shell: React.FC<ShellProps> = () => {
         return;
       }
 
+      if (import.meta.env.DEV && event.shiftKey && event.key.toLowerCase() === 'j') {
+        event.preventDefault();
+        setShowJankHud((prev) => !prev);
+        return;
+      }
+
       // Cmd/Ctrl+Space: Open System Search
       if (event.key === ' ') {
         event.preventDefault();
@@ -928,7 +937,7 @@ export const Shell: React.FC<ShellProps> = () => {
 
     try {
       localStorage.setItem(BOOT_STORAGE_KEY, '1');
-    } catch {}
+    } catch { }
 
     // Auto-open app from query param for automation testing and E2E
     // Enabled in dev + when navigator.webdriver is present (Playwright/Selenium)
@@ -1118,8 +1127,13 @@ export const Shell: React.FC<ShellProps> = () => {
         />
       )}
 
-      {import.meta.env.DEV && showPerfHud && (
-        <PerfHud onClose={() => setShowPerfHud(false)} />
+      {showPerfHud && <PerfHud onClose={() => setShowPerfHud(false)} />}
+
+      {import.meta.env.DEV && showJankHud && (
+        <>
+          <HitTestDebugHUD />
+          <RenderStormMonitor />
+        </>
       )}
 
       {/* Footer: Version Info (hidden in demo mode) */}

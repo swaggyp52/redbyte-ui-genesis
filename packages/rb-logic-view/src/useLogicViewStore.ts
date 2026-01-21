@@ -18,11 +18,28 @@ export function getGlobalViewStateStore() {
 
 // Helper to check if two Sets have the same contents
 function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {
+  if (!a || !b || !a.size || !b.size) return a === b;
   if (a.size !== b.size) return false;
   for (const item of a) {
     if (!b.has(item)) return false;
   }
   return true;
+}
+
+// Helper to safely clone a Set even if input is malformed (e.g. plain object from JSON)
+function safeSet<T>(input: any): Set<T> {
+  if (input instanceof Set) return new Set(input);
+  if (Array.isArray(input)) return new Set(input);
+  return new Set();
+}
+
+// Helper to create a new Set only if contents differ
+function createSetIfDifferent<T>(current: Set<T>, newItems: T[]): Set<T> {
+  const newSet = new Set(newItems);
+  if (current instanceof Set && setsEqual(current, newSet)) {
+    return current; // Return same reference if contents match
+  }
+  return newSet;
 }
 
 export interface Camera {
@@ -87,187 +104,187 @@ function createLogicViewStore() {
       zoom: 1,
     },
 
-  setCamera: (camera) =>
-    set((state) => ({
-      camera: { ...state.camera, ...camera },
-    })),
+    setCamera: (camera) =>
+      set((state) => ({
+        camera: { ...state.camera, ...camera },
+      })),
 
-  pan: (dx, dy) =>
-    set((state) => ({
-      camera: {
-        ...state.camera,
-        x: state.camera.x + dx,
-        y: state.camera.y + dy,
-      },
-    })),
-
-  zoom: (delta, centerX = 0, centerY = 0) =>
-    set((state) => {
-      const oldZoom = state.camera.zoom;
-      const newZoom = Math.max(0.25, Math.min(4, oldZoom * (1 + delta * 0.001)));
-
-      // Zoom towards cursor position
-      const zoomFactor = newZoom / oldZoom;
-      const newX = centerX - (centerX - state.camera.x) * zoomFactor;
-      const newY = centerY - (centerY - state.camera.y) * zoomFactor;
-
-      return {
+    pan: (dx, dy) =>
+      set((state) => ({
         camera: {
-          x: newX,
-          y: newY,
-          zoom: newZoom,
+          ...state.camera,
+          x: state.camera.x + dx,
+          y: state.camera.y + dy,
         },
-      };
-    }),
+      })),
 
-  // Selection state
-  selection: {
-    nodes: new Set(),
-    wires: new Set(),
-  },
+    zoom: (delta, centerX = 0, centerY = 0) =>
+      set((state) => {
+        const oldZoom = state.camera.zoom;
+        const newZoom = Math.max(0.25, Math.min(4, oldZoom * (1 + delta * 0.001)));
 
-  selectNode: (nodeId, addToSelection = false) =>
-    set((state) => {
-      const nodes = addToSelection ? new Set(state.selection.nodes) : new Set<string>();
-      if (nodes.has(nodeId)) {
-        nodes.delete(nodeId);
-      } else {
-        nodes.add(nodeId);
-      }
+        // Zoom towards cursor position
+        const zoomFactor = newZoom / oldZoom;
+        const newX = centerX - (centerX - state.camera.x) * zoomFactor;
+        const newY = centerY - (centerY - state.camera.y) * zoomFactor;
 
-      // Check if selection actually changed
-      if (setsEqual(nodes, state.selection.nodes)) {
-        return state;
-      }
+        return {
+          camera: {
+            x: newX,
+            y: newY,
+            zoom: newZoom,
+          },
+        };
+      }),
 
-      // Sync with global view state if available (async to break loop)
-      if (globalViewStateStore) {
-        const nodeArray = Array.from(nodes);
-        queueMicrotask(() => {
-          globalViewStateStore.getState().selectNodes(nodeArray, false);
-        });
-      }
+    // Selection state
+    selection: {
+      nodes: new Set(),
+      wires: new Set(),
+    },
 
-      return {
-        selection: {
-          ...state.selection,
-          nodes,
+    selectNode: (nodeId, addToSelection = false) =>
+      set((state) => {
+        const nodes = addToSelection ? safeSet<string>(state.selection.nodes) : new Set<string>();
+        if (nodes.has(nodeId)) {
+          nodes.delete(nodeId);
+        } else {
+          nodes.add(nodeId);
+        }
+
+        // Check if selection actually changed
+        if (setsEqual(nodes, state.selection.nodes)) {
+          return state;
+        }
+
+        // Sync with global view state if available (async to break loop)
+        if (globalViewStateStore) {
+          const nodeArray = Array.from(nodes);
+          queueMicrotask(() => {
+            globalViewStateStore.getState().selectNodes(nodeArray, false);
+          });
+        }
+
+        return {
+          selection: {
+            ...state.selection,
+            nodes,
+          },
+        };
+      }),
+
+    selectWire: (wireId, addToSelection = false) =>
+      set((state) => {
+        const wires = addToSelection ? safeSet<string>(state.selection.wires) : new Set<string>();
+        if (wires.has(wireId)) {
+          wires.delete(wireId);
+        } else {
+          wires.add(wireId);
+        }
+
+        // Check if selection actually changed
+        if (setsEqual(wires, state.selection.wires)) {
+          return state;
+        }
+
+        // Sync with global view state if available (async to break loop)
+        if (globalViewStateStore) {
+          const wireArray = Array.from(wires);
+          queueMicrotask(() => {
+            globalViewStateStore.getState().selectWires(wireArray, false);
+          });
+        }
+
+        return {
+          selection: {
+            ...state.selection,
+            wires,
+          },
+        };
+      }),
+
+    clearSelection: () =>
+      set((state) => {
+        // Check if already empty
+        if (state.selection.nodes.size === 0 && state.selection.wires.size === 0) {
+          return state;
+        }
+
+        // Sync with global view state if available (async to break loop)
+        if (globalViewStateStore) {
+          queueMicrotask(() => {
+            globalViewStateStore.getState().clearSelection();
+          });
+        }
+
+        return {
+          selection: {
+            nodes: new Set(),
+            wires: new Set(),
+          },
+        };
+      }),
+
+    selectMultipleNodes: (nodeIds, syncToGlobal = true) =>
+      set((state) => {
+        const newNodes = new Set(nodeIds);
+
+        // Check if selection actually changed
+        if (setsEqual(newNodes, safeSet<string>(state.selection.nodes)) && safeSet<string>(state.selection.wires).size === 0) {
+          return state;
+        }
+
+        // Only sync with global view state if this is a local change (async to break loop)
+        if (syncToGlobal && globalViewStateStore) {
+          queueMicrotask(() => {
+            globalViewStateStore.getState().selectNodes(nodeIds, false);
+          });
+        }
+
+        return {
+          selection: {
+            nodes: newNodes,
+            wires: new Set(),
+          },
+        };
+      }),
+
+    // Tool mode
+    toolMode: 'select',
+    setToolMode: (mode) => set({ toolMode: mode }),
+
+    // Editing state
+    editingState: {
+      isDragging: false,
+    },
+
+    setEditingState: (state) =>
+      set((prev) => ({
+        editingState: { ...prev.editingState, ...state },
+      })),
+
+    startWire: (port) =>
+      set((state) => ({
+        toolMode: 'wire',
+        editingState: {
+          ...state.editingState,
+          wireStartPort: port,
         },
-      };
-    }),
+      })),
 
-  selectWire: (wireId, addToSelection = false) =>
-    set((state) => {
-      const wires = addToSelection ? new Set(state.selection.wires) : new Set<string>();
-      if (wires.has(wireId)) {
-        wires.delete(wireId);
-      } else {
-        wires.add(wireId);
-      }
-
-      // Check if selection actually changed
-      if (setsEqual(wires, state.selection.wires)) {
-        return state;
-      }
-
-      // Sync with global view state if available (async to break loop)
-      if (globalViewStateStore) {
-        const wireArray = Array.from(wires);
-        queueMicrotask(() => {
-          globalViewStateStore.getState().selectWires(wireArray, false);
-        });
-      }
-
-      return {
-        selection: {
-          ...state.selection,
-          wires,
+    endWire: () =>
+      set((state) => ({
+        toolMode: 'select',
+        editingState: {
+          ...state.editingState,
+          wireStartPort: undefined,
         },
-      };
-    }),
+      })),
 
-  clearSelection: () =>
-    set((state) => {
-      // Check if already empty
-      if (state.selection.nodes.size === 0 && state.selection.wires.size === 0) {
-        return state;
-      }
-
-      // Sync with global view state if available (async to break loop)
-      if (globalViewStateStore) {
-        queueMicrotask(() => {
-          globalViewStateStore.getState().clearSelection();
-        });
-      }
-
-      return {
-        selection: {
-          nodes: new Set(),
-          wires: new Set(),
-        },
-      };
-    }),
-
-  selectMultipleNodes: (nodeIds, syncToGlobal = true) =>
-    set((state) => {
-      const newNodes = new Set(nodeIds);
-
-      // Check if selection actually changed
-      if (setsEqual(newNodes, state.selection.nodes) && state.selection.wires.size === 0) {
-        return state;
-      }
-
-      // Only sync with global view state if this is a local change (async to break loop)
-      if (syncToGlobal && globalViewStateStore) {
-        queueMicrotask(() => {
-          globalViewStateStore.getState().selectNodes(nodeIds, false);
-        });
-      }
-
-      return {
-        selection: {
-          nodes: newNodes,
-          wires: new Set(),
-        },
-      };
-    }),
-
-  // Tool mode
-  toolMode: 'select',
-  setToolMode: (mode) => set({ toolMode: mode }),
-
-  // Editing state
-  editingState: {
-    isDragging: false,
-  },
-
-  setEditingState: (state) =>
-    set((prev) => ({
-      editingState: { ...prev.editingState, ...state },
-    })),
-
-  startWire: (port) =>
-    set((state) => ({
-      toolMode: 'wire',
-      editingState: {
-        ...state.editingState,
-        wireStartPort: port,
-      },
-    })),
-
-  endWire: () =>
-    set((state) => ({
-      toolMode: 'select',
-      editingState: {
-        ...state.editingState,
-        wireStartPort: undefined,
-      },
-    })),
-
-  // Settings
-  snapToGrid: true,
-  toggleSnapToGrid: () => set((state) => ({ snapToGrid: !state.snapToGrid })),
-  gridSize: 16,
+    // Settings
+    snapToGrid: true,
+    toggleSnapToGrid: () => set((state) => ({ snapToGrid: !state.snapToGrid })),
+    gridSize: 16,
   }));
 }
 
@@ -275,7 +292,7 @@ function createLogicViewStore() {
 function useLogicViewStoreInternal() {
   if (!_storeInternal) _storeInternal = createLogicViewStore();
   const api = _storeInternal as any;
-  
+
   if (import.meta.env.DEV && typeof window !== 'undefined') {
     if (!window.__rbLogicViewStorePatched) {
       window.__rbLogicViewStorePatched = true;
@@ -301,7 +318,7 @@ function useLogicViewStoreInternal() {
       };
     }
   }
-  
+
   return _storeInternal;
 }
 

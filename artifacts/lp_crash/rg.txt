@@ -1,0 +1,9 @@
+LogicPlaygroundApp.tsx:444: fanOutCounts.size
+LogicCanvas.tsx:390: selection.nodes.size
+LogicCanvas.tsx:524: selection.nodes.size
+LogicCanvas.tsx:535: selection.wires.size
+LogicCanvas.tsx:546: selection.nodes.size
+LogicCanvas.tsx:668: selection.nodes.size
+LogicCanvas.tsx:714: selection.nodes.size
+useLogicViewStore.ts:21: a.size !== b.size
+useLogicViewStore.ts:192: state.selection.nodes.size

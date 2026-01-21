@@ -135,8 +135,12 @@ export const RightDock: React.FC<RightDockProps> = ({
   const [activeTab, setActiveTab] = useState<RightDockTab>(initialTab);
   const [dockState, setDockState] = useState<RightDockState>(initialState);
   // Use shallow comparison to prevent re-renders when selection object reference changes but content is the same
-  const selection = useLogicViewStore((state) => state.selection, shallow);
-  
+  const rawSelection = useLogicViewStore((state) => state.selection, shallow);
+  const selection = useMemo(() => ({
+    nodes: rawSelection?.nodes instanceof Set ? rawSelection.nodes : new Set<string>(),
+    wires: rawSelection?.wires instanceof Set ? rawSelection.wires : new Set<string>(),
+  }), [rawSelection]);
+
   // Select each probe store property individually to maintain stable references
   // (object literals in selectors create new references on every store update, breaking Zustand's getSnapshot cache)
   const probes = useProbeStore((state) => state.probes);
@@ -396,11 +400,10 @@ export const RightDock: React.FC<RightDockProps> = ({
       <div className="h-12 border-b border-gray-700 bg-gray-850 flex items-stretch px-2 gap-1">
         <button
           onClick={() => handleTabChange('inspector')}
-          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            activeTab === 'inspector'
+          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'inspector'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
-          }`}
+            }`}
           aria-label="Inspector"
           data-testid="rightdock-tab-inspector"
           type="button"
@@ -410,11 +413,10 @@ export const RightDock: React.FC<RightDockProps> = ({
         </button>
         <button
           onClick={() => handleTabChange('health')}
-          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            activeTab === 'health'
+          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'health'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
-          }`}
+            }`}
           aria-label="Health"
           data-testid="rightdock-tab-health"
           type="button"
@@ -424,11 +426,10 @@ export const RightDock: React.FC<RightDockProps> = ({
         </button>
         <button
           onClick={() => handleTabChange('learn')}
-          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            activeTab === 'learn'
+          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'learn'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
-          }`}
+            }`}
           aria-label="Learn"
           data-testid="rightdock-tab-learn"
           type="button"
@@ -438,11 +439,10 @@ export const RightDock: React.FC<RightDockProps> = ({
         </button>
         <button
           onClick={() => handleTabChange('probes')}
-          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            activeTab === 'probes'
+          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'probes'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
-          }`}
+            }`}
           aria-label="Probes"
           data-testid="rightdock-tab-probes"
           type="button"
@@ -452,11 +452,10 @@ export const RightDock: React.FC<RightDockProps> = ({
         </button>
         <button
           onClick={() => handleTabChange('record')}
-          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            activeTab === 'record'
+          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'record'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
-          }`}
+            }`}
           aria-label="Record"
           data-testid="rightdock-tab-record"
           type="button"
@@ -466,11 +465,10 @@ export const RightDock: React.FC<RightDockProps> = ({
         </button>
         <button
           onClick={() => handleTabChange('chips')}
-          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            activeTab === 'chips'
+          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'chips'
               ? 'bg-cyan-600 text-white shadow-lg'
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
-          }`}
+            }`}
           aria-label="Chips"
           data-testid="rightdock-tab-chips"
           type="button"
@@ -503,9 +501,8 @@ export const RightDock: React.FC<RightDockProps> = ({
                   <div className="mt-1 flex items-center gap-2 text-xs font-mono">
                     <span className="text-cyan-300">t{tickCount}</span>
                     <span
-                      className={`text-[10px] ${
-                        isRunning ? 'text-green-400' : tickCount === 0 ? 'text-gray-400' : 'text-yellow-300'
-                      }`}
+                      className={`text-[10px] ${isRunning ? 'text-green-400' : tickCount === 0 ? 'text-gray-400' : 'text-yellow-300'
+                        }`}
                     >
                       {isRunning ? 'Running' : tickCount === 0 ? 'Stopped' : 'Paused'}
                     </span>
@@ -533,11 +530,10 @@ export const RightDock: React.FC<RightDockProps> = ({
                   {onRun && onPause && (
                     <button
                       onClick={isRunning ? onPause : onRun}
-                      className={`px-2 py-1 text-[10px] rounded border ${
-                        isRunning
+                      className={`px-2 py-1 text-[10px] rounded border ${isRunning
                           ? 'border-yellow-500/50 text-yellow-200 hover:bg-yellow-500/20'
                           : 'border-green-500/50 text-green-200 hover:bg-green-500/20'
-                      }`}
+                        }`}
                       type="button"
                     >
                       {isRunning ? 'Pause' : 'Run'}
@@ -691,15 +687,14 @@ export const RightDock: React.FC<RightDockProps> = ({
                         setDraggedProbeIndex(null);
                         setDragOverIndex(null);
                       }}
-                      className={`rounded border p-3 transition-colors cursor-move ${
-                        draggedProbeIndex === index
+                      className={`rounded border p-3 transition-colors cursor-move ${draggedProbeIndex === index
                           ? 'opacity-50'
                           : dragOverIndex === index
-                          ? 'border-cyan-500 bg-cyan-900/30'
-                          : activeProbeId === probe.id
-                          ? 'border-cyan-500/60 bg-cyan-900/20'
-                          : 'border-gray-700/50 bg-gray-800/50 hover:bg-gray-800/80'
-                      }`}
+                            ? 'border-cyan-500 bg-cyan-900/30'
+                            : activeProbeId === probe.id
+                              ? 'border-cyan-500/60 bg-cyan-900/20'
+                              : 'border-gray-700/50 bg-gray-800/50 hover:bg-gray-800/80'
+                        }`}
                       onClick={() => handleProbeSelect(probe.id)}
                     >
                       <div className="flex items-start gap-2">
@@ -771,22 +766,22 @@ export const RightDock: React.FC<RightDockProps> = ({
               isRunning={isRunning}
               currentTick={tickCount}
               tickRate={tickRate}
-              onArm={onRecordArm ?? (() => {})}
-              onStartRecording={onRecordStart ?? (() => {})}
-              onStopRecording={onRecordStop ?? (() => {})}
-              onStartReplay={onRecordReplayStart ?? (() => {})}
-              onStopReplay={onRecordReplayStop ?? (() => {})}
-              onPauseReplay={onRecordReplayPause ?? (() => {})}
-              onResumeReplay={onRecordReplayResume ?? (() => {})}
-              onStepReplay={onRecordReplayStep ?? (() => {})}
-              onJumpReplay={onRecordReplayJump ?? (() => {})}
-              onVerify={onRecordVerify ?? (() => {})}
-              onExport={onRecordExport ?? (() => {})}
-              onExportProof={onRecordExportProof ?? (() => {})}
-              onRecordProof={onRecordProof ?? (() => {})}
-              onFocusTarget={onRecordFocus ?? (() => {})}
-              onMismatchSelect={onRecordMismatchSelect ?? (() => {})}
-              onImportProofPack={onRecordImportProofPack ?? (() => {})}
+              onArm={onRecordArm ?? (() => { })}
+              onStartRecording={onRecordStart ?? (() => { })}
+              onStopRecording={onRecordStop ?? (() => { })}
+              onStartReplay={onRecordReplayStart ?? (() => { })}
+              onStopReplay={onRecordReplayStop ?? (() => { })}
+              onPauseReplay={onRecordReplayPause ?? (() => { })}
+              onResumeReplay={onRecordReplayResume ?? (() => { })}
+              onStepReplay={onRecordReplayStep ?? (() => { })}
+              onJumpReplay={onRecordReplayJump ?? (() => { })}
+              onVerify={onRecordVerify ?? (() => { })}
+              onExport={onRecordExport ?? (() => { })}
+              onExportProof={onRecordExportProof ?? (() => { })}
+              onRecordProof={onRecordProof ?? (() => { })}
+              onFocusTarget={onRecordFocus ?? (() => { })}
+              onMismatchSelect={onRecordMismatchSelect ?? (() => { })}
+              onImportProofPack={onRecordImportProofPack ?? (() => { })}
             />
           </div>
         )}

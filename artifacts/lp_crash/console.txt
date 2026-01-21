@@ -1,0 +1,5 @@
+[LogicPlayground] Component rendering
+[playground-debug] flags []
+...
+Application Error: Cannot read properties of undefined (reading 'size')
+(Crash occurs in LogicPlaygroundApp.tsx or LogicCanvas.tsx accessing .size on undefined selection.nodes)

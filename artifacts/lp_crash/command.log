@@ -1,0 +1,6 @@
+mkdir artifacts\lp_crash
+browser_subagent (repro)
+grep .size packages/rb-apps
+grep .size packages/rb-logic-view
+findstr .size stores
+vitest run guard test

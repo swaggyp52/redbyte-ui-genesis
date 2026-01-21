@@ -75,7 +75,13 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const uiTick = useUiTickStore((state) => state.uiTick);
 
   const camera = useLogicViewStore((state) => state.camera, shallow);
-  const selection = useLogicViewStore((state) => state.selection, shallow);
+  const rawSelection = useLogicViewStore((state) => state.selection, shallow);
+  // Guard: Ensure selection Sets exist and are valid Sets (prevent crash if store state is malformed/hydrated as keys)
+  const selection = React.useMemo(() => ({
+    nodes: rawSelection?.nodes instanceof Set ? rawSelection.nodes : new Set(),
+    wires: rawSelection?.wires instanceof Set ? rawSelection.wires : new Set(),
+  }), [rawSelection]);
+
   const editingState = useLogicViewStore((state) => state.editingState, shallow);
   const snapToGridEnabled = useLogicViewStore((state) => state.snapToGrid);
   const toolMode = useLogicViewStore((state) => state.toolMode);
@@ -93,7 +99,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const endWire = useLogicViewStore((state) => state.endWire);
   const selectMultipleNodes = useLogicViewStore((state) => state.selectMultipleNodes);
   const setToolMode = useLogicViewStore((state) => state.setToolMode);
-  
+
   const zoomFn = zoom;
   const shouldSnap = snapToGridEnabled;
 
@@ -107,6 +113,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const lastSyncedSelection = React.useRef<Set<string>>(new Set());
   const lastCircuitNodeCount = React.useRef(0);
   const lastFocusRequestId = React.useRef<number>(-1);
+  const mouseRafPending = React.useRef<boolean>(false);
 
   // Stable refs for functions used in subscriptions (prevents infinite loops)
   const selectMultipleNodesRef = React.useRef(selectMultipleNodes);
@@ -239,7 +246,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     const newSignals = engine.getEngine().getAllSignals();
     setSignals(newSignals);
     setSignalsVersion(v => v + 1); // Bump version on tick updates too
-    
+
     if (onSignalsUpdated) {
       onSignalsUpdated(newSignals, 'tick');
     }
@@ -357,12 +364,20 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       setLastMouse({ x: e.clientX, y: e.clientY });
     }
 
-    // Track mouse position for wire preview
-    if (svgRef.current) {
-      const rect = svgRef.current.getBoundingClientRect();
-      setMousePosition({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
+    // Track mouse position for wire preview (throttled to RAF)
+    if (svgRef.current && !mouseRafPending.current) {
+      mouseRafPending.current = true;
+      const clientX = e.clientX;
+      const clientY = e.clientY;
+      requestAnimationFrame(() => {
+        mouseRafPending.current = false;
+        if (svgRef.current) {
+          const rect = svgRef.current.getBoundingClientRect();
+          setMousePosition({
+            x: clientX - rect.left,
+            y: clientY - rect.top,
+          });
+        }
       });
     }
   };
@@ -434,15 +449,15 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     };
 
     commitCircuit(updatedCircuit);
-    
+
     // CRITICAL: Immediately recompute signals after input change
     // This makes toggles interactive without waiting for next UI tick
     const newSignals = engine.getEngine().getAllSignals();
     setSignals(newSignals);
-    
+
     // Bump version to trigger scope/3D updates even when stopped
     setSignalsVersion(v => v + 1);
-    
+
     // Notify parent (scope/3D can subscribe to this)
     if (onSignalsUpdated) {
       onSignalsUpdated(newSignals, 'input');
@@ -725,15 +740,14 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           <div className="flex items-center justify-between gap-2">
             <span className="text-gray-500 uppercase tracking-wide">Sim</span>
             <span
-              className={`font-mono ${
-                isReplayMode ? 'text-cyan-300' : isRunning ? 'text-green-400' : 'text-gray-400'
-              }`}
+              className={`font-mono ${isReplayMode ? 'text-cyan-300' : isRunning ? 'text-green-400' : 'text-gray-400'
+                }`}
             >
               {isReplayMode
                 ? `Replay${tickRate ? ` ${tickRate}Hz` : ''}`
                 : isRunning
-                ? `Running${tickRate ? ` ${tickRate}Hz` : ''}`
-                : 'Paused'}
+                  ? `Running${tickRate ? ` ${tickRate}Hz` : ''}`
+                  : 'Paused'}
             </span>
           </div>
           <div className="flex items-center justify-between gap-2">
@@ -922,7 +936,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               const screenY = node.position.y * camera.zoom + camera.y;
               const size = 48 * camera.zoom;
               const switchState = node.state?.isOn ?? 0;
-              
+
               // Toggle dimensions
               const toggleWidth = size * 0.75;
               const toggleHeight = 16;
