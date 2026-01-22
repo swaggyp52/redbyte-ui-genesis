@@ -181,6 +181,7 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
               boxShadow: isRunning ? 'var(--rb-shadow-sm)' : 'none',
             }}
             className="relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200"
+            data-testid={`dock-icon-${dock.id}`}
           >
             <Icon
               width={28}

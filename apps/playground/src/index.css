@@ -1,9 +1,23 @@
+@import "../../../packages/rb-apps/src/styles/os-tokens.css";
+@import "../../../packages/rb-apps/src/styles/os-controls.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import "../../../packages/rb-apps/src/styles/os-tokens.css";
-@import "../../../packages/rb-apps/src/styles/os-controls.css";
+/* 
+  GRANDMA PASS HARDENING 
+  Kill the preact-border-shadow-host overlay that blocks 100% of clicks.
+  Likely injected by a devtool or deep dependency.
+*/
+#preact-border-shadow-host {
+  display: none !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  z-index: -9999 !important;
+}
 
 * {
   margin: 0;

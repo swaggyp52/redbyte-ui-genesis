@@ -1,0 +1,74 @@
+{"version":8,"type":"context-options","origin":"testRunner","browserName":"","playwrightVersion":"1.57.0","options":{},"platform":"win32","wallTime":1769037273457,"monotonicTime":10817.469,"sdkLanguage":"javascript"}
+{"type":"before","callId":"hook@1","stepId":"hook@1","startTime":10821.084,"class":"Test","method":"hook","title":"Before Hooks","params":{},"stack":[]}
+{"type":"before","callId":"fixture@29","stepId":"fixture@29","parentId":"hook@1","startTime":10834.123,"class":"Test","method":"fixture","title":"Fixture \"browser\"","params":{},"stack":[]}
+{"type":"before","callId":"pw:api@30","stepId":"pw:api@30","parentId":"fixture@29","startTime":10838.777,"class":"Test","method":"pw:api","title":"Launch browser","params":{"handleSIGINT":"false","args":"[--disable-gpu, --disable-dev-shm-usage, --no-sandbox, --disable-features=ServiceWorker]","tracesDir":"C:\\Users\\conno\\redbyte-ui\\test-results\\.playwright-artifacts-0\\traces","headless":"false","ignoreDefaultArgs":"undefined","ignoreAllDefaultArgs":"false","env":"undefined","timeout":"180000"},"stack":[]}
+{"type":"stderr","timestamp":10839.237,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m=> browserType.launch started \u001b[38;5;45m+0ms\u001b[0m\n"}
+{"type":"stderr","timestamp":11248.233,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m<= browserType.launch succeeded \u001b[38;5;45m+409ms\u001b[0m\n"}
+{"type":"after","callId":"pw:api@30","endTime":11248.463,"annotations":[]}
+{"type":"after","callId":"fixture@29","endTime":11248.629,"annotations":[]}
+{"type":"before","callId":"fixture@33","stepId":"fixture@33","parentId":"hook@1","startTime":11251.226,"class":"Test","method":"fixture","title":"Fixture \"context\"","params":{},"stack":[]}
+{"type":"before","callId":"pw:api@34","stepId":"pw:api@34","parentId":"fixture@33","startTime":11255.446,"class":"Test","method":"pw:api","title":"Create context","params":{"acceptDownloads":"accept","bypassCSP":"false","colorScheme":"light","hasTouch":"false","ignoreHTTPSErrors":"false","isMobile":"false","javaScriptEnabled":"true","locale":"en-US","offline":"false","viewport":"Object","baseURL":"http://localhost:5173","serviceWorkers":"block","recordVideo":"Object","selectorEngines":"[]","testIdAttributeName":"data-testid","noDefaultViewport":"false","extraHTTPHeaders":"undefined","storageState":"undefined","reducedMotion":"undefined","forcedColors":"undefined","contrast":"undefined","clientCertificates":"undefined"},"stack":[]}
+{"type":"stderr","timestamp":11255.931,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m=> browser.newContext started \u001b[38;5;45m+8ms\u001b[0m\n"}
+{"type":"stderr","timestamp":11275.549,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m<= browser.newContext succeeded \u001b[38;5;45m+19ms\u001b[0m\n"}
+{"type":"after","callId":"pw:api@34","endTime":11275.645,"annotations":[]}
+{"type":"after","callId":"fixture@33","endTime":11284.2,"annotations":[]}
+{"type":"before","callId":"fixture@35","stepId":"fixture@35","parentId":"hook@1","startTime":11284.998,"class":"Test","method":"fixture","title":"Fixture \"page\"","params":{},"stack":[]}
+{"type":"before","callId":"pw:api@36","stepId":"pw:api@36","parentId":"fixture@35","startTime":11288.777,"class":"Test","method":"pw:api","title":"Create page","params":{},"stack":[]}
+{"type":"stderr","timestamp":11288.917,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m=> browserContext.newPage started \u001b[38;5;45m+14ms\u001b[0m\n"}
+{"type":"stderr","timestamp":11502.324,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m<= browserContext.newPage succeeded \u001b[38;5;45m+213ms\u001b[0m\n"}
+{"type":"after","callId":"pw:api@36","endTime":11502.446,"annotations":[]}
+{"type":"after","callId":"fixture@35","endTime":11502.837,"annotations":[]}
+{"type":"after","callId":"hook@1","endTime":11502.966,"annotations":[]}
+{"type":"before","callId":"pw:api@37","stepId":"pw:api@37","startTime":11507.111,"class":"Test","method":"pw:api","title":"Navigate to \"/\"","params":{"url":"/","waitUntil":"domcontentloaded","timeout":"0"},"stack":[{"file":"C:\\Users\\conno\\redbyte-ui\\tests\\e2e\\_helpers\\osReady.ts","line":6,"column":16,"function":"osReady"}]}
+{"type":"stderr","timestamp":11507.234,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m=> page.goto started \u001b[38;5;45m+5ms\u001b[0m\n"}
+{"type":"stderr","timestamp":11522.231,"text":"  \u001b[38;5;45;1mpw:api \u001b[0mnavigating to \"http://localhost:5173/\", waiting until \"domcontentloaded\" \u001b[38;5;45m+15ms\u001b[0m\n"}
+{"type":"stderr","timestamp":11558.371,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m  \"commit\" event fired \u001b[38;5;45m+36ms\u001b[0m\n"}
+{"type":"stderr","timestamp":11559.057,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m  navigated to \"http://localhost:5173/\" \u001b[38;5;45m+1ms\u001b[0m\n"}
+{"type":"stderr","timestamp":11634.567,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m  \"domcontentloaded\" event fired \u001b[38;5;45m+75ms\u001b[0m\n"}
+{"type":"stderr","timestamp":11637.701,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m  \"load\" event fired \u001b[38;5;45m+4ms\u001b[0m\n"}
+{"type":"stderr","timestamp":11690.96,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m<= page.goto succeeded \u001b[38;5;45m+53ms\u001b[0m\n"}
+{"type":"after","callId":"pw:api@37","endTime":11691.081,"annotations":[]}
+{"type":"before","callId":"pw:api@38","stepId":"pw:api@38","startTime":11702.312,"class":"Test","method":"pw:api","title":"Is visible locator('[data-testid=\"shell-boot-screen\"]')","params":{"selector":"[data-testid=\"shell-boot-screen\"]","strict":"true","timeout":"5000"},"stack":[{"file":"C:\\Users\\conno\\redbyte-ui\\tests\\e2e\\_helpers\\osReady.ts","line":12,"column":26,"function":"osReady"}],"group":"getter"}
+{"type":"stderr","timestamp":11702.534,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m=> locator.isVisible started \u001b[38;5;45m+11ms\u001b[0m\n"}
+{"type":"stderr","timestamp":11730.473,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m  checking visibility of locator('[data-testid=\"shell-boot-screen\"]') \u001b[38;5;45m+28ms\u001b[0m\n"}
+{"type":"stderr","timestamp":11797.326,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m<= locator.isVisible succeeded \u001b[38;5;45m+67ms\u001b[0m\n"}
+{"type":"after","callId":"pw:api@38","endTime":11797.475,"annotations":[]}
+{"type":"before","callId":"expect@39","stepId":"expect@39","startTime":11802.675,"class":"Test","method":"expect","title":"Expect \"toBeVisible\"","params":{"expected":"Object"},"stack":[{"file":"C:\\Users\\conno\\redbyte-ui\\tests\\e2e\\_helpers\\osReady.ts","line":17,"column":65,"function":"osReady"}]}
+{"type":"stderr","timestamp":11809.674,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m=> expect.toBeVisible started \u001b[38;5;45m+13ms\u001b[0m\n"}
+{"type":"stderr","timestamp":11829.261,"text":"  \u001b[38;5;45;1mpw:api \u001b[0mExpect \"toBeVisible\" with timeout 60000ms \u001b[38;5;45m+19ms\u001b[0m\n"}
+{"type":"stderr","timestamp":11829.934,"text":"  \u001b[38;5;45;1mpw:api \u001b[0mwaiting for locator('[data-testid=\"shell-desktop\"]') \u001b[38;5;45m+1ms\u001b[0m\n"}
+{"type":"error","message":"\u001b[31mTest timeout of 180000ms exceeded.\u001b[39m","stack":[]}
+{"type":"before","callId":"hook@40","stepId":"hook@40","startTime":191266.954,"class":"Test","method":"hook","title":"After Hooks","params":{},"stack":[]}
+{"type":"stderr","timestamp":191272.632,"text":"  \u001b[38;5;45;1mpw:api \u001b[0mtaking page screenshot \u001b[38;5;45m+3m\u001b[0m\n"}
+{"type":"before","callId":"fixture@41","stepId":"fixture@41","parentId":"hook@40","startTime":196290.308,"class":"Test","method":"fixture","title":"Fixture \"page\"","params":{},"stack":[]}
+{"type":"after","callId":"fixture@41","endTime":196290.651,"annotations":[]}
+{"type":"before","callId":"fixture@42","stepId":"fixture@42","parentId":"hook@40","startTime":196291.136,"class":"Test","method":"fixture","title":"Fixture \"context\"","params":{},"stack":[]}
+{"type":"before","callId":"pw:api@43","stepId":"pw:api@43","parentId":"fixture@42","startTime":201375.502,"class":"Test","method":"pw:api","title":"Close context","params":{"reason":"Test timeout of 180000ms exceeded."},"stack":[]}
+{"type":"stderr","timestamp":201375.649,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m=> browserContext.close started \u001b[38;5;45m+10s\u001b[0m\n"}
+{"type":"stderr","timestamp":201911.464,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m<= expect.toBeVisible succeeded \u001b[38;5;45m+535ms\u001b[0m\n"}
+{"type":"after","callId":"expect@39","endTime":201914.162,"annotations":[],"error":{"name":"","message":"Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('[data-testid=\"shell-desktop\"]')\nExpected: visible\nTimeout: 60000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 60000ms\u001b[22m\n\u001b[2m  - waiting for locator('[data-testid=\"shell-desktop\"]')\u001b[22m\n","stack":"Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('[data-testid=\"shell-desktop\"]')\nExpected: visible\nTimeout: 60000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 60000ms\u001b[22m\n\u001b[2m  - waiting for locator('[data-testid=\"shell-desktop\"]')\u001b[22m\n\n    at osReady (C:\\Users\\conno\\redbyte-ui\\tests\\e2e\\_helpers\\osReady.ts:17:65)\n    at C:\\Users\\conno\\redbyte-ui\\tests\\e2e\\smoke.spec.ts:327:5"}}
+{"type":"error","message":"Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('[data-testid=\"shell-desktop\"]')\nExpected: visible\nTimeout: 60000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 60000ms\u001b[22m\n\u001b[2m  - waiting for locator('[data-testid=\"shell-desktop\"]')\u001b[22m\n","stack":[{"file":"C:\\Users\\conno\\redbyte-ui\\tests\\e2e\\_helpers\\osReady.ts","line":17,"column":65,"function":"osReady"},{"file":"C:\\Users\\conno\\redbyte-ui\\tests\\e2e\\smoke.spec.ts","line":327,"column":5}]}
+{"type":"stderr","timestamp":214840.975,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m<= browserContext.close succeeded \u001b[38;5;45m+13s\u001b[0m\n"}
+{"type":"after","callId":"pw:api@43","endTime":214841.075,"annotations":[]}
+{"type":"after","callId":"fixture@42","endTime":214847.7,"attachments":[{"name":"video","contentType":"video/webm","sha1":"3b29d75db11b954dff91de79099cd8121e8944c2"}],"annotations":[]}
+{"type":"before","callId":"fixture@51","stepId":"fixture@51","parentId":"hook@40","startTime":214851.495,"class":"Test","method":"fixture","title":"Fixture \"serviceWorkers\"","params":{},"stack":[{"file":"project#chromium","line":1,"column":1}],"group":"configuration"}
+{"type":"after","callId":"fixture@51","endTime":214851.563,"annotations":[]}
+{"type":"before","callId":"fixture@52","stepId":"fixture@52","parentId":"hook@40","startTime":214853.083,"class":"Test","method":"fixture","title":"Fixture \"baseURL\"","params":{},"stack":[{"file":"project#chromium","line":1,"column":1}],"group":"configuration"}
+{"type":"after","callId":"fixture@52","endTime":214853.165,"annotations":[]}
+{"type":"after","callId":"hook@40","endTime":214861.844,"annotations":[]}
+{"type":"before","callId":"hook@74","stepId":"hook@74","startTime":214862.111,"class":"Test","method":"hook","title":"Worker Cleanup","params":{},"stack":[]}
+{"type":"before","callId":"fixture@77","stepId":"fixture@77","parentId":"hook@74","startTime":214864.328,"class":"Test","method":"fixture","title":"Fixture \"video\"","params":{},"stack":[{"file":"project#chromium","line":1,"column":1}],"group":"configuration"}
+{"type":"after","callId":"fixture@77","endTime":214864.367,"annotations":[]}
+{"type":"before","callId":"fixture@78","stepId":"fixture@78","parentId":"hook@74","startTime":214864.648,"class":"Test","method":"fixture","title":"Fixture \"browser\"","params":{},"stack":[]}
+{"type":"stderr","timestamp":214865.481,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m=> browser.close started \u001b[38;5;45m+24ms\u001b[0m\n"}
+{"type":"stderr","timestamp":215031.277,"text":"  \u001b[38;5;45;1mpw:api \u001b[0m<= browser.close succeeded \u001b[38;5;45m+166ms\u001b[0m\n"}
+{"type":"after","callId":"fixture@78","endTime":215031.376,"annotations":[]}
+{"type":"before","callId":"fixture@81","stepId":"fixture@81","parentId":"hook@74","startTime":215032.246,"class":"Test","method":"fixture","title":"Fixture \"browserName\"","params":{},"stack":[{"file":"project#chromium","line":1,"column":1}],"group":"configuration"}
+{"type":"after","callId":"fixture@81","endTime":215032.279,"annotations":[]}
+{"type":"before","callId":"fixture@82","stepId":"fixture@82","parentId":"hook@74","startTime":215032.471,"class":"Test","method":"fixture","title":"Fixture \"screenshot\"","params":{},"stack":[{"file":"project#chromium","line":1,"column":1}],"group":"configuration"}
+{"type":"after","callId":"fixture@82","endTime":215032.501,"annotations":[]}
+{"type":"before","callId":"fixture@85","stepId":"fixture@85","parentId":"hook@74","startTime":215033.21,"class":"Test","method":"fixture","title":"Fixture \"launchOptions\"","params":{},"stack":[{"file":"project#chromium","line":1,"column":1}],"group":"configuration"}
+{"type":"after","callId":"fixture@85","endTime":215033.24,"annotations":[]}
+{"type":"before","callId":"fixture@86","stepId":"fixture@86","parentId":"hook@74","startTime":215033.447,"class":"Test","method":"fixture","title":"Fixture \"headless\"","params":{},"stack":[{"file":"project#chromium","line":1,"column":1}],"group":"configuration"}
+{"type":"after","callId":"fixture@86","endTime":215033.478,"annotations":[]}
+{"type":"after","callId":"hook@74","endTime":215033.815,"annotations":[]}

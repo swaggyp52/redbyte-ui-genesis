@@ -949,8 +949,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
               return (
                 <g
-                  key={`switch-overlay-${node.id}`}
+                  key={`switch-toggle-${node.id}`}
                   transform={`translate(${screenX}, ${screenY})`}
+                  style={{ pointerEvents: 'auto' }}
+                  data-testid={`switch-toggle-${node.id}`}
                 >
                   {/* Hit target - large clickable area */}
                   <rect

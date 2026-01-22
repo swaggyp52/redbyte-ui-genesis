@@ -35,6 +35,7 @@ import './styles.css';
 import { PerfHud } from './debug/PerfHud';
 import { HitTestDebugHUD } from './debug/HitTestDebugHUD';
 import { RenderStormMonitor } from './debug/RenderStormMonitor';
+import { DeadZoneScanner } from './debug/DeadZoneScanner';
 
 // Dev-only imports (gated by import.meta.env.DEV)
 import { DeterminismPanel, useDeterminismRecorder } from './dev';
@@ -76,6 +77,7 @@ export const Shell: React.FC<ShellProps> = () => {
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
   const [showPerfHud, setShowPerfHud] = useState(() => isPerfDebugEnabled());
   const [showJankHud, setShowJankHud] = useState(false);
+  const [showDeadZoneScanner, setShowDeadZoneScanner] = useState(true);
 
   const hasShownWelcomeRef = useRef(false);
   const hasInitializedRef = useRef(false);
@@ -782,6 +784,12 @@ export const Shell: React.FC<ShellProps> = () => {
         return;
       }
 
+      if (import.meta.env.DEV && event.shiftKey && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setShowDeadZoneScanner((prev) => !prev);
+        return;
+      }
+
       // Cmd/Ctrl+Space: Open System Search
       if (event.key === ' ') {
         event.preventDefault();
@@ -1135,6 +1143,8 @@ export const Shell: React.FC<ShellProps> = () => {
           <RenderStormMonitor />
         </>
       )}
+
+      {import.meta.env.DEV && showDeadZoneScanner && <DeadZoneScanner />}
 
       {/* Footer: Version Info (hidden in demo mode) */}
       {!isDemoMode && (

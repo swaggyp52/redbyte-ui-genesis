@@ -11,6 +11,32 @@ const bisectStep = Number(params.get('step') || '0');
 const isE2E = params.get('e2e') === '1' || import.meta.env.VITE_E2E === '1';
 const isAudit = isAuditEnabled(params);
 
+// 3) Temporary Crash Beacon for Playwright triage
+if (typeof window !== 'undefined') {
+  const renderCrashBeacon = (message: string) => {
+    let beacon = document.querySelector('[data-testid="rb-crash-beacon"]');
+    if (!beacon) {
+      beacon = document.createElement('div');
+      beacon.setAttribute('data-testid', 'rb-crash-beacon');
+      beacon.style.setProperty('display', 'none');
+      document.body.appendChild(beacon);
+    }
+    beacon.textContent = message;
+  };
+
+  window.addEventListener('error', (event) => {
+    const error = event.error || { message: event.message };
+    (window as any).__rb_crash = { message: error.message, stack: error.stack };
+    renderCrashBeacon(error.message);
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    (window as any).__rb_crash = { message: String(reason), stack: reason?.stack };
+    renderCrashBeacon(String(reason));
+  });
+}
+
 installAuditGuards(isAudit);
 
 console.log('RB_MAIN_SEARCH_PARAMS', { isE2E, isBisect, bisectStep });

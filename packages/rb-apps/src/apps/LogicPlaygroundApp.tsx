@@ -138,7 +138,7 @@ interface LogicPlaygroundProps {
   determinismRecorder?: any; // Type from useDeterminismRecorder hook
 }
 
-const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
+export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   windowId,
   initialFileId,
   initialExampleId,
@@ -327,7 +327,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showExamplesModal, setShowExamplesModal] = useState(false);
-  
+
   // CE Mode modals
   const [showCEResetModal, setShowCEResetModal] = useState(false);
   const [showCEExamplesModal, setShowCEExamplesModal] = useState(false);
@@ -378,8 +378,8 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     isRunning: boolean;
     tickCount: number;
     viewState: {
-      camera: ReturnType<typeof useLogicViewStore.getState>['camera'];
-      selection: ReturnType<typeof useLogicViewStore.getState>['selection'];
+      camera: ReturnType<NonNullable<ReturnType<typeof useLogicViewStore>>['getState']>['camera'];
+      selection: ReturnType<NonNullable<ReturnType<typeof useLogicViewStore>>['getState']>['selection'];
     };
   } | null>(null);
   const engineRef = useRef<CircuitEngine>(engine);
@@ -434,7 +434,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   useEffect(() => {
     const nodeCount = circuit.nodes.length;
     const edgeCount = circuit.connections.length;
-    
+
     // Calculate max fan-out
     const fanOutCounts = new Map<string, number>();
     circuit.connections.forEach((conn) => {
@@ -442,7 +442,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       fanOutCounts.set(key, (fanOutCounts.get(key) || 0) + 1);
     });
     const maxFanOut = fanOutCounts.size > 0 ? Math.max(...fanOutCounts.values()) : 0;
-    
+
     // Update classroom mode store
     const { setComplexity } = useClassroomModeStore.getState();
     setComplexity(nodeCount, edgeCount, maxFanOut);
@@ -507,33 +507,33 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     if (import.meta.env.DEV || navigator.webdriver) {
       pushMount('RB_READY_EFFECT_FIRED');
     }
-    
+
     // Check if root element is ready (TopCommandBar + RightDock + main view mounted)
     const rootEl = document.querySelector('[data-testid="logic-playground-root"]');
     const topBarEl = document.querySelector('[data-testid="top-command-bar"]');
     const rightDockEl = document.querySelector('[data-testid="right-dock"]');
-    
+
     if (rootEl && topBarEl && rightDockEl) {
       // Mark root as ready
       rootEl.setAttribute('data-ready', 'true');
-      
+
       // Dispatch window event for test automation
       window.dispatchEvent(new Event('rb:logic-playground-ready'));
-      
+
       // Enable runaway loop watchdog for crash detection
       enableWatchdog();
-      
+
       if (import.meta.env.DEV) {
         console.log('RB_READY');
         console.log('[LogicPlayground] Readiness signal dispatched');
-        
+
         // Persist for post-mortem
         try {
           localStorage.setItem('__RB_LAST_READY__', '1');
         } catch (e) {
           // Ignore
         }
-        
+
         pushMount('RB_READY_DISPATCHED');
       }
     }
@@ -550,7 +550,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     const engine = tickEngineRef.current;
     const originalStepOnce = engine.stepOnce.bind(engine);
 
-    engine.stepOnce = function(this: TickEngine) {
+    engine.stepOnce = function (this: TickEngine) {
       const prevTick = this.getTickCount();
       originalStepOnce();
       const newTick = this.getTickCount();
@@ -606,7 +606,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     replaySetupRef.current = true;
 
     if (!preReplayStateRef.current) {
-      const viewState = useLogicViewStore.getState();
+      const viewState = (useLogicViewStore() as any).getState();
       preReplayStateRef.current = {
         circuit,
         engine,
@@ -671,7 +671,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       tickEngine.stepOnce();
       const nextTick = tickEngine.getTickCount();
       useRunRecorderStore.getState().setPlayheadTick(nextTick);
-      setDebugSignals(new Map(tickEngine.getEngine().getAllSignals()));
+      const rawSignals = tickEngine.getEngine().getAllSignals();
+      const mappedSignals = new Map<string, 0 | 1>();
+      rawSignals.forEach((v, k) => mappedSignals.set(k, (v > 0 ? 1 : 0) as 0 | 1));
+      setDebugSignals(mappedSignals);
       setDebugTick(nextTick);
 
       if (nextTick >= replayMaxTick) {
@@ -719,7 +722,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         setTickCount,
         setIsRunning,
       },
-      useLogicViewStore
+      useLogicViewStore() as any
     );
   }, [recorderMode]);
 
@@ -769,8 +772,10 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       context.tickEngine.stepOnce();
     }
 
-    setCircuit(context.engine.getCircuit());
-    setDebugSignals(new Map(context.tickEngine.getEngine().getAllSignals()));
+    const rawSignals = context.tickEngine.getEngine().getAllSignals();
+    const mappedSignals = new Map<string, 0 | 1>();
+    rawSignals.forEach((v, k) => mappedSignals.set(k, (v > 0 ? 1 : 0) as 0 | 1));
+    setDebugSignals(mappedSignals);
     setDebugTick(context.tickEngine.getTickCount());
   }, [recorderMode, replayRecord, replayPaused, playheadTick]);
 
@@ -1027,7 +1032,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     // Read current values from refs to avoid circular updates
     const currentHierarchyCircuit = hierarchyCircuitRef.current;
     const currentCircuit = circuitRef.current;
-    
+
     if (hierarchyStack.length > 0) {
       // We're inside a chip - use hierarchy circuit
       // Only sync if hierarchyCircuit actually changed (reference check)
@@ -1188,7 +1193,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   }, [selectedExampleId]);
 
   // Layout is driven by the perspective store.
-  useEffect(() => {}, [perspective]);
+  useEffect(() => { }, [perspective]);
 
   // Autosave after 5 seconds of idle (debounced)
   useEffect(() => {
@@ -1884,14 +1889,14 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       }
       const exampleData = await loadExample(exampleToLoad);
       const loadedCircuit = deserialize(exampleData);
-      
+
       // PHASE 1.5: DEV-only fault injection for ISSUE-B validation (stack overflow)
       if (import.meta.env.DEV) {
         const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
         if (params.get('fault') === 'deep-recursion') {
           // Intentional deep recursion to trigger "Maximum call stack size exceeded"
           console.warn('[FAULT INJECTION] ISSUE-B: deep-recursion - expect stack overflow');
-          
+
           // Recursive function that will exceed stack depth
           const deepRecurse = (depth: number): any => {
             if (depth > 5000) {
@@ -1901,7 +1906,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             // Each call gets deeper, guaranteeing stack overflow
             return deepRecurse(depth + 1);
           };
-          
+
           try {
             deepRecurse(0); // This will throw before reaching 5000
           } catch (e) {
@@ -1910,7 +1915,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           }
         }
       }
-      
+
       setCircuit(loadedCircuit);
       const newEngine = new CircuitEngine(loadedCircuit);
       setEngine(newEngine);
@@ -2564,7 +2569,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           if (rightDockState === 'collapsed') setRightDockState('peek');
           return;
         case 'playground-toggle-wire': {
-          const logicView = useLogicViewStore.getState();
+          const logicView = (useLogicViewStore() as any).getState();
           const editingState = logicView.editingState;
           if (editingState.wireStartPort) {
             logicView.endWire();
@@ -2580,11 +2585,11 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           const size = useViewStateStore.getState().circuitViewSize;
           if (!size) return;
           const nextCamera = calculateFitToView(circuit.nodes, size.width, size.height);
-          useLogicViewStore.getState().setCamera(nextCamera);
+          (useLogicViewStore() as any).getState().setCamera(nextCamera);
           return;
         }
         case 'playground-reset-view':
-          useLogicViewStore.getState().setCamera({ x: 0, y: 0, zoom: 1 });
+          (useLogicViewStore() as any).getState().setCamera({ x: 0, y: 0, zoom: 1 });
           return;
         case 'playground-clear-scope':
           useOscilloscopeStore.getState().requestClear();
@@ -2630,32 +2635,32 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const allChips = React.useMemo(() => getAllChips(), [getAllChips]);
 
   // ====== CE MODE HANDLERS ======
-  
+
   const handleCEResetWorkspace = () => {
     try {
       // Clear autosave
       clearSavedCircuit();
-      
+
       // Reset circuit to empty
       const emptyCircuit: Circuit = { nodes: [], connections: [] };
       setCircuit(emptyCircuit);
       engine.setCircuit(emptyCircuit);
       tickEngine.setCircuit(emptyCircuit);
-      
+
       // Reset tick count
       tickEngine.resetTickCount();
       setTickCount(0);
-      
+
       // Stop simulation
       if (isRunning) {
         tickEngine.pause();
         setIsRunning(false);
       }
-      
+
       // Reset view
       setPerspective('build');
-      useLogicViewStore.getState().setCamera({ x: 0, y: 0, zoom: 1 });
-      
+      (useLogicViewStore() as any).getState().setCamera({ x: 0, y: 0, zoom: 1 });
+
       addToast('Workspace reset to empty circuit', 'success');
       setShowCEResetModal(false);
     } catch (error) {
@@ -2668,17 +2673,17 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     try {
       // example is the CEExample object with circuit already loaded
       const exampleCircuit = example.circuit || example;
-      
+
       setCircuit(exampleCircuit);
       engine.setCircuit(exampleCircuit);
       tickEngine.setCircuit(exampleCircuit);
-      
+
       // Pause simulation on load (especially for heavy circuits)
       if (isRunning) {
         tickEngine.pause();
         setIsRunning(false);
       }
-      
+
       // Check if heavy and warn
       const nodeCount = exampleCircuit.nodes.length;
       const connCount = exampleCircuit.connections.length;
@@ -2687,7 +2692,7 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       } else {
         addToast(`Example loaded successfully`, 'success');
       }
-      
+
       setShowCEExamplesModal(false);
     } catch (error) {
       console.error('Load example error:', error);
@@ -2717,694 +2722,677 @@ const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           </div>
         )}
 
-      {/* Hierarchy Breadcrumbs */}
-      <HierarchyBreadcrumbs />
+        {/* Hierarchy Breadcrumbs */}
+        <HierarchyBreadcrumbs />
 
-      {/* Classroom guardrail banners */}
-      <ClassroomModeBanner />
+        {/* Classroom guardrail banners */}
+        <ClassroomModeBanner />
 
-      {/* Top Command Bar - vNext Design */}
-      <TopCommandBar
-        onExamples={ceMode ? () => setShowCEExamplesModal(true) : () => setShowExamplesModal(true)}
-        projectName={projectName}
-        onNew={handleNew}
-        onNewProject={handleNewProject}
-        onSaveProject={handleSaveProject}
-        onOpenProject={handleOpenProject}
-        onExportProject={ceMode ? () => setShowCEExportModal(true) : handleExportProject}
-        onSave={handleSave}
-        onSaveAs={handleSaveAs}
-        onShare={handleShare}
-        isDirty={isDirty}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        isRunning={isRunning}
-        onRun={handleRun}
-        onPause={handlePause}
-        onStep={handleStep}
-        tickCount={tickCount}
-        tickRate={currentHz}
-        onTickRateChange={handleHzChange}
-        onResetTickCount={handleResetTickCount}
-        onReset={ceMode ? () => setShowCEResetModal(true) : undefined}
-        perspective={perspective}
-        onPerspectiveChange={setPerspective}
-        schematicMiniEnabled={schematicMiniEnabled}
-        onToggleSchematicMini={toggleSchematicMini}
-        onManual={() => onOpenApp?.('user-manual')}
-        onHelp={() => setShowKeyboardHelp(true)}
-      />
+        {/* Top Command Bar - vNext Design */}
+        <TopCommandBar
+          onExamples={ceMode ? () => setShowCEExamplesModal(true) : () => setShowExamplesModal(true)}
+          projectName={projectName}
+          onNew={handleNew}
+          onNewProject={handleNewProject}
+          onSaveProject={handleSaveProject}
+          onOpenProject={handleOpenProject}
+          onExportProject={ceMode ? () => setShowCEExportModal(true) : handleExportProject}
+          onSave={handleSave}
+          onSaveAs={handleSaveAs}
+          onShare={handleShare}
+          isDirty={isDirty}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          isRunning={isRunning}
+          onRun={handleRun}
+          onPause={handlePause}
+          onStep={handleStep}
+          tickCount={tickCount}
+          tickRate={currentHz}
+          onTickRateChange={handleHzChange}
+          onResetTickCount={handleResetTickCount}
+          onReset={ceMode ? () => setShowCEResetModal(true) : undefined}
+          perspective={perspective}
+          onPerspectiveChange={setPerspective}
+          schematicMiniEnabled={schematicMiniEnabled}
+          onToggleSchematicMini={toggleSchematicMini}
+          onManual={() => onOpenApp?.('user-manual')}
+          onHelp={() => setShowKeyboardHelp(true)}
+        />
 
-      <input
-        ref={projectFileInputRef}
-        type="file"
-        accept="application/json,.json"
-        onChange={handleProjectFileChange}
-        className="hidden"
-        aria-label="Open project file"
-      />
+        <input
+          ref={projectFileInputRef}
+          type="file"
+          accept="application/json,.json"
+          onChange={handleProjectFileChange}
+          className="hidden"
+          aria-label="Open project file"
+        />
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - Enhanced Palette (PR3) */}
-        <EnhancedPalette
-          primitiveNodes={PRIMITIVE_NODES}
-          compositeNodes={COMPOSITE_NODES}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Sidebar - Enhanced Palette (PR3) */}
+          <EnhancedPalette
+            primitiveNodes={PRIMITIVE_NODES}
+            compositeNodes={COMPOSITE_NODES}
+            chips={allChips}
+            onNodeDragStart={handleNodeDragStart}
+            onAddNode={storeAddNode}
+            onChipLibraryOpen={() => setShowChipLibrary(true)}
+            getChipMetadata={getChipMetadataForNode}
+            getNodeDescription={getNodeDescription}
+            isReplayMode={isReplayMode}
+          />
+
+          {/* Center - Canvas */}
+          <div
+            ref={canvasAreaRef}
+            tabIndex={-1}
+            className="flex-1 relative outline-none"
+            data-testid="logic-canvas"
+            onDragOver={handleNodeDragOver}
+            onDrop={handleNodeDrop}
+            onDragEnd={() => {
+              // Clean up drag state when drag ends
+              setDraggingNodeType(null);
+              setDragPosition(null);
+            }}
+          >
+            {/* Drag preview indicator */}
+            {dragPosition && draggingNodeType && (
+              <div
+                className="absolute pointer-events-none z-50"
+                style={{
+                  left: `${dragPosition.x}px`,
+                  top: `${dragPosition.y}px`,
+                  transform: 'translate(-50%, -50%)',
+                }}
+              >
+                <div className="px-3 py-2 bg-cyan-500/20 border-2 border-cyan-500 rounded-lg shadow-lg backdrop-blur-sm">
+                  <div className="text-xs font-semibold text-cyan-300">{draggingNodeType}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Empty State Message (shown when canvas is empty in demo mode) */}
+            {circuit.nodes.length === 0 && isDemoMode && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                <div className="bg-slate-800/90 backdrop-blur-sm border border-slate-600 rounded-lg px-8 py-6 max-w-md text-center shadow-2xl">
+                  <div className="text-2xl text-cyan-400 mb-3">Get Started</div>
+                  <p className="text-gray-300 text-sm leading-relaxed">
+                    Drag components from the left palette to begin building your circuit, or{' '}
+                    <button
+                      onClick={() => setShowOpenModal(true)}
+                      className="text-cyan-400 hover:text-cyan-300 underline pointer-events-auto"
+                    >
+                      load an example
+                    </button>
+                    .
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {disableSplitView ? (
+              <div className="flex h-full items-center justify-center text-sm text-gray-300">
+                Split view disabled by debug flag.
+              </div>
+            ) : (
+              <SplitViewLayout
+                mode={e2eDisableQuad && splitScreenMode === 'quad' ? 'single' : splitScreenMode}
+                views={e2eDisableQuad ? [activeViews[0] ?? 'circuit'] : activeViews}
+                splitRatio={splitRatio}
+                engine={engine}
+                tickEngine={tickEngine}
+                circuit={circuit}
+                isRunning={isRunning}
+                tickCount={tickCount}
+                debugSignals={debugSignals}
+                debugTick={debugTick}
+                mismatchWireHighlights={mismatchWireHighlights}
+                mismatchNodeIds={mismatchNodeIds}
+                mismatchPortKeys={mismatchPortKeys}
+                canUndo={canUndo}
+                canRedo={canRedo}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                getChipMetadata={getChipMetadataForNode}
+                onNodeDoubleClick={handleEnterChip}
+                showCircuitHints={false}
+                onDismissCircuitHints={() => setShowCircuitHints(false)}
+                showSchematicHints={false}
+                onDismissSchematicHints={() => setShowSchematicHints(false)}
+                show3DHints={false}
+                onDismiss3DHints={() => setShow3DHints(false)}
+                showOscilloscopeHints={false}
+                onDismissOscilloscopeHints={() => setShowOscilloscopeHints(false)}
+                onInputToggled={handleInputToggled}
+                onCircuitChange={handleCircuitChange}
+                viewStateStore={useViewStateStore}
+                onProbeToggle={handleProbeToggle}
+                probedPorts={probedPorts}
+                probeWireHighlights={probeWireHighlights}
+                highlightedPort={highlightedPort}
+                isReplayMode={isReplayMode}
+                onHelpOpen={(section) => {
+                  setHelpDockSection(section);
+                  setShowHelpDock(true);
+                }}
+                disableToolStrip={disableToolStrip}
+              />
+            )}
+            {isReplayMode && (
+              <div className="absolute inset-0 z-30 pointer-events-none">
+                <div className="absolute top-3 right-3 bg-gray-900/80 border border-gray-700 rounded px-2 py-2 text-[10px] text-cyan-300 font-mono pointer-events-auto">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="uppercase tracking-wide">Replay</span>
+                    <span>t{playheadTick}</span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-1">
+                    <button
+                      onClick={replayPaused ? handleRunReplayResume : handleRunReplayPause}
+                      className="px-1.5 py-0.5 border border-gray-600 rounded text-[10px] text-gray-200 hover:bg-gray-800"
+                      type="button"
+                    >
+                      {replayPaused ? 'Play' : 'Pause'}
+                    </button>
+                    <button
+                      onClick={() => handleRunReplayStep(1)}
+                      className="px-1.5 py-0.5 border border-gray-600 rounded text-[10px] text-gray-200 hover:bg-gray-800"
+                      type="button"
+                      disabled={!replayPaused}
+                      title={!replayPaused ? 'Pause replay to step' : undefined}
+                    >
+                      Step
+                    </button>
+                    <button
+                      onClick={() => handleRunReplayStep(10)}
+                      className="px-1.5 py-0.5 border border-gray-600 rounded text-[10px] text-gray-200 hover:bg-gray-800"
+                      type="button"
+                      disabled={!replayPaused}
+                      title={!replayPaused ? 'Pause replay to step' : undefined}
+                    >
+                      +10
+                    </button>
+                    <button
+                      onClick={handleRunReplayStop}
+                      className="px-1.5 py-0.5 border border-red-700 rounded text-[10px] text-red-300 hover:bg-red-900/30"
+                      type="button"
+                    >
+                      Exit
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {selectedExampleId && EXAMPLE_NOTES[selectedExampleId] && !exampleNoteDismissed && (
+              <div className="absolute top-3 left-3 z-20 max-w-sm pointer-events-auto">
+                <div className="bg-slate-900/90 border border-slate-700 rounded-lg px-4 py-3 text-xs shadow-lg">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] uppercase tracking-wide text-cyan-300">
+                        What to do
+                      </div>
+                      <div className="text-sm font-semibold text-white">
+                        {EXAMPLE_NOTES[selectedExampleId]?.title}
+                      </div>
+                      <div className="text-gray-300 mt-1 leading-relaxed">
+                        {EXAMPLE_NOTES[selectedExampleId]?.description}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setExampleNoteDismissed(true)}
+                      className="text-gray-500 hover:text-gray-300 transition-colors"
+                      aria-label="Dismiss example note"
+                      type="button"
+                    >
+                      x
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {tutorialActive && <TutorialOverlay onLoadExample={handleLoadTutorialExample} />}
+          </div>
+
+          {/* Right Dock or Help Dock depending on perspective */}
+          {showHelpDock ? (
+            <HelpDock
+              visible={true}
+              focusSection={helpDockSection}
+              onClose={() => {
+                setShowHelpDock(false);
+                setHelpDockSection(null);
+              }}
+              onLoadExample={(exampleId, highlightComponents) => {
+                handleLoadExample(exampleId);
+                // TODO: Implement component highlighting
+                if (highlightComponents) {
+                  console.log('Highlighting components:', highlightComponents);
+                }
+              }}
+            />
+          ) : !disableRightDock ? (
+            <RightDock
+              circuit={circuit}
+              engine={engine}
+              isRunning={isRunning}
+              isReplayMode={isReplayMode}
+              onRun={handleRun}
+              onPause={handlePause}
+              onStep={handleStep}
+              onResetTickCount={handleResetTickCount}
+              lastTickAt={lastTickAt}
+              highlightProbePaths={highlightProbePaths}
+              onToggleHighlightProbePaths={setHighlightProbePaths}
+              onNodeUpdate={handleNodeUpdate}
+              onConnectionDelete={handleConnectionDelete}
+              onFocusNode={handleFocusNode}
+              onIssueHover={(nodeId, portName) => {
+                if (!nodeId || !portName) {
+                  setHighlightedPort(null);
+                  return;
+                }
+                setHighlightedPort({ nodeId, portName });
+              }}
+              tickCount={tickCount}
+              tickRate={currentHz}
+              onRecordArm={handleRunRecorderArm}
+              onRecordStart={handleRunRecorderStart}
+              onRecordStop={handleRunRecorderStop}
+              onRecordReplayStart={handleRunReplayStart}
+              onRecordReplayStop={handleRunReplayStop}
+              onRecordReplayPause={handleRunReplayPause}
+              onRecordReplayResume={handleRunReplayResume}
+              onRecordReplayStep={handleRunReplayStep}
+              onRecordReplayJump={handleRunReplayJump}
+              onRecordVerify={verifyRunReplay}
+              onRecordExport={handleRunRecorderExport}
+              onRecordExportProof={handleRunRecorderExportProof}
+              onRecordProof={handleRunRecorderProof}
+              onRecordFocus={handleRunRecorderFocus}
+              onRecordMismatchSelect={handleMismatchSelect}
+              onRecordImportProofPack={handleRunRecorderImportProofPack}
+              onLoadExample={handleLoadLearnExample}
+              onExitLearnMode={handleExitLearnMode}
+              chips={allChips}
+              initialState={rightDockState}
+              initialTab={rightDockTab}
+              onStateChange={setRightDockState}
+              onTabChange={setRightDockTab}
+            />
+          ) : null}
+        </div>
+
+        {/* Loading Overlay */}
+        {isLoadingSharedCircuit && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+              <div className="flex items-center gap-3">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-500" />
+                <span className="text-white">Loading shared circuit...</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Clipboard Fallback Modal */}
+        {shareFallbackURL && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4">
+              <h3 className="text-lg font-semibold mb-3 text-white">Share Link Ready</h3>
+              <p className="text-sm text-gray-300 mb-4">
+                Automatic clipboard copy failed. Please copy the link manually:
+              </p>
+              <input
+                type="text"
+                readOnly
+                value={shareFallbackURL}
+                onClick={(e) => e.currentTarget.select()}
+                aria-label="Share link"
+                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white font-mono text-sm mb-4"
+                autoFocus
+              />
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareFallbackURL).catch(() => { });
+                    addToast('Link copied!', 'success');
+                    setShareFallbackURL(null);
+                  }}
+                  className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded text-white text-sm"
+                >
+                  Copy
+                </button>
+                <button
+                  onClick={() => setShareFallbackURL(null)}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Decode Error Modal */}
+        {showDecodeErrorModal && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-3 text-red-400">Invalid Share Link</h3>
+              <p className="text-sm text-gray-300 mb-4">
+                This share link is invalid or corrupted. The circuit could not be loaded.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={handleClearURLAndReset}
+                  className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded text-white text-sm"
+                >
+                  Clear URL & Start Fresh
+                </button>
+                <button
+                  onClick={() => setShowDecodeErrorModal(false)}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
+                >
+                  Close
+                </button>
+              </div>
+              <a
+                href="https://github.com/swaggyp52/redbyte-ui-genesis/issues"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block mt-4 text-xs text-cyan-400 hover:text-cyan-300"
+              >
+                Report Issue →
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Export Modal */}
+        {showExportModal && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-3 text-white">Export</h3>
+              <div className="space-y-2 mb-4">
+                <button
+                  onClick={() => {
+                    handleSaveProject();
+                    setShowExportModal(false);
+                  }}
+                  className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
+                >
+                  Project (rb-project.json)
+                </button>
+                <button
+                  onClick={() => {
+                    void handleSaveProjectArchive();
+                    setShowExportModal(false);
+                  }}
+                  className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
+                >
+                  Project Archive (.rbproj.zip)
+                </button>
+                <button
+                  onClick={() => {
+                    handleExportNetlist();
+                    setShowExportModal(false);
+                  }}
+                  className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
+                >
+                  Netlist (netlist.json)
+                </button>
+                <button
+                  onClick={() => {
+                    handleExportVerilog();
+                    setShowExportModal(false);
+                  }}
+                  className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
+                >
+                  Verilog (circuit.v)
+                </button>
+                <button
+                  onClick={() => {
+                    handleExportDebugBundle();
+                    setShowExportModal(false);
+                  }}
+                  className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
+                >
+                  Debug Bundle (rb-debug-bundle.json)
+                </button>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Save As Modal */}
+        {showSaveAsModal && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-3 text-white">Save Circuit As...</h3>
+              <input
+                type="text"
+                value={saveAsFilename}
+                onChange={(e) => setSaveAsFilename(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') confirmSaveAs();
+                  if (e.key === 'Escape') setShowSaveAsModal(false);
+                }}
+                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white mb-4"
+                placeholder="circuit.rblogic"
+                aria-label="Save as filename"
+                autoFocus
+              />
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={confirmSaveAs}
+                  className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded text-white text-sm"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setShowSaveAsModal(false)}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Open File Modal */}
+        {showOpenModal && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-3 text-white">Open Circuit</h3>
+              {availableFiles.length === 0 ? (
+                <p className="text-sm text-gray-300 mb-4">
+                  No saved circuits found. Create one with Ctrl+S.
+                </p>
+              ) : (
+                <div className="mb-4 max-h-64 overflow-y-auto">
+                  {availableFiles.map((file, index) => (
+                    <button
+                      key={file.id}
+                      onClick={() => handleOpenFile(file.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleOpenFile(file.id);
+                        if (e.key === 'Escape') setShowOpenModal(false);
+                      }}
+                      className="w-full text-left px-3 py-2 bg-gray-900 hover:bg-gray-700 border border-gray-700 rounded mb-2 text-white text-sm transition-colors"
+                      autoFocus={index === 0}
+                    >
+                      <div className="font-medium">{file.name}</div>
+                      <div className="text-xs text-gray-400">
+                        Modified: {file.modified}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setShowOpenModal(false)}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Examples Modal */}
+        {showExamplesModal && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
+              <h3 className="text-lg font-semibold mb-3 text-white">Load Example</h3>
+              <div className="flex-1 overflow-y-auto mb-4">
+                {([0, 1, 2, 3, 4, 5, 6] as CircuitLayer[]).map((layer) => {
+                  const layerExamples = listExamplesByLayer(layer);
+                  if (layerExamples.length === 0) return null;
+                  return (
+                    <div key={layer} className="mb-4">
+                      <h4 className="text-sm font-semibold text-cyan-400 mb-2">
+                        Layer {layer}: {getLayerDescription(layer)}
+                      </h4>
+                      <div className="space-y-1">
+                        {layerExamples.map((ex) => (
+                          <button
+                            key={ex.id}
+                            onClick={() => {
+                              handleLoadExample(ex.id);
+                              setShowExamplesModal(false);
+                            }}
+                            className="w-full text-left px-3 py-2 bg-gray-900 hover:bg-gray-700 border border-gray-700 rounded text-white text-sm transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">{ex.name}</span>
+                              <span className="text-xs text-gray-400">{ex.difficulty}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2 justify-end border-t border-gray-700 pt-4">
+                <button
+                  onClick={() => setShowExamplesModal(false)}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Save as Chip Modal */}
+        {showSaveChipModal && recognizedPattern && (
+          <SaveChipModal
+            circuit={circuit}
+            recognizedPattern={recognizedPattern}
+            onSave={handleSaveChip}
+            onCancel={() => setShowSaveChipModal(false)}
+          />
+        )}
+
+        {/* Trace Viewer Modal */}
+        {showTraceViewer && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+            <div className="bg-gray-900 rounded-lg shadow-2xl w-[90%] h-[90%] max-w-5xl overflow-hidden border border-gray-700">
+              <TraceViewer
+                traces={traceSnapshots}
+                circuit={circuit}
+                currentTick={tickEngine.getTickCount()}
+                onClose={() => setShowTraceViewer(false)}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Chip Library Modal */}
+        <ChipLibraryModal
+          isOpen={showChipLibrary}
+          onClose={() => setShowChipLibrary(false)}
           chips={allChips}
-          onNodeDragStart={handleNodeDragStart}
-          onAddNode={storeAddNode}
-          onChipLibraryOpen={() => setShowChipLibrary(true)}
-          getChipMetadata={getChipMetadataForNode}
-          getNodeDescription={getNodeDescription}
+          onSelectChip={handleSelectChipFromLibrary}
+          onDeleteChip={handleDeleteChip}
+          onDragStart={handleNodeDragStart}
+        />
+
+        {/* Keyboard Shortcuts Help */}
+        <KeyboardShortcutsHelp
+          isOpen={showKeyboardHelp}
+          onClose={() => setShowKeyboardHelp(false)}
+        />
+
+        {/* Quick Add Palette */}
+        <QuickAddPalette
+          isOpen={showQuickAdd}
+          onClose={() => setShowQuickAdd(false)}
+          onSelectComponent={(type) => {
+            if (isReplayMode) return;
+            storeAddNode(type, getDefaultAddPosition());
+            setShowQuickAdd(false);
+          }}
           isReplayMode={isReplayMode}
         />
 
-        {/* Center - Canvas */}
-        <div
-          ref={canvasAreaRef}
-          tabIndex={-1}
-          className="flex-1 relative outline-none"
-          onDragOver={handleNodeDragOver}
-          onDrop={handleNodeDrop}
-          onDragEnd={() => {
-            // Clean up drag state when drag ends
-            setDraggingNodeType(null);
-            setDragPosition(null);
-          }}
-        >
-          {/* Drag preview indicator */}
-          {dragPosition && draggingNodeType && (
-            <div
-              className="absolute pointer-events-none z-50"
-              style={{
-                left: `${dragPosition.x}px`,
-                top: `${dragPosition.y}px`,
-                transform: 'translate(-50%, -50%)',
-              }}
-            >
-              <div className="px-3 py-2 bg-cyan-500/20 border-2 border-cyan-500 rounded-lg shadow-lg backdrop-blur-sm">
-                <div className="text-xs font-semibold text-cyan-300">{draggingNodeType}</div>
-              </div>
-            </div>
-          )}
+        {/* CE Mode Modals */}
+        {ceMode && (
+          <>
+            <ResetWorkspaceModal
+              isOpen={showCEResetModal}
+              onConfirm={handleCEResetWorkspace}
+              onCancel={() => setShowCEResetModal(false)}
+            />
 
-          {/* Empty State Message (shown when canvas is empty in demo mode) */}
-          {circuit.nodes.length === 0 && isDemoMode && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-              <div className="bg-slate-800/90 backdrop-blur-sm border border-slate-600 rounded-lg px-8 py-6 max-w-md text-center shadow-2xl">
-                <div className="text-2xl text-cyan-400 mb-3">Get Started</div>
-                <p className="text-gray-300 text-sm leading-relaxed">
-                  Drag components from the left palette to begin building your circuit, or{' '}
-                  <button
-                    onClick={() => setShowOpenModal(true)}
-                    className="text-cyan-400 hover:text-cyan-300 underline pointer-events-auto"
-                  >
-                    load an example
-                  </button>
-                  .
-                </p>
-              </div>
-            </div>
-          )}
+            <ExampleGalleryModal
+              isOpen={showCEExamplesModal}
+              examples={[]} // TODO: Load CE example pack
+              onSelectExample={handleCELoadExample}
+              onClose={() => setShowCEExamplesModal(false)}
+            />
 
-          {disableSplitView ? (
-            <div className="flex h-full items-center justify-center text-sm text-gray-300">
-              Split view disabled by debug flag.
-            </div>
-          ) : (
-            <SplitViewLayout
-              mode={e2eDisableQuad && splitScreenMode === 'quad' ? 'single' : splitScreenMode}
-              views={e2eDisableQuad ? [activeViews[0] ?? 'circuit'] : activeViews}
-              splitRatio={splitRatio}
-              engine={engine}
-              tickEngine={tickEngine}
+            <ExportBundleModal
+              isOpen={showCEExportModal}
               circuit={circuit}
-              isRunning={isRunning}
-              tickCount={tickCount}
-              debugSignals={debugSignals}
-              debugTick={debugTick}
-              mismatchWireHighlights={mismatchWireHighlights}
-              mismatchNodeIds={mismatchNodeIds}
-              mismatchPortKeys={mismatchPortKeys}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              onUndo={handleUndo}
-              onRedo={handleRedo}
-              getChipMetadata={getChipMetadataForNode}
-              onNodeDoubleClick={handleEnterChip}
-              showCircuitHints={false}
-              onDismissCircuitHints={() => setShowCircuitHints(false)}
-              showSchematicHints={false}
-              onDismissSchematicHints={() => setShowSchematicHints(false)}
-              show3DHints={false}
-              onDismiss3DHints={() => setShow3DHints(false)}
-              showOscilloscopeHints={false}
-              onDismissOscilloscopeHints={() => setShowOscilloscopeHints(false)}
-              onInputToggled={handleInputToggled}
-              onCircuitChange={handleCircuitChange}
-              viewStateStore={useViewStateStore}
-              onProbeToggle={handleProbeToggle}
-              probedPorts={probedPorts}
-              probeWireHighlights={probeWireHighlights}
-              highlightedPort={highlightedPort}
-              isReplayMode={isReplayMode}
-              onHelpOpen={(section) => {
-                setHelpDockSection(section);
-                setShowHelpDock(true);
-              }}
-              disableToolStrip={disableToolStrip}
+              exampleName={projectName}
+              onClose={() => setShowCEExportModal(false)}
             />
-          )}
-          {isReplayMode && (
-            <div className="absolute inset-0 z-30 pointer-events-none">
-              <div className="absolute top-3 right-3 bg-gray-900/80 border border-gray-700 rounded px-2 py-2 text-[10px] text-cyan-300 font-mono pointer-events-auto">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="uppercase tracking-wide">Replay</span>
-                  <span>t{playheadTick}</span>
-                </div>
-                <div className="mt-2 flex items-center gap-1">
-                  <button
-                    onClick={replayPaused ? handleRunReplayResume : handleRunReplayPause}
-                    className="px-1.5 py-0.5 border border-gray-600 rounded text-[10px] text-gray-200 hover:bg-gray-800"
-                    type="button"
-                  >
-                    {replayPaused ? 'Play' : 'Pause'}
-                  </button>
-                  <button
-                    onClick={() => handleRunReplayStep(1)}
-                    className="px-1.5 py-0.5 border border-gray-600 rounded text-[10px] text-gray-200 hover:bg-gray-800"
-                    type="button"
-                    disabled={!replayPaused}
-                    title={!replayPaused ? 'Pause replay to step' : undefined}
-                  >
-                    Step
-                  </button>
-                  <button
-                    onClick={() => handleRunReplayStep(10)}
-                    className="px-1.5 py-0.5 border border-gray-600 rounded text-[10px] text-gray-200 hover:bg-gray-800"
-                    type="button"
-                    disabled={!replayPaused}
-                    title={!replayPaused ? 'Pause replay to step' : undefined}
-                  >
-                    +10
-                  </button>
-                  <button
-                    onClick={handleRunReplayStop}
-                    className="px-1.5 py-0.5 border border-red-700 rounded text-[10px] text-red-300 hover:bg-red-900/30"
-                    type="button"
-                  >
-                    Exit
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          </>
+        )}
 
-          {selectedExampleId && EXAMPLE_NOTES[selectedExampleId] && !exampleNoteDismissed && (
-            <div className="absolute top-3 left-3 z-20 max-w-sm pointer-events-auto">
-              <div className="bg-slate-900/90 border border-slate-700 rounded-lg px-4 py-3 text-xs shadow-lg">
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[10px] uppercase tracking-wide text-cyan-300">
-                      What to do
-                    </div>
-                    <div className="text-sm font-semibold text-white">
-                      {EXAMPLE_NOTES[selectedExampleId]?.title}
-                    </div>
-                    <div className="text-gray-300 mt-1 leading-relaxed">
-                      {EXAMPLE_NOTES[selectedExampleId]?.description}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setExampleNoteDismissed(true)}
-                    className="text-gray-500 hover:text-gray-300 transition-colors"
-                    aria-label="Dismiss example note"
-                    type="button"
-                  >
-                    x
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {tutorialActive && <TutorialOverlay onLoadExample={handleLoadTutorialExample} />}
-        </div>
-
-        {/* Right Dock or Help Dock depending on perspective */}
-        {showHelpDock ? (
-          <HelpDock
-            visible={true}
-            focusSection={helpDockSection}
-            onClose={() => {
-              setShowHelpDock(false);
-              setHelpDockSection(null);
-            }}
-            onLoadExample={(exampleId, highlightComponents) => {
-              handleLoadExample(exampleId);
-              // TODO: Implement component highlighting
-              if (highlightComponents) {
-                console.log('Highlighting components:', highlightComponents);
-              }
-            }}
-          />
-        ) : !disableRightDock ? (
-          <RightDock
-            circuit={circuit}
-            engine={engine}
-            isRunning={isRunning}
-            isReplayMode={isReplayMode}
-            onRun={handleRun}
-            onPause={handlePause}
-            onStep={handleStep}
-            onResetTickCount={handleResetTickCount}
-            lastTickAt={lastTickAt}
-            highlightProbePaths={highlightProbePaths}
-            onToggleHighlightProbePaths={setHighlightProbePaths}
-            onNodeUpdate={handleNodeUpdate}
-            onConnectionDelete={handleConnectionDelete}
-            onFocusNode={handleFocusNode}
-            onIssueHover={(nodeId, portName) => {
-              if (!nodeId || !portName) {
-                setHighlightedPort(null);
-                return;
-              }
-              setHighlightedPort({ nodeId, portName });
-            }}
-            tickCount={tickCount}
-            tickRate={currentHz}
-            onRecordArm={handleRunRecorderArm}
-            onRecordStart={handleRunRecorderStart}
-            onRecordStop={handleRunRecorderStop}
-            onRecordReplayStart={handleRunReplayStart}
-            onRecordReplayStop={handleRunReplayStop}
-            onRecordReplayPause={handleRunReplayPause}
-            onRecordReplayResume={handleRunReplayResume}
-            onRecordReplayStep={handleRunReplayStep}
-            onRecordReplayJump={handleRunReplayJump}
-            onRecordVerify={verifyRunReplay}
-            onRecordExport={handleRunRecorderExport}
-            onRecordExportProof={handleRunRecorderExportProof}
-            onRecordProof={handleRunRecorderProof}
-            onRecordFocus={handleRunRecorderFocus}
-            onRecordMismatchSelect={handleMismatchSelect}
-            onRecordImportProofPack={handleRunRecorderImportProofPack}
-            onLoadExample={handleLoadLearnExample}
-            onExitLearnMode={handleExitLearnMode}
-            chips={allChips}
-            initialState={rightDockState}
-            initialTab={rightDockTab}
-            onStateChange={setRightDockState}
-            onTabChange={setRightDockTab}
-          />
-        ) : null}
-      </div>
-
-      {/* Loading Overlay */}
-      {isLoadingSharedCircuit && (
-        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-            <div className="flex items-center gap-3">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-500" />
-              <span className="text-white">Loading shared circuit...</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Clipboard Fallback Modal */}
-      {shareFallbackURL && (
-        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4">
-            <h3 className="text-lg font-semibold mb-3 text-white">Share Link Ready</h3>
-            <p className="text-sm text-gray-300 mb-4">
-              Automatic clipboard copy failed. Please copy the link manually:
-            </p>
-            <input
-              type="text"
-              readOnly
-              value={shareFallbackURL}
-              onClick={(e) => e.currentTarget.select()}
-              aria-label="Share link"
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white font-mono text-sm mb-4"
-              autoFocus
-            />
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(shareFallbackURL).catch(() => {});
-                  addToast('Link copied!', 'success');
-                  setShareFallbackURL(null);
-                }}
-                className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded text-white text-sm"
-              >
-                Copy
-              </button>
-              <button
-                onClick={() => setShareFallbackURL(null)}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Decode Error Modal */}
-      {showDecodeErrorModal && (
-        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-3 text-red-400">Invalid Share Link</h3>
-            <p className="text-sm text-gray-300 mb-4">
-              This share link is invalid or corrupted. The circuit could not be loaded.
-            </p>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={handleClearURLAndReset}
-                className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded text-white text-sm"
-              >
-                Clear URL & Start Fresh
-              </button>
-              <button
-                onClick={() => setShowDecodeErrorModal(false)}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
-              >
-                Close
-              </button>
-            </div>
-            <a
-              href="https://github.com/swaggyp52/redbyte-ui-genesis/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block mt-4 text-xs text-cyan-400 hover:text-cyan-300"
-            >
-              Report Issue →
-            </a>
-          </div>
-        </div>
-      )}
-
-      {/* Export Modal */}
-      {showExportModal && (
-        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-3 text-white">Export</h3>
-            <div className="space-y-2 mb-4">
-              <button
-                onClick={() => {
-                  handleSaveProject();
-                  setShowExportModal(false);
-                }}
-                className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
-              >
-                Project (rb-project.json)
-              </button>
-              <button
-                onClick={() => {
-                  void handleSaveProjectArchive();
-                  setShowExportModal(false);
-                }}
-                className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
-              >
-                Project Archive (.rbproj.zip)
-              </button>
-              <button
-                onClick={() => {
-                  handleExportNetlist();
-                  setShowExportModal(false);
-                }}
-                className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
-              >
-                Netlist (netlist.json)
-              </button>
-              <button
-                onClick={() => {
-                  handleExportVerilog();
-                  setShowExportModal(false);
-                }}
-                className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
-              >
-                Verilog (circuit.v)
-              </button>
-              <button
-                onClick={() => {
-                  handleExportDebugBundle();
-                  setShowExportModal(false);
-                }}
-                className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
-              >
-                Debug Bundle (rb-debug-bundle.json)
-              </button>
-            </div>
-            <div className="flex justify-end">
-              <button
-                onClick={() => setShowExportModal(false)}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Save As Modal */}
-      {showSaveAsModal && (
-        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-3 text-white">Save Circuit As...</h3>
-            <input
-              type="text"
-              value={saveAsFilename}
-              onChange={(e) => setSaveAsFilename(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') confirmSaveAs();
-                if (e.key === 'Escape') setShowSaveAsModal(false);
-              }}
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white mb-4"
-              placeholder="circuit.rblogic"
-              aria-label="Save as filename"
-              autoFocus
-            />
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={confirmSaveAs}
-                className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded text-white text-sm"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => setShowSaveAsModal(false)}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Open File Modal */}
-      {showOpenModal && (
-        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-3 text-white">Open Circuit</h3>
-            {availableFiles.length === 0 ? (
-              <p className="text-sm text-gray-300 mb-4">
-                No saved circuits found. Create one with Ctrl+S.
-              </p>
-            ) : (
-              <div className="mb-4 max-h-64 overflow-y-auto">
-                {availableFiles.map((file, index) => (
-                  <button
-                    key={file.id}
-                    onClick={() => handleOpenFile(file.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleOpenFile(file.id);
-                      if (e.key === 'Escape') setShowOpenModal(false);
-                    }}
-                    className="w-full text-left px-3 py-2 bg-gray-900 hover:bg-gray-700 border border-gray-700 rounded mb-2 text-white text-sm transition-colors"
-                    autoFocus={index === 0}
-                  >
-                    <div className="font-medium">{file.name}</div>
-                    <div className="text-xs text-gray-400">
-                      Modified: {file.modified}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setShowOpenModal(false)}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Examples Modal */}
-      {showExamplesModal && (
-        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
-            <h3 className="text-lg font-semibold mb-3 text-white">Load Example</h3>
-            <div className="flex-1 overflow-y-auto mb-4">
-              {([0, 1, 2, 3, 4, 5, 6] as CircuitLayer[]).map((layer) => {
-                const layerExamples = listExamplesByLayer(layer);
-                if (layerExamples.length === 0) return null;
-                return (
-                  <div key={layer} className="mb-4">
-                    <h4 className="text-sm font-semibold text-cyan-400 mb-2">
-                      Layer {layer}: {getLayerDescription(layer)}
-                    </h4>
-                    <div className="space-y-1">
-                      {layerExamples.map((ex) => (
-                        <button
-                          key={ex.id}
-                          onClick={() => {
-                            handleLoadExample(ex.id);
-                            setShowExamplesModal(false);
-                          }}
-                          className="w-full text-left px-3 py-2 bg-gray-900 hover:bg-gray-700 border border-gray-700 rounded text-white text-sm transition-colors"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium">{ex.name}</span>
-                            <span className="text-xs text-gray-400">{ex.difficulty}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex gap-2 justify-end border-t border-gray-700 pt-4">
-              <button
-                onClick={() => setShowExamplesModal(false)}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Save as Chip Modal */}
-      {showSaveChipModal && recognizedPattern && (
-        <SaveChipModal
-          circuit={circuit}
-          recognizedPattern={recognizedPattern}
-          onSave={handleSaveChip}
-          onCancel={() => setShowSaveChipModal(false)}
+        {/* Status Bar */}
+        <StatusBar
+          nodeCount={circuit.nodes.length}
+          connectionCount={circuit.connections.length}
+          selectedCount={0}
+          isRunning={isRunning}
+          tickRate={currentHz}
+          isDirty={isDirty}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          viewMode={viewLabel}
         />
-      )}
-
-      {/* Trace Viewer Modal */}
-      {showTraceViewer && (
-        <div className="absolute inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-gray-900 rounded-lg shadow-2xl w-[90%] h-[90%] max-w-5xl overflow-hidden border border-gray-700">
-            <TraceViewer
-              traces={traceSnapshots}
-              circuit={circuit}
-              currentTick={tickEngine.getTickCount()}
-              onClose={() => setShowTraceViewer(false)}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Chip Library Modal */}
-      <ChipLibraryModal
-        isOpen={showChipLibrary}
-        onClose={() => setShowChipLibrary(false)}
-        chips={allChips}
-        onSelectChip={handleSelectChipFromLibrary}
-        onDeleteChip={handleDeleteChip}
-        onDragStart={handleNodeDragStart}
-      />
-
-      {/* Keyboard Shortcuts Help */}
-      <KeyboardShortcutsHelp
-        isOpen={showKeyboardHelp}
-        onClose={() => setShowKeyboardHelp(false)}
-      />
-
-      {/* Quick Add Palette */}
-      <QuickAddPalette
-        isOpen={showQuickAdd}
-        onClose={() => setShowQuickAdd(false)}
-        onSelectComponent={(type) => {
-          if (isReplayMode) return;
-          storeAddNode(type, getDefaultAddPosition());
-          setShowQuickAdd(false);
-        }}
-        isReplayMode={isReplayMode}
-      />
-
-      {/* CE Mode Modals */}
-      {ceMode && (
-        <>
-          <ResetWorkspaceModal
-            isOpen={showCEResetModal}
-            onConfirm={handleCEResetWorkspace}
-            onCancel={() => setShowCEResetModal(false)}
-          />
-          
-          <ExampleGalleryModal
-            isOpen={showCEExamplesModal}
-            examples={[]} // TODO: Load CE example pack
-            onSelectExample={handleCELoadExample}
-            onClose={() => setShowCEExamplesModal(false)}
-          />
-          
-          <ExportBundleModal
-            isOpen={showCEExportModal}
-            circuit={circuit}
-            exampleName={projectName}
-            onClose={() => setShowCEExportModal(false)}
-          />
-        </>
-      )}
-
-      {/* Status Bar */}
-      <StatusBar
-        nodeCount={circuit.nodes.length}
-        connectionCount={circuit.connections.length}
-        selectedCount={0}
-        isRunning={isRunning}
-        tickRate={currentHz}
-        isDirty={isDirty}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        viewMode={viewLabel}
-      />
-    </div>
+      </div>
     </ErrorBoundary>
   );
 };
 
-// Explicitly export component for better HMR
-export { LogicPlaygroundComponent };
-
-export const LogicPlaygroundApp: RedByteApp = {
-  manifest: {
-    id: 'logic-playground',
-    name: 'Logic Playground',
-    iconId: 'logic',
-    category: 'logic',
-    defaultSize: { width: 1200, height: 800 },
-    minSize: { width: 800, height: 600 },
-  },
-  component: LogicPlaygroundComponent,
-};
-
-console.log('[LogicPlayground] App exported', {
-  hasComponent: !!LogicPlaygroundApp.component,
-  componentType: typeof LogicPlaygroundApp.component,
-});
+// End of LogicPlaygroundApp components

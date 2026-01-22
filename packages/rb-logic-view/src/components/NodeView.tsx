@@ -84,7 +84,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const [hoveredPort, setHoveredPort] = React.useState<string | null>(null);
   const [isHovered, setIsHovered] = React.useState(false);
   const [isToggleHovered, setIsToggleHovered] = React.useState(false);
-  const [hoveredProbePort, setHoveredProbePort] = React.useState<{portName: string; x: number; y: number} | null>(null);
+  const [hoveredProbePort, setHoveredProbePort] = React.useState<{ portName: string; x: number; y: number } | null>(null);
 
   const getPortValue = React.useCallback(
     (portName: string) => {
@@ -166,7 +166,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const toggleHitHeight = 28; // Increased hit area
   const toggleHitX = -toggleHitWidth / 2;
   const toggleHitY = toggleY - (toggleHitHeight - toggleHeight) / 2;
-  
+
   // DEBUG: Log toggle state for Switch nodes
   if (isSwitch && typeof window !== 'undefined') {
     if (!window.__RB_SWITCH_LOG__) window.__RB_SWITCH_LOG__ = new Set();
@@ -669,6 +669,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
       onMouseUp={handleMouseUp}
       onDoubleClick={handleDoubleClick}
       style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+      data-testid={`node-${node.type}-${node.id}`}
     >
       {/* Highlight ring */}
       {isHighlighted && (

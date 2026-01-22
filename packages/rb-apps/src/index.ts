@@ -27,11 +27,11 @@ export * from './examples';
 export async function registerAllApps() {
   // Dynamic imports: only load app modules when explicitly requested
   const { registerApp } = await import('./AppRegistry');
-  
+
   const { TerminalApp } = await import('./apps/TerminalApp');
   const { SettingsApp } = await import('./apps/SettingsApp');
   const { FilesApp } = await import('./apps/FilesApp');
-  const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundApp');
+  const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundManifest');
   const { AppStoreApp } = await import('./apps/AppStoreApp');
   const { WelcomeApp } = await import('./apps/WelcomeApp');
   const { StartHereApp } = await import('./apps/StartHereApp');

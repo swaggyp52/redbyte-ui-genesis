@@ -134,7 +134,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
       window.__RB_MOUNT_TRACE__.push(`${timestamp} TopCommandBar:render`);
     }
   }
-  
+
   return (
     <div className="h-12 border-b border-gray-700 bg-gray-900 px-4 flex items-center justify-between gap-6" data-testid="top-command-bar">
       {/* LEFT: Project */}
@@ -196,6 +196,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             onClick={onExamples}
             className="px-3 py-1.5 text-sm bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded font-medium transition-all shadow-lg"
             title="Load Example"
+            data-testid="logic-playground-examples"
           >
             📚 Examples
           </button>
@@ -203,11 +204,10 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onSave && (
           <button
             onClick={onSave}
-            className={`px-3 py-1.5 text-sm rounded transition-all ${
-              isDirty
+            className={`px-3 py-1.5 text-sm rounded transition-all ${isDirty
                 ? 'bg-cyan-600 hover:bg-cyan-500 shadow-lg shadow-cyan-600/30'
                 : 'bg-gray-800 hover:bg-gray-700'
-            }`}
+              }`}
             title="Save (Ctrl+S)"
           >
             {isDirty ? '● Save' : 'Save'}
@@ -237,11 +237,10 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           <button
             onClick={onUndo}
             disabled={!canUndo}
-            className={`px-2 py-1.5 text-sm rounded transition-colors ${
-              canUndo
+            className={`px-2 py-1.5 text-sm rounded transition-colors ${canUndo
                 ? 'bg-gray-800 hover:bg-gray-700 text-white'
                 : 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
-            }`}
+              }`}
             title="Undo (Ctrl+Z)"
           >
             ↶
@@ -251,11 +250,10 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           <button
             onClick={onRedo}
             disabled={!canRedo}
-            className={`px-2 py-1.5 text-sm rounded transition-colors ${
-              canRedo
+            className={`px-2 py-1.5 text-sm rounded transition-colors ${canRedo
                 ? 'bg-gray-800 hover:bg-gray-700 text-white'
                 : 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
-            }`}
+              }`}
             title="Redo (Ctrl+Shift+Z)"
           >
             ↷
@@ -282,11 +280,10 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         <button
           onClick={isRunning ? onPause : onRun}
           data-testid="logic-playground-run"
-          className={`px-4 py-2 rounded font-medium text-sm transition-all flex items-center gap-2 ${
-            isRunning
+          className={`px-4 py-2 rounded font-medium text-sm transition-all flex items-center gap-2 ${isRunning
               ? 'bg-yellow-600 hover:bg-yellow-500 shadow-lg'
               : 'bg-green-600 hover:bg-green-500 shadow-lg'
-          }`}
+            }`}
           title={isRunning ? 'Pause' : 'Run'}
         >
           {isRunning ? (
@@ -327,9 +324,8 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
               </span>
               <span className="flex items-center gap-1 text-[10px] text-gray-400">
                 <span
-                  className={`h-2 w-2 rounded-full ${
-                    isRunning ? 'bg-green-400' : 'bg-gray-500'
-                  }`}
+                  className={`h-2 w-2 rounded-full ${isRunning ? 'bg-green-400' : 'bg-gray-500'
+                    }`}
                 />
                 {isRunning ? `${tickRate}Hz` : 'Paused'}
               </span>
@@ -403,11 +399,10 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {perspective === 'schematic' && onToggleSchematicMini && (
           <button
             onClick={onToggleSchematicMini}
-            className={`px-3 py-2 rounded text-xs transition-all ${
-              schematicMiniEnabled
+            className={`px-3 py-2 rounded text-xs transition-all ${schematicMiniEnabled
                 ? 'bg-gray-800 hover:bg-gray-700 text-white'
                 : 'bg-gray-800/50 text-gray-500 hover:text-gray-300 hover:bg-gray-700'
-            }`}
+              }`}
             title="Toggle circuit mini view"
           >
             Circuit mini
@@ -419,11 +414,10 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           {/* Safe Mode Toggle */}
           <button
             onClick={handleSafeModeToggle}
-            className={`px-3 py-1.5 rounded text-xs font-semibold transition-all ${
-              safeMode
+            className={`px-3 py-1.5 rounded text-xs font-semibold transition-all ${safeMode
                 ? 'bg-green-700 hover:bg-green-600 text-white'
                 : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-            }`}
+              }`}
             title="Toggle Safe Mode (disables 3D, quad, animations)"
             data-testid="safe-mode-toggle"
           >

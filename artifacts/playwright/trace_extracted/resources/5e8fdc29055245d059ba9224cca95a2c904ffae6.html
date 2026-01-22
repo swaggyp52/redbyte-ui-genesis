@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script type="module">import { injectIntoGlobalHook } from "/@react-refresh";
+injectIntoGlobalHook(window);
+window.$RefreshReg$ = () => {};
+window.$RefreshSig$ = () => (type) => type;</script>
+
+    <script type="module" src="/@vite/client"></script>
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RedByte Playground</title>
+    <script>
+      // SAFETY: Defer Three.js preload until after main.tsx controls the import order
+      // This prevents temporal dead zone (TDZ) errors in Three.js minified exports
+      if (!new URLSearchParams(window.location.search).has('boot')) {
+        // Normal mode: Three.js will be loaded by full-bootstrap
+        // Preload is safe because full-bootstrap controls import order
+        document.write('');
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx?t=1769036921298"></script>
+  </body>
+</html>

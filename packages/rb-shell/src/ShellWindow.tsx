@@ -178,10 +178,12 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
         }}
         onMouseDown={isMax ? undefined : startDrag}
         onDoubleClick={isMax ? onRestore : onMaximize}
+        data-testid="window-title-bar"
       >
         <div
-          className="flex-1 truncate font-semibold tracking-wide leading-none transition-colors duration-200"
+          className="flex-1 truncate font-semibold tracking-wide leading-none transition-colors duration-200 pointer-events-none"
           style={{ color: state.focused ? 'var(--rb-text)' : 'var(--rb-muted)' }}
+          data-testid="window-title-text"
         >
           {state.title}
         </div>
@@ -192,6 +194,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
               style={{ color: 'var(--rb-muted)' }}
               onClick={onMinimize}
               title="Minimize"
+              data-testid="window-minimize-button"
             >
               <WindowMinimizeIcon width={14} height={14} />
             </button>
@@ -202,6 +205,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
               style={{ color: 'var(--rb-muted)' }}
               onClick={isMax ? onRestore : onMaximize}
               title={isMax ? "Restore" : "Maximize"}
+              data-testid="window-maximize-button"
             >
               <WindowMaximizeIcon width={14} height={14} />
             </button>
@@ -211,6 +215,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
             style={{ color: 'var(--rb-muted)' }}
             onClick={onClose}
             title="Close"
+            data-testid="window-close-button"
           >
             <WindowCloseIcon width={14} height={14} />
           </button>
