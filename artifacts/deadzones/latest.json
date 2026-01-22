@@ -1,0 +1,527 @@
+{
+  "timestamp": "2026-01-22T00:55:32.496Z",
+  "gridSize": 25,
+  "totalPoints": 625,
+  "backgroundHits": 569,
+  "blockers": [
+    {
+      "selector": "div.flex",
+      "count": 25,
+      "tagName": "div",
+      "id": "",
+      "testId": "",
+      "className": "flex items-center justify-center rounded-xl border transition-colors duration-150 backdrop-blur-sm border-cyan-400/70 bg-cyan-500/10 shadow-[0_10px_24px_rgba(6,182,212,0.25)]",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "static",
+      "owningWindow": "none",
+      "rect": {
+        "x": 80,
+        "y": 56,
+        "w": 72,
+        "h": 72
+      },
+      "htmlPreview": "<div class=\"flex items-center justify-center rounded-xl border transition-colors duration-150 backdrop-blur-sm border-cyan-400/70 bg-cyan-500/10 shadow-[0_10px_24px_rgba(6,182,212,0.25)]\" style=\"width"
+    },
+    {
+      "selector": "div.w-full",
+      "count": 6,
+      "tagName": "div",
+      "id": "",
+      "testId": "",
+      "className": "w-full text-center text-[11px] font-medium tracking-wide text-cyan-300",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "static",
+      "owningWindow": "none",
+      "rect": {
+        "x": 56,
+        "y": 136,
+        "w": 120,
+        "h": 20
+      },
+      "htmlPreview": "<div class=\"w-full text-center text-[11px] font-medium tracking-wide text-cyan-300\" style=\"margin-top: 8px; min-height: 20px;\">Logic Playground</div>"
+    },
+    {
+      "selector": "div.absolute",
+      "count": 4,
+      "tagName": "div",
+      "id": "",
+      "testId": "",
+      "className": "absolute bottom-6 left-1/2 -translate-x-1/2 flex items-end gap-2 rounded-2xl px-4 py-3 backdrop-blur-xl",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "absolute",
+      "owningWindow": "none",
+      "rect": {
+        "x": 461,
+        "y": 657,
+        "w": 473,
+        "h": 81
+      },
+      "htmlPreview": "<div class=\"absolute bottom-6 left-1/2 -translate-x-1/2 flex items-end gap-2 rounded-2xl px-4 py-3 backdrop-blur-xl\" title=\"Alt+Arrow keys to reorder (when focused)\" style=\"background: var(--rb-panel)"
+    },
+    {
+      "selector": "svg.transition-colors",
+      "count": 3,
+      "tagName": "svg",
+      "id": "",
+      "testId": "",
+      "className": "transition-colors duration-200",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "static",
+      "owningWindow": "none",
+      "rect": {
+        "x": 620,
+        "y": 684,
+        "w": 28,
+        "h": 28
+      },
+      "htmlPreview": "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" width=\"28\" height=\"28\" class=\"transition-colors duration-200\" style=\"color: var(--rb-muted);\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"2\" fill=\"none\" s"
+    },
+    {
+      "selector": "div[data-testid=\"desktop-icon-student-lab\"]",
+      "count": 2,
+      "tagName": "div",
+      "id": "",
+      "testId": "desktop-icon-student-lab",
+      "className": "flex flex-col items-center text-xs cursor-pointer select-none transition-colors duration-150",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "absolute",
+      "owningWindow": "none",
+      "rect": {
+        "x": 56,
+        "y": 184,
+        "w": 120,
+        "h": 100
+      },
+      "htmlPreview": "<div data-testid=\"desktop-icon-student-lab\" class=\"flex flex-col items-center text-xs cursor-pointer select-none transition-colors duration-150\" style=\"position: absolute; left: 56px; top: 184px; widt"
+    },
+    {
+      "selector": "button[data-testid=\"dock-icon-launcher\"]",
+      "count": 2,
+      "tagName": "button",
+      "id": "",
+      "testId": "dock-icon-launcher",
+      "className": "relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "relative",
+      "owningWindow": "none",
+      "rect": {
+        "x": 478,
+        "y": 670,
+        "w": 56,
+        "h": 56
+      },
+      "htmlPreview": "<button aria-label=\"Launcher (Ctrl+K / Cmd+K)\" aria-keyshortcuts=\"Control+K Meta+K\" title=\"Launcher (Ctrl+K / Cmd+K) — Type to search — Ctrl+, / Cmd+, for Settings\" class=\"relative h-14 w-14 rounded-x"
+    },
+    {
+      "selector": "button[data-testid=\"dock-icon-start-here\"]",
+      "count": 2,
+      "tagName": "button",
+      "id": "",
+      "testId": "dock-icon-start-here",
+      "className": "relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "relative",
+      "owningWindow": "none",
+      "rect": {
+        "x": 542,
+        "y": 670,
+        "w": 56,
+        "h": 56
+      },
+      "htmlPreview": "<button aria-label=\"Start Here\" title=\"Start Here\" class=\"relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200\" data-testid=\"dock-icon-start-here\" style=\"trans"
+    },
+    {
+      "selector": "button[data-testid=\"dock-icon-logic-playground\"]",
+      "count": 2,
+      "tagName": "button",
+      "id": "",
+      "testId": "dock-icon-logic-playground",
+      "className": "relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "relative",
+      "owningWindow": "none",
+      "rect": {
+        "x": 798,
+        "y": 670,
+        "w": 56,
+        "h": 56
+      },
+      "htmlPreview": "<button aria-label=\"Logic Playground\" title=\"Logic Playground\" class=\"relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200\" data-testid=\"dock-icon-logic-playgr"
+    },
+    {
+      "selector": "button[data-testid=\"dock-icon-app-store\"]",
+      "count": 2,
+      "tagName": "button",
+      "id": "",
+      "testId": "dock-icon-app-store",
+      "className": "relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "relative",
+      "owningWindow": "none",
+      "rect": {
+        "x": 862,
+        "y": 670,
+        "w": 56,
+        "h": 56
+      },
+      "htmlPreview": "<button aria-label=\"App Store\" title=\"App Store\" class=\"relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200\" data-testid=\"dock-icon-app-store\" style=\"transfor"
+    },
+    {
+      "selector": "span.px-2",
+      "count": 1,
+      "tagName": "span",
+      "id": "",
+      "testId": "",
+      "className": "px-2 py-1 bg-cyan-900/40 border border-cyan-600/60 rounded text-cyan-300 font-semibold",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "static",
+      "owningWindow": "none",
+      "rect": {
+        "x": 16,
+        "y": 729,
+        "w": 42,
+        "h": 25
+      },
+      "htmlPreview": "<span class=\"px-2 py-1 bg-cyan-900/40 border border-cyan-600/60 rounded text-cyan-300 font-semibold\">V1.0</span>"
+    },
+    {
+      "selector": "div[data-testid=\"desktop-icon-submission-inspector\"]",
+      "count": 1,
+      "tagName": "div",
+      "id": "",
+      "testId": "desktop-icon-submission-inspector",
+      "className": "flex flex-col items-center text-xs cursor-pointer select-none transition-colors duration-150",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "absolute",
+      "owningWindow": "none",
+      "rect": {
+        "x": 56,
+        "y": 312,
+        "w": 120,
+        "h": 100
+      },
+      "htmlPreview": "<div data-testid=\"desktop-icon-submission-inspector\" class=\"flex flex-col items-center text-xs cursor-pointer select-none transition-colors duration-150\" style=\"position: absolute; left: 56px; top: 31"
+    },
+    {
+      "selector": "div[data-testid=\"desktop-icon-files\"]",
+      "count": 1,
+      "tagName": "div",
+      "id": "",
+      "testId": "desktop-icon-files",
+      "className": "flex flex-col items-center text-xs cursor-pointer select-none transition-colors duration-150",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "absolute",
+      "owningWindow": "none",
+      "rect": {
+        "x": 56,
+        "y": 440,
+        "w": 120,
+        "h": 100
+      },
+      "htmlPreview": "<div data-testid=\"desktop-icon-files\" class=\"flex flex-col items-center text-xs cursor-pointer select-none transition-colors duration-150\" style=\"position: absolute; left: 56px; top: 440px; width: 120"
+    },
+    {
+      "selector": "span.text-slate-400",
+      "count": 1,
+      "tagName": "span",
+      "id": "",
+      "testId": "",
+      "className": "text-slate-400",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "static",
+      "owningWindow": "none",
+      "rect": {
+        "x": 70,
+        "y": 734,
+        "w": 63,
+        "h": 16
+      },
+      "htmlPreview": "<span class=\"text-slate-400\">v1.0.0 (dev)</span>"
+    },
+    {
+      "selector": "button[data-testid=\"dock-icon-terminal\"]",
+      "count": 1,
+      "tagName": "button",
+      "id": "",
+      "testId": "dock-icon-terminal",
+      "className": "relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "relative",
+      "owningWindow": "none",
+      "rect": {
+        "x": 606,
+        "y": 670,
+        "w": 56,
+        "h": 56
+      },
+      "htmlPreview": "<button aria-label=\"Terminal\" title=\"Terminal\" class=\"relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200\" data-testid=\"dock-icon-terminal\" style=\"transform: "
+    },
+    {
+      "selector": "button[data-testid=\"dock-icon-files\"]",
+      "count": 1,
+      "tagName": "button",
+      "id": "",
+      "testId": "dock-icon-files",
+      "className": "relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "relative",
+      "owningWindow": "none",
+      "rect": {
+        "x": 670,
+        "y": 670,
+        "w": 56,
+        "h": 56
+      },
+      "htmlPreview": "<button aria-label=\"Files\" title=\"Files\" class=\"relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200\" data-testid=\"dock-icon-files\" style=\"transform: scale(1) "
+    },
+    {
+      "selector": "button[data-testid=\"dock-icon-settings\"]",
+      "count": 1,
+      "tagName": "button",
+      "id": "",
+      "testId": "dock-icon-settings",
+      "className": "relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "relative",
+      "owningWindow": "none",
+      "rect": {
+        "x": 734,
+        "y": 670,
+        "w": 56,
+        "h": 56
+      },
+      "htmlPreview": "<button aria-label=\"Settings\" aria-keyshortcuts=\"Control+, Meta+,\" title=\"Settings\" class=\"relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200\" data-testid=\"d"
+    },
+    {
+      "selector": "div.text-slate-500",
+      "count": 1,
+      "tagName": "div",
+      "id": "",
+      "testId": "",
+      "className": "text-slate-500 pointer-events-auto",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "static",
+      "owningWindow": "none",
+      "rect": {
+        "x": 1314,
+        "y": 734,
+        "w": 67,
+        "h": 16
+      },
+      "htmlPreview": "<div class=\"text-slate-500 pointer-events-auto\">RedByte OS</div>"
+    }
+  ],
+  "topOffenders": [
+    {
+      "selector": "div.flex",
+      "count": 25,
+      "tagName": "div",
+      "id": "",
+      "testId": "",
+      "className": "flex items-center justify-center rounded-xl border transition-colors duration-150 backdrop-blur-sm border-cyan-400/70 bg-cyan-500/10 shadow-[0_10px_24px_rgba(6,182,212,0.25)]",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "static",
+      "owningWindow": "none",
+      "rect": {
+        "x": 80,
+        "y": 56,
+        "w": 72,
+        "h": 72
+      },
+      "htmlPreview": "<div class=\"flex items-center justify-center rounded-xl border transition-colors duration-150 backdrop-blur-sm border-cyan-400/70 bg-cyan-500/10 shadow-[0_10px_24px_rgba(6,182,212,0.25)]\" style=\"width"
+    },
+    {
+      "selector": "div.w-full",
+      "count": 6,
+      "tagName": "div",
+      "id": "",
+      "testId": "",
+      "className": "w-full text-center text-[11px] font-medium tracking-wide text-cyan-300",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "static",
+      "owningWindow": "none",
+      "rect": {
+        "x": 56,
+        "y": 136,
+        "w": 120,
+        "h": 20
+      },
+      "htmlPreview": "<div class=\"w-full text-center text-[11px] font-medium tracking-wide text-cyan-300\" style=\"margin-top: 8px; min-height: 20px;\">Logic Playground</div>"
+    },
+    {
+      "selector": "div.absolute",
+      "count": 4,
+      "tagName": "div",
+      "id": "",
+      "testId": "",
+      "className": "absolute bottom-6 left-1/2 -translate-x-1/2 flex items-end gap-2 rounded-2xl px-4 py-3 backdrop-blur-xl",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "absolute",
+      "owningWindow": "none",
+      "rect": {
+        "x": 461,
+        "y": 657,
+        "w": 473,
+        "h": 81
+      },
+      "htmlPreview": "<div class=\"absolute bottom-6 left-1/2 -translate-x-1/2 flex items-end gap-2 rounded-2xl px-4 py-3 backdrop-blur-xl\" title=\"Alt+Arrow keys to reorder (when focused)\" style=\"background: var(--rb-panel)"
+    },
+    {
+      "selector": "svg.transition-colors",
+      "count": 3,
+      "tagName": "svg",
+      "id": "",
+      "testId": "",
+      "className": "transition-colors duration-200",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "static",
+      "owningWindow": "none",
+      "rect": {
+        "x": 620,
+        "y": 684,
+        "w": 28,
+        "h": 28
+      },
+      "htmlPreview": "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" width=\"28\" height=\"28\" class=\"transition-colors duration-200\" style=\"color: var(--rb-muted);\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"2\" fill=\"none\" s"
+    },
+    {
+      "selector": "div[data-testid=\"desktop-icon-student-lab\"]",
+      "count": 2,
+      "tagName": "div",
+      "id": "",
+      "testId": "desktop-icon-student-lab",
+      "className": "flex flex-col items-center text-xs cursor-pointer select-none transition-colors duration-150",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "absolute",
+      "owningWindow": "none",
+      "rect": {
+        "x": 56,
+        "y": 184,
+        "w": 120,
+        "h": 100
+      },
+      "htmlPreview": "<div data-testid=\"desktop-icon-student-lab\" class=\"flex flex-col items-center text-xs cursor-pointer select-none transition-colors duration-150\" style=\"position: absolute; left: 56px; top: 184px; widt"
+    },
+    {
+      "selector": "button[data-testid=\"dock-icon-launcher\"]",
+      "count": 2,
+      "tagName": "button",
+      "id": "",
+      "testId": "dock-icon-launcher",
+      "className": "relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "relative",
+      "owningWindow": "none",
+      "rect": {
+        "x": 478,
+        "y": 670,
+        "w": 56,
+        "h": 56
+      },
+      "htmlPreview": "<button aria-label=\"Launcher (Ctrl+K / Cmd+K)\" aria-keyshortcuts=\"Control+K Meta+K\" title=\"Launcher (Ctrl+K / Cmd+K) — Type to search — Ctrl+, / Cmd+, for Settings\" class=\"relative h-14 w-14 rounded-x"
+    },
+    {
+      "selector": "button[data-testid=\"dock-icon-start-here\"]",
+      "count": 2,
+      "tagName": "button",
+      "id": "",
+      "testId": "dock-icon-start-here",
+      "className": "relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "relative",
+      "owningWindow": "none",
+      "rect": {
+        "x": 542,
+        "y": 670,
+        "w": 56,
+        "h": 56
+      },
+      "htmlPreview": "<button aria-label=\"Start Here\" title=\"Start Here\" class=\"relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200\" data-testid=\"dock-icon-start-here\" style=\"trans"
+    },
+    {
+      "selector": "button[data-testid=\"dock-icon-logic-playground\"]",
+      "count": 2,
+      "tagName": "button",
+      "id": "",
+      "testId": "dock-icon-logic-playground",
+      "className": "relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "relative",
+      "owningWindow": "none",
+      "rect": {
+        "x": 798,
+        "y": 670,
+        "w": 56,
+        "h": 56
+      },
+      "htmlPreview": "<button aria-label=\"Logic Playground\" title=\"Logic Playground\" class=\"relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200\" data-testid=\"dock-icon-logic-playgr"
+    },
+    {
+      "selector": "button[data-testid=\"dock-icon-app-store\"]",
+      "count": 2,
+      "tagName": "button",
+      "id": "",
+      "testId": "dock-icon-app-store",
+      "className": "relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "relative",
+      "owningWindow": "none",
+      "rect": {
+        "x": 862,
+        "y": 670,
+        "w": 56,
+        "h": 56
+      },
+      "htmlPreview": "<button aria-label=\"App Store\" title=\"App Store\" class=\"relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200\" data-testid=\"dock-icon-app-store\" style=\"transfor"
+    },
+    {
+      "selector": "span.px-2",
+      "count": 1,
+      "tagName": "span",
+      "id": "",
+      "testId": "",
+      "className": "px-2 py-1 bg-cyan-900/40 border border-cyan-600/60 rounded text-cyan-300 font-semibold",
+      "pointerEvents": "auto",
+      "zIndex": "auto",
+      "position": "static",
+      "owningWindow": "none",
+      "rect": {
+        "x": 16,
+        "y": 729,
+        "w": 42,
+        "h": 25
+      },
+      "htmlPreview": "<span class=\"px-2 py-1 bg-cyan-900/40 border border-cyan-600/60 rounded text-cyan-300 font-semibold\">V1.0</span>"
+    }
+  ],
+  "viewport": {
+    "width": 1396,
+    "height": 763
+  }
+}

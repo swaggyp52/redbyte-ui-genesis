@@ -77,7 +77,7 @@ export const Shell: React.FC<ShellProps> = () => {
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
   const [showPerfHud, setShowPerfHud] = useState(() => isPerfDebugEnabled());
   const [showJankHud, setShowJankHud] = useState(false);
-  const [showDeadZoneScanner, setShowDeadZoneScanner] = useState(true);
+  const [showDeadZoneScanner, setShowDeadZoneScanner] = useState(false);
 
   const hasShownWelcomeRef = useRef(false);
   const hasInitializedRef = useRef(false);
@@ -1148,8 +1148,8 @@ export const Shell: React.FC<ShellProps> = () => {
 
       {/* Footer: Version Info (hidden in demo mode) */}
       {!isDemoMode && (
-        <div className="fixed bottom-0 left-0 right-0 bg-slate-900/90 border-t border-slate-700 px-4 py-2 flex items-center justify-between text-xs z-10">
-          <div className="flex items-center gap-3">
+        <div className="fixed bottom-0 left-0 right-0 bg-slate-900/90 border-t border-slate-700 px-4 py-2 flex items-center justify-between text-xs z-10 pointer-events-none">
+          <div className="flex items-center gap-3 pointer-events-auto">
             <span className="px-2 py-1 bg-cyan-900/40 border border-cyan-600/60 rounded text-cyan-300 font-semibold">
               V1.0
             </span>
@@ -1157,7 +1157,7 @@ export const Shell: React.FC<ShellProps> = () => {
               {getVersionString()}
             </span>
           </div>
-          <div className="text-slate-500">
+          <div className="text-slate-500 pointer-events-auto">
             RedByte OS
           </div>
         </div>

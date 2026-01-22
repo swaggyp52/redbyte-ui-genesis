@@ -149,7 +149,7 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   unregisterStateAccessor,
   determinismRecorder,
 }) => {
-  console.log('[LogicPlayground] Component rendering', { windowId });
+  // console.log('[LogicPlayground] Component rendering', { windowId });
 
   const debugFlags = React.useMemo(() => {
     if (!import.meta.env.DEV) return new Set<string>();
@@ -171,7 +171,7 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const e2eDisableQuad = e2eParams.get('disableQuad') === '1';
   const e2eCpuLite = e2eParams.get('cpuLite') === '1';
 
-  useRenderStormDetector('LogicPlaygroundApp');
+  // useRenderStormDetector('LogicPlaygroundApp');
   if (import.meta.env.DEV) {
     // eslint-disable-next-line no-console
     console.info('[playground-debug] flags', Array.from(debugFlags));

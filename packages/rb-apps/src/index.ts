@@ -71,3 +71,5 @@ export async function registerAllApps() {
   registerApp(StudentLabApp);
   registerApp(SubmissionInspectorApp);
 }
+
+export { PlaygroundGoldenPath } from './dev/PlaygroundGoldenPath';

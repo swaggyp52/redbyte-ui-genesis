@@ -12,7 +12,21 @@ const isE2E = params.get('e2e') === '1' || import.meta.env.VITE_E2E === '1';
 const isAudit = isAuditEnabled(params);
 
 // 3) Temporary Crash Beacon for Playwright triage
-if (typeof window !== 'undefined') {
+if (import.meta.env.VITE_GOLDEN_PATH === '1') {
+  console.log('RB_GOLDEN_PATH_ACTIVE');
+  import('react').then(m => {
+    const React = m.default;
+    import('react-dom/client').then(m2 => {
+      const ReactDOM = m2;
+      import('@redbyte/rb-apps').then(({ PlaygroundGoldenPath }) => {
+        const root = document.getElementById('root');
+        if (root) {
+          ReactDOM.createRoot(root).render(React.createElement(PlaygroundGoldenPath));
+        }
+      });
+    });
+  });
+} else if (typeof window !== 'undefined') {
   const renderCrashBeacon = (message: string) => {
     let beacon = document.querySelector('[data-testid="rb-crash-beacon"]');
     if (!beacon) {
