@@ -47,10 +47,6 @@ interface OscilloscopeViewProps {
   onDismissHints?: () => void;
   onHelp?: () => void;
   debugTick?: number | null;
-  // Signal update propagation for immediate sampling on input changes
-  signals?: Map<string, 0 | 1>;
-  signalsVersion?: number;
-  signalsUpdateReason?: 'input' | 'tick';
 }
 
 const MAX_SAMPLES = 500; // Maximum samples to keep in buffer
@@ -67,24 +63,12 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   onDismissHints,
   onHelp,
   debugTick,
-  signals,
-  signalsVersion,
-  signalsUpdateReason,
 }) => {
   trackRender('OscilloscopeView');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const pendingDrawRef = useRef<number | null>(null);
-  
-  // Guardrail 1: Version-based sampling to prevent cascades
-  const lastSampledVersionRef = useRef<number>(-1);
-  
-  // Guardrail 2: RAF batching for spam-click prevention
-  const rafRef = useRef<number | null>(null);
-  const pendingInputSampleRef = useRef<{
-    version: number;
-    reason: 'input' | 'tick';
-  } | null>(null);
+
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 600 });
   const probes = useProbeStore((state) => state.probes);
   const activeProbeId = useProbeStore((state) => state.activeProbeId);
@@ -121,7 +105,8 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     [circuit.nodes]
   );
 
-  const samplingIntervalRef = useRef<number | null>(null);
+  // QUARANTINE: Wall-clock time for UI display ONLY (not used in sampling)
+  // Sampling is deterministic and derived from tick count only
   const startTimeRef = useRef<number>(Date.now());
   const measurementUpdateRef = useRef<number | null>(null);
   const pauseScroll = useOscilloscopeStore((state) => state.pauseScroll);
@@ -141,6 +126,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   const selectedNodeIds = useViewStateStore((state) => state.selectedNodeIds);
   const autoProbeEnabled = useViewStateStore((state) => state.autoProbeEnabled);
   const setAutoProbeEnabled = useViewStateStore((state) => state.setAutoProbeEnabled);
+  // QUARANTINE: UI-only wall-clock time display (not used in sampling logic)
   const getCurrentTime = useCallback(() => (Date.now() - startTimeRef.current) / 1000, []);
 
   useEffect(() => {
@@ -272,12 +258,13 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
     });
   }, [probes]);
 
-  // Sample signals from probes
+  // Sample signals from probes using TraceRecorder
   const sampleSignals = useCallback(() => {
-    // Sample on tick when running, or on input change when stopped
-    if (!isRunning && signalsUpdateReason !== 'input') return;
+    const traceRecorder = tickEngine.getTraceRecorder();
+    if (!traceRecorder) return;
 
-    const relativeTime = getCurrentTime(); // seconds
+    const traces = traceRecorder.getAllTraces();
+    if (traces.length === 0) return;
 
     setProbeData((prevData) => {
       const newData = new Map(prevData);
@@ -285,25 +272,25 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       probes.forEach((probe) => {
         if (!probe.enabled) return;
 
-        // Get the node - if it doesn't exist, continue sampling with value 0 (missing node)
-        const node = circuit.nodes.find((n) => n.id === probe.nodeId);
-
-        // Get signal value from engine (will be 0 if node doesn't exist)
-        const outputs = node ? engine.getNodeOutputs(probe.nodeId) : {};
-        const value = outputs[probe.portName] ?? 0;
-
-        // Get or create probe data
         let data = newData.get(probe.id);
         if (!data) {
           data = { probeId: probe.id, samples: [], measurements: null };
           newData.set(probe.id, data);
         }
 
-        // Add sample
-        data.samples.push({
-          timestamp: relativeTime,
-          value,
+        // Get the signal key for this probe
+        const signalKey = `${probe.nodeId}.${probe.portName}`;
+
+        // Build samples from trace entries
+        const newSamples: SignalSample[] = [];
+        traces.forEach((trace) => {
+          const value = trace.signals.get(signalKey) ?? 0;
+          const timestamp = trace.tick / tickEngine.getTickRate(); // Convert tick to seconds
+          newSamples.push({ timestamp, value });
         });
+
+        // Replace samples with trace data
+        data.samples = newSamples;
 
         // Limit buffer size
         if (data.samples.length > MAX_SAMPLES) {
@@ -311,18 +298,19 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
         }
       });
 
-      // Increment sample counter
-      setTotalSamples((prev) => prev + probes.filter((p) => p.enabled).length);
+      // Update sample counter
+      setTotalSamples(traces.length * probes.filter((p) => p.enabled).length);
 
       return newData;
     });
 
     if (!pauseScrollRef.current) {
-      setViewEndTime(relativeTime);
+      const latestTick = traces[traces.length - 1]?.tick ?? 0;
+      setViewEndTime(latestTick / tickEngine.getTickRate());
     }
-  }, [isRunning, signalsUpdateReason, probes, circuit.nodes, engine, getCurrentTime]);
+  }, [probes, tickEngine, pauseScrollRef]);
 
-  // Start/stop trace recording
+  // Poll TraceRecorder for updates
   useEffect(() => {
     const traceRecorder = tickEngine.getTraceRecorder();
 
@@ -334,74 +322,38 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
         traceRecorder.start();
       }
 
-      // Reset start time when starting
+      // Reset UI display time when starting (does not affect sampling)
       startTimeRef.current = Date.now();
       setTotalSamples(0);
       setViewEndTime(0);
 
-      // Start sampling
-      samplingIntervalRef.current = window.setInterval(sampleSignals, SAMPLE_INTERVAL);
+      // Poll trace data at 60fps (16ms interval)
+      const pollInterval = window.setInterval(() => {
+        sampleSignals();
+      }, 16);
 
       // Start measurement updates (every 1 second)
       measurementUpdateRef.current = window.setInterval(() => {
         setMeasurementUpdateCounter((prev) => prev + 1);
       }, 1000);
+
+      return () => {
+        clearInterval(pollInterval);
+        if (measurementUpdateRef.current) {
+          clearInterval(measurementUpdateRef.current);
+        }
+      };
     } else {
-      // Stop sampling (but keep trace recording active for review)
-      if (samplingIntervalRef.current) {
-        clearInterval(samplingIntervalRef.current);
-        samplingIntervalRef.current = null;
-      }
+      // Stop measurement updates when paused
       if (measurementUpdateRef.current) {
         clearInterval(measurementUpdateRef.current);
         measurementUpdateRef.current = null;
       }
     }
-
-    return () => {
-      if (samplingIntervalRef.current) {
-        clearInterval(samplingIntervalRef.current);
-      }
-      if (measurementUpdateRef.current) {
-        clearInterval(measurementUpdateRef.current);
-      }
-    };
   }, [isRunning, sampleSignals, tickEngine]);
 
-  // Guardrails: Version-based sampling + RAF batching for input changes
-  useEffect(() => {
-    // Only batch input changes; tick changes are handled by interval
-    const isInputChange = signalsUpdateReason === 'input' && !isRunning;
-    if (!isInputChange) return;
-    if (signalsVersion === undefined) return;
-
-    // Store pending sample with latest version
-    pendingInputSampleRef.current = { version: signalsVersion, reason: 'input' };
-
-    // If RAF already scheduled, don't double-schedule
-    if (rafRef.current !== null) return;
-
-    // Schedule sampling at next frame
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = null;
-      const pending = pendingInputSampleRef.current;
-      pendingInputSampleRef.current = null;
-      if (!pending) return;
-
-      // Prevent double-sampling same version
-      if (lastSampledVersionRef.current === pending.version) return;
-      lastSampledVersionRef.current = pending.version;
-
-      sampleSignals();
-    });
-
-    return () => {
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-    };
-  }, [signalsVersion, signalsUpdateReason, isRunning, sampleSignals]);
+  // Input changes are now captured by TraceRecorder automatically
+  // No need for separate input-change sampling
 
   // Update measurements periodically
   useEffect(() => {
@@ -946,11 +898,10 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
 
           <button
             onClick={handlePauseScrollToggle}
-            className={`px-2 py-0.5 rounded text-xs border ${
-              pauseScroll
-                ? 'bg-cyan-700/20 border-cyan-500 text-cyan-200'
-                : 'bg-gray-700 hover:bg-gray-600 border-gray-600'
-            }`}
+            className={`px-2 py-0.5 rounded text-xs border ${pauseScroll
+              ? 'bg-cyan-700/20 border-cyan-500 text-cyan-200'
+              : 'bg-gray-700 hover:bg-gray-600 border-gray-600'
+              }`}
             title="Pause scroll (keeps simulation running)"
           >
             Pause Scroll
@@ -1064,11 +1015,10 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
           >
             <button
               onClick={handlePauseScrollToggle}
-              className={`px-1.5 py-0.5 rounded border ${
-                pauseScroll
-                  ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
-                  : 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
-              }`}
+              className={`px-1.5 py-0.5 rounded border ${pauseScroll
+                ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
+                : 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
+                }`}
               title="Pause scroll (keeps simulation running)"
               type="button"
             >
@@ -1094,11 +1044,10 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
             </button>
             <button
               onClick={toggleTimeCursor}
-              className={`px-1.5 py-0.5 rounded border ${
-                showTimeCursor
-                  ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
-                  : 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
-              }`}
+              className={`px-1.5 py-0.5 rounded border ${showTimeCursor
+                ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
+                : 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
+                }`}
               title="Toggle time cursor"
               type="button"
             >
@@ -1106,11 +1055,10 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
             </button>
             <button
               onClick={() => setShowTickGuides(!showTickGuides)}
-              className={`px-1.5 py-0.5 rounded border ${
-                showTickGuides
-                  ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
-                  : 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
-              }`}
+              className={`px-1.5 py-0.5 rounded border ${showTickGuides
+                ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
+                : 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
+                }`}
               title="Toggle tick guides"
               type="button"
             >
@@ -1257,13 +1205,12 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
                 return (
                   <div
                     key={probe.id}
-                    className={`p-2 rounded border transition-colors ${
-                      probe.id === activeProbeId
-                        ? 'border-cyan-500/70 bg-cyan-900/20'
-                        : nodeExists
+                    className={`p-2 rounded border transition-colors ${probe.id === activeProbeId
+                      ? 'border-cyan-500/70 bg-cyan-900/20'
+                      : nodeExists
                         ? 'border-gray-700 bg-gray-800 hover:bg-gray-800/80'
                         : 'border-yellow-700/50 bg-yellow-900/10 hover:bg-yellow-900/20'
-                    }`}
+                      }`}
                     onClick={() => setActiveProbe(probe.id)}
                   >
                     <div className="flex items-start gap-1.5 mb-1">
@@ -1284,57 +1231,57 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
                           {probe.nodeId.slice(0, 10)}
                         </div>
                       </div>
-                    <button
-                      onClick={() => handleRemoveProbe(probe.id)}
-                      className="text-gray-400 hover:text-red-400 text-sm leading-none"
-                      title="Remove probe"
-                    >
-                      ×
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-2 mb-1">
-                    <label className="flex items-center gap-1 text-[10px] cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={probe.enabled}
-                        onChange={() => handleToggleProbe(probe.id)}
-                        className="w-3 h-3"
-                      />
-                      <span className="text-gray-400">On</span>
-                    </label>
-
-                    <div className="flex-1" />
-
-                    <div className="text-[10px] text-gray-500">
-                      {probeData.get(probe.id)?.samples.length ?? 0}
+                      <button
+                        onClick={() => handleRemoveProbe(probe.id)}
+                        className="text-gray-400 hover:text-red-400 text-sm leading-none"
+                        title="Remove probe"
+                      >
+                        ×
+                      </button>
                     </div>
-                  </div>
 
-                  {/* Signal measurements */}
-                  {probeData.get(probe.id)?.measurements && (
-                    <div className="mt-1 pt-1 border-t border-gray-700 space-y-0.5 text-[10px]">
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Freq:</span>
-                        <span className="font-mono text-gray-300">
-                          {probeData.get(probe.id)?.measurements?.frequency?.toFixed(2) ?? '-'}Hz
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Period:</span>
-                        <span className="font-mono text-gray-300">
-                          {probeData.get(probe.id)?.measurements?.period?.toFixed(3) ?? '-'}s
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Duty:</span>
-                        <span className="font-mono text-gray-300">
-                          {probeData.get(probe.id)?.measurements?.dutyCycle?.toFixed(1) ?? '-'}%
-                        </span>
+                    <div className="flex items-center gap-2 mb-1">
+                      <label className="flex items-center gap-1 text-[10px] cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={probe.enabled}
+                          onChange={() => handleToggleProbe(probe.id)}
+                          className="w-3 h-3"
+                        />
+                        <span className="text-gray-400">On</span>
+                      </label>
+
+                      <div className="flex-1" />
+
+                      <div className="text-[10px] text-gray-500">
+                        {probeData.get(probe.id)?.samples.length ?? 0}
                       </div>
                     </div>
-                  )}
-                </div>
+
+                    {/* Signal measurements */}
+                    {probeData.get(probe.id)?.measurements && (
+                      <div className="mt-1 pt-1 border-t border-gray-700 space-y-0.5 text-[10px]">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Freq:</span>
+                          <span className="font-mono text-gray-300">
+                            {probeData.get(probe.id)?.measurements?.frequency?.toFixed(2) ?? '-'}Hz
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Period:</span>
+                          <span className="font-mono text-gray-300">
+                            {probeData.get(probe.id)?.measurements?.period?.toFixed(3) ?? '-'}s
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Duty:</span>
+                          <span className="font-mono text-gray-300">
+                            {probeData.get(probe.id)?.measurements?.dutyCycle?.toFixed(1) ?? '-'}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -1366,7 +1313,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
                       const closestSample = data.samples.reduce(
                         (prev, curr) =>
                           Math.abs(curr.timestamp - cursor.time) <
-                          Math.abs(prev.timestamp - cursor.time)
+                            Math.abs(prev.timestamp - cursor.time)
                             ? curr
                             : prev,
                         data.samples[0]

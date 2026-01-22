@@ -11,7 +11,7 @@ export const LogicPlaygroundApp: RedByteApp = {
         name: 'Logic Playground',
         iconId: 'logic',
         category: 'logic',
-        defaultSize: { width: 1200, height: 800 },
+        defaultSize: { width: 1280, height: 850 },
         minSize: { width: 800, height: 600 },
     },
     component: LogicPlaygroundComponent,

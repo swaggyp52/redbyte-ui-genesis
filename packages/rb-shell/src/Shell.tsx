@@ -289,7 +289,11 @@ export const Shell: React.FC<ShellProps> = () => {
           }
 
           // Create new window (no existing window found or preferNewWindow=true)
-          return openWindow(targetAppId, { resourceId, resourceType });
+          const newWindowId = openWindow(targetAppId, { resourceId, resourceType });
+          if (!newWindowId) {
+            toast.error({ message: `Failed to open ${resourceId}: App "${targetAppId}" not found` });
+          }
+          return newWindowId;
         }
         case 'open-example': {
           const { targetAppId, exampleId } = intent.payload;
@@ -313,7 +317,11 @@ export const Shell: React.FC<ShellProps> = () => {
           }
 
           // Create new window (no existing window found or preferNewWindow=true)
-          return openWindow(targetAppId, { initialExampleId: exampleId });
+          const newWindowId = openWindow(targetAppId, { initialExampleId: exampleId });
+          if (!newWindowId) {
+            toast.error({ message: `Failed to open example "${exampleId}": App "${targetAppId}" not found` });
+          }
+          return newWindowId;
         }
         default:
           console.warn('Unknown intent type:', (intent as any).type);
@@ -321,6 +329,7 @@ export const Shell: React.FC<ShellProps> = () => {
       }
     },
     [openWindow, windows, bindings, focusWindow]
+
   );
 
   const switchWorkspaceById = useCallback(

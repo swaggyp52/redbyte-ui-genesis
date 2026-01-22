@@ -317,7 +317,8 @@ function createLogicViewStore() {
 }
 
 // Dev-only storm detector to surface runaway store updates.
-function useLogicViewStoreInternal() {
+// Dev-only storm detector to surface runaway store updates.
+function getStore() {
   if (!_storeInternal) _storeInternal = createLogicViewStore();
   const api = _storeInternal as any;
 
@@ -350,7 +351,14 @@ function useLogicViewStoreInternal() {
   return _storeInternal;
 }
 
-export const useLogicViewStore = useLogicViewStoreInternal;
+export const useLogicViewStore = Object.assign(
+  (selector?: any, equalityFn?: any) => getStore()(selector, equalityFn),
+  {
+    getState: () => getStore().getState(),
+    setState: (...args: any[]) => getStore().setState(...args),
+    subscribe: (listener: any) => getStore().subscribe(listener),
+  }
+);
 
 declare global {
   interface Window {

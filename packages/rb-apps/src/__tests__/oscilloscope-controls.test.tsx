@@ -238,13 +238,54 @@ const createCircuit = (): Circuit => ({
   connections: [],
 });
 
-const createMockTickEngine = () =>
-  ({
-    getTraceRecorder: () => null,
+
+const createMockTickEngine = () => {
+  let tickCount = 0;
+  const traces: Array<{
+    tick: number;
+    timestamp: number;
+    signals: Map<string, 0 | 1>;
+    nodeStates: Map<string, Record<string, any>>;
+    changedNodes: string[];
+  }> = [];
+
+  const mockTraceRecorder = {
+    getAllTraces: () => traces,
+    isActive: () => true,
+    start: vi.fn(),
+    stop: vi.fn(),
+    clear: vi.fn(() => {
+      traces.length = 0;
+    }),
+    getStats: () => ({
+      totalTicks: traces.length,
+      totalChanges: 0,
+      memoryUsage: 0,
+    }),
+  };
+
+  return {
+    getTraceRecorder: () => mockTraceRecorder,
     enableTracing: vi.fn(),
-    getTickCount: () => 0,
+    getTickCount: () => tickCount,
     getTickRate: () => 20,
-  }) as any;
+    // Simulate ticks happening when time advances
+    _simulateTick: () => {
+      tickCount++;
+      traces.push({
+        tick: tickCount,
+        timestamp: Date.now(),
+        signals: new Map([['switch1.out', 1]]),
+        nodeStates: new Map(),
+        changedNodes: ['switch1'],
+      });
+      // Keep only last 100 traces
+      if (traces.length > 100) {
+        traces.shift();
+      }
+    },
+  } as any;
+};
 
 const getCanvas = () => screen.getByTestId('oscilloscope-canvas');
 
@@ -305,6 +346,10 @@ describe('Oscilloscope controls', () => {
     );
 
     act(() => {
+      // Simulate 4 ticks (200ms / 50ms per tick)
+      for (let i = 0; i < 4; i++) {
+        tickEngine._simulateTick();
+      }
       vi.advanceTimersByTime(200);
     });
 
@@ -312,6 +357,10 @@ describe('Oscilloscope controls', () => {
 
     act(() => {
       screen.getByText('Pause Scroll').click();
+      // Simulate 4 more ticks
+      for (let i = 0; i < 4; i++) {
+        tickEngine._simulateTick();
+      }
       vi.advanceTimersByTime(200);
     });
 
@@ -340,6 +389,9 @@ describe('Oscilloscope controls', () => {
     );
 
     act(() => {
+      for (let i = 0; i < 4; i++) {
+        tickEngine._simulateTick();
+      }
       vi.advanceTimersByTime(200);
       screen.getByText('Pause Scroll').click();
     });
@@ -347,6 +399,9 @@ describe('Oscilloscope controls', () => {
     const pausedEndTime = getNumericAttr('data-view-end-time');
 
     act(() => {
+      for (let i = 0; i < 4; i++) {
+        tickEngine._simulateTick();
+      }
       vi.advanceTimersByTime(200);
     });
 
@@ -375,12 +430,18 @@ describe('Oscilloscope controls', () => {
     );
 
     act(() => {
+      for (let i = 0; i < 4; i++) {
+        tickEngine._simulateTick();
+      }
       vi.advanceTimersByTime(200);
     });
 
     const beforeNowTime = getNumericAttr('data-now-time');
 
     act(() => {
+      for (let i = 0; i < 4; i++) {
+        tickEngine._simulateTick();
+      }
       vi.advanceTimersByTime(200);
     });
 
@@ -409,6 +470,9 @@ describe('Oscilloscope controls', () => {
     );
 
     act(() => {
+      for (let i = 0; i < 4; i++) {
+        tickEngine._simulateTick();
+      }
       vi.advanceTimersByTime(200);
     });
 
@@ -417,6 +481,9 @@ describe('Oscilloscope controls', () => {
     act(() => {
       screen.getByText('Pause Scroll').click();
       screen.getByText('Pause Scroll').click();
+      for (let i = 0; i < 2; i++) {
+        tickEngine._simulateTick();
+      }
       vi.advanceTimersByTime(100);
     });
 

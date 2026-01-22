@@ -89,10 +89,10 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
   // Filter components by search query
   const filteredComponents = searchQuery
     ? allComponents.filter(
-        (comp) =>
-          comp.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          comp.description.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      (comp) =>
+        comp.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        comp.description.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : [];
 
   // Keyboard shortcut: / to focus search
@@ -169,9 +169,9 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
         draggable={!isReplayMode}
         onDragStart={(e) => handleDragStart(type, e)}
         onClick={() => handleComponentClick(type)}
-        className={`w-full text-left px-2 py-1 text-xs bg-gray-800 rounded transition-colors border ${layerColor} group relative ${extraClass} ${
-          isReplayMode ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-700 cursor-move'
-        }`}
+        data-component-type={type}
+        className={`w-full text-left px-2 py-1 text-xs bg-gray-800 rounded transition-colors border ${layerColor} group relative ${extraClass} ${isReplayMode ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-700 cursor-move'
+          }`}
         title={isReplayMode ? REPLAY_LOCK_MESSAGE : description}
       >
         <div className="flex items-center justify-between">

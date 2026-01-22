@@ -76,6 +76,16 @@ export const getVisibleSchematicNodes = (
 
 /**
  * IEEE/ANSI standard logic gate symbols
+ * 
+ * GEOMETRY CONTRACT (must match SchematicPortDetector):
+ * - All gates positioned at (x, y) origin
+ * - Standard dimensions: 60x40 (width x height)
+ * - Input legs: x=-10 to x=0, at y=10 and y=30 for dual-input gates
+ * - Single input: x=-10 to x=0, at y=20
+ * - Output leg: extends to x=60, at y=20
+ * - Gate body: x=0 to x=~45 (varies by gate type)
+ * 
+ * This contract ensures wires connect to the correct port positions.
  */
 const GateSymbols: React.FC<{
   type: string;
@@ -86,30 +96,50 @@ const GateSymbols: React.FC<{
   const activeColor = signal === 1 ? '#22c55e' : '#6b7280';
   const strokeWidth = 2;
 
+  // Standard dimensions for gates: 60x40 roughly.
+  // We want inputs to be accessible from the left (approx x=0)
+  // And output to be at the right (approx x=60)
+
+  // Helper for input legs
+  const InputLegs = () => (
+    <>
+      <path d="M -10,10 L 0,10" stroke={activeColor} strokeWidth={strokeWidth} fill="none" />
+      <path d="M -10,30 L 0,30" stroke={activeColor} strokeWidth={strokeWidth} fill="none" />
+    </>
+  );
+
+  const SingleInputLeg = () => (
+    <path d="M -10,20 L 0,20" stroke={activeColor} strokeWidth={strokeWidth} fill="none" />
+  );
+
   switch (type) {
     case 'AND':
       return (
         <g transform={`translate(${x},${y})`}>
+          <InputLegs />
           <path
-            d="M 0,0 L 0,40 L 20,40 A 20,20 0 0,0 20,0 Z"
+            d="M 0,0 L 25,0 A 20,20 0 0,1 25,40 L 0,40 Z"
             fill="none"
             stroke={activeColor}
             strokeWidth={strokeWidth}
           />
-          <circle cx="45" cy="20" r="3" fill={activeColor} />
+          {/* Output leg */}
+          <line x1="45" y1="20" x2="60" y2="20" stroke={activeColor} strokeWidth={strokeWidth} />
         </g>
       );
 
     case 'OR':
       return (
         <g transform={`translate(${x},${y})`}>
+          <InputLegs />
+          {/* OR shape: Curved back, pointed front */}
           <path
-            d="M 0,0 Q 10,20 0,40 L 10,40 Q 35,30 40,20 Q 35,10 10,0 Z"
+            d="M 0,0 Q 25,5 35,20 Q 25,35 0,40 Q 10,20 0,0 Z"
             fill="none"
             stroke={activeColor}
             strokeWidth={strokeWidth}
           />
-          <circle cx="45" cy="20" r="3" fill={activeColor} />
+          <line x1="35" y1="20" x2="60" y2="20" stroke={activeColor} strokeWidth={strokeWidth} />
         </g>
       );
 
@@ -117,67 +147,79 @@ const GateSymbols: React.FC<{
     case 'Inverter':
       return (
         <g transform={`translate(${x},${y})`}>
+          <SingleInputLeg />
+          {/* Triangle */}
           <path
-            d="M 0,0 L 0,40 L 30,20 Z"
+            d="M 0,0 L 0,40 L 32,20 Z"
             fill="none"
             stroke={activeColor}
             strokeWidth={strokeWidth}
           />
-          <circle cx="35" cy="20" r="4" fill="none" stroke={activeColor} strokeWidth={strokeWidth} />
-          <circle cx="42" cy="20" r="3" fill={activeColor} />
+          {/* Bubble at tip - radius 4 */}
+          <circle cx="36" cy="20" r="4" fill="none" stroke={activeColor} strokeWidth={strokeWidth} />
+          <line x1="40" y1="20" x2="60" y2="20" stroke={activeColor} strokeWidth={strokeWidth} />
         </g>
       );
 
     case 'NAND':
       return (
         <g transform={`translate(${x},${y})`}>
+          <InputLegs />
+          {/* AND shape */}
           <path
-            d="M 0,0 L 0,40 L 20,40 A 20,20 0 0,0 20,0 Z"
+            d="M 0,0 L 25,0 A 20,20 0 0,1 25,40 L 0,40 Z"
             fill="none"
             stroke={activeColor}
             strokeWidth={strokeWidth}
           />
-          <circle cx="42" cy="20" r="4" fill="none" stroke={activeColor} strokeWidth={strokeWidth} />
-          <circle cx="50" cy="20" r="3" fill={activeColor} />
+          {/* Bubble */}
+          <circle cx="49" cy="20" r="4" fill="none" stroke={activeColor} strokeWidth={strokeWidth} />
+          <line x1="53" y1="20" x2="60" y2="20" stroke={activeColor} strokeWidth={strokeWidth} />
         </g>
       );
 
     case 'NOR':
       return (
         <g transform={`translate(${x},${y})`}>
+          <InputLegs />
           <path
-            d="M 0,0 Q 10,20 0,40 L 10,40 Q 35,30 40,20 Q 35,10 10,0 Z"
+            d="M 0,0 Q 25,5 35,20 Q 25,35 0,40 Q 10,20 0,0 Z"
             fill="none"
             stroke={activeColor}
             strokeWidth={strokeWidth}
           />
-          <circle cx="42" cy="20" r="4" fill="none" stroke={activeColor} strokeWidth={strokeWidth} />
-          <circle cx="50" cy="20" r="3" fill={activeColor} />
+          {/* Bubble */}
+          <circle cx="39" cy="20" r="4" fill="none" stroke={activeColor} strokeWidth={strokeWidth} />
+          <line x1="43" y1="20" x2="60" y2="20" stroke={activeColor} strokeWidth={strokeWidth} />
         </g>
       );
 
     case 'XOR':
       return (
         <g transform={`translate(${x},${y})`}>
+          <InputLegs />
+          {/* First curve (back input guard) */}
           <path
             d="M -5,0 Q 5,20 -5,40"
             fill="none"
             stroke={activeColor}
             strokeWidth={strokeWidth}
           />
+          {/* Main Body */}
           <path
-            d="M 0,0 Q 10,20 0,40 L 10,40 Q 35,30 40,20 Q 35,10 10,0 Z"
+            d="M 0,0 Q 25,5 35,20 Q 25,35 0,40 Q 10,20 0,0"
             fill="none"
             stroke={activeColor}
             strokeWidth={strokeWidth}
           />
-          <circle cx="45" cy="20" r="3" fill={activeColor} />
+          <line x1="35" y1="20" x2="60" y2="20" stroke={activeColor} strokeWidth={strokeWidth} />
         </g>
       );
 
     case 'XNOR':
       return (
         <g transform={`translate(${x},${y})`}>
+          <InputLegs />
           <path
             d="M -5,0 Q 5,20 -5,40"
             fill="none"
@@ -185,13 +227,13 @@ const GateSymbols: React.FC<{
             strokeWidth={strokeWidth}
           />
           <path
-            d="M 0,0 Q 10,20 0,40 L 10,40 Q 35,30 40,20 Q 35,10 10,0 Z"
+            d="M 0,0 Q 25,5 35,20 Q 25,35 0,40 Q 10,20 0,0"
             fill="none"
             stroke={activeColor}
             strokeWidth={strokeWidth}
           />
-          <circle cx="42" cy="20" r="4" fill="none" stroke={activeColor} strokeWidth={strokeWidth} />
-          <circle cx="50" cy="20" r="3" fill={activeColor} />
+          <circle cx="39" cy="20" r="4" fill="none" stroke={activeColor} strokeWidth={strokeWidth} />
+          <line x1="43" y1="20" x2="60" y2="20" stroke={activeColor} strokeWidth={strokeWidth} />
         </g>
       );
 
@@ -209,9 +251,10 @@ const GateSymbols: React.FC<{
             strokeWidth={strokeWidth}
           />
           <circle cx="20" cy="20" r="6" fill={activeColor} />
-          <text x="20" y="25" textAnchor="middle" fontSize="10" fill={activeColor}>
+          <text x="20" y="25" textAnchor="middle" fontSize="10" fill={activeColor} style={{ pointerEvents: 'none' }}>
             SW
           </text>
+          <line x1="40" y1="20" x2="60" y2="20" stroke={activeColor} strokeWidth={strokeWidth} />
         </g>
       );
 
@@ -234,15 +277,17 @@ const GateSymbols: React.FC<{
             stroke={activeColor}
             strokeWidth={1.5}
           />
+          <line x1="40" y1="20" x2="60" y2="20" stroke={activeColor} strokeWidth={strokeWidth} />
         </g>
       );
 
     case 'LED':
       return (
         <g transform={`translate(${x},${y})`}>
+          <SingleInputLeg />
           <circle cx="20" cy="20" r="12" fill="none" stroke={activeColor} strokeWidth={strokeWidth} />
           <circle cx="20" cy="20" r="8" fill={signal === 1 ? activeColor : 'none'} opacity="0.6" />
-          <text x="20" y="25" textAnchor="middle" fontSize="10" fill={activeColor}>
+          <text x="20" y="25" textAnchor="middle" fontSize="10" fill={activeColor} style={{ pointerEvents: 'none' }}>
             LED
           </text>
         </g>
@@ -251,6 +296,7 @@ const GateSymbols: React.FC<{
     case 'Probe':
       return (
         <g transform={`translate(${x},${y})`}>
+          <SingleInputLeg />
           <path
             d="M 10,20 L 30,20 M 20,10 L 20,30"
             stroke={activeColor}
@@ -264,6 +310,7 @@ const GateSymbols: React.FC<{
       // Generic box for unknown components
       return (
         <g transform={`translate(${x},${y})`}>
+          <InputLegs />
           <rect
             x="0"
             y="5"
@@ -274,9 +321,10 @@ const GateSymbols: React.FC<{
             stroke={activeColor}
             strokeWidth={strokeWidth}
           />
-          <text x="25" y="23" textAnchor="middle" fontSize="9" fill={activeColor}>
+          <text x="25" y="23" textAnchor="middle" fontSize="9" fill={activeColor} style={{ pointerEvents: 'none' }}>
             {type}
           </text>
+          <line x1="50" y1="20" x2="60" y2="20" stroke={activeColor} strokeWidth={strokeWidth} />
         </g>
       );
   }
@@ -580,9 +628,22 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
           };
         }
 
-        // Output port on right side, input port on left side
-        const from = { x: fromNode.x + 60, y: fromNode.y + 20 };
-        const to = { x: toNode.x - 10, y: toNode.y + 20 };
+        // Use port-aware positions
+        // Output ports are on the right (x=60), input ports on the left (x=-10)
+        const fromCircuitNode = circuit.nodes.find((n) => n.id === conn.from.nodeId);
+        const toCircuitNode = circuit.nodes.find((n) => n.id === conn.to.nodeId);
+
+        // Get all port positions for both nodes
+        const fromPorts = fromCircuitNode ? getPortPositions(fromCircuitNode, fromNode.x, fromNode.y) : [];
+        const toPorts = toCircuitNode ? getPortPositions(toCircuitNode, toNode.x, toNode.y) : [];
+
+        // Find the specific ports for this connection
+        const fromPort = fromPorts.find(p => p.portName === conn.from.portName);
+        const toPort = toPorts.find(p => p.portName === conn.to.portName);
+
+        // Fallback to generic positions if ports not found
+        const from = fromPort ? { x: fromPort.x, y: fromPort.y } : { x: fromNode.x + 60, y: fromNode.y + 20 };
+        const to = toPort ? { x: toPort.x, y: toPort.y } : { x: toNode.x - 10, y: toNode.y + 20 };
 
         const signalKey = `${conn.from.nodeId}.${conn.from.portName}`;
         const signal = renderSignals.get(signalKey) ?? 0;
@@ -602,6 +663,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
     return wires;
   }, [
     circuit.connections,
+    circuit.nodes,
     schematicNodes,
     visibleNodeIds,
     renderSignals,
@@ -708,61 +770,61 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
           <g transform={`translate(${Number.isFinite(camera.x) ? camera.x : 0},${Number.isFinite(camera.y) ? camera.y : 0}) scale(${Number.isFinite(camera.zoom) ? camera.zoom : 1})`}>
             {/* Render wires */}
             <g className="wires">
-            {schematicWires.map((wire, i) => {
-              const pathData = wire.points
-                .map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x},${p.y}`)
-                .join(' ');
+              {schematicWires.map((wire, i) => {
+                const pathData = wire.points
+                  .map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x},${p.y}`)
+                  .join(' ');
 
-              const wireColor = isRunning
-                ? wire.signal === 1
-                  ? '#22c55e'
-                  : '#6b7280'
-                : '#9ca3af';
+                const wireColor = isRunning
+                  ? wire.signal === 1
+                    ? '#22c55e'
+                    : '#6b7280'
+                  : '#9ca3af';
 
-              return (
-                <g key={i}>
-                  {wire.probeColors?.map((color, index) => (
+                return (
+                  <g key={i}>
+                    {wire.probeColors?.map((color, index) => (
+                      <path
+                        key={`${wire.id}-probe-${index}`}
+                        d={pathData}
+                        stroke={color}
+                        strokeWidth="5"
+                        opacity="0.25"
+                        fill="none"
+                      />
+                    ))}
+                    {wire.mismatchColors?.map((color, index) => (
+                      <path
+                        key={`${wire.id}-mismatch-${index}`}
+                        d={pathData}
+                        stroke={color}
+                        strokeWidth="6"
+                        opacity="0.35"
+                        fill="none"
+                      />
+                    ))}
                     <path
-                      key={`${wire.id}-probe-${index}`}
                       d={pathData}
-                      stroke={color}
-                      strokeWidth="5"
-                      opacity="0.25"
+                      stroke={wireColor}
+                      strokeWidth="2"
                       fill="none"
-                    />
-                  ))}
-                  {wire.mismatchColors?.map((color, index) => (
-                    <path
-                      key={`${wire.id}-mismatch-${index}`}
-                      d={pathData}
-                      stroke={color}
-                      strokeWidth="6"
-                      opacity="0.35"
-                      fill="none"
-                    />
-                  ))}
-                  <path
-                    d={pathData}
-                    stroke={wireColor}
-                    strokeWidth="2"
-                    fill="none"
-                    className="transition-colors duration-100"
-                  />
-                  {/* Connection dots */}
-                  {wire.points.map((p, idx) => (
-                    <circle
-                      key={idx}
-                      cx={p.x}
-                      cy={p.y}
-                      r="2"
-                      fill={wireColor}
                       className="transition-colors duration-100"
                     />
-                  ))}
-                </g>
-              );
-            })}
-          </g>
+                    {/* Connection dots */}
+                    {wire.points.map((p, idx) => (
+                      <circle
+                        key={idx}
+                        cx={p.x}
+                        cy={p.y}
+                        r="2"
+                        fill={wireColor}
+                        className="transition-colors duration-100"
+                      />
+                    ))}
+                  </g>
+                );
+              })}
+            </g>
 
             {/* Render components */}
             <g className="components">

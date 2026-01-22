@@ -38,51 +38,65 @@ export class WindowManager {
 
     return state;
   }
+  mode: "normal",
+  zIndex: this.zCounter++,
+    focused: true,
+      resizable: opts.resizable ?? true,
+        minimizable: opts.minimizable ?? true,
+          maximizable: opts.maximizable ?? true,
+            contentId: opts.contentId,
+    };
 
-  closeWindow(id: WindowId) {
-    this.windows = this.windows.filter(w => w.id !== id);
+this.windows.forEach(w => (w.focused = false));
+this.windows.push(state);
+
+return state;
   }
 
-  focusWindow(id: WindowId) {
-    const w = this.windows.find(w => w.id === id);
-    if (!w) return;
+closeWindow(id: WindowId) {
+  this.windows = this.windows.filter(w => w.id !== id);
+}
 
-    this.windows.forEach(x => (x.focused = false));
-    w.focused = true;
-    w.zIndex = this.zCounter++;
-  }
+focusWindow(id: WindowId) {
+  const w = this.windows.find(w => w.id === id);
+  if (!w) return;
 
-  moveWindow(id: WindowId, x: number, y: number) {
-    const w = this.windows.find(w => w.id === id);
-    if (!w || w.mode !== "normal") return;
+  this.windows.forEach(x => (x.focused = false));
+  w.focused = true;
+  w.zIndex = this.zCounter++;
+}
 
-    w.bounds.x = x;
-    w.bounds.y = y;
-  }
+moveWindow(id: WindowId, x: number, y: number) {
+  const w = this.windows.find(w => w.id === id);
+  if (!w || w.mode !== "normal") return;
 
-  resizeWindow(id: WindowId, width: number, height: number) {
-    const w = this.windows.find(w => w.id === id);
-    if (!w || !w.resizable || w.mode !== "normal") return;
+  w.bounds.x = x;
+  w.bounds.y = y;
+}
 
-    w.bounds.width = width;
-    w.bounds.height = height;
-  }
+resizeWindow(id: WindowId, width: number, height: number) {
+  const w = this.windows.find(w => w.id === id);
+  if (!w || !w.resizable || w.mode !== "normal") return;
 
-  minimizeWindow(id: WindowId) {
-    const w = this.windows.find(w => w.id === id);
-    if (!w || !w.minimizable) return;
-    w.mode = "minimized";
-  }
+  w.bounds.width = width;
+  w.bounds.height = height;
+}
 
-  maximizeWindow(id: WindowId) {
-    const w = this.windows.find(w => w.id === id);
-    if (!w || !w.maximizable) return;
-    w.mode = "maximized";
-  }
+minimizeWindow(id: WindowId) {
+  const w = this.windows.find(w => w.id === id);
+  if (!w || !w.minimizable) return;
+  w.mode = "minimized";
+}
 
-  restoreWindow(id: WindowId) {
-    const w = this.windows.find(w => w.id === id);
-    if (!w) return;
-    w.mode = "normal";
-  }
+maximizeWindow(id: WindowId) {
+  const w = this.windows.find(w => w.id === id);
+  if (!w || !w.maximizable) return;
+  w.mode = "maximized";
+}
+
+restoreWindow(id: WindowId) {
+  const w = this.windows.find(w => w.id === id);
+  if (!w) return;
+  w.mode = "normal";
+}
 }

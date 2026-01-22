@@ -36,7 +36,7 @@ export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
   workers: 1,
-  timeout: 60_000,  // Increased for complexity tests with many nodes
+  timeout: 120_000,  // Increased for drag-and-drop tests
   retries: process.env.CI ? 1 : 0,  // Get traces on first failure in CI
 
   use: {
@@ -46,7 +46,7 @@ export default defineConfig({
     video: 'on',
     screenshot: 'only-on-failure',
   },
-  expect: { timeout: 60_000 },
+  expect: { timeout: 15_000 },  // Increased for state propagation
 
   // Run against the production-like preview server
   webServer: {

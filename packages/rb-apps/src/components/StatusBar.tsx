@@ -34,7 +34,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
       {/* Left Section */}
       <div className="flex items-center gap-4">
         {/* Node Count */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5" data-testid="status-node-count">
           <span className="text-cyan-400">📦</span>
           <span>{nodeCount} node{nodeCount !== 1 ? 's' : ''}</span>
         </div>

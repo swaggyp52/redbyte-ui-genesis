@@ -34,15 +34,17 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
 
   // Get selected nodes and connections
   const selectedNodes = useMemo(() => {
+    if (!selection?.nodes) return [];
     return circuit.nodes.filter((n) => selection.nodes.has(n.id));
-  }, [circuit.nodes, selection.nodes]);
+  }, [circuit.nodes, selection]);
 
   const selectedConnections = useMemo(() => {
+    if (!selection?.wires) return [];
     return circuit.connections.filter((c) => {
       const id = `${c.from.nodeId}.${c.from.portName}->${c.to.nodeId}.${c.to.portName}`;
       return selection.wires.has(id);
     });
-  }, [circuit.connections, selection.wires]);
+  }, [circuit.connections, selection]);
 
   // Get real-time signals for selected nodes
   const [nodeSignals, setNodeSignals] = React.useState<Map<string, Record<string, Signal>>>(new Map());
@@ -200,23 +202,23 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
     const analogControls = [
       node.type === 'LDR'
         ? {
-            key: 'light',
-            label: 'Light Level',
-            min: 0,
-            max: 1,
-            step: 0.01,
-            value: analogUiState.light ?? uiState.light ?? 0.5,
-          }
+          key: 'light',
+          label: 'Light Level',
+          min: 0,
+          max: 1,
+          step: 0.01,
+          value: analogUiState.light ?? uiState.light ?? 0.5,
+        }
         : null,
       node.type === 'VoltageSource'
         ? {
-            key: 'voltage',
-            label: 'Voltage (V)',
-            min: 0,
-            max: 5,
-            step: 0.1,
-            value: analogUiState.voltage ?? uiState.voltage ?? node.config?.voltage ?? 5,
-          }
+          key: 'voltage',
+          label: 'Voltage (V)',
+          min: 0,
+          max: 5,
+          step: 0.1,
+          value: analogUiState.voltage ?? uiState.voltage ?? node.config?.voltage ?? 5,
+        }
         : null,
     ].filter(Boolean) as Array<{ key: string; label: string; min: number; max: number; step: number; value: number }>;
 
@@ -274,11 +276,10 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                         Add Probe
                       </button>
                       <div
-                        className={`font-bold text-lg px-3 py-1 rounded-md transition-all ${
-                          signal === 1
+                        className={`font-bold text-lg px-3 py-1 rounded-md transition-all ${signal === 1
                             ? 'bg-green-500/30 text-green-300 shadow-lg shadow-green-500/20 scale-110'
                             : 'bg-gray-700/50 text-gray-500 scale-100'
-                        }`}
+                          }`}
                       >
                         {signal}
                       </div>
@@ -395,9 +396,8 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                       <div className="block text-gray-400 mb-1.5 text-xs capitalize">{labelText}</div>
                       {typeof value === 'boolean' ? (
                         <label
-                          className={`flex items-center gap-3 bg-gray-800/50 rounded px-3 py-2 transition-colors ${
-                            isReplayMode ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-700/50'
-                          }`}
+                          className={`flex items-center gap-3 bg-gray-800/50 rounded px-3 py-2 transition-colors ${isReplayMode ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-700/50'
+                            }`}
                           title={isReplayMode ? lockMessage : undefined}
                         >
                           <span className="sr-only">{labelText}</span>
@@ -526,11 +526,10 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                 const id = `${conn.from.nodeId}.${conn.from.portName}->${conn.to.nodeId}.${conn.to.portName}`;
                 onConnectionDelete(id);
               }}
-              className={`w-full px-4 py-3 border border-red-500/30 rounded-lg text-red-400 transition-all font-medium flex items-center justify-center gap-2 group ${
-                isReplayMode
+              className={`w-full px-4 py-3 border border-red-500/30 rounded-lg text-red-400 transition-all font-medium flex items-center justify-center gap-2 group ${isReplayMode
                   ? 'bg-red-500/5 opacity-60 cursor-not-allowed'
                   : 'bg-red-500/10 hover:bg-red-500/20 active:bg-red-500/30 hover:text-red-300'
-              }`}
+                }`}
               disabled={isReplayMode}
               title={isReplayMode ? lockMessage : undefined}
             >

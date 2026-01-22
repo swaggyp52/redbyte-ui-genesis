@@ -395,14 +395,14 @@ export const RightDock: React.FC<RightDockProps> = ({
   const width = dockState === 'peek' ? 'w-80' : 'w-96';
 
   return (
-    <div className={`${width} border-l border-gray-700 bg-gray-900 flex flex-col transition-all duration-200`} data-testid="right-dock">
+    <div className={`${width} border-l border-gray-700 bg-gray-900 flex flex-col transition-all duration-200 shrink-0`} data-testid="right-dock">
       {/* Tab Bar */}
       <div className="h-12 border-b border-gray-700 bg-gray-850 flex items-stretch px-2 gap-1">
         <button
           onClick={() => handleTabChange('inspector')}
           className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'inspector'
-              ? 'bg-cyan-600 text-white shadow-lg'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+            ? 'bg-cyan-600 text-white shadow-lg'
+            : 'text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           aria-label="Inspector"
           data-testid="rightdock-tab-inspector"
@@ -414,8 +414,8 @@ export const RightDock: React.FC<RightDockProps> = ({
         <button
           onClick={() => handleTabChange('health')}
           className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'health'
-              ? 'bg-cyan-600 text-white shadow-lg'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+            ? 'bg-cyan-600 text-white shadow-lg'
+            : 'text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           aria-label="Health"
           data-testid="rightdock-tab-health"
@@ -427,8 +427,8 @@ export const RightDock: React.FC<RightDockProps> = ({
         <button
           onClick={() => handleTabChange('learn')}
           className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'learn'
-              ? 'bg-cyan-600 text-white shadow-lg'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+            ? 'bg-cyan-600 text-white shadow-lg'
+            : 'text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           aria-label="Learn"
           data-testid="rightdock-tab-learn"
@@ -440,8 +440,8 @@ export const RightDock: React.FC<RightDockProps> = ({
         <button
           onClick={() => handleTabChange('probes')}
           className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'probes'
-              ? 'bg-cyan-600 text-white shadow-lg'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+            ? 'bg-cyan-600 text-white shadow-lg'
+            : 'text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           aria-label="Probes"
           data-testid="rightdock-tab-probes"
@@ -453,8 +453,8 @@ export const RightDock: React.FC<RightDockProps> = ({
         <button
           onClick={() => handleTabChange('record')}
           className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'record'
-              ? 'bg-cyan-600 text-white shadow-lg'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+            ? 'bg-cyan-600 text-white shadow-lg'
+            : 'text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           aria-label="Record"
           data-testid="rightdock-tab-record"
@@ -466,8 +466,8 @@ export const RightDock: React.FC<RightDockProps> = ({
         <button
           onClick={() => handleTabChange('chips')}
           className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'chips'
-              ? 'bg-cyan-600 text-white shadow-lg'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+            ? 'bg-cyan-600 text-white shadow-lg'
+            : 'text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           aria-label="Chips"
           data-testid="rightdock-tab-chips"
@@ -531,8 +531,8 @@ export const RightDock: React.FC<RightDockProps> = ({
                     <button
                       onClick={isRunning ? onPause : onRun}
                       className={`px-2 py-1 text-[10px] rounded border ${isRunning
-                          ? 'border-yellow-500/50 text-yellow-200 hover:bg-yellow-500/20'
-                          : 'border-green-500/50 text-green-200 hover:bg-green-500/20'
+                        ? 'border-yellow-500/50 text-yellow-200 hover:bg-yellow-500/20'
+                        : 'border-green-500/50 text-green-200 hover:bg-green-500/20'
                         }`}
                       type="button"
                     >
@@ -688,12 +688,12 @@ export const RightDock: React.FC<RightDockProps> = ({
                         setDragOverIndex(null);
                       }}
                       className={`rounded border p-3 transition-colors cursor-move ${draggedProbeIndex === index
-                          ? 'opacity-50'
-                          : dragOverIndex === index
-                            ? 'border-cyan-500 bg-cyan-900/30'
-                            : activeProbeId === probe.id
-                              ? 'border-cyan-500/60 bg-cyan-900/20'
-                              : 'border-gray-700/50 bg-gray-800/50 hover:bg-gray-800/80'
+                        ? 'opacity-50'
+                        : dragOverIndex === index
+                          ? 'border-cyan-500 bg-cyan-900/30'
+                          : activeProbeId === probe.id
+                            ? 'border-cyan-500/60 bg-cyan-900/20'
+                            : 'border-gray-700/50 bg-gray-800/50 hover:bg-gray-800/80'
                         }`}
                       onClick={() => handleProbeSelect(probe.id)}
                     >

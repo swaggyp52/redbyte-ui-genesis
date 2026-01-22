@@ -129,307 +129,335 @@ let _store: ReturnType<typeof createWindowStore> | null = null;
 
 function createWindowStore() {
   return create<WindowManagerStore>((set, get) => ({
-  // State
-  windows: [],
-  nextZIndex: 1,
-  snapToGrid: false,
-  gridSize: 20,
+    // State
+    windows: [],
+    nextZIndex: 1,
+    snapToGrid: false,
+    gridSize: 20,
 
-  // Actions
-  createWindow: (opts) => {
-    const state = get();
-    const id = crypto.randomUUID();
+    // Actions
+    createWindow: (opts) => {
+      const state = get();
+      const id = crypto.randomUUID();
 
-    const defaultBounds = {
-      x: 100,
-      y: 100,
-      width: 400,
-      height: 300,
-    };
-
-    // Smart cascade positioning: If position not specified, cascade from existing windows
-    const CASCADE_OFFSET = 30;
-    const MAX_CASCADE = 8; // After 8 cascades, reset to start
-    let defaultX = defaultBounds.x;
-    let defaultY = defaultBounds.y;
-
-    if (opts.x === undefined || opts.y === undefined) {
-      // Count windows for same contentId to determine cascade offset
-      const existingWindows = state.windows.filter(w => w.contentId === opts.contentId);
-      const cascadeIndex = existingWindows.length % MAX_CASCADE;
-
-      defaultX = defaultBounds.x + (cascadeIndex * CASCADE_OFFSET);
-      defaultY = defaultBounds.y + (cascadeIndex * CASCADE_OFFSET);
-    }
-
-    let bounds: WindowBounds = {
-      x: opts.x ?? defaultX,
-      y: opts.y ?? defaultY,
-      width: opts.width ?? defaultBounds.width,
-      height: opts.height ?? defaultBounds.height,
-    };
-
-    // Apply snap-to-grid if enabled
-    if (state.snapToGrid) {
-      bounds = {
-        x: snapToGrid(bounds.x, state.gridSize),
-        y: snapToGrid(bounds.y, state.gridSize),
-        width: snapToGrid(bounds.width, state.gridSize),
-        height: snapToGrid(bounds.height, state.gridSize),
+      const defaultBounds = {
+        x: 100,
+        y: 100,
+        width: 400,
+        height: 300,
       };
-    }
 
-    const newWindow: WindowState = {
-      id,
-      title: opts.title ?? 'Untitled',
-      bounds,
-      mode: 'normal',
-      zIndex: state.nextZIndex,
-      focused: true,
-      resizable: opts.resizable ?? true,
-      minimizable: opts.minimizable ?? true,
-      maximizable: opts.maximizable ?? true,
-      contentId: opts.contentId,
-    };
+      // Get viewport dimensions (safe for SSR)
+      const vw = typeof window !== 'undefined' ? window.innerWidth : 1920;
+      const vh = typeof window !== 'undefined' ? window.innerHeight : 1080;
 
-    setWithInvariants(set, get, (state: WindowManagerState) => ({
-      windows: [
-        ...state.windows.map((w) => ({ ...w, focused: false })),
-        newWindow,
-      ],
-      nextZIndex: state.nextZIndex + 1,
-    }));
+      let width = opts.width ?? defaultBounds.width;
+      let height = opts.height ?? defaultBounds.height;
 
-    return newWindow;
-  },
+      // Clamp size to viewport
+      if (width > vw) width = vw - 40;
+      if (height > vh) height = vh - 40;
 
-  closeWindow: (id) => {
-    setWithInvariants(set, get, (state: WindowManagerState) => ({
-      windows: state.windows.filter((w) => w.id !== id),
-    }));
-  },
+      const CASCADE_OFFSET = 30;
+      const MAX_CASCADE = 8;
 
-  focusWindow: (id) => {
-    setWithInvariants(set, get, (state: WindowManagerState) => {
-      const window = state.windows.find((w) => w.id === id);
-      if (!window) return state;
+      // Default to centered if not cascading
+      let defaultX = Math.max(0, Math.floor((vw - width) / 2));
+      let defaultY = Math.max(0, Math.floor((vh - height) * 0.4));
 
-      return {
-        windows: state.windows.map((w) => ({
-          ...w,
-          focused: w.id === id,
-          zIndex: w.id === id ? state.nextZIndex : w.zIndex,
-          lastFocusedAt: w.id === id ? Date.now() : w.lastFocusedAt, // PHASE_AC: track focus history
-        })),
+      if (opts.x === undefined || opts.y === undefined) {
+        const existingWindows = state.windows.filter(w => w.contentId === opts.contentId);
+        if (existingWindows.length > 0) {
+          // Cascade from the LAST opened window of this type
+          const lastWindow = existingWindows[existingWindows.length - 1];
+          const cascadeIndex = (existingWindows.length) % MAX_CASCADE;
+
+          // If we have a reference window, cascade from IT, otherwise use center + offset
+          // But simple cascade from top-left is standard for OS.
+          // Let's stick to centering for the FIRST window, and cascading for subsequent.
+          // Or simply: center + cascade offset.
+
+          // Logic: First window centers. Subsequent windows offset from the first one?
+          // Actually, existing logic was absolute 100,100 + offset.
+          // Let's make it: Center + offset.
+
+          defaultX = defaultX + (cascadeIndex * CASCADE_OFFSET);
+          defaultY = defaultY + (cascadeIndex * CASCADE_OFFSET);
+        }
+      }
+
+      let bounds: WindowBounds = {
+        x: opts.x ?? defaultX,
+        y: opts.y ?? defaultY,
+        width,
+        height,
+      };
+
+      // Ensure on screen
+      if (bounds.x < 0) bounds.x = 0;
+      if (bounds.y < 0) bounds.y = 0;
+
+      // Apply snap-to-grid if enabled
+      if (state.snapToGrid) {
+        bounds = {
+          x: snapToGrid(bounds.x, state.gridSize),
+          y: snapToGrid(bounds.y, state.gridSize),
+          width: snapToGrid(bounds.width, state.gridSize),
+          height: snapToGrid(bounds.height, state.gridSize),
+        };
+      }
+
+      const newWindow: WindowState = {
+        id,
+        title: opts.title ?? 'Untitled',
+        bounds,
+        mode: 'normal',
+        zIndex: state.nextZIndex,
+        focused: true,
+        resizable: opts.resizable ?? true,
+        minimizable: opts.minimizable ?? true,
+        maximizable: opts.maximizable ?? true,
+        contentId: opts.contentId,
+      };
+
+      setWithInvariants(set, get, (state: WindowManagerState) => ({
+        windows: [
+          ...state.windows.map((w) => ({ ...w, focused: false })),
+          newWindow,
+        ],
         nextZIndex: state.nextZIndex + 1,
-      };
-    });
-  },
+      }));
 
-  moveWindow: (id, x, y) => {
-    set((state) => {
-      const window = state.windows.find((w) => w.id === id);
-      if (!window || window.mode !== 'normal') return state;
+      return newWindow;
+    },
 
-      let newX = x;
-      let newY = y;
+    closeWindow: (id) => {
+      setWithInvariants(set, get, (state: WindowManagerState) => ({
+        windows: state.windows.filter((w) => w.id !== id),
+      }));
+    },
 
-      if (state.snapToGrid) {
-        newX = snapToGrid(x, state.gridSize);
-        newY = snapToGrid(y, state.gridSize);
+    focusWindow: (id) => {
+      setWithInvariants(set, get, (state: WindowManagerState) => {
+        const window = state.windows.find((w) => w.id === id);
+        if (!window) return state;
+
+        return {
+          windows: state.windows.map((w) => ({
+            ...w,
+            focused: w.id === id,
+            zIndex: w.id === id ? state.nextZIndex : w.zIndex,
+            lastFocusedAt: w.id === id ? Date.now() : w.lastFocusedAt, // PHASE_AC: track focus history
+          })),
+          nextZIndex: state.nextZIndex + 1,
+        };
+      });
+    },
+
+    moveWindow: (id, x, y) => {
+      set((state) => {
+        const window = state.windows.find((w) => w.id === id);
+        if (!window || window.mode !== 'normal') return state;
+
+        let newX = x;
+        let newY = y;
+
+        if (state.snapToGrid) {
+          newX = snapToGrid(x, state.gridSize);
+          newY = snapToGrid(y, state.gridSize);
+        }
+
+        return {
+          windows: state.windows.map((w) =>
+            w.id === id
+              ? { ...w, bounds: { ...w.bounds, x: newX, y: newY } }
+              : w
+          ),
+        };
+      });
+    },
+
+    resizeWindow: (id, width, height) => {
+      set((state) => {
+        const window = state.windows.find((w) => w.id === id);
+        if (!window || !window.resizable || window.mode !== 'normal') return state;
+
+        let newWidth = width;
+        let newHeight = height;
+
+        if (state.snapToGrid) {
+          newWidth = snapToGrid(width, state.gridSize);
+          newHeight = snapToGrid(height, state.gridSize);
+        }
+
+        return {
+          windows: state.windows.map((w) =>
+            w.id === id
+              ? { ...w, bounds: { ...w.bounds, width: newWidth, height: newHeight } }
+              : w
+          ),
+        };
+      });
+    },
+
+    setWindowTitle: (id, title) => {
+      set((state) => ({
+        windows: state.windows.map((w) =>
+          w.id === id ? { ...w, title } : w
+        ),
+      }));
+    },
+
+    toggleMinimize: (id) => {
+      setWithInvariants(set, get, (state: WindowManagerState) => {
+        const window = state.windows.find((w) => w.id === id);
+        if (!window || !window.minimizable) return state;
+
+        return {
+          windows: state.windows.map((w) =>
+            w.id === id
+              ? { ...w, mode: w.mode === 'minimized' ? 'normal' : 'minimized', focused: w.mode === 'minimized' ? w.focused : false }
+              : w
+          ),
+        };
+      });
+    },
+
+    toggleMaximize: (id) => {
+      setWithInvariants(set, get, (state: WindowManagerState) => {
+        const window = state.windows.find((w) => w.id === id);
+        if (!window || !window.maximizable) return state;
+
+        return {
+          windows: state.windows.map((w) =>
+            w.id === id
+              ? { ...w, mode: w.mode === 'maximized' ? 'normal' : 'maximized' }
+              : w
+          ),
+        };
+      });
+    },
+
+    restoreWindow: (id) => {
+      setWithInvariants(set, get, (state: WindowManagerState) => ({
+        windows: state.windows.map((w) =>
+          w.id === id ? { ...w, mode: 'normal' } : w
+        ),
+      }));
+    },
+
+    setSnapToGrid: (enabled) => {
+      set({ snapToGrid: enabled });
+    },
+
+    setGridSize: (size) => {
+      set({ gridSize: size });
+    },
+
+    // Layout actions
+    snapWindow: (id, direction, desktopBounds) => {
+      setWithInvariants(set, get, (state: WindowManagerState) => {
+        const window = state.windows.find((w) => w.id === id);
+        if (!window || window.mode === 'minimized') return state;
+
+        let newBounds: WindowBounds;
+        const halfWidth = desktopBounds.width / 2;
+        const halfHeight = desktopBounds.height / 2;
+
+        switch (direction) {
+          case 'left':
+            newBounds = {
+              x: desktopBounds.x,
+              y: desktopBounds.y,
+              width: halfWidth,
+              height: desktopBounds.height,
+            };
+            break;
+          case 'right':
+            newBounds = {
+              x: desktopBounds.x + halfWidth,
+              y: desktopBounds.y,
+              width: halfWidth,
+              height: desktopBounds.height,
+            };
+            break;
+          case 'top':
+            newBounds = {
+              x: desktopBounds.x,
+              y: desktopBounds.y,
+              width: desktopBounds.width,
+              height: halfHeight,
+            };
+            break;
+          case 'bottom':
+            newBounds = {
+              x: desktopBounds.x,
+              y: desktopBounds.y + halfHeight,
+              width: desktopBounds.width,
+              height: halfHeight,
+            };
+            break;
+        }
+
+        return {
+          windows: state.windows.map((w) =>
+            w.id === id
+              ? { ...w, bounds: newBounds, mode: 'normal' as const }
+              : w
+          ),
+        };
+      });
+    },
+
+    centerWindow: (id, desktopBounds) => {
+      setWithInvariants(set, get, (state: WindowManagerState) => {
+        const window = state.windows.find((w) => w.id === id);
+        if (!window || window.mode === 'minimized') return state;
+
+        const defaultWidth = 400;
+        const defaultHeight = 300;
+        const centeredX = desktopBounds.x + (desktopBounds.width - defaultWidth) / 2;
+        const centeredY = desktopBounds.y + (desktopBounds.height - defaultHeight) / 2;
+
+        const newBounds: WindowBounds = {
+          x: centeredX,
+          y: centeredY,
+          width: defaultWidth,
+          height: defaultHeight,
+        };
+
+        return {
+          windows: state.windows.map((w) =>
+            w.id === id
+              ? { ...w, bounds: newBounds, mode: 'normal' as const }
+              : w
+          ),
+        };
+      });
+    },
+
+    // Session actions
+    restoreSession: (windows, nextZIndex) => {
+      set({ windows, nextZIndex });
+      // Check invariants after restore
+      if (process.env.NODE_ENV !== 'production') {
+        assertWindowInvariants(get().windows);
       }
+    },
 
-      return {
-        windows: state.windows.map((w) =>
-          w.id === id
-            ? { ...w, bounds: { ...w.bounds, x: newX, y: newY } }
-            : w
-        ),
-      };
-    });
-  },
+    // Selectors
+    getActiveWindows: () => {
+      return get().windows.filter((w) => w.mode !== 'minimized');
+    },
 
-  resizeWindow: (id, width, height) => {
-    set((state) => {
-      const window = state.windows.find((w) => w.id === id);
-      if (!window || !window.resizable || window.mode !== 'normal') return state;
+    getFocusedWindow: () => {
+      return get().windows.find((w) => w.focused) || null;
+    },
 
-      let newWidth = width;
-      let newHeight = height;
-
-      if (state.snapToGrid) {
-        newWidth = snapToGrid(width, state.gridSize);
-        newHeight = snapToGrid(height, state.gridSize);
-      }
-
-      return {
-        windows: state.windows.map((w) =>
-          w.id === id
-            ? { ...w, bounds: { ...w.bounds, width: newWidth, height: newHeight } }
-            : w
-        ),
-      };
-    });
-  },
-
-  setWindowTitle: (id, title) => {
-    set((state) => ({
-      windows: state.windows.map((w) =>
-        w.id === id ? { ...w, title } : w
-      ),
-    }));
-  },
-
-  toggleMinimize: (id) => {
-    setWithInvariants(set, get, (state: WindowManagerState) => {
-      const window = state.windows.find((w) => w.id === id);
-      if (!window || !window.minimizable) return state;
-
-      return {
-        windows: state.windows.map((w) =>
-          w.id === id
-            ? { ...w, mode: w.mode === 'minimized' ? 'normal' : 'minimized', focused: w.mode === 'minimized' ? w.focused : false }
-            : w
-        ),
-      };
-    });
-  },
-
-  toggleMaximize: (id) => {
-    setWithInvariants(set, get, (state: WindowManagerState) => {
-      const window = state.windows.find((w) => w.id === id);
-      if (!window || !window.maximizable) return state;
-
-      return {
-        windows: state.windows.map((w) =>
-          w.id === id
-            ? { ...w, mode: w.mode === 'maximized' ? 'normal' : 'maximized' }
-            : w
-        ),
-      };
-    });
-  },
-
-  restoreWindow: (id) => {
-    setWithInvariants(set, get, (state: WindowManagerState) => ({
-      windows: state.windows.map((w) =>
-        w.id === id ? { ...w, mode: 'normal' } : w
-      ),
-    }));
-  },
-
-  setSnapToGrid: (enabled) => {
-    set({ snapToGrid: enabled });
-  },
-
-  setGridSize: (size) => {
-    set({ gridSize: size });
-  },
-
-  // Layout actions
-  snapWindow: (id, direction, desktopBounds) => {
-    setWithInvariants(set, get, (state: WindowManagerState) => {
-      const window = state.windows.find((w) => w.id === id);
-      if (!window || window.mode === 'minimized') return state;
-
-      let newBounds: WindowBounds;
-      const halfWidth = desktopBounds.width / 2;
-      const halfHeight = desktopBounds.height / 2;
-
-      switch (direction) {
-        case 'left':
-          newBounds = {
-            x: desktopBounds.x,
-            y: desktopBounds.y,
-            width: halfWidth,
-            height: desktopBounds.height,
-          };
-          break;
-        case 'right':
-          newBounds = {
-            x: desktopBounds.x + halfWidth,
-            y: desktopBounds.y,
-            width: halfWidth,
-            height: desktopBounds.height,
-          };
-          break;
-        case 'top':
-          newBounds = {
-            x: desktopBounds.x,
-            y: desktopBounds.y,
-            width: desktopBounds.width,
-            height: halfHeight,
-          };
-          break;
-        case 'bottom':
-          newBounds = {
-            x: desktopBounds.x,
-            y: desktopBounds.y + halfHeight,
-            width: desktopBounds.width,
-            height: halfHeight,
-          };
-          break;
-      }
-
-      return {
-        windows: state.windows.map((w) =>
-          w.id === id
-            ? { ...w, bounds: newBounds, mode: 'normal' as const }
-            : w
-        ),
-      };
-    });
-  },
-
-  centerWindow: (id, desktopBounds) => {
-    setWithInvariants(set, get, (state: WindowManagerState) => {
-      const window = state.windows.find((w) => w.id === id);
-      if (!window || window.mode === 'minimized') return state;
-
-      const defaultWidth = 400;
-      const defaultHeight = 300;
-      const centeredX = desktopBounds.x + (desktopBounds.width - defaultWidth) / 2;
-      const centeredY = desktopBounds.y + (desktopBounds.height - defaultHeight) / 2;
-
-      const newBounds: WindowBounds = {
-        x: centeredX,
-        y: centeredY,
-        width: defaultWidth,
-        height: defaultHeight,
-      };
-
-      return {
-        windows: state.windows.map((w) =>
-          w.id === id
-            ? { ...w, bounds: newBounds, mode: 'normal' as const }
-            : w
-        ),
-      };
-    });
-  },
-
-  // Session actions
-  restoreSession: (windows, nextZIndex) => {
-    set({ windows, nextZIndex });
-    // Check invariants after restore
-    if (process.env.NODE_ENV !== 'production') {
-      assertWindowInvariants(get().windows);
-    }
-  },
-
-  // Selectors
-  getActiveWindows: () => {
-    return get().windows.filter((w) => w.mode !== 'minimized');
-  },
-
-  getFocusedWindow: () => {
-    return get().windows.find((w) => w.focused) || null;
-  },
-
-  getZOrderedWindows: () => {
-    return [...get().windows].sort((a, b) => a.zIndex - b.zIndex);
-  },
-}));
+    getZOrderedWindows: () => {
+      return [...get().windows].sort((a, b) => a.zIndex - b.zIndex);
+    },
+  }));
 }
 
 // Export lazy-initialized store with same API as direct Zustand hook
