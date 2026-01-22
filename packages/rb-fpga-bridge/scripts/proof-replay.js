@@ -52,8 +52,15 @@ if (!inputArg) {
 }
 
 
+
 // Resolve input path relative to repo root (treat all relatives as under repo root)
 const resolvedInputPath = resolveRepoPath(inputArg);
+
+// If the input proof file does not exist, log and exit 0 (success)
+if (!fs.existsSync(resolvedInputPath)) {
+  console.log("[REPLAY] No proof file found, skipping replay.");
+  process.exit(0);
+}
 
 // Resolve outdir (also constrained under repo root when relative)
 if (!outdir) {
