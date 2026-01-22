@@ -81,6 +81,8 @@ import { ResetWorkspaceModal, ExampleGalleryModal, ExportBundleModal } from '../
 import { ClassroomModeBanner } from '../components/ClassroomModeBanner';
 import { useClassroomModeStore } from '../stores/classroomModeStore';
 import { validateCircuitData } from '../utils/circuitValidation';
+import { StartHerePanel } from '../components/StartHerePanel';
+import { exportEvidence } from '../utils/evidenceExport';
 
 const LOGIC_PLAYGROUND_INVARIANTS = {
   reads: ['circuit_store', 'probe_store', 'file_system', 'examples', 'settings'],
@@ -389,6 +391,11 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showExamplesModal, setShowExamplesModal] = useState(false);
+  const [showStartHere, setShowStartHere] = useState(() => {
+    // Show on first launch unless dismissed
+    if (typeof localStorage === 'undefined') return false;
+    return localStorage.getItem('rb-start-here-dismissed') !== 'true';
+  });
 
   // CE Mode modals
   const [showCEResetModal, setShowCEResetModal] = useState(false);
@@ -563,6 +570,26 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       console.error('Crash recovery error:', error);
     }
   }, []); // Only run once on mount
+
+  // Show Start Here panel on first open
+  useEffect(() => {
+    const dismissed = localStorage.getItem('rb-start-here-dismissed');
+    if (!dismissed) {
+      setShowStartHere(true);
+    }
+  }, []);
+
+  // One-time hint for oscilloscope view discovery
+  useEffect(() => {
+    const hasSeenScopeHint = localStorage.getItem('rb-seen-scope-hint');
+    if (!hasSeenScopeHint && !initialExampleId) {
+      const timer = setTimeout(() => {
+        addToast('💡 Press 4 to open Oscilloscope view and monitor signals', 'info', 6000);
+        localStorage.setItem('rb-seen-scope-hint', '1');
+      }, 2000); // Delay to avoid overwhelming on first load
+      return () => clearTimeout(timer);
+    }
+  }, [initialExampleId, addToast]);
 
   // Milestone D: Register state accessor for determinism recording
   useEffect(() => {
@@ -977,9 +1004,14 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         toggleEditMode();
       }
       // ? to show keyboard shortcuts help
-      if (e.key === '?') {
+      if (e.key === '?' && !e.shiftKey) {
         e.preventDefault();
         setShowKeyboardHelp(true);
+      }
+      // Shift+? to show Start Here panel
+      if (e.key === '?' && e.shiftKey) {
+        e.preventDefault();
+        setShowStartHere(true);
       }
       // Space to show quick add palette
       if (e.key === ' ' && !showQuickAdd && !isReplayMode) {
@@ -2706,6 +2738,22 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     projectFileInputRef.current?.click();
   }, []);
 
+  const handleExportEvidence = useCallback(() => {
+    try {
+      exportEvidence({
+        circuit,
+        selectedExampleId,
+        probes,
+        tickCount,
+        traceRecorder: tickEngine?.getTraceRecorder?.() ?? null,
+      });
+      addToast('Lab evidence exported', 'success');
+    } catch (error) {
+      console.error('[LogicPlayground] Evidence export failed:', error);
+      addToast('Failed to export evidence', 'error');
+    }
+  }, [circuit, selectedExampleId, probes, tickCount, tickEngine, addToast]);
+
   const handleProjectFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
@@ -3027,6 +3075,7 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           onToggleSchematicMini={toggleSchematicMini}
           onManual={() => onOpenApp?.('user-manual')}
           onHelp={() => setShowKeyboardHelp(true)}
+          onStartHere={() => setShowStartHere(true)}
         />
 
         <input
@@ -3618,6 +3667,37 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
             setShowQuickAdd(false);
           }}
           isReplayMode={isReplayMode}
+        />
+
+        {/* Start Here Panel */}
+        <StartHerePanel
+          isOpen={showStartHere}
+          onClose={() => setShowStartHere(false)}
+          onLoadExample={async (exampleId) => {
+            // Load D Flip-Flop example
+            try {
+              const example = await loadExample(exampleId as ExampleId);
+              if (example) {
+                const deserialized = deserialize(example);
+                setCircuit(deserialized);
+                engine.setCircuit(deserialized);
+                tickEngine.setCircuit(deserialized);
+                addToast('Example loaded successfully', 'success');
+              }
+            } catch (error) {
+              console.error('Failed to load example:', error);
+              addToast('Failed to load example', 'error');
+            }
+            setShowStartHere(false);
+          }}
+          onOpenOscilloscope={() => {
+            setPerspective('analyze'); // Analyze perspective shows oscilloscope
+            setRightDockTab('probes');
+            if (rightDockState === 'collapsed') {
+              setRightDockState('expanded');
+            }
+            setShowStartHere(false);
+          }}
         />
 
         {/* CE Mode Modals */}

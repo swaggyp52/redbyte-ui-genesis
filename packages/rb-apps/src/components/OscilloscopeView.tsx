@@ -927,14 +927,14 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
             <span className="text-gray-400 text-xs">Grid</span>
           </label>
 
-          <label className="flex items-center gap-1.5 cursor-pointer">
+          <label className="flex items-center gap-1.5 cursor-pointer" title="Automatically add probes when you select components">
             <input
               type="checkbox"
               checked={autoProbeEnabled}
               onChange={(e) => setAutoProbeEnabled(e.target.checked)}
               className="w-3 h-3"
             />
-            <span className="text-gray-400 text-xs">Auto</span>
+            <span className="text-gray-400 text-xs">Auto-Probe</span>
           </label>
 
           <button
@@ -1094,13 +1094,12 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
                     </button>
                   )}
                 </div>
-                <div><span className="text-cyan-400">Add probes →</span> Monitor signals over time</div>
-                <div><span className="text-cyan-400">Auto-Probe:</span> Auto-add selected nodes</div>
-                <div><span className="text-cyan-400">Click canvas:</span> Place cursor</div>
-                <div><span className="text-cyan-400">Shift+Click:</span> Add 2nd cursor for Δt</div>
-                <div><span className="text-cyan-400">Run circuit:</span> See waveforms</div>
+                <div><span className="text-cyan-400">1. Select a component</span> (click on Switch, LED, etc.)</div>
+                <div><span className="text-cyan-400">2. Enable Auto-Probe</span> (checkbox above) or click "Add Probe" in Properties</div>
+                <div><span className="text-cyan-400">3. Run circuit</span> (press Space) to see waveforms</div>
+                <div><span className="text-cyan-400">4. Toggle inputs</span> to see signal changes</div>
                 <div className="pt-2 border-t border-gray-700 text-gray-500">
-                  Enable Auto-Probe, then select nodes in other views!
+                  💡 Tip: Enable Auto-Probe for fastest workflow!
                 </div>
               </div>
             </div>

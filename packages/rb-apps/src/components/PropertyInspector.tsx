@@ -271,14 +271,14 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                         }
                         className="px-2 py-1 text-[10px] bg-gray-800/70 hover:bg-gray-700 rounded text-gray-200"
                         type="button"
-                        title="Add probe"
+                        title="Add probe to monitor this signal in Oscilloscope (press 4)"
                       >
                         Add Probe
                       </button>
                       <div
                         className={`font-bold text-lg px-3 py-1 rounded-md transition-all ${signal === 1
-                            ? 'bg-green-500/30 text-green-300 shadow-lg shadow-green-500/20 scale-110'
-                            : 'bg-gray-700/50 text-gray-500 scale-100'
+                          ? 'bg-green-500/30 text-green-300 shadow-lg shadow-green-500/20 scale-110'
+                          : 'bg-gray-700/50 text-gray-500 scale-100'
                           }`}
                       >
                         {signal}
@@ -527,8 +527,8 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                 onConnectionDelete(id);
               }}
               className={`w-full px-4 py-3 border border-red-500/30 rounded-lg text-red-400 transition-all font-medium flex items-center justify-center gap-2 group ${isReplayMode
-                  ? 'bg-red-500/5 opacity-60 cursor-not-allowed'
-                  : 'bg-red-500/10 hover:bg-red-500/20 active:bg-red-500/30 hover:text-red-300'
+                ? 'bg-red-500/5 opacity-60 cursor-not-allowed'
+                : 'bg-red-500/10 hover:bg-red-500/20 active:bg-red-500/30 hover:text-red-300'
                 }`}
               disabled={isReplayMode}
               title={isReplayMode ? lockMessage : undefined}

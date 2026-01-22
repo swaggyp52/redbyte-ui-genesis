@@ -54,7 +54,9 @@ interface TopCommandBarProps {
   schematicMiniEnabled?: boolean;
   onToggleSchematicMini?: () => void;
   onHelp: () => void;
+  onStartHere?: () => void;
   onManual?: () => void;
+  onExportEvidence?: () => void;
 
   // Classroom: Reset callbacks
   onResetWorkspace?: () => void;
@@ -91,12 +93,15 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   schematicMiniEnabled,
   onToggleSchematicMini,
   onHelp,
+  onStartHere,
   onManual,
+  onExportEvidence,
   onResetWorkspace,
   onResetLayout,
 }) => {
   const { safeMode, setSafeMode, isComplexityWarning } = useClassroomModeStore();
   const [showResetMenu, setShowResetMenu] = React.useState(false);
+  const [showHelpMenu, setShowHelpMenu] = React.useState(false);
 
   const handleSafeModeToggle = () => {
     setSafeMode(!safeMode);
@@ -201,12 +206,22 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             📚 Examples
           </button>
         )}
+        {onExportEvidence && (
+          <button
+            onClick={onExportEvidence}
+            className="px-3 py-1.5 text-sm bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded font-medium transition-all shadow-lg"
+            title="Export Lab Evidence"
+            data-testid="export-evidence-button"
+          >
+            📋 Export Evidence
+          </button>
+        )}
         {onSave && (
           <button
             onClick={onSave}
             className={`px-3 py-1.5 text-sm rounded transition-all ${isDirty
-                ? 'bg-cyan-600 hover:bg-cyan-500 shadow-lg shadow-cyan-600/30'
-                : 'bg-gray-800 hover:bg-gray-700'
+              ? 'bg-cyan-600 hover:bg-cyan-500 shadow-lg shadow-cyan-600/30'
+              : 'bg-gray-800 hover:bg-gray-700'
               }`}
             title="Save (Ctrl+S)"
           >
@@ -238,8 +253,8 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             onClick={onUndo}
             disabled={!canUndo}
             className={`px-2 py-1.5 text-sm rounded transition-colors ${canUndo
-                ? 'bg-gray-800 hover:bg-gray-700 text-white'
-                : 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
+              ? 'bg-gray-800 hover:bg-gray-700 text-white'
+              : 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
               }`}
             title="Undo (Ctrl+Z)"
           >
@@ -251,8 +266,8 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             onClick={onRedo}
             disabled={!canRedo}
             className={`px-2 py-1.5 text-sm rounded transition-colors ${canRedo
-                ? 'bg-gray-800 hover:bg-gray-700 text-white'
-                : 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
+              ? 'bg-gray-800 hover:bg-gray-700 text-white'
+              : 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
               }`}
             title="Redo (Ctrl+Shift+Z)"
           >
@@ -281,8 +296,8 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           onClick={isRunning ? onPause : onRun}
           data-testid="logic-playground-run"
           className={`px-4 py-2 rounded font-medium text-sm transition-all flex items-center gap-2 ${isRunning
-              ? 'bg-yellow-600 hover:bg-yellow-500 shadow-lg'
-              : 'bg-green-600 hover:bg-green-500 shadow-lg'
+            ? 'bg-yellow-600 hover:bg-yellow-500 shadow-lg'
+            : 'bg-green-600 hover:bg-green-500 shadow-lg'
             }`}
           title={isRunning ? 'Pause' : 'Run'}
         >
@@ -401,8 +416,8 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           <button
             onClick={onToggleSchematicMini}
             className={`px-3 py-2 rounded text-xs transition-all ${schematicMiniEnabled
-                ? 'bg-gray-800 hover:bg-gray-700 text-white'
-                : 'bg-gray-800/50 text-gray-500 hover:text-gray-300 hover:bg-gray-700'
+              ? 'bg-gray-800 hover:bg-gray-700 text-white'
+              : 'bg-gray-800/50 text-gray-500 hover:text-gray-300 hover:bg-gray-700'
               }`}
             title="Toggle circuit mini view"
           >
@@ -416,8 +431,8 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           <button
             onClick={handleSafeModeToggle}
             className={`px-3 py-1.5 rounded text-xs font-semibold transition-all ${safeMode
-                ? 'bg-green-700 hover:bg-green-600 text-white'
-                : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+              ? 'bg-green-700 hover:bg-green-600 text-white'
+              : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
               }`}
             title="Toggle Safe Mode (disables 3D, quad, animations)"
             data-testid="safe-mode-toggle"
@@ -466,13 +481,42 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             Guide
           </button>
         )}
-        <button
-          onClick={onHelp}
-          className="px-3 py-2 bg-purple-700 hover:bg-purple-600 rounded font-bold transition-all"
-          title="Help (?)"
-        >
-          ?
-        </button>
+        {/* Help Menu */}
+        <div className="relative">
+          <button
+            onClick={() => setShowHelpMenu(!showHelpMenu)}
+            className="px-3 py-2 bg-purple-700 hover:bg-purple-600 rounded font-bold transition-all"
+            title="Help (?)"
+          >
+            ?
+          </button>
+          {showHelpMenu && (
+            <div className="absolute right-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded shadow-lg z-50">
+              {onStartHere && (
+                <button
+                  onClick={() => {
+                    onStartHere();
+                    setShowHelpMenu(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-all"
+                  data-testid="help-start-here"
+                >
+                  🚀 Start Here
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  onHelp();
+                  setShowHelpMenu(false);
+                }}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-all border-t border-gray-700"
+                data-testid="help-keyboard-shortcuts"
+              >
+                ⌨️ Keyboard Shortcuts
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
