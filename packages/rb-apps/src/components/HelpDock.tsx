@@ -35,7 +35,8 @@ export type HelpSectionId =
   | 'circuit-controls'
   | 'schematic-controls'
   | 'scope-controls'
-  | '3d-controls';
+  | '3d-controls'
+  | 'code-controls';
 
 const CONTROL_SECTIONS: Record<
   HelpSectionId,
@@ -83,10 +84,19 @@ const CONTROL_SECTIONS: Record<
       'Use Fit to re-center the scene',
     ],
   },
+  'code-controls': {
+    title: 'Code Controls',
+    summary: 'Export HDL output from your circuit.',
+    items: [
+      'Select Verilog or JSON formats from the dropdown',
+      'LIB/XDC toggles include primitives or constraints',
+      'Copy and Download export the current code view',
+    ],
+  },
 };
 
 const COMMON_SHORTCUTS = [
-  'Layout: 1-5 presets, Shift+1-4 single views',
+  'Layout: 1-5 single views, Shift+1-4 workflows, Shift+5 quad',
   'Probes: Right-click ports to toggle, Shift+P opens Probes tab',
   'Inspector: Use Add Probe on live signals to pin outputs',
 ];

@@ -614,7 +614,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
       {/* Compact header */}
       <div className="px-3 py-2 flex items-center justify-between border-b border-gray-700 shrink-0">
         <div>
-          <h2 className="text-sm font-semibold text-white">dY"? Schematic View</h2>
+          <h2 className="text-sm font-semibold text-white">Schematic View</h2>
           <div className="text-[10px] text-gray-500">IEEE/ANSI symbols</div>
         </div>
         <div className="flex items-center gap-2">
@@ -647,7 +647,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
             )}
           </div>
           <div className="text-xs text-gray-400">
-            {circuit.nodes.length} components ??? {circuit.connections.length} connections
+            {circuit.nodes.length} components | {circuit.connections.length} connections
           </div>
         </div>
       </div>

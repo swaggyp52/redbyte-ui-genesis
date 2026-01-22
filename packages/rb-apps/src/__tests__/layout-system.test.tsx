@@ -33,6 +33,11 @@ describe('Layout System', () => {
     useLayoutStore.getState().setPerspective('scope-only');
     expect(useLayoutStore.getState().activeViews).toEqual(['oscilloscope']);
     expect(useLayoutStore.getState().splitScreenMode).toBe('single');
+
+    // Switch to code-only (single view)
+    useLayoutStore.getState().setPerspective('code-only');
+    expect(useLayoutStore.getState().activeViews).toEqual(['code']);
+    expect(useLayoutStore.getState().splitScreenMode).toBe('single');
   });
 
   // Test 2: Persistence - set layout → reload → restores layout
@@ -78,7 +83,12 @@ describe('Layout System', () => {
     expect(useLayoutStore.getState().perspective).toBe('scope-only');
     expect(useLayoutStore.getState().activeViews).toEqual(['oscilloscope']);
 
-    // Simulate pressing "5" key (quad)
+    // Simulate pressing "5" key (code-only)
+    useLayoutStore.getState().setPerspective('code-only');
+    expect(useLayoutStore.getState().perspective).toBe('code-only');
+    expect(useLayoutStore.getState().activeViews).toEqual(['code']);
+
+    // Simulate pressing Shift+5 (quad)
     useLayoutStore.getState().setPerspective('quad');
     expect(useLayoutStore.getState().perspective).toBe('quad');
     expect(useLayoutStore.getState().activeViews).toEqual(['circuit', 'schematic', '3d', 'oscilloscope']);

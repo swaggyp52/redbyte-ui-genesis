@@ -1,5 +1,4 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
-// Use without permission prohibited.
+// Copyright (c) 2025 Connor Angiel
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useMemo, useState, useCallback } from 'react';
@@ -23,6 +22,12 @@ const FORMAT_OPTIONS: { value: CodeFormat; label: string; description: string }[
   { value: 'verilog-synthesizable', label: 'Verilog (Synthesizable)', description: 'For FPGA synthesis' },
   { value: 'netlist-json', label: 'Netlist JSON', description: 'Raw netlist data' },
 ];
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 
 export const CodeView: React.FC<CodeViewProps> = ({
   circuit,
@@ -66,61 +71,67 @@ export const CodeView: React.FC<CodeViewProps> = ({
     }
   }, [circuit, format]);
 
+  const displayCode = useMemo(() => {
+    let text = code;
+    if (showPrimitives && primitivesCode) {
+      text += '\n\n// === PRIMITIVES LIBRARY ===\n\n' + primitivesCode;
+    }
+    if (showConstraints && constraintsCode) {
+      text += '\n\n// === CONSTRAINTS (XDC) ===\n\n' + constraintsCode;
+    }
+    return text;
+  }, [code, primitivesCode, constraintsCode, showPrimitives, showConstraints]);
+
   const handleCopy = useCallback(async () => {
     try {
-      let textToCopy = code;
-      if (showPrimitives && primitivesCode) {
-        textToCopy += '\n\n// === PRIMITIVES LIBRARY ===\n\n' + primitivesCode;
-      }
-      if (showConstraints && constraintsCode) {
-        textToCopy += '\n\n// === CONSTRAINTS (XDC) ===\n\n' + constraintsCode;
-      }
-      await navigator.clipboard.writeText(textToCopy);
+      await navigator.clipboard.writeText(displayCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard API may fail in some environments
     }
-  }, [code, primitivesCode, constraintsCode, showPrimitives, showConstraints]);
+  }, [displayCode]);
 
   const handleDownload = useCallback(() => {
     const extension = format === 'netlist-json' ? 'json' : 'v';
     const filename = `circuit.${extension}`;
-    const blob = new Blob([code], { type: 'text/plain' });
+    const blob = new Blob([displayCode], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-  }, [code, format]);
+  }, [displayCode, format]);
 
-  // Simple syntax highlighting for Verilog
+  // Simple syntax highlighting for Verilog/JSON
   const highlightedCode = useMemo(() => {
+    const escaped = escapeHtml(displayCode);
+
     if (format === 'netlist-json') {
-      // JSON highlighting
-      return code
-        .replace(/(".*?")/g, '<span class="text-green-400">$1</span>')
-        .replace(/\b(true|false|null)\b/g, '<span class="text-purple-400">$1</span>')
-        .replace(/\b(\d+)\b/g, '<span class="text-cyan-400">$1</span>');
+      const jsonToken = /(".*?")|\b(true|false|null)\b|\b(\d+)\b/g;
+      return escaped.replace(jsonToken, (match, stringLit, boolLit, numberLit) => {
+        if (stringLit) return `<span class="text-green-400">${stringLit}</span>`;
+        if (boolLit) return `<span class="text-purple-400">${boolLit}</span>`;
+        if (numberLit) return `<span class="text-cyan-400">${numberLit}</span>`;
+        return match;
+      });
     }
 
-    // Verilog highlighting
-    return code
-      .replace(/(\/\/.*)/g, '<span class="text-gray-500">$1</span>')
-      .replace(/\b(module|endmodule|input|output|wire|reg|assign|always|begin|end|posedge|negedge)\b/g, '<span class="text-purple-400">$1</span>')
-      .replace(/\b(if|else|case|endcase|for|while)\b/g, '<span class="text-pink-400">$1</span>')
-      .replace(/(`timescale|`define|`include)/g, '<span class="text-cyan-400">$1</span>')
-      .replace(/\b(\d+'[bdh]\w+|\d+)\b/g, '<span class="text-orange-400">$1</span>');
-  }, [code, format]);
-
-  const displayedCode = showPrimitives && primitivesCode
-    ? code + '\n\n// === PRIMITIVES LIBRARY ===\n\n' + primitivesCode
-    : code;
-
-  const finalDisplayCode = showConstraints && constraintsCode
-    ? displayedCode + '\n\n// === CONSTRAINTS (XDC) ===\n\n' + constraintsCode
-    : displayedCode;
+    const verilogToken =
+      /(\/\/.*)|\b(module|endmodule|input|output|wire|reg|assign|always|begin|end|posedge|negedge)\b|\b(if|else|case|endcase|for|while)\b|(`timescale|`define|`include)|\b(\d+'[bdh]\w+|\d+)\b/g;
+    return escaped.replace(
+      verilogToken,
+      (match, comment, keyword, flow, directive, numberLit) => {
+        if (comment) return `<span class="text-gray-500">${comment}</span>`;
+        if (keyword) return `<span class="text-purple-400">${keyword}</span>`;
+        if (flow) return `<span class="text-pink-400">${flow}</span>`;
+        if (directive) return `<span class="text-cyan-400">${directive}</span>`;
+        if (numberLit) return `<span class="text-orange-400">${numberLit}</span>`;
+        return match;
+      }
+    );
+  }, [displayCode, format]);
 
   return (
     <div className="w-full h-full bg-gray-900 flex flex-col overflow-hidden">
@@ -217,8 +228,9 @@ export const CodeView: React.FC<CodeViewProps> = ({
                     onClick={onDismissHints}
                     className="text-gray-500 hover:text-gray-300 transition-colors"
                     title="Dismiss hints"
+                    type="button"
                   >
-                    ✕
+                    x
                   </button>
                 )}
               </div>
@@ -233,33 +245,17 @@ export const CodeView: React.FC<CodeViewProps> = ({
         )}
 
         {/* Code editor area */}
-        <div className="absolute inset-0 overflow-auto p-4 font-mono text-xs">
+        <div className="absolute inset-0 overflow-auto py-4 pr-4 pl-12 font-mono text-xs">
           <pre
-            className="text-gray-200 whitespace-pre-wrap"
+            className="text-gray-200 whitespace-pre leading-5"
             dangerouslySetInnerHTML={{ __html: highlightedCode }}
           />
-          {showPrimitives && primitivesCode && (
-            <>
-              <div className="my-4 border-t border-gray-700 pt-4">
-                <div className="text-cyan-400 font-semibold mb-2">// === PRIMITIVES LIBRARY ===</div>
-                <pre className="text-gray-200 whitespace-pre-wrap">{primitivesCode}</pre>
-              </div>
-            </>
-          )}
-          {showConstraints && constraintsCode && (
-            <>
-              <div className="my-4 border-t border-gray-700 pt-4">
-                <div className="text-cyan-400 font-semibold mb-2">// === CONSTRAINTS (XDC) ===</div>
-                <pre className="text-gray-200 whitespace-pre-wrap">{constraintsCode}</pre>
-              </div>
-            </>
-          )}
         </div>
 
         {/* Line numbers gutter */}
         <div className="absolute top-0 left-0 w-10 h-full bg-gray-850 border-r border-gray-700 overflow-hidden pointer-events-none">
-          <div className="p-4 font-mono text-xs text-gray-600 select-none">
-            {finalDisplayCode.split('\n').map((_, i) => (
+          <div className="p-4 font-mono text-xs text-gray-600 select-none leading-5">
+            {displayCode.split('\n').map((_, i) => (
               <div key={i} className="text-right pr-2">{i + 1}</div>
             ))}
           </div>
@@ -273,7 +269,7 @@ export const CodeView: React.FC<CodeViewProps> = ({
             {FORMAT_OPTIONS.find(o => o.value === format)?.description}
           </span>
           <span className="text-gray-500">
-            {circuit.nodes.length} nodes • {circuit.connections.length} wires • {code.split('\n').length} lines
+            {circuit.nodes.length} nodes | {circuit.connections.length} wires | {displayCode.split('\n').length} lines
           </span>
         </div>
       </div>

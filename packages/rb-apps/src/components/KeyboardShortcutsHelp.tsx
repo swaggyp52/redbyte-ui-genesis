@@ -34,6 +34,8 @@ export const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({ is
       { keys: `${modKey}+0`, description: 'Reset zoom to 100%' },
       { keys: 'Scroll', description: 'Zoom in/out' },
       { keys: 'Shift+Drag', description: 'Pan view' },
+      { keys: '1-5', description: 'Single-view layouts (Circuit/Schematic/Scope/3D/Code)' },
+      { keys: 'Shift+1-5', description: 'Workflow layouts (Build/Explain/Analyze/Explore/Quad)' },
     ]},
     { category: 'Dock & Panels', items: [
       { keys: `${modKey}+1..6`, description: 'Switch right dock tabs' },

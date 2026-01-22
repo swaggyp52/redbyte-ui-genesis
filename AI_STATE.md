@@ -6001,3 +6001,9 @@ Commits:
 ## Change Log  2026-01-20
 
 - Added Spartan-3E stub generator support in rb-fpga-toolchain (ISE project skeleton, constraints copy, deterministic outputs) with tests; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-21
+
+- Added HDL Code view wiring: introduced `code-only` layout preset, code view renderer, and layout dropdown/shortcut updates to expose the new view; objectives unchanged; phase unchanged.
+- Hardened Code view rendering (safe highlighting, line-number gutter, copy/download alignment) and added layout help/docs updates for new shortcuts; objectives unchanged; phase unchanged.
+- Corrected Schematic view header text corruption and layout stats display; objectives unchanged; phase unchanged.

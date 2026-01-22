@@ -976,7 +976,7 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       }
       if (e.key === '5' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
-        setPerspective('quad');
+        setPerspective('code-only');
       }
 
       // Shift+Number for workflow layouts
@@ -995,6 +995,10 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       if (e.key === '$' && e.shiftKey) { // Shift+4
         e.preventDefault();
         setPerspective('explore');
+      }
+      if (e.key === '%' && e.shiftKey) { // Shift+5
+        e.preventDefault();
+        setPerspective('quad');
       }
     };
 
@@ -2366,7 +2370,7 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
       if (project.layout?.perspectiveId) {
         const perspectiveId = project.layout.perspectiveId;
-        const validPerspectives = ['build', 'analyze', 'explain', 'explore', 'quad', 'circuit-only', 'schematic-only', 'scope-only', '3d-only', 'inspect', 'debug', 'schematic', 'learn'] as const;
+        const validPerspectives = ['build', 'analyze', 'explain', 'explore', 'quad', 'circuit-only', 'schematic-only', 'scope-only', '3d-only', 'code-only', 'inspect', 'debug', 'schematic', 'learn'] as const;
         if ((validPerspectives as readonly string[]).includes(perspectiveId)) {
           setPerspective(perspectiveId as PerspectiveId);
         }
@@ -2557,6 +2561,9 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           return;
         case 'playground-layout-3d-only':
           setPerspective('3d-only');
+          return;
+        case 'playground-layout-code-only':
+          setPerspective('code-only');
           return;
         case 'playground-dock-info':
           setRightDockTab('inspector');

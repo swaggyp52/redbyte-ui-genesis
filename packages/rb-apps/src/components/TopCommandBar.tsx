@@ -373,7 +373,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           }}
           data-testid="logic-playground-perspective"
           className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 focus:border-cyan-500 focus:outline-none transition-colors cursor-pointer"
-          title="Switch layout (1-5, Shift+1-4)"
+          title="Switch layout (1-5, Shift+1-5)"
         >
           <optgroup label="Workflow Layouts">
             <option value="build">🔧 Build</option>
@@ -387,6 +387,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             <option value="schematic-only">📐 Schematic Only</option>
             <option value="scope-only">📊 Scope Only</option>
             <option value="3d-only" disabled={safeMode || isComplexityWarning}>🧊 3D Only {(safeMode || isComplexityWarning) && '(disabled)'}</option>
+            <option value="code-only">Code Only</option>
           </optgroup>
           <optgroup label="Legacy">
             <option value="inspect">🔍 Inspect</option>
