@@ -16,6 +16,18 @@ export { LogicNandIcon } from './LogicNandIcon';
 export { LogicNorIcon } from './LogicNorIcon';
 export { LogicXnorIcon } from './LogicXnorIcon';
 
+// Logic component icons
+export { SwitchIcon } from './SwitchIcon';
+export { InputPortIcon } from './InputPortIcon';
+export { OutputPortIcon } from './OutputPortIcon';
+export { LampIcon } from './LampIcon';
+export { ClockIcon } from './ClockIcon';
+export { DelayIcon } from './DelayIcon';
+export { LatchIcon } from './LatchIcon';
+export { FlipFlopIcon } from './FlipFlopIcon';
+export { AdderIcon } from './AdderIcon';
+export { CounterIcon } from './CounterIcon';
+
 // Dock/taskbar application icons
 export { TerminalIcon } from './TerminalIcon';
 export { FolderIcon } from './FolderIcon';

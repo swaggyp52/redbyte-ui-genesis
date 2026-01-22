@@ -86,6 +86,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const snapToGridEnabled = useLogicViewStore((state) => state.snapToGrid);
   const toolMode = useLogicViewStore((state) => state.toolMode);
   const gridSize = useLogicViewStore((state) => state.gridSize);
+  const interactionMode = useLogicViewStore((state) => state.interactionMode);
 
   // Get action functions separately (these are stable)
   const setCamera = useLogicViewStore((state) => state.setCamera);
@@ -99,6 +100,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const endWire = useLogicViewStore((state) => state.endWire);
   const selectMultipleNodes = useLogicViewStore((state) => state.selectMultipleNodes);
   const setToolMode = useLogicViewStore((state) => state.setToolMode);
+  const setInteractionMode = useLogicViewStore((state) => state.setInteractionMode);
 
   const zoomFn = zoom;
   const shouldSnap = snapToGridEnabled;
@@ -334,22 +336,31 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const [showFirstWireToast, setShowFirstWireToast] = React.useState(false);
 
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+    // Gate interactions - don't allow new interactions while dragging nodes
+    if (interactionMode === 'dragging') return;
+
     if (e.button === 1 || isSpacePressed) {
-      // Middle mouse or space+drag for panning
-      setIsPanning(true);
-      setLastMouse({ x: e.clientX, y: e.clientY });
-      e.preventDefault(); // Prevent text selection during space-pan
+      // Middle mouse or space+drag for panning - only if not already in another mode
+      if (interactionMode === 'idle' || interactionMode === 'wiring') {
+        setIsPanning(true);
+        setInteractionMode('panning');
+        setLastMouse({ x: e.clientX, y: e.clientY });
+        e.preventDefault(); // Prevent text selection during space-pan
+      }
     } else if (e.button === 2) {
       // Right-click cancels wire
-      if (editingState.wireStartPort) {
+      if (interactionMode === 'wiring' && editingState.wireStartPort) {
         e.preventDefault();
         endWire();
       }
     } else if (e.button === 0 && !isSpacePressed) {
-      // Left click on background clears selection and cancels wire
-      clearSelection();
-      if (editingState.wireStartPort) {
+      // Left click on background
+      if (interactionMode === 'wiring') {
+        // Cancel wire if clicking on empty space
         endWire();
+      } else if (interactionMode === 'idle') {
+        // Clear selection when clicking background
+        clearSelection();
       }
     }
   };
@@ -357,7 +368,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const [mousePosition, setMousePosition] = React.useState({ x: 0, y: 0 });
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (isPanning) {
+    // Only pan if in panning mode
+    if (interactionMode === 'panning' && isPanning) {
       const dx = e.clientX - lastMouse.x;
       const dy = e.clientY - lastMouse.y;
       pan(dx, dy);
@@ -383,7 +395,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   };
 
   const handleMouseUp = () => {
-    setIsPanning(false);
+    if (isPanning) {
+      setIsPanning(false);
+      setInteractionMode('idle');
+    }
   };
 
   const handleNodeMove = React.useCallback((nodeId: string, x: number, y: number) => {
@@ -466,7 +481,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
   const handlePortClick = React.useCallback((nodeId: string, portName: string) => {
     if (isReplayMode) return;
-    if (editingState.wireStartPort) {
+    // Don't allow port interactions while panning or dragging
+    if (interactionMode === 'panning' || interactionMode === 'dragging') return;
+
+    if (interactionMode === 'wiring' && editingState.wireStartPort) {
       // End wire - validate connection first
       const from = editingState.wireStartPort;
       const to = { nodeId, portName };
@@ -488,7 +506,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       };
 
       commitCircuit(updatedCircuit);
-      endWire();
+      endWire(); // This sets interactionMode back to 'idle'
 
       // Show first-wire toast if this is the user's first wire
       const hasSeenFirstWireToast = localStorage.getItem('rb-logic-view:hasSeenFirstWireToast');
@@ -498,11 +516,11 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         // Auto-hide after 4 seconds
         setTimeout(() => setShowFirstWireToast(false), 4000);
       }
-    } else {
-      // Start wire
-      startWire({ nodeId, portName });
+    } else if (interactionMode === 'idle') {
+      // Start wire - only from idle state
+      startWire({ nodeId, portName }); // This sets interactionMode to 'wiring'
     }
-  }, [circuit, editingState.wireStartPort, commitCircuit, endWire, startWire, getChipMetadata, isReplayMode]);
+  }, [circuit, editingState.wireStartPort, commitCircuit, endWire, startWire, getChipMetadata, isReplayMode, interactionMode]);
 
   const handleAddNode = React.useCallback((type: string) => {
     if (isReplayMode) return;

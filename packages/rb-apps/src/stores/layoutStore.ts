@@ -17,6 +17,7 @@ export type PerspectiveId =
   | 'schematic-only'  // Schematic only
   | 'scope-only'      // Oscilloscope only
   | '3d-only'         // 3D only
+  | 'code-only'       // HDL Code View only
   // Legacy perspectives (kept for compatibility)
   | 'inspect'
   | 'debug'
@@ -123,6 +124,13 @@ const PERSPECTIVE_PRESETS: Record<
   '3d-only': {
     splitScreenMode: 'single',
     activeViews: ['3d'],
+    rightDockState: 'collapsed',
+    rightDockTab: 'inspector',
+    showHelpDock: false,
+  },
+  'code-only': {
+    splitScreenMode: 'single',
+    activeViews: ['code'],
     rightDockState: 'collapsed',
     rightDockTab: 'inspector',
     showHelpDock: false,

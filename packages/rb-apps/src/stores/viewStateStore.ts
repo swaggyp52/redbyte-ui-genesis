@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 
 export type SplitScreenMode = 'single' | 'horizontal' | 'vertical' | 'quad';
-export type ViewMode = 'circuit' | 'schematic' | 'oscilloscope' | '3d';
+export type ViewMode = 'circuit' | 'schematic' | 'oscilloscope' | '3d' | 'code';
 
 // Helper to check if two Sets have the same contents
 function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {

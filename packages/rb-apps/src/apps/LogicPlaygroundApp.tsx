@@ -47,7 +47,7 @@ import { useViewStateStore } from '../stores/viewStateStore';
 import { useProbeStore } from '../stores/probeStore';
 import { useLayoutStore, type PerspectiveId } from '../stores/layoutStore';
 import { useOscilloscopeStore } from '../stores/oscilloscopeStore';
-import { calculateFitToView, setGlobalViewStateSync, useLogicViewStore } from '@redbyte/rb-logic-view';
+import { calculateFitToView, setGlobalViewStateSync, useLogicViewStore, screenToWorld, snapToGrid } from '@redbyte/rb-logic-view';
 import { useHierarchyStore } from '../stores/hierarchyStore';
 import { buildProbeWireHighlights } from '../utils/probeHighlight';
 import { useRunRecorderStore } from '../stores/runRecorderStore';
@@ -1725,22 +1725,32 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       return;
     }
 
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // Get screen coordinates relative to canvas
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
 
     // Validate calculated position
-    if (isNaN(x) || isNaN(y)) {
+    if (isNaN(screenX) || isNaN(screenY)) {
       setDraggingNodeType(null);
       setDragPosition(null);
       return;
     }
+
+    // Get current camera state and convert screen to world coordinates
+    const viewStore = useLogicViewStore as any;
+    const { camera, snapToGrid: shouldSnap, gridSize } = viewStore.getState();
+    const worldPos = screenToWorld(screenX, screenY, camera);
+
+    // Optionally snap to grid
+    const finalX = shouldSnap ? snapToGrid(worldPos.x, gridSize) : worldPos.x;
+    const finalY = shouldSnap ? snapToGrid(worldPos.y, gridSize) : worldPos.y;
 
     // Create new node at drop position with correct structure
     const defaultConfig = draggingNodeType === 'Clock' ? { period: 10 } : {};
     const newNode = {
       id: `${draggingNodeType.toLowerCase()}-${Date.now()}`,
       type: draggingNodeType,
-      position: { x, y },
+      position: { x: finalX, y: finalY },
       rotation: 0,
       config: defaultConfig,
       state: {},

@@ -12,6 +12,7 @@ export type {
   Camera,
   Selection,
   ToolMode,
+  InteractionMode,
   EditingState,
   LogicViewState,
 } from './useLogicViewStore';

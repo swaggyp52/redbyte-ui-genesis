@@ -55,6 +55,12 @@ export interface Selection {
 
 export type ToolMode = 'select' | 'wire' | 'pan';
 
+/**
+ * Interaction mode is the single source of truth for what the user is currently doing.
+ * Only ONE mode can be active at a time. This prevents conflicting handlers.
+ */
+export type InteractionMode = 'idle' | 'placing' | 'dragging' | 'wiring' | 'panning';
+
 export interface EditingState {
   wireStartPort?: PortRef;
   isDragging: boolean;
@@ -76,9 +82,16 @@ export interface LogicViewState {
   clearSelection: () => void;
   selectMultipleNodes: (nodeIds: string[], syncToGlobal?: boolean) => void;
 
-  // Tool mode
+  // Tool mode (legacy, kept for toolbar compatibility)
   toolMode: ToolMode;
   setToolMode: (mode: ToolMode) => void;
+
+  // Interaction mode - THE source of truth for current user interaction
+  interactionMode: InteractionMode;
+  setInteractionMode: (mode: InteractionMode) => void;
+
+  // Helper to check if an interaction can start
+  canStartInteraction: (mode: InteractionMode) => boolean;
 
   // Editing state
   editingState: EditingState;
@@ -249,9 +262,22 @@ function createLogicViewStore() {
         };
       }),
 
-    // Tool mode
+    // Tool mode (legacy, kept for toolbar compatibility)
     toolMode: 'select',
     setToolMode: (mode) => set({ toolMode: mode }),
+
+    // Interaction mode - single source of truth
+    interactionMode: 'idle' as InteractionMode,
+    setInteractionMode: (mode: InteractionMode) => set({ interactionMode: mode }),
+
+    // Helper to check if an interaction can start (only when idle)
+    canStartInteraction: (mode: InteractionMode) => {
+      const current = get().interactionMode;
+      // Can always transition to idle
+      if (mode === 'idle') return true;
+      // Can only start a new interaction from idle
+      return current === 'idle';
+    },
 
     // Editing state
     editingState: {
@@ -266,6 +292,7 @@ function createLogicViewStore() {
     startWire: (port) =>
       set((state) => ({
         toolMode: 'wire',
+        interactionMode: 'wiring' as InteractionMode,
         editingState: {
           ...state.editingState,
           wireStartPort: port,
@@ -275,6 +302,7 @@ function createLogicViewStore() {
     endWire: () =>
       set((state) => ({
         toolMode: 'select',
+        interactionMode: 'idle' as InteractionMode,
         editingState: {
           ...state.editingState,
           wireStartPort: undefined,

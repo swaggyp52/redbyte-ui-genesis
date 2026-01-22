@@ -11,6 +11,7 @@ const Logic3DSceneLazy = React.lazy(() =>
 );
 import { SchematicView } from './SchematicView';
 import { OscilloscopeView } from './OscilloscopeView';
+import { CodeView } from './CodeView';
 import { CircuitToolStrip } from './CircuitToolStrip';
 import type { SplitScreenMode, ViewMode } from '../stores/viewStateStore';
 import { useViewStateStore } from '../stores/viewStateStore';
@@ -108,6 +109,7 @@ const VIEW_METADATA = {
   schematic: { icon: '📐', label: 'Schematic View', color: 'blue' },
   '3d': { icon: '🧊', label: '3D View', color: 'purple' },
   oscilloscope: { icon: '📊', label: 'Oscilloscope', color: 'green' },
+  code: { icon: '📝', label: 'HDL Code', color: 'yellow' },
 } as const;
 
 const ViewRenderer: React.FC<ViewRendererProps> = ({
@@ -406,6 +408,18 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
             </div>
           );
         }
+
+      case 'code':
+        return (
+          <div ref={containerRef} style={containerStyle}>
+            <CodeView
+              circuit={circuit}
+              width={dimensions.width}
+              height={dimensions.height}
+              onHelp={onHelpOpen ? () => onHelpOpen('code-controls') : undefined}
+            />
+          </div>
+        );
 
       default:
         return (
