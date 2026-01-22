@@ -47,7 +47,7 @@ import { useViewStateStore } from '../stores/viewStateStore';
 import { useProbeStore } from '../stores/probeStore';
 import { useLayoutStore, type PerspectiveId } from '../stores/layoutStore';
 import { useOscilloscopeStore } from '../stores/oscilloscopeStore';
-import { calculateFitToView, setGlobalViewStateSync, useLogicViewStore, screenToWorld, snapToGrid } from '@redbyte/rb-logic-view';
+import { calculateFitToView, setGlobalViewStateSync, useLogicViewStore, screenToWorld, snapToGrid, findSmartSpawnPosition } from '@redbyte/rb-logic-view';
 import { useHierarchyStore } from '../stores/hierarchyStore';
 import { buildProbeWireHighlights } from '../utils/probeHighlight';
 import { useRunRecorderStore } from '../stores/runRecorderStore';
@@ -270,12 +270,31 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       return;
     }
 
-    const pos = position ?? getDefaultAddPosition();
+    let pos = position;
+    if (!pos) {
+      // Calculate center of view effectively
+      // We don't have direct access to camera here usually, but we can get it from store
+      // LogicCanvas uses useLogicViewStore.
+      const viewState = useLogicViewStore.getState();
+      const camera = viewState.camera;
+      // Assuming standard 800x600 viewport approximate if width/height not available, 
+      // or we can just spawn at (0,0) world coords corrected for camera
+      // The view usually centers (0,0) initially.
+      // Let's rely on camera being accurate.
+      // Note: LogicPlayground doesn't know exact canvas dimensions easily here without ref.
+      // But we can approximate or just use world (0,0) as base.
+
+      const centerX = -camera.x / camera.zoom;
+      const centerY = -camera.y / camera.zoom;
+
+      pos = findSmartSpawnPosition(circuit.nodes, { x: centerX, y: centerY });
+    }
+
     storeAddNode(nodeType, pos);
 
     // Nice-to-have feedback for keyboard/click add
     // addToast(`Added ${nodeType}`, 'success', 1000); 
-  }, [circuit.nodes.length, storeAddNode, addToast]);
+  }, [circuit.nodes, storeAddNode, addToast]);
 
 
 
@@ -1328,12 +1347,27 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
 
 
+
+  // Helper to strictly reset all ephemeral app stores to prevent state leaks
+  const resetAppStores = useCallback(() => {
+    // 1. Clear Probes
+    useProbeStore.getState().clearProbes();
+    // 2. Clear Oscilloscope history/view
+    useOscilloscopeStore.getState().requestClear();
+    // 3. Reset Run Recorder/Replay state
+    useRunRecorderStore.getState().reset();
+    // 4. Reset UI tick (visual sync)
+    useUiTickStore.setState({ uiTick: 0 });
+    // 5. Clear global selection (pre-emptively)
+    useLogicViewStore.getState().clearSelection();
+  }, []);
+
   const handleNew = () => {
     // New phrasing: "Creating a new project will discard your current unsaved circuit. Are you sure?"
     if (!confirmReplacement('Creating a new project')) return;
 
-    // FIX (P1): Clear selection first to prevent 'getSnapshot' null crash due to zombie selection
-    useLogicViewStore.getState().clearSelection();
+    // FIX (P1): Reset all auxiliary stores (probes, recorder, scope)
+    resetAppStores();
 
     // Set hydration guard to prevent marking dirty during load
     isHydratingRef.current = true;
@@ -1937,6 +1971,9 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     // Set hydration guard to prevent marking dirty during load
     isHydratingRef.current = true;
 
+    // Reset stores before loading file
+    resetAppStores();
+
     // Parse the file content (JSON string) to get the serialized circuit
     const serialized: SerializedCircuitV1 = file.content
       ? JSON.parse(file.content)
@@ -2084,6 +2121,10 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     try {
       // Set hydration guard to prevent marking dirty during load
       isHydratingRef.current = true;
+
+      // Ensure clean state before loading example
+      resetAppStores();
+
       let exampleToLoad: ExampleId = exampleId as ExampleId;
       // CPU lite mode: swap heavy CPU for a lightweight counter and show a banner
       if (exampleToLoad === '05_simple-cpu' && e2eCpuLite) {
@@ -2156,6 +2197,12 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
       seedExampleProbes(exampleToLoad, loadedCircuit);
       if (exampleToLoad === '11_d-flipflop' || exampleToLoad === '04_4bit-counter') {
         setPerspective('debug');
+      }
+
+      // UX Polish: Auto-start simulation for examples so they feel "alive" immediately
+      setIsRunning(true);
+      if (tickEngineRef.current) {
+        tickEngineRef.current.start();
       }
 
       // Clear pattern recognition state
@@ -2459,6 +2506,10 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const handleClearURLAndReset = () => {
     // Clear URL parameter
     window.history.replaceState({}, '', window.location.pathname);
+
+    resetAppStores();
+    useCircuitStore.getState().reset(); // Ensure detailed history reset too
+
     // Reset to empty circuit
     const emptyCircuit: Circuit = { nodes: [], connections: [] };
     setCircuit(emptyCircuit);
@@ -2543,6 +2594,8 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   const applyProject = useCallback(
     (project: RBProject) => {
       isHydratingRef.current = true;
+      resetAppStores(); // Clear everything before applying project state
+
       const nextCircuit = project.circuit ?? { nodes: [], connections: [] };
       const nextTickRate = project.meta?.tickRate ?? tickRate;
       const newEngine = new CircuitEngine(nextCircuit);

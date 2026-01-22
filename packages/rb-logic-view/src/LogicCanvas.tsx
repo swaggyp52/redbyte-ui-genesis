@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { shallow } from 'zustand/shallow';
-import type { TickEngine, Node, Connection } from '@redbyte/rb-logic-core';
+import type { TickEngine, Node, Connection, Circuit } from '@redbyte/rb-logic-core';
 import { useLogicViewStore, getGlobalViewStateStore, type LogicViewState } from './useLogicViewStore';
 import { NodeView, type ChipMetadata } from './components/NodeView';
 import { WireView } from './components/WireView';
@@ -12,6 +12,7 @@ import { Toolbar } from './components/Toolbar';
 import { renderGrid } from './tools/grid';
 import { snapToGrid as snapPointToGrid, calculateFitToView } from './tools/panzoom';
 import { isValidConnection, normalizeConnection, isInputPort } from './tools/wireValidation';
+import { findSmartSpawnPosition } from './tools/placement';
 import { trackRender, useUiTickStore } from '@redbyte/rb-utils';
 
 export interface LogicCanvasProps {
@@ -524,13 +525,18 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
   const handleAddNode = React.useCallback((type: string) => {
     if (isReplayMode) return;
+
+    // Calculate center of view in world coordinates
+    const centerX = (-camera.x + width / 2) / camera.zoom;
+    const centerY = (-camera.y + height / 2) / camera.zoom;
+
+    // Use smart placement to find a free spot near center
+    const position = findSmartSpawnPosition(circuit.nodes, { x: centerX, y: centerY });
+
     const newNode: Node = {
       id: `node_${Date.now()}`,
       type,
-      position: {
-        x: (-camera.x + width / 2) / camera.zoom,
-        y: (-camera.y + height / 2) / camera.zoom,
-      },
+      position,
       rotation: 0,
       config: {},
     };
