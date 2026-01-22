@@ -171,11 +171,15 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const isIssueHighlighted = (portName: string) =>
     highlightedPort?.nodeId === node.id && highlightedPort.portName === portName;
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handlePointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
     e.stopPropagation();
 
+    // Capture pointer to ensure we get events even if cursor leaves the element
+    e.currentTarget.setPointerCapture(e.pointerId);
+
     // Don't start drag yet - wait for movement
+    // Store initial client position to calculate delta
     setDragStart({ x: e.clientX, y: e.clientY });
     setDragPosition({ x: node.position.x, y: node.position.y });
 
@@ -203,7 +207,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handlePointerMove = (e: React.PointerEvent) => {
     // Only start drag if mouse moved more than 3px (prevents accidental drag on click)
     if (!isDragging && dragStart.x !== 0) {
       const dx = Math.abs(e.clientX - dragStart.x);
@@ -215,6 +219,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
 
     if (!isDragging) return;
 
+    // Use camera zoom to convert screen delta to world delta
     const dx = (e.clientX - dragStart.x) / camera.zoom;
     const dy = (e.clientY - dragStart.y) / camera.zoom;
 
@@ -225,31 +230,21 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     });
   };
 
-  const handleMouseUp = () => {
+  const handlePointerUp = (e: React.PointerEvent) => {
+    e.currentTarget.releasePointerCapture(e.pointerId);
+
     if (isDragging) {
       // Commit the final position when drag ends
       onMove(node.id, dragPosition.x, dragPosition.y);
       setIsDragging(false);
       setDragStart({ x: 0, y: 0 });
     } else if (dragStart.x !== 0) {
-      // Click without drag - but we no longer toggle here (moved to dedicated toggle button)
+      // Click without drag
       setDragStart({ x: 0, y: 0 });
     }
   };
 
-  React.useEffect(() => {
-    if (isDragging) {
-      const handleGlobalMouseUp = () => {
-        // Commit the final position when drag ends
-        onMove(node.id, dragPosition.x, dragPosition.y);
-        setIsDragging(false);
-        setDragStart({ x: 0, y: 0 });
-      };
-      window.addEventListener('mouseup', handleGlobalMouseUp);
-      return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
-    }
-  }, [isDragging, dragPosition, node.id, onMove]);
-
+  // No longer need global window listener because we have pointer capture!
   const color = NODE_COLORS[node.type] || '#94a3b8';
   const isActive = signals?.get(`${node.id}.out`) === 1;
   const isChip = !!chipMetadata;
@@ -263,13 +258,13 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     return (
       <g
         transform={`translate(${screenX}, ${screenY}) rotate(${node.rotation})`}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
         onDoubleClick={handleDoubleClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+        style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
       >
         {/* Highlight ring */}
         {isHighlighted && (
@@ -657,11 +652,11 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   return (
     <g
       transform={`translate(${screenX}, ${screenY}) rotate(${node.rotation})`}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
       onDoubleClick={handleDoubleClick}
-      style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+      style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
       data-testid={`node-${node.type}-${node.id}`}
     >
       {/* Highlight ring */}
