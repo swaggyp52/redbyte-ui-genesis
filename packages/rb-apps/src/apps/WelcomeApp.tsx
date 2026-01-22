@@ -59,6 +59,7 @@ export const WelcomeAppContent: React.FC<WelcomeAppProps> = ({ onClose, onNaviga
             onClick={handleExploreStudio}
             data-testid="welcome-explore-studio"
             className={`${styles.button} ${styles.buttonPrimary}`}
+            type="button"
           >
             Explore Studio
           </button>
@@ -66,6 +67,7 @@ export const WelcomeAppContent: React.FC<WelcomeAppProps> = ({ onClose, onNaviga
             onClick={handleOpenPlayground}
             data-testid="welcome-open-playground"
             className={`${styles.button} ${styles.buttonSecondary}`}
+            type="button"
           >
             Open Logic Playground
           </button>

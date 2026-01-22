@@ -1,3 +1,6 @@
+// Lab Spec validation
+export { validateEvidenceAgainstLabSpec } from './validateEvidenceAgainstLabSpec';
+export type { LabSpecV1 } from './labSpecSchema';
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.

@@ -15,14 +15,26 @@ export class WindowManager {
   createWindow(opts: CreateWindowOptions): WindowState {
     const id = crypto.randomUUID();
 
+    // Clamp window position to viewport (assume 0,0 is top-left, 1280x800 default viewport)
+    const viewportWidth = window?.innerWidth || 1280;
+    const viewportHeight = window?.innerHeight || 800;
+    const width = Math.min(opts.width ?? 400, viewportWidth);
+    const height = Math.min(opts.height ?? 300, viewportHeight);
+    let x = opts.x ?? 100;
+    let y = opts.y ?? 100;
+    if (x + width > viewportWidth) x = viewportWidth - width;
+    if (y + height > viewportHeight) y = viewportHeight - height;
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+
     const state: WindowState = {
       id,
       title: opts.title ?? "Untitled",
       bounds: {
-        x: opts.x ?? 100,
-        y: opts.y ?? 100,
-        width: opts.width ?? 400,
-        height: opts.height ?? 300,
+        x,
+        y,
+        width,
+        height,
       },
       mode: "normal",
       zIndex: this.zCounter++,
@@ -31,6 +43,8 @@ export class WindowManager {
       minimizable: opts.minimizable ?? true,
       maximizable: opts.maximizable ?? true,
       contentId: opts.contentId,
+      // UI can use this for active window highlighting
+      lastFocusedAt: Date.now(),
     };
 
     this.windows.forEach(w => (w.focused = false));
@@ -57,14 +71,15 @@ closeWindow(id: WindowId) {
   this.windows = this.windows.filter(w => w.id !== id);
 }
 
-focusWindow(id: WindowId) {
-  const w = this.windows.find(w => w.id === id);
-  if (!w) return;
+  focusWindow(id: WindowId) {
+    const w = this.windows.find(w => w.id === id);
+    if (!w) return;
 
-  this.windows.forEach(x => (x.focused = false));
-  w.focused = true;
-  w.zIndex = this.zCounter++;
-}
+    this.windows.forEach(x => (x.focused = false));
+    w.focused = true;
+    w.zIndex = this.zCounter++;
+    w.lastFocusedAt = Date.now();
+  }
 
 moveWindow(id: WindowId, x: number, y: number) {
   const w = this.windows.find(w => w.id === id);

@@ -110,27 +110,29 @@ export const Shell: React.FC<ShellProps> = () => {
   const determinismRecorder = !isDemoMode && useDeterminismRecorder ? useDeterminismRecorder() : null;
 
   const [pinnedAppIds, setPinnedAppIds] = useState<string[]>(() => {
-    if (typeof localStorage === 'undefined') return [];
+    if (typeof localStorage === 'undefined') return ['start-here'];
 
     try {
       const raw = localStorage.getItem('rb:shell:pinnedApps');
 
       // Demo mode: Auto-pin demo apps if no pins exist
       if (!raw && isDemoMode) {
-        const demoApps = ['logic-playground', 'student-lab', 'submission-inspector'];
+        const demoApps = ['start-here', 'logic-playground', 'student-lab', 'submission-inspector'];
         localStorage.setItem('rb:shell:pinnedApps', JSON.stringify(demoApps));
         return demoApps;
       }
 
-      if (!raw) return [];
+      if (!raw) return ['start-here'];
 
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        return parsed.filter((id): id is string => typeof id === 'string');
+        // Always ensure 'start-here' is first unless explicitly removed
+        const filtered = parsed.filter((id): id is string => typeof id === 'string' && id !== 'start-here');
+        return ['start-here', ...filtered];
       }
     } catch { }
 
-    return [];
+    return ['start-here'];
   });
   const settings = useSettingsStore();
   const hasSettings = useMemo(() => Boolean(getApp('settings')), []);

@@ -28,20 +28,7 @@
   color: #94a3b8;
 }
 
-.labId {
-  margin: 0;
-  font-size: 0.875rem;
-  font-family: 'Courier New', monospace;
-  color: #94a3b8;
-}
-
-/* Attempt Info (shown during attempt phase) */
-.attemptInfo {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 0.5rem;
+.snapshotsList {
 }
 
 .attemptBadge {
@@ -240,12 +227,9 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  composes: rbButtonPrimary from "../styles/os-controls.css";
 }
 
-.tab:hover {
-  color: #f8fafc;
-  background: rgba(34, 211, 238, 0.05);
-}
 
 .tabActive {
   color: #22d3ee;
@@ -313,22 +297,6 @@
 
 .constraint:last-child {
   border-bottom: none;
-}
-
-.constraintLabel {
-  font-weight: 500;
-  color: #94a3b8;
-  min-width: 150px;
-}
-
-.constraintValue {
-  font-family: 'Courier New', monospace;
-  color: #f8fafc;
-}
-
-/* Vectors */
-.vectors {
-  margin-top: 2rem;
 }
 
 .vectors h3 {
@@ -678,11 +646,6 @@
   font-size: 0.875rem;
   font-weight: 600;
   color: #f43f5e;
-}
-
-.exportRequirements ul {
-  margin: 0;
-  padding-left: 1.25rem;
 }
 
 .requirementItem {
@@ -1178,21 +1141,7 @@
   margin-bottom: 2rem;
 }
 
-.captureButton {
-  background: linear-gradient(135deg, #0ea5e9, #22d3ee);
-  color: #000;
-  border: none;
-  padding: 0.875rem 1.75rem;
-  border-radius: 6px;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.15s ease;
-}
 
-.captureButton:hover {
-  transform: translateY(-1px);
-}
 
 .actionHint {
   margin-top: 0.75rem;
@@ -1371,8 +1320,6 @@
 }
 
 .modalButtonSecondary:hover {
-  border-color: #525252;
-  color: #f8fafc;
 }
 
 .modalButtonPrimary {

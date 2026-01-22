@@ -402,47 +402,65 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     }
   };
 
+
+  // Drag responsiveness optimization: batch node move updates with requestAnimationFrame
+  const dragMoveRaf = React.useRef<number | null>(null);
+  const lastDragArgs = React.useRef<{ nodeId: string; x: number; y: number } | null>(null);
+
   const handleNodeMove = React.useCallback((nodeId: string, x: number, y: number) => {
     if (isReplayMode) return;
-    // Alt temporarily disables snap
-    const snapEnabled = shouldSnap && !isAltPressed;
-    const newX = snapEnabled ? snapPointToGrid(x, gridSize) : x;
-    const newY = snapEnabled ? snapPointToGrid(y, gridSize) : y;
-
-    // Calculate delta for the dragged node
-    const draggedNode = circuit.nodes.find(n => n.id === nodeId);
-    if (!draggedNode) return;
-
-    const dx = newX - draggedNode.position.x;
-    const dy = newY - draggedNode.position.y;
-
-    // If this node is selected and there are multiple selected nodes, move all of them
-    const isNodeSelected = selection.nodes.has(nodeId);
-    const hasMultipleSelected = selection.nodes.size > 1;
-
-    const updatedCircuit = {
-      ...circuit,
-      nodes: circuit.nodes.map((n) => {
-        // Move the dragged node
-        if (n.id === nodeId) {
-          return { ...n, position: { x: newX, y: newY } };
-        }
-        // If dragging a selected node and others are also selected, move them too
-        if (isNodeSelected && hasMultipleSelected && selection.nodes.has(n.id)) {
-          return {
-            ...n,
-            position: {
-              x: snapEnabled ? snapPointToGrid(n.position.x + dx, gridSize) : n.position.x + dx,
-              y: snapEnabled ? snapPointToGrid(n.position.y + dy, gridSize) : n.position.y + dy,
-            },
-          };
-        }
-        return n;
-      }),
-    };
-
-    commitCircuit(updatedCircuit);
+    lastDragArgs.current = { nodeId, x, y };
+    if (dragMoveRaf.current !== null) return;
+    dragMoveRaf.current = window.requestAnimationFrame(() => {
+      dragMoveRaf.current = null;
+      const args = lastDragArgs.current;
+      if (!args) return;
+      const { nodeId, x, y } = args;
+      // Alt temporarily disables snap
+      const snapEnabled = shouldSnap && !isAltPressed;
+      const newX = snapEnabled ? snapPointToGrid(x, gridSize) : x;
+      const newY = snapEnabled ? snapPointToGrid(y, gridSize) : y;
+      // Calculate delta for the dragged node
+      const draggedNode = circuit.nodes.find(n => n.id === nodeId);
+      if (!draggedNode) return;
+      const dx = newX - draggedNode.position.x;
+      const dy = newY - draggedNode.position.y;
+      // If this node is selected and there are multiple selected nodes, move all of them
+      const isNodeSelected = selection.nodes.has(nodeId);
+      const hasMultipleSelected = selection.nodes.size > 1;
+      const updatedCircuit = {
+        ...circuit,
+        nodes: circuit.nodes.map((n) => {
+          // Move the dragged node
+          if (n.id === nodeId) {
+            return { ...n, position: { x: newX, y: newY } };
+          }
+          // If dragging a selected node and others are also selected, move them too
+          if (isNodeSelected && hasMultipleSelected && selection.nodes.has(n.id)) {
+            return {
+              ...n,
+              position: {
+                x: snapEnabled ? snapPointToGrid(n.position.x + dx, gridSize) : n.position.x + dx,
+                y: snapEnabled ? snapPointToGrid(n.position.y + dy, gridSize) : n.position.y + dy,
+              },
+            };
+          }
+          return n;
+        }),
+      };
+      commitCircuit(updatedCircuit);
+    });
   }, [circuit, shouldSnap, isAltPressed, gridSize, selection.nodes, commitCircuit, isReplayMode]);
+
+  // Clean up RAF on unmount
+  React.useEffect(() => {
+    return () => {
+      if (dragMoveRaf.current !== null) {
+        window.cancelAnimationFrame(dragMoveRaf.current);
+        dragMoveRaf.current = null;
+      }
+    };
+  }, []);
 
   const handleToggleSwitch = React.useCallback((nodeId: string) => {
     if (isReplayMode) return;

@@ -1015,8 +1015,7 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
             </p>
             {simGuide && (
               <div className={`${styles.warningBanner} rbBannerWarn`}>
-                <strong>SIM mode:</strong> Start the bridge with simulated telemetry, then click Connect.
-                <br />
+                <strong>SIM mode:</strong> Start the bridge with simulated telemetry, then click Connect.<br />
                 <code className="rbCodeBlock">RB_FPGA_SIM=1 pnpm --filter @redbyte/fpga-bridge dev</code>
               </div>
             )}
@@ -1033,11 +1032,12 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
                 </div>
                 {!bridgeStatus.online && (
                   <div className={styles.statusHint}>
-                    Start the FPGA Bridge to enable automatic board detection.
-                    <br />
-                    <code className="rbCodeBlock">pnpm --filter @redbyte/fpga-bridge dev</code>
-                    <br />
-                    <code className="rbCodeBlock">RB_FPGA_SIM=1 pnpm --filter @redbyte/fpga-bridge dev</code>
+                    Start the FPGA Bridge to enable automatic board detection.<br />
+                    <code className="rbCodeBlock">pnpm --filter @redbyte/fpga-bridge dev</code><br />
+                    <span className={styles.statusHintNote}>
+                      For simulation/testing, use:<br />
+                      <code className="rbCodeBlock">RB_FPGA_SIM=1 pnpm --filter @redbyte/fpga-bridge dev</code>
+                    </span>
                     <div className={styles.statusHintNote}>
                       Then return here and click Connect (ports refresh automatically).
                     </div>

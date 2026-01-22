@@ -141,7 +141,11 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   }
 
   return (
-    <div className="h-12 border-b border-gray-700 bg-gray-900 px-4 flex items-center justify-between gap-6" data-testid="top-command-bar">
+    <div
+      className="h-12 border-b border-gray-700 bg-gray-900 px-4 flex items-center justify-between gap-6 sticky top-0 left-0 right-0 z-[100]"
+      style={{ position: 'sticky', top: 0, left: 0, right: 0, zIndex: 100 }}
+      data-testid="top-command-bar"
+    >
       {/* LEFT: Project */}
       <div className="flex items-center gap-2">
         <span className="text-xs text-gray-500 uppercase tracking-wide mr-2">Project</span>
@@ -214,6 +218,16 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             data-testid="export-evidence-button"
           >
             📋 Export Evidence
+          </button>
+        )}
+        {props.onOpenEvidence && (
+          <button
+            onClick={props.onOpenEvidence}
+            className="px-3 py-1.5 text-sm bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-500 hover:to-blue-500 rounded font-medium transition-all shadow-lg"
+            title="Open Lab Evidence"
+            data-testid="open-evidence-button"
+          >
+            🗂️ Open Lab Evidence…
           </button>
         )}
         {onSave && (
