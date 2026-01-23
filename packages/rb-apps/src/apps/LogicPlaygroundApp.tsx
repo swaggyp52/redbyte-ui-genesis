@@ -3311,6 +3311,7 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           onHelp={() => setShowKeyboardHelp(true)}
           onStartHere={() => setShowStartHere(true)}
           onExportEvidence={handleExportEvidence}
+          onOpenEvidence={() => onOpenApp?.('submission-inspector')}
         />
 
         <input

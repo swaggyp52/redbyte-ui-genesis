@@ -143,8 +143,8 @@ function createWindowStore() {
       const defaultBounds = {
         x: 100,
         y: 100,
-        width: 400,
-        height: 300,
+        width: 800,
+        height: 600,
       };
 
       // Get viewport dimensions (safe for SSR)

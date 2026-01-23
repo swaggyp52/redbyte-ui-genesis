@@ -5,55 +5,25 @@
 import React from 'react';
 
 export interface ButtonProps<T extends React.ElementType = 'button'> {
-  /**
-   * The element type to render as (polymorphic component)
-   * @default 'button'
-   */
+  /** The element type to render as (polymorphic component) */
   as?: T;
-  /**
-   * Button visual variant
-   */
-  variant?: 'primary' | 'secondary' | 'ghost';
-  /**
-   * Button size
-   */
+  /** Button visual variant */
+  variant?: 'primary' | 'secondary' | 'ghost' | 'destructive';
+  /** Button size */
   size?: 'sm' | 'md' | 'lg';
-  /**
-   * Whether the button is disabled
-   */
+  /** Whether the button is disabled */
   disabled?: boolean;
-  /**
-   * Button children content
-   */
+  /** Button children content */
   children: React.ReactNode;
-  /**
-   * Accessible label override when the visual label is not descriptive
-   */
+  /** Accessible label override when the visual label is not descriptive */
   ariaLabel?: string;
 }
 
-type PolymorphicButtonProps<T extends React.ElementType> = ButtonProps<T> &
-  Omit<React.ComponentPropsWithoutRef<T>, keyof ButtonProps<T>>;
+type PolymorphicButtonProps<T extends React.ElementType = 'button'> =
+  ButtonProps<T> & Omit<React.ComponentPropsWithoutRef<T>, keyof ButtonProps<T>>;
 
 /**
  * Button - Accessible polymorphic button component
- *
- * Features:
- * - Polymorphic: Can be rendered as any element via `as` prop
- * - Keyboard accessible: Focus-visible styles, Enter/Space activation
- * - Respects reduced-motion preference
- * - Fully typed with TypeScript
- *
- * @example
- * ```tsx
- * <Button variant="primary" onClick={handleClick}>
- *   Click me
- * </Button>
- *
- * <Button as="a" href="/page">
- *   Navigate
- * </Button>
- * ```
  */
 export function Button<T extends React.ElementType = 'button'>({
   as,
@@ -83,7 +53,7 @@ export function Button<T extends React.ElementType = 'button'>({
     'disabled:cursor-not-allowed',
   ];
 
-  const variantStyles = {
+  const variantStyles: Record<'primary' | 'secondary' | 'ghost' | 'destructive', string[]> = {
     primary: [
       'bg-[var(--rb-color-accent-500)]',
       'text-white',
@@ -102,9 +72,15 @@ export function Button<T extends React.ElementType = 'button'>({
       'hover:bg-[var(--rb-color-neutral-100)]',
       'active:bg-[var(--rb-color-neutral-200)]',
     ],
+    destructive: [
+      'bg-[var(--rb-color-destructive-500)]',
+      'text-white',
+      'hover:bg-[var(--rb-color-destructive-600)]',
+      'active:bg-[var(--rb-color-destructive-700)]',
+    ],
   };
 
-  const sizeStyles = {
+  const sizeStyles: Record<'sm' | 'md' | 'lg', string[]> = {
     sm: ['text-[var(--rb-font-size-sm)]', 'px-[var(--rb-spacing-3)]', 'py-[var(--rb-spacing-1)]'],
     md: ['text-[var(--rb-font-size-base)]', 'px-[var(--rb-spacing-4)]', 'py-[var(--rb-spacing-2)]'],
     lg: ['text-[var(--rb-font-size-lg)]', 'px-[var(--rb-spacing-6)]', 'py-[var(--rb-spacing-3)]'],
@@ -119,8 +95,7 @@ export function Button<T extends React.ElementType = 'button'>({
       aria-disabled={disabled}
       role={role}
       aria-label={ariaLabel}
-      // @ts-expect-error type is only valid on button elements
-      type={(props as { type?: string }).type || (Component === 'button' ? 'button' : undefined)}
+      type={(props as any).type || (Component === 'button' ? 'button' : undefined)}
       {...props}
     >
       {children}

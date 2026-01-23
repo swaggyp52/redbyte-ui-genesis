@@ -19,6 +19,9 @@
 - Context and simulation info
 - Integrity verification result (PASS/FAIL/UNVERIFIED)
 
+> [!TIP]
+> **Instructor/TA Tip:** Always check for the **PASS** badge before grading. If it says **FAIL** or **UNVERIFIED**, the evidence file may have been tampered with or corrupted.
+
 ## What’s Not Supported
 
 - Editing, running, or saving the evidence

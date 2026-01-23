@@ -38,14 +38,29 @@ pnpm --filter @redbyte/rb-fpga-signing rb-sign path\to\student.rb-lab.zip --key 
 
 ## 5) Grade with Submission Inspector
 
-1. Open Submission Inspector and import the `.rb-lab.zip`.
+1. Open Submission Inspector and import the `.json` or `.rb-lab.zip`.
 2. Confirm signature status.
 3. Review checks + replay.
 4. Click **Export Grading Report** to download JSON.
 
+## 6) Day 1 Lab Flow (The Happy Path)
+
+1. **Start:** Open `http://localhost:3000/?mode=beginner&example=xor` (or navigate: Start Here -> Try Logic Playground).
+2. **Build:**
+    * Drag **Switch** (x2) and **AND** gate and **Lamp** from palette.
+    * Wire: Switch A -> AND.in1, Switch B -> AND.in2, AND.out -> Lamp.
+3. **Verify:**
+    * Click **Run** (or ensure it's auto-running).
+    * Toggle switches. Confirm 1+1=1 (lamp on), others off.
+4. **Export:**
+    * Click **Export Lab Evidence** (top toolbar).
+    * Use filename format `lab01-studentname`.
+5. **Submit:**
+    * Upload `.json` file to LMS.
+
 ## Common failures and fixes
 
-- No COM ports: check USB cable, Windows Device Manager, or drivers.
-- No packets: ensure the FPGA bitstream is programmed and UART is sending binary frames.
-- Signature invalid: confirm instructor public key is in `trusted-keys.ts` and the bundle was re-signed after changes.
-- Trace missing: ensure trace recording is enabled before export.
+* No COM ports: check USB cable, Windows Device Manager, or drivers.
+* No packets: ensure the FPGA bitstream is programmed and UART is sending binary frames.
+* Signature invalid: confirm instructor public key is in `trusted-keys.ts` and the bundle was re-signed after changes.
+* Trace missing: ensure trace recording is enabled before export.

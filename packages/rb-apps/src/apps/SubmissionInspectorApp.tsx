@@ -15,6 +15,8 @@ import {
 import { verifyBundleSignature, type SignatureStatus } from '../utils/bundleSignature';
 import { getLabTemplate, type LabTemplate } from '../utils/labTemplates';
 import { assertAppOutput, registerAppInvariants } from '../utils/appInvariants';
+import { hashEvidence, canonicalizeEvidence } from '../utils/evidenceExport';
+import type { EvidenceBundle } from '../evidenceSchema';
 
 const INSPECTOR_INVARIANTS = {
   reads: ['bundle', 'lab_templates'],
@@ -49,6 +51,9 @@ interface BundleData {
     json?: Record<string, any>;
     md?: string | null;
   };
+  // v1-json specific
+  circuitSnapshot?: any;
+  probesSnapshot?: any[];
 }
 
 interface InspectorProps {
@@ -68,12 +73,63 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
   const hasAutoLoadedSample = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const parseBundle = useCallback(async (zipFile: File) => {
+  const parseJsonEvidence = useCallback(async (file: File) => {
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text) as EvidenceBundle;
+
+      // Verify Integrity
+      const { integrity, ...rest } = json;
+      const canonical = canonicalizeEvidence(rest);
+      const { hash } = hashEvidence(canonical);
+
+      const isVerified = integrity?.integrityHash === hash;
+      const signatureStatus: SignatureStatus = isVerified ? 'Valid' : 'Invalid';
+
+      // Map to BundleData
+      setBundle({
+        manifest: {
+          lab_id: json.context.selectedExampleId || 'Unknown Lab',
+          created_at: json.exportedAtIso,
+          redbyte_version: json.app.version,
+          student: { name: 'Unknown (v1)' },
+        },
+        capsule: null,
+        events: [],
+        schemaVersion: 'v1', // Using v1 for JSON evidence
+        signatureStatus,
+        traceEvents: [],
+        traceReplay: [],
+        traceFilePresent: false,
+        bitstreamFilePresent: false,
+        missingArtifacts: [],
+        checkResults: [],
+        checksPass: isVerified,
+        traceStats: undefined,
+        hardware: undefined,
+        grade: undefined,
+        circuitSnapshot: json.circuitSnapshot,
+        probesSnapshot: json.probesSnapshot,
+      });
+      setActiveTab('summary');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to parse JSON evidence');
+      setBundle(null);
+    }
+  }, []);
+
+  const parseBundle = useCallback(async (file: File) => {
     setLoading(true);
     setError(null);
-    
+
+    if (file.name.endsWith('.json')) {
+      await parseJsonEvidence(file);
+      setLoading(false);
+      return;
+    }
+
     try {
-      const zipBytes = new Uint8Array(await zipFile.arrayBuffer());
+      const zipBytes = new Uint8Array(await file.arrayBuffer());
       const zip = new JSZip();
       const loaded = await zip.loadAsync(zipBytes);
 
@@ -131,9 +187,9 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
         const eventsFile = loaded.file('proofs/events.ndjson');
         events = eventsFile
           ? (await eventsFile.async('string'))
-              .split('\n')
-              .filter((line) => line.trim())
-              .map((line) => JSON.parse(line))
+            .split('\n')
+            .filter((line) => line.trim())
+            .map((line) => JSON.parse(line))
           : [];
       }
 
@@ -228,7 +284,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
     e.preventDefault();
     (e.currentTarget as HTMLElement).style.background = '';
     const file = e.dataTransfer.files?.[0];
-    if (file && file.name.endsWith('.rb-lab.zip')) {
+    if (file && (file.name.endsWith('.rb-lab.zip') || file.name.endsWith('.json'))) {
       parseBundle(file);
     }
   };
@@ -307,7 +363,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
           <input
             ref={fileInputRef}
             type="file"
-            accept=".rb-lab.zip"
+            accept=".rb-lab.zip,.json"
             onChange={handleFileSelect}
             style={{ display: 'none' }}
             aria-label="Upload submission file"
@@ -361,11 +417,11 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
         <div className={styles.demoModeContainer}>
           <div className={styles.demoVerdictSection}>
             <div className={styles.demoVerdictBadge} style={{
-              background: bundle.capsule?.summary?.all_passed 
-                ? 'rgba(16, 185, 129, 0.2)' 
+              background: bundle.capsule?.summary?.all_passed
+                ? 'rgba(16, 185, 129, 0.2)'
                 : 'rgba(239, 68, 68, 0.2)',
-              borderColor: bundle.capsule?.summary?.all_passed 
-                ? 'rgba(16, 185, 129, 0.5)' 
+              borderColor: bundle.capsule?.summary?.all_passed
+                ? 'rgba(16, 185, 129, 0.5)'
                 : 'rgba(239, 68, 68, 0.5)',
               color: bundle.capsule?.summary?.all_passed ? '#10b981' : '#ef4444',
             }}>
@@ -446,397 +502,395 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
       ) : (
         // Normal Mode: Tabs
         <>
-      <div className={styles.tabs}>
-        <button
-          className={`${styles.tab} ${activeTab === 'summary' ? styles.tabActive : ''}`}
-          onClick={() => setActiveTab('summary')}
-        >
-          Summary
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'vectors' ? styles.tabActive : ''}`}
-          onClick={() => setActiveTab('vectors')}
-        >
-          Vectors ({bundle.capsule?.vectors?.length || 0})
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'events' ? styles.tabActive : ''}`}
-          onClick={() => setActiveTab('events')}
-        >
-          Events ({bundle.events.length})
-        </button>
-        {bundle.hardware && (
-          <button
-            className={`${styles.tab} ${activeTab === 'hardware' ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab('hardware')}
-          >
-            Hardware ({bundle.hardware.snapshots?.length || 0})
-          </button>
-        )}
-        <button
-          className={`${styles.tab} ${activeTab === 'files' ? styles.tabActive : ''}`}
-          onClick={() => setActiveTab('files')}
-        >
-          Files
-        </button>
-      </div>
-
-      <div className={styles.content}>
-        {/* Summary Tab */}
-        {activeTab === 'summary' && (
-          <div className={styles.panel}>
-            <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>Submission Summary</h2>
-              <button className={styles.exportButton} onClick={handleExportGradingReport}>
-                Export Grading Report
+          <div className={styles.tabs}>
+            <button
+              className={`${styles.tab} ${activeTab === 'summary' ? styles.tabActive : ''}`}
+              onClick={() => setActiveTab('summary')}
+            >
+              Summary
+            </button>
+            <button
+              className={`${styles.tab} ${activeTab === 'vectors' ? styles.tabActive : ''}`}
+              onClick={() => setActiveTab('vectors')}
+            >
+              Vectors ({bundle.capsule?.vectors?.length || 0})
+            </button>
+            <button
+              className={`${styles.tab} ${activeTab === 'events' ? styles.tabActive : ''}`}
+              onClick={() => setActiveTab('events')}
+            >
+              Events ({bundle.events.length})
+            </button>
+            {bundle.hardware && (
+              <button
+                className={`${styles.tab} ${activeTab === 'hardware' ? styles.tabActive : ''}`}
+                onClick={() => setActiveTab('hardware')}
+              >
+                Hardware ({bundle.hardware.snapshots?.length || 0})
               </button>
-            </div>
-            
-            <div className={styles.summaryGrid}>
-              <div className={styles.summaryCard}>
-                <div className={styles.summaryLabel}>Lab ID</div>
-                <div className={styles.summaryValue}>{bundle.manifest.lab_id}</div>
-              </div>
+            )}
+            <button
+              className={`${styles.tab} ${activeTab === 'files' ? styles.tabActive : ''}`}
+              onClick={() => setActiveTab('files')}
+            >
+              Files
+            </button>
+          </div>
 
-              <div className={styles.summaryCard}>
-                <div className={styles.summaryLabel}>Schema</div>
-                <div className={styles.summaryValue}>{bundle.schemaVersion || 'unknown'}</div>
-              </div>
-
-              <div className={styles.summaryCard}>
-                <div className={styles.summaryLabel}>Lab Version</div>
-                <div className={styles.summaryValue}>{bundle.manifest.lab_version || 'N/A'}</div>
-              </div>
-
-              <div className={styles.summaryCard}>
-                <div className={styles.summaryLabel}>Student</div>
-                <div className={styles.summaryValue}>{bundle.manifest.student?.name || 'Unknown'}</div>
-              </div>
-
-              <div className={styles.summaryCard}>
-                <div className={styles.summaryLabel}>Student ID</div>
-                <div className={styles.summaryValue}>{bundle.manifest.student?.id || '—'}</div>
-              </div>
-
-              <div className={styles.summaryCard}>
-                <div className={styles.summaryLabel}>Created</div>
-                <div className={styles.summaryValue}>
-                  {new Date(bundle.manifest.created_at).toLocaleString()}
+          <div className={styles.content}>
+            {/* Summary Tab */}
+            {activeTab === 'summary' && (
+              <div className={styles.panel}>
+                <div className={styles.sectionHeader}>
+                  <h2 className={styles.sectionTitle}>Submission Summary</h2>
+                  <button className={styles.exportButton} onClick={handleExportGradingReport}>
+                    Export Grading Report
+                  </button>
                 </div>
-              </div>
 
-              <div className={styles.summaryCard}>
-                <div className={styles.summaryLabel}>Signature</div>
-                <div className={styles.summaryValue}>{bundle.signatureStatus || 'Unsigned'}</div>
-              </div>
-
-              {bundle.schemaVersion === 'v2' && (
-                <>
+                <div className={styles.summaryGrid}>
                   <div className={styles.summaryCard}>
-                    <div className={styles.summaryLabel}>Trace</div>
+                    <div className={styles.summaryLabel}>Lab ID</div>
+                    <div className={styles.summaryValue}>{bundle.manifest.lab_id}</div>
+                  </div>
+
+                  <div className={styles.summaryCard}>
+                    <div className={styles.summaryLabel}>Schema</div>
+                    <div className={styles.summaryValue}>{bundle.schemaVersion || 'unknown'}</div>
+                  </div>
+
+                  <div className={styles.summaryCard}>
+                    <div className={styles.summaryLabel}>Lab Version</div>
+                    <div className={styles.summaryValue}>{bundle.manifest.lab_version || 'N/A'}</div>
+                  </div>
+
+                  <div className={styles.summaryCard}>
+                    <div className={styles.summaryLabel}>Student</div>
+                    <div className={styles.summaryValue}>{bundle.manifest.student?.name || 'Unknown'}</div>
+                  </div>
+
+                  <div className={styles.summaryCard}>
+                    <div className={styles.summaryLabel}>Student ID</div>
+                    <div className={styles.summaryValue}>{bundle.manifest.student?.id || '—'}</div>
+                  </div>
+
+                  <div className={styles.summaryCard}>
+                    <div className={styles.summaryLabel}>Created</div>
                     <div className={styles.summaryValue}>
-                      {bundle.traceFilePresent
-                        ? `${bundle.traceReplay?.length ?? 0} events`
-                        : 'Missing'}
+                      {new Date(bundle.manifest.created_at).toLocaleString()}
                     </div>
                   </div>
+
                   <div className={styles.summaryCard}>
-                    <div className={styles.summaryLabel}>Bitstream</div>
-                    <div className={styles.summaryValue}>
-                      {bundle.bitstreamFilePresent ? 'Present' : 'Missing'}
-                    </div>
+                    <div className={styles.summaryLabel}>Signature</div>
+                    <div className={styles.summaryValue}>{bundle.signatureStatus || 'Unsigned'}</div>
                   </div>
-                </>
-              )}
-            </div>
 
-            {bundle.schemaVersion === 'v2' && bundle.missingArtifacts && bundle.missingArtifacts.length > 0 && (
-              <div className={styles.missingSection}>
-                {bundle.missingArtifacts.map((artifact) => (
-                  <div key={artifact} className={styles.missingItem}>
-                    Missing: {artifact}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {bundle.capsule && (
-              <div className={styles.summarySection}>
-                <h3>Self-Check Summary</h3>
-                <div className={styles.summaryStats}>
-                  <div className={styles.stat}>
-                    <span className={styles.statLabel}>Passed</span>
-                    <span className={styles.statValue} style={{ color: '#10b981' }}>
-                      {bundle.capsule.summary?.passed || 0}
-                    </span>
-                  </div>
-                  <div className={styles.stat}>
-                    <span className={styles.statLabel}>Failed</span>
-                    <span className={styles.statValue} style={{ color: '#ef4444' }}>
-                      {bundle.capsule.summary?.failed || 0}
-                    </span>
-                  </div>
-                  <div className={styles.stat}>
-                    <span className={styles.statLabel}>Total</span>
-                    <span className={styles.statValue}>{bundle.capsule.summary?.total || 0}</span>
-                  </div>
+                  {bundle.schemaVersion === 'v2' && (
+                    <>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Trace</div>
+                        <div className={styles.summaryValue}>
+                          {bundle.traceFilePresent
+                            ? `${bundle.traceReplay?.length ?? 0} events`
+                            : 'Missing'}
+                        </div>
+                      </div>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Bitstream</div>
+                        <div className={styles.summaryValue}>
+                          {bundle.bitstreamFilePresent ? 'Present' : 'Missing'}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
-              </div>
-            )}
 
-            {bundle.schemaVersion === 'v2' && (
-              <div className={styles.summarySection}>
-                <h3>Hardware Trace</h3>
-                {bundle.traceReplay && bundle.traceReplay.length > 0 ? (
-                  <>
+                {bundle.schemaVersion === 'v2' && bundle.missingArtifacts && bundle.missingArtifacts.length > 0 && (
+                  <div className={styles.missingSection}>
+                    {bundle.missingArtifacts.map((artifact) => (
+                      <div key={artifact} className={styles.missingItem}>
+                        Missing: {artifact}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {bundle.capsule && (
+                  <div className={styles.summarySection}>
+                    <h3>Self-Check Summary</h3>
                     <div className={styles.summaryStats}>
                       <div className={styles.stat}>
-                        <span className={styles.statLabel}>Events</span>
-                        <span className={styles.statValue}>{bundle.traceReplay.length}</span>
+                        <span className={styles.statLabel}>Passed</span>
+                        <span className={styles.statValue} style={{ color: '#10b981' }}>
+                          {bundle.capsule.summary?.passed || 0}
+                        </span>
                       </div>
                       <div className={styles.stat}>
-                        <span className={styles.statLabel}>First hw_tick</span>
-                        <span className={styles.statValue}>{bundle.traceReplay[0]?.hw_tick ?? 0}</span>
+                        <span className={styles.statLabel}>Failed</span>
+                        <span className={styles.statValue} style={{ color: '#ef4444' }}>
+                          {bundle.capsule.summary?.failed || 0}
+                        </span>
                       </div>
                       <div className={styles.stat}>
-                        <span className={styles.statLabel}>Last hw_tick</span>
+                        <span className={styles.statLabel}>Total</span>
+                        <span className={styles.statValue}>{bundle.capsule.summary?.total || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {bundle.schemaVersion === 'v2' && (
+                  <div className={styles.summarySection}>
+                    <h3>Hardware Trace</h3>
+                    {bundle.traceReplay && bundle.traceReplay.length > 0 ? (
+                      <>
+                        <div className={styles.summaryStats}>
+                          <div className={styles.stat}>
+                            <span className={styles.statLabel}>Events</span>
+                            <span className={styles.statValue}>{bundle.traceReplay.length}</span>
+                          </div>
+                          <div className={styles.stat}>
+                            <span className={styles.statLabel}>First hw_tick</span>
+                            <span className={styles.statValue}>{bundle.traceReplay[0]?.hw_tick ?? 0}</span>
+                          </div>
+                          <div className={styles.stat}>
+                            <span className={styles.statLabel}>Last hw_tick</span>
+                            <span className={styles.statValue}>
+                              {bundle.traceReplay[bundle.traceReplay.length - 1]?.hw_tick ?? 0}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          className={styles.closeButton}
+                          onClick={handleTraceStep}
+                          disabled={traceCursor >= bundle.traceReplay.length}
+                        >
+                          Next Trace Event
+                        </button>
+                        {traceCurrent && (
+                          <pre className={styles.codeBlock}>{JSON.stringify(traceCurrent, null, 2)}</pre>
+                        )}
+                      </>
+                    ) : (
+                      <div className={styles.empty}>No hardware trace in bundle</div>
+                    )}
+                  </div>
+                )}
+
+                {bundle.schemaVersion === 'v2' && bundle.traceStats && (
+                  <div className={styles.summarySection}>
+                    <h3>Bundle Health</h3>
+                    <div className={styles.summaryStats}>
+                      <div className={styles.stat}>
+                        <span className={styles.statLabel}>Event Count</span>
+                        <span className={styles.statValue}>{bundle.traceStats.event_count}</span>
+                      </div>
+                      <div className={styles.stat}>
+                        <span className={styles.statLabel}>hw_tick Min</span>
                         <span className={styles.statValue}>
-                          {bundle.traceReplay[bundle.traceReplay.length - 1]?.hw_tick ?? 0}
+                          {bundle.traceStats.hw_tick_min ?? 'N/A'}
+                        </span>
+                      </div>
+                      <div className={styles.stat}>
+                        <span className={styles.statLabel}>hw_tick Max</span>
+                        <span className={styles.statValue}>
+                          {bundle.traceStats.hw_tick_max ?? 'N/A'}
+                        </span>
+                      </div>
+                      <div className={styles.stat}>
+                        <span className={styles.statLabel}>mono_seq OK</span>
+                        <span className={styles.statValue}>
+                          {bundle.traceStats.mono_seq_nondecreasing ? 'Yes' : 'No'}
                         </span>
                       </div>
                     </div>
-                    <button
-                      className={styles.closeButton}
-                      onClick={handleTraceStep}
-                      disabled={traceCursor >= bundle.traceReplay.length}
-                    >
-                      Next Trace Event
-                    </button>
-                    {traceCurrent && (
-                      <pre className={styles.codeBlock}>{JSON.stringify(traceCurrent, null, 2)}</pre>
-                    )}
-                  </>
-                ) : (
-                  <div className={styles.empty}>No hardware trace in bundle</div>
+                  </div>
+                )}
+
+                {bundle.checkResults && bundle.checkResults.length > 0 && (
+                  <div className={styles.summarySection}>
+                    <h3>Checks</h3>
+                    <div className={styles.summaryStats}>
+                      <div className={styles.stat}>
+                        <span className={styles.statLabel}>Overall</span>
+                        <span
+                          className={`${styles.statValue} ${bundle.checksPass ? styles.checkPass : styles.checkFail
+                            }`}
+                        >
+                          {bundle.checksPass ? 'PASS' : 'FAIL'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className={styles.checkList}>
+                      {bundle.checkResults.map((result) => (
+                        <div key={result.id} className={styles.checkItem}>
+                          <span
+                            className={`${styles.checkStatus} ${result.pass ? styles.checkPass : styles.checkFail
+                              }`}
+                          >
+                            {result.pass ? 'PASS' : 'FAIL'}
+                          </span>
+                          <span className={styles.checkLabel}>{result.id}</span>
+                          <span className={styles.checkMessage}>{result.message}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {bundle.grade?.json && (
+                  <div className={styles.summarySection}>
+                    <h3>Grade</h3>
+                    <pre className={styles.codeBlock}>{JSON.stringify(bundle.grade.json, null, 2)}</pre>
+                  </div>
+                )}
+
+                {bundle.grade?.md && (
+                  <div className={styles.summarySection}>
+                    <h3>Grade Details</h3>
+                    <pre className={styles.codeBlock}>{bundle.grade.md}</pre>
+                  </div>
                 )}
               </div>
             )}
 
-            {bundle.schemaVersion === 'v2' && bundle.traceStats && (
-              <div className={styles.summarySection}>
-                <h3>Bundle Health</h3>
-                <div className={styles.summaryStats}>
-                  <div className={styles.stat}>
-                    <span className={styles.statLabel}>Event Count</span>
-                    <span className={styles.statValue}>{bundle.traceStats.event_count}</span>
-                  </div>
-                  <div className={styles.stat}>
-                    <span className={styles.statLabel}>hw_tick Min</span>
-                    <span className={styles.statValue}>
-                      {bundle.traceStats.hw_tick_min ?? 'N/A'}
-                    </span>
-                  </div>
-                  <div className={styles.stat}>
-                    <span className={styles.statLabel}>hw_tick Max</span>
-                    <span className={styles.statValue}>
-                      {bundle.traceStats.hw_tick_max ?? 'N/A'}
-                    </span>
-                  </div>
-                  <div className={styles.stat}>
-                    <span className={styles.statLabel}>mono_seq OK</span>
-                    <span className={styles.statValue}>
-                      {bundle.traceStats.mono_seq_nondecreasing ? 'Yes' : 'No'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {bundle.checkResults && bundle.checkResults.length > 0 && (
-              <div className={styles.summarySection}>
-                <h3>Checks</h3>
-                <div className={styles.summaryStats}>
-                  <div className={styles.stat}>
-                    <span className={styles.statLabel}>Overall</span>
-                    <span
-                      className={`${styles.statValue} ${
-                        bundle.checksPass ? styles.checkPass : styles.checkFail
-                      }`}
-                    >
-                      {bundle.checksPass ? 'PASS' : 'FAIL'}
-                    </span>
-                  </div>
-                </div>
-                <div className={styles.checkList}>
-                  {bundle.checkResults.map((result) => (
-                    <div key={result.id} className={styles.checkItem}>
-                      <span
-                        className={`${styles.checkStatus} ${
-                          result.pass ? styles.checkPass : styles.checkFail
-                        }`}
-                      >
-                        {result.pass ? 'PASS' : 'FAIL'}
-                      </span>
-                      <span className={styles.checkLabel}>{result.id}</span>
-                      <span className={styles.checkMessage}>{result.message}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {bundle.grade?.json && (
-              <div className={styles.summarySection}>
-                <h3>Grade</h3>
-                <pre className={styles.codeBlock}>{JSON.stringify(bundle.grade.json, null, 2)}</pre>
-              </div>
-            )}
-
-            {bundle.grade?.md && (
-              <div className={styles.summarySection}>
-                <h3>Grade Details</h3>
-                <pre className={styles.codeBlock}>{bundle.grade.md}</pre>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Vectors Tab */}
-        {activeTab === 'vectors' && (
-          <div className={styles.panel}>
-            <h2 className={styles.sectionTitle}>Test Vectors</h2>
-            {bundle.capsule?.vectors && bundle.capsule.vectors.length > 0 ? (
-              <div className={styles.vectorsList}>
-                {bundle.capsule.vectors.map((vec: any, idx: number) => (
-                  <div key={idx} className={styles.vectorCard}>
-                    <div className={styles.vectorHeader}>
-                      <span className={styles.vectorName}>{vec.name}</span>
-                      <span className={`${styles.vectorBadge} ${vec.pass ? styles.badgePass : styles.badgeFail}`}>
-                        {vec.pass ? 'PASS' : 'FAIL'}
-                      </span>
-                    </div>
-                    {vec.error && (
-                      <div className={styles.vectorError}>{vec.error}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className={styles.empty}>No vectors in this submission</div>
-            )}
-          </div>
-        )}
-
-        {/* Events Tab */}
-        {activeTab === 'events' && (
-          <div className={styles.panel}>
-            <h2 className={styles.sectionTitle}>Event Timeline</h2>
-            {bundle.events.length > 0 ? (
-              <div className={styles.eventsList}>
-                {bundle.events.map((event: any, idx: number) => (
-                  <div key={idx} className={styles.eventCard}>
-                    <div className={styles.eventTime}>
-                      {new Date(event.timestamp).toLocaleTimeString()}
-                    </div>
-                    <div className={styles.eventType}>{event.type}</div>
-                    {Object.keys(event.data || {}).length > 0 && (
-                      <pre className={styles.eventData}>{JSON.stringify(event.data, null, 2)}</pre>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className={styles.empty}>No events recorded</div>
-            )}
-          </div>
-        )}
-
-        {/* Hardware Tab */}
-        {activeTab === 'hardware' && (
-          <div className={styles.panel}>
-            <h2 className={styles.sectionTitle}>Hardware Evidence</h2>
-            {bundle.hardware ? (
-              <>
-                <div className={styles.hardwareInfo}>
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Bridge Status:</span>
-                    <span className={styles.infoValue}>{bundle.hardware.bridge_status}</span>
-                  </div>
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Board Status:</span>
-                    <span className={styles.infoValue}>{bundle.hardware.board_status}</span>
-                  </div>
-                  {bundle.hardware.board_model && (
-                    <div className={styles.infoRow}>
-                      <span className={styles.infoLabel}>Board Model:</span>
-                      <span className={styles.infoValue}>{bundle.hardware.board_model}</span>
-                    </div>
-                  )}
-                </div>
-
-                {bundle.hardware.snapshots && bundle.hardware.snapshots.length > 0 ? (
-                  <div className={styles.snapshotsList}>
-                    <h3>Snapshots ({bundle.hardware.snapshots.length})</h3>
-                    {bundle.hardware.snapshots.map((snap: any, idx: number) => (
-                      <div key={idx} className={styles.snapshotCard}>
-                        <div className={styles.snapshotTime}>
-                          {new Date(snap.timestamp).toLocaleTimeString()}
-                          {snap.source && (
-                            <span className={`${styles.snapshotSource} ${snap.source === 'bridge' ? styles.sourceBridge : styles.sourceManual}`}>
-                              {snap.source}
-                            </span>
-                          )}
+            {/* Vectors Tab */}
+            {activeTab === 'vectors' && (
+              <div className={styles.panel}>
+                <h2 className={styles.sectionTitle}>Test Vectors</h2>
+                {bundle.capsule?.vectors && bundle.capsule.vectors.length > 0 ? (
+                  <div className={styles.vectorsList}>
+                    {bundle.capsule.vectors.map((vec: any, idx: number) => (
+                      <div key={idx} className={styles.vectorCard}>
+                        <div className={styles.vectorHeader}>
+                          <span className={styles.vectorName}>{vec.name}</span>
+                          <span className={`${styles.vectorBadge} ${vec.pass ? styles.badgePass : styles.badgeFail}`}>
+                            {vec.pass ? 'PASS' : 'FAIL'}
+                          </span>
                         </div>
-                        <div className={styles.snapshotData}>
-                          <div><strong>Inputs:</strong> <code>{JSON.stringify(snap.inputs)}</code></div>
-                          <div><strong>Outputs:</strong> <code>{JSON.stringify(snap.outputs)}</code></div>
-                          {snap.notes && <div><strong>Notes:</strong> {snap.notes}</div>}
-                        </div>
+                        {vec.error && (
+                          <div className={styles.vectorError}>{vec.error}</div>
+                        )}
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className={styles.empty}>No snapshots recorded</div>
+                  <div className={styles.empty}>No vectors in this submission</div>
                 )}
-              </>
-            ) : (
-              <div className={styles.empty}>No hardware evidence in this bundle</div>
+              </div>
+            )}
+
+            {/* Events Tab */}
+            {activeTab === 'events' && (
+              <div className={styles.panel}>
+                <h2 className={styles.sectionTitle}>Event Timeline</h2>
+                {bundle.events.length > 0 ? (
+                  <div className={styles.eventsList}>
+                    {bundle.events.map((event: any, idx: number) => (
+                      <div key={idx} className={styles.eventCard}>
+                        <div className={styles.eventTime}>
+                          {new Date(event.timestamp).toLocaleTimeString()}
+                        </div>
+                        <div className={styles.eventType}>{event.type}</div>
+                        {Object.keys(event.data || {}).length > 0 && (
+                          <pre className={styles.eventData}>{JSON.stringify(event.data, null, 2)}</pre>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={styles.empty}>No events recorded</div>
+                )}
+              </div>
+            )}
+
+            {/* Hardware Tab */}
+            {activeTab === 'hardware' && (
+              <div className={styles.panel}>
+                <h2 className={styles.sectionTitle}>Hardware Evidence</h2>
+                {bundle.hardware ? (
+                  <>
+                    <div className={styles.hardwareInfo}>
+                      <div className={styles.infoRow}>
+                        <span className={styles.infoLabel}>Bridge Status:</span>
+                        <span className={styles.infoValue}>{bundle.hardware.bridge_status}</span>
+                      </div>
+                      <div className={styles.infoRow}>
+                        <span className={styles.infoLabel}>Board Status:</span>
+                        <span className={styles.infoValue}>{bundle.hardware.board_status}</span>
+                      </div>
+                      {bundle.hardware.board_model && (
+                        <div className={styles.infoRow}>
+                          <span className={styles.infoLabel}>Board Model:</span>
+                          <span className={styles.infoValue}>{bundle.hardware.board_model}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {bundle.hardware.snapshots && bundle.hardware.snapshots.length > 0 ? (
+                      <div className={styles.snapshotsList}>
+                        <h3>Snapshots ({bundle.hardware.snapshots.length})</h3>
+                        {bundle.hardware.snapshots.map((snap: any, idx: number) => (
+                          <div key={idx} className={styles.snapshotCard}>
+                            <div className={styles.snapshotTime}>
+                              {new Date(snap.timestamp).toLocaleTimeString()}
+                              {snap.source && (
+                                <span className={`${styles.snapshotSource} ${snap.source === 'bridge' ? styles.sourceBridge : styles.sourceManual}`}>
+                                  {snap.source}
+                                </span>
+                              )}
+                            </div>
+                            <div className={styles.snapshotData}>
+                              <div><strong>Inputs:</strong> <code>{JSON.stringify(snap.inputs)}</code></div>
+                              <div><strong>Outputs:</strong> <code>{JSON.stringify(snap.outputs)}</code></div>
+                              {snap.notes && <div><strong>Notes:</strong> {snap.notes}</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className={styles.empty}>No snapshots recorded</div>
+                    )}
+                  </>
+                ) : (
+                  <div className={styles.empty}>No hardware evidence in this bundle</div>
+                )}
+              </div>
+            )}
+
+            {/* Files Tab */}
+            {activeTab === 'files' && (
+              <div className={styles.panel}>
+                <h2 className={styles.sectionTitle}>Bundle Contents</h2>
+                <div className={styles.filesList}>
+                  {bundle.schemaVersion === 'v2' ? (
+                    <>
+                      <div className={styles.fileItem}>manifest.json</div>
+                      <div className={`${styles.fileItem} ${!bundle.traceFilePresent ? styles.fileMissing : ''}`}>
+                        trace/hw_trace.ndjson
+                      </div>
+                      <div className={`${styles.fileItem} ${!bundle.bitstreamFilePresent ? styles.fileMissing : ''}`}>
+                        bitstream/design.bit
+                      </div>
+                      <div className={styles.fileItem}>meta/board_profile.json</div>
+                      <div className={styles.fileItem}>integrity/capsule.json</div>
+                      <div className={styles.fileItem}>integrity/signature.sig</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className={styles.fileItem}>manifest.json</div>
+                      <div className={styles.fileItem}>proofs/capsule.json</div>
+                      <div className={styles.fileItem}>proofs/events.ndjson</div>
+                      {bundle.hardware && <div className={styles.fileItem}>proofs/hardware.json</div>}
+                      {bundle.grade?.json && <div className={styles.fileItem}>grade.json</div>}
+                      {bundle.grade?.md && <div className={styles.fileItem}>grade.md</div>}
+                    </>
+                  )}
+                </div>
+              </div>
             )}
           </div>
-        )}
-
-        {/* Files Tab */}
-        {activeTab === 'files' && (
-          <div className={styles.panel}>
-            <h2 className={styles.sectionTitle}>Bundle Contents</h2>
-            <div className={styles.filesList}>
-              {bundle.schemaVersion === 'v2' ? (
-                <>
-                  <div className={styles.fileItem}>manifest.json</div>
-                  <div className={`${styles.fileItem} ${!bundle.traceFilePresent ? styles.fileMissing : ''}`}>
-                    trace/hw_trace.ndjson
-                  </div>
-                  <div className={`${styles.fileItem} ${!bundle.bitstreamFilePresent ? styles.fileMissing : ''}`}>
-                    bitstream/design.bit
-                  </div>
-                  <div className={styles.fileItem}>meta/board_profile.json</div>
-                  <div className={styles.fileItem}>integrity/capsule.json</div>
-                  <div className={styles.fileItem}>integrity/signature.sig</div>
-                </>
-              ) : (
-                <>
-                  <div className={styles.fileItem}>manifest.json</div>
-                  <div className={styles.fileItem}>proofs/capsule.json</div>
-                  <div className={styles.fileItem}>proofs/events.ndjson</div>
-                  {bundle.hardware && <div className={styles.fileItem}>proofs/hardware.json</div>}
-                  {bundle.grade?.json && <div className={styles.fileItem}>grade.json</div>}
-                  {bundle.grade?.md && <div className={styles.fileItem}>grade.md</div>}
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
         </>
       )}
     </div>

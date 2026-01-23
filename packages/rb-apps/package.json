@@ -1,6 +1,6 @@
 {
   "name": "@redbyte/rb-apps",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "main": "./dist/rb-apps.js",
   "module": "./dist/rb-apps.js",

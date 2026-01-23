@@ -26,33 +26,23 @@ export default function Footer() {
             <h4 className="text-xs font-semibold uppercase tracking-wider text-rb-dim mb-4">Documentation</h4>
             <ul className="space-y-2.5 text-sm">
               <li>
-                <Link to="/install" className="text-rb-muted hover:text-rb-text transition-colors">
-                  Install
-                </Link>
-              </li>
-              <li>
-                <Link to="/getting-started" className="text-rb-muted hover:text-rb-text transition-colors">
-                  Getting Started
-                </Link>
-              </li>
-              <li>
-                <Link to="/examples" className="text-rb-muted hover:text-rb-text transition-colors">
-                  Examples
+                <Link to="/manual/playground" className="text-rb-muted hover:text-rb-text transition-colors">
+                  Playground
                 </Link>
               </li>
               <li>
                 <Link to="/manual" className="text-rb-muted hover:text-rb-text transition-colors">
-                  Manual
+                  User Manual
                 </Link>
               </li>
               <li>
-                <Link to="/demo" className="text-rb-muted hover:text-rb-text transition-colors">
-                  For Educators
+                <Link to="/manual#student-export-schema" className="text-rb-muted hover:text-rb-text transition-colors">
+                  Evidence Schema
                 </Link>
               </li>
               <li>
                 <Link to="/instructors" className="text-rb-muted hover:text-rb-text transition-colors">
-                  Instructors
+                  Instructor Guide
                 </Link>
               </li>
             </ul>
@@ -77,22 +67,24 @@ export default function Footer() {
                   GitHub
                 </a>
               </li>
-              <li>
-                <Link to="/install" className="text-rb-muted hover:text-rb-text transition-colors">
-                  Install OS
-                </Link>
-              </li>
             </ul>
           </div>
         </div>
 
         {/* Bottom bar */}
         <div className="mt-12 pt-6 border-t border-rb-border flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 items-center">
+            <p className="text-xs text-rb-dim">
+              {new Date().getFullYear()} RedByte. Local-first & Open Source.
+            </p>
+            <p className="text-xs text-rb-dim flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500/50"></span>
+              Accessibility: Keyboard Nav + ARIA Supported
+            </p>
+          </div>
+
           <p className="text-xs text-rb-dim">
             Built by Connor Angiel
-          </p>
-          <p className="text-xs text-rb-dim">
-            {new Date().getFullYear()} RedByte. Local-first, privacy-respecting.
           </p>
         </div>
       </div>

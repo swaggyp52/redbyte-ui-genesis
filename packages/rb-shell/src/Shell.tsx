@@ -234,6 +234,8 @@ export const Shell: React.FC<ShellProps> = () => {
     }
   }, [booted, restoreSession, isDemoMode, closeWindow]);
 
+
+
   const openWindow = useCallback(
     (appId: string, props?: any) => {
       const app = getApp(appId);
@@ -265,6 +267,20 @@ export const Shell: React.FC<ShellProps> = () => {
     },
     [createWindow, focusWindow, recordRecentApp, windows, restoreWindow]
   );
+
+  // Auto-launch Logic Playground from URL parameters (Deep Linking)
+  useEffect(() => {
+    if (!booted) return;
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    // Check for Logic Playground specific parameters
+    if (params.has('mode') || params.has('example') || params.has('circuit')) {
+      // Open logic-playground (openWindow handles singleton check automatically)
+      // We rely on the app itself to parse the params again and apply configuration
+      openWindow('logic-playground');
+    }
+  }, [booted, openWindow]);
 
   const dispatchIntent = useCallback(
     (intent: Intent) => {

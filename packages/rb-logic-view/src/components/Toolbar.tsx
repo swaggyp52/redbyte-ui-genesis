@@ -80,53 +80,24 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        top: 10,
-        left: 10,
-        background: '#1a1a1a',
-        border: '1px solid #333',
-        borderRadius: 8,
-        padding: '8px 12px',
-        display: 'flex',
-        gap: 12,
-        alignItems: 'center',
-        color: '#fff',
-        fontSize: 14,
-        zIndex: 100,
-      }}
-    >
+    <div className="absolute top-3 left-3 bg-neutral-900/95 backdrop-blur border border-neutral-800 rounded-lg p-2 flex items-center gap-2 z-50 text-sm text-neutral-200 shadow-xl">
       {/* Simulation controls */}
-      <div style={{ display: 'flex', gap: 8, borderRight: '1px solid #333', paddingRight: 12 }}>
+      <div className="flex items-center gap-2">
         <button
           onClick={handleRun}
-          style={{
-            padding: '4px 12px',
-            background: isRunning ? '#ef4444' : '#22c55e',
-            border: 'none',
-            borderRadius: 4,
-            color: '#fff',
-            cursor: 'pointer',
-          }}
+          className={`px-3 py-1.5 rounded text-white font-medium transition-colors ${isRunning ? 'bg-red-600 hover:bg-red-500' : 'bg-green-600 hover:bg-green-500'
+            }`}
         >
           {isRunning ? 'Pause' : 'Run'}
         </button>
         <button
           onClick={handleStep}
-          style={{
-            padding: '4px 12px',
-            background: '#3b82f6',
-            border: 'none',
-            borderRadius: 4,
-            color: '#fff',
-            cursor: 'pointer',
-          }}
+          className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors"
         >
           Step
         </button>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <label htmlFor="tickRate">Hz:</label>
+        <div className="flex items-center gap-2 px-2 text-neutral-400">
+          <label htmlFor="tickRate" className="text-xs uppercase tracking-wider font-bold">Hz</label>
           <input
             id="tickRate"
             type="range"
@@ -134,38 +105,34 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             max="60"
             value={tickRate}
             onChange={handleTickRateChange}
-            style={{ width: 80 }}
+            className="w-20 accent-cyan-500"
           />
-          <span style={{ width: 30, textAlign: 'right' }}>{tickRate}</span>
+          <span className="w-6 text-right font-mono text-neutral-300">{tickRate}</span>
+        </div>
+        <span className="text-neutral-500 font-mono text-xs border-l border-neutral-800 pl-3 ml-1">
+          {tickCount} ticks
         </span>
-        <span style={{ color: '#94a3b8' }}>Ticks: {tickCount}</span>
       </div>
 
       {/* Tool mode toggle */}
       {onToolModeChange && (
-        <div style={{ display: 'flex', gap: 8, borderRight: '1px solid #333', paddingRight: 12 }}>
+        <div className="ml-2 pl-2 border-l border-neutral-800">
           <button
             type="button"
             onClick={() => onToolModeChange(toolMode === 'wire' ? 'select' : 'wire')}
-            style={{
-              padding: '4px 12px',
-              background: toolMode === 'wire' ? '#06b6d4' : '#374151',
-              border: toolMode === 'wire' ? '2px solid #22d3ee' : '1px solid #444',
-              borderRadius: 4,
-              color: '#fff',
-              cursor: 'pointer',
-              fontWeight: toolMode === 'wire' ? '600' : '400',
-              transition: 'all 0.2s',
-            }}
+            className={`px-3 py-1.5 rounded font-medium transition-all ${toolMode === 'wire'
+                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-900/20'
+                : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200'
+              }`}
             title="Toggle Wire Mode (W)"
           >
-            {toolMode === 'wire' ? '⚡ Wire Mode' : '🔌 Wire Tool'}
+            {toolMode === 'wire' ? '⚡ Wire' : '🔌 Wire'}
           </button>
         </div>
       )}
 
       {/* Add node menu */}
-      <div style={{ display: 'flex', gap: 8, borderRight: '1px solid #333', paddingRight: 12 }}>
+      <div className="ml-2">
         <select
           onChange={(e) => {
             if (e.target.value) {
@@ -173,14 +140,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               e.target.value = '';
             }
           }}
-          style={{
-            padding: '4px 8px',
-            background: '#2a2a2a',
-            border: '1px solid #444',
-            borderRadius: 4,
-            color: '#fff',
-            cursor: 'pointer',
-          }}
+          className="bg-neutral-800 border-none text-neutral-200 text-sm rounded px-3 py-1.5 hover:bg-neutral-700 cursor-pointer focus:ring-2 focus:ring-cyan-500/50 outline-none"
         >
           <option value="">Add Node...</option>
           {NODE_TYPES.map((type) => (
@@ -194,56 +154,36 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       {/* Delete button */}
       <button
         onClick={onDelete}
-        style={{
-          padding: '4px 12px',
-          background: '#ef4444',
-          border: 'none',
-          borderRadius: 4,
-          color: '#fff',
-          cursor: 'pointer',
-        }}
+        className="ml-2 px-3 py-1.5 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+        title="Delete Selected (Backspace)"
       >
         Delete
       </button>
 
       {/* Snap to grid toggle */}
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-        <input type="checkbox" checked={snapToGrid} onChange={onToggleSnap} />
-        Snap to Grid
+      <label className="ml-3 flex items-center gap-2 cursor-pointer text-xs text-neutral-400 hover:text-neutral-300">
+        <input type="checkbox" checked={snapToGrid} onChange={onToggleSnap} className="rounded border-neutral-700 bg-neutral-800 text-cyan-500 focus:ring-0" />
+        Snap
       </label>
 
       {/* View controls */}
-      <div style={{ display: 'flex', gap: 8, borderLeft: '1px solid #333', paddingLeft: 12 }}>
+      <div className="ml-3 pl-3 border-l border-neutral-800 flex gap-1">
         {onFitToView && (
           <button
             onClick={onFitToView}
-            style={{
-              padding: '4px 12px',
-              background: '#374151',
-              border: '1px solid #444',
-              borderRadius: 4,
-              color: '#fff',
-              cursor: 'pointer',
-            }}
+            className="p-1.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-colors"
             title="Fit to View (F)"
           >
-            🔍 Fit
+            🔍
           </button>
         )}
         {onResetView && (
           <button
             onClick={onResetView}
-            style={{
-              padding: '4px 12px',
-              background: '#374151',
-              border: '1px solid #444',
-              borderRadius: 4,
-              color: '#fff',
-              cursor: 'pointer',
-            }}
+            className="p-1.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-colors"
             title="Reset View (0)"
           >
-            ⟲ Reset
+            ⟲
           </button>
         )}
       </div>

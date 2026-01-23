@@ -405,6 +405,8 @@ export const RightDock: React.FC<RightDockProps> = ({
             : 'text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           aria-label="Inspector"
+          aria-selected={activeTab === 'inspector'}
+          role="tab"
           data-testid="rightdock-tab-inspector"
           type="button"
         >
@@ -418,6 +420,8 @@ export const RightDock: React.FC<RightDockProps> = ({
             : 'text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           aria-label="Health"
+          aria-selected={activeTab === 'health'}
+          role="tab"
           data-testid="rightdock-tab-health"
           type="button"
         >
@@ -431,6 +435,8 @@ export const RightDock: React.FC<RightDockProps> = ({
             : 'text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           aria-label="Learn"
+          aria-selected={activeTab === 'learn'}
+          role="tab"
           data-testid="rightdock-tab-learn"
           type="button"
         >
@@ -444,6 +450,8 @@ export const RightDock: React.FC<RightDockProps> = ({
             : 'text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           aria-label="Probes"
+          aria-selected={activeTab === 'probes'}
+          role="tab"
           data-testid="rightdock-tab-probes"
           type="button"
         >
@@ -457,6 +465,8 @@ export const RightDock: React.FC<RightDockProps> = ({
             : 'text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           aria-label="Record"
+          aria-selected={activeTab === 'record'}
+          role="tab"
           data-testid="rightdock-tab-record"
           type="button"
         >
@@ -470,6 +480,8 @@ export const RightDock: React.FC<RightDockProps> = ({
             : 'text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           aria-label="Chips"
+          aria-selected={activeTab === 'chips'}
+          role="tab"
           data-testid="rightdock-tab-chips"
           type="button"
         >

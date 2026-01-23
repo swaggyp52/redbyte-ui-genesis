@@ -57,6 +57,7 @@ interface TopCommandBarProps {
   onStartHere?: () => void;
   onManual?: () => void;
   onExportEvidence?: () => void;
+  onOpenEvidence?: () => void;
 
   // Classroom: Reset callbacks
   onResetWorkspace?: () => void;
@@ -96,6 +97,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   onStartHere,
   onManual,
   onExportEvidence,
+  onOpenEvidence,
   onResetWorkspace,
   onResetLayout,
 }) => {
@@ -142,7 +144,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
 
   return (
     <div
-      className="h-12 border-b border-gray-700 bg-gray-900 px-4 flex items-center justify-between gap-6 sticky top-0 left-0 right-0 z-[100]"
+      className="h-12 border-b border-slate-700 bg-slate-900 px-4 flex items-center justify-between gap-6 sticky top-0 left-0 right-0 z-[100]"
       style={{ position: 'sticky', top: 0, left: 0, right: 0, zIndex: 100 }}
       data-testid="top-command-bar"
     >
@@ -150,7 +152,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
       <div className="flex items-center gap-2">
         <span className="text-xs text-gray-500 uppercase tracking-wide mr-2">Project</span>
         {projectName && (
-          <div className="text-xs text-gray-300 font-medium px-2 py-1 bg-gray-800/60 border border-gray-700/60 rounded">
+          <div className="text-xs text-slate-300 font-medium px-2 py-1 bg-slate-800/60 border border-slate-700/60 rounded">
             {projectName}
             {isDirty ? <span className="ml-1 text-cyan-400">*</span> : null}
           </div>
@@ -158,7 +160,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onNewProject && (
           <button
             onClick={onNewProject}
-            className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded transition-colors"
+            className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 rounded transition-colors"
             title="New Project"
           >
             New Project
@@ -167,7 +169,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onOpenProject && (
           <button
             onClick={onOpenProject}
-            className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded transition-colors"
+            className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 rounded transition-colors"
             title="Open Project"
           >
             Open Project
@@ -176,7 +178,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onSaveProject && (
           <button
             onClick={onSaveProject}
-            className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded transition-colors"
+            className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 rounded transition-colors"
             title="Save Project"
           >
             Save Project
@@ -185,7 +187,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onExportProject && (
           <button
             onClick={onExportProject}
-            className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded transition-colors"
+            className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 rounded transition-colors"
             title="Export Project Artifacts"
           >
             Export...
@@ -194,7 +196,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onNew && (
           <button
             onClick={onNew}
-            className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded transition-colors"
+            className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 rounded transition-colors"
             title="New Circuit"
           >
             New Circuit
@@ -203,7 +205,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onExamples && (
           <button
             onClick={onExamples}
-            className="px-3 py-1.5 text-sm bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded font-medium transition-all shadow-lg"
+            className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 rounded transition-colors"
             title="Load Example"
             data-testid="logic-playground-examples"
           >
@@ -213,18 +215,18 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onExportEvidence && (
           <button
             onClick={onExportEvidence}
-            className="px-3 py-1.5 text-sm bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded font-medium transition-all shadow-lg"
-            title="Export Lab Evidence"
+            className="px-3 py-1.5 text-sm bg-purple-700 hover:bg-purple-600 rounded transition-colors"
+            title="Export evidence for grading – includes circuit snapshot, probes, and integrity hash."
             data-testid="export-evidence-button"
           >
-            📋 Export Evidence
+            📋 Export Lab Evidence
           </button>
         )}
-        {props.onOpenEvidence && (
+        {onOpenEvidence && (
           <button
-            onClick={props.onOpenEvidence}
-            className="px-3 py-1.5 text-sm bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-500 hover:to-blue-500 rounded font-medium transition-all shadow-lg"
-            title="Open Lab Evidence"
+            onClick={onOpenEvidence}
+            className="px-3 py-1.5 text-sm bg-emerald-700 hover:bg-emerald-600 rounded transition-colors"
+            title="Open Lab Evidence (checks integrity hash - look for PASS badge)"
             data-testid="open-evidence-button"
           >
             🗂️ Open Lab Evidence…
@@ -235,7 +237,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             onClick={onSave}
             className={`px-3 py-1.5 text-sm rounded transition-all ${isDirty
               ? 'bg-cyan-600 hover:bg-cyan-500 shadow-lg shadow-cyan-600/30'
-              : 'bg-gray-800 hover:bg-gray-700'
+              : 'bg-slate-800 hover:bg-slate-700'
               }`}
             title="Save (Ctrl+S)"
           >
@@ -245,7 +247,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onSaveAs && (
           <button
             onClick={onSaveAs}
-            className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded transition-colors"
+            className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 rounded transition-colors"
             title="Save As"
           >
             Save As
@@ -254,7 +256,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onShare && (
           <button
             onClick={onShare}
-            className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded transition-colors"
+            className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 rounded transition-colors"
             title="Share via link"
           >
             Share

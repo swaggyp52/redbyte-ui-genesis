@@ -190,24 +190,14 @@ export const Launcher: React.FC<LauncherProps> = ({
         aria-selected={isSelected}
         ref={isSelected ? selectedRef : undefined}
         tabIndex={-1}
-        style={{
-          margin: '0.5rem 0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '0.5rem',
-          textAlign: 'left',
-          backgroundColor: isSelected ? '#1b1b1b' : 'transparent',
-          borderColor: isSelected ? '#5b8cff' : undefined,
-          padding: '0.5rem',
-          borderWidth: 1,
-          borderStyle: 'solid',
-          borderRadius: 4,
-        }}
+        className={`flex items-center justify-between gap-2 p-2 rounded mb-1 border border-transparent cursor-pointer transition-colors ${isSelected
+            ? 'bg-slate-800 border-blue-500/50'
+            : 'hover:bg-slate-800/50'
+          }`}
         onClick={() => handleLaunch(app.id)}
       >
-        <span>
-          {app.name} {runningIds.has(app.id) && <small style={{ color: '#9fb0ff' }}>(Running)</small>}
+        <span className="text-sm font-medium text-slate-200">
+          {app.name} {runningIds.has(app.id) && <span className="text-xs text-blue-400 ml-2">(Running)</span>}
         </span>
         {onTogglePin && (
           <button
@@ -218,14 +208,10 @@ export const Launcher: React.FC<LauncherProps> = ({
               event.stopPropagation();
               onTogglePin(app.id);
             }}
-            style={{
-              background: 'transparent',
-              color: '#9fb0ff',
-              border: '1px solid #9fb0ff',
-              borderRadius: 4,
-              padding: '0.15rem 0.35rem',
-              cursor: 'pointer',
-            }}
+            className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${isPinned
+                ? 'bg-blue-500/10 border-blue-500/50 text-blue-400 hover:bg-blue-500/20'
+                : 'border-slate-600 text-slate-500 hover:border-slate-500 hover:text-slate-400'
+              }`}
           >
             {isPinned ? 'Unpin' : 'Pin'}
           </button>
@@ -239,43 +225,50 @@ export const Launcher: React.FC<LauncherProps> = ({
       role="listbox"
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      style={{ padding: '1rem', color: '#fff' }}
+      className="p-4 h-full overflow-y-auto bg-slate-900 text-slate-200 focus:outline-none"
     >
-      <h2>App Launcher</h2>
+      <h2 className="text-lg font-bold text-white mb-4">App Launcher</h2>
+
       {showHelp && (
-        <div style={{ marginBottom: '0.75rem' }}>
-          <h3>Help</h3>
-          <ul style={{ paddingLeft: '1.25rem', margin: 0 }}>
-            <li>Up / Down: Move selection</li>
-            <li>Enter: Launch selected app (closes launcher)</li>
-            <li>Escape: Clear search or close launcher</li>
-            <li>Typing: Filter apps by name</li>
-            <li>Backspace: Remove last search character</li>
-            <li>Pin buttons: Pin or unpin without launching</li>
-            <li>?: Toggle this help</li>
+        <div className="mb-4 bg-slate-800 p-3 rounded border border-slate-700">
+          <h3 className="text-xs font-bold text-slate-400 uppercase mb-2">Keyboard Shortcuts</h3>
+          <ul className="text-xs space-y-1 text-slate-300">
+            <li><kbd className="bg-slate-700 px-1 rounded">↑</kbd> <kbd className="bg-slate-700 px-1 rounded">↓</kbd> Move selection</li>
+            <li><kbd className="bg-slate-700 px-1 rounded">Enter</kbd> Launch app</li>
+            <li><kbd className="bg-slate-700 px-1 rounded">Esc</kbd> Clear search / Close</li>
+            <li><kbd className="bg-slate-700 px-1 rounded">?</kbd> Toggle help</li>
           </ul>
         </div>
       )}
-      {query && <p>Search: {query}</p>}
+
+      {query && (
+        <div className="mb-4 px-2 py-1.5 bg-slate-800 border border-blue-500 rounded text-sm text-white">
+          <span className="text-slate-500 mr-2">Search:</span>
+          {query}
+        </div>
+      )}
+
       {pinnedList.length > 0 && (
-        <div>
-          <h3>Pinned</h3>
+        <div className="mb-4">
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Pinned</h3>
           {pinnedList.map((app, index) => renderAppButton(app, index, true))}
         </div>
       )}
 
       {showRecents && (
-        <div>
-          <h3>Recent</h3>
+        <div className="mb-4">
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Recent</h3>
           {recentList.map((app, index) => renderAppButton(app, index + pinnedList.length, false))}
         </div>
       )}
 
       <div>
-        <h3>All apps</h3>
-        {hasQuery && pinnedList.length === 0 && filteredAllApps.length === 0 && <p>No matches</p>}
+        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">All Apps</h3>
+        {hasQuery && pinnedList.length === 0 && filteredAllApps.length === 0 && (
+          <p className="text-sm text-slate-500 italic px-2">No matches found</p>
+        )}
         {!hasQuery && apps.length === 0 && pinnedList.length === 0 && recentList.length === 0 && (
-          <p>No apps registered</p>
+          <p className="text-sm text-slate-500 italic px-2">No apps registered</p>
         )}
         {filteredAllApps.map((app, index) =>
           renderAppButton(
@@ -286,25 +279,16 @@ export const Launcher: React.FC<LauncherProps> = ({
         )}
 
         {hasSettings && (
-          <div style={{ marginTop: '1rem' }}>
+          <div className="mt-4 pt-4 border-t border-slate-800">
             <button
               type="button"
               title="Open Settings (Ctrl+, / Cmd+,)"
-              aria-label="Open Settings (Ctrl+, / Cmd+,)"
-              aria-keyshortcuts="Control+, Meta+,"
+              aria-label="Open Settings"
               onClick={() => handleLaunch('settings')}
-              style={{
-                background: '#1f2a44',
-                color: '#fff',
-                border: '1px solid #5b8cff',
-                padding: '0.5rem 0.75rem',
-                borderRadius: 6,
-                cursor: 'pointer',
-                width: '100%',
-                textAlign: 'left',
-              }}
+              className="w-full flex items-center justify-between px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 rounded text-sm text-slate-300 transition-colors"
             >
-              Open Settings
+              <span>Open Settings</span>
+              <span className="text-xs text-slate-500">Ctrl+,</span>
             </button>
           </div>
         )}

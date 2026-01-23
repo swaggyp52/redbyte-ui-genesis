@@ -18,11 +18,17 @@
 - The integrity hash is computed over the canonical JSON (excluding the hash field itself).
 - Same app state → same evidence JSON bytes (except timestamp/filename).
 
+## How to export
+
+1. Click **Export Lab Evidence** in the top toolbar.
+2. Save the file as `labXX-studentname.json`.
+3. Upload to your LMS.
+
 ## Instructor Usage
 
 - Download the evidence file from the “Export Lab Evidence” button in the top toolbar.
 - Inspect the JSON for grading: all required grading info is present.
-- To verify integrity, re-hash the canonical JSON (excluding the `integrityHash`) using FNV-1a 32-bit.
+- **Verification:** To verify integrity, ensure the file loads with `PASS` status in the Evidence Viewer.
 
 ## File Naming
 

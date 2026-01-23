@@ -51,7 +51,7 @@ export default function Instructors() {
                 />
               </div>
               <ol className="list-decimal pl-5 text-sm text-rb-muted space-y-2">
-                <li>Import the .rb-lab.zip in Submission Inspector.</li>
+                <li>Import the .json or .rb-lab.zip in Submission Inspector.</li>
                 <li>Confirm signature status (Valid, Invalid, Unsigned).</li>
                 <li>Review checks and replay the trace.</li>
                 <li>Export the grading report JSON.</li>
