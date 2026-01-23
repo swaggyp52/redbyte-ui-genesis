@@ -60,7 +60,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
     // Grid-aligned icons with Logic Playground featured
     const base: DesktopIconData[] = [
       { id: 'logic', title: 'Logic Playground', appId: 'logic-playground', iconId: 'logic', x: GRID_START_X, y: GRID_START_Y },
-      { id: 'student-lab', title: 'Lab Workbench', appId: 'student-lab', iconId: 'chip', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING },
+      { id: 'ece-lab', title: 'ECE 347 Lab', appId: 'ece-lab', iconId: 'chip', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING },
       { id: 'submission-inspector', title: 'Submission Inspector', appId: 'submission-inspector', iconId: 'folder', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 2 },
       { id: 'files', title: 'Files', appId: 'files', iconId: 'files', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 3 },
       { id: 'settings', title: 'Settings', appId: 'settings', iconId: 'settings', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 4 },
@@ -89,7 +89,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
   useEffect(() => {
     if (!selectionBox) return;
     const rectIntersect = (icon: DesktopIconData) => {
-    const rect = { x: icon.x, y: icon.y, w: ICON_CELL_WIDTH, h: ICON_CELL_HEIGHT };
+      const rect = { x: icon.x, y: icon.y, w: ICON_CELL_WIDTH, h: ICON_CELL_HEIGHT };
       return !(
         rect.x > selectionBox.x + selectionBox.w ||
         rect.x + rect.w < selectionBox.x ||
@@ -326,8 +326,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
             onClick={() => handleIconClick(icon)}
           >
             <div
-              className={`flex items-center justify-center rounded-xl border transition-colors duration-150 backdrop-blur-sm ${
-                isFlagship
+              className={`flex items-center justify-center rounded-xl border transition-colors duration-150 backdrop-blur-sm ${isFlagship
                   ? 'border-cyan-400/70 bg-cyan-500/10 shadow-[0_10px_24px_rgba(6,182,212,0.25)]'
                   : isSelected
                     ? isLightMode
@@ -336,7 +335,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
                     : isLightMode
                       ? 'border-slate-300/50 bg-white/40 hover:border-slate-400/70 hover:bg-white/60'
                       : 'border-white/10 bg-black/20 hover:border-white/20 hover:bg-black/30'
-              }`}
+                }`}
               style={{ width: `${ICON_BOX_SIZE}px`, height: `${ICON_BOX_SIZE}px` }}
             >
               <IconComponent
@@ -352,13 +351,12 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
               />
             </div>
             <div
-              className={`w-full text-center text-[11px] font-medium tracking-wide ${
-                isFlagship
+              className={`w-full text-center text-[11px] font-medium tracking-wide ${isFlagship
                   ? 'text-cyan-300'
                   : isLightMode
                     ? 'text-gray-900'
                     : 'text-slate-300'
-              }`}
+                }`}
               style={{ marginTop: ICON_LABEL_GAP, minHeight: ICON_LABEL_HEIGHT }}
             >
               {icon.title}

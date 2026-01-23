@@ -18,7 +18,7 @@ export const StartHereAppContent: React.FC<StartHereAppProps> = ({ onOpenApp }) 
   };
 
   const handleOpenLab = () => {
-    onOpenApp?.('student-lab', { initialTab: 'hardware', simGuide: true });
+    onOpenApp?.('ece-lab', { initialTab: 'hardware', simGuide: true });
   };
 
   const handleOpenInspector = () => {

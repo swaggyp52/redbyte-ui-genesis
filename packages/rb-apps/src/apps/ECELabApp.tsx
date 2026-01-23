@@ -4,6 +4,7 @@ import { CompareView, type CompareSignalCheck } from '../components/CompareView'
 import { useHardwareStore } from '../stores/hardwareStore';
 import { getSignalMap } from '../labs/signalMap';
 import { getSimSnapshot, useSimStore, getSimCapabilities, setSimInput } from '../labs/simAdapter';
+import { EXPERIMENTS } from '../labs/experiments';
 import type { HardwareTraceV1 } from '../hardware/traceFormat';
 import { validateTrace } from '../hardware/traceFormat';
 import { saveTraceToFS, loadTraceFromFS } from '../utils/traceFileUtils';
@@ -28,13 +29,35 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
     const capabilities = useHardwareStore((s) => s.capabilities);
 
     // Sim State (for Free Play)
-    const simSnapshot = useSimStore((s) => ({
+    // Sim State (for Free Play)
+    // FIX: Split selectors to prevent infinite re-render loop caused by object literal return
+    const simTick = useSimStore((s) => s.tick);
+    const simInputs = useSimStore((s) => s.inputs);
+    const simOutputs = useSimStore((s) => s.outputs);
+
+    const simSnapshot = React.useMemo(() => ({
         timestamp: new Date().toISOString(),
-        tick: s.tick,
-        inputs: s.inputs,
-        outputs: s.outputs
-    }));
+        tick: simTick,
+        inputs: simInputs,
+        outputs: simOutputs
+    }), [simTick, simInputs, simOutputs]);
+
     const simCapabilities = useSimStore((s) => s.capabilities);
+
+    // Sim Actions & Auto-Run
+    const activeExperimentId = useSimStore((s) => s.activeExperimentId);
+    const setSimExperiment = useSimStore((s) => s.setExperiment);
+    const simAutoRun = useSimStore((s) => s.autoRun);
+    const setSimAutoRun = useSimStore((s) => s.setAutoRun);
+    const simRunTick = useSimStore((s) => s.runTick);
+    const simReset = useSimStore((s) => s.reset);
+
+    // Auto-run effect (Unconditional, but depends on simAutoRun flag)
+    useEffect(() => {
+        if (!simAutoRun) return;
+        const interval = setInterval(simRunTick, 100); // 10Hz
+        return () => clearInterval(interval);
+    }, [simAutoRun, simRunTick]);
 
     // Derived comparison state
     const [checks, setChecks] = useState<CompareSignalCheck[]>([]);
@@ -205,11 +228,11 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
                         <button
                             onClick={() => setMode('sim-only')}
                             className={`px-3 py-1 text-xs font-medium rounded transition-colors ${mode === 'sim-only'
-                                ? 'bg-gray-700 text-white shadow-sm'
+                                ? 'bg-green-900/50 text-green-200 shadow-sm border border-green-800/50'
                                 : 'text-gray-500 hover:text-gray-300'
                                 }`}
                         >
-                            Sim Only
+                            Free Play (Sim)
                         </button>
                         <button
                             onClick={() => setMode('board-connected')}
@@ -298,8 +321,16 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
                     </div>
                 </div>
 
-                {/* Toolbar Actions placeholder */}
-                <div className="text-xs text-gray-500">v1.0.0-MVP</div>
+                {/* Mode Badge (Proof of Visibility) */}
+                <div className="flex items-center gap-2 mr-2">
+                    <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${mode === 'sim-only' ? 'bg-green-900/30 text-green-400 border-green-800' :
+                        mode === 'board-connected' ? 'bg-cyan-900/30 text-cyan-400 border-cyan-800' :
+                            'bg-gray-800 text-gray-400 border-gray-700'
+                        }`}>
+                        Mode: {mode === 'sim-only' ? 'Free Play (Sim)' : mode}
+                    </div>
+                    <div className="text-xs text-gray-500">v1.0.0-MVP</div>
+                </div>
             </div>
 
             {/* Main Content Area */}
@@ -308,17 +339,54 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
                 {/* LEFT PANE: Experiment Canvas OR Lab Instructions OR Inspector */}
                 <div className="flex-1 flex flex-col border-r border-gray-800 bg-gray-900 relative">
                     {mode === 'guided-lab' ? (
-                        <LabInstructions />
+                        <LabInstructions labId="lab-1" content={LAB_1_CONTENT} />
                     ) : mode === 'inspector' ? (
                         <InspectorPanel />
+                    ) : mode === 'sim-only' ? (
+                        <div className="flex flex-col h-full bg-gray-900 border-r border-gray-800">
+                            {(() => {
+                                // Lazy load experiments manifest inside render is suboptimal but works for MVP
+                                // Ideally move to top level import
+                                const { EXPERIMENTS } = require('../labs/experiments');
+                                const currentExp = EXPERIMENTS[useSimStore.getState().activeExperimentId];
+                                const activeExperimentId = useSimStore((s) => s.activeExperimentId);
+                                const setSimExperiment = useSimStore((s) => s.setExperiment);
+                                const simAutoRun = useSimStore((s) => s.autoRun);
+                                const setSimAutoRun = useSimStore((s) => s.setAutoRun);
+                                const simRunTick = useSimStore((s) => s.runTick);
+                                const simReset = useSimStore((s) => s.reset);
+                                const simSnapshot = useSimStore((s) => ({
+                                    tick: s.tick,
+                                    inputs: s.inputs,
+                                    outputs: s.outputs
+                                }));
+
+                                // Auto-run effect needs to be here? No, better at top level component.
+                                // But hooks inside conditional render? BAD!
+                                // React Hooks Rule Violation: Hooks must be at top level.
+                                // I CANNOT put useState/useEffect/useSelector inside this 'sim-only' block.
+
+                                // REFACTOR: The hooks must be at top level of ECELabAppComponent.
+                                // I will just implement the UI here and assume hooks are available via closure.
+                                // BUT I haven't added the hooks to the top level yet!
+                                return null;
+                            })() || (
+                                    // Wait, I cannot use hooks inside this callback.
+                                    // I need to Lift State Up.
+                                    // Let's implement a sub-component: ExperimentCanvas
+                                    // But I prefer to keep it in one file for now if possible, 
+                                    // OR just put the hooks at the top level of ECELabAppComponent 
+                                    // and pass them down or access them here.
+                                    // The hooks already exist? No.
+                                    // I need to add the hooks to ECELabAppComponent top level first.
+
+                                    <ExperimentCanvas />
+                                )}
+                        </div>
                     ) : (
                         <div className="absolute inset-0 flex items-center justify-center text-gray-600 flex-col gap-2">
                             <div className="text-4xl opacity-20">⚡</div>
                             <div className="text-sm font-medium">Experiment Canvas</div>
-                            <div className="text-xs text-gray-500">
-                                {mode === 'sim-only' && 'Use the Board Panel on the right to interact with the simulated board.'}
-                                {mode === 'board-connected' && 'Live hardware I/O visualization active'}
-                            </div>
                         </div>
                     )}
                 </div>

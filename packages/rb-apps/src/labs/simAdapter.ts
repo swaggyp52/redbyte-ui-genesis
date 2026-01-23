@@ -4,6 +4,7 @@
 
 import { create } from 'zustand';
 import type { IOSnapshot, BoardCapabilities } from '../services/hardwareClient';
+import { EXPERIMENTS, type Experiment, DEFAULT_EXPERIMENT } from './experiments';
 
 interface SimState {
     tick: number;
@@ -18,19 +19,17 @@ interface SimState {
         DP: number;
     };
     capabilities: BoardCapabilities;
+    activeExperimentId: string;
+    experimentState: any;
+    autoRun: boolean;
 }
 
 interface SimStore extends SimState {
     setInputs: (inputs: Partial<SimState['inputs']>) => void;
-    // For free play, we might want simple logic: SW -> LED
-    // or just allow manual output setting for testing?
-    // "One command sanity checklist" ... "toggle switches and see LEDs update"
-    // implies we need *some* logic.
-    // Let's implement a loopback mode: LED = SW, SEG = BTN (just to see something)
+    setExperiment: (experimentId: string) => void;
+    setAutoRun: (enabled: boolean) => void;
     runTick: () => void;
-
-    // Explicitly set outputs (if we had a Logic Engine driving it)
-    setOutputs: (outputs: Partial<SimState['outputs']>) => void;
+    reset: () => void;
 }
 
 // Default capabilities mimicking Basys3
@@ -45,44 +44,62 @@ const BASYS3_CAPS: BoardCapabilities = {
     outputs: [
         { name: 'LED', width: 16, kind: 'led' },
         { name: 'SEG', width: 8, kind: '7segment' },
-        { name: 'AN', width: 4, kind: 'led' } // 'anode' is not in IOGroup kind union? 'led' is safe fallback or check type
+        { name: 'AN', width: 4, kind: 'led' }
     ]
 };
 
 export const useSimStore = create<SimStore>((set, get) => ({
     tick: 0,
     inputs: { SW: 0, BTN: 0 },
-    outputs: { LED: 0, SEG: 0, AN: 0, DP: 0 },
+    outputs: { LED: 0, SEG: 0, AN: 0b1111, DP: 1 },
     capabilities: BASYS3_CAPS,
+    activeExperimentId: DEFAULT_EXPERIMENT.id,
+    experimentState: DEFAULT_EXPERIMENT.initialState,
+    autoRun: false,
 
     setInputs: (newInputs) => {
         set(state => ({
             inputs: { ...state.inputs, ...newInputs }
         }));
-        // Auto-tick on input change for responsiveness
+        // Immediate update on interaction
         get().runTick();
     },
 
-    setOutputs: (newOutputs) => {
-        set(state => ({
-            outputs: { ...state.outputs, ...newOutputs }
-        }));
+    setExperiment: (experimentId) => {
+        const exp = EXPERIMENTS[experimentId];
+        if (!exp) return;
+        set({
+            activeExperimentId: exp.id,
+            experimentState: exp.initialState,
+            outputs: { LED: 0, SEG: 0, AN: 0b1111, DP: 1 }, // Clear outputs
+            tick: 0
+        });
+        // Run initial tick to set initial state outputs
+        get().runTick();
+    },
+
+    setAutoRun: (enabled) => set({ autoRun: enabled }),
+
+    reset: () => {
+        const currentExp = EXPERIMENTS[get().activeExperimentId] || DEFAULT_EXPERIMENT;
+        set({
+            tick: 0,
+            experimentState: currentExp.initialState,
+            inputs: { SW: 0, BTN: 0 },
+            outputs: { LED: 0, SEG: 0, AN: 0b1111, DP: 1 }
+        });
+        get().runTick();
     },
 
     runTick: () => {
         set(state => {
-            const nextTick = state.tick + 1;
-
-            // Simple Default Logic: LED follows SW exactly
-            // This satisfies "Toggle switches and see LEDs update" for Free Play without a logic engine
-            const ledState = state.inputs.SW;
+            const exp = EXPERIMENTS[state.activeExperimentId] || DEFAULT_EXPERIMENT;
+            const result = exp.compute(state.inputs, state.tick, state.experimentState);
 
             return {
-                tick: nextTick,
-                outputs: {
-                    ...state.outputs,
-                    LED: ledState
-                }
+                tick: state.tick + 1,
+                outputs: result.outputs,
+                experimentState: result.nextState ?? state.experimentState
             };
         });
     }

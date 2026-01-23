@@ -72,56 +72,82 @@ const Basys3Layout: React.FC<{
         </div>
 
         {/* Buttons (center, cross pattern) */}
+        {/* Buttons (center, cross pattern) */}
         <div className="flex justify-center mb-6">
           <div className="grid grid-cols-3 gap-1 w-20">
-            {/* BTNU */}
+            {/* BTNU (Bit 1) */}
             <div className="col-start-2 flex justify-center">
               <div
-                className={`w-4 h-4 rounded-full ${btnBits[1] === '1'
+                className={`w-4 h-4 rounded-full cursor-pointer active:scale-95 transition-transform ${btnBits[4] === '1' // '01000' -> Bit 1? No, wait. 
+                   // Let's standardise: BTN = [D, R, L, U, C] usually? 
+                   // SimAdapter traffic light expects BTNC at bit 0.
+                   // Let's use: C=0, U=1, L=2, R=3, D=4.
+                   // btnBits string is MSB...LSB (43210). 
+                   // So btnBits[4] is bit 0 (C). btnBits[3] is bit 1 (U).
+                   // Wait, padStart(5, '0') -> "43210".
+                   // Index 0 is bit 4 (D). Index 4 is bit 0 (C).
+
+                   // BTNU = Bit 1 => Index 3.
+                  btnBits[3] === '1'
+              ? 'bg-yellow-400 border-2 border-yellow-300'
+              : 'bg-gray-700 border-2 border-gray-600'
+                  }`}
+              title="BTNU"
+              onMouseDown={() => onInteraction?.('BTN', parseInt(btnBits, 2) | (1 << 1))}
+              onMouseUp={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 1))}
+              onMouseLeave={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 1))}
+              />
+            </div>
+            {/* BTNL (Bit 2) => Index 2 */}
+            <div className="flex justify-center items-center">
+              <div
+                className={`w-4 h-4 rounded-full cursor-pointer active:scale-95 transition-transform ${btnBits[2] === '1'
                   ? 'bg-yellow-400 border-2 border-yellow-300'
                   : 'bg-gray-700 border-2 border-gray-600'
                   }`}
-                title={`BTNU: ${btnBits[1] === '1' ? 'PRESSED' : 'released'}`}
+                title="BTNL"
+                onMouseDown={() => onInteraction?.('BTN', parseInt(btnBits, 2) | (1 << 2))}
+                onMouseUp={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 2))}
+                onMouseLeave={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 2))}
               />
             </div>
-            {/* BTNL */}
+            {/* BTNC (Bit 0) => Index 4 */}
             <div className="flex justify-center items-center">
               <div
-                className={`w-4 h-4 rounded-full ${btnBits[2] === '1'
-                  ? 'bg-yellow-400 border-2 border-yellow-300'
-                  : 'bg-gray-700 border-2 border-gray-600'
-                  }`}
-                title={`BTNL: ${btnBits[2] === '1' ? 'PRESSED' : 'released'}`}
-              />
-            </div>
-            {/* BTNC */}
-            <div className="flex justify-center items-center">
-              <div
-                className={`w-5 h-5 rounded-full ${btnBits[0] === '1'
+                className={`w-5 h-5 rounded-full cursor-pointer active:scale-95 transition-transform ${btnBits[4] === '1'
                   ? 'bg-red-400 border-2 border-red-300'
                   : 'bg-gray-700 border-2 border-gray-600'
                   }`}
-                title={`BTNC: ${btnBits[0] === '1' ? 'PRESSED' : 'released'}`}
+                title="BTNC"
+                onMouseDown={() => onInteraction?.('BTN', parseInt(btnBits, 2) | 1)}
+                onMouseUp={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~1)}
+                onMouseLeave={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~1)}
               />
             </div>
-            {/* BTNR */}
+            {/* BTNR (Bit 3) => Index 1 */}
             <div className="flex justify-center items-center">
               <div
-                className={`w-4 h-4 rounded-full ${btnBits[3] === '1'
+                className={`w-4 h-4 rounded-full cursor-pointer active:scale-95 transition-transform ${btnBits[1] === '1'
                   ? 'bg-yellow-400 border-2 border-yellow-300'
                   : 'bg-gray-700 border-2 border-gray-600'
                   }`}
-                title={`BTNR: ${btnBits[3] === '1' ? 'PRESSED' : 'released'}`}
+                title="BTNR"
+                onMouseDown={() => onInteraction?.('BTN', parseInt(btnBits, 2) | (1 << 3))}
+                onMouseUp={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 3))}
+                onMouseLeave={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 3))}
               />
             </div>
-            {/* BTND */}
+            {/* BTND (Bit 4) => Index 0 */}
             <div className="col-start-2 flex justify-center">
               <div
-                className={`w-4 h-4 rounded-full ${btnBits[4] === '1'
+                className={`w-4 h-4 rounded-full cursor-pointer active:scale-95 transition-transform ${btnBits[0] === '1'
                   ? 'bg-yellow-400 border-2 border-yellow-300'
                   : 'bg-gray-700 border-2 border-gray-600'
                   }`}
-                title={`BTND: ${btnBits[4] === '1' ? 'PRESSED' : 'released'}`}
+                title="BTND"
+                onMouseDown={() => onInteraction?.('BTN', parseInt(btnBits, 2) | (1 << 4))}
+                onMouseUp={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 4))}
+                onMouseLeave={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 4))}
               />
             </div>
           </div>
