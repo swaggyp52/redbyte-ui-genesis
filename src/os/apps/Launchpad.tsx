@@ -1,5 +1,4 @@
 import React from "react";
-import BootstrapSection from "./BootstrapSection";
 
 const launchItems = [
   { id: "root-console", name: "/root console", group: "system" },
@@ -18,7 +17,6 @@ export const LaunchpadApp: React.FC = () => {
           Quick overview of installed RedByte OS apps.
         </p>
       </div>
-      <BootstrapSection />
       <div className="grid grid-cols-2 gap-2">
         {launchItems.map((item) => (
           <div
