@@ -98,7 +98,9 @@
       "Bash(node scripts/generate-student-export.js:*)",
       "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-liveness.ps1:*)",
       "Bash(npm run build:libs:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(unzip:*)",
+      "Bash(node tools/bridge-smoke.mjs:*)"
     ],
     "deny": [],
     "ask": []

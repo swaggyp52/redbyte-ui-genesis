@@ -57,7 +57,9 @@
         "ops:student-export:fail": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-liveness.ps1 -StartServer -ZipPath .\\packages\\ops\\labs\\fixtures\\student-export-fail.rb-lab.zip -ExpectExitCodes 1 -JsonOut .\\ops-liveness.json",
         "ops:student-export:ci": "pnpm ops:student-export:pass && pnpm ops:student-export:fail",
         "bless:artifacts": "node ./scripts/bless-latest-artifacts.js",
-        "verify:install": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/verify-install.ps1"
+        "verify:install": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/verify-install.ps1",
+        "bridge:smoke": "node tools/bridge-smoke.mjs",
+        "bridge:smoke:mock": "node tools/bridge-smoke.mjs --mock"
     },
     "devDependencies": {
         "@playwright/test": "1.57.0",

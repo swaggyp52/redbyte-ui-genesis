@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://redbyte.dev/schemas/board-capabilities.v1.json",
+  "title": "Board Capabilities",
+  "description": "Runtime capabilities of a connected FPGA board for UI rendering",
+  "type": "object",
+  "required": ["boardId", "boardName", "inputs", "outputs"],
+  "properties": {
+    "boardId": {
+      "type": "string",
+      "description": "Unique board identifier (e.g., 'basys3', 'spartan3e-starter')"
+    },
+    "boardName": {
+      "type": "string",
+      "description": "Human-readable board name"
+    },
+    "manufacturer": {
+      "type": "string",
+      "description": "Board manufacturer (e.g., 'Digilent')"
+    },
+    "inputs": {
+      "type": "array",
+      "description": "Input signal groups (switches, buttons)",
+      "items": {
+        "$ref": "#/$defs/ioGroup"
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "description": "Output signal groups (LEDs, 7-segment)",
+      "items": {
+        "$ref": "#/$defs/ioGroup"
+      }
+    },
+    "features": {
+      "type": "array",
+      "description": "Optional features supported by the board",
+      "items": {
+        "type": "string",
+        "enum": ["trace", "program", "vectors", "uart", "jtag", "sim"]
+      }
+    },
+    "clock": {
+      "type": "object",
+      "description": "Main clock configuration",
+      "properties": {
+        "name": { "type": "string" },
+        "frequencyHz": { "type": "integer" }
+      }
+    }
+  },
+  "$defs": {
+    "ioGroup": {
+      "type": "object",
+      "required": ["name", "width", "kind"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Signal name used in protocol (e.g., 'SW', 'BTN', 'LED')"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of bits in this signal group"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["switch", "button", "led", "7segment"],
+          "description": "Type of I/O for UI rendering"
+        },
+        "labels": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Human-readable labels for each bit (MSB first)"
+        },
+        "writable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this signal can be written by the client (outputs only)"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "boardId": "basys3",
+      "boardName": "Basys3",
+      "manufacturer": "Digilent",
+      "inputs": [
+        { "name": "SW", "width": 16, "kind": "switch", "labels": ["SW15", "SW14", "SW13", "SW12", "SW11", "SW10", "SW9", "SW8", "SW7", "SW6", "SW5", "SW4", "SW3", "SW2", "SW1", "SW0"] },
+        { "name": "BTN", "width": 5, "kind": "button", "labels": ["BTNC", "BTNU", "BTNL", "BTNR", "BTND"] }
+      ],
+      "outputs": [
+        { "name": "LED", "width": 16, "kind": "led", "labels": ["LD15", "LD14", "LD13", "LD12", "LD11", "LD10", "LD9", "LD8", "LD7", "LD6", "LD5", "LD4", "LD3", "LD2", "LD1", "LD0"], "writable": true }
+      ],
+      "features": ["trace", "program", "vectors", "uart", "jtag"],
+      "clock": { "name": "CLK100MHZ", "frequencyHz": 100000000 }
+    },
+    {
+      "boardId": "spartan3e-starter",
+      "boardName": "Spartan-3E Starter Kit",
+      "manufacturer": "Digilent",
+      "inputs": [
+        { "name": "SW", "width": 4, "kind": "switch", "labels": ["SW3", "SW2", "SW1", "SW0"] },
+        { "name": "BTN", "width": 4, "kind": "button", "labels": ["BTN_EAST", "BTN_NORTH", "BTN_SOUTH", "BTN_WEST"] }
+      ],
+      "outputs": [
+        { "name": "LED", "width": 8, "kind": "led", "labels": ["LD7", "LD6", "LD5", "LD4", "LD3", "LD2", "LD1", "LD0"], "writable": true }
+      ],
+      "features": ["trace", "program", "vectors", "uart", "jtag"],
+      "clock": { "name": "CLK_50MHZ", "frequencyHz": 50000000 }
+    },
+    {
+      "boardId": "sim",
+      "boardName": "Simulated Board",
+      "manufacturer": "RedByte",
+      "inputs": [
+        { "name": "SW", "width": 16, "kind": "switch", "labels": ["SW15", "SW14", "SW13", "SW12", "SW11", "SW10", "SW9", "SW8", "SW7", "SW6", "SW5", "SW4", "SW3", "SW2", "SW1", "SW0"] },
+        { "name": "BTN", "width": 5, "kind": "button", "labels": ["BTNC", "BTNU", "BTNL", "BTNR", "BTND"] }
+      ],
+      "outputs": [
+        { "name": "LED", "width": 16, "kind": "led", "labels": ["LD15", "LD14", "LD13", "LD12", "LD11", "LD10", "LD9", "LD8", "LD7", "LD6", "LD5", "LD4", "LD3", "LD2", "LD1", "LD0"], "writable": true }
+      ],
+      "features": ["sim", "vectors"],
+      "clock": { "name": "CLK_SIM", "frequencyHz": 1000 }
+    }
+  ]
+}

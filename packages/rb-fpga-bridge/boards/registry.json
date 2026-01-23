@@ -22,6 +22,27 @@
           "BTNC", "BTNU", "BTNL", "BTNR", "BTND"
         ]
       }
+    },
+    {
+      "id": "spartan3e-starter",
+      "name": "Spartan-3E Starter Kit",
+      "description": "Spartan-3E based board with 4-bit switches, 8 LEDs, 4 buttons",
+      "widths": {
+        "LED": 8,
+        "SW": 4,
+        "BTN": 4
+      },
+      "labels": {
+        "LED": [
+          "LD7", "LD6", "LD5", "LD4", "LD3", "LD2", "LD1", "LD0"
+        ],
+        "SW": [
+          "SW3", "SW2", "SW1", "SW0"
+        ],
+        "BTN": [
+          "BTN_EAST", "BTN_NORTH", "BTN_SOUTH", "BTN_WEST"
+        ]
+      }
     }
   ]
 }

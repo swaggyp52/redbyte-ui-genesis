@@ -38,9 +38,30 @@ interface Device {
 
 interface IOSnapshot {
   timestamp: string;
-  inputs: Record<string, number>;
-  outputs: Record<string, number>;
+  tick?: number;
+  inputs: Record<string, number | string>;
+  outputs: Record<string, number | string>;
 }
+
+interface IOGroup {
+  name: string;
+  width: number;
+  kind: 'switch' | 'button' | 'led' | '7segment';
+  labels?: string[];
+  writable?: boolean;
+}
+
+interface BoardCapabilities {
+  boardId: string;
+  boardName: string;
+  manufacturer?: string;
+  inputs: IOGroup[];
+  outputs: IOGroup[];
+  features?: string[];
+  clock?: { name: string; frequencyHz: number };
+}
+
+type IOUpdateCallback = (snapshot: IOSnapshot) => void;
 
 type ConnectionState = 
   | { status: 'offline'; reason: 'disabled' | 'unavailable' | 'failed'; message: string }
@@ -53,12 +74,18 @@ export class HardwareClient {
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private wsReconnectTimeout: NodeJS.Timeout | null = null;
   private listeners: Set<(state: ConnectionState) => void> = new Set();
+  private ioListeners: Set<IOUpdateCallback> = new Set();
   private retryAttempts = 0;
   private readonly MAX_RETRY_ATTEMPTS = 3;
   private readonly RETRY_DELAY_MS = 2000;
   private readonly HEALTH_CHECK_INTERVAL_MS = 10000;
   private readonly DEMO_MODE_ENABLED = typeof process !== 'undefined' && process.env.RB_DEMO_MODE === '1';
   private readonly FETCH_TIMEOUT_MS = this.DEMO_MODE_ENABLED ? 500 : 2000; // Fast fail in demo mode
+
+  // Active device state
+  private activeDevice: Device | null = null;
+  private capabilities: BoardCapabilities | null = null;
+  private latestIOSnapshot: IOSnapshot | null = null;
 
   constructor(config?: Partial<HardwareClientConfig>) {
     this.config = {
@@ -248,6 +275,10 @@ export class HardwareClient {
         }
       };
 
+      socket.onmessage = (event) => {
+        this.handleWSMessage(event.data);
+      };
+
       socket.onerror = (error) => {
         console.warn('[HardwareClient] WebSocket error:', error);
       };
@@ -291,12 +322,219 @@ export class HardwareClient {
     this.retryAttempts = 0;
   }
 
+  // Handle WebSocket messages
+  private handleWSMessage(data: string | Buffer) {
+    try {
+      const msg = JSON.parse(data.toString());
+
+      // Handle io:update events
+      if (msg.type === 'io:update' || msg.SW !== undefined || msg.io !== undefined) {
+        const snapshot: IOSnapshot = {
+          timestamp: msg.timestamp || new Date().toISOString(),
+          tick: msg.tick ?? msg.TICK ?? msg.mono_seq ?? msg.hw_tick,
+          inputs: {},
+          outputs: {},
+        };
+
+        // Extract inputs/outputs from various message formats
+        if (msg.changes) {
+          // Bridge contract format: { changes: { SW, BTN, LED } }
+          if (msg.changes.SW !== undefined) snapshot.inputs.SW = msg.changes.SW;
+          if (msg.changes.BTN !== undefined) snapshot.inputs.BTN = msg.changes.BTN;
+          if (msg.changes.LED !== undefined) snapshot.outputs.LED = msg.changes.LED;
+        } else if (msg.io) {
+          // Stream sample format: { io: { SW, BTN, LED } }
+          if (msg.io.SW !== undefined) snapshot.inputs.SW = msg.io.SW;
+          if (msg.io.BTN !== undefined) snapshot.inputs.BTN = msg.io.BTN;
+          if (msg.io.LED !== undefined) snapshot.outputs.LED = msg.io.LED;
+        } else {
+          // Direct format: { SW, BTN, LED }
+          if (msg.SW !== undefined) snapshot.inputs.SW = msg.SW;
+          if (msg.BTN !== undefined) snapshot.inputs.BTN = msg.BTN;
+          if (msg.LED !== undefined) snapshot.outputs.LED = msg.LED;
+        }
+
+        this.latestIOSnapshot = snapshot;
+        this.ioListeners.forEach((listener) => listener(snapshot));
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
   // Safe contract getters - never return undefined
   getDevices(): Device[] {
     if (this.state.status === 'connected') {
       return this.state.devices ?? [];
     }
     return [];
+  }
+
+  /**
+   * Get the active device (the one we're connected to)
+   */
+  getActiveDevice(): Device | null {
+    return this.activeDevice;
+  }
+
+  /**
+   * Get capabilities of the active device
+   */
+  getCapabilities(): BoardCapabilities | null {
+    return this.capabilities;
+  }
+
+  /**
+   * Get latest I/O snapshot (from WebSocket)
+   */
+  getLatestIO(): IOSnapshot | null {
+    return this.latestIOSnapshot;
+  }
+
+  /**
+   * Select and connect to a specific device
+   */
+  async selectDevice(deviceId: string): Promise<boolean> {
+    if (this.state.status !== 'connected') {
+      console.warn('[HardwareClient] Cannot select device: not connected to bridge');
+      return false;
+    }
+
+    const device = this.state.devices.find(d => d.deviceId === deviceId);
+    if (!device) {
+      console.warn(`[HardwareClient] Device not found: ${deviceId}`);
+      return false;
+    }
+
+    try {
+      // Try production bridge endpoint first
+      const res = await fetch(`${this.config.httpUrl.replace('/api/v1', '')}/connect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId }),
+        signal: AbortSignal.timeout(this.FETCH_TIMEOUT_MS),
+      });
+
+      if (!res.ok) {
+        // Fall back to mock bridge session API
+        const sessionRes = await fetch(`${this.config.httpUrl}/session/open`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deviceId }),
+          signal: AbortSignal.timeout(this.FETCH_TIMEOUT_MS),
+        });
+
+        if (!sessionRes.ok) {
+          throw new Error(`Failed to connect: HTTP ${sessionRes.status}`);
+        }
+      }
+
+      this.activeDevice = device;
+      this.capabilities = this.buildCapabilitiesFromDevice(device);
+      console.log(`[HardwareClient] Selected device: ${device.boardModel} (${deviceId})`);
+      return true;
+
+    } catch (error: any) {
+      console.error('[HardwareClient] Failed to select device:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Build capabilities from device info
+   */
+  private buildCapabilitiesFromDevice(device: Device): BoardCapabilities {
+    // Default capabilities based on board model
+    const boardId = device.boardModel?.toLowerCase() || 'unknown';
+
+    if (boardId.includes('basys') || boardId === 'basys3') {
+      return {
+        boardId: 'basys3',
+        boardName: 'Basys3',
+        manufacturer: 'Digilent',
+        inputs: [
+          { name: 'SW', width: 16, kind: 'switch', labels: ['SW15', 'SW14', 'SW13', 'SW12', 'SW11', 'SW10', 'SW9', 'SW8', 'SW7', 'SW6', 'SW5', 'SW4', 'SW3', 'SW2', 'SW1', 'SW0'] },
+          { name: 'BTN', width: 5, kind: 'button', labels: ['BTNC', 'BTNU', 'BTNL', 'BTNR', 'BTND'] },
+        ],
+        outputs: [
+          { name: 'LED', width: 16, kind: 'led', labels: ['LD15', 'LD14', 'LD13', 'LD12', 'LD11', 'LD10', 'LD9', 'LD8', 'LD7', 'LD6', 'LD5', 'LD4', 'LD3', 'LD2', 'LD1', 'LD0'], writable: true },
+        ],
+        features: ['trace', 'program', 'vectors', 'uart', 'jtag'],
+        clock: { name: 'CLK100MHZ', frequencyHz: 100000000 },
+      };
+    }
+
+    if (boardId.includes('spartan') || boardId === 'spartan3e-starter') {
+      return {
+        boardId: 'spartan3e-starter',
+        boardName: 'Spartan-3E Starter Kit',
+        manufacturer: 'Digilent',
+        inputs: [
+          { name: 'SW', width: 4, kind: 'switch', labels: ['SW3', 'SW2', 'SW1', 'SW0'] },
+          { name: 'BTN', width: 4, kind: 'button', labels: ['BTN_EAST', 'BTN_NORTH', 'BTN_SOUTH', 'BTN_WEST'] },
+        ],
+        outputs: [
+          { name: 'LED', width: 8, kind: 'led', labels: ['LD7', 'LD6', 'LD5', 'LD4', 'LD3', 'LD2', 'LD1', 'LD0'], writable: true },
+        ],
+        features: ['trace', 'program', 'vectors', 'uart', 'jtag'],
+        clock: { name: 'CLK_50MHZ', frequencyHz: 50000000 },
+      };
+    }
+
+    // Generic fallback
+    return {
+      boardId: boardId,
+      boardName: device.boardModel || 'Unknown Board',
+      manufacturer: 'Unknown',
+      inputs: [
+        { name: 'SW', width: 8, kind: 'switch' },
+        { name: 'BTN', width: 4, kind: 'button' },
+      ],
+      outputs: [
+        { name: 'LED', width: 8, kind: 'led', writable: true },
+      ],
+      features: [],
+    };
+  }
+
+  /**
+   * Subscribe to I/O updates from WebSocket
+   */
+  subscribeIO(callback: IOUpdateCallback): () => void {
+    this.ioListeners.add(callback);
+    // Send latest snapshot immediately if available
+    if (this.latestIOSnapshot) {
+      callback(this.latestIOSnapshot);
+    }
+    return () => this.ioListeners.delete(callback);
+  }
+
+  /**
+   * Set output values (e.g., LED state)
+   * For simulation/testing mode only - real hardware outputs are driven by DUT
+   */
+  async setOutputs(outputs: Record<string, number>): Promise<boolean> {
+    if (this.state.status !== 'connected') {
+      console.warn('[HardwareClient] Cannot set outputs: not connected');
+      return false;
+    }
+
+    try {
+      // Try to set each output via the API
+      for (const [signal, value] of Object.entries(outputs)) {
+        const endpoint = `${this.config.httpUrl.replace('/api/v1', '')}/api/io/${signal.toLowerCase()}/0`;
+        await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value }),
+          signal: AbortSignal.timeout(this.FETCH_TIMEOUT_MS),
+        });
+      }
+      return true;
+    } catch (error: any) {
+      console.warn('[HardwareClient] Failed to set outputs:', error);
+      return false;
+    }
   }
 
   async getIO(sessionId: string): Promise<IOSnapshot> {
@@ -352,4 +590,16 @@ export class HardwareClient {
 
 // Singleton instance
 export const hardwareClient = new HardwareClient();
+
+// Export types for use in stores
+export type {
+  ConnectionState,
+  ConnectionMode,
+  Device,
+  IOSnapshot,
+  IOGroup,
+  BoardCapabilities,
+  IOUpdateCallback,
+  BridgeHealth,
+};
 
