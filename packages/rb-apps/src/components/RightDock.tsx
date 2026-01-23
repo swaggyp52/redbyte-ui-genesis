@@ -375,7 +375,7 @@ export const RightDock: React.FC<RightDockProps> = ({
           title="Record"
           type="button"
         >
-          <span className="text-xl">dY"7</span>
+          <span className="text-xl">⏺️</span>
         </button>
         <button
           onClick={() => {
@@ -470,7 +470,7 @@ export const RightDock: React.FC<RightDockProps> = ({
           data-testid="rightdock-tab-record"
           type="button"
         >
-          <span className="mr-1 pointer-events-none select-none">dY"7</span>
+          <span className="mr-1 pointer-events-none select-none">⏺️</span>
           <span className="pointer-events-none select-none">Record</span>
         </button>
         <button
@@ -663,7 +663,7 @@ export const RightDock: React.FC<RightDockProps> = ({
             <div className="flex-1 overflow-y-auto mt-1">
               {probes.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
-                  <div className="text-4xl mb-2">dY"S</div>
+                  <div className="text-4xl mb-2">📊</div>
                   <div className="text-sm">No probes added</div>
                   <div className="text-xs text-gray-500 mt-2">
                     Select a node and add a probe

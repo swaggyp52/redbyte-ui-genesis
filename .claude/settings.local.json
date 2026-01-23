@@ -96,7 +96,9 @@
       "Bash(npx vitest:*)",
       "Bash(Select-String \"ops:|agent:\")",
       "Bash(node scripts/generate-student-export.js:*)",
-      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-liveness.ps1:*)"
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-liveness.ps1:*)",
+      "Bash(npm run build:libs:*)",
+      "Bash(npm run:*)"
     ],
     "deny": [],
     "ask": []

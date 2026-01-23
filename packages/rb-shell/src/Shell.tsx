@@ -38,8 +38,9 @@ import { RenderStormMonitor } from './debug/RenderStormMonitor';
 import { DeadZoneScanner } from './debug/DeadZoneScanner';
 import { OverlayDebugHUD } from './debug/OverlayDebugHUD';
 
-// Dev-only imports (gated by import.meta.env.DEV)
+// Determinism imports (core to RedByte, not dev-only)
 import { DeterminismPanel, useDeterminismRecorder } from './dev';
+import { TruthBar, type DeterminismMode } from './TruthBar';
 import { OnboardingModal } from './OnboardingModal';
 import { AboutModal } from './AboutModal';
 
@@ -107,9 +108,9 @@ export const Shell: React.FC<ShellProps> = () => {
   const [bindings, setBindings] = useState<Record<string, WindowAppBinding>>({});
   const [recentAppIds, setRecentAppIds] = useState<string[]>([]);
 
-  // Determinism recorder (dev only - hidden in public demo mode)
+  // Determinism recorder (core to RedByte - determinism is the physics, not a debug feature)
   const isDemoMode = import.meta.env.VITE_PUBLIC_DEMO === 'true';
-  const determinismRecorder = !isDemoMode && useDeterminismRecorder ? useDeterminismRecorder() : null;
+  const determinismRecorder = useDeterminismRecorder();
 
   const [pinnedAppIds, setPinnedAppIds] = useState<string[]>(() => {
     if (typeof localStorage === 'undefined') return ['start-here'];
@@ -433,8 +434,6 @@ export const Shell: React.FC<ShellProps> = () => {
 
   const handleDeterminismAction = useCallback(
     (action: any) => {
-      if (!determinismRecorder) return;
-
       switch (action.type) {
         case 'start-recording': {
           const circuit = getCurrentCircuit();
@@ -839,8 +838,8 @@ export const Shell: React.FC<ShellProps> = () => {
         return;
       }
 
-      // Cmd/Ctrl+Shift+D: Open Determinism Tools (Dev only - disabled in demo mode)
-      if (!isDemoMode && event.shiftKey && event.key.toLowerCase() === 'd') {
+      // Cmd/Ctrl+Shift+D: Open Determinism Tools (full panel)
+      if (event.shiftKey && event.key.toLowerCase() === 'd') {
         event.preventDefault();
         setDeterminismPanelOpen(true);
         return;
@@ -1056,7 +1055,7 @@ export const Shell: React.FC<ShellProps> = () => {
               onDispatchIntent={dispatchIntent}
               registerStateAccessor={registerWindowStateAccessor}
               unregisterStateAccessor={unregisterWindowStateAccessor}
-              determinismRecorder={!isDemoMode ? determinismRecorder : undefined}
+              determinismRecorder={determinismRecorder}
               recentAppIds={app.manifest.id === 'launcher' ? recentAppIds : undefined}
               pinnedAppIds={app.manifest.id === 'launcher' ? pinnedAppIds : undefined}
               runningAppIds={app.manifest.id === 'launcher' ? runningAppIds : undefined}
@@ -1154,8 +1153,8 @@ export const Shell: React.FC<ShellProps> = () => {
         />
       )}
 
-      {/* Determinism Tools Panel (Dev only - hidden in demo mode) */}
-      {!isDemoMode && determinismPanelOpen && DeterminismPanel && determinismRecorder && (
+      {/* Determinism Tools Panel (full controls) */}
+      {determinismPanelOpen && DeterminismPanel && (
         <DeterminismPanel
           isOpen={determinismPanelOpen}
           onClose={() => setDeterminismPanelOpen(false)}
@@ -1182,22 +1181,44 @@ export const Shell: React.FC<ShellProps> = () => {
       {import.meta.env.DEV && showDeadZoneScanner && <DeadZoneScanner />}
       {import.meta.env.DEV && showOverlayDebug && <OverlayDebugHUD />}
 
-      {/* Footer: Version Info (hidden in demo mode) */}
-      {!isDemoMode && (
-        <div className="fixed bottom-0 left-0 right-0 bg-slate-900/90 border-t border-slate-700 px-4 py-2 flex items-center justify-between text-xs z-10 pointer-events-none">
-          <div className="flex items-center gap-3 pointer-events-auto">
-            <span className="px-2 py-1 bg-cyan-900/40 border border-cyan-600/60 rounded text-cyan-300 font-semibold">
-              V1.0
-            </span>
-            <span className="text-slate-400">
-              {getVersionString()}
-            </span>
-          </div>
-          <div className="text-slate-500 pointer-events-auto">
-            RedByte OS
-          </div>
-        </div>
-      )}
+      {/* Truth Bar: Always-visible determinism status */}
+      <TruthBar
+        mode={
+          determinismRecorder.isRecording
+            ? 'recording'
+            : determinismRecorder.isTimeTraveling
+            ? 'replay'
+            : 'live'
+        }
+        tickCount={determinismRecorder.tickCount}
+        totalEvents={determinismRecorder.currentSnapshot?.totalEvents}
+        hashPrefix={
+          determinismRecorder.verificationResult?.liveHash
+            ? determinismRecorder.verificationResult.liveHash.slice(0, 8)
+            : undefined
+        }
+        canRecord={getCurrentCircuit() !== null}
+        onToggleRecording={() => {
+          if (determinismRecorder.isRecording) {
+            handleDeterminismAction({ type: 'stop-recording' });
+          } else {
+            handleDeterminismAction({ type: 'start-recording' });
+          }
+        }}
+        onVerify={
+          determinismRecorder.hasRecording && !determinismRecorder.isRecording
+            ? () => handleDeterminismAction({ type: 'verify-replay' })
+            : undefined
+        }
+        verificationStatus={
+          determinismRecorder.verificationResult
+            ? determinismRecorder.verificationResult.equal
+              ? 'pass'
+              : 'fail'
+            : undefined
+        }
+        onOpenPanel={() => setDeterminismPanelOpen(true)}
+      />
     </div>
   );
 };

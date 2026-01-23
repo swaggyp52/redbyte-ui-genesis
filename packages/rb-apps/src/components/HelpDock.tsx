@@ -281,7 +281,7 @@ export const HelpDock: React.FC<HelpDockProps> = ({
       {/* Breadcrumb - "You are here" */}
       <div className="px-4 py-2 bg-cyan-900/10 border-b border-gray-700">
         <div className="text-xs text-cyan-400 flex items-center gap-1">
-          <span>dY"?</span>
+          <span>📍</span>
           {focusedSection ? (
             <span>{focusedSection.title}</span>
           ) : (
@@ -327,7 +327,7 @@ export const HelpDock: React.FC<HelpDockProps> = ({
                 onClick={handleLoadExample}
                 className="w-full mt-4 px-4 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg font-semibold text-sm transition-all shadow-lg flex items-center justify-center gap-2"
               >
-                <span className="text-lg">dY"s</span>
+                <span className="text-lg">⚡</span>
                 Load Example
               </button>
             )}

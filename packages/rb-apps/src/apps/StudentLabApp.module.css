@@ -1330,3 +1330,194 @@
 .modalButtonPrimary:hover {
   transform: translateY(-1px);
 }
+
+/* ============================================================================
+   Build Tab - Circuit Integration
+   ============================================================================ */
+
+.circuitStatusCard {
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.circuitStatusHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.circuitStatusLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.circuitStatusBadge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+}
+
+.circuitStatusActive {
+  background: rgba(34, 211, 238, 0.15);
+  color: #22d3ee;
+  border: 1px solid rgba(34, 211, 238, 0.3);
+}
+
+.circuitStatusEmpty {
+  background: rgba(100, 116, 139, 0.15);
+  color: #64748b;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+.circuitPreview {
+  padding-top: 0.75rem;
+  border-top: 1px solid #1a1a1a;
+}
+
+.circuitNodeList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.circuitNodeTag {
+  background: #0a0a0a;
+  border: 1px solid #222;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-family: 'Courier New', monospace;
+  color: #94a3b8;
+}
+
+.circuitNodeMore {
+  font-size: 0.75rem;
+  color: #64748b;
+  padding: 0.25rem 0.5rem;
+}
+
+.buildActions {
+  margin-bottom: 1.5rem;
+}
+
+.openPlaygroundButton {
+  background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+  color: #000;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.openPlaygroundButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(34, 211, 238, 0.3);
+}
+
+.buildHint {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.buildDivider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 2rem 0;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.buildDivider::before,
+.buildDivider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid #222;
+}
+
+.presetSection {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid #1a1a1a;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.presetSectionTitle {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.presetSectionInfo {
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.noPresetsMessage {
+  padding: 1.5rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.buildStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: rgba(34, 211, 238, 0.05);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: 6px;
+}
+
+.buildStatusIcon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(34, 211, 238, 0.15);
+  border-radius: 50%;
+  color: #22d3ee;
+  font-size: 0.875rem;
+}
+
+.buildStatusText {
+  font-size: 0.875rem;
+  color: #f8fafc;
+}
+
+.captureButton {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.captureButton:hover {
+  transform: translateY(-1px);
+}

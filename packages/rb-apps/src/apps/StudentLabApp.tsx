@@ -15,6 +15,8 @@ import {
 import { OverlayRoot, OverlayPanel } from '@redbyte/rb-primitives';
 import { exportBundle, downloadBlob, type ExportResult } from '../utils/bundleExport';
 import { assertAppOutput, registerAppInvariants } from '../utils/appInvariants';
+import { useCircuitStore } from '../stores/circuitStore';
+import type { Circuit } from '@redbyte/rb-logic-core';
 
 const STUDENT_LAB_INVARIANTS = {
   reads: ['lab_templates', 'bridge_telemetry', 'trace_events'],
@@ -88,6 +90,7 @@ type StudentLabTab = 'spec' | 'build' | 'hardware' | 'self-check' | 'export';
 interface StudentLabAppProps {
   initialTab?: StudentLabTab;
   simGuide?: boolean;
+  onOpenApp?: (appId: string, props?: Record<string, unknown>) => void;
 }
 
 // ============================================================================
@@ -147,8 +150,11 @@ function generateStudentId(): string {
 // Main Component
 // ============================================================================
 
-const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGuide }) => {
+const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGuide, onOpenApp }) => {
   const initialTabValue: StudentLabTab = initialTab ?? (simGuide ? 'hardware' : 'spec');
+
+  // Access circuit from global store (shared with LogicPlayground)
+  const globalCircuit = useCircuitStore((state) => state.circuit);
   // App phase: 'select' | 'attempt' | 'exported'
   const [phase, setPhase] = useState<'select' | 'attempt' | 'exported'>('select');
 
@@ -943,64 +949,133 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
           </div>
         )}
 
-        {/* Build Tab - Preset Selector (Option B) */}
+        {/* Build Tab - Circuit Editor Integration */}
         {activeTab === 'build' && (
           <div className={styles.panel}>
-            <h2 className={styles.panelTitle}>Select Your Implementation</h2>
-            <p className={styles.buildInfo}>
-              Choose an implementation preset below. Each preset simulates a different circuit design
-              with predetermined test results. This allows you to experience the full submission flow.
-            </p>
+            <h2 className={styles.panelTitle}>Build Your Circuit</h2>
 
-            {presetsLoading && <div className={styles.loadingText}>Loading presets...</div>}
-
-            {!presetsLoading && presets && presets.presets.length > 0 && (
-              <div className={styles.presetGrid}>
-                {presets.presets.map((preset) => (
-                  <button
-                    type="button"
-                    key={preset.id}
-                    className={`${styles.presetCard} ${selectedPreset?.id === preset.id ? styles.presetCardSelected : ''}`}
-                    onClick={() => {
-                      setSelectedPreset(preset);
-                      // Clear previous self-check when preset changes
-                      setSelfCheckSummary(null);
-                      // Emit preset_selected event
-                      emitEvent('preset_selected', {
-                        lab_id: spec?.lab_id,
-                        preset_id: preset.id,
-                        preset_name: preset.name,
-                      });
-                    }}
-                  >
-                    <div className={styles.presetCardTitle}>{preset.name}</div>
-                    <div className={styles.presetCardDesc}>{preset.description}</div>
-                    <div className={styles.presetCardVectors}>
-                      {preset.vectors.filter((v) => v.pass).length}/{preset.vectors.length} vectors pass
-                    </div>
-                  </button>
-                ))}
+            {/* Circuit Status */}
+            <div className={styles.circuitStatusCard}>
+              <div className={styles.circuitStatusHeader}>
+                <span className={styles.circuitStatusLabel}>Current Circuit</span>
+                {globalCircuit.nodes.length > 0 ? (
+                  <span className={styles.circuitStatusBadge + ' ' + styles.circuitStatusActive}>
+                    {globalCircuit.nodes.length} nodes, {globalCircuit.connections.length} wires
+                  </span>
+                ) : (
+                  <span className={styles.circuitStatusBadge + ' ' + styles.circuitStatusEmpty}>
+                    Empty
+                  </span>
+                )}
               </div>
-            )}
 
-            {!presetsLoading && (!presets || presets.presets.length === 0) && (
-              <div className={styles.comingSoon}>
-                <div className={styles.comingSoonIcon}>🔧</div>
-                <div className={styles.comingSoonTitle}>No Presets Available</div>
-                <p className={styles.comingSoonText}>
-                  No implementation presets are available for this lab.
-                  The circuit editor will be integrated in a future release.
-                </p>
-              </div>
-            )}
-
-            {selectedPreset && (
-              <div className={styles.selectedPresetInfo}>
-                <h3>Selected: {selectedPreset.name}</h3>
-                <p>{selectedPreset.description}</p>
-                <div className={styles.nextStepHint}>
-                  Proceed to the <strong>Self-Check</strong> tab to verify your implementation.
+              {globalCircuit.nodes.length > 0 && (
+                <div className={styles.circuitPreview}>
+                  <div className={styles.circuitNodeList}>
+                    {globalCircuit.nodes.slice(0, 6).map((node) => (
+                      <span key={node.id} className={styles.circuitNodeTag}>
+                        {node.type}
+                      </span>
+                    ))}
+                    {globalCircuit.nodes.length > 6 && (
+                      <span className={styles.circuitNodeMore}>
+                        +{globalCircuit.nodes.length - 6} more
+                      </span>
+                    )}
+                  </div>
                 </div>
+              )}
+            </div>
+
+            {/* Open in Playground Button */}
+            <div className={styles.buildActions}>
+              <button
+                type="button"
+                className={`${styles.openPlaygroundButton} rbButtonPrimary`}
+                onClick={() => {
+                  if (onOpenApp) {
+                    onOpenApp('logic-playground');
+                    emitEvent('opened_playground', {
+                      lab_id: spec?.lab_id,
+                      nodes_before: globalCircuit.nodes.length,
+                    });
+                  }
+                }}
+              >
+                Open Logic Playground
+              </button>
+              <p className={styles.buildHint}>
+                Build your circuit in Logic Playground. Your design will automatically sync here.
+              </p>
+            </div>
+
+            {/* Divider */}
+            <div className={styles.buildDivider}>
+              <span>or use a preset</span>
+            </div>
+
+            {/* Preset Selector (Fallback) */}
+            <div className={styles.presetSection}>
+              <h3 className={styles.presetSectionTitle}>Demo Presets</h3>
+              <p className={styles.presetSectionInfo}>
+                For demonstration purposes, select a pre-built implementation:
+              </p>
+
+              {presetsLoading && <div className={styles.loadingText}>Loading presets...</div>}
+
+              {!presetsLoading && presets && presets.presets.length > 0 && (
+                <div className={styles.presetGrid}>
+                  {presets.presets.map((preset) => (
+                    <button
+                      type="button"
+                      key={preset.id}
+                      className={`${styles.presetCard} ${selectedPreset?.id === preset.id ? styles.presetCardSelected : ''}`}
+                      onClick={() => {
+                        setSelectedPreset(preset);
+                        setSelfCheckSummary(null);
+                        emitEvent('preset_selected', {
+                          lab_id: spec?.lab_id,
+                          preset_id: preset.id,
+                          preset_name: preset.name,
+                        });
+                      }}
+                    >
+                      <div className={styles.presetCardTitle}>{preset.name}</div>
+                      <div className={styles.presetCardDesc}>{preset.description}</div>
+                      <div className={styles.presetCardVectors}>
+                        {preset.vectors.filter((v) => v.pass).length}/{preset.vectors.length} vectors pass
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {!presetsLoading && (!presets || presets.presets.length === 0) && (
+                <div className={styles.noPresetsMessage}>
+                  No presets available for this lab.
+                </div>
+              )}
+            </div>
+
+            {/* Status Summary */}
+            {(globalCircuit.nodes.length > 0 || selectedPreset) && (
+              <div className={styles.buildStatus}>
+                <div className={styles.buildStatusIcon}>
+                  {globalCircuit.nodes.length > 0 || selectedPreset ? '✓' : '○'}
+                </div>
+                <div className={styles.buildStatusText}>
+                  {globalCircuit.nodes.length > 0
+                    ? `Circuit ready: ${globalCircuit.nodes.length} nodes`
+                    : selectedPreset
+                    ? `Using preset: ${selectedPreset.name}`
+                    : 'Build your circuit or select a preset'}
+                </div>
+              </div>
+            )}
+
+            {(globalCircuit.nodes.length > 0 || selectedPreset) && (
+              <div className={styles.nextStepHint}>
+                Proceed to <strong>Self-Check</strong> to verify your implementation.
               </div>
             )}
           </div>

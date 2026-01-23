@@ -435,7 +435,7 @@ export const UserManualAppComponent: React.FC<UserManualProps> = ({ onOpenApp })
     <div className="h-full bg-slate-900 text-white flex flex-col">
       <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="text-xl">dY","</div>
+          <div className="text-xl">📖</div>
           <div>
             <div className="text-sm font-semibold text-slate-100">Redbyte Guide</div>
             <div className="text-xs text-slate-500">Digital Circuit Playground</div>

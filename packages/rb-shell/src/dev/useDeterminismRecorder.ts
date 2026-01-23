@@ -34,6 +34,8 @@ export function useDeterminismRecorder() {
   const [isRecording, setIsRecording] = useState(false);
   const [verificationResult, setVerificationResult] = useState<VerifyReplayResult | null>(null);
   const [currentSnapshot, setCurrentSnapshot] = useState<CircuitStateSnapshot | null>(null);
+  const [eventCount, setEventCount] = useState(0);
+  const [tickCount, setTickCount] = useState(0);
   const recorderRef = useRef<Recorder | null>(null);
   const initialCircuitRef = useRef<Circuit | null>(null);
 
@@ -53,6 +55,8 @@ export function useDeterminismRecorder() {
     initialCircuitRef.current = JSON.parse(JSON.stringify(initialCircuit)); // Deep clone
     setIsRecording(true);
     setVerificationResult(null);
+    setEventCount(1); // Initial circuit load event
+    setTickCount(0);
   }, [isRecording]);
 
   const stopRecording = useCallback(() => {
@@ -68,11 +72,14 @@ export function useDeterminismRecorder() {
   const recordInputToggled = useCallback((nodeId: string, portName: string, value: number) => {
     if (!recorderRef.current || !recorderRef.current.isRecording()) return;
     recorderRef.current.recordInputToggled(nodeId, portName, value);
+    setEventCount((prev) => prev + 1);
   }, []);
 
   const recordSimulationTick = useCallback((dt: number = 1) => {
     if (!recorderRef.current || !recorderRef.current.isRecording()) return;
     recorderRef.current.recordSimulationTick(dt);
+    setEventCount((prev) => prev + 1);
+    setTickCount((prev) => prev + 1);
   }, []);
 
   const verifyRecording = useCallback(async () => {
@@ -94,6 +101,8 @@ export function useDeterminismRecorder() {
     setIsRecording(false);
     setVerificationResult(null);
     setCurrentSnapshot(null);
+    setEventCount(0);
+    setTickCount(0);
   }, []);
 
   // Time travel navigation callbacks
@@ -173,21 +182,38 @@ export function useDeterminismRecorder() {
     URL.revokeObjectURL(url);
   }, []);
 
+  // Derived state for TruthBar
+  const hasRecording = recorderRef.current !== null || initialCircuitRef.current !== null;
+  const isTimeTraveling = currentSnapshot !== null;
+
   return {
+    // Core state
     isRecording,
     verificationResult,
     currentSnapshot,
+
+    // TruthBar state
+    eventCount,
+    tickCount,
+    hasRecording,
+    isTimeTraveling,
+
+    // Recording actions
     startRecording,
     stopRecording,
     recordInputToggled,
     recordSimulationTick,
+
+    // Verification
     verifyRecording,
     reset,
+    exportLog,
+
+    // Time travel
     initializeTimeTravel,
     stepForwardInTime,
     stepBackwardInTime,
     canNavigateForward,
     canNavigateBackward,
-    exportLog,
   };
 }
