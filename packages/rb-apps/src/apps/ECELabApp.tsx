@@ -3,7 +3,7 @@ import BoardPanel from '../components/BoardPanel';
 import { CompareView, type CompareSignalCheck } from '../components/CompareView';
 import { useHardwareStore } from '../stores/hardwareStore';
 import { getSignalMap } from '../labs/signalMap';
-import { getSimSnapshot } from '../labs/simAdapter';
+import { getSimSnapshot, useSimStore, getSimCapabilities, setSimInput } from '../labs/simAdapter';
 import type { HardwareTraceV1 } from '../hardware/traceFormat';
 import { validateTrace } from '../hardware/traceFormat';
 import { saveTraceToFS, loadTraceFromFS } from '../utils/traceFileUtils';
@@ -26,6 +26,15 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
     // Hardware state for comparison
     const ioSnapshot = useHardwareStore((s) => s.ioSnapshot);
     const capabilities = useHardwareStore((s) => s.capabilities);
+
+    // Sim State (for Free Play)
+    const simSnapshot = useSimStore((s) => ({
+        timestamp: new Date().toISOString(),
+        tick: s.tick,
+        inputs: s.inputs,
+        outputs: s.outputs
+    }));
+    const simCapabilities = useSimStore((s) => s.capabilities);
 
     // Derived comparison state
     const [checks, setChecks] = useState<CompareSignalCheck[]>([]);
@@ -71,10 +80,12 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
         return () => window.removeEventListener('rb:load-replay', handleReplayLoad);
     }, []);
 
-    // Effective Snapshot: Live vs Replay
+    // Effective Snapshot: Priority -> Replay > Live (Hardware/Sim based on mode)
     const effectiveSnapshot = replayTrace
         ? replayTrace.samples[replayIndex] ?? null
-        : ioSnapshot;
+        : (mode === 'sim-only' ? simSnapshot : ioSnapshot);
+
+    const effectiveCapabilities = mode === 'sim-only' ? simCapabilities : capabilities;
 
     // Recording Actions
     const handleToggleRecording = () => {
@@ -113,11 +124,15 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
     useEffect(() => {
         if (rightTab !== 'compare') return;
 
-        // 1. Get mappings based on connected board
-        const boardId = capabilities?.boardId || 'unknown';
+        if (rightTab !== 'compare') return;
+
+        // 1. Get mappings based on connected board (or sim)
+        const boardId = effectiveCapabilities?.boardId || 'unknown';
         const map = getSignalMap(boardId);
 
-        // 2. Get sim snapshot (stub for now)
+        // 2. Get sim snapshot (stub for now) -> Actually comparing against SimStore anyway?
+        // If mode is 'sim-only', "Comparison" is weird (Sim vs Sim?), but maybe Lab mode uses Sim?
+        // Let's assume standard Lab comparison logic applies to whatever is "Effective".
         const sim = getSimSnapshot();
 
         // 3. Compute checks
@@ -125,8 +140,26 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
 
         // Iterate over mapped signals
         for (const [signalName, hwLoc] of Object.entries(map)) {
-            // Sim value
-            const expected = sim.signals[signalName];
+            // Sim value (Expected)
+            let expected: number | string = '-';
+            if (sim) {
+                // Determine if input or output
+                // Access correct group from inputs/outputs
+                // Note: signalMap uses flat signal names, we need to map back to group?
+                // Actually hwLoc has group/bit info.
+
+                let groupVal: number | string | undefined;
+                if (hwLoc.group === 'SW' || hwLoc.group === 'BTN') {
+                    groupVal = sim.inputs[hwLoc.group];
+                } else {
+                    groupVal = sim.outputs[hwLoc.group];
+                }
+
+                if (groupVal !== undefined) {
+                    const intVal = typeof groupVal === 'number' ? groupVal : parseInt(groupVal as string || '0', 2);
+                    expected = (intVal >> hwLoc.bit) & 1;
+                }
+            }
 
             // HW value (resolve from snapshot)
             let observed: number | string = '-';
@@ -156,7 +189,8 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
 
         setChecks(newChecks);
 
-    }, [rightTab, effectiveSnapshot, capabilities, replayTrace]); // Re-run on any IO change
+
+    }, [rightTab, effectiveSnapshot, effectiveCapabilities, replayTrace]); // Re-run on any IO change
 
 
     return (
@@ -282,7 +316,7 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
                             <div className="text-4xl opacity-20">⚡</div>
                             <div className="text-sm font-medium">Experiment Canvas</div>
                             <div className="text-xs text-gray-500">
-                                {mode === 'sim-only' && 'Build and simulate circuits here (Coming Soon)'}
+                                {mode === 'sim-only' && 'Use the Board Panel on the right to interact with the simulated board.'}
                                 {mode === 'board-connected' && 'Live hardware I/O visualization active'}
                             </div>
                         </div>
@@ -316,7 +350,12 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
                     {/* Content */}
                     <div className="flex-1 overflow-hidden relative">
                         {rightTab === 'board' ? (
-                            <BoardPanel />
+                            <BoardPanel
+                                snapshot={effectiveSnapshot}
+                                capabilities={effectiveCapabilities}
+                                onInteraction={mode === 'sim-only' ? setSimInput : undefined}
+                                readOnly={!!replayTrace}
+                            />
                         ) : (
                             <CompareView ioSnapshot={effectiveSnapshot} checks={checks} />
                         )}

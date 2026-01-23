@@ -11,12 +11,20 @@
 
 import React from 'react';
 import { useHardwareStore, type HardwareState } from '../stores/hardwareStore';
-import { hardwareClient } from '../services/hardwareClient';
+import { hardwareClient, type BoardCapabilities } from '../services/hardwareClient';
 import { ConnectionStatusBadge } from './ConnectionStatusBadge';
 import { GenericIOGrid } from './GenericIOGrid';
 
+// Helper types for interaction
+export type BoardInteractionHandler = (componentId: string, value: number) => void;
+
 interface BoardPanelProps {
   className?: string;
+  // Overrides for Simulation / Replay
+  snapshot?: HardwareState['ioSnapshot'];
+  capabilities?: BoardCapabilities | null;
+  onInteraction?: BoardInteractionHandler;
+  readOnly?: boolean;
 }
 
 // Helper: robust device ID extraction
@@ -24,11 +32,11 @@ interface BoardPanelProps {
 const getDeviceKey = (d: any) => d.deviceId ?? d.id ?? '';
 
 
-// Basys3-specific layout component
 const Basys3Layout: React.FC<{
   ioSnapshot: HardwareState['ioSnapshot'];
   onSetOutput: (signal: string, value: number) => void;
-}> = ({ ioSnapshot, onSetOutput }) => {
+  onInteraction?: BoardInteractionHandler;
+}> = ({ ioSnapshot, onSetOutput, onInteraction }) => {
   // Parse SW value (16-bit)
   const swValue = ioSnapshot?.inputs.SW;
   const swBits = typeof swValue === 'string' ? swValue : (swValue ?? 0).toString(2).padStart(16, '0');
@@ -120,16 +128,29 @@ const Basys3Layout: React.FC<{
         </div>
 
         <div className="flex justify-center gap-1">
-          {swBits.split('').map((bit: string, idx: number) => (
-            <div
-              key={`sw-${15 - idx}`}
-              className={`w-2 h-5 rounded-sm transition-all ${bit === '1'
-                ? 'bg-cyan-500 border border-cyan-400'
-                : 'bg-gray-700 border border-gray-600'
-                }`}
-              title={`SW${15 - idx}: ${bit === '1' ? 'ON' : 'OFF'}`}
-            />
-          ))}
+          {swBits.split('').map((bit: string, idx: number) => {
+            const bitIndex = 15 - idx;
+            const isOn = bit === '1';
+            return (
+              <div
+                key={`sw-${bitIndex}`}
+                className={`w-2 h-5 rounded-sm transition-all cursor-pointer ${isOn
+                  ? 'bg-cyan-500 border border-cyan-400'
+                  : 'bg-gray-700 border border-gray-600'
+                  }`}
+                title={`SW${bitIndex}: ${isOn ? 'ON' : 'OFF'}`}
+                onClick={() => {
+                  if (onInteraction) {
+                    // Toggle bit
+                    const currentVal = parseInt(swBits, 2);
+                    const mask = 1 << bitIndex;
+                    const newVal = isOn ? (currentVal & ~mask) : (currentVal | mask);
+                    onInteraction('SW', newVal);
+                  }
+                }}
+              />
+            );
+          })}
         </div>
 
         {/* Switch labels */}
@@ -152,10 +173,21 @@ const Basys3Layout: React.FC<{
   );
 };
 
-export const BoardPanel: React.FC<BoardPanelProps> = ({ className = '' }) => {
+export const BoardPanel: React.FC<BoardPanelProps> = ({
+  className = '',
+  snapshot: propSnapshot,
+  capabilities: propCapabilities,
+  onInteraction,
+  readOnly = false
+}) => {
   const connectionState = useHardwareStore((s) => s.connectionState);
-  const capabilities = useHardwareStore((s) => s.capabilities);
-  const ioSnapshot = useHardwareStore((s) => s.ioSnapshot);
+  // Use props if provided, otherwise fall back to store
+  const storeCapabilities = useHardwareStore((s) => s.capabilities);
+  const capabilities = propCapabilities ?? storeCapabilities;
+
+  const storeSnapshot = useHardwareStore((s) => s.ioSnapshot);
+  const ioSnapshot = propSnapshot ?? storeSnapshot;
+
   const availableDevices = useHardwareStore((s) => s.availableDevices);
   const activeDevice = useHardwareStore((s) => s.activeDevice);
   const lastError = useHardwareStore((s) => s.lastError);
@@ -185,7 +217,7 @@ export const BoardPanel: React.FC<BoardPanelProps> = ({ className = '' }) => {
 
     // Use board-specific layout if available
     if (capabilities.boardId.toLowerCase() === 'basys3') {
-      return <Basys3Layout ioSnapshot={ioSnapshot} onSetOutput={handleSetOutput} />;
+      return <Basys3Layout ioSnapshot={ioSnapshot} onSetOutput={handleSetOutput} onInteraction={onInteraction} />;
     }
 
     // Explicit fallback: Spartan-3E and all other boards use GenericIOGrid
@@ -208,8 +240,8 @@ export const BoardPanel: React.FC<BoardPanelProps> = ({ className = '' }) => {
           <ConnectionStatusBadge state={connectionState} />
         </div>
 
-        {/* Connect button */}
-        {connectionState === 'disconnected' && (
+        {/* Connect button - Only show if using store state (no props overrides) */}
+        {connectionState === 'disconnected' && !propSnapshot && (
           <button
             onClick={() => connect()}
             className="px-3 py-1 text-xs bg-cyan-600 hover:bg-cyan-500 text-white rounded transition-colors"
