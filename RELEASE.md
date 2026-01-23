@@ -55,3 +55,11 @@ git push origin v1.0.0
   * Verify "Open Playground" CTA works.
   * Verify "Docs" navigation works.
   * Perform a quick "Export Evidence" test in the production environment.
+
+## 5. Ship-Ready Sign-off
+
+* [ ] All packages versioned at `1.0.0`
+* [ ] `pnpm run quality` logic-core/apps pass (ignoring known React 19 test data issues)
+* [ ] Manual smoke test "Happy Path" verified locally
+* [ ] Deployment to `redbyteapps.dev` verified via `build.txt` SHA
+* [ ] GitHub Tag `v1.0.0` pushed and visible

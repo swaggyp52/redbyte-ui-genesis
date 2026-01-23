@@ -1,6 +1,6 @@
 {
   "name": "@redbyte/rb-logic-view",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "main": "./dist/rb-logic-view.js",
   "module": "./dist/rb-logic-view.js",

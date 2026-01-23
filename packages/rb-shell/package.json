@@ -1,6 +1,6 @@
 {
   "name": "@redbyte/rb-shell",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "main": "./dist/rb-shell.js",
   "module": "./dist/rb-shell.js",
