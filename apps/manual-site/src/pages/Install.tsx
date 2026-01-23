@@ -9,82 +9,49 @@ export default function Install() {
     <div className="py-16 bg-rb-bg">
       <div className="content-container px-6">
         <div className="max-w-4xl">
-          <h1 className="text-h1 text-rb-text mb-4">Install RedByte OS</h1>
+          <h1 className="text-h1 text-rb-text mb-4">Install RedByte OS (Windows)</h1>
           <p className="text-lg text-rb-muted mb-10 leading-relaxed">
-            Use the pinned bootstrap script for deterministic setup. It installs the required
-            toolchain, checks versions, and builds the workspace.
+            Paste this into a <strong>fresh PowerShell window</strong>.
+            It installs everything and launches RedByte automatically.
           </p>
 
           <section className="mb-12">
-            <h2 className="text-h2 text-rb-text mb-6">Bootstrap (Windows PowerShell)</h2>
-            <div className="bg-rb-surface border border-rb-border rounded-md p-6 space-y-4">
-              <p className="text-sm text-rb-muted">
-                Runs the pinned bootstrap script from a clean clone.
-              </p>
+            <div className="bg-rb-surface border border-rb-border rounded-md p-8 space-y-6">
               <CodeBlock code={mvpFacts.bootstrapCommand} />
-              <p className="text-xs text-rb-dim">
-                Default pin: <code className="text-rb-accent">fpga-mvp-0.1.0</code>. Override with <code className="text-rb-accent">RB_GIT_REF</code> if needed.
-              </p>
-            </div>
-          </section>
 
-          <section className="mb-12">
-            <h2 className="text-h2 text-rb-text mb-6">Override the pinned ref</h2>
-            <div className="bg-rb-surface border border-rb-border rounded-md p-6 space-y-4">
-              <p className="text-sm text-rb-muted">
-                Use a tag or commit SHA for a specific class release.
-              </p>
-              <CodeBlock code={mvpFacts.bootstrapOverrideCommand} />
-            </div>
-          </section>
-
-          <section className="mb-12">
-            <h2 className="text-h2 text-rb-text mb-6">System requirements</h2>
-            <div className="bg-rb-surface border border-rb-border rounded-md p-6">
-              <ul className="space-y-2 text-rb-muted">
-                <li>Windows 10 or 11</li>
-                <li>Basys 3 board optional (hardware mode)</li>
-                <li>Vivado 2024.1 required only for programming hardware</li>
-                <li>SIM mode works without Vivado</li>
-              </ul>
-            </div>
-          </section>
-
-          <section className="mb-12">
-            <h2 className="text-h2 text-rb-text mb-6">Verify the install</h2>
-            <div className="bg-rb-surface border border-rb-border rounded-md p-6 space-y-4">
-              <div>
-                <div className="text-sm text-rb-muted mb-2">Environment check (SIM mode supported)</div>
-                <CodeBlock code={`powershell -NoProfile -ExecutionPolicy Bypass -File .\\\\scripts\\\\doctor.ps1`} />
-                <p className="text-xs text-rb-dim mt-2">
-                  To validate SIM-only machines, set <code className="text-rb-accent">RB_FPGA_SIM=1</code> before running doctor.
-                </p>
-              </div>
-              <div>
-                <div className="text-sm text-rb-muted mb-2">SIM smoke test (no hardware)</div>
-                <CodeBlock code={mvpFacts.smokeSimCommand} />
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => navigator.clipboard.writeText(mvpFacts.bootstrapCommand)}
+                  className="btn btn-primary"
+                >
+                  Copy Command
+                </button>
+                <a
+                  href="https://redbyteapps.dev/bootstrap.ps1"
+                  className="btn btn-secondary"
+                  download
+                >
+                  Download Script
+                </a>
               </div>
             </div>
           </section>
 
           <section className="mb-4">
             <div className="bg-rb-surface border border-rb-border rounded-md p-6">
-              <h3 className="text-h3 text-rb-text mb-2">Next steps</h3>
+              <h3 className="text-h3 text-rb-text mb-2">Advanced / Offline Setup</h3>
               <p className="text-sm text-rb-muted mb-4">
-                Launch the OS, open Start Here, and follow the SIM or hardware walkthroughs.
+                For educator guides, manual toolchain setup, or offline installs:
               </p>
               <div className="flex flex-wrap gap-3">
-                <Link to="/getting-started" className="btn btn-secondary">
-                  Getting Started
-                </Link>
-                <Link to="/demo" className="btn btn-secondary">
+                <Link to="/instructors" className="btn btn-secondary">
                   For Educators
                 </Link>
                 <a
                   href="https://github.com/swaggyp52/redbyte-ui-genesis"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn btn-primary"
+                  className="btn btn-secondary"
                 >
                   View Repo
                 </a>

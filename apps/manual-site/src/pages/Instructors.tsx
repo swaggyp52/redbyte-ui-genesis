@@ -17,8 +17,7 @@ export default function Instructors() {
           <section className="mb-12">
             <h2 className="text-h2 text-rb-text mb-4">Day 1 flow</h2>
             <ol className="list-decimal pl-5 text-sm text-rb-muted space-y-2">
-              <li>Install RedByte OS with the pinned bootstrap.</li>
-              <li>Run the SIM smoke test to verify deterministic frames and trace output.</li>
+              <li>Install RedByte OS using the one-line bootstrap command from the Install page.</li>
               <li>Launch the OS and use Start Here to open the FPGA Lab in SIM mode.</li>
               <li>Export a v2 bundle and import it into Submission Inspector.</li>
               <li>Review checks and export a grading report JSON.</li>
@@ -31,9 +30,6 @@ export default function Instructors() {
               <CodeBlock code={mvpFacts.bootstrapCommand} />
               <CodeBlock code={mvpFacts.bridgeCommandSim} />
               <CodeBlock code={mvpFacts.smokeSimCommand} />
-              <p className="text-xs text-rb-dim">
-                Override the pinned tag with <code className="text-rb-accent">RB_GIT_REF</code> when issuing updates.
-              </p>
             </div>
           </section>
 

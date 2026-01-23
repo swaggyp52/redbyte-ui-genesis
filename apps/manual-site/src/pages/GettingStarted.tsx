@@ -41,35 +41,24 @@ export default function GettingStarted() {
           {/* Installation */}
           <section className="mb-16">
             <h2 className="text-h2 text-rb-text mb-6">Installation</h2>
-            <div className="space-y-4">
-              <Step number={1} title="Clone the repository">
-                <CodeBlock code={`git clone https://github.com/swaggyp52/redbyte-ui-genesis.git
-cd redbyte-ui-genesis`} />
-                <p className="text-sm text-rb-muted mt-3">
-                  This will download the full RedByte monorepo to your device.
-                </p>
-              </Step>
-
-              <Step number={2} title="Install dependencies">
-                <CodeBlock code="pnpm install" />
-                <p className="text-sm text-rb-muted mt-3">
-                  Make sure you have <b>pnpm 10.24.0+</b> installed globally. If not, run <code className="text-rb-accent">npm install -g pnpm</code> first.
-                </p>
-              </Step>
-
-              <Step number={3} title="Start the RedByte app">
-                <CodeBlock code={`pnpm --filter @redbyte/playground dev`} />
-                <p className="text-sm text-rb-muted mt-3">
-                  This launches the main RedByte desktop environment. Open <code className="text-rb-accent">http://localhost:5173</code> in your browser.
-                </p>
-              </Step>
-
-              <Step number={4} title="(Optional) Run tests or build">
-                <CodeBlock code={`pnpm test\npnpm build`} />
-                <p className="text-sm text-rb-muted mt-3">
-                  <b>pnpm test</b> runs the full test suite. <b>pnpm build</b> builds all apps and packages for production.
-                </p>
-              </Step>
+            <div className="bg-rb-surface border border-rb-border rounded-md p-6">
+              <p className="text-rb-muted mb-6">
+                RedByte OS is designed to be installed with a single command on Windows.
+                This sets up the toolchain, workspace, and launches the app automatically.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Link to="/install" className="btn btn-primary">
+                  Go to Install Page
+                </Link>
+                <a
+                  href="https://github.com/swaggyp52/redbyte-ui-genesis"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-secondary"
+                >
+                  View Repo
+                </a>
+              </div>
             </div>
           </section>
 

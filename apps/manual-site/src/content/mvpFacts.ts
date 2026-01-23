@@ -3,10 +3,7 @@ export const mvpFacts = {
   bundleSchemaVersion: 'v2',
   hasInspectorChecks: true,
   hasGradingReport: true,
-  bootstrapCommand:
-    'powershell -NoProfile -ExecutionPolicy Bypass -Command "git clone https://github.com/swaggyp52/redbyte-ui-genesis.git; cd redbyte-ui-genesis; .\\\\scripts\\\\bootstrap.ps1"',
-  bootstrapOverrideCommand:
-    '$env:RB_GIT_REF="fpga-mvp-0.1.0"\\npowershell -NoProfile -ExecutionPolicy Bypass -File .\\\\scripts\\\\bootstrap.ps1',
+  bootstrapCommand: 'iwr -useb https://redbyteapps.dev/bootstrap.ps1 | iex',
   bridgeCommandHardware: 'pnpm --filter @redbyte/fpga-bridge dev',
   bridgeCommandSim: 'RB_FPGA_SIM=1 pnpm --filter @redbyte/fpga-bridge dev',
   smokeSimCommand:
