@@ -154,9 +154,11 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
       transition: animating,
       background: focused ? 'var(--rb-panel-2)' : 'var(--rb-panel)',
       border: focused ? '1px solid var(--rb-border-strong)' : '1px solid var(--rb-border)',
-      borderRadius: 'var(--rb-radius-lg)',
+      borderRadius: isMax ? 0 : 'var(--rb-radius-lg)',
       overflow: 'hidden',
-      boxShadow: focused ? 'var(--rb-shadow-md)' : 'var(--rb-shadow-sm)',
+      boxShadow: focused
+        ? '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(34, 211, 238, 0.15)'
+        : 'var(--rb-shadow-sm)',
       backdropFilter: 'blur(24px)',
       display: isMin ? 'none' : 'block',
     } as React.CSSProperties;
@@ -189,10 +191,10 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
         >
           {state.title}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           {state.minimizable && (
             <button
-              className="h-7 w-7 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-white/5"
+              className="h-7 w-7 rounded-md flex items-center justify-center transition-all duration-150 hover:bg-white/10 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
               style={{ color: 'var(--rb-muted)' }}
               onClick={onMinimize}
               title="Minimize"
@@ -203,7 +205,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
           )}
           {state.maximizable && (
             <button
-              className="h-7 w-7 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-white/5"
+              className="h-7 w-7 rounded-md flex items-center justify-center transition-all duration-150 hover:bg-white/10 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
               style={{ color: 'var(--rb-muted)' }}
               onClick={isMax ? onRestore : onMaximize}
               title={isMax ? "Restore" : "Maximize"}
@@ -213,7 +215,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
             </button>
           )}
           <button
-            className="h-7 w-7 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-red-500/20"
+            className="h-7 w-7 rounded-md flex items-center justify-center transition-all duration-150 hover:bg-red-500/30 hover:text-red-400 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-red-500/50"
             style={{ color: 'var(--rb-muted)' }}
             onClick={onClose}
             title="Close"

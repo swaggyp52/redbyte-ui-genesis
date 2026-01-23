@@ -5,14 +5,35 @@
 
 .resize-handle {
   position: absolute;
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   background: transparent;
+  transition: background-color 0.15s ease;
+  z-index: 10;
+}
+
+.resize-handle:hover {
+  background: rgba(34, 211, 238, 0.15);
+  border-radius: 2px;
+}
+
+.resize-handle:active {
+  background: rgba(34, 211, 238, 0.25);
 }
 
 .resize-edge {
   position: absolute;
   background: transparent;
+  transition: background-color 0.15s ease;
+  z-index: 9;
+}
+
+.resize-edge:hover {
+  background: rgba(34, 211, 238, 0.08);
+}
+
+.resize-edge:active {
+  background: rgba(34, 211, 238, 0.15);
 }
 
 .resize-edge[style*='left'],
@@ -233,4 +254,27 @@
 
 .animate-sparkle {
   animation: sparkle 2s ease-in-out infinite;
+}
+
+/* Accessibility: Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .resize-handle,
+  .resize-edge {
+    transition: none;
+  }
+
+  .animate-gradient-shift,
+  .animate-float-orb,
+  .animate-pulse-glow,
+  .animate-grid-pulse,
+  .animate-scan-line,
+  .animate-sparkle {
+    animation: none;
+  }
+}
+
+/* Focus visible for keyboard navigation */
+.shell-container :focus-visible {
+  outline: 2px solid rgba(34, 211, 238, 0.6);
+  outline-offset: 2px;
 }
