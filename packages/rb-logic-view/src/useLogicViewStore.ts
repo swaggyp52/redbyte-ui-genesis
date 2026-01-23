@@ -351,14 +351,22 @@ function getStore() {
   return _storeInternal;
 }
 
-export const useLogicViewStore = Object.assign(
-  (selector?: any, equalityFn?: any) => getStore()(selector, equalityFn),
-  {
-    getState: () => getStore().getState(),
-    setState: (...args: any[]) => getStore().setState(...args),
-    subscribe: (listener: any) => getStore().subscribe(listener),
-  }
-);
+// Explicitly type the store to preserve inference
+import type { StoreApi, UseBoundStore } from 'zustand';
+
+// In Zustand v5, we should expose the hook directly.
+// The manual proxy approach was causing signature mismatches (0-1 args vs 2).
+export const useLogicViewStore = ((selector?: any) => {
+  return getStore()(selector);
+}) as UseBoundStore<StoreApi<LogicViewState>>;
+
+// Copy static methods to the hook to maintain compatibility
+Object.assign(useLogicViewStore, {
+  getState: () => getStore().getState(),
+  setState: (...args: [any]) => getStore().setState(...args),
+  subscribe: (listener: any) => getStore().subscribe(listener),
+  destroy: () => { }, // mock destroy to satisfy interface
+});
 
 declare global {
   interface Window {

@@ -3,7 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React from 'react';
-import { shallow } from 'zustand/shallow';
+import { useShallow } from 'zustand/react/shallow';
 import type { TickEngine, Node, Connection, Circuit } from '@redbyte/rb-logic-core';
 import { useLogicViewStore, getGlobalViewStateStore, type LogicViewState } from './useLogicViewStore';
 import { NodeView, type ChipMetadata } from './components/NodeView';
@@ -75,15 +75,15 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   trackRender('LogicCanvas');
   const uiTick = useUiTickStore((state) => state.uiTick);
 
-  const camera = useLogicViewStore((state) => state.camera, shallow);
-  const rawSelection = useLogicViewStore((state) => state.selection, shallow);
+  const camera = useLogicViewStore(useShallow((state) => state.camera));
+  const rawSelection = useLogicViewStore(useShallow((state) => state.selection));
   // Guard: Ensure selection Sets exist and are valid Sets (prevent crash if store state is malformed/hydrated as keys)
   const selection = React.useMemo(() => ({
     nodes: rawSelection?.nodes instanceof Set ? rawSelection.nodes : new Set(),
     wires: rawSelection?.wires instanceof Set ? rawSelection.wires : new Set(),
   }), [rawSelection]);
 
-  const editingState = useLogicViewStore((state) => state.editingState, shallow);
+  const editingState = useLogicViewStore(useShallow((state) => state.editingState));
   const snapToGridEnabled = useLogicViewStore((state) => state.snapToGrid);
   const toolMode = useLogicViewStore((state) => state.toolMode);
   const gridSize = useLogicViewStore((state) => state.gridSize);
@@ -246,7 +246,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       setInternalCircuit(nextCircuit);
     }
 
-    const newSignals = engine.getEngine().getAllSignals();
+    const newSignals = engine.getEngine().getAllSignals() as Map<string, 0 | 1>;
     setSignals(newSignals);
     setSignalsVersion(v => v + 1); // Bump version on tick updates too
 
@@ -281,7 +281,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     const unsubscribe = globalStore.subscribe(
       (state: any) => {
         // Sync global selection to local selection
-        const globalNodeIds = state.selectedNodeIds || new Set();
+        const globalNodeIds = (state.selectedNodeIds || new Set()) as Set<string>;
 
         // Check if this is different from what we last synced
         const lastSynced = lastSyncedSelection.current;
@@ -486,7 +486,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
     // CRITICAL: Immediately recompute signals after input change
     // This makes toggles interactive without waiting for next UI tick
-    const newSignals = engine.getEngine().getAllSignals();
+    const newSignals = engine.getEngine().getAllSignals() as Map<string, 0 | 1>;
     setSignals(newSignals);
 
     // Bump version to trigger scope/3D updates even when stopped

@@ -3,7 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { shallow } from 'zustand/shallow';
+import { useShallow } from 'zustand/react/shallow';
 import type { Circuit, CircuitEngine } from '@redbyte/rb-logic-core';
 import type { ProofPack } from '../recording/runRecord';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
@@ -135,7 +135,7 @@ export const RightDock: React.FC<RightDockProps> = ({
   const [activeTab, setActiveTab] = useState<RightDockTab>(initialTab);
   const [dockState, setDockState] = useState<RightDockState>(initialState);
   // Use shallow comparison to prevent re-renders when selection object reference changes but content is the same
-  const rawSelection = useLogicViewStore((state) => state.selection, shallow);
+  const rawSelection = useLogicViewStore(useShallow((state: import('@redbyte/rb-logic-view').LogicViewState) => state.selection));
   const selection = useMemo(() => ({
     nodes: rawSelection?.nodes instanceof Set ? rawSelection.nodes : new Set<string>(),
     wires: rawSelection?.wires instanceof Set ? rawSelection.wires : new Set<string>(),
@@ -397,104 +397,113 @@ export const RightDock: React.FC<RightDockProps> = ({
   return (
     <div className={`${width} border-l border-gray-700 bg-gray-900 flex flex-col transition-all duration-200 shrink-0`} data-testid="right-dock">
       {/* Tab Bar */}
-      <div className="h-12 border-b border-gray-700 bg-gray-850 flex items-stretch px-2 gap-1">
-        <button
-          onClick={() => handleTabChange('inspector')}
-          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'inspector'
-            ? 'bg-cyan-600 text-white shadow-lg'
-            : 'text-gray-400 hover:text-white hover:bg-gray-700'
-            }`}
-          aria-label="Inspector"
-          aria-selected={activeTab === 'inspector'}
-          role="tab"
-          data-testid="rightdock-tab-inspector"
-          type="button"
-        >
-          <span className="mr-1 pointer-events-none select-none">🔍</span>
-          <span className="pointer-events-none select-none">Info</span>
-        </button>
-        <button
-          onClick={() => handleTabChange('health')}
-          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'health'
-            ? 'bg-cyan-600 text-white shadow-lg'
-            : 'text-gray-400 hover:text-white hover:bg-gray-700'
-            }`}
-          aria-label="Health"
-          aria-selected={activeTab === 'health'}
-          role="tab"
-          data-testid="rightdock-tab-health"
-          type="button"
-        >
-          <span className="mr-1 pointer-events-none select-none">💊</span>
-          <span className="pointer-events-none select-none">Health</span>
-        </button>
-        <button
-          onClick={() => handleTabChange('learn')}
-          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'learn'
-            ? 'bg-cyan-600 text-white shadow-lg'
-            : 'text-gray-400 hover:text-white hover:bg-gray-700'
-            }`}
-          aria-label="Learn"
-          aria-selected={activeTab === 'learn'}
-          role="tab"
-          data-testid="rightdock-tab-learn"
-          type="button"
-        >
-          <span className="mr-1 pointer-events-none select-none">🎓</span>
-          <span className="pointer-events-none select-none">Learn</span>
-        </button>
-        <button
-          onClick={() => handleTabChange('probes')}
-          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'probes'
-            ? 'bg-cyan-600 text-white shadow-lg'
-            : 'text-gray-400 hover:text-white hover:bg-gray-700'
-            }`}
-          aria-label="Probes"
-          aria-selected={activeTab === 'probes'}
-          role="tab"
-          data-testid="rightdock-tab-probes"
-          type="button"
-        >
-          <span className="mr-1 pointer-events-none select-none">📊</span>
-          <span className="pointer-events-none select-none">Probes</span>
-        </button>
-        <button
-          onClick={() => handleTabChange('record')}
-          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'record'
-            ? 'bg-cyan-600 text-white shadow-lg'
-            : 'text-gray-400 hover:text-white hover:bg-gray-700'
-            }`}
-          aria-label="Record"
-          aria-selected={activeTab === 'record'}
-          role="tab"
-          data-testid="rightdock-tab-record"
-          type="button"
-        >
-          <span className="mr-1 pointer-events-none select-none">⏺️</span>
-          <span className="pointer-events-none select-none">Record</span>
-        </button>
-        <button
-          onClick={() => handleTabChange('chips')}
-          className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'chips'
-            ? 'bg-cyan-600 text-white shadow-lg'
-            : 'text-gray-400 hover:text-white hover:bg-gray-700'
-            }`}
-          aria-label="Chips"
-          aria-selected={activeTab === 'chips'}
-          role="tab"
-          data-testid="rightdock-tab-chips"
-          type="button"
-        >
-          <span className="mr-1 pointer-events-none select-none">🧩</span>
-          <span className="pointer-events-none select-none">Chips</span>
-        </button>
+      <div className="flex items-center h-12 bg-gray-850 border-b border-gray-700">
+        <div className="flex-1 flex items-stretch h-full px-2 gap-1" role="tablist">
+          <button
+            onClick={() => handleTabChange('inspector')}
+            className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'inspector'
+              ? 'bg-cyan-600 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            aria-label="Inspector"
+            aria-selected={activeTab === 'inspector' ? 'true' : 'false'}
+            role="tab"
+            tabIndex={activeTab === 'inspector' ? 0 : -1}
+            data-testid="rightdock-tab-inspector"
+            type="button"
+          >
+            <span className="mr-1 pointer-events-none select-none">🔍</span>
+            <span className="pointer-events-none select-none">Info</span>
+          </button>
+          <button
+            onClick={() => handleTabChange('health')}
+            className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'health'
+              ? 'bg-cyan-600 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            aria-label="Health"
+            aria-selected={activeTab === 'health' ? 'true' : 'false'}
+            role="tab"
+            tabIndex={activeTab === 'health' ? 0 : -1}
+            data-testid="rightdock-tab-health"
+            type="button"
+          >
+            <span className="mr-1 pointer-events-none select-none">💊</span>
+            <span className="pointer-events-none select-none">Health</span>
+          </button>
+          <button
+            onClick={() => handleTabChange('learn')}
+            className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'learn'
+              ? 'bg-cyan-600 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            aria-label="Learn"
+            aria-selected={activeTab === 'learn' ? 'true' : 'false'}
+            role="tab"
+            tabIndex={activeTab === 'learn' ? 0 : -1}
+            data-testid="rightdock-tab-learn"
+            type="button"
+          >
+            <span className="mr-1 pointer-events-none select-none">🎓</span>
+            <span className="pointer-events-none select-none">Learn</span>
+          </button>
+          <button
+            onClick={() => handleTabChange('probes')}
+            className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'probes'
+              ? 'bg-cyan-600 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            aria-label="Probes"
+            aria-selected={activeTab === 'probes' ? 'true' : 'false'}
+            role="tab"
+            tabIndex={activeTab === 'probes' ? 0 : -1}
+            data-testid="rightdock-tab-probes"
+            type="button"
+          >
+            <span className="mr-1 pointer-events-none select-none">📊</span>
+            <span className="pointer-events-none select-none">Probes</span>
+          </button>
+          <button
+            onClick={() => handleTabChange('record')}
+            className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'record'
+              ? 'bg-cyan-600 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            aria-label="Record"
+            aria-selected={activeTab === 'record' ? 'true' : 'false'}
+            role="tab"
+            tabIndex={activeTab === 'record' ? 0 : -1}
+            data-testid="rightdock-tab-record"
+            type="button"
+          >
+            <span className="mr-1 pointer-events-none select-none">⏺️</span>
+            <span className="pointer-events-none select-none">Record</span>
+          </button>
+          <button
+            onClick={() => handleTabChange('chips')}
+            className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'chips'
+              ? 'bg-cyan-600 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            aria-label="Chips"
+            aria-selected={activeTab === 'chips' ? 'true' : 'false'}
+            role="tab"
+            tabIndex={activeTab === 'chips' ? 0 : -1}
+            data-testid="rightdock-tab-chips"
+            type="button"
+          >
+            <span className="mr-1 pointer-events-none select-none">🧩</span>
+            <span className="pointer-events-none select-none">Chips</span>
+          </button>
+        </div>
 
-        {/* Dock state toggle */}
+        {/* Dock state toggle - OUTSIDE tablist */}
         <button
           onClick={handleStateToggle}
           className="h-full px-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
           title={dockState === 'peek' ? 'Expand' : 'Collapse'}
           type="button"
+          aria-label={dockState === 'peek' ? 'Expand Dock' : 'Collapse Dock'}
         >
           {dockState === 'peek' ? '→' : '←'}
         </button>

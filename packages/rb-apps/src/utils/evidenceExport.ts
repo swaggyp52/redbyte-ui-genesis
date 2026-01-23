@@ -16,6 +16,13 @@ export interface LabEvidenceCapsule {
     completedSteps: number[];
     isPass: boolean;
     trace: HardwareTraceV1 | null;
+    grading?: {
+        score?: number;
+        passFail?: boolean;
+        notes?: string;
+        initials: string;
+    };
+    evidenceHash?: string;
 }
 
 export async function exportEvidenceCapsule(filename: string): Promise<boolean> {
@@ -28,11 +35,6 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
         let trace: HardwareTraceV1 | null = null;
         if (hw.traceBuffer.length > 0 && hw.capabilities) {
             // We create a trace from whatever is in the buffer currently
-            // Note: startTick might be rough if not currently recording, 
-            // but traceBuffer usually only populates during recording?
-            // Actually traceBuffer is persistent in store until cleared.
-            // If not recording, we might need to grab what we have.
-            // If recording, we stop? No, just copy.
             trace = createTrace(
                 hw.capabilities.boardId,
                 hw.recordingStartTick ?? (hw.traceBuffer[0]?.tick || 0),
@@ -119,5 +121,34 @@ export async function loadEvidenceCapsule(fileId: string): Promise<LabEvidenceCa
     } catch (error) {
         console.error('Failed to load evidence capsule', error);
         return null;
+    }
+}
+
+// Helper to export grading evidence
+// Matches usage in LogicPlaygroundApp.tsx
+export async function exportEvidence(data: any): Promise<void> {
+    const fs = useFileSystemStore.getState();
+    const filename = `grading_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+
+    const content = JSON.stringify({
+        schemaVersion: 1,
+        timestamp: new Date().toISOString(),
+        type: 'grading_evidence',
+        ...data
+    }, null, 2);
+
+    await fs.createFile('/' + filename, content);
+
+    // Also trigger download if in browser
+    if (typeof document !== 'undefined') {
+        const blob = new Blob([content], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 }

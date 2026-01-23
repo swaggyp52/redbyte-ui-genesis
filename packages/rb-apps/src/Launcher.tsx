@@ -186,19 +186,22 @@ export const Launcher: React.FC<LauncherProps> = ({
     return (
       <div
         key={app.id}
-        role="option"
-        aria-selected={isSelected}
-        ref={isSelected ? selectedRef : undefined}
-        tabIndex={-1}
-        className={`flex items-center justify-between gap-2 p-2 rounded mb-1 border border-transparent cursor-pointer transition-colors ${isSelected
-            ? 'bg-slate-800 border-blue-500/50'
-            : 'hover:bg-slate-800/50'
+        className={`flex items-center justify-between gap-2 p-2 rounded mb-1 border border-transparent transition-colors ${isSelected
+          ? 'bg-slate-800 border-blue-500/50'
+          : 'hover:bg-slate-800/50'
           }`}
-        onClick={() => handleLaunch(app.id)}
       >
-        <span className="text-sm font-medium text-slate-200">
-          {app.name} {runningIds.has(app.id) && <span className="text-xs text-blue-400 ml-2">(Running)</span>}
-        </span>
+        <button
+          ref={isSelected ? selectedRef : undefined}
+          tabIndex={isSelected ? 0 : -1}
+          onClick={() => handleLaunch(app.id)}
+          className="flex-1 text-left bg-transparent border-0 outline-none focus:outline-none cursor-pointer"
+          aria-current={isSelected ? 'true' : undefined}
+        >
+          <span className="text-sm font-medium text-slate-200">
+            {app.name} {runningIds.has(app.id) && <span className="text-xs text-blue-400 ml-2">(Running)</span>}
+          </span>
+        </button>
         {onTogglePin && (
           <button
             type="button"
@@ -208,9 +211,10 @@ export const Launcher: React.FC<LauncherProps> = ({
               event.stopPropagation();
               onTogglePin(app.id);
             }}
+            tabIndex={isSelected ? 0 : -1}
             className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${isPinned
-                ? 'bg-blue-500/10 border-blue-500/50 text-blue-400 hover:bg-blue-500/20'
-                : 'border-slate-600 text-slate-500 hover:border-slate-500 hover:text-slate-400'
+              ? 'bg-blue-500/10 border-blue-500/50 text-blue-400 hover:bg-blue-500/20'
+              : 'border-slate-600 text-slate-500 hover:border-slate-500 hover:text-slate-400'
               }`}
           >
             {isPinned ? 'Unpin' : 'Pin'}
@@ -222,8 +226,10 @@ export const Launcher: React.FC<LauncherProps> = ({
 
   return (
     <div
-      role="listbox"
-      tabIndex={0}
+      role="dialog"
+      aria-label="App Launcher"
+      aria-modal="true"
+      tabIndex={-1}
       onKeyDown={handleKeyDown}
       className="p-4 h-full overflow-y-auto bg-slate-900 text-slate-200 focus:outline-none"
     >

@@ -403,7 +403,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 onClick={(e) => {
                   e.stopPropagation();
                   // P-click to toggle probe
-                  if ((e.shiftKey && e.key === 'P') || (e.altKey && e.button === 0)) {
+                  if (e.shiftKey || (e.altKey && e.button === 0)) {
                     const label = `${chipMetadata?.name || node.type} ${input.name || input.id}`;
                     onProbeToggle?.(node.id, input.id, label);
                   } else {
@@ -548,7 +548,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 onClick={(e) => {
                   e.stopPropagation();
                   // P-click to toggle probe
-                  if ((e.shiftKey && e.key === 'P') || (e.altKey && e.button === 0)) {
+                  if (e.shiftKey || (e.altKey && e.button === 0)) {
                     const label = `${chipMetadata?.name || node.type} ${output.name || output.id}`;
                     onProbeToggle?.(node.id, output.id, label);
                   } else {
@@ -760,7 +760,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               onClick={(e) => {
                 e.stopPropagation();
                 // P-click or right-click to toggle probe
-                if ((e.shiftKey && e.key === 'P') || (e.altKey && e.button === 0)) {
+                if ((e.shiftKey) || (e.altKey && e.button === 0)) {
                   const label = `${node.type} in`;
                   onProbeToggle?.(node.id, 'in', label);
                 } else {
@@ -868,7 +868,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               onClick={(e) => {
                 e.stopPropagation();
                 // P-click to toggle probe
-                if ((e.shiftKey && e.key === 'P') || (e.altKey && e.button === 0)) {
+                if (e.shiftKey || (e.altKey && e.button === 0)) {
                   const label = `${node.type} out`;
                   onProbeToggle?.(node.id, 'out', label);
                 } else {

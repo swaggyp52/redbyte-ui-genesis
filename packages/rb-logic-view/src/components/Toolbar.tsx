@@ -121,8 +121,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             type="button"
             onClick={() => onToolModeChange(toolMode === 'wire' ? 'select' : 'wire')}
             className={`px-3 py-1.5 rounded font-medium transition-all ${toolMode === 'wire'
-                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-900/20'
-                : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200'
+              ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-900/20'
+              : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200'
               }`}
             title="Toggle Wire Mode (W)"
           >
@@ -141,6 +141,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             }
           }}
           className="bg-neutral-800 border-none text-neutral-200 text-sm rounded px-3 py-1.5 hover:bg-neutral-700 cursor-pointer focus:ring-2 focus:ring-cyan-500/50 outline-none"
+          aria-label="Add Node"
         >
           <option value="">Add Node...</option>
           {NODE_TYPES.map((type) => (

@@ -681,8 +681,8 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     isRunning: boolean;
     tickCount: number;
     viewState: {
-      camera: ReturnType<NonNullable<ReturnType<typeof useLogicViewStore>>['getState']>['camera'];
-      selection: ReturnType<NonNullable<ReturnType<typeof useLogicViewStore>>['getState']>['selection'];
+      camera: import('@redbyte/rb-logic-view').Camera;
+      selection: import('@redbyte/rb-logic-view').Selection;
     };
   } | null>(null);
   const engineRef = useRef<CircuitEngine>(engine);
