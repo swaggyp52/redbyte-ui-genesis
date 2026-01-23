@@ -1,4 +1,5 @@
 import React from "react";
+import BootstrapSection from "./BootstrapSection";
 
 const launchItems = [
   { id: "root-console", name: "/root console", group: "system" },
@@ -10,13 +11,14 @@ const launchItems = [
 
 export const LaunchpadApp: React.FC = () => {
   return (
-    <div className="text-xs text-slate-200 space-y-3">
+    <div className="text-xs text-slate-200 space-y-6">
       <div>
         <p className="text-sm font-semibold text-slate-50">Launchpad</p>
         <p className="text-slate-400">
           Quick overview of installed RedByte OS apps.
         </p>
       </div>
+      <BootstrapSection />
       <div className="grid grid-cols-2 gap-2">
         {launchItems.map((item) => (
           <div
