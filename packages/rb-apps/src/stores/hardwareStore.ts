@@ -19,6 +19,7 @@ import {
   type IOSnapshot,
   type BoardCapabilities,
 } from '../services/hardwareClient';
+import { createTrace, type HardwareTraceV1 } from '../hardware/traceFormat';
 
 // Connection state machine
 type HardwareConnectionState =
@@ -46,6 +47,7 @@ interface HardwareState {
   maxTraceSize: number;
   isRecording: boolean;
   recordingStartTick: number | null;
+  recordingBoardId: string | null;
 }
 
 interface HardwareActions {
@@ -56,7 +58,7 @@ interface HardwareActions {
 
   // Recording actions
   startRecording: () => void;
-  stopRecording: () => IOSnapshot[];
+  stopRecording: () => HardwareTraceV1 | null;
   clearTrace: () => void;
   setMaxTraceSize: (size: number) => void;
 
@@ -88,6 +90,7 @@ function createHardwareStore() {
     maxTraceSize: DEFAULT_MAX_TRACE_SIZE,
     isRecording: false,
     recordingStartTick: null,
+    recordingBoardId: null,
 
     // Connection actions
     connect: async () => {
@@ -130,22 +133,34 @@ function createHardwareStore() {
 
     // Recording actions
     startRecording: () => {
-      const { ioSnapshot } = get();
+      const { ioSnapshot, capabilities } = get();
+      if (!capabilities) {
+        console.warn('[HardwareStore] Cannot record: no board capabilities/connected');
+        return;
+      }
+
       set({
         isRecording: true,
         traceBuffer: [],
         recordingStartTick: ioSnapshot?.tick ?? 0,
+        recordingBoardId: capabilities.boardId,
       });
     },
 
     stopRecording: () => {
-      const { traceBuffer } = get();
-      set({ isRecording: false, recordingStartTick: null });
-      return [...traceBuffer];
+      const { traceBuffer, recordingStartTick, recordingBoardId } = get();
+
+      let trace: HardwareTraceV1 | null = null;
+      if (recordingBoardId && recordingStartTick !== null) {
+        trace = createTrace(recordingBoardId, recordingStartTick, [...traceBuffer]);
+      }
+
+      set({ isRecording: false, recordingStartTick: null, recordingBoardId: null });
+      return trace;
     },
 
     clearTrace: () => {
-      set({ traceBuffer: [], recordingStartTick: null });
+      set({ traceBuffer: [], recordingStartTick: null, recordingBoardId: null });
     },
 
     setMaxTraceSize: (size: number) => {
@@ -243,4 +258,5 @@ export type {
   HardwareConnectionState,
   HardwareState,
   HardwareActions,
+  IOSnapshot,
 };

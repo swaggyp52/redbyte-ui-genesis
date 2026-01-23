@@ -32,6 +32,7 @@ export async function registerAllApps() {
   const { SettingsApp } = await import('./apps/SettingsApp');
   const { FilesApp } = await import('./apps/FilesApp');
   const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundManifest');
+  const { ECELabApp } = await import('./apps/ECELabManifest');
   const { AppStoreApp } = await import('./apps/AppStoreApp');
   const { WelcomeApp } = await import('./apps/WelcomeApp');
   const { StartHereApp } = await import('./apps/StartHereApp');
@@ -56,6 +57,7 @@ export async function registerAllApps() {
     componentType: typeof LogicPlaygroundApp?.component,
   });
   registerApp(LogicPlaygroundApp);
+  registerApp(ECELabApp);
   registerApp(AppStoreApp);
   registerApp(WelcomeApp);
   registerApp(StartHereApp);

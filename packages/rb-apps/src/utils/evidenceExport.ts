@@ -2,56 +2,122 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import { EvidenceBundle } from '../evidenceSchema';
-import { stableStringify } from '../export/stableStringify';
-import { fnv1a32 } from './fnv1a32';
-import { downloadBlob } from './bundleExport';
+import { useFileSystemStore } from '../stores/fileSystemStore';
+import { useHardwareStore } from '../stores/hardwareStore';
+import { useLabStore } from '../labs/labStore';
+import { createTrace, type HardwareTraceV1 } from '../hardware/traceFormat';
 
-// Build the evidence bundle (excluding integrity)
-export function buildEvidenceBundle({
-    circuitSnapshot,
-    simulationSnapshot,
-    probesSnapshot,
-    oscilloscopeSnapshot,
-    context,
-    app
-}: Omit<EvidenceBundle, 'schemaVersion' | 'exportedAtIso' | 'integrity'>): Omit<EvidenceBundle, 'integrity'> {
-    return {
-        schemaVersion: '1.0',
-        exportedAtIso: new Date().toISOString(),
-        app,
-        context,
-        circuitSnapshot,
-        simulationSnapshot,
-        probesSnapshot,
-        oscilloscopeSnapshot
-    };
+export interface LabEvidenceCapsule {
+    schemaVersion: 1;
+    timestamp: string;
+    labId: string;
+    deviceBoardId?: string;
+    deviceKey?: string;
+    completedSteps: number[];
+    isPass: boolean;
+    trace: HardwareTraceV1 | null;
 }
 
-// Canonicalize evidence bundle (stable key ordering)
-export function canonicalizeEvidence(bundle: Omit<EvidenceBundle, 'integrity'>): string {
-    return stableStringify(bundle);
-}
+export async function exportEvidenceCapsule(filename: string): Promise<boolean> {
+    try {
+        const fs = useFileSystemStore.getState();
+        const hw = useHardwareStore.getState();
+        const lab = useLabStore.getState();
 
-// FNV-1a 32-bit hash of canonical JSON
-export function hashEvidence(canonicalJson: string): { hash: string; bytes: number } {
-    const hash = fnv1a32(canonicalJson);
-    return { hash, bytes: canonicalJson.length };
-}
-
-// Export evidence: build, canonicalize, hash, finalize, download
-export async function exportEvidence(bundle: Omit<EvidenceBundle, 'integrity'>) {
-    const canonicalJson = canonicalizeEvidence(bundle);
-    const { hash, bytes } = hashEvidence(canonicalJson);
-    const evidence: EvidenceBundle = {
-        ...bundle,
-        integrity: {
-            hashAlg: 'fnv1a32',
-            integrityHash: hash,
-            hashedBytes: bytes
+        // Create trace from current buffer if available
+        let trace: HardwareTraceV1 | null = null;
+        if (hw.traceBuffer.length > 0 && hw.capabilities) {
+            // We create a trace from whatever is in the buffer currently
+            // Note: startTick might be rough if not currently recording, 
+            // but traceBuffer usually only populates during recording?
+            // Actually traceBuffer is persistent in store until cleared.
+            // If not recording, we might need to grab what we have.
+            // If recording, we stop? No, just copy.
+            trace = createTrace(
+                hw.capabilities.boardId,
+                hw.recordingStartTick ?? (hw.traceBuffer[0]?.tick || 0),
+                [...hw.traceBuffer]
+            );
         }
-    };
-    const finalJson = stableStringify(evidence);
-    const filename = `lab-evidence-${bundle.exportedAtIso.replace(/[:.]/g, '').replace(/[-T]/g, '').slice(0,15)}.json`;
-    downloadBlob(new Blob([finalJson], { type: 'application/json' }), filename);
+
+        const capsule: LabEvidenceCapsule = {
+            schemaVersion: 1,
+            timestamp: new Date().toISOString(),
+            labId: 'lab-1',
+            completedSteps: lab.completedSteps,
+            isPass: lab.isPass,
+            trace
+        };
+
+        const content = JSON.stringify(capsule, null, 2);
+
+        // Normalize filename
+        let safeName = filename.replace(/^\/+/, '');
+        if (!safeName.endsWith('.json')) {
+            safeName += '.json';
+        }
+
+        await fs.createFile('/' + safeName, content);
+        return true;
+    } catch (error) {
+        console.error('Failed to export evidence', error);
+        return false;
+    }
+}
+
+export async function loadEvidenceCapsule(fileId: string): Promise<LabEvidenceCapsule | null> {
+    try {
+        const fs = useFileSystemStore.getState();
+        const allFiles = fs.getAllFiles();
+
+        // Robust Lookup: handles fileId (opaque) OR filename (user input)
+        const file = allFiles.find(f => f.id === fileId || f.name === fileId || f.name === fileId + '.json');
+
+        if (!file) {
+            console.error('Evidence file not found:', fileId);
+            return null;
+        }
+
+        // Robust Read: Use explicit getFile/readFile if available to ensure content
+        // (Handles cases where list might be metadata-only in future)
+        const loadedFile = fs.getFile(file.id);
+
+        if (!loadedFile || !loadedFile.content) {
+            console.error('Evidence file has no content:', fileId);
+            return null;
+        }
+
+        let json: any;
+        try {
+            json = JSON.parse(loadedFile.content);
+        } catch (e) {
+            console.error('Failed to parse evidence JSON:', e);
+            return null;
+        }
+
+        // 1. Schema Version Check
+        if (json.schemaVersion !== 1) {
+            console.error('Unsupported evidence schema version:', json.schemaVersion);
+            return null;
+        }
+
+        // 2. Critical Field Validation
+        if (typeof json.labId !== 'string' || !json.labId) {
+            console.error('Missing or invalid labId');
+            return null;
+        }
+        if (typeof json.timestamp !== 'string' || !json.timestamp) {
+            console.error('Missing or invalid timestamp');
+            return null;
+        }
+        if (typeof json.isPass !== 'boolean') {
+            console.error('Missing or invalid isPass status');
+            return null;
+        }
+
+        return json as LabEvidenceCapsule;
+    } catch (error) {
+        console.error('Failed to load evidence capsule', error);
+        return null;
+    }
 }
