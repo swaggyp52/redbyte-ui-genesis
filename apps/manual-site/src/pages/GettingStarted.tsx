@@ -20,45 +20,9 @@ export default function GettingStarted() {
               <ul className="space-y-3 text-rb-muted">
                 <li className="flex items-start gap-3">
                   <span className="text-rb-accent mt-1">&gt;</span>
-                  <span><strong className="text-rb-text">Node.js 20.19.0+</strong> - Required for running the development server</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-rb-accent mt-1">&gt;</span>
-                  <span><strong className="text-rb-text">pnpm 10.24.0+</strong> - Package manager (install with <code className="text-rb-accent">npm install -g pnpm</code>)</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-rb-accent mt-1">&gt;</span>
                   <span><strong className="text-rb-text">Modern browser</strong> - Chrome, Firefox, Safari, or Edge (latest versions)</span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-rb-accent mt-1">&gt;</span>
-                  <span><strong className="text-rb-text">Optional hardware kit</strong> - Basys 3 (Artix-7), LM358, LDRs, breadboard, USB cable</span>
-                </li>
               </ul>
-            </div>
-          </section>
-
-          {/* Installation */}
-          <section className="mb-16">
-            <h2 className="text-h2 text-rb-text mb-6">Installation</h2>
-            <div className="bg-rb-surface border border-rb-border rounded-md p-6">
-              <p className="text-rb-muted mb-6">
-                RedByte OS is designed to be installed with a single command on Windows.
-                This sets up the toolchain, workspace, and launches the app automatically.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Link to="/install" className="btn btn-primary">
-                  Go to Install Page
-                </Link>
-                <a
-                  href="https://github.com/swaggyp52/redbyte-ui-genesis"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-secondary"
-                >
-                  View Repo
-                </a>
-              </div>
             </div>
           </section>
 
@@ -120,24 +84,6 @@ export default function GettingStarted() {
             </div>
           </section>
 
-          {/* FPGA Toolchain */}
-          <section className="mb-16">
-            <h2 className="text-h2 text-rb-text mb-6">FPGA Toolchain (Optional)</h2>
-            <p className="text-rb-muted mb-6">
-              RedByte programs Basys 3 boards through the FPGA Bridge using AMD Vivado WebPACK in batch mode.
-              SIM mode works without Vivado, and UART telemetry uses CRC-checked binary frames for reliable capture.
-            </p>
-            <div className="space-y-4">
-              <TroubleshootItem
-                question="Vivado not found"
-                answer="Install AMD Vivado WebPACK and ensure the Vivado binary is on your PATH. The Hardware Panel will show toolchain status once detected."
-              />
-              <TroubleshootItem
-                question="Board not detected"
-                answer="Confirm the Basys 3 is connected over USB and powered. On Windows, verify the FTDI driver is installed and the COM port appears."
-              />
-            </div>
-          </section>
 
           {/* Keyboard Shortcuts */}
           <section className="mb-16">
@@ -177,37 +123,6 @@ export default function GettingStarted() {
             </div>
           </section>
 
-          {/* Troubleshooting */}
-          <section className="mb-16">
-            <h2 className="text-h2 text-rb-text mb-6">Troubleshooting</h2>
-
-            <div className="space-y-4">
-              <TroubleshootItem
-                question="pnpm install fails with dependency errors"
-                answer="Make sure you're using pnpm 10.24.0 or later and Node.js 20.19.0 or later. Run 'pnpm --version' and 'node --version' to check. If versions are correct, try 'pnpm install --force'."
-              />
-
-              <TroubleshootItem
-                question="The app won't load in the browser"
-                answer="Check that the dev server is running (you should see output in your terminal). Try a hard refresh (Ctrl+Shift+R). Check browser console for errors."
-              />
-
-              <TroubleshootItem
-                question="Simulation isn't responding"
-                answer="Make sure simulation is not paused (press Space). Check that all inputs and outputs are wired correctly - floating inputs can cause unexpected behavior."
-              />
-
-              <TroubleshootItem
-                question="Simulator doesn't tick"
-                answer="Verify the tick rate is above zero and the simulation is running. If you're in replay mode, exit replay to resume live ticks."
-              />
-
-              <TroubleshootItem
-                question="Can't connect wires between components"
-                answer="Enter wire mode first (press W). Wires connect outputs to inputs only - you can't wire two outputs together or two inputs together."
-              />
-            </div>
-          </section>
 
           {/* Next Steps */}
           <section>

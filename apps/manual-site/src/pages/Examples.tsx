@@ -1,6 +1,9 @@
 import LogicGatePlayground from '../components/examples/LogicGatePlayground';
 import CounterCircuit from '../components/examples/CounterCircuit';
 import WaveformViewer from '../components/examples/WaveformViewer';
+import { Link as RouterLink } from 'react-router-dom';
+
+const Link = RouterLink as React.ComponentType<{ to: string; className?: string; children: React.ReactNode }>;
 
 export default function Examples() {
   return (
@@ -47,18 +50,22 @@ export default function Examples() {
 
         {/* CTA */}
         <div className="mt-16 bg-rb-surface border border-rb-border rounded-md p-8 text-center">
-          <h2 className="text-h2 text-rb-text mb-3">Ready for More?</h2>
+          <h2 className="text-h2 text-rb-text mb-3">Explore the Project</h2>
           <p className="text-rb-muted mb-6 max-w-lg mx-auto">
-            These examples demonstrate the basics. Download RedByte to build complex circuits,
-            create custom chips, and work through structured labs.
+            RedByte is an open-source project dedicated to making digital logic education more accessible and interactive.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <a href="#download" className="btn btn-primary">
-              Download RedByte
+            <a
+              href="https://github.com/swaggyp52/redbyte-ui-genesis"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary px-8"
+            >
+              View on GitHub
             </a>
-            <a href="/#/getting-started" className="btn btn-secondary">
-              Read Getting Started
-            </a>
+            <Link to="/getting-started" className="btn btn-secondary px-8">
+              Getting Started
+            </Link>
           </div>
         </div>
       </div>

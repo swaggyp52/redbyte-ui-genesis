@@ -139,7 +139,6 @@ export default function Demo() {
                   <StatusItem status="done">File explorer and terminal</StatusItem>
                   <StatusItem status="done">Keyboard shortcuts (Ctrl+K, etc.)</StatusItem>
                   <StatusItem status="done">Settings and preferences</StatusItem>
-                  <StatusItem status="done">FPGA bridge (SIM mode + Basys 3 programming)</StatusItem>
                   <StatusItem status="done">RB Zip v2 export (manifest, trace, integrity capsule)</StatusItem>
                   <StatusItem status="done">Submission Inspector checks and grading report export</StatusItem>
                   <StatusItem status="done">Lab template checks (baseline)</StatusItem>
@@ -258,19 +257,6 @@ export default function Demo() {
             </div>
           </section>
 
-          <section className="mt-12">
-            <div className="bg-rb-surface border border-rb-border rounded-md p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <h3 className="text-h3 text-rb-text mb-2">Ready for labs?</h3>
-                <p className="text-sm text-rb-muted">
-                  Install RedByte OS to use the FPGA Bridge, trace recorder, and Submission Inspector.
-                </p>
-              </div>
-              <Link to="/install" className="btn btn-primary">
-                Install OS
-              </Link>
-            </div>
-          </section>
         </div>
       </div>
 

@@ -36,13 +36,8 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/manual#student-export-schema" className="text-rb-muted hover:text-rb-text transition-colors">
-                  Evidence Schema
-                </Link>
-              </li>
-              <li>
-                <Link to="/instructors" className="text-rb-muted hover:text-rb-text transition-colors">
-                  Instructor Guide
+                <Link to="/about" className="text-rb-muted hover:text-rb-text transition-colors">
+                  About
                 </Link>
               </li>
             </ul>

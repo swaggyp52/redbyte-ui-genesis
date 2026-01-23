@@ -20,8 +20,8 @@ export default function Home() {
               All in the Browser.
             </h1>
             <p className="text-xl text-rb-muted mb-10 leading-relaxed max-w-2xl mx-auto">
-              RedByte is a local-first logic playground lets you build real-time circuits,
-              view waveforms instantly, and export evidence for automated grading – no install, no server.
+              RedByte is a local-first logic playground that lets you build real-time circuits,
+              view waveforms instantly, and explore the principles of digital logic directly in your browser.
             </p>
 
             <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
