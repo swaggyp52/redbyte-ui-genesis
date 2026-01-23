@@ -78,24 +78,14 @@ const Basys3Layout: React.FC<{
             {/* BTNU (Bit 1) */}
             <div className="col-start-2 flex justify-center">
               <div
-                className={`w-4 h-4 rounded-full cursor-pointer active:scale-95 transition-transform ${btnBits[4] === '1' // '01000' -> Bit 1? No, wait. 
-                   // Let's standardise: BTN = [D, R, L, U, C] usually? 
-                   // SimAdapter traffic light expects BTNC at bit 0.
-                   // Let's use: C=0, U=1, L=2, R=3, D=4.
-                   // btnBits string is MSB...LSB (43210). 
-                   // So btnBits[4] is bit 0 (C). btnBits[3] is bit 1 (U).
-                   // Wait, padStart(5, '0') -> "43210".
-                   // Index 0 is bit 4 (D). Index 4 is bit 0 (C).
-
-                   // BTNU = Bit 1 => Index 3.
-                  btnBits[3] === '1'
-              ? 'bg-yellow-400 border-2 border-yellow-300'
-              : 'bg-gray-700 border-2 border-gray-600'
+                className={`w-4 h-4 rounded-full cursor-pointer active:scale-95 transition-transform ${btnBits[3] === '1'
+                  ? 'bg-yellow-400 border-2 border-yellow-300'
+                  : 'bg-gray-700 border-2 border-gray-600'
                   }`}
-              title="BTNU"
-              onMouseDown={() => onInteraction?.('BTN', parseInt(btnBits, 2) | (1 << 1))}
-              onMouseUp={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 1))}
-              onMouseLeave={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 1))}
+                title="BTNU"
+                onMouseDown={() => onInteraction?.('BTN', parseInt(btnBits, 2) | (1 << 1))}
+                onMouseUp={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 1))}
+                onMouseLeave={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 1))}
               />
             </div>
             {/* BTNL (Bit 2) => Index 2 */}
