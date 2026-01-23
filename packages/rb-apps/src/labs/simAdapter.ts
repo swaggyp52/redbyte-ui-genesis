@@ -28,11 +28,12 @@ interface SimStore extends SimState {
     setInputs: (inputs: Partial<SimState['inputs']>) => void;
     setExperiment: (experimentId: string) => void;
     setAutoRun: (enabled: boolean) => void;
+    setBoard: (boardId: string) => void;
     runTick: () => void;
     reset: () => void;
 }
 
-// Default capabilities mimicking Basys3
+// Board capabilities
 const BASYS3_CAPS: BoardCapabilities = {
     boardId: 'basys3',
     boardName: 'Basys 3 (Simulated)',
@@ -45,7 +46,27 @@ const BASYS3_CAPS: BoardCapabilities = {
         { name: 'LED', width: 16, kind: 'led' },
         { name: 'SEG', width: 8, kind: '7segment' },
         { name: 'AN', width: 4, kind: 'led' }
-    ]
+    ],
+    clock: { name: 'CLK100MHZ', frequencyHz: 100000000 }
+};
+
+const SPARTAN3E_CAPS: BoardCapabilities = {
+    boardId: 'spartan3e-starter',
+    boardName: 'Spartan-3E Starter Kit (Simulated)',
+    manufacturer: 'Xilinx (Sim)',
+    inputs: [
+        { name: 'SW', width: 4, kind: 'switch' },
+        { name: 'BTN', width: 4, kind: 'button' }
+    ],
+    outputs: [
+        { name: 'LED', width: 8, kind: 'led' }
+    ],
+    clock: { name: 'CLK_50MHZ', frequencyHz: 50000000 }
+};
+
+const BOARD_CAPS: Record<string, BoardCapabilities> = {
+    'basys3': BASYS3_CAPS,
+    'spartan3e-starter': SPARTAN3E_CAPS,
 };
 
 export const useSimStore = create<SimStore>((set, get) => ({
@@ -79,6 +100,16 @@ export const useSimStore = create<SimStore>((set, get) => ({
     },
 
     setAutoRun: (enabled) => set({ autoRun: enabled }),
+
+    setBoard: (boardId) => {
+        const caps = BOARD_CAPS[boardId] || BASYS3_CAPS;
+        set({
+            capabilities: caps,
+            inputs: { SW: 0, BTN: 0 },
+            outputs: { LED: 0, SEG: 0, AN: 0b1111, DP: 1 },
+            tick: 0
+        });
+    },
 
     reset: () => {
         const currentExp = EXPERIMENTS[get().activeExperimentId] || DEFAULT_EXPERIMENT;

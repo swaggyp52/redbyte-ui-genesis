@@ -41,15 +41,50 @@ export function validateTrace(trace: any): { ok: boolean; errors: string[] } {
         errors.push('Missing or invalid boardId');
     }
 
+    if (typeof trace.startTick !== 'number') {
+        errors.push('Missing or invalid startTick');
+    }
+
     if (!Array.isArray(trace.samples)) {
         errors.push('Missing samples array');
-    } else if (trace.samples.length > 0) {
-        // Light check on first sample
-        const s = trace.samples[0];
-        if (typeof s.tick !== 'number' && typeof s.tick !== 'undefined') { // tick optional in snapshot but required for good trace?
-            // Actually snapshot definition says tick is optional.
-            // But user said: "Recording uses ioSnapshot.tick as the timebase. If missing, fail loudly"
-            // So we should enforce tick existence for Replay.
+    } else {
+        // Deep validation of samples
+        let previousTick = trace.startTick - 1;
+
+        for (let i = 0; i < trace.samples.length; i++) {
+            const s = trace.samples[i];
+
+            // Check essential fields
+            if (!s.timestamp) {
+                errors.push(`Sample ${i}: Missing timestamp`);
+                break;
+            }
+
+            // Check tick (required for replay synchronization)
+            if (typeof s.tick !== 'number') {
+                errors.push(`Sample ${i}: Missing or invalid tick`);
+                break;
+            }
+
+            // Monotonicity check (ticks must strictly increase or stay same if burst? No, usually distinct or strictly increasing)
+            // Actually, we might have multiple events in same tick? 
+            // The polling interval is usually larger than a tick, but hardware might send bursts.
+            // Let's enforce non-decreasing.
+            if (s.tick < previousTick) {
+                errors.push(`Sample ${i}: Time travel detected (tick ${s.tick} < previous ${previousTick})`);
+                break;
+            }
+            previousTick = s.tick!;
+
+            // Check inputs/outputs existence
+            if (!s.inputs || typeof s.inputs !== 'object') {
+                errors.push(`Sample ${i}: Missing inputs object`);
+                break;
+            }
+            if (!s.outputs || typeof s.outputs !== 'object') {
+                errors.push(`Sample ${i}: Missing outputs object`);
+                break;
+            }
         }
     }
 

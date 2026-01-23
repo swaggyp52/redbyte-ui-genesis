@@ -63,7 +63,7 @@ interface BoardCapabilities {
 
 type IOUpdateCallback = (snapshot: IOSnapshot) => void;
 
-type ConnectionState = 
+type ConnectionState =
   | { status: 'offline'; reason: 'disabled' | 'unavailable' | 'failed'; message: string }
   | { status: 'connecting'; message: string }
   | { status: 'connected'; bridge: BridgeHealth; devices: Device[]; ws: WebSocket | null };
@@ -170,7 +170,7 @@ export class HardwareClient {
       }
 
       const bridge: BridgeHealth = await res.json();
-      
+
       const devicesRes = await fetch(`${this.config.httpUrl}/devices`, {
         signal: AbortSignal.timeout(this.FETCH_TIMEOUT_MS),
       });
@@ -225,12 +225,12 @@ export class HardwareClient {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const bridge: BridgeHealth = await res.json();
-      
+
       const devicesRes = await fetch(`${this.config.httpUrl}/devices`, {
         signal: AbortSignal.timeout(this.FETCH_TIMEOUT_MS),
       });
       const devices: Device[] = devicesRes.ok ? await devicesRes.json() : [];
-      
+
       if (this.state.status === 'connected') {
         this.state = {
           status: 'connected',
@@ -585,6 +585,37 @@ export class HardwareClient {
 
     const json = JSON.stringify(capsule, null, 2);
     return new Blob([json], { type: 'application/json' });
+  }
+
+  /**
+   * Stream a series of test vectors to the hardware.
+   * This sends a batch of inputs to the bridge for execution.
+   */
+  async streamVectors(vectors: Array<{ inputs: Record<string, number>; delayMs?: number }>): Promise<boolean> {
+    if (this.state.status !== 'connected') {
+      console.warn('[HardwareClient] Cannot stream vectors: not connected');
+      return false;
+    }
+
+    try {
+      const endpoint = `${this.config.httpUrl.replace('/api/v1', '')}/api/vectors/stream`;
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vectors }),
+        signal: AbortSignal.timeout(this.FETCH_TIMEOUT_MS * 5), // Longer timeout for batch
+      });
+
+      return res.ok;
+    } catch (error) {
+      console.warn('[HardwareClient] Failed to stream vectors:', error);
+      // Fallback: send individually if stream endpoint not available
+      for (const v of vectors) {
+        await this.setOutputs(v.inputs);
+        if (v.delayMs) await new Promise(r => setTimeout(r, v.delayMs));
+      }
+      return true;
+    }
   }
 }
 

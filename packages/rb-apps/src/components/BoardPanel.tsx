@@ -3,9 +3,10 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 /**
- * BoardPanel - Hardware board visualization with capabilities-driven layout
+ * BoardPanel - Photorealistic hardware board visualization
  *
- * Renders board-specific layouts when available (Basys3, Spartan-3E),
+ * Renders stunning, interactive FPGA board visualizations with
+ * authentic PCB aesthetics. Supports Basys3, Spartan-3E, and
  * falls back to GenericIOGrid for unknown boards.
  */
 
@@ -14,6 +15,8 @@ import { useHardwareStore, type HardwareState } from '../stores/hardwareStore';
 import { hardwareClient, type BoardCapabilities } from '../services/hardwareClient';
 import { ConnectionStatusBadge } from './ConnectionStatusBadge';
 import { GenericIOGrid } from './GenericIOGrid';
+import { Basys3Board } from './boards/Basys3Board';
+import { Spartan3EBoard } from './boards/Spartan3EBoard';
 
 // Helper types for interaction
 export type BoardInteractionHandler = (componentId: string, value: number) => void;
@@ -25,179 +28,22 @@ interface BoardPanelProps {
   capabilities?: BoardCapabilities | null;
   onInteraction?: BoardInteractionHandler;
   readOnly?: boolean;
+  // Display mode
+  compact?: boolean;
 }
 
 // Helper: robust device ID extraction
-// Handles inconsistencies between device.deviceId and device.id
 const getDeviceKey = (d: any) => d.deviceId ?? d.id ?? '';
-
-
-const Basys3Layout: React.FC<{
-  ioSnapshot: HardwareState['ioSnapshot'];
-  onSetOutput: (signal: string, value: number) => void;
-  onInteraction?: BoardInteractionHandler;
-}> = ({ ioSnapshot, onSetOutput, onInteraction }) => {
-  // Parse SW value (16-bit)
-  const swValue = ioSnapshot?.inputs.SW;
-  const swBits = typeof swValue === 'string' ? swValue : (swValue ?? 0).toString(2).padStart(16, '0');
-
-  // Parse BTN value (5-bit)
-  const btnValue = ioSnapshot?.inputs.BTN;
-  const btnBits = typeof btnValue === 'string' ? btnValue : (btnValue ?? 0).toString(2).padStart(5, '0');
-
-  // Parse LED value (16-bit)
-  const ledValue = ioSnapshot?.outputs.LED;
-  const ledBits = typeof ledValue === 'string' ? ledValue : (ledValue ?? 0).toString(2).padStart(16, '0');
-
-  return (
-    <div className="flex flex-col gap-4 p-4">
-      {/* Board visual representation */}
-      <div className="relative bg-[#1a472a] rounded-lg p-4 border-2 border-gray-700">
-        {/* Board title */}
-        <div className="absolute top-2 left-2 text-xs font-bold text-white/60">
-          BASYS3
-        </div>
-
-        <div className="flex justify-center gap-1 mb-6 mt-4">
-          {ledBits.split('').map((bit: string, idx: number) => (
-            <div
-              key={`led-${15 - idx}`}
-              className={`w-3 h-3 rounded-full transition-all duration-100 ${bit === '1'
-                ? 'bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.8)]'
-                : 'bg-gray-800 border border-gray-600'
-                }`}
-              title={`LD${15 - idx}: ${bit === '1' ? 'ON' : 'OFF'}`}
-            />
-          ))}
-        </div>
-
-        {/* Buttons (center, cross pattern) */}
-        {/* Buttons (center, cross pattern) */}
-        <div className="flex justify-center mb-6">
-          <div className="grid grid-cols-3 gap-1 w-20">
-            {/* BTNU (Bit 1) */}
-            <div className="col-start-2 flex justify-center">
-              <div
-                className={`w-4 h-4 rounded-full cursor-pointer active:scale-95 transition-transform ${btnBits[3] === '1'
-                  ? 'bg-yellow-400 border-2 border-yellow-300'
-                  : 'bg-gray-700 border-2 border-gray-600'
-                  }`}
-                title="BTNU"
-                onMouseDown={() => onInteraction?.('BTN', parseInt(btnBits, 2) | (1 << 1))}
-                onMouseUp={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 1))}
-                onMouseLeave={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 1))}
-              />
-            </div>
-            {/* BTNL (Bit 2) => Index 2 */}
-            <div className="flex justify-center items-center">
-              <div
-                className={`w-4 h-4 rounded-full cursor-pointer active:scale-95 transition-transform ${btnBits[2] === '1'
-                  ? 'bg-yellow-400 border-2 border-yellow-300'
-                  : 'bg-gray-700 border-2 border-gray-600'
-                  }`}
-                title="BTNL"
-                onMouseDown={() => onInteraction?.('BTN', parseInt(btnBits, 2) | (1 << 2))}
-                onMouseUp={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 2))}
-                onMouseLeave={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 2))}
-              />
-            </div>
-            {/* BTNC (Bit 0) => Index 4 */}
-            <div className="flex justify-center items-center">
-              <div
-                className={`w-5 h-5 rounded-full cursor-pointer active:scale-95 transition-transform ${btnBits[4] === '1'
-                  ? 'bg-red-400 border-2 border-red-300'
-                  : 'bg-gray-700 border-2 border-gray-600'
-                  }`}
-                title="BTNC"
-                onMouseDown={() => onInteraction?.('BTN', parseInt(btnBits, 2) | 1)}
-                onMouseUp={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~1)}
-                onMouseLeave={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~1)}
-              />
-            </div>
-            {/* BTNR (Bit 3) => Index 1 */}
-            <div className="flex justify-center items-center">
-              <div
-                className={`w-4 h-4 rounded-full cursor-pointer active:scale-95 transition-transform ${btnBits[1] === '1'
-                  ? 'bg-yellow-400 border-2 border-yellow-300'
-                  : 'bg-gray-700 border-2 border-gray-600'
-                  }`}
-                title="BTNR"
-                onMouseDown={() => onInteraction?.('BTN', parseInt(btnBits, 2) | (1 << 3))}
-                onMouseUp={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 3))}
-                onMouseLeave={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 3))}
-              />
-            </div>
-            {/* BTND (Bit 4) => Index 0 */}
-            <div className="col-start-2 flex justify-center">
-              <div
-                className={`w-4 h-4 rounded-full cursor-pointer active:scale-95 transition-transform ${btnBits[0] === '1'
-                  ? 'bg-yellow-400 border-2 border-yellow-300'
-                  : 'bg-gray-700 border-2 border-gray-600'
-                  }`}
-                title="BTND"
-                onMouseDown={() => onInteraction?.('BTN', parseInt(btnBits, 2) | (1 << 4))}
-                onMouseUp={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 4))}
-                onMouseLeave={() => onInteraction?.('BTN', parseInt(btnBits, 2) & ~(1 << 4))}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-center gap-1">
-          {swBits.split('').map((bit: string, idx: number) => {
-            const bitIndex = 15 - idx;
-            const isOn = bit === '1';
-            return (
-              <div
-                key={`sw-${bitIndex}`}
-                className={`w-2 h-5 rounded-sm transition-all cursor-pointer ${isOn
-                  ? 'bg-cyan-500 border border-cyan-400'
-                  : 'bg-gray-700 border border-gray-600'
-                  }`}
-                title={`SW${bitIndex}: ${isOn ? 'ON' : 'OFF'}`}
-                onClick={() => {
-                  if (onInteraction) {
-                    // Toggle bit
-                    const currentVal = parseInt(swBits, 2);
-                    const mask = 1 << bitIndex;
-                    const newVal = isOn ? (currentVal & ~mask) : (currentVal | mask);
-                    onInteraction('SW', newVal);
-                  }
-                }}
-              />
-            );
-          })}
-        </div>
-
-        {/* Switch labels */}
-        <div className="flex justify-center gap-1 mt-1">
-          {Array.from({ length: 16 }, (_, i) => (
-            <span key={i} className="text-[8px] text-white/40 w-2 text-center">
-              {15 - i}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Tick counter */}
-      {ioSnapshot?.tick !== undefined && (
-        <div className="text-center text-xs text-gray-500">
-          TICK: <span className="font-mono text-cyan-400">{ioSnapshot.tick}</span>
-        </div>
-      )}
-    </div>
-  );
-};
 
 export const BoardPanel: React.FC<BoardPanelProps> = ({
   className = '',
   snapshot: propSnapshot,
   capabilities: propCapabilities,
   onInteraction,
-  readOnly = false
+  readOnly = false,
+  compact = false,
 }) => {
   const connectionState = useHardwareStore((s) => s.connectionState);
-  // Use props if provided, otherwise fall back to store
   const storeCapabilities = useHardwareStore((s) => s.capabilities);
   const capabilities = propCapabilities ?? storeCapabilities;
 
@@ -211,86 +57,168 @@ export const BoardPanel: React.FC<BoardPanelProps> = ({
   const selectDevice = useHardwareStore((s) => s.selectDevice);
   const isRecording = useHardwareStore((s) => s.isRecording);
 
-  // Handle output changes
   const handleSetOutput = async (signal: string, value: number) => {
     await hardwareClient.setOutputs({ [signal]: value });
   };
 
-  // Handle device selection
   const handleSelectDevice = async (deviceId: string) => {
     await selectDevice(deviceId);
   };
 
-  // Render board layout based on capabilities
+  // Render board visualization based on capabilities
   const renderBoardLayout = () => {
     if (!capabilities) {
       return (
-        <div className="text-center text-gray-500 py-8">
-          No device connected
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div
+              className="w-20 h-20 mx-auto mb-4 rounded-lg opacity-20"
+              style={{
+                background: 'linear-gradient(135deg, #1a3a2a 0%, #0a1a10 100%)',
+                border: '2px dashed #2a4a3a',
+              }}
+            />
+            <div className="text-sm text-gray-500 font-medium">No Board Connected</div>
+            <div className="text-xs text-gray-600 mt-1">Connect hardware or select a simulation</div>
+          </div>
         </div>
       );
     }
 
-    // Use board-specific layout if available
-    if (capabilities.boardId.toLowerCase() === 'basys3') {
-      return <Basys3Layout ioSnapshot={ioSnapshot} onSetOutput={handleSetOutput} onInteraction={onInteraction} />;
+    const boardId = capabilities.boardId.toLowerCase();
+    const scale = compact ? 0.8 : 1;
+
+    // Basys3 - Photorealistic green PCB
+    if (boardId === 'basys3' || boardId.includes('basys')) {
+      return (
+        <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
+          <Basys3Board
+            ioSnapshot={ioSnapshot}
+            onInteraction={onInteraction}
+            readOnly={readOnly}
+            scale={scale}
+          />
+        </div>
+      );
     }
 
-    // Explicit fallback: Spartan-3E and all other boards use GenericIOGrid
+    // Spartan-3E - Red PCB with LCD
+    if (boardId === 'spartan3e-starter' || boardId.includes('spartan')) {
+      return (
+        <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
+          <Spartan3EBoard
+            ioSnapshot={ioSnapshot}
+            onInteraction={onInteraction}
+            readOnly={readOnly}
+            scale={scale}
+          />
+        </div>
+      );
+    }
+
+    // Generic fallback
     return (
-      <GenericIOGrid
-        inputs={capabilities.inputs}
-        outputs={capabilities.outputs}
-        ioSnapshot={ioSnapshot}
-        onSetOutput={handleSetOutput}
-      />
+      <div className="flex-1 overflow-auto p-4">
+        <GenericIOGrid
+          inputs={capabilities.inputs}
+          outputs={capabilities.outputs}
+          ioSnapshot={ioSnapshot}
+          onSetOutput={handleSetOutput}
+          readOnly={readOnly}
+        />
+      </div>
     );
   };
 
   return (
-    <div className={`flex flex-col h-full bg-gray-950 ${className}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-gray-800">
+    <div
+      className={`flex flex-col h-full ${className}`}
+      style={{
+        background: 'linear-gradient(180deg, #0a0f14 0%, #050810 100%)',
+      }}
+    >
+      {/* Header with lab equipment styling */}
+      <div
+        className="flex items-center justify-between px-4 py-2"
+        style={{
+          background: 'linear-gradient(180deg, #1a1f24 0%, #10151a 100%)',
+          borderBottom: '1px solid #2a3540',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        }}
+      >
         <div className="flex items-center gap-3">
-          <h2 className="text-sm font-semibold text-gray-200">Hardware</h2>
+          {/* Equipment badge */}
+          <div
+            className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider"
+            style={{
+              background: 'linear-gradient(180deg, #2a3a2a 0%, #1a2a1a 100%)',
+              border: '1px solid #3a4a3a',
+              color: '#8a9a8a',
+            }}
+          >
+            FPGA DEV
+          </div>
           <ConnectionStatusBadge state={connectionState} />
         </div>
 
-        {/* Connect button - Only show if using store state (no props overrides) */}
+        {/* Connect button */}
         {connectionState === 'disconnected' && !propSnapshot && (
           <button
+            type="button"
             onClick={() => connect()}
-            className="px-3 py-1 text-xs bg-cyan-600 hover:bg-cyan-500 text-white rounded transition-colors"
+            className="px-3 py-1 text-[10px] font-bold tracking-wider rounded transition-all"
+            style={{
+              background: 'linear-gradient(180deg, #1a4a3a 0%, #0a3a2a 100%)',
+              border: '1px solid #2a5a4a',
+              color: '#4ade80',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
+            }}
           >
-            Connect
+            CONNECT
           </button>
         )}
       </div>
 
       {/* Error display */}
       {lastError && (
-        <div className="px-3 py-2 bg-red-900/30 border-b border-red-800 text-xs text-red-400">
-          {lastError}
+        <div
+          className="px-4 py-2 text-xs flex items-center gap-2"
+          style={{
+            background: 'linear-gradient(90deg, #3a1a1a 0%, #2a1010 100%)',
+            borderBottom: '1px solid #4a2a2a',
+          }}
+        >
+          <span className="w-2 h-2 rounded-full bg-red-500" />
+          <span className="text-red-400">{lastError}</span>
         </div>
       )}
 
-      {/* Device selector (when connected but no device selected) */}
+      {/* Device selector */}
       {connectionState === 'ready' && !activeDevice && availableDevices.length > 0 && (
-        <div className="p-3 border-b border-gray-800">
-          <label className="text-xs text-gray-400 block mb-2">Select Device:</label>
+        <div
+          className="p-4"
+          style={{
+            background: 'rgba(0,0,0,0.3)',
+            borderBottom: '1px solid #2a3540',
+          }}
+        >
+          <div className="text-[10px] font-bold tracking-wider text-gray-500 mb-2">SELECT DEVICE</div>
           <div className="flex flex-col gap-2">
             {availableDevices.map((device) => {
               const id = getDeviceKey(device);
               return (
                 <button
                   key={id}
+                  type="button"
                   onClick={() => handleSelectDevice(id)}
-                  className="px-3 py-2 text-left text-sm bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 transition-colors"
+                  className="px-3 py-2 text-left rounded transition-all hover:brightness-110"
+                  style={{
+                    background: 'linear-gradient(180deg, #1a2a1a 0%, #0a1a0a 100%)',
+                    border: '1px solid #2a3a2a',
+                  }}
                 >
-                  <div className="text-gray-200">{device.boardModel || 'Unknown Device'}</div>
-                  <div className="text-xs text-gray-500">
-                    {device.serial || id}
-                  </div>
+                  <div className="text-sm text-gray-200">{device.boardModel || 'Unknown'}</div>
+                  <div className="text-[10px] text-gray-500 font-mono">{device.serial || id}</div>
                 </button>
               );
             })}
@@ -298,26 +226,73 @@ export const BoardPanel: React.FC<BoardPanelProps> = ({
         </div>
       )}
 
-      {/* Board info */}
+      {/* Board info badge */}
       {capabilities && (
-        <div className="px-3 py-2 border-b border-gray-800 text-xs text-gray-500">
-          <span className="text-gray-300">{capabilities.boardName}</span>
-          {capabilities.manufacturer && ` by ${capabilities.manufacturer}`}
+        <div
+          className="px-4 py-1.5 flex items-center justify-between text-[10px]"
+          style={{
+            background: 'rgba(0,0,0,0.2)',
+            borderBottom: '1px solid #1a2530',
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-gray-300">{capabilities.boardName}</span>
+            {capabilities.manufacturer && (
+              <span className="text-gray-600">by {capabilities.manufacturer}</span>
+            )}
+          </div>
+          {capabilities.clock && (
+            <span className="font-mono text-gray-600">
+              {(capabilities.clock.frequencyHz / 1e6).toFixed(0)}MHz
+            </span>
+          )}
         </div>
       )}
 
-      {/* Board layout */}
-      <div className="flex-1 overflow-auto">
+      {/* Board visualization area */}
+      <div className="flex-1 overflow-hidden relative">
+        {/* Ambient glow effect */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: capabilities
+              ? 'radial-gradient(circle at 50% 50%, rgba(0,100,50,0.05) 0%, transparent 70%)'
+              : 'none',
+          }}
+        />
         {renderBoardLayout()}
       </div>
 
       {/* Recording indicator */}
       {isRecording && (
-        <div className="px-3 py-2 bg-red-900/30 border-t border-red-800 flex items-center gap-2">
+        <div
+          className="px-4 py-2 flex items-center gap-2"
+          style={{
+            background: 'linear-gradient(90deg, #3a1a1a 0%, #2a1010 100%)',
+            borderTop: '1px solid #4a2a2a',
+          }}
+        >
           <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-xs text-red-400">Recording trace...</span>
+          <span className="text-xs text-red-400 font-medium">REC</span>
+          <span className="text-[10px] text-red-400/60 font-mono">Recording trace...</span>
         </div>
       )}
+
+      {/* Bottom status bar */}
+      <div
+        className="px-4 py-1 flex items-center justify-between text-[9px] font-mono"
+        style={{
+          background: '#050810',
+          borderTop: '1px solid #1a2530',
+        }}
+      >
+        <span className="text-gray-600">
+          {connectionState === 'ready' ? 'ONLINE' : connectionState.toUpperCase()}
+        </span>
+        {ioSnapshot?.tick !== undefined && (
+          <span className="text-cyan-600">T:{ioSnapshot.tick}</span>
+        )}
+      </div>
     </div>
   );
 };

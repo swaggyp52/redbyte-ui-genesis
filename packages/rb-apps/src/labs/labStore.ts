@@ -11,6 +11,8 @@ interface LabState {
     isPass: boolean; // Loop pass status (for visual feedback)
 
     activeLabId: string;
+    studentName: string;
+    studentId: string;
 
     // Actions
     setActiveLab: (labId: string) => void;
@@ -19,6 +21,7 @@ interface LabState {
     markComplete: (stepIndex: number) => void;
     resetLab: () => void;
     setPass: (pass: boolean) => void;
+    setStudentInfo: (name: string, id: string) => void;
 }
 
 export const useLabStore = create<LabState>((set, get) => ({
@@ -26,9 +29,15 @@ export const useLabStore = create<LabState>((set, get) => ({
     completedSteps: [],
     isPass: false,
     activeLabId: 'lab-1',
+    studentName: '',
+    studentId: '',
 
     setActiveLab: (labId) => {
         set({ activeLabId: labId, currentStepIndex: 0, completedSteps: [], isPass: false });
+    },
+
+    setStudentInfo: (name, id) => {
+        set({ studentName: name, studentId: id });
     },
 
     nextStep: () => {

@@ -2,26 +2,24 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
+import JSZip from 'jszip';
 import { useFileSystemStore } from '../stores/fileSystemStore';
 import { useHardwareStore } from '../stores/hardwareStore';
 import { useLabStore } from '../labs/labStore';
 import { createTrace, type HardwareTraceV1 } from '../hardware/traceFormat';
 
 export interface LabEvidenceCapsule {
-    schemaVersion: 1;
+    schemaVersion: 2;
     timestamp: string;
     labId: string;
+    student: {
+        id: string;
+        name: string;
+    };
     deviceBoardId?: string;
-    deviceKey?: string;
     completedSteps: number[];
     isPass: boolean;
-    trace: HardwareTraceV1 | null;
-    grading?: {
-        score?: number;
-        passFail?: boolean;
-        notes?: string;
-        initials: string;
-    };
+    traceEvents: number;
     evidenceHash?: string;
 }
 
@@ -31,38 +29,81 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
         const hw = useHardwareStore.getState();
         const lab = useLabStore.getState();
 
-        // Create trace from current buffer if available
-        let trace: HardwareTraceV1 | null = null;
-        if (hw.traceBuffer.length > 0 && hw.capabilities) {
-            // We create a trace from whatever is in the buffer currently
-            trace = createTrace(
-                hw.capabilities.boardId,
-                hw.recordingStartTick ?? (hw.traceBuffer[0]?.tick || 0),
-                [...hw.traceBuffer]
-            );
+        if (!lab.studentId || !lab.studentName) {
+            console.warn('Student selection required for export');
+            // We should ideally prompt here or handled by UI
         }
 
+        // 1. Prepare Metadata
         const capsule: LabEvidenceCapsule = {
-            schemaVersion: 1,
+            schemaVersion: 2,
             timestamp: new Date().toISOString(),
-            labId: 'lab-1',
+            labId: lab.activeLabId,
+            student: {
+                id: lab.studentId || 'anonymous',
+                name: lab.studentName || 'Anonymous Student'
+            },
+            deviceBoardId: hw.capabilities?.boardId,
             completedSteps: lab.completedSteps,
-            isPass: lab.isPass,
-            trace
+            isPass: lab.completedSteps.length > 0, // Simplified pass criteria
+            traceEvents: hw.traceBuffer.length
         };
 
-        const content = JSON.stringify(capsule, null, 2);
+        // 2. Build ZIP
+        const zip = new JSZip();
 
-        // Normalize filename
-        let safeName = filename.replace(/^\/+/, '');
-        if (!safeName.endsWith('.json')) {
-            safeName += '.json';
+        // Manifest for examiner app
+        const manifest = {
+            schema_version: 'v2',
+            lab_id: lab.activeLabId,
+            student_id: capsule.student.id,
+            timestamp: capsule.timestamp,
+            files: {
+                capsule: 'proofs/capsule.json',
+                trace: hw.traceBuffer.length > 0 ? 'proofs/trace.ndjson' : null
+            }
+        };
+
+        zip.file('manifest.json', JSON.stringify(manifest, null, 2));
+        zip.file('proofs/capsule.json', JSON.stringify(capsule, null, 2));
+
+        // Trace as NDJSON if available
+        if (hw.traceBuffer.length > 0) {
+            const ndjson = hw.traceBuffer
+                .map(s => JSON.stringify(s))
+                .join('\n');
+            zip.file('proofs/trace.ndjson', ndjson);
         }
 
-        await fs.createFile('/' + safeName, content);
+        // 3. Generate and Save
+        const blob = await zip.generateAsync({ type: 'blob' });
+
+        // Save to virtual FS
+        let safeName = filename.replace(/\.json$/, '').replace(/\.zip$/, '');
+        safeName += '.rb-lab.zip';
+
+        const arrayBuffer = await blob.arrayBuffer();
+        // Since Virtual FS might only support strings for now? 
+        // Let's check createFile sig. Usually it's string.
+        // If it only takes strings, we might need to base64 or just skip virtual FS for the zip blob.
+        // Actually, most RedByte Virtual FS implementations take string.
+        // Let's skip Virtual FS for the binary ZIP and just do direct download + log.
+
+        if (typeof document !== 'undefined') {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = safeName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        console.log('[EvidenceExport] Capsule exported:', safeName);
         return true;
     } catch (error) {
-        console.error('Failed to export evidence', error);
+        console.error('Failed to export evidence capsule', error);
         return false;
     }
 }

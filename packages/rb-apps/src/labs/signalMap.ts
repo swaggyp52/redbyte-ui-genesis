@@ -16,21 +16,28 @@ export type SignalMap = Record<string, HardwareMapping>;
 export const DEFAULT_MAPPINGS: Record<string, SignalMap> = {
     // Basys3 Default Mapping
     'basys3': {
-        'input_0': { group: 'SW', bit: 0 },
-        'input_1': { group: 'SW', bit: 1 },
-        'input_2': { group: 'SW', bit: 2 },
-        'input_3': { group: 'SW', bit: 3 },
-        'output_0': { group: 'LED', bit: 0 },
-        'output_1': { group: 'LED', bit: 1 },
-        'output_2': { group: 'LED', bit: 2 },
-        'output_3': { group: 'LED', bit: 3 },
+        // Switches 0-15
+        ...Object.fromEntries(Array.from({ length: 16 }, (_, i) => [`SW${i}`, { group: 'SW', bit: i }])),
+        // LEDs 0-15
+        ...Object.fromEntries(Array.from({ length: 16 }, (_, i) => [`LED${i}`, { group: 'LED', bit: i }])),
+        // Buttons (0:C, 1:U, 2:L, 3:R, 4:D - logical mapping)
+        'BTN_C': { group: 'BTN', bit: 0 },
+        'BTN_U': { group: 'BTN', bit: 1 },
+        'BTN_L': { group: 'BTN', bit: 2 },
+        'BTN_R': { group: 'BTN', bit: 3 },
+        'BTN_D': { group: 'BTN', bit: 4 },
     },
-    // Spartan-3E Default Mapping
+    // Spartan-3E Starter Kit Default Mapping
     'spartan3e-starter': {
-        'input_0': { group: 'SW', bit: 0 },
-        'input_1': { group: 'SW', bit: 1 },
-        'output_0': { group: 'LED', bit: 0 },
-        'output_1': { group: 'LED', bit: 1 },
+        // Switches 0-3
+        ...Object.fromEntries(Array.from({ length: 4 }, (_, i) => [`SW${i}`, { group: 'SW', bit: i }])),
+        // LEDs 0-7
+        ...Object.fromEntries(Array.from({ length: 8 }, (_, i) => [`LED${i}`, { group: 'LED', bit: i }])),
+        // Buttons (0:N, 1:E, 2:S, 3:W)
+        'BTN_NORTH': { group: 'BTN', bit: 0 },
+        'BTN_EAST': { group: 'BTN', bit: 1 },
+        'BTN_SOUTH': { group: 'BTN', bit: 2 },
+        'BTN_WEST': { group: 'BTN', bit: 3 },
     },
 };
 
