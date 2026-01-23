@@ -152,3 +152,36 @@ export async function exportEvidence(data: any): Promise<void> {
         URL.revokeObjectURL(url);
     }
 }
+
+/**
+ * Recursively sort object keys to ensure deterministic JSON serialization.
+ */
+export function canonicalizeEvidence(obj: any): any {
+    if (obj === null || typeof obj !== 'object') {
+        return obj;
+    }
+    if (Array.isArray(obj)) {
+        return obj.map(canonicalizeEvidence);
+    }
+    const sortedKeys = Object.keys(obj).sort();
+    const result: Record<string, any> = {};
+    for (const key of sortedKeys) {
+        result[key] = canonicalizeEvidence(obj[key]);
+    }
+    return result;
+}
+
+/**
+ * Generate a simple hash of the evidence object for integrity checks.
+ * Using a simple DJB2 variant for client-side speed/availablity if crypto not avail.
+ * Or use Web Crypto API if available.
+ */
+export function hashEvidence(evidence: any): { hash: string } {
+    const json = JSON.stringify(evidence);
+    let hash = 5381;
+    for (let i = 0; i < json.length; i++) {
+        hash = ((hash << 5) + hash) + json.charCodeAt(i); /* hash * 33 + c */
+    }
+    // Return unsigned hex
+    return { hash: (hash >>> 0).toString(16) };
+}
