@@ -31,9 +31,14 @@ export type { FocusTrapOptions } from './focusTrap';
 
 export { Portal } from './Portal';
 export type { PortalProps } from './Portal';
+export { PortalProvider, usePortalContainer } from './PortalContext';
+export type { PortalProviderProps } from './PortalContext';
 
 export { Modal } from './Modal';
 export type { ModalProps } from './Modal';
+
+export { OverlayRoot, OverlayPanel, OverlayBackdrop } from './OverlayRoot';
+export type { OverlayProps, OverlayPanelProps, OverlayBackdropProps } from './OverlayRoot';
 
 export { Toast, ToastContainer, useToast, toast, toastStore, subscribeToToasts } from './Toast';
 export type { ToastType, ToastKind, ToastOptions, ToastAction } from './Toast';

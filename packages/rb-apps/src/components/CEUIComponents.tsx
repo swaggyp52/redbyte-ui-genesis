@@ -8,6 +8,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { getCEConfig } from '@redbyte/rb-utils';
+import { OverlayRoot, OverlayPanel } from '@redbyte/rb-primitives';
 import { clearAutosaveStorage } from '../utils/ceAutosave';
 import type { Circuit } from '@redbyte/rb-logic-core';
 
@@ -35,8 +36,8 @@ export const ResetWorkspaceModal: React.FC<ResetWorkspaceModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-gray-800 border border-gray-600 rounded-lg p-6 max-w-md">
+    <OverlayRoot className="bg-black/60 flex items-center justify-center">
+      <OverlayPanel className="bg-gray-800 border border-gray-600 rounded-lg p-6 max-w-md">
         <h2 className="text-xl font-bold mb-4 text-cyan-400">Reset Workspace?</h2>
         <p className="text-gray-300 mb-2">
           This will:
@@ -63,8 +64,8 @@ export const ResetWorkspaceModal: React.FC<ResetWorkspaceModalProps> = ({
             Reset
           </button>
         </div>
-      </div>
-    </div>
+      </OverlayPanel>
+    </OverlayRoot>
   );
 };
 
@@ -108,8 +109,8 @@ export const ExampleGalleryModal: React.FC<ExampleGalleryModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-gray-800 border border-gray-600 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] flex flex-col">
+    <OverlayRoot className="bg-black/60 flex items-center justify-center">
+      <OverlayPanel className="bg-gray-800 border border-gray-600 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-cyan-400">Example Gallery</h2>
           <button
@@ -126,11 +127,10 @@ export const ExampleGalleryModal: React.FC<ExampleGalleryModalProps> = ({
             <button
               key={week}
               onClick={() => setSelectedWeek(week as any)}
-              className={`px-3 py-1 text-sm rounded transition-colors ${
-                selectedWeek === week
+              className={`px-3 py-1 text-sm rounded transition-colors ${selectedWeek === week
                   ? 'bg-cyan-600 text-white'
                   : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
+                }`}
             >
               {week === 'all' ? 'All' : `Week ${week}`}
             </button>
@@ -164,8 +164,8 @@ export const ExampleGalleryModal: React.FC<ExampleGalleryModalProps> = ({
             ))}
           </div>
         </div>
-      </div>
-    </div>
+      </OverlayPanel>
+    </OverlayRoot>
   );
 };
 
@@ -226,8 +226,8 @@ export const ExportBundleModal: React.FC<ExportBundleModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-gray-800 border border-gray-600 rounded-lg p-6 max-w-md">
+    <OverlayRoot className="bg-black/60 flex items-center justify-center">
+      <OverlayPanel className="bg-gray-800 border border-gray-600 rounded-lg p-6 max-w-md">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-cyan-400">Export Circuit</h2>
           <button
@@ -251,11 +251,10 @@ export const ExportBundleModal: React.FC<ExportBundleModalProps> = ({
         <div className="flex gap-3">
           <button
             onClick={handleCopy}
-            className={`flex-1 px-4 py-2 rounded font-medium transition-colors ${
-              copied
+            className={`flex-1 px-4 py-2 rounded font-medium transition-colors ${copied
                 ? 'bg-green-600 text-white'
                 : 'bg-blue-600 hover:bg-blue-500 text-white'
-            }`}
+              }`}
           >
             {copied ? 'Copied!' : 'Copy JSON'}
           </button>
@@ -273,8 +272,8 @@ export const ExportBundleModal: React.FC<ExportBundleModalProps> = ({
         >
           Close
         </button>
-      </div>
-    </div>
+      </OverlayPanel>
+    </OverlayRoot>
   );
 };
 

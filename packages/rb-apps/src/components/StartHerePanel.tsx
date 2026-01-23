@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useState } from 'react';
+import { OverlayRoot, OverlayPanel, OverlayBackdrop } from '@redbyte/rb-primitives';
 
 interface StartHerePanelProps {
     isOpen: boolean;
@@ -98,8 +99,12 @@ export const StartHerePanel: React.FC<StartHerePanelProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/80 z-[300] flex items-center justify-center p-4 animate-in fade-in duration-300">
-            <div className="bg-gradient-to-br from-gray-900 to-gray-950 border-2 border-cyan-500 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
+        <OverlayRoot className="flex items-center justify-center p-4">
+            <OverlayBackdrop
+                className="bg-black/80 animate-in fade-in duration-300"
+                onClick={handleClose}
+            />
+            <OverlayPanel className="relative z-10 bg-gradient-to-br from-gray-900 to-gray-950 border-2 border-cyan-500 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
                 {/* Header */}
                 <div className="p-6 border-b border-gray-800 bg-gradient-to-r from-cyan-900/20 to-purple-900/20 flex items-center justify-between">
                     <div>
@@ -182,7 +187,7 @@ export const StartHerePanel: React.FC<StartHerePanelProps> = ({
                         Close
                     </button>
                 </div>
-            </div>
-        </div>
+            </OverlayPanel>
+        </OverlayRoot>
     );
 };

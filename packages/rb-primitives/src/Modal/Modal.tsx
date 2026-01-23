@@ -5,6 +5,7 @@
 import React, { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 import { Portal } from '../Portal';
 import { createFocusTrap } from '../focusTrap';
+import { usePortalContainer } from '../PortalContext';
 
 export interface ModalProps {
   /** Controls modal visibility */
@@ -45,6 +46,7 @@ export function Modal({
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
+  const contextContainer = usePortalContainer();
 
   // Handle body scroll lock for center modals
   useEffect(() => {
@@ -105,30 +107,45 @@ export function Modal({
     'bottom-right': 'items-end justify-end p-8',
   };
 
+  // If we have a context container, we are in a window-scoped OS environment.
+  // We use absolute positioning and inset-0 to stay inside the window content.
+  const isWindowScoped = !!contextContainer;
+
   return (
     <Portal>
-      {/* Backdrop */}
+      {/* Root - does not block interactions with window chrome */}
       <div
-        className={`fixed inset-0 flex ${variantClasses[variant]}`}
+        className={`${isWindowScoped ? 'absolute' : 'fixed'} inset-0 flex ${variantClasses[variant]}`}
         style={{
           zIndex: MODAL_Z_INDEX,
-          backgroundColor: variant === 'center' ? 'rgba(0, 0, 0, 0.5)' : 'transparent',
+          pointerEvents: 'none',
         }}
-        onClick={handleBackdropClick}
         aria-modal="true"
         role="dialog"
       >
-        {/* Modal Panel */}
+        {/* Backdrop - captures clicks to close, limited to window content if scoped */}
+        <div
+          className="absolute inset-0 transition-opacity duration-300"
+          style={{
+            backgroundColor: variant === 'center' ? 'rgba(0, 0, 0, 0.5)' : 'transparent',
+            pointerEvents: 'auto',
+          }}
+          onClick={handleBackdropClick}
+        />
+
+        {/* Modal Panel - interactive content */}
         <div
           ref={modalRef}
           tabIndex={-1}
           className={`
+            relative z-10
             bg-slate-800 border border-slate-700 rounded-lg shadow-xl
             ${variant === 'center' ? `${sizeClasses[size]} w-full mx-4` : 'max-w-sm'}
             ${variant === 'bottom-right' ? 'transform transition-all duration-300 ease-out' : ''}
           `}
           style={{
             outline: 'none',
+            pointerEvents: 'auto',
             ...(variant === 'bottom-right' && {
               boxShadow: '0 8px 32px rgba(0, 217, 255, 0.2)',
             }),

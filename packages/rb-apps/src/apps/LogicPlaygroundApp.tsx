@@ -39,7 +39,7 @@ const EvidenceViewerPanel: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-gray-900 text-gray-100">
+    <div className="flex flex-col h-full w-full bg-gray-900 text-gray-100 relative">
       <div className="p-4 border-b border-gray-700 flex items-center gap-4">
         <span className="font-bold text-lg">Evidence Viewer</span>
         <span className={verificationStatus === 'PASS' ? 'text-green-400' : 'text-red-400'}>
@@ -250,7 +250,7 @@ import {
 import { LogicCanvas } from '@redbyte/rb-logic-view';
 import { ViewAdapter } from '@redbyte/rb-logic-adapter';
 import { useSettingsStore, useUiTickStore, enableWatchdog, installFatalCapture, pushMount } from '@redbyte/rb-utils';
-import { toast } from '@redbyte/rb-primitives';
+import { toast, OverlayRoot, OverlayPanel } from '@redbyte/rb-primitives';
 import type { ToastKind } from '@redbyte/rb-primitives';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import { loadExample, listExamples, listExamplesByLayer, getLayerDescription, type ExampleId, type CircuitLayer } from '../examples';
@@ -3581,20 +3581,20 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
         {/* Loading Overlay */}
         {isLoadingSharedCircuit && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+          <OverlayRoot className="bg-black bg-opacity-50 flex items-center justify-center">
+            <OverlayPanel className="bg-gray-800 p-6 rounded-lg shadow-lg">
               <div className="flex items-center gap-3">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-500" />
                 <span className="text-white">Loading shared circuit...</span>
               </div>
-            </div>
-          </div>
+            </OverlayPanel>
+          </OverlayRoot>
         )}
 
         {/* Clipboard Fallback Modal */}
         {shareFallbackURL && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4">
+          <OverlayRoot className="bg-black bg-opacity-50 flex items-center justify-center">
+            <OverlayPanel className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4">
               <h3 className="text-lg font-semibold mb-3 text-white">Share Link Ready</h3>
               <p className="text-sm text-gray-300 mb-4">
                 Automatic clipboard copy failed. Please copy the link manually:
@@ -3626,14 +3626,14 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
                   Close
                 </button>
               </div>
-            </div>
-          </div>
+            </OverlayPanel>
+          </OverlayRoot>
         )}
 
         {/* Decode Error Modal */}
         {showDecodeErrorModal && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+          <OverlayRoot className="bg-black bg-opacity-50 flex items-center justify-center">
+            <OverlayPanel className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
               <h3 className="text-lg font-semibold mb-3 text-red-400">Invalid Share Link</h3>
               <p className="text-sm text-gray-300 mb-4">
                 This share link is invalid or corrupted. The circuit could not be loaded.
@@ -3660,14 +3660,14 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
               >
                 Report Issue →
               </a>
-            </div>
-          </div>
+            </OverlayPanel>
+          </OverlayRoot>
         )}
 
         {/* Export Modal */}
         {showExportModal && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+          <OverlayRoot className="bg-black bg-opacity-50 flex items-center justify-center">
+            <OverlayPanel className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
               <h3 className="text-lg font-semibold mb-3 text-white">Export</h3>
               <div className="space-y-2 mb-4">
                 <button
@@ -3724,14 +3724,14 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
                   Close
                 </button>
               </div>
-            </div>
-          </div>
+            </OverlayPanel>
+          </OverlayRoot>
         )}
 
         {/* Save As Modal */}
         {showSaveAsModal && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+          <OverlayRoot className="bg-black bg-opacity-50 flex items-center justify-center">
+            <OverlayPanel className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
               <h3 className="text-lg font-semibold mb-3 text-white">Save Circuit As...</h3>
               <input
                 type="text"
@@ -3760,14 +3760,14 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
                   Cancel
                 </button>
               </div>
-            </div>
-          </div>
+            </OverlayPanel>
+          </OverlayRoot>
         )}
 
         {/* Open File Modal */}
         {showOpenModal && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+          <OverlayRoot className="bg-black bg-opacity-50 flex items-center justify-center">
+            <OverlayPanel className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
               <h3 className="text-lg font-semibold mb-3 text-white">Open Circuit</h3>
               {availableFiles.length === 0 ? (
                 <p className="text-sm text-gray-300 mb-4">
@@ -3802,14 +3802,14 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
                   Cancel
                 </button>
               </div>
-            </div>
-          </div>
+            </OverlayPanel>
+          </OverlayRoot>
         )}
 
         {/* Examples Modal */}
         {showExamplesModal && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
+          <OverlayRoot className="bg-black bg-opacity-50 flex items-center justify-center">
+            <OverlayPanel className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
               <h3 className="text-lg font-semibold mb-3 text-white">Load Example</h3>
               <div className="flex-1 overflow-y-auto mb-4">
                 {([0, 1, 2, 3, 4, 5, 6] as CircuitLayer[]).map((layer) => {
@@ -3849,8 +3849,8 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
                   Cancel
                 </button>
               </div>
-            </div>
-          </div>
+            </OverlayPanel>
+          </OverlayRoot>
         )}
 
         {/* Save as Chip Modal */}
@@ -3865,16 +3865,16 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
         {/* Trace Viewer Modal */}
         {showTraceViewer && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-            <div className="bg-gray-900 rounded-lg shadow-2xl w-[90%] h-[90%] max-w-5xl overflow-hidden border border-gray-700">
+          <OverlayRoot className="bg-black bg-opacity-50 flex items-center justify-center">
+            <OverlayPanel className="bg-gray-900 rounded-lg shadow-2xl w-[90%] h-[90%] max-w-5xl overflow-hidden border border-gray-700">
               <TraceViewer
                 traces={traceSnapshots}
                 circuit={circuit}
                 currentTick={tickEngine.getTickCount()}
                 onClose={() => setShowTraceViewer(false)}
               />
-            </div>
-          </div>
+            </OverlayPanel>
+          </OverlayRoot>
         )}
 
         {/* Chip Library Modal */}

@@ -9,6 +9,7 @@ import {
   WindowMaximizeIcon,
   WindowMinimizeIcon,
 } from '@redbyte/rb-icons';
+import { PortalProvider } from '@redbyte/rb-primitives';
 
 interface ShellWindowProps {
   state: WindowState;
@@ -42,6 +43,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
   const [mounted, setMounted] = useState(false);
   const boundsRef = useRef<HTMLDivElement>(null);
+  const overlayRootRef = useRef<HTMLDivElement>(null);
 
   const isMax = state.mode === 'maximized';
   const isMin = state.mode === 'minimized';
@@ -222,8 +224,16 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
         </div>
       </div>
 
-      <div className="h-[calc(100%-40px)] overflow-hidden" style={{ background: 'var(--rb-bg)', color: 'var(--rb-text)' }}>
-        {children}
+      <div className="h-[calc(100%-40px)] overflow-hidden relative" style={{ background: 'var(--rb-bg)', color: 'var(--rb-text)' }}>
+        <PortalProvider container={overlayRootRef.current}>
+          {children}
+        </PortalProvider>
+        {/* Window-scoped portal target for modals and overlays */}
+        <div
+          ref={overlayRootRef}
+          data-rb-window-overlay-root
+          className="absolute inset-0 pointer-events-none z-50"
+        />
       </div>
 
       {/* Resize handles */}

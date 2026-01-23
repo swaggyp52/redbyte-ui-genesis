@@ -12,6 +12,7 @@ import {
   type PresetsFile,
   type SelfCheckResult,
 } from '../utils/selfCheck';
+import { OverlayRoot, OverlayPanel } from '@redbyte/rb-primitives';
 import { exportBundle, downloadBlob, type ExportResult } from '../utils/bundleExport';
 import { assertAppOutput, registerAppInvariants } from '../utils/appInvariants';
 
@@ -243,9 +244,9 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
         if (response.ok) {
           const data = await response.json();
           const now = new Date().toISOString();
-          
+
           setBridgeStatus({ online: true, lastChecked: now });
-          
+
           const wasDisconnected = !boardStatus.connected;
           setBoardStatus({
             connected: data.connected || false,
@@ -550,7 +551,7 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
     const canStart = studentName.trim() && selectedLabId;
 
     return (
-      <div className={styles.container}>
+      <div className={`${styles.container} relative`}>
         <div className={styles.header}>
           <h1 className={styles.title}>RedByte Logic Labs</h1>
           <p className={styles.subtitle}>Build, test, and submit your digital logic designs</p>
@@ -676,7 +677,7 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
     };
 
     return (
-      <div className={styles.container}>
+      <div className={`${styles.container} relative`}>
         <div className={styles.header}>
           <h1 className={styles.title}>Submission Receipt</h1>
           <p className={styles.subtitle}>Your lab submission has been exported successfully</p>
@@ -802,7 +803,7 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
 
   if (!spec || !attempt) {
     return (
-      <div className={styles.container}>
+      <div className={`${styles.container} relative`}>
         <div className={styles.loading}>Loading...</div>
       </div>
     );
@@ -817,14 +818,14 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
   // Progress steps
   const steps = [
     { id: 'spec', label: 'Spec', complete: true },
-    { id: 'build', label: 'Build', complete: !!selectedPreset },    { id: 'hardware', label: 'Hardware', completed: snapshots.length > 0 },    { id: 'self-check', label: 'Self-Check', complete: !!selfCheckSummary },
+    { id: 'build', label: 'Build', complete: !!selectedPreset }, { id: 'hardware', label: 'Hardware', completed: snapshots.length > 0 }, { id: 'self-check', label: 'Self-Check', complete: !!selfCheckSummary },
     { id: 'export', label: 'Export', complete: false },
   ];
 
   const currentStepIndex = steps.findIndex(s => s.id === activeTab);
 
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container} relative`}>
       {/* Header with attempt info */}
       <div className={styles.header}>
         <h1 className={styles.title}>{spec.title}</h1>
@@ -841,9 +842,8 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
         {steps.map((step, idx) => (
           <div
             key={step.id}
-            className={`${styles.progressStep} ${
-              idx === currentStepIndex ? styles.progressStepActive : ''
-            } ${step.complete ? styles.progressStepComplete : ''}`}
+            className={`${styles.progressStep} ${idx === currentStepIndex ? styles.progressStepActive : ''
+              } ${step.complete ? styles.progressStepComplete : ''}`}
           >
             <div className={styles.progressStepNumber}>{idx + 1}</div>
             <div className={styles.progressStepLabel}>{step.label}</div>
@@ -1116,13 +1116,13 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
 
             {/* Manual Snapshot Modal */}
             {showManualSnapshotModal && (
-              <div className={styles.modal}>
-                <div className={styles.modalContent}>
+              <OverlayRoot className="bg-black/60 flex items-center justify-center">
+                <OverlayPanel className={styles.modalContent}>
                   <h3 className={styles.modalTitle}>Manual Snapshot Entry</h3>
                   <p className={styles.modalInfo}>
                     Enter the observed I/O states from your FPGA board in JSON format.
                   </p>
-                  
+
                   <div className={styles.modalField}>
                     <label className={styles.modalLabel}>Inputs (JSON)</label>
                     <input
@@ -1170,8 +1170,8 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
                       Save Snapshot
                     </button>
                   </div>
-                </div>
-              </div>
+                </OverlayPanel>
+              </OverlayRoot>
             )}
           </div>
         )}
@@ -1310,8 +1310,8 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
 
             {/* Confirmation Modal */}
             {showExportConfirm && (
-              <div className={styles.modalOverlay}>
-                <div className={styles.modal}>
+              <OverlayRoot className="bg-black/60 flex items-center justify-center">
+                <OverlayPanel className={styles.modal}>
                   <h3 className={styles.modalTitle}>Confirm Export</h3>
                   <p className={styles.modalText}>
                     You are about to export your submission for <strong>{spec.title}</strong> as <strong>{studentName}</strong>.
@@ -1327,8 +1327,8 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
                       Confirm Export
                     </button>
                   </div>
-                </div>
-              </div>
+                </OverlayPanel>
+              </OverlayRoot>
             )}
           </div>
         )}
