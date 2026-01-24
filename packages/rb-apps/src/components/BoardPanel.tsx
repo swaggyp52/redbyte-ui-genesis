@@ -208,6 +208,22 @@ export const BoardPanel: React.FC<BoardPanelProps> = ({
         </div>
       )}
 
+      {/* No devices found — show microcopy when hardware source */}
+      {executionSource === 'hardware' && connectionState === 'ready' && availableDevices.length === 0 && (
+        <div
+          className="p-4"
+          style={{
+            background: 'rgba(0,0,0,0.3)',
+            borderBottom: '1px solid #2a3540',
+          }}
+        >
+          <div className="text-[10px] font-bold tracking-wider text-amber-500/80 mb-1">NO DEVICES FOUND</div>
+          <div className="text-[9px] text-gray-500">
+            Start bridge with <code className="text-cyan-400/80 bg-black/30 px-1 rounded">RB_FPGA_MOCK=1</code> for mock Basys3
+          </div>
+        </div>
+      )}
+
       {/* Device selector */}
       {connectionState === 'ready' && !activeDevice && availableDevices.length > 0 && (
         <div

@@ -174,7 +174,9 @@ export class HardwareClient {
       const devicesRes = await fetch(`${this.config.httpUrl}/devices`, {
         signal: AbortSignal.timeout(this.FETCH_TIMEOUT_MS),
       });
-      const devices: Device[] = devicesRes.ok ? await devicesRes.json() : [];
+      // Bridge returns { schema_version, devices: [...] } - extract the array
+      const devicesData = devicesRes.ok ? await devicesRes.json() : { devices: [] };
+      const devices: Device[] = Array.isArray(devicesData) ? devicesData : (devicesData.devices ?? []);
 
       this.state = {
         status: 'connected',
@@ -229,7 +231,9 @@ export class HardwareClient {
       const devicesRes = await fetch(`${this.config.httpUrl}/devices`, {
         signal: AbortSignal.timeout(this.FETCH_TIMEOUT_MS),
       });
-      const devices: Device[] = devicesRes.ok ? await devicesRes.json() : [];
+      // Bridge returns { schema_version, devices: [...] } - extract the array
+      const devicesData = devicesRes.ok ? await devicesRes.json() : { devices: [] };
+      const devices: Device[] = Array.isArray(devicesData) ? devicesData : (devicesData.devices ?? []);
 
       if (this.state.status === 'connected') {
         this.state = {
