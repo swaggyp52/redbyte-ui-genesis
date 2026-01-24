@@ -89,7 +89,7 @@ export class HardwareClient {
 
   constructor(config?: Partial<HardwareClientConfig>) {
     this.config = {
-      httpUrl: config?.httpUrl ?? 'http://127.0.0.1:3002/api/v1',
+      httpUrl: config?.httpUrl ?? 'http://127.0.0.1:4242',
       wsUrl: config?.wsUrl ?? 'ws://127.0.0.1:4243',
       mode: config?.mode ?? 'auto',
     };

@@ -645,6 +645,21 @@ async function stopRun(runId, options = {}) {
 
 // ... existing code ...
 
+app.get("/", (req, res) => {
+  res.send(`
+    <html>
+      <head><title>RedByte FPGA Bridge</title></head>
+      <body style="font-family: monospace; padding: 2rem;">
+        <h1>RedByte FPGA Bridge</h1>
+        <p>Status: <strong>Running</strong></p>
+        <p>Mode: <strong>${MOCK_MODE ? "MOCK" : "REAL"}</strong></p>
+        <p>WebSocket: <strong>ws://localhost:${WS_PORT}</strong></p>
+        <p><a href="/health">check health</a></p>
+      </body>
+    </html>
+  `);
+});
+
 app.get("/health", (req, res) => {
   // Aggregate stats from active runs
   const runStats = Array.from(activeRuns.values()).map(r => ({
@@ -659,8 +674,11 @@ app.get("/health", (req, res) => {
   }));
 
   res.json({
-    status: "ok",
-    uptime: process.uptime(),
+    ok: true,
+    mock: MOCK_MODE,
+    version: "0.1.0",
+    uptimeMs: process.uptime() * 1000,
+    status: "ok", // Keep for backward compat if any
     activeRunCount: activeRuns.size,
     totalMemory: process.memoryUsage().rss,
     runs: runStats
@@ -1560,8 +1578,10 @@ app.get("/api/synthesize/:jobId/bitstream", (req, res) => {
 });
 
 
-const server = app.listen(HTTP_PORT, () => {
-  console.log(`[fpga-bridge] HTTP on http://localhost:${HTTP_PORT}`);
+const server = app.listen(HTTP_PORT, "0.0.0.0", () => {
+  console.log(`HTTP listening on http://localhost:${HTTP_PORT}`);
+  console.log(`WS listening on ws://localhost:${WS_PORT}`);
+  console.log(`Mode: ${MOCK_MODE ? "MOCK" : "REAL"}`);
 });
 
 const wss = new WebSocketServer({ port: WS_PORT });
