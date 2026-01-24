@@ -4,6 +4,7 @@
 
 import type { HardwareTraceV1 } from '../hardware/traceFormat';
 import { validateTrace, serializeTrace, deserializeTrace } from '../hardware/traceFormat';
+import { type RedByteCapsule, validateCapsule } from '../hardware/capsuleFormat';
 import { useFileSystemStore } from '../stores/fileSystemStore';
 
 export async function saveTraceToFS(trace: HardwareTraceV1, filename: string): Promise<boolean> {
@@ -86,6 +87,69 @@ export async function loadTraceFromFS(fileIdOrName: string): Promise<HardwareTra
     } catch (error) {
         console.error('Failed to load trace', error);
         alert('An unexpected error occurred while loading the trace.');
+        return null;
+    }
+}
+
+export async function saveCapsuleToFS(capsule: RedByteCapsule, filename: string): Promise<boolean> {
+    try {
+        const fs = useFileSystemStore.getState();
+        const content = JSON.stringify(capsule, null, 2);
+
+        const validation = validateCapsule(capsule);
+        if (!validation.ok) {
+            console.error('Invalid capsule:', validation.error);
+            alert(`Cannot save invalid capsule: ${validation.error}`);
+            return false;
+        }
+
+        let safeName = filename.replace(/^\/+/, '');
+        if (!safeName.toLowerCase().endsWith('.json') && !safeName.toLowerCase().endsWith('.capsule')) {
+            // Prefer .capsule.json or just .json? Plan said .json mostly?
+            // Let's stick to .json for compatibility with file system viewer usually, or .capsule.json
+            safeName += '.json';
+        }
+
+        await fs.createFile('/' + safeName, content);
+        console.log('[TraceUtils] Saved capsule to:', safeName);
+        return true;
+    } catch (error) {
+        console.error('Failed to save capsule', error);
+        return false;
+    }
+}
+
+export async function loadCapsuleFromFS(fileIdOrName: string): Promise<RedByteCapsule | null> {
+    try {
+        const fs = useFileSystemStore.getState();
+        const allFiles = fs.getAllFiles();
+
+        const file = allFiles.find(f =>
+            f.id === fileIdOrName ||
+            f.name === fileIdOrName ||
+            f.name.toLowerCase() === fileIdOrName.toLowerCase() ||
+            f.name.toLowerCase() === (fileIdOrName + '.json').toLowerCase()
+        );
+
+        if (!file || !file.content) return null;
+
+        let data: any;
+        try {
+            data = JSON.parse(file.content);
+        } catch {
+            return null;
+        }
+
+        // Validate
+        const validation = validateCapsule(data);
+        if (!validation.ok || !validation.capsule) {
+            console.warn('Capsule validation failed:', validation.error);
+            return null;
+        }
+
+        return validation.capsule;
+    } catch (error) {
+        console.error('Failed to load capsule', error);
         return null;
     }
 }

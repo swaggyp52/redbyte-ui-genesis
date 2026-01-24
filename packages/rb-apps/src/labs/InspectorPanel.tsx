@@ -4,11 +4,11 @@
 
 import React, { useState } from 'react';
 import { useHardwareStore } from '../stores/hardwareStore';
-import { loadEvidenceCapsule, type LabEvidenceCapsule } from '../utils/evidenceExport';
-import { useFileSystemStore } from '../stores/fileSystemStore';
+import { type RedByteCapsule } from '../hardware/capsuleFormat';
+import { loadCapsuleFromFS } from '../utils/traceFileUtils';
 
 export const InspectorPanel: React.FC = () => {
-    const [capsule, setCapsule] = useState<LabEvidenceCapsule | null>(null);
+    const [capsule, setCapsule] = useState<RedByteCapsule | null>(null);
     const [error, setError] = useState<string | null>(null);
     const disconnect = useHardwareStore((s) => s.disconnect);
 
@@ -20,7 +20,7 @@ export const InspectorPanel: React.FC = () => {
         setError(null);
         if (!fileId) return;
 
-        const loaded = await loadEvidenceCapsule(fileId);
+        const loaded = await loadCapsuleFromFS(fileId);
         if (loaded) {
             setCapsule(loaded);
         } else {
@@ -99,14 +99,14 @@ export const InspectorPanel: React.FC = () => {
             {capsule ? (
                 <div className="space-y-4 animate-fade-in">
                     {/* Status Badge */}
-                    <div className={`p-4 rounded-lg border flex items-center justify-between ${capsule.isPass
+                    <div className={`p-4 rounded-lg border flex items-center justify-between ${capsule.result?.status === 'pass'
                         ? 'bg-green-900/20 border-green-800'
                         : 'bg-red-900/20 border-red-800'
                         }`}>
                         <div>
                             <div className="text-[10px] items-center text-gray-500 uppercase font-bold">Status</div>
-                            <div className={`text-lg font-bold ${capsule.isPass ? 'text-green-400' : 'text-red-400'}`}>
-                                {capsule.isPass ? 'PASSED' : 'FAILED'}
+                            <div className={`text-lg font-bold ${capsule.result?.status === 'pass' ? 'text-green-400' : 'text-red-400'}`}>
+                                {capsule.result?.status === 'pass' ? 'PASSED' : 'INCOMPLETE'}
                             </div>
                         </div>
                         <div className="text-xs text-gray-400 font-mono text-right">

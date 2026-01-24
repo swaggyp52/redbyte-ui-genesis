@@ -20,7 +20,8 @@ import { getSimSnapshot, useSimStore, setSimInput } from '../labs/simAdapter';
 import { EXPERIMENTS } from '../labs/experiments';
 import type { HardwareTraceV1 } from '../hardware/traceFormat';
 import { validateTrace } from '../hardware/traceFormat';
-import { saveTraceToFS, loadTraceFromFS } from '../utils/traceFileUtils';
+import { saveTraceToFS, loadTraceFromFS, saveCapsuleToFS, loadCapsuleFromFS } from '../utils/traceFileUtils';
+import { createCapsule, validateCapsule, type RedByteCapsule } from '../hardware/capsuleFormat';
 import { LabInstructions } from '../labs/LabInstructions';
 import { InspectorPanel } from '../labs/InspectorPanel';
 import { LAB_1_CONTENT } from '../labs/labContent';
@@ -30,6 +31,7 @@ interface ECELabAppProps {
 }
 
 type ECELabMode = 'sim-only' | 'board-connected' | 'guided-lab' | 'inspector';
+type ExecutionSource = 'sim' | 'hardware' | 'replay';
 type RightPanelTab = 'board' | 'compare' | 'test';
 
 // Board selector dropdown
@@ -161,8 +163,10 @@ const VectorRunnerView: React.FC<{
 
 export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
   const [mode, setMode] = useState<ECELabMode>('sim-only');
+  const [executionSource, setExecutionSource] = useState<ExecutionSource>('sim');
   const [rightTab, setRightTab] = useState<RightPanelTab>('board');
   const [selectedBoard, setSelectedBoard] = useState<string>('basys3');
+  const [showStartGuide, setShowStartGuide] = useState(true);
 
   // Hardware state
   const ioSnapshot = useHardwareStore((s) => s.ioSnapshot);
@@ -234,18 +238,21 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
       }
       setReplayTrace(trace);
       setReplayIndex(0);
+      setExecutionSource('replay');
       setMode('board-connected'); // Switch to board view for replay
     };
     window.addEventListener('rb:load-replay', handleReplayLoad);
     return () => window.removeEventListener('rb:load-replay', handleReplayLoad);
   }, []);
 
-  // Effective snapshot (replay > live)
-  const effectiveSnapshot = replayTrace
-    ? replayTrace.samples[replayIndex] ?? null
-    : (mode === 'sim-only' ? simSnapshot : ioSnapshot);
+  // Effective snapshot (Arbiter)
+  const effectiveSnapshot =
+    executionSource === 'replay' && replayTrace ? replayTrace.samples[replayIndex] ?? null :
+      executionSource === 'hardware' ? ioSnapshot :
+        simSnapshot; // 'sim' fallback
 
-  const effectiveCapabilities = mode === 'sim-only' ? simCapabilities : capabilities;
+  // Capabilities come from source if possible, else current board selection
+  const effectiveCapabilities = executionSource === 'sim' ? simCapabilities : capabilities;
 
   // Current experiment
   const currentExperiment = EXPERIMENTS[activeExperimentId];
@@ -255,9 +262,16 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
     if (isRecording) {
       const trace = stopRecording();
       if (trace && trace.samples.length > 0) {
-        const name = window.prompt('Save trace as:', `trace-${Date.now()}.json`);
+        const name = window.prompt('Save capsule as:', `capsule-${Date.now()}.json`);
         if (name) {
-          saveTraceToFS(trace, name).then(ok => {
+          const capsule = createCapsule({
+            labId: mode === 'guided-lab' ? 'lab-1' : 'free-play', // specific lab ID if available
+            executionSource: executionSource,
+            mode: mode,
+            deviceBoardId: effectiveCapabilities?.boardId || 'unknown',
+            trace: trace
+          });
+          saveCapsuleToFS(capsule, name).then(ok => {
             if (!ok) console.error('Save failed');
           });
         }
@@ -269,12 +283,26 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
   };
 
   const handleLoadTrace = async () => {
-    const name = window.prompt('Load trace filename:', 'trace.json');
+    const name = window.prompt('Load trace/capsule filename:', 'trace.json');
     if (!name) return;
+
+    // Try loading as capsule first
+    const capsule = await loadCapsuleFromFS(name);
+    if (capsule && capsule.trace) {
+      console.log('Loaded capsule:', capsule);
+      setReplayTrace(capsule.trace);
+      setReplayIndex(0);
+      setExecutionSource('replay');
+      setMode('board-connected');
+      return;
+    }
+
+    // Fallback: legacy trace
     const trace = await loadTraceFromFS(name);
     if (trace) {
       setReplayTrace(trace);
       setReplayIndex(0);
+      setExecutionSource('replay');
       setMode('board-connected');
     }
   };
@@ -364,7 +392,30 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
             </div>
           </div>
 
-          {/* Mode Switcher */}
+          {/* Execution Source Switcher (The Arbiter) */}
+          <div className="flex rounded-lg overflow-hidden border border-[#1a2a3a] bg-[#0a1018]">
+            {(['sim', 'hardware', 'replay'] as ExecutionSource[]).map((src) => {
+              const isActive = executionSource === src;
+              const color = src === 'sim' ? '#00ff88' : src === 'hardware' ? '#00d4ff' : '#ffaa00';
+              return (
+                <button
+                  key={src}
+                  onClick={() => setExecutionSource(src)}
+                  className="px-3 py-1 text-[10px] font-bold tracking-wider transition-all"
+                  style={{
+                    background: isActive ? `${color}15` : 'transparent',
+                    color: isActive ? color : '#4a5a6a',
+                    borderRight: '1px solid #1a2a3a',
+                    textShadow: isActive ? `0 0 10px ${color}66` : 'none',
+                  }}
+                >
+                  {src.toUpperCase()}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* View Mode Switcher */}
           <div
             className="flex rounded-lg overflow-hidden"
             style={{
@@ -401,8 +452,8 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
             })}
           </div>
 
-          {/* Board Selector (sim mode only) */}
-          {mode === 'sim-only' && (
+          {/* Board Selector (sim only) */}
+          {executionSource === 'sim' && mode === 'sim-only' && (
             <BoardSelector value={selectedBoard} onChange={setSelectedBoard} />
           )}
         </div>
@@ -486,10 +537,38 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
               border: `1px solid ${mode === 'sim-only' ? '#00ff8833' : '#00d4ff33'}`,
             }}
           >
-            {mode === 'sim-only' ? 'SIMULATION' : mode === 'board-connected' ? 'LIVE' : mode.toUpperCase()}
+            {executionSource === 'sim' ? 'SIMULATION' : executionSource === 'hardware' ? 'LIVE HARDWARE' : 'REPLAY'}
           </div>
         </div>
       </div>
+
+      {/* === START HERE GUIDE === */}
+      {showStartGuide && (
+        <div className="bg-[#0a1520] border-b border-[#1a2a3a] px-4 py-2 flex items-center justify-between animate-fade-in relative z-10">
+          <div className="flex items-center gap-6 text-[10px] font-medium text-gray-400">
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-cyan-900/30 text-cyan-400 flex items-center justify-center font-bold text-xs ring-1 ring-cyan-500/20">1</span>
+              <span>Select Source (Sim / Hardware)</span>
+            </div>
+            <div className="w-px h-4 bg-[#1a2a3a]" />
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-cyan-900/30 text-cyan-400 flex items-center justify-center font-bold text-xs ring-1 ring-cyan-500/20">2</span>
+              <span>Choose Experiment or Lab</span>
+            </div>
+            <div className="w-px h-4 bg-[#1a2a3a]" />
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-cyan-900/30 text-cyan-400 flex items-center justify-center font-bold text-xs ring-1 ring-cyan-500/20">3</span>
+              <span>Interact & Capture Evidence</span>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowStartGuide(false)}
+            className="text-gray-600 hover:text-gray-300 text-xs px-2"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* === MAIN CONTENT === */}
       <div className="flex-1 flex overflow-hidden">
@@ -506,9 +585,10 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
             <InspectorPanel />
           ) : (
             <>
-              {/* Experiment Controls Bar */}
+              {/* Experiment Controls Bar - Only active if Sim source */}
               <div
-                className="flex items-center justify-between px-4 py-2"
+                className={`flex items-center justify-between px-4 py-2 transition-opacity ${executionSource !== 'sim' ? 'opacity-50 pointer-events-none grayscale' : ''
+                  }`}
                 style={{
                   background: 'linear-gradient(180deg, #0a1520 0%, #080f18 100%)',
                   borderBottom: '1px solid #1a2a3a',
@@ -671,13 +751,13 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
               <BoardPanel
                 snapshot={effectiveSnapshot}
                 capabilities={effectiveCapabilities}
-                onInteraction={mode === 'sim-only' ? setSimInput : undefined}
-                readOnly={!!replayTrace}
+                onInteraction={executionSource === 'sim' ? setSimInput : undefined}
+                readOnly={executionSource === 'replay'}
               />
             ) : rightTab === 'compare' ? (
               <CompareView ioSnapshot={effectiveSnapshot} checks={checks} />
             ) : (
-              <VectorRunnerView mode={mode === 'sim-only' ? 'sim' : 'hardware'} />
+              <VectorRunnerView mode={executionSource === 'sim' ? 'sim' : 'hardware'} />
             )}
           </div>
         </div>
