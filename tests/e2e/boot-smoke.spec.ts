@@ -80,21 +80,21 @@ test.describe('Boot Smoke Test', () => {
     }
   });
 
-  test('can open Lab Workbench app', async ({ page }) => {
+  test('can open ECE 347 Lab app', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('[data-testid="desktop-shell"]', { timeout: 10000 });
 
-    // Find and click Lab Workbench app launcher
-    const appLauncher = page.locator('text="Lab Workbench"').first();
+    // Find and click ECE 347 Lab app launcher
+    const appLauncher = page.locator('text="ECE 347 Lab"').first();
     if (await appLauncher.count() > 0) {
       await appLauncher.click();
 
       // Wait for app window
       await page.waitForSelector('[data-window-id]', { timeout: 5000 });
 
-      console.log('✅ Lab Workbench opened successfully');
+      console.log('✅ ECE 347 Lab opened successfully');
     } else {
-      console.warn('⚠️ Lab Workbench launcher not found (skipped)');
+      console.warn('⚠️ ECE 347 Lab launcher not found (skipped)');
     }
   });
 });

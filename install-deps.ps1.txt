@@ -1,0 +1,50 @@
+# install-deps.ps1
+# RedByte dependency installer (no repo cloning)
+
+$ErrorActionPreference = "Stop"
+
+function Has($cmd) {
+  return [bool](Get-Command $cmd -ErrorAction SilentlyContinue)
+}
+
+Write-Host "RedByte – Installing required dependencies" -ForegroundColor Cyan
+
+# --- winget ---
+if (-not (Has "winget")) {
+  Write-Host "ERROR: winget not found. Install 'App Installer' from Microsoft Store." -ForegroundColor Red
+  exit 1
+}
+
+# --- Git ---
+if (Has "git") {
+  Write-Host "Git already installed"
+} else {
+  Write-Host "Installing Git..." -ForegroundColor Yellow
+  winget install --id Git.Git -e --source winget `
+    --accept-package-agreements --accept-source-agreements
+}
+
+# --- Node.js LTS ---
+if (Has "node") {
+  Write-Host "Node already installed: $(node -v)"
+} else {
+  Write-Host "Installing Node.js LTS..." -ForegroundColor Yellow
+  winget install --id OpenJS.NodeJS.LTS -e --source winget `
+    --accept-package-agreements --accept-source-agreements
+}
+
+# --- pnpm (via corepack) ---
+if (Has "pnpm") {
+  Write-Host "pnpm already installed: $(pnpm -v)"
+} else {
+  Write-Host "Enabling pnpm via corepack..." -ForegroundColor Yellow
+  corepack enable
+  corepack prepare pnpm@latest --activate
+}
+
+Write-Host ""
+Write-Host "Dependencies installed." -ForegroundColor Green
+Write-Host "Next steps:" -ForegroundColor Cyan
+Write-Host "  cd <your-redbyte-repo>"
+Write-Host "  pnpm install"
+Write-Host "  pnpm run dev"

@@ -70,7 +70,6 @@ export async function registerAllApps() {
   registerApp(LabExaminerAppRegistry);
   registerApp(InstructorApp);
   registerApp(InstructorRunDetailApp);
-  registerApp(InstructorRunDetailApp);
   // registerApp(StudentLabApp); // LEGACY: Replaced by ECELabApp (ECE 347 Lab)
   registerApp(SubmissionInspectorApp);
 }

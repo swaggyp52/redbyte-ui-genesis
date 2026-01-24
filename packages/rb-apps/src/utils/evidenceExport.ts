@@ -9,7 +9,7 @@ import { useLabStore } from '../labs/labStore';
 import { createTrace, type HardwareTraceV1 } from '../hardware/traceFormat';
 
 export interface LabEvidenceCapsule {
-    schemaVersion: 2;
+    schemaVersion: 1 | 2;
     timestamp: string;
     labId: string;
     student: {
@@ -17,9 +17,11 @@ export interface LabEvidenceCapsule {
         name: string;
     };
     deviceBoardId?: string;
+    deviceKey?: string;
     completedSteps: number[];
     isPass: boolean;
     traceEvents: number;
+    trace?: HardwareTraceV1;
     evidenceHash?: string;
 }
 
@@ -34,7 +36,15 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
             // We should ideally prompt here or handled by UI
         }
 
-        // 1. Prepare Metadata
+        // 1. Prepare Metadata + embedded trace
+        const embeddedTrace = hw.traceBuffer.length > 0
+            ? createTrace(
+                hw.capabilities?.boardId || 'unknown',
+                hw.recordingStartTick ?? 0,
+                [...hw.traceBuffer]
+            )
+            : undefined;
+
         const capsule: LabEvidenceCapsule = {
             schemaVersion: 2,
             timestamp: new Date().toISOString(),
@@ -44,9 +54,11 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
                 name: lab.studentName || 'Anonymous Student'
             },
             deviceBoardId: hw.capabilities?.boardId,
+            deviceKey: hw.activeDevice?.deviceId,
             completedSteps: lab.completedSteps,
             isPass: lab.completedSteps.length > 0, // Simplified pass criteria
-            traceEvents: hw.traceBuffer.length
+            traceEvents: hw.traceBuffer.length,
+            trace: embeddedTrace
         };
 
         // 2. Build ZIP
@@ -78,9 +90,10 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
         // 3. Generate and Save
         const blob = await zip.generateAsync({ type: 'blob' });
 
-        // Save to virtual FS
+        // Save to virtual FS - add timestamp for collision-safety
         let safeName = filename.replace(/\.json$/, '').replace(/\.zip$/, '');
-        safeName += '.rb-lab.zip';
+        const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        safeName += `-${ts}.rb-lab.zip`;
 
         const arrayBuffer = await blob.arrayBuffer();
         // Since Virtual FS might only support strings for now? 
@@ -138,8 +151,8 @@ export async function loadEvidenceCapsule(fileId: string): Promise<LabEvidenceCa
             return null;
         }
 
-        // 1. Schema Version Check
-        if (json.schemaVersion !== 1) {
+        // 1. Schema Version Check (support both v1 and v2)
+        if (json.schemaVersion !== 1 && json.schemaVersion !== 2) {
             console.error('Unsupported evidence schema version:', json.schemaVersion);
             return null;
         }

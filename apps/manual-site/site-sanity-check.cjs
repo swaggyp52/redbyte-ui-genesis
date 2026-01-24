@@ -83,7 +83,7 @@ if (!fsContractContent.includes('file-v2-')) {
 const appRoots = path.join(repoRoot, 'packages', 'rb-apps', 'src', 'apps');
 const appFiles = fs.readdirSync(appRoots).filter((file) => file.endsWith('.tsx'));
 const appContents = appFiles.map((file) => read(path.join(appRoots, file)));
-const requiredAppIds = ['logic-playground', 'student-lab', 'submission-inspector'];
+const requiredAppIds = ['logic-playground', 'ece-lab', 'submission-inspector'];
 for (const id of requiredAppIds) {
   const idRegex = new RegExp(`id:\\s*['"]${id}['"]`);
   if (!appContents.some((content) => idRegex.test(content))) {

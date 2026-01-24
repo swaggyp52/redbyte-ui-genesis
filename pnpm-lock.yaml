@@ -49,6 +49,9 @@ importers:
       autoprefixer:
         specifier: 10.4.22
         version: 10.4.22(postcss@8.5.6)
+      cross-env:
+        specifier: 7.0.3
+        version: 7.0.3
       eslint-plugin-jsx-a11y:
         specifier: workspace:*
         version: link:packages/eslint-plugin-jsx-a11y

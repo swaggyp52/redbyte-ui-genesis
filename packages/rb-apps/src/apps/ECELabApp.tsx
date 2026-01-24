@@ -218,17 +218,23 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
   const [replayTrace, setReplayTrace] = useState<HardwareTraceV1 | null>(null);
   const [replayIndex, setReplayIndex] = useState<number>(0);
 
-  // Replay loader
+  // Replay loader with validation + user feedback
   useEffect(() => {
     const handleReplayLoad = (e: Event) => {
       const trace = (e as CustomEvent).detail;
+      if (!trace) {
+        alert('No trace data in evidence capsule.');
+        return;
+      }
       const validation = validateTrace(trace);
       if (!validation.ok) {
         console.error('Invalid replay trace:', validation.errors);
+        alert(`Invalid trace: ${validation.errors.slice(0, 2).join(', ')}`);
         return;
       }
       setReplayTrace(trace);
       setReplayIndex(0);
+      setMode('board-connected'); // Switch to board view for replay
     };
     window.addEventListener('rb:load-replay', handleReplayLoad);
     return () => window.removeEventListener('rb:load-replay', handleReplayLoad);

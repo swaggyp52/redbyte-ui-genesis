@@ -120,7 +120,7 @@ export const Shell: React.FC<ShellProps> = () => {
 
       // Demo mode: Auto-pin demo apps if no pins exist
       if (!raw && isDemoMode) {
-        const demoApps = ['start-here', 'logic-playground', 'student-lab', 'submission-inspector'];
+        const demoApps = ['start-here', 'logic-playground', 'ece-lab', 'submission-inspector'];
         localStorage.setItem('rb:shell:pinnedApps', JSON.stringify(demoApps));
         return demoApps;
       }

@@ -46,7 +46,7 @@ export const StartHereAppContent: React.FC<StartHereAppProps> = ({ onOpenApp }) 
         <button type="button" className={styles.card} onClick={handleOpenLab}>
           <div className={styles.cardTitle}>Try FPGA Lab (SIM Mode)</div>
           <p className={styles.cardBody}>See the FPGA lab workflow using simulated hardware data.</p>
-          <div className={styles.cardAction}>Open Lab Workbench</div>
+          <div className={styles.cardAction}>Open ECE 347 Lab</div>
         </button>
 
         <button type="button" className={styles.card} onClick={handleOpenInspector}>
