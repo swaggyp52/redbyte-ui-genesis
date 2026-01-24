@@ -679,6 +679,7 @@ app.get("/health", (req, res) => {
     version: "0.1.0",
     uptimeMs: process.uptime() * 1000,
     status: "ok", // Keep for backward compat if any
+    wsPort: actualWsPort, // Actual WS port (may differ if fallback occurred)
     activeRunCount: activeRuns.size,
     totalMemory: process.memoryUsage().rss,
     runs: runStats
@@ -1580,12 +1581,38 @@ app.get("/api/synthesize/:jobId/bitstream", (req, res) => {
 
 const server = app.listen(HTTP_PORT, "0.0.0.0", () => {
   console.log(`HTTP listening on http://localhost:${HTTP_PORT}`);
-  console.log(`WS listening on ws://localhost:${WS_PORT}`);
   console.log(`Mode: ${MOCK_MODE ? "MOCK" : "REAL"}`);
 });
 
-const wss = new WebSocketServer({ port: WS_PORT });
-console.log(`[fpga-bridge] WS on ws://localhost:${WS_PORT}`);
+// WebSocket with port fallback on EADDRINUSE
+let wss = null;
+let actualWsPort = WS_PORT;
+
+function startWebSocket(port, attempt = 1) {
+  const maxAttempts = 3;
+  const server = new WebSocketServer({ port }, () => {
+    actualWsPort = port;
+    console.log(`[fpga-bridge] WS listening on ws://localhost:${port}`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE' && attempt < maxAttempts) {
+      const nextPort = port + 1;
+      console.warn(`[fpga-bridge] Port ${port} in use, trying ${nextPort}...`);
+      startWebSocket(nextPort, attempt + 1);
+    } else {
+      console.error(`[fpga-bridge] Failed to start WebSocket: ${err.message}`);
+      console.error(`[fpga-bridge] To kill process on port ${port}:`);
+      console.error(`  PowerShell: Get-NetTCPConnection -LocalPort ${port} | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }`);
+      console.error(`  Or simply: taskkill /F /PID <pid>`);
+      process.exit(1);
+    }
+  });
+
+  wss = server;
+}
+
+startWebSocket(WS_PORT);
 
 function broadcast(msg) {
   const s = JSON.stringify(msg);

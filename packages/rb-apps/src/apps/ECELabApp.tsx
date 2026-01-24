@@ -222,7 +222,7 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
   const [replayTrace, setReplayTrace] = useState<HardwareTraceV1 | null>(null);
   const [replayIndex, setReplayIndex] = useState<number>(0);
 
-  // Replay loader with validation + user feedback
+  // Replay loader with validation + user feedback (NO auto-switch)
   useEffect(() => {
     const handleReplayLoad = (e: Event) => {
       const trace = (e as CustomEvent).detail;
@@ -238,8 +238,7 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
       }
       setReplayTrace(trace);
       setReplayIndex(0);
-      setExecutionSource('replay');
-      setMode('board-connected'); // Switch to board view for replay
+      // Do NOT auto-switch to replay; user must explicitly click REPLAY source
     };
     window.addEventListener('rb:load-replay', handleReplayLoad);
     return () => window.removeEventListener('rb:load-replay', handleReplayLoad);
@@ -292,8 +291,7 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
       console.log('Loaded capsule:', capsule);
       setReplayTrace(capsule.trace);
       setReplayIndex(0);
-      setExecutionSource('replay');
-      setMode('board-connected');
+      // Do NOT auto-switch; user clicks REPLAY source button to activate
       return;
     }
 
@@ -302,8 +300,7 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
     if (trace) {
       setReplayTrace(trace);
       setReplayIndex(0);
-      setExecutionSource('replay');
-      setMode('board-connected');
+      // Do NOT auto-switch; user clicks REPLAY source button to activate
     }
   };
 
@@ -397,19 +394,29 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
             {(['sim', 'hardware', 'replay'] as ExecutionSource[]).map((src) => {
               const isActive = executionSource === src;
               const color = src === 'sim' ? '#00ff88' : src === 'hardware' ? '#00d4ff' : '#ffaa00';
+              const isReplayUnavailable = src === 'replay' && !replayTrace;
+              const hasReplayReady = src === 'replay' && replayTrace && executionSource !== 'replay';
               return (
                 <button
                   key={src}
-                  onClick={() => setExecutionSource(src)}
-                  className="px-3 py-1 text-[10px] font-bold tracking-wider transition-all"
+                  onClick={() => {
+                    if (isReplayUnavailable) return; // No-op if no capsule
+                    setExecutionSource(src);
+                  }}
+                  title={isReplayUnavailable ? 'No capsule loaded — use LOAD to import' : undefined}
+                  className="px-3 py-1 text-[10px] font-bold tracking-wider transition-all relative"
                   style={{
                     background: isActive ? `${color}15` : 'transparent',
-                    color: isActive ? color : '#4a5a6a',
+                    color: isReplayUnavailable ? '#2a3a4a' : isActive ? color : '#4a5a6a',
                     borderRight: '1px solid #1a2a3a',
                     textShadow: isActive ? `0 0 10px ${color}66` : 'none',
+                    cursor: isReplayUnavailable ? 'not-allowed' : 'pointer',
                   }}
                 >
                   {src.toUpperCase()}
+                  {hasReplayReady && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  )}
                 </button>
               );
             })}
@@ -468,6 +475,21 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
               border: '1px solid #1a2a3a',
             }}
           >
+            {/* Replay loaded but not active — show prompt */}
+            {replayTrace && executionSource !== 'replay' && (
+              <button
+                type="button"
+                onClick={() => setExecutionSource('replay')}
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider animate-pulse"
+                style={{
+                  background: 'rgba(255, 170, 0, 0.15)',
+                  color: '#ffaa00',
+                  border: '1px solid rgba(255, 170, 0, 0.3)',
+                }}
+              >
+                ▶ SWITCH TO REPLAY
+              </button>
+            )}
             {!replayTrace ? (
               <>
                 <button
@@ -753,6 +775,7 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
                 capabilities={effectiveCapabilities}
                 onInteraction={executionSource === 'sim' ? setSimInput : undefined}
                 readOnly={executionSource === 'replay'}
+                executionSource={executionSource}
               />
             ) : rightTab === 'compare' ? (
               <CompareView ioSnapshot={effectiveSnapshot} checks={checks} />

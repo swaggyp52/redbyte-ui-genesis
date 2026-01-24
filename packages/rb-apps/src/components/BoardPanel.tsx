@@ -30,6 +30,8 @@ interface BoardPanelProps {
   readOnly?: boolean;
   // Display mode
   compact?: boolean;
+  // Execution source for proper UI state
+  executionSource?: 'sim' | 'hardware' | 'replay';
 }
 
 // Helper: robust device ID extraction
@@ -42,6 +44,7 @@ export const BoardPanel: React.FC<BoardPanelProps> = ({
   onInteraction,
   readOnly = false,
   compact = false,
+  executionSource = 'sim',
 }) => {
   const connectionState = useHardwareStore((s) => s.connectionState);
   const storeCapabilities = useHardwareStore((s) => s.capabilities);
@@ -161,8 +164,8 @@ export const BoardPanel: React.FC<BoardPanelProps> = ({
           <ConnectionStatusBadge state={connectionState} />
         </div>
 
-        {/* Connect button */}
-        {connectionState === 'disconnected' && !propSnapshot && (
+        {/* Connect button — show when hardware source and disconnected */}
+        {executionSource === 'hardware' && connectionState === 'disconnected' && (
           <button
             type="button"
             onClick={() => connect()}
@@ -176,6 +179,18 @@ export const BoardPanel: React.FC<BoardPanelProps> = ({
           >
             CONNECT
           </button>
+        )}
+        {/* Sim mode indicator */}
+        {executionSource === 'sim' && (
+          <span className="text-[9px] font-medium text-emerald-500/80 tracking-wide">
+            SIM — click board to interact
+          </span>
+        )}
+        {/* Replay mode indicator */}
+        {executionSource === 'replay' && (
+          <span className="text-[9px] font-medium text-amber-500/80 tracking-wide">
+            REPLAY — use scrubber
+          </span>
         )}
       </div>
 
