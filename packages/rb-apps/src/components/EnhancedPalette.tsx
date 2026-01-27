@@ -202,7 +202,7 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
   };
 
   return (
-    <div className="w-48 border-r border-gray-700 overflow-y-auto p-2 bg-gray-850 flex flex-col gap-3">
+    <div className="w-48 min-h-0 min-w-0 border-r border-gray-700 overflow-y-auto p-2 bg-gray-850 flex flex-col gap-3">
       {/* Search Input */}
       <div>
         <input

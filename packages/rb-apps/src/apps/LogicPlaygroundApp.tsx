@@ -3263,7 +3263,7 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
 
   return (
     <ErrorBoundary>
-      <div className="h-full flex flex-col bg-gray-900 text-white" data-testid="logic-playground-root">
+      <div className="h-full flex flex-col min-h-0 min-w-0 bg-gray-900 text-white" data-testid="logic-playground-root">
         {/* Intent Resource Display */}
         {resourceId && (
           <div className="bg-cyan-900/30 border-b border-cyan-700 p-2 text-xs">
@@ -3323,7 +3323,7 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           aria-label="Open project file"
         />
 
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden">
           {/* Left Sidebar - Enhanced Palette (PR3) */}
           <EnhancedPalette
             primitiveNodes={PRIMITIVE_NODES}
@@ -3341,7 +3341,7 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
           <div
             ref={canvasAreaRef}
             tabIndex={-1}
-            className="flex-1 relative outline-none"
+            className="flex-1 min-h-0 min-w-0 relative outline-none"
             data-testid="logic-canvas"
             onDragOver={handleNodeDragOver}
             onDrop={handleNodeDrop}

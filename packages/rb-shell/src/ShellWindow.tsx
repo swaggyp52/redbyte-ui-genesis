@@ -400,8 +400,8 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
         </div>
       </div>
 
-      <div className="h-[calc(100%-44px)] flex flex-col" style={{ background: 'var(--rb-surface-0)', color: 'var(--rb-text)' }}>
-        <div className="flex-1 overflow-hidden relative">
+      <div className="h-[calc(100%-44px)] flex flex-col min-h-0 min-w-0" style={{ background: 'var(--rb-surface-0)', color: 'var(--rb-text)' }}>
+        <div className="flex-1 min-h-0 min-w-0 overflow-hidden relative">
           <PortalProvider container={overlayRootRef.current}>
             {children}
           </PortalProvider>

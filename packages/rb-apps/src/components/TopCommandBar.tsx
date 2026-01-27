@@ -144,12 +144,12 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
 
   return (
     <div
-      className="h-12 border-b border-slate-700 bg-slate-900 px-4 flex items-center justify-between gap-6 sticky top-0 left-0 right-0 z-[100]"
+      className="min-h-[48px] border-b border-slate-700 bg-slate-900 px-4 py-2 flex flex-wrap items-center justify-between gap-4 sticky top-0 left-0 right-0 z-[100] overflow-x-auto"
       style={{ position: 'sticky', top: 0, left: 0, right: 0, zIndex: 100 }}
       data-testid="top-command-bar"
     >
       {/* LEFT: Project */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 min-w-0">
         <span className="text-xs text-gray-500 uppercase tracking-wide mr-2">Project</span>
         {projectName && (
           <div className="text-xs text-slate-300 font-medium px-2 py-1 bg-slate-800/60 border border-slate-700/60 rounded">
@@ -293,7 +293,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
       </div>
 
       {/* CENTER: Simulation (PRIMARY - Step-first design) */}
-      <div className="flex items-center gap-3 bg-gray-800/50 rounded-lg px-4 py-1.5 border border-gray-700/50">
+      <div className="flex flex-wrap items-center gap-3 bg-gray-800/50 rounded-lg px-4 py-1.5 border border-gray-700/50 min-w-0">
         <span className="text-xs text-gray-500 uppercase tracking-wide mr-1">Simulate</span>
 
         {/* STEP - First-class, prominent */}
@@ -386,7 +386,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
       </div>
 
       {/* RIGHT: Layout + Help */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 min-w-0">
         <span className="text-xs text-gray-500 uppercase tracking-wide mr-1">Layout</span>
 
         {/* Layout Selector - Dropdown */}
