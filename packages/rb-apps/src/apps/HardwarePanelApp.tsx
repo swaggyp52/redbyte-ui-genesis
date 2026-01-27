@@ -3,7 +3,7 @@ import type { RedByteApp } from "../types";
 import type { BridgeDevice } from "@redbyte/rb-fpga-bridge-contract";
 import type { HardwareTraceEvent } from "@redbyte/rb-fpga-proof-core";
 import { exportV2Bundle, type BoardProfile } from "../utils/bundleExport";
-import { buildTraceEvent } from "./hardwarePanelUtils";
+import { buildTraceEvent, computeStreamSilenceMs } from "./hardwarePanelUtils";
 
 const BRIDGE_URL = "http://127.0.0.1:4242";
 const DEFAULT_LAB_ID = "basys3_mvp_lab";
@@ -11,7 +11,8 @@ const DEFAULT_LAB_VERSION = "1.0.0";
 const DEFAULT_BOARD = "basys3";
 const DEFAULT_CAPTURE_HZ = 20;
 const DEFAULT_CAPTURE_SECONDS = 5;
-const STREAM_SILENCE_MS = 2000;
+const STREAM_START_GRACE_MS = 2500;
+const NO_DATA_AUTO_STOP_MS = 5000;
 const STREAM_RETRY_LIMIT = 1;
 const DEFAULT_RETRY_DELAY_MS = 600;
 
@@ -130,6 +131,7 @@ function HardwarePanelComponent() {
   const [programError, setProgramError] = useState<string | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [runStatus, setRunStatus] = useState<string | null>(null);
+  const [runStatusHint, setRunStatusHint] = useState<string | null>(null);
   const [traceEvents, setTraceEvents] = useState<HardwareTraceEvent[]>([]);
   const [captureHz, setCaptureHz] = useState<number>(DEFAULT_CAPTURE_HZ);
   const [captureSeconds, setCaptureSeconds] = useState<number>(DEFAULT_CAPTURE_SECONDS);
@@ -143,8 +145,11 @@ function HardwarePanelComponent() {
   const captureHzRef = useRef<number>(DEFAULT_CAPTURE_HZ);
   const stopTimerRef = useRef<number | null>(null);
   const silenceTimerRef = useRef<number | null>(null);
+  const noDataTimerRef = useRef<number | null>(null);
   const lastSampleAtRef = useRef<number | null>(null);
   const streamRetryRef = useRef<number>(0);
+  const captureStartRef = useRef<number | null>(null);
+  const runStatusRef = useRef<string | null>(null);
 
   const selectedDevice = useMemo(
     () => devices.find((device) => device.id === selectedDeviceId) ?? null,
@@ -157,6 +162,7 @@ function HardwarePanelComponent() {
   const isSimDevice = selectedDevice?.transport === "sim";
   const runtimeReady = selectedDevice?.runtime?.status === "ready";
   const programmingReady = selectedDevice?.programming?.status === "ready";
+  const isRunningNoData = runStatus === "running_no_data";
 
   const programBlockedReason =
     !bridgeReady
@@ -205,6 +211,10 @@ function HardwarePanelComponent() {
     setError(message);
     setPanelState("ERROR");
   }, []);
+
+  useEffect(() => {
+    runStatusRef.current = runStatus;
+  }, [runStatus]);
 
   const fetchHealth = useCallback(async () => {
     try {
@@ -265,6 +275,21 @@ function HardwarePanelComponent() {
   }, [refreshBridge]);
 
   useEffect(() => {
+    const healthInterval = window.setInterval(() => {
+      void fetchHealth();
+    }, 3000);
+    const deviceInterval = window.setInterval(() => {
+      if (panelState !== "PROGRAMMING" && panelState !== "RUNNING") {
+        void fetchDevices();
+      }
+    }, 5000);
+    return () => {
+      window.clearInterval(healthInterval);
+      window.clearInterval(deviceInterval);
+    };
+  }, [fetchDevices, fetchHealth, panelState]);
+
+  useEffect(() => {
     return () => {
       if (stopTimerRef.current) {
         window.clearTimeout(stopTimerRef.current);
@@ -273,6 +298,10 @@ function HardwarePanelComponent() {
       if (silenceTimerRef.current) {
         window.clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = null;
+      }
+      if (noDataTimerRef.current) {
+        window.clearTimeout(noDataTimerRef.current);
+        noDataTimerRef.current = null;
       }
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
@@ -381,11 +410,14 @@ function HardwarePanelComponent() {
     (runId: string) => {
       closeStream();
       lastSampleAtRef.current = null;
+      captureStartRef.current = Date.now();
 
       const source = new EventSource(
         `${BRIDGE_URL}/stream?run_id=${encodeURIComponent(runId)}`
       );
       eventSourceRef.current = source;
+
+      const silenceMs = computeStreamSilenceMs(captureHzRef.current);
 
       const scheduleSilenceCheck = () => {
         if (silenceTimerRef.current) {
@@ -393,8 +425,23 @@ function HardwarePanelComponent() {
           silenceTimerRef.current = null;
         }
         silenceTimerRef.current = window.setTimeout(() => {
+          const now = Date.now();
           const last = lastSampleAtRef.current;
-          if (!last || Date.now() - last >= STREAM_SILENCE_MS) {
+          const captureStart = captureStartRef.current ?? now;
+          const elapsed = now - captureStart;
+
+          // Don't fail during grace period - wait for first sample
+          if (elapsed < STREAM_START_GRACE_MS && !last) {
+            scheduleSilenceCheck();
+            return;
+          }
+
+          // If running_no_data, don't treat as stall - handled separately
+          if (runStatusRef.current === "running_no_data") {
+            return;
+          }
+
+          if (!last || now - last >= silenceMs) {
             if (streamRetryRef.current < STREAM_RETRY_LIMIT && runIdRef.current) {
               streamRetryRef.current += 1;
               openStream(runIdRef.current);
@@ -402,7 +449,7 @@ function HardwarePanelComponent() {
             }
             failCapture("Stream stalled (no samples).");
           }
-        }, STREAM_SILENCE_MS);
+        }, silenceMs);
       };
 
       source.addEventListener("sample", (event) => {
@@ -423,6 +470,23 @@ function HardwarePanelComponent() {
           const data = JSON.parse(event.data) as StreamStatus;
           if (data.state) {
             setRunStatus(data.state);
+            if (data.hint) {
+              setRunStatusHint(data.hint);
+            }
+
+            // Handle running_no_data: start auto-stop timer
+            if (data.state === "running_no_data") {
+              if (noDataTimerRef.current) {
+                window.clearTimeout(noDataTimerRef.current);
+              }
+              noDataTimerRef.current = window.setTimeout(() => {
+                failCapture("No wrapper detected — auto-stopped after timeout.");
+              }, NO_DATA_AUTO_STOP_MS);
+            } else if (noDataTimerRef.current) {
+              // Clear timer if state changes away from running_no_data
+              window.clearTimeout(noDataTimerRef.current);
+              noDataTimerRef.current = null;
+            }
           }
         } catch {
           // Ignore status parse errors
@@ -813,6 +877,52 @@ function HardwarePanelComponent() {
         </div>
       </div>
 
+      {isRunningNoData && (
+        <div style={{ padding: "12px", background: "#3a2a0a", borderRadius: "4px", border: "1px solid #6a4a0a", marginBottom: "12px" }}>
+          <div style={{ color: "#fa0", fontWeight: "bold", marginBottom: "6px" }}>
+            ⚠ No Wrapper Detected
+          </div>
+          <div style={{ color: "#db9", fontSize: "12px", lineHeight: "1.5" }}>
+            The bitstream is running but not producing IO samples.
+            This typically means the design lacks the RedByte IO wrapper.
+          </div>
+          <div style={{ color: "#db9", fontSize: "12px", marginTop: "8px" }}>
+            <strong>To fix:</strong> Use the instructor-provided wrapper bitstream,
+            or build your design with the RedByte toolchain.
+          </div>
+          <div style={{ color: "#888", fontSize: "11px", marginTop: "8px" }}>
+            Auto-stopping in {NO_DATA_AUTO_STOP_MS / 1000}s...
+            {runStatusHint && ` (${runStatusHint})`}
+          </div>
+        </div>
+      )}
+
+      <div style={sectionStyle}>
+        <strong>Lab Diagnostics</strong>
+        <div style={{ marginTop: "8px", fontSize: "11px", color: "#888" }}>
+          <div>Bridge URL: <span style={{ color: bridgeHealth?.ok ? "#0f0" : "#f66" }}>{BRIDGE_URL}</span></div>
+          <div style={{ marginTop: "4px" }}>
+            Status: {bridgeHealth?.ok ? (
+              <span style={{ color: "#0f0" }}>Online (v{bridgeHealth.version || "?"})</span>
+            ) : (
+              <span style={{ color: "#f66" }}>{bridgeError || "Offline"}</span>
+            )}
+          </div>
+          {bridgeHealth?.activeRunCount !== undefined && (
+            <div style={{ marginTop: "4px" }}>Active runs: {bridgeHealth.activeRunCount}</div>
+          )}
+          {programLogPath && (
+            <div style={{ marginTop: "4px" }}>Last program log: {programLogPath}</div>
+          )}
+          {programError && (
+            <div style={{ marginTop: "4px", color: "#f66" }}>Last program error: {programError}</div>
+          )}
+        </div>
+        <div style={{ marginTop: "8px", fontSize: "11px", color: "#666" }}>
+          <div>Checklist: Digilent Adept installed? FTDI VCP drivers? Bridge daemon running?</div>
+        </div>
+      </div>
+
       {error && (
         <div style={{ padding: "10px", background: "#2a0a0a", borderRadius: "4px", border: "1px solid #5a0a0a", color: "#f66" }}>
           {error}
@@ -828,7 +938,7 @@ export const HardwarePanelApp: RedByteApp = {
     name: "Hardware Panel",
     iconId: "chip",
     singleton: true,
-    category: "development",
+    category: "tools",
     defaultSize: { width: 900, height: 700 },
     minSize: { width: 700, height: 500 },
   },

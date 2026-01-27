@@ -63,3 +63,9 @@ export function buildTraceEvent(
     ts_wall: tMs,
   };
 }
+
+export function computeStreamSilenceMs(hz: number): number {
+  const safeHz = Number.isFinite(hz) && hz > 0 ? hz : 1;
+  const periodMs = 1000 / safeHz;
+  return Math.max(2000, Math.round(periodMs * 3));
+}
