@@ -1,8 +1,11 @@
 import { Link as RouterLink } from 'react-router-dom';
+import CodeBlock from '../components/CodeBlock';
 
 const Link = RouterLink as React.ComponentType<{ to: string; className?: string; children: React.ReactNode }>;
 
 export default function GettingStarted() {
+  const quickStartCommand = 'powershell -ExecutionPolicy Bypass -NoProfile -File .\\bootstrap.ps1';
+
   return (
     <div className="py-16 bg-rb-bg">
       <div className="content-container px-6">
@@ -84,6 +87,16 @@ export default function GettingStarted() {
             </div>
           </section>
 
+          {/* Quick Start */}
+          <section className="mb-16">
+            <h2 className="text-h2 text-rb-text mb-6">Quick Start (Windows PowerShell)</h2>
+            <div className="bg-rb-surface border border-rb-border rounded-md p-6">
+              <CodeBlock code={quickStartCommand} />
+              <p className="text-sm text-rb-muted mt-4">
+                Run this from the repo root after cd'ing into it.
+              </p>
+            </div>
+          </section>
 
           {/* Keyboard Shortcuts */}
           <section className="mb-16">
@@ -170,14 +183,6 @@ function Step({ number, title, children }: { number: number; title: string; chil
         {children}
       </div>
     </div>
-  );
-}
-
-function CodeBlock({ code }: { code: string }) {
-  return (
-    <pre className="bg-rb-raised border border-rb-border rounded-md p-4 overflow-x-auto">
-      <code className="text-sm text-rb-text font-mono">{code}</code>
-    </pre>
   );
 }
 

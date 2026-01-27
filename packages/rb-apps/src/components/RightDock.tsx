@@ -255,7 +255,7 @@ export const RightDock: React.FC<RightDockProps> = ({
       nextValues[probe.id] = value;
     });
     setProbeValues(nextValues);
-  }, [engine, probes, isRunning]);
+  }, [engine, probes, isRunning, circuit]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -270,7 +270,7 @@ export const RightDock: React.FC<RightDockProps> = ({
       nextValues[probe.id] = value;
     });
     setProbeValues(nextValues);
-  }, [engine, probes, isRunning, uiTick]);
+  }, [engine, probes, isRunning, uiTick, circuit]);
 
   React.useEffect(() => {
     setActiveTab(initialTab);

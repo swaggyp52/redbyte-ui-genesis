@@ -5250,6 +5250,27 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-01-27 (UI Honesty + Non-Blocking Overlay)
+- Adjusted Modal backdrop pointer-events so bottom-right overlays no longer block clicks.
+- Updated probe value refresh to run on circuit changes when paused, keeping input toggles reflected in the Probes dock.
+- Clarified Oscilloscope paused state text to indicate waveforms capture requires running.
+- Typecheck: `pnpm -w typecheck`.
+
+### 2026-01-27 (Hardware Panel Tests + Bundle Hash Hardening)
+- Added hardware panel test coverage (offline state, stop-on-unmount) and trace adapter unit tests.
+- Added v2 bundle export test with file layout assertions.
+- Normalized bundle export bytes for JSZip compatibility and hardened hash calculation across Blob/Uint8Array/ArrayBuffer inputs; fallback hash uses uint8array output when blob hash fails.
+- Export v2 now requires a successful hash before download (no partial bundle on hash failure).
+- Typecheck: `pnpm -w typecheck`.
+- Tests: `pnpm -w exec vitest run packages/rb-apps/src/__tests__/hardware-panel-utils.test.ts packages/rb-apps/src/__tests__/hardware-panel.test.tsx packages/rb-apps/src/__tests__/bundle-export-v2.test.ts`.
+
+### 2026-01-27 (Local Setup Runner Script)
+- Added `requirements.txt` Node runner to enable Corepack, install deps with pnpm, run optional typecheck, and start the dev server from repo root.
+
+### 2026-01-27 (Quick Start PowerShell Block)
+- Simplified repo-root `bootstrap.ps1` to install Node.js LTS via winget when missing and run `node requirements.txt` from the repo root (no clone/pull behavior).
+- Added "Quick Start (Windows PowerShell)" section to the manual-site Getting Started page with a copyable `powershell -ExecutionPolicy Bypass -NoProfile -File .\bootstrap.ps1` command and note to run from repo root.
+
 ### 2026-01-20 (Hardware Session v1 - CI Verified Non-Breaking)
 - **VERIFIED CI GATES REMAIN GREEN**: Ran pnpm ops:student-export:pass and pnpm ops:student-export:fail to confirm existing student-export-pass.rb-lab.zip and student-export-fail.rb-lab.zip fixtures still ingest and grade correctly with exit_code=0 (PASS) and exit_code=1 (FAIL) respectively; both tests show overallPass=True, gradingPass=True, contracts.verdictMappingConsistent=True, contracts.gradeExitMatches=True; ops-liveness.json output confirms no regressions; hardware.json and manifest.hardware section are OPTIONAL - bundles without hardware evidence still ingest cleanly (backward compatible); agent-lab.ps1 ingest logic does not require hardware artifacts; (1) Created scripts/test-hardware-export.ps1 - manual test script that extracts ZIP, verifies proofs/hardware.json exists, checks manifest.hardware section, runs ops-liveness ingest, and validates overallPass + contracts; script accepts -ZipPath parameter for testing real student exports with hardware snapshots; provides clear PASS/FAIL output with contract verification; (2) Created DESKTOP_BRIDGE_API.md - formal API contract defining stable HTTP interface between browser UI and FPGA boards; specifies GET /board/status (returns connected, model, serial, timestamp; must respond <500ms; polled every 2s by browser) and GET /board/snapshot (returns timestamp, inputs{}, outputs{}, meta{}; must respond <1000ms; user-initiated; returns 409 if board disconnected); documents timing requirements, error responses, CORS headers, security (localhost-only binding), versioning (current: 1.0), and future endpoints (POST /board/program for bitstream upload, GET /board/stream WebSocket for live I/O); provides implementation guidance for production bridges using OpenOCD/Vivado/openFPGALoader; reference implementation: tools/desktop-bridge.js mock server; contract ensures Desktop Bridge can evolve independently without breaking browser UI expectations; Manual validation workflow documented: (a) start Desktop Bridge on 3002, (b) start dev server on 5173, (c) open lab.html?lab=traffic-light, (d) capture 2+ hardware snapshots, (e) run self-check, (f) export ZIP, (g) run test-hardware-export.ps1 -ZipPath <downloaded-zip> to verify ingest passes with hardware evidence included; Next step after manual validation: implement real POST /board/program endpoint for actual bitstream programming via bridge (shells out to openFPGALoader/Vivado); this makes "program board" button functional instead of stub; Phase unchanged; milestone: Hardware Session v1 architecture proven non-breaking, CI green, contracts locked.
 

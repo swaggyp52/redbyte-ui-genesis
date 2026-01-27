@@ -111,6 +111,8 @@ export function Modal({
   // We use absolute positioning and inset-0 to stay inside the window content.
   const isWindowScoped = !!contextContainer;
 
+  const isBlockingModal = variant === 'center';
+
   return (
     <Portal>
       {/* Root - does not block interactions with window chrome */}
@@ -128,7 +130,7 @@ export function Modal({
           className="absolute inset-0 transition-opacity duration-300"
           style={{
             backgroundColor: variant === 'center' ? 'rgba(0, 0, 0, 0.5)' : 'transparent',
-            pointerEvents: 'auto',
+            pointerEvents: isBlockingModal ? 'auto' : 'none',
           }}
           onClick={handleBackdropClick}
         />

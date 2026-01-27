@@ -1002,7 +1002,9 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
             {isRunning ? (
               <span className="text-green-400">● Running</span>
             ) : (
-              <span className="text-gray-500">○ Paused</span>
+              <span className="text-gray-500" title="Run the circuit to update waveforms">
+                ○ Paused (run to capture)
+              </span>
             )}
           </div>
         </div>

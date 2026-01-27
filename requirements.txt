@@ -1,0 +1,162 @@
+#!/usr/bin/env node
+/*
+ * RedByte local setup + run script
+ *
+ * Usage:
+ *   node requirements.txt
+ *
+ * What it does:
+ *   - Verifies Node is installed and meets repo engines
+ *   - Enables Corepack and activates pnpm (uses packageManager version when available)
+ *   - Installs monorepo dependencies (pnpm install)
+ *   - Runs typecheck (non-fatal if missing)
+ *   - Starts the dev server (root "dev" script)
+ *
+ * Notes:
+ *   - Hardware bridge daemon is started separately.
+ */
+
+const { spawn } = require("node:child_process");
+const fs = require("node:fs");
+const path = require("node:path");
+
+const isWin = process.platform === "win32";
+const PNPM = isWin ? "pnpm.cmd" : "pnpm";
+
+function run(cmd, args, opts = {}) {
+  return new Promise((resolve, reject) => {
+    const p = spawn(cmd, args, {
+      stdio: "inherit",
+      shell: false,
+      ...opts,
+    });
+    p.on("close", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`${cmd} ${args.join(" ")} exited with code ${code}`));
+    });
+  });
+}
+
+async function runOptional(cmd, args) {
+  try {
+    await run(cmd, args);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function readJson(p) {
+  return JSON.parse(fs.readFileSync(p, "utf8"));
+}
+
+function exists(p) {
+  try {
+    fs.accessSync(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function parseVersion(version) {
+  const [major, minor, patch] = String(version || "0.0.0")
+    .replace(/^v/, "")
+    .split(".")
+    .map((part) => Number(part) || 0);
+  return { major, minor, patch };
+}
+
+function isAtLeast(current, required) {
+  if (current.major !== required.major) return current.major > required.major;
+  if (current.minor !== required.minor) return current.minor > required.minor;
+  return current.patch >= required.patch;
+}
+
+function resolveRequiredNode(engineString) {
+  if (!engineString) return null;
+  const match = engineString.match(/>=\s*([0-9]+(?:\.[0-9]+){0,2})/);
+  if (!match) return null;
+  return parseVersion(match[1]);
+}
+
+async function main() {
+  const root = process.cwd();
+  const pkgPath = path.join(root, "package.json");
+
+  if (!exists(pkgPath)) {
+    console.error("ERROR: package.json not found. Run from repo root.");
+    process.exit(1);
+  }
+
+  const pkg = readJson(pkgPath);
+  const enginesNode = pkg.engines && pkg.engines.node;
+  const requiredNode = resolveRequiredNode(enginesNode);
+  const currentNode = parseVersion(process.versions.node);
+
+  if (requiredNode && !isAtLeast(currentNode, requiredNode)) {
+    console.error(
+      `ERROR: Node ${process.versions.node} detected. ` +
+        `Requires ${enginesNode || "a newer version"}.`
+    );
+    process.exit(1);
+  }
+
+  console.log(`Node OK: ${process.versions.node}`);
+
+  const packageManager = String(pkg.packageManager || "");
+  const pnpmVersionMatch = packageManager.match(/^pnpm@(.+)$/);
+  const pnpmVersion = pnpmVersionMatch ? pnpmVersionMatch[1] : null;
+
+  console.log("\n==> Enabling Corepack...");
+  await runOptional("corepack", ["enable"]);
+
+  if (pnpmVersion) {
+    console.log(`\n==> Activating pnpm ${pnpmVersion} via Corepack...`);
+    await runOptional("corepack", ["prepare", `pnpm@${pnpmVersion}`, "--activate"]);
+  }
+
+  console.log("\n==> Installing dependencies (pnpm install)...");
+  await run(PNPM, ["install"]);
+
+  console.log("\n==> Typecheck (optional)...");
+  const didTypecheck = await runOptional(PNPM, ["-w", "typecheck"]);
+  if (!didTypecheck) {
+    console.log("Typecheck failed or missing. Continuing.");
+  }
+
+  console.log("\n==> Starting RedByte dev server...");
+  const startAttempts = [
+    { label: "pnpm dev", cmd: PNPM, args: ["dev"] },
+    { label: "pnpm -w dev", cmd: PNPM, args: ["-w", "dev"] },
+    { label: "pnpm --filter @redbyte/playground dev", cmd: PNPM, args: ["--filter", "@redbyte/playground", "dev"] },
+  ];
+
+  for (const attempt of startAttempts) {
+    try {
+      console.log(`\n--> Trying: ${attempt.label}`);
+      await run(attempt.cmd, attempt.args);
+      return;
+    } catch {
+      console.log(`Failed: ${attempt.label}`);
+    }
+  }
+
+  console.error("\nERROR: Could not find a working dev/start script.");
+  console.error("Try manually:");
+  console.error("  pnpm dev");
+  console.error("  pnpm -w dev");
+  console.error("  pnpm --filter @redbyte/playground dev");
+  process.exit(1);
+}
+
+main()
+  .then(() => {
+    console.log("\nDone.");
+    console.log("Hardware note: start the localhost bridge daemon separately if needed.");
+  })
+  .catch((err) => {
+    console.error("\nSetup failed.");
+    console.error(err && err.message ? err.message : err);
+    process.exit(1);
+  });
