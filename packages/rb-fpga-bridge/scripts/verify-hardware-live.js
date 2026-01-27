@@ -29,15 +29,21 @@ async function run() {
 
     ports.forEach(p => log(`Found Port: ${p.path} (${p.manufacturer || 'Unknown'})`));
 
-    // Auto-select likely candidate (Scanning for typical USB-Serial indications)
-    // Spartan-3E usually shows as "USB Serial Port" or FTDI, but here we might take the first available if not sure.
-    // We favor standard COM ports or ttyUSB.
-    const targetPort = ports.find(p =>
+    // Auto-select likely candidate
+    // Filter out Bluetooth
+    const candidates = ports.filter(p => !p.pnpId || !p.pnpId.includes('BTHENUM'));
+
+    if (candidates.length === 0) {
+        log("FAIL: No non-Bluetooth ports found.");
+        process.exit(1);
+    }
+
+    const targetPort = candidates.find(p =>
         (p.manufacturer && (p.manufacturer.includes('FTDI') || p.manufacturer.includes('Prolific'))) ||
         p.path.includes('USB')
-    ) || ports[0];
+    ) || candidates[0];
 
-    log(`Selected Port: ${targetPort.path}`);
+    log(`Selected Port: ${targetPort.path} (${targetPort.manufacturer || 'Generic'})`);
 
     // 2. Open Port
     const port = new SerialPort({

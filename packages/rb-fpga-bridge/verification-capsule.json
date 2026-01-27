@@ -2,7 +2,7 @@
     "meta": {
         "board": "Spartan-3E",
         "jtag_idcode": "unknown-mvp",
-        "captured_at": "2026-01-27T21:20:57.250Z",
+        "captured_at": "2026-01-27T21:30:00.200Z",
         "transport": {
             "type": "uart",
             "port": "COM4",
