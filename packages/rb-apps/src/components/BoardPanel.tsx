@@ -55,10 +55,16 @@ export const BoardPanel: React.FC<BoardPanelProps> = ({
 
   const availableDevices = useHardwareStore((s) => s.availableDevices);
   const activeDevice = useHardwareStore((s) => s.activeDevice);
+  const runState = useHardwareStore((s) => s.runState);
   const lastError = useHardwareStore((s) => s.lastError);
   const connect = useHardwareStore((s) => s.connect);
   const selectDevice = useHardwareStore((s) => s.selectDevice);
   const isRecording = useHardwareStore((s) => s.isRecording);
+  const traceBuffer = useHardwareStore((s) => s.traceBuffer);
+  const startRecording = useHardwareStore((s) => s.startRecording);
+  const stopRecording = useHardwareStore((s) => s.stopRecording);
+  const exportV2Bundle = useHardwareStore((s) => s.exportV2Bundle);
+  const clearTrace = useHardwareStore((s) => s.clearTrace);
 
   const handleSetOutput = async (signal: string, value: number) => {
     await hardwareClient.setOutputs({ [signal]: value });
@@ -66,6 +72,25 @@ export const BoardPanel: React.FC<BoardPanelProps> = ({
 
   const handleSelectDevice = async (deviceId: string) => {
     await selectDevice(deviceId);
+  };
+
+  const handleExport = async () => {
+    try {
+      const blob = await exportV2Bundle({ studentName: 'Student' }); // TODO: Get actual name
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `redbyte_trace_${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) {
+      console.error('Export failed:', e);
+      alert('Failed to export trace. See console for details.');
+    }
   };
 
   // Render board visualization based on capabilities
@@ -164,6 +189,45 @@ export const BoardPanel: React.FC<BoardPanelProps> = ({
           <ConnectionStatusBadge state={connectionState} />
         </div>
 
+        {/* Toolbar */}
+        <div className="flex items-center gap-2">
+          {/* Record/Stop */}
+          <button
+            type="button"
+            onClick={() => isRecording ? stopRecording() : startRecording()}
+            disabled={connectionState !== 'ready'}
+            className={`px-2 py-1 text-[10px] font-bold tracking-wider rounded transition-all flex items-center gap-1 ${isRecording
+                ? 'bg-red-900/50 text-red-400 border border-red-800 hover:bg-red-900'
+                : 'bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-red-500'}`} />
+            {isRecording ? 'STOP' : 'REC'}
+          </button>
+
+          {/* Export */}
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={isRecording || traceBuffer.length === 0}
+            className="px-2 py-1 text-[10px] font-bold tracking-wider rounded transition-all bg-gray-800 text-cyan-400 border border-gray-700 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            title={traceBuffer.length === 0 ? "Record trace to export" : "Export V2 Bundle"}
+          >
+            EXPORT
+          </button>
+
+          {/* Clear */}
+          {traceBuffer.length > 0 && !isRecording && (
+            <button
+              type="button"
+              onClick={() => clearTrace()}
+              className="px-2 py-1 text-[10px] font-bold tracking-wider rounded transition-all text-gray-500 hover:text-gray-300"
+            >
+              CLEAR
+            </button>
+          )}
+        </div>
+
         {/* Connect button — show when hardware source and disconnected */}
         {executionSource === 'hardware' && connectionState === 'disconnected' && (
           <button
@@ -221,6 +285,16 @@ export const BoardPanel: React.FC<BoardPanelProps> = ({
           <div className="text-[9px] text-gray-500">
             Start bridge with <code className="text-cyan-400/80 bg-black/30 px-1 rounded">RB_FPGA_MOCK=1</code> for mock Basys3
           </div>
+        </div>
+      )}
+
+      {/* Run Status / No Data Warning */}
+      {runState.status === 'running_no_data' && (
+        <div className="px-4 py-2 bg-amber-900/40 border-b border-amber-800/50 flex items-center gap-2">
+          <span className="text-amber-400 text-xs font-bold">NO DATA</span>
+          <span className="text-amber-200/80 text-[10px]">
+            {runState.hint || "FPGA is running but not sending data. Check wrapper instantiation."}
+          </span>
         </div>
       )}
 
