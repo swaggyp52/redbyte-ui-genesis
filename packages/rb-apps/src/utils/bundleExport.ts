@@ -81,10 +81,20 @@ export interface ExportV2Options {
 /**
  * Compute SHA-256 hash of a blob
  */
-async function computeHash(blob: Blob): Promise<string | undefined> {
+async function computeHash(blob: Blob | ArrayBuffer | Uint8Array): Promise<string | undefined> {
   try {
-    const buffer = await blob.arrayBuffer();
-    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    let view: Uint8Array | null = null;
+    if (blob instanceof Uint8Array) {
+      view = new Uint8Array(blob);
+    } else if (blob instanceof ArrayBuffer) {
+      view = new Uint8Array(blob);
+    } else if (typeof (blob as Blob).arrayBuffer === 'function') {
+      const buffer = await (blob as Blob).arrayBuffer();
+      view = new Uint8Array(buffer);
+    } else {
+      return undefined;
+    }
+    const hashBuffer = await crypto.subtle.digest('SHA-256', view);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   } catch (e) {
@@ -102,10 +112,11 @@ function countNdjsonEvents(ndjson: string): number {
 
 async function toUint8Array(input: string | Uint8Array | Blob): Promise<Uint8Array> {
   if (typeof input === 'string') {
-    return new TextEncoder().encode(input);
+    const encoded = new TextEncoder().encode(input);
+    return new Uint8Array(encoded);
   }
   if (input instanceof Uint8Array) {
-    return input;
+    return new Uint8Array(input);
   }
   const buffer = await input.arrayBuffer();
   return new Uint8Array(buffer);
@@ -196,7 +207,7 @@ export async function exportV2Bundle(options: ExportV2Options): Promise<ExportRe
   }
 
   const { capsuleJsonUtf8 } = await buildCapsule(capsuleFiles);
-  zip.file('integrity/capsule.json', capsuleJsonUtf8);
+  zip.file('integrity/capsule.json', new Uint8Array(capsuleJsonUtf8));
 
   const safeTimestamp = timestamp.replace(/[:.]/g, '-');
   const filename = options.studentId
@@ -204,8 +215,15 @@ export async function exportV2Bundle(options: ExportV2Options): Promise<ExportRe
     : `${options.labId}-${safeTimestamp}.rb-lab.zip`;
 
   const blob = await zip.generateAsync({ type: 'blob' });
-  const hash = await computeHash(blob);
+  let hash = await computeHash(blob);
+  if (!hash) {
+    const bytes = await zip.generateAsync({ type: 'uint8array' });
+    hash = await computeHash(bytes);
+  }
 
+  if (!hash) {
+    throw new Error('bundle_hash_failed');
+  }
   downloadBlob(blob, filename);
 
   return {
