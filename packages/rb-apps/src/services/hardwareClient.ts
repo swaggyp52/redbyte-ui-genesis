@@ -34,6 +34,11 @@ interface Device {
   transport: string;
   toolchain: string;
   status: string;
+  runtime?: {
+    port?: string;
+    baud_default?: number;
+    status?: string;
+  };
 }
 
 interface IOSnapshot {
@@ -48,6 +53,7 @@ interface IOGroup {
   width: number;
   kind: 'switch' | 'button' | 'led' | '7segment';
   labels?: string[];
+  pins?: string[];
   writable?: boolean;
 }
 
@@ -61,7 +67,17 @@ interface BoardCapabilities {
   clock?: { name: string; frequencyHz: number };
 }
 
+type RunStatus = 'idle' | 'starting' | 'running' | 'running_no_data' | 'stopping' | 'stopped' | 'error';
+
+interface RunState {
+  runId: string | null;
+  status: RunStatus;
+  hint?: string;
+  error?: string;
+}
+
 type IOUpdateCallback = (snapshot: IOSnapshot) => void;
+type StatusUpdateCallback = (state: RunState) => void;
 
 type ConnectionState =
   | { status: 'offline'; reason: 'disabled' | 'unavailable' | 'failed'; message: string }
@@ -75,6 +91,7 @@ export class HardwareClient {
   private wsReconnectTimeout: NodeJS.Timeout | null = null;
   private listeners: Set<(state: ConnectionState) => void> = new Set();
   private ioListeners: Set<IOUpdateCallback> = new Set();
+  private statusListeners: Set<StatusUpdateCallback> = new Set();
   private retryAttempts = 0;
   private readonly MAX_RETRY_ATTEMPTS = 3;
   private readonly RETRY_DELAY_MS = 2000;
@@ -86,6 +103,7 @@ export class HardwareClient {
   private activeDevice: Device | null = null;
   private capabilities: BoardCapabilities | null = null;
   private latestIOSnapshot: IOSnapshot | null = null;
+  private latestRunState: RunState = { runId: null, status: 'idle' };
 
   constructor(config?: Partial<HardwareClientConfig>) {
     this.config = {
@@ -360,6 +378,16 @@ export class HardwareClient {
 
         this.latestIOSnapshot = snapshot;
         this.ioListeners.forEach((listener) => listener(snapshot));
+      } else if (msg.type === 'status' || msg.state !== undefined) {
+        // Handle status update
+        const newState: RunState = {
+          runId: msg.run_id || this.latestRunState.runId,
+          status: msg.state || 'idle',
+          hint: msg.hint,
+          error: msg.error
+        };
+        this.latestRunState = newState;
+        this.statusListeners.forEach(l => l(newState));
       }
     } catch {
       // Ignore parse errors
@@ -398,6 +426,9 @@ export class HardwareClient {
   /**
    * Select and connect to a specific device
    */
+  /**
+   * Select and connect to a specific device
+   */
   async selectDevice(deviceId: string): Promise<boolean> {
     if (this.state.status !== 'connected') {
       console.warn('[HardwareClient] Cannot select device: not connected to bridge');
@@ -411,26 +442,24 @@ export class HardwareClient {
     }
 
     try {
-      // Try production bridge endpoint first
+      // Bridge expects { port: string } to connect
+      // If device is a simulation/mock without a port, we might not need to "connect" via serial,
+      // but the bridge convention is to POST /connect to set active target.
+      const port = device.runtime?.port;
+
+      // If it's a hardware device, we MUST have a port.
+      // If it's a sim/mock, port might be null or "SIM".
+      const payload = port ? { port } : { deviceId };
+
       const res = await fetch(`${this.config.httpUrl.replace('/api/v1', '')}/connect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId }),
+        body: JSON.stringify(payload),
         signal: AbortSignal.timeout(this.FETCH_TIMEOUT_MS),
       });
 
       if (!res.ok) {
-        // Fall back to mock bridge session API
-        const sessionRes = await fetch(`${this.config.httpUrl}/session/open`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ deviceId }),
-          signal: AbortSignal.timeout(this.FETCH_TIMEOUT_MS),
-        });
-
-        if (!sessionRes.ok) {
-          throw new Error(`Failed to connect: HTTP ${sessionRes.status}`);
-        }
+        throw new Error(`Failed to connect: HTTP ${res.status}`);
       }
 
       this.activeDevice = device;
@@ -474,11 +503,37 @@ export class HardwareClient {
         boardName: 'Spartan-3E Starter Kit',
         manufacturer: 'Digilent',
         inputs: [
-          { name: 'SW', width: 4, kind: 'switch', labels: ['SW3', 'SW2', 'SW1', 'SW0'] },
-          { name: 'BTN', width: 4, kind: 'button', labels: ['BTN_EAST', 'BTN_NORTH', 'BTN_SOUTH', 'BTN_WEST'] },
+          {
+            name: 'SW',
+            width: 4,
+            kind: 'switch',
+            labels: ['SW3', 'SW2', 'SW1', 'SW0'],
+            pins: ['N17', 'H18', 'L14', 'L13']
+          },
+          {
+            name: 'BTN',
+            width: 4,
+            kind: 'button',
+            labels: ['BTN_EAST', 'BTN_NORTH', 'BTN_SOUTH', 'BTN_WEST'],
+            pins: ['H13', 'V4', 'K17', 'D18']
+          },
+          {
+            name: 'ROT',
+            width: 3,
+            kind: 'switch', // Treated as general input
+            labels: ['ROT_A', 'ROT_B', 'ROT_CENTER'],
+            pins: ['K18', 'G18', 'V16']
+          }
         ],
         outputs: [
-          { name: 'LED', width: 8, kind: 'led', labels: ['LD7', 'LD6', 'LD5', 'LD4', 'LD3', 'LD2', 'LD1', 'LD0'], writable: true },
+          {
+            name: 'LED',
+            width: 8,
+            kind: 'led',
+            labels: ['LD7', 'LD6', 'LD5', 'LD4', 'LD3', 'LD2', 'LD1', 'LD0'],
+            pins: ['F9', 'E9', 'D11', 'C11', 'F11', 'E11', 'E12', 'F12'],
+            writable: true
+          },
         ],
         features: ['trace', 'program', 'vectors', 'uart', 'jtag'],
         clock: { name: 'CLK_50MHZ', frequencyHz: 50000000 },
@@ -511,6 +566,15 @@ export class HardwareClient {
       callback(this.latestIOSnapshot);
     }
     return () => this.ioListeners.delete(callback);
+  }
+
+  /**
+   * Subscribe to Run Status updates
+   */
+  subscribeStatus(callback: StatusUpdateCallback): () => void {
+    this.statusListeners.add(callback);
+    callback(this.latestRunState);
+    return () => this.statusListeners.delete(callback);
   }
 
   /**
@@ -635,6 +699,9 @@ export type {
   IOGroup,
   BoardCapabilities,
   IOUpdateCallback,
+  StatusUpdateCallback,
+  RunStatus,
+  RunState,
   BridgeHealth,
 };
 

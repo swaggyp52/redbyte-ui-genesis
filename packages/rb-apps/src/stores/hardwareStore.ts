@@ -18,8 +18,10 @@ import {
   type Device,
   type IOSnapshot,
   type BoardCapabilities,
+  type RunState,
 } from '../services/hardwareClient';
 import { createTrace, type HardwareTraceV1 } from '../hardware/traceFormat';
+import { createV2Bundle, type V2BundleMetadata } from '../hardware/v2Export';
 
 // Connection state machine
 type HardwareConnectionState =
@@ -38,6 +40,9 @@ interface HardwareState {
   activeDevice: Device | null;
   capabilities: BoardCapabilities | null;
   availableDevices: Device[];
+
+  // Run state (program/run/stop)
+  runState: RunState;
 
   // Live I/O (tick-based)
   ioSnapshot: IOSnapshot | null;
@@ -59,12 +64,14 @@ interface HardwareActions {
   // Recording actions
   startRecording: () => void;
   stopRecording: () => HardwareTraceV1 | null;
+  exportV2Bundle: (metadata?: V2BundleMetadata) => Promise<Blob | null>;
   clearTrace: () => void;
   setMaxTraceSize: (size: number) => void;
 
   // Internal actions (called by subscription)
   _updateConnectionState: (state: ConnectionState) => void;
   _updateIOSnapshot: (snapshot: IOSnapshot) => void;
+  _updateRunState: (state: RunState) => void;
 }
 
 type HardwareStore = HardwareState & HardwareActions;
@@ -76,6 +83,7 @@ const DEFAULT_MAX_TRACE_SIZE = 5000;
 let _store: ReturnType<typeof createHardwareStore> | null = null;
 let _unsubscribeConnection: (() => void) | null = null;
 let _unsubscribeIO: (() => void) | null = null;
+let _unsubscribeStatus: (() => void) | null = null;
 
 function createHardwareStore() {
   const store = create<HardwareStore>((set, get) => ({
@@ -85,6 +93,7 @@ function createHardwareStore() {
     activeDevice: null,
     capabilities: null,
     availableDevices: [],
+    runState: { runId: null, status: 'idle' },
     ioSnapshot: null,
     traceBuffer: [],
     maxTraceSize: DEFAULT_MAX_TRACE_SIZE,
@@ -159,6 +168,27 @@ function createHardwareStore() {
       return trace;
     },
 
+    exportV2Bundle: async (metadata: V2BundleMetadata = {}) => {
+      const { traceBuffer, recordingStartTick, recordingBoardId, isRecording, capabilities } = get();
+
+      // If currently recording, stop temporarily or just use current buffer?
+      // Contract: export does not stop recording, but captures current state.
+      // But for consistency we need a boardId and startTick.
+
+      if (!recordingBoardId || recordingStartTick === null || traceBuffer.length === 0) {
+        return null;
+      }
+
+      // Inject board profile if available
+      const finalMetadata = {
+        ...metadata,
+        boardProfile: metadata.boardProfile ?? capabilities
+      };
+
+      const trace = createTrace(recordingBoardId, recordingStartTick, [...traceBuffer]);
+      return await createV2Bundle(trace, finalMetadata);
+    },
+
     clearTrace: () => {
       set({ traceBuffer: [], recordingStartTick: null, recordingBoardId: null });
     },
@@ -203,6 +233,11 @@ function createHardwareStore() {
         set({ traceBuffer: newBuffer });
       }
     },
+
+    // Internal: update run state from hardwareClient
+    _updateRunState: (state: RunState) => {
+      set({ runState: state });
+    }
   }));
 
   // Subscribe to hardwareClient state changes
@@ -213,6 +248,11 @@ function createHardwareStore() {
   // Subscribe to I/O updates
   _unsubscribeIO = hardwareClient.subscribeIO((snapshot) => {
     store.getState()._updateIOSnapshot(snapshot);
+  });
+
+  // Subscribe to Status updates
+  _unsubscribeStatus = hardwareClient.subscribeStatus((state) => {
+    store.getState()._updateRunState(state);
   });
 
   return store;
@@ -250,6 +290,8 @@ export function _cleanupHardwareStore() {
   if (_unsubscribeIO) _unsubscribeIO();
   _unsubscribeConnection = null;
   _unsubscribeIO = null;
+  if (_unsubscribeStatus) _unsubscribeStatus();
+  _unsubscribeStatus = null;
   _store = null;
 }
 
