@@ -1,0 +1,79 @@
+{
+    "meta": {
+        "board": "Spartan-3E",
+        "jtag_idcode": "unknown-mvp",
+        "captured_at": "2026-01-27T21:20:57.250Z",
+        "transport": {
+            "type": "uart",
+            "port": "COM4",
+            "baud": 115200
+        }
+    },
+    "session": {
+        "clock_domain_hz": 50000000,
+        "start_tick": 104500,
+        "end_tick": 344500
+    },
+    "timeline": [
+        {
+            "type": "io",
+            "tick": 104500,
+            "seq": 12,
+            "payload": {
+                "sw": 0,
+                "btn": 0,
+                "led": 0
+            }
+        },
+        {
+            "type": "io",
+            "tick": 109500,
+            "seq": 13,
+            "payload": {
+                "sw": 0,
+                "btn": 0,
+                "led": 0
+            }
+        },
+        {
+            "type": "io",
+            "tick": 114500,
+            "seq": 14,
+            "payload": {
+                "sw": 0,
+                "btn": 0,
+                "led": 0
+            }
+        },
+        {
+            "type": "io",
+            "tick": 119500,
+            "seq": 15,
+            "payload": {
+                "sw": 0,
+                "btn": 0,
+                "led": 0
+            }
+        },
+        {
+            "type": "io",
+            "tick": 254500,
+            "seq": 42,
+            "payload": {
+                "sw": 1,
+                "btn": 0,
+                "led": 1
+            }
+        },
+        {
+            "type": "io",
+            "tick": 344500,
+            "seq": 60,
+            "payload": {
+                "sw": 1,
+                "btn": 0,
+                "led": 1
+            }
+        }
+    ]
+}

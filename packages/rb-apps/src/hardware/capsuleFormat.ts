@@ -38,6 +38,39 @@ export interface RedByteCapsule {
     outputsSummary?: Record<string, any>;
 }
 
+// -----------------------------------------------------------------------------
+// Spartan-3E Specific Schema
+// -----------------------------------------------------------------------------
+
+export interface Spartan3ECapsule {
+    meta: {
+        board: "Spartan-3E";
+        jtag_idcode: string;
+        ds2432_rom_id?: string;
+        bitstream_hash: string;
+        captured_at: string;
+        bridge_version: string;
+        transport: {
+            type: "uart" | "jtag" | "sim";
+            baud_rate?: number;
+            latency_us_estimate: number;
+            flow_control: "none";
+        };
+    };
+    session: {
+        clock_domain_hz: number;
+        start_tick: number;
+        end_tick: number;
+        tick_decimation: number;
+    };
+    timeline: Spartan3EEvent[];
+}
+
+export type Spartan3EEvent =
+    | { type: "io"; tick: number; seq: number; payload: { sw: number; btn: number; led: number; } }
+    | { type: "status"; tick: number; seq: number; payload: { code: string; message?: string; } };
+
+
 export function createCapsule(
     data: {
         labId: string;

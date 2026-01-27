@@ -1,0 +1,54 @@
+{
+    "board": "Spartan-3E",
+    "manufacturer": "Xilinx/Digilent",
+    "fpga": "XC3S500E-4FG320C",
+    "clock": "50MHz",
+    "inputs": {
+        "SW": {
+            "count": 4,
+            "description": "Slide switches SW0-SW3 (Active High)"
+        },
+        "BTN": {
+            "count": 4,
+            "names": [
+                "BTN0",
+                "BTN1",
+                "BTN2",
+                "BTN3"
+            ],
+            "description": "Push buttons (Active High)"
+        },
+        "ROT": {
+            "count": 3,
+            "names": [
+                "A",
+                "B",
+                "PUSH"
+            ],
+            "description": "Rotary Encoder"
+        }
+    },
+    "outputs": {
+        "LED": {
+            "count": 8,
+            "description": "Discrete LEDs LD0-LD7"
+        }
+    },
+    "interfaces": {
+        "uart": {
+            "baud": 115200,
+            "port_type": "DCE",
+            "connector": "DB9 Female",
+            "protocol": "RB-BIN-V1",
+            "description": "RS-232 DCE Port for telemetry (Straight-through cable)"
+        },
+        "jtag": {
+            "description": "On-board USB-JTAG"
+        }
+    },
+    "telemetry": {
+        "format": "RB-BIN-V1 [0xAA, 0x55, SEQ, TICK(32), PAYLOAD(16), AUX(32), CRC(8)]",
+        "rate_limit": "debounce_20ms",
+        "description": "Binary event stream with CRC8 and heartbeat"
+    }
+}

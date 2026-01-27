@@ -27,6 +27,8 @@ import * as os from "os";
 // So I should keep `import * as fs from "fs"`.
 
 import * as fs from "fs";
+import RbBinV1Parser from "./parsers/rb-bin-v1.js";
+import { RedByteIngestion } from "./ingestion.js";
 
 const execAsync = promisify(exec);
 
@@ -640,6 +642,17 @@ async function stopRun(runId, options = {}) {
   if (deviceRunIndex.get(run.deviceId) === runId) {
     deviceRunIndex.delete(run.deviceId);
   }
+  if (run.ingestion) {
+    // Save capsule on stop
+    const filename = `capsule-${run.id}.json`;
+    const outPath = path.join(ensureTmpDir(getRepoRoot()), "capsules", filename);
+    try {
+      run.ingestion.saveSync(outPath);
+      console.log(`Saved Spartan-3E capsule to ${outPath}`);
+    } catch (e) {
+      console.error("Failed to save capsule:", e);
+    }
+  }
   return run;
 }
 
@@ -736,15 +749,62 @@ async function startHardwareRun({ device, hz }) {
   }
 
   // Decoupled Parser: UART -> Buffer
-  const parser = createStreamParser({
-    onSample: (sample) => {
-      run.framesParsed += 1;
-      run.buffer.push(sample); // Push to ring buffer (drops oldest if full)
-    },
-    onError: () => {
-      run.decodeErrors += 1;
-    },
-  });
+  let parser;
+  let ingestion = null;
+
+  if (device.board === "Spartan-3E") {
+    // Spartan-3E Specific Path
+    const binParser = new RbBinV1Parser();
+
+    // Setup Ingestion Recorder
+    ingestion = new RedByteIngestion({
+      board: "Spartan-3E",
+      jtag_idcode: "unknown-mvp", // TODO: Fetch from JTAG
+      bitstream_hash: "unknown",
+      captured_at: new Date().toISOString(),
+      bridge_version: "0.2.0",
+      transport: { type: "uart", baud_rate: baudRate, latency_us_estimate: 5000, flow_control: "none" }
+    }, {
+      clock_domain_hz: 50000000,
+      start_tick: 0,
+      end_tick: 0,
+      tick_decimation: 1
+    });
+    run.ingestion = ingestion;
+
+    binParser.on('data', (evt) => {
+      run.framesParsed++;
+      // Record raw event
+      if (ingestion) ingestion.recordEvent(evt);
+
+      // Normalize for UI
+      const io = evt.payload; // { sw, btn, led }
+      // Add derived 'seg' if needed or leave null
+      const sample = {
+        t_ms: evt.tick / 50000, // 50MHz -> 50,000 cycles = 1ms
+        io: io
+      };
+      run.buffer.push(sample);
+    });
+
+    binParser.on('error', (err) => {
+      run.decodeErrors++;
+      console.error("Spartan-3E Parser Error:", err.message);
+    });
+
+    parser = binParser; // Polymorphic use (write method needed)
+  } else {
+    // Default / Legacy Stream Parser
+    parser = createStreamParser({
+      onSample: (sample) => {
+        run.framesParsed += 1;
+        run.buffer.push(sample); // Push to ring buffer (drops oldest if full)
+      },
+      onError: () => {
+        run.decodeErrors += 1;
+      },
+    });
+  }
 
   // Decoupled Sender: Buffer -> Network
   // Drain at approx 60Hz (16ms) to batch writes if needed, or just keep up.
