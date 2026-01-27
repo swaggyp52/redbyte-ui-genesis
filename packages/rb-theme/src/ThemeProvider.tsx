@@ -40,11 +40,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [variant, setVariantState] = useState<ThemeVariant>(() => {
     // SSR guard - return default theme during SSR
-    if (typeof window === 'undefined') return 'dark';
+    if (typeof window === 'undefined') return 'redbyte-dark';
 
     // Try to get saved theme
     const saved = getActiveTheme();
-    return saved ?? 'dark';
+    return saved ?? 'redbyte-dark';
   });
 
   // Apply theme on mount and when variant changes
@@ -76,7 +76,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
  *   const { variant, setVariant } = useTheme();
  *
  *   const toggleTheme = () => {
- *     setVariant(variant === 'dark' ? 'light' : 'dark');
+ *     setVariant(variant === 'redbyte-dark' ? 'instrument' : 'redbyte-dark');
  *   };
  *
  *   return <button onClick={toggleTheme}>Toggle Theme</button>;

@@ -7,6 +7,7 @@ import type { RedByteApp } from '../types';
 import type { Intent } from '@redbyte/rb-shell';
 import type { FileEntry } from './files/fsTypes';
 import { TextInputModal, ConfirmModal, OpenWithModal } from './files/modals';
+import { Icon } from '@redbyte/rb-icons';
 import {
   getFileActionTargets,
   isFileActionEligible,
@@ -471,7 +472,10 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
                       }`}
                     >
                       <td className="p-3 text-sm">
-                        {entry.type === 'folder' ? '📁' : '📄'} {entry.name}
+                        <span className="inline-flex items-center gap-2">
+                          <Icon name={entry.type === 'folder' ? 'folder' : 'document'} size={16} />
+                          {entry.name}
+                        </span>
                       </td>
                       <td className="p-3 text-sm text-slate-400">
                         {entry.type === 'folder' ? 'Folder' : 'File'}

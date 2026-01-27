@@ -18,6 +18,8 @@ import {
   resolveDefaultTarget,
   OpenWithModal,
   type FileActionTarget,
+  useSystemLogStore,
+  logSystemEvent,
 } from '@redbyte/rb-apps';
 import { useWindowStore, loadSession, resolveTargetWindowId } from '@redbyte/rb-windowing';
 import { useWorkspaceStore, loadWorkspaces } from './workspaceStore';
@@ -43,6 +45,7 @@ import { DeterminismPanel, useDeterminismRecorder } from './dev';
 import { TruthBar, type DeterminismMode } from './TruthBar';
 import { OnboardingModal } from './OnboardingModal';
 import { AboutModal } from './AboutModal';
+import { TopBar } from './TopBar';
 
 export interface ShellProps {
   children?: React.ReactNode;
@@ -81,6 +84,7 @@ export const Shell: React.FC<ShellProps> = () => {
   const [showJankHud, setShowJankHud] = useState(false);
   const [showDeadZoneScanner, setShowDeadZoneScanner] = useState(false);
   const [showOverlayDebug, setShowOverlayDebug] = useState(false);
+  const lastSettingsRef = useRef<{ themeVariant: string; density: string; reduceMotion: boolean } | null>(null);
 
   const hasShownWelcomeRef = useRef(false);
   const hasInitializedRef = useRef(false);
@@ -93,6 +97,12 @@ export const Shell: React.FC<ShellProps> = () => {
     const ids = windows.filter((w) => w.mode !== 'minimized').map((w) => w.contentId);
     return Array.from(new Set(ids));
   }, [windows]);
+  const systemLogEntries = useSystemLogStore((s) => s.entries);
+  const systemLogLastRead = useSystemLogStore((s) => s.lastReadSeq);
+  const unreadLogCount = useMemo(
+    () => systemLogEntries.filter((entry) => entry.seq > systemLogLastRead).length,
+    [systemLogEntries, systemLogLastRead]
+  );
   const createWindow = useWindowStore((s) => s.createWindow);
   const closeWindow = useWindowStore((s) => s.closeWindow);
   const moveWindow = useWindowStore((s) => s.moveWindow);
@@ -167,8 +177,35 @@ export const Shell: React.FC<ShellProps> = () => {
   useEffect(() => {
     if (typeof document !== 'undefined') {
       applyTheme(document.documentElement, settings.themeVariant);
+      document.documentElement.setAttribute('data-rb-density', settings.density);
+      document.documentElement.setAttribute('data-rb-motion', settings.reduceMotion ? 'reduced' : 'full');
     }
-  }, [settings.themeVariant]);
+  }, [settings.themeVariant, settings.density, settings.reduceMotion]);
+
+  useEffect(() => {
+    const current = {
+      themeVariant: settings.themeVariant,
+      density: settings.density,
+      reduceMotion: settings.reduceMotion,
+    };
+    if (!lastSettingsRef.current) {
+      lastSettingsRef.current = current;
+      return;
+    }
+    if (
+      lastSettingsRef.current.themeVariant !== current.themeVariant ||
+      lastSettingsRef.current.density !== current.density ||
+      lastSettingsRef.current.reduceMotion !== current.reduceMotion
+    ) {
+      logSystemEvent({
+        level: 'action',
+        source: 'settings',
+        message: 'Settings updated',
+        data: current,
+      });
+      lastSettingsRef.current = current;
+    }
+  }, [settings.themeVariant, settings.density, settings.reduceMotion]);
 
   // Workspace/Session restore on mount
   useEffect(() => {
@@ -242,7 +279,15 @@ export const Shell: React.FC<ShellProps> = () => {
   const openWindow = useCallback(
     (appId: string, props?: any) => {
       const app = getApp(appId);
-      if (!app) return null;
+      if (!app) {
+        logSystemEvent({
+          level: 'error',
+          source: 'shell',
+          message: 'App not found',
+          data: { appId },
+        });
+        return null;
+      }
 
       recordRecentApp(appId);
 
@@ -254,6 +299,12 @@ export const Shell: React.FC<ShellProps> = () => {
           }
           focusWindow(existing.id);
           setBindings((prev) => ({ ...prev, [existing.id]: { appId, props } }));
+          logSystemEvent({
+            level: 'action',
+            source: 'shell',
+            message: 'Window focused',
+            data: { appId, windowId: existing.id, mode: existing.mode },
+          });
           return existing.id;
         }
       }
@@ -266,6 +317,12 @@ export const Shell: React.FC<ShellProps> = () => {
       });
 
       setBindings((prev) => ({ ...prev, [state.id]: { appId, props } }));
+      logSystemEvent({
+        level: 'action',
+        source: 'shell',
+        message: 'Window opened',
+        data: { appId, windowId: state.id },
+      });
       return state.id;
     },
     [createWindow, focusWindow, recordRecentApp, windows, restoreWindow]
@@ -287,6 +344,12 @@ export const Shell: React.FC<ShellProps> = () => {
 
   const dispatchIntent = useCallback(
     (intent: Intent) => {
+      logSystemEvent({
+        level: 'action',
+        source: 'intent',
+        message: 'Intent dispatched',
+        data: { type: intent.type, payload: intent.payload },
+      });
       switch (intent.type) {
         case 'open-with': {
           const { targetAppId, resourceId, resourceType } = intent.payload;
@@ -397,6 +460,12 @@ export const Shell: React.FC<ShellProps> = () => {
         delete next[id];
         return next;
       });
+      logSystemEvent({
+        level: 'action',
+        source: 'shell',
+        message: 'Window closed',
+        data: { windowId: id },
+      });
     },
     [closeWindow]
   );
@@ -439,26 +508,61 @@ export const Shell: React.FC<ShellProps> = () => {
           const circuit = getCurrentCircuit();
           if (circuit) {
             determinismRecorder.startRecording(circuit);
+            logSystemEvent({
+              level: 'action',
+              source: 'determinism',
+              message: 'Recording started',
+            });
           }
           break;
         }
         case 'stop-recording':
           determinismRecorder.stopRecording();
+          logSystemEvent({
+            level: 'action',
+            source: 'determinism',
+            message: 'Recording stopped',
+          });
           break;
         case 'verify-replay':
           determinismRecorder.verifyRecording();
+          logSystemEvent({
+            level: 'action',
+            source: 'determinism',
+            message: 'Verification requested',
+          });
           break;
         case 'reset':
           determinismRecorder.reset();
+          logSystemEvent({
+            level: 'action',
+            source: 'determinism',
+            message: 'Determinism state reset',
+          });
           break;
         case 'initialize-timetravel':
           determinismRecorder.initializeTimeTravel();
+          logSystemEvent({
+            level: 'action',
+            source: 'determinism',
+            message: 'Time travel initialized',
+          });
           break;
         case 'step-forward':
           determinismRecorder.stepForwardInTime();
+          logSystemEvent({
+            level: 'action',
+            source: 'determinism',
+            message: 'Time travel step forward',
+          });
           break;
         case 'step-backward':
           determinismRecorder.stepBackwardInTime();
+          logSystemEvent({
+            level: 'action',
+            source: 'determinism',
+            message: 'Time travel step backward',
+          });
           break;
       }
     },
@@ -480,6 +584,12 @@ export const Shell: React.FC<ShellProps> = () => {
 
   const executeCommand = useCallback(
     (command: Command) => {
+      logSystemEvent({
+        level: 'action',
+        source: 'command',
+        message: 'Command executed',
+        data: { command },
+      });
       switch (command) {
         case 'focus-next-window': {
           const activeWindows = useWindowStore.getState().getActiveWindows();
@@ -965,6 +1075,12 @@ export const Shell: React.FC<ShellProps> = () => {
             },
           ],
         });
+        logSystemEvent({
+          level: 'error',
+          source: 'storage',
+          message: 'Storage quota exceeded',
+          data: { detail: event.detail },
+        });
       }
     };
 
@@ -1019,8 +1135,26 @@ export const Shell: React.FC<ShellProps> = () => {
     return <BootScreen onComplete={() => setBooted(true)} />;
   }
 
+  const determinismMode: DeterminismMode =
+    determinismRecorder.isRecording
+      ? 'recording'
+      : determinismRecorder.isTimeTraveling
+      ? 'replay'
+      : 'live';
+
   return (
     <div data-testid="shell-container" className="shell-container relative w-screen h-screen overflow-hidden bg-black text-white">
+      <TopBar
+        isRecording={determinismRecorder.isRecording}
+        modeLabel={determinismMode}
+        tickCount={determinismRecorder.tickCount}
+        versionLabel={getVersionString()}
+        unreadCount={unreadLogCount}
+        onOpenLog={() => openWindow('system-log')}
+        onOpenLauncher={() => openWindow('launcher')}
+        onOpenSettings={() => openWindow('settings')}
+        onOpenDeterminism={() => setDeterminismPanelOpen(true)}
+      />
       <Desktop
         onOpenApp={openWindow}
         wallpaperId={settings.wallpaperId}
@@ -1034,19 +1168,61 @@ export const Shell: React.FC<ShellProps> = () => {
         const app: RedByteApp | null = binding ? getApp(binding.appId) : getApp(window.contentId);
         if (!app) return null;
         const Component = app.component;
+        const resourceId =
+          binding?.props?.resourceId ??
+          binding?.props?.initialFileId ??
+          binding?.props?.initialExampleId ??
+          undefined;
 
         return (
           <ShellWindow
             key={window.id}
             state={window}
             minSize={app.manifest.minSize}
+            provenance={{
+              appId: app.manifest.id,
+              resourceId,
+              tick: determinismRecorder.tickCount,
+            }}
             onClose={() => handleClose(window.id)}
-            onFocus={() => focusWindow(window.id)}
+            onFocus={() => {
+              focusWindow(window.id);
+              logSystemEvent({
+                level: 'action',
+                source: 'shell',
+                message: 'Window focused',
+                data: { windowId: window.id, appId: window.contentId },
+              });
+            }}
             onMove={(x, y) => moveWindow(window.id, x, y)}
             onResize={(w, h) => resizeWindow(window.id, w, h)}
-            onMinimize={() => toggleMinimize(window.id)}
-            onMaximize={() => toggleMaximize(window.id)}
-            onRestore={() => restoreWindow(window.id)}
+            onMinimize={() => {
+              toggleMinimize(window.id);
+              logSystemEvent({
+                level: 'action',
+                source: 'shell',
+                message: 'Window minimized',
+                data: { windowId: window.id, appId: window.contentId },
+              });
+            }}
+            onMaximize={() => {
+              toggleMaximize(window.id);
+              logSystemEvent({
+                level: 'action',
+                source: 'shell',
+                message: 'Window maximized',
+                data: { windowId: window.id, appId: window.contentId },
+              });
+            }}
+            onRestore={() => {
+              restoreWindow(window.id);
+              logSystemEvent({
+                level: 'action',
+                source: 'shell',
+                message: 'Window restored',
+                data: { windowId: window.id, appId: window.contentId },
+              });
+            }}
           >
             <Component
               windowId={window.id}
@@ -1056,6 +1232,8 @@ export const Shell: React.FC<ShellProps> = () => {
               registerStateAccessor={registerWindowStateAccessor}
               unregisterStateAccessor={unregisterWindowStateAccessor}
               determinismRecorder={determinismRecorder}
+              getCurrentCircuit={getCurrentCircuit}
+              versionLabel={getVersionString()}
               recentAppIds={app.manifest.id === 'launcher' ? recentAppIds : undefined}
               pinnedAppIds={app.manifest.id === 'launcher' ? pinnedAppIds : undefined}
               runningAppIds={app.manifest.id === 'launcher' ? runningAppIds : undefined}
@@ -1183,13 +1361,7 @@ export const Shell: React.FC<ShellProps> = () => {
 
       {/* Truth Bar: Always-visible determinism status */}
       <TruthBar
-        mode={
-          determinismRecorder.isRecording
-            ? 'recording'
-            : determinismRecorder.isTimeTraveling
-            ? 'replay'
-            : 'live'
-        }
+        mode={determinismMode}
         tickCount={determinismRecorder.tickCount}
         totalEvents={determinismRecorder.currentSnapshot?.totalEvents}
         hashPrefix={

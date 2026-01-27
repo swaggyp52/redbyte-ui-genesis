@@ -13,6 +13,7 @@ import { SchematicView } from './SchematicView';
 import { OscilloscopeView } from './OscilloscopeView';
 import { CodeView } from './CodeView';
 import { CircuitToolStrip } from './CircuitToolStrip';
+import { Icon, type IconName } from '@redbyte/rb-icons';
 import type { SplitScreenMode, ViewMode } from '../stores/viewStateStore';
 import { useViewStateStore } from '../stores/viewStateStore';
 import type { HelpSectionId } from './HelpDock';
@@ -104,13 +105,13 @@ interface ViewRendererProps {
 }
 
 // View metadata for headers
-const VIEW_METADATA = {
-  circuit: { icon: '⚡', label: 'Circuit View', color: 'cyan' },
-  schematic: { icon: '📐', label: 'Schematic View', color: 'blue' },
-  '3d': { icon: '🧊', label: '3D View', color: 'purple' },
-  oscilloscope: { icon: '📊', label: 'Oscilloscope', color: 'green' },
-  code: { icon: '📝', label: 'HDL Code', color: 'yellow' },
-} as const;
+const VIEW_METADATA: Record<ViewMode, { icon: IconName; label: string; color: string }> = {
+  circuit: { icon: 'logic', label: 'Circuit View', color: 'cyan' },
+  schematic: { icon: 'grid', label: 'Schematic View', color: 'blue' },
+  '3d': { icon: 'chip', label: '3D View', color: 'purple' },
+  oscilloscope: { icon: 'neon-wave', label: 'Oscilloscope', color: 'green' },
+  code: { icon: 'code', label: 'HDL Code', color: 'yellow' },
+};
 
 const ViewRenderer: React.FC<ViewRendererProps> = ({
   view,
@@ -434,7 +435,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     <div className="flex flex-col h-full">
       {/* View Header */}
       <div className={`h-8 px-3 flex items-center gap-2 border-b border-gray-700/50 bg-gradient-to-r from-${metadata.color}-900/20 to-gray-900/20`}>
-        <span className="text-lg">{metadata.icon}</span>
+        <Icon name={metadata.icon} size={16} className={`text-${metadata.color}-400`} />
         <span className={`text-xs font-semibold text-${metadata.color}-400 uppercase tracking-wide`}>{metadata.label}</span>
         {renderMicroToolbar()}
         <div className="ml-auto text-[10px] text-gray-500">

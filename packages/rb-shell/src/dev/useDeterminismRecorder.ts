@@ -182,6 +182,11 @@ export function useDeterminismRecorder() {
     URL.revokeObjectURL(url);
   }, []);
 
+  const getLog = useCallback(() => {
+    if (!recorderRef.current) return null;
+    return recorderRef.current.getLog();
+  }, []);
+
   // Derived state for TruthBar
   const hasRecording = recorderRef.current !== null || initialCircuitRef.current !== null;
   const isTimeTraveling = currentSnapshot !== null;
@@ -208,6 +213,7 @@ export function useDeterminismRecorder() {
     verifyRecording,
     reset,
     exportLog,
+    getLog,
 
     // Time travel
     initializeTimeTravel,

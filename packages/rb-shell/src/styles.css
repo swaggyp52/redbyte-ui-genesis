@@ -3,6 +3,29 @@
   font-family: var(--rb-font-family-body, 'Inter', sans-serif);
 }
 
+:root[data-rb-density='compact'] {
+  --rb-pad-sm: 8px;
+  --rb-pad-md: 12px;
+  --rb-pad-lg: 14px;
+}
+
+:root[data-rb-density='comfortable'] {
+  --rb-pad-sm: 10px;
+  --rb-pad-md: 14px;
+  --rb-pad-lg: 18px;
+}
+
+:root[data-rb-motion='reduced'] * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+:root[data-rb-motion='reduced'] .rb-anim {
+  animation: none !important;
+}
+
 .resize-handle {
   position: absolute;
   width: 14px;

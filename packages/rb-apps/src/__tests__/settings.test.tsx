@@ -13,10 +13,12 @@ const SettingsComponent = SettingsApp.component;
 describe('Settings app lifecycle', () => {
   beforeEach(() => {
     useSettingsStore.setState({
-      themeVariant: 'dark',
+      themeVariant: 'redbyte-dark',
       wallpaperId: 'default',
       accentColor: 'cyan',
       tickRate: 20,
+      reduceMotion: false,
+      density: 'comfortable',
     });
   });
 
@@ -31,20 +33,18 @@ describe('Settings app lifecycle', () => {
   it('renders theme options in Appearance panel', () => {
     render(<SettingsComponent />);
 
-    expect(screen.getByRole('button', { name: /Light/i })).toBeTruthy();
-    expect(screen.getByRole('button', { name: /Dark/i })).toBeTruthy();
-    // "System" theme option exists - there are multiple buttons with "System" (sidebar + theme), verify at least one
-    expect(screen.getAllByRole('button', { name: /System/i }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /RedByte Dark/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Instrument/i })).toBeTruthy();
   });
 
   it('changes theme when button is clicked', () => {
     render(<SettingsComponent />);
 
-    const lightButton = screen.getByRole('button', { name: /Light/i });
-    fireEvent.click(lightButton);
+    const instrumentButton = screen.getByRole('button', { name: /Instrument/i });
+    fireEvent.click(instrumentButton);
 
     const state = useSettingsStore.getState();
-    expect(state.themeVariant).toBe('light');
+    expect(state.themeVariant).toBe('instrument');
   });
 
   it('changes wallpaper when selector is changed', () => {
@@ -101,15 +101,15 @@ describe('Settings persistence', () => {
   it('persists theme changes to localStorage', () => {
     render(<SettingsComponent />);
 
-    const lightButton = screen.getByRole('button', { name: /Light/i });
-    fireEvent.click(lightButton);
+    const instrumentButton = screen.getByRole('button', { name: /Instrument/i });
+    fireEvent.click(instrumentButton);
 
     const stored = localStorage.getItem('rb.shell.settings');
     expect(stored).toBeTruthy();
 
     if (stored) {
       const parsed = JSON.parse(stored);
-      expect(parsed.themeVariant).toBe('light');
+      expect(parsed.themeVariant).toBe('instrument');
     }
   });
 

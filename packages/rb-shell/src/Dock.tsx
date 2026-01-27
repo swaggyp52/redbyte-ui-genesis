@@ -4,20 +4,21 @@
 
 import React, { useMemo, useRef, useState } from 'react';
 import { useWindowStore } from '@redbyte/rb-windowing';
-import { BrowserIcon, TerminalIcon, FilesIcon, SettingsIcon, LogicIcon, NeonWaveIcon, CpuIcon } from '@redbyte/rb-icons';
+import { Icon, type IconName } from '@redbyte/rb-icons';
 
 interface DockProps {
   onOpenApp: (id: string) => void;
 }
 
-const dockIcons = [
-  { id: 'launcher', label: 'Launcher', component: BrowserIcon },
-  { id: 'start-here', label: 'Start Here', component: CpuIcon },
-  { id: 'terminal', label: 'Terminal', component: TerminalIcon },
-  { id: 'files', label: 'Files', component: FilesIcon },
-  { id: 'settings', label: 'Settings', component: SettingsIcon },
-  { id: 'logic-playground', label: 'Logic Playground', component: LogicIcon },
-  { id: 'app-store', label: 'App Store', component: NeonWaveIcon },
+const dockIcons: Array<{ id: string; label: string; iconId: IconName }> = [
+  { id: 'launcher', label: 'Launcher', iconId: 'browser' },
+  { id: 'start-here', label: 'Start Here', iconId: 'cpu' },
+  { id: 'terminal', label: 'Terminal', iconId: 'terminal' },
+  { id: 'files', label: 'Files', iconId: 'files' },
+  { id: 'settings', label: 'Settings', iconId: 'settings' },
+  { id: 'system-log', label: 'System Log', iconId: 'log' },
+  { id: 'logic-playground', label: 'Logic Playground', iconId: 'logic' },
+  { id: 'app-store', label: 'App Store', iconId: 'neon-wave' },
 ];
 
 const LAUNCHER_SHORTCUT_HINT = 'Ctrl+K / Cmd+K';
@@ -126,7 +127,7 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
 
   return (
     <div
-      className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-end gap-2 rounded-2xl px-4 py-3 backdrop-blur-xl"
+      className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-end gap-2 rounded-2xl px-4 py-2 backdrop-blur-xl"
       title="Alt+Arrow keys to reorder (when focused)"
       onMouseLeave={() => setHoveredId(null)}
       style={{
@@ -136,7 +137,7 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
       }}
     >
       {dockItems.map((dock, index) => {
-        const Icon = dock.component;
+        const iconName = dock.iconId;
         const isRunning = runningIds.includes(dock.id);
         const isHovered = hoveredId === dock.id;
         const title =
@@ -151,15 +152,7 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
               ? SETTINGS_ARIA_KEYSHORTCUTS
               : undefined;
 
-        // Calculate scale based on hover proximity
-        let scale = 1;
-        if (hoveredId) {
-          const hoveredIndex = dockItems.findIndex(d => d.id === hoveredId);
-          const distance = Math.abs(index - hoveredIndex);
-          if (distance === 0) scale = 1.4;
-          else if (distance === 1) scale = 1.2;
-          else if (distance === 2) scale = 1.1;
-        }
+        const scale = isHovered ? 1.06 : 1;
 
         return (
           <button
@@ -174,24 +167,25 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
             aria-keyshortcuts={ariaKeyShortcuts}
             title={title}
             style={{
-              transform: `scale(${scale}) translateY(${isHovered ? '-8px' : '0px'})`,
-              transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+              transform: `scale(${scale})`,
+              transition: 'all 120ms var(--rb-easing-out, ease)',
               background: isRunning ? 'var(--rb-panel-2)' : 'var(--rb-panel)',
               border: isRunning ? '1px solid var(--rb-accent-strong)' : '1px solid var(--rb-border)',
               boxShadow: isRunning ? 'var(--rb-shadow-sm)' : 'none',
             }}
-            className="relative h-14 w-14 rounded-xl flex items-center justify-center transition-colors duration-200"
+            className="relative h-12 w-12 rounded-xl flex items-center justify-center transition-colors duration-200"
             data-testid={`dock-icon-${dock.id}`}
           >
             <Icon
-              width={28}
-              height={28}
+              name={iconName}
+              size={24}
               style={{ color: isRunning ? 'var(--rb-accent)' : 'var(--rb-muted)' }}
               className="transition-colors duration-200"
+              aria-label={`${dock.label} icon`}
             />
             {isRunning && (
               <span
-                className="absolute -bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full animate-pulse"
+                className="absolute -bottom-1.5 left-1/2 h-1 w-6 -translate-x-1/2 rounded-full"
                 style={{ background: 'var(--rb-accent)' }}
               />
             )}

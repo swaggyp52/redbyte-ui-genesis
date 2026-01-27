@@ -99,7 +99,10 @@ export const TruthBar: React.FC<TruthBarProps> = ({
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-20">
-      <div className="h-9 px-3 flex items-center gap-3 bg-slate-900/95 border-t border-slate-700/80 backdrop-blur-md">
+      <div
+        className="h-9 px-3 flex items-center gap-3 border-t backdrop-blur-md"
+        style={{ background: 'rgba(8, 12, 20, 0.94)', borderColor: 'var(--rb-border)' }}
+      >
         {/* Mode Indicator */}
         <div
           className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold tracking-wider ${modeConfig.bg} ${modeConfig.border} border ${modeConfig.color}`}

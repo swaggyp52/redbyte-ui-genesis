@@ -7,6 +7,7 @@ export * from './AppRegistry';
 export * from './stores/filesStore';
 export * from './stores/fileAssociationsStore';
 export * from './stores/fileSystemStore';
+export * from './stores/systemLogStore';
 export * from './apps/files/fileActionTargets';
 export * from './apps/files/modals';
 export * from './examples';
@@ -37,6 +38,7 @@ export async function registerAllApps() {
   const { WelcomeApp } = await import('./apps/WelcomeApp');
   const { StartHereApp } = await import('./apps/StartHereApp');
   const { LauncherApp } = await import('./apps/LauncherApp');
+  const { SystemLogApp } = await import('./apps/SystemLogApp');
   const { TextViewerApp } = await import('./apps/TextViewerApp');
   const LogicHelpApp = (await import('./apps/LogicHelpApp')).default;
   const { UserManualApp } = await import('./apps/UserManualApp');
@@ -62,6 +64,7 @@ export async function registerAllApps() {
   registerApp(WelcomeApp);
   registerApp(StartHereApp);
   registerApp(LauncherApp);
+  registerApp(SystemLogApp);
   registerApp(TextViewerApp);
   registerApp(LogicHelpApp);
   registerApp(UserManualApp);

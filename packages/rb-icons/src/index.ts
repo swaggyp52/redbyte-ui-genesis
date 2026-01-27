@@ -44,3 +44,17 @@ export { BrowserIcon } from './BrowserIcon';
 export { ImageIcon } from './ImageIcon';
 export { MusicIcon } from './MusicIcon';
 export { DocumentIcon } from './DocumentIcon';
+
+// Additional system icons
+export { GridIcon } from './GridIcon';
+export { SearchIcon } from './SearchIcon';
+export { FileTextIcon } from './FileTextIcon';
+export { BookIcon } from './BookIcon';
+export { MicroscopeIcon } from './MicroscopeIcon';
+export { CircuitBoardIcon } from './CircuitBoardIcon';
+export { LogIcon } from './LogIcon';
+export { KeyboardIcon } from './KeyboardIcon';
+
+// Icon registry
+export { Icon, IconMap } from './IconMap';
+export type { IconName, IconSize, IconProps } from './IconMap';

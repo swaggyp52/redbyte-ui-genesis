@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useState } from 'react';
+import { Icon } from '@redbyte/rb-icons';
 
 interface WelcomeOverlayProps {
   isOpen: boolean;
@@ -14,21 +15,21 @@ interface WelcomeOverlayProps {
 const QUICK_START_EXAMPLES = [
   {
     id: '01_wire-lamp',
-    title: '💡 Your First Circuit',
+    title: 'Your First Circuit',
     description: 'Power source connected to a lamp - see electricity flow',
     difficulty: 'Beginner',
     time: '30 seconds',
   },
   {
     id: '02_and-gate',
-    title: '∧ Logic Gates',
+    title: 'Logic Gates',
     description: 'Learn how AND gates work with switches and lamps',
     difficulty: 'Beginner',
     time: '2 minutes',
   },
   {
     id: '03_or-xor',
-    title: '⊕ Comparing Gates',
+    title: 'Comparing Gates',
     description: 'See the difference between OR and XOR gates',
     difficulty: 'Intermediate',
     time: '3 minutes',
@@ -36,13 +37,13 @@ const QUICK_START_EXAMPLES = [
 ];
 
 const FEATURES = [
-  { icon: '🎨', title: 'Drag & Drop', description: 'Build circuits by dragging components onto the canvas' },
-  { icon: '⚡', title: 'Live Simulation', description: 'Watch signals flow through your circuit in real-time' },
-  { icon: '🔌', title: 'Easy Wiring', description: 'Click port → Click port to connect components' },
-  { icon: '📊', title: 'Multiple Views', description: 'See your circuit in 2D, 3D, schematic, and oscilloscope' },
-  { icon: '💾', title: 'Auto-Save', description: 'Your work is automatically saved and crash-protected' },
-  { icon: '⌨️', title: 'Power User', description: 'Keyboard shortcuts for everything - press ? for help' },
-];
+  { icon: 'grid', title: 'Drag & Drop', description: 'Build circuits by dragging components onto the canvas' },
+  { icon: 'neon-wave', title: 'Live Simulation', description: 'Watch signals flow through your circuit in real-time' },
+  { icon: 'circuit-board', title: 'Easy Wiring', description: 'Click port → Click port to connect components' },
+  { icon: 'logic', title: 'Multiple Views', description: 'See your circuit in 2D, 3D, schematic, and oscilloscope' },
+  { icon: 'document', title: 'Auto-Save', description: 'Your work is automatically saved and crash-protected' },
+  { icon: 'terminal', title: 'Power User', description: 'Keyboard shortcuts for everything - press ? for help' },
+] as const;
 
 export const WelcomeOverlay: React.FC<WelcomeOverlayProps> = ({
   isOpen,
@@ -77,7 +78,9 @@ export const WelcomeOverlay: React.FC<WelcomeOverlayProps> = ({
                     key={index}
                     className="p-4 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-cyan-500/50 transition-all"
                   >
-                    <div className="text-3xl mb-2">{feature.icon}</div>
+                    <div className="mb-2 text-cyan-300">
+                      <Icon name={feature.icon} size={20} />
+                    </div>
                     <h3 className="text-white font-semibold mb-1">{feature.title}</h3>
                     <p className="text-gray-400 text-sm">{feature.description}</p>
                   </div>
@@ -87,7 +90,8 @@ export const WelcomeOverlay: React.FC<WelcomeOverlayProps> = ({
               {/* Quick Tips */}
               <div className="bg-cyan-900/20 border border-cyan-500/30 rounded-lg p-6">
                 <h3 className="text-cyan-400 font-bold mb-3 flex items-center gap-2">
-                  <span>💡</span> Pro Tips
+                  <Icon name="lamp" size={16} />
+                  Pro Tips
                 </h3>
                 <ul className="space-y-2 text-sm text-gray-300">
                   <li className="flex items-start gap-2">
@@ -120,14 +124,20 @@ export const WelcomeOverlay: React.FC<WelcomeOverlayProps> = ({
                   }}
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 rounded-lg font-semibold text-white transition-all shadow-lg"
                 >
-                  🎓 Start Interactive Tutorial
+                  <span className="inline-flex items-center gap-2">
+                    <Icon name="book" size={16} />
+                    Start Interactive Tutorial
+                  </span>
                 </button>
               )}
               <button
                 onClick={() => setCurrentPage('examples')}
                 className="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold text-white transition-all"
               >
-                📚 Try an Example
+                <span className="inline-flex items-center gap-2">
+                  <Icon name="document" size={16} />
+                  Try an Example
+                </span>
               </button>
               <button
                 onClick={onClose}

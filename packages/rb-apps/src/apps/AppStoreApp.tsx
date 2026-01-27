@@ -4,17 +4,7 @@
 
 import React, { useEffect, useState } from 'react';
 import type { RedByteApp } from '../types';
-import {
-  TerminalIcon,
-  SettingsIcon,
-  FilesIcon,
-  LogicIcon,
-  NeonWaveIcon,
-  CpuIcon,
-  ChipIcon,
-  FolderIcon,
-  DocumentIcon,
-} from '@redbyte/rb-icons';
+import { Icon, type IconName } from '@redbyte/rb-icons';
 
 interface AppStoreProps {
   onOpenApp?: (id: string, props?: any) => void;
@@ -48,7 +38,7 @@ const AppStoreComponent: React.FC<AppStoreProps> = ({ onOpenApp }) => {
           >
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-black/40 border border-white/10">
-                {iconFor(app)}
+                <Icon name={(app.manifest.iconId as IconName) ?? 'folder'} size={24} />
               </div>
               <div className="flex-1">
                 <div className="font-semibold text-base group-hover:text-cyan-200">{app.manifest.name}</div>
@@ -77,27 +67,3 @@ export const AppStoreApp: RedByteAppType = {
   },
   component: AppStoreComponent,
 };
-
-function iconFor(app: RedByteApp) {
-  const size = 26;
-  switch (app.manifest.iconId) {
-    case 'terminal':
-      return <TerminalIcon width={size} height={size} />;
-    case 'settings':
-      return <SettingsIcon width={size} height={size} />;
-    case 'files':
-      return <FilesIcon width={size} height={size} />;
-    case 'logic':
-      return <LogicIcon width={size} height={size} />;
-    case 'neon-wave':
-      return <NeonWaveIcon width={size} height={size} />;
-    case 'cpu':
-      return <CpuIcon width={size} height={size} />;
-    case 'chip':
-      return <ChipIcon width={size} height={size} />;
-    case 'document':
-      return <DocumentIcon width={size} height={size} />;
-    default:
-      return <FolderIcon width={size} height={size} />;
-  }
-}

@@ -4,18 +4,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ThemeVariant, WallpaperId } from '@redbyte/rb-utils';
-import {
-  TerminalIcon,
-  SettingsIcon,
-  FolderIcon,
-  FilesIcon,
-  LogicIcon,
-  NeonWaveIcon,
-  CpuIcon,
-  ChipIcon,
-  PowerButtonIcon,
-  DocumentIcon,
-} from '@redbyte/rb-icons';
+import { Icon, type IconName } from '@redbyte/rb-icons';
 import { getWallpaperStyle } from './wallpapers';
 
 interface DesktopProps {
@@ -28,7 +17,7 @@ interface DesktopIconData {
   id: string;
   title: string;
   appId: string;
-  iconId: string;
+  iconId: IconName;
   x: number;
   y: number;
 }
@@ -42,18 +31,22 @@ const GRID_SPACING = 128;
 const GRID_START_X = 56;
 const GRID_START_Y = 56;
 
-const iconComponents: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> = {
-  terminal: TerminalIcon,
-  settings: SettingsIcon,
-  files: FilesIcon,
-  logic: LogicIcon,
-  folder: FolderIcon,
-  'neon-wave': NeonWaveIcon,
-  cpu: CpuIcon,
-  chip: ChipIcon,
-  'power-button': PowerButtonIcon,
-  document: DocumentIcon,
+const seededValue = (seed: number) => {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
 };
+
+const buildNodes = (count: number, seed: number) =>
+  Array.from({ length: count }, (_, i) => {
+    const base = seed + i * 17.131;
+    return {
+      left: 5 + seededValue(base) * 90,
+      top: 5 + seededValue(base + 3.17) * 90,
+      size: 4 + Math.floor(seededValue(base + 5.23) * 6),
+      delay: seededValue(base + 9.41) * 2,
+      glow: 12 + Math.floor(seededValue(base + 11.7) * 10),
+    };
+  });
 
 export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeVariant }) => {
   const [icons, setIcons] = useState<DesktopIconData[]>(() => {
@@ -65,7 +58,8 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
       { id: 'files', title: 'Files', appId: 'files', iconId: 'files', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 3 },
       { id: 'settings', title: 'Settings', appId: 'settings', iconId: 'settings', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 4 },
       { id: 'terminal', title: 'Terminal', appId: 'terminal', iconId: 'terminal', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 5 },
-      { id: 'user-manual', title: 'Guide', appId: 'user-manual', iconId: 'document', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 6 },
+      { id: 'system-log', title: 'System Log', appId: 'system-log', iconId: 'log', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 6 },
+      { id: 'user-manual', title: 'Guide', appId: 'user-manual', iconId: 'document', x: GRID_START_X, y: GRID_START_Y + GRID_SPACING * 7 },
     ];
     return base;
   });
@@ -76,11 +70,9 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
   const desktopRef = useRef<HTMLDivElement>(null);
 
   const wallpaperStyle = useMemo(() => getWallpaperStyle(wallpaperId, themeVariant), [wallpaperId, themeVariant]);
-  const resolvedTheme = useMemo(() => {
-    if (themeVariant !== 'system') return themeVariant;
-    if (typeof window === 'undefined') return 'dark';
-    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-  }, [themeVariant]);
+  const circuitNodes = useMemo(() => buildNodes(15, 4.2), []);
+  const frostNodes = useMemo(() => buildNodes(30, 9.6), []);
+  const isLightMode = false;
 
   useEffect(() => {
     desktopRef.current?.focus();
@@ -163,8 +155,6 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
     }
   };
 
-  const isLightMode = resolvedTheme === 'light';
-
   return (
     <div
       ref={desktopRef}
@@ -222,23 +212,23 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
 
           {/* Circuit nodes - pulsing dots at intersections */}
           <div className={`absolute inset-0 ${isLightMode ? 'opacity-20' : 'opacity-30'}`}>
-            {[...Array(15)].map((_, i) => (
+            {circuitNodes.map((node, i) => (
               <div
                 key={`node-${i}`}
-                className="absolute rounded-full"
+                className="absolute rounded-full rb-anim"
                 style={{
-                  left: `${Math.random() * 90 + 5}%`,
-                  top: `${Math.random() * 90 + 5}%`,
-                  width: Math.random() * 8 + 4 + 'px',
-                  height: Math.random() * 8 + 4 + 'px',
+                  left: `${node.left}%`,
+                  top: `${node.top}%`,
+                  width: `${node.size}px`,
+                  height: `${node.size}px`,
                   background: isLightMode
                     ? 'rgba(6, 182, 212, 0.5)'
                     : 'rgba(6, 182, 212, 0.9)',
                   boxShadow: isLightMode
-                    ? '0 0 12px rgba(6, 182, 212, 0.3)'
-                    : '0 0 20px rgba(6, 182, 212, 0.7)',
-                  animation: `circuit-pulse ${2 + Math.random() * 3}s ease-in-out infinite`,
-                  animationDelay: `${Math.random() * 2}s`,
+                    ? `0 0 ${node.glow}px rgba(6, 182, 212, 0.3)`
+                    : `0 0 ${node.glow + 6}px rgba(6, 182, 212, 0.7)`,
+                  animation: `circuit-pulse ${2 + node.delay}s ease-in-out infinite`,
+                  animationDelay: `${node.delay}s`,
                 }}
               />
             ))}
@@ -276,23 +266,23 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
 
           {/* Frost particles - small glowing dots */}
           <div className={`absolute inset-0 ${isLightMode ? 'opacity-10' : 'opacity-20'}`}>
-            {[...Array(30)].map((_, i) => (
+            {frostNodes.map((node, i) => (
               <div
                 key={`frost-${i}`}
-                className="absolute rounded-full"
+                className="absolute rounded-full rb-anim"
                 style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  width: Math.random() * 3 + 1 + 'px',
-                  height: Math.random() * 3 + 1 + 'px',
+                  left: `${node.left}%`,
+                  top: `${node.top}%`,
+                  width: `${Math.max(1, Math.floor(node.size / 2))}px`,
+                  height: `${Math.max(1, Math.floor(node.size / 2))}px`,
                   background: isLightMode
                     ? 'rgba(6, 182, 212, 0.6)'
                     : 'rgba(6, 182, 212, 1)',
                   boxShadow: isLightMode
-                    ? '0 0 8px rgba(6, 182, 212, 0.4)'
-                    : '0 0 10px rgba(6, 182, 212, 0.8)',
-                  animation: `frost-twinkle ${1 + Math.random() * 2}s ease-in-out infinite`,
-                  animationDelay: `${Math.random() * 3}s`,
+                    ? `0 0 ${Math.max(6, node.glow - 4)}px rgba(6, 182, 212, 0.4)`
+                    : `0 0 ${Math.max(8, node.glow - 2)}px rgba(6, 182, 212, 0.8)`,
+                  animation: `frost-twinkle ${1 + node.delay}s ease-in-out infinite`,
+                  animationDelay: `${node.delay}s`,
                 }}
               />
             ))}
@@ -305,10 +295,9 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
         <div className={`pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent ${isLightMode ? 'via-white/5 to-white/10' : 'via-black/5 to-black/20'}`} />
       )}
       {icons.map((icon) => {
-        const IconComponent = iconComponents[icon.iconId] ?? FolderIcon;
         const isSelected = selected.includes(icon.id);
-        const isFlagship = icon.id === 'logic'; // Logic Playground is the flagship
-        const iconSize = isFlagship ? 36 : 30;
+        const isFlagship = icon.id === 'logic';
+        const iconSize = isFlagship ? 24 : 20;
 
         return (
           <div
@@ -338,9 +327,9 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
                 }`}
               style={{ width: `${ICON_BOX_SIZE}px`, height: `${ICON_BOX_SIZE}px` }}
             >
-              <IconComponent
-                width={iconSize}
-                height={iconSize}
+              <Icon
+                name={icon.iconId}
+                size={iconSize as 20 | 24}
                 className={
                   isFlagship
                     ? 'text-cyan-300'
@@ -348,6 +337,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
                       ? 'text-gray-700'
                       : 'text-slate-300'
                 }
+                aria-label={`${icon.title} icon`}
               />
             </div>
             <div

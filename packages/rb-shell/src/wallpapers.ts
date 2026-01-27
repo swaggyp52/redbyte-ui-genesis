@@ -11,10 +11,9 @@ export interface WallpaperDefinition {
   style: (variant: ThemeVariant) => CSSProperties;
 }
 
-const resolveThemeVariant = (variant: ThemeVariant): 'light' | 'dark' => {
-  if (variant !== 'system') return variant;
-  if (typeof window === 'undefined') return 'dark';
-  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+const resolveThemeVariant = (_variant: ThemeVariant): 'light' | 'dark' => {
+  // Current themes are dark-toned; keep wallpaper styling consistent.
+  return 'dark';
 };
 
 export const wallpapers: WallpaperDefinition[] = [

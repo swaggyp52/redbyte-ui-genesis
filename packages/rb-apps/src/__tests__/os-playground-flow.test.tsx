@@ -38,7 +38,7 @@ describe.skip('OS to Playground circuit flow', () => {
     sessionStorage.clear();
     useWindowStore.setState({ windows: [], nextZIndex: 1 });
     useSettingsStore.setState({
-      themeVariant: 'dark',
+      themeVariant: 'redbyte-dark',
       wallpaperId: 'default',
       accentColor: 'cyan',
       tickRate: 20,

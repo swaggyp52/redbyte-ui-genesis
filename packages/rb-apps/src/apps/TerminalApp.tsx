@@ -2,18 +2,26 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import type { RedByteApp } from '../types';
 import { listExamples, type ExampleId } from '../examples';
+import { getApp } from '../AppRegistry';
 import { useSettingsStore, type ThemeVariant } from '@redbyte/rb-utils';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import { deleteFile, getFile, listFiles } from '../stores/filesStore';
 import { exportAuditLog } from '../utils/audit';
+import { useFileSystemStore } from '../stores/fileSystemStore';
+import { logSystemEvent, useSystemLogStore } from '../stores/systemLogStore';
+import { digestValue, stableStringify } from '../utils/digest';
+import { Icon } from '@redbyte/rb-icons';
 
 interface TerminalProps {
   onOpenApp?: (appId: string, props?: any) => void;
   onThemeChange?: (theme: ThemeVariant) => void;
   onTickRateChange?: (rate: number) => void;
+  determinismRecorder?: any;
+  getCurrentCircuit?: () => any;
+  versionLabel?: string;
 }
 
 interface TerminalLine {
@@ -52,6 +60,54 @@ const COMMAND_SPECS: Record<string, CommandSpec> = {
     reads: [],
     writes: ['terminal_buffer'],
     produces: [],
+  },
+  open: {
+    description: 'Open an app window',
+    reads: ['app_registry'],
+    writes: ['window_store'],
+    produces: [],
+  },
+  focus: {
+    description: 'Focus a window by id or app',
+    reads: ['window_store'],
+    writes: ['window_store'],
+    produces: [],
+  },
+  'list windows': {
+    description: 'List open windows',
+    reads: ['window_store'],
+    writes: [],
+    produces: [],
+  },
+  'list files': {
+    description: 'List virtual filesystem files',
+    reads: ['file_system'],
+    writes: [],
+    produces: [],
+  },
+  cat: {
+    description: 'Print file contents from the virtual filesystem',
+    reads: ['file_system'],
+    writes: [],
+    produces: [],
+  },
+  theme: {
+    description: 'Set theme variant',
+    reads: ['settings'],
+    writes: ['settings.theme'],
+    produces: [],
+  },
+  record: {
+    description: 'Toggle determinism recorder',
+    reads: ['determinism'],
+    writes: ['determinism'],
+    produces: [],
+  },
+  'export capsule': {
+    description: 'Export deterministic capsule',
+    reads: ['determinism', 'window_store', 'settings', 'system_log'],
+    writes: [],
+    produces: ['capsule_artifact'],
   },
   about: {
     description: 'About RedByte OS',
@@ -152,8 +208,14 @@ const COMMAND_SPECS: Record<string, CommandSpec> = {
 };
 
 const COMMAND_USAGE: Record<string, string> = {
+  open: 'Usage: open <appId>',
+  focus: 'Usage: focus <windowId | appId>',
+  list: 'Usage: list windows | list files',
+  cat: 'Usage: cat <fileId | fileName>',
+  theme: 'Usage: theme <redbyte-dark | instrument>',
+  record: 'Usage: record on | record off',
+  export: 'Usage: export capsule',
   apps: 'Usage: apps list',
-  theme: 'Usage: theme list | theme current | theme set <variant>',
   wallpaper: 'Usage: wallpaper set <neon-circuit | frost-grid | solid>',
   files: 'Usage: files list | files open <id> | files delete <id>',
   examples: 'Usage: examples list | examples load <id>',
@@ -164,13 +226,28 @@ const COMMAND_USAGE: Record<string, string> = {
 const resolveCommandKey = (command: string, args: string[]): string | null => {
   if (!command) return null;
   switch (command) {
+    case 'open':
+      return 'open';
+    case 'focus':
+      return 'focus';
+    case 'list':
+      if (args[0] === 'windows') return 'list windows';
+      if (args[0] === 'files') return 'list files';
+      return null;
+    case 'cat':
+      return 'cat';
+    case 'record':
+      return 'record';
+    case 'export':
+      return args[0] === 'capsule' ? 'export capsule' : null;
     case 'apps':
       return args[0] ? `apps ${args[0]}` : 'apps list';
     case 'theme':
-      if (!args[0] || args[0] === 'list') return 'theme list';
+      if (!args[0]) return 'theme';
+      if (args[0] === 'list') return 'theme list';
       if (args[0] === 'current') return 'theme current';
       if (args[0] === 'set') return 'theme set';
-      return null;
+      return 'theme';
     case 'wallpaper':
       return args[0] === 'set' ? 'wallpaper set' : null;
     case 'files':
@@ -249,6 +326,9 @@ const TerminalComponent: React.FC<TerminalProps> = ({
   onOpenApp,
   onThemeChange,
   onTickRateChange,
+  determinismRecorder,
+  getCurrentCircuit,
+  versionLabel,
 }) => {
   const [lines, setLines] = useState<TerminalLine[]>([
     { type: 'output', text: 'RedByte OS Terminal v1.0' },
@@ -258,6 +338,23 @@ const TerminalComponent: React.FC<TerminalProps> = ({
   const [input, setInput] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState('');
+  const [paletteIndex, setPaletteIndex] = useState(0);
+
+  const paletteItems = useMemo(() => {
+    const entries = Object.entries(COMMAND_SPECS).map(([id, spec]) => ({
+      id,
+      label: spec.description,
+    }));
+    if (!paletteQuery.trim()) return entries;
+    const lowered = paletteQuery.toLowerCase();
+    return entries.filter((item) => item.id.includes(lowered) || item.label.toLowerCase().includes(lowered));
+  }, [paletteQuery]);
+
+  useEffect(() => {
+    setPaletteIndex(0);
+  }, [paletteQuery, paletteItems.length]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
@@ -271,8 +368,23 @@ const TerminalComponent: React.FC<TerminalProps> = ({
     setLines((prev) => [...prev, { type, text, title }]);
   };
 
-  const isThemeVariant = (value: string | undefined): value is ThemeVariant =>
-    value === 'light' || value === 'dark' || value === 'system';
+  const logCommandEvent = (level: 'info' | 'action' | 'warning' | 'error', message: string, data?: Record<string, unknown>) => {
+    logSystemEvent({
+      level,
+      source: 'terminal',
+      message,
+      data,
+    });
+  };
+
+  const resolveThemeVariant = (value: string | undefined): ThemeVariant | null => {
+    if (!value) return null;
+    const normalized = value.toLowerCase();
+    if (normalized === 'redbyte-dark' || normalized === 'redbyte' || normalized === 'dark') return 'redbyte-dark';
+    if (normalized === 'instrument' || normalized === 'inst') return 'instrument';
+    if (normalized === 'system') return 'system';
+    return null;
+  };
 
   const listRunningApps = async () => {
     const windows = useWindowStore.getState().windows;
@@ -290,6 +402,82 @@ const TerminalComponent: React.FC<TerminalProps> = ({
       const name = app?.manifest.name ?? window.contentId;
       addLine(`  ${name} (${window.contentId})`);
     });
+  };
+
+  const listWindows = () => {
+    const windows = useWindowStore.getState().windows;
+    if (windows.length === 0) {
+      addLine('No windows open.');
+      return;
+    }
+    addLine('Windows:');
+    windows.forEach((window) => {
+      const focused = window.focused ? '*' : ' ';
+      addLine(` ${focused} ${window.id} | ${window.contentId} | ${window.title} | ${window.mode}`);
+    });
+  };
+
+  const listVirtualFiles = () => {
+    const files = useFileSystemStore.getState().getAllFiles();
+    if (files.length === 0) {
+      addLine('No virtual files found.');
+      return;
+    }
+    addLine('Virtual files:');
+    files.forEach((file) => {
+      addLine(`  ${file.id} | ${file.name} | ${file.modified}`);
+    });
+  };
+
+  const catVirtualFile = (query: string | undefined) => {
+    if (!query) {
+      addLine('Usage: cat <fileId | fileName>', 'error');
+      return;
+    }
+    const fs = useFileSystemStore.getState();
+    let file = fs.getFile(query);
+    if (!file) {
+      const all = fs.getAllFiles();
+      file = all.find((entry) => entry.name.toLowerCase() === query.toLowerCase()) ?? null;
+    }
+    if (!file) {
+      addLine('File not found in virtual filesystem.', 'error');
+      return;
+    }
+    addLine(`--- ${file.name} (${file.id}) ---`);
+    addLine(file.content ? file.content : '[empty]');
+  };
+
+  const downloadText = (filename: string, text: string) => {
+    const blob = new Blob([text], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportCapsule = () => {
+    const windows = useWindowStore.getState().windows;
+    const settings = useSettingsStore.getState();
+    const systemLog = useSystemLogStore.getState().entries;
+    const determinismLog = determinismRecorder?.getLog ? determinismRecorder.getLog() : null;
+    const payload = {
+      schema_version: 'rb_capsule_v1',
+      created_at: new Date().toISOString(),
+      version: versionLabel ?? 'unknown',
+      ui_state: {
+        windows,
+        nextZIndex: useWindowStore.getState().nextZIndex,
+        settings,
+      },
+      determinism: determinismLog,
+      system_log: systemLog,
+    };
+    const hash = digestValue(payload);
+    const capsule = { ...payload, hash };
+    downloadText(`rb-capsule-${Date.now()}.json`, stableStringify(capsule));
   };
 
   const handleCommand = (cmd: string) => {
@@ -319,6 +507,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
     }
 
     appendCommandLog(trimmed);
+    logCommandEvent('action', 'Command executed', { command: trimmed });
 
     switch (command) {
       case 'help':
@@ -332,6 +521,46 @@ const TerminalComponent: React.FC<TerminalProps> = ({
           '  clear                       - Clear terminal screen',
           'output',
           formatCommandEffects(COMMAND_SPECS.clear)
+        );
+        addLine(
+          '  open <appId>                - Open an app window',
+          'output',
+          formatCommandEffects(COMMAND_SPECS.open)
+        );
+        addLine(
+          '  focus <windowId|appId>      - Focus a window',
+          'output',
+          formatCommandEffects(COMMAND_SPECS.focus)
+        );
+        addLine(
+          '  list windows                - List open windows',
+          'output',
+          formatCommandEffects(COMMAND_SPECS['list windows'])
+        );
+        addLine(
+          '  list files                  - List virtual filesystem files',
+          'output',
+          formatCommandEffects(COMMAND_SPECS['list files'])
+        );
+        addLine(
+          '  cat <fileId|fileName>       - Print a virtual file',
+          'output',
+          formatCommandEffects(COMMAND_SPECS.cat)
+        );
+        addLine(
+          '  theme <name>                - Set theme (redbyte-dark | instrument)',
+          'output',
+          formatCommandEffects(COMMAND_SPECS.theme)
+        );
+        addLine(
+          '  record on|off               - Toggle determinism recorder',
+          'output',
+          formatCommandEffects(COMMAND_SPECS.record)
+        );
+        addLine(
+          '  export capsule              - Export determinism capsule',
+          'output',
+          formatCommandEffects(COMMAND_SPECS['export capsule'])
         );
         addLine(
           '  about                       - About RedByte OS',
@@ -406,13 +635,123 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         break;
 
       case 'about':
-        addLine('RedByte OS v1.0');
-        addLine('Digital Logic Workspace');
+        addLine(versionLabel ? `RedByte OS ${versionLabel}` : 'RedByte OS');
+        addLine('Deterministic Logic Workspace');
         addLine('');
         addLine(`Theme: ${useSettingsStore.getState().themeVariant}`);
         addLine(`Wallpaper: ${useSettingsStore.getState().wallpaperId}`);
         addLine(`Tick Rate: ${useSettingsStore.getState().tickRate} Hz`);
         break;
+
+      case 'open': {
+        const appId = args[0];
+        if (!appId) {
+          addLine(COMMAND_USAGE.open, 'error');
+          break;
+        }
+        const app = getApp(appId);
+        if (!app) {
+          addLine(`App not found: ${appId}`, 'error');
+          logCommandEvent('error', 'App not found', { appId });
+          break;
+        }
+        onOpenApp?.(appId);
+        addLine(`Opened ${app.manifest.name}.`);
+        logCommandEvent('info', 'App opened', { appId });
+        break;
+      }
+
+      case 'focus': {
+        const query = args.join(' ').trim();
+        if (!query) {
+          addLine(COMMAND_USAGE.focus, 'error');
+          break;
+        }
+        const store = useWindowStore.getState();
+        const windows = store.windows;
+        let target = windows.find((w) => w.id === query);
+        if (!target) {
+          target = windows.find((w) => w.contentId === query);
+        }
+        if (!target) {
+          target = windows.find((w) => w.title.toLowerCase() === query.toLowerCase());
+        }
+        if (!target) {
+          addLine('Window not found.', 'error');
+          logCommandEvent('error', 'Window not found', { query });
+          break;
+        }
+        if (target.mode === 'minimized') {
+          store.restoreWindow(target.id);
+        }
+        store.focusWindow(target.id);
+        addLine(`Focused ${target.title} (${target.id}).`);
+        logCommandEvent('info', 'Window focused', { windowId: target.id });
+        break;
+      }
+
+      case 'list': {
+        const sub = args[0];
+        if (sub === 'windows') {
+          listWindows();
+          break;
+        }
+        if (sub === 'files') {
+          listVirtualFiles();
+          break;
+        }
+        addLine(COMMAND_USAGE.list, 'error');
+        break;
+      }
+
+      case 'cat': {
+        const target = args.join(' ').trim();
+        catVirtualFile(target);
+        break;
+      }
+
+      case 'record': {
+        const sub = args[0];
+        if (!determinismRecorder || !getCurrentCircuit) {
+          addLine('Determinism recorder unavailable.', 'error');
+          break;
+        }
+        if (!sub) {
+          addLine(`Recording: ${determinismRecorder.isRecording ? 'on' : 'off'}`);
+          break;
+        }
+        if (sub === 'on') {
+          const circuit = getCurrentCircuit();
+          if (!circuit) {
+            addLine('No active circuit to record.', 'error');
+            logCommandEvent('warning', 'Record failed (no circuit)');
+            break;
+          }
+          determinismRecorder.startRecording(circuit);
+          addLine('Recording enabled.');
+          logCommandEvent('info', 'Recording started');
+          break;
+        }
+        if (sub === 'off') {
+          determinismRecorder.stopRecording();
+          addLine('Recording stopped.');
+          logCommandEvent('info', 'Recording stopped');
+          break;
+        }
+        addLine(COMMAND_USAGE.record, 'error');
+        break;
+      }
+
+      case 'export': {
+        if (args[0] !== 'capsule') {
+          addLine(COMMAND_USAGE.export, 'error');
+          break;
+        }
+        exportCapsule();
+        addLine('Capsule exported.');
+        logCommandEvent('info', 'Capsule exported');
+        break;
+      }
 
       case 'status': {
         const settings = useSettingsStore.getState();
@@ -479,8 +818,14 @@ const TerminalComponent: React.FC<TerminalProps> = ({
 
       case 'theme': {
         const sub = args[0];
-        if (!sub || sub === 'list') {
-          addLine('Available themes: light, dark, system');
+        if (!sub) {
+          const current = useSettingsStore.getState().themeVariant;
+          addLine(`Current theme: ${current}`);
+          addLine('Available themes: redbyte-dark, instrument');
+          break;
+        }
+        if (sub === 'list') {
+          addLine('Available themes: redbyte-dark, instrument');
           break;
         }
         if (sub === 'current') {
@@ -488,17 +833,24 @@ const TerminalComponent: React.FC<TerminalProps> = ({
           break;
         }
         if (sub === 'set') {
-          const variant = args[1];
-          if (isThemeVariant(variant)) {
+          const variant = resolveThemeVariant(args[1]);
+          if (variant) {
             addLine(`Theme set to: ${variant}`);
             useSettingsStore.getState().setThemeVariant(variant);
             onThemeChange?.(variant);
           } else {
-            addLine('Valid themes: light, dark, system', 'error');
+            addLine('Valid themes: redbyte-dark, instrument', 'error');
           }
           break;
         }
-        addLine('Usage: theme list | theme current | theme set <variant>', 'error');
+        const variant = resolveThemeVariant(sub);
+        if (variant) {
+          addLine(`Theme set to: ${variant}`);
+          useSettingsStore.getState().setThemeVariant(variant);
+          onThemeChange?.(variant);
+          break;
+        }
+        addLine(COMMAND_USAGE.theme, 'error');
         break;
       }
 
@@ -621,11 +973,61 @@ const TerminalComponent: React.FC<TerminalProps> = ({
     addLine('');
   };
 
+  const openPalette = () => {
+    setPaletteOpen(true);
+    setPaletteQuery('');
+    setPaletteIndex(0);
+  };
+
+  const closePalette = () => {
+    setPaletteOpen(false);
+    setPaletteQuery('');
+    setPaletteIndex(0);
+    inputRef.current?.focus();
+  };
+
+  const handlePaletteSelect = (commandId: string) => {
+    closePalette();
+    handleCommand(commandId);
+  };
+
+  const handlePaletteKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closePalette();
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setPaletteIndex((prev) => Math.min(prev + 1, paletteItems.length - 1));
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setPaletteIndex((prev) => Math.max(prev - 1, 0));
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const selected = paletteItems[paletteIndex];
+      if (selected) {
+        handlePaletteSelect(selected.id);
+      }
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim()) {
       handleCommand(input);
       setInput('');
+    }
+  };
+
+  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'p') {
+      event.preventDefault();
+      openPalette();
     }
   };
 
@@ -641,7 +1043,10 @@ const TerminalComponent: React.FC<TerminalProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-black text-white font-mono text-sm">
+    <div
+      className="h-full flex flex-col font-mono text-sm relative"
+      style={{ background: 'var(--rb-bg)', color: 'var(--rb-text)' }}
+    >
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-4 space-y-1"
@@ -654,15 +1059,16 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         ))}
       </div>
 
-      <form onSubmit={handleSubmit} className="border-t border-gray-700 p-4">
+      <form onSubmit={handleSubmit} className="border-t p-4" style={{ borderColor: 'var(--rb-border)' }}>
         <div className="flex items-center gap-2">
-          <span className="text-green-400">&gt;</span>
+          <span className="text-cyan-300">&gt;</span>
           <input
             ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            className="flex-1 bg-transparent outline-none text-white"
+            onKeyDown={handleInputKeyDown}
+            className="flex-1 bg-transparent outline-none"
             aria-label="Terminal command input"
             placeholder="Enter a command"
             autoFocus
@@ -670,6 +1076,44 @@ const TerminalComponent: React.FC<TerminalProps> = ({
           />
         </div>
       </form>
+
+      {paletteOpen && (
+        <div
+          className="absolute inset-0 bg-black/70 flex items-start justify-center pt-16"
+          onKeyDown={handlePaletteKeyDown}
+        >
+          <div className="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-950 shadow-2xl">
+            <div className="flex items-center gap-2 border-b border-slate-800 px-3 py-2 text-xs text-slate-400">
+              <Icon name="search" size={16} />
+              <input
+                value={paletteQuery}
+                onChange={(e) => setPaletteQuery(e.target.value)}
+                className="flex-1 bg-transparent outline-none text-slate-200"
+                placeholder="Filter commands..."
+                autoFocus
+              />
+              <span className="text-[10px] text-slate-500">Esc</span>
+            </div>
+            <div className="max-h-72 overflow-y-auto">
+              {paletteItems.length === 0 && (
+                <div className="px-3 py-3 text-xs text-slate-500">No matches.</div>
+              )}
+              {paletteItems.map((item, index) => (
+                <button
+                  key={item.id}
+                  onClick={() => handlePaletteSelect(item.id)}
+                  className={`w-full text-left px-3 py-2 text-xs border-b border-slate-900 ${
+                    index === paletteIndex ? 'bg-cyan-500/10 text-cyan-200' : 'text-slate-300 hover:bg-slate-900/60'
+                  }`}
+                >
+                  <div className="font-mono text-slate-200">{item.id}</div>
+                  <div className="text-[11px] text-slate-500">{item.label}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

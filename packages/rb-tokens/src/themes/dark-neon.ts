@@ -13,16 +13,16 @@ import type { RBTokens } from '../types';
 export const tokensDarkNeon: RBTokens = {
   color: {
     accent: {
-      50: '#fff1f2',
-      100: '#ffe4e6',
-      200: '#fecdd3',
-      300: '#fda4af',
-      400: '#fb7185',
-      500: '#f43f5e',  // Primary accent
-      600: '#e11d48',
-      700: '#be123c',
-      800: '#9f1239',
-      900: '#881337',
+      50: '#fff5f3',
+      100: '#ffe4de',
+      200: '#fec5ba',
+      300: '#f99c8a',
+      400: '#f26c54',
+      500: '#cc2c1a',  // Primary accent
+      600: '#b32516',
+      700: '#8f1e12',
+      800: '#70160d',
+      900: '#520f08',
     },
     neutral: {
       50: '#f8fafc',
@@ -128,9 +128,9 @@ export const tokensDarkNeon: RBTokens = {
   },
   typography: {
     fontFamily: {
-      sans: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-      serif: 'Georgia, Cambria, "Times New Roman", Times, serif',
-      mono: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+      sans: '"Space Grotesk", "IBM Plex Sans", "SF Pro Text", system-ui, sans-serif',
+      serif: 'Georgia, "Times New Roman", serif',
+      mono: '"JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
     },
     fontSize: {
       xs: '0.75rem',    // 12px

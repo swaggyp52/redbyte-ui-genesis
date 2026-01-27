@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { Portal } from '../Portal';
 import { Toast } from './Toast';
-import { subscribeToToasts } from './toastStore';
+import { subscribeToToasts, toastStore } from './toastStore';
 import type { Toast as ToastType } from './toastTypes';
 
 export interface ToastContainerProps {
@@ -49,8 +49,7 @@ export function ToastContainer({ position = 'top-right' }: ToastContainerProps) 
             key={toast.id}
             toast={toast}
             onDismiss={(id) => {
-              // The toast store handles removal
-              // This is called from Toast component after animation
+              toastStore.remove(id);
             }}
           />
         ))}

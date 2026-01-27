@@ -6028,3 +6028,11 @@ Commits:
 - Added HDL Code view wiring: introduced `code-only` layout preset, code view renderer, and layout dropdown/shortcut updates to expose the new view; objectives unchanged; phase unchanged.
 - Hardened Code view rendering (safe highlighting, line-number gutter, copy/download alignment) and added layout help/docs updates for new shortcuts; objectives unchanged; phase unchanged.
 - Corrected Schematic view header text corruption and layout stats display; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-27 (RedByte UI Cohesion Pass - PHASE_UI_01/02)
+
+- Added `rb-ui-constitution.md`, `rb-ui-implementation-plan.md`, and `rb-ui-before-after-checklist.md` for the deterministic UI system contract and delivery tracking.
+- Introduced unified IconMap registry in `@redbyte/rb-icons` and replaced mixed icon usage across shell/apps for consistent sizing and semantics.
+- Added TopBar determinism status + System Log entry point, window provenance footer, and System Log store/app with Shell event logging.
+- Expanded Settings with RedByte Dark/Instrument themes, density and reduce motion toggles, and shortcuts reference; updated theme tokens and application.
+- Delivered Terminal MVP with command palette, deterministic OS commands, capsule export, and determinism recording controls; fixed toast dismiss hitbox and added targeted tests; objectives unchanged; phase unchanged.

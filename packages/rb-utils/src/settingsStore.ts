@@ -4,8 +4,9 @@
 
 import { create } from 'zustand';
 
-export type ThemeVariant = 'light' | 'dark' | 'system';
+export type ThemeVariant = 'redbyte-dark' | 'instrument' | 'system';
 export type WallpaperId = 'default' | 'neon-circuit' | 'frost-grid' | 'solid';
+export type DensityMode = 'compact' | 'comfortable';
 
 const ACCENT_COLORS = ['cyan', 'purple', 'green', 'orange', 'pink'] as const;
 export type AccentColor = (typeof ACCENT_COLORS)[number];
@@ -15,6 +16,8 @@ interface SettingsState {
   wallpaperId: WallpaperId;
   accentColor: AccentColor;
   tickRate: number;
+  reduceMotion: boolean;
+  density: DensityMode;
 }
 
 interface SettingsActions {
@@ -22,6 +25,8 @@ interface SettingsActions {
   setWallpaperId: (id: WallpaperId) => void;
   setAccentColor: (color: AccentColor) => void;
   setTickRate: (rate: number) => void;
+  setReduceMotion: (enabled: boolean) => void;
+  setDensity: (mode: DensityMode) => void;
 }
 
 type SettingsStore = SettingsState & SettingsActions;
@@ -29,10 +34,12 @@ type SettingsStore = SettingsState & SettingsActions;
 const STORAGE_KEY = 'rb.shell.settings';
 
 const DEFAULT_SETTINGS: SettingsState = {
-  themeVariant: 'dark',
+  themeVariant: 'redbyte-dark',
   wallpaperId: 'neon-circuit',
   accentColor: 'cyan',
   tickRate: 20,
+  reduceMotion: false,
+  density: 'comfortable',
 };
 
 function loadSettings(): SettingsState {
@@ -53,10 +60,18 @@ function loadSettings(): SettingsState {
 
     const VALID_WALLPAPERS: WallpaperId[] = ['default', 'neon-circuit', 'frost-grid', 'solid'];
 
+    const themeVariant = (() => {
+      const raw = parsed.themeVariant;
+      if (raw === 'redbyte-dark' || raw === 'instrument' || raw === 'system') return raw;
+      if (raw === 'dark') return 'redbyte-dark';
+      if (raw === 'light') return 'instrument';
+      return DEFAULT_SETTINGS.themeVariant;
+    })();
+
+    const density: DensityMode = rawDensity(parsed.density);
+
     return {
-      themeVariant: ['light', 'dark', 'system'].includes(parsed.themeVariant)
-        ? parsed.themeVariant
-        : DEFAULT_SETTINGS.themeVariant,
+      themeVariant,
       wallpaperId: VALID_WALLPAPERS.includes(parsed.wallpaperId)
         ? parsed.wallpaperId
         : DEFAULT_SETTINGS.wallpaperId,
@@ -66,6 +81,10 @@ function loadSettings(): SettingsState {
       tickRate: typeof parsed.tickRate === 'number' && parsed.tickRate > 0 && parsed.tickRate <= 60
         ? parsed.tickRate
         : DEFAULT_SETTINGS.tickRate,
+      reduceMotion: typeof parsed.reduceMotion === 'boolean'
+        ? parsed.reduceMotion
+        : DEFAULT_SETTINGS.reduceMotion,
+      density,
     };
   } catch (err) {
     console.warn('Failed to load settings from localStorage, using defaults', err);
@@ -81,6 +100,11 @@ function persistSettings(settings: SettingsState): void {
   } catch (err) {
     console.warn('Failed to persist settings to localStorage', err);
   }
+}
+
+function rawDensity(value: unknown): DensityMode {
+  if (value === 'compact' || value === 'comfortable') return value;
+  return DEFAULT_SETTINGS.density;
 }
 
 // Lazy-init singleton to prevent TDZ crash from circular imports
@@ -110,6 +134,17 @@ function createSettingsStore() {
       // Clamp to valid range
       const clampedRate = Math.max(1, Math.min(60, rate));
       set({ tickRate: clampedRate });
+      persistSettings(get());
+    },
+
+    setReduceMotion: (enabled) => {
+      set({ reduceMotion: enabled });
+      persistSettings(get());
+    },
+
+    setDensity: (mode) => {
+      const next = rawDensity(mode);
+      set({ density: next });
       persistSettings(get());
     },
   }));

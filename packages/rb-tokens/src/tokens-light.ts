@@ -7,9 +7,9 @@ import type { RBTokens } from './types';
 export const tokensLightFrost: RBTokens = {
   color: {
     accent: {
-      50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe',
-      300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6',
-      600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a',
+      50: '#fffbeb', 100: '#fef3c7', 200: '#fde68a',
+      300: '#fcd34d', 400: '#fbbf24', 500: '#f59e0b',
+      600: '#d97706', 700: '#b45309', 800: '#92400e', 900: '#78350f',
     },
     neutral: {
       50: '#0f172a', 100: '#1e293b', 200: '#334155',
@@ -58,9 +58,9 @@ export const tokensLightFrost: RBTokens = {
   },
   typography: {
     fontFamily: {
-      sans: 'system-ui, sans-serif',
-      serif: 'Georgia, serif',
-      mono: 'ui-monospace, monospace',
+      sans: '"Space Grotesk", "IBM Plex Sans", "SF Pro Text", system-ui, sans-serif',
+      serif: 'Georgia, "Times New Roman", serif',
+      mono: '"JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
     },
     fontSize: {
       xs: '0.75rem', sm: '0.875rem', base: '1rem', lg: '1.125rem',

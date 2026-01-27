@@ -5,14 +5,18 @@ import { vi } from 'vitest';
 
 // Mock settings state - stable reference
 const mockSettingsState = {
-  themeVariant: 'dark' as const,
+  themeVariant: 'redbyte-dark' as const,
   wallpaperId: 'neon-circuit' as const,
   accentColor: 'cyan' as const,
   tickRate: 20,
+  reduceMotion: false,
+  density: 'comfortable' as const,
   setThemeVariant: vi.fn(),
   setWallpaperId: vi.fn(),
   setAccentColor: vi.fn(),
   setTickRate: vi.fn(),
+  setReduceMotion: vi.fn(),
+  setDensity: vi.fn(),
 };
 
 // Mock UI tick state - stable reference

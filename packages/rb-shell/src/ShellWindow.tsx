@@ -4,11 +4,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { WindowState } from '@redbyte/rb-windowing';
-import {
-  WindowCloseIcon,
-  WindowMaximizeIcon,
-  WindowMinimizeIcon,
-} from '@redbyte/rb-icons';
+import { Icon } from '@redbyte/rb-icons';
 import { PortalProvider } from '@redbyte/rb-primitives';
 
 interface ShellWindowProps {
@@ -21,6 +17,11 @@ interface ShellWindowProps {
   onMinimize: () => void;
   onMaximize: () => void;
   onRestore: () => void;
+  provenance?: {
+    appId: string;
+    resourceId?: string;
+    tick?: number;
+  };
   children?: React.ReactNode;
 }
 
@@ -36,6 +37,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
   onMinimize,
   onMaximize,
   onRestore,
+  provenance,
   children,
 }) => {
   const [dragging, setDragging] = useState(false);
@@ -200,7 +202,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
               title="Minimize"
               data-testid="window-minimize-button"
             >
-              <WindowMinimizeIcon width={14} height={14} />
+              <Icon name="window-minimize" size={16} />
             </button>
           )}
           {state.maximizable && (
@@ -211,7 +213,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
               title={isMax ? "Restore" : "Maximize"}
               data-testid="window-maximize-button"
             >
-              <WindowMaximizeIcon width={14} height={14} />
+              <Icon name="window-maximize" size={16} />
             </button>
           )}
           <button
@@ -221,21 +223,37 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
             title="Close"
             data-testid="window-close-button"
           >
-            <WindowCloseIcon width={14} height={14} />
+            <Icon name="window-close" size={16} />
           </button>
         </div>
       </div>
 
-      <div className="h-[calc(100%-40px)] overflow-hidden relative" style={{ background: 'var(--rb-bg)', color: 'var(--rb-text)' }}>
-        <PortalProvider container={overlayRootRef.current}>
-          {children}
-        </PortalProvider>
-        {/* Window-scoped portal target for modals and overlays */}
+      <div className="h-[calc(100%-40px)] flex flex-col" style={{ background: 'var(--rb-bg)', color: 'var(--rb-text)' }}>
+        <div className="flex-1 overflow-hidden relative">
+          <PortalProvider container={overlayRootRef.current}>
+            {children}
+          </PortalProvider>
+          {/* Window-scoped portal target for modals and overlays */}
+          <div
+            ref={overlayRootRef}
+            data-rb-window-overlay-root
+            className="absolute inset-0 pointer-events-none z-50"
+          />
+        </div>
         <div
-          ref={overlayRootRef}
-          data-rb-window-overlay-root
-          className="absolute inset-0 pointer-events-none z-50"
-        />
+          className="h-6 px-3 flex items-center justify-between text-[10px] font-mono tracking-wide border-t"
+          style={{
+            color: 'var(--rb-faint)',
+            borderColor: 'var(--rb-border)',
+            background: 'var(--rb-panel)',
+            pointerEvents: 'none',
+          }}
+          data-testid="window-provenance"
+        >
+          <span>app:{provenance?.appId ?? state.contentId}</span>
+          <span>resource:{provenance?.resourceId ?? 'none'}</span>
+          <span>tick:{(provenance?.tick ?? 0).toString().padStart(4, '0')}</span>
+        </div>
       </div>
 
       {/* Resize handles */}

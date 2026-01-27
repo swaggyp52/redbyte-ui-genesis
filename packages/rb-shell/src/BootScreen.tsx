@@ -3,7 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useEffect, useState } from 'react';
-import { NeonWaveIcon } from '@redbyte/rb-icons';
+import { Icon } from '@redbyte/rb-icons';
 
 interface BootScreenProps {
   onComplete: () => void;
@@ -69,7 +69,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete }) => {
 
       <div className="relative z-10 flex flex-col items-center text-center">
         <div className="mb-5 flex items-center gap-3">
-          <NeonWaveIcon width={40} height={40} className="text-cyan-300" />
+          <Icon name="neon-wave" size={24} className="text-cyan-300" />
           <div className="text-left">
             <div className="text-lg font-semibold tracking-wide text-slate-100">RedByte</div>
             <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Digital Logic Workspace</div>
