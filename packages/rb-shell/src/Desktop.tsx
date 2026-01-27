@@ -159,7 +159,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
     <div
       ref={desktopRef}
       data-testid="shell-desktop"
-      className={`absolute inset-0 overflow-hidden ${isLightMode ? 'text-gray-900' : 'text-white'}`}
+      className={`rb-desktop rb-noise absolute inset-0 overflow-hidden ${isLightMode ? 'text-gray-900' : 'text-white'}`}
       style={{ ...wallpaperStyle }}
       tabIndex={0}
       onKeyDown={handleKeyDown}
@@ -294,6 +294,32 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
       {(wallpaperId === 'default' || wallpaperId === 'solid') && (
         <div className={`pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent ${isLightMode ? 'via-white/5 to-white/10' : 'via-black/5 to-black/20'}`} />
       )}
+
+      {wallpaperId === 'redbyte-field' && (
+        <div className="pointer-events-none absolute inset-0">
+          <div
+            className="absolute inset-0 rb-anim opacity-40"
+            style={{
+              backgroundImage:
+                'linear-gradient(rgba(56, 189, 248, 0.06) 1px, transparent 1px), ' +
+                'linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px)',
+              backgroundSize: '120px 120px',
+              animation: 'rb-field-drift 60s linear infinite',
+            }}
+          />
+          <div
+            className="absolute inset-0 rb-anim opacity-30"
+            style={{
+              backgroundImage:
+                'radial-gradient(circle at 20% 30%, rgba(34, 211, 238, 0.12), transparent 35%), ' +
+                'radial-gradient(circle at 80% 70%, rgba(59, 130, 246, 0.12), transparent 40%)',
+              animation: 'rb-field-scan 40s ease-in-out infinite',
+            }}
+          />
+        </div>
+      )}
+
+      <div className="pointer-events-none absolute inset-0 rb-vignette" />
       {icons.map((icon) => {
         const isSelected = selected.includes(icon.id);
         const isFlagship = icon.id === 'logic';

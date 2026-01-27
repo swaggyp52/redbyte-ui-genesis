@@ -11,12 +11,14 @@ const mockSettingsState = {
   tickRate: 20,
   reduceMotion: false,
   density: 'comfortable' as const,
+  snapAssist: 'manual' as const,
   setThemeVariant: vi.fn(),
   setWallpaperId: vi.fn(),
   setAccentColor: vi.fn(),
   setTickRate: vi.fn(),
   setReduceMotion: vi.fn(),
   setDensity: vi.fn(),
+  setSnapAssist: vi.fn(),
 };
 
 // Mock UI tick state - stable reference

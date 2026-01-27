@@ -41,6 +41,9 @@ describe.skip('OS launch integration', () => {
       wallpaperId: 'default',
       accentColor: 'cyan',
       tickRate: 20,
+      reduceMotion: false,
+      density: 'comfortable',
+      snapAssist: 'manual',
     });
   });
 

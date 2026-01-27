@@ -9,9 +9,17 @@ Global keyboard shortcuts for RedByte OS.
 | `Ctrl/Cmd+Space` | Open System Search | Anywhere |
 | `Ctrl/Cmd+,` | Open Settings | Anywhere |
 | `Ctrl/Cmd+Shift+P` | Open Command Palette | Anywhere |
-| `Alt+Tab` | Window Switcher | Anywhere |
+| `Ctrl/Cmd+Tab` | Window Switcher | Anywhere |
 | `Ctrl/Cmd+W` | Close Focused Window | Anywhere |
 | `Ctrl/Cmd+M` | Minimize Focused Window | Anywhere |
+| `Ctrl/Cmd+Alt+Arrow` | Snap Focused Window | Anywhere |
+| `Ctrl/Cmd+Alt+C` | Center Focused Window | Anywhere |
+
+## Windowing
+
+| Shortcut | Action | Context |
+|----------|--------|---------|
+| `Shift + Drag (edge)` | Snap Preview (Manual Snap Assist) | Dragging windows |
 
 ## App-Specific Shortcuts
 
@@ -39,5 +47,5 @@ Global keyboard shortcuts for RedByte OS.
 
 ---
 
-**Last Updated**: 2026-01-08
+**Last Updated**: 2026-01-27
 **Version**: v0.1.0-preview

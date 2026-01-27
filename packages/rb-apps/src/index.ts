@@ -11,6 +11,7 @@ export * from './stores/systemLogStore';
 export * from './apps/files/fileActionTargets';
 export * from './apps/files/modals';
 export * from './examples';
+export * from './components/EmptyState';
 
 // DEFERRED EXPORTS: Do NOT import app modules at the module level.
 // This prevents circular dependencies and temporal dead zone errors

@@ -89,6 +89,27 @@ export function applyTheme(root: HTMLElement, variant: ThemeVariant): void {
     '--rb-effect-glass',
     resolved === 'redbyte-dark' ? 'rgba(12,18,34,0.7)' : 'rgba(18,26,38,0.66)'
   );
+  // Material system surfaces
+  root.style.setProperty('--rb-surface-0', surface.bg);
+  root.style.setProperty('--rb-surface-1', surface.panel);
+  root.style.setProperty('--rb-surface-2', surface.panel2);
+  root.style.setProperty('--rb-surface-3', resolved === 'redbyte-dark' ? '#162038' : '#1a2434');
+  root.style.setProperty(
+    '--rb-glass',
+    resolved === 'redbyte-dark' ? 'rgba(8, 14, 26, 0.72)' : 'rgba(12, 18, 30, 0.72)'
+  );
+  root.style.setProperty(
+    '--rb-metal',
+    resolved === 'redbyte-dark' ? 'rgba(12, 18, 32, 0.9)' : 'rgba(18, 26, 38, 0.9)'
+  );
+  root.style.setProperty('--rb-shadow-1', '0 12px 28px rgba(0, 0, 0, 0.35)');
+  root.style.setProperty('--rb-shadow-2', '0 18px 44px rgba(0, 0, 0, 0.45)');
+  root.style.setProperty('--rb-shadow-3', '0 28px 70px rgba(0, 0, 0, 0.6)');
+  root.style.setProperty('--rb-motion-fast', tokens.motion.duration.fast);
+  root.style.setProperty('--rb-motion-normal', tokens.motion.duration.normal);
+  root.style.setProperty('--rb-motion-slow', tokens.motion.duration.slow);
+  root.style.setProperty('--rb-easing-out', tokens.motion.easing.out);
+  root.style.setProperty('--rb-noise-opacity', resolved === 'redbyte-dark' ? '0.05' : '0.04');
   root.style.setProperty('--rb-theme-foreground', surface.text);
   root.style.setProperty('--rb-theme-background', surface.bg);
 

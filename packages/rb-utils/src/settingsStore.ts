@@ -5,8 +5,9 @@
 import { create } from 'zustand';
 
 export type ThemeVariant = 'redbyte-dark' | 'instrument' | 'system';
-export type WallpaperId = 'default' | 'neon-circuit' | 'frost-grid' | 'solid';
+export type WallpaperId = 'default' | 'neon-circuit' | 'frost-grid' | 'solid' | 'redbyte-field';
 export type DensityMode = 'compact' | 'comfortable';
+export type SnapAssistMode = 'off' | 'manual' | 'auto';
 
 const ACCENT_COLORS = ['cyan', 'purple', 'green', 'orange', 'pink'] as const;
 export type AccentColor = (typeof ACCENT_COLORS)[number];
@@ -18,6 +19,7 @@ interface SettingsState {
   tickRate: number;
   reduceMotion: boolean;
   density: DensityMode;
+  snapAssist: SnapAssistMode;
 }
 
 interface SettingsActions {
@@ -27,6 +29,7 @@ interface SettingsActions {
   setTickRate: (rate: number) => void;
   setReduceMotion: (enabled: boolean) => void;
   setDensity: (mode: DensityMode) => void;
+  setSnapAssist: (mode: SnapAssistMode) => void;
 }
 
 type SettingsStore = SettingsState & SettingsActions;
@@ -40,6 +43,7 @@ const DEFAULT_SETTINGS: SettingsState = {
   tickRate: 20,
   reduceMotion: false,
   density: 'comfortable',
+  snapAssist: 'manual',
 };
 
 function loadSettings(): SettingsState {
@@ -58,7 +62,7 @@ function loadSettings(): SettingsState {
       return DEFAULT_SETTINGS;
     }
 
-    const VALID_WALLPAPERS: WallpaperId[] = ['default', 'neon-circuit', 'frost-grid', 'solid'];
+    const VALID_WALLPAPERS: WallpaperId[] = ['default', 'neon-circuit', 'frost-grid', 'solid', 'redbyte-field'];
 
     const themeVariant = (() => {
       const raw = parsed.themeVariant;
@@ -69,6 +73,7 @@ function loadSettings(): SettingsState {
     })();
 
     const density: DensityMode = rawDensity(parsed.density);
+    const snapAssist: SnapAssistMode = rawSnapAssist(parsed.snapAssist);
 
     return {
       themeVariant,
@@ -85,6 +90,7 @@ function loadSettings(): SettingsState {
         ? parsed.reduceMotion
         : DEFAULT_SETTINGS.reduceMotion,
       density,
+      snapAssist,
     };
   } catch (err) {
     console.warn('Failed to load settings from localStorage, using defaults', err);
@@ -105,6 +111,11 @@ function persistSettings(settings: SettingsState): void {
 function rawDensity(value: unknown): DensityMode {
   if (value === 'compact' || value === 'comfortable') return value;
   return DEFAULT_SETTINGS.density;
+}
+
+function rawSnapAssist(value: unknown): SnapAssistMode {
+  if (value === 'off' || value === 'manual' || value === 'auto') return value;
+  return DEFAULT_SETTINGS.snapAssist;
 }
 
 // Lazy-init singleton to prevent TDZ crash from circular imports
@@ -145,6 +156,12 @@ function createSettingsStore() {
     setDensity: (mode) => {
       const next = rawDensity(mode);
       set({ density: next });
+      persistSettings(get());
+    },
+
+    setSnapAssist: (mode) => {
+      const next = rawSnapAssist(mode);
+      set({ snapAssist: next });
       persistSettings(get());
     },
   }));

@@ -42,6 +42,9 @@ describe.skip('OS to Playground circuit flow', () => {
       wallpaperId: 'default',
       accentColor: 'cyan',
       tickRate: 20,
+      reduceMotion: false,
+      density: 'comfortable',
+      snapAssist: 'manual',
     });
     act(() => {
       useCircuitStore.getState().reset();

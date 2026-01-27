@@ -6036,3 +6036,17 @@ Commits:
 - Added TopBar determinism status + System Log entry point, window provenance footer, and System Log store/app with Shell event logging.
 - Expanded Settings with RedByte Dark/Instrument themes, density and reduce motion toggles, and shortcuts reference; updated theme tokens and application.
 - Delivered Terminal MVP with command palette, deterministic OS commands, capsule export, and determinism recording controls; fixed toast dismiss hitbox and added targeted tests; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-27 (Window Manager Snap Assist - PHASE_OS_01)
+
+- Added Snap Assist setting (Off/Manual/Auto), updated Settings UI, and documented windowing rules in `rb-os-windowing-spec.md` plus `rb-os-windowing-plan.md`.
+- Reworked ShellWindow drag handling to be intent-gated: snap previews with hysteresis, hover delay, and release-only snapping; added snap preview overlay in Shell.
+- Logged window move/resize/snap actions deterministically and updated keyboard shortcuts documentation; added snap preview tests for manual/auto modes; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-27 (RedByte OS Visual Pass - PHASE_VIS_01/02)
+
+- Added `rb-os-visual-spec.md` to define the OS visual material system, elevation rules, motion targets, and chrome guidelines.
+- Introduced material system tokens (`--rb-surface-*`, `--rb-glass`, `--rb-metal`, shadow tiers, motion vars) and applied them to shell chrome, Dock, TopBar, and modals.
+- Upgraded window chrome hierarchy with icon + title + resource subtitle, active/inactive contrast, and refined control styling.
+- Added RedByte Field wallpaper, desktop noise/vignette overlays, and boot screen staging with deterministic checks and fade-out.
+- Styled command palette with a glass panel, grouped sections, and integrated EmptyState surfaces for Desktop, Files, and System Log; objectives unchanged; phase unchanged.

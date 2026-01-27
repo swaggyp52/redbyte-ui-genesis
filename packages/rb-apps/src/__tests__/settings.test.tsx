@@ -19,6 +19,7 @@ describe('Settings app lifecycle', () => {
       tickRate: 20,
       reduceMotion: false,
       density: 'comfortable',
+      snapAssist: 'manual',
     });
   });
 
@@ -28,6 +29,12 @@ describe('Settings app lifecycle', () => {
     expect(screen.getByRole('button', { name: /Appearance/ })).toBeTruthy();
     // System section exists in sidebar - there are multiple elements with "System", verify at least one exists
     expect(screen.getAllByRole('button', { name: /System/ }).length).toBeGreaterThan(0);
+  });
+
+  it('renders Windowing section in sidebar', () => {
+    render(<SettingsComponent />);
+
+    expect(screen.getByRole('button', { name: /Windowing/ })).toBeTruthy();
   });
 
   it('renders theme options in Appearance panel', () => {
@@ -66,6 +73,19 @@ describe('Settings app lifecycle', () => {
     fireEvent.click(systemButtons[0]);
 
     expect(screen.getByText(/Simulation Timing/i)).toBeTruthy();
+  });
+
+  it('updates snap assist mode in Windowing section', () => {
+    render(<SettingsComponent />);
+
+    const windowingButton = screen.getByRole('button', { name: /Windowing/ });
+    fireEvent.click(windowingButton);
+
+    const autoButton = screen.getByRole('button', { name: /Auto/i });
+    fireEvent.click(autoButton);
+
+    const state = useSettingsStore.getState();
+    expect(state.snapAssist).toBe('auto');
   });
 
 

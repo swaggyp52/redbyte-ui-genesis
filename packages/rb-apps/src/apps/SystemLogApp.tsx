@@ -6,6 +6,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { RedByteApp } from '../types';
 import { useSystemLogStore } from '../stores/systemLogStore';
 import { Icon } from '@redbyte/rb-icons';
+import { EmptyState } from '../components/EmptyState';
 
 type LogFilter = 'all' | 'action' | 'info' | 'warning' | 'error';
 
@@ -89,8 +90,12 @@ const SystemLogComponent: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-sm text-slate-500">
-            No log entries yet.
+          <div className="flex h-full items-center justify-center">
+            <EmptyState
+              icon="log"
+              title="No log entries yet"
+              description="System activity will appear here as deterministic events."
+            />
           </div>
         ) : (
           <div className="divide-y divide-slate-900">

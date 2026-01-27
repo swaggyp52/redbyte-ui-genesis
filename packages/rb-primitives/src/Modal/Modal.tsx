@@ -140,23 +140,26 @@ export function Modal({
           ref={modalRef}
           tabIndex={-1}
           className={`
-            relative z-10
-            bg-slate-800 border border-slate-700 rounded-lg shadow-xl
+            relative z-10 rounded-xl border
             ${variant === 'center' ? `${sizeClasses[size]} w-full mx-4` : 'max-w-sm'}
             ${variant === 'bottom-right' ? 'transform transition-all duration-300 ease-out' : ''}
           `}
           style={{
             outline: 'none',
             pointerEvents: 'auto',
-            ...(variant === 'bottom-right' && {
-              boxShadow: '0 8px 32px rgba(0, 217, 255, 0.2)',
-            }),
+            background: 'var(--rb-metal)',
+            borderColor: 'var(--rb-border)',
+            boxShadow: variant === 'center' ? 'var(--rb-shadow-3)' : 'var(--rb-shadow-2)',
+            backdropFilter: 'blur(16px)',
           }}
         >
           {/* Header */}
           {title && (
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
-              <div className="text-lg font-semibold text-gray-100">{title}</div>
+            <div
+              className="flex items-center justify-between px-6 py-4 border-b"
+              style={{ borderColor: 'var(--rb-border)' }}
+            >
+              <div className="text-lg font-semibold" style={{ color: 'var(--rb-text)' }}>{title}</div>
               <button
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-200 transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
@@ -181,7 +184,11 @@ export function Modal({
           <div className={`${title || footer ? 'px-6 py-4' : 'p-6'}`}>{children}</div>
 
           {/* Footer */}
-          {footer && <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3">{footer}</div>}
+          {footer && (
+            <div className="px-6 py-4 border-t flex justify-end gap-3" style={{ borderColor: 'var(--rb-border)' }}>
+              {footer}
+            </div>
+          )}
         </div>
       </div>
     </Portal>

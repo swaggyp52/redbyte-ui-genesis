@@ -8,6 +8,7 @@ import type { Intent } from '@redbyte/rb-shell';
 import type { FileEntry } from './files/fsTypes';
 import { TextInputModal, ConfirmModal, OpenWithModal } from './files/modals';
 import { Icon } from '@redbyte/rb-icons';
+import { EmptyState } from '../components/EmptyState';
 import {
   getFileActionTargets,
   isFileActionEligible,
@@ -438,8 +439,12 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
 
         <div className="flex-1 overflow-y-auto">
           {entries.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-slate-400">
-              <p className="text-sm">Empty folder</p>
+            <div className="flex items-center justify-center h-full">
+              <EmptyState
+                icon="folder"
+                title="Empty folder"
+                description="Create a file or folder with Ctrl/Cmd+N."
+              />
             </div>
           ) : (
             <table className="w-full">

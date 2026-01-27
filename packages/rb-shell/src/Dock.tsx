@@ -131,9 +131,9 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
       title="Alt+Arrow keys to reorder (when focused)"
       onMouseLeave={() => setHoveredId(null)}
       style={{
-        background: 'var(--rb-panel)',
+        background: 'var(--rb-glass)',
         border: '1px solid var(--rb-border)',
-        boxShadow: 'var(--rb-shadow-sm)',
+        boxShadow: 'var(--rb-shadow-2)',
       }}
     >
       {dockItems.map((dock, index) => {
@@ -152,7 +152,8 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
               ? SETTINGS_ARIA_KEYSHORTCUTS
               : undefined;
 
-        const scale = isHovered ? 1.06 : 1;
+        const scale = isHovered ? 1.07 : 1;
+        const lift = isHovered ? -2 : 0;
 
         return (
           <button
@@ -167,11 +168,11 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
             aria-keyshortcuts={ariaKeyShortcuts}
             title={title}
             style={{
-              transform: `scale(${scale})`,
-              transition: 'all 120ms var(--rb-easing-out, ease)',
-              background: isRunning ? 'var(--rb-panel-2)' : 'var(--rb-panel)',
+              transform: `translateY(${lift}px) scale(${scale})`,
+              transition: 'all 140ms var(--rb-easing-out, ease)',
+              background: isRunning ? 'var(--rb-surface-2)' : 'var(--rb-surface-1)',
               border: isRunning ? '1px solid var(--rb-accent-strong)' : '1px solid var(--rb-border)',
-              boxShadow: isRunning ? 'var(--rb-shadow-sm)' : 'none',
+              boxShadow: isRunning ? 'var(--rb-shadow-1)' : 'none',
             }}
             className="relative h-12 w-12 rounded-xl flex items-center justify-center transition-colors duration-200"
             data-testid={`dock-icon-${dock.id}`}
@@ -186,7 +187,11 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
             {isRunning && (
               <span
                 className="absolute -bottom-1.5 left-1/2 h-1 w-6 -translate-x-1/2 rounded-full"
-                style={{ background: 'var(--rb-accent)' }}
+                style={{
+                  background: 'var(--rb-accent)',
+                  boxShadow: '0 0 10px rgba(34, 211, 238, 0.55)',
+                  transition: 'width 140ms var(--rb-easing-out)',
+                }}
               />
             )}
           </button>

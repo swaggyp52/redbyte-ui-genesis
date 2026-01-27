@@ -3,13 +3,22 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { WindowState } from '@redbyte/rb-windowing';
-import { Icon } from '@redbyte/rb-icons';
+import { WindowState, type WindowBounds } from '@redbyte/rb-windowing';
+import type { SnapAssistMode } from '@redbyte/rb-utils';
+import { Icon, type IconName } from '@redbyte/rb-icons';
 import { PortalProvider } from '@redbyte/rb-primitives';
+
+type SnapTarget = 'left' | 'right' | 'maximize';
+
+const SNAP_ENTER_PX = 24;
+const SNAP_EXIT_PX = 48;
+const SNAP_HOVER_MS = 250;
 
 interface ShellWindowProps {
   state: WindowState;
   minSize?: { width: number; height: number };
+  snapAssistMode?: SnapAssistMode;
+  iconName?: IconName;
   onClose: () => void;
   onFocus: () => void;
   onMove: (x: number, y: number) => void;
@@ -17,6 +26,10 @@ interface ShellWindowProps {
   onMinimize: () => void;
   onMaximize: () => void;
   onRestore: () => void;
+  onMoveEnd?: (bounds: WindowBounds) => void;
+  onResizeEnd?: (bounds: WindowBounds) => void;
+  onSnapPreviewChange?: (windowId: string, target: SnapTarget | null) => void;
+  onSnap?: (windowId: string, target: SnapTarget) => void;
   provenance?: {
     appId: string;
     resourceId?: string;
@@ -30,6 +43,8 @@ type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 export const ShellWindow: React.FC<ShellWindowProps> = ({
   state,
   minSize,
+  snapAssistMode = 'manual',
+  iconName,
   onClose,
   onFocus,
   onMove,
@@ -37,6 +52,10 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
   onMinimize,
   onMaximize,
   onRestore,
+  onMoveEnd,
+  onResizeEnd,
+  onSnapPreviewChange,
+  onSnap,
   provenance,
   children,
 }) => {
@@ -46,6 +65,16 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
   const [mounted, setMounted] = useState(false);
   const boundsRef = useRef<HTMLDivElement>(null);
   const overlayRootRef = useRef<HTMLDivElement>(null);
+  const dragBoundsRef = useRef<WindowBounds | null>(null);
+  const lastBoundsRef = useRef<WindowBounds>(state.bounds);
+  const snapPreviewRef = useRef<SnapTarget | null>(null);
+  const snapTimerRef = useRef<number | null>(null);
+  const pendingSnapTargetRef = useRef<SnapTarget | null>(null);
+  const lastPointerRef = useRef<{ x: number; y: number; shiftKey: boolean } | null>(null);
+  const draggingRef = useRef(false);
+  const resizingRef = useRef(false);
+  const hasMovedRef = useRef(false);
+  const hasResizedRef = useRef(false);
 
   const isMax = state.mode === 'maximized';
   const isMin = state.mode === 'minimized';
@@ -55,67 +84,180 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
     return () => cancelAnimationFrame(timer);
   }, []);
 
-  const applySnap = (x: number, y: number) => {
-    const threshold = 24;
+  useEffect(() => {
+    return () => {
+      clearSnapTimer();
+    };
+  }, []);
+
+  useEffect(() => {
+    lastBoundsRef.current = state.bounds;
+  }, [state.bounds]);
+
+  useEffect(() => {
+    draggingRef.current = dragging;
+  }, [dragging]);
+
+  useEffect(() => {
+    resizingRef.current = Boolean(resizing);
+  }, [resizing]);
+
+  const clearSnapTimer = () => {
+    if (snapTimerRef.current !== null) {
+      window.clearTimeout(snapTimerRef.current);
+      snapTimerRef.current = null;
+    }
+    pendingSnapTargetRef.current = null;
+  };
+
+  const updateSnapPreview = (target: SnapTarget | null) => {
+    if (snapPreviewRef.current === target) return;
+    snapPreviewRef.current = target;
+    onSnapPreviewChange?.(state.id, target);
+    if (target) {
+      clearSnapTimer();
+    }
+  };
+
+  const clearSnapPreview = () => {
+    updateSnapPreview(null);
+    clearSnapTimer();
+  };
+
+  const resolveSnapTarget = (x: number, y: number, threshold: number): SnapTarget | null => {
     const width = window.innerWidth;
-    const height = window.innerHeight;
+    if (y <= threshold) return 'maximize';
+    if (x <= threshold) return 'left';
+    if (x >= width - threshold) return 'right';
+    return null;
+  };
 
-    if (y < threshold) {
-      onMaximize();
+  const handleSnapPreview = (x: number, y: number, shiftKey: boolean) => {
+    if (snapAssistMode === 'off') {
+      clearSnapPreview();
       return;
     }
 
-    if (x < threshold) {
-      onResize(width / 2, height);
-      onMove(0, 0);
+    const activeTarget = snapPreviewRef.current;
+    const enterTarget = resolveSnapTarget(x, y, SNAP_ENTER_PX);
+    const exitTarget = resolveSnapTarget(x, y, SNAP_EXIT_PX);
+
+    if (activeTarget) {
+      if (snapAssistMode === 'manual' && !shiftKey) {
+        clearSnapPreview();
+        return;
+      }
+      if (exitTarget === activeTarget) {
+        return;
+      }
+      clearSnapPreview();
+    }
+
+    if (snapAssistMode === 'manual') {
+      if (shiftKey && enterTarget) {
+        updateSnapPreview(enterTarget);
+      } else {
+        clearSnapPreview();
+      }
       return;
     }
 
-    if (width - (x + (state.bounds.width || 0)) < threshold) {
-      onResize(width / 2, height);
-      onMove(width / 2, 0);
-    } else {
-      onMove(x, y);
+    if (snapAssistMode === 'auto') {
+      if (!enterTarget) {
+        clearSnapTimer();
+        return;
+      }
+      if (pendingSnapTargetRef.current !== enterTarget) {
+        clearSnapTimer();
+        pendingSnapTargetRef.current = enterTarget;
+        snapTimerRef.current = window.setTimeout(() => {
+          if (!draggingRef.current || resizingRef.current) return;
+          const pointer = lastPointerRef.current;
+          if (!pointer) return;
+          const currentTarget = resolveSnapTarget(pointer.x, pointer.y, SNAP_ENTER_PX);
+          if (currentTarget === enterTarget) {
+            updateSnapPreview(enterTarget);
+          }
+        }, SNAP_HOVER_MS);
+      }
     }
   };
 
   const startDrag = (e: React.MouseEvent) => {
-    if (isMax) return;
+    if (isMax || isMin) return;
+    draggingRef.current = true;
     setDragging(true);
     setStart({ x: e.clientX, y: e.clientY });
+    dragBoundsRef.current = { ...state.bounds };
+    hasMovedRef.current = false;
+    clearSnapPreview();
     onFocus();
   };
 
-  const endAll = () => {
-    if (dragging && start) {
-      applySnap(state.bounds.x, state.bounds.y);
-    }
+  const finishDrag = (shouldSnap: boolean) => {
+    if (!draggingRef.current) return;
+    const activeSnap = snapPreviewRef.current;
+    draggingRef.current = false;
     setDragging(false);
+    setStart(null);
+    dragBoundsRef.current = null;
+    if (shouldSnap && activeSnap && onSnap) {
+      onSnap(state.id, activeSnap);
+    } else if (hasMovedRef.current) {
+      onMoveEnd?.(lastBoundsRef.current);
+    }
+    clearSnapPreview();
+  };
+
+  const finishResize = () => {
+    if (!resizingRef.current) return;
+    resizingRef.current = false;
     setResizing(null);
     setStart(null);
+    dragBoundsRef.current = null;
+    if (hasResizedRef.current) {
+      onResizeEnd?.(lastBoundsRef.current);
+    }
+    clearSnapPreview();
   };
 
   const onMoveDrag = (e: React.MouseEvent) => {
-    if (!dragging || !start) return;
+    if (!draggingRef.current || !start) return;
     const dx = e.clientX - start.x;
     const dy = e.clientY - start.y;
-    onMove(state.bounds.x + dx, state.bounds.y + dy);
+    const currentBounds = dragBoundsRef.current ?? state.bounds;
+    const nextBounds: WindowBounds = {
+      ...currentBounds,
+      x: currentBounds.x + dx,
+      y: currentBounds.y + dy,
+    };
+    hasMovedRef.current = true;
+    dragBoundsRef.current = nextBounds;
+    lastBoundsRef.current = nextBounds;
+    onMove(nextBounds.x, nextBounds.y);
+    lastPointerRef.current = { x: e.clientX, y: e.clientY, shiftKey: e.shiftKey };
+    handleSnapPreview(e.clientX, e.clientY, e.shiftKey);
     setStart({ x: e.clientX, y: e.clientY });
   };
 
   const startResize = (dir: ResizeDirection) => (e: React.MouseEvent) => {
     e.stopPropagation();
+    resizingRef.current = true;
     setResizing(dir);
     setStart({ x: e.clientX, y: e.clientY });
+    dragBoundsRef.current = { ...state.bounds };
+    hasResizedRef.current = false;
+    clearSnapPreview();
     onFocus();
   };
 
   const onResizeDrag = (e: React.MouseEvent) => {
-    if (!resizing || !start || isMax || isMin) return;
+    if (!resizingRef.current || !start || isMax || isMin || !resizing) return;
     const dx = e.clientX - start.x;
     const dy = e.clientY - start.y;
 
-    let { width, height, x, y } = state.bounds;
+    const currentBounds = dragBoundsRef.current ?? state.bounds;
+    let { width, height, x, y } = currentBounds;
     const minW = minSize?.width ?? 320;
     const minH = minSize?.height ?? 240;
 
@@ -134,6 +276,10 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
       y = y + dy;
     }
 
+    const nextBounds: WindowBounds = { x, y, width, height };
+    hasResizedRef.current = true;
+    dragBoundsRef.current = nextBounds;
+    lastBoundsRef.current = nextBounds;
     onResize(width, height);
     onMove(x, y);
     setStart({ x: e.clientX, y: e.clientY });
@@ -142,8 +288,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
   const containerStyle = useMemo(() => {
     const { bounds, zIndex, focused } = state;
     const opacity = mounted ? 1 : 0;
-    const transform = mounted ? 'scale(1) translateY(0)' : 'scale(0.96) translateY(8px)';
-    const animating = 'transition-all duration-300 ease-out';
+    const transform = mounted ? 'scale(1) translateY(0)' : 'scale(0.98) translateY(6px)';
     return {
       position: 'absolute' as const,
       left: isMax ? 0 : bounds.x,
@@ -153,15 +298,17 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
       zIndex,
       opacity,
       transform,
-      transition: animating,
-      background: focused ? 'var(--rb-panel-2)' : 'var(--rb-panel)',
+      transition:
+        'opacity var(--rb-motion-fast) var(--rb-easing-out), transform var(--rb-motion-fast) var(--rb-easing-out), box-shadow 140ms var(--rb-easing-out), border-color 140ms var(--rb-easing-out), background-color 140ms var(--rb-easing-out)',
+      background: focused ? 'var(--rb-surface-2)' : 'var(--rb-surface-1)',
       border: focused ? '1px solid var(--rb-border-strong)' : '1px solid var(--rb-border)',
       borderRadius: isMax ? 0 : 'var(--rb-radius-lg)',
       overflow: 'hidden',
       boxShadow: focused
-        ? '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(34, 211, 238, 0.15)'
-        : 'var(--rb-shadow-sm)',
-      backdropFilter: 'blur(24px)',
+        ? 'var(--rb-shadow-2), 0 0 0 1px var(--rb-accent-weak)'
+        : 'var(--rb-shadow-1)',
+      backdropFilter: 'blur(18px)',
+      filter: focused ? 'saturate(1)' : 'saturate(0.92)',
       display: isMin ? 'none' : 'block',
     } as React.CSSProperties;
   }, [state, isMax, isMin, mounted]);
@@ -171,33 +318,60 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
       ref={boundsRef}
       style={containerStyle}
       onMouseMove={dragging ? onMoveDrag : resizing ? onResizeDrag : undefined}
-      onMouseUp={endAll}
-      onMouseLeave={endAll}
+      onMouseUp={() => {
+        if (draggingRef.current) finishDrag(true);
+        if (resizingRef.current) finishResize();
+      }}
+      onMouseLeave={() => {
+        if (draggingRef.current) finishDrag(false);
+        if (resizingRef.current) finishResize();
+      }}
       onMouseDown={onFocus}
     >
       <div
-        className="flex h-10 items-center gap-3 px-3 text-sm select-none border-b transition-colors duration-200"
+        className="flex h-11 items-center gap-3 px-3 text-sm select-none border-b"
         style={{
           cursor: isMax ? 'default' : 'grab',
-          background: state.focused ? 'var(--rb-panel-2)' : 'var(--rb-panel)',
+          background: state.focused ? 'var(--rb-surface-2)' : 'var(--rb-surface-1)',
           borderColor: state.focused ? 'var(--rb-border-strong)' : 'var(--rb-border)',
+          transition: 'background-color 140ms var(--rb-easing-out), border-color 140ms var(--rb-easing-out)',
         }}
         onMouseDown={isMax ? undefined : startDrag}
         onDoubleClick={isMax ? onRestore : onMaximize}
         data-testid="window-title-bar"
       >
-        <div
-          className="flex-1 truncate font-semibold tracking-wide leading-none transition-colors duration-200 pointer-events-none"
-          style={{ color: state.focused ? 'var(--rb-text)' : 'var(--rb-muted)' }}
-          data-testid="window-title-text"
-        >
-          {state.title}
+        <div className="flex min-w-0 flex-1 items-center gap-3 pointer-events-none">
+          {iconName && (
+            <div
+              className="h-8 w-8 rounded-md border flex items-center justify-center"
+              style={{
+                borderColor: state.focused ? 'var(--rb-border-strong)' : 'var(--rb-border)',
+                background: 'var(--rb-surface-3)',
+                color: state.focused ? 'var(--rb-text)' : 'var(--rb-muted)',
+              }}
+            >
+              <Icon name={iconName} size={16} />
+            </div>
+          )}
+          <div className="min-w-0">
+            <div
+              className="truncate font-semibold tracking-wide leading-tight"
+              style={{ color: state.focused ? 'var(--rb-text)' : 'var(--rb-muted)' }}
+              data-testid="window-title-text"
+            >
+              {state.title}
+            </div>
+            {provenance?.resourceId && (
+              <div className="truncate text-[10px] font-mono" style={{ color: 'var(--rb-faint)' }}>
+                {provenance.resourceId}
+              </div>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           {state.minimizable && (
             <button
-              className="h-7 w-7 rounded-md flex items-center justify-center transition-all duration-150 hover:bg-white/10 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-              style={{ color: 'var(--rb-muted)' }}
+              className="rb-window-control h-7 w-7 rounded-md flex items-center justify-center hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
               onClick={onMinimize}
               title="Minimize"
               data-testid="window-minimize-button"
@@ -207,8 +381,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
           )}
           {state.maximizable && (
             <button
-              className="h-7 w-7 rounded-md flex items-center justify-center transition-all duration-150 hover:bg-white/10 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-              style={{ color: 'var(--rb-muted)' }}
+              className="rb-window-control h-7 w-7 rounded-md flex items-center justify-center hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
               onClick={isMax ? onRestore : onMaximize}
               title={isMax ? "Restore" : "Maximize"}
               data-testid="window-maximize-button"
@@ -217,8 +390,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
             </button>
           )}
           <button
-            className="h-7 w-7 rounded-md flex items-center justify-center transition-all duration-150 hover:bg-red-500/30 hover:text-red-400 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-red-500/50"
-            style={{ color: 'var(--rb-muted)' }}
+            className="rb-window-control h-7 w-7 rounded-md flex items-center justify-center hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-red-500/50 hover:text-red-300"
             onClick={onClose}
             title="Close"
             data-testid="window-close-button"
@@ -228,7 +400,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
         </div>
       </div>
 
-      <div className="h-[calc(100%-40px)] flex flex-col" style={{ background: 'var(--rb-bg)', color: 'var(--rb-text)' }}>
+      <div className="h-[calc(100%-44px)] flex flex-col" style={{ background: 'var(--rb-surface-0)', color: 'var(--rb-text)' }}>
         <div className="flex-1 overflow-hidden relative">
           <PortalProvider container={overlayRootRef.current}>
             {children}

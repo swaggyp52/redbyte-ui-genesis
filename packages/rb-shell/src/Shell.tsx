@@ -20,6 +20,7 @@ import {
   type FileActionTarget,
   useSystemLogStore,
   logSystemEvent,
+  EmptyState,
 } from '@redbyte/rb-apps';
 import { useWindowStore, loadSession, resolveTargetWindowId } from '@redbyte/rb-windowing';
 import { useWorkspaceStore, loadWorkspaces } from './workspaceStore';
@@ -64,6 +65,13 @@ interface OpenWithModalState {
   eligibleTargets: FileActionTarget[];
 }
 
+type SnapPreviewTarget = 'left' | 'right' | 'maximize';
+
+interface SnapPreviewState {
+  windowId: string;
+  target: SnapPreviewTarget;
+}
+
 export const Shell: React.FC<ShellProps> = () => {
   const BOOT_STORAGE_KEY = 'rb:shell:booted:v1';
   const [booted, setBooted] = useState<boolean>(() => {
@@ -84,7 +92,13 @@ export const Shell: React.FC<ShellProps> = () => {
   const [showJankHud, setShowJankHud] = useState(false);
   const [showDeadZoneScanner, setShowDeadZoneScanner] = useState(false);
   const [showOverlayDebug, setShowOverlayDebug] = useState(false);
-  const lastSettingsRef = useRef<{ themeVariant: string; density: string; reduceMotion: boolean } | null>(null);
+  const [snapPreview, setSnapPreview] = useState<SnapPreviewState | null>(null);
+  const lastSettingsRef = useRef<{
+    themeVariant: string;
+    density: string;
+    reduceMotion: boolean;
+    snapAssist: string;
+  } | null>(null);
 
   const hasShownWelcomeRef = useRef(false);
   const hasInitializedRef = useRef(false);
@@ -174,19 +188,71 @@ export const Shell: React.FC<ShellProps> = () => {
     });
   }, []);
 
+  const handleSnapPreviewChange = useCallback((windowId: string, target: SnapPreviewTarget | null) => {
+    setSnapPreview((prev) => {
+      if (!target) {
+        return prev?.windowId === windowId ? null : prev;
+      }
+      if (prev?.windowId === windowId && prev.target === target) return prev;
+      return { windowId, target };
+    });
+  }, []);
+
+  const handleSnapCommit = useCallback(
+    (windowId: string, target: SnapPreviewTarget) => {
+      const desktopBounds = {
+        x: 0,
+        y: 0,
+        width: window.innerWidth,
+        height: window.innerHeight,
+      };
+      if (target === 'maximize') {
+        toggleMaximize(windowId);
+      } else {
+        snapWindow(windowId, target, desktopBounds);
+      }
+      logSystemEvent({
+        level: 'action',
+        source: 'shell',
+        message: 'Window snapped',
+        data: { windowId, target },
+      });
+    },
+    [snapWindow, toggleMaximize]
+  );
+
+  const handleMoveEnd = useCallback((windowId: string, bounds: { x: number; y: number; width: number; height: number }) => {
+    logSystemEvent({
+      level: 'action',
+      source: 'shell',
+      message: 'Window moved',
+      data: { windowId, bounds },
+    });
+  }, []);
+
+  const handleResizeEnd = useCallback((windowId: string, bounds: { x: number; y: number; width: number; height: number }) => {
+    logSystemEvent({
+      level: 'action',
+      source: 'shell',
+      message: 'Window resized',
+      data: { windowId, bounds },
+    });
+  }, []);
+
   useEffect(() => {
     if (typeof document !== 'undefined') {
       applyTheme(document.documentElement, settings.themeVariant);
       document.documentElement.setAttribute('data-rb-density', settings.density);
       document.documentElement.setAttribute('data-rb-motion', settings.reduceMotion ? 'reduced' : 'full');
     }
-  }, [settings.themeVariant, settings.density, settings.reduceMotion]);
+  }, [settings.themeVariant, settings.density, settings.reduceMotion, settings.snapAssist]);
 
   useEffect(() => {
     const current = {
       themeVariant: settings.themeVariant,
       density: settings.density,
       reduceMotion: settings.reduceMotion,
+      snapAssist: settings.snapAssist,
     };
     if (!lastSettingsRef.current) {
       lastSettingsRef.current = current;
@@ -195,7 +261,8 @@ export const Shell: React.FC<ShellProps> = () => {
     if (
       lastSettingsRef.current.themeVariant !== current.themeVariant ||
       lastSettingsRef.current.density !== current.density ||
-      lastSettingsRef.current.reduceMotion !== current.reduceMotion
+      lastSettingsRef.current.reduceMotion !== current.reduceMotion ||
+      lastSettingsRef.current.snapAssist !== current.snapAssist
     ) {
       logSystemEvent({
         level: 'action',
@@ -639,6 +706,12 @@ export const Shell: React.FC<ShellProps> = () => {
 
           const direction = command.replace('snap-', '') as 'left' | 'right' | 'top' | 'bottom';
           snapWindow(focused.id, direction, desktopBounds);
+          logSystemEvent({
+            level: 'action',
+            source: 'shell',
+            message: 'Window snapped',
+            data: { windowId: focused.id, target: direction, via: 'command' },
+          });
           break;
         }
 
@@ -654,6 +727,12 @@ export const Shell: React.FC<ShellProps> = () => {
           };
 
           centerWindow(focused.id, desktopBounds);
+          logSystemEvent({
+            level: 'action',
+            source: 'shell',
+            message: 'Window centered',
+            data: { windowId: focused.id, via: 'command' },
+          });
           break;
         }
 
@@ -1141,9 +1220,32 @@ export const Shell: React.FC<ShellProps> = () => {
       : determinismRecorder.isTimeTraveling
       ? 'replay'
       : 'live';
+  const hasVisibleWindows = windows.some((w) => w.mode !== 'minimized');
+
+  const snapPreviewBounds = useMemo(() => {
+    if (!snapPreview || typeof window === 'undefined') return null;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    if (snapPreview.target === 'maximize') {
+      return { x: 0, y: 0, width, height };
+    }
+    const halfWidth = Math.floor(width / 2);
+    if (snapPreview.target === 'left') {
+      return { x: 0, y: 0, width: halfWidth, height };
+    }
+    return { x: width - halfWidth, y: 0, width: halfWidth, height };
+  }, [snapPreview]);
+
+  const snapPreviewLabel = snapPreview
+    ? snapPreview.target === 'maximize'
+      ? 'Maximize'
+      : snapPreview.target === 'left'
+      ? 'Snap Left'
+      : 'Snap Right'
+    : null;
 
   return (
-    <div data-testid="shell-container" className="shell-container relative w-screen h-screen overflow-hidden bg-black text-white">
+    <div data-testid="shell-container" className="shell-container rb-shell relative w-screen h-screen overflow-hidden">
       <TopBar
         isRecording={determinismRecorder.isRecording}
         modeLabel={determinismMode}
@@ -1163,6 +1265,56 @@ export const Shell: React.FC<ShellProps> = () => {
 
       <Dock onOpenApp={openWindow} />
 
+      {!hasVisibleWindows && (
+        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+          <EmptyState
+            icon="browser"
+            title="Workspace idle"
+            description="Open the Launcher to start an app or use Ctrl/Cmd+Space to search."
+            action={(
+              <button
+                onClick={() => openWindow('launcher')}
+                className="px-3 py-1.5 rounded-md text-xs font-semibold"
+                style={{
+                  background: 'var(--rb-surface-2)',
+                  border: '1px solid var(--rb-border)',
+                  color: 'var(--rb-text)',
+                }}
+              >
+                Open Launcher
+              </button>
+            )}
+            className="pointer-events-auto"
+          />
+        </div>
+      )}
+
+      {snapPreviewBounds && (
+        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 9999 }}>
+          <div
+            className="absolute rounded-2xl border"
+            style={{
+              left: snapPreviewBounds.x,
+              top: snapPreviewBounds.y,
+              width: snapPreviewBounds.width,
+              height: snapPreviewBounds.height,
+              borderColor: 'var(--rb-accent-strong)',
+              background: 'var(--rb-accent-weak)',
+              boxShadow: 'var(--rb-shadow-2)',
+              backdropFilter: 'blur(6px)',
+            }}
+          >
+            {snapPreviewLabel && (
+              <div className="absolute top-3 left-3 px-3 py-1 rounded-full text-[10px] font-semibold tracking-[0.2em] uppercase text-cyan-200 border"
+                style={{ background: 'var(--rb-surface-2)', borderColor: 'var(--rb-border-strong)' }}
+              >
+                {snapPreviewLabel}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {windows.map((window) => {
         const binding = bindings[window.id];
         const app: RedByteApp | null = binding ? getApp(binding.appId) : getApp(window.contentId);
@@ -1179,6 +1331,8 @@ export const Shell: React.FC<ShellProps> = () => {
             key={window.id}
             state={window}
             minSize={app.manifest.minSize}
+            iconName={app.manifest.iconId}
+            snapAssistMode={settings.snapAssist}
             provenance={{
               appId: app.manifest.id,
               resourceId,
@@ -1196,6 +1350,10 @@ export const Shell: React.FC<ShellProps> = () => {
             }}
             onMove={(x, y) => moveWindow(window.id, x, y)}
             onResize={(w, h) => resizeWindow(window.id, w, h)}
+            onMoveEnd={(bounds) => handleMoveEnd(window.id, bounds)}
+            onResizeEnd={(bounds) => handleResizeEnd(window.id, bounds)}
+            onSnapPreviewChange={handleSnapPreviewChange}
+            onSnap={handleSnapCommit}
             onMinimize={() => {
               toggleMinimize(window.id);
               logSystemEvent({

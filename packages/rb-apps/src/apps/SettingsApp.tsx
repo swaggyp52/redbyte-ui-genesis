@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import type { RedByteApp } from '../types';
-import { useSettingsStore, type ThemeVariant, type WallpaperId, type DensityMode } from '@redbyte/rb-utils';
+import { useSettingsStore, type ThemeVariant, type WallpaperId, type DensityMode, type SnapAssistMode } from '@redbyte/rb-utils';
 import { Icon, type IconName } from '@redbyte/rb-icons';
 import { FileAssociationsPanel } from './settings/FileAssociationsPanel';
 import { FilesystemDataPanel } from './settings/FilesystemDataPanel';
@@ -17,11 +17,12 @@ interface SettingsProps {
 const WALLPAPERS: Array<{ id: WallpaperId; name: string; description: string }> = [
   { id: 'neon-circuit', name: 'Neon Circuit', description: 'Futuristic circuit board design' },
   { id: 'frost-grid', name: 'Frost Grid', description: 'Cool minimalist grid pattern' },
+  { id: 'redbyte-field', name: 'RedByte Field', description: 'Subtle field lines and glow' },
   { id: 'default', name: 'Gradient', description: 'Classic gradient background' },
   { id: 'solid', name: 'Solid', description: 'Clean solid color' },
 ];
 
-type SettingsSection = 'appearance' | 'system' | 'files' | 'filesystem' | 'session';
+type SettingsSection = 'appearance' | 'system' | 'windowing' | 'files' | 'filesystem' | 'session';
 type SettingsSectionId = SettingsSection | 'shortcuts';
 
 const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
@@ -39,6 +40,8 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
     setReduceMotion,
     density,
     setDensity,
+    snapAssist,
+    setSnapAssist,
   } = useSettingsStore();
 
   useEffect(() => {
@@ -72,6 +75,7 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
           {([
             { id: 'appearance', label: 'Appearance', icon: 'image' },
             { id: 'system', label: 'System', icon: 'settings' },
+            { id: 'windowing', label: 'Windowing', icon: 'grid' },
             { id: 'shortcuts', label: 'Shortcuts', icon: 'keyboard' },
             { id: 'files', label: 'File Associations', icon: 'files' },
             { id: 'filesystem', label: 'Filesystem Data', icon: 'document' },
@@ -103,6 +107,8 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
               ? 'Appearance'
               : selectedSection === 'system'
               ? 'System'
+              : selectedSection === 'windowing'
+              ? 'Windowing'
               : selectedSection === 'shortcuts'
               ? 'Keyboard Shortcuts'
               : selectedSection === 'files'
@@ -228,6 +234,16 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
                             }}
                           />
                         )}
+                        {wallpaper.id === 'redbyte-field' && (
+                          <div
+                            className="h-full w-full"
+                            style={{
+                              background:
+                                'radial-gradient(120px circle at 20% 20%, rgba(56, 189, 248, 0.25), transparent 60%),' +
+                                'linear-gradient(135deg, rgba(6, 12, 24, 0.98), rgba(9, 14, 28, 0.9))',
+                            }}
+                          />
+                        )}
                         {wallpaper.id === 'default' && (
                           <div
                             className="h-full w-full"
@@ -293,6 +309,49 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
             </div>
           )}
 
+          {selectedSection === 'windowing' && (
+            <div className="space-y-6 text-sm text-slate-300 max-w-2xl">
+              <div className="p-6 bg-slate-800/50 rounded-xl border border-slate-700">
+                <div className="flex items-start gap-4">
+                  <div className="text-3xl">
+                    <Icon name="grid" size={24} />
+                  </div>
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <h4 className="text-base font-semibold text-white mb-2">Snap Assist</h4>
+                      <p className="text-slate-400">
+                        Controls edge snapping behavior while dragging windows.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      {([
+                        { value: 'off', label: 'Off', desc: 'No snap previews' },
+                        { value: 'manual', label: 'Manual (Shift)', desc: 'Hold Shift to preview' },
+                        { value: 'auto', label: 'Auto (Hover)', desc: 'Hover 250ms to preview' },
+                      ] as Array<{ value: SnapAssistMode; label: string; desc: string }>).map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => setSnapAssist(option.value)}
+                          className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                            snapAssist === option.value
+                              ? 'border-cyan-500 text-cyan-200 bg-cyan-500/10'
+                              : 'border-slate-700 text-slate-300 hover:border-slate-600'
+                          }`}
+                        >
+                          <div>{option.label}</div>
+                          <div className="text-[10px] text-slate-500 mt-1">{option.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      Snap previews only apply on release. Resizing never triggers snap.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {selectedSection === 'shortcuts' && (
             <div className="space-y-4 text-sm text-slate-300 max-w-3xl">
               <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
@@ -303,10 +362,12 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
                     { keys: 'Ctrl/Cmd + ,', label: 'Open Settings' },
                     { keys: 'Ctrl/Cmd + Shift + P', label: 'Command Palette' },
                     { keys: 'Ctrl/Cmd + Space', label: 'System Search' },
+                    { keys: 'Ctrl/Cmd + Tab', label: 'Window Switcher' },
                     { keys: 'Ctrl/Cmd + `', label: 'Cycle Windows' },
                     { keys: 'Ctrl/Cmd + W', label: 'Close Focused Window' },
                     { keys: 'Ctrl/Cmd + M', label: 'Minimize Focused Window' },
                     { keys: 'Ctrl/Cmd + Alt + Arrows', label: 'Snap Window' },
+                    { keys: 'Shift + Drag (edge)', label: 'Snap Preview (Manual)' },
                   ].map((shortcut) => (
                     <div key={shortcut.label} className="flex items-center justify-between rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2">
                       <span className="text-xs font-mono text-slate-200">{shortcut.keys}</span>

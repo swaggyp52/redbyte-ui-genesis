@@ -33,7 +33,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       <div
         className="h-10 px-4 flex items-center justify-between backdrop-blur-md border-b"
         style={{
-          background: 'rgba(6, 12, 24, 0.82)',
+          background: 'var(--rb-glass)',
           borderColor: 'var(--rb-border)',
         }}
       >
@@ -47,9 +47,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             <Icon name="browser" size={16} />
             <span className="font-semibold tracking-wide">RedByte OS</span>
           </button>
-          {versionLabel && (
-            <span className="text-[10px] text-slate-500 font-mono">{versionLabel}</span>
-          )}
+          <span className="text-[10px] text-slate-500 font-mono uppercase tracking-[0.2em]">Instrument</span>
         </div>
 
         <div className="flex items-center gap-3 pointer-events-auto">
@@ -72,11 +70,20 @@ export const TopBar: React.FC<TopBarProps> = ({
         </div>
 
         <div className="flex items-center gap-2 pointer-events-auto">
+          {versionLabel && (
+            <div className="px-2 py-1 rounded-full border border-slate-700/70 bg-slate-900/50 text-[10px] font-mono text-slate-400 uppercase tracking-[0.14em]">
+              {versionLabel}
+            </div>
+          )}
           <button
             onClick={onOpenLog}
-            className="relative h-8 px-2.5 rounded-md border border-slate-700/70 bg-slate-900/60 text-slate-200 hover:text-white hover:border-slate-500 transition-colors"
+            className="relative h-8 px-2.5 rounded-md border text-slate-200 hover:text-white transition-colors"
             aria-label="Open System Log"
             title="Open System Log"
+            style={{
+              borderColor: 'var(--rb-border)',
+              background: 'var(--rb-surface-2)',
+            }}
           >
             <span className="inline-flex items-center gap-2 text-xs font-semibold">
               <Icon name="log" size={16} />
@@ -91,9 +98,13 @@ export const TopBar: React.FC<TopBarProps> = ({
           {onOpenSettings && (
             <button
               onClick={onOpenSettings}
-              className="h-8 w-8 rounded-md border border-slate-700/70 bg-slate-900/60 text-slate-300 hover:text-white hover:border-slate-500 transition-colors flex items-center justify-center"
+              className="h-8 w-8 rounded-md border text-slate-300 hover:text-white transition-colors flex items-center justify-center"
               aria-label="Open Settings"
               title="Open Settings (Ctrl/Cmd+,)"
+              style={{
+                borderColor: 'var(--rb-border)',
+                background: 'var(--rb-surface-2)',
+              }}
             >
               <Icon name="settings" size={16} />
             </button>

@@ -1,6 +1,45 @@
 /* HMR Proof Comment - Cycle 1.1 */
 .shell-container {
   font-family: var(--rb-font-family-body, 'Inter', sans-serif);
+  background: var(--rb-surface-0);
+}
+
+.rb-shell {
+  background: var(--rb-surface-0);
+  color: var(--rb-text);
+}
+
+.rb-desktop {
+  position: relative;
+}
+
+.rb-noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--rb-noise-opacity, 0.05);
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' stitchTiles='stitch'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='0.4'/></svg>");
+  background-size: 180px 180px;
+}
+
+.rb-vignette {
+  background: radial-gradient(1200px circle at 50% 20%, rgba(20, 30, 48, 0.12), transparent 55%),
+    radial-gradient(900px circle at 50% 90%, rgba(4, 6, 12, 0.35), transparent 60%);
+}
+
+.rb-window-control {
+  background: var(--rb-surface-3);
+  border: 1px solid var(--rb-border);
+  color: var(--rb-muted);
+  transition: background-color 120ms var(--rb-easing-out), border-color 120ms var(--rb-easing-out), color 120ms var(--rb-easing-out), transform 120ms var(--rb-easing-out);
+}
+
+.rb-window-control:hover {
+  background: var(--rb-surface-2);
+  border-color: var(--rb-border-strong);
+  color: var(--rb-text);
 }
 
 :root[data-rb-density='compact'] {
@@ -31,32 +70,38 @@
   width: 14px;
   height: 14px;
   background: transparent;
-  transition: background-color 0.15s ease;
+  opacity: 0.05;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
   z-index: 10;
 }
 
 .resize-handle:hover {
-  background: rgba(34, 211, 238, 0.15);
+  opacity: 1;
+  background: rgba(34, 211, 238, 0.12);
   border-radius: 2px;
 }
 
 .resize-handle:active {
+  opacity: 1;
   background: rgba(34, 211, 238, 0.25);
 }
 
 .resize-edge {
   position: absolute;
   background: transparent;
-  transition: background-color 0.15s ease;
+  opacity: 0.02;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
   z-index: 9;
 }
 
 .resize-edge:hover {
-  background: rgba(34, 211, 238, 0.08);
+  opacity: 1;
+  background: rgba(34, 211, 238, 0.06);
 }
 
 .resize-edge:active {
-  background: rgba(34, 211, 238, 0.15);
+  opacity: 1;
+  background: rgba(34, 211, 238, 0.12);
 }
 
 .resize-edge[style*='left'],
@@ -162,6 +207,32 @@
   50% {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes rb-field-drift {
+  0% {
+    background-position: 0% 0%;
+  }
+
+  100% {
+    background-position: 120% 120%;
+  }
+}
+
+@keyframes rb-field-scan {
+  0% {
+    transform: translateY(-20%);
+    opacity: 0.1;
+  }
+
+  50% {
+    opacity: 0.25;
+  }
+
+  100% {
+    transform: translateY(20%);
+    opacity: 0.1;
   }
 }
 

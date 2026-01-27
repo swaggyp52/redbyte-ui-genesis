@@ -62,6 +62,19 @@ export const wallpapers: WallpaperDefinition[] = [
     },
   },
   {
+    id: 'redbyte-field',
+    name: 'RedByte Field',
+    style: (variant) => {
+      const resolved = resolveThemeVariant(variant);
+      return {
+        background:
+          resolved === 'light'
+            ? 'linear-gradient(140deg, #0b0f18 0%, #101826 55%, #0a0f18 100%)'
+            : 'linear-gradient(140deg, #060b14 0%, #0d1624 55%, #060b14 100%)',
+      };
+    },
+  },
+  {
     id: 'solid',
     name: 'Solid',
     style: (variant) => {
