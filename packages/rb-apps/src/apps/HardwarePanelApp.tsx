@@ -15,6 +15,7 @@ const STREAM_START_GRACE_MS = 2500;
 const NO_DATA_AUTO_STOP_MS = 5000;
 const STREAM_RETRY_LIMIT = 1;
 const DEFAULT_RETRY_DELAY_MS = 600;
+const MAX_SAMPLES = 50000;
 
 type PanelState =
   | "DISCONNECTED"
@@ -459,7 +460,13 @@ function HardwarePanelComponent() {
           const eventItem = buildTraceEvent(data, seq, captureHzRef.current);
           lastSampleAtRef.current = Date.now();
           scheduleSilenceCheck();
-          setTraceEvents((prev) => [...prev, eventItem]);
+          setTraceEvents((prev) => {
+            if (prev.length >= MAX_SAMPLES) {
+              // Simple strict cap: drop oldest
+              return [...prev.slice(1), eventItem];
+            }
+            return [...prev, eventItem];
+          });
         } catch {
           // Ignore malformed samples
         }

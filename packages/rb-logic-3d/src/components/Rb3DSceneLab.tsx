@@ -7,7 +7,111 @@ import { WireMesh } from '../meshes/WireMesh';
 import { useLabInteraction } from '../hooks/useLabInteraction';
 import { computeNetlist } from '../lab-model/netlist';
 
-// --- Part Mesh with Interactive Pins ---
+// --- Visual Components ---
+const BreadboardVisual = ({ dim }: { dim: { x: number; y: number; z: number } }) => {
+    return (
+        <group>
+            {/* Main Body */}
+            <Box args={[dim.x, dim.y, dim.z]}>
+                <meshStandardMaterial color="#f0f0e6" roughness={0.8} />
+            </Box>
+            {/* Center Trench */}
+            <Box args={[dim.x, 0.02, 0.2]} position={[0, dim.y / 2 + 0.01, 0]}>
+                <meshStandardMaterial color="#cca" roughness={1} />
+            </Box>
+            {/* Power Rails Stripes (Red/Blue lines for visual cue) */}
+            <Box args={[dim.x, 0.01, 0.05]} position={[0, dim.y / 2 + 0.01, -2.0]}>
+                <meshBasicMaterial color="#d00" />
+            </Box>
+            <Box args={[dim.x, 0.01, 0.05]} position={[0, dim.y / 2 + 0.01, -1.7]}>
+                <meshBasicMaterial color="#00d" />
+            </Box>
+            <Box args={[dim.x, 0.01, 0.05]} position={[0, dim.y / 2 + 0.01, 1.7]}>
+                <meshBasicMaterial color="#d00" />
+            </Box>
+            <Box args={[dim.x, 0.01, 0.05]} position={[0, dim.y / 2 + 0.01, 2.0]}>
+                <meshBasicMaterial color="#00d" />
+            </Box>
+            {/* Simple Grid Dots (Texture would be better, but dots work cheaply) */}
+            {/* Omitted for perf (too many instanced meshes needed). Rely on structure. */}
+        </group>
+    );
+};
+
+const NanoVisual = ({ dim }: { dim: { x: number; y: number; z: number } }) => {
+    const pcbHeight = 0.15;
+    return (
+        <group>
+            {/* PCB */}
+            <Box args={[dim.x, pcbHeight, dim.z]} position={[0, -dim.y / 2 + pcbHeight / 2, 0]}>
+                <meshStandardMaterial color="#003366" roughness={0.3} metalness={0.5} />
+            </Box>
+            {/* USB Connector */}
+            <Box args={[0.8, 0.4, 0.6]} position={[0, -dim.y / 2 + pcbHeight + 0.2, -dim.z / 2 + 0.3]}>
+                <meshStandardMaterial color="#silver" roughness={0.2} metalness={0.9} />
+            </Box>
+            {/* Main IC */}
+            <Box args={[0.8, 0.1, 0.8]} position={[0.2, -dim.y / 2 + pcbHeight + 0.05, 0.5]} rotation={[0, Math.PI / 4, 0]}>
+                <meshStandardMaterial color="#111" roughness={0.2} />
+            </Box>
+            {/* Reset Button */}
+            <Box args={[0.3, 0.2, 0.3]} position={[0, -dim.y / 2 + pcbHeight + 0.1, 0]}>
+                <meshStandardMaterial color="#ccc" />
+            </Box>
+        </group>
+    );
+};
+
+const LedVisual = ({ isOn }: { isOn: boolean }) => (
+    <group rotation={[Math.PI / 2, 0, 0]}>
+        {/* Bulb */}
+        <mesh position={[0, 0.3, 0]}>
+            <cylinderGeometry args={[0.25, 0.25, 0.6, 16]} />
+            <meshStandardMaterial
+                color={isOn ? '#ff2222' : '#880000'}
+                emissive={isOn ? '#ff0000' : 'black'}
+                emissiveIntensity={isOn ? 2 : 0}
+                roughness={0.2}
+                transparent
+                opacity={0.9}
+            />
+        </mesh>
+        {/* Rim */}
+        <mesh position={[0, 0, 0]}>
+            <cylinderGeometry args={[0.3, 0.3, 0.1, 16]} />
+            <meshStandardMaterial color={isOn ? '#ff2222' : '#880000'} />
+        </mesh>
+    </group>
+);
+
+const ResistorVisual = () => (
+    <group rotation={[0, 0, Math.PI / 2]} position={[0, 0.1, 0]}>
+        {/* Body */}
+        <mesh>
+            <cylinderGeometry args={[0.15, 0.15, 0.8, 12]} />
+            <meshStandardMaterial color="#e0c0a0" />
+        </mesh>
+        {/* Color Bands (Static for visual flair) */}
+        <mesh position={[0, 0.1, 0]}>
+            <cylinderGeometry args={[0.155, 0.155, 0.1, 12]} />
+            <meshStandardMaterial color="brown" />
+        </mesh>
+        <mesh position={[0, 0.25, 0]}>
+            <cylinderGeometry args={[0.155, 0.155, 0.1, 12]} />
+            <meshStandardMaterial color="black" />
+        </mesh>
+        <mesh position={[0, -0.1, 0]}>
+            <cylinderGeometry args={[0.155, 0.155, 0.1, 12]} />
+            <meshStandardMaterial color="red" />
+        </mesh>
+        <mesh position={[0, -0.25, 0]}>
+            <cylinderGeometry args={[0.155, 0.155, 0.1, 12]} />
+            <meshStandardMaterial color="gold" metalness={0.8} />
+        </mesh>
+    </group>
+);
+
+
 const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string> }> = ({ node, pinToNetId }) => {
     const def = PART_DEFINITIONS[node.type];
     const { handlePinHover, handlePinUnhover, handlePinClick } = useLabInteraction();
@@ -19,35 +123,32 @@ const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string> }> = ({
 
     if (!def) return null;
 
-    // LED emissive state
-    const isLedOn = node.type === 'led-5mm' && pinStates[`${node.id}:anode`] === 1;
-
-    // Part-specific color
-    const partColor = isLedOn ? '#ff2222'
-        : node.type === 'arduino-nano' ? '#1a5276'
-            : node.type === 'breadboard-half' ? '#f5f5dc'
-                : node.type === 'resistor-dip' ? '#8b7355'
-                    : node.type === 'button-momentary' ? '#333333'
-                        : '#888888';
+    const isLeOn = node.type === 'led-5mm' && pinStates[`${node.id}:anode`] === 1;
 
     return (
         <group
             position={[node.pose.position.x, node.pose.position.y, node.pose.position.z]}
             rotation={[node.pose.rotation.x, node.pose.rotation.y, node.pose.rotation.z]}
         >
-            {/* Visual Body */}
-            <Box args={[def.dimensions.x, def.dimensions.y, def.dimensions.z]}>
-                <meshStandardMaterial
-                    color={partColor}
-                    emissive={isLedOn ? '#ff0000' : 'black'}
-                    emissiveIntensity={isLedOn ? 3 : 0}
-                    roughness={node.type === 'breadboard-half' ? 0.8 : 0.5}
-                    metalness={node.type === 'arduino-nano' ? 0.1 : 0}
-                />
-            </Box>
-            <Text position={[0, def.dimensions.y / 2 + 0.15, 0]} fontSize={0.25} color="white" rotation={[-Math.PI / 2, 0, 0]}>
-                {def.name}
-            </Text>
+            {/* Specialized Geometry */}
+            {node.type === 'breadboard-half' ? (
+                <BreadboardVisual dim={def.dimensions} />
+            ) : node.type === 'arduino-nano' ? (
+                <NanoVisual dim={def.dimensions} />
+            ) : node.type === 'led-5mm' ? (
+                <LedVisual isOn={isLeOn} />
+            ) : node.type === 'resistor-dip' ? (
+                <ResistorVisual />
+            ) : (
+                <>
+                    <Box args={[def.dimensions.x, def.dimensions.y, def.dimensions.z]}>
+                        <meshStandardMaterial color="#888" />
+                    </Box>
+                    <Text position={[0, def.dimensions.y / 2 + 0.15, 0]} fontSize={0.25} color="white" rotation={[-Math.PI / 2, 0, 0]}>
+                        {def.name}
+                    </Text>
+                </>
+            )}
 
             {/* Interactive Pins */}
             {def.pins.map(pin => {
@@ -63,21 +164,34 @@ const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string> }> = ({
 
                 return (
                     <group key={pin.id} position={[pin.position.x, pin.position.y, pin.position.z]}>
-                        {/* Large invisible hitbox for easy clicking */}
+                        {/* Enlarged invisible hitbox for easy clicking */}
                         <mesh
                             visible={false}
-                            onPointerOver={(e) => handlePinHover(node.id, pin.id, e)}
-                            onPointerOut={(e) => handlePinUnhover(node.id, pin.id, e)}
-                            onClick={(e) => handlePinClick(node.id, pin.id, e)}
+                            onPointerOver={(e) => handlePinHover(node.id, pin.id, e as any)}
+                            onPointerOut={(e) => handlePinUnhover(node.id, pin.id, e as any)}
+                            onClick={(e) => handlePinClick(node.id, pin.id, e as any)}
                         >
-                            <boxGeometry args={[0.4, 0.4, 0.4]} />
+                            <boxGeometry args={[0.3, 0.4, 0.3]} />
                             <meshBasicMaterial transparent opacity={0.0} />
                         </mesh>
 
                         {/* Visual pin */}
-                        <Box args={[0.08, 0.08, 0.08]}>
-                            <meshBasicMaterial color={pinColor} />
-                        </Box>
+                        {
+                            // Only show pin visual if not buried inside breadboard (breadboard holes are implicit)
+                            node.type !== 'breadboard-half' && (
+                                <Box args={[0.08, 0.08, 0.08]}>
+                                    <meshBasicMaterial color={pinColor} />
+                                </Box>
+                            )
+                        }
+
+                        {/* For breadboard: Show highlight ring/box if hovered/active */}
+                        {node.type === 'breadboard-half' && (isHovered || isHighlighted || isNetSelected) && (
+                            <Box args={[0.15, 0.02, 0.15]} position={[0, 0.06, 0]}>
+                                <meshBasicMaterial color={pinColor} />
+                            </Box>
+                        )}
+
 
                         {/* Pin label on hover */}
                         {isHovered && (

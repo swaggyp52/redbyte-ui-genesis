@@ -302,7 +302,9 @@ export class HardwareClient {
       };
 
       socket.onerror = (error) => {
-        console.warn('[HardwareClient] WebSocket error:', error);
+        if (import.meta.env.DEV) {
+          console.warn('[HardwareClient] WebSocket error:', error);
+        }
       };
 
       socket.onclose = () => {
@@ -322,7 +324,9 @@ export class HardwareClient {
       };
 
     } catch (error) {
-      console.warn('[HardwareClient] Failed to create WebSocket:', error);
+      if (import.meta.env.DEV) {
+        console.warn('[HardwareClient] Failed to create WebSocket:', error);
+      }
     }
   }
 
