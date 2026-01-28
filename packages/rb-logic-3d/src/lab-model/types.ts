@@ -78,7 +78,8 @@ export type LabEvent =
     | { type: 'SERIAL_OUTPUT'; text: string } & BaseLabEvent
     | { type: 'SKETCH_LOADED'; sketchHash: string } & BaseLabEvent
     | { type: 'SKETCH_ERROR'; message: string } & BaseLabEvent
-    | { type: 'INTEGRITY_RECOVERY'; reason: string } & BaseLabEvent;
+    | { type: 'INTEGRITY_RECOVERY'; reason: string } & BaseLabEvent
+    | { type: 'FPGA_LOAD_PRESET'; presetId: string; presetHash: string; nodeId: string } & BaseLabEvent;
 
 export interface LabSnapshot {
     tick: number;

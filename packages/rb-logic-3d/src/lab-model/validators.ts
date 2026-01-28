@@ -106,6 +106,9 @@ export function validateTimeline(timeline: LabTimeline): ValidationResult {
         if ((event.type === 'SERIAL_OUTPUT' || event.type === 'SKETCH_LOADED' || event.type === 'SKETCH_ERROR') && event.source === 'user') {
             errors.push(`${event.type} event at seq ${event.seq} must come from 'engine' or 'import'`);
         }
+        if (event.type === 'FPGA_LOAD_PRESET' && event.source !== 'user') {
+            errors.push(`FPGA_LOAD_PRESET event at seq ${event.seq} must come from 'user'`);
+        }
     }
 
     // Validate Snapshots monotonicity
@@ -398,7 +401,8 @@ export async function fingerprintCapsuleContent(content: { meta: any, graph: Lab
                 source: e.source,
                 // Flatten discriminant fields
                 ...('part' in e ? { part: e.part } : {}),
-                ...('nodeId' in e ? { nodeId: e.nodeId, position: e.position, rotation: e.rotation } : {}),
+                ...('nodeId' in e ? { nodeId: e.nodeId } : {}),
+                ...(e.type === 'MOVE_PART' ? { position: e.position, rotation: e.rotation } : {}),
                 ...('wire' in e ? { wire: e.wire } : {}),
                 ...('wireId' in e ? { wireId: e.wireId } : {}),
                 ...('pinDiffs' in e ? {

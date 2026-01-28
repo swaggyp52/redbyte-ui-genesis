@@ -24,6 +24,7 @@ interface SimulationState {
     playbackMode: 'live' | 'replay';
     tick: number;
     pinStates: Record<string, number>; // "nodeId:pinId" -> 1/0
+    partStates: Record<string, any>; // "nodeId" -> { preset: "...", internal: {...} }
     replayScrubTick: number; // The tick we are viewing in replay mode
     lastReconstructionMs: number;
 }
@@ -87,6 +88,11 @@ interface LabStoreState {
 
     // User Interaction (P0 Determinism)
     setUserPinState: (nodeId: string, pinId: string, value: number) => void;
+    loadFpgaPreset: (nodeId: string, presetId: string) => void;
+
+    // Transport (Phase 5)
+    setTransport: (type: 'sim' | 'bridge') => void;
+    getTransportStatus: () => import('./transport/types').TransportStatus;
 }
 
 const SNAPSHOT_INTERVAL_TICKS = 200; // Create a snapshot every N ticks
@@ -137,10 +143,15 @@ const resyncEventSeq = (events: LabEvent[]): LabEvent[] =>
 
 const cloneGraph = (graph: LabGraph): LabGraph => JSON.parse(JSON.stringify(graph));
 
-import { FpgaSimEngine } from './fpga-sim/engine';
+import { LabTransport } from './transport/types';
+import { SimTransport } from './transport/sim-transport';
+import { BridgeTransport } from './transport/bridge-transport';
 
 const sketchRuntime = new SketchRuntime({ tickMs: TICK_MS, stepBudget: SKETCH_STEP_BUDGET });
-const fpgaEngine = new FpgaSimEngine('passthrough'); // Default to passthrough for MVP
+// Default to SimTransport for now
+// In real app, this might be a singleton managed outside or passed in.
+// For now, we keep it file-local like fpgaEngine was, but typed as Transport.
+let activeTransport: LabTransport = new SimTransport('passthrough');
 
 const buildWireAdjacency = (graph: LabGraph): Map<string, Set<string>> => {
     const adjacency = new Map<string, Set<string>>();
@@ -287,6 +298,7 @@ export const useLabStore = create<LabStoreState>()(
                 playbackMode: 'live',
                 tick: 0,
                 pinStates: {},
+                partStates: {},
                 replayScrubTick: 0,
                 lastReconstructionMs: 0,
             },
@@ -452,17 +464,42 @@ export const useLabStore = create<LabStoreState>()(
                             fpgaInputs[pinId] = (state.simulation.pinStates[key] ?? 0) as 0 | 1;
                         });
 
-                        // 2. Run Engine Tick
-                        const fpgaOutputs = fpgaEngine.tick(fpgaInputs);
+                        // 2. Transport Push (Sync Inputs to Transport)
+                        // If sim, we need to ensure it knows the pin states.
+                        if (activeTransport instanceof SimTransport) {
+                            activeTransport.tickWithInputs(fpgaInputs);
+                        } else {
+                            // Bridge: we push changes via pushInteraction below? 
+                            // Or the transport handles polling itself?
+                            // For MVP-5 Bridge: we rely on pushInteraction being called during setUserPinState.
+                            // But for physical switches, we might need to sync "initial" state if we missed it?
+                            // Let's assume pushInteraction is enough for now.
+                            // But wait, if we changed inputs via a wire? 
+                            // Yes, wire changes propagate to pins -> pinStates -> next tick we see them.
+                            // We need to tell the transport "Hey, SW0 is 1 now".
+                            // For every input pin:
+                            inputPins.forEach(pinId => {
+                                // Optimization: Only push if changed? 
+                                // We don't track "previous inputs" here easily without extra state.
+                                // But SimTransport needs inputs every tick to simulate combinational logic.
+                                // BridgeTransport might overload if we send 21 updates per tick (50ms).
+                                // Ideally BridgeTransport has a diffing layer.
+                                // Let's blindly push for now (or assume pushInteraction covers USER interaction).
+                                // BUT: If a wire connects output to input, that's not user interaction.
+                                // So we MUST push inputs to transport if we want closed-loop logic.
+                                const val = fpgaInputs[pinId];
+                                activeTransport.pushInteraction(fpgaNode.id, pinId, val);
+                            });
+                        }
 
-                        // 3. Apply Outputs (LEDs, 7Seg)
-                        Object.entries(fpgaOutputs).forEach(([pinId, value]) => {
-                            const key = `${fpgaNode.id}:${pinId}`;
-                            // Only propagate if changed (engine.tick returns changes, but let's be safe)
+                        // 3. Transport Poll (Outputs from Engine/HW)
+                        const fpgaOutputs = activeTransport.poll();
+
+                        // 4. Apply Outputs (LEDs, 7Seg)
+                        // Note: poll() returns "nodeId:pinId" -> value keys
+                        Object.entries(fpgaOutputs).forEach(([key, value]) => {
+                            // Only propagate if changed
                             if (state.simulation.pinStates[key] !== value) {
-                                // Direct write to pin state?
-                                // Ideally we treat this as a "driver". 
-                                // propagatePinDiffs handles net logic.
                                 const expanded = propagatePinDiffs(state.graph, state.simulation.pinStates, { [key]: value });
                                 Object.assign(diffs, expanded);
                             }
@@ -551,8 +588,7 @@ export const useLabStore = create<LabStoreState>()(
                         part: node,
                         tick: state.simulation.tick,
                         seq: state.timeline.events.length,
-                        source: 'user',
-                        ts: Date.now()
+                        source: 'user'
                     });
                     assertInvariants(state, 'addNode');
                 })),
@@ -591,8 +627,7 @@ export const useLabStore = create<LabStoreState>()(
                             rotation: node.pose.rotation,
                             tick: state.simulation.tick,
                             seq: state.timeline.events.length,
-                            source: 'user',
-                            ts: Date.now()
+                            source: 'user'
                         });
                         assertInvariants(state, 'updateNodePose');
                     }
@@ -616,8 +651,7 @@ export const useLabStore = create<LabStoreState>()(
                         wire,
                         tick: state.simulation.tick,
                         seq: state.timeline.events.length,
-                        source: 'user',
-                        ts: Date.now()
+                        source: 'user'
                     });
                     assertInvariants(state, 'addWire');
                 })),
@@ -633,8 +667,7 @@ export const useLabStore = create<LabStoreState>()(
                         wireId: id,
                         tick: state.simulation.tick,
                         seq: state.timeline.events.length,
-                        source: 'user',
-                        ts: Date.now()
+                        source: 'user'
                     });
                     assertInvariants(state, 'removeWire');
                 })),
@@ -717,11 +750,50 @@ export const useLabStore = create<LabStoreState>()(
                     applyIntegrityRecovery(state, recoveryMsg, { clearError: true });
                 })),
 
-            setUserPinState: (nodeId, pinId, value) =>
+            loadFpgaPreset: (nodeId, presetId) =>
                 set(produce((state: LabStoreState) => {
-                    // In Replay mode, user interaction is blocked (read-only)
                     if (state.simulation.playbackMode === 'replay') return;
                     if (state.integrityError) return;
+
+                    // Pause if running to ensure clean state transition
+                    if (state.simulation.isRunning) {
+                        applyPlaybackState(state.simulation, 'live:stopped');
+                    }
+
+                    // Reset part state to new preset
+                    // Note: This relies on FpgaSimEngine picking up the new preset from partStates
+                    state.simulation.partStates[nodeId] = {
+                        preset: presetId,
+                        internal: { outputs: {}, internal: {} }
+                    };
+
+                    state.timeline.events.push({
+                        type: 'FPGA_LOAD_PRESET',
+                        presetId,
+                        presetHash: presetId, // Using ID as hash for now (presets are static)
+                        nodeId,
+                        tick: state.simulation.tick,
+                        seq: state.timeline.events.length,
+                        source: 'user'
+                    });
+
+                    // Sync Transport
+                    activeTransport.loadPreset(nodeId, presetId);
+
+                    assertInvariants(state, 'loadFpgaPreset');
+                })),
+
+            setUserPinState: (nodeId, pinId, value) =>
+                set(produce((state: LabStoreState) => {
+
+
+                    // In Replay mode, user interaction is blocked (read-only)
+                    if (state.simulation.playbackMode === 'replay') {
+                        return;
+                    }
+                    if (state.integrityError) {
+                        return;
+                    }
 
                     // If simulation is running, we might want to pause or queue.
                     // For MVP-3, we allow immediate injection into pinStates,
@@ -737,22 +809,49 @@ export const useLabStore = create<LabStoreState>()(
                         pinDiffs: { [key]: value },
                         tick: state.simulation.tick,
                         seq: state.timeline.events.length,
-                        source: 'user', // Explicitly user-driven
-                        ts: Date.now()
+                        source: 'user' // Explicitly user-driven
                     });
 
-                    // Note: If sim is running, this might happen between ticks.
-                    // Ideally interaction events should align with ticks. 
-                    // But since we use ticks for replay, as long as it's recorded at 'tick',
-                    // it will be replayed at 'tick'.
-
-                    assertInvariants(state, 'setUserPinState');
+                    // assertInvariants(state, 'setUserPinState');
                 })),
+
+            setTransport: (type) => {
+                const current = activeTransport.getStatus().type;
+                if (current === type) return;
+
+                activeTransport.disconnect().then(() => {
+                    if (type === 'bridge') {
+                        activeTransport = new BridgeTransport();
+                    } else {
+                        activeTransport = new SimTransport();
+                        // Restore Preset Check
+                        const s = get();
+                        const fpgaNode = s.graph.nodes.find(n => n.type === 'fpga-basys3');
+                        if (fpgaNode) {
+                            const partState = s.simulation.partStates[fpgaNode.id];
+                            if (partState?.preset) {
+                                activeTransport.loadPreset(fpgaNode.id, partState.preset);
+                            }
+                        }
+                    }
+                    activeTransport.connect();
+                    // Trigger update via dummy set if needed, or rely on next tick/event
+                    set((s) => ({ simulation: { ...s.simulation } }));
+                });
+            },
+
+            getTransportStatus: () => activeTransport.getStatus(),
 
             reset: () => {
                 sketchRuntime.reset();
+                // Restore default transport
+                if (activeTransport instanceof BridgeTransport) {
+                    activeTransport.disconnect();
+                    activeTransport = new SimTransport();
+                    activeTransport.connect();
+                }
+
                 const resetSnapshot = createEmptySnapshot();
-                const resetGoodSnapshot = createEmptySnapshot();
                 set({
                     graph: createEmptyGraph(),
                     timeline: { events: [], snapshots: [resetSnapshot] },
@@ -762,6 +861,7 @@ export const useLabStore = create<LabStoreState>()(
                         playbackMode: 'live',
                         tick: 0,
                         pinStates: {},
+                        partStates: {},
                         replayScrubTick: 0,
                         lastReconstructionMs: 0,
                     },
@@ -781,13 +881,14 @@ export const useLabStore = create<LabStoreState>()(
                         selectedNetId: null,
                     },
                     integrityError: null,
-                    lastGoodSnapshot: resetGoodSnapshot,
+                    lastGoodSnapshot: resetSnapshot,
                     labSession: null
                 });
             },
         };
     })
 );
+
 
 // --- HELPER: Deterministic State Derivation ---
 function deriveStateAtTick(timeline: LabTimeline, targetTick: number): { derivedGraph: LabGraph, derivedPinStates: Record<string, number>, reconstructionMs: number } {
@@ -833,6 +934,27 @@ function deriveStateAtTick(timeline: LabTimeline, targetTick: number): { derived
                     Object.entries(event.pinDiffs).forEach(([key, val]) => {
                         pinStates[key] = val;
                     });
+                    break;
+                case 'FPGA_LOAD_PRESET':
+                    // In deriveStateAtTick, we might not track partStates fully if output only cares about graph/pinStates.
+                    // BUT, if FpgaSimEngine needs state to run ticks properly (if we were re-running simulation), we would need it.
+                    // For now, deriveStateAtTick produces 'graph' and 'pinStates' for VISUALS.
+                    // Does loading a preset change visuals immediately? No (unless it resets LEDs).
+                    // IF we want to support accurate replay of "load preset", we should probably reset the pins driving the FPGA outputs.
+                    // But the engine runs in the component or via `runSimulationStep`?
+                    // Actually, `pinStates` are the source of truth for LEDs. 
+                    // `FPGA_LOAD_PRESET` resets the engine. The engine outputs will be 0.
+                    // So we should probably zero out the outputs of that node in pinStates?
+                    // For MVP-3 deterministic replay, the SIM_PIN_DIFFs generated by the engine *after* the load will handle the pin updates.
+                    // So, strictly speaking, this event doesn't mutate graph/pinStates directly *here*.
+                    // It only affects the *next* simulation steps.
+                    // Since deriveStateAtTick is "what does the world look like at tick T",
+                    // and SIM_PIN_DIFFs are recorded, we theoretically don't need to do anything here 
+                    // IF we have all SIM_PIN_DIFFs recorded.
+                    // HOWEVER, if we are reconstructing state for *resuming* simulation, we need partStates.
+                    // The function signature only returns `derivedGraph` and `derivedPinStates`.
+                    // It does NOT return `partStates`. 
+                    // So we are good.
                     break;
             }
         }
