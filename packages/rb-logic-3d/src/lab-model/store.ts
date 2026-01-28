@@ -1,106 +1,39 @@
-// Aborted to update types.ts first
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { produce } from 'immer';
-import { LabGraph, LabNode, LabWire, LabNet, LabTimeline, LabEvent, LabSnapshot, PinState } from './types';
-import { validateLabGraph, validateTimeline, repairLabGraph, fingerprintStateSync } from './validators';
+import { LabGraph, LabNode, LabWire, LabTimeline, LabEvent, LabSnapshot, LabSession } from './types';
+import { validateLabGraph, validateTimeline, fingerprintState, fingerprintStateSync } from './validators';
+import { SketchRuntime } from './sketchEngine';
+import type { LabTemplate } from './labTemplate';
+import { fingerprintLabTemplate } from './labTemplate';
 
-// ... imports ...
-
-// ... interfaces ...
-
-// ... store creation ...
-
-runSimulationStep: () =>
-    set(produce((state: LabStoreState) => {
-        if (state.simulation.playbackMode === 'replay') return;
-        if (state.integrityError) return; // Halt on corruption
-
-        state.simulation.tick++;
-        const currentTick = state.simulation.tick;
-
-        // --- SNAPSHOT POLICY ---
-        if (currentTick % SNAPSHOT_INTERVAL_TICKS === 0) {
-            const snapshot: LabSnapshot = {
-                tick: currentTick,
-                graph: JSON.parse(JSON.stringify(state.graph)), // Deep copy
-                pinStates: { ...state.simulation.pinStates },
-                // Synchronous Checksum for Drift Detection
-                // fingerprint will be filled after object creation or via helper
-            };
-            snapshot.fingerprint = fingerprintStateSync(snapshot);
-
-            state.timeline.snapshots.push(snapshot);
-
-            // Invariant Check (Lazy, every snapshot)
-            const valid = validateLabGraph(state.graph);
-            if (valid.valid) {
-                state.lastGoodSnapshot = snapshot;
-            } else {
-                state.integrityError = `Corruption Detected at Tick ${currentTick}: ${valid.errors[0]}`;
-                state.simulation.isRunning = false;
-            }
-        }
-
-        // ... simulation logic ...
-        // (rest of runSimulationStep is unchanged, skipping for brevity in this replace block if possible, but I need to target the whole function or careful ranges.
-        // I will target the imports and then specific methods using multiple chunks if needed, or replacement of the `recover` and `runSimulationStep` blocks.
-        // actually I can just replace the chunks.)
-
-        // ...
-    })),
-
-    // ...
-
-    recover: () =>
-        set(produce((state: LabStoreState) => {
-            if (state.lastGoodSnapshot) {
-                const snap = state.lastGoodSnapshot;
-
-                // 1. Restore State
-                state.graph = JSON.parse(JSON.stringify(snap.graph));
-                state.simulation.pinStates = { ...snap.pinStates };
-                state.simulation.tick = snap.tick;
-
-                // 2. Truncate History (Deterministic Recovery)
-                // Keep events that happened <= snap.tick
-                state.timeline.events = state.timeline.events.filter(e => e.tick <= snap.tick);
-
-                // 3. Emit Recovery Event
-                const recoveryMsg = state.integrityError || 'Manual Recovery';
-                state.timeline.events.push({
-                    type: 'INTEGRITY_RECOVERY' as any, // Type cast if not in LabEvent yet
-                    tick: snap.tick,
-                    seq: state.timeline.events.length,
-                    source: 'engine',
-                    reason: recoveryMsg
-                } as any);
-
-                state.integrityError = null;
-                state.simulation.isRunning = false;
-                console.warn(`System Recovered to Snapshot at Tick ${snap.tick}. Reason: ${recoveryMsg}`);
-            } else {
-                // Hard Reset
-                state.graph = { nodes: [], wires: [], net: {} };
-                state.simulation.tick = 0;
-                state.timeline.events = [];
-                state.integrityError = null;
-            }
-        })),
-
-        interface InteractionState {
+interface InteractionState {
     mode: 'orbit' | 'wire';
     hoveredPin: { nodeId: string; pinId: string } | null;
     wireStartPin: { nodeId: string; pinId: string } | null;
     dragPosition: { x: number; y: number; z: number } | null;
+    highlightedPins: Array<{ nodeId: string; pinId: string }>;
+    selectedNetId: string | null;
 }
 
+type PlaybackState = 'live:stopped' | 'live:running' | 'replay:paused' | 'replay:playing';
+
 interface SimulationState {
+    playbackState: PlaybackState;
     isRunning: boolean;
+    playbackMode: 'live' | 'replay';
     tick: number;
     pinStates: Record<string, number>; // "nodeId:pinId" -> 1/0
-    playbackMode: 'live' | 'replay';
     replayScrubTick: number; // The tick we are viewing in replay mode
+    lastReconstructionMs: number;
+}
+
+interface SketchState {
+    source: string;
+    status: 'idle' | 'loaded' | 'error';
+    error: string | null;
+    serial: string[];
+    sketchHash: string | null;
 }
 
 interface LabStoreState {
@@ -109,6 +42,8 @@ interface LabStoreState {
 
     interaction: InteractionState;
     simulation: SimulationState;
+    sketch: SketchState;
+    labSession: LabSession | null;
 
     // Reliability
     integrityError: string | null;
@@ -116,6 +51,8 @@ interface LabStoreState {
 
     // Actions
     setInteractionMode: (mode: 'orbit' | 'wire') => void;
+    setHighlightedPins: (pins: Array<{ nodeId: string; pinId: string }>) => void;
+    setSelectedNetId: (netId: string | null) => void;
 
     // Simulation & Timeline
     runSimulationStep: () => void;
@@ -136,367 +73,707 @@ interface LabStoreState {
     removeWire: (id: string) => void;
     reset: () => void;
 
+    // Sketch
+    setSketchSource: (source: string) => void;
+    loadSketch: () => void;
+    clearSerial: () => void;
+
+    // Lab Session
+    startLabSession: (template: LabTemplate) => void;
+    clearLabSession: () => void;
+
     // Recovery
     recover: () => void;
 }
 
 const SNAPSHOT_INTERVAL_TICKS = 200; // Create a snapshot every N ticks
+const TICK_MS = 50;
+const SKETCH_STEP_BUDGET = 2000;
+const RECONSTRUCTION_WARN_MS = 16;
+const DEBUG_INVARIANTS = typeof process !== 'undefined' ? process.env.NODE_ENV !== 'production' : true;
+
+const createEmptyGraph = (): LabGraph => ({ nodes: [], wires: [], net: {} });
+
+const createEmptySnapshot = (): LabSnapshot => {
+    const graph = createEmptyGraph();
+    const pinStates: Record<string, number> = {};
+    return {
+        tick: 0,
+        graph,
+        pinStates,
+        traceHash: fingerprintStateSync({ graph, pinStates, tick: 0 })
+    };
+};
+
+const playbackModeFromState = (state: PlaybackState): 'live' | 'replay' =>
+    state.startsWith('live') ? 'live' : 'replay';
+
+const isRunningFromState = (state: PlaybackState): boolean =>
+    state === 'live:running' || state === 'replay:playing';
+
+const applyPlaybackState = (simulation: SimulationState, nextState: PlaybackState): void => {
+    simulation.playbackState = nextState;
+    simulation.playbackMode = playbackModeFromState(nextState);
+    simulation.isRunning = isRunningFromState(nextState);
+};
+
+const pauseLiveSimulationForEdit = (state: LabStoreState): void => {
+    if (state.simulation.playbackState !== 'live:running') return;
+    applyPlaybackState(state.simulation, 'live:stopped');
+    state.timeline.events.push({
+        type: 'SIMULATION_STOP',
+        tick: state.simulation.tick,
+        seq: state.timeline.events.length,
+        source: 'user',
+        ts: Date.now()
+    });
+};
+
+const resyncEventSeq = (events: LabEvent[]): LabEvent[] =>
+    events.map((event, index) => ({ ...event, seq: index }));
+
+const cloneGraph = (graph: LabGraph): LabGraph => JSON.parse(JSON.stringify(graph));
+
+const sketchRuntime = new SketchRuntime({ tickMs: TICK_MS, stepBudget: SKETCH_STEP_BUDGET });
+
+const buildWireAdjacency = (graph: LabGraph): Map<string, Set<string>> => {
+    const adjacency = new Map<string, Set<string>>();
+    const addEdge = (from: string, to: string) => {
+        if (!adjacency.has(from)) adjacency.set(from, new Set());
+        adjacency.get(from)!.add(to);
+    };
+    for (const wire of graph.wires) {
+        const a = `${wire.sourceNodeId}:${wire.sourcePinId}`;
+        const b = `${wire.targetNodeId}:${wire.targetPinId}`;
+        addEdge(a, b);
+        addEdge(b, a);
+    }
+    return adjacency;
+};
+
+const propagatePinDiffs = (
+    graph: LabGraph,
+    pinStates: Record<string, number>,
+    diffs: Record<string, number>
+): Record<string, number> => {
+    const adjacency = buildWireAdjacency(graph);
+    const expanded: Record<string, number> = {};
+    const queue: Array<{ key: string; value: number }> = Object.entries(diffs).map(([key, value]) => ({ key, value }));
+    const visited = new Set<string>();
+
+    while (queue.length > 0) {
+        const { key, value } = queue.shift()!;
+        if (visited.has(key)) continue;
+        visited.add(key);
+
+        if (pinStates[key] !== value) {
+            pinStates[key] = value;
+            expanded[key] = value;
+        }
+
+        const neighbors = adjacency.get(key);
+        if (!neighbors) continue;
+        for (const next of neighbors) {
+            if (!visited.has(next)) {
+                queue.push({ key: next, value });
+            }
+        }
+    }
+
+    return expanded;
+};
+
+const scheduleSnapshotFingerprint = (
+    setState: (fn: (state: LabStoreState) => void) => void,
+    snapshotSource: { graph: LabGraph; pinStates: Record<string, number>; tick: number }
+) => {
+    if (typeof crypto === 'undefined' || !crypto.subtle) return;
+    const snapshotTick = snapshotSource.tick;
+    queueMicrotask(() => {
+        void fingerprintState(snapshotSource)
+            .then((hash) => {
+                setState(produce((draft: LabStoreState) => {
+                    const target = draft.timeline.snapshots.find((snap) => snap.tick === snapshotTick);
+                    if (target) {
+                        target.fingerprint = hash;
+                    }
+                }));
+            })
+            .catch(() => {
+                // Ignore fingerprint failures in background
+            });
+    });
+};
+
+const applyIntegrityRecovery = (
+    state: LabStoreState,
+    reason: string,
+    options?: { clearError?: boolean }
+) => {
+    const snapshot = state.lastGoodSnapshot;
+    if (!snapshot) {
+        state.graph = createEmptyGraph();
+        state.timeline = { events: [], snapshots: [createEmptySnapshot()] };
+        state.simulation.tick = 0;
+        state.simulation.pinStates = {};
+        state.simulation.replayScrubTick = 0;
+        applyPlaybackState(state.simulation, 'replay:paused');
+        state.integrityError = options?.clearError ? null : reason;
+        return;
+    }
+
+    state.graph = cloneGraph(snapshot.graph);
+    state.simulation.pinStates = { ...snapshot.pinStates };
+    state.simulation.tick = snapshot.tick;
+    state.simulation.replayScrubTick = snapshot.tick;
+    applyPlaybackState(state.simulation, 'replay:paused');
+
+    const truncatedEvents = state.timeline.events.filter((event) => event.tick <= snapshot.tick);
+    state.timeline.events = resyncEventSeq(truncatedEvents);
+    state.timeline.events.push({
+        type: 'INTEGRITY_RECOVERY',
+        tick: snapshot.tick,
+        seq: state.timeline.events.length,
+        source: 'engine',
+        reason
+    });
+
+    const truncatedSnapshots = state.timeline.snapshots.filter((snap) => snap.tick <= snapshot.tick);
+    state.timeline.snapshots = truncatedSnapshots.length > 0 ? truncatedSnapshots : [createEmptySnapshot()];
+
+    state.integrityError = options?.clearError ? null : reason;
+};
+
+const assertInvariants = (state: LabStoreState, context: string) => {
+    if (!DEBUG_INVARIANTS) return;
+    if (state.integrityError) return;
+    const graphResult = validateLabGraph(state.graph);
+    const timelineResult = validateTimeline(state.timeline);
+    if (!graphResult.valid || !timelineResult.valid) {
+        const message = !graphResult.valid
+            ? graphResult.errors[0]
+            : timelineResult.errors[0];
+        applyIntegrityRecovery(state, `Integrity Warning (${context}): ${message}`);
+    }
+};
 
 export const useLabStore = create<LabStoreState>()(
-    subscribeWithSelector((set, get) => ({
-        graph: {
-            nodes: [],
-            wires: [],
-            net: {},
-        },
-        timeline: {
-            events: [],
-            snapshots: [{ tick: 0, graph: { nodes: [], wires: [], net: {} }, pinStates: {} }], // Initial snapshot
-        },
-        interaction: {
-            mode: 'orbit',
-            hoveredPin: null,
-            wireStartPin: null,
-            dragPosition: null,
-        },
-        simulation: {
-            isRunning: false,
-            tick: 0,
-            pinStates: {},
-            playbackMode: 'live',
-            replayScrubTick: 0,
-        },
-        integrityError: null,
-        lastGoodSnapshot: { tick: 0, graph: { nodes: [], wires: [], net: {} }, pinStates: {} },
+    subscribeWithSelector((set, get) => {
+        const initialSnapshot = createEmptySnapshot();
+        const lastGoodSnapshot = createEmptySnapshot();
+        return {
+            graph: createEmptyGraph(),
+            timeline: {
+                events: [],
+                snapshots: [initialSnapshot],
+            },
+            interaction: {
+                mode: 'orbit',
+                hoveredPin: null,
+                wireStartPin: null,
+                dragPosition: null,
+                highlightedPins: [],
+                selectedNetId: null,
+            },
+            simulation: {
+                playbackState: 'live:stopped',
+                isRunning: false,
+                playbackMode: 'live',
+                tick: 0,
+                pinStates: {},
+                replayScrubTick: 0,
+                lastReconstructionMs: 0,
+            },
+            sketch: {
+                source: '',
+                status: 'idle',
+                error: null,
+                serial: [],
+                sketchHash: null,
+            },
+            labSession: null,
+            integrityError: null,
+            lastGoodSnapshot,
 
-        setInteractionMode: (mode) =>
-            set(produce((state: LabStoreState) => { state.interaction.mode = mode; })),
+            setInteractionMode: (mode) =>
+                set(produce((state: LabStoreState) => { state.interaction.mode = mode; })),
+            setHighlightedPins: (pins) =>
+                set(produce((state: LabStoreState) => { state.interaction.highlightedPins = pins; })),
+            setSelectedNetId: (netId) =>
+                set(produce((state: LabStoreState) => { state.interaction.selectedNetId = netId; })),
 
-        toggleSimulation: (running) =>
-            set(produce((state: LabStoreState) => {
-                if (state.simulation.playbackMode === 'replay' && running) {
-                    // If user Hits play in replay mode, maybe we jump to live? 
-                    // For safety, let's auto-switch to live if they explicitly run.
-                    state.simulation.playbackMode = 'live';
-                }
-                const next = running ?? !state.simulation.isRunning;
-                state.simulation.isRunning = next;
+            toggleSimulation: (running) =>
+                set(produce((state: LabStoreState) => {
+                    if (state.integrityError) return;
+                    const nextRunning = running ?? !state.simulation.isRunning;
 
-                // Record start/stop events
-                const seq = state.timeline.events.length;
-                state.timeline.events.push({
-                    type: next ? 'SIMULATION_START' : 'SIMULATION_STOP',
-                    tick: state.simulation.tick,
-                    seq,
-                    source: 'user',
-                    ts: Date.now()
-                });
-            })),
-
-        setPlaybackMode: (mode) =>
-            set(produce((state: LabStoreState) => {
-                state.simulation.playbackMode = mode;
-                state.simulation.isRunning = false; // Stop simulation when switching modes
-                if (mode === 'live') {
-                    // Restore latest live state
-                    // We need to re-derive from the latest snapshot + events up to current tick
-                    const targetTick = state.simulation.tick;
-                    // For MVP simplicity, we can just let runSimulationStep continue from where it was
-                    // The graph state in 'live' should inherently BE the latest if we didn't corrupt it during replay.
-                    // IMPORTANT: 'scrub' updates state.graph. We MUST restore state.graph when going back to live.
-
-                    // Optimization: Actually, let's just re-derive state at maxTick to be safe.
-                    // Or, we can keep 'liveGraph' separately in memory? 
-                    // For MVP, strictly deriving is safest.
-                    const { derivedGraph, derivedPinStates } = deriveStateAtTick(state.timeline, targetTick);
-                    state.graph = derivedGraph;
-                    state.simulation.pinStates = derivedPinStates;
-                } else {
-                    state.simulation.replayScrubTick = state.simulation.tick;
-                }
-            })),
-
-        scrub: (tick) =>
-            set(produce((state: LabStoreState) => {
-                if (state.simulation.playbackMode !== 'replay') return;
-
-                // Clamp tick
-                const maxTick = state.simulation.tick;
-                const targetTick = Math.max(0, Math.min(tick, maxTick));
-
-                state.simulation.replayScrubTick = targetTick;
-
-                // DERIVE STATE
-                const { derivedGraph, derivedPinStates } = deriveStateAtTick(state.timeline, targetTick);
-                state.graph = derivedGraph;
-                state.simulation.pinStates = derivedPinStates;
-            })),
-
-        runSimulationStep: () =>
-            set(produce((state: LabStoreState) => {
-                if (state.simulation.playbackMode === 'replay') return;
-                if (state.integrityError) return; // Halt on corruption
-
-                state.simulation.tick++;
-                const currentTick = state.simulation.tick;
-
-                // --- SNAPSHOT POLICY ---
-                if (currentTick % SNAPSHOT_INTERVAL_TICKS === 0) {
-                    const snapshot = {
-                        tick: currentTick,
-                        graph: JSON.parse(JSON.stringify(state.graph)), // Deep copy
-                        pinStates: { ...state.simulation.pinStates }
-                    };
-                    state.timeline.snapshots.push(snapshot);
-
-                    // Invariant Check (Lazy, every snapshot)
-                    const valid = validateLabGraph(state.graph);
-                    if (valid.valid) {
-                        state.lastGoodSnapshot = snapshot;
-                        // Trigger async fingerprinting here (e.g., calculate hash for snapshot.graph)
-                        // void calculateGraphFingerprint(snapshot.graph).then(fingerprint => { /* store fingerprint */ });
-                    } else {
-                        state.integrityError = `Corruption Detected at Tick ${currentTick}: ${valid.errors[0]}`;
-                        state.simulation.isRunning = false;
+                    if (state.simulation.playbackMode === 'replay') {
+                        applyPlaybackState(state.simulation, nextRunning ? 'replay:playing' : 'replay:paused');
+                        return;
                     }
-                }
 
-                // --- MVP BLINK LOGIC ---
-                const arduino = state.graph.nodes.find(n => n.type === 'arduino-nano');
-                const diffs: Record<string, number> = {};
-
-                if (arduino) {
-                    const cycle = 40;
-                    const val = (currentTick % cycle) < 20 ? 1 : 0;
-                    const d13Key = `${arduino.id}:D13`;
-
-                    // Only record diff if changed
-                    if (state.simulation.pinStates[d13Key] !== val) {
-                        state.simulation.pinStates[d13Key] = val;
-                        diffs[d13Key] = val;
-
-                        // Propagate
-                        const d13Wires = state.graph.wires.filter(w =>
-                            (w.sourceNodeId === arduino.id && w.sourcePinId === 'D13') ||
-                            (w.targetNodeId === arduino.id && w.targetPinId === 'D13')
-                        );
-
-                        d13Wires.forEach(w => {
-                            const otherNodeId = w.sourceNodeId === arduino.id ? w.targetNodeId : w.sourceNodeId;
-                            const otherPinId = w.sourceNodeId === arduino.id ? w.targetPinId : w.sourcePinId;
-                            const key = `${otherNodeId}:${otherPinId}`;
-
-                            if (state.simulation.pinStates[key] !== val) {
-                                state.simulation.pinStates[key] = val;
-                                diffs[key] = val;
-                            }
-                        });
-                    }
-                }
-
-                // Emit Tick Event with Diffs
-                if (Object.keys(diffs).length > 0) {
-                    state.timeline.events.push({
-                        type: 'SIM_PIN_DIFF',
-                        tick: currentTick,
-                        seq: state.timeline.events.length,
-                        source: 'engine',
-                        pinDiffs: diffs
-                    });
-                }
-            })),
-
-        setHoveredPin: (pin) =>
-            set(produce((state: LabStoreState) => { state.interaction.hoveredPin = pin; })),
-
-        startWire: (nodeId, pinId) =>
-            set(produce((state: LabStoreState) => {
-                if (state.simulation.playbackMode === 'replay') return;
-                state.interaction.wireStartPin = { nodeId, pinId };
-                state.interaction.mode = 'wire';
-            })),
-
-        cancelWire: () =>
-            set(produce((state: LabStoreState) => {
-                state.interaction.wireStartPin = null;
-                state.interaction.mode = 'orbit';
-                state.interaction.dragPosition = null;
-            })),
-
-        updateDragPosition: (pos) =>
-            set(produce((state: LabStoreState) => { state.interaction.dragPosition = pos; })),
-
-        addNode: (node) =>
-            set(produce((state: LabStoreState) => {
-                if (state.simulation.playbackMode === 'replay') return;
-                state.graph.nodes.push(node);
-
-                // Immediate Validation
-                const valid = validateLabGraph(state.graph);
-                if (!valid.valid) {
-                    // Rollback! (By not modifying, but Immer is a proxy...)
-                    // We need to revert the push.
-                    state.graph.nodes.pop();
-                    console.error("Blocked Invalid Node Placement:", valid.errors);
-                    return;
-                }
-
-                // Record Event
-                state.timeline.events.push({
-                    type: 'PLACE_PART',
-                    part: node,
-                    tick: state.simulation.tick,
-                    seq: state.timeline.events.length,
-                    source: 'user',
-                    ts: Date.now()
-                });
-            })),
-
-        updateNodePose: (id, position, rotation) =>
-            set(produce((state: LabStoreState) => {
-                if (state.simulation.playbackMode === 'replay') return;
-                const node = state.graph.nodes.find((n) => n.id === id);
-                if (node) {
-                    node.pose.position = position;
-                    node.pose.rotation = rotation;
-
-                    // Debounce or reduce frequency of move events in real implementation
-                    // For MVP-1, we might just record final move? 
-                    // Let's assume this is called on drag end for now, or record every frame (bad).
-                    // Refactoring to record only significant moves or drag-end is better, 
-                    // but verifying with USER plan: "record events: placePart, movePart..."
-                    // We'll record it.
+                    if (nextRunning === state.simulation.isRunning) return;
+                    applyPlaybackState(state.simulation, nextRunning ? 'live:running' : 'live:stopped');
 
                     state.timeline.events.push({
-                        type: 'MOVE_PART',
-                        nodeId: id,
-                        position,
-                        rotation,
+                        type: nextRunning ? 'SIMULATION_START' : 'SIMULATION_STOP',
                         tick: state.simulation.tick,
                         seq: state.timeline.events.length,
                         source: 'user',
                         ts: Date.now()
                     });
-                }
-                // We trust Pose from OrbitControls mostly, but could clamp here if needed.
-            })),
+                    assertInvariants(state, 'toggleSimulation');
+                })),
 
-        addWire: (wire) =>
-            set(produce((state: LabStoreState) => {
-                if (state.simulation.playbackMode === 'replay') return;
-                state.graph.wires.push(wire);
+            setPlaybackMode: (mode) =>
+                set(produce((state: LabStoreState) => {
+                    if (state.integrityError) return;
+                    if (state.simulation.playbackState === 'live:running' && mode === 'replay') {
+                        return;
+                    }
+                    if (mode === 'live') {
+                        applyPlaybackState(state.simulation, 'live:stopped');
+                        const targetTick = state.simulation.tick;
+                        const { derivedGraph, derivedPinStates, reconstructionMs } = deriveStateAtTick(state.timeline, targetTick);
+                        state.graph = derivedGraph;
+                        state.simulation.pinStates = derivedPinStates;
+                        state.simulation.lastReconstructionMs = reconstructionMs;
+                    } else {
+                        applyPlaybackState(state.simulation, 'replay:paused');
+                        state.simulation.replayScrubTick = state.simulation.tick;
+                    }
+                })),
 
-                const valid = validateLabGraph(state.graph);
-                if (!valid.valid) {
-                    state.graph.wires.pop();
-                    console.error("Blocked Invalid Wire:", valid.errors);
-                    return;
-                }
+            scrub: (tick) =>
+                set(produce((state: LabStoreState) => {
+                    if (state.simulation.playbackMode !== 'replay') return;
+                    if (state.simulation.playbackState === 'replay:playing') return;
 
-                state.timeline.events.push({
-                    type: 'ADD_WIRE',
-                    wire,
-                    tick: state.simulation.tick,
-                    seq: state.timeline.events.length,
-                    source: 'user',
-                    ts: Date.now()
+                    const maxTick = state.simulation.tick;
+                    const targetTick = Math.max(0, Math.min(tick, maxTick));
+
+                    state.simulation.replayScrubTick = targetTick;
+
+                    const { derivedGraph, derivedPinStates, reconstructionMs } = deriveStateAtTick(state.timeline, targetTick);
+                    state.graph = derivedGraph;
+                    state.simulation.pinStates = derivedPinStates;
+                    state.simulation.lastReconstructionMs = reconstructionMs;
+                })),
+
+            runSimulationStep: () =>
+                set(produce((state: LabStoreState) => {
+                    if (state.integrityError) return;
+
+                    if (state.simulation.playbackState === 'replay:playing') {
+                        const maxTick = state.simulation.tick;
+                        const nextTick = Math.min(state.simulation.replayScrubTick + 1, maxTick);
+                        if (nextTick === state.simulation.replayScrubTick) {
+                            applyPlaybackState(state.simulation, 'replay:paused');
+                            return;
+                        }
+                        state.simulation.replayScrubTick = nextTick;
+                        const { derivedGraph, derivedPinStates, reconstructionMs } = deriveStateAtTick(state.timeline, nextTick);
+                        state.graph = derivedGraph;
+                        state.simulation.pinStates = derivedPinStates;
+                        state.simulation.lastReconstructionMs = reconstructionMs;
+                        return;
+                    }
+
+                    if (state.simulation.playbackState !== 'live:running') return;
+
+                    state.simulation.tick++;
+                    const currentTick = state.simulation.tick;
+
+                    if (currentTick % SNAPSHOT_INTERVAL_TICKS === 0) {
+                        const snapshotGraph = cloneGraph(state.graph);
+                        const snapshotPinStates = { ...state.simulation.pinStates };
+                        const snapshot: LabSnapshot = {
+                            tick: currentTick,
+                            graph: snapshotGraph,
+                            pinStates: snapshotPinStates,
+                            traceHash: fingerprintStateSync({ graph: snapshotGraph, pinStates: snapshotPinStates, tick: currentTick })
+                        };
+
+                        state.timeline.snapshots.push(snapshot);
+                        scheduleSnapshotFingerprint(set, { graph: snapshotGraph, pinStates: snapshotPinStates, tick: currentTick });
+
+                        const graphResult = validateLabGraph(state.graph);
+                        const timelineResult = validateTimeline(state.timeline);
+                        if (graphResult.valid && timelineResult.valid) {
+                            state.lastGoodSnapshot = snapshot;
+                        } else {
+                            const message = !graphResult.valid ? graphResult.errors[0] : timelineResult.errors[0];
+                            applyIntegrityRecovery(state, `Integrity Warning (snapshot): ${message}`);
+                            return;
+                        }
+                    }
+
+                    const diffs: Record<string, number> = {};
+                    const serialOutputs: string[] = [];
+                    let sketchError: string | null = null;
+
+                    if (state.sketch.status === 'loaded' && sketchRuntime.hasProgram()) {
+                        sketchRuntime.step({
+                            tick: currentTick,
+                            graph: state.graph,
+                            pinStates: state.simulation.pinStates,
+                            emitSerial: (text) => serialOutputs.push(text),
+                            emitError: (message) => { sketchError = message; },
+                            onPinWrite: (pinKey, value) => {
+                                const expanded = propagatePinDiffs(state.graph, state.simulation.pinStates, { [pinKey]: value });
+                                Object.assign(diffs, expanded);
+                            }
+                        });
+                    }
+
+                    if (Object.keys(diffs).length > 0) {
+                        state.timeline.events.push({
+                            type: 'SIM_PIN_DIFF',
+                            tick: currentTick,
+                            seq: state.timeline.events.length,
+                            source: 'engine',
+                            pinDiffs: diffs
+                        });
+                    }
+
+                    if (serialOutputs.length > 0) {
+                        for (const text of serialOutputs) {
+                            state.timeline.events.push({
+                                type: 'SERIAL_OUTPUT',
+                                tick: currentTick,
+                                seq: state.timeline.events.length,
+                                source: 'engine',
+                                text
+                            });
+                        }
+                        const merged = [...state.sketch.serial, ...serialOutputs];
+                        state.sketch.serial = merged.slice(-200);
+                    }
+
+                    if (sketchError) {
+                        state.sketch.status = 'error';
+                        state.sketch.error = sketchError;
+                        state.timeline.events.push({
+                            type: 'SKETCH_ERROR',
+                            tick: currentTick,
+                            seq: state.timeline.events.length,
+                            source: 'engine',
+                            message: sketchError
+                        });
+                        applyPlaybackState(state.simulation, 'live:stopped');
+                        return;
+                    }
+
+                    assertInvariants(state, 'runSimulationStep');
+                })),
+
+            setHoveredPin: (pin) =>
+                set(produce((state: LabStoreState) => { state.interaction.hoveredPin = pin; })),
+
+            startWire: (nodeId, pinId) =>
+                set(produce((state: LabStoreState) => {
+                    if (state.simulation.playbackMode === 'replay') return;
+                    if (state.integrityError) return;
+                    pauseLiveSimulationForEdit(state);
+                    state.interaction.wireStartPin = { nodeId, pinId };
+                    state.interaction.mode = 'wire';
+                })),
+
+            cancelWire: () =>
+                set(produce((state: LabStoreState) => {
+                    state.interaction.wireStartPin = null;
+                    state.interaction.mode = 'orbit';
+                    state.interaction.dragPosition = null;
+                })),
+
+            updateDragPosition: (pos) =>
+                set(produce((state: LabStoreState) => { state.interaction.dragPosition = pos; })),
+
+            addNode: (node) =>
+                set(produce((state: LabStoreState) => {
+                    if (state.simulation.playbackMode === 'replay') return;
+                    if (state.integrityError) return;
+                    pauseLiveSimulationForEdit(state);
+                    state.graph.nodes.push(node);
+
+                    const valid = validateLabGraph(state.graph);
+                    if (!valid.valid) {
+                        state.graph.nodes.pop();
+                        return;
+                    }
+
+                    state.timeline.events.push({
+                        type: 'PLACE_PART',
+                        part: node,
+                        tick: state.simulation.tick,
+                        seq: state.timeline.events.length,
+                        source: 'user',
+                        ts: Date.now()
+                    });
+                    assertInvariants(state, 'addNode');
+                })),
+
+            updateNodePose: (id, position, rotation) =>
+                set(produce((state: LabStoreState) => {
+                    if (state.simulation.playbackMode === 'replay') return;
+                    if (state.integrityError) return;
+                    pauseLiveSimulationForEdit(state);
+                    const node = state.graph.nodes.find((n) => n.id === id);
+                    if (node) {
+                        const sanePos = {
+                            x: isFinite(position.x) ? position.x : node.pose.position.x,
+                            y: isFinite(position.y) ? position.y : node.pose.position.y,
+                            z: isFinite(position.z) ? position.z : node.pose.position.z
+                        };
+
+                        let rx = isFinite(rotation.x) ? rotation.x : 0;
+                        let ry = isFinite(rotation.y) ? rotation.y : 0;
+                        let rz = isFinite(rotation.z) ? rotation.z : 0;
+                        let rw = isFinite(rotation.w) ? rotation.w : 1;
+
+                        const len = Math.sqrt(rx * rx + ry * ry + rz * rz + rw * rw);
+                        if (len < 0.0001) { rx = 0; ry = 0; rz = 0; rw = 1; }
+                        else if (Math.abs(len - 1.0) > 0.001) {
+                            rx /= len; ry /= len; rz /= len; rw /= len;
+                        }
+
+                        node.pose.position = sanePos;
+                        node.pose.rotation = { x: rx, y: ry, z: rz, w: rw };
+
+                        state.timeline.events.push({
+                            type: 'MOVE_PART',
+                            nodeId: id,
+                            position: sanePos,
+                            rotation: node.pose.rotation,
+                            tick: state.simulation.tick,
+                            seq: state.timeline.events.length,
+                            source: 'user',
+                            ts: Date.now()
+                        });
+                        assertInvariants(state, 'updateNodePose');
+                    }
+                })),
+
+            addWire: (wire) =>
+                set(produce((state: LabStoreState) => {
+                    if (state.simulation.playbackMode === 'replay') return;
+                    if (state.integrityError) return;
+                    pauseLiveSimulationForEdit(state);
+                    state.graph.wires.push(wire);
+
+                    const valid = validateLabGraph(state.graph);
+                    if (!valid.valid) {
+                        state.graph.wires.pop();
+                        return;
+                    }
+
+                    state.timeline.events.push({
+                        type: 'ADD_WIRE',
+                        wire,
+                        tick: state.simulation.tick,
+                        seq: state.timeline.events.length,
+                        source: 'user',
+                        ts: Date.now()
+                    });
+                    assertInvariants(state, 'addWire');
+                })),
+
+            removeWire: (id) =>
+                set(produce((state: LabStoreState) => {
+                    if (state.simulation.playbackMode === 'replay') return;
+                    if (state.integrityError) return;
+                    pauseLiveSimulationForEdit(state);
+                    state.graph.wires = state.graph.wires.filter((w) => w.id !== id);
+                    state.timeline.events.push({
+                        type: 'REMOVE_WIRE',
+                        wireId: id,
+                        tick: state.simulation.tick,
+                        seq: state.timeline.events.length,
+                        source: 'user',
+                        ts: Date.now()
+                    });
+                    assertInvariants(state, 'removeWire');
+                })),
+
+            setSketchSource: (source) =>
+                set(produce((state: LabStoreState) => {
+                    if (state.simulation.playbackMode === 'replay') return;
+                    if (state.integrityError) return;
+                    state.sketch.source = source;
+                    if (state.sketch.status !== 'idle') {
+                        state.sketch.status = 'idle';
+                        state.sketch.error = null;
+                        state.sketch.sketchHash = null;
+                    }
+                })),
+
+            loadSketch: () =>
+                set(produce((state: LabStoreState) => {
+                    if (state.simulation.playbackMode === 'replay') return;
+                    if (state.integrityError) return;
+                    const source = state.sketch.source ?? '';
+                    if (!source.trim()) {
+                        state.sketch.status = 'idle';
+                        state.sketch.error = 'Sketch source is empty.';
+                        state.sketch.sketchHash = null;
+                        return;
+                    }
+                    const result = sketchRuntime.load(source);
+                    if (!result.ok) {
+                        state.sketch.status = 'error';
+                        state.sketch.error = result.error ?? 'Sketch failed to compile.';
+                        state.sketch.sketchHash = null;
+                        state.timeline.events.push({
+                            type: 'SKETCH_ERROR',
+                            tick: state.simulation.tick,
+                            seq: state.timeline.events.length,
+                            source: 'engine',
+                            message: state.sketch.error
+                        });
+                        applyPlaybackState(state.simulation, 'live:stopped');
+                        return;
+                    }
+                    state.sketch.status = 'loaded';
+                    state.sketch.error = null;
+                    state.sketch.serial = [];
+                    state.sketch.sketchHash = result.hash ?? null;
+                    state.timeline.events.push({
+                        type: 'SKETCH_LOADED',
+                        tick: state.simulation.tick,
+                        seq: state.timeline.events.length,
+                        source: 'engine',
+                        sketchHash: result.hash ?? 'unknown'
+                    });
+                })),
+
+            clearSerial: () =>
+                set(produce((state: LabStoreState) => {
+                    state.sketch.serial = [];
+                })),
+
+            startLabSession: (template) =>
+                set(produce((state: LabStoreState) => {
+                    const templateHash = fingerprintLabTemplate(template);
+                    const sessionId = `lab-${state.simulation.tick}-${state.timeline.events.length}`;
+                    state.labSession = {
+                        sessionId,
+                        templateId: template.lab_id,
+                        templateHash,
+                        startedAtTick: state.simulation.tick,
+                        status: 'active'
+                    };
+                })),
+
+            clearLabSession: () =>
+                set(produce((state: LabStoreState) => { state.labSession = null; })),
+
+            recover: () =>
+                set(produce((state: LabStoreState) => {
+                    const recoveryMsg = state.integrityError || 'Manual Recovery';
+                    applyIntegrityRecovery(state, recoveryMsg, { clearError: true });
+                })),
+
+            reset: () => {
+                sketchRuntime.reset();
+                const resetSnapshot = createEmptySnapshot();
+                const resetGoodSnapshot = createEmptySnapshot();
+                set({
+                    graph: createEmptyGraph(),
+                    timeline: { events: [], snapshots: [resetSnapshot] },
+                    simulation: {
+                        playbackState: 'live:stopped',
+                        isRunning: false,
+                        playbackMode: 'live',
+                        tick: 0,
+                        pinStates: {},
+                        replayScrubTick: 0,
+                        lastReconstructionMs: 0,
+                    },
+                    sketch: {
+                        source: '',
+                        status: 'idle',
+                        error: null,
+                        serial: [],
+                        sketchHash: null,
+                    },
+                    interaction: {
+                        mode: 'orbit',
+                        hoveredPin: null,
+                        wireStartPin: null,
+                        dragPosition: null,
+                        highlightedPins: [],
+                        selectedNetId: null,
+                    },
+                    integrityError: null,
+                    lastGoodSnapshot: resetGoodSnapshot,
+                    labSession: null
                 });
-            })),
-
-        removeWire: (id) =>
-            set(produce((state: LabStoreState) => {
-                if (state.simulation.playbackMode === 'replay') return;
-                // Validation not strictly needed for removal unless it breaks something else (unlikely in this model)
-                state.graph.wires = state.graph.wires.filter((w) => w.id !== id);
-                state.timeline.events.push({
-                    type: 'REMOVE_WIRE',
-                    wireId: id,
-                    tick: state.simulation.tick,
-                    seq: state.timeline.events.length,
-                    source: 'user',
-                    ts: Date.now()
-                });
-            })),
-
-        recover: () =>
-            set(produce((state: LabStoreState) => {
-                if (state.lastGoodSnapshot) {
-                    state.graph = JSON.parse(JSON.stringify(state.lastGoodSnapshot.graph));
-                    state.simulation.pinStates = { ...state.lastGoodSnapshot.pinStates };
-                    state.simulation.tick = state.lastGoodSnapshot.tick;
-                    state.integrityError = null;
-                    state.simulation.isRunning = false;
-                    console.warn("System Recovered to Last Good Snapshot at Tick", state.lastGoodSnapshot.tick);
-                } else {
-                    // Hard Reset
-                    state.graph = { nodes: [], wires: [], net: {} };
-                    state.simulation.tick = 0;
-                    state.integrityError = null;
-                }
-            })),
-
-        reset: () =>
-            set({
-                graph: { nodes: [], wires: [], net: {} },
-                timeline: { events: [], snapshots: [{ tick: 0, graph: { nodes: [], wires: [], net: {} }, pinStates: {} }] },
-                simulation: { isRunning: false, tick: 0, pinStates: {}, playbackMode: 'live', replayScrubTick: 0 },
-                integrityError: null,
-                lastGoodSnapshot: { tick: 0, graph: { nodes: [], wires: [], net: {} }, pinStates: {} }
-            }),
-    }))
+            },
+        };
+    })
 );
 
 // --- HELPER: Deterministic State Derivation ---
-function deriveStateAtTick(timeline: LabTimeline, targetTick: number): { derivedGraph: LabGraph, derivedPinStates: Record<string, number> } {
+function deriveStateAtTick(timeline: LabTimeline, targetTick: number): { derivedGraph: LabGraph, derivedPinStates: Record<string, number>, reconstructionMs: number } {
     const start = performance.now();
 
-    // 1. Find nearest snapshot <= targetTick
-    let bestSnap = timeline.snapshots[0];
-    for (const snap of timeline.snapshots) {
-        if (snap.tick <= targetTick && snap.tick > bestSnap.tick) {
-            bestSnap = snap;
+    try {
+        // 1. Find nearest snapshot <= targetTick
+        let bestSnap = timeline.snapshots[0];
+        for (const snap of timeline.snapshots) {
+            if (snap.tick <= targetTick && snap.tick > bestSnap.tick) {
+                bestSnap = snap;
+            }
         }
-    }
 
-    // 2. Clone snapshot state
-    const graph: LabGraph = JSON.parse(JSON.stringify(bestSnap.graph));
-    const pinStates: Record<string, number> = { ...bestSnap.pinStates };
+        // 2. Clone snapshot state
+        const graph: LabGraph = JSON.parse(JSON.stringify(bestSnap.graph));
+        const pinStates: Record<string, number> = { ...bestSnap.pinStates };
 
-    // 3. Replay events from snapshot.tick + 1 to targetTick
-    const relevantEvents = timeline.events.filter(e => e.tick >= bestSnap.tick && e.tick <= targetTick);
-    // Sort by seq to be absolutely sure
-    relevantEvents.sort((a, b) => a.seq - b.seq);
+        // 3. Replay events from snapshot.tick + 1 to targetTick
+        const relevantEvents = timeline.events.filter(e => e.tick >= bestSnap.tick && e.tick <= targetTick);
+        // Sort by seq to be absolutely sure
+        relevantEvents.sort((a, b) => a.seq - b.seq);
 
-    for (const event of relevantEvents) {
-        switch (event.type) {
-            case 'PLACE_PART':
-                graph.nodes.push(event.part);
-                break;
-            case 'MOVE_PART':
-                const n = graph.nodes.find(n => n.id === event.nodeId);
-                if (n) {
-                    n.pose.position = event.position;
-                    n.pose.rotation = event.rotation;
-                }
-                break;
-            case 'ADD_WIRE':
-                graph.wires.push(event.wire);
-                break;
-            case 'REMOVE_WIRE':
-                graph.wires = graph.wires.filter(w => w.id !== event.wireId);
-                break;
-            case 'SIM_PIN_DIFF':
-                Object.entries(event.pinDiffs).forEach(([key, val]) => {
-                    pinStates[key] = val;
-                });
-                break;
+        for (const event of relevantEvents) {
+            switch (event.type) {
+                case 'PLACE_PART':
+                    graph.nodes.push(event.part);
+                    break;
+                case 'MOVE_PART':
+                    const n = graph.nodes.find(n => n.id === event.nodeId);
+                    if (n) {
+                        n.pose.position = event.position;
+                        n.pose.rotation = event.rotation;
+                    }
+                    break;
+                case 'ADD_WIRE':
+                    graph.wires.push(event.wire);
+                    break;
+                case 'REMOVE_WIRE':
+                    graph.wires = graph.wires.filter(w => w.id !== event.wireId);
+                    break;
+                case 'SIM_PIN_DIFF':
+                    Object.entries(event.pinDiffs).forEach(([key, val]) => {
+                        pinStates[key] = val;
+                    });
+                    break;
+            }
         }
-    }
 
-    const duration = performance.now() - start;
-    if (duration > 16) {
-        console.warn(`[Performance] deriveStateAtTick took ${duration.toFixed(2)}ms. Consider increasing snapshot frequency.`);
-    }
+        const duration = performance.now() - start;
+        if (duration > RECONSTRUCTION_WARN_MS) {
+            console.warn(`[Performance] deriveStateAtTick took ${duration.toFixed(2)}ms. Consider increasing snapshot frequency.`);
+        }
 
-    return { derivedGraph: graph, derivedPinStates: pinStates };
+        return { derivedGraph: graph, derivedPinStates: pinStates, reconstructionMs: duration };
+    } catch (error) {
+        const duration = performance.now() - start;
+        const fallback = timeline.snapshots[0];
+        return {
+            derivedGraph: fallback ? JSON.parse(JSON.stringify(fallback.graph)) : createEmptyGraph(),
+            derivedPinStates: fallback ? { ...fallback.pinStates } : {},
+            reconstructionMs: duration
+        };
+    }
 }

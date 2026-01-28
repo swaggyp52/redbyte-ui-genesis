@@ -16,6 +16,7 @@ export interface RepairResult<T> {
 export function validateLabGraph(graph: LabGraph): ValidationResult {
     const errors: string[] = [];
     const nodeIds = new Set<string>();
+    const nodeById = new Map<string, LabNode>();
 
     // Validate Nodes
     for (const node of graph.nodes) {
@@ -23,6 +24,7 @@ export function validateLabGraph(graph: LabGraph): ValidationResult {
             errors.push(`Duplicate node ID: ${node.id}`);
         }
         nodeIds.add(node.id);
+        nodeById.set(node.id, node);
 
         if (!PART_DEFINITIONS[node.type]) {
             errors.push(`Unknown part type: ${node.type} (node: ${node.id})`);
@@ -52,20 +54,27 @@ export function validateLabGraph(graph: LabGraph): ValidationResult {
         }
         wireIds.add(wire.id);
 
-        if (!nodeIds.has(wire.sourceNodeId)) {
+        const sourceNode = nodeById.get(wire.sourceNodeId);
+        const targetNode = nodeById.get(wire.targetNodeId);
+
+        if (!sourceNode) {
             errors.push(`Wire ${wire.id} source node ${wire.sourceNodeId} does not exist`);
         }
-        if (!nodeIds.has(wire.targetNodeId)) {
+        if (!targetNode) {
             errors.push(`Wire ${wire.id} target node ${wire.targetNodeId} does not exist`);
         }
 
         // Validate Pins Exists (if node exists)
-        if (nodeIds.has(wire.sourceNodeId)) {
-            const node = graph.nodes.find(n => n.id === wire.sourceNodeId);
-            const def = PART_DEFINITIONS[node!.type];
-            if (wire.sourcePinId !== 'center' && !def?.pins.some(p => p.id === wire.sourcePinId)) {
-                // Note: 'center' usually not a pin, but check if we allow virtual pins? No, strict.
-                errors.push(`Wire ${wire.id} source pin ${wire.sourcePinId} invalid on ${node!.type}`);
+        if (sourceNode) {
+            const def = PART_DEFINITIONS[sourceNode.type];
+            if (!def?.pins.some(p => p.id === wire.sourcePinId)) {
+                errors.push(`Wire ${wire.id} source pin ${wire.sourcePinId} invalid on ${sourceNode.type}`);
+            }
+        }
+        if (targetNode) {
+            const def = PART_DEFINITIONS[targetNode.type];
+            if (!def?.pins.some(p => p.id === wire.targetPinId)) {
+                errors.push(`Wire ${wire.id} target pin ${wire.targetPinId} invalid on ${targetNode.type}`);
             }
         }
     }
@@ -79,9 +88,10 @@ export function validateTimeline(timeline: LabTimeline): ValidationResult {
     let prevSeq = -1;
     let prevTick = 0;
 
-    for (const event of timeline.events) {
+    for (let index = 0; index < timeline.events.length; index++) {
+        const event = timeline.events[index];
         if (event.seq <= prevSeq) {
-            errors.push(`Non-increasing seq at index ${timeline.events.indexOf(event)}: ${event.seq} <= ${prevSeq}`);
+            errors.push(`Non-increasing seq at index ${index}: ${event.seq} <= ${prevSeq}`);
         }
         if (event.tick < prevTick) {
             errors.push(`Time travel detected at seq ${event.seq}: tick ${event.tick} < ${prevTick}`);
@@ -92,6 +102,9 @@ export function validateTimeline(timeline: LabTimeline): ValidationResult {
 
         if (event.type === 'SIM_PIN_DIFF' && event.source !== 'engine') {
             errors.push(`SIM_PIN_DIFF event at seq ${event.seq} must come from 'engine'`);
+        }
+        if ((event.type === 'SERIAL_OUTPUT' || event.type === 'SKETCH_LOADED' || event.type === 'SKETCH_ERROR') && event.source === 'user') {
+            errors.push(`${event.type} event at seq ${event.seq} must come from 'engine' or 'import'`);
         }
     }
 
@@ -113,6 +126,7 @@ export function repairLabGraph(graph: LabGraph): RepairResult<LabGraph> {
     const warnings: string[] = [];
     const safeNodes: LabNode[] = [];
     const validNodeIds = new Set<string>();
+    const validPinsByNodeId = new Map<string, Set<string>>();
 
     // 1. Repair Nodes
     for (const node of graph.nodes) {
@@ -149,6 +163,7 @@ export function repairLabGraph(graph: LabGraph): RepairResult<LabGraph> {
 
         if (PART_DEFINITIONS[node.type]) {
             validNodeIds.add(node.id);
+            validPinsByNodeId.set(node.id, new Set(PART_DEFINITIONS[node.type].pins.map(p => p.id)));
             safeNodes.push({ ...node, pose: safePose });
         } else {
             warnings.push(`Dropping unknown part type: ${node.type}`);
@@ -160,6 +175,12 @@ export function repairLabGraph(graph: LabGraph): RepairResult<LabGraph> {
     for (const wire of graph.wires) {
         if (!validNodeIds.has(wire.sourceNodeId) || !validNodeIds.has(wire.targetNodeId)) {
             warnings.push(`Dropping dangling wire ${wire.id}`);
+            continue;
+        }
+        const sourcePins = validPinsByNodeId.get(wire.sourceNodeId);
+        const targetPins = validPinsByNodeId.get(wire.targetNodeId);
+        if (!sourcePins?.has(wire.sourcePinId) || !targetPins?.has(wire.targetPinId)) {
+            warnings.push(`Dropping wire ${wire.id} with invalid pin reference`);
             continue;
         }
         // Self-wire check
@@ -179,11 +200,13 @@ export function repairLabGraph(graph: LabGraph): RepairResult<LabGraph> {
 export function repairTimeline(timeline: LabTimeline): RepairResult<LabTimeline> {
     const warnings: string[] = [];
     const safeEvents: LabEvent[] = [];
+    const safeSnapshots: LabSnapshot[] = [];
 
     let lastSeq = -1;
     let lastTick = 0;
 
-    for (const event of timeline.events) {
+    const sortedEvents = [...timeline.events].sort((a, b) => a.seq - b.seq);
+    for (const event of sortedEvents) {
         let fixedEvent = { ...event };
 
         // 1. Fix Seq
@@ -203,8 +226,19 @@ export function repairTimeline(timeline: LabTimeline): RepairResult<LabTimeline>
         lastTick = fixedEvent.tick;
     }
 
+    const sortedSnapshots = [...timeline.snapshots].sort((a, b) => a.tick - b.tick);
+    let lastSnapTick = -1;
+    for (const snap of sortedSnapshots) {
+        if (snap.tick <= lastSnapTick) {
+            warnings.push(`Dropped non-monotonic snapshot at tick ${snap.tick}`);
+            continue;
+        }
+        safeSnapshots.push(snap);
+        lastSnapTick = snap.tick;
+    }
+
     return {
-        repaired: { events: safeEvents, snapshots: timeline.snapshots }, // Snapshots are just optimization, pass through or clear if paranoid
+        repaired: { events: safeEvents, snapshots: safeSnapshots },
         warnings
     };
 }
@@ -212,7 +246,44 @@ export function repairTimeline(timeline: LabTimeline): RepairResult<LabTimeline>
 
 // --- FINGERPRINTING ---
 
-// --- FINGERPRINTING ---
+const FLOAT_PRECISION = 3;
+
+function normalizeNumber(value: number): number {
+    if (!Number.isFinite(value)) return value;
+    return Number(value.toFixed(FLOAT_PRECISION));
+}
+
+function canonicalizeValue(value: unknown): unknown {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    if (typeof value === 'number') return normalizeNumber(value);
+    if (typeof value !== 'object') return value;
+    if (Array.isArray(value)) {
+        const result: unknown[] = [];
+        for (const item of value) {
+            const normalized = canonicalizeValue(item);
+            if (normalized !== undefined) {
+                result.push(normalized);
+            }
+        }
+        return result;
+    }
+    const entries = Object.entries(value as Record<string, unknown>)
+        .filter(([, v]) => v !== undefined)
+        .sort(([a], [b]) => a.localeCompare(b));
+    const result: Record<string, unknown> = {};
+    for (const [key, entryValue] of entries) {
+        const normalized = canonicalizeValue(entryValue);
+        if (normalized !== undefined) {
+            result[key] = normalized;
+        }
+    }
+    return result;
+}
+
+function stringifyCanonical(value: unknown): string {
+    return JSON.stringify(canonicalizeValue(value));
+}
 
 // FNV-1a 32-bit Hash (Fast, Non-Cryptographic)
 function stableHash32(str: string): number {
@@ -249,7 +320,7 @@ export function fingerprintStateSync(state: { graph: LabGraph, pinStates: Record
         }, {} as Record<string, number>)
     };
 
-    return stableHash32(JSON.stringify(canonical)).toString(16);
+    return stableHash32(stringifyCanonical(canonical)).toString(16);
 }
 
 export async function fingerprintState(state: { graph: LabGraph, pinStates: Record<string, number>, tick: number }): Promise<string> {
@@ -283,7 +354,7 @@ export async function fingerprintState(state: { graph: LabGraph, pinStates: Reco
         }, {} as Record<string, number>)
     };
 
-    const CanonicalString = JSON.stringify(canonical);
+    const CanonicalString = stringifyCanonical(canonical);
 
     const encoder = new TextEncoder();
     const data = encoder.encode(CanonicalString);
@@ -292,7 +363,7 @@ export async function fingerprintState(state: { graph: LabGraph, pinStates: Reco
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-export async function fingerprintCapsuleContent(content: { meta: any, graph: LabGraph, history: LabTimeline }): Promise<string> {
+export async function fingerprintCapsuleContent(content: { meta: any, graph: LabGraph, history: LabTimeline, artifacts?: any }): Promise<string> {
     // Canonicalize
     // Meta: exclude deterministicHash. exclude createdAt? No, createdAt is part of the record.
     // Spec says: "excluding hash field itself"
@@ -300,7 +371,7 @@ export async function fingerprintCapsuleContent(content: { meta: any, graph: Lab
     // We reuse the canonical structure logic:
     const canonical = {
         meta: Object.keys(content.meta).sort().reduce((acc: any, key) => {
-            if (key !== 'deterministicHash') {
+            if (key !== 'deterministicHash' && key !== 'capsuleHash') {
                 acc[key] = content.meta[key];
             }
             return acc;
@@ -344,10 +415,11 @@ export async function fingerprintCapsuleContent(content: { meta: any, graph: Lab
             // But strict determinism says only events matter. 
             // Let's exclude snapshots from the "Canonical Truth Hash".
             snapshots: []
-        }
+        },
+        artifacts: content.artifacts ?? {}
     };
 
-    const CanonicalString = JSON.stringify(canonical);
+    const CanonicalString = stringifyCanonical(canonical);
 
     const encoder = new TextEncoder();
     const data = encoder.encode(CanonicalString);

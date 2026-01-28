@@ -24,6 +24,7 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .redbyte/
+fuzz_log*.txt
 
 # Vite cache
 *.temp

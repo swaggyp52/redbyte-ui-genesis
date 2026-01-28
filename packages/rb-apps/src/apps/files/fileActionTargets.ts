@@ -46,6 +46,12 @@ export const FILE_ACTION_TARGETS: FileActionTarget[] = [
         name.endsWith('.events.ndjson')
       ),
   },
+  {
+    id: 'virtual-lab',
+    name: 'Virtual Lab',
+    appId: 'virtual-lab',
+    isEligible: (type, name) => type === 'file' && name.endsWith('.labcapsule.json'),
+  },
 ];
 
 /**

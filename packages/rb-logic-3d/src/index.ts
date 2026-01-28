@@ -17,4 +17,8 @@ export type { LabGraph, LabNode, LabWire, LabPin } from './lab-model/types';
 export * from './lab-model/store';
 export * from './lab-model/parts';
 export * from './lab-model/validators';
+export * from './lab-model/labTemplate';
+export * from './lab-model/labEvaluator';
+export * from './lab-model/netlist';
+export * from './lab-model/sketchEngine';
 export { Rb3DSceneLab } from './components/Rb3DSceneLab';

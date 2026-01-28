@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 
@@ -19,6 +19,49 @@ interface Rb3DViewportProps {
     reduceMotion?: boolean;
 }
 
+const ViewportControls: React.FC<{
+    cameraPosition: [number, number, number];
+    cameraTarget: [number, number, number];
+    onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void;
+    reduceMotion: boolean;
+}> = ({ cameraPosition, cameraTarget, onCameraChange, reduceMotion }) => {
+    const controlsRef = useRef<OrbitControlsImpl>(null);
+    const { camera, invalidate } = useThree();
+    const lastNotifyRef = useRef(0);
+
+    useEffect(() => {
+        camera.position.set(cameraPosition[0], cameraPosition[1], cameraPosition[2]);
+        if (controlsRef.current) {
+            controlsRef.current.target.set(cameraTarget[0], cameraTarget[1], cameraTarget[2]);
+            controlsRef.current.update();
+        }
+        invalidate();
+    }, [camera, cameraPosition, cameraTarget, invalidate]);
+
+    return (
+        <OrbitControls
+            ref={controlsRef}
+            makeDefault
+            enableDamping={!reduceMotion}
+            dampingFactor={0.05}
+            minDistance={2}
+            maxDistance={100}
+            maxPolarAngle={Math.PI / 2.1} // Prevent going below ground
+            onChange={() => {
+                invalidate();
+                if (controlsRef.current && onCameraChange) {
+                    const now = performance.now();
+                    if (now - lastNotifyRef.current < 33) return;
+                    lastNotifyRef.current = now;
+                    const p = controlsRef.current.object.position;
+                    const t = controlsRef.current.target;
+                    onCameraChange([p.x, p.y, p.z], [t.x, t.y, t.z]);
+                }
+            }}
+        />
+    );
+};
+
 export const Rb3DViewport: React.FC<Rb3DViewportProps> = ({
     children,
     width = '100%',
@@ -27,11 +70,11 @@ export const Rb3DViewport: React.FC<Rb3DViewportProps> = ({
     cameraPosition = [10, 10, 10],
     cameraTarget = [0, 0, 0],
     onCameraChange,
-    frameloop = 'always', // In future, switch to 'demand' for optimization
+    frameloop = 'demand',
     reduceMotion = false,
 }) => {
-    const controlsRef = useRef<OrbitControlsImpl>(null);
     const [webglFailed, setWebglFailed] = useState(false);
+    const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
 
     // Handle WebGL context loss
     useEffect(() => {
@@ -46,17 +89,16 @@ export const Rb3DViewport: React.FC<Rb3DViewportProps> = ({
             setWebglFailed(false);
         };
 
-        const canvas = document.querySelector('canvas');
-        if (canvas) {
-            canvas.addEventListener('webglcontextlost', handleContextLost);
-            canvas.addEventListener('webglcontextrestored', handleContextRestored);
+        const canvas = canvasEl;
+        if (!canvas) return;
+        canvas.addEventListener('webglcontextlost', handleContextLost);
+        canvas.addEventListener('webglcontextrestored', handleContextRestored);
 
-            return () => {
-                canvas.removeEventListener('webglcontextlost', handleContextLost);
-                canvas.removeEventListener('webglcontextrestored', handleContextRestored);
-            };
-        }
-    }, []);
+        return () => {
+            canvas.removeEventListener('webglcontextlost', handleContextLost);
+            canvas.removeEventListener('webglcontextrestored', handleContextRestored);
+        };
+    }, [canvasEl]);
 
     if (webglFailed) {
         return (
@@ -82,6 +124,9 @@ export const Rb3DViewport: React.FC<Rb3DViewportProps> = ({
                     powerPreference: 'high-performance',
                     failIfMajorPerformanceCaveat: false
                 }}
+                onCreated={({ gl }) => {
+                    setCanvasEl(gl.domElement);
+                }}
             >
                 <color attach="background" args={['#0a0a0a']} />
                 <fog attach="fog" args={['#0a0a0a', 20, 60]} />
@@ -94,22 +139,11 @@ export const Rb3DViewport: React.FC<Rb3DViewportProps> = ({
                 <Grid args={[100, 100]} cellColor="#333" sectionColor="#555" fadeDistance={50} />
 
                 {/* Camera Controls */}
-                <OrbitControls
-                    ref={controlsRef}
-                    makeDefault
-                    enableDamping={!reduceMotion}
-                    dampingFactor={0.05}
-                    minDistance={2}
-                    maxDistance={100}
-                    maxPolarAngle={Math.PI / 2.1} // Prevent going below ground
-                    onChange={() => {
-                        if (controlsRef.current && onCameraChange) {
-                            // Throttle this in real implementation
-                            const p = controlsRef.current.object.position;
-                            const t = controlsRef.current.target;
-                            onCameraChange([p.x, p.y, p.z], [t.x, t.y, t.z]);
-                        }
-                    }}
+                <ViewportControls
+                    cameraPosition={cameraPosition}
+                    cameraTarget={cameraTarget}
+                    onCameraChange={onCameraChange}
+                    reduceMotion={reduceMotion}
                 />
 
                 {children}

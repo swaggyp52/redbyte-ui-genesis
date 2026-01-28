@@ -554,14 +554,15 @@ export const Shell: React.FC<ShellProps> = () => {
     // Find the focused Logic Playground window
     const focusedWindow = useWindowStore.getState().getFocusedWindow();
     if (!focusedWindow) {
-      console.warn('getCurrentCircuit: No focused window');
+      return null;
+    }
+    if (focusedWindow.contentId !== 'logic-playground') {
       return null;
     }
 
     // Check if this window has registered a circuit accessor
     const accessor = windowStateAccessorsRef.current.get(focusedWindow.id);
     if (!accessor?.getCircuit) {
-      console.warn(`getCurrentCircuit: Window ${focusedWindow.id} has no circuit accessor registered`);
       return null;
     }
 
@@ -1210,18 +1211,6 @@ export const Shell: React.FC<ShellProps> = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booted, isDemoMode]);
 
-  if (!booted) {
-    return <BootScreen onComplete={() => setBooted(true)} />;
-  }
-
-  const determinismMode: DeterminismMode =
-    determinismRecorder.isRecording
-      ? 'recording'
-      : determinismRecorder.isTimeTraveling
-      ? 'replay'
-      : 'live';
-  const hasVisibleWindows = windows.some((w) => w.mode !== 'minimized');
-
   const snapPreviewBounds = useMemo(() => {
     if (!snapPreview || typeof window === 'undefined') return null;
     const width = window.innerWidth;
@@ -1235,6 +1224,18 @@ export const Shell: React.FC<ShellProps> = () => {
     }
     return { x: width - halfWidth, y: 0, width: halfWidth, height };
   }, [snapPreview]);
+
+  if (!booted) {
+    return <BootScreen onComplete={() => setBooted(true)} />;
+  }
+
+  const determinismMode: DeterminismMode =
+    determinismRecorder.isRecording
+      ? 'recording'
+      : determinismRecorder.isTimeTraveling
+      ? 'replay'
+      : 'live';
+  const hasVisibleWindows = windows.some((w) => w.mode !== 'minimized');
 
   const snapPreviewLabel = snapPreview
     ? snapPreview.target === 'maximize'

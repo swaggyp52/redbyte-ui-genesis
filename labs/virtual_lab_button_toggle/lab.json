@@ -1,0 +1,63 @@
+{
+  "template_version": "virtual-lab.v1",
+  "lab_id": "virtual_lab_button_toggle",
+  "lab_version": "1.0.0",
+  "name": "Button Toggles LED",
+  "summary": "Press the button to toggle the LED on D13.",
+  "required_parts": [
+    { "type": "arduino-nano", "min": 1, "max": 1 },
+    { "type": "button-momentary", "min": 1, "max": 1 },
+    { "type": "led-5mm", "min": 1, "max": 1 },
+    { "type": "resistor-dip", "min": 1, "max": 1 }
+  ],
+  "required_nets": [
+    {
+      "id": "button_signal",
+      "label": "Button to D2",
+      "pins": [
+        { "part": "arduino-nano", "pins": ["D2"] },
+        { "part": "button-momentary", "pins": ["p1"] }
+      ]
+    },
+    {
+      "id": "button_ground",
+      "label": "Button to GND",
+      "pins": [
+        { "part": "arduino-nano", "pins": ["GND"] },
+        { "part": "button-momentary", "pins": ["p2"] }
+      ]
+    },
+    {
+      "id": "led_signal",
+      "label": "LED anode to D13",
+      "pins": [
+        { "part": "arduino-nano", "pins": ["D13"] },
+        { "part": "led-5mm", "pins": ["anode"] }
+      ]
+    },
+    {
+      "id": "led_ground",
+      "label": "LED cathode to GND",
+      "pins": [
+        { "part": "arduino-nano", "pins": ["GND"] },
+        { "part": "led-5mm", "pins": ["cathode"] }
+      ]
+    }
+  ],
+  "behavior_checks": [
+    {
+      "id": "led_on_present",
+      "type": "digital_level",
+      "pin": { "part": "arduino-nano", "pins": ["D13"] },
+      "value": 1,
+      "min_ticks": 5
+    },
+    {
+      "id": "led_off_present",
+      "type": "digital_level",
+      "pin": { "part": "arduino-nano", "pins": ["D13"] },
+      "value": 0,
+      "min_ticks": 5
+    }
+  ]
+}

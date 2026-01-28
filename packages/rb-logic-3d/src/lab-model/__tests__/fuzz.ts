@@ -10,20 +10,16 @@ if (!global.crypto) {
     global.crypto = require('crypto').webcrypto;
 }
 
-const ITERATIONS = 500;
-const SEED = 12345; // TODO: Real seeded random
-
-// Simple PRNG
-let seedState = SEED;
-const random = () => {
-    seedState = (seedState * 9301 + 49297) % 233280;
-    return seedState / 233280;
+// Advanced Fuzz Configuration
+const MODES = {
+    BASIC: { iterations: 500, checkInvariants: true },
+    STRESS: { iterations: 10000, checkInvariants: false }, // Too slow to check every step
+    MODE_SWITCH: { iterations: 1000, checkInvariants: true, probSwitch: 0.1 }
 };
-const randInt = (max: number) => Math.floor(random() * max);
-const randItem = <T>(arr: T[]): T | undefined => arr.length ? arr[randInt(arr.length)] : undefined;
 
-async function runFuzz() {
-    console.log(`Starting Fuzz Test (${ITERATIONS} iterations)...`);
+async function runFuzz(modeName: keyof typeof MODES = 'BASIC') {
+    const config = MODES[modeName];
+    console.log(`Starting Fuzz Test [${modeName}] (${config.iterations} iterations)...`);
 
     // Access store directly (zustand create returns hook + api)
     const store = useLabStore;
@@ -31,122 +27,151 @@ async function runFuzz() {
 
     let partIds: string[] = [];
     let wireIds: string[] = [];
+    let failures = 0;
+    let recoveries = 0;
 
-    for (let i = 0; i < ITERATIONS; i++) {
+    // Seeded Random Helper
+    let seedState = 12345;
+    const random = () => {
+        seedState = (seedState * 9301 + 49297) % 233280;
+        return seedState / 233280;
+    };
+    const randInt = (max: number) => Math.floor(random() * max);
+    const randItem = <T>(arr: T[]): T | undefined => arr.length ? arr[randInt(arr.length)] : undefined;
+
+    const dumpDebug = (step: number) => {
+        const state = store.getState();
+        console.error("--- DEBUG DUMP ---");
+        console.error(`Step: ${step}, Seed: 12345`);
+        console.error(`Events: ${state.timeline.events.length}`);
+        if (state.timeline.events.length > 0)
+            console.error(`Last Event:`, state.timeline.events[state.timeline.events.length - 1]);
+        console.error("------------------");
+    };
+
+    const startTotal = performance.now();
+
+    for (let i = 0; i < config.iterations; i++) {
         const state = store.getState();
 
-        // Check Invariants BEFORE action
-        const gValid = validateLabGraph(state.graph);
-        if (!gValid.valid) throw new Error(`Invariant Failed BEFORE step ${i}: ${gValid.errors.join(',')}`);
+        // Invariant Check (if enabled)
+        if (config.checkInvariants) {
+            const gValid = validateLabGraph(state.graph);
+            if (!gValid.valid) {
+                dumpDebug(i);
+                throw new Error(`Invariant Failed BEFORE step ${i}: ${gValid.errors.join(',')}`);
+            }
+        }
 
-        // Random Action
-        const actionType = randInt(10);
+        // Action Selection
+        const actionType = randInt(100);
 
         try {
-            if (actionType < 2) {
-                // ADD PART
+            if (actionType < 10) { // Add Part
                 const types = Object.keys(PART_DEFINITIONS);
                 const type = types[randInt(types.length)];
                 const id = `${type}-${i}`;
                 const node: LabNode = {
                     id,
                     type,
-                    pose: { position: { x: random() * 10, y: random() * 10, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 } },
+                    pose: { position: { x: (random() - 0.5) * 20, y: (random() - 0.5) * 20, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 } },
                     properties: {}
                 };
                 store.getState().addNode(node);
                 partIds.push(id);
-                // console.log(`Step ${i}: Added Node ${id}`);
-
-            } else if (actionType < 4) {
-                // MOVE PART
+            }
+            else if (actionType < 30) { // Move Part
                 const id = randItem(partIds);
                 if (id) {
-                    store.getState().updateNodePose(id,
-                        { x: random() * 10, y: random() * 10, z: 0 },
-                        { x: 0, y: 0, z: random(), w: 1 }
-                    );
-                    // console.log(`Step ${i}: Moved Node ${id}`);
-                }
+                    // Fuzz: Try NaN occasionally?
+                    const isEvil = random() < 0.01;
+                    const x = isEvil ? NaN : (random() - 0.5) * 20;
 
-            } else if (actionType < 6) {
-                // ADD WIRE
+                    store.getState().updateNodePose(id,
+                        { x, y: (random() - 0.5) * 20, z: 0 },
+                        { x: 0, y: 0, z: random(), w: 1 } // Non-normalized often
+                    );
+                }
+            }
+            else if (actionType < 50) { // Add Wire
                 if (partIds.length >= 2) {
                     const srcId = randItem(partIds)!;
                     const tgtId = randItem(partIds)!;
-                    if (srcId !== tgtId) {
-                        // Pick random pins (mocking)
-                        // MVP definition doesn't expose pins easily in a list, we hardcode generic names or just trust validation fails if invalid?
-                        // Actually PART_DEFINITIONS has `pins`?
-                        // Let's assume generic pins for fuzzing or look up.
-                        // Validators check pin existence? NO, basic validator creates warnings but doesn't deep check part defs in this version.
-                        // Let's just try 'D13' -> 'Anode' etc.
-                        const wire: LabWire = {
-                            id: `w-${i}`,
-                            sourceNodeId: srcId,
-                            sourcePinId: 'D13', // simplistic
-                            targetNodeId: tgtId,
-                            targetPinId: 'GND',
-                            color: 'green'
-                        };
-                        store.getState().addWire(wire);
-                        wireIds.push(wire.id);
-                        // console.log(`Step ${i}: Added Wire`);
-                    }
+                    const wire: LabWire = {
+                        id: `w-${i}`,
+                        sourceNodeId: srcId, sourcePinId: 'D13',
+                        targetNodeId: tgtId, targetPinId: 'GND',
+                        color: 'green'
+                    };
+                    store.getState().addWire(wire);
+                    wireIds.push(wire.id);
                 }
-
-            } else if (actionType < 7) {
-                // REMOVE WIRE
+            }
+            else if (actionType < 60) { // Remove Wire
                 const wId = randItem(wireIds);
                 if (wId) {
                     store.getState().removeWire(wId);
                     wireIds = wireIds.filter(id => id !== wId);
-                    // console.log(`Step ${i}: Removed Wire`);
                 }
-
-            } else {
-                // RUN SIMULATION
-                store.getState().runSimulationStep();
-                // console.log(`Step ${i}: Sim Step`);
             }
-
-            // Check Invariants AFTER action
-            const postValid = validateLabGraph(store.getState().graph);
-            if (!postValid.valid) {
-                // The store should have prevented invalid mutations (addNode/addWire check inputs).
-                // If we forced it or if simulation broke it:
-                console.error("Invariant Failure Detected!", postValid.errors);
-                throw new Error("Store allowed invalid state!");
+            else if (actionType < 80) { // Run Sim
+                store.getState().runSimulationStep();
+            }
+            else if (modeName === 'MODE_SWITCH' && actionType < 90) { // Toggle Mode
+                const mode = state.simulation.playbackMode === 'live' ? 'replay' : 'live';
+                store.getState().setPlaybackMode(mode);
+                if (mode === 'replay') {
+                    // Scrub random
+                    const t = randInt(state.simulation.tick);
+                    store.getState().scrub(t);
+                }
             }
 
             // Check Integrity Error
             if (store.getState().integrityError) {
-                console.warn("Integrity Error Triggered:", store.getState().integrityError);
-                // This is actually valid behavior if we fed garbage and it was caught.
-                // But our Fuzz inputs should be "valid-ish".
-                // Recover
+                // If we injected evil NaN, this is expected behavior (blocked or caught).
+                // But if we injected valid stuff and it broke, that's bad.
+                // store.recover() auto-fixes.
+                recoveries++;
                 store.getState().recover();
             }
 
         } catch (e) {
-            console.error(`Error at step ${i}:`, e);
+            console.error(`CRASH at step ${i}:`, e);
+            dumpDebug(i);
             throw e;
         }
     }
 
-    // Final Determinism Check
-    console.log("Iterations Complete. checking final state fingerprint...");
+    const duration = performance.now() - startTotal;
+
+    // Receipts
+    console.log("\n--- FUZZ RECEIPTS ---");
+    console.log(`Mode: ${modeName}`);
+    console.log(`Iterations: ${config.iterations}`);
+    console.log(`Time: ${duration.toFixed(2)}ms`);
+    console.log(`Final Parts: ${partIds.length}`);
+    console.log(`Final Wires: ${wireIds.length}`);
+    console.log(`Recoveries: ${recoveries}`);
+
     const state = store.getState();
     const hash = await fingerprintState({
         graph: state.graph,
         pinStates: state.simulation.pinStates,
         tick: state.simulation.tick
     });
-    console.log("Final State Hash:", hash);
-    console.log("SUCCESS: Fuzz Test Passed without Crash or Corruption.");
+    console.log(`Final State Hash: ${hash}`);
+
+    if (recoveries > 0 && modeName === 'BASIC') {
+        console.warn("WARNING: Basic fuzz triggered recoveries. Invariants might be too loose or generator too evil.");
+    } else {
+        console.log("SUCCESS: Robustness Verified.");
+    }
 }
 
-runFuzz().catch(e => {
-    console.error("Fuzz Test Failed:", e);
-    process.exit(1);
-});
+// Run Suite
+(async () => {
+    try { await runFuzz('BASIC'); } catch (e) { console.error(e); process.exit(1); }
+    // Optional: Uncomment for intense testing
+    // try { await runFuzz('MODE_SWITCH'); } catch(e) { process.exit(1); }
+})();

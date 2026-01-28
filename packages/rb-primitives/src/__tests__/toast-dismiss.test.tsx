@@ -10,7 +10,9 @@ import { toastStore } from '../Toast/toastStore';
 
 describe('Toast dismissal', () => {
   afterEach(() => {
-    toastStore.clear();
+    act(() => {
+      toastStore.clear();
+    });
     vi.useRealTimers();
   });
 

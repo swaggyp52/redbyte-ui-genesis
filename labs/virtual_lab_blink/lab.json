@@ -1,0 +1,46 @@
+{
+  "template_version": "virtual-lab.v1",
+  "lab_id": "virtual_lab_blink",
+  "lab_version": "1.0.0",
+  "name": "Blink LED",
+  "summary": "Blink D13 LED at a 2-second period.",
+  "required_parts": [
+    { "type": "arduino-nano", "min": 1, "max": 1 },
+    { "type": "led-5mm", "min": 1, "max": 1 },
+    { "type": "resistor-dip", "min": 1, "max": 1 }
+  ],
+  "required_nets": [
+    {
+      "id": "led_signal",
+      "label": "LED anode to D13",
+      "pins": [
+        { "part": "arduino-nano", "pins": ["D13"] },
+        { "part": "led-5mm", "pins": ["anode"] }
+      ]
+    },
+    {
+      "id": "led_ground",
+      "label": "LED cathode to GND",
+      "pins": [
+        { "part": "arduino-nano", "pins": ["GND"] },
+        { "part": "led-5mm", "pins": ["cathode"] }
+      ]
+    }
+  ],
+  "behavior_checks": [
+    {
+      "id": "blink_d13",
+      "type": "blink",
+      "pin": { "part": "arduino-nano", "pins": ["D13"] },
+      "period_ticks": 40,
+      "tolerance_ticks": 6,
+      "min_cycles": 3
+    }
+  ],
+  "allowed_variations": {
+    "resistor_values_ohms": [220, 1000],
+    "alternate_pins": [
+      { "part": "arduino-nano", "pins": ["D13"] }
+    ]
+  }
+}

@@ -74,12 +74,17 @@ export type LabEvent =
     | { type: 'REMOVE_WIRE'; wireId: string } & BaseLabEvent
     | { type: 'SIMULATION_START' } & BaseLabEvent
     | { type: 'SIMULATION_STOP' } & BaseLabEvent
-    | { type: 'SIM_PIN_DIFF'; pinDiffs: Record<string, number> } & BaseLabEvent;
+    | { type: 'SIM_PIN_DIFF'; pinDiffs: Record<string, number> } & BaseLabEvent
+    | { type: 'SERIAL_OUTPUT'; text: string } & BaseLabEvent
+    | { type: 'SKETCH_LOADED'; sketchHash: string } & BaseLabEvent
+    | { type: 'SKETCH_ERROR'; message: string } & BaseLabEvent
+    | { type: 'INTEGRITY_RECOVERY'; reason: string } & BaseLabEvent;
 
 export interface LabSnapshot {
     tick: number;
     graph: LabGraph; // Deep copy at that tick
     pinStates: Record<string, number>;
+    traceHash?: string; // Fast checksum of canonical state
     fingerprint?: string; // SHA-256 of canonical state
 }
 
@@ -95,7 +100,13 @@ export interface LabCapsuleMeta {
     engineVersion: string;
     appVersion: string;
     createdAt: string; // ISO
-    deterministicHash: string;
+    seed?: number;
+    capsuleHash?: string;
+    deterministicHash?: string;
+    sketchHash?: string;
+    labTemplateId?: string;
+    labTemplateHash?: string;
+    labSessionId?: string;
 }
 
 export interface LabCapsule {
@@ -106,4 +117,12 @@ export interface LabCapsule {
     artifacts?: {
         sketchSource?: string;
     };
+}
+
+export interface LabSession {
+    sessionId: string;
+    templateId: string;
+    templateHash: string;
+    startedAtTick: number;
+    status: 'idle' | 'active';
 }

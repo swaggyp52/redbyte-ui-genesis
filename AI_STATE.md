@@ -6050,3 +6050,75 @@ Commits:
 - Upgraded window chrome hierarchy with icon + title + resource subtitle, active/inactive contrast, and refined control styling.
 - Added RedByte Field wallpaper, desktop noise/vignette overlays, and boot screen staging with deterministic checks and fade-out.
 - Styled command palette with a glass panel, grouped sections, and integrated EmptyState surfaces for Desktop, Files, and System Log; objectives unchanged; phase unchanged.
+
+## Change Log  2026-01-28 (Virtual Lab MVP-1 Reliability Hardening)
+
+- Added strict lab validators + repair (pin validation both ends, snapshot ordering), canonical hashing with sorted keys + float normalization, capsuleHash support, and traceHash/fingerprint snapshot fields.
+- Reworked lab store playback state machine (live/replay running/paused), deterministic recovery with INTEGRITY_RECOVERY event + event truncation and seq resync, last reconstruction metric, and async snapshot fingerprinting.
+- Hardened VirtualLabApp import/export with capsuleHash + seed, budget warnings, integrity warning read-only flow, repair mode, and integrity toasts; updated simulation loop to allow replay play.
+- Added vitest fuzz suite covering basic/mode-switch/stress, idempotency and snapshot consistency, and repair handling; added task.md and refreshed walkthrough.md.
+
+## Change Log  2026-01-28 (Virtual Lab MVP-2 Phase 01/02 Foundations)
+
+- Added deterministic Sketch Engine v1 (Arduino-like subset), new sketch timeline events, and store integration for serial output + pin diffs; guarded sketch edits in replay/integrity states and synced capsule hashing to include sketch artifacts.
+- Added LabTemplate v1 schema helpers (net evaluation, stricter validation), plus new sample lab templates for blink, button toggle, and serial status under `labs/`.
+- Added Arduino D2 + push-button part definitions to support lab templates and digital input sketches.
+- Added vitest coverage for sketch determinism/safety and template validation/net evaluation.
+
+## Change Log  2026-01-28 (Virtual Lab MVP-2 Phase 03 Checklist + Evaluation)
+
+- Added LabTemplate v1 evaluation engine (parts, wiring, behavior) with GradeReport output and deterministic tick-based scoring.
+- Added LabSession state and pin highlight support in lab store; wired 3D pin highlighting for checklist Locate actions.
+- Added Virtual Lab catalog + Start Lab flow, checklist panel UI, and live evaluation status in VirtualLabApp.
+- Added Virtual Lab templates registry and lab evaluator exports for checklist/grade integration.
+
+## Change Log  2026-01-28 (Virtual Lab Phase 04 Review Mode)
+
+- Reframed lab evaluation output as a Review UX: PASS/WARN/FAIL statuses, explanations, evidence jump links, bookmarks, and event feed.
+- Added capsule review overlay with template metadata and integrity status before opening capsules.
+- Added net inspector panel with pin history and jump-to-change navigation.
+- Extended lab evaluator evidence metadata and lab capsule meta fields to support review mode.
+
+## Change Log  2026-01-28 (Shell Hook Order Fix)
+
+- Fixed Shell hook order crash by moving snap preview useMemo above the boot screen early return to keep hook order stable.
+
+## Change Log  2026-01-28 (R3F Hook Context Fix)
+
+- Fixed R3F hook usage by moving lab interaction pointer handling into a Canvas child component in `Rb3DSceneLab`, preventing useThree/useFrame outside Canvas.
+
+## Change Log  2026-01-28 (Virtual Lab Console Fixes)
+
+- Fixed duplicate React keys in Virtual Lab event feed/bookmarks/net history by using seq/index-based keys.
+- Silenced getCurrentCircuit spam by gating it to the Logic Playground window and registered accessors only.
+
+## Change Log  2026-01-28 (VL_CORE_01 Netlist + Instruments Backbone)
+
+- Added deterministic netlist computation with stable net IDs, breadboard connectivity rules, and net sampling helpers for probe/instrument backbones.
+- Added breadboard pin definitions for A–J rows and power rails, plus net highlighting in 3D for selected nets.
+- Added Net Inspector list selection, net history sampling, and selection plumbing in VirtualLabApp.
+- Added netlist and sampling tests to validate determinism and breadboard grouping.
+
+## Change Log  2026-01-28 (RB_UNIFY_01 LabCapsule File Association)
+
+- Added Virtual Lab as an Open With target for .labcapsule.json files and wired VirtualLabApp to load capsules from filesystem Open With intents.
+- Refactored capsule import parsing into a shared prepareCapsule helper for file input and filesystem open.
+
+## Change Log  2026-01-28 (RB_UNIFY_01 Instruments Dock)
+
+- Added @redbyte/rb-instruments package with SignalSource contract, instrument dock UI, and Net Inspector/Scope/Probe/Serial panels plus deterministic instrument state.
+- Added Virtual Lab SignalSource adapter (netlist-backed sampling/history, locate hooks, serial log + clear) and integrated InstrumentDock into VirtualLabApp for shared instrumentation.
+- Added Logic Playground SignalSource stub for future adapter wiring and cleaned up VirtualLabApp selection handling to sync instruments with net/pin highlights.
+## Change Log  2026-01-28 (SR_00 Student Readiness Sweep)
+
+- Fixed deterministic wiring IDs and lab session IDs, and paused live simulation automatically before edits to prevent replay/sampling desync.
+- Throttled lab pointer-move raycasts, invalidated demand rendering on interaction, and switched Rb3DViewport default frameloop to demand with controlled OrbitControls updates.
+- Capped net history length for instruments, decimated scope sampling, and added a lightweight InstrumentDock render test; updated vitest setup to avoid hook timeouts.
+- Added favicon to apps/playground/public and ignored local fuzz logs; removed unused code and corrected sketchEngine instruction fields to eliminate build warnings.
+
+SR_00 Proof:
+- pnpm -w lint: OK
+- pnpm -w test:audit: FAILED (command not found; suggested test:ci)
+- pnpm -w exec vitest run [fuzz/netlist/probe-samples/window-snap-preview/toast-dismiss/instrument-dock]: PASS
+- pnpm -w build: OK (existing AppRegistry dynamic import warning remains)
+- Manual checklist: NOT RUN (see walkthrough.md)

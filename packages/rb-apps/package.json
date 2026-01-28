@@ -21,6 +21,7 @@
     "@redbyte/rb-fpga-signing": "workspace:*",
     "@redbyte/rb-fpga-proof-core": "workspace:*",
     "@redbyte/rb-icons": "workspace:*",
+    "@redbyte/rb-instruments": "workspace:*",
     "@redbyte/rb-logic-3d": "workspace:*",
     "@redbyte/rb-logic-adapter": "workspace:*",
     "@redbyte/rb-logic-core": "workspace:*",

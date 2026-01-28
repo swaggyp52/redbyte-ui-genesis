@@ -1,25 +1,36 @@
 import '@testing-library/jest-dom';
-import { afterEach, beforeEach, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, vi } from 'vitest';
 
 // Pre-register all apps for search tests
 // This allows searchRegistry.ts to find apps via listApps()
+let appsRegistered = false;
+let registerPromise: Promise<void> | null = null;
+
 async function registerTestApps() {
-  try {
-    const { registerAllApps } = await import('./packages/rb-apps/src/index.ts');
-    await registerAllApps();
-  } catch {
-    // Module may not be loaded in all tests
+  if (appsRegistered) return;
+  if (!registerPromise) {
+    registerPromise = (async () => {
+      try {
+        const { registerAllApps } = await import('./packages/rb-apps/src/index.ts');
+        await registerAllApps();
+        appsRegistered = true;
+      } catch {
+        // Module may not be loaded in all tests
+      }
+    })();
   }
+  await registerPromise;
 }
 
 // Mock requestAnimationFrame to prevent uiTickStore animation loops in tests
 const originalRAF = globalThis.requestAnimationFrame;
 const originalCAF = globalThis.cancelAnimationFrame;
 
-beforeEach(async () => {
-  // Pre-register apps for search/launcher tests
+beforeAll(async () => {
   await registerTestApps();
+}, 30000);
 
+beforeEach(async () => {
   // Replace RAF with a no-op that returns a valid ID but never invokes callback
   globalThis.requestAnimationFrame = vi.fn(() => 1);
   globalThis.cancelAnimationFrame = vi.fn();

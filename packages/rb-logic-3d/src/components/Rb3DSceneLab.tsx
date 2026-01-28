@@ -5,15 +5,17 @@ import { Box, Text, Line } from '@react-three/drei';
 import { Rb3DViewport } from './Rb3DViewport';
 import { WireMesh } from '../meshes/WireMesh';
 import { useLabInteraction } from '../hooks/useLabInteraction';
-import { Vector3 } from 'three';
+import { computeNetlist } from '../lab-model/netlist';
 
 // --- Part Mesh with Interactive Pins ---
-const PartMesh: React.FC<{ node: any; }> = ({ node }) => {
+const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string> }> = ({ node, pinToNetId }) => {
     const def = PART_DEFINITIONS[node.type];
     const { handlePinHover, handlePinUnhover, handlePinClick } = useLabInteraction();
 
     // Hovered state for feedback? Global store check or simple CSS cursor?
     const hoveredPin = useLabStore(state => state.interaction.hoveredPin);
+    const highlightedPins = useLabStore(state => state.interaction.highlightedPins);
+    const selectedNetId = useLabStore(state => state.interaction.selectedNetId);
 
     // Check sim state
     const pinStates = useLabStore(state => state.simulation.pinStates);
@@ -43,6 +45,8 @@ const PartMesh: React.FC<{ node: any; }> = ({ node }) => {
             {/* Interactive Pins */}
             {def.pins.map(pin => {
                 const isHovered = hoveredPin?.nodeId === node.id && hoveredPin?.pinId === pin.id;
+                const pinNetId = selectedNetId ? pinToNetId[`${node.id}:${pin.id}`] : null;
+                const isNetSelected = selectedNetId && pinNetId === selectedNetId;
 
                 return (
                     <group key={pin.id} position={[pin.position.x, pin.position.y, pin.position.z]}>
@@ -59,7 +63,17 @@ const PartMesh: React.FC<{ node: any; }> = ({ node }) => {
 
                         {/* Visual Pin (Highlight on hover) */}
                         <Box args={[0.05, 0.05, 0.05]}>
-                            <meshBasicMaterial color={isHovered ? '#2ecc71' : 'gold'} />
+                            <meshBasicMaterial
+                                color={
+                                    isHovered
+                                        ? '#2ecc71'
+                                        : highlightedPins.some((highlight) => highlight.nodeId === node.id && highlight.pinId === pin.id)
+                                            ? '#00d4ff'
+                                            : isNetSelected
+                                                ? '#00d4ff'
+                                                : 'gold'
+                                }
+                            />
                         </Box>
                         {isHovered && (
                             <Text position={[0, 0.15, 0]} fontSize={0.1} color="white" receiveShadow={false}>
@@ -116,10 +130,20 @@ const GhostWire = () => {
     );
 };
 
+const LabInteractionLayer = () => {
+    const { handlePointerMove } = useLabInteraction();
+
+    return (
+        <mesh visible={false} onPointerMove={handlePointerMove} position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[100, 100]} />
+        </mesh>
+    );
+};
 
 export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: number | string, height?: number | string }) => {
     const graph = useLabStore(state => state.graph);
-    const { handlePointerMove } = useLabInteraction();
+    const selectedNetId = useLabStore(state => state.interaction.selectedNetId);
+    const netlist = useMemo(() => computeNetlist(graph), [graph]);
 
     return (
         <Rb3DViewport
@@ -128,17 +152,14 @@ export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: numb
             cameraPosition={[0, 8, 4]}
             cameraTarget={[0, 0, 0]}
         >
-            {/* Scene Handler for Pointer Move (Ghost Wire Drag) */}
-            <mesh visible={false} onPointerMove={handlePointerMove} position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                <planeGeometry args={[100, 100]} />
-            </mesh>
+            <LabInteractionLayer />
 
             <ambientLight intensity={0.5} />
             <directionalLight position={[5, 10, 5]} intensity={1} />
             <gridHelper args={[20, 20, 0x444444, 0x222222]} />
 
             {graph.nodes.map(node => (
-                <PartMesh key={node.id} node={node} />
+                <PartMesh key={node.id} node={node} pinToNetId={netlist.pinToNetId} />
             ))}
 
             {graph.wires.map(wire => {
@@ -163,6 +184,12 @@ export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: numb
                 const pinStates = useLabStore.getState().simulation.pinStates;
                 const val = pinStates[`${wire.sourceNodeId}:${wire.sourcePinId}`];
                 const isActive = val === 1;
+                const sourceKey = `${wire.sourceNodeId}:${wire.sourcePinId}`;
+                const targetKey = `${wire.targetNodeId}:${wire.targetPinId}`;
+                const isSelectedNet =
+                    selectedNetId &&
+                    netlist.pinToNetId[sourceKey] === selectedNetId &&
+                    netlist.pinToNetId[targetKey] === selectedNetId;
 
                 return (
                     <WireMesh
@@ -171,6 +198,7 @@ export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: numb
                         to={to}
                         isActive={isActive}
                         pulse={isActive ? 1 : 0}
+                        probeColors={isSelectedNet ? ['#00d4ff'] : undefined}
                     />
                 );
             })}
