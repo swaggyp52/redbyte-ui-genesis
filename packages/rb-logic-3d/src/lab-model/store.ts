@@ -84,6 +84,9 @@ interface LabStoreState {
 
     // Recovery
     recover: () => void;
+
+    // User Interaction (P0 Determinism)
+    setUserPinState: (nodeId: string, pinId: string, value: number) => void;
 }
 
 const SNAPSHOT_INTERVAL_TICKS = 200; // Create a snapshot every N ticks
@@ -712,6 +715,38 @@ export const useLabStore = create<LabStoreState>()(
                 set(produce((state: LabStoreState) => {
                     const recoveryMsg = state.integrityError || 'Manual Recovery';
                     applyIntegrityRecovery(state, recoveryMsg, { clearError: true });
+                })),
+
+            setUserPinState: (nodeId, pinId, value) =>
+                set(produce((state: LabStoreState) => {
+                    // In Replay mode, user interaction is blocked (read-only)
+                    if (state.simulation.playbackMode === 'replay') return;
+                    if (state.integrityError) return;
+
+                    // If simulation is running, we might want to pause or queue.
+                    // For MVP-3, we allow immediate injection into pinStates,
+                    // but MUST record it as an event to be replayable.
+
+                    // 1. Update State
+                    const key = `${nodeId}:${pinId}`;
+                    state.simulation.pinStates[key] = value;
+
+                    // 2. Record Event (Deterministic)
+                    state.timeline.events.push({
+                        type: 'SIM_PIN_DIFF',
+                        pinDiffs: { [key]: value },
+                        tick: state.simulation.tick,
+                        seq: state.timeline.events.length,
+                        source: 'user', // Explicitly user-driven
+                        ts: Date.now()
+                    });
+
+                    // Note: If sim is running, this might happen between ticks.
+                    // Ideally interaction events should align with ticks. 
+                    // But since we use ticks for replay, as long as it's recorded at 'tick',
+                    // it will be replayed at 'tick'.
+
+                    assertInvariants(state, 'setUserPinState');
                 })),
 
             reset: () => {

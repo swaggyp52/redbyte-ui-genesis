@@ -112,90 +112,125 @@ const ResistorVisual = () => (
 );
 
 
-const FpgaVisual = ({ dim }: { dim: { x: number; y: number; z: number } }) => {
-    // Indices for generation
-    const swIndices = Array.from({ length: 16 }, (_, i) => i);
-    const ledIndices = Array.from({ length: 16 }, (_, i) => i);
-    const btnLabels = ['C', 'U', 'L', 'R', 'D']; // 0,1,2,3,4
+const FpgaBoardVisual: React.FC<{ node: any }> = ({ node }) => {
+    const dim = { x: 10.2, y: 0.16, z: 7.6 };
+    const pinStates = useLabStore(state => state.simulation.pinStates);
+    // Helper to safely get pin state (0 or 1)
+    const getPinState = (pinId: string) => pinStates[`${node.id}:${pinId}`] ?? 0;
 
-    // Helper to match part definition pos (should technically read from PART_DEFINITIONS but fixed layout here is faster for pure visual)
-    const getSwPos = (i: number) => [-4.5 + (i * 0.6), 0.15, 2.5] as const;
-    const getLedPos = (i: number) => [-4.5 + (i * 0.6), 0.1, 2.0] as const;
-    const btnCenter = { x: 4.5, z: 0.5 };
-    const getBtnPos = (i: number) => {
-        if (i === 0) return [btnCenter.x, 0.15, btnCenter.z] as const;
-        if (i === 1) return [btnCenter.x, 0.15, btnCenter.z - 0.6] as const;
-        if (i === 2) return [btnCenter.x - 0.6, 0.15, btnCenter.z] as const;
-        if (i === 3) return [btnCenter.x + 0.6, 0.15, btnCenter.z] as const;
-        return [btnCenter.x, 0.15, btnCenter.z + 0.6] as const;
+    // Layout constants matching parts.ts
+    // SW0..15: z=-3.05 (Bottom), X: +4.1 (Right == SW0) -> -4.1
+    const getSwPos = (i: number) => [4.1 - (i * 0.547), 0.10, -3.05] as const;
+    // LED0..15: z=-2.30 (Above Switches), Same X range
+    const getLedPos = (i: number) => [4.1 - (i * 0.547), 0.18, -2.30] as const;
+
+    // Buttons (BTN0=Center, 1=U, 2=L, 3=R, 4=D)
+    const btnLabels = ['C', 'U', 'D', 'L', 'R'];
+    const getBtnPos = (lbl: string) => {
+        const btnZ = 1.2;
+        const btnY = 0.18;
+        if (lbl === 'C') return [0, btnY, btnZ] as const;
+        if (lbl === 'U') return [0, btnY, btnZ + 0.65] as const;
+        if (lbl === 'D') return [0, btnY, btnZ - 0.65] as const;
+        if (lbl === 'L') return [-0.9, btnY, btnZ] as const;
+        if (lbl === 'R') return [0.9, btnY, btnZ] as const;
+        return [0, 0, 0] as const;
+    };
+    const getBtnId = (lbl: string) => {
+        // Map label back to ID used in parts.ts
+        if (lbl === 'C') return 'BTN0';
+        if (lbl === 'U') return 'BTN1';
+        if (lbl === 'L') return 'BTN2';
+        if (lbl === 'R') return 'BTN3';
+        if (lbl === 'D') return 'BTN4';
+        return 'BTN0';
     };
 
     return (
         <group>
-            {/* PCB Board */}
+            {/* PCB Base */}
             <Box args={[dim.x, dim.y, dim.z]}>
                 <meshStandardMaterial color="#005533" roughness={0.6} />
             </Box>
 
-            {/* White Silk Screen Areas (Decor) */}
-            <Box args={[dim.x - 0.5, 0.01, dim.z - 0.5]} position={[0, dim.y / 2 + 0.005, 0]}>
+            {/* Silkscreen / Decor Plane */}
+            <Box args={[dim.x - 0.2, 0.01, dim.z - 0.2]} position={[0, dim.y / 2 + 0.005, 0]}>
                 <meshBasicMaterial color="#006644" />
             </Box>
 
             {/* Switches */}
-            {swIndices.map(i => (
-                <group key={`vis-sw-${i}`} position={getSwPos(i)}>
-                    <Box args={[0.3, 0.1, 0.5]}>
-                        <meshStandardMaterial color="#888" />
-                    </Box>
-                    <Box args={[0.1, 0.3, 0.1]} position={[0, 0.1, 0]}>
-                        <meshStandardMaterial color="#222" />
-                    </Box>
-                    <Text position={[0, 0, 0.4]} fontSize={0.2} rotation={[-Math.PI / 2, 0, 0]} color="white">
-                        {i}
-                    </Text>
-                </group>
-            ))}
+            {Array.from({ length: 16 }, (_, i) => {
+                const isActive = getPinState(`SW${i}`) === 1;
+                const pos = getSwPos(i);
+                return (
+                    <group key={`sw-${i}`} position={[pos[0], pos[1], pos[2]]}>
+                        {/* Switch Body */}
+                        <Box args={[0.3, 0.2, 0.5]}>
+                            <meshStandardMaterial color="#888" />
+                        </Box>
+                        {/* Switch Toggle (moves when active) */}
+                        <Box args={[0.2, 0.2, 0.2]} position={[0, 0.15, isActive ? -0.15 : 0.15]}>
+                            <meshStandardMaterial color="white" />
+                        </Box>
+                        {/* Label */}
+                        <Text position={[0, 0.11, 0.4]} fontSize={0.15} rotation={[-Math.PI / 2, 0, 0]} color="white">
+                            {i}
+                        </Text>
+                    </group>
+                );
+            })}
 
             {/* LEDs */}
-            {ledIndices.map(i => (
-                <group key={`vis-led-${i}`} position={getLedPos(i)}>
-                    <Box args={[0.2, 0.05, 0.1]}>
-                        <meshStandardMaterial color="#222" />
-                    </Box>
-                    {/* The Lit Part - we'd need state to light this up. 
-                        For now just the physical component. */}
-                    <Box args={[0.15, 0.06, 0.05]} position={[0, 0.01, 0]}>
-                        <meshStandardMaterial color="#400" />
-                    </Box>
-                    <Text position={[0, 0, -0.2]} fontSize={0.15} rotation={[-Math.PI / 2, 0, 0]} color="white">
-                        LED{i}
-                    </Text>
-                </group>
-            ))}
+            {Array.from({ length: 16 }, (_, i) => {
+                const isOn = getPinState(`LED${i}`) === 1;
+                const pos = getLedPos(i);
+                return (
+                    <group key={`led-${i}`} position={[pos[0], pos[1], pos[2]]}>
+                        {/* LED Dome */}
+                        <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+                            <cylinderGeometry args={[0.1, 0.1, 0.05, 16]} />
+                            <meshStandardMaterial
+                                color={isOn ? '#ff2222' : '#440000'}
+                                emissive={isOn ? '#ff0000' : 'black'}
+                                emissiveIntensity={isOn ? 2.0 : 0}
+                            />
+                        </mesh>
+                        <Text position={[0, 0.01, -0.2]} fontSize={0.12} rotation={[-Math.PI / 2, 0, 0]} color="#ccc">
+                            LED{i}
+                        </Text>
+                    </group>
+                );
+            })}
 
             {/* Buttons */}
-            {btnLabels.map((lbl, i) => (
-                <group key={`vis-btn-${i}`} position={getBtnPos(i)}>
-                    <cylinderGeometry args={[0.25, 0.25, 0.1, 16]} />
-                    <meshStandardMaterial color="#222" />
-                    <mesh position={[0, 0.1, 0]}>
-                        <cylinderGeometry args={[0.15, 0.15, 0.1, 16]} />
-                        <meshStandardMaterial color="#111" />
-                    </mesh>
-                </group>
-            ))}
+            {btnLabels.map(lbl => {
+                const pinId = getBtnId(lbl);
+                const isPressed = getPinState(pinId) === 1;
+                const pos = getBtnPos(lbl);
+                return (
+                    <group key={`btn-${lbl}`} position={[pos[0], pos[1], pos[2]]}>
+                        {/* Button Cap */}
+                        <mesh position={[0, isPressed ? -0.05 : 0.05, 0]}>
+                            <cylinderGeometry args={[0.2, 0.2, 0.1, 16]} />
+                            <meshStandardMaterial color="#111" />
+                        </mesh>
+                        {/* Button Housing ring */}
+                        <mesh position={[0, -0.05, 0]}>
+                            <cylinderGeometry args={[0.25, 0.25, 0.1, 16]} />
+                            <meshStandardMaterial color="#333" />
+                        </mesh>
+                        <Text position={[0, 0.11, 0.35]} fontSize={0.15} rotation={[-Math.PI / 2, 0, 0]} color="white">
+                            {lbl}
+                        </Text>
+                    </group>
+                );
+            })}
 
-            {/* 7-Seg Display Area */}
-            <Box args={[3.0, 0.1, 1.5]} position={[2.6, 0.1, -2.0]}>
-                <meshStandardMaterial color="#111" />
-            </Box>
-
-            {/* FPGA Chip (Center) */}
+            {/* FPGA Chip (Center-ish) */}
             <Box args={[1.5, 0.1, 1.5]} position={[0, 0.1, -0.5]}>
                 <meshStandardMaterial color="#111" roughness={0.2} />
                 <Text position={[0, 0.06, 0]} fontSize={0.2} rotation={[-Math.PI / 2, 0, 0]} color="#666">
-                    XILINX
+                    ARTIX-7
                 </Text>
             </Box>
         </group>
@@ -403,6 +438,10 @@ export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: numb
                     targetNode.pose.position.z + tPin.position.z
                 ];
 
+                // --- FIX: Check if getState exists or use hook if possible. 
+                // Since we are in a component, we can use useLabStore.getState() safely or 
+                // just use the hook passed down? 
+                // Wires are inside Canvas, fine.
                 const pinStates = useLabStore.getState().simulation.pinStates;
                 const val = pinStates[`${wire.sourceNodeId}:${wire.sourcePinId}`];
                 const isActive = val === 1;

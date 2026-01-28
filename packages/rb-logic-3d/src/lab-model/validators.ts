@@ -100,8 +100,8 @@ export function validateTimeline(timeline: LabTimeline): ValidationResult {
         prevSeq = event.seq;
         prevTick = event.tick;
 
-        if (event.type === 'SIM_PIN_DIFF' && event.source !== 'engine') {
-            errors.push(`SIM_PIN_DIFF event at seq ${event.seq} must come from 'engine'`);
+        if (event.type === 'SIM_PIN_DIFF' && event.source !== 'engine' && event.source !== 'user') {
+            errors.push(`SIM_PIN_DIFF event at seq ${event.seq} must come from 'engine' or 'user'`);
         }
         if ((event.type === 'SERIAL_OUTPUT' || event.type === 'SKETCH_LOADED' || event.type === 'SKETCH_ERROR') && event.source === 'user') {
             errors.push(`${event.type} event at seq ${event.seq} must come from 'engine' or 'import'`);

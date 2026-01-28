@@ -21,6 +21,7 @@ import type { RedByteApp } from '../types';
 import { useFileSystemStore } from '../stores/fileSystemStore';
 import { VIRTUAL_LAB_TEMPLATES } from './virtual-lab-templates';
 import { useVirtualLabSignalSource } from '../instruments/virtualLabSignalSource';
+import { FpgaStatusPanel } from '../panels/FpgaStatusPanel';
 
 const DEFAULT_SKETCH = `void setup() {
   pinMode(13, OUTPUT);
@@ -720,6 +721,8 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                     )}
                 </div>
 
+                <FpgaStatusPanel />
+
                 {/* Integrity Recovery UI */}
                 {integrityError && (
                     <div className="absolute top-16 right-4 pointer-events-auto">
@@ -866,147 +869,147 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                     )}
                 </div>
                 <div className="flex-1 min-h-0 overflow-y-auto">
-                {activeTemplate && gradeReport && (
-                    <div className="border-t border-gray-700 p-3 flex flex-col gap-2">
-                        <div className="text-xs font-semibold text-gray-200">Lab Review</div>
-                        <div className="text-[11px] text-gray-400">{activeTemplate.summary}</div>
-                        <div className="grid grid-cols-3 gap-2 text-[10px]">
-                            <div className="bg-[#111] border border-gray-700 rounded px-2 py-1">
-                                <div className="text-gray-500 uppercase">Wiring</div>
-                                <div className="text-white">{wiringSummary.pass}/{wiringSummary.total} verified</div>
+                    {activeTemplate && gradeReport && (
+                        <div className="border-t border-gray-700 p-3 flex flex-col gap-2">
+                            <div className="text-xs font-semibold text-gray-200">Lab Review</div>
+                            <div className="text-[11px] text-gray-400">{activeTemplate.summary}</div>
+                            <div className="grid grid-cols-3 gap-2 text-[10px]">
+                                <div className="bg-[#111] border border-gray-700 rounded px-2 py-1">
+                                    <div className="text-gray-500 uppercase">Wiring</div>
+                                    <div className="text-white">{wiringSummary.pass}/{wiringSummary.total} verified</div>
+                                </div>
+                                <div className="bg-[#111] border border-gray-700 rounded px-2 py-1">
+                                    <div className="text-gray-500 uppercase">Behavior</div>
+                                    <div className="text-white">{behaviorSummary.pass}/{behaviorSummary.total} verified</div>
+                                </div>
+                                <div className="bg-[#111] border border-gray-700 rounded px-2 py-1">
+                                    <div className="text-gray-500 uppercase">Evidence</div>
+                                    <div className="text-white">{playbackMode === 'live' && isRunning ? 'Recording' : 'Idle'}</div>
+                                </div>
                             </div>
-                            <div className="bg-[#111] border border-gray-700 rounded px-2 py-1">
-                                <div className="text-gray-500 uppercase">Behavior</div>
-                                <div className="text-white">{behaviorSummary.pass}/{behaviorSummary.total} verified</div>
+                            <div className="mt-2 text-[10px] text-gray-500 bg-[#111] border border-gray-800 rounded px-2 py-1">
+                                Template: {activeTemplate.name} · Version {activeTemplate.lab_version} · Integrity {integrityError ? 'Unverified' : 'Verified'}
                             </div>
-                            <div className="bg-[#111] border border-gray-700 rounded px-2 py-1">
-                                <div className="text-gray-500 uppercase">Evidence</div>
-                                <div className="text-white">{playbackMode === 'live' && isRunning ? 'Recording' : 'Idle'}</div>
-                            </div>
-                        </div>
-                        <div className="mt-2 text-[10px] text-gray-500 bg-[#111] border border-gray-800 rounded px-2 py-1">
-                            Template: {activeTemplate.name} · Version {activeTemplate.lab_version} · Integrity {integrityError ? 'Unverified' : 'Verified'}
-                        </div>
-                        <div className="mt-2 space-y-2">
-                            <div className="text-[11px] text-gray-300 font-semibold">Parts</div>
-                            {gradeReport.checks
-                                .filter((check) => check.category === 'parts')
-                                .map((check) => {
-                                    const status = statusLabel(check.status);
-                                    return (
-                                        <div key={check.id} className="text-[10px] bg-[#111] border border-gray-800 rounded px-2 py-1">
-                                            <div className="flex items-center justify-between">
-                                                <span>{check.label}</span>
-                                                <span className={status.color}>{status.label}</span>
-                                            </div>
-                                            {check.details && (
-                                                <div className="text-[10px] text-gray-500 mt-1">{check.details}</div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            <div className="text-[11px] text-gray-300 font-semibold mt-2">Wiring</div>
-                            {activeTemplate.required_nets.map((net) => {
-                                const check = gradeReport.checks.find((entry) => entry.id === `wiring:${net.id}`);
-                                const status = statusLabel(check?.status ?? 'missing');
-                                return (
-                                    <div key={net.id} className="text-[10px] bg-[#111] border border-gray-800 rounded px-2 py-1">
-                                        <div className="flex items-center justify-between">
-                                            <span>{net.label}</span>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => handleLocatePins(net.pins)}
-                                                    className="text-[10px] text-blue-300 hover:text-blue-200"
-                                                >
-                                                    Locate
-                                                </button>
-                                                <span className={status.color}>{status.label}</span>
-                                            </div>
-                                        </div>
-                                        {net.hint && (
-                                            <div className="text-[10px] text-gray-500 mt-1">Hint: {net.hint}</div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                            {activeTemplate.behavior_checks && (
-                                <>
-                                    <div className="text-[11px] text-gray-300 font-semibold mt-2">Behavior</div>
-                                    {activeTemplate.behavior_checks.map((behavior) => {
-                                        const check = gradeReport.checks.find((entry) => entry.id === `behavior:${behavior.id}`);
-                                        const status = statusLabel(check?.status ?? 'fail');
+                            <div className="mt-2 space-y-2">
+                                <div className="text-[11px] text-gray-300 font-semibold">Parts</div>
+                                {gradeReport.checks
+                                    .filter((check) => check.category === 'parts')
+                                    .map((check) => {
+                                        const status = statusLabel(check.status);
                                         return (
-                                            <div key={behavior.id} className="text-[10px] bg-[#111] border border-gray-800 rounded px-2 py-1">
+                                            <div key={check.id} className="text-[10px] bg-[#111] border border-gray-800 rounded px-2 py-1">
                                                 <div className="flex items-center justify-between">
-                                                    <span>{behavior.id}</span>
-                                                    <div className="flex items-center gap-2">
-                                                        <button
-                                                            onClick={() => handleLocatePins([behavior.pin])}
-                                                            className="text-[10px] text-blue-300 hover:text-blue-200"
-                                                        >
-                                                            Locate
-                                                        </button>
-                                                        {check?.evidence && (
-                                                            <button
-                                                                onClick={() => handleShowEvidence(check.evidence)}
-                                                                className="text-[10px] text-blue-300 hover:text-blue-200"
-                                                            >
-                                                                Show evidence
-                                                            </button>
-                                                        )}
-                                                        <span className={status.color}>{status.label}</span>
-                                                    </div>
+                                                    <span>{check.label}</span>
+                                                    <span className={status.color}>{status.label}</span>
                                                 </div>
-                                                {check?.details && (
-                                                    <div className="text-[10px] text-gray-500 mt-1">What this means: {check.details}</div>
-                                                )}
-                                                {'hint' in behavior && behavior.hint && (
-                                                    <div className="text-[10px] text-gray-500 mt-1">Hint: {behavior.hint}</div>
+                                                {check.details && (
+                                                    <div className="text-[10px] text-gray-500 mt-1">{check.details}</div>
                                                 )}
                                             </div>
                                         );
                                     })}
-                                </>
+                                <div className="text-[11px] text-gray-300 font-semibold mt-2">Wiring</div>
+                                {activeTemplate.required_nets.map((net) => {
+                                    const check = gradeReport.checks.find((entry) => entry.id === `wiring:${net.id}`);
+                                    const status = statusLabel(check?.status ?? 'missing');
+                                    return (
+                                        <div key={net.id} className="text-[10px] bg-[#111] border border-gray-800 rounded px-2 py-1">
+                                            <div className="flex items-center justify-between">
+                                                <span>{net.label}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => handleLocatePins(net.pins)}
+                                                        className="text-[10px] text-blue-300 hover:text-blue-200"
+                                                    >
+                                                        Locate
+                                                    </button>
+                                                    <span className={status.color}>{status.label}</span>
+                                                </div>
+                                            </div>
+                                            {net.hint && (
+                                                <div className="text-[10px] text-gray-500 mt-1">Hint: {net.hint}</div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                                {activeTemplate.behavior_checks && (
+                                    <>
+                                        <div className="text-[11px] text-gray-300 font-semibold mt-2">Behavior</div>
+                                        {activeTemplate.behavior_checks.map((behavior) => {
+                                            const check = gradeReport.checks.find((entry) => entry.id === `behavior:${behavior.id}`);
+                                            const status = statusLabel(check?.status ?? 'fail');
+                                            return (
+                                                <div key={behavior.id} className="text-[10px] bg-[#111] border border-gray-800 rounded px-2 py-1">
+                                                    <div className="flex items-center justify-between">
+                                                        <span>{behavior.id}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                onClick={() => handleLocatePins([behavior.pin])}
+                                                                className="text-[10px] text-blue-300 hover:text-blue-200"
+                                                            >
+                                                                Locate
+                                                            </button>
+                                                            {check?.evidence && (
+                                                                <button
+                                                                    onClick={() => handleShowEvidence(check.evidence)}
+                                                                    className="text-[10px] text-blue-300 hover:text-blue-200"
+                                                                >
+                                                                    Show evidence
+                                                                </button>
+                                                            )}
+                                                            <span className={status.color}>{status.label}</span>
+                                                        </div>
+                                                    </div>
+                                                    {check?.details && (
+                                                        <div className="text-[10px] text-gray-500 mt-1">What this means: {check.details}</div>
+                                                    )}
+                                                    {'hint' in behavior && behavior.hint && (
+                                                        <div className="text-[10px] text-gray-500 mt-1">Hint: {behavior.hint}</div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    <div className="border-t border-gray-700 p-3 flex flex-col gap-2">
+                        <div className="text-xs font-semibold text-gray-200">Event Feed</div>
+                        <div className="text-[10px] text-gray-500">Latest actions & signals</div>
+                        <div className="max-h-24 overflow-auto space-y-1">
+                            {eventFeed.length === 0 ? (
+                                <div className="text-[10px] text-gray-500">No events yet.</div>
+                            ) : (
+                                eventFeed.map((item, index) => (
+                                    <button
+                                        key={item.seq ?? `${item.tick}-${item.label}-${index}`}
+                                        onClick={() => {
+                                            setPlaybackMode('replay');
+                                            scrub(item.tick);
+                                        }}
+                                        className="w-full text-left text-[10px] text-blue-300 hover:text-blue-200"
+                                    >
+                                        Tick {item.tick}: {item.label}
+                                    </button>
+                                ))
                             )}
                         </div>
                     </div>
-                )}
-                <div className="border-t border-gray-700 p-3 flex flex-col gap-2">
-                    <div className="text-xs font-semibold text-gray-200">Event Feed</div>
-                    <div className="text-[10px] text-gray-500">Latest actions & signals</div>
-                    <div className="max-h-24 overflow-auto space-y-1">
-                        {eventFeed.length === 0 ? (
-                            <div className="text-[10px] text-gray-500">No events yet.</div>
-                        ) : (
-                            eventFeed.map((item, index) => (
-                                <button
-                                    key={item.seq ?? `${item.tick}-${item.label}-${index}`}
-                                    onClick={() => {
-                                        setPlaybackMode('replay');
-                                        scrub(item.tick);
-                                    }}
-                                    className="w-full text-left text-[10px] text-blue-300 hover:text-blue-200"
-                                >
-                                    Tick {item.tick}: {item.label}
-                                </button>
-                            ))
-                        )}
+                    <div className="flex-1 border-t border-gray-700 min-h-[240px] flex flex-col">
+                        <div className="p-3 border-b border-gray-700">
+                            <div className="text-xs font-semibold text-gray-200">Instruments</div>
+                            <div className="text-[10px] text-gray-500">Scope, probe, net inspector, serial</div>
+                        </div>
+                        <div className="flex-1 min-h-0">
+                            <InstrumentDock
+                                signalSource={signalSource}
+                                currentTick={evaluationTick}
+                                selectedSignalId={selectedSignalId}
+                                onSelectSignalId={handleSelectSignalId}
+                            />
+                        </div>
                     </div>
-                </div>
-                <div className="flex-1 border-t border-gray-700 min-h-[240px] flex flex-col">
-                    <div className="p-3 border-b border-gray-700">
-                        <div className="text-xs font-semibold text-gray-200">Instruments</div>
-                        <div className="text-[10px] text-gray-500">Scope, probe, net inspector, serial</div>
-                    </div>
-                    <div className="flex-1 min-h-0">
-                        <InstrumentDock
-                            signalSource={signalSource}
-                            currentTick={evaluationTick}
-                            selectedSignalId={selectedSignalId}
-                            onSelectSignalId={handleSelectSignalId}
-                        />
-                    </div>
-                </div>
                 </div>
             </div>
         </div>
