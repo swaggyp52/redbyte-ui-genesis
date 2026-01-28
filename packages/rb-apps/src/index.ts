@@ -50,6 +50,7 @@ export async function registerAllApps() {
   const { InstructorRunDetailApp } = await import('./apps/InstructorRunDetailApp');
   const { StudentLabApp } = await import('./apps/StudentLabApp');
   const { SubmissionInspectorApp } = await import('./apps/SubmissionInspectorApp');
+  const { VirtualLabApp } = await import('./apps/VirtualLabApp');
 
   registerApp(TerminalApp);
   registerApp(SettingsApp);
@@ -76,6 +77,7 @@ export async function registerAllApps() {
   registerApp(InstructorRunDetailApp);
   // registerApp(StudentLabApp); // LEGACY: Replaced by ECELabApp (ECE 347 Lab)
   registerApp(SubmissionInspectorApp);
+  registerApp(VirtualLabApp);
 }
 
 export { PlaygroundGoldenPath } from './dev/PlaygroundGoldenPath';

@@ -8,6 +8,7 @@ import { LABS } from './labContent';
 import { useHardwareStore } from '../stores/hardwareStore';
 import { getSignalMap } from './signalMap';
 import { exportEvidenceCapsule } from '../utils/evidenceExport';
+import { PanelLayout } from '../components/PanelLayout';
 
 // Styled Markdown Renderer
 const SimpleMarkdown: React.FC<{ content: string }> = ({ content }) => {
@@ -176,131 +177,145 @@ export const LabInstructions: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-full overflow-hidden" style={{ background: '#081018' }}>
-            {/* Header / Progress Bar */}
-            <div className="p-4 bg-[#0a1520] border-b border-[#1a2a3a]">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                        <span className="text-[9px] font-black text-gray-600 tracking-widest">MODULE</span>
-                        <select
-                            value={activeLabId}
-                            onChange={(e) => setActiveLab(e.target.value)}
-                            aria-label="Select lab module"
-                            className="bg-transparent text-xs font-bold text-cyan-400 border-none outline-none cursor-pointer uppercase tracking-wider"
-                        >
-                            {labs.map(id => (
-                                <option key={id} value={id} className="bg-[#0a1520]">{id.replace('-', ' ')}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="text-[9px] font-mono text-gray-500">
-                        STEP <span className="text-white">{currentStepIndex + 1}</span> / {content.length}
-                    </div>
-                </div>
-                {/* Progress Bar */}
-                <div className="w-full bg-[#05080a] h-1 rounded-full overflow-hidden border border-[#1a2a3a]/30">
-                    <div
-                        className="bg-cyan-500 h-full transition-all duration-500 ease-out shadow-[0_0_8px_rgba(0,255,255,0.5)]"
-                        style={{ width: `${((currentStepIndex + 1) / content.length) * 100}%` }}
-                    />
-                </div>
-            </div>
-
-            {/* Content Area */}
-            <div className="flex-1 overflow-auto p-6 custom-scrollbar">
-                {isFirst && <StudentIdentity />}
-
-                <SimpleMarkdown content={step.markdown} />
-
-                {/* Checkpoint UI */}
-                {step.checkpoint && (
-                    <div className={`mt-10 p-5 rounded-lg border transition-all duration-300 ${isCompleted
-                        ? 'border-green-500/30 bg-green-500/5 shadow-[0_0_20px_rgba(0,255,100,0.05)]'
-                        : 'border-cyan-500/30 bg-cyan-500/5'}`
-                    }>
-                        <div className="flex items-center justify-between mb-4">
-                            <span className={`text-[9px] font-black tracking-widest uppercase ${isCompleted ? 'text-green-400' : 'text-cyan-500'}`}>
-                                Checkpoint: {isCompleted ? 'VERIFIED' : 'PENDING'}
-                            </span>
-                            {isCompleted && <span className="text-green-500 text-xs">✓</span>}
+        <PanelLayout
+            className="bg-[#081018]"
+            header={
+                <div className="bg-[#0a1520] border-b border-[#1a2a3a] -m-4 p-4">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                            <span className="text-[9px] font-black text-gray-600 tracking-widest">MODULE</span>
+                            <select
+                                value={activeLabId}
+                                onChange={(e) => setActiveLab(e.target.value)}
+                                aria-label="Select lab module"
+                                className="bg-transparent text-xs font-bold text-cyan-400 border-none outline-none cursor-pointer uppercase tracking-wider"
+                            >
+                                {labs.map(id => (
+                                    <option key={id} value={id} className="bg-[#0a1520]">{id.replace('-', ' ')}</option>
+                                ))}
+                            </select>
                         </div>
-
-                        <div className="text-sm text-gray-300 leading-relaxed mb-4 italic">
-                            "{step.checkpoint.description}"
+                        <div className="text-[9px] font-mono text-gray-500">
+                            STEP <span className="text-white">{currentStepIndex + 1}</span> / {content.length}
                         </div>
-
-                        <div className="grid grid-cols-2 gap-2 mb-4">
-                            <div className="p-2 bg-black/30 rounded border border-[#1a2a3a] text-center">
-                                <div className="text-[8px] text-gray-600 uppercase font-bold mb-1">Target Signal</div>
-                                <div className="text-xs font-mono text-cyan-400">{step.checkpoint.signal}</div>
-                            </div>
-                            <div className="p-2 bg-black/30 rounded border border-[#1a2a3a] text-center">
-                                <div className="text-[8px] text-gray-600 uppercase font-bold mb-1">Expected State</div>
-                                <div className="text-xs font-mono text-white">{step.checkpoint.expectedValue === 1 ? 'HIGH (1)' : 'LOW (0)'}</div>
-                            </div>
-                        </div>
-
-                        {!isCompleted && (
-                            <CheckpointVerifier
-                                signal={step.checkpoint.signal}
-                                expected={step.checkpoint.expectedValue}
-                                stepIndex={currentStepIndex}
-                            />
-                        )}
                     </div>
-                )}
-
-                {/* Completion UI */}
-                {step.id === 'completion' && (
-                    <div className="mt-10 p-8 bg-cyan-950/10 border-2 border-dashed border-cyan-500/20 rounded-2xl text-center space-y-6">
-                        <div>
-                            <div className="text-3xl mb-2 opacity-50">🏆</div>
-                            <h3 className="text-lg font-black text-white tracking-widest uppercase">LAB COMPLETE</h3>
-                            <p className="text-xs text-gray-500 max-w-[240px] mx-auto leading-relaxed">
-                                All objectives verified. Generate your cryptographic evidence capsule for submission.
-                            </p>
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={handleExport}
-                            className="px-8 py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs tracking-widest rounded-lg shadow-[0_0_20px_rgba(0,255,255,0.3)] transition-all active:scale-95"
-                        >
-                            EXPORT EVIDENCE CAPSULE
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            {/* Navigation Footer */}
-            <div className="p-4 bg-[#0a1520] border-t border-[#1a2a3a] flex items-center justify-between">
-                <button
-                    type="button"
-                    onClick={prevStep}
-                    disabled={isFirst}
-                    className={`text-[9px] font-black tracking-widest uppercase transition-all ${isFirst ? 'text-gray-700 opacity-30' : 'text-gray-500 hover:text-white'}`}
-                >
-                    ← PREVIOUS
-                </button>
-
-                <div className="flex gap-1">
-                    {content.map((_, idx) => (
+                    {/* Progress Bar */}
+                    <div className="w-full bg-[#05080a] h-1 rounded-full overflow-hidden border border-[#1a2a3a]/30">
                         <div
-                            key={idx}
-                            className={`w-1 h-1 rounded-full transition-all duration-300 ${idx === currentStepIndex ? 'w-4 bg-cyan-400' : (completedSteps.includes(idx) ? 'bg-green-600' : 'bg-gray-800')}`}
+                            className="bg-cyan-500 h-full transition-all duration-500 ease-out shadow-[0_0_8px_rgba(0,255,255,0.5)]"
+                            style={{ width: `${((currentStepIndex + 1) / content.length) * 100}%` }}
                         />
-                    ))}
+                    </div>
+                </div>
+            }
+        // Add navigation as a footer by appending it to component or using a slot if PanelLayout supported it.
+        // Since PanelLayout is generic, we can put the footer in the body but fixed or...
+        // Actually, PanelLayout only has header slot. We might want to just render footer after PanelLayout body content?
+        // No, PanelLayout enforces full height. Ideally we'd add a 'footer' prop to PanelLayout or just accept Children.
+        // Let's modify PanelLayout to support footer or just put it in children if we want it to scroll?
+        // Wait, navigation footer should be fixed.
+        // I'll stick the footer INSIDE the body for now? No, that scrolls away.
+        // I'll update PanelLayout to support a footer prop in the next step or just patch it here.
+        // Actually, I can just not use PanelLayout for the footer part if I wrap it differently, but PanelLayout is root.
+        // Let's assume PanelLayout handles header and body.
+        // I will update PanelLayout.tsx to support footer prop first.
+        >
+            <div className="flex flex-col h-full">
+                <div className="flex-1">
+                    {isFirst && <StudentIdentity />}
+
+                    <SimpleMarkdown content={step.markdown} />
+
+                    {/* Checkpoint UI */}
+                    {step.checkpoint && (
+                        <div className={`mt-10 p-5 rounded-lg border transition-all duration-300 ${isCompleted
+                            ? 'border-green-500/30 bg-green-500/5 shadow-[0_0_20px_rgba(0,255,100,0.05)]'
+                            : 'border-cyan-500/30 bg-cyan-500/5'}`
+                        }>
+                            <div className="flex items-center justify-between mb-4">
+                                <span className={`text-[9px] font-black tracking-widest uppercase ${isCompleted ? 'text-green-400' : 'text-cyan-500'}`}>
+                                    Checkpoint: {isCompleted ? 'VERIFIED' : 'PENDING'}
+                                </span>
+                                {isCompleted && <span className="text-green-500 text-xs">✓</span>}
+                            </div>
+
+                            <div className="text-sm text-gray-300 leading-relaxed mb-4 italic">
+                                "{step.checkpoint.description}"
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 mb-4">
+                                <div className="p-2 bg-black/30 rounded border border-[#1a2a3a] text-center">
+                                    <div className="text-[8px] text-gray-600 uppercase font-bold mb-1">Target Signal</div>
+                                    <div className="text-xs font-mono text-cyan-400">{step.checkpoint.signal}</div>
+                                </div>
+                                <div className="p-2 bg-black/30 rounded border border-[#1a2a3a] text-center">
+                                    <div className="text-[8px] text-gray-600 uppercase font-bold mb-1">Expected State</div>
+                                    <div className="text-xs font-mono text-white">{step.checkpoint.expectedValue === 1 ? 'HIGH (1)' : 'LOW (0)'}</div>
+                                </div>
+                            </div>
+
+                            {!isCompleted && (
+                                <CheckpointVerifier
+                                    signal={step.checkpoint.signal}
+                                    expected={step.checkpoint.expectedValue}
+                                    stepIndex={currentStepIndex}
+                                />
+                            )}
+                        </div>
+                    )}
+
+                    {/* Completion UI */}
+                    {step.id === 'completion' && (
+                        <div className="mt-10 p-8 bg-cyan-950/10 border-2 border-dashed border-cyan-500/20 rounded-2xl text-center space-y-6">
+                            <div>
+                                <div className="text-3xl mb-2 opacity-50">🏆</div>
+                                <h3 className="text-lg font-black text-white tracking-widest uppercase">LAB COMPLETE</h3>
+                                <p className="text-xs text-gray-500 max-w-[240px] mx-auto leading-relaxed">
+                                    All objectives verified. Generate your cryptographic evidence capsule for submission.
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={handleExport}
+                                className="px-8 py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs tracking-widest rounded-lg shadow-[0_0_20px_rgba(0,255,255,0.3)] transition-all active:scale-95"
+                            >
+                                EXPORT EVIDENCE CAPSULE
+                            </button>
+                        </div>
+                    )}
                 </div>
 
-                <button
-                    type="button"
-                    onClick={nextStep}
-                    disabled={isLast}
-                    className={`text-[9px] font-black tracking-widest uppercase transition-all ${isLast ? 'text-gray-700 opacity-0' : 'text-cyan-500 hover:text-cyan-300'}`}
-                >
-                    NEXT →
-                </button>
+                {/* Navigation Footer */}
+                <div className="sticky bottom-0 bg-[#0a1520] border-t border-[#1a2a3a] flex items-center justify-between mt-auto pt-4 shadow-lg -mx-6 -mb-6 px-6 pb-6">
+                    <button
+                        type="button"
+                        onClick={prevStep}
+                        disabled={isFirst}
+                        className={`text-[9px] font-black tracking-widest uppercase transition-all ${isFirst ? 'text-gray-700 opacity-30' : 'text-gray-500 hover:text-white'}`}
+                    >
+                        ← PREVIOUS
+                    </button>
+
+                    <div className="flex gap-1">
+                        {content.map((_, idx) => (
+                            <div
+                                key={idx}
+                                className={`w-1 h-1 rounded-full transition-all duration-300 ${idx === currentStepIndex ? 'w-4 bg-cyan-400' : (completedSteps.includes(idx) ? 'bg-green-600' : 'bg-gray-800')}`}
+                            />
+                        ))}
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={nextStep}
+                        disabled={isLast}
+                        className={`text-[9px] font-black tracking-widest uppercase transition-all ${isLast ? 'text-gray-700 opacity-0' : 'text-cyan-500 hover:text-cyan-300'}`}
+                    >
+                        NEXT →
+                    </button>
+                </div>
             </div>
-        </div>
+        </PanelLayout>
     );
 };

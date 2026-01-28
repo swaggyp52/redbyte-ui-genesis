@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { useHardwareStore } from '../stores/hardwareStore';
 import { type RedByteCapsule } from '../hardware/capsuleFormat';
 import { loadCapsuleFromFS } from '../utils/traceFileUtils';
+import { PanelLayout } from '../components/PanelLayout';
 
 export const InspectorPanel: React.FC = () => {
     const [capsule, setCapsule] = useState<RedByteCapsule | null>(null);
@@ -36,43 +37,19 @@ export const InspectorPanel: React.FC = () => {
 
         // Safety: disconnect live hardware first
         disconnect();
-
-        // Load trace into store
-        // We need an action 'setReplayTrace' exposed via store or simply use 'startReplay'?
-        // Wait, ECELabApp manages replayTrace state locally in the component!
-        // This is a problem. InspectorPanel is a child? Or sibling?
-        // If ECELabApp holds state `[replayTrace, setReplayTrace]`, InspectorPanel needs access.
-
-        // Solution: We can't easily push to ECELabApp state from here without context/props.
-        // BUT: The user asked for Instructor View which might be a separate App or a Mode.
-        // If it's a separate app, it can have its own state.
-        // If it's a panel inside ECELabApp, we need to lift state or use a store slice.
-
-        // For MVP Phase 7:
-        // We will assume InspectorPanel is rendered INSIDE ECELabApp when in "Inspector Mode".
-        // And we will pass `onLoadTrace` prop to it?
-        // OR we put `replayTrace` into `hardwareStore` (Subagent C refinement).
-
-        // Let's assume for now we just show metadata. 
-        // The actual "Watch" button might need to callback to parent.
-        // Or we move `replayTrace` to global store?
-        // Moving to global store is cleaner for "App-wide Replay Mode".
-
-        // Let's invoke a store action if possible. 
-        // Current hardwareStore has `traceBuffer` but `replayTrace` was local in ECELabApp.
-        // Refactoring to put replayTrace in store is "Subagent C" work.
-        // For now, let's just emit an event or assume we will refactor.
-
-        // Let's create `dispatchReplay(capsule.trace)` event or similar?
-        // No, let's keep it simple. define prop `onLoadTrace`.
     };
 
     return (
-        <div className="flex flex-col h-full bg-gray-900 border-l border-gray-800 p-4 w-80">
-            <h2 className="text-sm font-bold text-gray-400 uppercase mb-4 tracking-wider">
-                Evidence Inspector
-            </h2>
-
+        <PanelLayout
+            className="w-80 border-l border-gray-800 bg-gray-900"
+            header={
+                <div className="flex items-center justify-between">
+                    <span className="font-bold text-gray-100">Inspector</span>
+                    <span className="text-xs text-gray-500 uppercase tracking-widest">Debug</span>
+                </div>
+            }
+            bodyClassName="p-4"
+        >
             {/* Loader */}
             <div className="flex gap-2 mb-6">
                 <input
@@ -153,6 +130,6 @@ export const InspectorPanel: React.FC = () => {
                     No evidence loaded.
                 </div>
             )}
-        </div>
+        </PanelLayout>
     );
 };

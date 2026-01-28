@@ -47,6 +47,9 @@ interface OscilloscopeViewProps {
   onDismissHints?: () => void;
   onHelp?: () => void;
   debugTick?: number | null;
+  signals?: Map<string, 0 | 1>;
+  signalsVersion?: number;
+  signalsUpdateReason?: 'input' | 'tick';
 }
 
 const MAX_SAMPLES = 500; // Maximum samples to keep in buffer
@@ -142,21 +145,35 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   }, [pauseScroll, getCurrentTime]);
 
 
-  // Update canvas dimensions based on container size
+  // Update canvas dimensions based on container size using ResizeObserver
   useEffect(() => {
-    const updateCanvasDimensions = () => {
+    if (!canvasContainerRef.current) return;
+
+    const updateDimensions = () => {
       if (canvasContainerRef.current) {
         const rect = canvasContainerRef.current.getBoundingClientRect();
-        setCanvasDimensions({
-          width: Math.max(rect.width - 20, 400),
-          height: Math.max(rect.height - 20, 300),
+        // Ensure non-zero dimensions to prevent canvas errors
+        const width = Math.max(rect.width - 20, 100);
+        const height = Math.max(rect.height - 20, 100);
+
+        setCanvasDimensions(prev => {
+          if (prev.width === width && prev.height === height) return prev;
+          return { width, height };
         });
       }
     };
 
-    updateCanvasDimensions();
-    window.addEventListener('resize', updateCanvasDimensions);
-    return () => window.removeEventListener('resize', updateCanvasDimensions);
+    const observer = new ResizeObserver(() => {
+      // Wrap in requestAnimationFrame to avoid "ResizeObserver loop limit exceeded"
+      window.requestAnimationFrame(updateDimensions);
+    });
+
+    observer.observe(canvasContainerRef.current);
+
+    // Initial measure
+    updateDimensions();
+
+    return () => observer.disconnect();
   }, []);
 
   // Auto-populate interesting nodes on initial load

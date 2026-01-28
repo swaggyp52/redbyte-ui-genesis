@@ -97,6 +97,7 @@ interface ViewRendererProps {
   highlightedPort?: { nodeId: string; portName: string } | null;
   isReplayMode?: boolean;
   onHelpOpen?: (section: HelpSectionId) => void;
+  disableToolStrip?: boolean;
   // Signal propagation for scope/3D
   onSignalsUpdated?: (signals: Map<string, 0 | 1>, reason: 'input' | 'tick') => void;
   latestSignals?: Map<string, 0 | 1>;
@@ -166,23 +167,30 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   const setCircuitViewSize = useViewStateStore((state) => state.setCircuitViewSize);
 
   React.useEffect(() => {
+    if (!containerRef.current) return;
+
     const updateDimensions = () => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
       const nextWidth = rect.width;
-      const nextHeight = rect.height - 32;
-      // Avoid re-renders when the measured size has not changed.
+      const nextHeight = Math.max(0, rect.height - 32); // Subtract header height
+
       setDimensions((prev) => {
-        if (prev.width === nextWidth && prev.height === nextHeight) {
+        if (Math.abs(prev.width - nextWidth) < 1 && Math.abs(prev.height - nextHeight) < 1) {
           return prev;
         }
         return { width: nextWidth, height: nextHeight };
       });
     };
 
+    const observer = new ResizeObserver(() => {
+      window.requestAnimationFrame(updateDimensions);
+    });
+
+    observer.observe(containerRef.current);
     updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
+
+    return () => observer.disconnect();
   }, []);
 
   React.useEffect(() => {
@@ -208,8 +216,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
         <button
           onClick={() => setToolMode('select')}
           className={`px-2 py-1 rounded text-[10px] border ${toolMode === 'select'
-              ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
-              : 'border-gray-600 text-gray-300 hover:bg-gray-800/60'
+            ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
+            : 'border-gray-600 text-gray-300 hover:bg-gray-800/60'
             }`}
           title="Select tool"
           type="button"
@@ -219,8 +227,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
         <button
           onClick={() => setToolMode(toolMode === 'wire' ? 'select' : 'wire')}
           className={`px-2 py-1 rounded text-[10px] border ${toolMode === 'wire'
-              ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
-              : 'border-gray-600 text-gray-300 hover:bg-gray-800/60'
+            ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
+            : 'border-gray-600 text-gray-300 hover:bg-gray-800/60'
             }`}
           title="Wire tool"
           type="button"
@@ -230,8 +238,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
         <button
           onClick={toggleSnapToGrid}
           className={`px-2 py-1 rounded text-[10px] border ${snapToGrid
-              ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
-              : 'border-gray-600 text-gray-300 hover:bg-gray-800/60'
+            ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
+            : 'border-gray-600 text-gray-300 hover:bg-gray-800/60'
             }`}
           title="Toggle snap to grid"
           type="button"
@@ -432,9 +440,9 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0 min-w-0">
       {/* View Header */}
-      <div className={`h-8 px-3 flex items-center gap-2 border-b border-gray-700/50 bg-gradient-to-r from-${metadata.color}-900/20 to-gray-900/20`}>
+      <div className={`h-8 px-3 flex items-center gap-2 border-b border-gray-700/50 bg-gradient-to-r from-${metadata.color}-900/20 to-gray-900/20 shrink-0`}>
         <Icon name={metadata.icon} size={16} className={`text-${metadata.color}-400`} />
         <span className={`text-xs font-semibold text-${metadata.color}-400 uppercase tracking-wide`}>{metadata.label}</span>
         {renderMicroToolbar()}
@@ -443,7 +451,9 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
         </div>
       </div>
       {/* View Content */}
-      {renderContent()}
+      <div className="flex-1 min-h-0 min-w-0 relative overflow-hidden">
+        {renderContent()}
+      </div>
     </div>
   );
 };

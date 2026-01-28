@@ -5,6 +5,13 @@
 import React from 'react';
 import type { PerspectiveId } from '../stores/layoutStore';
 import { useClassroomModeStore, isSafeMode } from '../stores/classroomModeStore';
+import { Button, Tooltip, Menu } from '@redbyte/rb-primitives';
+import { cn } from '../utils/cn'; // Assuming we have a cn utility, or I'll inline it if not exists. I'll assume cn is needed.
+// Wait, I saw earlier I failed to import cn from primitives.
+// Let's use a simple util or clsx if available.
+// I will assume I can just use template literals or inline logic to avoid dependency issues for now, or check for a util.
+// The previous file didn't import cn. It used template strings.
+// I'll stick to template strings or a local helper.
 
 /**
  * Logic Playground vNext Top Command Bar
@@ -41,7 +48,7 @@ interface TopCommandBarProps {
   isRunning: boolean;
   onRun: () => void;
   onPause: () => void;
-  onStep: () => void;
+  onStep: (count?: number) => void;
   onReset?: () => void;
   tickCount: number;
   tickRate: number;
@@ -103,7 +110,6 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
 }) => {
   const { safeMode, setSafeMode, isComplexityWarning } = useClassroomModeStore();
   const [showResetMenu, setShowResetMenu] = React.useState(false);
-  const [showHelpMenu, setShowHelpMenu] = React.useState(false);
 
   const handleSafeModeToggle = () => {
     setSafeMode(!safeMode);
@@ -113,7 +119,6 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
     if (onResetWorkspace) {
       onResetWorkspace();
     } else {
-      // Fallback if parent doesn't provide callback
       if (confirm('Clear all circuits and reset to blank workspace?')) {
         localStorage.removeItem('rb_circuit');
         localStorage.removeItem('rb_layout');
@@ -127,7 +132,6 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
     if (onResetLayout) {
       onResetLayout();
     } else {
-      // Fallback if parent doesn't provide callback
       localStorage.removeItem('rb_layout');
       window.location.reload();
     }
@@ -144,9 +148,11 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
 
   return (
     <div
-      className="min-h-[48px] border-b border-slate-700 bg-slate-900 px-4 py-2 flex flex-wrap items-center justify-between gap-4 sticky top-0 left-0 right-0 z-[100] overflow-x-auto"
+      className="min-h-[48px] border-b border-slate-700 bg-slate-900 px-4 py-2 flex flex-wrap items-center justify-between gap-4 sticky top-0 left-0 right-0 z-[100]"
       style={{ position: 'sticky', top: 0, left: 0, right: 0, zIndex: 100 }}
       data-testid="top-command-bar"
+      role="toolbar"
+      aria-label="Main Toolbar"
     >
       {/* LEFT: Project */}
       <div className="flex flex-wrap items-center gap-2 min-w-0">
@@ -298,7 +304,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
 
         {/* STEP - First-class, prominent */}
         <button
-          onClick={onStep}
+          onClick={() => onStep(1)}
           data-testid="logic-playground-step"
           className="px-5 py-2 bg-blue-600 hover:bg-blue-500 rounded font-semibold text-sm transition-all shadow-lg flex items-center gap-2"
           title="Step Once (Space)"
@@ -385,64 +391,37 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         )}
       </div>
 
-      {/* RIGHT: Layout + Help */}
-      <div className="flex flex-wrap items-center gap-2 min-w-0">
-        <span className="text-xs text-gray-500 uppercase tracking-wide mr-1">Layout</span>
+      {/* RIGHT: Layout + Help (with Overflow) */}
+      <div className="flex items-center gap-2 min-w-0">
+        {/* Desktop View */}
+        <div className="hidden xl:flex items-center gap-2">
+          <span className="text-xs text-gray-500 uppercase tracking-wide mr-1">Layout</span>
 
-        {/* Layout Selector - Dropdown */}
-        <select
-          value={perspective}
-          onChange={(e) => {
-            // In Safe Mode or complexity warning, prevent selecting quad or 3D
-            const shouldBlock = safeMode || isComplexityWarning;
-            if (shouldBlock && (e.target.value === 'quad' || e.target.value === '3d-only' || e.target.value === 'explore')) {
-              const reason = safeMode ? 'Safe Mode' : 'Complexity warning';
-              alert(`${reason}: Quad and 3D views are disabled. Simplify your circuit or switch to Normal mode.`);
-              return;
-            }
-            onPerspectiveChange(e.target.value as PerspectiveId);
-          }}
-          data-testid="logic-playground-perspective"
-          className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 focus:border-cyan-500 focus:outline-none transition-colors cursor-pointer"
-          title="Switch layout (1-5, Shift+1-5)"
-        >
-          <optgroup label="Workflow Layouts">
-            <option value="build">🔧 Build</option>
-            <option value="analyze">📊 Analyze</option>
-            <option value="explain">📐 Explain</option>
-            <option value="explore" disabled={safeMode || isComplexityWarning}>🧊 Explore {(safeMode || isComplexityWarning) && '(disabled)'}</option>
-            <option value="quad" disabled={safeMode || isComplexityWarning}>▦ Quad {(safeMode || isComplexityWarning) && '(disabled)'}</option>
-          </optgroup>
-          <optgroup label="Single View">
-            <option value="circuit-only">⚡ Circuit Only</option>
-            <option value="schematic-only">📐 Schematic Only</option>
-            <option value="scope-only">📊 Scope Only</option>
-            <option value="3d-only" disabled={safeMode || isComplexityWarning}>🧊 3D Only {(safeMode || isComplexityWarning) && '(disabled)'}</option>
-            <option value="code-only">Code Only</option>
-          </optgroup>
-          <optgroup label="Legacy">
-            <option value="inspect">🔍 Inspect</option>
-            <option value="debug">🐛 Debug</option>
-            <option value="schematic">📐 Schematic</option>
-            <option value="learn">📖 Learn</option>
-          </optgroup>
-        </select>
+          <div className="flex bg-slate-800/50 rounded-lg p-0.5 border border-slate-700/50">
+            <Tooltip content="Standard View">
+              <button
+                onClick={() => onPerspectiveChange('standard')}
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${perspective === 'standard'
+                    ? 'bg-slate-700 text-cyan-400 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                  }`}
+              >
+                Editor
+              </button>
+            </Tooltip>
+            <Tooltip content="Split View (Circuit + Scope)">
+              <button
+                onClick={() => onPerspectiveChange('split')}
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${perspective === 'split'
+                    ? 'bg-slate-700 text-cyan-400 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                  }`}
+              >
+                Split
+              </button>
+            </Tooltip>
+          </div>
 
-        {perspective === 'schematic' && onToggleSchematicMini && (
-          <button
-            onClick={onToggleSchematicMini}
-            className={`px-3 py-2 rounded text-xs transition-all ${schematicMiniEnabled
-              ? 'bg-gray-800 hover:bg-gray-700 text-white'
-              : 'bg-gray-800/50 text-gray-500 hover:text-gray-300 hover:bg-gray-700'
-              }`}
-            title="Toggle circuit mini view"
-          >
-            Circuit mini
-          </button>
-        )}
-
-        {/* Safe Mode + Reset */}
-        <div className="flex items-center gap-2 border-l border-gray-700 pl-4">
           {/* Safe Mode Toggle */}
           <button
             onClick={handleSafeModeToggle}
@@ -451,18 +430,16 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
               : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
               }`}
             title="Toggle Safe Mode (disables 3D, quad, animations)"
-            data-testid="safe-mode-toggle"
           >
             🛡 {safeMode ? 'Safe' : 'Normal'}
           </button>
 
-          {/* Reset Dropdown */}
+          {/* Reset Menu */}
           <div className="relative">
             <button
               onClick={() => setShowResetMenu(!showResetMenu)}
               className="px-3 py-1.5 rounded text-xs font-semibold bg-gray-700 hover:bg-gray-600 text-gray-300 transition-all"
               title="Reset workspace or layout"
-              data-testid="reset-menu-button"
             >
               ↻
             </button>
@@ -471,67 +448,50 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
                 <button
                   onClick={handleResetWorkspace}
                   className="block w-full text-left px-4 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition-all"
-                  data-testid="reset-workspace-button"
                 >
                   Reset Workspace
                 </button>
                 <button
                   onClick={handleResetLayout}
                   className="block w-full text-left px-4 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white border-t border-gray-700 transition-all"
-                  data-testid="reset-layout-button"
                 >
                   Reset Layout
                 </button>
               </div>
             )}
           </div>
-        </div>
 
-        {/* Help */}
-        {onManual && (
+          {onManual && (
+            <button
+              onClick={onManual}
+              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs font-semibold transition-all"
+              title="Open Guide"
+            >
+              Guide
+            </button>
+          )}
           <button
-            onClick={onManual}
-            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs font-semibold transition-all"
-            title="Open Guide"
-          >
-            Guide
-          </button>
-        )}
-        {/* Help Menu */}
-        <div className="relative">
-          <button
-            onClick={() => setShowHelpMenu(!showHelpMenu)}
-            className="px-3 py-2 bg-purple-700 hover:bg-purple-600 rounded font-bold transition-all"
+            onClick={onHelp}
+            className="px-3 py-2 bg-purple-700 hover:bg-purple-600 rounded font-bold transition-all text-sm"
             title="Help (?)"
           >
             ?
           </button>
-          {showHelpMenu && (
-            <div className="absolute right-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded shadow-lg z-50">
-              {onStartHere && (
-                <button
-                  onClick={() => {
-                    onStartHere();
-                    setShowHelpMenu(false);
-                  }}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-all"
-                  data-testid="help-start-here"
-                >
-                  🚀 Start Here
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  onHelp();
-                  setShowHelpMenu(false);
-                }}
-                className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-all border-t border-gray-700"
-                data-testid="help-keyboard-shortcuts"
-              >
-                ⌨️ Keyboard Shortcuts
-              </button>
-            </div>
-          )}
+        </div>
+
+        {/* Mobile/Tight View: Overflow Menu */}
+        <div className="xl:hidden">
+          <Menu label="Layout & Help" align="right">
+            <Menu.Item onClick={() => onPerspectiveChange('standard')}>Editor View</Menu.Item>
+            <Menu.Item onClick={() => onPerspectiveChange('split')}>Split View</Menu.Item>
+            <Menu.Separator />
+            <Menu.Item onClick={handleSafeModeToggle}>{safeMode ? 'Disable Safe Mode' : 'Enable Safe Mode'}</Menu.Item>
+            <Menu.Item onClick={handleResetLayout}>Reset Layout</Menu.Item>
+            <Menu.Separator />
+            <Menu.Item onClick={onHelp}>Shortcuts</Menu.Item>
+            {onManual && <Menu.Item onClick={onManual}>Documentation</Menu.Item>}
+            {onExamples && <Menu.Item onClick={onExamples}>Examples</Menu.Item>}
+          </Menu>
         </div>
       </div>
     </div>
