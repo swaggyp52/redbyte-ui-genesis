@@ -9,7 +9,9 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/rb-logic-3d.js"
-    }
+    },
+    "./presets": "./src/lab-model/fpga-sim/presets.ts",
+    "./bridge-protocol": "./src/lab-model/transport/bridge-protocol.ts"
   },
   "scripts": {
     "build": "vite build",

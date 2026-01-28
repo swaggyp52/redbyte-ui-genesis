@@ -14,6 +14,7 @@ import { useFileSystemStore } from '../stores/fileSystemStore';
 import { logSystemEvent, useSystemLogStore } from '../stores/systemLogStore';
 import { digestValue, stableStringify } from '../utils/digest';
 import { Icon } from '@redbyte/rb-icons';
+import { useLabStore } from '@redbyte/rb-logic-3d';
 
 interface TerminalProps {
   onOpenApp?: (appId: string, props?: any) => void;
@@ -199,6 +200,18 @@ const COMMAND_SPECS: Record<string, CommandSpec> = {
     writes: ['session'],
     produces: [],
   },
+  'arduino upload': {
+    description: 'Upload an Arduino sketch via bridge agent',
+    reads: ['file_system', 'bridge_transport'],
+    writes: ['hardware'],
+    produces: ['hardware_state'],
+  },
+  'arduino list-ports': {
+    description: 'List available serial ports via bridge agent',
+    reads: ['bridge_transport'],
+    writes: [],
+    produces: [],
+  },
   'audit export': {
     description: 'Export determinism audit log',
     reads: ['audit_log'],
@@ -250,6 +263,7 @@ const COMMAND_USAGE: Record<string, string> = {
   files: 'Usage: files list | files open <id> | files delete <id>',
   examples: 'Usage: examples list | examples load <id>',
   ticks: 'Usage: ticks set <number>',
+  arduino: 'Usage: arduino list-ports | arduino upload <port> <file> [--board uno|nano]',
   audit: 'Usage: audit export',
   lab: 'Usage: lab ls | lab open <fileId> | lab export | lab verify <fileId> | lab replay <fileId>',
 };
@@ -287,6 +301,10 @@ const resolveCommandKey = (command: string, args: string[]): string | null => {
       return args[0] ? `examples ${args[0]}` : 'examples list';
     case 'ticks':
       return args[0] === 'set' ? 'ticks set' : null;
+    case 'arduino':
+      if (args[0] === 'upload') return 'arduino upload';
+      if (args[0] === 'list-ports') return 'arduino list-ports';
+      return 'arduino';
     case 'audit':
       return args[0] === 'export' ? 'audit export' : null;
     case 'lab':
@@ -946,6 +964,99 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         break;
       }
 
+      case 'arduino': {
+        const sub = args[0];
+
+        if (sub === 'list-ports') {
+          const transport = useLabStore.getState().activeTransport;
+          if (!transport || typeof transport.listDevices !== 'function') {
+            addLine('No active bridge transport.', 'error');
+            break;
+          }
+          addLine('Scanning for serial devices...');
+          const listFn = transport.listDevices.bind(transport);
+          (async () => {
+            try {
+              const result = await listFn();
+              if (result && result.devices) {
+                addLine('Available Arduino/Serial Devices:');
+                result.devices.forEach((d: any) => {
+                  addLine(`  ${d.port} - ${d.manufacturer || 'unknown'} (${d.target || 'generic'})`);
+                });
+              } else {
+                addLine('No devices found.', 'output');
+              }
+            } catch (err: any) {
+              addLine(`Error listing devices: ${err.message}`, 'error');
+            }
+            addLine('');
+          })();
+          break;
+        }
+
+        if (sub !== 'upload') {
+          addLine(COMMAND_USAGE.arduino, 'error');
+          break;
+        }
+
+        const port = args[1];
+        const filename = args[2];
+        if (!port || !filename) {
+          addLine(COMMAND_USAGE.arduino, 'error');
+          break;
+        }
+
+        // Parse optional board flag
+        let board: 'arduino-uno' | 'arduino-nano' = 'arduino-uno';
+        const boardIndex = args.indexOf('--board');
+        if (boardIndex !== -1 && args[boardIndex + 1]) {
+          const b = args[boardIndex + 1].toLowerCase();
+          if (b === 'nano') board = 'arduino-nano';
+        }
+
+        const fs = useFileSystemStore.getState();
+        const file = fs.getFile(filename) || fs.getAllFiles().find(f => f.name === filename);
+        if (!file || !file.content) {
+          addLine(`File not found: ${filename}`, 'error');
+          break;
+        }
+
+        addLine(`Preparing upload for ${board} on ${port}...`);
+
+        const transport = useLabStore.getState().activeTransport;
+        if (!transport || typeof transport.uploadSketch !== 'function') {
+          addLine('Active transport does not support sketch uploads (switch to HARDWARE mode).', 'error');
+          break;
+        }
+
+        const fqbn = board === 'arduino-uno' ? 'arduino:avr:uno' : 'arduino:avr:nano';
+        const uploadFn = transport.uploadSketch.bind(transport);
+
+        (async () => {
+          try {
+            const result = await uploadFn({
+              target: board,
+              port,
+              fqbn,
+              sketchText: file.content
+            });
+
+            if (result && result.ok) {
+              addLine(`✓ Success: ${result.message || 'Sketch uploaded.'}`);
+              addLine(`  Artifact SHA256: ${result.artifact?.sketchSha256.substring(0, 12)}...`);
+            } else {
+              addLine(`✖ Failed: ${result?.message || 'Unknown error'}`, 'error');
+              if (result?.errorCode) addLine(`  Code: ${result.errorCode}`, 'error');
+            }
+          } catch (err: any) {
+            addLine(`✖ Error: ${err.message}`, 'error');
+          }
+          addLine('');
+        })();
+
+        break;
+      }
+
       case 'files': {
         const sub = args[0];
         if (!sub || sub === 'list') {
@@ -1217,7 +1328,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         >
           <div className="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-950 shadow-2xl">
             <div className="flex items-center gap-2 border-b border-slate-800 px-3 py-2 text-xs text-slate-400">
-              <Icon name="search" size={16} />
+              {React.createElement(Icon as any, { name: 'search', size: 16 })}
               <input
                 value={paletteQuery}
                 onChange={(e) => setPaletteQuery(e.target.value)}

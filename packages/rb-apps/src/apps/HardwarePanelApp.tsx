@@ -708,6 +708,7 @@ function HardwarePanelComponent() {
             value={selectedDeviceId}
             onChange={(e) => setSelectedDeviceId(e.target.value)}
             disabled={!bridgeReady}
+            title="Select Hardware Device"
             style={{ padding: "6px", background: "#111", color: "#fff", border: "1px solid #444", borderRadius: "4px", minWidth: "280px" }}
           >
             {devices.length === 0 && <option value="">No devices found</option>}
@@ -749,6 +750,7 @@ function HardwarePanelComponent() {
             accept=".bit"
             onChange={handleBitstreamSelect}
             disabled={!bridgeReady}
+            title="Select Bitstream File"
             style={{ color: "#fff" }}
           />
           <span style={{ fontSize: "11px", color: "#888" }}>

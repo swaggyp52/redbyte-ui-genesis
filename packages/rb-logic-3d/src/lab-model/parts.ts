@@ -1,4 +1,5 @@
-import { LabPartDefinition, Vector3 } from './types';
+
+import { LabPartDefinition, Vector3 } from './types.js';
 
 /**
  * Breadboard pin coordinate system:
@@ -84,15 +85,9 @@ const buildBasys3Pins = () => {
 
     // BTNC (Center)
     pins.push({ id: 'BTNC', type: 'digital' as const, direction: 'output' as const, position: { x: 0, y: btnY, z: btnZ }, hitRadius: btnRadius });
-    // BTNU (Up -> Top -> +Z relative to switches? No, switches are at -3.05 (Bottom). So Top is +Z??)
-    // User Spec: "Place user IO on the “bottom” edge (negative Z)". So -Z is Bottom. +Z is Top.
-    // User Spec: "BTNU: (0, btnZ + 0.65)". This moves BTNU towards +Z (Top). Correct.
     pins.push({ id: 'BTNU', type: 'digital' as const, direction: 'output' as const, position: { x: 0, y: btnY, z: btnZ + 0.65 }, hitRadius: btnRadius });
-    // BTND (Down -> Bottom -> -Z)
     pins.push({ id: 'BTND', type: 'digital' as const, direction: 'output' as const, position: { x: 0, y: btnY, z: btnZ - 0.65 }, hitRadius: btnRadius });
-    // BTNL (Left -> -X)
     pins.push({ id: 'BTNL', type: 'digital' as const, direction: 'output' as const, position: { x: -0.9, y: btnY, z: btnZ }, hitRadius: btnRadius });
-    // BTNR (Right -> +X)
     pins.push({ id: 'BTNR', type: 'digital' as const, direction: 'output' as const, position: { x: 0.9, y: btnY, z: btnZ }, hitRadius: btnRadius });
 
     // Extra Pins
@@ -103,16 +98,42 @@ const buildBasys3Pins = () => {
 };
 
 export const PART_DEFINITIONS: Record<string, LabPartDefinition> = {
+    'arduino-uno': {
+        type: 'arduino-uno',
+        name: 'Arduino UNO',
+        dimensions: { x: 6.86, y: 0.5, z: 5.34 },
+        pins: [
+            { id: 'D13', type: 'digital', direction: 'io', position: { x: 2.4, y: 0.2, z: -2.3 } },
+            { id: 'D12', type: 'digital', direction: 'io', position: { x: 2.4, y: 0.2, z: -2.05 } },
+            { id: 'D11', type: 'digital', direction: 'io', position: { x: 2.4, y: 0.2, z: -1.8 } },
+            { id: 'D10', type: 'digital', direction: 'io', position: { x: 2.4, y: 0.2, z: -1.55 } },
+            { id: 'D9', type: 'digital', direction: 'io', position: { x: 2.4, y: 0.2, z: -1.3 } },
+            { id: 'D8', type: 'digital', direction: 'io', position: { x: 2.4, y: 0.2, z: -1.05 } },
+            { id: 'GND1', type: 'ground', position: { x: 2.4, y: 0.2, z: -0.7 } },
+            { id: 'AREF', type: 'digital', direction: 'input', position: { x: 2.4, y: 0.2, z: -0.45 } },
+            { id: 'D7', type: 'digital', direction: 'io', position: { x: 2.4, y: 0.2, z: 0.1 } },
+            { id: 'D6', type: 'digital', direction: 'io', position: { x: 2.4, y: 0.2, z: 0.35 } },
+            { id: 'D5', type: 'digital', direction: 'io', position: { x: 2.4, y: 0.2, z: 0.6 } },
+            { id: 'D4', type: 'digital', direction: 'io', position: { x: 2.4, y: 0.2, z: 0.85 } },
+            { id: 'D3', type: 'digital', direction: 'io', position: { x: 2.4, y: 0.2, z: 1.1 } },
+            { id: 'D2', type: 'digital', direction: 'io', position: { x: 2.4, y: 0.2, z: 1.35 } },
+            { id: 'D1', type: 'digital', direction: 'io', position: { x: 2.4, y: 0.2, z: 1.6 } },
+            { id: 'D0', type: 'digital', direction: 'io', position: { x: 2.4, y: 0.2, z: 1.85 } },
+            { id: '5V', type: 'power', position: { x: -2.0, y: 0.2, z: 1.25 } },
+            { id: 'GND2', type: 'ground', position: { x: -2.0, y: 0.2, z: 1.5 } },
+            { id: 'GND3', type: 'ground', position: { x: -2.0, y: 0.2, z: 1.75 } },
+            { id: 'VIN', type: 'power', position: { x: -2.0, y: 0.2, z: 2.0 } },
+        ],
+    },
     'arduino-nano': {
         type: 'arduino-nano',
         name: 'Arduino Nano',
-        dimensions: { x: 1.8, y: 0.5, z: 4.5 }, // Approximate units (cm or arbitrary)
+        dimensions: { x: 1.8, y: 0.5, z: 4.5 },
         pins: [
             { id: 'D13', type: 'digital', direction: 'io', position: { x: -0.8, y: 0.2, z: -1.0 } },
             { id: 'D2', type: 'digital', direction: 'io', position: { x: -0.8, y: 0.2, z: -1.3 } },
             { id: 'GND', type: 'ground', position: { x: -0.8, y: 0.2, z: -0.5 } },
             { id: '5V', type: 'power', position: { x: -0.8, y: 0.2, z: 0.0 } },
-            // ... more pins for full MVP later
         ],
     },
     'fpga-basys3': {

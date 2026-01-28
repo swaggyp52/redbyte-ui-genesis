@@ -38,6 +38,43 @@ const BreadboardVisual = ({ dim }: { dim: { x: number; y: number; z: number } })
     );
 };
 
+const UnoVisual = ({ dim }: { dim: { x: number; y: number; z: number } }) => {
+    const pcbHeight = 0.15;
+    return (
+        <group>
+            {/* PCB */}
+            <Box args={[dim.x, pcbHeight, dim.z]} position={[0, -dim.y / 2 + pcbHeight / 2, 0]}>
+                <meshStandardMaterial color="#004488" roughness={0.3} metalness={0.5} />
+            </Box>
+            {/* USB Connector (Standard B) */}
+            <Box args={[1.2, 0.8, 1.6]} position={[-dim.x / 2 + 0.8, 0.4, -dim.z / 2 + 0.8]}>
+                <meshStandardMaterial color="#silver" metalness={0.9} />
+            </Box>
+            {/* Power Jack */}
+            <Box args={[0.9, 1.0, 1.4]} position={[-dim.x / 2 + 0.8, 0.5, dim.z / 2 - 1.2]}>
+                <meshStandardMaterial color="#111" />
+            </Box>
+            {/* Main Processor (ATMega328P) */}
+            <Box args={[2.8, 0.4, 0.8]} position={[1.0, 0.2, 0.5]}>
+                <meshStandardMaterial color="#222" />
+                <Text position={[0, 0.21, 0]} fontSize={0.2} rotation={[-Math.PI / 2, 0, 0]} color="#555">ATMEGA328P</Text>
+            </Box>
+            {/* Headers */}
+            {/* Digital Header Top */}
+            <Box args={[2.5, 0.8, 0.25]} position={[dim.x / 2 - 1.5, 0.4, -dim.z / 2 + 0.4]}>
+                <meshStandardMaterial color="#111" />
+            </Box>
+            <Box args={[2.0, 0.8, 0.25]} position={[dim.x / 2 - 4.0, 0.4, -dim.z / 2 + 0.4]}>
+                <meshStandardMaterial color="#111" />
+            </Box>
+            {/* Label */}
+            <Text position={[0, 0.1, 0]} fontSize={0.4} color="white" rotation={[-Math.PI / 2, 0, 0]} opacity={0.3} transparent>
+                ARDUINO UNO
+            </Text>
+        </group>
+    );
+};
+
 const NanoVisual = ({ dim }: { dim: { x: number; y: number; z: number } }) => {
     const pcbHeight = 0.15;
     return (
@@ -46,18 +83,22 @@ const NanoVisual = ({ dim }: { dim: { x: number; y: number; z: number } }) => {
             <Box args={[dim.x, pcbHeight, dim.z]} position={[0, -dim.y / 2 + pcbHeight / 2, 0]}>
                 <meshStandardMaterial color="#003366" roughness={0.3} metalness={0.5} />
             </Box>
-            {/* USB Connector */}
-            <Box args={[0.8, 0.4, 0.6]} position={[0, -dim.y / 2 + pcbHeight + 0.2, -dim.z / 2 + 0.3]}>
+            {/* USB Connector (Mini-B) */}
+            <Box args={[0.8, 0.4, 0.6]} position={[0, 0.3, -dim.z / 2 + 0.3]}>
                 <meshStandardMaterial color="#silver" roughness={0.2} metalness={0.9} />
             </Box>
             {/* Main IC */}
-            <Box args={[0.8, 0.1, 0.8]} position={[0.2, -dim.y / 2 + pcbHeight + 0.05, 0.5]} rotation={[0, Math.PI / 4, 0]}>
+            <Box args={[0.7, 0.1, 0.7]} position={[0, 0.15, 0.5]} rotation={[0, 0, 0]}>
                 <meshStandardMaterial color="#111" roughness={0.2} />
             </Box>
             {/* Reset Button */}
-            <Box args={[0.3, 0.2, 0.3]} position={[0, -dim.y / 2 + pcbHeight + 0.1, 0]}>
+            <Box args={[0.3, 0.2, 0.3]} position={[0, 0.2, 0]}>
                 <meshStandardMaterial color="#ccc" />
             </Box>
+            {/* Labels */}
+            <Text position={[0, 0.1, 1.5]} fontSize={0.3} color="white" rotation={[-Math.PI / 2, 0, 0]} opacity={0.4} transparent>
+                NANO
+            </Text>
         </group>
     );
 };
@@ -259,6 +300,8 @@ const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string> }> = ({
             {/* Specialized Geometry */}
             {node.type === 'breadboard-half' ? (
                 <BreadboardVisual dim={def.dimensions} />
+            ) : node.type === 'arduino-uno' ? (
+                <UnoVisual dim={def.dimensions} />
             ) : node.type === 'arduino-nano' ? (
                 <NanoVisual dim={def.dimensions} />
             ) : node.type === 'fpga-basys3' ? (
