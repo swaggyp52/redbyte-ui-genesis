@@ -86,14 +86,7 @@ import { exportEvidence } from '../utils/evidenceExport';
 import { useEvidenceViewerStore } from '../stores/evidenceViewerStore';
 
 // Placeholder for evidence viewer (feature in development)
-const EvidenceViewerPanel: React.FC = () => (
-  <div className="flex items-center justify-center h-full bg-gray-900 text-gray-400 p-8">
-    <div className="text-center">
-      <div className="text-2xl mb-2">📋 Evidence Viewer</div>
-      <div className="text-sm">Evidence review mode active. Close to return to editing.</div>
-    </div>
-  </div>
-);
+import { EvidenceViewerPanel } from '../components/EvidenceViewerPanel';
 
 const LOGIC_PLAYGROUND_INVARIANTS = {
   reads: ['circuit_store', 'probe_store', 'file_system', 'examples', 'settings'],
@@ -526,6 +519,26 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   useEffect(() => {
     setGlobalViewStateSync(useViewStateStore);
   }, []);
+
+  // Evidence Viewer Loading
+  useEffect(() => {
+    if (resourceId && resourceId.endsWith('.rbev')) {
+      // Need to defer to next tick or ensure file system is ready?
+      // getFile is synchronous if loaded.
+      const file = getFile(resourceId);
+      if (file && file.content) {
+        try {
+          const bundle = JSON.parse(file.content);
+          // Auto-verify legacy/simple bundles for now
+          // Real verification would check hash against content, but here we just load it.
+          useEvidenceViewerStore.getState().setEvidence(bundle, 'UNVERIFIED');
+        } catch (e) {
+          console.error('Failed to load evidence', e);
+          addToast('Failed to load evidence capsule', 'error');
+        }
+      }
+    }
+  }, [resourceId, getFile, addToast]);
 
   // Classroom Edition: autosave circuit on mutations
   useAutosaveCircuit();
@@ -3736,6 +3749,15 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
               setRightDockState('expanded');
             }
             setShowStartHere(false);
+          }}
+          onStartGuidedLab={() => {
+            setShowStartHere(false);
+            // Launch Lab Assignment App with Lab 1
+            if (onOpenApp) {
+              onOpenApp('ece-lab', { labId: 'guided-01' });
+            } else {
+              addToast('Lab Assignment App not available in this environment', 'error');
+            }
           }}
         />
 

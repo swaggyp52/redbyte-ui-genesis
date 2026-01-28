@@ -112,6 +112,97 @@ const ResistorVisual = () => (
 );
 
 
+const FpgaVisual = ({ dim }: { dim: { x: number; y: number; z: number } }) => {
+    // Indices for generation
+    const swIndices = Array.from({ length: 16 }, (_, i) => i);
+    const ledIndices = Array.from({ length: 16 }, (_, i) => i);
+    const btnLabels = ['C', 'U', 'L', 'R', 'D']; // 0,1,2,3,4
+
+    // Helper to match part definition pos (should technically read from PART_DEFINITIONS but fixed layout here is faster for pure visual)
+    const getSwPos = (i: number) => [-4.5 + (i * 0.6), 0.15, 2.5] as const;
+    const getLedPos = (i: number) => [-4.5 + (i * 0.6), 0.1, 2.0] as const;
+    const btnCenter = { x: 4.5, z: 0.5 };
+    const getBtnPos = (i: number) => {
+        if (i === 0) return [btnCenter.x, 0.15, btnCenter.z] as const;
+        if (i === 1) return [btnCenter.x, 0.15, btnCenter.z - 0.6] as const;
+        if (i === 2) return [btnCenter.x - 0.6, 0.15, btnCenter.z] as const;
+        if (i === 3) return [btnCenter.x + 0.6, 0.15, btnCenter.z] as const;
+        return [btnCenter.x, 0.15, btnCenter.z + 0.6] as const;
+    };
+
+    return (
+        <group>
+            {/* PCB Board */}
+            <Box args={[dim.x, dim.y, dim.z]}>
+                <meshStandardMaterial color="#005533" roughness={0.6} />
+            </Box>
+
+            {/* White Silk Screen Areas (Decor) */}
+            <Box args={[dim.x - 0.5, 0.01, dim.z - 0.5]} position={[0, dim.y / 2 + 0.005, 0]}>
+                <meshBasicMaterial color="#006644" />
+            </Box>
+
+            {/* Switches */}
+            {swIndices.map(i => (
+                <group key={`vis-sw-${i}`} position={getSwPos(i)}>
+                    <Box args={[0.3, 0.1, 0.5]}>
+                        <meshStandardMaterial color="#888" />
+                    </Box>
+                    <Box args={[0.1, 0.3, 0.1]} position={[0, 0.1, 0]}>
+                        <meshStandardMaterial color="#222" />
+                    </Box>
+                    <Text position={[0, 0, 0.4]} fontSize={0.2} rotation={[-Math.PI / 2, 0, 0]} color="white">
+                        {i}
+                    </Text>
+                </group>
+            ))}
+
+            {/* LEDs */}
+            {ledIndices.map(i => (
+                <group key={`vis-led-${i}`} position={getLedPos(i)}>
+                    <Box args={[0.2, 0.05, 0.1]}>
+                        <meshStandardMaterial color="#222" />
+                    </Box>
+                    {/* The Lit Part - we'd need state to light this up. 
+                        For now just the physical component. */}
+                    <Box args={[0.15, 0.06, 0.05]} position={[0, 0.01, 0]}>
+                        <meshStandardMaterial color="#400" />
+                    </Box>
+                    <Text position={[0, 0, -0.2]} fontSize={0.15} rotation={[-Math.PI / 2, 0, 0]} color="white">
+                        LED{i}
+                    </Text>
+                </group>
+            ))}
+
+            {/* Buttons */}
+            {btnLabels.map((lbl, i) => (
+                <group key={`vis-btn-${i}`} position={getBtnPos(i)}>
+                    <cylinderGeometry args={[0.25, 0.25, 0.1, 16]} />
+                    <meshStandardMaterial color="#222" />
+                    <mesh position={[0, 0.1, 0]}>
+                        <cylinderGeometry args={[0.15, 0.15, 0.1, 16]} />
+                        <meshStandardMaterial color="#111" />
+                    </mesh>
+                </group>
+            ))}
+
+            {/* 7-Seg Display Area */}
+            <Box args={[3.0, 0.1, 1.5]} position={[2.6, 0.1, -2.0]}>
+                <meshStandardMaterial color="#111" />
+            </Box>
+
+            {/* FPGA Chip (Center) */}
+            <Box args={[1.5, 0.1, 1.5]} position={[0, 0.1, -0.5]}>
+                <meshStandardMaterial color="#111" roughness={0.2} />
+                <Text position={[0, 0.06, 0]} fontSize={0.2} rotation={[-Math.PI / 2, 0, 0]} color="#666">
+                    XILINX
+                </Text>
+            </Box>
+        </group>
+    );
+};
+
+
 const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string> }> = ({ node, pinToNetId }) => {
     const def = PART_DEFINITIONS[node.type];
     const { handlePinHover, handlePinUnhover, handlePinClick } = useLabInteraction();
@@ -135,6 +226,8 @@ const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string> }> = ({
                 <BreadboardVisual dim={def.dimensions} />
             ) : node.type === 'arduino-nano' ? (
                 <NanoVisual dim={def.dimensions} />
+            ) : node.type === 'fpga-basys3' ? (
+                <FpgaBoardVisual node={node} />
             ) : node.type === 'led-5mm' ? (
                 <LedVisual isOn={isLeOn} />
             ) : node.type === 'resistor-dip' ? (

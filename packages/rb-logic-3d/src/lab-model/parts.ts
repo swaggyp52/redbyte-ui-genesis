@@ -47,6 +47,61 @@ const buildBreadboardPins = (columns: number) => {
     return pins;
 };
 
+const buildBasys3Pins = () => {
+    const pins = [];
+
+    // Switch Row: SW0..SW15 at z = -3.05 (Bottom Edge)
+    // X range: +4.1 (Right, SW0) to -4.1 (Left, SW15)
+    // Step: 0.547
+    for (let i = 0; i < 16; i++) {
+        const x = 4.1 - (i * 0.547);
+        pins.push({
+            id: `SW${i}`,
+            type: 'digital' as const,
+            direction: 'output' as const,
+            position: { x, y: 0.10, z: -3.05 },
+            hitRadius: 0.35
+        });
+    }
+
+    // LED Row: LED0..LED15 at z = -2.30 (Just above switches)
+    // X range: SAME as switches
+    for (let i = 0; i < 16; i++) {
+        const x = 4.1 - (i * 0.547);
+        pins.push({
+            id: `LED${i}`,
+            type: 'digital' as const,
+            direction: 'input' as const,
+            position: { x, y: 0.18, z: -2.30 },
+            hitRadius: 0.35
+        });
+    }
+
+    // Buttons: Centered around Z=1.2
+    const btnZ = 1.2;
+    const btnY = 0.18;
+    const btnRadius = 0.45;
+
+    // BTNC (Center)
+    pins.push({ id: 'BTNC', type: 'digital' as const, direction: 'output' as const, position: { x: 0, y: btnY, z: btnZ }, hitRadius: btnRadius });
+    // BTNU (Up -> Top -> +Z relative to switches? No, switches are at -3.05 (Bottom). So Top is +Z??)
+    // User Spec: "Place user IO on the “bottom” edge (negative Z)". So -Z is Bottom. +Z is Top.
+    // User Spec: "BTNU: (0, btnZ + 0.65)". This moves BTNU towards +Z (Top). Correct.
+    pins.push({ id: 'BTNU', type: 'digital' as const, direction: 'output' as const, position: { x: 0, y: btnY, z: btnZ + 0.65 }, hitRadius: btnRadius });
+    // BTND (Down -> Bottom -> -Z)
+    pins.push({ id: 'BTND', type: 'digital' as const, direction: 'output' as const, position: { x: 0, y: btnY, z: btnZ - 0.65 }, hitRadius: btnRadius });
+    // BTNL (Left -> -X)
+    pins.push({ id: 'BTNL', type: 'digital' as const, direction: 'output' as const, position: { x: -0.9, y: btnY, z: btnZ }, hitRadius: btnRadius });
+    // BTNR (Right -> +X)
+    pins.push({ id: 'BTNR', type: 'digital' as const, direction: 'output' as const, position: { x: 0.9, y: btnY, z: btnZ }, hitRadius: btnRadius });
+
+    // Extra Pins
+    pins.push({ id: 'CLK100', type: 'digital' as const, direction: 'output' as const, position: { x: 4.6, y: 0.1, z: 3.0 }, hitRadius: 0.35 });
+    pins.push({ id: 'RESET', type: 'digital' as const, direction: 'output' as const, position: { x: 3.9, y: 0.1, z: 3.0 }, hitRadius: 0.35 });
+
+    return pins;
+};
+
 export const PART_DEFINITIONS: Record<string, LabPartDefinition> = {
     'arduino-nano': {
         type: 'arduino-nano',
@@ -59,6 +114,12 @@ export const PART_DEFINITIONS: Record<string, LabPartDefinition> = {
             { id: '5V', type: 'power', position: { x: -0.8, y: 0.2, z: 0.0 } },
             // ... more pins for full MVP later
         ],
+    },
+    'fpga-basys3': {
+        type: 'fpga-basys3',
+        name: 'Basys3 FPGA',
+        dimensions: { x: 10.2, y: 0.16, z: 7.6 },
+        pins: buildBasys3Pins(),
     },
     'breadboard-half': {
         type: 'breadboard-half',

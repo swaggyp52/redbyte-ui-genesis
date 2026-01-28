@@ -28,6 +28,7 @@ import { LAB_1_CONTENT } from '../labs/labContent';
 
 interface ECELabAppProps {
   windowId?: string;
+  labId?: string;
 }
 
 type ECELabMode = 'sim-only' | 'board-connected' | 'guided-lab' | 'inspector';
@@ -161,12 +162,12 @@ const VectorRunnerView: React.FC<{
   );
 };
 
-export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
-  const [mode, setMode] = useState<ECELabMode>('sim-only');
+export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }) => {
+  const [mode, setMode] = useState<ECELabMode>(labId ? 'guided-lab' : 'sim-only');
   const [executionSource, setExecutionSource] = useState<ExecutionSource>('sim');
   const [rightTab, setRightTab] = useState<RightPanelTab>('board');
   const [selectedBoard, setSelectedBoard] = useState<string>('basys3');
-  const [showStartGuide, setShowStartGuide] = useState(true);
+  const [showStartGuide, setShowStartGuide] = useState(!labId);
 
   // Hardware state
   const ioSnapshot = useHardwareStore((s) => s.ioSnapshot);

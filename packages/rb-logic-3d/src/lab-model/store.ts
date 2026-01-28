@@ -134,7 +134,10 @@ const resyncEventSeq = (events: LabEvent[]): LabEvent[] =>
 
 const cloneGraph = (graph: LabGraph): LabGraph => JSON.parse(JSON.stringify(graph));
 
+import { FpgaSimEngine } from './fpga-sim/engine';
+
 const sketchRuntime = new SketchRuntime({ tickMs: TICK_MS, stepBudget: SKETCH_STEP_BUDGET });
+const fpgaEngine = new FpgaSimEngine('passthrough'); // Default to passthrough for MVP
 
 const buildWireAdjacency = (graph: LabGraph): Map<string, Set<string>> => {
     const adjacency = new Map<string, Set<string>>();
@@ -425,6 +428,44 @@ export const useLabStore = create<LabStoreState>()(
                             }
                         });
                     }
+
+                    // --- FPGA SIMULATION ---
+                    // Find Basys3 part
+                    const fpgaNode = state.graph.nodes.find(n => n.type === 'fpga-basys3');
+                    if (fpgaNode) {
+                        // 1. Gather Inputs (SW, BTN)
+                        const fpgaInputs: Record<string, 0 | 1> = {};
+                        // Iterate all pins of the FPGA node to find their current state
+                        // We rely on 'pinStates' which holds the state of the NET connected to the pin
+                        // Optimization: In a real engine we'd cache the pin list
+                        // For MVP, knowing we have fixed pins SW0-15, BTN0-4
+                        const inputPins = [
+                            ...Array.from({ length: 16 }, (_, i) => `SW${i}`),
+                            ...Array.from({ length: 5 }, (_, i) => `BTN${i}`)
+                        ];
+
+                        inputPins.forEach(pinId => {
+                            const key = `${fpgaNode.id}:${pinId}`;
+                            fpgaInputs[pinId] = (state.simulation.pinStates[key] ?? 0) as 0 | 1;
+                        });
+
+                        // 2. Run Engine Tick
+                        const fpgaOutputs = fpgaEngine.tick(fpgaInputs);
+
+                        // 3. Apply Outputs (LEDs, 7Seg)
+                        Object.entries(fpgaOutputs).forEach(([pinId, value]) => {
+                            const key = `${fpgaNode.id}:${pinId}`;
+                            // Only propagate if changed (engine.tick returns changes, but let's be safe)
+                            if (state.simulation.pinStates[key] !== value) {
+                                // Direct write to pin state?
+                                // Ideally we treat this as a "driver". 
+                                // propagatePinDiffs handles net logic.
+                                const expanded = propagatePinDiffs(state.graph, state.simulation.pinStates, { [key]: value });
+                                Object.assign(diffs, expanded);
+                            }
+                        });
+                    }
+                    // -----------------------
 
                     if (Object.keys(diffs).length > 0) {
                         state.timeline.events.push({

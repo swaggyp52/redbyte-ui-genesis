@@ -10,6 +10,7 @@ interface StartHerePanelProps {
     onClose: () => void;
     onLoadExample: (exampleId: string) => void;
     onOpenOscilloscope: () => void;
+    onStartGuidedLab: () => void;
 }
 
 // TODO: Import from docs/INSTRUCTOR_QUICKSTART.md when module system supports it
@@ -72,6 +73,7 @@ export const StartHerePanel: React.FC<StartHerePanelProps> = ({
     onClose,
     onLoadExample,
     onOpenOscilloscope,
+    onStartGuidedLab,
 }) => {
     const [dontShowAgain, setDontShowAgain] = useState(false);
 
@@ -164,6 +166,13 @@ export const StartHerePanel: React.FC<StartHerePanelProps> = ({
                             >
                                 <span>📊</span>
                                 <span>Open Oscilloscope + Probe Mode</span>
+                            </button>
+                            <button
+                                onClick={onStartGuidedLab}
+                                className="w-full px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 rounded-lg font-semibold text-white transition-all shadow-lg text-left flex items-center gap-2"
+                            >
+                                <span>🎓</span>
+                                <span>Start Guided Lab 1</span>
                             </button>
                         </div>
                     </div>

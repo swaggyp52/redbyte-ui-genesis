@@ -26,7 +26,7 @@ export const FILE_ACTION_TARGETS: FileActionTarget[] = [
     id: 'logic-playground',
     name: 'Logic Playground',
     appId: 'logic-playground',
-    isEligible: (type, name) => type === 'file' && name.endsWith('.rblogic'),
+    isEligible: (type, name) => type === 'file' && (name.endsWith('.rblogic') || name.endsWith('.rbev')),
   },
   {
     id: 'text-viewer',
