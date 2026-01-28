@@ -288,7 +288,7 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId }) => {
     // Try loading as capsule first
     const capsule = await loadCapsuleFromFS(name);
     if (capsule && capsule.trace) {
-      console.log('Loaded capsule:', capsule);
+      if (import.meta.env.DEV) console.log('Loaded capsule:', capsule);
       setReplayTrace(capsule.trace);
       setReplayIndex(0);
       // Do NOT auto-switch; user clicks REPLAY source button to activate

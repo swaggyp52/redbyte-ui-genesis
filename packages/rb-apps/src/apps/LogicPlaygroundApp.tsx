@@ -83,6 +83,17 @@ import { useClassroomModeStore } from '../stores/classroomModeStore';
 import { validateCircuitData } from '../utils/circuitValidation';
 import { StartHerePanel } from '../components/StartHerePanel';
 import { exportEvidence } from '../utils/evidenceExport';
+import { useEvidenceViewerStore } from '../stores/evidenceViewerStore';
+
+// Placeholder for evidence viewer (feature in development)
+const EvidenceViewerPanel: React.FC = () => (
+  <div className="flex items-center justify-center h-full bg-gray-900 text-gray-400 p-8">
+    <div className="text-center">
+      <div className="text-2xl mb-2">📋 Evidence Viewer</div>
+      <div className="text-sm">Evidence review mode active. Close to return to editing.</div>
+    </div>
+  </div>
+);
 
 const LOGIC_PLAYGROUND_INVARIANTS = {
   reads: ['circuit_store', 'probe_store', 'file_system', 'examples', 'settings'],
@@ -141,20 +152,12 @@ interface LogicPlaygroundProps {
   determinismRecorder?: any; // Type from useDeterminismRecorder hook
 }
 
-export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
-  windowId,
-  initialFileId,
-  initialExampleId,
-  resourceId,
-  resourceType,
-  onOpenApp,
-  registerStateAccessor,
-  unregisterStateAccessor,
-  determinismRecorder,
-}) => {
-  const { evidenceBundle } = useEvidenceViewerStore();
-  // console.log('[LogicPlayground] Component rendering', { windowId });
+// Outer gate component: handles feature gates with stable hook set
+export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = (props) => {
+  // Gate-only hooks (stable and minimal - ALWAYS called)
+  const evidenceBundle = useEvidenceViewerStore((s) => s.evidenceBundle);
 
+  // Debug flags (useMemo is stable)
   const debugFlags = React.useMemo(() => {
     if (!import.meta.env.DEV) return new Set<string>();
     const raw = localStorage.getItem('rb-debug-playground') || '';
@@ -165,36 +168,58 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
         .filter(Boolean)
     );
   }, []);
+  const disablePlaygroundView = debugFlags.has('disable-playground-view');
+
+  // Debug logging (no hooks)
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.info('[playground-debug] flags', Array.from(debugFlags));
+  }
+
+  // PHASE 2C: Install fatal capture + mount breadcrumb (no hooks)
+  if (import.meta.env.DEV || navigator.webdriver) {
+    installFatalCapture();
+    pushMount('LogicPlaygroundApp:start');
+  }
+
+  // Early returns - SAFE because hook set above is stable
+  if (disablePlaygroundView) {
+    return <div data-testid="playground-debug-disabled">Playground view disabled by debug flag.</div>;
+  }
+
+  if (evidenceBundle) {
+    return <EvidenceViewerPanel />;
+  }
+
+  // Render inner component with all the real hooks
+  return <LogicPlaygroundInner {...props} debugFlags={debugFlags} />;
+};
+
+// Inner component: all hooks live here, only mounted when gates pass
+interface LogicPlaygroundInnerProps extends LogicPlaygroundProps {
+  debugFlags: Set<string>;
+}
+
+const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
+  windowId,
+  initialFileId,
+  initialExampleId,
+  resourceId,
+  resourceType,
+  onOpenApp,
+  registerStateAccessor,
+  unregisterStateAccessor,
+  determinismRecorder,
+  debugFlags,
+}) => {
   const disableToolStrip = debugFlags.has('disable-toolstrip');
   const disableRightDock = debugFlags.has('disable-rightdock');
-  const disablePlaygroundView = debugFlags.has('disable-playground-view');
   const disableSplitView = debugFlags.has('disable-splitview');
 
   // E2E flags via querystring (test-only)
   const e2eParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const e2eDisableQuad = e2eParams.get('disableQuad') === '1';
   const e2eCpuLite = e2eParams.get('cpuLite') === '1';
-
-  // useRenderStormDetector('LogicPlaygroundApp');
-  if (import.meta.env.DEV) {
-    // eslint-disable-next-line no-console
-    console.info('[playground-debug] flags', Array.from(debugFlags));
-  }
-
-  // PHASE 2C: Install fatal capture + mount breadcrumb
-  if (import.meta.env.DEV || navigator.webdriver) {
-    installFatalCapture();
-    pushMount('LogicPlaygroundApp:start');
-  }
-
-  if (disablePlaygroundView) {
-    return <div data-testid="playground-debug-disabled">Playground view disabled by debug flag.</div>;
-  }
-
-  // If evidence viewer is active, render it and gate all editing features
-  if (evidenceBundle) {
-    return <EvidenceViewerPanel />;
-  }
 
   const tickRate = useSettingsStore((state) => state.tickRate);
 
@@ -482,10 +507,12 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     const unsubscribe = useCircuitStore.subscribe((state) => {
       // Only update if circuit actually changed (avoid infinite loops)
       if (state.circuit !== circuit) {
-        console.log('[LogicPlayground] Syncing circuit from store', {
-          storeNodes: state.circuit.nodes.length,
-          localNodes: circuit.nodes.length
-        });
+        if (import.meta.env.DEV) {
+          console.log('[LogicPlayground] Syncing circuit from store', {
+            storeNodes: state.circuit.nodes.length,
+            localNodes: circuit.nodes.length
+          });
+        }
         setCircuit(state.circuit);
         // Also sync engines to keep them in sync with the new circuit
         engineRef.current.setCircuit(state.circuit);
@@ -1803,7 +1830,7 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
   );
 
   const handleNodeDragStart = (nodeType: string, e?: React.DragEvent) => {
-    console.log('[LogicPlayground] handleNodeDragStart', { nodeType });
+    if (import.meta.env.DEV) console.log('[LogicPlayground] handleNodeDragStart', { nodeType });
     if (e) {
       try {
         e.dataTransfer.effectAllowed = 'copy';
@@ -1901,11 +1928,13 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     const finalX = shouldSnap ? snapToGrid(worldPos.x, gridSize) : worldPos.x;
     const finalY = shouldSnap ? snapToGrid(worldPos.y, gridSize) : worldPos.y;
 
-    console.log('[LogicPlayground] handleNodeDrop', {
-      nodeType: draggingNodeType,
-      position: { x: finalX, y: finalY },
-      beforeCount: circuit.nodes.length
-    });
+    if (import.meta.env.DEV) {
+      console.log('[LogicPlayground] handleNodeDrop', {
+        nodeType: draggingNodeType,
+        position: { x: finalX, y: finalY },
+        beforeCount: circuit.nodes.length
+      });
+    }
 
     // CRITICAL FIX: Call circuitStore.addNode() instead of bypassing the store
     // The old code directly called setCircuit() which didn't update the store,
@@ -1914,11 +1943,13 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
     storeAddNode(draggingNodeType, { x: finalX, y: finalY });
     const afterCount = useCircuitStore.getState().circuit.nodes.length;
 
-    console.log('[LogicPlayground] After addNode', {
-      beforeCount,
-      afterCount,
-      added: afterCount > beforeCount
-    });
+    if (import.meta.env.DEV) {
+      console.log('[LogicPlayground] After addNode', {
+        beforeCount,
+        afterCount,
+        added: afterCount > beforeCount
+      });
+    }
 
     // Check if node was added successfully
     if (afterCount > beforeCount) {
@@ -3294,7 +3325,7 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = ({
               onLoadExample={(exampleId, highlightComponents) => {
                 handleLoadExample(exampleId);
                 // TODO: Implement component highlighting
-                if (highlightComponents) {
+                if (highlightComponents && import.meta.env.DEV) {
                   console.log('Highlighting components:', highlightComponents);
                 }
               }}

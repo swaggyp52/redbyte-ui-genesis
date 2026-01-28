@@ -55,11 +55,13 @@ export async function registerAllApps() {
   registerApp(TerminalApp);
   registerApp(SettingsApp);
   registerApp(FilesApp);
-  console.log('[AppRegistry] Registering LogicPlaygroundApp', {
-    hasApp: !!LogicPlaygroundApp,
-    hasComponent: !!LogicPlaygroundApp?.component,
-    componentType: typeof LogicPlaygroundApp?.component,
-  });
+  if (import.meta.env.DEV) {
+    console.log('[AppRegistry] Registering LogicPlaygroundApp', {
+      hasApp: !!LogicPlaygroundApp,
+      hasComponent: !!LogicPlaygroundApp?.component,
+      componentType: typeof LogicPlaygroundApp?.component,
+    });
+  }
   registerApp(LogicPlaygroundApp);
   registerApp(ECELabApp);
   registerApp(AppStoreApp);

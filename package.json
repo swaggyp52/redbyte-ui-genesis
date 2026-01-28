@@ -22,6 +22,7 @@
         "lint:selectors": "node ./scripts/lint-zustand-selectors.js",
         "typecheck": "pnpm -r --if-present run typecheck",
         "test:ci": "node -e \"const fs=require('fs'); const p='./tools/scripts/test-discovery-guard.js'; if (fs.existsSync(p)) require(p);\" && pnpm -r --workspace-concurrency=1 vitest run",
+        "test:audit": "pnpm -w exec vitest run packages/rb-logic-3d/src/lab-model/__tests__/fuzz.test.ts packages/rb-logic-3d/src/lab-model/__tests__/netlist.test.ts packages/rb-logic-3d/src/lab-model/__tests__/probe-samples.test.ts packages/rb-shell/src/__tests__/window-snap-preview.test.tsx packages/rb-primitives/src/__tests__/toast-dismiss.test.tsx packages/rb-apps/src/__tests__/instrument-dock.test.tsx",
         "test": "vitest run",
         "quality": "node -e \"console.log('E2E: SKIPPED (run pnpm quality:full to include Playwright)')\" && pnpm run build && pnpm run test:ci && pnpm run lint",
         "quality:full": "node -e \"console.log('E2E: ENABLED (Playwright smoke tests blocking)')\" && pnpm run build && pnpm run test:ci && pnpm run test:smoke:ci && pnpm run lint",

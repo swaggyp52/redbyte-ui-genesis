@@ -220,7 +220,7 @@ export class HardwareClient {
           message: 'Hardware bridge offline (expected in demo mode)',
         };
         this.notifyListeners();
-        console.log('[HardwareClient] Bridge unavailable, entering offline mode');
+        console.debug('[HardwareClient] Bridge unavailable, entering offline mode');
       } else {
         console.warn(`[HardwareClient] Connection attempt ${this.retryAttempts}/${this.MAX_RETRY_ATTEMPTS} failed, retrying in ${this.RETRY_DELAY_MS}ms...`);
         this.state = {
