@@ -11,19 +11,30 @@ export interface MenuItemProps {
 }
 
 export interface MenuProps {
-  items: MenuItemProps[];
+  items?: MenuItemProps[];
   className?: string;
   label?: string;
 }
 
 export const Menu: React.FC<MenuProps> = ({ items, className, label = 'Menu' }) => {
+  // Defensive: ensure items is always an array (upstream can pass undefined)
+  const safeItems: MenuItemProps[] = Array.isArray(items) ? items : [];
+
+  if (import.meta.env.DEV && !Array.isArray(items)) {
+    console.warn('[Menu] items was not an array, received:', items);
+  }
+
+  if (safeItems.length === 0) {
+    return null; // Don't render empty menu
+  }
+
   return (
     <div
       role="menu"
       aria-label={label}
       className={`bg-[var(--rb-color-neutral-50)] rounded-[var(--rb-radius-md)] shadow-[var(--rb-shadow-lg)] py-[var(--rb-spacing-1)] ${className || ''}`}
     >
-      {items.map((item, index) => (
+      {safeItems.map((item, index) => (
         <button
           key={index}
           role="menuitem"
