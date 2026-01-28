@@ -205,6 +205,36 @@ const COMMAND_SPECS: Record<string, CommandSpec> = {
     writes: [],
     produces: ['audit_artifact'],
   },
+  'lab ls': {
+    description: 'List lab capsule files',
+    reads: ['file_system'],
+    writes: [],
+    produces: [],
+  },
+  'lab open': {
+    description: 'Open a lab capsule file',
+    reads: ['file_system'],
+    writes: ['window_store'],
+    produces: [],
+  },
+  'lab export': {
+    description: 'Export current lab session',
+    reads: ['lab_session'],
+    writes: [],
+    produces: ['lab_capsule'],
+  },
+  'lab verify': {
+    description: 'Verify lab capsule integrity',
+    reads: ['file_system'],
+    writes: [],
+    produces: [],
+  },
+  'lab replay': {
+    description: 'Open lab capsule in replay mode',
+    reads: ['file_system'],
+    writes: ['window_store'],
+    produces: [],
+  },
 };
 
 const COMMAND_USAGE: Record<string, string> = {
@@ -221,6 +251,7 @@ const COMMAND_USAGE: Record<string, string> = {
   examples: 'Usage: examples list | examples load <id>',
   ticks: 'Usage: ticks set <number>',
   audit: 'Usage: audit export',
+  lab: 'Usage: lab ls | lab open <fileId> | lab export | lab verify <fileId> | lab replay <fileId>',
 };
 
 const resolveCommandKey = (command: string, args: string[]): string | null => {
@@ -258,6 +289,13 @@ const resolveCommandKey = (command: string, args: string[]): string | null => {
       return args[0] === 'set' ? 'ticks set' : null;
     case 'audit':
       return args[0] === 'export' ? 'audit export' : null;
+    case 'lab':
+      if (args[0] === 'ls') return 'lab ls';
+      if (args[0] === 'open') return 'lab open';
+      if (args[0] === 'export') return 'lab export';
+      if (args[0] === 'verify') return 'lab verify';
+      if (args[0] === 'replay') return 'lab replay';
+      return null;
     default:
       return command;
   }
@@ -960,9 +998,104 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         try {
           localStorage.removeItem('rb:shell:booted');
           localStorage.removeItem('rb:shell:booted:v1');
-        } catch {}
+        } catch { }
         addLine('Restarting RedByte OS…');
         setTimeout(() => window.location.reload(), 300);
+        break;
+      }
+
+      case 'lab': {
+        const sub = args[0];
+        if (!sub) {
+          addLine(COMMAND_USAGE.lab, 'error');
+          break;
+        }
+
+        if (sub === 'ls') {
+          // List .labcapsule.json or .rb-lab.zip files
+          const fs = useFileSystemStore.getState();
+          const allFiles = fs.getAllFiles();
+          const capsules = allFiles.filter((f) =>
+            f.name.endsWith('.labcapsule.json') || f.name.endsWith('.rb-lab.zip')
+          ).sort((a, b) => a.name.localeCompare(b.name));
+          if (capsules.length === 0) {
+            addLine('No lab capsule files found.');
+          } else {
+            addLine('Lab capsules:');
+            capsules.forEach((f) => addLine(`  ${f.id} - ${f.name}`));
+          }
+          break;
+        }
+
+        if (sub === 'open') {
+          const fileId = args[1];
+          if (!fileId) {
+            addLine('Usage: lab open <fileId>', 'error');
+            break;
+          }
+          const fs = useFileSystemStore.getState();
+          const file = fs.getFile(fileId);
+          if (!file) {
+            addLine('File not found. Use "lab ls".', 'error');
+            break;
+          }
+          addLine(`Opening lab: ${file.name}`);
+          // Open in Virtual Lab or Lab Assignment based on file type
+          onOpenApp?.('virtual-lab', { initialCapsuleId: file.id });
+          logCommandEvent('info', 'Lab opened', { fileId });
+          break;
+        }
+
+        if (sub === 'export') {
+          addLine('Exporting current lab session...');
+          addLine('Use the Export button in Virtual Lab for full capsule export.', 'output');
+          break;
+        }
+
+        if (sub === 'verify') {
+          const fileId = args[1];
+          if (!fileId) {
+            addLine('Usage: lab verify <fileId>', 'error');
+            break;
+          }
+          const fs = useFileSystemStore.getState();
+          const file = fs.getFile(fileId);
+          if (!file || !file.content) {
+            addLine('File not found or empty.', 'error');
+            break;
+          }
+          try {
+            const capsule = JSON.parse(file.content);
+            const hasHash = !!capsule.meta?.capsuleHash || !!capsule.meta?.deterministicHash;
+            addLine(`Capsule: ${file.name}`);
+            addLine(`  Version: ${capsule.meta?.capsuleVersion ?? 'unknown'}`);
+            addLine(`  Hash: ${hasHash ? 'Present' : 'Missing'}`);
+            addLine(`  Status: ${hasHash ? '✓ Verified' : '⚠ Unverified'}`);
+          } catch {
+            addLine('Failed to parse capsule.', 'error');
+          }
+          break;
+        }
+
+        if (sub === 'replay') {
+          const fileId = args[1];
+          if (!fileId) {
+            addLine('Usage: lab replay <fileId>', 'error');
+            break;
+          }
+          const fs = useFileSystemStore.getState();
+          const file = fs.getFile(fileId);
+          if (!file) {
+            addLine('File not found. Use "lab ls".', 'error');
+            break;
+          }
+          addLine(`Opening replay: ${file.name}`);
+          onOpenApp?.('virtual-lab', { initialCapsuleId: file.id, replayMode: true });
+          logCommandEvent('info', 'Lab replay', { fileId });
+          break;
+        }
+
+        addLine(COMMAND_USAGE.lab, 'error');
         break;
       }
 
@@ -1102,9 +1235,8 @@ const TerminalComponent: React.FC<TerminalProps> = ({
                 <button
                   key={item.id}
                   onClick={() => handlePaletteSelect(item.id)}
-                  className={`w-full text-left px-3 py-2 text-xs border-b border-slate-900 ${
-                    index === paletteIndex ? 'bg-cyan-500/10 text-cyan-200' : 'text-slate-300 hover:bg-slate-900/60'
-                  }`}
+                  className={`w-full text-left px-3 py-2 text-xs border-b border-slate-900 ${index === paletteIndex ? 'bg-cyan-500/10 text-cyan-200' : 'text-slate-300 hover:bg-slate-900/60'
+                    }`}
                 >
                   <div className="font-mono text-slate-200">{item.id}</div>
                   <div className="text-[11px] text-slate-500">{item.label}</div>

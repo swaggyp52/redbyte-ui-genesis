@@ -12,18 +12,23 @@ const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string> }> = ({
     const def = PART_DEFINITIONS[node.type];
     const { handlePinHover, handlePinUnhover, handlePinClick } = useLabInteraction();
 
-    // Hovered state for feedback? Global store check or simple CSS cursor?
     const hoveredPin = useLabStore(state => state.interaction.hoveredPin);
     const highlightedPins = useLabStore(state => state.interaction.highlightedPins);
     const selectedNetId = useLabStore(state => state.interaction.selectedNetId);
-
-    // Check sim state
     const pinStates = useLabStore(state => state.simulation.pinStates);
 
     if (!def) return null;
 
-    // LED Logic: If type is LED and 'anode' is High (Simplified)
+    // LED emissive state
     const isLedOn = node.type === 'led-5mm' && pinStates[`${node.id}:anode`] === 1;
+
+    // Part-specific color
+    const partColor = isLedOn ? '#ff2222'
+        : node.type === 'arduino-nano' ? '#1a5276'
+            : node.type === 'breadboard-half' ? '#f5f5dc'
+                : node.type === 'resistor-dip' ? '#8b7355'
+                    : node.type === 'button-momentary' ? '#333333'
+                        : '#888888';
 
     return (
         <group
@@ -33,12 +38,14 @@ const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string> }> = ({
             {/* Visual Body */}
             <Box args={[def.dimensions.x, def.dimensions.y, def.dimensions.z]}>
                 <meshStandardMaterial
-                    color={isLedOn ? '#ff0000' : (node.type === 'arduino-nano' ? '#0088cc' : '#eee')}
+                    color={partColor}
                     emissive={isLedOn ? '#ff0000' : 'black'}
-                    emissiveIntensity={isLedOn ? 2 : 0}
+                    emissiveIntensity={isLedOn ? 3 : 0}
+                    roughness={node.type === 'breadboard-half' ? 0.8 : 0.5}
+                    metalness={node.type === 'arduino-nano' ? 0.1 : 0}
                 />
             </Box>
-            <Text position={[0, def.dimensions.y / 2 + 0.1, 0]} fontSize={0.2} color="white" rotation={[-Math.PI / 2, 0, 0]}>
+            <Text position={[0, def.dimensions.y / 2 + 0.15, 0]} fontSize={0.25} color="white" rotation={[-Math.PI / 2, 0, 0]}>
                 {def.name}
             </Text>
 
@@ -47,36 +54,42 @@ const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string> }> = ({
                 const isHovered = hoveredPin?.nodeId === node.id && hoveredPin?.pinId === pin.id;
                 const pinNetId = selectedNetId ? pinToNetId[`${node.id}:${pin.id}`] : null;
                 const isNetSelected = selectedNetId && pinNetId === selectedNetId;
+                const isHighlighted = highlightedPins.some((h) => h.nodeId === node.id && h.pinId === pin.id);
+
+                const pinColor = isHovered ? '#2ecc71'
+                    : isHighlighted ? '#00d4ff'
+                        : isNetSelected ? '#00d4ff'
+                            : '#c0a000';
 
                 return (
                     <group key={pin.id} position={[pin.position.x, pin.position.y, pin.position.z]}>
-                        {/* Hitbox (Invisible/Transparent but interactive) */}
+                        {/* Large invisible hitbox for easy clicking */}
                         <mesh
                             visible={false}
                             onPointerOver={(e) => handlePinHover(node.id, pin.id, e)}
                             onPointerOut={(e) => handlePinUnhover(node.id, pin.id, e)}
                             onClick={(e) => handlePinClick(node.id, pin.id, e)}
                         >
-                            <boxGeometry args={[0.2, 0.2, 0.2]} />
+                            <boxGeometry args={[0.4, 0.4, 0.4]} />
                             <meshBasicMaterial transparent opacity={0.0} />
                         </mesh>
 
-                        {/* Visual Pin (Highlight on hover) */}
-                        <Box args={[0.05, 0.05, 0.05]}>
-                            <meshBasicMaterial
-                                color={
-                                    isHovered
-                                        ? '#2ecc71'
-                                        : highlightedPins.some((highlight) => highlight.nodeId === node.id && highlight.pinId === pin.id)
-                                            ? '#00d4ff'
-                                            : isNetSelected
-                                                ? '#00d4ff'
-                                                : 'gold'
-                                }
-                            />
+                        {/* Visual pin */}
+                        <Box args={[0.08, 0.08, 0.08]}>
+                            <meshBasicMaterial color={pinColor} />
                         </Box>
+
+                        {/* Pin label on hover */}
                         {isHovered && (
-                            <Text position={[0, 0.15, 0]} fontSize={0.1} color="white" receiveShadow={false}>
+                            <Text
+                                position={[0, 0.25, 0]}
+                                fontSize={0.15}
+                                color="white"
+                                anchorX="center"
+                                anchorY="bottom"
+                                outlineWidth={0.02}
+                                outlineColor="black"
+                            >
                                 {pin.id}
                             </Text>
                         )}
@@ -94,7 +107,6 @@ const GhostWire = () => {
 
     if (interaction.mode !== 'wire' || !interaction.wireStartPin || !interaction.dragPosition) return null;
 
-    // Resolve start position
     const startNode = nodes.find(n => n.id === interaction.wireStartPin!.nodeId);
     if (!startNode) return null;
 
@@ -102,8 +114,6 @@ const GhostWire = () => {
     const pinDef = startDef?.pins.find(p => p.id === interaction.wireStartPin!.pinId);
     if (!pinDef) return null;
 
-    // Apply Node Transform to Pin Position (Simplified: Just adding for now, ideally use Matrix4)
-    // NOTE: This assumes 0 rotation for MVP. Rotated parts need matrix math.
     const startPos: [number, number, number] = [
         startNode.pose.position.x + pinDef.position.x,
         startNode.pose.position.y + pinDef.position.y,
@@ -163,7 +173,6 @@ export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: numb
             ))}
 
             {graph.wires.map(wire => {
-                // Resolve positions needed for wire mesh
                 const sourceNode = graph.nodes.find(n => n.id === wire.sourceNodeId);
                 const targetNode = graph.nodes.find(n => n.id === wire.targetNodeId);
 
@@ -176,11 +185,17 @@ export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: numb
 
                 if (!sPin || !tPin) return null;
 
-                // Simple Transform (No Rotation Support yet)
-                const from: [number, number, number] = [sourceNode.pose.position.x + sPin.position.x, sourceNode.pose.position.y + sPin.position.y, sourceNode.pose.position.z + sPin.position.z];
-                const to: [number, number, number] = [targetNode.pose.position.x + tPin.position.x, targetNode.pose.position.y + tPin.position.y, targetNode.pose.position.z + tPin.position.z];
+                const from: [number, number, number] = [
+                    sourceNode.pose.position.x + sPin.position.x,
+                    sourceNode.pose.position.y + sPin.position.y,
+                    sourceNode.pose.position.z + sPin.position.z
+                ];
+                const to: [number, number, number] = [
+                    targetNode.pose.position.x + tPin.position.x,
+                    targetNode.pose.position.y + tPin.position.y,
+                    targetNode.pose.position.z + tPin.position.z
+                ];
 
-                // Visual State
                 const pinStates = useLabStore.getState().simulation.pinStates;
                 const val = pinStates[`${wire.sourceNodeId}:${wire.sourcePinId}`];
                 const isActive = val === 1;

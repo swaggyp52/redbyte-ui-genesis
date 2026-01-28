@@ -8,7 +8,7 @@ import { ECELabAppComponent } from './ECELabApp';
 export const ECELabApp: RedByteApp = {
     manifest: {
         id: 'ece-lab',
-        name: 'ECE 347 Lab',
+        name: 'Lab Assignment',
         iconId: 'cpu',
         category: 'logic',
         defaultSize: { width: 1400, height: 900 },

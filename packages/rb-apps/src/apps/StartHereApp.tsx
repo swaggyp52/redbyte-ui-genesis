@@ -21,6 +21,10 @@ export const StartHereAppContent: React.FC<StartHereAppProps> = ({ onOpenApp }) 
     onOpenApp?.('ece-lab', { initialTab: 'hardware', simGuide: true });
   };
 
+  const handleOpenVirtualLab = () => {
+    onOpenApp?.('virtual-lab', {});
+  };
+
   const handleOpenInspector = () => {
     onOpenApp?.('submission-inspector', { loadSample: true });
   };
@@ -36,25 +40,39 @@ export const StartHereAppContent: React.FC<StartHereAppProps> = ({ onOpenApp }) 
 
       <div className={styles.grid}>
         <button type="button" className={styles.card} onClick={handleOpenPlayground}>
-          <div className={styles.cardTitle}>Try Logic Playground (Simulation)</div>
+          <div className={styles.cardTitle}>Logic Playground</div>
           <p className={styles.cardBody}>
-            Build and simulate logic instantly -- no hardware required. Loads the 4-bit counter example.
+            2D digital circuits — drag gates, wires. Best for logic design and truth tables.
           </p>
           <div className={styles.cardAction}>Open Playground</div>
         </button>
 
-        <button type="button" className={styles.card} onClick={handleOpenLab}>
-          <div className={styles.cardTitle}>Try FPGA Lab (SIM Mode)</div>
-          <p className={styles.cardBody}>See the FPGA lab workflow using simulated hardware data.</p>
-          <div className={styles.cardAction}>Open ECE 347 Lab</div>
+        <button type="button" className={styles.card} onClick={handleOpenVirtualLab}>
+          <div className={styles.cardTitle}>Virtual Lab</div>
+          <p className={styles.cardBody}>3D bench — MCU + wiring + scope + serial. Export lab capsules.</p>
+          <div className={styles.cardAction}>Open Virtual Lab</div>
         </button>
 
-        <button type="button" className={styles.card} onClick={handleOpenInspector}>
-          <div className={styles.cardTitle}>Grade a Sample Submission</div>
-          <p className={styles.cardBody}>Replay a real submission, verify integrity, and export a grading report.</p>
-          <div className={styles.cardAction}>Open Submission Inspector</div>
+        <button type="button" className={styles.card} onClick={handleOpenLab}>
+          <div className={styles.cardTitle}>Lab Assignment</div>
+          <p className={styles.cardBody}>Course lab wrapper — pick template, run vectors, submit capsule.</p>
+          <div className={styles.cardAction}>Open Lab Assignment</div>
         </button>
       </div>
+
+      {/* Lab Map Section */}
+      <section className={styles.labMapSection}>
+        <h2 className={styles.labMapTitle}>Lab Map</h2>
+        <ul className={styles.labMapList}>
+          <li><strong>Logic Playground</strong> — 2D circuits + truth tables + replay</li>
+          <li><strong>Virtual Lab</strong> — 3D bench + MCU sketch + instruments + capsule export</li>
+          <li><strong>Lab Assignment</strong> — Course lab wrapper + template + submit</li>
+          <li><strong>Lab Examiner</strong> — Read-only inspection + integrity verification</li>
+        </ul>
+        <p className={styles.labMapFiles}>
+          <code>.labcapsule.json</code> = evidence capsule
+        </p>
+      </section>
     </div>
   );
 };

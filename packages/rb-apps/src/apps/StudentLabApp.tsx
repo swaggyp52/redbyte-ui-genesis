@@ -2,6 +2,11 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
+/**
+ * @deprecated RB_UNIFY_02: This app has been replaced by Lab Assignment (ECELabApp).
+ * Kept for reference only; not registered in AppRegistry.
+ */
+
 import React, { useState, useEffect, useCallback } from 'react';
 import type { RedByteApp } from '../types';
 import styles from './StudentLabApp.module.css';
@@ -1067,8 +1072,8 @@ const StudentLabAppContent: React.FC<StudentLabAppProps> = ({ initialTab, simGui
                   {globalCircuit.nodes.length > 0
                     ? `Circuit ready: ${globalCircuit.nodes.length} nodes`
                     : selectedPreset
-                    ? `Using preset: ${selectedPreset.name}`
-                    : 'Build your circuit or select a preset'}
+                      ? `Using preset: ${selectedPreset.name}`
+                      : 'Build your circuit or select a preset'}
                 </div>
               </div>
             )}

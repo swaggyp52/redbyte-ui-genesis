@@ -48,7 +48,7 @@ export async function registerAllApps() {
   const LabExaminerAppRegistry = (await import('./apps/LabExaminerAppRegistry')).default;
   const { InstructorApp } = await import('./apps/InstructorApp');
   const { InstructorRunDetailApp } = await import('./apps/InstructorRunDetailApp');
-  const { StudentLabApp } = await import('./apps/StudentLabApp');
+  // const { StudentLabApp } = await import('./apps/StudentLabApp'); // RB_UNIFY_02: DEPRECATED — use Lab Assignment
   const { SubmissionInspectorApp } = await import('./apps/SubmissionInspectorApp');
   const { VirtualLabApp } = await import('./apps/VirtualLabApp');
 
