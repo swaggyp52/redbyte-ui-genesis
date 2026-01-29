@@ -4,6 +4,8 @@ import type { BridgeDevice } from "@redbyte/rb-fpga-bridge-contract";
 import type { HardwareTraceEvent } from "@redbyte/rb-fpga-proof-core";
 import { exportV2Bundle, type BoardProfile } from "../utils/bundleExport";
 import { buildTraceEvent, computeStreamSilenceMs } from "./hardwarePanelUtils";
+import { hardwareClient, type ConnectionState, type Device } from "../services/hardwareClient";
+import { BridgeDebugPanel } from "../panels/BridgeDebugPanel";
 
 const BRIDGE_URL = "http://127.0.0.1:4242";
 const DEFAULT_LAB_ID = "basys3_mvp_lab";
@@ -124,7 +126,7 @@ function HardwarePanelComponent() {
   const [panelState, setPanelState] = useState<PanelState>("DISCONNECTED");
   const [bridgeHealth, setBridgeHealth] = useState<BridgeHealth | null>(null);
   const [bridgeError, setBridgeError] = useState<string | null>(null);
-  const [devices, setDevices] = useState<BridgeDevice[]>([]);
+  const [devices, setDevices] = useState<Device[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
   const [bitstreamFile, setBitstreamFile] = useState<File | null>(null);
   const [bitstreamBase64, setBitstreamBase64] = useState<string | null>(null);
@@ -153,16 +155,19 @@ function HardwarePanelComponent() {
   const runStatusRef = useRef<string | null>(null);
 
   const selectedDevice = useMemo(
-    () => devices.find((device) => device.id === selectedDeviceId) ?? null,
+    () => devices.find((device) => device.deviceId === selectedDeviceId) ?? null,
     [devices, selectedDeviceId]
   );
 
   const traceEventCount = traceEvents.length;
   const bridgeReady = bridgeHealth?.ok === true;
   const hasDevices = devices.length > 0;
-  const isSimDevice = selectedDevice?.transport === "sim";
-  const runtimeReady = selectedDevice?.runtime?.status === "ready";
-  const programmingReady = selectedDevice?.programming?.status === "ready";
+  // const isSimDevice = selectedDevice?.transport === "sim";
+  const isSimDevice = false; // Phase 10: Logic 3D handles Sim, this panel is for Hardware
+  // const runtimeReady = selectedDevice?.runtime?.status === "ready";
+  const runtimeReady = true; // Assume ready if connected
+  // const programmingReady = selectedDevice?.programming?.status === "ready";
+  const programmingReady = true; // Assume ready if connected
   const isRunningNoData = runStatus === "running_no_data";
 
   const programBlockedReason =
@@ -217,79 +222,62 @@ function HardwarePanelComponent() {
     runStatusRef.current = runStatus;
   }, [runStatus]);
 
-  const fetchHealth = useCallback(async () => {
-    try {
-      const result = await fetchJsonWithRetry<BridgeHealth>(
-        `${BRIDGE_URL}/health`,
-        {},
-        { timeoutMs: 2000, retries: 1 }
-      );
-      if (!result.ok || !result.data?.ok) {
-        throw new Error(`bridge_http_${result.status}`);
+  // --- Model A Integration ---
+  useEffect(() => {
+    // 1. Initial state sync
+    const syncState = (state: ConnectionState) => {
+      if (state.status === 'connected') {
+        setBridgeHealth(state.bridge);
+        setDevices(state.devices);
+        setBridgeError(null);
+        // Auto-select first device if none selected
+        if (!selectedDeviceId && state.devices.length > 0) {
+          setSelectedDeviceId(state.devices[0].deviceId);
+        }
+      } else if (state.status === 'offline') {
+        setBridgeHealth(null);
+        setBridgeError(state.message || "Bridge offline");
+        setDevices([]);
+      } else {
+        // Connecting...
+        setBridgeError("Connecting...");
       }
-      const data = result.data;
-      if (!data.ok) throw new Error("bridge_unavailable");
-      setBridgeHealth(data);
-      setBridgeError(null);
-      setPanelState((prev) =>
-        prev === "DISCONNECTED" || prev === "ERROR" ? "IDLE" : prev
-      );
-      return true;
-    } catch (err) {
-      setBridgeHealth(null);
-      setBridgeError("Local Bridge not running");
-      setDevices([]);
-      setSelectedDeviceId("");
-      setPanelState("DISCONNECTED");
-      return false;
-    }
-  }, []);
+    };
 
-  const fetchDevices = useCallback(async () => {
-    try {
-      const result = await fetchJsonWithRetry<{ devices?: BridgeDevice[] }>(
-        `${BRIDGE_URL}/devices`,
-        {},
-        { timeoutMs: 3000, retries: 1 }
-      );
-      if (!result.ok) throw new Error(`devices_http_${result.status}`);
-      const payload = result.data;
-      const list = Array.isArray(payload?.devices) ? payload.devices : [];
-      setDevices(list);
-      if (!selectedDeviceId && list.length > 0) {
-        setSelectedDeviceId(list[0].id);
-      }
-    } catch (err) {
-      setDevices([]);
-    }
+    // 2. Subscribe
+    const unsubscribe = hardwareClient.subscribe(syncState);
+    return unsubscribe;
   }, [selectedDeviceId]);
 
-  const refreshBridge = useCallback(async () => {
-    const ok = await fetchHealth();
-    if (ok) {
-      await fetchDevices();
+  // Refresh -> hardwareClient.connect() implies a retry or re-check
+  const refreshBridge = useCallback(() => {
+    hardwareClient.connect(); // forceful reconnect attempt
+  }, []);
+
+  // Remove internal polling effects!
+
+  const stateLabel = (() => {
+    switch (panelState) {
+      case "DISCONNECTED":
+        return "Bridge offline";
+      case "IDLE":
+        return "Ready";
+      case "PROGRAMMING":
+        return "Programming";
+      case "READY":
+        return "Programmed";
+      case "RUNNING":
+        return "Capturing";
+      case "STOPPING":
+        return "Stopping";
+      case "DONE":
+        return "Capture complete";
+      case "ERROR":
+        return "Error";
+      default:
+        return "Unknown";
     }
-  }, [fetchDevices, fetchHealth]);
-
-  useEffect(() => {
-    refreshBridge();
-  }, [refreshBridge]);
-
-  useEffect(() => {
-    const healthInterval = window.setInterval(() => {
-      void fetchHealth();
-    }, 3000);
-    const deviceInterval = window.setInterval(() => {
-      if (panelState !== "PROGRAMMING" && panelState !== "RUNNING") {
-        void fetchDevices();
-      }
-    }, 5000);
-    return () => {
-      window.clearInterval(healthInterval);
-      window.clearInterval(deviceInterval);
-    };
-  }, [fetchDevices, fetchHealth, panelState]);
-
+  })();
   useEffect(() => {
     return () => {
       if (stopTimerRef.current) {
@@ -530,7 +518,7 @@ function HardwarePanelComponent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             device_id: selectedDeviceId,
-            board_model_id: selectedDevice?.model_id ?? DEFAULT_BOARD,
+            board_model_id: selectedDevice?.boardModel ?? DEFAULT_BOARD,
             bitstream_base64: bitstreamBase64,
           }),
         },
@@ -545,7 +533,7 @@ function HardwarePanelComponent() {
       setProgramError(err instanceof Error ? err.message : "program_failed");
       setPanelState("ERROR");
     }
-  }, [bitstreamBase64, programBlockedReason, selectedDevice?.model_id, selectedDeviceId]);
+  }, [bitstreamBase64, programBlockedReason, selectedDevice, selectedDeviceId]);
 
   const handleStopCapture = useCallback(async () => {
     if (!runIdRef.current) return;
@@ -578,7 +566,7 @@ function HardwarePanelComponent() {
           body: JSON.stringify({
             device_id: selectedDeviceId,
             hz: captureHz,
-            mode: selectedDevice?.transport === "sim" ? "mock" : "hardware",
+            mode: "hardware",
           }),
         },
         { timeoutMs: 5000, retries: 1 }
@@ -621,14 +609,14 @@ function HardwarePanelComponent() {
 
     const boardProfile: BoardProfile = {
       ...DEFAULT_BOARD_PROFILE,
-      board: selectedDevice?.model_id ?? DEFAULT_BOARD,
+      board: selectedDevice?.boardModel ?? DEFAULT_BOARD,
     };
 
     try {
       const result = await exportV2Bundle({
         labId: DEFAULT_LAB_ID,
         labVersion: DEFAULT_LAB_VERSION,
-        board: selectedDevice?.model_id ?? DEFAULT_BOARD,
+        board: selectedDevice?.boardModel ?? DEFAULT_BOARD,
         binSizeMs: Math.max(1, Math.round(1000 / captureHzRef.current)),
         traceNdjson: traceEvents.map((event) => JSON.stringify(event)).join("\n"),
         traceEventCount: traceEvents.length,
@@ -641,30 +629,9 @@ function HardwarePanelComponent() {
     } catch (err) {
       setPanelError(err instanceof Error ? err.message : "export_failed");
     }
-  }, [bitstreamFile, exportBlockedReason, selectedDevice?.model_id, traceEvents, setPanelError]);
+  }, [bitstreamFile, exportBlockedReason, selectedDevice, traceEvents, setPanelError]);
 
-  const stateLabel = (() => {
-    switch (panelState) {
-      case "DISCONNECTED":
-        return "Bridge offline";
-      case "IDLE":
-        return "Ready";
-      case "PROGRAMMING":
-        return "Programming";
-      case "READY":
-        return "Programmed";
-      case "RUNNING":
-        return "Capturing";
-      case "STOPPING":
-        return "Stopping";
-      case "DONE":
-        return "Capture complete";
-      case "ERROR":
-        return "Error";
-      default:
-        return "Unknown";
-    }
-  })();
+
 
   const sectionStyle = {
     marginBottom: "20px",
@@ -676,6 +643,7 @@ function HardwarePanelComponent() {
 
   return (
     <div style={{ padding: "20px", fontFamily: "monospace", color: "#fff", height: "100%", overflow: "auto" }}>
+      <BridgeDebugPanel />
       <h2>Hardware Panel</h2>
 
       <div style={sectionStyle}>
@@ -713,13 +681,13 @@ function HardwarePanelComponent() {
           >
             {devices.length === 0 && <option value="">No devices found</option>}
             {devices.map((device) => (
-              <option key={device.id} value={device.id}>
-                {device.display_name} ({device.id})
+              <option key={device.deviceId} value={device.deviceId}>
+                {device.boardModel} ({device.deviceId})
               </option>
             ))}
           </select>
           <button
-            onClick={fetchDevices}
+            onClick={refreshBridge}
             style={{ padding: "6px 10px", background: "#333", color: "#fff", border: "1px solid #555", borderRadius: "4px", cursor: "pointer", fontSize: "11px" }}
           >
             Refresh Devices
@@ -737,7 +705,7 @@ function HardwarePanelComponent() {
         )}
         {selectedDevice && (
           <div style={{ marginTop: "8px", fontSize: "11px", color: "#888" }}>
-            model_id: {selectedDevice.model_id} | transport: {selectedDevice.transport} | runtime: {selectedDevice.runtime?.status}
+            model_id: {selectedDevice.boardModel} | transport: hardware
           </div>
         )}
       </div>

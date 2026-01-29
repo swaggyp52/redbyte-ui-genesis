@@ -60,11 +60,13 @@ const server = app.listen(PORT, () => {
 const wss = new WebSocketServer({ server, path: '/ws' });
 
 const backends = new Map<string, any>();
+const connecting = new Set<string>();
 
 wss.on('connection', (ws: WebSocket) => {
     console.log('[Bridge Agent] Client connected via WebSocket');
 
     ws.on('message', async (data: string) => {
+        console.log('[Bridge DEBUG] Raw message received:', data.toString());
         try {
             const msg: BridgeMessage = JSON.parse(data.toString());
 
@@ -76,6 +78,8 @@ wss.on('connection', (ws: WebSocket) => {
             const deviceId = msg.deviceId || 'default';
             const activeBackend = backends.get(deviceId);
 
+            console.log(`[Bridge DEBUG] Processing ${msg.type} for ${deviceId} (ID: ${msg.id})`);
+
             switch (msg.type) {
                 case 'PING':
                     sendResponse(ws, msg.id, 'PONG');
@@ -85,11 +89,23 @@ wss.on('connection', (ws: WebSocket) => {
                     const payload = msg.payload as ConnectPayload;
                     console.log(`[Bridge Agent] Connect request for target: ${payload.target} on ${deviceId}`);
 
+                    if (connecting.has(deviceId)) {
+                        console.warn(`[Bridge Agent] Connection to ${deviceId} already in progress.`);
+                        sendResponse(ws, msg.id, 'CONNECT_ERR', { message: 'Connection in progress' });
+                        break;
+                    }
+
                     try {
                         const existing = backends.get(deviceId);
-                        if (existing && typeof existing.disconnect === 'function') {
-                            await existing.disconnect();
+
+                        // DE-DUPE: If already connected to the same port/target, return OK immediately
+                        if (existing) {
+                            console.log(`[Bridge Agent] Device ${deviceId} already active, reusing connection.`);
+                            sendResponse(ws, msg.id, 'CONNECT_OK', { target: payload.target, reused: true });
+                            break;
                         }
+
+                        connecting.add(deviceId);
 
                         let backend: any;
                         if (payload.target === 'arduino-uno' || payload.target === 'arduino-nano') {
@@ -112,6 +128,8 @@ wss.on('connection', (ws: WebSocket) => {
                         sendResponse(ws, msg.id, 'CONNECT_OK', { target: payload.target });
                     } catch (err: any) {
                         sendResponse(ws, msg.id, 'CONNECT_ERR', { message: err.message });
+                    } finally {
+                        connecting.delete(deviceId);
                     }
                     break;
                 }

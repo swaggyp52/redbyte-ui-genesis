@@ -25,16 +25,8 @@ if not exist "apps\playground\dist\index.html" (
     )
 )
 
-echo [Launcher] Starting Bridge Agent...
-rem Start Bridge in background (using start /b or separate window minimized)
-rem We assume packages/rb-bridge-agent/dist/index.js exists or we use ts-node/direct
-rem Check if bridge is built
-if exist "packages\rb-bridge-agent\dist\index.js" (
-    start "RedByte Bridge" /min node packages\rb-bridge-agent\dist\index.js
-) else (
-    echo [Launcher] Bridge dist not found, running via pnpm start...
-    start "RedByte Bridge" /min pnpm --filter rb-bridge-agent start
-)
+echo [Launcher] NOTE: Bridge Agent must be started separately (Model A).
+echo [Launcher] Ensure 'pnpm --filter rb-bridge-agent start' is running.
 
 echo [Launcher] Starting UI Server...
 start "RedByte UI" /min node apps\playground\scripts\prod-server.js

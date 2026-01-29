@@ -36,6 +36,7 @@ async function loadWebSocket() {
 const args = process.argv.slice(2);
 const MOCK_MODE = args.includes('--mock');
 const SET_LED = args.find(a => a.startsWith('--set-led='))?.split('=')[1];
+const TARGET_DEVICE = args.find(a => a.startsWith('--device='))?.split('=')[1];
 const DURATION = parseInt(args.find(a => a.startsWith('--duration='))?.split('=')[1] || '5000');
 
 // Bridge endpoints
@@ -225,7 +226,15 @@ async function testProductionBridge() {
   }
 
   // Step 3: Select and Connect via WebSocket (handled in Step 5)
-  const device = validDevices[0];
+  let device = validDevices[0];
+  if (TARGET_DEVICE) {
+    device = validDevices.find(d => d.deviceId === TARGET_DEVICE);
+    if (!device) {
+      log('error', `Target device '${TARGET_DEVICE}' not found in: ${validDevices.map(d => d.deviceId).join(', ')}`);
+      return false;
+    }
+  }
+
   log('info', `Targeting device: ${device.deviceId} on ${device.port}`);
 
   // Step 4: Skip legacy HTTP run/stop - using WebSocket protocol instead

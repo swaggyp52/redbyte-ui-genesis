@@ -3804,3 +3804,16 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 };
 
 // End of LogicPlaygroundApp components
+
+export const LogicPlaygroundApp: RedByteApp = {
+  manifest: {
+    id: 'logic-playground',
+    name: 'Logic Playground',
+    iconId: 'logic',
+    category: 'logic',
+    defaultSize: { width: 1200, height: 720 },
+    minSize: { width: 800, height: 600 },
+  },
+  component: LogicPlaygroundComponent,
+};
+

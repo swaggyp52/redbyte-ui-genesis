@@ -13,6 +13,7 @@ import { SchematicView } from './SchematicView';
 import { OscilloscopeView } from './OscilloscopeView';
 import { CodeView } from './CodeView';
 import { CircuitToolStrip } from './CircuitToolStrip';
+import { HardwareMapper } from './HardwareMapper';
 import { Icon, type IconName } from '@redbyte/rb-icons';
 import type { SplitScreenMode, ViewMode } from '../stores/viewStateStore';
 import { useViewStateStore } from '../stores/viewStateStore';
@@ -412,6 +413,10 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
                   mismatchPortKeys={mismatchPortKeys}
                   debugSignals={signalsUpdateReason === 'input' ? latestSignals : debugSignals}
                   onHelp={onHelpOpen ? () => onHelpOpen('3d-controls') : undefined}
+                  onLayoutChange={() => {
+                    // Trigger circuit save when 3D layout changes
+                    onCircuitChange({ ...engine.getCircuit() });
+                  }}
                 />
               </React.Suspense>
             </div>
@@ -450,6 +455,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
           {circuit.nodes.length} nodes • {circuit.connections.length} wires
         </div>
       </div>
+      {/* Headless Mapper */}
+      {hardwareMapper}
       {/* View Content */}
       <div className="flex-1 min-h-0 min-w-0 relative overflow-hidden">
         {renderContent()}
@@ -501,7 +508,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   const [signalsUpdateReason, setSignalsUpdateReason] = React.useState<'input' | 'tick' | undefined>();
   const [signalsVersion, setSignalsVersion] = React.useState(0);
 
-  // Handle signal updates from LogicCanvas
+  // Handle logic updates from LogicCanvas
   const handleSignalsUpdated = React.useCallback((signals: Map<string, 0 | 1>, reason: 'input' | 'tick') => {
     setLatestSignals(signals);
     setSignalsUpdateReason(reason);
@@ -524,6 +531,19 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
       </div>
     );
   }
+
+  // --- SUBAGENT C: Hardware Mapper ---
+  // Headless component to handle auto-spawn
+  // Uses key to reset if engine changes, but mostly stable
+  // -----------------------------------
+
+  // Renders the mapper, but returns null (headless)
+  const hardwareMapper = (
+    <HardwareMapper
+      circuit={circuit}
+      onCircuitChange={onCircuitChange}
+    />
+  );
 
   // PHASE 1.5: DEV-only fault injection for ISSUE-A validation
   // When ?fault=selector-object is added, use unstable Zustand selector to trigger React #185

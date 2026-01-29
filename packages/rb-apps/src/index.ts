@@ -33,7 +33,7 @@ export async function registerAllApps() {
   const { TerminalApp } = await import('./apps/TerminalApp');
   const { SettingsApp } = await import('./apps/SettingsApp');
   const { FilesApp } = await import('./apps/FilesApp');
-  const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundManifest');
+  const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundApp');
   const { ECELabApp } = await import('./apps/ECELabManifest');
   const { AppStoreApp } = await import('./apps/AppStoreApp');
   const { WelcomeApp } = await import('./apps/WelcomeApp');

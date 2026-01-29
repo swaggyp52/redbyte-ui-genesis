@@ -76,6 +76,21 @@ export class CircuitEngine {
   }
 
   /**
+   * Update node position (in-place)
+   * This allows "Live Edit" without resetting the simulation state.
+   */
+  updateNodePosition(nodeId: string, position: { x: number; y: number }): void {
+    const node = this.circuit.nodes.find((n) => n.id === nodeId);
+    if (node) {
+      // Modify in place to preserve reference if needed, 
+      // but strictly we should probably treat circuit as immutable if possible.
+      // However, for performance in live edit, direct mutation of the cached circuit is acceptable
+      // as long as we don't need history undo/redo here (that's handled by the store/host).
+      node.position = position;
+    }
+  }
+
+  /**
    * Build inputs for a node by finding all connections to it
    */
   private buildNodeInputs(

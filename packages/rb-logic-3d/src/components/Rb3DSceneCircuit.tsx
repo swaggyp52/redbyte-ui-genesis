@@ -1,4 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
+import { TransformControls } from '@react-three/drei';
+import * as THREE from 'three';
 import { NodeMesh } from '../meshes/NodeMesh';
 import { WireMesh } from '../meshes/WireMesh';
 import { SignalParticleSystem } from '../components/SignalParticle';
@@ -14,6 +16,7 @@ interface Rb3DSceneCircuitProps {
     selectedNodeIds?: Set<string>;
     onNodeSelect?: (id: string, additive: boolean) => void;
     onNodeHover?: (id: string | null) => void;
+    onNodeMove?: (id: string, position: { x: number; y: number }) => void;
 
     // Highlighting Props
     probeWireHighlights?: Map<string, string[]>;
@@ -31,6 +34,7 @@ export const Rb3DSceneCircuit: React.FC<Rb3DSceneCircuitProps> = ({
     selectedNodeIds = new Set(),
     onNodeSelect,
     onNodeHover,
+    onNodeMove,
     probeWireHighlights,
     mismatchWireHighlights,
     mismatchNodeIds,
@@ -41,8 +45,50 @@ export const Rb3DSceneCircuit: React.FC<Rb3DSceneCircuitProps> = ({
         return map;
     }, [nodes, selectedNodeIds]);
 
+    // Track refs for all node meshes
+    const nodeRefs = useRef<Map<string, THREE.Mesh>>(new Map());
+
+    // Sync refs map with current nodes
+    useMemo(() => {
+        // We clean up old refs that are no longer in the nodes list
+        // by creating a fresh map or just managing the existing one carefully.
+        // For simplicity, we just rely on the callback ref pattern in the loop below.
+    }, [nodes]);
+
+    // Determine the single active object for TransformControls
+    const activeTransformTarget = useMemo(() => {
+        if (selectedNodeIds.size === 1) {
+            const id = Array.from(selectedNodeIds)[0];
+            return nodeRefs.current.get(id);
+        }
+        return undefined;
+    }, [selectedNodeIds, nodes]); // Re-eval if nodes change (ref might update)
+
+    const handleTransformEnd = (e: any) => {
+        const target = e?.target?.object;
+        if (target && target.userData?.nodeId && onNodeMove) {
+            // target is the mesh.
+            // Convert 3D position (x, -, z) back to 2D logic (x*20, z*20)
+            // Y is strictly 0.25 in 3D, mapped to nothing in 2D.
+            const x = target.position.x * 20;
+            const y = target.position.z * 20;
+            onNodeMove(target.userData.nodeId, { x, y });
+        }
+    };
+
     return (
         <>
+            {/* Transform Controls (Gizmo) */}
+            {activeTransformTarget && (
+                <TransformControls
+                    object={activeTransformTarget}
+                    mode="translate"
+                    showY={false} // Lock vertical movement
+                    translationSnap={0.5} // 10 units in 2D logic (since 20 scale factor) -> 0.5 * 20 = 10 grid snap
+                    onMouseUp={handleTransformEnd}
+                />
+            )}
+
             {/* Nodes */}
             {nodes.map((node) => {
                 const signalKey = `${node.id}.out`;
@@ -61,6 +107,10 @@ export const Rb3DSceneCircuit: React.FC<Rb3DSceneCircuitProps> = ({
                 return (
                     <React.Fragment key={node.id}>
                         <NodeMesh
+                            ref={(el) => {
+                                if (el) nodeRefs.current.set(node.id, el);
+                                else nodeRefs.current.delete(node.id);
+                            }}
                             id={node.id}
                             type={node.type}
                             position={position}

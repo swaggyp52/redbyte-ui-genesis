@@ -3,6 +3,47 @@ import type { LabTemplate } from '@redbyte/rb-logic-3d';
 export const VIRTUAL_LAB_TEMPLATES: LabTemplate[] = [
   {
     template_version: 'virtual-lab.v1',
+    lab_id: 'lab0_hardware_proof',
+    lab_version: '1.0.0',
+    name: 'Lab 0: Hardware Proof',
+    summary: 'Validate your RedByte Hardware Kit (Basys 3 + Arduino Uno).',
+    hardware_target: 'basys3', // primary target
+    required_parts: [
+      { type: 'fpga-basys3', min: 1, max: 1 },
+      { type: 'arduino-uno', min: 1, max: 1 }
+    ],
+    required_nets: [],
+    behavior_checks: [],
+    guide: [
+      {
+        id: 'step1_detect',
+        title: 'Step 1: Detection',
+        markdown: '1. Connect both **Basys 3** and **Arduino Uno** via USB.\n2. Ensure the **RedByte Bridge** is running.\n3. Open the **Hardware Panel** and verify both devices appear in the list.'
+      },
+      {
+        id: 'step2_switches',
+        title: 'Step 2: Input Test (Basys 3)',
+        markdown: '1. Located the **Basys 3** node in the 3D view (it should auto-spawn).\n2. Flip physical switch **SW0**.\n3. Verify the virtual switch on screen moves instantly.'
+      },
+      {
+        id: 'step3_blink',
+        title: 'Step 3: Output Test (Uno)',
+        markdown: '1. Locate the **Arduino Uno** node.\n2. Verify the **L (Pin 13)** LED is blinking (if standard blink sketch is loaded).\n3. *Optional*: Connect a virtual Wire from Basys3 **SW0** to Uno **D13** to control it!'
+      },
+      {
+        id: 'step4_record',
+        title: 'Step 4: Evidence',
+        markdown: '1. Press **Record** in the top toolbar.\n2. Toggle switches and reset the Arduino.\n3. Stop recording after 10 seconds.'
+      },
+      {
+        id: 'step5_export',
+        title: 'Step 5: Submission',
+        markdown: '1. Click **Export Capsule**.\n2. Verify the generated file contains your recording.\n3. This file proves your hardware is working.'
+      }
+    ]
+  },
+  {
+    template_version: 'virtual-lab.v1',
     lab_id: 'lab2_adder',
     lab_version: '1.0.0',
     name: 'Lab 2: 4-Bit Ripple Carry Adder',
@@ -17,22 +58,27 @@ export const VIRTUAL_LAB_TEMPLATES: LabTemplate[] = [
       {
         id: 'step1_objective',
         title: 'Objective',
-        markdown: 'Build a **4-Bit Ripple Carry Adder** using standard logic gates.\n\n- **Input A**: Switches 0-3\n- **Input B**: Switches 4-7\n- **Output Sum**: LEDs 0-3\n- **Output Carry**: LED 4'
+        markdown: 'Build a **4-Bit Ripple Carry Adder** and verify it on real hardware.\n\n- **Input A**: Switches 0-3\n- **Input B**: Switches 4-7\n- **Output Sum**: LEDs 0-3\n- **Output Carry**: LED 4'
       },
       {
-        id: 'step2_lsb',
-        title: 'Step 1: The LSB (Bit 0)',
+        id: 'step2_setup',
+        title: 'Step 1: Setup',
+        markdown: '1. Connect your **Basys 3** board.\n2. In the "Hardware" panel, select **Basys 3 (COM7)** and click **Connect**.\n3. Verify the "Hardware Live" indicator appears.'
+      },
+      {
+        id: 'step3_lsb',
+        title: 'Step 2: The LSB (Bit 0)',
         markdown: 'Create the first Full Adder.\n1. Connect **SW0** and **SW4** to the inputs.\n2. Connect **Cin** (Ground) to the Carry In.\n3. Connect Sum to **LED0**.\n4. Route **Cout** to the next stage.'
       },
       {
-        id: 'step3_chain',
-        title: 'Step 2: The Carry Chain',
+        id: 'step4_chain',
+        title: 'Step 3: The Carry Chain',
         markdown: 'Replicate the Full Adder for Bits 1, 2, and 3.\n- Chain the **Cout** of Bit N to **Cin** of Bit N+1.\n- Connect **SW1/SW5** -> Bit 1\n- Connect **SW2/SW6** -> Bit 2\n- Connect **SW3/SW7** -> Bit 3'
       },
       {
-        id: 'step4_verify',
-        title: 'Verification',
-        markdown: 'Test your design:\n- Set **SW0=1** (A=1) + **SW4=1** (B=1). **LED1** should light (Sum=2).\n- Test overflow: 15 + 1 = 16 (LED4 should light).'
+        id: 'step5_verify',
+        title: 'Step 4: Verification',
+        markdown: 'Test your design on the board:\n- Set **SW0=1** (A=1) + **SW4=1** (B=1). **LED1** should light (Sum=2).\n- Test overflow: 15 + 1 = 16 (LED4 should light).\n\n**Submission**: Click "Export Capsule" in the palette to save your work for grading.'
       }
     ]
   },
@@ -40,8 +86,8 @@ export const VIRTUAL_LAB_TEMPLATES: LabTemplate[] = [
     template_version: 'virtual-lab.v1',
     lab_id: 'lab3_7seg',
     lab_version: '1.0.0',
-    name: 'Lab 3: Seven-Segment Driver',
-    summary: 'BCD to 7-Segment Decoder with Time Multiplexing.',
+    name: 'Lab 3: Seven-Segment Driver (LOCKED)',
+    summary: 'Opens Week 3. BCD to 7-Segment Decoder.',
     hardware_target: 'basys3',
     required_parts: [{ type: 'fpga-basys3', min: 1, max: 1 }],
     required_nets: [],
@@ -51,8 +97,8 @@ export const VIRTUAL_LAB_TEMPLATES: LabTemplate[] = [
     template_version: 'virtual-lab.v1',
     lab_id: 'lab4_alu',
     lab_version: '1.0.0',
-    name: 'Lab 4: Simplified ALU',
-    summary: '1-bit ALU with MUX and Decoder implementations.',
+    name: 'Lab 4: Simplified ALU (LOCKED)',
+    summary: 'Opens Week 5. 1-bit ALU with MUX.',
     hardware_target: 'basys3',
     required_parts: [{ type: 'fpga-basys3', min: 1, max: 1 }],
     required_nets: [],
@@ -62,8 +108,8 @@ export const VIRTUAL_LAB_TEMPLATES: LabTemplate[] = [
     template_version: 'virtual-lab.v1',
     lab_id: 'lab5_adder_signed',
     lab_version: '1.0.0',
-    name: 'Lab 5: Signed Adder/Subtractor',
-    summary: '2’s Complement Arithmetic with Overflow detection.',
+    name: 'Lab 5: Signed Adder (LOCKED)',
+    summary: 'Opens Week 6. 2’s Complement Arithmetic.',
     hardware_target: 'basys3',
     required_parts: [{ type: 'fpga-basys3', min: 1, max: 1 }],
     required_nets: [],
@@ -73,8 +119,8 @@ export const VIRTUAL_LAB_TEMPLATES: LabTemplate[] = [
     template_version: 'virtual-lab.v1',
     lab_id: 'lab6_ff',
     lab_version: '1.0.0',
-    name: 'Lab 6: Latches and Flip-Flops',
-    summary: 'Sequential logic, metastability, and debounce.',
+    name: 'Lab 6: Flip-Flops (LOCKED)',
+    summary: 'Opens Week 8. Sequential logic.',
     hardware_target: 'basys3',
     required_parts: [{ type: 'fpga-basys3', min: 1, max: 1 }],
     required_nets: [],
@@ -84,8 +130,8 @@ export const VIRTUAL_LAB_TEMPLATES: LabTemplate[] = [
     template_version: 'virtual-lab.v1',
     lab_id: 'lab7_counters',
     lab_version: '1.0.0',
-    name: 'Lab 7: Synchronous Counters',
-    summary: 'Binary and BCD counters with control inputs.',
+    name: 'Lab 7: Counters (LOCKED)',
+    summary: 'Opens Week 10. Synchronous Counters.',
     hardware_target: 'basys3',
     required_parts: [{ type: 'fpga-basys3', min: 1, max: 1 }],
     required_nets: [],

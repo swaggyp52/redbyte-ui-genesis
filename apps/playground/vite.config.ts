@@ -37,7 +37,7 @@ export default defineConfig({
   },
   build: {
     // Sourcemaps disabled for production optimization
-    sourcemap: false,
+    sourcemap: true,
     // Increase chunk size warning threshold to 750kB to accommodate vendor-3d (Three.js)
     // This chunk is only loaded when user opens Logic Playground, not on cold load
     chunkSizeWarningLimit: 750,
@@ -61,8 +61,8 @@ export default defineConfig({
       },
       output: {
         manualChunks(id) {
-  // Ensure Zustand + use-sync-external-store load with React to avoid prod init-order crash
-  if (id.includes('zustand') || id.includes('use-sync-external-store')) return 'vendor-react';
+          // Ensure Zustand + use-sync-external-store load with React to avoid prod init-order crash
+          if (id.includes('zustand') || id.includes('use-sync-external-store')) return 'vendor-react';
 
           // Vendor chunk: React ecosystem
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
@@ -87,19 +87,19 @@ export default defineConfig({
           // Split heavy apps from rb-apps into separate chunks
           // Files app + file system (largest)
           if (id.includes('packages/rb-apps/src/apps/files') ||
-              id.includes('packages/rb-apps/src/apps/FilesApp')) {
+            id.includes('packages/rb-apps/src/apps/FilesApp')) {
             return 'app-files';
           }
 
           // Settings app + panels (second largest)
           if (id.includes('packages/rb-apps/src/apps/settings') ||
-              id.includes('packages/rb-apps/src/apps/SettingsApp')) {
+            id.includes('packages/rb-apps/src/apps/SettingsApp')) {
             return 'app-settings';
           }
 
           // Logic Playground (contains 3D logic)
           if (id.includes('packages/rb-apps/src/apps/LogicPlaygroundApp') ||
-              id.includes('packages/rb-logic-3d/src')) {
+            id.includes('packages/rb-logic-3d/src')) {
             return 'app-logic';
           }
 

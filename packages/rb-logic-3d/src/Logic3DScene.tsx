@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CircuitEngine } from '@redbyte/rb-logic-core';
 import { ViewAdapter } from '@redbyte/rb-logic-adapter';
 import { use3DEngineSync } from './hooks/use3DEngineSync';
-import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
+
 import { Rb3DViewport } from './components/Rb3DViewport';
 import { Rb3DSceneCircuit } from './components/Rb3DSceneCircuit';
 
@@ -27,6 +27,7 @@ interface Logic3DSceneProps {
   getChipMetadata?: (nodeType: string) => any;
   /** Force a specific time for deterministic replay (optional) */
   forcedTime?: number;
+  onLayoutChange?: () => void;
 }
 
 export const buildSelectionMap = (
@@ -80,6 +81,7 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
   mismatchNodeIds,
   debugSignals,
   forcedTime,
+  onLayoutChange,
 }) => {
   const [showHelp, setShowHelp] = React.useState(false);
   const [followSelection, setFollowSelection] = useState(false);
@@ -149,6 +151,21 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
     [viewStateStore]
   );
 
+  const handleNodeMove = useCallback(
+    (nodeId: string, position: { x: number; y: number }) => {
+      if (engine && typeof engine.updateNodePosition === 'function') {
+        engine.updateNodePosition(nodeId, position);
+        if (onLayoutChange) {
+          onLayoutChange();
+        }
+      }
+    },
+    [engine, onLayoutChange]
+  );
+
+
+
+
   // Camera Following Logic
   useEffect(() => {
     if (!followSelection) return;
@@ -187,6 +204,7 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
           selectedNodeIds={selectedNodeIds}
           onNodeSelect={handleNodeSelect}
           onNodeHover={handleNodeHover}
+          onNodeMove={handleNodeMove}
           probeWireHighlights={probeWireHighlights}
           mismatchWireHighlights={mismatchWireHighlights}
           mismatchNodeIds={mismatchNodeIds}
@@ -225,8 +243,8 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
         <button
           onClick={() => setFollowSelection((prev) => !prev)}
           className={`px-1.5 py-0.5 rounded border ${followSelection
-              ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
-              : 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
+            ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
+            : 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
             }`}
           title="Follow selection"
         >
@@ -235,8 +253,8 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
         <button
           onClick={() => setAnimateSignalFlow((prev) => !prev)}
           className={`px-1.5 py-0.5 rounded border ${animateSignalFlow
-              ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
-              : 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
+            ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
+            : 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
             }`}
           title="Animate signal flow"
         >

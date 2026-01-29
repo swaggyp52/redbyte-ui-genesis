@@ -21,7 +21,7 @@ interface NodeMeshProps {
   onHover?: (nodeId: string | null) => void;
 }
 
-export const NodeMesh: React.FC<NodeMeshProps> = ({
+export const NodeMesh = React.forwardRef<THREE.Mesh, NodeMeshProps>(({
   id,
   type,
   position,
@@ -31,8 +31,12 @@ export const NodeMesh: React.FC<NodeMeshProps> = ({
   pulse = 0,
   onSelect,
   onHover,
-}) => {
-  const meshRef = useRef<THREE.Mesh>(null);
+}, ref) => {
+  const localRef = useRef<THREE.Mesh>(null);
+
+  // Merge refs so both local usage and parent access work
+  React.useImperativeHandle(ref, () => localRef.current as THREE.Mesh);
+
   const [hovered, setHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -53,9 +57,9 @@ export const NodeMesh: React.FC<NodeMeshProps> = ({
   }, [geometry, material]);
 
   useFrame(() => {
-    if (meshRef.current) {
+    if (localRef.current) {
       // Update emissive intensity based on active state
-      const mat = meshRef.current.material as THREE.MeshStandardMaterial;
+      const mat = localRef.current.material as THREE.MeshStandardMaterial;
       const pulseBoost = pulse * 0.6;
       const targetIntensity = (isActive ? 0.8 : 0) + pulseBoost;
       mat.emissiveIntensity = THREE.MathUtils.lerp(mat.emissiveIntensity, targetIntensity, 0.1);
@@ -100,7 +104,7 @@ export const NodeMesh: React.FC<NodeMeshProps> = ({
 
   return (
     <mesh
-      ref={meshRef}
+      ref={localRef}
       position={position}
       material={material}
       geometry={geometry}
@@ -116,4 +120,6 @@ export const NodeMesh: React.FC<NodeMeshProps> = ({
       <SelectionGlow isSelected={isSelected} isHovered={hovered} />
     </mesh>
   );
-};
+});
+
+NodeMesh.displayName = 'NodeMesh';

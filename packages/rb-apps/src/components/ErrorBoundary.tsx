@@ -32,12 +32,13 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     const msg = `RB_FATAL: ${error.message}`;
     console.error(msg);
     console.error('Stack:', error.stack);
-    
+    console.error('Component stack:', errorInfo.componentStack); // ADDED FOR DEBUGGING
+
     // If this is a watchdog error, mark it clearly
     if (error.message.includes('RB_RUNAWAY_LOOP_DETECTED')) {
       console.error('[WATCHDOG_CAUGHT]', error.message);
     }
-    
+
     // Set global flag for test inspection
     if (typeof window !== 'undefined') {
       (window as any).__RB_ERROR_BOUNDARY_HIT__ = {
@@ -51,7 +52,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   render() {
     if (this.state.hasError) {
       const isDev = import.meta.env.DEV;
-      
+
       return (
         <div className="h-full flex items-center justify-center bg-gray-900 text-white p-8">
           <div className="max-w-lg text-center">

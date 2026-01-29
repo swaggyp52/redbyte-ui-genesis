@@ -21,20 +21,20 @@ import type { RedByteApp } from '../types';
 import { useFileSystemStore } from '../stores/fileSystemStore';
 import { VIRTUAL_LAB_TEMPLATES } from './virtual-lab-templates';
 import { useVirtualLabSignalSource } from '../instruments/virtualLabSignalSource';
-import { HardwareRackPanel } from '../panels/HardwareRackPanel';
-import { TruthHud } from '@redbyte/rb-logic-3d';
 import { GuidedLabSidebar } from '../components/GuidedLabSidebar';
-import { HardwareStatusOverlay } from '../panels/HardwareStatusOverlay';
+// Lazy load panels to break circular dependency / TDZ issues during initialization
+const HardwareRackPanel = React.lazy(() => import('../panels/HardwareRackPanel').then(m => ({ default: m.HardwareRackPanel })));
+const HardwareStatusOverlay = React.lazy(() => import('../panels/HardwareStatusOverlay').then(m => ({ default: m.HardwareStatusOverlay })));
 
 const DEFAULT_SKETCH = `void setup() {
-  pinMode(13, OUTPUT);
+        pinMode(13, OUTPUT);
 }
 
-void loop() {
-  digitalWrite(13, HIGH);
-  delay(1000);
-  digitalWrite(13, LOW);
-  delay(1000);
+    void loop() {
+        digitalWrite(13, HIGH);
+    delay(1000);
+    digitalWrite(13, LOW);
+    delay(1000);
 }`;
 
 interface VirtualLabAppProps {
@@ -67,6 +67,9 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
     const replayScrubTick = useLabStore((state) => state.simulation.replayScrubTick);
     const integrityError = useLabStore((state) => state.integrityError);
     const graph = useLabStore((state) => state.graph);
+    // Hardware State Selectors (Primitives to avoid infinite loops)
+    const activeTransportType = useLabStore((state) => state.activeTransport.type);
+    const activeDeviceVerified = useLabStore((state) => state.activeTransport.getStatus().deviceVerified);
     const timeline = useLabStore((state) => state.timeline);
     const pinStates = useLabStore((state) => state.simulation.pinStates);
     const labSession = useLabStore((state) => state.labSession);
@@ -122,7 +125,7 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
         if (!candidate || !candidate.content) return;
         const load = async () => {
             try {
-                const json = JSON.parse(candidate.content || '{}');
+                const json = JSON.parse(candidate.content || '{ }');
                 const prepared = await prepareCapsule(json);
                 if (prepared) {
                     setPendingCapsule(prepared);
@@ -745,14 +748,10 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
 
                 {/* Giant Mode Watermark */}
                 <div className="absolute top-12 left-1/2 -translate-x-1/2 pointer-events-none select-none opacity-20">
-                    {useLabStore(state => {
-                        const transport = state.activeTransport;
-                        const status = transport.getStatus();
-                        return { type: transport.type, verified: status.deviceVerified };
-                    }).type === 'bridge' ? (
+                    {activeTransportType === 'bridge' ? (
                         <div className="flex flex-col items-center gap-1">
-                            <span className={`text-[40px] font-black tracking-tighter leading-none ${useLabStore.getState().activeTransport.getStatus().deviceVerified ? 'text-green-500' : 'text-red-500'}`}>
-                                {useLabStore.getState().activeTransport.getStatus().deviceVerified ? 'REAL HARDWARE' : 'HARDWARE (UNVERIFIED)'}
+                            <span className={`text-[40px] font-black tracking-tighter leading-none ${activeDeviceVerified ? 'text-green-500' : 'text-red-500'}`}>
+                                {activeDeviceVerified ? 'REAL HARDWARE' : 'HARDWARE (UNVERIFIED)'}
                             </span>
                             <div className="flex gap-4">
                                 <span className="text-[10px] font-bold tracking-[0.4em] uppercase text-green-600/60">UNO // COM8</span>
@@ -768,7 +767,9 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                 </div>
 
                 {/* Overlay Controls */}
-                <HardwareStatusOverlay />
+                <React.Suspense fallback={null}>
+                    <HardwareStatusOverlay />
+                </React.Suspense>
 
                 {/* Integrity Recovery UI */}
                 {integrityError && (

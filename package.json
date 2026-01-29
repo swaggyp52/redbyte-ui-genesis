@@ -40,6 +40,7 @@
         "coverage": "vitest run --coverage --passWithNoTests",
         "capture:screenshots": "tsx scripts/capture-screenshots.ts",
         "perf:soak": "tsx scripts/perf-soak.ts",
+        "ship:gate": "tsx scripts/ship-gate.ts",
         "release:gate": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
         "agent:status": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/agent-status.ps1",
         "agent:verify": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/agent-verify.ps1",

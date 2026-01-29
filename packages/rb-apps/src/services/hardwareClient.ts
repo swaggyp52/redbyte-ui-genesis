@@ -108,7 +108,7 @@ export class HardwareClient {
   constructor(config?: Partial<HardwareClientConfig>) {
     this.config = {
       httpUrl: config?.httpUrl ?? 'http://127.0.0.1:4242',
-      wsUrl: config?.wsUrl ?? 'ws://127.0.0.1:4242',
+      wsUrl: config?.wsUrl ?? 'ws://127.0.0.1:4242/ws',
       mode: config?.mode ?? 'auto',
     };
 
@@ -278,14 +278,20 @@ export class HardwareClient {
     }
   }
 
-  private connectWS() {
+  private connectWS(urlOverride?: string) {
     if (this.state.status !== 'connected' || this.state.ws) return;
 
+    // Default to config URL, but allow override for fallback
+    const url = urlOverride ?? this.config.wsUrl;
+    let hasConnected = false;
+
     try {
-      const socket = new WebSocket(this.config.wsUrl);
+      const socket = new WebSocket(url);
 
       socket.onopen = () => {
-        console.log('[HardwareClient] WebSocket connected');
+        console.log(`[HardwareClient] WebSocket connected to ${url}`);
+        hasConnected = true;
+
         if (this.state.status === 'connected') {
           this.state = {
             status: 'connected',
@@ -303,12 +309,22 @@ export class HardwareClient {
 
       socket.onerror = (error) => {
         if (import.meta.env.DEV) {
-          console.warn('[HardwareClient] WebSocket error:', error);
+          console.warn(`[HardwareClient] WebSocket error on ${url}:`, error);
         }
       };
 
       socket.onclose = () => {
-        console.log('[HardwareClient] WebSocket closed');
+        console.log(`[HardwareClient] WebSocket closed (${url})`);
+
+        // If we never connected and this was the default URL, try the fallback
+        if (!hasConnected && !urlOverride && url.endsWith('/ws')) {
+          const fallbackUrl = url.replace(/\/ws$/, '/');
+          console.log(`[HardwareClient] Primary WS path failed, attempting fallback: ${fallbackUrl}`);
+          // Short timeout to avoid frantic loops, but fast enough to not feel broken
+          this.wsReconnectTimeout = setTimeout(() => this.connectWS(fallbackUrl), 500);
+          return;
+        }
+
         if (this.state.status === 'connected') {
           this.state = {
             status: 'connected',
@@ -319,6 +335,7 @@ export class HardwareClient {
           this.notifyListeners();
 
           if (this.wsReconnectTimeout) clearTimeout(this.wsReconnectTimeout);
+          // Retry the *original* configured URL next time (reset fallback logic)
           this.wsReconnectTimeout = setTimeout(() => this.connectWS(), this.RETRY_DELAY_MS);
         }
       };
@@ -445,36 +462,78 @@ export class HardwareClient {
       return false;
     }
 
-    try {
-      // Bridge expects { port: string } to connect
-      // If device is a simulation/mock without a port, we might not need to "connect" via serial,
-      // but the bridge convention is to POST /connect to set active target.
-      const port = device.runtime?.port;
+    // Determine target from device metadata or ID
+    // Basys3 usually identifies as 'basys3' or via FTDI manufacturer
+    // Uno usually identifies as 'arduino-uno' or 'uno'
+    let target = 'unknown';
+    if (device.deviceId === 'basys3' || device.boardModel?.toLowerCase().includes('basys')) {
+      target = 'basys3';
+    } else if (device.deviceId === 'uno' || device.boardModel?.toLowerCase().includes('uno')) {
+      target = 'arduino-uno';
+    } else {
+      // Fallback: trust the device ID if it looks like a target, or default to unknown
+      target = device.deviceId;
+    }
 
-      // If it's a hardware device, we MUST have a port.
-      // If it's a sim/mock, port might be null or "SIM".
-      const payload = port ? { port } : { deviceId };
+    // Explicit override from runtime if available (e.g. from a mockup)
+    // The bridge expects 'arduino-uno', 'basys3', etc. as `target`
 
-      const res = await fetch(`${this.config.httpUrl.replace('/api/v1', '')}/connect`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(this.FETCH_TIMEOUT_MS),
-      });
+    // Construct valid payload for Bridge Agent via WS
+    // Note: We use WS now because HTTP POST /connect does not exist in the bridge agent.
+    const payload = {
+      target,
+      port: (device as any).port || device.runtime?.port, // Bridge sends port at top level
+      baud: device.runtime?.baud_default
+    };
 
-      if (!res.ok) {
-        throw new Error(`Failed to connect: HTTP ${res.status}`);
+    return new Promise((resolve) => {
+      if (!this.state.ws) {
+        resolve(false);
+        return;
       }
 
-      this.activeDevice = device;
-      this.capabilities = this.buildCapabilitiesFromDevice(device);
-      console.log(`[HardwareClient] Selected device: ${device.boardModel} (${deviceId})`);
-      return true;
+      // Generate a correlation ID
+      const id = Math.floor(Math.random() * 1000000);
 
-    } catch (error: any) {
-      console.error('[HardwareClient] Failed to select device:', error);
-      return false;
-    }
+      // One-time listener for the response
+      const handler = (event: MessageEvent) => {
+        try {
+          const msg = JSON.parse(event.data.toString());
+          if (msg.id === id) {
+            this.state.ws?.removeEventListener('message', handler);
+
+            if (msg.type === 'CONNECT_OK') {
+              this.activeDevice = device;
+              this.capabilities = this.buildCapabilitiesFromDevice(device);
+              console.log(`[HardwareClient] Selected device: ${device.boardModel} (${deviceId})`);
+              resolve(true);
+            } else {
+              console.error(`[HardwareClient] Connect failed: ${msg.payload?.message}`);
+              resolve(false);
+            }
+          }
+        } catch (e) {
+          // Ignore parse errors from other messages
+        }
+      };
+
+      this.state.ws.addEventListener('message', handler);
+
+      // Send CONNECT message
+      this.state.ws.send(JSON.stringify({
+        v: 'rb-bridge.v1',
+        id,
+        type: 'CONNECT',
+        deviceId: deviceId, // Important: Tell bridge WHICH virtual slot to use (uno vs basys3)
+        payload
+      }));
+
+      // Timeout fallback
+      setTimeout(() => {
+        this.state.ws?.removeEventListener('message', handler);
+        resolve(false);
+      }, 5000);
+    });
   }
 
   /**
