@@ -18,30 +18,30 @@ export interface LabTemplateNetRequirement {
 
 export type LabBehaviorCheck =
   | {
-      id: string;
-      type: 'blink';
-      pin: LabTemplatePinSelector;
-      period_ticks: number;
-      tolerance_ticks: number;
-      min_cycles?: number;
-      hint?: string;
-    }
+    id: string;
+    type: 'blink';
+    pin: LabTemplatePinSelector;
+    period_ticks: number;
+    tolerance_ticks: number;
+    min_cycles?: number;
+    hint?: string;
+  }
   | {
-      id: string;
-      type: 'serial_matches_pin';
-      pin: LabTemplatePinSelector;
-      on_text: string;
-      off_text: string;
-      hint?: string;
-    }
+    id: string;
+    type: 'serial_matches_pin';
+    pin: LabTemplatePinSelector;
+    on_text: string;
+    off_text: string;
+    hint?: string;
+  }
   | {
-      id: string;
-      type: 'digital_level';
-      pin: LabTemplatePinSelector;
-      value: number;
-      min_ticks?: number;
-      hint?: string;
-    };
+    id: string;
+    type: 'digital_level';
+    pin: LabTemplatePinSelector;
+    value: number;
+    min_ticks?: number;
+    hint?: string;
+  };
 
 export interface LabTemplate {
   template_version: 'virtual-lab.v1';
@@ -63,6 +63,8 @@ export interface LabTemplate {
       pins: string[];
     }>;
   };
+  hardware_target?: string; // e.g. 'arduino-uno'
+  firmware_path?: string;   // e.g. './labs/arduino/blink.ino'
 }
 
 type PinKey = string;

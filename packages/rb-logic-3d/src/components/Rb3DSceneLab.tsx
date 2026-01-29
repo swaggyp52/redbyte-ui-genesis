@@ -38,7 +38,7 @@ const BreadboardVisual = ({ dim }: { dim: { x: number; y: number; z: number } })
     );
 };
 
-const UnoVisual = ({ dim }: { dim: { x: number; y: number; z: number } }) => {
+const UnoVisual = ({ dim, isLive }: { dim: { x: number; y: number; z: number }, isLive?: boolean }) => {
     const pcbHeight = 0.15;
     return (
         <group>
@@ -46,6 +46,19 @@ const UnoVisual = ({ dim }: { dim: { x: number; y: number; z: number } }) => {
             <Box args={[dim.x, pcbHeight, dim.z]} position={[0, -dim.y / 2 + pcbHeight / 2, 0]}>
                 <meshStandardMaterial color="#004488" roughness={0.3} metalness={0.5} />
             </Box>
+
+            {/* "LIVE" Hardware Badge */}
+            {isLive && (
+                <group position={[dim.x / 2 - 0.8, 0.45, dim.z / 2 - 0.8]}>
+                    <Box args={[1.2, 0.1, 0.4]}>
+                        <meshBasicMaterial color="#00e5ff" />
+                    </Box>
+                    <Text position={[0, 0.1, 0]} fontSize={0.2} color="black" rotation={[-Math.PI / 2, 0, 0]} fontWeight="bold">
+                        LIVE
+                    </Text>
+                </group>
+            )}
+
             {/* USB Connector (Standard B) */}
             <Box args={[1.2, 0.8, 1.6]} position={[-dim.x / 2 + 0.8, 0.4, -dim.z / 2 + 0.8]}>
                 <meshStandardMaterial color="#silver" metalness={0.9} />
@@ -301,7 +314,7 @@ const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string> }> = ({
             {node.type === 'breadboard-half' ? (
                 <BreadboardVisual dim={def.dimensions} />
             ) : node.type === 'arduino-uno' ? (
-                <UnoVisual dim={def.dimensions} />
+                <UnoVisual dim={def.dimensions} isLive={node.hardware_target === 'arduino-uno' && useLabStore.getState().getTransportStatus().connected} />
             ) : node.type === 'arduino-nano' ? (
                 <NanoVisual dim={def.dimensions} />
             ) : node.type === 'fpga-basys3' ? (

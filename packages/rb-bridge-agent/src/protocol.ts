@@ -16,6 +16,8 @@ export type BridgeMessageType =
     | 'ERROR'
     | 'LIST_DEVICES'
     | 'LIST_DEVICES_OK'
+    | 'VERIFY_DEVICE'
+    | 'VERIFY_DEVICE_OK'
     | 'UPLOAD_SKETCH'
     | 'UPLOAD_SKETCH_OK';
 
@@ -29,6 +31,7 @@ export interface BridgeMessage {
     v: typeof BRIDGE_PROTOCOL_VERSION;
     id: number;
     type: BridgeMessageType;
+    deviceId?: string; // Target device for this message
     payload?: any;
 }
 
@@ -38,6 +41,7 @@ export interface SetPinsPayload {
 }
 
 export interface GetPinsResponsePayload {
+    deviceId?: string;
     pins: Record<string, number>; // "pinId" -> value
 }
 
@@ -63,4 +67,13 @@ export interface UploadSketchResponsePayload {
     };
     error?: string;
     message?: string;
+}
+
+export interface VerifyDeviceResponsePayload {
+    verified: boolean;
+    board: string;
+    port: string;
+    agent: string;
+    timestamp: string;
+    details?: string;
 }

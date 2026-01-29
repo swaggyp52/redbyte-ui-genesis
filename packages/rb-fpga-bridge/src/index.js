@@ -33,7 +33,7 @@ import { RedByteIngestion } from "./ingestion.js";
 const execAsync = promisify(exec);
 
 const HTTP_PORT = Number(process.env.RB_FPGA_HTTP_PORT || 4242);
-const WS_PORT = Number(process.env.RB_FPGA_WS_PORT || 4243);
+const WS_PORT = Number(process.env.RB_FPGA_WS_PORT || 4242);
 const BAUD = Number(process.env.RB_FPGA_BAUD || 115200);
 const OVERRIDE_PORT = process.env.REDBYTE_FPGA_PORT || ""; // e.g. "COM5"
 const MOCK_MODE = process.env.RB_FPGA_MOCK === "1" || process.env.RB_FPGA_MOCK === "true";

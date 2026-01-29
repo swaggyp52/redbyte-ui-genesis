@@ -147,6 +147,7 @@ const cloneGraph = (graph: LabGraph): LabGraph => JSON.parse(JSON.stringify(grap
 import { LabTransport } from './transport/types';
 import { SimTransport } from './transport/sim-transport';
 import { BridgeTransport } from './transport/bridge-transport';
+import { TransportRouter } from './transport/transport-router';
 
 const sketchRuntime = new SketchRuntime({ tickMs: TICK_MS, stepBudget: SKETCH_STEP_BUDGET });
 // Transport factory
@@ -444,38 +445,27 @@ export const useLabStore = create<LabStoreState>()(
                         });
                     }
 
-                    // --- FPGA TRANSPORT ---
-                    const fpgaNode = state.graph.nodes.find(n => n.type === 'fpga-basys3');
-                    if (fpgaNode) {
+                    // --- HARDWARE TRANSPORT (FPGA, ARDUINO, ETC) ---
+                    const hardwareNodes = state.graph.nodes.filter(n =>
+                        n.type === 'fpga-basys3' || n.hardware_target === 'arduino-uno'
+                    );
+
+                    if (hardwareNodes.length > 0) {
                         const transport = state.activeTransport;
 
-                        // 1. Collect all inputs (Source of Truth is store)
-                        const inputPins = [
-                            ...Array.from({ length: 16 }, (_, i) => `SW${i}`),
-                            ...Array.from({ length: 5 }, (_, i) => `BTN${i}`)
-                        ];
-                        const fpgaInputs: Record<string, 0 | 1> = {};
-                        inputPins.forEach(pinId => {
-                            const key = `${fpgaNode.id}:${pinId}`;
-                            fpgaInputs[pinId] = (state.simulation.pinStates[key] ?? 0) as 0 | 1;
-                        });
+                        // 1. Collect and Push Interactions (User -> Hardware)
+                        // This already happens implicitly via setUserPinState, but we ensure 
+                        // any active hardware node gets updated if the transport supports it.
+                        // (Most transport implementations for bridge are per-target).
 
-                        // 2. Refresh/Tick Transport
-                        if (transport instanceof SimTransport) {
-                            transport.tickWithInputs(fpgaInputs);
-                        } else {
-                            // Bridge: we push inputs to ensure board matches UI switches
-                            Object.entries(fpgaInputs).forEach(([pinId, val]) => {
-                                transport.pushInteraction(fpgaNode.id, pinId, val);
-                            });
-                        }
+                        // 2. Poll for Hardware Outputs (Hardware -> Store)
+                        // poll() returns coalesced diffs since last tick.
+                        const hardwareOutputs = transport.poll();
 
-                        // 3. Poll for outputs
-                        const fpgaOutputs = transport.poll();
-
-                        // 4. Apply back to Store
-                        Object.entries(fpgaOutputs).forEach(([key, value]) => {
+                        // 3. Apply normalized diffs to Store
+                        Object.entries(hardwareOutputs).forEach(([key, value]) => {
                             if (state.simulation.pinStates[key] !== value) {
+                                // Deterministic Coalescence: last-poll-wins, committed to this tick
                                 const expanded = propagatePinDiffs(state.graph, state.simulation.pinStates, { [key]: value });
                                 Object.assign(diffs, expanded);
                             }
@@ -799,7 +789,13 @@ export const useLabStore = create<LabStoreState>()(
 
                     // Create new
                     if (type === 'bridge') {
-                        state.activeTransport = new BridgeTransport();
+                        const router = new TransportRouter();
+                        // Arduino Uno on COM8 (deviceId: 'uno')
+                        router.addTransport('uno', new BridgeTransport('http://localhost:4242', 'uno'));
+                        // Basys 3 on COM7 (deviceId: 'basys3')
+                        router.addTransport('basys3', new BridgeTransport('http://localhost:4242', 'basys3'));
+
+                        state.activeTransport = router;
                     } else {
                         state.activeTransport = new SimTransport();
                         // Restore Preset

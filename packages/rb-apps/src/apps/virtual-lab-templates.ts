@@ -145,5 +145,100 @@ export const VIRTUAL_LAB_TEMPLATES: LabTemplate[] = [
         hint: 'Use Serial.println(\"ON\") and Serial.println(\"OFF\").'
       }
     ]
+  },
+  {
+    template_version: 'virtual-lab.v1',
+    lab_id: 'hardware_lab_blink',
+    lab_version: '1.0.0',
+    name: 'Hardware Blink (UNO)',
+    summary: 'Flash and monitor a real Arduino UNO blink cycle.',
+    hardware_target: 'arduino-uno',
+    firmware_path: './labs/arduino/blink.ino',
+    required_parts: [
+      { type: 'arduino-uno', min: 1, max: 1 }
+    ],
+    required_nets: [],
+    behavior_checks: [
+      {
+        id: 'blink_d13',
+        type: 'blink',
+        pin: { part: 'arduino-uno', pins: ['D13'] },
+        period_ticks: 40,
+        tolerance_ticks: 6,
+        min_cycles: 3,
+        hint: 'Flash blink.ino using the terminal.'
+      }
+    ]
+  },
+  {
+    template_version: 'virtual-lab.v1',
+    lab_id: 'hardware_lab_bridge',
+    lab_version: '1.0.0',
+    name: 'Hardware Bridge (Button-LED)',
+    summary: 'Use a physical button on D2 to drive an external LED on D12.',
+    hardware_target: 'arduino-uno',
+    firmware_path: './labs/arduino/interactive_bridge.ino',
+    required_parts: [
+      { type: 'arduino-uno', min: 1, max: 1 },
+      { type: 'button-momentary', min: 1, max: 1 },
+      { type: 'led-5mm', min: 1, max: 1 }
+    ],
+    required_nets: [
+      {
+        id: 'btn_input',
+        label: 'Button to D2',
+        pins: [{ part: 'arduino-uno', pins: ['D2'] }, { part: 'button-momentary', pins: ['p1'] }]
+      },
+      {
+        id: 'led_output',
+        label: 'LED via Resistor to D12',
+        pins: [{ part: 'arduino-uno', pins: ['D12'] }, { part: 'led-5mm', pins: ['anode'] }]
+      }
+    ],
+    behavior_checks: [
+      {
+        id: 'btn_interaction',
+        type: 'digital_level',
+        pin: { part: 'arduino-uno', pins: ['D2'] },
+        value: 0,
+        hint: 'Press the physical button.'
+      }
+    ]
+  },
+  {
+    template_version: 'virtual-lab.v1',
+    lab_id: 'hardware_lab_analog',
+    lab_version: '1.0.0',
+    name: 'Hardware Analog Monitor',
+    summary: 'Monitor and graph A0 analog input from real hardware.',
+    hardware_target: 'arduino-uno',
+    firmware_path: './labs/arduino/analog_monitor.ino',
+    required_parts: [
+      { type: 'arduino-uno', min: 1, max: 1 }
+    ],
+    required_nets: [],
+    behavior_checks: []
+  },
+  {
+    template_version: 'virtual-lab.v1',
+    lab_id: 'hardware_lab_xor_hil',
+    lab_version: '1.0.0',
+    name: 'XOR Logic Bridge (HIL)',
+    summary: 'Implement XOR logic in hardware and drive inputs from RedByte.',
+    hardware_target: 'arduino-uno',
+    firmware_path: './labs/arduino/xor_logic.ino',
+    required_parts: [
+      { type: 'arduino-uno', min: 1, max: 1 }
+    ],
+    required_nets: [],
+    behavior_checks: [
+      {
+        id: 'xor_verification',
+        type: 'digital_level',
+        pin: { part: 'arduino-uno', pins: ['D10'] },
+        value: 1,
+        hint: 'The Arduino XORs D8 and D9. Set D8=1, D9=0 to verify.'
+      }
+    ]
   }
 ];

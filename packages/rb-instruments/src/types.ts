@@ -22,4 +22,4 @@ export interface SignalSource {
   clearSerialLog?: () => void;
 }
 
-export type InstrumentId = 'net-inspector' | 'scope' | 'probe' | 'serial';
+export type InstrumentId = 'net-inspector' | 'scope' | 'probe' | 'serial' | 'hardware';

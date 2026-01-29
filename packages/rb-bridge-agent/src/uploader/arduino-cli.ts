@@ -17,6 +17,18 @@ export interface UploadResult {
 
 export class ArduinoCliUploader {
     /**
+     * Resolve the arduino-cli path based on the contract:
+     * 1. RED_BYTE_ARDUINO_CLI env var
+     * 2. PATH
+     */
+    private async getCliPath(): Promise<string> {
+        if (process.env.RED_BYTE_ARDUINO_CLI) {
+            return process.env.RED_BYTE_ARDUINO_CLI;
+        }
+        return 'arduino-cli';
+    }
+
+    /**
      * Compile and upload a sketch to the specified board.
      */
     async upload(
@@ -25,6 +37,7 @@ export class ArduinoCliUploader {
         fqbn: string,
         compileOnly: boolean = false
     ): Promise<UploadResult> {
+        const cli = await this.getCliPath();
         // 1. Calculate Hash
         const hash = crypto.createHash('sha256').update(sketchText).digest('hex');
 
@@ -41,9 +54,18 @@ export class ArduinoCliUploader {
             // 3. Compile
             // Note: arduino-cli must be in PATH
             try {
-                await execAsync(`arduino-cli compile --fqbn ${fqbn} "${sketchDir}"`);
+                await execAsync(`"${cli}" compile --fqbn ${fqbn} "${sketchDir}"`);
             } catch (err: any) {
-                return { ok: false, error: 'COMPILE_ERROR', message: err.stderr || err.message };
+                const msg = err.stderr || err.message || '';
+                if (msg.includes('not found') || msg.includes('is not recognized')) {
+                    const resolved = await this.getCliPath();
+                    return {
+                        ok: false,
+                        error: 'NOT_SUPPORTED',
+                        message: `arduino-cli not found. Resolved path: "${resolved}".\n\nTo fix:\n1. Install arduino-cli\n2. Add to PATH or set RED_BYTE_ARDUINO_CLI env var.`
+                    };
+                }
+                return { ok: false, error: 'COMPILE_ERROR', message: msg };
             }
 
             if (compileOnly) {
@@ -52,9 +74,18 @@ export class ArduinoCliUploader {
 
             // 4. Upload
             try {
-                await execAsync(`arduino-cli upload -p ${port} --fqbn ${fqbn} "${sketchDir}"`);
+                await execAsync(`"${cli}" upload -p ${port} --fqbn ${fqbn} "${sketchDir}"`);
             } catch (err: any) {
-                return { ok: false, error: 'UPLOAD_ERROR', message: err.stderr || err.message };
+                const msg = err.stderr || err.message || '';
+                if (msg.includes('not found') || msg.includes('is not recognized')) {
+                    const resolved = await this.getCliPath();
+                    return {
+                        ok: false,
+                        error: 'NOT_SUPPORTED',
+                        message: `arduino-cli not found. Resolved path: "${resolved}".`
+                    };
+                }
+                return { ok: false, error: 'UPLOAD_ERROR', message: msg };
             }
 
             return { ok: true, sketchSha256: hash, message: 'Uploaded successfully.' };
@@ -79,7 +110,8 @@ export class ArduinoCliUploader {
      */
     async isAvailable(): Promise<boolean> {
         try {
-            await execAsync('arduino-cli version');
+            const cli = await this.getCliPath();
+            await execAsync(`"${cli}" version`);
             return true;
         } catch {
             return false;

@@ -21,4 +21,6 @@ export * from './lab-model/labTemplate';
 export * from './lab-model/labEvaluator';
 export * from './lab-model/netlist';
 export * from './lab-model/sketchEngine';
+export { TransportRouter } from './lab-model/transport/transport-router';
+export { BridgeTransport } from './lab-model/transport/bridge-transport';
 export { Rb3DSceneLab } from './components/Rb3DSceneLab';

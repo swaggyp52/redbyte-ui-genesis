@@ -7,8 +7,10 @@ import {
 } from './bridge-protocol';
 
 export class BridgeTransport implements LabTransport {
+    public readonly type = 'bridge';
     private ws: WebSocket | null = null;
     private connected: boolean = false;
+    private isVerified: boolean = false;
     private msgId: number = 0;
     private pendingResponses: Map<number, (payload: any) => void> = new Map();
     private lastPollOutputs: Record<string, number> = {};
@@ -18,9 +20,13 @@ export class BridgeTransport implements LabTransport {
     private error: string | undefined = undefined;
     private url: string;
     private options: any = { target: 'basys3' };
+    private reconnectAttempts: number = 0;
+    private deviceId: string;
 
-    constructor(url: string = 'ws://localhost:4242/ws') {
-        this.url = url;
+    constructor(baseUrl: string = 'http://localhost:4242', deviceId: string = 'default') {
+        const wsBase = baseUrl.replace(/^http/, 'ws');
+        this.url = `${wsBase}/ws`;
+        this.deviceId = deviceId;
     }
 
     async connect(options?: { target: 'basys3' | 'arduino-uno', port?: string, baud?: number }): Promise<void> {
@@ -39,6 +45,7 @@ export class BridgeTransport implements LabTransport {
                 // Send initial CONNECT with target/options
                 this.sendRequest('CONNECT', this.options).then((payload) => {
                     console.log('[Bridge] Handshake OK:', payload);
+                    this.reconnectAttempts = 0; // Reset on success
                     // Start polling
                     this.startPolling();
                     resolve();
@@ -84,9 +91,18 @@ export class BridgeTransport implements LabTransport {
 
     private handleDisconnect() {
         this.connected = false;
+        this.isVerified = false;
         this.stopPolling();
-        if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
-        this.reconnectTimeout = setTimeout(() => this.connect(this.options), 5000);
+        if (this.reconnectTimeout) return; // Already scheduled
+
+        const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+        this.reconnectAttempts++;
+
+        console.log(`[Bridge] Disconnected. Reconnecting in ${delay}ms...`);
+        this.reconnectTimeout = setTimeout(() => {
+            this.reconnectTimeout = null;
+            this.connect(this.options);
+        }, delay);
     }
 
     private startPolling() {
@@ -110,6 +126,7 @@ export class BridgeTransport implements LabTransport {
         this.stopPolling();
         if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
         this.connected = false;
+        this.isVerified = false;
         if (this.ws) {
             this.ws.close();
             this.ws = null;
@@ -120,6 +137,7 @@ export class BridgeTransport implements LabTransport {
         return {
             type: 'bridge',
             connected: this.connected,
+            deviceVerified: this.isVerified,
             error: this.error
         };
     }
@@ -140,13 +158,34 @@ export class BridgeTransport implements LabTransport {
     }
 
     async uploadSketch(payload: any): Promise<any> {
-        if (!this.connected) throw new Error('Not connected to bridge agent');
+        if (!this.connected) return { ok: false, message: 'Not connected to bridge agent' };
         return this.sendRequest('UPLOAD_SKETCH', payload);
     }
 
     async listDevices(): Promise<any> {
-        if (!this.connected) throw new Error('Not connected to bridge agent');
-        return this.sendRequest('LIST_DEVICES');
+        try {
+            const httpUrl = this.url.replace('/ws', '').replace(/^ws/, 'http');
+            const res = await fetch(`${httpUrl}/devices`);
+            if (res.ok) {
+                const data = await res.json();
+                return data.devices || [];
+            }
+        } catch (e) {
+            console.warn('[Bridge] HTTP device discovery failed, falling back to WS', e);
+        }
+
+        if (!this.connected) return [];
+        const res = await this.sendRequest('LIST_DEVICES');
+        return res?.devices || [];
+    }
+
+    async verifyDevice(): Promise<any> {
+        if (!this.connected) return { verified: false, error: 'Not connected to bridge agent' };
+        const result = await this.sendRequest('VERIFY_DEVICE');
+        if (result?.verified) {
+            this.isVerified = true;
+        }
+        return result;
     }
 
     poll(): Record<string, number> {
@@ -159,6 +198,7 @@ export class BridgeTransport implements LabTransport {
             v: BRIDGE_PROTOCOL_VERSION,
             id: ++this.msgId,
             type,
+            deviceId: this.deviceId,
             payload
         };
         this.ws.send(JSON.stringify(msg));
@@ -177,6 +217,7 @@ export class BridgeTransport implements LabTransport {
                 v: BRIDGE_PROTOCOL_VERSION,
                 id,
                 type,
+                deviceId: this.deviceId,
                 payload
             };
             this.ws.send(JSON.stringify(msg));

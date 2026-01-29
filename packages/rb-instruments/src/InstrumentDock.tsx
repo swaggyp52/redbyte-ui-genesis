@@ -12,6 +12,7 @@ interface InstrumentDockProps {
   selectedSignalId?: string | null;
   onSelectSignalId?: (id: string | null) => void;
   defaultInstrumentId?: InstrumentId;
+  hardwarePanel?: React.ReactNode;
 }
 
 const instruments: Array<{ id: InstrumentId; label: string }> = [
@@ -19,6 +20,7 @@ const instruments: Array<{ id: InstrumentId; label: string }> = [
   { id: 'scope', label: 'Scope' },
   { id: 'probe', label: 'Probe' },
   { id: 'serial', label: 'Serial' },
+  { id: 'hardware', label: 'Hardware' },
 ];
 
 export const InstrumentDock: React.FC<InstrumentDockProps> = ({
@@ -27,6 +29,7 @@ export const InstrumentDock: React.FC<InstrumentDockProps> = ({
   selectedSignalId,
   onSelectSignalId,
   defaultInstrumentId,
+  hardwarePanel,
 }) => {
   const activeInstrumentId = useInstrumentState((state) => state.activeInstrumentId);
   const setActiveInstrumentId = useInstrumentState((state) => state.setActiveInstrumentId);
@@ -45,11 +48,10 @@ export const InstrumentDock: React.FC<InstrumentDockProps> = ({
           <button
             key={instrument.id}
             onClick={() => setActiveInstrumentId(instrument.id)}
-            className={`px-2 py-1 text-[10px] rounded border ${
-              currentInstrument === instrument.id
-                ? 'border-blue-400 text-blue-200 bg-blue-900/30'
-                : 'border-gray-800 text-gray-400 hover:text-blue-200'
-            }`}
+            className={`px-2 py-1 text-[10px] rounded border ${currentInstrument === instrument.id
+              ? 'border-blue-400 text-blue-200 bg-blue-900/30'
+              : 'border-gray-800 text-gray-400 hover:text-blue-200'
+              }`}
           >
             {instrument.label}
           </button>
@@ -82,6 +84,7 @@ export const InstrumentDock: React.FC<InstrumentDockProps> = ({
         {currentInstrument === 'serial' && (
           <SerialPanel signalSource={signalSource} />
         )}
+        {currentInstrument === 'hardware' && hardwarePanel}
       </div>
     </div>
   );

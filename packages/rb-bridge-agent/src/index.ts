@@ -15,6 +15,7 @@ import {
 } from './protocol.js';
 import { MockBasys3Backend } from './backends/mock-basys3.js';
 import { ArduinoUnoBackend } from './backends/arduino-uno.js';
+import { Basys3Backend } from './backends/basys3.js';
 import { ArduinoCliUploader } from './uploader/arduino-cli.js';
 
 const PORT = 4242;
@@ -27,13 +28,38 @@ app.get('/health', (req: Request, res: Response) => {
     res.json({ status: 'ok', version: BRIDGE_PROTOCOL_VERSION });
 });
 
+// Device discovery
+app.get('/devices', async (req: Request, res: Response) => {
+    try {
+        const ports = await SerialPort.list();
+        const devices = ports.map(p => {
+            let target: 'arduino-uno' | 'basys3' | 'unknown' = 'unknown';
+            if (p.productId === '0043' || (p.manufacturer && p.manufacturer.includes('Arduino'))) {
+                target = 'arduino-uno';
+            } else if (p.manufacturer && (p.manufacturer.includes('FTDI') || p.manufacturer.includes('Digilent'))) {
+                target = 'basys3';
+            }
+
+            return {
+                target,
+                port: p.path,
+                manufacturer: p.manufacturer,
+                deviceId: target === 'unknown' ? undefined : (target === 'arduino-uno' ? 'uno' : 'basys3')
+            };
+        });
+        res.json({ devices });
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 const server = app.listen(PORT, () => {
     console.log(`[Bridge Agent] Listening on http://localhost:${PORT}`);
 });
 
 const wss = new WebSocketServer({ server, path: '/ws' });
 
-let activeBackend: any = new MockBasys3Backend();
+const backends = new Map<string, any>();
 
 wss.on('connection', (ws: WebSocket) => {
     console.log('[Bridge Agent] Client connected via WebSocket');
@@ -47,6 +73,9 @@ wss.on('connection', (ws: WebSocket) => {
                 return;
             }
 
+            const deviceId = msg.deviceId || 'default';
+            const activeBackend = backends.get(deviceId);
+
             switch (msg.type) {
                 case 'PING':
                     sendResponse(ws, msg.id, 'PONG');
@@ -54,23 +83,32 @@ wss.on('connection', (ws: WebSocket) => {
 
                 case 'CONNECT': {
                     const payload = msg.payload as ConnectPayload;
-                    console.log(`[Bridge Agent] Connect request for target: ${payload.target}`);
+                    console.log(`[Bridge Agent] Connect request for target: ${payload.target} on ${deviceId}`);
 
                     try {
-                        if (activeBackend && typeof activeBackend.disconnect === 'function') {
-                            await activeBackend.disconnect();
+                        const existing = backends.get(deviceId);
+                        if (existing && typeof existing.disconnect === 'function') {
+                            await existing.disconnect();
                         }
 
+                        let backend: any;
                         if (payload.target === 'arduino-uno' || payload.target === 'arduino-nano') {
-                            activeBackend = new ArduinoUnoBackend({
+                            backend = new ArduinoUnoBackend({
                                 port: payload.port || 'COM6',
                                 baud: payload.baud || 115200
                             });
-                            await activeBackend.connect();
+                            await backend.connect();
+                        } else if (payload.target === 'basys3') {
+                            backend = new Basys3Backend({
+                                port: payload.port || 'COM7',
+                                baud: payload.baud || 115200
+                            });
+                            await backend.connect();
                         } else {
-                            activeBackend = new MockBasys3Backend();
+                            backend = new MockBasys3Backend();
                         }
 
+                        backends.set(deviceId, backend);
                         sendResponse(ws, msg.id, 'CONNECT_OK', { target: payload.target });
                     } catch (err: any) {
                         sendResponse(ws, msg.id, 'CONNECT_ERR', { message: err.message });
@@ -87,7 +125,7 @@ wss.on('connection', (ws: WebSocket) => {
                 case 'GET_PINS':
                     if (activeBackend) {
                         const pins = await activeBackend.getPins();
-                        sendResponse(ws, msg.id, 'GET_PINS_OK', { pins });
+                        sendResponse(ws, msg.id, 'GET_PINS_OK', { deviceId, pins });
                     }
                     break;
 
@@ -133,7 +171,8 @@ wss.on('connection', (ws: WebSocket) => {
                     try {
                         const ports = await SerialPort.list();
                         const devices = ports.map(p => ({
-                            target: p.productId === '0043' || p.manufacturer?.includes('Arduino') ? 'arduino-uno' : 'unknown',
+                            target: p.productId === '0043' || (p.manufacturer && p.manufacturer.includes('Arduino')) ? 'arduino-uno' :
+                                (p.manufacturer && p.manufacturer.includes('FTDI')) ? 'basys3' : 'unknown',
                             port: p.path,
                             manufacturer: p.manufacturer
                         }));
@@ -144,11 +183,22 @@ wss.on('connection', (ws: WebSocket) => {
                     break;
                 }
 
+                case 'VERIFY_DEVICE': {
+                    if (activeBackend && typeof activeBackend.verify === 'function') {
+                        const result = await activeBackend.verify();
+                        sendResponse(ws, msg.id, 'VERIFY_DEVICE_OK', result);
+                    } else {
+                        sendResponse(ws, msg.id, 'ERROR', { message: 'Active backend does not support verification' });
+                    }
+                    break;
+                }
+
                 case 'DISCONNECT':
-                    console.log('[Bridge Agent] Client requested disconnect');
+                    console.log(`[Bridge Agent] Client requested disconnect for ${deviceId}`);
                     if (activeBackend && typeof activeBackend.disconnect === 'function') {
                         await activeBackend.disconnect();
                     }
+                    backends.delete(deviceId);
                     sendResponse(ws, msg.id, 'PONG'); // Simple ACK
                     break;
 

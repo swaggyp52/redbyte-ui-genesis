@@ -24,6 +24,7 @@ export interface LabNode {
         rotation: Quaternion;
     };
     properties: Record<string, any>; // value: "10k", color: "red"
+    hardware_target?: string; // e.g., "arduino-uno"
 }
 
 export interface LabWire {
@@ -108,6 +109,13 @@ export interface LabCapsuleMeta {
     labTemplateId?: string;
     labTemplateHash?: string;
     labSessionId?: string;
+    transportMode?: 'sim' | 'hardware';
+    hardware?: {
+        board: string;
+        port: string;
+        agent: string;
+        verified: boolean;
+    };
 }
 
 export interface LabCapsule {

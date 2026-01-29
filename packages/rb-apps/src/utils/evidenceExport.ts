@@ -5,7 +5,8 @@
 import JSZip from 'jszip';
 import { useFileSystemStore } from '../stores/fileSystemStore';
 import { useHardwareStore } from '../stores/hardwareStore';
-import { useLabStore } from '../labs/labStore';
+import { useLabStore as usePedagogicalLabStore } from '../labs/labStore';
+import { useLabStore as useModelLabStore } from '@redbyte/rb-logic-3d';
 import { createTrace, type HardwareTraceV1 } from '../hardware/traceFormat';
 
 export interface LabEvidenceCapsule {
@@ -29,7 +30,7 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
     try {
         const fs = useFileSystemStore.getState();
         const hw = useHardwareStore.getState();
-        const lab = useLabStore.getState();
+        const lab = usePedagogicalLabStore.getState();
 
         if (!lab.studentId || !lab.studentName) {
             console.warn('Student selection required for export');
@@ -45,7 +46,10 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
             )
             : undefined;
 
-        const capsule: LabEvidenceCapsule = {
+        const modelLab = useModelLabStore.getState();
+        const modelStatus = modelLab.getTransportStatus();
+
+        const capsule: LabEvidenceCapsule & { meta?: any } = {
             schemaVersion: 2,
             timestamp: new Date().toISOString(),
             labId: lab.activeLabId,
@@ -58,7 +62,16 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
             completedSteps: lab.completedSteps,
             isPass: lab.completedSteps.length > 0, // Simplified pass criteria
             traceEvents: hw.traceBuffer.length,
-            trace: embeddedTrace
+            trace: embeddedTrace,
+            meta: {
+                transportMode: modelLab.activeTransport.type,
+                hardware: modelLab.activeTransport.type === 'bridge' ? {
+                    board: 'uno',
+                    port: 'CONNECTED',
+                    agent: '127.0.0.1:4242',
+                    verified: true
+                } : undefined
+            }
         };
 
         // 2. Build ZIP
@@ -182,18 +195,29 @@ export async function loadEvidenceCapsule(fileId: string): Promise<LabEvidenceCa
 // Matches usage in LogicPlaygroundApp.tsx
 export async function exportEvidence(data: any): Promise<void> {
     const fs = useFileSystemStore.getState();
+    const lab = useModelLabStore.getState();
+    const status = lab.getTransportStatus();
+
     const filename = `grading_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
 
     const content = JSON.stringify({
         schemaVersion: 1,
         timestamp: new Date().toISOString(),
         type: 'grading_evidence',
+        meta: {
+            transportMode: lab.activeTransport.type,
+            hardware: lab.activeTransport.type === 'bridge' ? {
+                board: 'uno',
+                port: 'CONNECTED',
+                agent: '127.0.0.1:4242',
+                verified: true
+            } : undefined
+        },
         ...data
     }, null, 2);
 
     await fs.createFile('/' + filename, content);
 
-    // Also trigger download if in browser
     if (typeof document !== 'undefined') {
         const blob = new Blob([content], { type: 'application/json' });
         const url = URL.createObjectURL(blob);

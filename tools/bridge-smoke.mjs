@@ -40,9 +40,9 @@ const DURATION = parseInt(args.find(a => a.startsWith('--duration='))?.split('='
 
 // Bridge endpoints
 const HTTP_PORT = MOCK_MODE ? 3002 : 4242;
-const WS_PORT = 4243;
+const WS_PORT = 4242;
 const BASE_URL = `http://127.0.0.1:${HTTP_PORT}`;
-const WS_URL = `ws://127.0.0.1:${WS_PORT}`;
+const WS_URL = `ws://127.0.0.1:${WS_PORT}/ws`;
 
 // Console colors
 const colors = {
@@ -171,8 +171,8 @@ async function testProductionBridgeSSE(device, runId) {
 
   async function cleanup() {
     log('info', 'Cleaning up...');
-    try { await httpRequest('POST', '/stop'); } catch {}
-    try { await httpRequest('POST', '/disconnect'); } catch {}
+    try { await httpRequest('POST', '/stop'); } catch { }
+    try { await httpRequest('POST', '/disconnect'); } catch { }
   }
 
   function printSummary(count) {
@@ -194,7 +194,7 @@ async function testProductionBridge() {
   // Step 1: Health check
   log('info', 'Step 1: Health check...');
   try {
-    const health = await httpRequest('GET', '/api/health');
+    const health = await httpRequest('GET', '/health');
     if (health.status !== 200) throw new Error(`Health check failed: ${health.status}`);
     log('ok', `Bridge healthy: version=${health.data.version || 'unknown'}, backend=${health.data.backend || 'unknown'}`);
   } catch (err) {
@@ -207,51 +207,29 @@ async function testProductionBridge() {
   log('info', 'Step 2: Device discovery...');
   let devices;
   try {
-    const resp = await httpRequest('GET', '/api/devices');
-    devices = resp.data?.devices || resp.data || [];
-    if (!Array.isArray(devices)) devices = [devices];
+    const resp = await httpRequest('GET', '/devices');
+    devices = resp.data?.devices || [];
     log('ok', `Found ${devices.length} device(s)`);
     devices.forEach((d, i) => {
-      log('data', `  [${i}] ${d.display_name || d.name || d.id} (${d.model_id || d.board || 'unknown'}) - ${d.runtime?.status || d.status || 'unknown'}`);
+      log('data', `  [${i}] ${d.deviceId || 'unknown'} (${d.target}) - ${d.port} [${d.manufacturer || '?'}]`);
     });
   } catch (err) {
     log('error', `Device discovery failed: ${err.message}`);
     return false;
   }
 
-  if (devices.length === 0) {
-    log('warn', 'No devices found. Is a board connected?');
+  const validDevices = devices.filter(d => d.deviceId);
+  if (validDevices.length === 0) {
+    log('warn', 'No valid devices found. Is a board connected?');
     return false;
   }
 
-  // Step 3: Connect to first device
-  const device = devices[0];
-  log('info', `Step 3: Connecting to ${device.display_name || device.id}...`);
-  try {
-    const resp = await httpRequest('POST', '/connect', { deviceId: device.id });
-    if (resp.status !== 200 && !resp.data?.ok) {
-      throw new Error(resp.data?.error || `Status ${resp.status}`);
-    }
-    log('ok', 'Connected to device');
-  } catch (err) {
-    log('error', `Connection failed: ${err.message}`);
-    return false;
-  }
+  // Step 3: Select and Connect via WebSocket (handled in Step 5)
+  const device = validDevices[0];
+  log('info', `Targeting device: ${device.deviceId} on ${device.port}`);
 
-  // Step 4: Start a run
-  log('info', 'Step 4: Starting run...');
-  let runId;
-  try {
-    const resp = await httpRequest('POST', '/run', {
-      device_id: device.id,
-      board_model_id: device.model_id || 'basys3',
-      mode: device.transport === 'sim' ? 'sim' : 'hardware',
-    });
-    runId = resp.data?.run_id;
-    log('ok', `Run started: ${runId || 'OK'}`);
-  } catch (err) {
-    log('warn', `Run start failed (may already be running): ${err.message}`);
-  }
+  // Step 4: Skip legacy HTTP run/stop - using WebSocket protocol instead
+  log('info', 'Step 4: Using WebSocket-only protocol for connectivity...');
 
   // Step 5: Subscribe to WebSocket for io:update events
   log('info', `Step 5: Subscribing to WebSocket at ${WS_URL}...`);
@@ -268,6 +246,8 @@ async function testProductionBridge() {
 
   return new Promise((resolve) => {
     const ws = new WS(WS_URL);
+    let connected = false;
+
     const timeout = setTimeout(() => {
       log('info', `Duration ${DURATION}ms elapsed, closing...`);
       ws.close();
@@ -275,29 +255,38 @@ async function testProductionBridge() {
 
     ws.on('open', () => {
       log('ok', 'WebSocket connected');
+      // Step 5a: Send CONNECT message
+      const connectMsg = {
+        v: 'rb-bridge.v1',
+        id: 1,
+        type: 'CONNECT',
+        deviceId: device.deviceId,
+        payload: { target: device.target, port: device.port }
+      };
+      ws.send(JSON.stringify(connectMsg));
+      log('info', `Sent CONNECT for ${device.deviceId}`);
     });
 
     ws.on('message', (data) => {
       try {
         const msg = JSON.parse(data.toString());
-        if (msg.type === 'io:update' || msg.SW !== undefined) {
+        if (msg.type === 'CONNECT_OK') {
+          connected = true;
+          log('ok', `Hardware Connection Verified: ${device.deviceId}`);
+        } else if (msg.type === 'GET_PINS_OK' || msg.type === 'SET_PINS_OK' || msg.payload?.pins) {
           sampleCount++;
-          const tick = msg.tick ?? msg.TICK ?? sampleCount;
-          const sw = msg.changes?.SW || msg.SW || '?';
-          const btn = msg.changes?.BTN || msg.BTN || '?';
-          const led = msg.changes?.LED || msg.LED || '?';
+          const pins = msg.payload?.pins || msg.pins || {};
+          const pinSummary = Object.entries(pins).map(([k, v]) => `${k}=${v}`).join(' ');
 
-          // Only log if SW or LED changed
-          if (sw !== lastSW || led !== lastLED) {
-            log('data', `TICK=${String(tick).padStart(5)} SW=${sw} BTN=${btn} LED=${led}`);
-            lastSW = sw;
-            lastLED = led;
+          if (pinSummary !== lastSW) { // Using lastSW as lastSummary
+            log('data', `TICK=${String(sampleCount).padStart(5)} ${pinSummary}`);
+            lastSW = pinSummary;
           }
-        } else if (msg.type === 'status') {
-          log('data', `Status: ${msg.state || 'unknown'}`);
+        } else if (msg.type === 'ERROR') {
+          log('error', `Agent reported error: ${msg.payload?.message || 'Unknown'}`);
         }
-      } catch {
-        // Ignore parse errors
+      } catch (err) {
+        log('warn', `Parse error: ${err.message}`);
       }
     });
 

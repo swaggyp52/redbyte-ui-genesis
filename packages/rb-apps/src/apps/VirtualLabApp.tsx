@@ -16,12 +16,13 @@ import {
     fingerprintLabTemplate,
     resolveSelectorPins,
 } from '@redbyte/rb-logic-3d';
-import { InstrumentDock } from '@redbyte/rb-instruments';
+import { InstrumentDock, useInstrumentState } from '@redbyte/rb-instruments';
 import type { RedByteApp } from '../types';
 import { useFileSystemStore } from '../stores/fileSystemStore';
 import { VIRTUAL_LAB_TEMPLATES } from './virtual-lab-templates';
 import { useVirtualLabSignalSource } from '../instruments/virtualLabSignalSource';
-import { FpgaStatusPanel } from '../panels/FpgaStatusPanel';
+import { HardwareRackPanel } from '../panels/HardwareRackPanel';
+import { HardwareStatusOverlay } from '../panels/HardwareStatusOverlay';
 
 const DEFAULT_SKETCH = `void setup() {
   pinMode(13, OUTPUT);
@@ -99,6 +100,19 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
         }
     }, [setSketchSource]);
 
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key.toLowerCase() === 'h' && !(e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement)) {
+                const setActive = useInstrumentState.getState().setActiveInstrumentId;
+                const current = useInstrumentState.getState().activeInstrumentId;
+                setActive(current === 'hardware' ? 'net-inspector' : 'hardware');
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
     useEffect(() => {
         if (!resourceId || resourceType !== 'file') return;
         const file = getFile(resourceId);
@@ -106,7 +120,7 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
         if (!candidate || !candidate.content) return;
         const load = async () => {
             try {
-                const json = JSON.parse(candidate.content);
+                const json = JSON.parse(candidate.content || '{}');
                 const prepared = await prepareCapsule(json);
                 if (prepared) {
                     setPendingCapsule(prepared);
@@ -379,6 +393,7 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                 playbackMode,
                 tick: capsule.lastTick,
                 pinStates: {},
+                partStates: {}, // Fix missing partStates
                 replayScrubTick: capsule.loadedAsReadOnly ? 0 : capsule.lastTick,
                 lastReconstructionMs: 0,
             },
@@ -627,6 +642,7 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                             onChange={(e) => setSelectedTemplateId(e.target.value)}
                             className="w-full bg-[#1a1a1a] border border-gray-700 rounded px-2 py-1 text-xs text-gray-200"
                             disabled={!!labSession}
+                            title="Lab Catalog"
                         >
                             {VIRTUAL_LAB_TEMPLATES.map((template) => (
                                 <option key={template.lab_id} value={template.lab_id}>
@@ -721,7 +737,32 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                     )}
                 </div>
 
-                <FpgaStatusPanel />
+                {/* Giant Mode Watermark */}
+                <div className="absolute top-12 left-1/2 -translate-x-1/2 pointer-events-none select-none opacity-20">
+                    {useLabStore(state => {
+                        const transport = state.activeTransport;
+                        const status = transport.getStatus();
+                        return { type: transport.type, verified: status.deviceVerified };
+                    }).type === 'bridge' ? (
+                        <div className="flex flex-col items-center gap-1">
+                            <span className={`text-[40px] font-black tracking-tighter leading-none ${useLabStore.getState().activeTransport.getStatus().deviceVerified ? 'text-green-500' : 'text-red-500'}`}>
+                                {useLabStore.getState().activeTransport.getStatus().deviceVerified ? 'REAL HARDWARE' : 'HARDWARE (UNVERIFIED)'}
+                            </span>
+                            <div className="flex gap-4">
+                                <span className="text-[10px] font-bold tracking-[0.4em] uppercase text-green-600/60">UNO // COM8</span>
+                                <span className="text-[10px] font-bold tracking-[0.4em] uppercase text-blue-600/60">BASYS3 // COM7</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center">
+                            <span className="text-[60px] font-black tracking-tighter text-blue-500 leading-none">SIMULATION</span>
+                            <span className="text-[12px] font-bold text-blue-600 tracking-[0.4em] uppercase">deterministic-engine // virtual-physics</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Overlay Controls */}
+                <HardwareStatusOverlay />
 
                 {/* Integrity Recovery UI */}
                 {integrityError && (
@@ -842,6 +883,7 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                         readOnly={playbackMode === 'replay' || !!integrityError}
                         className={`h-56 w-full resize-none rounded border border-gray-700 bg-[#111] text-gray-200 font-mono text-xs p-2 focus:outline-none focus:border-blue-500 ${playbackMode === 'replay' || integrityError ? 'opacity-60' : ''}`}
                         spellCheck={false}
+                        title="Sketch Source Code"
                     />
                     <div className="flex items-center justify-between">
                         <button
@@ -1002,12 +1044,18 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                             <div className="text-[10px] text-gray-500">Scope, probe, net inspector, serial</div>
                         </div>
                         <div className="flex-1 min-h-0">
-                            <InstrumentDock
-                                signalSource={signalSource}
-                                currentTick={evaluationTick}
-                                selectedSignalId={selectedSignalId}
-                                onSelectSignalId={handleSelectSignalId}
-                            />
+                            {(() => {
+                                const DockComponent = InstrumentDock as any;
+                                return (
+                                    <DockComponent
+                                        signalSource={signalSource}
+                                        currentTick={evaluationTick}
+                                        selectedSignalId={selectedSignalId}
+                                        onSelectSignalId={handleSelectSignalId}
+                                        hardwarePanel={<HardwareRackPanel />}
+                                    />
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>

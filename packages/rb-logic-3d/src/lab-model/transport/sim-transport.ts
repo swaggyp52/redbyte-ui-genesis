@@ -3,6 +3,7 @@ import { LabTransport, TransportStatus } from './types';
 import { FpgaSimEngine } from '../fpga-sim/engine';
 
 export class SimTransport implements LabTransport {
+    public readonly type = 'sim';
     private engine: FpgaSimEngine;
     private currentNodeId: string | null = null;
     private currentInputs: Record<string, 0 | 1> = {};
