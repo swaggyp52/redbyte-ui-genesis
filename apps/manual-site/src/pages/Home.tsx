@@ -1,200 +1,101 @@
-import { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
-import GuidedTour from '../components/GuidedTour';
-import LogicGatePlayground from '../components/examples/LogicGatePlayground';
+import React from 'react';
+import { Link } from 'react-router-dom';
 
-// Type workaround for React 19 compatibility
-const Link = RouterLink as React.ComponentType<{ to: string; className?: string; children: React.ReactNode }>;
-
-export default function Home() {
-  const [showTour, setShowTour] = useState(false);
-
+const Home = () => {
   return (
-    <div className="bg-rb-bg text-rb-text">
+    <div className="bg-rb-bg text-gray-200">
       {/* Hero Section */}
-      <section className="border-b border-rb-border bg-rb-surface">
-        <div className="content-container px-6 py-20 md:py-28 text-center">
-          <div className="max-w-4xl mx-auto">
-            <h1 className="text-display mb-6 font-bold tracking-tight">
-              Design, Simulate, and Grade Digital Logic – <br className="hidden md:block" />
-              All in the Browser.
-            </h1>
-            <p className="text-xl text-rb-muted mb-10 leading-relaxed max-w-2xl mx-auto">
-              RedByte is a local-first logic playground that lets you build real-time circuits,
-              view waveforms instantly, and explore the principles of digital logic directly in your browser.
-            </p>
-
-            <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
-              <Link to="/manual/playground" className="btn btn-primary text-lg px-8 py-3">
-                Open Playground
-              </Link>
-              <Link to="/docs" className="btn btn-secondary text-lg px-8 py-3">
-                Read the Docs
-              </Link>
-            </div>
-
-            <div className="text-sm text-rb-dim">
-              Open source. Local-first. Deterministic execution.
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Why RedByte Matters */}
-      <section className="py-16 border-b border-rb-border">
-        <div className="content-container px-6">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-h2 mb-4">Why RedByte Matters</h2>
-            <p className="text-lg text-rb-muted leading-relaxed">
-              Traditional logic labs require clunky installed software or fragile hardware setups.
-              RedByte runs entirely in the browser with <strong>zero setup</strong>. Students get
-              <strong>immediate feedback</strong> through a live oscilloscope, and instructors get
-              <strong>reproducible labs</strong> with deterministic grading evidence.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Audience Segments */}
-      <section className="py-20 border-b border-rb-border bg-rb-bg-alt">
-        <div className="content-container px-6">
-          <h2 className="text-h2 text-center mb-12">Who It's For</h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            <AudienceCard
-              title="Students"
-              icon="🎓"
-              description="Quickly prototype and test logic circuits. Drag-and-drop components, instant wire routing, and a guided 'Start Here' tutorial to master the basics without friction."
-              link="/docs#students"
-              linkText="Start Learning"
-            />
-            <AudienceCard
-              title="Instructors"
-              icon="👩‍🏫"
-              description="Provide structured labs and grade automatically. The Evidence Export feature produces a deterministic JSON snapshot of student work, including circuit state and waveforms."
-              link="/docs#instructors"
-              linkText="Instructor Guide"
-            />
-            <AudienceCard
-              title="Engineers"
-              icon="🛠️"
-              description="Experiment with custom logic modules. Use the TypeScript API to extend the component library or embed the sandboxed environment into your own documentation."
-              link="/docs#developers"
-              linkText="View API"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Core Features */}
-      <section className="py-20 border-b border-rb-border">
-        <div className="content-container px-6">
-          <div className="mb-12 text-center">
-            <h2 className="text-h2 mb-4">What Actually Ships</h2>
-            <p className="text-rb-muted max-w-2xl mx-auto">
-              No future promises or marketing fluff. These features are live in the codebase today.
-            </p>
+      <div className="relative overflow-hidden bg-gradient-to-b from-[#1a1a1a] to-[#111] pt-20 pb-32 border-b border-gray-800">
+        <div className="container mx-auto px-6 text-center max-w-4xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-900/30 border border-blue-700/50 text-blue-400 text-xs font-bold uppercase tracking-wider mb-8">
+            <span className="animate-pulse">●</span> RedByte OS Genesis
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <FeatureCard
-              title="Component Palette"
-              description="Full library of logic gates, flip-flops, multiplexers, and I/O components. Drag and drop directly onto the canvas."
-              status="Shipped"
-            />
-            <FeatureCard
-              title="Live Oscilloscope"
-              description="Real-time waveform display with probe selection. Sampling is tick-accurate for precise timing analysis."
-              status="Shipped"
-            />
-            <FeatureCard
-              title="Start-Here Tutorial"
-              description="Integrated first-time user experience with a guided D-Flip-Flop example and step-by-step instructions."
-              status="Shipped"
-            />
-            <FeatureCard
-              title="Lab Evidence Export"
-              description="One-click generation of a deterministic JSON file containing circuit topology, probe data, and trace metadata."
-              status="Shipped"
-            />
-            <FeatureCard
-              title="Keyboard Shortcuts"
-              description="Rapidly switch between Schematic, Logic, and Oscilloscope views using the Perspective system (keys 1-3)."
-              status="Shipped"
-            />
-            <FeatureCard
-              title="Resilient Loading"
-              description="Robust example loading with schema validation. Prevents partial state mutation and provides clear UI feedback."
-              status="Shipped"
-            />
-          </div>
-        </div>
-      </section>
+          <h1 className="text-6xl md:text-7xl font-black tracking-tighter text-white mb-6 leading-tight">
+            The OS for <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-indigo-500">Hardware Labs</span>
+          </h1>
 
-      {/* Live Demo Preview */}
-      <section className="py-20 border-b border-rb-border bg-rb-surface">
-        <div className="content-container px-6">
-          <div className="mb-8 text-center">
-            <h2 className="text-h2 mb-4">Try It Live</h2>
-            <p className="text-rb-muted max-w-2xl mx-auto">
-              Interact with a running simulation right here. Toggle the inputs and watch the logic update instantly.
-            </p>
-          </div>
-          <div className="bg-rb-bg border border-rb-border rounded-lg p-6 shadow-sm">
-            <LogicGatePlayground />
-          </div>
-          <div className="mt-8 text-center">
-            <Link to="/manual/playground" className="btn btn-outline">
-              Launch Full Playground
+          <p className="text-xl text-gray-400 mb-10 leading-relaxed max-w-2xl mx-auto">
+            A modern, deterministic environment for digital logic design.
+            Deploy instant virtual labs that students verify on real FPGA hardware.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link to="/install" className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-lg shadow-lg shadow-blue-900/20 transition-all transform hover:-translate-y-1">
+              Download Bundle
+            </Link>
+            <Link to="/instructors" className="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg font-bold text-lg border border-gray-700 transition-all">
+              Instructor Guide
             </Link>
           </div>
-        </div>
-      </section>
 
-      <section className="py-20">
-        <div className="content-container px-6 text-center">
-          <h2 className="text-h2 mb-6">Ready to Build?</h2>
-          <Link to="/manual/playground" className="btn btn-primary text-lg px-10 py-4">
-            Open RedByte Playground
-          </Link>
-          <div className="mt-4">
-            <button
-              onClick={() => setShowTour(true)}
-              className="text-rb-accent hover:underline text-sm"
-            >
-              Replay the OS Tour
-            </button>
+          {/* Hero Image / UI Mockup */}
+          <div className="mt-16 -mb-48 rounded-xl border border-gray-700 shadow-2xl overflow-hidden opacity-90 hover:opacity-100 transition-opacity">
+            <div className="bg-gray-900 p-2 border-b border-gray-800 flex gap-2">
+              <div className="w-3 h-3 rounded-full bg-red-500" />
+              <div className="w-3 h-3 rounded-full bg-yellow-500" />
+              <div className="w-3 h-3 rounded-full bg-green-500" />
+            </div>
+            <div className="bg-black h-[400px] flex items-center justify-center text-gray-600 font-mono">
+              <span className="text-lg">[ Live Simulation Viewport ]</span>
+            </div>
           </div>
         </div>
-      </section>
-
-      {showTour && <GuidedTour onClose={() => setShowTour(false)} />}
-    </div>
-  );
-}
-
-function AudienceCard({ title, description, icon, link, linkText }: { title: string; description: string; icon: string; link: string; linkText: string }) {
-  return (
-    <div className="bg-rb-surface border border-rb-border rounded-lg p-8 hover:border-rb-accent transition-colors flex flex-col h-full">
-      <div className="text-4xl mb-4">{icon}</div>
-      <h3 className="text-h3 mb-3">{title}</h3>
-      <p className="text-rb-muted leading-relaxed mb-6 flex-grow">{description}</p>
-      <Link to={link} className="text-rb-accent font-medium hover:underline inline-flex items-center">
-        {linkText} &rarr;
-      </Link>
-    </div>
-  );
-}
-
-function FeatureCard({ title, description, status }: { title: string; description: string; status: string }) {
-  return (
-    <div className="bg-rb-bg border border-rb-border rounded-lg p-6">
-      <div className="flex justify-between items-start mb-3">
-        <h3 className="font-bold text-rb-text text-lg">{title}</h3>
-        <span className="text-xs font-bold text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400 px-2 py-1 rounded-full uppercase tracking-wider">
-          {status}
-        </span>
       </div>
-      <p className="text-sm text-rb-muted leading-relaxed">{description}</p>
+
+      {/* Trust / Stats */}
+      <div className="bg-[#0f0f0f] border-b border-gray-800 pt-56 pb-16">
+        <div className="container mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          <Stat label="Latency" value="<10ms" />
+          <Stat label="Hardware" value="Basys3 + Uno" />
+          <Stat label="Determinism" value="100%" />
+          <Stat label="License" value="Open Source" />
+        </div>
+      </div>
+
+      {/* Core Value Props */}
+      <div className="py-24 bg-[#111]">
+        <div className="container mx-auto px-6">
+          <div className="grid md:grid-cols-3 gap-12">
+            <FeatureCard
+              icon="⚡"
+              title="Hardware Reality"
+              desc="Bridge virtual circuits to physical FPGAs instanly. No massive toolchains required on student laptops."
+            />
+            <FeatureCard
+              icon="🎓"
+              title="Guided Labs"
+              desc="Integrated lab manuals and Truth HUD ensure students know exactly what to build and verify."
+            />
+            <FeatureCard
+              icon="⚖️"
+              title="Evidence Export"
+              desc="Deterministic replay capsules allow TAs to grade labs based on what actually happened, not just screenshots."
+            />
+          </div>
+        </div>
+      </div>
+
     </div>
   );
-}
+};
+
+const Stat = ({ label, value }: { label: string, value: string }) => (
+  <div>
+    <div className="text-3xl font-black text-white mb-1">{value}</div>
+    <div className="text-xs font-bold text-gray-500 uppercase tracking-widest">{label}</div>
+  </div>
+);
+
+const FeatureCard = ({ icon, title, desc }: { icon: string, title: string, desc: string }) => (
+  <div className="bg-[#1a1a1a] p-8 rounded-2xl border border-gray-800 hover:border-gray-600 transition-colors">
+    <div className="text-4xl mb-6">{icon}</div>
+    <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
+    <p className="text-gray-400 leading-relaxed text-sm">
+      {desc}
+    </p>
+  </div>
+);
+
+export default Home;

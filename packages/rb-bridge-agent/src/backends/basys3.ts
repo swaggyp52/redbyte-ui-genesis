@@ -1,6 +1,5 @@
 
 import { SerialPort } from 'serialport';
-import { ReadlineParser } from '@serialport/parser-readline';
 import { SetPinsPayload } from '../protocol.js';
 
 export interface Basys3Options {
@@ -8,11 +7,27 @@ export interface Basys3Options {
     baud?: number;
 }
 
+// Protocol Definition
+// Protocol Definition (RB Telemetry v1)
+const PKT_MAGIC0 = 0x52; // 'R'
+const PKT_MAGIC1 = 0x42; // 'B'
+const PKT_SIZE = 28;
+
+// Offsets
+const IDX_MAGIC0 = 0;
+const IDX_MAGIC1 = 1;
+const IDX_VERSION = 2;
+const IDX_FLAGS = 3;
+const IDX_SEQ = 4; // 4 bytes Big Endian
+const IDX_DIGITAL = 8; // 2 bytes Big Endian (SW)
+const IDX_ANALOG = 10; // 8 * 2 bytes = 16 bytes
+const IDX_CRC = 26; // 2 bytes Big Endian
+
 export class Basys3Backend {
     private port: SerialPort | null = null;
-    private parser: ReadlineParser | null = null;
     private pinState: Record<string, number> = {};
     private connected: boolean = false;
+    private buffer: Buffer = Buffer.alloc(0);
 
     constructor(private options: Basys3Options) { }
 
@@ -25,8 +40,6 @@ export class Basys3Backend {
                     autoOpen: false
                 });
 
-                this.parser = this.port.pipe(new ReadlineParser({ delimiter: '\n' }));
-
                 this.port.open((err) => {
                     if (err) {
                         console.error(`[Basys3] Failed to open port ${this.options.port}: ${err.message}`);
@@ -38,8 +51,8 @@ export class Basys3Backend {
                     resolve();
                 });
 
-                this.parser.on('data', (data: string) => {
-                    this.handleSerialData(data.trim());
+                this.port.on('data', (data: Buffer) => {
+                    this.handleSerialData(data);
                 });
 
                 this.port.on('error', (err) => {
@@ -71,23 +84,111 @@ export class Basys3Backend {
         });
     }
 
-    private handleSerialData(data: string) {
-        // Assume Basys 3 UART protocol for simulation
-        // Expecting format like "SW[0..15]=1" or "LD[0..15]=0"
-        if (data.includes('=')) {
-            const [key, val] = data.split('=');
-            this.pinState[key] = parseInt(val, 10);
+    private handleSerialData(chunk: Buffer) {
+        this.buffer = Buffer.concat([this.buffer, chunk]);
+
+        while (this.buffer.length >= PKT_SIZE) {
+            // Find Header (0x52 0x42)
+            let headIdx = -1;
+            for (let i = 0; i < this.buffer.length - 1; i++) {
+                if (this.buffer[i] === PKT_MAGIC0 && this.buffer[i + 1] === PKT_MAGIC1) {
+                    headIdx = i;
+                    break;
+                }
+            }
+
+            if (headIdx === -1) {
+                // Keep last byte just in case it's 0x52
+                if (this.buffer.length > 0 && this.buffer[this.buffer.length - 1] === PKT_MAGIC0) {
+                    this.buffer = this.buffer.subarray(this.buffer.length - 1);
+                } else {
+                    this.buffer = Buffer.alloc(0);
+                }
+                return;
+            }
+
+            if (headIdx > 0) {
+                // Discard garbage before header
+                this.buffer = this.buffer.subarray(headIdx);
+            }
+
+            if (this.buffer.length < PKT_SIZE) {
+                // Need more data
+                return;
+            }
+
+            // Extract Packet
+            const packet = this.buffer.subarray(0, PKT_SIZE);
+            if (this.validatePacket(packet)) {
+                this.parsePacket(packet);
+                // Advance buffer
+                this.buffer = this.buffer.subarray(PKT_SIZE);
+            } else {
+                console.warn('[Basys3] Invalid Checksum, skipping header');
+                // Skip these two magic bytes and search again
+                this.buffer = this.buffer.subarray(2);
+            }
         }
+    }
+
+    private validatePacket(pkt: Buffer): boolean {
+        // CRC-16-CCITT (0x1021) over 0..25 (inclusive)
+        // Packet has CRC at 26, 27
+        const claimedCrc = (pkt[IDX_CRC] << 8) | pkt[IDX_CRC + 1];
+
+        let crc = 0xFFFF;
+        for (let i = 0; i < IDX_CRC; i++) {
+            crc = crc ^ (pkt[i] << 8);
+            for (let j = 0; j < 8; j++) {
+                if ((crc & 0x8000) !== 0) {
+                    crc = (crc << 1) ^ 0x1021;
+                } else {
+                    crc = crc << 1;
+                }
+            }
+        }
+        crc = crc & 0xFFFF;
+        return crc === claimedCrc;
+    }
+
+    private parsePacket(pkt: Buffer) {
+        const flags = pkt[IDX_FLAGS];
+        // Big Endian
+        const digital = (pkt[IDX_DIGITAL] << 8) | pkt[IDX_DIGITAL + 1];
+
+        // Update Pin State
+        // Switches SW0..SW15 mapped from 'digital'
+        for (let i = 0; i < 16; i++) {
+            this.pinState[`basys3:SW${i}`] = (digital >> i) & 1;
+        }
+
+        // Buttons from Flags
+        // HDL: {3'b000, btnD, btnR, btnL, btnU, btnC}
+        // Bit 0: BTNC
+        // Bit 1: BTNU
+        // Bit 2: BTNL
+        // Bit 3: BTNR
+        // Bit 4: BTND
+        this.pinState['basys3:BTNC'] = (flags >> 0) & 1;
+        this.pinState['basys3:BTNU'] = (flags >> 1) & 1;
+        this.pinState['basys3:BTNL'] = (flags >> 2) & 1;
+        this.pinState['basys3:BTNR'] = (flags >> 3) & 1;
+        this.pinState['basys3:BTND'] = (flags >> 4) & 1;
+
+        // Note: LEDs are not in this Telemetry packet (it's device -> host).
+        // If we want to reflect LED state, we assume the board 'loopback' logic holds
+        // or we rely on the Simulation causing the Virtual LEDs to light up.
+        // For "Hardware Reality", we strictly report what we measure.
     }
 
     setPins(payload: SetPinsPayload): void {
         if (!this.connected || !this.port) return;
 
-        Object.entries(payload.pins).forEach(([pinId, value]) => {
-            // Send command to Basys 3
-            this.port?.write(`SET ${pinId} ${value}\n`);
-            this.pinState[pinId] = value;
-        });
+        // Basys3 usually doesn't accept SET PINS from PC unless we have a specific control protocol.
+        // The current plan is mostly monitoring. 
+        // If we need to drive inputs (Virtual Lab Mode -> Hardware), standard UART would need a command.
+        // For now, we log or ignore.
+        // console.log('[Basys3] setPins not implemented for hardware inputs yet');
     }
 
     async getPins(): Promise<Record<string, number>> {
@@ -95,9 +196,7 @@ export class Basys3Backend {
     }
 
     loadPreset(nodeId: string, presetId: string): void {
-        if (this.connected && this.port) {
-            this.port.write(`PRESET ${presetId}\n`);
-        }
+        // No-op for now
     }
 
     async verify(): Promise<any> {
@@ -109,7 +208,7 @@ export class Basys3Backend {
             port: this.options.port,
             agent: '127.0.0.1:4242',
             timestamp: new Date().toLocaleTimeString(),
-            details: 'UART connection established. Signature pending.'
+            details: 'RedByte Protocol v1 (Raw Reality)'
         };
     }
 

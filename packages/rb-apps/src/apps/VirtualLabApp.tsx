@@ -22,6 +22,8 @@ import { useFileSystemStore } from '../stores/fileSystemStore';
 import { VIRTUAL_LAB_TEMPLATES } from './virtual-lab-templates';
 import { useVirtualLabSignalSource } from '../instruments/virtualLabSignalSource';
 import { HardwareRackPanel } from '../panels/HardwareRackPanel';
+import { TruthHud } from '@redbyte/rb-logic-3d';
+import { GuidedLabSidebar } from '../components/GuidedLabSidebar';
 import { HardwareStatusOverlay } from '../panels/HardwareStatusOverlay';
 
 const DEFAULT_SKETCH = `void setup() {
@@ -644,11 +646,15 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                             disabled={!!labSession}
                             title="Lab Catalog"
                         >
-                            {VIRTUAL_LAB_TEMPLATES.map((template) => (
-                                <option key={template.lab_id} value={template.lab_id}>
-                                    {template.name}
-                                </option>
-                            ))}
+                            {VIRTUAL_LAB_TEMPLATES.map((template) => {
+                                const LOCKED_LABS = ['lab3_7seg', 'lab4_alu', 'lab5_adder_signed', 'lab6_ff', 'lab7_counters'];
+                                const isLocked = LOCKED_LABS.includes(template.lab_id);
+                                return (
+                                    <option key={template.lab_id} value={template.lab_id} disabled={isLocked}>
+                                        {template.name} {isLocked ? '(LOCKED)' : ''}
+                                    </option>
+                                );
+                            })}
                         </select>
                         <button
                             onClick={handleStartLab}
@@ -1059,7 +1065,12 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                         </div>
                     </div>
                 </div>
+
             </div>
+
+            {/* Right Sidebar: Guided Lab Mode */}
+            <GuidedLabSidebar />
+
         </div>
     );
 };

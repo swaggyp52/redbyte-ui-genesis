@@ -1,0 +1,21 @@
+{
+    "manifest_version": 1,
+    "created_at": "2026-01-28T12:00:00Z",
+    "lab_id": "lab2_adder",
+    "board_id": "basys3",
+    "sources": {
+        "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "files": []
+    },
+    "toolchain": {
+        "name": "rb-fpga-toolchain",
+        "version": "1.0.0",
+        "wrapper_version": 1
+    },
+    "metadata": {
+        "title": "Lab 2: 4-Bit Binary Adder",
+        "description": "Design and verification of a 4-bit ripple carry adder on Basys3.",
+        "is_released": true,
+        "hardware_required": true
+    }
+}

@@ -43,6 +43,13 @@ export type LabBehaviorCheck =
     hint?: string;
   };
 
+export interface LabGuideStep {
+  id: string;
+  title: string;
+  markdown: string;
+  verify_criteria?: string; // Links to behavior_checks id
+}
+
 export interface LabTemplate {
   template_version: 'virtual-lab.v1';
   lab_id: string;
@@ -56,6 +63,7 @@ export interface LabTemplate {
   }>;
   required_nets: LabTemplateNetRequirement[];
   behavior_checks?: LabBehaviorCheck[];
+  guide?: LabGuideStep[]; // New Guided Mode
   allowed_variations?: {
     resistor_values_ohms?: [number, number];
     alternate_pins?: Array<{
@@ -326,6 +334,14 @@ export const validateLabTemplate = (template: LabTemplate): ValidationResult => 
           errors.push(`behavior_checks ${check.id} min_ticks must be >= 0`);
         }
       }
+    }
+  }
+
+  if (template.guide) {
+    for (const step of template.guide) {
+      if (!step.id) errors.push('Guide step missing id');
+      if (!step.title) errors.push(`Guide step ${step.id} missing title`);
+      if (!step.markdown) errors.push(`Guide step ${step.id} missing markdown`);
     }
   }
 

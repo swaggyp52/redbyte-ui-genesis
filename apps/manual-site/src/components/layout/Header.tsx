@@ -6,13 +6,9 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 const navLinks = [
-  { to: '/', label: 'Home' },
-  { to: '/getting-started', label: 'Getting Started' },
-  { to: '/examples', label: 'Examples' },
-  { to: '/guide', label: 'Guide' },
-  { to: '/demo', label: 'For Educators' },
-  { to: '/instructors', label: 'Instructors' },
-  { to: '/about', label: 'About' },
+  { to: '/', label: 'Product' },
+  { to: '/install', label: 'Download' },
+  { to: '/instructors', label: 'Instructor Guide' },
 ];
 
 export default function Header() {
@@ -47,8 +43,8 @@ export default function Header() {
                 key={to}
                 to={to}
                 className={`px-3 py-2 text-sm rounded transition-colors ${isActive(to)
-                    ? 'text-rb-text bg-rb-surface'
-                    : 'text-rb-muted hover:text-rb-text hover:bg-rb-surface/50'
+                  ? 'text-rb-text bg-rb-surface'
+                  : 'text-rb-muted hover:text-rb-text hover:bg-rb-surface/50'
                   }`}
               >
                 {label}
@@ -101,8 +97,8 @@ export default function Header() {
                   to={to}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`px-3 py-2.5 text-sm rounded transition-colors ${isActive(to)
-                      ? 'text-rb-text bg-rb-surface'
-                      : 'text-rb-muted hover:text-rb-text hover:bg-rb-surface/50'
+                    ? 'text-rb-text bg-rb-surface'
+                    : 'text-rb-muted hover:text-rb-text hover:bg-rb-surface/50'
                     }`}
                 >
                   {label}

@@ -1,73 +1,68 @@
-import { Link as RouterLink } from 'react-router-dom';
-import CodeBlock from '../components/CodeBlock';
-import { mvpFacts } from '../content/mvpFacts';
+import React from 'react';
 
-const Link = RouterLink as React.ComponentType<{ to: string; className?: string; children: React.ReactNode }>;
-
-export default function Instructors() {
+const Instructors = () => {
   return (
-    <div className="py-16 bg-rb-bg">
-      <div className="content-container px-6">
-        <div className="max-w-4xl">
-          <h1 className="text-h1 text-rb-text mb-4">Instructor Day 1</h1>
-          <p className="text-lg text-rb-muted mb-10 leading-relaxed">
-            A SIM-first workflow to run a lab without hardware, then scale to Basys 3 when ready.
+    <div className="bg-rb-bg min-h-screen text-gray-300">
+      <div className="container mx-auto px-6 py-16 max-w-4xl">
+
+        <h1 className="text-4xl font-black text-white mb-8">Instructor Setup Guide</h1>
+
+        <div className="prose prose-invert prose-lg max-w-none">
+          <p className="text-xl text-gray-400 mb-12">
+            RedByte OS is designed to be "Day 1 Ready" for digital logic labs.
+            Follow this guide to prepare your classroom environment.
           </p>
 
-          <section className="mb-12">
-            <h2 className="text-h2 text-rb-text mb-4">Day 1 flow</h2>
-            <ol className="list-decimal pl-5 text-sm text-rb-muted space-y-2">
-              <li>Launch the OS and use Start Here to open the FPGA Lab in SIM mode.</li>
-              <li>Export a v2 bundle and import it into Submission Inspector.</li>
-              <li>Review checks and export a grading report JSON.</li>
+          <Section title="1. The Lab Bundle">
+            <p>
+              We provide a single <code>RedByte_Lab_Bundle.zip</code> that works on locked-down Windows PCs
+              without requiring Administrator privileges (mostly).
+            </p>
+            <ul className="list-disc pl-6 space-y-2 mt-4 text-base">
+              <li><strong>Runtime:</strong> Includes a portable Node.js runtime (if missing).</li>
+              <li><strong>Drivers:</strong> FTDI drivers for Basys3 must be pre-installed by IT.</li>
+              <li><strong>Network:</strong> No internet connection required after download.</li>
+            </ul>
+          </Section>
+
+          <Section title="2. Hardware Prep (One-Time)">
+            <p>
+              Before the semester starts, you must flash the <strong>RedByte Bridge Core</strong> onto your Basys 3 boards.
+            </p>
+            <div className="bg-gray-800 p-4 rounded-lg mt-4 font-mono text-sm border border-gray-700">
+              # From the instructor workstation with Vivado:<br />
+              cd packages/rb-fpga-toolchain<br />
+              vivado -mode batch -source scripts/build_basys3.tcl
+            </div>
+            <p className="mt-4 text-sm text-gray-400">
+              This creates the <code>top.bit</code> file that bridges the switches/LEDs to the UART port.
+              Flash this to the board's non-volatile memory.
+            </p>
+          </Section>
+
+          <Section title="3. Grading with Evidence">
+            <p>
+              Students export <strong>.labcapsule.json</strong> files. You do not need to reproduce their circuit manually.
+            </p>
+            <ol className="list-decimal pl-6 space-y-2 mt-4 text-base">
+              <li>Open your Instructor Dashboard (RedByte OS).</li>
+              <li>Drag & Drop the student's capsule.</li>
+              <li>The environment <strong>Replays</strong> their session deterministically.</li>
+              <li>Check the <strong>Truth HUD</strong> for the "VERIFIED" badge.</li>
             </ol>
-          </section>
+          </Section>
 
-
-          <section className="mb-12">
-            <h2 className="text-h2 text-rb-text mb-4">Signing and grading</h2>
-            <div className="bg-rb-surface border border-rb-border rounded-md p-6 space-y-4">
-              <p className="text-sm text-rb-muted leading-relaxed">
-                Documentation for manual signing and local grading workflows is temporarily offline.
-                Please refer to the repository for current command-line tools and schemas.
-              </p>
-              <div className="flex">
-                <a
-                  href="https://github.com/swaggyp52/redbyte-ui-genesis"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-secondary px-6"
-                >
-                  View CLI Docs on GitHub
-                </a>
-              </div>
-            </div>
-          </section>
-
-
-          <section className="mb-4">
-            <div className="bg-rb-surface border border-rb-border rounded-md p-6">
-              <h3 className="text-h3 text-rb-text mb-2">Next step</h3>
-              <p className="text-sm text-rb-muted mb-4">
-                Use the SIM workflow first, then transition to hardware programming once the lab is stable.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Link to="/demo" className="btn btn-secondary">
-                  Educator Overview
-                </Link>
-                <a
-                  href="https://github.com/swaggyp52/redbyte-ui-genesis"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-secondary"
-                >
-                  View Source
-                </a>
-              </div>
-            </div>
-          </section>
         </div>
       </div>
     </div>
   );
-}
+};
+
+const Section = ({ title, children }: { title: string, children: React.ReactNode }) => (
+  <div className="mb-12 border-l-4 border-blue-900 pl-6 py-2">
+    <h2 className="text-2xl font-bold text-white mb-4">{title}</h2>
+    {children}
+  </div>
+);
+
+export default Instructors;

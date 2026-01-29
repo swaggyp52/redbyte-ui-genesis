@@ -24,3 +24,4 @@ export * from './lab-model/sketchEngine';
 export { TransportRouter } from './lab-model/transport/transport-router';
 export { BridgeTransport } from './lab-model/transport/bridge-transport';
 export { Rb3DSceneLab } from './components/Rb3DSceneLab';
+export { TruthHud } from './components/TruthHud';

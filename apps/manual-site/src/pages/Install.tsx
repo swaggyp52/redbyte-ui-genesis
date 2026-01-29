@@ -1,121 +1,47 @@
-import { Link as RouterLink } from 'react-router-dom';
-import CodeBlock from '../components/CodeBlock';
-import { mvpFacts } from '../content/mvpFacts';
+import React from 'react';
+import { Link } from 'react-router-dom';
 
-const Link = RouterLink as React.ComponentType<{ to: string; className?: string; children: React.ReactNode }>;
-
-export default function Install() {
+const Install = () => {
   return (
-    <div className="py-24 bg-rb-bg min-h-[60vh]">
-      <div className="content-container px-6">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-h1 text-rb-text mb-4">Lab Machine Setup</h1>
-            <p className="text-lg text-rb-muted">
-              Follow these steps to verify readiness for ECE Lab deployment.
-            </p>
-          </div>
+    <div className="bg-rb-bg min-h-screen text-gray-300">
+      <div className="container mx-auto px-6 py-16 max-w-4xl text-center">
 
-          <div className="space-y-12">
-            {/* Quick Start */}
-            <section className="bg-rb-surface border border-rb-border rounded-xl p-8">
-              <h2 className="text-h3 text-white mb-4 flex items-center gap-3">
-                <span className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-sm font-bold border border-emerald-500/20">1</span>
-                Quick Start
-              </h2>
-              <p className="text-rb-muted mb-4 text-sm">
-                Run this command in PowerShell (Admin not required) to install Node.js (if missing), dependencies, and start the dev environment.
-              </p>
-              <CodeBlock
-                code="powershell -ExecutionPolicy Bypass -NoProfile -File .\bootstrap.ps1"
-              />
-            </section>
+        <h1 className="text-5xl font-black text-white mb-6">Get RedByte OS</h1>
+        <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
+          The all-in-one lab environment. Includes the bridge agent, drivers, and the offline web app.
+        </p>
 
-            {/* Verification Plan */}
-            <section className="bg-rb-surface border border-rb-border rounded-xl p-8">
-              <h2 className="text-h3 text-white mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center text-sm font-bold border border-blue-500/20">2</span>
-                Lab Verification Plan
-              </h2>
+        <div className="bg-[#1a1a1a] p-10 rounded-2xl border border-gray-700 inline-block text-left relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
 
-              <div className="space-y-6">
-                <div>
-                  <h3 className="font-bold text-gray-200 mb-2">A. Verify Bridge</h3>
-                  <ul className="list-disc list-inside text-sm text-rb-muted space-y-1">
-                    <li>Start the bridge daemon (port 4242).</li>
-                    <li>Open <a href="http://localhost:4242/health" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">/health</a> - Expect <code className="bg-black/30 px-1 rounded">ok: true</code></li>
-                    <li>Open <a href="http://localhost:4242/devices" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">/devices</a> - Expect your board to be listed.</li>
-                  </ul>
-                </div>
+          <h2 className="text-2xl font-bold text-white mb-2">RedByte Lab Bundle</h2>
+          <div className="text-sm text-gray-500 mb-6 font-mono">v1.0.0 • Windows 10/11 • 64-bit</div>
 
-                <div>
-                  <h3 className="font-bold text-gray-200 mb-2">B. Hardware Panel UX</h3>
-                  <ul className="list-disc list-inside text-sm text-rb-muted space-y-1">
-                    <li>Open RedByte UI (port 5173/5174).</li>
-                    <li>Navigate to Hardware Panel.</li>
-                    <li>Verify status is <strong>ONLINE</strong> (or connect manually).</li>
-                    <li>Ensure correct board model (e.g., Basys3) is detected.</li>
-                  </ul>
-                </div>
+          <button className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-lg shadow-lg mb-4 transition-colors">
+            Download .zip (145 MB)
+          </button>
 
-                <div>
-                  <h3 className="font-bold text-gray-200 mb-2">C. Program & Export</h3>
-                  <ul className="list-disc list-inside text-sm text-rb-muted space-y-1">
-                    <li>Program a known-good bitstream (e.g., lab wrapper).</li>
-                    <li>Click <strong>REC</strong> and toggle switches on the board.</li>
-                    <li>Click <strong>STOP</strong> after ~5 seconds.</li>
-                    <li>Click <strong>EXPORT</strong> to download the V2 Bundle (zip).</li>
-                    <li>Verify the zip contains <code>manifest.json</code> and <code>trace/hw_trace.ndjson</code>.</li>
-                  </ul>
-                </div>
-              </div>
-            </section>
-
-            {/* Spartan-3E Setup Guide */}
-            <section className="bg-rb-surface border border-rb-border rounded-xl p-8">
-              <h2 className="text-h3 text-white mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center text-sm font-bold border border-red-500/20">3</span>
-                Spartan-3E Starter Kit Setup
-              </h2>
-              <div className="space-y-4">
-                <div className="bg-black/20 p-4 rounded-lg border border-rb-border">
-                  <h4 className="font-bold text-sm text-gray-300 mb-2">Hardware Connection</h4>
-                  <ul className="list-disc list-inside text-sm text-rb-muted space-y-2">
-                    <li>
-                      <strong>Power:</strong> Connect the 5V power supply. Slide power switch to ON.
-                    </li>
-                    <li>
-                      <strong>USB:</strong> Connect the USB Type-B cable (port is on the left, next to Ethernet).
-                    </li>
-                    <li>
-                      <strong>Status:</strong> Ensure the green LED near the USB port is LIT (driver active).
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="bg-black/20 p-4 rounded-lg border border-rb-border">
-                  <h4 className="font-bold text-sm text-gray-300 mb-2">Programming & Wrapper</h4>
-                  <p className="text-sm text-rb-muted mb-2">
-                    This board requires JTAG programming via USBC.
-                  </p>
-                  <ul className="list-disc list-inside text-sm text-rb-muted space-y-1">
-                    <li>Use <strong>Adept</strong> or <strong>iMPACT</strong> to load your bitstream (<code>.bit</code>).</li>
-                    <li>
-                      <strong>Wrapper Required:</strong> If you see <span className="text-amber-400">NO DATA</span> in RedByte, ensure your design instantiates the RedByte Wrapper to drive the UART trace pins.
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <div className="mt-12 text-center">
-            <Link to="/about" className="btn btn-secondary px-8">
-              Detailed Docs
-            </Link>
-          </div>
+          <p className="text-xs text-center text-gray-500">
+            MD5: 7a9...f42 • <Link to="/instructors" className="text-blue-400 hover:underline">Installation Guide</Link>
+          </p>
         </div>
+
+        <div className="mt-16 grid md:grid-cols-3 gap-8 text-left">
+          <Feature title="Portable" desc="No administrator rights required for basic usage. Just unzip and run." />
+          <Feature title="Offline" desc="Zero internet dependency. Perfect for air-gapped lab networks." />
+          <Feature title="Complete" desc="Includes Node.js runtime, Drivers, and Documentation." />
+        </div>
+
       </div>
     </div>
   );
-}
+};
+
+const Feature = ({ title, desc }: { title: string, desc: string }) => (
+  <div className="p-6 bg-[#111] rounded-lg border border-gray-800">
+    <h3 className="font-bold text-white mb-2">{title}</h3>
+    <p className="text-sm text-gray-400">{desc}</p>
+  </div>
+);
+
+export default Install;

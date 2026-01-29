@@ -101,7 +101,7 @@ export const Rb3DSceneCircuit: React.FC<Rb3DSceneCircuitProps> = ({
                             mismatchColors={mismatchColors}
                         />
                         {isActive && animateSignalFlow && (
-                            <SignalParticleSystem from={from} to={to} isActive={isActive} wireId={wire.id} />
+                            <SignalParticleSystem from={from} to={to} isActive={isActive} wireId={wire.id} currentTime={currentTime} />
                         )}
                     </React.Fragment>
                 );
