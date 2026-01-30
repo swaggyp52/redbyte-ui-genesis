@@ -8,8 +8,8 @@ Updated: 2026-01-28
 - [x] Store recovery state machine with deterministic truncation and integrity events
 - [x] Import/export hardening with capsule hash + seed
 - [x] Performance guards with reconstruction timing
-- [/] Remove Truth HUD (Final Polish)
-- [x] Fuzz suite (basic, mode switch, stress, repair)
+- [x] Remove Truth HUD (Final Polish)
+- [x] Push and Tag `demo-lock` releasewitch, stress, repair)
 - [x] Documentation refresh
 
 ## Notes
