@@ -9,6 +9,7 @@
         "start": "node dist/index.js"
     },
     "dependencies": {
+        "@redbyte/rb-protocol": "workspace:*",
         "express": "^4.21.2",
         "ws": "^8.18.0",
         "cors": "^2.8.5",

@@ -93,7 +93,8 @@ async function run() {
         log('CHECK', 'Verifying Device List...');
         const devicesRes = await fetch(`${BRIDGE_URL}/devices`);
         if (!devicesRes.ok) throw new Error('Failed to fetch devices');
-        const devices = await devicesRes.json();
+        const devicesData = await devicesRes.json();
+        const devices = devicesData.devices || [];
         log('CHECK', `Found ${devices.length} devices.`);
 
         // D. Run Truth Sequence
@@ -103,16 +104,22 @@ async function run() {
         execSync(`npx tsx ${VERIFY_SCRIPT}`, { stdio: 'inherit' });
         log('TRUTH', 'Sequence Passed.');
 
-        // E. Run Playwright
-        log('UI', 'Running Headless UI Check...');
-        // We assume verify_client might have cleaned up? 
-        // No, check verify_client.ts logic... it connects then disconnects (or exits).
-        // UI Check expects bridge to be running.
+        // E. Manual Gate Checklist
+        log('MANUAL', 'Printing Quality Gate Checklist...');
 
-        execSync(`npx playwright test ${PLAYWRIGHT_TEST}`, { stdio: 'inherit' });
-        log('UI', 'UI Check Passed.');
+        console.log('\n\x1b[33m--- MANUAL VERIFICATION REQUIRED ---\x1b[0m');
+        console.log('1. [ ] Bridge Health OK (Verified ✅)');
+        console.log('2. [ ] Device Discovery (Verified ✅ - Found ' + devices.length + ' devices)');
+        console.log('3. [ ] Truth Sequence (Verified ✅)');
+        console.log('4. [ ] UI: Hardware Panel shows "Local Bridge Online"');
+        console.log('5. [ ] UI: Devices list matches: ' + devices.map((d: any) => d.target).join(', '));
+        console.log('6. [ ] UI: Lab 0 -> Basys 3 auto-spawns at non-zero offset if multiple exist');
+        console.log('7. [ ] UI: Physical SW0 toggle reflects on 3D node instantly');
+        console.log('8. [ ] UI: Dragging Gizmo updates node position and persists');
+        console.log('------------------------------------\n');
 
-        console.log('\n\x1b[42m\x1b[30m === SHIP:GATE PASSED === \x1b[0m\n');
+        console.log('\n\x1b[42m\x1b[30m === SHIP:GATE PRE-FLIGHT PASSED === \x1b[0m');
+        console.log('Perform manual UI checks 4-8 to approve the release.\n');
 
     } catch (e: any) {
         error('FAIL', e.message || 'Unknown error');

@@ -14,6 +14,7 @@ interface InteractionState {
     dragPosition: { x: number; y: number; z: number } | null;
     highlightedPins: Array<{ nodeId: string; pinId: string }>;
     selectedNetId: string | null;
+    selectedNodeId: string | null;
 }
 
 type PlaybackState = 'live:stopped' | 'live:running' | 'replay:paused' | 'replay:playing';
@@ -54,6 +55,7 @@ interface LabStoreState {
     setInteractionMode: (mode: 'orbit' | 'wire') => void;
     setHighlightedPins: (pins: Array<{ nodeId: string; pinId: string }>) => void;
     setSelectedNetId: (netId: string | null) => void;
+    setSelectedNodeId: (nodeId: string | null) => void;
 
     // Simulation & Timeline
     runSimulationStep: () => void;
@@ -72,6 +74,7 @@ interface LabStoreState {
     updateNodePose: (id: string, position: { x: number, y: number, z: number }, rotation: { x: number, y: number, z: number, w: number }) => void;
     addWire: (wire: LabWire) => void;
     removeWire: (id: string) => void;
+    resetLayout: () => void;
     reset: () => void;
 
     // Sketch
@@ -291,6 +294,7 @@ export const useLabStore = create<LabStoreState>()(
                 dragPosition: null,
                 highlightedPins: [],
                 selectedNetId: null,
+                selectedNodeId: null,
             },
             simulation: {
                 playbackState: 'live:stopped',
@@ -320,6 +324,8 @@ export const useLabStore = create<LabStoreState>()(
                 set(produce((state: LabStoreState) => { state.interaction.highlightedPins = pins; })),
             setSelectedNetId: (netId) =>
                 set(produce((state: LabStoreState) => { state.interaction.selectedNetId = netId; })),
+            setSelectedNodeId: (nodeId) =>
+                set(produce((state: LabStoreState) => { state.interaction.selectedNodeId = nodeId; })),
 
             toggleSimulation: (running) =>
                 set(produce((state: LabStoreState) => {
@@ -813,6 +819,21 @@ export const useLabStore = create<LabStoreState>()(
 
             getTransportStatus: () => get().activeTransport.getStatus(),
 
+            resetLayout: () => {
+                set(produce((state: LabStoreState) => {
+                    if (state.simulation.playbackMode === 'replay') return;
+                    state.graph.nodes = [];
+                    state.graph.wires = [];
+                    state.timeline.events = state.timeline.events.filter((e: any) =>
+                        e.type !== 'PLACE_PART' &&
+                        e.type !== 'MOVE_PART' &&
+                        e.type !== 'ADD_WIRE' &&
+                        e.type !== 'REMOVE_WIRE'
+                    );
+                    state.interaction.selectedNodeId = null;
+                }));
+            },
+
             reset: () => {
                 sketchRuntime.reset();
 
@@ -851,6 +872,7 @@ export const useLabStore = create<LabStoreState>()(
                         dragPosition: null,
                         highlightedPins: [],
                         selectedNetId: null,
+                        selectedNodeId: null,
                     };
                     state.integrityError = null;
                     state.lastGoodSnapshot = resetSnapshot;

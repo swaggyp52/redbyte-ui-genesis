@@ -13,7 +13,25 @@ export const VIRTUAL_LAB_TEMPLATES: LabTemplate[] = [
       { type: 'arduino-uno', min: 1, max: 1 }
     ],
     required_nets: [],
-    behavior_checks: [],
+    behavior_checks: [
+      {
+        id: 'sw0_high',
+        type: 'digital_level',
+        pin: { part: 'fpga-basys3', pins: ['SW0'] },
+        value: 1,
+        min_ticks: 5,
+        hint: 'Flip physical Switch 0 on your Basys 3 board.'
+      },
+      {
+        id: 'blink_uno',
+        type: 'blink',
+        pin: { part: 'arduino-uno', pins: ['D13'] },
+        period_ticks: 40,
+        tolerance_ticks: 6,
+        min_cycles: 2,
+        hint: 'Ensure the Arduino Blink sketch is running.'
+      }
+    ],
     guide: [
       {
         id: 'step1_detect',

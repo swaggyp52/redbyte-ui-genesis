@@ -11,8 +11,10 @@ import {
     LoadPresetPayload,
     ConnectPayload,
     UploadSketchPayload,
-    UploadSketchResponsePayload
-} from './protocol.js';
+    UploadSketchResponsePayload,
+    BridgeDevice,
+    BridgeHealth
+} from '@redbyte/rb-protocol';
 import { MockBasys3Backend } from './backends/mock-basys3.js';
 import { ArduinoUnoBackend } from './backends/arduino-uno.js';
 import { Basys3Backend } from './backends/basys3.js';
@@ -25,14 +27,19 @@ app.use(cors());
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
-    res.json({ status: 'ok', version: BRIDGE_PROTOCOL_VERSION });
+    const health: BridgeHealth = {
+        ok: true,
+        version: BRIDGE_PROTOCOL_VERSION,
+        status: 'ok'
+    };
+    res.json(health);
 });
 
 // Device discovery
 app.get('/devices', async (req: Request, res: Response) => {
     try {
         const ports = await SerialPort.list();
-        const devices = ports.map(p => {
+        const devices: BridgeDevice[] = ports.map(p => {
             let target: 'arduino-uno' | 'basys3' | 'unknown' = 'unknown';
             if (p.productId === '0043' || (p.manufacturer && p.manufacturer.includes('Arduino'))) {
                 target = 'arduino-uno';
@@ -43,7 +50,8 @@ app.get('/devices', async (req: Request, res: Response) => {
             return {
                 target,
                 port: p.path,
-                manufacturer: p.manufacturer,
+                manufacturer: p.manufacturer || 'unknown',
+                serialNumber: p.serialNumber,
                 deviceId: target === 'unknown' ? undefined : (target === 'arduino-uno' ? 'uno' : 'basys3')
             };
         });
@@ -188,12 +196,22 @@ wss.on('connection', (ws: WebSocket) => {
                 case 'LIST_DEVICES': {
                     try {
                         const ports = await SerialPort.list();
-                        const devices = ports.map(p => ({
-                            target: p.productId === '0043' || (p.manufacturer && p.manufacturer.includes('Arduino')) ? 'arduino-uno' :
-                                (p.manufacturer && p.manufacturer.includes('FTDI')) ? 'basys3' : 'unknown',
-                            port: p.path,
-                            manufacturer: p.manufacturer
-                        }));
+                        const devices: BridgeDevice[] = ports.map(p => {
+                            let target: 'arduino-uno' | 'basys3' | 'unknown' = 'unknown';
+                            if (p.productId === '0043' || (p.manufacturer && p.manufacturer.includes('Arduino'))) {
+                                target = 'arduino-uno';
+                            } else if (p.manufacturer && (p.manufacturer.includes('FTDI') || p.manufacturer.includes('Digilent'))) {
+                                target = 'basys3';
+                            }
+
+                            return {
+                                target,
+                                port: p.path,
+                                manufacturer: p.manufacturer || 'unknown',
+                                serialNumber: p.serialNumber,
+                                deviceId: target === 'unknown' ? undefined : (target === 'arduino-uno' ? 'uno' : 'basys3')
+                            };
+                        });
                         sendResponse(ws, msg.id, 'LIST_DEVICES_OK', { devices });
                     } catch (err: any) {
                         sendResponse(ws, msg.id, 'ERROR', { message: err.message });

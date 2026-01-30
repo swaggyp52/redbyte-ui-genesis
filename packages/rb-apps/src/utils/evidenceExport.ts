@@ -23,6 +23,7 @@ export interface LabEvidenceCapsule {
     isPass: boolean;
     traceEvents: number;
     trace?: HardwareTraceV1;
+    stimulus?: any[];
     evidenceHash?: string;
 }
 
@@ -47,8 +48,8 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
             : undefined;
 
         const modelLab = useModelLabStore.getState();
-        const modelStatus = modelLab.getTransportStatus();
-
+        const recorder = (await import('../stores/runRecorderStore')).useRunRecorderStore.getState();
+        
         const capsule: LabEvidenceCapsule & { meta?: any } = {
             schemaVersion: 2,
             timestamp: new Date().toISOString(),
@@ -63,10 +64,11 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
             isPass: lab.completedSteps.length > 0, // Simplified pass criteria
             traceEvents: hw.traceBuffer.length,
             trace: embeddedTrace,
+            stimulus: recorder.record?.stimulus || recorder.stimulus,
             meta: {
                 transportMode: modelLab.activeTransport.type,
                 hardware: modelLab.activeTransport.type === 'bridge' ? {
-                    board: 'uno',
+                    board: hw.capabilities?.boardId || 'unknown',
                     port: 'CONNECTED',
                     agent: '127.0.0.1:4242',
                     verified: true

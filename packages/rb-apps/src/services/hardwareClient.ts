@@ -2,6 +2,14 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
+import {
+  BRIDGE_PROTOCOL_VERSION,
+  BridgeHealth,
+  BridgeDevice,
+  BridgeMessage,
+  ConnectPayload
+} from '@redbyte/rb-protocol';
+
 /**
  * Hardware Bridge Client (MVP)
  * 
@@ -19,13 +27,7 @@ interface HardwareClientConfig {
   mode: ConnectionMode;
 }
 
-interface BridgeHealth {
-  ok: boolean;
-  version: string;
-  uptimeSec: number;
-  build: string;
-}
-
+// Local types for UI state (derived from Bridge types)
 interface Device {
   deviceId: string;
   boardModel: string;
@@ -82,7 +84,7 @@ type StatusUpdateCallback = (state: RunState) => void;
 type ConnectionState =
   | { status: 'offline'; reason: 'disabled' | 'unavailable' | 'failed'; message: string }
   | { status: 'connecting'; message: string }
-  | { status: 'connected'; bridge: BridgeHealth; devices: Device[]; ws: WebSocket | null };
+  | { status: 'connected'; bridge: BridgeHealth; devices: Device[]; ws: WebSocket | any };
 
 export class HardwareClient {
   private config: HardwareClientConfig;
@@ -193,8 +195,27 @@ export class HardwareClient {
         signal: AbortSignal.timeout(this.FETCH_TIMEOUT_MS),
       });
       // Bridge returns { schema_version, devices: [...] } - extract the array
+
+
+      // Bridge returns { devices: BridgeDevice[] }
       const devicesData = devicesRes.ok ? await devicesRes.json() : { devices: [] };
-      const devices: Device[] = Array.isArray(devicesData) ? devicesData : (devicesData.devices ?? []);
+      const bridgeDevices: BridgeDevice[] = Array.isArray(devicesData) ? devicesData : (devicesData.devices ?? []);
+
+      // MAP TO INTERNAL DEVICE TYPE
+      const devices: Device[] = bridgeDevices.map(bd => ({
+        deviceId: bd.deviceId || 'unknown',
+        boardModel: bd.target === 'arduino-uno' ? 'Arduino Uno' : (bd.target === 'basys3' ? 'Basys 3' : 'Unknown Board'),
+        boardFamily: bd.target === 'basys3' ? 'fpga' : 'avr',
+        serial: bd.serialNumber || '',
+        transport: 'serial',
+        toolchain: bd.target === 'basys3' ? 'vivado' : 'arduino-cli',
+        status: 'ready',
+        runtime: {
+          port: bd.port,
+          baud_default: bd.target === 'basys3' ? 115200 : 115200,
+          status: 'ready'
+        }
+      }));
 
       this.state = {
         status: 'connected',
@@ -487,10 +508,12 @@ export class HardwareClient {
     };
 
     return new Promise((resolve) => {
-      if (!this.state.ws) {
+      // Type Guard: Ensure we are connected and have a WS
+      if (this.state.status !== 'connected' || !this.state.ws) {
         resolve(false);
         return;
       }
+      const ws = this.state.ws;
 
       // Generate a correlation ID
       const id = Math.floor(Math.random() * 1000000);
@@ -500,7 +523,7 @@ export class HardwareClient {
         try {
           const msg = JSON.parse(event.data.toString());
           if (msg.id === id) {
-            this.state.ws?.removeEventListener('message', handler);
+            ws.removeEventListener('message', handler);
 
             if (msg.type === 'CONNECT_OK') {
               this.activeDevice = device;
@@ -517,10 +540,10 @@ export class HardwareClient {
         }
       };
 
-      this.state.ws.addEventListener('message', handler);
+      ws.addEventListener('message', handler);
 
       // Send CONNECT message
-      this.state.ws.send(JSON.stringify({
+      ws.send(JSON.stringify({
         v: 'rb-bridge.v1',
         id,
         type: 'CONNECT',
@@ -530,7 +553,7 @@ export class HardwareClient {
 
       // Timeout fallback
       setTimeout(() => {
-        this.state.ws?.removeEventListener('message', handler);
+        ws.removeEventListener('message', handler);
         resolve(false);
       }, 5000);
     });

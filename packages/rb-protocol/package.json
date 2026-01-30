@@ -1,0 +1,9 @@
+{
+    "name": "@redbyte/rb-protocol",
+    "version": "1.0.0",
+    "private": true,
+    "main": "src/bridge.ts",
+    "exports": {
+        ".": "./src/bridge.ts"
+    }
+}

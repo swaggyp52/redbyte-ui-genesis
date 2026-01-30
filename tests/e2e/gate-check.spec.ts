@@ -16,12 +16,25 @@ test.describe('Ship Gate UI Check', () => {
         // But typically the "Hardware" or "Rack" panel is part of the layout.
         // Let's look for the header text "Hardware Reality"
 
+        // 2. Open Logic Playground
+        const desktopIcon = page.getByText('Logic Playground');
+        await desktopIcon.click();
+        await expect(page.locator('[data-testid="logic-playground-root"]')).toBeVisible({ timeout: 60_000 });
+
+        // 3. Verify Hardware Panel Availability
+        // It might be in a sidebar tab. Let's look for "Hardware" text in the UI.
+        const hardwareTab = page.getByText('Hardware'); // Generic search
+        // Make sure we wait significantly as the app boots
+        await expect(page.locator('body')).toContainText('Hardware', { timeout: 10000 });
+
+        // Look for the panel header specifically
         const header = page.getByText('Hardware Reality');
+        // If it's not visible, we might need to click the tab.
         if (!await header.isVisible()) {
-            // If not visible, try to find the "Chips" or "Hardware" icon in the dock/activity bar
-            // This relies on knowing the layout. 
-            // For now, let's assume standard layout or try to find a generic way.
-            // If this fails, the test fails, which is good.
+            const tab = page.getByRole('tab', { name: /hardware/i });
+            if (await tab.isVisible()) {
+                await tab.click();
+            }
         }
 
         await expect(header).toBeVisible({ timeout: 10000 });

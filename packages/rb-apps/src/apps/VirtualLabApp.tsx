@@ -25,6 +25,9 @@ import { GuidedLabSidebar } from '../components/GuidedLabSidebar';
 // Lazy load panels to break circular dependency / TDZ issues during initialization
 const HardwareRackPanel = React.lazy(() => import('../panels/HardwareRackPanel').then(m => ({ default: m.HardwareRackPanel })));
 const HardwareStatusOverlay = React.lazy(() => import('../panels/HardwareStatusOverlay').then(m => ({ default: m.HardwareStatusOverlay })));
+import { TruthHUD } from '../components/TruthHUD';
+import { HardwareAutoAdopt } from '../components/HardwareAutoAdopt';
+import { HardwareClientTransport } from '../services/hardwareClientTransport';
 
 const DEFAULT_SKETCH = `void setup() {
         pinMode(13, OUTPUT);
@@ -45,8 +48,20 @@ interface VirtualLabAppProps {
 const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, resourceType }) => {
     const addNode = useLabStore((state) => state.addNode);
     const reset = useLabStore((state) => state.reset);
-    const runSimulationStep = useLabStore((state) => state.runSimulationStep);
     const toggleSimulation = useLabStore((state) => state.toggleSimulation);
+    const runSimulationStep = useLabStore((state) => state.runSimulationStep);
+    const setTransport = useLabStore((state) => state.setTransport);
+
+    // SHIP-GRADE: Override default transport with HardwareClient bridge
+    useEffect(() => {
+        const transport = new HardwareClientTransport();
+        transport.connect().then(() => {
+            useLabStore.setState({ activeTransport: transport });
+        });
+        return () => {
+            void transport.disconnect();
+        };
+    }, []);
     const setPlaybackMode = useLabStore((state) => state.setPlaybackMode);
     const scrub = useLabStore((state) => state.scrub);
     const recover = useLabStore((state) => state.recover);
@@ -63,6 +78,9 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
     // Selectors
     const isRunning = useLabStore((state) => state.simulation.isRunning);
     const tick = useLabStore((state) => state.simulation.tick);
+    useEffect(() => {
+        (window as any).rbTickCount = tick;
+    }, [tick]);
     const playbackMode = useLabStore((state) => state.simulation.playbackMode);
     const replayScrubTick = useLabStore((state) => state.simulation.replayScrubTick);
     const integrityError = useLabStore((state) => state.integrityError);
@@ -940,7 +958,15 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                                 Template: {activeTemplate.name} · Version {activeTemplate.lab_version} · Integrity {integrityError ? 'Unverified' : 'Verified'}
                             </div>
                             <div className="mt-2 space-y-2">
-                                <div className="text-[11px] text-gray-300 font-semibold">Parts</div>
+                                <div className="flex items-center justify-between">
+                                    <div className="text-[11px] text-gray-300 font-semibold">Parts</div>
+                                    <button
+                                        onClick={() => useLabStore.getState().resetLayout()}
+                                        className="text-[10px] text-red-400 hover:text-red-300"
+                                    >
+                                        Reset Layout
+                                    </button>
+                                </div>
                                 {gradeReport.checks
                                     .filter((check) => check.category === 'parts')
                                     .map((check) => {
@@ -1072,6 +1098,11 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
             {/* Right Sidebar: Guided Lab Mode */}
             <GuidedLabSidebar />
 
+            {/* SHIP-GRADE TRUTH HUD */}
+            <TruthHUD />
+
+            {/* AUTO-ADOPT LOGIC */}
+            <HardwareAutoAdopt />
         </div>
     );
 };

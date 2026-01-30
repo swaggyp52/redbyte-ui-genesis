@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { BridgeDevice } from '@redbyte/rb-fpga-bridge-contract';
+import { BridgeDevice, BridgeHealth } from '@redbyte/rb-protocol';
 import { hardwareClient } from '../services/hardwareClient';
 import type { ConnectionState } from '../services/hardwareClient';
+import { useRunRecorderStore } from './runRecorderStore';
 
 // ============================================================================
 // Types
@@ -29,6 +30,8 @@ export interface HardwareSession {
     verified: boolean;
     capabilities: string[];
     connectedAt: number | null;
+    lastIoAt: number | null;
+    messageCount: number;
     error: string | null;
 }
 
@@ -63,6 +66,8 @@ const DEFAULT_SESSION: HardwareSession = {
     verified: false,
     capabilities: [],
     connectedAt: null,
+    lastIoAt: null,
+    messageCount: 0,
     error: null,
 };
 
@@ -83,21 +88,25 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
                         state.bridge.status = 'online';
                         state.bridge.version = clientState.bridge.version;
                         state.bridge.lastSeenAt = Date.now();
-                        // Map internal Device[] to BridgeDevice[]
-                        // They are largely compatible, but let's be safe
+
+                        // Use the devices directly from client if they match rb-protocol
                         state.devices = clientState.devices.map(d => ({
-                            model: d.boardModel,
-                            description: d.boardFamily,
                             deviceId: d.deviceId,
-                            serial: d.serial,
-                            target: (d.deviceId === 'uno' ? 'arduino-uno' : d.deviceId) as any, // mapping hack
-                            transport: { type: 'serial', port: d.runtime?.port || 'unknown' },
-                        }));
+                            target: d.deviceId as any, // Standardized as 'uno' | 'basys3'
+                            port: d.runtime?.port || 'unknown',
+                            manufacturer: 'unknown', // Fallback
+                            serialNumber: d.serial
+                        })) as any;
+
+                        // Trigger auto-adopt after sync if bridge just came online
+                        const wasOffline = state.bridge.status !== 'online';
+                        if (wasOffline) {
+                            setTimeout(() => get().autoAdopt(), 100);
+                        }
                     } else if (clientState.status === 'connecting') {
                         state.bridge.status = 'connecting';
                     } else {
                         state.bridge.status = 'disconnected';
-                        // Reset devices on disconnect? Maybe keep last known for UI flicker prevention
                     }
                 });
             };
@@ -127,6 +136,43 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
 
                     // Initial connect
                     hardwareClient.setMode('auto');
+
+                    // Subscribe to IO for HUD heartbeat
+                    hardwareClient.subscribeIO((snapshot: any) => {
+                        set(state => {
+                            // Find target associated with this snapshot
+                            // In Lab 0, we can assume if we have a session for basys3, 
+                            // and the snapshot matches its deviceId, we update it.
+                            for (const target of Object.keys(state.sessions) as Target[]) {
+                                const session = state.sessions[target];
+                                // We don't have deviceId in snapshot yet? 
+                                // Actually snapshot doesn't have deviceId. 
+                                // But and the bridge sends target in payload if we are lucky.
+                                // Let's use a simpler heuristic for Lab 0: 
+                                // if basys3 is connected, update it.
+                                if (session.status === 'connected') {
+                                    session.lastIoAt = Date.now();
+                                    session.messageCount++;
+                                }
+                            }
+
+                            // RECORDING INTEGRITY
+                            const recorder = useRunRecorderStore.getState();
+                            if (recorder.mode === 'recording') {
+                                recorder.recordEvent({
+                                    tick: (window as any).rbTickCount || 0,
+                                    type: 'hw_io',
+                                    deviceId: 'bridge',
+                                    inputs: snapshot.inputs,
+                                    outputs: snapshot.outputs,
+                                });
+                            }
+                        });
+                    });
+
+                    // Auto-Adopt trigger: when bridge goes online, try to adopt orphans
+                    // This is moved to a subscription effect in the store or component
+                    // for React-driven apps, but here we can trigger it manually on sync
                 },
 
                 shutdown: () => {
@@ -188,6 +234,17 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
                             state.sessions[target].verified = true;
                             state.sessions[target].connectedAt = Date.now();
                         });
+
+                        // RECORD CONNECT
+                        const recorder = useRunRecorderStore.getState();
+                        if (recorder.mode === 'recording') {
+                            recorder.recordEvent({
+                                tick: (window as any).rbTickCount || 0,
+                                type: 'hw_connect',
+                                deviceId: candidate.deviceId,
+                                target: target
+                            });
+                        }
                     } else {
                         set((state) => {
                             state.sessions[target].status = 'error';
@@ -205,8 +262,25 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
                 },
 
                 autoAdopt: async () => {
-                    // DISABLED PER INSTRUCTION
-                    console.log('[HardwareStore] Auto-adopt disabled for stability.');
+                    const { bridge, devices, sessions, ensureSession } = get();
+                    if (bridge.status !== 'online') return;
+
+                    console.log('[HardwareStore] Running Auto-Adopt...');
+
+                    // Standard RedByte targets we care about
+                    const targets: Target[] = ['basys3', 'arduino-uno'];
+
+                    for (const target of targets) {
+                        const session = sessions[target];
+                        if (session.status === 'idle') {
+                            // Find if there is a device available for this target
+                            const hasDevice = devices.some(d => d.target === target);
+                            if (hasDevice) {
+                                console.log(`[HardwareStore] Auto-Adopting: ${target}`);
+                                await ensureSession(target);
+                            }
+                        }
+                    }
                 },
             };
         }),

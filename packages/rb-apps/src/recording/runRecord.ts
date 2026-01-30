@@ -7,14 +7,28 @@ import type { EventLogV1 } from '@redbyte/rb-logic-core/src/determinism';
 
 export type RunRecorderMode = 'idle' | 'armed' | 'recording' | 'replaying';
 
-export interface RunStimulusEvent {
-  tick: number;
-  type: 'input_toggled';
-  nodeId: string;
-  portName: string;
-  value: 0 | 1;
-  label?: string;
-}
+export type RunStimulusEvent =
+  | {
+    tick: number;
+    type: 'input_toggled';
+    nodeId: string;
+    portName: string;
+    value: 0 | 1;
+    label?: string;
+  }
+  | {
+    tick: number;
+    type: 'hw_io';
+    deviceId: string;
+    inputs: Record<string, number | string>;
+    outputs: Record<string, number | string>;
+  }
+  | {
+    tick: number;
+    type: 'hw_connect';
+    deviceId: string;
+    target: string;
+  };
 
 export interface RunProbe {
   id: string;

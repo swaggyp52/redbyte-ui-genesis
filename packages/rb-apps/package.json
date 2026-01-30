@@ -26,6 +26,7 @@
     "@redbyte/rb-logic-adapter": "workspace:*",
     "@redbyte/rb-logic-core": "workspace:*",
     "@redbyte/rb-logic-view": "workspace:*",
+    "@redbyte/rb-protocol": "workspace:*",
     "@redbyte/rb-theme": "workspace:*",
     "@redbyte/rb-utils": "workspace:*",
     "jszip": "3.10.1",

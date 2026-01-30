@@ -1,7 +1,9 @@
 import React, { useMemo } from 'react';
+import * as THREE from 'three';
 import { useLabStore } from '../lab-model/store';
 import { PART_DEFINITIONS } from '../lab-model/parts';
-import { Box, Text, Line } from '@react-three/drei';
+import { Box, Text, Line, TransformControls } from '@react-three/drei';
+import { ThreeEvent } from '@react-three/fiber';
 import { Rb3DViewport } from './Rb3DViewport';
 import { WireMesh } from '../meshes/WireMesh';
 import { useLabInteraction } from '../hooks/useLabInteraction';
@@ -292,7 +294,7 @@ const FpgaBoardVisual: React.FC<{ node: any }> = ({ node }) => {
 };
 
 
-const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string> }> = ({ node, pinToNetId }) => {
+const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string>; isSelected?: boolean; onSelect?: (id: string) => void; nodeRefs: React.MutableRefObject<Map<string, THREE.Mesh>> }> = ({ node, pinToNetId, isSelected, onSelect, nodeRefs }) => {
     const def = PART_DEFINITIONS[node.type];
     const { handlePinHover, handlePinUnhover, handlePinClick } = useLabInteraction();
 
@@ -325,7 +327,14 @@ const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string> }> = ({
                 <ResistorVisual />
             ) : (
                 <>
-                    <Box args={[def.dimensions.x, def.dimensions.y, def.dimensions.z]}>
+                    <Box
+                        args={[def.dimensions.x, def.dimensions.y, def.dimensions.z]}
+                        ref={(el: any) => {
+                            if (el) nodeRefs.current.set(node.id, el);
+                            else nodeRefs.current.delete(node.id);
+                        }}
+                        onClick={(e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); onSelect?.(node.id); }}
+                    >
                         <meshStandardMaterial color="#888" />
                     </Box>
                     <Text position={[0, def.dimensions.y / 2 + 0.15, 0]} fontSize={0.25} color="white" rotation={[-Math.PI / 2, 0, 0]}>
@@ -451,7 +460,29 @@ const LabInteractionLayer = () => {
 export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: number | string, height?: number | string }) => {
     const graph = useLabStore(state => state.graph);
     const selectedNetId = useLabStore(state => state.interaction.selectedNetId);
+    const selectedNodeId = useLabStore(state => state.interaction.selectedNodeId);
+    const setSelectedNodeId = useLabStore(state => state.setSelectedNodeId);
+    const updateNodePose = useLabStore(state => state.updateNodePose);
     const netlist = useMemo(() => computeNetlist(graph), [graph]);
+
+    // Track refs for TransformControls
+    const nodeRefs = React.useRef<Map<string, THREE.Mesh>>(new Map());
+
+    const activeTransformTarget = useMemo(() => {
+        if (!selectedNodeId) return undefined;
+        return nodeRefs.current.get(selectedNodeId);
+    }, [selectedNodeId, graph.nodes]);
+
+    const handleTransformEnd = (e: any) => {
+        const target = e?.target?.object;
+        if (target && selectedNodeId) {
+            updateNodePose(
+                selectedNodeId,
+                { x: target.position.x, y: target.position.y, z: target.position.z },
+                { x: target.quaternion.x, y: target.quaternion.y, z: target.quaternion.z, w: target.quaternion.w }
+            );
+        }
+    };
 
     return (
         <Rb3DViewport
@@ -460,6 +491,14 @@ export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: numb
             cameraPosition={[0, 8, 4]}
             cameraTarget={[0, 0, 0]}
         >
+            {activeTransformTarget && (
+                <TransformControls
+                    object={activeTransformTarget}
+                    mode="translate"
+                    showY={false}
+                    onMouseUp={handleTransformEnd}
+                />
+            )}
             <LabInteractionLayer />
 
             <ambientLight intensity={0.5} />
@@ -467,7 +506,14 @@ export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: numb
             <gridHelper args={[20, 20, 0x444444, 0x222222]} />
 
             {graph.nodes.map(node => (
-                <PartMesh key={node.id} node={node} pinToNetId={netlist.pinToNetId} />
+                <PartMesh
+                    key={node.id}
+                    node={node}
+                    pinToNetId={netlist.pinToNetId}
+                    isSelected={selectedNodeId === node.id}
+                    onSelect={setSelectedNodeId}
+                    nodeRefs={nodeRefs}
+                />
             ))}
 
             {graph.wires.map(wire => {
