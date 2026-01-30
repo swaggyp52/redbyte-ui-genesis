@@ -141,7 +141,7 @@ const PushButton: React.FC<{
       type="button"
       className={`
         ${sizeClass} rounded-full relative transition-all duration-75
-        ${disabled ? 'cursor-default' : 'cursor-pointer'}
+        ${disabled ? 'cursor-default' : 'cursor-pointer hover:brightness-110 active:scale-95'}
       `}
       style={{
         background: `radial-gradient(circle at 50% 40%, ${pressed ? c.pressed : c.base}, #111)`,

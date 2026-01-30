@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 const navLinks = [
+  { to: '/students', label: 'Students' },
   { to: '/', label: 'Product' },
   { to: '/install', label: 'Download' },
   { to: '/instructors', label: 'Instructor Guide' },

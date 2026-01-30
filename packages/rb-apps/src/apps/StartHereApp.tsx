@@ -71,12 +71,23 @@ export const StartHereAppContent: React.FC<StartHereAppProps> = ({ onOpenApp }) 
           <li><strong>Lab Examiner</strong> — Read-only inspection + integrity verification</li>
         </ul>
         <p className={styles.labMapFiles}>
-          <code>.labcapsule.json</code> = evidence capsule
+          <code>.rb-lab.zip</code> = evidence capsule
         </p>
       </section>
+      <div className="mt-6 pt-4 border-t border-white/5 text-[9px] text-gray-600 font-mono text-center">
+        RedByte OS Genesis · {import.meta.env.MODE} · <BuildInfo />
+      </div>
     </div>
   );
 };
+
+const BuildInfo = () => {
+  const [info, setInfo] = React.useState('Loading...');
+  React.useEffect(() => {
+    fetch('/build.json').then(r => r.json()).then(d => setInfo(`${d.sha} (${d.env})`)).catch(() => setInfo('dev-mode'));
+  }, []);
+  return <span>{info}</span>;
+}
 
 export const StartHereApp: RedByteApp = {
   manifest: {

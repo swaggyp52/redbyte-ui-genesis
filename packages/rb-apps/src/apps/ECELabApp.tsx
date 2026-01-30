@@ -11,9 +11,14 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import JSZip from 'jszip';
 import BoardPanel from '../components/BoardPanel';
 import { CompareView, type CompareSignalCheck } from '../components/CompareView';
-import { CircuitCanvas } from '../components/boards/CircuitCanvas';
+import { CircuitCanvas } from '../components/boards/CircuitCanvas'; // TODO: Remove if unused, but keeping type safely
+import { SplitViewLayout } from '../components/SplitViewLayout';
+import { Circuit, CircuitEngine, TickEngine, Node } from '@redbyte/rb-logic-core';
+import { useViewStateStore } from '../stores/viewStateStore';
+import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import { useHardwareStore } from '../stores/hardwareStore';
 import { getSignalMap } from '../labs/signalMap';
 import { getSimSnapshot, useSimStore, setSimInput } from '../labs/simAdapter';
@@ -213,6 +218,42 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
   // Comparison state
   const [checks, setChecks] = useState<CompareSignalCheck[]>([]);
 
+  // --- ENGINE INTEGRATION (New for SplitViewLayout) ---
+  const [circuit, setCircuit] = useState<Circuit>(() => ({ nodes: [], connections: [] }));
+  const [engine] = useState(() => new CircuitEngine({ nodes: [], connections: [] }));
+  const [tickEngine] = useState(() => new TickEngine({ nodes: [], connections: [] }, { tickRate: 10 }));
+
+  // Initialize engines
+  useEffect(() => {
+    engine.setCircuit(circuit);
+    tickEngine.setCircuit(circuit);
+  }, [circuit, engine, tickEngine]);
+
+  // Sync SimStore Inputs -> Engine (if interacting with BoardPanel)
+  useEffect(() => {
+    // Find any IO nodes or Board nodes and update them based on SimInputs
+    // For now, we assume direct wiring or a "Sim Board" node is present.
+    // If logic playground uses specific nodes for IO, we map them here.
+    // NOTE: This basic implementation assumes 'standard' IO nodes for now.
+    // Real implementation would find 'fpga-basys3' node.
+  }, [simInputs]);
+
+  // Sync Engine Outputs -> SimStore (for BoardPanel visualization)
+  useEffect(() => {
+    if (!executionSource) return;
+    const interval = setInterval(() => {
+      if (executionSource === 'sim') {
+        const tick = tickEngine.getTickCount();
+        // Extract outputs (Hypothetically from engine nodes)
+        // const newOutputs = ...
+        // For now, we let the legacy SimAdapter loop handle 'computational' experiments
+        // BUT if user is building custom circuits, we need to extract outputs here.
+      }
+    }, 50);
+    return () => clearInterval(interval);
+  }, [executionSource, tickEngine]);
+
+
   // Trace / Replay
   const isRecording = useHardwareStore((s) => s.isRecording);
   const traceBuffer = useHardwareStore((s) => s.traceBuffer);
@@ -393,25 +434,38 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
           {/* Execution Source Switcher (The Arbiter) */}
           <div className="flex rounded-lg overflow-hidden border border-[#1a2a3a] bg-[#0a1018]">
             {(['sim', 'hardware', 'replay'] as ExecutionSource[]).map((src) => {
+              // @ts-ignore
+              const isBrowserDemo = typeof window !== 'undefined' && !window.electron;
+
               const isActive = executionSource === src;
               const color = src === 'sim' ? '#00ff88' : src === 'hardware' ? '#00d4ff' : '#ffaa00';
               const isReplayUnavailable = src === 'replay' && !replayTrace;
+              const isHardwareUnavailable = src === 'hardware' && isBrowserDemo;
+
               const hasReplayReady = src === 'replay' && replayTrace && executionSource !== 'replay';
+
+              const disabled = isReplayUnavailable || isHardwareUnavailable;
+              const title = isReplayUnavailable
+                ? 'No capsule loaded — use LOAD to import'
+                : isHardwareUnavailable
+                  ? 'Hardware unavailable in Browser Demo. Install Local OS.'
+                  : undefined;
+
               return (
                 <button
                   key={src}
                   onClick={() => {
-                    if (isReplayUnavailable) return; // No-op if no capsule
+                    if (disabled) return;
                     setExecutionSource(src);
                   }}
-                  title={isReplayUnavailable ? 'No capsule loaded — use LOAD to import' : undefined}
+                  title={title}
                   className="px-3 py-1 text-[10px] font-bold tracking-wider transition-all relative"
                   style={{
                     background: isActive ? `${color}15` : 'transparent',
-                    color: isReplayUnavailable ? '#2a3a4a' : isActive ? color : '#4a5a6a',
+                    color: disabled ? '#2a3a4a' : isActive ? color : '#4a5a6a',
                     borderRight: '1px solid #1a2a3a',
                     textShadow: isActive ? `0 0 10px ${color}66` : 'none',
-                    cursor: isReplayUnavailable ? 'not-allowed' : 'pointer',
+                    cursor: disabled ? 'not-allowed' : 'pointer',
                   }}
                 >
                   {src.toUpperCase()}
@@ -551,6 +605,59 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
             )}
           </div>
 
+          {/* Export Evidence Button */}
+          <button
+            type="button"
+            onClick={async () => {
+              if (isRecording) stopRecording();
+
+              // Prefer replay trace, fallback to active buffer if valid
+              const trace = replayTrace || (traceBuffer.length > 0 ? {
+                version: 1,
+                samples: [...traceBuffer],
+                metadata: {
+                  boardId: effectiveCapabilities?.boardId || 'unknown',
+                  recordedAt: new Date().toISOString(),
+                  sampleRate: 0
+                }
+              } : null);
+
+              if (!trace) {
+                window.alert("No evidence recorded.\n\n1. Click REC\n2. Toggle switches\n3. Click STOP");
+                return;
+              }
+
+              const zip = new JSZip();
+              zip.file("manifest.json", JSON.stringify({
+                version: 1,
+                labId: mode === 'guided-lab' ? 'lab-1' : 'free-play',
+                timestamp: new Date().toISOString(),
+                agent: "RedByte ECELab"
+              }, null, 2));
+
+              const capsule = createCapsule({
+                labId: mode === 'guided-lab' ? 'lab-1' : 'free-play',
+                executionSource: executionSource,
+                mode: mode,
+                deviceBoardId: effectiveCapabilities?.boardId || 'unknown',
+                trace: trace as any
+              });
+              zip.file("evidence.json", JSON.stringify(capsule, null, 2));
+
+              const blob = await zip.generateAsync({ type: 'blob' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `lab-evidence-${Date.now()}.rb-lab.zip`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="px-3 py-1 rounded text-[10px] font-bold tracking-wider transition-all hover:scale-105 active:scale-95 shadow-lg bg-green-600 hover:bg-green-500 text-white border border-green-400"
+            title="Download verified evidence (.rb-lab.zip)"
+          >
+            EXPORT EVIDENCE
+          </button>
+
           {/* Status Badge */}
           <div
             className="px-2 py-0.5 rounded text-[9px] font-bold tracking-wider"
@@ -689,41 +796,109 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
                 </div>
               </div>
 
-              {/* Circuit Visualization Canvas */}
-              <div className="flex-1 relative overflow-hidden">
-                {currentExperiment && (
-                  <CircuitCanvas
-                    experiment={currentExperiment}
-                    inputs={{
-                      SW: typeof simInputs.SW === 'number' ? simInputs.SW : parseInt(String(simInputs.SW || '0'), 2),
-                      BTN: typeof simInputs.BTN === 'number' ? simInputs.BTN : parseInt(String(simInputs.BTN || '0'), 2),
-                    }}
-                    outputs={{
-                      LED: typeof simOutputs.LED === 'number' ? simOutputs.LED : parseInt(String(simOutputs.LED || '0'), 2),
-                      SEG: typeof simOutputs.SEG === 'number' ? simOutputs.SEG : parseInt(String(simOutputs.SEG || '0'), 2),
-                      AN: typeof simOutputs.AN === 'number' ? simOutputs.AN : parseInt(String(simOutputs.AN || '0'), 2),
-                      DP: typeof simOutputs.DP === 'number' ? simOutputs.DP : parseInt(String(simOutputs.DP || '0'), 2),
-                    }}
-                    tick={simSnapshot.tick}
-                  />
+              {/* Circuit Visualization / Interactive Canvas */}
+              <div className="flex-1 relative overflow-hidden bg-gray-950">
+                {currentExperiment ? (
+                  /* Legacy Experiment Mode: Use Static Canvas for 'canned' experiments */
+                  <div className="absolute inset-0 flex flex-col">
+                    <CircuitCanvas
+                      experiment={currentExperiment}
+                      inputs={{
+                        SW: typeof simInputs.SW === 'number' ? simInputs.SW : parseInt(String(simInputs.SW || '0'), 2),
+                        BTN: typeof simInputs.BTN === 'number' ? simInputs.BTN : parseInt(String(simInputs.BTN || '0'), 2),
+                      }}
+                      outputs={{
+                        LED: typeof simOutputs.LED === 'number' ? simOutputs.LED : parseInt(String(simOutputs.LED || '0'), 2),
+                        SEG: typeof simOutputs.SEG === 'number' ? simOutputs.SEG : parseInt(String(simOutputs.SEG || '0'), 2),
+                        AN: typeof simOutputs.AN === 'number' ? simOutputs.AN : parseInt(String(simOutputs.AN || '0'), 2),
+                        DP: typeof simOutputs.DP === 'number' ? simOutputs.DP : parseInt(String(simOutputs.DP || '0'), 2),
+                      }}
+                      tick={simSnapshot.tick}
+                    />
+                    <div className="absolute top-2 left-2 px-2 py-1 bg-gray-900/80 text-[10px] text-cyan-500 border border-cyan-500/30 rounded pointer-events-none">
+                      PRE-BUILT EXPERIMENT
+                    </div>
+                  </div>
+                ) : (
+                  /* Interactive Mode: SplitViewLayout */
+                  /* Interactive Mode: SplitViewLayout */
+                  <div className="absolute inset-0">
+                    <SplitViewLayout
+                      mode="single"
+                      views={['circuit']}
+                      engine={engine}
+                      tickEngine={tickEngine}
+                      circuit={circuit}
+                      isRunning={simAutoRun}
+                      tickCount={simSnapshot.tick}
+                      onCircuitChange={(newCircuit) => {
+                        setCircuit(newCircuit);
+                        engine.setCircuit(newCircuit);
+                        tickEngine.setCircuit(newCircuit);
+                      }}
+                      viewStateStore={useViewStateStore}
+                      // Connect simulation inputs if handling standard nodes
+                      onInputToggled={(nodeId, port, val) => {
+                        // forward to engine (using setNodeState for built-in nodes)
+                        // Logic Core uses 'isOn' for Switch/Input state
+                        engine.setNodeState(nodeId, { isOn: val });
+                        engine.tick();
+                      }}
+                    />
+
+                    {/* Empty State Overlay */}
+                    {circuit.nodes.length === 0 && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none">
+                        <div className="bg-[#0a1520] border border-[#1a2a3a] p-6 rounded-lg shadow-2xl text-center pointer-events-auto max-w-sm">
+                          <h3 className="text-sm font-bold text-gray-200 mb-2">Empty Circuit</h3>
+                          <p className="text-xs text-gray-400 mb-6">
+                            Start by building a circuit or load a template to begin testing.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Create simple starter: Switch -> LED
+                              const starter: Circuit = {
+                                nodes: [
+                                  { id: 'sw0', type: 'switch', position: { x: 100, y: 100 }, state: { isOn: 0 }, config: { label: 'SW0' }, rotation: 0 },
+                                  { id: 'led0', type: 'lamp', position: { x: 300, y: 100 }, state: { isOn: 0 }, config: { label: 'LED0', color: 'red' }, rotation: 0 }
+                                ],
+                                connections: [
+                                  { from: { nodeId: 'sw0', portName: 'out' }, to: { nodeId: 'led0', portName: 'in' } }
+                                ]
+                              };
+                              setCircuit(starter);
+                              engine.setCircuit(starter);
+                              tickEngine.setCircuit(starter);
+                            }}
+                            className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold px-4 py-2 rounded transition-colors w-full mb-3"
+                          >
+                            LOAD STARTER CIRCUIT
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {/* Experiment description overlay */}
-                <div
-                  className="absolute bottom-4 left-4 right-4 px-4 py-2 rounded"
-                  style={{
-                    background: 'rgba(0,0,0,0.7)',
-                    backdropFilter: 'blur(8px)',
-                    border: '1px solid #1a2a3a',
-                  }}
-                >
-                  <div className="text-[10px] font-bold tracking-wider text-gray-500 mb-1">
-                    {currentExperiment?.name.toUpperCase()}
+                {currentExperiment && (
+                  <div
+                    className="absolute bottom-4 left-4 right-4 px-4 py-2 rounded pointer-events-none"
+                    style={{
+                      background: 'rgba(0,0,0,0.7)',
+                      backdropFilter: 'blur(8px)',
+                      border: '1px solid #1a2a3a',
+                    }}
+                  >
+                    <div className="text-[10px] font-bold tracking-wider text-gray-500 mb-1">
+                      {currentExperiment?.name.toUpperCase()}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {currentExperiment?.description}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-400">
-                    {currentExperiment?.description}
-                  </div>
-                </div>
+                )}
               </div>
             </>
           )}

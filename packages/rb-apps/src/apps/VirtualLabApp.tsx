@@ -496,7 +496,7 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `lab-replay-${Date.now()}.labcapsule.json`;
+        a.download = `lab-replay-${Date.now()}.rb-lab.zip`;
         a.click();
         URL.revokeObjectURL(url);
     };

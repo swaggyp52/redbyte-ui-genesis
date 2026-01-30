@@ -11,6 +11,8 @@ import Walkthrough from './pages/Walkthrough';
 import ManualRedirect from './pages/ManualRedirect';
 import About from './pages/About';
 import Demo from './pages/Demo';
+import StudentStart from './pages/StudentStart';
+import LabZero from './pages/LabZero';
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
         <main className="flex-1">
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/students" element={<StudentStart />} />
+            <Route path="/lab-0" element={<LabZero />} />
             <Route path="/install" element={<Install />} />
             <Route path="/instructors" element={<Instructors />} />
             <Route path="/getting-started" element={<GettingStarted />} />

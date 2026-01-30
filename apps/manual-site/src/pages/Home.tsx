@@ -49,40 +49,43 @@ const Home = () => {
           </div>
         </div>
       </div>
-    </div>
 
-      {/* Trust / Stats */ }
-  <div className="bg-[#0f0f0f] border-b border-gray-800 pt-56 pb-16">
-    <div className="container mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-      <Stat label="Latency" value="<10ms" />
-      <Stat label="Hardware" value="Basys3 + Uno" />
-      <Stat label="Determinism" value="100%" />
-      <Stat label="License" value="Open Source" />
-    </div>
-  </div>
 
-  {/* Core Value Props */ }
-  <div className="py-24 bg-[#111]">
-    <div className="container mx-auto px-6">
-      <div className="grid md:grid-cols-3 gap-12">
-        <FeatureCard
-          icon="⚡"
-          title="Hardware Reality"
-          desc="Bridge virtual circuits to physical FPGAs instantly. No massive toolchains required on student laptops."
-        />
-        <FeatureCard
-          icon="🎓"
-          title="Guided Labs"
-          desc="Integrated lab manuals and Truth HUD ensure students know exactly what to build and verify."
-        />
-        <FeatureCard
-          icon="⚖️"
-          title="Evidence Export"
-          desc="Deterministic replay capsules allow TAs to grade labs based on what actually happened, not just screenshots."
-        />
+      {/* Trust / Stats */}
+      <div className="bg-[#0f0f0f] border-b border-gray-800 pt-56 pb-16">
+        <div className="container mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          <Stat label="Latency" value="<10ms" />
+          <Stat label="Hardware" value="Basys3 + Uno" />
+          <Stat label="Determinism" value="100%" />
+          <Stat label="License" value="Open Source" />
+        </div>
+        <div className="mt-8 text-center">
+          <BuildTag />
+        </div>
       </div>
-    </div>
-  </div>
+
+      {/* Core Value Props */}
+      <div className="py-24 bg-[#111]">
+        <div className="container mx-auto px-6">
+          <div className="grid md:grid-cols-3 gap-12">
+            <FeatureCard
+              icon="⚡"
+              title="Hardware Reality"
+              desc="Bridge virtual circuits to physical FPGAs instantly. No massive toolchains required on student laptops."
+            />
+            <FeatureCard
+              icon="🎓"
+              title="Guided Labs"
+              desc="Integrated lab manuals and Truth HUD ensure students know exactly what to build and verify."
+            />
+            <FeatureCard
+              icon="⚖️"
+              title="Evidence Export"
+              desc="Deterministic replay capsules allow TAs to grade labs based on what actually happened, not just screenshots."
+            />
+          </div>
+        </div>
+      </div>
 
     </div >
   );
@@ -104,5 +107,26 @@ const FeatureCard = ({ icon, title, desc }: { icon: string, title: string, desc:
     </p>
   </div>
 );
+
+const BuildTag = () => {
+  const [build, setBuild] = React.useState<{ sha: string, env: string } | null>(null);
+
+  React.useEffect(() => {
+    fetch('/build.json')
+      .then(r => r.json())
+      .then(setBuild)
+      .catch(() => setBuild({ sha: 'dev', env: 'local' }));
+  }, []);
+
+  if (!build) return null;
+
+  return (
+    <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-900 rounded font-mono text-[10px] text-gray-600 border border-gray-800" title="Deployment Trust Identity">
+      <span className="text-green-500/50">●</span>
+      <span>Build: <span className="text-gray-400">{build.sha}</span></span>
+      <span className="opacity-50">({build.env})</span>
+    </div>
+  );
+};
 
 export default Home;

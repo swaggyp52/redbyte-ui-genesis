@@ -455,8 +455,6 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
           {circuit.nodes.length} nodes • {circuit.connections.length} wires
         </div>
       </div>
-      {/* Headless Mapper */}
-      {hardwareMapper}
       {/* View Content */}
       <div className="flex-1 min-h-0 min-w-0 relative overflow-hidden">
         {renderContent()}
@@ -566,7 +564,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   // Single view mode
   if (mode === 'single') {
     return (
-      <div className="w-full h-full">
+      <div className="w-full h-full relative">
+        {hardwareMapper}
         <ViewRenderer
           view={views[0] || 'circuit'}
           engine={engine}

@@ -42,13 +42,13 @@ const Instructors = () => {
 
           <Section title="3. Grading with Evidence">
             <p>
-              Students export <strong>.labcapsule.json</strong> files. You do not need to reproduce their circuit manually.
+              Students export a verified <strong>.rb-lab.zip</strong> bundle. You do not need to reproduce their circuit manually.
             </p>
             <ol className="list-decimal pl-6 space-y-2 mt-4 text-base">
-              <li>Open RedByte OS and launch the <strong>Inspector</strong> app.</li>
-              <li>Load the student's capsule file.</li>
-              <li>Values are replayed deterministically.</li>
-              <li>Check the <strong>Status Badge</strong> for "PASSED" or "INCOMPLETE".</li>
+              <li>Open RedByte OS and launch the <strong>Submission Inspector</strong> app.</li>
+              <li>Drag & Drop the student's <code>.rb-lab.zip</code> file onto the window.</li>
+              <li>Calculated values, circuit structure, and integrity are verified instantly.</li>
+              <li>Check the <strong>Verdict Badge</strong> for "PASS" or "FAIL".</li>
             </ol>
           </Section>
 

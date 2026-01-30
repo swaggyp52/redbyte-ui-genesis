@@ -7,6 +7,7 @@
     "dev": "vite",
     "prebuild": "node write-build-sha.cjs",
     "build": "npm run prebuild && vite build",
+    "postbuild": "node ../../scripts/copy-build-json.mjs",
     "preview": "vite preview",
     "sanity": "node ./site-sanity-check.cjs",
     "typecheck": "tsc --noEmit"

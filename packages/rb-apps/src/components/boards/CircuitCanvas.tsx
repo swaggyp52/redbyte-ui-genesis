@@ -637,6 +637,11 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
         {circuitContent}
       </div>
 
+      {/* Interaction Hint */}
+      <div className="absolute top-2 right-2 px-2 py-0.5 rounded border border-gray-800 bg-black/40 text-[9px] font-mono text-gray-600 pointer-events-none select-none">
+        VIEW ONLY
+      </div>
+
       {/* Oscilloscope-style border */}
       <div className="absolute inset-0 pointer-events-none border border-[#1a3a2a] rounded-lg" />
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#00ff8844] to-transparent" />

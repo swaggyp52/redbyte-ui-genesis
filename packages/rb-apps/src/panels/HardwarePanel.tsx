@@ -4,7 +4,23 @@ import { VIRTUAL_LAB_TEMPLATES } from '../apps/virtual-lab-templates';
 import { toast } from '@redbyte/rb-primitives';
 import { getFriendlyErrorMessage } from '../utils/studentErrors';
 
+import { useHardwareStore } from '../stores/hardwareStore';
+import { isWebDemoEnvironment } from '../utils/env';
+
 export const HardwarePanel: React.FC = () => {
+    if (isWebDemoEnvironment()) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full p-6 text-center text-gray-400 select-none">
+                <div className="text-amber-500 text-4xl mb-4">⚠️</div>
+                <h3 className="text-lg font-bold text-gray-200 mb-2">Simulation Only</h3>
+                <p className="text-sm">
+                    Hardware access is disabled in the Web Demo.<br />
+                    Install RedByte OS locally to connect to physical FPGA boards.
+                </p>
+            </div>
+        );
+    }
+
     const playbackMode = useLabStore(state => state.simulation.playbackMode);
     const serial = useLabStore(state => state.sketch.serial);
 
@@ -107,6 +123,26 @@ export const HardwarePanel: React.FC = () => {
     };
 
     const isVerified = verificationData?.verified && status.connected;
+
+    // Web Demo Hardening: Hide hardware panel in browser mode
+    // @ts-ignore
+    const isBrowserDemo = typeof window !== 'undefined' && !window.electron;
+
+    if (isBrowserDemo) {
+        return (
+            <div className="flex flex-col h-full bg-[#0a0a0a] text-[#444] items-center justify-center p-6 text-center select-none">
+                <div className="text-4xl mb-4 opacity-20">🔌</div>
+                <div className="text-xs font-bold uppercase tracking-widest mb-2 opacity-50">Local Only</div>
+                <p className="text-[10px] max-w-[200px] leading-relaxed">
+                    Hardware connection requires the <strong>Local RedByte OS</strong>.
+                </p>
+                <div className="mt-6 p-3 bg-[#111] rounded border border-white/5 w-full">
+                    <div className="text-[9px] font-mono text-cyan-500/50 mb-1">DEMO MODE</div>
+                    <div className="text-[9px] text-gray-600">Simulation is fully enabling.</div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-full bg-[#0a0a0a] text-[11px] text-gray-400 select-none">

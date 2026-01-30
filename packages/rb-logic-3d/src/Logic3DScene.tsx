@@ -4,6 +4,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CircuitEngine } from '@redbyte/rb-logic-core';
+import { useToast } from '@redbyte/rb-primitives';
 import { ViewAdapter } from '@redbyte/rb-logic-adapter';
 import { use3DEngineSync } from './hooks/use3DEngineSync';
 
@@ -204,7 +205,14 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
           selectedNodeIds={selectedNodeIds}
           onNodeSelect={handleNodeSelect}
           onNodeHover={handleNodeHover}
-          onNodeMove={handleNodeMove}
+          onNodeMove={() => {
+            const { toast } = useToast.getState(); // Access store directly or hook if available
+            toast({
+              title: "3D View is Read-Only",
+              description: "Switch to 2D view to edit the circuit.",
+              variant: "default"
+            });
+          }}
           probeWireHighlights={probeWireHighlights}
           mismatchWireHighlights={mismatchWireHighlights}
           mismatchNodeIds={mismatchNodeIds}
@@ -237,6 +245,11 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
           </div>
         </div>
       )}
+
+      {/* 3D READ-ONLY BADGE */}
+      <div className="absolute top-2 right-2 bg-amber-500/10 border border-amber-500/30 text-amber-500 px-2 py-1 rounded text-[10px] font-bold tracking-wider pointer-events-none select-none z-50">
+        3D VIEW (READ-ONLY)
+      </div>
 
       {/* Micro Toolbar */}
       <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-gray-900/80 border border-gray-700 rounded px-2 py-1 text-[10px] z-50" data-testid="3d-micro-toolbar">

@@ -158,12 +158,48 @@ export const BoardPanel: React.FC<BoardPanelProps> = ({
     );
   };
 
+  // --- PAN/ZOOM STATE ---
+  const [transform, setTransform] = React.useState({ x: 0, y: 0, scale: 1 });
+  const [isDragging, setIsDragging] = React.useState(false);
+  const dragStart = React.useRef({ x: 0, y: 0 });
+
+  const handleWheel = (e: React.WheelEvent) => {
+    // Zoom
+    e.stopPropagation();
+    const delta = -e.deltaY * 0.001;
+    setTransform(prev => ({
+      ...prev,
+      scale: Math.min(2, Math.max(0.5, prev.scale + delta))
+    }));
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.target instanceof HTMLButtonElement || e.target instanceof HTMLInputElement) return;
+    // Only drag on background
+    setIsDragging(true);
+    dragStart.current = { x: e.clientX - transform.x, y: e.clientY - transform.y };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setTransform(prev => ({
+      ...prev,
+      x: e.clientX - dragStart.current.x,
+      y: e.clientY - dragStart.current.y
+    }));
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
+  const handleReset = () => setTransform({ x: 0, y: 0, scale: 1 });
+
   return (
     <div
       className={`flex flex-col h-full ${className}`}
       style={{
         background: 'linear-gradient(180deg, #0a0f14 0%, #050810 100%)',
       }}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
     >
       {/* Header with lab equipment styling */}
       <div
@@ -197,8 +233,8 @@ export const BoardPanel: React.FC<BoardPanelProps> = ({
             onClick={() => isRecording ? stopRecording() : startRecording()}
             disabled={connectionState !== 'ready'}
             className={`px-2 py-1 text-[10px] font-bold tracking-wider rounded transition-all flex items-center gap-1 ${isRecording
-                ? 'bg-red-900/50 text-red-400 border border-red-800 hover:bg-red-900'
-                : 'bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700'
+              ? 'bg-red-900/50 text-red-400 border border-red-800 hover:bg-red-900'
+              : 'bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-red-500'}`} />
@@ -355,7 +391,12 @@ export const BoardPanel: React.FC<BoardPanelProps> = ({
       )}
 
       {/* Board visualization area */}
-      <div className="flex-1 overflow-hidden relative">
+      <div
+        className="flex-1 overflow-hidden relative cursor-grab active:cursor-grabbing"
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+      >
         {/* Ambient glow effect */}
         <div
           className="absolute inset-0 pointer-events-none"
@@ -365,7 +406,27 @@ export const BoardPanel: React.FC<BoardPanelProps> = ({
               : 'none',
           }}
         />
-        {renderBoardLayout()}
+
+        {/* Transform Container */}
+        <div
+          style={{
+            transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+            transformOrigin: 'center',
+            transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          {renderBoardLayout()}
+        </div>
+
+        {/* Zoom Controls Overlay */}
+        <div className="absolute bottom-4 right-4 flex flex-col gap-1">
+          <button onClick={handleReset} className="bg-gray-800 text-gray-300 w-6 h-6 rounded flex items-center justify-center border border-gray-700 hover:bg-gray-700 text-xs" title="Reset View">⟲</button>
+        </div>
       </div>
 
       {/* Recording indicator */}
