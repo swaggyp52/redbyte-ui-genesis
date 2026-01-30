@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "prebuild": "node write-build-sha.cjs",
-    "build": "npm run prebuild && vite build",
+    "build": "pnpm -w build:unified && rm -rf dist && cp -r ../../dist dist",
     "postbuild": "node ../../scripts/copy-build-json.mjs ./dist",
     "preview": "vite preview",
     "sanity": "node ./site-sanity-check.cjs",
