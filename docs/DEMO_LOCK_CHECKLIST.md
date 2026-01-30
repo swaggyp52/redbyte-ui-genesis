@@ -4,11 +4,11 @@
 
 ## 1. Deployment Truth
 
-- [ ] **Build JSON:** `https://redbyteapps.dev/build.json` returns valid JSON with SHA.
-  - ❌ **FAIL:** Returns HTML (SPA Fallback). Deployment is stale or file missing.
-- [ ] **Badge:** Website Home shows "Build: [SHA]".
-- [ ] **Badge:** OS Start Here shows "Build: [SHA]".
-- [ ] **Deep Link:** `https://redbyteapps.dev/?lab=lab-0` loads Lab 0 directly.
+- [x] **Build JSON:** `https://redbyteapps.dev/build.json` returns valid JSON with SHA.
+  - ✅ **PASS:** Verified via `verify-deploy.mjs` (SHA: `b2ebd0d`).
+- [x] **Badge:** Website Home shows "Build: [SHA]".
+- [x] **Badge:** OS Start Here shows "Build: [SHA]".
+- [x] **Deep Link:** `https://redbyteapps.dev/?lab=lab-0` loads Lab 0 directly.
 
 ## 2. Friend Laptop Validation (No Repo)
 
