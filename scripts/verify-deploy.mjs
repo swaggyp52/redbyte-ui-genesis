@@ -36,23 +36,34 @@ if (EXPECTED_SHA) console.log(`🎯 Expecting Commit: ${EXPECTED_SHA}`);
             }
         }
 
-        // 2. Deep Link Check (Lab 0 - Direct in OS)
-        console.log('Testing Lab 0 Deep Link (OS Direct)...');
-        await page.goto(`${TARGET_URL}/?lab=lab-0`);
+        // 2. Marketing Site Check (Root)
+        console.log('Testing Marketing Site (Root)...');
+        await page.goto(`${TARGET_URL}/`);
+        const marketingContent = await page.content();
+        if (marketingContent.includes('RedByte OS Genesis') || marketingContent.includes('The OS for')) {
+            console.log('✅ Marketing site loaded at root.');
+        } else {
+            console.error('❌ Marketing site NOT found at root.');
+            hasError = true;
+        }
+
+        // 3. Deep Link Check (Lab 0 - Direct in OS at /os/)
+        console.log('Testing Lab 0 Deep Link (OS Direct at /os/)...');
+        await page.goto(`${TARGET_URL}/os/?lab=lab-0`);
         await page.waitForTimeout(3000); // Allow OS to boot
 
         const content = await page.content();
-        const hasOSShell = content.includes('rb-shell') || content.includes('assets/rb-apps');
+        const hasOSShell = content.includes('rb-shell') || content.includes('assets/rb-apps') || content.includes('/os/assets/');
 
         if (hasOSShell) {
-            console.log('✅ OS Shell loaded at root (bundle verified).');
+            console.log('✅ OS Shell loaded at /os/ (bundle verified).');
         } else {
-            console.error('❌ OS Shell bundle NOT found at root.');
+            console.error('❌ OS Shell bundle NOT found at /os/.');
             console.log('Content snippet:', content.slice(0, 500));
             hasError = true;
         }
 
-        // 3. Docs Check (/docs/students)
+        // 4. Docs Check (/docs/students)
         console.log('Testing Docs Route (/docs/students)...');
         const page2 = await browser.newPage();
         await page2.goto(`${TARGET_URL}/docs/students`);

@@ -15,23 +15,24 @@ async function merge() {
     }
     fs.mkdirSync(FINAL_DIST, { recursive: true });
 
-    // 2. Copy OS to root
-    if (fs.existsSync(PLAYGROUND_DIST)) {
-        console.log(`📦 Copying OS from ${PLAYGROUND_DIST} to root...`);
-        fs.cpSync(PLAYGROUND_DIST, FINAL_DIST, { recursive: true });
+    // 2. Copy Marketing to root
+    if (fs.existsSync(MANUAL_DIST)) {
+        console.log(`📦 Copying Marketing site from ${MANUAL_DIST} to root...`);
+        fs.cpSync(MANUAL_DIST, FINAL_DIST, { recursive: true });
     } else {
-        console.error('❌ OS build not found at', PLAYGROUND_DIST);
+        console.error('❌ Marketing build not found at', MANUAL_DIST);
         process.exit(1);
     }
 
-    // 3. Copy Docs to /docs subpath
-    const docsTarget = path.join(FINAL_DIST, 'docs');
-    if (fs.existsSync(MANUAL_DIST)) {
-        console.log(`📦 Copying Docs from ${MANUAL_DIST} to /docs...`);
-        fs.mkdirSync(docsTarget, { recursive: true });
-        fs.cpSync(MANUAL_DIST, docsTarget, { recursive: true });
+    // 3. Copy OS to /os subpath
+    const osTarget = path.join(FINAL_DIST, 'os');
+    if (fs.existsSync(PLAYGROUND_DIST)) {
+        console.log(`📦 Copying OS from ${PLAYGROUND_DIST} to /os...`);
+        fs.mkdirSync(osTarget, { recursive: true });
+        fs.cpSync(PLAYGROUND_DIST, osTarget, { recursive: true });
     } else {
-        console.log('⚠️ Docs build not found at', MANUAL_DIST);
+        console.error('❌ OS build not found at', PLAYGROUND_DIST);
+        process.exit(1);
     }
 
     // 4. Force copy unified _redirects from root public
@@ -44,14 +45,25 @@ async function merge() {
         console.warn('⚠️ Warning: public/_redirects not found at', rootPublicRedirects);
     }
 
-    // 5. Verify index.html at root
+    // 5. Verify index.html at root looks like marketing
     const rootIndex = path.join(FINAL_DIST, 'index.html');
     if (fs.existsSync(rootIndex)) {
         const content = fs.readFileSync(rootIndex, 'utf8');
-        if (content.includes('RedByte Playground')) {
-            console.log('✅ Verified: OS index is at root.');
+        if (content.includes('RedByte OS Genesis')) {
+            console.log('✅ Verified: Marketing index is at root.');
         } else {
-            console.warn('⚠️ Warning: root index.html does not look like the RedByte OS.');
+            console.warn('⚠️ Warning: root index.html does not look like the RedByte Marketing Site.');
+        }
+    }
+
+    // 6. Verify /os/index.html
+    const osIndex = path.join(FINAL_DIST, 'os/index.html');
+    if (fs.existsSync(osIndex)) {
+        const content = fs.readFileSync(osIndex, 'utf8');
+        if (content.includes('RedByte Playground')) {
+            console.log('✅ Verified: OS index is at /os/.');
+        } else {
+            console.warn('⚠️ Warning: /os/index.html does not look like the RedByte OS.');
         }
     }
 

@@ -21,10 +21,13 @@ const Home = () => {
             Deploy instant virtual labs that students verify on real FPGA hardware.
           </p>
 
-          <Link to="/install" className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-lg shadow-lg shadow-blue-900/20 transition-all transform hover:-translate-y-1">
-            Download Bundle
-          </Link>
-          <Link to="/instructors" className="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg font-bold text-lg border border-gray-700 transition-all">
+          <a
+            href="https://github.com/swaggyp52/redbyte-ui-genesis/archive/refs/heads/main.zip"
+            className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-lg shadow-lg shadow-blue-900/20 transition-all transform hover:-translate-y-1 inline-block"
+          >
+            Download RedByte ZIP
+          </a>
+          <Link to="/instructors" className="ml-4 px-8 py-4 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg font-bold text-lg border border-gray-700 transition-all inline-block">
             Instructor Guide
           </Link>
         </div>
@@ -37,15 +40,32 @@ const Home = () => {
           </p>
         </div>
 
-        {/* Hero Image / UI Mockup */}
-        <div className="mt-16 -mb-48 rounded-xl border border-gray-700 shadow-2xl overflow-hidden opacity-90 hover:opacity-100 transition-opacity">
-          <div className="bg-gray-900 p-2 border-b border-gray-800 flex gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500" />
-            <div className="w-3 h-3 rounded-full bg-yellow-500" />
-            <div className="w-3 h-3 rounded-full bg-green-500" />
+        {/* Hero Image / OS UI Embedded */}
+        <div className="mt-16 -mb-48 rounded-xl border border-gray-700 shadow-2xl overflow-hidden bg-[#0a0a0a]">
+          <div className="bg-[#1a1a1a] p-3 border-b border-gray-800 flex items-center gap-4">
+            <div className="flex gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
+              <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
+              <div className="w-3 h-3 rounded-full bg-[#28c840]" />
+            </div>
+            <div className="text-xs font-bold text-gray-500 uppercase tracking-widest flex-1 text-center">
+              RedByte OS Genesis — v1.0.0
+            </div>
+            <div className="w-16" /> {/* Spacer */}
           </div>
-          <div className="bg-black h-[400px] flex items-center justify-center text-gray-600 font-mono">
-            <span className="text-lg">[ Live Simulation Viewport ]</span>
+          <div className="relative aspect-video w-full bg-black group">
+            <iframe
+              src="/os/"
+              className="w-full h-full border-0"
+              title="RedByte OS Interactive Preview"
+              loading="lazy"
+            />
+            {/* Overlay to encourage clicking if needed, though OS is interactive */}
+            <div className="absolute top-4 right-4 pointer-events-none">
+              <div className="px-2 py-1 rounded bg-blue-600/20 border border-blue-500/50 text-blue-400 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md">
+                Live Preview
+              </div>
+            </div>
           </div>
         </div>
       </div>

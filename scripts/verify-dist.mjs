@@ -19,26 +19,26 @@ check(fs.existsSync(path.join(DIST, 'index.html')), 'dist/index.html exists');
 check(fs.existsSync(path.join(DIST, 'build.json')), 'dist/build.json exists');
 check(fs.existsSync(path.join(DIST, 'assets')), 'dist/assets/ exists');
 
-// 2. OS Content Check
+// 2. Marketing Content Check
 const rootIndex = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8');
-check(rootIndex.includes('RedByte Playground'), 'dist/index.html is the OS (Playground)');
+check(rootIndex.includes('RedByte OS Genesis'), 'dist/index.html is the Marketing site');
 check(rootIndex.includes('src="/assets/') || rootIndex.includes('href="/assets/'), 'dist/index.html uses root assets');
 
-// 3. Docs Structure
-const DOCS = path.join(DIST, 'docs');
-check(fs.existsSync(DOCS), 'dist/docs/ exists');
-check(fs.existsSync(path.join(DOCS, 'index.html')), 'dist/docs/index.html exists');
-check(fs.existsSync(path.join(DOCS, 'assets')), 'dist/docs/assets/ exists');
+// 3. OS Structure
+const OS = path.join(DIST, 'os');
+check(fs.existsSync(OS), 'dist/os/ exists');
+check(fs.existsSync(path.join(OS, 'index.html')), 'dist/os/index.html exists');
+check(fs.existsSync(path.join(OS, 'assets')), 'dist/os/assets/ exists');
 
-// 4. Docs Content Check
-const docsIndex = fs.readFileSync(path.join(DOCS, 'index.html'), 'utf8');
-check(docsIndex.includes('RedByte OS Genesis'), 'dist/docs/index.html is the Docs');
-check(docsIndex.includes('src="/docs/assets/'), 'dist/docs/index.html uses /docs assets');
+// 4. OS Content Check
+const osIndex = fs.readFileSync(path.join(OS, 'index.html'), 'utf8');
+check(osIndex.includes('RedByte Playground'), 'dist/os/index.html is the OS');
+check(osIndex.includes('src="/os/assets/'), 'dist/os/index.html uses /os assets');
 
 // 5. Redirects check
 check(fs.existsSync(path.join(DIST, '_redirects')), 'dist/_redirects exists');
 const redirects = fs.readFileSync(path.join(DIST, '_redirects'), 'utf8');
-check(redirects.includes('/docs/*'), 'dist/_redirects contains /docs/* fallback');
+check(redirects.includes('/os/*'), 'dist/_redirects contains /os/* fallback');
 check(redirects.includes('/* /index.html 200'), 'dist/_redirects contains root fallback');
 
 // 6. Environment Check (if build.json exists)
