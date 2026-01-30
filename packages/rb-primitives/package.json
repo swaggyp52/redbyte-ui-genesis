@@ -1,8 +1,8 @@
 {
   "name": "@redbyte/rb-primitives",
   "version": "0.0.0",
-  "main": "dist/index.cjs",
-  "module": "dist/index.js",
+  "main": "dist/rb-primitives.js",
+  "module": "dist/rb-primitives.mjs",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "vite build -c ../../tools/config/vite.lib.config.ts",
@@ -24,7 +24,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/rb-primitives.mjs",
+      "require": "./dist/rb-primitives.js"
     }
   },
   "files": [

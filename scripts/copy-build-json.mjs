@@ -1,16 +1,18 @@
 /**
  * copy-build-json.mjs
  * 
- * Copies the generated build.json to app dist folders if they exist.
+ * Usage: node copy-build-json.mjs <target-dist-dir>
  */
 import fs from 'fs';
 import path from 'path';
-
-const apps = ['apps/playground/dist', 'apps/manual-site/dist'];
-const source = 'public/build.json'; // Assuming generate-build-json writes here or we write directly
-
-// Actually, let's just write directly to dists
 import { execSync } from 'child_process';
+
+const targetDir = process.argv[2];
+
+if (!targetDir) {
+    console.error('❌ Usage: node copy-build-json.mjs <target-dist-dir>');
+    process.exit(1);
+}
 
 const sha = (() => {
     try { return execSync('git rev-parse --short HEAD').toString().trim(); } catch { return 'unknown'; }
@@ -23,13 +25,14 @@ const data = JSON.stringify({
     version: process.env.npm_package_version || '1.0.0'
 }, null, 2);
 
-apps.forEach(dist => {
-    const target = path.join(process.cwd(), dist, 'build.json');
-    const dir = path.dirname(target);
-    if (fs.existsSync(dir)) {
-        fs.writeFileSync(target, data);
-        console.log(`✅ Wrote build.json to ${dist}`);
-    } else {
-        console.log(`⚠️  Skipping ${dist} (dir not found)`);
-    }
-});
+const absoluteTarget = path.resolve(process.cwd(), targetDir);
+const outputPath = path.join(absoluteTarget, 'build.json');
+
+if (fs.existsSync(absoluteTarget)) {
+    fs.writeFileSync(outputPath, data);
+    console.log(`✅ Wrote build.json to ${outputPath}`);
+} else {
+    console.error(`❌ Target directory not found: ${absoluteTarget}`);
+    // Don't fail build if dist missing, just warn? No, explicit failure is better.
+    process.exit(1);
+}
