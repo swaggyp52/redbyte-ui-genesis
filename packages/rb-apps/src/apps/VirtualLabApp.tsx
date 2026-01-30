@@ -25,7 +25,7 @@ import { GuidedLabSidebar } from '../components/GuidedLabSidebar';
 // Lazy load panels to break circular dependency / TDZ issues during initialization
 const HardwareRackPanel = React.lazy(() => import('../panels/HardwareRackPanel').then(m => ({ default: m.HardwareRackPanel })));
 const HardwareStatusOverlay = React.lazy(() => import('../panels/HardwareStatusOverlay').then(m => ({ default: m.HardwareStatusOverlay })));
-import { TruthHUD } from '../components/TruthHUD';
+
 import { HardwareAutoAdopt } from '../components/HardwareAutoAdopt';
 import { HardwareClientTransport } from '../services/hardwareClientTransport';
 
@@ -1098,8 +1098,7 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
             {/* Right Sidebar: Guided Lab Mode */}
             <GuidedLabSidebar />
 
-            {/* SHIP-GRADE TRUTH HUD */}
-            <TruthHUD />
+
 
             {/* AUTO-ADOPT LOGIC */}
             <HardwareAutoAdopt />

@@ -84,7 +84,7 @@ import { validateCircuitData } from '../utils/circuitValidation';
 import { StartHerePanel } from '../components/StartHerePanel';
 import { exportEvidence } from '../utils/evidenceExport';
 import { useEvidenceViewerStore } from '../stores/evidenceViewerStore';
-import { TruthHUD } from '../components/TruthHUD';
+
 
 // Placeholder for evidence viewer (feature in development)
 import { EvidenceViewerPanel } from '../components/EvidenceViewerPanel';
@@ -3804,8 +3804,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
           viewMode={viewLabel}
         />
 
-        {/* SHIP-GRADE TRUTH HUD */}
-        <TruthHUD />
+
       </div>
     </ErrorBoundary>
   );
