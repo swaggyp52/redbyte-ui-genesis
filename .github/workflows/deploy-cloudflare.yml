@@ -38,20 +38,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build manual site
-        run: pnpm --filter @redbyte/manual-site build
-        env:
-          GIT_SHA: ${{ github.sha }}
-
-      - name: Build playground (OS)
-        run: pnpm --filter @redbyte/playground build
+      - name: Build and Verify Unified Artifact
+        run: pnpm build:unified
         env:
           VITE_APP_ENV: production
           GIT_SHA: ${{ github.sha }}
-
-      - name: Preparation for Deploy
-        run: |
-          pnpm exec node scripts/merge-dist.mjs
 
       - name: Publish to Cloudflare Pages
         uses: cloudflare/pages-action@v1

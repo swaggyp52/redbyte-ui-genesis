@@ -45,6 +45,9 @@ jobs:
       - name: Run quality gate
         run: pnpm quality
 
+      - name: Verify Unified Artifact
+        run: node scripts/merge-dist.mjs && node scripts/verify-dist.mjs
+
       - name: Upload test results (on failure)
         if: failure()
         uses: actions/upload-artifact@v4

@@ -15,13 +15,20 @@ if (!targetDir) {
 }
 
 const sha = (() => {
-    try { return execSync('git rev-parse --short HEAD').toString().trim(); } catch { return 'unknown'; }
+    try {
+        // Use GITHUB_SHA if present, else git CLI
+        return process.env.GITHUB_SHA?.substring(0, 7) || execSync('git rev-parse --short HEAD').toString().trim();
+    } catch { return 'unknown'; }
 })();
+
+const isProd = process.env.VITE_APP_ENV === 'production' ||
+    !!process.env.CF_PAGES ||
+    !!process.env.GITHUB_ACTIONS;
 
 const data = JSON.stringify({
     sha,
     timestamp: new Date().toISOString(),
-    env: process.env.VITE_APP_ENV || 'dev',
+    env: isProd ? 'production' : (process.env.VITE_APP_ENV || 'dev'),
     version: process.env.npm_package_version || '1.0.0'
 }, null, 2);
 

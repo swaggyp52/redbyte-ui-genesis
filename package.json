@@ -13,6 +13,7 @@
         "build": "pnpm -r run build",
         "build:os": "pnpm -w build && pnpm -F redbyte-ui-genesis build",
         "build:manual": "pnpm --filter @redbyte/manual-site build",
+        "build:unified": "pnpm build && node scripts/merge-dist.mjs && node scripts/verify-dist.mjs",
         "preview": "pnpm --filter @redbyte/playground exec vite preview --host --port 4173 --open",
         "preview:playground": "pnpm --filter @redbyte/playground exec vite preview --host --port 4173 --open",
         "preview:manual": "pnpm --filter @redbyte/manual-site exec vite preview --host --port 4174 --open",
