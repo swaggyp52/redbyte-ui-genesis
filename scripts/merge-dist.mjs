@@ -34,7 +34,17 @@ async function merge() {
         console.log('⚠️ Docs build not found at', MANUAL_DIST);
     }
 
-    // 4. Verify index.html at root
+    // 4. Force copy unified _redirects from root public
+    const rootPublicRedirects = path.join(ROOT, 'public/_redirects');
+    const finalRedirects = path.join(FINAL_DIST, '_redirects');
+    if (fs.existsSync(rootPublicRedirects)) {
+        console.log('📦 Explicitly copying unified _redirects to root dist...');
+        fs.copyFileSync(rootPublicRedirects, finalRedirects);
+    } else {
+        console.warn('⚠️ Warning: public/_redirects not found at', rootPublicRedirects);
+    }
+
+    // 5. Verify index.html at root
     const rootIndex = path.join(FINAL_DIST, 'index.html');
     if (fs.existsSync(rootIndex)) {
         const content = fs.readFileSync(rootIndex, 'utf8');

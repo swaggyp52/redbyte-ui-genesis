@@ -35,7 +35,13 @@ const docsIndex = fs.readFileSync(path.join(DOCS, 'index.html'), 'utf8');
 check(docsIndex.includes('RedByte OS Genesis'), 'dist/docs/index.html is the Docs');
 check(docsIndex.includes('src="/docs/assets/'), 'dist/docs/index.html uses /docs assets');
 
-// 5. Environment Check (if build.json exists)
+// 5. Redirects check
+check(fs.existsSync(path.join(DIST, '_redirects')), 'dist/_redirects exists');
+const redirects = fs.readFileSync(path.join(DIST, '_redirects'), 'utf8');
+check(redirects.includes('/docs/*'), 'dist/_redirects contains /docs/* fallback');
+check(redirects.includes('/* /index.html 200'), 'dist/_redirects contains root fallback');
+
+// 6. Environment Check (if build.json exists)
 const buildJson = JSON.parse(fs.readFileSync(path.join(DIST, 'build.json'), 'utf8'));
 if (process.env.GITHUB_ACTIONS || process.env.CF_PAGES) {
     check(buildJson.env === 'production', `build.json env is "production" (detected CI)`);
