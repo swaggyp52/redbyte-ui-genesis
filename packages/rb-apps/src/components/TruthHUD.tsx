@@ -1,9 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useHardwareSessionStore, Target } from '../stores/hardwareSessionStore';
 
 export const TruthHUD: React.FC = () => {
     const { bridge, devices, sessions } = useHardwareSessionStore();
     const [isExpanded, setIsExpanded] = useState(false);
+
+    // Derive real latency from IO timestamp deltas
+    const lastIoRef = useRef<number | null>(null);
+    const [latencyMs, setLatencyMs] = useState<number | null>(null);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            // Find the most recent IO timestamp across all sessions
+            let newest: number | null = null;
+            for (const target of Object.keys(sessions) as Target[]) {
+                const s = sessions[target];
+                if (s.lastIoAt && (newest === null || s.lastIoAt > newest)) {
+                    newest = s.lastIoAt;
+                }
+            }
+            if (newest && lastIoRef.current && newest !== lastIoRef.current) {
+                setLatencyMs(newest - lastIoRef.current);
+            }
+            lastIoRef.current = newest;
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [sessions]);
 
     // Auto-boot if not already booted
     useEffect(() => {
@@ -100,7 +122,7 @@ export const TruthHUD: React.FC = () => {
                 {/* Footer (Recording Indicator?) */}
                 <div className="px-3 py-2 bg-white/5 border-t border-white/5 flex justify-between items-center">
                     <span className="text-[8px] uppercase font-black text-white/20">Lab 0 Baseline</span>
-                    {isExpanded && <span className="text-[8px] text-white/40">Lat: {Math.floor(Math.random() * 20) + 10}ms</span>}
+                    {isExpanded && <span className="text-[8px] text-white/40">Lat: {latencyMs != null ? `${latencyMs}ms` : '—'}</span>}
                 </div>
             </div>
         </div>

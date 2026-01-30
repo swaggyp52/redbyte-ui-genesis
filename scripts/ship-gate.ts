@@ -1,12 +1,10 @@
-import { execSync, spawn } from 'child_process';
-import { platform } from 'os';
+import { execSync, spawn, type ChildProcess } from 'child_process';
 
 // Config
 const BRIDGE_PORT = 4242;
 const BRIDGE_URL = `http://localhost:${BRIDGE_PORT}`;
-const PLAYWRIGHT_TEST = 'tests/e2e/gate-check.spec.ts';
-const BRIDGE_START_CMD = 'pnpm --filter @redbyte/rb-bridge-agent dev';
 const VERIFY_SCRIPT = 'tools/verify_client.ts';
+const SKIP_HW = process.argv.includes('--skip-hw');
 
 // Helpers
 const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -15,12 +13,51 @@ function log(step: string, msg: string) {
     console.log(`\x1b[36m[GATE:${step}]\x1b[0m ${msg}`);
 }
 
-function error(step: string, msg: string) {
+function fail(step: string, msg: string): never {
     console.error(`\x1b[31m[GATE:${step}:FAIL]\x1b[0m ${msg}`);
     process.exit(1);
 }
 
-// 1. Process Cleanup (Windows Focused)
+function pass(step: string) {
+    console.log(`\x1b[32m[GATE:${step}:PASS]\x1b[0m`);
+}
+
+function runStep(step: string, cmd: string) {
+    log(step, cmd);
+    try {
+        execSync(cmd, { stdio: 'inherit' });
+        pass(step);
+    } catch {
+        fail(step, `Command failed: ${cmd}`);
+    }
+}
+
+// ============================================================================
+// PHASE 1: Software Quality Gate (no hardware required)
+// ============================================================================
+
+function softwareGate() {
+    console.log('\n\x1b[45m\x1b[37m  PHASE 1: SOFTWARE QUALITY GATE  \x1b[0m\n');
+
+    // 1a. TypeCheck — all packages
+    runStep('TYPECHECK', 'pnpm -r exec tsc --noEmit');
+
+    // 1b. Audit Tests — core test suite
+    runStep('TESTS', 'pnpm test:audit');
+
+    // 1c. Build — full monorepo build
+    runStep('BUILD', 'pnpm build');
+
+    // 1d. Zustand selector lint
+    runStep('SELECTORS', 'pnpm lint:selectors');
+
+    console.log('\n\x1b[42m\x1b[30m  SOFTWARE GATE PASSED  \x1b[0m\n');
+}
+
+// ============================================================================
+// PHASE 2: Hardware Integration Gate (requires bridge + device)
+// ============================================================================
+
 function killPort(port: number) {
     log('CLEAN', `Checking port ${port}...`);
     try {
@@ -28,7 +65,6 @@ function killPort(port: number) {
             const output = execSync(`netstat -ano | findstr :${port}`).toString();
             const lines = output.trim().split('\n');
             if (lines.length > 0) {
-                // Parse PID (last token)
                 const tokens = lines[0].trim().split(/\s+/);
                 const pid = tokens[tokens.length - 1];
                 if (pid && parseInt(pid) > 0) {
@@ -37,18 +73,16 @@ function killPort(port: number) {
                 }
             }
         } else {
-            // Linux/Mac implementation omitted for "Windows OS" user constraint, but robust script would have it.
             try {
                 execSync(`lsof -ti:${port} | xargs kill -9`);
-            } catch (e) { /* ignore if empty */ }
+            } catch { /* ignore */ }
         }
-    } catch (e) {
-        // Ignore errors (no process found)
+    } catch {
+        // No process on port — fine
     }
 }
 
-// 2. Start Bridge
-async function startBridge() {
+async function startBridge(): Promise<ChildProcess> {
     log('BRIDGE', 'Starting Bridge Agent...');
     const subprocess = spawn('pnpm', ['--filter', '@redbyte/rb-bridge-agent', 'dev'], {
         shell: true,
@@ -56,80 +90,89 @@ async function startBridge() {
         detached: false
     });
 
-    // We pipe output to see it in CI/console
     subprocess.stdout.on('data', d => process.stdout.write(`[BRIDGE] ${d}`));
     subprocess.stderr.on('data', d => process.stderr.write(`[BRIDGE] ${d}`));
 
-    // Wait for health
     let attempts = 0;
     while (attempts < 30) {
         try {
             const res = await fetch(`${BRIDGE_URL}/health`);
             if (res.ok) {
-                log('BRIDGE', 'Health Check OK');
+                pass('BRIDGE');
                 return subprocess;
             }
-        } catch (e) { /* wait */ }
+        } catch { /* wait */ }
         await pause(1000);
         attempts++;
         process.stdout.write('.');
     }
 
-    error('BRIDGE', 'Timed out waiting for bridge to start.');
+    fail('BRIDGE', 'Timed out waiting for bridge to start.');
 }
 
-// 3. Verification Steps
-async function run() {
-    console.log('\n\x1b[42m\x1b[30m === STARTING SHIP:GATE SEQUENCE === \x1b[0m\n');
+async function hardwareGate() {
+    console.log('\n\x1b[45m\x1b[37m  PHASE 2: HARDWARE INTEGRATION GATE  \x1b[0m\n');
 
-    // A. Clean
     killPort(BRIDGE_PORT);
-
-    // B. Start Bridge
     const bridgeProc = await startBridge();
 
     try {
-        // C. Verify Devices
-        log('CHECK', 'Verifying Device List...');
+        // Verify device discovery
+        log('DEVICES', 'Verifying device list...');
         const devicesRes = await fetch(`${BRIDGE_URL}/devices`);
         if (!devicesRes.ok) throw new Error('Failed to fetch devices');
         const devicesData = await devicesRes.json();
         const devices = devicesData.devices || [];
-        log('CHECK', `Found ${devices.length} devices.`);
+        log('DEVICES', `Found ${devices.length} device(s).`);
+        pass('DEVICES');
 
-        // D. Run Truth Sequence
+        // Run truth sequence
         log('TRUTH', 'Running verify_client.ts...');
-        // Ensure ts-node or similar execution. Using 'tsx' as environment standard.
-        // Assuming verify_client.ts is in tools/verify_client.ts (verified in previous steps)
         execSync(`npx tsx ${VERIFY_SCRIPT}`, { stdio: 'inherit' });
-        log('TRUTH', 'Sequence Passed.');
+        pass('TRUTH');
 
-        // E. Manual Gate Checklist
-        log('MANUAL', 'Printing Quality Gate Checklist...');
-
+        // Manual gate checklist
         console.log('\n\x1b[33m--- MANUAL VERIFICATION REQUIRED ---\x1b[0m');
-        console.log('1. [ ] Bridge Health OK (Verified ✅)');
-        console.log('2. [ ] Device Discovery (Verified ✅ - Found ' + devices.length + ' devices)');
-        console.log('3. [ ] Truth Sequence (Verified ✅)');
+        console.log('1. [x] Bridge Health OK');
+        console.log('2. [x] Device Discovery (' + devices.length + ' found)');
+        console.log('3. [x] Truth Sequence Passed');
         console.log('4. [ ] UI: Hardware Panel shows "Local Bridge Online"');
         console.log('5. [ ] UI: Devices list matches: ' + devices.map((d: any) => d.target).join(', '));
-        console.log('6. [ ] UI: Lab 0 -> Basys 3 auto-spawns at non-zero offset if multiple exist');
-        console.log('7. [ ] UI: Physical SW0 toggle reflects on 3D node instantly');
-        console.log('8. [ ] UI: Dragging Gizmo updates node position and persists');
+        console.log('6. [ ] UI: Lab 0 auto-adopts connected boards');
+        console.log('7. [ ] UI: Physical SW0 toggle reflects on 3D node');
+        console.log('8. [ ] UI: Export ZIP opens in Submission Inspector');
         console.log('------------------------------------\n');
 
-        console.log('\n\x1b[42m\x1b[30m === SHIP:GATE PRE-FLIGHT PASSED === \x1b[0m');
-        console.log('Perform manual UI checks 4-8 to approve the release.\n');
+        console.log('\x1b[42m\x1b[30m  HARDWARE GATE PASSED  \x1b[0m\n');
 
     } catch (e: any) {
-        error('FAIL', e.message || 'Unknown error');
+        fail('HW', e.message || 'Unknown error');
     } finally {
         log('CLEAN', 'Stopping Bridge...');
         bridgeProc?.kill();
-        // Force kill port again to be sure
         killPort(BRIDGE_PORT);
-        process.exit(0);
     }
+}
+
+// ============================================================================
+// MAIN
+// ============================================================================
+
+async function run() {
+    console.log('\n\x1b[42m\x1b[30m === REDBYTE OS GENESIS — SHIP:GATE === \x1b[0m\n');
+
+    // Phase 1: Always runs
+    softwareGate();
+
+    // Phase 2: Hardware (skip with --skip-hw)
+    if (SKIP_HW) {
+        console.log('\x1b[33m[GATE:HW] Skipped (--skip-hw flag)\x1b[0m\n');
+    } else {
+        await hardwareGate();
+    }
+
+    console.log('\x1b[42m\x1b[30m === SHIP:GATE SEQUENCE COMPLETE === \x1b[0m\n');
+    process.exit(0);
 }
 
 run();

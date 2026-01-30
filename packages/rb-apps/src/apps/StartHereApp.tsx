@@ -18,7 +18,8 @@ export const StartHereAppContent: React.FC<StartHereAppProps> = ({ onOpenApp }) 
   };
 
   const handleOpenLab = () => {
-    onOpenApp?.('ece-lab', { initialTab: 'hardware', simGuide: true });
+    // Phase 5.1: Direct student to Lab 1 (Intro to Digital Logic) by default
+    onOpenApp?.('ece-lab', { labId: 'lab-1', initialTab: 'hardware' });
   };
 
   const handleOpenVirtualLab = () => {

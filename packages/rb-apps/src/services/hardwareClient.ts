@@ -91,6 +91,7 @@ export class HardwareClient {
   private state: ConnectionState;
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private wsReconnectTimeout: NodeJS.Timeout | null = null;
+  private backgroundReconnectInterval: NodeJS.Timeout | null = null;
   private listeners: Set<(state: ConnectionState) => void> = new Set();
   private ioListeners: Set<IOUpdateCallback> = new Set();
   private statusListeners: Set<StatusUpdateCallback> = new Set();
@@ -98,6 +99,7 @@ export class HardwareClient {
   private readonly MAX_RETRY_ATTEMPTS = 3;
   private readonly RETRY_DELAY_MS = 2000;
   private readonly HEALTH_CHECK_INTERVAL_MS = 10000;
+  private readonly BACKGROUND_RECONNECT_MS = 30000; // Try to recover every 30s when offline
   private readonly DEMO_MODE_ENABLED = typeof process !== 'undefined' && process.env.RB_DEMO_MODE === '1';
   private readonly FETCH_TIMEOUT_MS = this.DEMO_MODE_ENABLED ? 500 : 2000; // Fast fail in demo mode
 
@@ -194,9 +196,6 @@ export class HardwareClient {
       const devicesRes = await fetch(`${this.config.httpUrl}/devices`, {
         signal: AbortSignal.timeout(this.FETCH_TIMEOUT_MS),
       });
-      // Bridge returns { schema_version, devices: [...] } - extract the array
-
-
       // Bridge returns { devices: BridgeDevice[] }
       const devicesData = devicesRes.ok ? await devicesRes.json() : { devices: [] };
       const bridgeDevices: BridgeDevice[] = Array.isArray(devicesData) ? devicesData : (devicesData.devices ?? []);
@@ -224,6 +223,7 @@ export class HardwareClient {
         ws: null,
       };
       this.retryAttempts = 0;
+      this.stopBackgroundReconnect();
       this.notifyListeners();
 
       if (this.healthCheckInterval) clearInterval(this.healthCheckInterval);
@@ -242,6 +242,7 @@ export class HardwareClient {
         };
         this.notifyListeners();
         console.debug('[HardwareClient] Bridge unavailable, entering offline mode');
+        this.startBackgroundReconnect();
       } else {
         console.warn(`[HardwareClient] Connection attempt ${this.retryAttempts}/${this.MAX_RETRY_ATTEMPTS} failed, retrying in ${this.RETRY_DELAY_MS}ms...`);
         this.state = {
@@ -270,7 +271,6 @@ export class HardwareClient {
       const devicesRes = await fetch(`${this.config.httpUrl}/devices`, {
         signal: AbortSignal.timeout(this.FETCH_TIMEOUT_MS),
       });
-      // Bridge returns { schema_version, devices: [...] } - extract the array
       const devicesData = devicesRes.ok ? await devicesRes.json() : { devices: [] };
       const devices: Device[] = Array.isArray(devicesData) ? devicesData : (devicesData.devices ?? []);
 
@@ -292,10 +292,7 @@ export class HardwareClient {
         message: 'Connection to hardware bridge lost',
       };
       this.notifyListeners();
-
-      if (this.config.mode === 'on') {
-        setTimeout(() => this.connect(), this.RETRY_DELAY_MS);
-      }
+      this.startBackgroundReconnect();
     }
   }
 
@@ -368,6 +365,37 @@ export class HardwareClient {
     }
   }
 
+  /**
+   * Periodically attempt to reconnect when in offline state.
+   * Stops automatically once a connection succeeds or mode is set to 'off'.
+   */
+  private startBackgroundReconnect() {
+    if (this.config.mode === 'off') return;
+    if (this.backgroundReconnectInterval) return; // Already running
+
+    this.backgroundReconnectInterval = setInterval(() => {
+      if (this.config.mode === 'off') {
+        this.stopBackgroundReconnect();
+        return;
+      }
+      if (this.state.status === 'offline') {
+        console.debug('[HardwareClient] Background reconnect attempt...');
+        this.retryAttempts = 0;
+        this.connect();
+      } else {
+        // Connected or connecting — stop background polling
+        this.stopBackgroundReconnect();
+      }
+    }, this.BACKGROUND_RECONNECT_MS);
+  }
+
+  private stopBackgroundReconnect() {
+    if (this.backgroundReconnectInterval) {
+      clearInterval(this.backgroundReconnectInterval);
+      this.backgroundReconnectInterval = null;
+    }
+  }
+
   disconnect() {
     if (this.healthCheckInterval) {
       clearInterval(this.healthCheckInterval);
@@ -378,6 +406,8 @@ export class HardwareClient {
       clearTimeout(this.wsReconnectTimeout);
       this.wsReconnectTimeout = null;
     }
+
+    this.stopBackgroundReconnect();
 
     if (this.state.status === 'connected' && this.state.ws) {
       this.state.ws.close();

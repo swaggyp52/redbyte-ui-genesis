@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useHardwareSessionStore, Target } from '../stores/hardwareSessionStore';
 import { toast } from '@redbyte/rb-primitives';
-import { hardwareClient } from '../services/hardwareClient';
+import { getFriendlyErrorMessage } from '../utils/studentErrors';
 
 export const HardwareRackPanel: React.FC = () => {
     const { devices, sessions, bridge, ensureSession, disconnect, refreshDevices } = useHardwareSessionStore();
@@ -18,7 +18,7 @@ export const HardwareRackPanel: React.FC = () => {
             await ensureSession(target);
             toast.success({ message: `Connecting to ${target.toUpperCase()}...` });
         } catch (err: any) {
-            toast.error({ message: `Connection failed: ${err.message}` });
+            toast.error({ message: getFriendlyErrorMessage(err, 'Connection Failed') });
         }
     };
 

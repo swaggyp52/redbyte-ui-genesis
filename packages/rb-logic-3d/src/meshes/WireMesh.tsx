@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 
 interface WireMeshProps {
@@ -31,18 +31,39 @@ export const WireMesh: React.FC<WireMeshProps> = ({
   const pulseBoost = pulse * 0.6;
   const emissiveIntensity = (isActive ? 0.6 : 0.1) + pulseBoost;
 
+  // Track all materials for disposal
+  const materialRefs = useRef<THREE.Material[]>([]);
+
+  const wireMaterial = useMemo(() => {
+    const mat = new THREE.MeshStandardMaterial({
+      color: isActive ? '#22c55e' : '#6b7280',
+      emissive: new THREE.Color(isActive ? '#22c55e' : '#000000'),
+      emissiveIntensity,
+    });
+    return mat;
+  }, [isActive, emissiveIntensity]);
+
+  // Update material refs for cleanup
+  useEffect(() => {
+    materialRefs.current = [wireMaterial];
+  }, [wireMaterial]);
+
   useEffect(() => {
     return () => {
       tubeGeometry.dispose();
       glowGeometry.dispose();
+      wireMaterial.dispose();
+      materialRefs.current.forEach(m => m.dispose());
+      materialRefs.current = [];
     };
-  }, [tubeGeometry, glowGeometry]);
+  }, [tubeGeometry, glowGeometry, wireMaterial]);
 
   return (
     <>
       {probeColors?.map((color, index) => (
         <mesh key={`${color}-${index}`} geometry={glowGeometry}>
           <meshStandardMaterial
+            attach="material"
             color={color}
             emissive={color}
             emissiveIntensity={0.35}
@@ -54,6 +75,7 @@ export const WireMesh: React.FC<WireMeshProps> = ({
       {mismatchColors?.map((color, index) => (
         <mesh key={`${color}-mismatch-${index}`} geometry={glowGeometry}>
           <meshStandardMaterial
+            attach="material"
             color={color}
             emissive={color}
             emissiveIntensity={0.5}
@@ -62,13 +84,7 @@ export const WireMesh: React.FC<WireMeshProps> = ({
           />
         </mesh>
       ))}
-      <mesh geometry={tubeGeometry}>
-        <meshStandardMaterial
-          color={isActive ? '#22c55e' : '#6b7280'}
-          emissive={isActive ? '#22c55e' : '#000000'}
-          emissiveIntensity={emissiveIntensity}
-        />
-      </mesh>
+      <mesh geometry={tubeGeometry} material={wireMaterial} />
     </>
   );
 };

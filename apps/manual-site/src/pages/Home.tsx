@@ -21,63 +21,70 @@ const Home = () => {
             Deploy instant virtual labs that students verify on real FPGA hardware.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/install" className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-lg shadow-lg shadow-blue-900/20 transition-all transform hover:-translate-y-1">
-              Download Bundle
-            </Link>
-            <Link to="/instructors" className="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg font-bold text-lg border border-gray-700 transition-all">
-              Instructor Guide
-            </Link>
-          </div>
-
-          {/* Hero Image / UI Mockup */}
-          <div className="mt-16 -mb-48 rounded-xl border border-gray-700 shadow-2xl overflow-hidden opacity-90 hover:opacity-100 transition-opacity">
-            <div className="bg-gray-900 p-2 border-b border-gray-800 flex gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-500" />
-              <div className="w-3 h-3 rounded-full bg-yellow-500" />
-              <div className="w-3 h-3 rounded-full bg-green-500" />
-            </div>
-            <div className="bg-black h-[400px] flex items-center justify-center text-gray-600 font-mono">
-              <span className="text-lg">[ Live Simulation Viewport ]</span>
-            </div>
-          </div>
+          <Link to="/install" className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-lg shadow-lg shadow-blue-900/20 transition-all transform hover:-translate-y-1">
+            Download Bundle
+          </Link>
+          <Link to="/instructors" className="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg font-bold text-lg border border-gray-700 transition-all">
+            Instructor Guide
+          </Link>
         </div>
-      </div>
 
-      {/* Trust / Stats */}
-      <div className="bg-[#0f0f0f] border-b border-gray-800 pt-56 pb-16">
-        <div className="container mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          <Stat label="Latency" value="<10ms" />
-          <Stat label="Hardware" value="Basys3 + Uno" />
-          <Stat label="Determinism" value="100%" />
-          <Stat label="License" value="Open Source" />
+        <div className="mt-8 mb-4">
+          <p className="text-xs text-gray-500 max-w-lg mx-auto border-t border-gray-800 pt-4">
+            <strong>Transparency Note:</strong> RedByte is a deterministic learning instrument.
+            It does not "solve" labs for students. It records, verifies, and evaluates student work
+            using bit-perfect replay.
+          </p>
         </div>
-      </div>
 
-      {/* Core Value Props */}
-      <div className="py-24 bg-[#111]">
-        <div className="container mx-auto px-6">
-          <div className="grid md:grid-cols-3 gap-12">
-            <FeatureCard
-              icon="⚡"
-              title="Hardware Reality"
-              desc="Bridge virtual circuits to physical FPGAs instanly. No massive toolchains required on student laptops."
-            />
-            <FeatureCard
-              icon="🎓"
-              title="Guided Labs"
-              desc="Integrated lab manuals and Truth HUD ensure students know exactly what to build and verify."
-            />
-            <FeatureCard
-              icon="⚖️"
-              title="Evidence Export"
-              desc="Deterministic replay capsules allow TAs to grade labs based on what actually happened, not just screenshots."
-            />
+        {/* Hero Image / UI Mockup */}
+        <div className="mt-16 -mb-48 rounded-xl border border-gray-700 shadow-2xl overflow-hidden opacity-90 hover:opacity-100 transition-opacity">
+          <div className="bg-gray-900 p-2 border-b border-gray-800 flex gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-500" />
+            <div className="w-3 h-3 rounded-full bg-yellow-500" />
+            <div className="w-3 h-3 rounded-full bg-green-500" />
+          </div>
+          <div className="bg-black h-[400px] flex items-center justify-center text-gray-600 font-mono">
+            <span className="text-lg">[ Live Simulation Viewport ]</span>
           </div>
         </div>
       </div>
-
     </div>
+
+      {/* Trust / Stats */ }
+  <div className="bg-[#0f0f0f] border-b border-gray-800 pt-56 pb-16">
+    <div className="container mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+      <Stat label="Latency" value="<10ms" />
+      <Stat label="Hardware" value="Basys3 + Uno" />
+      <Stat label="Determinism" value="100%" />
+      <Stat label="License" value="Open Source" />
+    </div>
+  </div>
+
+  {/* Core Value Props */ }
+  <div className="py-24 bg-[#111]">
+    <div className="container mx-auto px-6">
+      <div className="grid md:grid-cols-3 gap-12">
+        <FeatureCard
+          icon="⚡"
+          title="Hardware Reality"
+          desc="Bridge virtual circuits to physical FPGAs instantly. No massive toolchains required on student laptops."
+        />
+        <FeatureCard
+          icon="🎓"
+          title="Guided Labs"
+          desc="Integrated lab manuals and Truth HUD ensure students know exactly what to build and verify."
+        />
+        <FeatureCard
+          icon="⚖️"
+          title="Evidence Export"
+          desc="Deterministic replay capsules allow TAs to grade labs based on what actually happened, not just screenshots."
+        />
+      </div>
+    </div>
+  </div>
+
+    </div >
   );
 };
 

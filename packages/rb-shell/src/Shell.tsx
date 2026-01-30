@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useRef, useMemo, type ErrorInfo } from 'react';
 import { Desktop } from './Desktop';
 import { Dock } from './Dock';
 import { ShellWindow } from './ShellWindow';
@@ -70,6 +70,54 @@ type SnapPreviewTarget = 'left' | 'right' | 'maximize';
 interface SnapPreviewState {
   windowId: string;
   target: SnapPreviewTarget;
+}
+
+/** Per-app error boundary: prevents one crashed app from tearing down the whole shell. */
+class AppErrorBoundary extends React.Component<
+  { appId: string; children: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { appId: string; children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(`[Shell] App "${this.props.appId}" crashed:`, error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          height: '100%', background: '#0a0a0a', color: '#e2e8f0', padding: '2rem', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ef4444', marginBottom: '0.5rem' }}>
+            App Crashed
+          </div>
+          <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '1rem', maxWidth: 300 }}>
+            {this.state.error?.message || 'Unknown error'}
+          </div>
+          <button
+            type="button"
+            onClick={() => this.setState({ hasError: false, error: undefined })}
+            style={{
+              padding: '0.4rem 1rem', background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '0.375rem', color: '#e2e8f0', cursor: 'pointer', fontSize: '0.75rem',
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 export const Shell: React.FC<ShellProps> = () => {
@@ -1203,7 +1251,7 @@ export const Shell: React.FC<ShellProps> = () => {
         const welcomeSeen = localStorage.getItem('rb-os:v1:welcomeSeen');
 
         if (welcomeSeen !== 'true') {
-          const timer = setTimeout(() => openWindow('welcome'), 500);
+          const timer = setTimeout(() => openWindow('start-here'), 500);
           return () => clearTimeout(timer);
         }
       }
@@ -1233,16 +1281,16 @@ export const Shell: React.FC<ShellProps> = () => {
     determinismRecorder.isRecording
       ? 'recording'
       : determinismRecorder.isTimeTraveling
-      ? 'replay'
-      : 'live';
+        ? 'replay'
+        : 'live';
   const hasVisibleWindows = windows.some((w) => w.mode !== 'minimized');
 
   const snapPreviewLabel = snapPreview
     ? snapPreview.target === 'maximize'
       ? 'Maximize'
       : snapPreview.target === 'left'
-      ? 'Snap Left'
-      : 'Snap Right'
+        ? 'Snap Left'
+        : 'Snap Right'
     : null;
 
   return (
@@ -1383,22 +1431,24 @@ export const Shell: React.FC<ShellProps> = () => {
               });
             }}
           >
-            <Component
-              windowId={window.id}
-              onOpenApp={openWindow}
-              onClose={() => handleClose(window.id)}
-              onDispatchIntent={dispatchIntent}
-              registerStateAccessor={registerWindowStateAccessor}
-              unregisterStateAccessor={unregisterWindowStateAccessor}
-              determinismRecorder={determinismRecorder}
-              getCurrentCircuit={getCurrentCircuit}
-              versionLabel={getVersionString()}
-              recentAppIds={app.manifest.id === 'launcher' ? recentAppIds : undefined}
-              pinnedAppIds={app.manifest.id === 'launcher' ? pinnedAppIds : undefined}
-              runningAppIds={app.manifest.id === 'launcher' ? runningAppIds : undefined}
-              onTogglePin={app.manifest.id === 'launcher' ? togglePinnedAppId : undefined}
-              {...binding?.props}
-            />
+            <AppErrorBoundary appId={app.manifest.id}>
+              <Component
+                windowId={window.id}
+                onOpenApp={openWindow}
+                onClose={() => handleClose(window.id)}
+                onDispatchIntent={dispatchIntent}
+                registerStateAccessor={registerWindowStateAccessor}
+                unregisterStateAccessor={unregisterWindowStateAccessor}
+                determinismRecorder={determinismRecorder}
+                getCurrentCircuit={getCurrentCircuit}
+                versionLabel={getVersionString()}
+                recentAppIds={app.manifest.id === 'launcher' ? recentAppIds : undefined}
+                pinnedAppIds={app.manifest.id === 'launcher' ? pinnedAppIds : undefined}
+                runningAppIds={app.manifest.id === 'launcher' ? runningAppIds : undefined}
+                onTogglePin={app.manifest.id === 'launcher' ? togglePinnedAppId : undefined}
+                {...binding?.props}
+              />
+            </AppErrorBoundary>
           </ShellWindow>
         );
       })}

@@ -69,6 +69,8 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 
 const backends = new Map<string, any>();
 const connecting = new Set<string>();
+/** Tracks which COM port paths are currently open or being opened. Prevents double-open. */
+const lockedPorts = new Map<string, string>(); // portPath → deviceId
 
 wss.on('connection', (ws: WebSocket) => {
     console.log('[Bridge Agent] Client connected via WebSocket');
@@ -113,18 +115,30 @@ wss.on('connection', (ws: WebSocket) => {
                             break;
                         }
 
+                        // COM port mutex: prevent double-open of the same physical port
+                        const portPath = payload.port || (payload.target === 'basys3' ? 'COM7' : 'COM6');
+                        const portOwner = lockedPorts.get(portPath);
+                        if (portOwner && portOwner !== deviceId) {
+                            console.warn(`[Bridge Agent] Port ${portPath} already locked by ${portOwner}, rejecting ${deviceId}`);
+                            sendResponse(ws, msg.id, 'CONNECT_ERR', {
+                                message: `Port ${portPath} is already in use by device "${portOwner}"`
+                            });
+                            break;
+                        }
+
                         connecting.add(deviceId);
+                        lockedPorts.set(portPath, deviceId);
 
                         let backend: any;
                         if (payload.target === 'arduino-uno' || payload.target === 'arduino-nano') {
                             backend = new ArduinoUnoBackend({
-                                port: payload.port || 'COM6',
+                                port: portPath,
                                 baud: payload.baud || 115200
                             });
                             await backend.connect();
                         } else if (payload.target === 'basys3') {
                             backend = new Basys3Backend({
-                                port: payload.port || 'COM7',
+                                port: portPath,
                                 baud: payload.baud || 115200
                             });
                             await backend.connect();
@@ -135,6 +149,9 @@ wss.on('connection', (ws: WebSocket) => {
                         backends.set(deviceId, backend);
                         sendResponse(ws, msg.id, 'CONNECT_OK', { target: payload.target });
                     } catch (err: any) {
+                        // Release port lock on connection failure
+                        const portPath = payload.port || (payload.target === 'basys3' ? 'COM7' : 'COM6');
+                        lockedPorts.delete(portPath);
                         sendResponse(ws, msg.id, 'CONNECT_ERR', { message: err.message });
                     } finally {
                         connecting.delete(deviceId);
@@ -235,6 +252,13 @@ wss.on('connection', (ws: WebSocket) => {
                         await activeBackend.disconnect();
                     }
                     backends.delete(deviceId);
+                    // Release COM port lock for this device
+                    for (const [port, owner] of lockedPorts) {
+                        if (owner === deviceId) {
+                            lockedPorts.delete(port);
+                            console.log(`[Bridge Agent] Released port lock ${port} for ${deviceId}`);
+                        }
+                    }
                     sendResponse(ws, msg.id, 'PONG'); // Simple ACK
                     break;
 

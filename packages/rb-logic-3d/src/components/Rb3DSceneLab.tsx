@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { useLabStore } from '../lab-model/store';
+import { useShallow } from 'zustand/react/shallow';
 import { PART_DEFINITIONS } from '../lab-model/parts';
 import { Box, Text, Line, TransformControls } from '@react-three/drei';
 import { ThreeEvent } from '@react-three/fiber';
@@ -298,10 +299,15 @@ const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string>; isSele
     const def = PART_DEFINITIONS[node.type];
     const { handlePinHover, handlePinUnhover, handlePinClick } = useLabInteraction();
 
-    const hoveredPin = useLabStore(state => state.interaction.hoveredPin);
-    const highlightedPins = useLabStore(state => state.interaction.highlightedPins);
-    const selectedNetId = useLabStore(state => state.interaction.selectedNetId);
-    const pinStates = useLabStore(state => state.simulation.pinStates);
+    const { hoveredPin, highlightedPins, selectedNetId, pinStates, transportConnected } = useLabStore(
+        useShallow(state => ({
+            hoveredPin: state.interaction.hoveredPin,
+            highlightedPins: state.interaction.highlightedPins,
+            selectedNetId: state.interaction.selectedNetId,
+            pinStates: state.simulation.pinStates,
+            transportConnected: state.getTransportStatus().connected,
+        }))
+    );
 
     if (!def) return null;
 
@@ -316,7 +322,7 @@ const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string>; isSele
             {node.type === 'breadboard-half' ? (
                 <BreadboardVisual dim={def.dimensions} />
             ) : node.type === 'arduino-uno' ? (
-                <UnoVisual dim={def.dimensions} isLive={node.hardware_target === 'arduino-uno' && useLabStore.getState().getTransportStatus().connected} />
+                <UnoVisual dim={def.dimensions} isLive={node.hardware_target === 'arduino-uno' && transportConnected} />
             ) : node.type === 'arduino-nano' ? (
                 <NanoVisual dim={def.dimensions} />
             ) : node.type === 'fpga-basys3' ? (
@@ -458,9 +464,14 @@ const LabInteractionLayer = () => {
 };
 
 export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: number | string, height?: number | string }) => {
-    const graph = useLabStore(state => state.graph);
-    const selectedNetId = useLabStore(state => state.interaction.selectedNetId);
-    const selectedNodeId = useLabStore(state => state.interaction.selectedNodeId);
+    const { graph, selectedNetId, selectedNodeId, pinStates: wirePinStates } = useLabStore(
+        useShallow(state => ({
+            graph: state.graph,
+            selectedNetId: state.interaction.selectedNetId,
+            selectedNodeId: state.interaction.selectedNodeId,
+            pinStates: state.simulation.pinStates,
+        }))
+    );
     const setSelectedNodeId = useLabStore(state => state.setSelectedNodeId);
     const updateNodePose = useLabStore(state => state.updateNodePose);
     const netlist = useMemo(() => computeNetlist(graph), [graph]);
@@ -540,12 +551,7 @@ export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: numb
                     targetNode.pose.position.z + tPin.position.z
                 ];
 
-                // --- FIX: Check if getState exists or use hook if possible. 
-                // Since we are in a component, we can use useLabStore.getState() safely or 
-                // just use the hook passed down? 
-                // Wires are inside Canvas, fine.
-                const pinStates = useLabStore.getState().simulation.pinStates;
-                const val = pinStates[`${wire.sourceNodeId}:${wire.sourcePinId}`];
+                const val = wirePinStates[`${wire.sourceNodeId}:${wire.sourcePinId}`];
                 const isActive = val === 1;
                 const sourceKey = `${wire.sourceNodeId}:${wire.sourcePinId}`;
                 const targetKey = `${wire.targetNodeId}:${wire.targetPinId}`;

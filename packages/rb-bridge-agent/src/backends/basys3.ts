@@ -1,6 +1,6 @@
 
 import { SerialPort } from 'serialport';
-import { SetPinsPayload } from '../protocol.js';
+import { SetPinsPayload } from '@redbyte/rb-protocol';
 
 export interface Basys3Options {
     port: string;

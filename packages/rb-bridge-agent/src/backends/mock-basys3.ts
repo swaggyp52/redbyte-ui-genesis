@@ -1,4 +1,4 @@
-import { SetPinsPayload, GetPinsResponsePayload } from '../protocol';
+import { SetPinsPayload, GetPinsResponsePayload } from '@redbyte/rb-protocol';
 
 export class MockBasys3Backend {
     private pins: Record<string, number> = {};

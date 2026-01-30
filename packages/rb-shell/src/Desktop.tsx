@@ -72,7 +72,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
   const wallpaperStyle = useMemo(() => getWallpaperStyle(wallpaperId, themeVariant), [wallpaperId, themeVariant]);
   const circuitNodes = useMemo(() => buildNodes(15, 4.2), []);
   const frostNodes = useMemo(() => buildNodes(30, 9.6), []);
-  const isLightMode = false;
+  const isLightMode = false; // No light theme variant exists yet; branches retained for future use
 
   useEffect(() => {
     desktopRef.current?.focus();

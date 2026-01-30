@@ -29,7 +29,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenDeterminism,
 }) => {
   return (
-    <div className="fixed top-0 left-0 right-0 z-30 pointer-events-none">
+    <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
       <div
         className="h-10 px-4 flex items-center justify-between backdrop-blur-md border-b"
         style={{

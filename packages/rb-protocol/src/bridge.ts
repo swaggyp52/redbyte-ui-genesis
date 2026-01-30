@@ -57,7 +57,8 @@ export interface BridgeHealth {
 }
 
 export interface SetPinsPayload {
-    [key: string]: number | string;
+    nodeId: string;
+    pins: Record<string, 0 | 1>;
 }
 
 export interface LoadPresetPayload {
@@ -66,6 +67,7 @@ export interface LoadPresetPayload {
 }
 
 export interface UploadSketchPayload {
+    target: 'arduino-uno' | 'arduino-nano';
     sketchText: string;
     port: string;
     fqbn: string;
@@ -79,4 +81,20 @@ export interface UploadSketchResponsePayload {
         fqbn: string;
         port: string;
     };
+    error?: string;
+    message?: string;
+}
+
+export interface GetPinsResponsePayload {
+    deviceId?: string;
+    pins: Record<string, number>;
+}
+
+export interface VerifyDeviceResponsePayload {
+    verified: boolean;
+    board: string;
+    port: string;
+    agent: string;
+    timestamp: string;
+    details?: string;
 }

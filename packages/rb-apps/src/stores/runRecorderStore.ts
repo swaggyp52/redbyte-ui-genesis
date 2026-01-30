@@ -75,6 +75,9 @@ interface RunRecorderActions {
   setDebugOverlay: (overlay: DebugOverlay | null) => void;
 }
 
+/** Maximum trace samples before recording is automatically capped. */
+const MAX_TRACE_SAMPLES = 50_000;
+
 // Lazy-init singleton to prevent TDZ crash from circular imports
 let _store: ReturnType<typeof createRunRecorderStore> | null = null;
 
@@ -219,7 +222,16 @@ function createRunRecorderStore() {
     recordTraceSample: (sample) =>
       set((state) => {
         if (state.mode !== 'recording') return state;
-        return { trace: [...state.trace, sample] };
+        if (state.trace.length >= MAX_TRACE_SAMPLES) {
+          // Cap reached — drop oldest 10% to make room without per-sample copies
+          const dropCount = Math.floor(MAX_TRACE_SAMPLES * 0.1);
+          const trimmed = state.trace.slice(dropCount);
+          trimmed.push(sample);
+          return { trace: trimmed };
+        }
+        // Efficient append: mutate-then-return new ref
+        const next = state.trace.concat(sample);
+        return { trace: next };
       }),
 
     startReplay: (record) =>
@@ -238,7 +250,14 @@ function createRunRecorderStore() {
     recordReplaySample: (sample) =>
       set((state) => {
         if (state.mode !== 'replaying') return state;
-        return { replayTrace: [...state.replayTrace, sample] };
+        if (state.replayTrace.length >= MAX_TRACE_SAMPLES) {
+          const dropCount = Math.floor(MAX_TRACE_SAMPLES * 0.1);
+          const trimmed = state.replayTrace.slice(dropCount);
+          trimmed.push(sample);
+          return { replayTrace: trimmed };
+        }
+        const next = state.replayTrace.concat(sample);
+        return { replayTrace: next };
       }),
 
     stopReplay: () =>

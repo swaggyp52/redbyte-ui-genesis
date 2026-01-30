@@ -6,7 +6,8 @@ import JSZip from 'jszip';
 import { useFileSystemStore } from '../stores/fileSystemStore';
 import { useHardwareStore } from '../stores/hardwareStore';
 import { useLabStore as usePedagogicalLabStore } from '../labs/labStore';
-import { useLabStore as useModelLabStore } from '@redbyte/rb-logic-3d';
+import { useLabStore as useModelLabStore, evaluateAtTick, fingerprintLabTemplate } from '@redbyte/rb-logic-3d';
+import { VIRTUAL_LAB_TEMPLATES } from '../apps/virtual-lab-templates';
 import { createTrace, type HardwareTraceV1 } from '../hardware/traceFormat';
 
 export interface LabEvidenceCapsule {
@@ -29,13 +30,11 @@ export interface LabEvidenceCapsule {
 
 export async function exportEvidenceCapsule(filename: string): Promise<boolean> {
     try {
-        const fs = useFileSystemStore.getState();
         const hw = useHardwareStore.getState();
         const lab = usePedagogicalLabStore.getState();
 
         if (!lab.studentId || !lab.studentName) {
             console.warn('Student selection required for export');
-            // We should ideally prompt here or handled by UI
         }
 
         // 1. Prepare Metadata + embedded trace
@@ -49,9 +48,35 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
 
         const modelLab = useModelLabStore.getState();
         const recorder = (await import('../stores/runRecorderStore')).useRunRecorderStore.getState();
-        
-        const capsule: LabEvidenceCapsule & { meta?: any } = {
-            schemaVersion: 2,
+
+        // 2. Run lab evaluator for grade report (vectors + summary)
+        const template = VIRTUAL_LAB_TEMPLATES.find(t => t.lab_id === lab.activeLabId);
+        let vectors: Array<{ name: string; pass: boolean; error?: string }> = [];
+        let gradeScore = 0;
+
+        if (template && modelLab.labSession) {
+            const templateHash = fingerprintLabTemplate(template);
+            const report = evaluateAtTick(
+                modelLab.graph,
+                modelLab.timeline,
+                template,
+                templateHash,
+                modelLab.simulation.tick
+            );
+            gradeScore = report.score;
+            vectors = report.checks.map(check => ({
+                name: check.label || check.id,
+                pass: check.status === 'pass',
+                error: check.status !== 'pass' ? (check.details || check.hint || `Status: ${check.status}`) : undefined,
+            }));
+        }
+
+        const passed = vectors.filter(v => v.pass).length;
+        const failed = vectors.filter(v => !v.pass).length;
+        const allPassed = vectors.length > 0 && failed === 0;
+
+        const capsule: LabEvidenceCapsule & { summary?: any; vectors?: any[]; meta?: any } = {
+            schemaVersion: 1,
             timestamp: new Date().toISOString(),
             labId: lab.activeLabId,
             student: {
@@ -61,61 +86,82 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
             deviceBoardId: hw.capabilities?.boardId,
             deviceKey: hw.activeDevice?.deviceId,
             completedSteps: lab.completedSteps,
-            isPass: lab.completedSteps.length > 0, // Simplified pass criteria
+            isPass: allPassed || lab.completedSteps.length > 0,
             traceEvents: hw.traceBuffer.length,
             trace: embeddedTrace,
             stimulus: recorder.record?.stimulus || recorder.stimulus,
+            summary: {
+                passed,
+                failed,
+                total: vectors.length,
+                all_passed: allPassed,
+                score: gradeScore,
+            },
+            vectors,
             meta: {
                 transportMode: modelLab.activeTransport.type,
                 hardware: modelLab.activeTransport.type === 'bridge' ? {
                     board: hw.capabilities?.boardId || 'unknown',
                     port: 'CONNECTED',
                     agent: '127.0.0.1:4242',
-                    verified: true
+                    verified: modelLab.activeTransport.getStatus().deviceVerified === true,
                 } : undefined
             }
         };
 
-        // 2. Build ZIP
+        // Compute integrity hash (SHA-256 when available)
+        const canonical = canonicalizeEvidence(capsule);
+        const { hash } = await hashEvidenceAsync(canonical);
+        capsule.evidenceHash = hash;
+
+        // 3. Build ZIP (v1-compatible format for inspector)
         const zip = new JSZip();
 
-        // Manifest for examiner app
         const manifest = {
-            schema_version: 'v2',
+            schema_version: 'v1',
             lab_id: lab.activeLabId,
+            lab_version: template?.lab_version || '1.0.0',
             student_id: capsule.student.id,
+            student: {
+                name: capsule.student.name,
+                id: capsule.student.id,
+            },
+            created_at: capsule.timestamp,
             timestamp: capsule.timestamp,
+            redbyte_version: '0.1.0',
             files: {
                 capsule: 'proofs/capsule.json',
-                trace: hw.traceBuffer.length > 0 ? 'proofs/trace.ndjson' : null
+                events: hw.traceBuffer.length > 0 ? 'proofs/events.ndjson' : null,
+                circuit_snapshot: 'proofs/circuit_snapshot.json',
             }
         };
 
         zip.file('manifest.json', JSON.stringify(manifest, null, 2));
         zip.file('proofs/capsule.json', JSON.stringify(capsule, null, 2));
 
-        // Trace as NDJSON if available
+        // Trace as NDJSON (v1 path: proofs/events.ndjson)
         if (hw.traceBuffer.length > 0) {
             const ndjson = hw.traceBuffer
                 .map(s => JSON.stringify(s))
                 .join('\n');
-            zip.file('proofs/trace.ndjson', ndjson);
+            zip.file('proofs/events.ndjson', ndjson);
         }
 
-        // 3. Generate and Save
+        // Circuit snapshot: full graph state at export time
+        zip.file('proofs/circuit_snapshot.json', JSON.stringify({
+            exportedAt: capsule.timestamp,
+            tick: modelLab.simulation.tick,
+            nodeCount: modelLab.graph.nodes.length,
+            wireCount: modelLab.graph.wires.length,
+            graph: modelLab.graph,
+        }, null, 2));
+
+        // 4. Generate and Save
         const blob = await zip.generateAsync({ type: 'blob' });
 
-        // Save to virtual FS - add timestamp for collision-safety
         let safeName = filename.replace(/\.json$/, '').replace(/\.zip$/, '');
         const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
         safeName += `-${ts}.rb-lab.zip`;
-
-        const arrayBuffer = await blob.arrayBuffer();
-        // Since Virtual FS might only support strings for now? 
-        // Let's check createFile sig. Usually it's string.
-        // If it only takes strings, we might need to base64 or just skip virtual FS for the zip blob.
-        // Actually, most RedByte Virtual FS implementations take string.
-        // Let's skip Virtual FS for the binary ZIP and just do direct download + log.
 
         if (typeof document !== 'undefined') {
             const url = URL.createObjectURL(blob);
@@ -212,7 +258,7 @@ export async function exportEvidence(data: any): Promise<void> {
                 board: 'uno',
                 port: 'CONNECTED',
                 agent: '127.0.0.1:4242',
-                verified: true
+                verified: lab.activeTransport.getStatus().deviceVerified === true,
             } : undefined
         },
         ...data
@@ -252,16 +298,32 @@ export function canonicalizeEvidence(obj: any): any {
 }
 
 /**
- * Generate a simple hash of the evidence object for integrity checks.
- * Using a simple DJB2 variant for client-side speed/availablity if crypto not avail.
- * Or use Web Crypto API if available.
+ * Generate a SHA-256 hash of the evidence object for integrity checks.
+ * Falls back to DJB2 if Web Crypto API is unavailable.
  */
-export function hashEvidence(evidence: any): { hash: string } {
+export async function hashEvidenceAsync(evidence: any): Promise<{ hash: string; hashedBytes: number; hashAlg: string }> {
     const json = JSON.stringify(evidence);
+    const hashedBytes = new TextEncoder().encode(json).byteLength;
+    if (typeof globalThis.crypto?.subtle?.digest === 'function') {
+        const data = new TextEncoder().encode(json);
+        const buffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(buffer));
+        const hex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        return { hash: hex, hashedBytes, hashAlg: 'sha256' };
+    }
+    // Fallback: DJB2 for environments without Web Crypto
+    return hashEvidence(evidence);
+}
+
+/**
+ * Synchronous DJB2 hash fallback for non-async contexts.
+ */
+export function hashEvidence(evidence: any): { hash: string; hashedBytes: number; hashAlg: string } {
+    const json = JSON.stringify(evidence);
+    const hashedBytes = new TextEncoder().encode(json).byteLength;
     let hash = 5381;
     for (let i = 0; i < json.length; i++) {
         hash = ((hash << 5) + hash) + json.charCodeAt(i); /* hash * 33 + c */
     }
-    // Return unsigned hex
-    return { hash: (hash >>> 0).toString(16) };
+    return { hash: (hash >>> 0).toString(16), hashedBytes, hashAlg: 'djb2' };
 }

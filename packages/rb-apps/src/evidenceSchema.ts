@@ -32,7 +32,7 @@ export type EvidenceBundle = {
     };
   };
   integrity: {
-    hashAlg: "fnv1a32" | "crc32";
+    hashAlg: "fnv1a32" | "crc32" | "sha256" | "djb2";
     integrityHash: string;
     hashedBytes: number;
   };

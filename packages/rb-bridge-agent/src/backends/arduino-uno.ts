@@ -1,7 +1,7 @@
 
 import { SerialPort } from 'serialport';
 import { ReadlineParser } from '@serialport/parser-readline';
-import { SetPinsPayload } from '../protocol.js';
+import { SetPinsPayload } from '@redbyte/rb-protocol';
 
 export interface ArduinoOptions {
     port: string;

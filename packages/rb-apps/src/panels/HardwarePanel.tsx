@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useLabStore } from '@redbyte/rb-logic-3d';
 import { VIRTUAL_LAB_TEMPLATES } from '../apps/virtual-lab-templates';
 import { toast } from '@redbyte/rb-primitives';
+import { getFriendlyErrorMessage } from '../utils/studentErrors';
 
 export const HardwarePanel: React.FC = () => {
     const playbackMode = useLabStore(state => state.simulation.playbackMode);
@@ -55,7 +56,7 @@ export const HardwarePanel: React.FC = () => {
                 }
             }
         } catch (err: any) {
-            toast.error({ message: err.message });
+            toast.error({ message: getFriendlyErrorMessage(err, 'Verification Error') });
         } finally {
             setIsAttemptingVerification(false);
         }
@@ -86,10 +87,10 @@ export const HardwarePanel: React.FC = () => {
                 setUploadSuccess(true);
                 toast.success({ message: "BITSTREAM DEPLOYED OK" });
             } else {
-                toast.error({ message: result.message || "Upload failed." });
+                toast.error({ message: getFriendlyErrorMessage(result.message || "Upload failed", 'Upload Error') });
             }
         } catch (err: any) {
-            toast.error({ message: err.message });
+            toast.error({ message: getFriendlyErrorMessage(err, 'Upload Error') });
         } finally {
             setIsUploading(false);
         }

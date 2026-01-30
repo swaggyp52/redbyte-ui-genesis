@@ -45,10 +45,10 @@ const Instructors = () => {
               Students export <strong>.labcapsule.json</strong> files. You do not need to reproduce their circuit manually.
             </p>
             <ol className="list-decimal pl-6 space-y-2 mt-4 text-base">
-              <li>Open your Instructor Dashboard (RedByte OS).</li>
-              <li>Drag & Drop the student's capsule.</li>
-              <li>The environment <strong>Replays</strong> their session deterministically.</li>
-              <li>Check the <strong>Truth HUD</strong> for the "VERIFIED" badge.</li>
+              <li>Open RedByte OS and launch the <strong>Inspector</strong> app.</li>
+              <li>Load the student's capsule file.</li>
+              <li>Values are replayed deterministically.</li>
+              <li>Check the <strong>Status Badge</strong> for "PASSED" or "INCOMPLETE".</li>
             </ol>
           </Section>
 

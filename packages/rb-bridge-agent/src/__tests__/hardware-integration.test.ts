@@ -1,7 +1,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { WebSocket } from 'ws';
-import { BRIDGE_PROTOCOL_VERSION, BridgeMessage } from '../protocol.js';
+import { BRIDGE_PROTOCOL_VERSION, BridgeMessage } from '@redbyte/rb-protocol';
 import { ArduinoCliUploader } from '../uploader/arduino-cli.js';
 
 // Mock the uploader to avoid needing real arduino-cli for this test

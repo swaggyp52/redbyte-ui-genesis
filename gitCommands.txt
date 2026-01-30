@@ -1,8 +1,0 @@
-git checkout main
-git pull
-pnpm install
-pnpm test
-pnpm run build
-git add -A
-git commit -m "fix(playground): resolve circuit interaction errors"
-git push origin main

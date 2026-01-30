@@ -206,6 +206,12 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
         md: gradeMdFile ? await gradeMdFile.async('string') : null,
       };
 
+      // Parse circuit snapshot if present
+      const circuitSnapshotFile = loaded.file('proofs/circuit_snapshot.json');
+      const circuitSnapshot = circuitSnapshotFile
+        ? JSON.parse(await circuitSnapshotFile.async('string'))
+        : null;
+
       const signatureStatus = await verifyBundleSignature(zipBytes);
       const traceReplay = traceEvents.length > 0 ? Array.from(replayHardwareTrace(traceEvents)) : [];
       const labTemplate = manifest?.lab_id ? getLabTemplate(String(manifest.lab_id)) : null;
@@ -228,6 +234,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
         missingArtifacts,
         hardware,
         grade,
+        circuitSnapshot,
       });
       setTraceCursor(0);
       setTraceCurrent(null);
@@ -635,6 +642,57 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
                       <div className={styles.stat}>
                         <span className={styles.statLabel}>Total</span>
                         <span className={styles.statValue}>{bundle.capsule.summary?.total || 0}</span>
+                      </div>
+                      {bundle.capsule.summary?.score != null && (
+                        <div className={styles.stat}>
+                          <span className={styles.statLabel}>Score</span>
+                          <span className={styles.statValue}>{bundle.capsule.summary.score}%</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {bundle.capsule?.completedSteps && (
+                  <div className={styles.summarySection}>
+                    <h3>Lab Progress</h3>
+                    <div className={styles.summaryStats}>
+                      <div className={styles.stat}>
+                        <span className={styles.statLabel}>Steps Completed</span>
+                        <span className={styles.statValue}>{bundle.capsule.completedSteps.length}</span>
+                      </div>
+                      <div className={styles.stat}>
+                        <span className={styles.statLabel}>Verdict</span>
+                        <span className={styles.statValue} style={{
+                          color: bundle.capsule.isPass ? '#10b981' : '#ef4444'
+                        }}>
+                          {bundle.capsule.isPass ? 'PASS' : 'FAIL'}
+                        </span>
+                      </div>
+                    </div>
+                    {bundle.capsule.evidenceHash && (
+                      <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#64748b' }}>
+                        Integrity Hash: <code>{bundle.capsule.evidenceHash}</code>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {bundle.circuitSnapshot && (
+                  <div className={styles.summarySection}>
+                    <h3>Circuit Snapshot</h3>
+                    <div className={styles.summaryStats}>
+                      <div className={styles.stat}>
+                        <span className={styles.statLabel}>Nodes</span>
+                        <span className={styles.statValue}>{bundle.circuitSnapshot.nodeCount ?? '?'}</span>
+                      </div>
+                      <div className={styles.stat}>
+                        <span className={styles.statLabel}>Wires</span>
+                        <span className={styles.statValue}>{bundle.circuitSnapshot.wireCount ?? '?'}</span>
+                      </div>
+                      <div className={styles.stat}>
+                        <span className={styles.statLabel}>Tick</span>
+                        <span className={styles.statValue}>{bundle.circuitSnapshot.tick ?? '?'}</span>
                       </div>
                     </div>
                   </div>

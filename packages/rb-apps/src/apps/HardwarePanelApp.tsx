@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import type { RedByteApp } from "../types";
-import type { BridgeDevice } from "@redbyte/rb-fpga-bridge-contract";
 import type { HardwareTraceEvent } from "@redbyte/rb-fpga-proof-core";
 import { exportV2Bundle, type BoardProfile } from "../utils/bundleExport";
 import { buildTraceEvent, computeStreamSilenceMs } from "./hardwarePanelUtils";
