@@ -36,47 +36,34 @@ if (EXPECTED_SHA) console.log(`🎯 Expecting Commit: ${EXPECTED_SHA}`);
             }
         }
 
-        // 2. Deep Link Check (Lab 0) + Redirect
-        console.log('Testing Lab 0 Deep Link (should redirect)...');
+        // 2. Deep Link Check (Lab 0 - Direct in OS)
+        console.log('Testing Lab 0 Deep Link (OS Direct)...');
         await page.goto(`${TARGET_URL}/?lab=lab-0`);
-        await page.waitForTimeout(2000); // Allow redirect && OS boot
-
-        if (page.url().includes('/os/')) {
-            console.log('✅ Redirect to /os/ working.');
-        } else {
-            console.warn('⚠️ Redirect to /os/ NOT detected (might be SPA routing). Current URL:', page.url());
-        }
-
-        // 3. Students Page Check
-        console.log('Testing /students route...');
-        const page2 = await browser.newPage();
-        await page2.goto(`${TARGET_URL}/students`);
-        const studentsContent = await page2.content();
-        if (studentsContent.includes('Install') || studentsContent.includes('Guide')) {
-            console.log('✅ Students page loaded.');
-        } else {
-            console.error('❌ Students page missing content.');
-            hasError = true;
-        }
-        await page2.close();
-
-        // 4. OS Route Check (/os/)
-        console.log('Testing OS Deep Link (/os/)...');
-        await page.goto(`${TARGET_URL}/os/`);
         await page.waitForTimeout(3000); // Allow OS to boot
 
-        // Check for specific text that proves the app loaded (not just index.html)
         const content = await page.content();
         const hasOSShell = content.includes('rb-shell') || content.includes('assets/rb-apps');
 
         if (hasOSShell) {
-            console.log('✅ OS Shell loaded (bundle verified).');
+            console.log('✅ OS Shell loaded at root (bundle verified).');
         } else {
-            console.error('❌ OS Shell bundle NOT found on /os/ route.');
-            // Dump partial content for debugging
+            console.error('❌ OS Shell bundle NOT found at root.');
             console.log('Content snippet:', content.slice(0, 500));
             hasError = true;
         }
+
+        // 3. Docs Check (/docs/students)
+        console.log('Testing Docs Route (/docs/students)...');
+        const page2 = await browser.newPage();
+        await page2.goto(`${TARGET_URL}/docs/students`);
+        const studentsContent = await page2.content();
+        if (studentsContent.includes('Install') || studentsContent.includes('Guide')) {
+            console.log('✅ Students doc page loaded.');
+        } else {
+            console.error('❌ Students doc page missing content.');
+            hasError = true;
+        }
+        await page2.close();
     } catch (e) {
         console.error('❌ Exception during verify:', e);
         hasError = true;

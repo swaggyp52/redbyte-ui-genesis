@@ -9,6 +9,9 @@ export const BridgeDebugPanel: React.FC = () => {
         return hardwareClient.subscribe(setState);
     }, []);
 
+    // HIDE IN PRODUCTION
+    if (import.meta.env.PROD) return null;
+
     if (!isOpen) {
         return (
             <button

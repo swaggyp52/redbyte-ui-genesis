@@ -45,7 +45,6 @@ export const InspectorPanel: React.FC = () => {
             header={
                 <div className="flex items-center justify-between">
                     <span className="font-bold text-gray-100">Inspector</span>
-                    <span className="text-xs text-gray-500 uppercase tracking-widest">Debug</span>
                 </div>
             }
             bodyClassName="p-4"

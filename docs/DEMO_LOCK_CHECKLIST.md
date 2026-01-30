@@ -8,14 +8,14 @@
   - ✅ **PASS:** Verified via `verify-deploy.mjs` (SHA: `b2ebd0d`).
 - [x] **Badge:** Website Home shows "Build: [SHA]".
 - [x] **Badge:** OS Start Here shows "Build: [SHA]".
-- [x] **Deep Link:** `https://redbyteapps.dev/?lab=lab-0` loads Lab 0 directly.
+- [x] **Deep Link:** `https://redbyteapps.dev/?lab=lab-0` loads Lab 0 directly (no redirect).
 
 ## 2. Friend Laptop Validation (No Repo)
 
 - [ ] **Clean Browser Check:**
-  - Open `https://redbyteapps.dev/students` -> Verify "Install Guide" text present.
-  - Open `https://redbyteapps.dev/lab-0` -> Verify OS loads.
-  - Open `https://redbyteapps.dev/build.json` -> Verify JSON content (not HTML).
+  - Open `https://redbyteapps.dev` -> **RedByte OS** (Launch Screen) appears.
+  - Open `https://redbyteapps.dev/docs/students` -> Verify "Install Guide" text present.
+  - Open `https://redbyteapps.dev/build.json` -> Verify JSON content.
   - Check Footer/Home for "Build: [SHA]" tag.
 
 ## 2. Environment Gates

@@ -49,10 +49,11 @@ jobs:
           VITE_APP_ENV: production
           GIT_SHA: ${{ github.sha }}
 
-      - name: Merge OS into Site
+      - name: Preparation for Deploy
         run: |
-          mkdir -p apps/manual-site/dist/os
-          cp -r apps/playground/dist/* apps/manual-site/dist/os/
+          # Create final structure in playground/dist (which will be root)
+          mkdir -p apps/playground/dist/docs
+          cp -r apps/manual-site/dist/* apps/playground/dist/docs/
 
       - name: Publish to Cloudflare Pages
         uses: cloudflare/pages-action@v1
@@ -60,6 +61,6 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: redbyte-ui-genesis
-          directory: apps/manual-site/dist
+          directory: apps/playground/dist
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: main

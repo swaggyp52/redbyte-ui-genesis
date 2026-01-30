@@ -34,9 +34,13 @@
 * **Root Domain:** Serves `manual-site` (Documentation/Landing).
 * **`/os/` Path:** Serves `playground` (The Actual OS).
 * **Deep Links:** `index.html` at root auto-redirects `?lab=...` to `/os/?lab=...`.
-* **Pipeline:** `deploy-cloudflare.yml` builds both apps and merges `playground/dist` into `manual-site/dist/os`.
 
-## 4. Packaging & Startup
+### 4. Trust & Polish (Phase 7.5)
+
+* **Debug Gates:** Hidden `BridgeDebugPanel` and Inspector debug labels in production builds (`import.meta.env.PROD`).
+* **Verification:** `verify-deploy.mjs` updated to validate OS at root and Docs at `/docs`.
+
+## 5. Packaging & Startup
 
 | Feature | Status | Fix/Notes |
 | :--- | :--- | :--- |
