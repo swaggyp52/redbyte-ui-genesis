@@ -916,7 +916,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
                           height={Math.max(18, debugPortValues.length * 12 + 12)}
                           rx={4}
                           fill="#0f172a"
-                          stroke="#22d3ee"
+                          stroke="#3B82F6"
                           strokeWidth={1}
                           opacity={0.9}
                         />

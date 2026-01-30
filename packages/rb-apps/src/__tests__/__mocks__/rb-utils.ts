@@ -5,9 +5,9 @@ import { vi } from 'vitest';
 
 // Mock settings state - stable reference
 const mockSettingsState = {
-  themeVariant: 'redbyte-dark' as const,
-  wallpaperId: 'neon-circuit' as const,
-  accentColor: 'cyan' as const,
+  themeVariant: 'dark' as const,
+  wallpaperId: 'default' as const,
+  accentColor: 'blue' as const,
   tickRate: 20,
   reduceMotion: false,
   density: 'comfortable' as const,

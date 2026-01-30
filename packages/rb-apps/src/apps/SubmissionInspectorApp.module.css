@@ -150,8 +150,8 @@
 }
 
 .tabActive {
-  color: #22d3ee;
-  border-bottom-color: #22d3ee;
+  color: #3B82F6;
+  border-bottom-color: #3B82F6;
 }
 
 /* Content */
@@ -195,7 +195,7 @@
 }
 
 .exportButton:hover {
-  border-color: #22d3ee;
+  border-color: #3B82F6;
   color: #f8fafc;
 }
 
@@ -392,7 +392,7 @@
 
 .eventType {
   font-weight: 600;
-  color: #22d3ee;
+  color: #3B82F6;
   font-size: 0.9375rem;
   margin-bottom: 0.5rem;
 }
@@ -475,7 +475,7 @@
 
 .sourceBridge {
   background: rgba(34, 211, 238, 0.15);
-  color: #22d3ee;
+  color: #3B82F6;
   border: 1px solid rgba(34, 211, 238, 0.3);
 }
 
@@ -744,7 +744,7 @@
 }
 
 .demoEventType {
-  color: #22d3ee;
+  color: #3B82F6;
   font-weight: 600;
 }
 

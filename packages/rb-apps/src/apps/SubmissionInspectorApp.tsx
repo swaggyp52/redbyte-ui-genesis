@@ -411,7 +411,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
             style={{
               background: demoMode ? 'rgba(34, 211, 238, 0.2)' : 'rgba(255, 255, 255, 0.05)',
               borderColor: demoMode ? 'rgba(34, 211, 238, 0.5)' : 'rgba(255, 255, 255, 0.1)',
-              color: demoMode ? '#22d3ee' : '#94a3b8',
+              color: demoMode ? '#3B82F6' : '#94a3b8',
             }}
           >
             {demoMode ? '✓ Demo Mode' : 'Demo Mode'}

@@ -1,41 +1,193 @@
+/* RedByte OS Genesis — Design Tokens
+   Precision Instrument aesthetic.
+   Single source of truth for all visual properties. */
+
 :root {
-  /* Surfaces */
-  --rb-bg: #0b1220;
-  --rb-panel: #0f1a2d;
-  --rb-panel-2: #101f36;
-  --rb-border: rgba(148, 163, 184, 0.18); /* slate-400-ish */
-  --rb-border-strong: rgba(148, 163, 184, 0.30);
+  /* ── Surfaces (Dark — primary) ── */
+  --rb-surface-0: #09090B;
+  --rb-surface-1: #18181B;
+  --rb-surface-2: #27272A;
+  --rb-surface-3: #3F3F46;
 
-  /* Text */
-  --rb-text: rgba(226, 232, 240, 0.92);   /* slate-200 */
-  --rb-muted: rgba(226, 232, 240, 0.66);
-  --rb-faint: rgba(226, 232, 240, 0.46);
+  /* Legacy aliases consumed by existing components */
+  --rb-bg: var(--rb-surface-0);
+  --rb-panel: var(--rb-surface-1);
+  --rb-panel-2: var(--rb-surface-2);
 
-  /* Accent (calm cyan) */
-  --rb-accent: #22d3ee;
-  --rb-accent-weak: rgba(34, 211, 238, 0.18);
-  --rb-accent-strong: rgba(34, 211, 238, 0.32);
+  /* ── Text ── */
+  --rb-text: #FAFAFA;
+  --rb-text-2: #A1A1AA;
+  --rb-text-3: #71717A;
+  --rb-muted: var(--rb-text-2);
+  --rb-faint: var(--rb-text-3);
 
-  /* Semantics */
-  --rb-warn-bg: rgba(245, 158, 11, 0.14);
-  --rb-warn-border: rgba(245, 158, 11, 0.35);
-  --rb-danger-bg: rgba(239, 68, 68, 0.14);
-  --rb-danger-border: rgba(239, 68, 68, 0.35);
+  /* ── Accent (Blue — precision / engineering) ── */
+  --rb-accent: #3B82F6;
+  --rb-accent-soft: rgba(59, 130, 246, 0.15);
+  --rb-accent-weak: rgba(59, 130, 246, 0.12);
+  --rb-accent-strong: rgba(59, 130, 246, 0.30);
 
-  /* Geometry */
-  --rb-radius-sm: 6px;
-  --rb-radius-md: 10px;
-  --rb-radius-lg: 14px;
+  /* ── Secondary accent (Amber — active / recording / warnings) ── */
+  --rb-amber: #F59E0B;
+  --rb-amber-soft: rgba(245, 158, 11, 0.15);
 
-  /* Shadows */
-  --rb-shadow-sm: 0 1px 0 rgba(0,0,0,0.35), 0 8px 24px rgba(0,0,0,0.22);
-  --rb-shadow-md: 0 2px 0 rgba(0,0,0,0.35), 0 12px 40px rgba(0,0,0,0.30);
+  /* ── Borders ── */
+  --rb-border: #27272A;
+  --rb-border-strong: #3F3F46;
 
-  /* Typography */
-  --rb-font-sans: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  --rb-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  /* ── Semantic colors ── */
+  --rb-success: #22C55E;
+  --rb-success-soft: rgba(34, 197, 94, 0.15);
+  --rb-warn-bg: rgba(245, 158, 11, 0.12);
+  --rb-warn-border: rgba(245, 158, 11, 0.30);
+  --rb-danger: #EF4444;
+  --rb-danger-bg: rgba(239, 68, 68, 0.12);
+  --rb-danger-border: rgba(239, 68, 68, 0.30);
 
-  /* Spacing (optional helpers) */
+  /* ── Typography ── */
+  --rb-font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --rb-font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --rb-font-family-body: var(--rb-font-sans);
+
+  --rb-text-xs:   0.6875rem;  /* 11px */
+  --rb-text-sm:   0.75rem;    /* 12px */
+  --rb-text-base: 0.8125rem;  /* 13px */
+  --rb-text-md:   0.875rem;   /* 14px */
+  --rb-text-lg:   1rem;       /* 16px */
+  --rb-text-xl:   1.25rem;    /* 20px */
+  --rb-text-2xl:  1.5rem;     /* 24px */
+
+  /* ── Spacing (4px base) ── */
+  --rb-space-1:  4px;
+  --rb-space-2:  8px;
+  --rb-space-3:  12px;
+  --rb-space-4:  16px;
+  --rb-space-5:  20px;
+  --rb-space-6:  24px;
+  --rb-space-8:  32px;
+  --rb-space-10: 40px;
+  --rb-space-12: 48px;
+
+  /* Legacy padding aliases */
+  --rb-pad-sm: 8px;
+  --rb-pad-md: 12px;
+  --rb-pad-lg: 16px;
+
+  /* ── Border Radius ── */
+  --rb-radius-sm: 4px;
+  --rb-radius-md: 6px;
+  --rb-radius-lg: 8px;
+  --rb-radius-xl: 12px;
+  --rb-radius-full: 9999px;
+
+  /* ── Shadows (instrument bezel — inner highlight + outer depth) ── */
+  --rb-shadow-1: 0 1px 2px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.03);
+  --rb-shadow-2: 0 4px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);
+  --rb-shadow-3: 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+
+  /* Legacy aliases */
+  --rb-shadow-sm: var(--rb-shadow-1);
+  --rb-shadow-md: var(--rb-shadow-2);
+
+  /* ── Motion ── */
+  --rb-motion-instant: 80ms;
+  --rb-motion-fast: 120ms;
+  --rb-motion-normal: 200ms;
+  --rb-motion-slow: 320ms;
+  --rb-easing-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --rb-easing-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --rb-easing-inout: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ── Glass / Material (used by dock, overlays) ── */
+  --rb-glass: rgba(9, 9, 11, 0.80);
+  --rb-metal: rgba(24, 24, 27, 0.92);
+
+  /* ── Noise overlay opacity ── */
+  --rb-noise-opacity: 0.03;
+
+  /* ── Theme foreground/background (consumed by ThemeProvider) ── */
+  --rb-theme-foreground: var(--rb-text);
+  --rb-theme-background: var(--rb-surface-0);
+}
+
+/* ── Light theme ── */
+[data-theme="light"] {
+  --rb-surface-0: #FAFAFA;
+  --rb-surface-1: #F4F4F5;
+  --rb-surface-2: #E4E4E7;
+  --rb-surface-3: #D4D4D8;
+
+  --rb-bg: var(--rb-surface-0);
+  --rb-panel: var(--rb-surface-1);
+  --rb-panel-2: var(--rb-surface-2);
+
+  --rb-text: #18181B;
+  --rb-text-2: #52525B;
+  --rb-text-3: #A1A1AA;
+  --rb-muted: var(--rb-text-2);
+  --rb-faint: var(--rb-text-3);
+
+  --rb-accent: #2563EB;
+  --rb-accent-soft: rgba(37, 99, 235, 0.10);
+  --rb-accent-weak: rgba(37, 99, 235, 0.08);
+  --rb-accent-strong: rgba(37, 99, 235, 0.22);
+
+  --rb-border: #E4E4E7;
+  --rb-border-strong: #D4D4D8;
+
+  --rb-shadow-1: 0 1px 2px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04);
+  --rb-shadow-2: 0 4px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.05);
+  --rb-shadow-3: 0 8px 24px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.06);
+
+  --rb-glass: rgba(250, 250, 250, 0.85);
+  --rb-metal: rgba(244, 244, 245, 0.95);
+  --rb-noise-opacity: 0.02;
+
+  --rb-theme-foreground: var(--rb-text);
+  --rb-theme-background: var(--rb-surface-0);
+}
+
+/* ── Midnight theme ── */
+[data-theme="midnight"] {
+  --rb-surface-0: #020617;
+  --rb-surface-1: #0F172A;
+  --rb-surface-2: #1E293B;
+  --rb-surface-3: #334155;
+
+  --rb-bg: var(--rb-surface-0);
+  --rb-panel: var(--rb-surface-1);
+  --rb-panel-2: var(--rb-surface-2);
+
+  --rb-text: #F1F5F9;
+  --rb-text-2: #94A3B8;
+  --rb-text-3: #64748B;
+  --rb-muted: var(--rb-text-2);
+  --rb-faint: var(--rb-text-3);
+
+  --rb-accent: #818CF8;
+  --rb-accent-soft: rgba(129, 140, 248, 0.15);
+  --rb-accent-weak: rgba(129, 140, 248, 0.10);
+  --rb-accent-strong: rgba(129, 140, 248, 0.28);
+
+  --rb-border: #1E293B;
+  --rb-border-strong: #334155;
+
+  --rb-glass: rgba(2, 6, 23, 0.82);
+  --rb-metal: rgba(15, 23, 42, 0.92);
+  --rb-noise-opacity: 0.04;
+
+  --rb-theme-foreground: var(--rb-text);
+  --rb-theme-background: var(--rb-surface-0);
+}
+
+/* ── Density variants ── */
+:root[data-rb-density='compact'] {
+  --rb-pad-sm: 6px;
+  --rb-pad-md: 10px;
+  --rb-pad-lg: 12px;
+}
+
+:root[data-rb-density='comfortable'] {
   --rb-pad-sm: 10px;
   --rb-pad-md: 14px;
   --rb-pad-lg: 18px;

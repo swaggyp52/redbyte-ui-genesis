@@ -12,9 +12,9 @@ import { useWindowStore } from '@redbyte/rb-windowing';
 
 // Stable mock state objects - MUST be defined outside vi.mock for referential stability
 const mockSettingsState = {
-  themeVariant: 'redbyte-dark' as const,
-  wallpaperId: 'neon-circuit' as const,
-  accentColor: 'cyan' as const,
+  themeVariant: 'dark' as const,
+  wallpaperId: 'default' as const,
+  accentColor: 'blue' as const,
   tickRate: 20,
   setThemeVariant: vi.fn(),
   setWallpaperId: vi.fn(),

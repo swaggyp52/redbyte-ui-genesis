@@ -18,39 +18,17 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-/**
- * ThemeProvider - Manages theme state and applies CSS variables
- *
- * Automatically applies the theme to document.documentElement on mount and theme changes.
- * Persists theme choice to localStorage.
- *
- * @example
- * ```tsx
- * function App() {
- *   return (
- *     <ThemeProvider>
- *       <YourApp />
- *     </ThemeProvider>
- *   );
- * }
- * ```
- */
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [variant, setVariantState] = useState<ThemeVariant>(() => {
-    // SSR guard - return default theme during SSR
-    if (typeof window === 'undefined') return 'redbyte-dark';
-
-    // Try to get saved theme
+    if (typeof window === 'undefined') return 'dark';
     const saved = getActiveTheme();
-    return saved ?? 'redbyte-dark';
+    return saved ?? 'dark';
   });
 
-  // Apply theme on mount and when variant changes
   useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
-
     applyTheme(document.documentElement, variant);
   }, [variant]);
 
@@ -65,24 +43,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
-/**
- * useTheme hook - Access current theme variant and setter
- *
- * @throws Error if used outside ThemeProvider
- *
- * @example
- * ```tsx
- * function ThemeToggle() {
- *   const { variant, setVariant } = useTheme();
- *
- *   const toggleTheme = () => {
- *     setVariant(variant === 'redbyte-dark' ? 'instrument' : 'redbyte-dark');
- *   };
- *
- *   return <button onClick={toggleTheme}>Toggle Theme</button>;
- * }
- * ```
- */
 export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext);
   if (!ctx) {

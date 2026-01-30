@@ -1,122 +1,152 @@
+/* RedByte OS Genesis — Control Styles
+   Precision Instrument aesthetic. Tight, systematic, no decoration. */
+
+/* ── Panels ── */
 .rbPanel {
-  background: var(--rb-panel);
+  background: var(--rb-surface-1);
   border: 1px solid var(--rb-border);
   border-radius: var(--rb-radius-md);
   padding: var(--rb-pad-lg);
-  box-shadow: var(--rb-shadow-sm);
+  box-shadow: var(--rb-shadow-1);
 }
 
+/* ── Buttons ── */
 .rbButtonPrimary {
   background: var(--rb-accent);
-  color: var(--rb-bg);
+  color: #fff;
   border: 1px solid var(--rb-accent);
   border-radius: var(--rb-radius-sm);
-  padding: 0.75rem 1.25rem;
+  padding: 0.5rem 1rem;
+  font-family: var(--rb-font-sans);
+  font-size: var(--rb-text-base);
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: background var(--rb-motion-fast) var(--rb-easing-out),
+              border-color var(--rb-motion-fast) var(--rb-easing-out),
+              opacity var(--rb-motion-fast) var(--rb-easing-out);
 }
 
 .rbButtonPrimary:hover {
-  background: rgba(34, 211, 238, 0.9);
+  opacity: 0.9;
+}
+
+.rbButtonPrimary:active {
+  opacity: 0.8;
 }
 
 .rbButtonSecondary {
-  background: var(--rb-panel-2);
+  background: var(--rb-surface-2);
   color: var(--rb-text);
   border: 1px solid var(--rb-border);
   border-radius: var(--rb-radius-sm);
-  padding: 0.75rem 1.25rem;
+  padding: 0.5rem 1rem;
+  font-family: var(--rb-font-sans);
+  font-size: var(--rb-text-base);
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  transition: border-color var(--rb-motion-fast) var(--rb-easing-out),
+              background var(--rb-motion-fast) var(--rb-easing-out);
 }
 
 .rbButtonSecondary:hover {
   border-color: var(--rb-border-strong);
-  background: rgba(15, 26, 45, 0.9);
+  background: var(--rb-surface-3);
 }
 
 .rbButtonGhost {
   background: transparent;
-  color: var(--rb-muted);
-  border: 1px solid var(--rb-border);
+  color: var(--rb-text-2);
+  border: 1px solid transparent;
   border-radius: var(--rb-radius-sm);
-  padding: 0.65rem 1rem;
+  padding: 0.5rem 0.75rem;
+  font-family: var(--rb-font-sans);
+  font-size: var(--rb-text-base);
   cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  transition: color var(--rb-motion-fast) var(--rb-easing-out),
+              background var(--rb-motion-fast) var(--rb-easing-out);
 }
 
 .rbButtonGhost:hover {
   color: var(--rb-text);
-  border-color: var(--rb-border-strong);
-  background: rgba(226, 232, 240, 0.06);
+  background: var(--rb-surface-2);
 }
 
+/* ── Inputs ── */
 .rbInput {
-  background: var(--rb-panel-2);
+  background: var(--rb-surface-0);
   color: var(--rb-text);
   border: 1px solid var(--rb-border);
   border-radius: var(--rb-radius-sm);
-  padding: 0.6rem 0.75rem;
+  padding: 0.5rem 0.625rem;
   font-family: var(--rb-font-sans);
+  font-size: var(--rb-text-base);
+  transition: border-color var(--rb-motion-fast) var(--rb-easing-out),
+              box-shadow var(--rb-motion-fast) var(--rb-easing-out);
 }
 
 .rbInput:focus {
   outline: none;
-  border-color: var(--rb-accent-strong);
-  box-shadow: 0 0 0 1px var(--rb-accent-weak);
+  border-color: var(--rb-accent);
+  box-shadow: 0 0 0 2px var(--rb-accent-weak);
 }
 
+/* ── Inline Code ── */
 .rbCodeBlock {
   display: inline-block;
-  background: var(--rb-panel-2);
+  background: var(--rb-surface-2);
   color: var(--rb-accent);
   border: 1px solid var(--rb-border);
   border-radius: var(--rb-radius-sm);
-  padding: 0.25rem 0.5rem;
+  padding: 0.125rem 0.375rem;
   font-family: var(--rb-font-mono);
-  font-size: 0.75rem;
+  font-size: var(--rb-text-sm);
 }
 
+/* ── Banners ── */
 .rbBannerWarn {
   background: var(--rb-warn-bg);
   border: 1px solid var(--rb-warn-border);
   border-radius: var(--rb-radius-sm);
   color: var(--rb-text);
-  padding: 0.75rem 0.9rem;
-  font-size: 0.875rem;
+  padding: 0.625rem 0.75rem;
+  font-size: var(--rb-text-base);
   line-height: 1.5;
 }
 
+/* ── Empty States ── */
 .rbEmptyState {
-  background: var(--rb-panel);
-  border: 1px dashed var(--rb-border);
+  background: var(--rb-surface-1);
+  border: 1px dashed var(--rb-border-strong);
   border-radius: var(--rb-radius-md);
-  color: var(--rb-muted);
+  color: var(--rb-text-2);
   padding: var(--rb-pad-lg);
   text-align: center;
 }
 
 .rbEmptyStateTitle {
-  font-size: 1rem;
+  font-size: var(--rb-text-md);
   font-weight: 600;
   color: var(--rb-text);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.375rem;
 }
 
 .rbEmptyStateBody {
-  font-size: 0.875rem;
-  color: var(--rb-muted);
+  font-size: var(--rb-text-base);
+  color: var(--rb-text-2);
 }
 
+/* ── Keyboard Hints ── */
 .rbKbdHint {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-family: var(--rb-font-mono);
-  background: var(--rb-panel-2);
-  border: 1px solid var(--rb-border);
+  background: var(--rb-surface-2);
+  border: 1px solid var(--rb-border-strong);
   border-radius: var(--rb-radius-sm);
-  padding: 0.2rem 0.4rem;
-  color: var(--rb-muted);
-  font-size: 0.75rem;
+  padding: 0.125rem 0.375rem;
+  color: var(--rb-text-3);
+  font-size: var(--rb-text-xs);
+  min-width: 1.25rem;
+  line-height: 1;
 }

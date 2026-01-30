@@ -186,20 +186,25 @@ export const Launcher: React.FC<LauncherProps> = ({
     return (
       <div
         key={app.id}
-        className={`flex items-center justify-between gap-2 p-2 rounded mb-1 border border-transparent transition-colors ${isSelected
-          ? 'bg-slate-800 border-blue-500/50'
-          : 'hover:bg-slate-800/50'
-          }`}
+        className="flex items-center justify-between gap-2 p-2 rounded-md mb-0.5 transition-colors"
+        style={{
+          background: isSelected ? 'var(--rb-surface-2)' : 'transparent',
+          border: isSelected ? '1px solid var(--rb-accent-border, var(--rb-border))' : '1px solid transparent',
+        }}
       >
         <button
+          type="button"
           ref={isSelected ? selectedRef : undefined}
           tabIndex={isSelected ? 0 : -1}
           onClick={() => handleLaunch(app.id)}
           className="flex-1 text-left bg-transparent border-0 outline-none focus:outline-none cursor-pointer"
           aria-current={isSelected ? 'true' : undefined}
         >
-          <span className="text-sm font-medium text-slate-200">
-            {app.name} {runningIds.has(app.id) && <span className="text-xs text-blue-400 ml-2">(Running)</span>}
+          <span className="text-sm font-medium" style={{ color: 'var(--rb-text)' }}>
+            {app.name}
+            {runningIds.has(app.id) && (
+              <span className="text-xs ml-2" style={{ color: 'var(--rb-accent)' }}>(Running)</span>
+            )}
           </span>
         </button>
         {onTogglePin && (
@@ -212,10 +217,12 @@ export const Launcher: React.FC<LauncherProps> = ({
               onTogglePin(app.id);
             }}
             tabIndex={isSelected ? 0 : -1}
-            className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${isPinned
-              ? 'bg-blue-500/10 border-blue-500/50 text-blue-400 hover:bg-blue-500/20'
-              : 'border-slate-600 text-slate-500 hover:border-slate-500 hover:text-slate-400'
-              }`}
+            className="text-[10px] px-1.5 py-0.5 rounded transition-colors"
+            style={{
+              background: isPinned ? 'var(--rb-accent-muted)' : 'transparent',
+              border: isPinned ? '1px solid var(--rb-accent-border, var(--rb-border))' : '1px solid var(--rb-border)',
+              color: isPinned ? 'var(--rb-accent)' : 'var(--rb-text-3)',
+            }}
           >
             {isPinned ? 'Unpin' : 'Pin'}
           </button>
@@ -231,50 +238,57 @@ export const Launcher: React.FC<LauncherProps> = ({
       aria-modal="true"
       tabIndex={-1}
       onKeyDown={handleKeyDown}
-      className="p-4 h-full overflow-y-auto bg-slate-900 text-slate-200 focus:outline-none"
+      className="p-4 h-full overflow-y-auto focus:outline-none"
+      style={{ background: 'var(--rb-surface-1)', color: 'var(--rb-text)' }}
     >
-      <h2 className="text-lg font-bold text-white mb-4">App Launcher</h2>
+      <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--rb-text)' }}>App Launcher</h2>
 
       {showHelp && (
-        <div className="mb-4 bg-slate-800 p-3 rounded border border-slate-700">
-          <h3 className="text-xs font-bold text-slate-400 uppercase mb-2">Keyboard Shortcuts</h3>
-          <ul className="text-xs space-y-1 text-slate-300">
-            <li><kbd className="bg-slate-700 px-1 rounded">↑</kbd> <kbd className="bg-slate-700 px-1 rounded">↓</kbd> Move selection</li>
-            <li><kbd className="bg-slate-700 px-1 rounded">Enter</kbd> Launch app</li>
-            <li><kbd className="bg-slate-700 px-1 rounded">Esc</kbd> Clear search / Close</li>
-            <li><kbd className="bg-slate-700 px-1 rounded">?</kbd> Toggle help</li>
+        <div
+          className="mb-4 p-3 rounded-md"
+          style={{ background: 'var(--rb-surface-2)', border: '1px solid var(--rb-border)' }}
+        >
+          <h3 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--rb-text-3)' }}>Keyboard Shortcuts</h3>
+          <ul className="text-xs space-y-1" style={{ color: 'var(--rb-text-2)' }}>
+            <li><kbd className="px-1 rounded" style={{ background: 'var(--rb-surface-3)' }}>↑</kbd> <kbd className="px-1 rounded" style={{ background: 'var(--rb-surface-3)' }}>↓</kbd> Move selection</li>
+            <li><kbd className="px-1 rounded" style={{ background: 'var(--rb-surface-3)' }}>Enter</kbd> Launch app</li>
+            <li><kbd className="px-1 rounded" style={{ background: 'var(--rb-surface-3)' }}>Esc</kbd> Clear search / Close</li>
+            <li><kbd className="px-1 rounded" style={{ background: 'var(--rb-surface-3)' }}>?</kbd> Toggle help</li>
           </ul>
         </div>
       )}
 
       {query && (
-        <div className="mb-4 px-2 py-1.5 bg-slate-800 border border-blue-500 rounded text-sm text-white">
-          <span className="text-slate-500 mr-2">Search:</span>
+        <div
+          className="mb-4 px-2 py-1.5 rounded text-sm"
+          style={{ background: 'var(--rb-surface-2)', border: '1px solid var(--rb-accent)', color: 'var(--rb-text)' }}
+        >
+          <span className="mr-2" style={{ color: 'var(--rb-text-3)' }}>Search:</span>
           {query}
         </div>
       )}
 
       {pinnedList.length > 0 && (
         <div className="mb-4">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Pinned</h3>
+          <h3 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--rb-text-3)' }}>Pinned</h3>
           {pinnedList.map((app, index) => renderAppButton(app, index, true))}
         </div>
       )}
 
       {showRecents && (
         <div className="mb-4">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Recent</h3>
+          <h3 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--rb-text-3)' }}>Recent</h3>
           {recentList.map((app, index) => renderAppButton(app, index + pinnedList.length, false))}
         </div>
       )}
 
       <div>
-        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">All Apps</h3>
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--rb-text-3)' }}>All Apps</h3>
         {hasQuery && pinnedList.length === 0 && filteredAllApps.length === 0 && (
-          <p className="text-sm text-slate-500 italic px-2">No matches found</p>
+          <p className="text-sm italic px-2" style={{ color: 'var(--rb-text-3)' }}>No matches found</p>
         )}
         {!hasQuery && apps.length === 0 && pinnedList.length === 0 && recentList.length === 0 && (
-          <p className="text-sm text-slate-500 italic px-2">No apps registered</p>
+          <p className="text-sm italic px-2" style={{ color: 'var(--rb-text-3)' }}>No apps registered</p>
         )}
         {filteredAllApps.map((app, index) =>
           renderAppButton(
@@ -285,16 +299,21 @@ export const Launcher: React.FC<LauncherProps> = ({
         )}
 
         {hasSettings && (
-          <div className="mt-4 pt-4 border-t border-slate-800">
+          <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--rb-border)' }}>
             <button
               type="button"
               title="Open Settings (Ctrl+, / Cmd+,)"
               aria-label="Open Settings"
               onClick={() => handleLaunch('settings')}
-              className="w-full flex items-center justify-between px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 rounded text-sm text-slate-300 transition-colors"
+              className="w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors"
+              style={{
+                background: 'var(--rb-surface-2)',
+                border: '1px solid var(--rb-border)',
+                color: 'var(--rb-text-2)',
+              }}
             >
               <span>Open Settings</span>
-              <span className="text-xs text-slate-500">Ctrl+,</span>
+              <span className="text-xs" style={{ color: 'var(--rb-text-3)' }}>Ctrl+,</span>
             </button>
           </div>
         )}

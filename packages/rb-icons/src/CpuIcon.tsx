@@ -22,7 +22,7 @@ export const CpuIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     ))}
     <defs>
       <linearGradient id="cpuGradient" x1="6" y1="6" x2="18" y2="18" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#22d3ee" stopOpacity="0.6" />
+        <stop stopColor="#3B82F6" stopOpacity="0.6" />
         <stop offset="1" stopColor="#0ea5e9" stopOpacity="0.8" />
       </linearGradient>
     </defs>

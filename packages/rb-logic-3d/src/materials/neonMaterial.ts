@@ -26,6 +26,6 @@ export const NODE_COLORS: Record<string, string> = {
   NOT: '#fb923c',
   NAND: '#a78bfa',
   XOR: '#ec4899',
-  Clock: '#22d3ee',
+  Clock: '#3B82F6',
   Delay: '#a3e635',
 };

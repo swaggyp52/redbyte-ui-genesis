@@ -37,9 +37,9 @@ describe.skip('OS launch integration', () => {
     sessionStorage.clear();
     useWindowStore.setState({ windows: [], nextZIndex: 1 });
     useSettingsStore.setState({
-      themeVariant: 'redbyte-dark',
+      themeVariant: 'dark',
       wallpaperId: 'default',
-      accentColor: 'cyan',
+      accentColor: 'blue',
       tickRate: 20,
       reduceMotion: false,
       density: 'comfortable',

@@ -54,7 +54,7 @@ const COMPONENTS: Component[] = [
   { type: 'NOR', name: 'NOR Gate', keywords: ['nor', 'gate', 'logic'], Icon: LogicNorIcon, color: '#f472b6' },
   { type: 'XOR', name: 'XOR Gate', keywords: ['xor', 'exclusive', 'gate', 'logic', 'different'], Icon: LogicXorIcon, color: '#ec4899' },
   { type: 'XNOR', name: 'XNOR Gate', keywords: ['xnor', 'gate', 'logic', 'same'], Icon: LogicXnorIcon, color: '#ec4899' },
-  { type: 'Clock', name: 'Clock', keywords: ['clock', 'oscillator', 'timer', 'pulse'], Icon: ClockIcon, color: '#22d3ee' },
+  { type: 'Clock', name: 'Clock', keywords: ['clock', 'oscillator', 'timer', 'pulse'], Icon: ClockIcon, color: '#3B82F6' },
   { type: 'Delay', name: 'Delay', keywords: ['delay', 'buffer', 'wait'], Icon: DelayIcon, color: '#a3e635' },
   { type: 'RSLatch', name: 'RS Latch', keywords: ['rs', 'latch', 'memory', 'flip', 'flop'], Icon: LatchIcon, color: '#f87171' },
   { type: 'DFlipFlop', name: 'D Flip-Flop', keywords: ['d', 'flip', 'flop', 'memory', 'register'], Icon: FlipFlopIcon, color: '#34d399' },

@@ -21,7 +21,6 @@ export const TopBar: React.FC<TopBarProps> = ({
   isRecording,
   modeLabel,
   tickCount,
-  versionLabel,
   unreadCount = 0,
   onOpenLog,
   onOpenLauncher,
@@ -31,66 +30,77 @@ export const TopBar: React.FC<TopBarProps> = ({
   return (
     <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
       <div
-        className="h-10 px-4 flex items-center justify-between backdrop-blur-md border-b"
+        className="h-8 px-3 flex items-center justify-between border-b"
         style={{
-          background: 'var(--rb-glass)',
+          background: 'var(--rb-surface-1)',
           borderColor: 'var(--rb-border)',
         }}
       >
-        <div className="flex items-center gap-3 pointer-events-auto">
+        {/* Left: Logo + workspace */}
+        <div className="flex items-center gap-2.5 pointer-events-auto">
           <button
-            className="flex items-center gap-2 text-sm text-slate-200 hover:text-white transition-colors"
+            className="flex items-center gap-2 text-xs font-semibold tracking-wide transition-colors"
             onClick={onOpenLauncher}
             title="Open Launcher (Ctrl/Cmd+K)"
             aria-label="Open Launcher"
+            style={{ color: 'var(--rb-text)' }}
           >
-            <Icon name="browser" size={16} />
-            <span className="font-semibold tracking-wide">RedByte OS</span>
+            <div
+              className="h-5 w-5 rounded flex items-center justify-center"
+              style={{ background: 'var(--rb-accent)' }}
+            >
+              <span className="text-[10px] font-bold text-white leading-none">R</span>
+            </div>
+            <span>RedByte</span>
           </button>
-          <span className="text-[10px] text-slate-500 font-mono uppercase tracking-[0.2em]">Instrument</span>
         </div>
 
-        <div className="flex items-center gap-3 pointer-events-auto">
+        {/* Center: Determinism status */}
+        <div className="flex items-center gap-2 pointer-events-auto">
           <button
             onClick={onOpenDeterminism}
-            className={`flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-[0.2em] border ${
-              isRecording
-                ? 'border-red-500/60 text-red-300 bg-red-500/10'
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium uppercase tracking-wider"
+            style={{
+              background: isRecording
+                ? 'rgba(239, 68, 68, 0.12)'
                 : modeLabel === 'replay'
-                ? 'border-purple-500/50 text-purple-300 bg-purple-500/10'
-                : 'border-emerald-500/50 text-emerald-300 bg-emerald-500/10'
-            }`}
+                  ? 'rgba(129, 140, 248, 0.12)'
+                  : 'var(--rb-surface-2)',
+              color: isRecording
+                ? '#F87171'
+                : modeLabel === 'replay'
+                  ? '#A5B4FC'
+                  : 'var(--rb-text-2)',
+            }}
             title="Determinism Status"
             aria-label="Determinism Status"
           >
-            {isRecording && <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />}
-            <span>{isRecording ? 'REC' : modeLabel.toUpperCase()}</span>
-            <span className="font-mono text-[10px] text-slate-400">T{tickCount.toString().padStart(4, '0')}</span>
+            {isRecording && (
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+            )}
+            <span>{isRecording ? 'REC' : modeLabel}</span>
+            <span style={{ color: 'var(--rb-text-3)' }}>
+              T{tickCount.toString().padStart(4, '0')}
+            </span>
           </button>
         </div>
 
-        <div className="flex items-center gap-2 pointer-events-auto">
-          {versionLabel && (
-            <div className="px-2 py-1 rounded-full border border-slate-700/70 bg-slate-900/50 text-[10px] font-mono text-slate-400 uppercase tracking-[0.14em]">
-              {versionLabel}
-            </div>
-          )}
+        {/* Right: Log + Settings */}
+        <div className="flex items-center gap-1 pointer-events-auto">
           <button
             onClick={onOpenLog}
-            className="relative h-8 px-2.5 rounded-md border text-slate-200 hover:text-white transition-colors"
+            className="relative h-6 px-2 rounded flex items-center gap-1.5 text-[11px] font-medium transition-colors"
             aria-label="Open System Log"
             title="Open System Log"
-            style={{
-              borderColor: 'var(--rb-border)',
-              background: 'var(--rb-surface-2)',
-            }}
+            style={{ color: 'var(--rb-text-2)' }}
           >
-            <span className="inline-flex items-center gap-2 text-xs font-semibold">
-              <Icon name="log" size={16} />
-              LOG
-            </span>
+            <Icon name="log" size={14} />
+            <span>Log</span>
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center">
+              <span
+                className="h-4 min-w-[16px] px-1 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
+                style={{ background: 'var(--rb-danger)' }}
+              >
                 {Math.min(unreadCount, 99)}
               </span>
             )}
@@ -98,15 +108,12 @@ export const TopBar: React.FC<TopBarProps> = ({
           {onOpenSettings && (
             <button
               onClick={onOpenSettings}
-              className="h-8 w-8 rounded-md border text-slate-300 hover:text-white transition-colors flex items-center justify-center"
+              className="h-6 w-6 rounded flex items-center justify-center transition-colors"
               aria-label="Open Settings"
               title="Open Settings (Ctrl/Cmd+,)"
-              style={{
-                borderColor: 'var(--rb-border)',
-                background: 'var(--rb-surface-2)',
-              }}
+              style={{ color: 'var(--rb-text-3)' }}
             >
-              <Icon name="settings" size={16} />
+              <Icon name="settings" size={14} />
             </button>
           )}
         </div>

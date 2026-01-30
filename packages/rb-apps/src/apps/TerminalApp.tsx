@@ -255,7 +255,7 @@ const COMMAND_USAGE: Record<string, string> = {
   focus: 'Usage: focus <windowId | appId>',
   list: 'Usage: list windows | list files',
   cat: 'Usage: cat <fileId | fileName>',
-  theme: 'Usage: theme <redbyte-dark | instrument>',
+  theme: 'Usage: theme <dark | light | midnight>',
   record: 'Usage: record on | record off',
   export: 'Usage: export capsule',
   apps: 'Usage: apps list',
@@ -436,8 +436,9 @@ const TerminalComponent: React.FC<TerminalProps> = ({
   const resolveThemeVariant = (value: string | undefined): ThemeVariant | null => {
     if (!value) return null;
     const normalized = value.toLowerCase();
-    if (normalized === 'redbyte-dark' || normalized === 'redbyte' || normalized === 'dark') return 'redbyte-dark';
-    if (normalized === 'instrument' || normalized === 'inst') return 'instrument';
+    if (normalized === 'dark' || normalized === 'redbyte-dark' || normalized === 'redbyte') return 'dark';
+    if (normalized === 'light' || normalized === 'instrument' || normalized === 'inst') return 'light';
+    if (normalized === 'midnight') return 'midnight';
     if (normalized === 'system') return 'system';
     return null;
   };
@@ -604,7 +605,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
           formatCommandEffects(COMMAND_SPECS.cat)
         );
         addLine(
-          '  theme <name>                - Set theme (redbyte-dark | instrument)',
+          '  theme <name>                - Set theme (dark | light | midnight)',
           'output',
           formatCommandEffects(COMMAND_SPECS.theme)
         );
@@ -877,11 +878,11 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         if (!sub) {
           const current = useSettingsStore.getState().themeVariant;
           addLine(`Current theme: ${current}`);
-          addLine('Available themes: redbyte-dark, instrument');
+          addLine('Available themes: dark, light, midnight');
           break;
         }
         if (sub === 'list') {
-          addLine('Available themes: redbyte-dark, instrument');
+          addLine('Available themes: dark, light, midnight');
           break;
         }
         if (sub === 'current') {
@@ -895,7 +896,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
             useSettingsStore.getState().setThemeVariant(variant);
             onThemeChange?.(variant);
           } else {
-            addLine('Valid themes: redbyte-dark, instrument', 'error');
+            addLine('Valid themes: dark, light, midnight', 'error');
           }
           break;
         }
@@ -1326,31 +1327,36 @@ const TerminalComponent: React.FC<TerminalProps> = ({
           className="absolute inset-0 bg-black/70 flex items-start justify-center pt-16"
           onKeyDown={handlePaletteKeyDown}
         >
-          <div className="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-950 shadow-2xl">
-            <div className="flex items-center gap-2 border-b border-slate-800 px-3 py-2 text-xs text-slate-400">
+          <div className="w-full max-w-lg rounded-lg shadow-2xl" style={{ border: '1px solid var(--rb-border)', background: 'var(--rb-surface-0)' }}>
+            <div className="flex items-center gap-2 px-3 py-2 text-xs" style={{ borderBottom: '1px solid var(--rb-border)', color: 'var(--rb-text-3)' }}>
               {React.createElement(Icon as any, { name: 'search', size: 16 })}
               <input
                 value={paletteQuery}
                 onChange={(e) => setPaletteQuery(e.target.value)}
-                className="flex-1 bg-transparent outline-none text-slate-200"
+                className="flex-1 bg-transparent outline-none"
+                style={{ color: 'var(--rb-text)' }}
                 placeholder="Filter commands..."
                 autoFocus
               />
-              <span className="text-[10px] text-slate-500">Esc</span>
+              <span className="text-[10px]" style={{ color: 'var(--rb-text-3)' }}>Esc</span>
             </div>
             <div className="max-h-72 overflow-y-auto">
               {paletteItems.length === 0 && (
-                <div className="px-3 py-3 text-xs text-slate-500">No matches.</div>
+                <div className="px-3 py-3 text-xs" style={{ color: 'var(--rb-text-3)' }}>No matches.</div>
               )}
               {paletteItems.map((item, index) => (
                 <button
                   key={item.id}
                   onClick={() => handlePaletteSelect(item.id)}
-                  className={`w-full text-left px-3 py-2 text-xs border-b border-slate-900 ${index === paletteIndex ? 'bg-cyan-500/10 text-cyan-200' : 'text-slate-300 hover:bg-slate-900/60'
-                    }`}
+                  className="w-full text-left px-3 py-2 text-xs"
+                  style={{
+                    borderBottom: '1px solid var(--rb-surface-0)',
+                    background: index === paletteIndex ? 'var(--rb-accent-muted)' : 'transparent',
+                    color: index === paletteIndex ? 'var(--rb-accent)' : 'var(--rb-text-2)',
+                  }}
                 >
-                  <div className="font-mono text-slate-200">{item.id}</div>
-                  <div className="text-[11px] text-slate-500">{item.label}</div>
+                  <div className="font-mono" style={{ color: 'var(--rb-text)' }}>{item.id}</div>
+                  <div className="text-[11px]" style={{ color: 'var(--rb-text-3)' }}>{item.label}</div>
                 </button>
               ))}
             </div>

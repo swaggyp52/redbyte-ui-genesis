@@ -26,29 +26,42 @@ const AppStoreComponent: React.FC<AppStoreProps> = ({ onOpenApp }) => {
   };
 
   return (
-    <div className="h-full bg-slate-950 text-white p-6 overflow-y-auto">
-      <h1 className="text-2xl font-semibold mb-4">RedByte App Store</h1>
-      <p className="mb-6 text-sm text-slate-300">Browse and launch installed experiences.</p>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div
+      className="h-full p-6 overflow-y-auto"
+      style={{ background: 'var(--rb-surface-0)', color: 'var(--rb-text)' }}
+    >
+      <h1 className="text-xl font-semibold mb-2" style={{ color: 'var(--rb-text)' }}>Apps</h1>
+      <p className="mb-6 text-sm" style={{ color: 'var(--rb-text-2)' }}>Browse and launch installed applications.</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {apps.map((app) => (
           <button
+            type="button"
             key={app.manifest.id}
-            className="group rounded-xl border border-white/10 bg-white/5 p-4 shadow-lg text-left transition hover:border-cyan-400/60 hover:shadow-cyan-500/20"
+            className="group rounded-lg p-4 text-left transition-colors"
+            style={{
+              background: 'var(--rb-surface-1)',
+              border: '1px solid var(--rb-border)',
+            }}
             onClick={() => openApp(app)}
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-black/40 border border-white/10">
-                <Icon name={(app.manifest.iconId as IconName) ?? 'folder'} size={24} />
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-lg"
+                style={{ background: 'var(--rb-surface-2)', border: '1px solid var(--rb-border)' }}
+              >
+                <Icon name={(app.manifest.iconId as IconName) ?? 'folder'} size={20} />
               </div>
               <div className="flex-1">
-                <div className="font-semibold text-base group-hover:text-cyan-200">{app.manifest.name}</div>
-                <div className="text-xs text-slate-400">{app.manifest.category}</div>
+                <div className="font-medium text-sm" style={{ color: 'var(--rb-text)' }}>{app.manifest.name}</div>
+                <div className="text-xs" style={{ color: 'var(--rb-text-3)' }}>{app.manifest.category}</div>
               </div>
-              <span className="text-cyan-400 text-sm">Launch</span>
+              <span className="text-xs" style={{ color: 'var(--rb-accent)' }}>Launch</span>
             </div>
-            <div className="mt-3 text-xs text-slate-300 leading-relaxed line-clamp-3">
-              {app.manifest.description ?? 'System application'}
-            </div>
+            {app.manifest.description && (
+              <div className="mt-2 text-xs leading-relaxed line-clamp-2" style={{ color: 'var(--rb-text-2)' }}>
+                {app.manifest.description}
+              </div>
+            )}
           </button>
         ))}
       </div>
@@ -56,11 +69,11 @@ const AppStoreComponent: React.FC<AppStoreProps> = ({ onOpenApp }) => {
   );
 };
 
-export const AppStoreApp: RedByteAppType = {
+export const AppStoreApp: RedByteApp = {
   manifest: {
     id: 'app-store',
-    name: 'App Store',
-    iconId: 'neon-wave',
+    name: 'Apps',
+    iconId: 'grid',
     category: 'system',
     defaultSize: { width: 800, height: 600 },
     minSize: { width: 600, height: 400 },

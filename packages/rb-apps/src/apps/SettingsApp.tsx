@@ -15,11 +15,11 @@ interface SettingsProps {
 }
 
 const WALLPAPERS: Array<{ id: WallpaperId; name: string; description: string }> = [
-  { id: 'neon-circuit', name: 'Neon Circuit', description: 'Futuristic circuit board design' },
-  { id: 'frost-grid', name: 'Frost Grid', description: 'Cool minimalist grid pattern' },
-  { id: 'redbyte-field', name: 'RedByte Field', description: 'Subtle field lines and glow' },
-  { id: 'default', name: 'Gradient', description: 'Classic gradient background' },
-  { id: 'solid', name: 'Solid', description: 'Clean solid color' },
+  { id: 'default', name: 'Gradient', description: 'Subtle dark gradient' },
+  { id: 'redbyte-field', name: 'RedByte Field', description: 'Animated grid drift' },
+  { id: 'neon-circuit', name: 'Deep', description: 'Solid dark surface' },
+  { id: 'frost-grid', name: 'Grid', description: 'Faint blue gridlines' },
+  { id: 'solid', name: 'Solid', description: 'Pure dark background' },
 ];
 
 type SettingsSection = 'appearance' | 'system' | 'windowing' | 'files' | 'filesystem' | 'session';
@@ -60,16 +60,18 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
       ref={containerRef}
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      className="h-full flex bg-slate-950 text-white"
-      style={{ outline: 'none' }}
+      className="h-full flex"
+      style={{ background: 'var(--rb-surface-0)', color: 'var(--rb-text)', outline: 'none' }}
     >
       {/* Sidebar */}
-      <div className="w-56 bg-slate-950/70 border-r border-slate-700/50 flex flex-col backdrop-blur-sm">
-        <div className="p-4 border-b border-slate-700/50">
-          <h2 className="text-lg font-semibold tracking-wide text-slate-100">
+      <div
+        className="w-52 flex flex-col"
+        style={{ background: 'var(--rb-surface-0)', borderRight: '1px solid var(--rb-border)' }}
+      >
+        <div className="p-4" style={{ borderBottom: '1px solid var(--rb-border)' }}>
+          <h2 className="text-base font-semibold tracking-wide" style={{ color: 'var(--rb-text)' }}>
             Settings
           </h2>
-          <div className="text-[11px] text-slate-500 uppercase tracking-[0.18em]">Deterministic Control</div>
         </div>
         <div className="flex-1 overflow-y-auto p-2">
           {([
@@ -82,16 +84,18 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
             { id: 'session', label: 'Session', icon: 'power' },
           ] as Array<{ id: SettingsSectionId; label: string; icon: IconName }>).map((item) => (
             <button
+              type="button"
               key={item.id}
               onClick={() => setSelectedSection(item.id)}
-              className={`w-full text-left px-3 py-2.5 mb-1 text-sm rounded-lg transition-all ${
-                selectedSection === item.id
-                  ? 'bg-cyan-500/10 text-cyan-200 border border-cyan-500/30'
-                  : 'text-slate-300 hover:bg-slate-800/50 border border-transparent'
-              }`}
+              className="w-full text-left px-3 py-2 mb-0.5 text-sm rounded-md transition-colors"
+              style={{
+                background: selectedSection === item.id ? 'var(--rb-accent-muted)' : 'transparent',
+                color: selectedSection === item.id ? 'var(--rb-accent)' : 'var(--rb-text-2)',
+                border: selectedSection === item.id ? '1px solid var(--rb-accent-border)' : '1px solid transparent',
+              }}
             >
               <span className="mr-2 inline-flex items-center">
-                <Icon name={item.icon} size={16} />
+                <Icon name={item.icon} size={14} />
               </span>
               {item.label}
             </button>
@@ -101,8 +105,8 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
 
       {/* Main pane */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-slate-700/50 bg-slate-900/30">
-          <h3 className="text-xl font-semibold text-white">
+        <div className="p-4" style={{ borderBottom: '1px solid var(--rb-border)', background: 'var(--rb-surface-1)' }}>
+          <h3 className="text-lg font-semibold" style={{ color: 'var(--rb-text)' }}>
             {selectedSection === 'appearance'
               ? 'Appearance'
               : selectedSection === 'system'
@@ -124,75 +128,86 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
             <div className="space-y-8 max-w-2xl">
               {/* Theme Section */}
               <div>
-                <label className="block text-sm font-semibold mb-4 text-slate-200">Theme</label>
-                <div className="grid grid-cols-2 gap-3">
+                <label className="block text-sm font-semibold mb-4" style={{ color: 'var(--rb-text)' }}>Theme</label>
+                <div className="grid grid-cols-3 gap-3">
                   {([
-                    { value: 'redbyte-dark', label: 'RedByte Dark', desc: 'Deep cockpit contrast', icon: 'neon-wave' },
-                    { value: 'instrument', label: 'Instrument', desc: 'High-clarity control mode', icon: 'cpu' },
-                  ] as Array<{ value: ThemeVariant; label: string; desc: string; icon: IconName }>).map((theme) => (
+                    { value: 'dark' as ThemeVariant, label: 'Dark', desc: 'Default dark surface' },
+                    { value: 'light' as ThemeVariant, label: 'Light', desc: 'High-clarity light mode' },
+                    { value: 'midnight' as ThemeVariant, label: 'Midnight', desc: 'Deep blue-black' },
+                  ]).map((theme) => (
                     <button
+                      type="button"
                       key={theme.value}
                       onClick={() => setThemeVariant(theme.value)}
-                      className={`p-4 rounded-xl border-2 transition-all text-left ${
-                        themeVariant === theme.value
-                          ? 'border-cyan-500 bg-cyan-500/10 shadow-lg shadow-cyan-500/20'
-                          : 'border-slate-700 bg-slate-900/50 hover:border-slate-600'
-                      }`}
+                      className="p-4 rounded-lg transition-all text-left"
+                      style={{
+                        border: themeVariant === theme.value
+                          ? '2px solid var(--rb-accent)'
+                          : '2px solid var(--rb-border)',
+                        background: themeVariant === theme.value
+                          ? 'var(--rb-accent-muted)'
+                          : 'var(--rb-surface-1)',
+                      }}
                     >
-                      <div className="text-2xl mb-2">
-                        <Icon name={theme.icon} size={20} />
-                      </div>
-                      <div className="font-semibold text-white">{theme.label}</div>
-                      <div className="text-xs text-slate-400 mt-1">{theme.desc}</div>
+                      <div className="font-semibold text-sm" style={{ color: 'var(--rb-text)' }}>{theme.label}</div>
+                      <div className="text-xs mt-1" style={{ color: 'var(--rb-text-3)' }}>{theme.desc}</div>
                     </button>
                   ))}
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-4 text-slate-200">Density</label>
+                <label className="block text-sm font-semibold mb-4" style={{ color: 'var(--rb-text)' }}>Density</label>
                 <div className="flex gap-3">
                   {([
                     { value: 'compact', label: 'Compact' },
                     { value: 'comfortable', label: 'Comfortable' },
                   ] as Array<{ value: DensityMode; label: string }>).map((option) => (
                     <button
+                      type="button"
                       key={option.value}
                       onClick={() => setDensity(option.value)}
-                      className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                        density === option.value
-                          ? 'border-cyan-500 text-cyan-200 bg-cyan-500/10'
-                          : 'border-slate-700 text-slate-300 hover:border-slate-600'
-                      }`}
+                      className="px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                      style={{
+                        border: density === option.value
+                          ? '1px solid var(--rb-accent)'
+                          : '1px solid var(--rb-border)',
+                        color: density === option.value ? 'var(--rb-accent)' : 'var(--rb-text-2)',
+                        background: density === option.value ? 'var(--rb-accent-muted)' : 'transparent',
+                      }}
                     >
                       {option.label}
                     </button>
                   ))}
                 </div>
-                <div className="text-xs text-slate-500 mt-2">
+                <div className="text-xs mt-2" style={{ color: 'var(--rb-text-3)' }}>
                   Adjusts spacing and panel density across the OS.
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-3 text-slate-200">Motion</label>
-                <div className="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-3">
+                <label className="block text-sm font-semibold mb-3" style={{ color: 'var(--rb-text)' }}>Motion</label>
+                <div
+                  className="flex items-center justify-between rounded-lg px-4 py-3"
+                  style={{ border: '1px solid var(--rb-border)', background: 'var(--rb-surface-1)' }}
+                >
                   <div>
-                    <div className="text-sm font-medium text-slate-100">Reduce Motion</div>
-                    <div className="text-xs text-slate-500">Disable non-essential animation</div>
+                    <div className="text-sm font-medium" style={{ color: 'var(--rb-text)' }}>Reduce Motion</div>
+                    <div className="text-xs" style={{ color: 'var(--rb-text-3)' }}>Disable non-essential animation</div>
                   </div>
                   <button
-                    onClick={() => setReduceMotion(!reduceMotion)}
-                    className={`relative h-6 w-11 rounded-full transition-colors ${
-                      reduceMotion ? 'bg-cyan-500' : 'bg-slate-700'
-                    }`}
-                    aria-label="Toggle reduced motion"
                     type="button"
+                    onClick={() => setReduceMotion(!reduceMotion)}
+                    className="relative h-6 w-11 rounded-full transition-colors"
+                    style={{ background: reduceMotion ? 'var(--rb-accent)' : 'var(--rb-surface-3)' }}
+                    aria-label="Toggle reduced motion"
                   >
                     <span
-                      className={`absolute top-0.5 h-5 w-5 rounded-full bg-slate-900 transition-transform ${
-                        reduceMotion ? 'translate-x-5' : 'translate-x-0.5'
-                      }`}
+                      className="absolute top-0.5 h-5 w-5 rounded-full transition-transform"
+                      style={{
+                        background: 'var(--rb-surface-0)',
+                        transform: reduceMotion ? 'translateX(20px)' : 'translateX(2px)',
+                      }}
                     />
                   </button>
                 </div>
@@ -200,68 +215,51 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
 
               {/* Wallpaper Section */}
               <div>
-                <label className="block text-sm font-semibold mb-4 text-slate-200">Desktop Wallpaper</label>
-                <div className="grid grid-cols-2 gap-4">
+                <label className="block text-sm font-semibold mb-4" style={{ color: 'var(--rb-text)' }}>Desktop Wallpaper</label>
+                <div className="grid grid-cols-2 gap-3">
                   {WALLPAPERS.map((wallpaper) => (
                     <button
+                      type="button"
                       key={wallpaper.id}
                       onClick={() => setWallpaperId(wallpaper.id)}
-                      className={`relative p-4 rounded-xl border-2 transition-all text-left overflow-hidden group ${
-                        wallpaperId === wallpaper.id
-                          ? 'border-cyan-500 bg-cyan-500/10 shadow-lg shadow-cyan-500/20'
-                          : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
-                      }`}
+                      className="relative p-3 rounded-lg transition-all text-left overflow-hidden"
+                      style={{
+                        border: wallpaperId === wallpaper.id
+                          ? '2px solid var(--rb-accent)'
+                          : '2px solid var(--rb-border)',
+                        background: wallpaperId === wallpaper.id
+                          ? 'var(--rb-accent-muted)'
+                          : 'var(--rb-surface-1)',
+                      }}
                     >
                       {/* Preview */}
-                      <div className="h-24 mb-3 rounded-lg overflow-hidden border border-slate-700">
-                        {wallpaper.id === 'neon-circuit' && (
-                          <div
-                            className="h-full w-full"
-                            style={{
-                              backgroundImage: 'url(/wallpapers/neon-circuit.svg)',
-                              backgroundSize: 'cover',
-                              backgroundPosition: 'center',
-                            }}
-                          />
-                        )}
-                        {wallpaper.id === 'frost-grid' && (
-                          <div
-                            className="h-full w-full"
-                            style={{
-                              backgroundImage: 'url(/wallpapers/frost-grid.svg)',
-                              backgroundSize: 'cover',
-                              backgroundPosition: 'center',
-                            }}
-                          />
-                        )}
-                        {wallpaper.id === 'redbyte-field' && (
-                          <div
-                            className="h-full w-full"
-                            style={{
-                              background:
-                                'radial-gradient(120px circle at 20% 20%, rgba(56, 189, 248, 0.25), transparent 60%),' +
-                                'linear-gradient(135deg, rgba(6, 12, 24, 0.98), rgba(9, 14, 28, 0.9))',
-                            }}
-                          />
-                        )}
-                        {wallpaper.id === 'default' && (
-                          <div
-                            className="h-full w-full"
-                            style={{
-                              background: 'linear-gradient(135deg, #1e3a8a 0%, #312e81 50%, #1e1b4b 100%)',
-                            }}
-                          />
-                        )}
-                        {wallpaper.id === 'solid' && (
-                          <div className="h-full w-full bg-slate-900" />
-                        )}
+                      <div
+                        className="h-20 mb-2 rounded overflow-hidden"
+                        style={{ border: '1px solid var(--rb-border)' }}
+                      >
+                        <div
+                          className="h-full w-full"
+                          style={{
+                            background: wallpaper.id === 'default'
+                              ? 'linear-gradient(145deg, #09090B 0%, #18181B 50%, #09090B 100%)'
+                              : wallpaper.id === 'redbyte-field'
+                              ? 'linear-gradient(140deg, #09090B 0%, #111318 55%, #09090B 100%)'
+                              : wallpaper.id === 'frost-grid'
+                              ? `linear-gradient(rgba(59, 130, 246, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(59, 130, 246, 0.02) 1px, transparent 1px), #09090B`
+                              : '#09090B',
+                            backgroundSize: wallpaper.id === 'frost-grid' ? '20px 20px' : undefined,
+                          }}
+                        />
                       </div>
 
-                      <div className="font-semibold text-white">{wallpaper.name}</div>
-                      <div className="text-xs text-slate-400 mt-1">{wallpaper.description}</div>
+                      <div className="font-medium text-sm" style={{ color: 'var(--rb-text)' }}>{wallpaper.name}</div>
+                      <div className="text-xs mt-0.5" style={{ color: 'var(--rb-text-3)' }}>{wallpaper.description}</div>
 
                       {wallpaperId === wallpaper.id && (
-                        <div className="absolute top-2 right-2 w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center text-white text-xs">
+                        <div
+                          className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px]"
+                          style={{ background: 'var(--rb-accent)' }}
+                        >
                           ✓
                         </div>
                       )}
@@ -273,13 +271,15 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
           )}
 
           {selectedSection === 'system' && (
-            <div className="space-y-6 text-sm text-slate-300 max-w-2xl">
-              <div className="p-6 bg-slate-800/50 rounded-xl border border-slate-700">
+            <div className="space-y-6 text-sm max-w-2xl" style={{ color: 'var(--rb-text-2)' }}>
+              <div
+                className="p-5 rounded-lg"
+                style={{ background: 'var(--rb-surface-1)', border: '1px solid var(--rb-border)' }}
+              >
                 <div className="flex items-start gap-4">
-                  <div className="text-3xl">⚙️</div>
                   <div className="flex-1">
-                    <h4 className="text-base font-semibold text-white mb-2">Simulation Timing</h4>
-                    <p className="text-slate-400 mb-4">
+                    <h4 className="text-base font-semibold mb-2" style={{ color: 'var(--rb-text)' }}>Simulation Timing</h4>
+                    <p className="mb-4" style={{ color: 'var(--rb-text-3)' }}>
                       Sets the default tick rate for new and live-running circuits.
                     </p>
                     <div className="flex items-center gap-3">
@@ -289,7 +289,8 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
                         max={60}
                         value={tickRate}
                         onChange={(e) => setTickRate(parseInt(e.target.value, 10))}
-                        className="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                        className="flex-1 h-1.5 rounded-lg appearance-none cursor-pointer"
+                        style={{ background: 'var(--rb-surface-3)' }}
                         aria-label="Simulation tick rate"
                       />
                       <input
@@ -298,10 +299,15 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
                         max={60}
                         value={tickRate}
                         onChange={(e) => setTickRate(parseInt(e.target.value, 10))}
-                        className="w-20 px-2 py-1 bg-slate-900 border border-slate-700 rounded text-white text-sm font-mono"
+                        className="w-16 px-2 py-1 rounded text-sm font-mono"
+                        style={{
+                          background: 'var(--rb-surface-0)',
+                          border: '1px solid var(--rb-border)',
+                          color: 'var(--rb-text)',
+                        }}
                         aria-label="Simulation tick rate value"
                       />
-                      <span className="text-xs text-slate-400">Hz</span>
+                      <span className="text-xs" style={{ color: 'var(--rb-text-3)' }}>Hz</span>
                     </div>
                   </div>
                 </div>
@@ -310,16 +316,16 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
           )}
 
           {selectedSection === 'windowing' && (
-            <div className="space-y-6 text-sm text-slate-300 max-w-2xl">
-              <div className="p-6 bg-slate-800/50 rounded-xl border border-slate-700">
+            <div className="space-y-6 text-sm max-w-2xl" style={{ color: 'var(--rb-text-2)' }}>
+              <div
+                className="p-5 rounded-lg"
+                style={{ background: 'var(--rb-surface-1)', border: '1px solid var(--rb-border)' }}
+              >
                 <div className="flex items-start gap-4">
-                  <div className="text-3xl">
-                    <Icon name="grid" size={24} />
-                  </div>
                   <div className="flex-1 space-y-4">
                     <div>
-                      <h4 className="text-base font-semibold text-white mb-2">Snap Assist</h4>
-                      <p className="text-slate-400">
+                      <h4 className="text-base font-semibold mb-2" style={{ color: 'var(--rb-text)' }}>Snap Assist</h4>
+                      <p style={{ color: 'var(--rb-text-3)' }}>
                         Controls edge snapping behavior while dragging windows.
                       </p>
                     </div>
@@ -330,20 +336,24 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
                         { value: 'auto', label: 'Auto (Hover)', desc: 'Hover 250ms to preview' },
                       ] as Array<{ value: SnapAssistMode; label: string; desc: string }>).map((option) => (
                         <button
+                          type="button"
                           key={option.value}
                           onClick={() => setSnapAssist(option.value)}
-                          className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                            snapAssist === option.value
-                              ? 'border-cyan-500 text-cyan-200 bg-cyan-500/10'
-                              : 'border-slate-700 text-slate-300 hover:border-slate-600'
-                          }`}
+                          className="px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                          style={{
+                            border: snapAssist === option.value
+                              ? '1px solid var(--rb-accent)'
+                              : '1px solid var(--rb-border)',
+                            color: snapAssist === option.value ? 'var(--rb-accent)' : 'var(--rb-text-2)',
+                            background: snapAssist === option.value ? 'var(--rb-accent-muted)' : 'transparent',
+                          }}
                         >
                           <div>{option.label}</div>
-                          <div className="text-[10px] text-slate-500 mt-1">{option.desc}</div>
+                          <div className="text-[10px] mt-1" style={{ color: 'var(--rb-text-3)' }}>{option.desc}</div>
                         </button>
                       ))}
                     </div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs" style={{ color: 'var(--rb-text-3)' }}>
                       Snap previews only apply on release. Resizing never triggers snap.
                     </div>
                   </div>
@@ -353,10 +363,10 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
           )}
 
           {selectedSection === 'shortcuts' && (
-            <div className="space-y-4 text-sm text-slate-300 max-w-3xl">
-              <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
-                <div className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-3">Global</div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-4 text-sm max-w-3xl" style={{ color: 'var(--rb-text-2)' }}>
+              <div className="rounded-lg p-4" style={{ border: '1px solid var(--rb-border)', background: 'var(--rb-surface-1)' }}>
+                <div className="text-[10px] uppercase tracking-[0.2em] mb-3" style={{ color: 'var(--rb-text-3)' }}>Global</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {[
                     { keys: 'Ctrl/Cmd + K', label: 'Open Launcher' },
                     { keys: 'Ctrl/Cmd + ,', label: 'Open Settings' },
@@ -369,17 +379,21 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
                     { keys: 'Ctrl/Cmd + Alt + Arrows', label: 'Snap Window' },
                     { keys: 'Shift + Drag (edge)', label: 'Snap Preview (Manual)' },
                   ].map((shortcut) => (
-                    <div key={shortcut.label} className="flex items-center justify-between rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2">
-                      <span className="text-xs font-mono text-slate-200">{shortcut.keys}</span>
-                      <span className="text-xs text-slate-400">{shortcut.label}</span>
+                    <div
+                      key={shortcut.label}
+                      className="flex items-center justify-between rounded-md px-3 py-1.5"
+                      style={{ background: 'var(--rb-surface-0)', border: '1px solid var(--rb-border)' }}
+                    >
+                      <span className="text-xs font-mono" style={{ color: 'var(--rb-text)' }}>{shortcut.keys}</span>
+                      <span className="text-xs" style={{ color: 'var(--rb-text-3)' }}>{shortcut.label}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
-                <div className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-3">Files</div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="rounded-lg p-4" style={{ border: '1px solid var(--rb-border)', background: 'var(--rb-surface-1)' }}>
+                <div className="text-[10px] uppercase tracking-[0.2em] mb-3" style={{ color: 'var(--rb-text-3)' }}>Files</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {[
                     { keys: 'Alt + ← / →', label: 'Back / Forward' },
                     { keys: 'Ctrl/Cmd + N', label: 'New File' },
@@ -388,9 +402,13 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
                     { keys: 'F2', label: 'Rename' },
                     { keys: 'Del', label: 'Delete' },
                   ].map((shortcut) => (
-                    <div key={shortcut.label} className="flex items-center justify-between rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2">
-                      <span className="text-xs font-mono text-slate-200">{shortcut.keys}</span>
-                      <span className="text-xs text-slate-400">{shortcut.label}</span>
+                    <div
+                      key={shortcut.label}
+                      className="flex items-center justify-between rounded-md px-3 py-1.5"
+                      style={{ background: 'var(--rb-surface-0)', border: '1px solid var(--rb-border)' }}
+                    >
+                      <span className="text-xs font-mono" style={{ color: 'var(--rb-text)' }}>{shortcut.keys}</span>
+                      <span className="text-xs" style={{ color: 'var(--rb-text-3)' }}>{shortcut.label}</span>
                     </div>
                   ))}
                 </div>
@@ -411,8 +429,11 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
           )}
         </div>
 
-        <div className="p-3 border-t border-slate-700/50 bg-slate-900/30 text-xs text-slate-500">
-          <kbd className="px-2 py-1 bg-slate-800 rounded border border-slate-700">Esc</kbd> Close
+        <div className="p-3 text-xs" style={{ borderTop: '1px solid var(--rb-border)', background: 'var(--rb-surface-1)', color: 'var(--rb-text-3)' }}>
+          <kbd
+            className="px-2 py-0.5 rounded text-[10px]"
+            style={{ background: 'var(--rb-surface-0)', border: '1px solid var(--rb-border)' }}
+          >Esc</kbd> Close
         </div>
       </div>
     </div>

@@ -56,7 +56,7 @@ const COMPONENTS: ComponentInfo[] = [
   { type: 'XNOR', name: 'XNOR Gate', description: 'ON when inputs match', Icon: LogicXnorIcon, category: 'Logic Gates', color: '#ec4899' },
 
   // Timing
-  { type: 'Clock', name: 'Clock', description: 'Oscillates ON/OFF rhythmically', Icon: ClockIcon, category: 'Timing', color: '#22d3ee' },
+  { type: 'Clock', name: 'Clock', description: 'Oscillates ON/OFF rhythmically', Icon: ClockIcon, category: 'Timing', color: '#3B82F6' },
   { type: 'Delay', name: 'Delay', description: 'Delays signal by one tick', Icon: DelayIcon, category: 'Timing', color: '#a3e635' },
 
   // Advanced

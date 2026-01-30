@@ -17,19 +17,28 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 const STORAGE_KEY = "redbyte:theme:v1";
 
+/** Migrate legacy theme IDs to new values */
+function migrateThemeId(id: string): string {
+  if (id === "neon") return "dark";
+  if (id === "carbon") return "light";
+  return id;
+}
+
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [themeId, setThemeId] = useState<string>(() => {
+  const [themeId, setThemeIdRaw] = useState<string>(() => {
     if (typeof window === "undefined") return neonTheme.id;
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY);
-      if (saved) return saved;
+      if (saved) return migrateThemeId(saved);
     } catch {
       // ignore
     }
     return neonTheme.id;
   });
+
+  const setThemeId = (id: string) => setThemeIdRaw(migrateThemeId(id));
 
   const theme = themes.find((t) => t.id === themeId) ?? neonTheme;
 
@@ -40,6 +49,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch {
       // ignore
     }
+    // Sync with data-theme attribute for CSS variable system
+    document.documentElement.setAttribute("data-theme", themeId);
   }, [themeId]);
 
   return (
@@ -58,38 +69,3 @@ export function useTheme() {
   }
   return ctx;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

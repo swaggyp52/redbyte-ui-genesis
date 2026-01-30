@@ -7,4 +7,3 @@ export interface ThemeTokenSet {
   accentSoft: string;
   borderSubtle: string;
 }
-

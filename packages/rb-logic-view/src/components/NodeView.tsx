@@ -47,7 +47,7 @@ const NODE_COLORS: Record<string, string> = {
   NOT: '#fb923c',
   NAND: '#a78bfa',
   XOR: '#ec4899',
-  Clock: '#22d3ee',
+  Clock: '#3B82F6',
   Delay: '#a3e635',
   FullAdder: '#818cf8',
   RSLatch: '#f87171',
@@ -274,7 +274,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
             width={size + 8}
             height={chipHeight + 8}
             fill="none"
-            stroke="#22d3ee"
+            stroke="#3B82F6"
             strokeWidth={2}
             rx={8}
             className="animate-pulse"
@@ -667,7 +667,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           width={size + 8}
           height={size + 8}
           fill="none"
-          stroke="#22d3ee"
+          stroke="#3B82F6"
           strokeWidth={2}
           rx={6}
           className="animate-pulse"

@@ -4,12 +4,12 @@
 
 import { create } from 'zustand';
 
-export type ThemeVariant = 'redbyte-dark' | 'instrument' | 'system';
+export type ThemeVariant = 'dark' | 'light' | 'midnight' | 'system';
 export type WallpaperId = 'default' | 'neon-circuit' | 'frost-grid' | 'solid' | 'redbyte-field';
 export type DensityMode = 'compact' | 'comfortable';
 export type SnapAssistMode = 'off' | 'manual' | 'auto';
 
-const ACCENT_COLORS = ['cyan', 'purple', 'green', 'orange', 'pink'] as const;
+const ACCENT_COLORS = ['blue', 'purple', 'green', 'orange', 'pink'] as const;
 export type AccentColor = (typeof ACCENT_COLORS)[number];
 
 interface SettingsState {
@@ -37,14 +37,29 @@ type SettingsStore = SettingsState & SettingsActions;
 const STORAGE_KEY = 'rb.shell.settings';
 
 const DEFAULT_SETTINGS: SettingsState = {
-  themeVariant: 'redbyte-dark',
-  wallpaperId: 'neon-circuit',
-  accentColor: 'cyan',
+  themeVariant: 'dark',
+  wallpaperId: 'default',
+  accentColor: 'blue',
   tickRate: 20,
   reduceMotion: false,
   density: 'comfortable',
   snapAssist: 'manual',
 };
+
+/** Migrate legacy theme variant names */
+function migrateThemeVariant(raw: unknown): ThemeVariant {
+  if (raw === 'dark' || raw === 'light' || raw === 'midnight' || raw === 'system') return raw;
+  if (raw === 'redbyte-dark' || raw === 'redbyte') return 'dark';
+  if (raw === 'instrument') return 'light';
+  return DEFAULT_SETTINGS.themeVariant;
+}
+
+/** Migrate legacy accent color names */
+function migrateAccentColor(raw: unknown): AccentColor {
+  if (typeof raw === 'string' && (ACCENT_COLORS as readonly string[]).includes(raw)) return raw as AccentColor;
+  if (raw === 'cyan') return 'blue';
+  return DEFAULT_SETTINGS.accentColor;
+}
 
 function loadSettings(): SettingsState {
   if (typeof localStorage === 'undefined') {
@@ -64,14 +79,8 @@ function loadSettings(): SettingsState {
 
     const VALID_WALLPAPERS: WallpaperId[] = ['default', 'neon-circuit', 'frost-grid', 'solid', 'redbyte-field'];
 
-    const themeVariant = (() => {
-      const raw = parsed.themeVariant;
-      if (raw === 'redbyte-dark' || raw === 'instrument' || raw === 'system') return raw;
-      if (raw === 'dark') return 'redbyte-dark';
-      if (raw === 'light') return 'instrument';
-      return DEFAULT_SETTINGS.themeVariant;
-    })();
-
+    const themeVariant = migrateThemeVariant(parsed.themeVariant);
+    const accentColor = migrateAccentColor(parsed.accentColor);
     const density: DensityMode = rawDensity(parsed.density);
     const snapAssist: SnapAssistMode = rawSnapAssist(parsed.snapAssist);
 
@@ -80,9 +89,7 @@ function loadSettings(): SettingsState {
       wallpaperId: VALID_WALLPAPERS.includes(parsed.wallpaperId)
         ? parsed.wallpaperId
         : DEFAULT_SETTINGS.wallpaperId,
-      accentColor: ACCENT_COLORS.includes(parsed.accentColor)
-        ? parsed.accentColor
-        : DEFAULT_SETTINGS.accentColor,
+      accentColor,
       tickRate: typeof parsed.tickRate === 'number' && parsed.tickRate > 0 && parsed.tickRate <= 60
         ? parsed.tickRate
         : DEFAULT_SETTINGS.tickRate,

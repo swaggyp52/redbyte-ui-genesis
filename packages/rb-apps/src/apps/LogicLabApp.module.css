@@ -19,7 +19,7 @@
   margin: 0 0 0.5rem 0;
   font-size: 1.5rem;
   font-weight: 600;
-  color: #22d3ee;
+  color: #3B82F6;
 }
 
 .subtitle {
@@ -46,7 +46,7 @@
 
 .attemptBadge {
   background: rgba(34, 211, 238, 0.15);
-  color: #22d3ee;
+  color: #3B82F6;
   padding: 0.25rem 0.75rem;
   border-radius: 4px;
   font-size: 0.75rem;
@@ -119,7 +119,7 @@
 
 .input:focus {
   outline: none;
-  border-color: #22d3ee;
+  border-color: #3B82F6;
 }
 
 .input::placeholder {
@@ -149,7 +149,7 @@
 }
 
 .labCardSelected {
-  border-color: #22d3ee;
+  border-color: #3B82F6;
   background: rgba(34, 211, 238, 0.05);
 }
 
@@ -180,7 +180,7 @@
 }
 
 .startButton {
-  background: #22d3ee;
+  background: #3B82F6;
   color: #0a0a0a;
   border: none;
   padding: 1rem 2.5rem;
@@ -248,13 +248,13 @@
 }
 
 .tabActive {
-  color: #22d3ee;
-  border-bottom-color: #22d3ee;
+  color: #3B82F6;
+  border-bottom-color: #3B82F6;
 }
 
 .tabBadge {
   background: rgba(34, 211, 238, 0.15);
-  color: #22d3ee;
+  color: #3B82F6;
   padding: 0.125rem 0.5rem;
   border-radius: 4px;
   font-size: 0.75rem;
@@ -301,7 +301,7 @@
   margin: 0 0 1rem 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #22d3ee;
+  color: #3B82F6;
 }
 
 .constraint {
@@ -335,7 +335,7 @@
   margin: 0 0 1rem 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #22d3ee;
+  color: #3B82F6;
 }
 
 .vector {
@@ -425,7 +425,7 @@
 }
 
 .presetCardSelected {
-  border-color: #22d3ee;
+  border-color: #3B82F6;
   background: rgba(34, 211, 238, 0.05);
 }
 
@@ -463,7 +463,7 @@
   margin: 0 0 0.5rem 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #22d3ee;
+  color: #3B82F6;
 }
 
 .selectedPresetInfo p {
@@ -478,7 +478,7 @@
 }
 
 .nextStepHint strong {
-  color: #22d3ee;
+  color: #3B82F6;
 }
 
 /* ============================================================================
@@ -512,11 +512,11 @@
 }
 
 .presetIndicator strong {
-  color: #22d3ee;
+  color: #3B82F6;
 }
 
 .checkButton {
-  background: #22d3ee;
+  background: #3B82F6;
   color: #0a0a0a;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -573,7 +573,7 @@
 }
 
 .resultPass {
-  border-left: 3px solid #22d3ee;
+  border-left: 3px solid #3B82F6;
 }
 
 .resultFail {
@@ -601,7 +601,7 @@
 
 .badgePass {
   background: rgba(34, 211, 238, 0.15);
-  color: #22d3ee;
+  color: #3B82F6;
 }
 
 .badgeFail {
@@ -635,7 +635,7 @@
   margin: 0 0 1rem 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #22d3ee;
+  color: #3B82F6;
 }
 
 .summaryRow {
@@ -692,7 +692,7 @@
 }
 
 .exportButton {
-  background: #22d3ee;
+  background: #3B82F6;
   color: #0a0a0a;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -784,7 +784,7 @@
 }
 
 .modalConfirm {
-  background: #22d3ee;
+  background: #3B82F6;
   color: #0a0a0a;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -816,13 +816,13 @@
   width: 80px;
   height: 80px;
   background: rgba(34, 211, 238, 0.15);
-  border: 2px solid #22d3ee;
+  border: 2px solid #3B82F6;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 2.5rem;
-  color: #22d3ee;
+  color: #3B82F6;
   margin-bottom: 1.5rem;
 }
 
@@ -885,8 +885,8 @@
 }
 
 .newAttemptButton:hover {
-  border-color: #22d3ee;
-  color: #22d3ee;
+  border-color: #3B82F6;
+  color: #3B82F6;
 }
 
 /* ============================================================================
@@ -967,19 +967,19 @@
 
 .progressStepActive .progressStepNumber {
   background: rgba(34, 211, 238, 0.15);
-  border-color: #22d3ee;
-  color: #22d3ee;
+  border-color: #3B82F6;
+  color: #3B82F6;
 }
 
 .progressStepActive .progressStepLabel {
-  color: #22d3ee;
+  color: #3B82F6;
   font-weight: 600;
 }
 
 .progressStepComplete .progressStepNumber {
   background: rgba(34, 211, 238, 0.1);
-  border-color: #22d3ee;
-  color: #22d3ee;
+  border-color: #3B82F6;
+  color: #3B82F6;
 }
 
 .progressStepComplete .progressStepLabel {
@@ -1020,7 +1020,7 @@
   margin: 0 0 1rem 0;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #22d3ee;
+  color: #3B82F6;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -1061,7 +1061,7 @@
 }
 
 .receiptActionButton {
-  background: #22d3ee;
+  background: #3B82F6;
   color: #0a0a0a;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -1166,7 +1166,7 @@
   border-radius: 3px;
   font-family: 'Courier New', monospace;
   font-size: 0.75rem;
-  color: #22d3ee;
+  color: #3B82F6;
 }
 
 .hardwareActions {
@@ -1224,11 +1224,11 @@
 
 .bridgeSelect:focus {
   outline: none;
-  border-color: #22d3ee;
+  border-color: #3B82F6;
 }
 
 .bridgeButton {
-  background: #22d3ee;
+  background: #3B82F6;
   color: #0a0a0a;
   border: none;
   padding: 0.5rem 1.25rem;
@@ -1243,7 +1243,7 @@
 }
 
 .captureButton {
-  background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+  background: linear-gradient(135deg, #0ea5e9, #3B82F6);
   color: #000;
   border: none;
   padding: 0.875rem 1.75rem;
@@ -1299,11 +1299,11 @@
 
 .programInput:focus {
   outline: none;
-  border-color: #22d3ee;
+  border-color: #3B82F6;
 }
 
 .programButton {
-  background: #22d3ee;
+  background: #3B82F6;
   color: #0a0a0a;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -1351,7 +1351,7 @@
 }
 
 .programLogLink {
-  color: #22d3ee;
+  color: #3B82F6;
   text-decoration: none;
 }
 
@@ -1412,7 +1412,7 @@
 
 .sourceBridge {
   background: rgba(34, 211, 238, 0.15);
-  color: #22d3ee;
+  color: #3B82F6;
   border: 1px solid rgba(34, 211, 238, 0.3);
 }
 
@@ -1507,7 +1507,7 @@
 
 .modalInput:focus {
   outline: none;
-  border-color: #22d3ee;
+  border-color: #3B82F6;
 }
 
 .modalActions {
@@ -1536,7 +1536,7 @@
 
 .modalButtonPrimary {
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+  background: linear-gradient(135deg, #0ea5e9, #3B82F6);
   border: none;
   border-radius: 6px;
   color: #000;

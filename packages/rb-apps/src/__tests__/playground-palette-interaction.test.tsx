@@ -15,9 +15,9 @@ import { useFileSystemStore } from '../stores/fileSystemStore';
 vi.mock('@redbyte/rb-utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@redbyte/rb-utils')>();
   const mockSettingsState = {
-    themeVariant: 'redbyte-dark' as const,
-    wallpaperId: 'neon-circuit' as const,
-    accentColor: 'cyan' as const,
+    themeVariant: 'dark' as const,
+    wallpaperId: 'default' as const,
+    accentColor: 'blue' as const,
     tickRate: 20,
     setThemeVariant: vi.fn(),
     setWallpaperId: vi.fn(),

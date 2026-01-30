@@ -4,34 +4,38 @@
 
 import type { ThemeTokenSet } from './types';
 
-export const neonTheme: ThemeTokenSet = {
-  id: 'neon',
-  name: 'Neon',
-  background: 'bg-slate-950',
-  foreground: 'text-slate-50',
-  accent: 'text-pink-500',
-  accentSoft: 'text-pink-300',
-  borderSubtle: 'border-slate-800',
-};
-
-export const carbonTheme: ThemeTokenSet = {
-  id: 'carbon',
-  name: 'Carbon',
-  background: 'bg-neutral-900',
-  foreground: 'text-neutral-50',
+export const darkTheme: ThemeTokenSet = {
+  id: 'dark',
+  name: 'Dark',
+  background: 'bg-zinc-950',
+  foreground: 'text-zinc-50',
   accent: 'text-blue-500',
   accentSoft: 'text-blue-300',
-  borderSubtle: 'border-neutral-700',
+  borderSubtle: 'border-zinc-800',
+};
+
+export const lightTheme: ThemeTokenSet = {
+  id: 'light',
+  name: 'Light',
+  background: 'bg-zinc-50',
+  foreground: 'text-zinc-900',
+  accent: 'text-blue-600',
+  accentSoft: 'text-blue-400',
+  borderSubtle: 'border-zinc-200',
 };
 
 export const midnightTheme: ThemeTokenSet = {
   id: 'midnight',
   name: 'Midnight',
-  background: 'bg-indigo-950',
-  foreground: 'text-indigo-50',
-  accent: 'text-purple-500',
-  accentSoft: 'text-purple-300',
-  borderSubtle: 'border-indigo-800',
+  background: 'bg-slate-950',
+  foreground: 'text-slate-50',
+  accent: 'text-indigo-400',
+  accentSoft: 'text-indigo-300',
+  borderSubtle: 'border-slate-800',
 };
 
-export const themes: ThemeTokenSet[] = [neonTheme, carbonTheme, midnightTheme];
+// Legacy aliases for backwards compatibility
+export const neonTheme = darkTheme;
+export const carbonTheme = darkTheme;
+
+export const themes: ThemeTokenSet[] = [darkTheme, lightTheme, midnightTheme];

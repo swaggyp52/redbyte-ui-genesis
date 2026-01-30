@@ -9,3 +9,6 @@ export const themes: ThemeTokenSet[] = [neonTheme, carbonTheme, midnightTheme];
 
 export { neonTheme, carbonTheme, midnightTheme };
 
+// New canonical names
+export const darkTheme = neonTheme;
+export const lightTheme = carbonTheme;

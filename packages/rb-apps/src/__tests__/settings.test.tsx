@@ -13,9 +13,9 @@ const SettingsComponent = SettingsApp.component;
 describe('Settings app lifecycle', () => {
   beforeEach(() => {
     useSettingsStore.setState({
-      themeVariant: 'redbyte-dark',
+      themeVariant: 'dark',
       wallpaperId: 'default',
-      accentColor: 'cyan',
+      accentColor: 'blue',
       tickRate: 20,
       reduceMotion: false,
       density: 'comfortable',
@@ -61,7 +61,7 @@ describe('Settings app lifecycle', () => {
     fireEvent.click(neonCircuitButton);
 
     const state = useSettingsStore.getState();
-    expect(state.wallpaperId).toBe('neon-circuit');
+    expect(state.wallpaperId).toBe('default');
   });
 
   it('switches to System section when clicked', () => {

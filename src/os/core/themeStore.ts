@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type Accent = "red" | "blue" | "green";
+export type Accent = "blue" | "red" | "green";
 export type Density = "normal" | "compact";
 
 interface ThemeState {
@@ -18,7 +18,7 @@ function createThemeStore() {
   return create<ThemeState>()(
     persist(
       (set) => ({
-        accent: "red",
+        accent: "blue",
         density: "normal",
         setAccent: (accent) => set({ accent }),
         setDensity: (density) => set({ density })
