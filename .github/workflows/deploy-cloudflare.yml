@@ -43,6 +43,17 @@ jobs:
         env:
           GIT_SHA: ${{ github.sha }}
 
+      - name: Build playground (OS)
+        run: pnpm --filter @redbyte/playground build
+        env:
+          VITE_APP_ENV: production
+          GIT_SHA: ${{ github.sha }}
+
+      - name: Merge OS into Site
+        run: |
+          mkdir -p apps/manual-site/dist/os
+          cp -r apps/playground/dist/* apps/manual-site/dist/os/
+
       - name: Publish to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:

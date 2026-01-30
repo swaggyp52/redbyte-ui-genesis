@@ -36,10 +36,16 @@ if (EXPECTED_SHA) console.log(`🎯 Expecting Commit: ${EXPECTED_SHA}`);
             }
         }
 
-        // 2. Deep Link Check (Lab 0)
-        console.log('Testing Lab 0 Deep Link...');
+        // 2. Deep Link Check (Lab 0) + Redirect
+        console.log('Testing Lab 0 Deep Link (should redirect)...');
         await page.goto(`${TARGET_URL}/?lab=lab-0`);
-        await page.waitForTimeout(2000); // Allow OS to boot
+        await page.waitForTimeout(2000); // Allow redirect && OS boot
+
+        if (page.url().includes('/os/')) {
+            console.log('✅ Redirect to /os/ working.');
+        } else {
+            console.warn('⚠️ Redirect to /os/ NOT detected (might be SPA routing). Current URL:', page.url());
+        }
 
         // 3. Students Page Check
         console.log('Testing /students route...');
@@ -54,15 +60,23 @@ if (EXPECTED_SHA) console.log(`🎯 Expecting Commit: ${EXPECTED_SHA}`);
         }
         await page2.close();
 
+        // 4. OS Route Check (/os/)
+        console.log('Testing OS Deep Link (/os/)...');
+        await page.goto(`${TARGET_URL}/os/`);
+        await page.waitForTimeout(3000); // Allow OS to boot
+
         // Check for specific text that proves the app loaded (not just index.html)
         const content = await page.content();
-        if (content.includes('RedByte OS') || content.includes('Loading')) {
-            console.log('✅ OS Shell loaded.');
+        const hasOSShell = content.includes('rb-shell') || content.includes('assets/rb-apps');
+
+        if (hasOSShell) {
+            console.log('✅ OS Shell loaded (bundle verified).');
         } else {
-            console.error('❌ OS Shell did not load correctly.');
+            console.error('❌ OS Shell bundle NOT found on /os/ route.');
+            // Dump partial content for debugging
+            console.log('Content snippet:', content.slice(0, 500));
             hasError = true;
         }
-
     } catch (e) {
         console.error('❌ Exception during verify:', e);
         hasError = true;

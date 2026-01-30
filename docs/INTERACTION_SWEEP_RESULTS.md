@@ -29,6 +29,13 @@
 * Space+Drag pans the canvas.
 * Added "Pan Mode" cursor cues.
 
+### 3. Deployment Architecture (Fixed)
+
+* **Root Domain:** Serves `manual-site` (Documentation/Landing).
+* **`/os/` Path:** Serves `playground` (The Actual OS).
+* **Deep Links:** `index.html` at root auto-redirects `?lab=...` to `/os/?lab=...`.
+* **Pipeline:** `deploy-cloudflare.yml` builds both apps and merges `playground/dist` into `manual-site/dist/os`.
+
 ## 4. Packaging & Startup
 
 | Feature | Status | Fix/Notes |
