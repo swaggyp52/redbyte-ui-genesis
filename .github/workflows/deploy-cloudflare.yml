@@ -51,9 +51,7 @@ jobs:
 
       - name: Preparation for Deploy
         run: |
-          # Create final structure in playground/dist (which will be root)
-          mkdir -p apps/playground/dist/docs
-          cp -r apps/manual-site/dist/* apps/playground/dist/docs/
+          pnpm exec node scripts/merge-dist.mjs
 
       - name: Publish to Cloudflare Pages
         uses: cloudflare/pages-action@v1
@@ -61,6 +59,6 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: redbyte-ui-genesis
-          directory: apps/playground/dist
+          directory: dist
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: main

@@ -5,7 +5,7 @@
 ## 1. Deployment Truth
 
 - [x] **Build JSON:** `https://redbyteapps.dev/build.json` returns valid JSON with SHA.
-  - ✅ **PASS:** Verified via `verify-deploy.mjs` (SHA: `b2ebd0d`).
+  - ✅ **PASS:** Verified via `verify-deploy.mjs` (SHA: `96fbdbf`).
 - [x] **Badge:** Website Home shows "Build: [SHA]".
 - [x] **Badge:** OS Start Here shows "Build: [SHA]".
 - [x] **Deep Link:** `https://redbyteapps.dev/?lab=lab-0` loads Lab 0 directly (no redirect).
