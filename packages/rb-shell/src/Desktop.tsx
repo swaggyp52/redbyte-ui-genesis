@@ -12,7 +12,7 @@ interface DesktopProps {
   themeVariant: ThemeVariant;
 }
 
-export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeVariant }) => {
+export const Desktop: React.FC<DesktopProps> = React.memo(({ onOpenApp, wallpaperId, themeVariant }) => {
   const desktopRef = useRef<HTMLDivElement>(null);
   const wallpaperStyle = useMemo(() => getWallpaperStyle(wallpaperId, themeVariant), [wallpaperId, themeVariant]);
 
@@ -28,12 +28,12 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
   return (
     <div
       ref={desktopRef}
+      id="rb-desktop-region"
       data-testid="shell-desktop"
-      className="rb-desktop rb-noise absolute inset-0 overflow-hidden"
+      role="region"
+      aria-label="Desktop"
+      className="rb-desktop rb-noise absolute inset-0 overflow-hidden pointer-events-none"
       style={{ ...wallpaperStyle }}
-      tabIndex={0}
-      onContextMenu={handleContextMenu}
-      onDoubleClick={handleDoubleClick}
     >
       {/* Subtle vignette for depth */}
       <div className="pointer-events-none absolute inset-0 rb-vignette" />
@@ -70,6 +70,14 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
         </div>
       )}
 
+      {/* Interaction layer — sits behind windows (z-0), receives desktop events */}
+      <div
+        className="absolute inset-0 pointer-events-auto"
+        style={{ zIndex: 0 }}
+        onContextMenu={handleContextMenu}
+        onDoubleClick={handleDoubleClick}
+      />
+
       {/* Copyright */}
       <div
         className="absolute bottom-3 right-4 z-10 text-right text-[10px] font-mono pointer-events-none"
@@ -79,4 +87,5 @@ export const Desktop: React.FC<DesktopProps> = ({ onOpenApp, wallpaperId, themeV
       </div>
     </div>
   );
-};
+});
+Desktop.displayName = 'Desktop';

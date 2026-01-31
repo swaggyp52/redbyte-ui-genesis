@@ -7,6 +7,8 @@ import { WindowState, type WindowBounds } from '@redbyte/rb-windowing';
 import type { SnapAssistMode } from '@redbyte/rb-utils';
 import { Icon, type IconName } from '@redbyte/rb-icons';
 import { PortalProvider } from '@redbyte/rb-primitives';
+import { getMaximizedBounds, TOPBAR_HEIGHT, DOCK_WIDTH, MIN_VISIBLE_SIDE } from './layout/layout-constants';
+import { usePersistenceStore, type SaveStatus } from './persistenceStore';
 
 type SnapTarget = 'left' | 'right' | 'maximize';
 
@@ -40,7 +42,7 @@ interface ShellWindowProps {
 
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
-export const ShellWindow: React.FC<ShellWindowProps> = ({
+const ShellWindowComponent: React.FC<ShellWindowProps> = ({
   state,
   minSize,
   snapAssistMode = 'manual',
@@ -78,6 +80,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
 
   const isMax = state.mode === 'maximized';
   const isMin = state.mode === 'minimized';
+  const saveStatus: SaveStatus = usePersistenceStore((s) => s.windows[state.id]?.status ?? 'clean');
 
   useEffect(() => {
     const timer = requestAnimationFrame(() => setMounted(true));
@@ -195,7 +198,20 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
     const dx = e.clientX - start.x;
     const dy = e.clientY - start.y;
     const currentBounds = dragBoundsRef.current ?? state.bounds;
-    const nextBounds: WindowBounds = { ...currentBounds, x: currentBounds.x + dx, y: currentBounds.y + dy };
+    let newX = currentBounds.x + dx;
+    let newY = currentBounds.y + dy;
+
+    // Clamp: never above TopBar
+    if (newY < TOPBAR_HEIGHT) newY = TOPBAR_HEIGHT;
+
+    // Clamp: keep at least MIN_VISIBLE_SIDE px visible horizontally
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1920;
+    const minX = DOCK_WIDTH - currentBounds.width + MIN_VISIBLE_SIDE;
+    const maxX = vw - MIN_VISIBLE_SIDE;
+    if (newX < minX) newX = minX;
+    if (newX > maxX) newX = maxX;
+
+    const nextBounds: WindowBounds = { ...currentBounds, x: newX, y: newY };
     hasMovedRef.current = true;
     dragBoundsRef.current = nextBounds;
     lastBoundsRef.current = nextBounds;
@@ -244,12 +260,13 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
     const { bounds, zIndex, focused } = state;
     const opacity = mounted ? 1 : 0;
     const transform = mounted ? 'scale(1) translateY(0)' : 'scale(0.98) translateY(4px)';
+    const maxBounds = isMax ? getMaximizedBounds() : null;
     return {
       position: 'absolute' as const,
-      left: isMax ? 0 : bounds.x,
-      top: isMax ? 0 : bounds.y,
-      width: isMax ? '100%' : bounds.width,
-      height: isMax ? '100%' : bounds.height,
+      left: maxBounds ? maxBounds.x : bounds.x,
+      top: maxBounds ? maxBounds.y : bounds.y,
+      width: maxBounds ? maxBounds.width : bounds.width,
+      height: maxBounds ? maxBounds.height : bounds.height,
       zIndex,
       opacity,
       transform,
@@ -297,7 +314,7 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
               className="h-6 w-6 rounded flex items-center justify-center"
               style={{
                 background: 'var(--rb-surface-3)',
-                color: state.focused ? 'var(--rb-text)' : 'var(--rb-text-3)',
+                color: state.focused ? 'var(--rb-text)' : 'var(--rb-text-2)',
               }}
             >
               <Icon name={iconName} size={14} />
@@ -310,6 +327,18 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
           >
             {state.title}
           </div>
+          {saveStatus !== 'clean' && (
+            <span
+              className="h-1.5 w-1.5 rounded-full flex-shrink-0"
+              title={saveStatus === 'dirty' ? 'Unsaved changes' : saveStatus === 'saving' ? 'Saving...' : 'Save error'}
+              style={{
+                background:
+                  saveStatus === 'dirty' ? 'var(--rb-amber, #F59E0B)'
+                    : saveStatus === 'saving' ? 'var(--rb-accent, #3B82F6)'
+                      : 'var(--rb-danger, #EF4444)',
+              }}
+            />
+          )}
         </div>
         <div className="flex items-center gap-0.5">
           {state.minimizable && (
@@ -381,3 +410,37 @@ export const ShellWindow: React.FC<ShellWindowProps> = ({
     </div>
   );
 };
+
+/**
+ * ShellWindow — Render-Optimized Window Container
+ *
+ * Wrapped with React.memo to prevent unnecessary re-renders.
+ * Only re-renders when:
+ * - state object reference changes (window bounds, mode, focus, etc.)
+ * - children change
+ * - callback props change (if not stable)
+ *
+ * This prevents dragging one window from re-rendering all other windows.
+ */
+export const ShellWindow = React.memo(
+  ShellWindowComponent,
+  (prevProps, nextProps) => {
+    // Deep equality check for state object (window bounds, mode, focus, etc.)
+    const stateEqual =
+      prevProps.state.id === nextProps.state.id &&
+      prevProps.state.bounds.x === nextProps.state.bounds.x &&
+      prevProps.state.bounds.y === nextProps.state.bounds.y &&
+      prevProps.state.bounds.width === nextProps.state.bounds.width &&
+      prevProps.state.bounds.height === nextProps.state.bounds.height &&
+      prevProps.state.mode === nextProps.state.mode &&
+      prevProps.state.focused === nextProps.state.focused &&
+      prevProps.state.zIndex === nextProps.state.zIndex &&
+      prevProps.state.title === nextProps.state.title;
+
+    // Children equality (shallow)
+    const childrenEqual = prevProps.children === nextProps.children;
+
+    // If both state and children are equal, skip re-render
+    return stateEqual && childrenEqual;
+  }
+);

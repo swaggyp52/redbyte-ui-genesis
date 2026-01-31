@@ -1,0 +1,7 @@
+{
+  "name": "@redbyte/rb-lab-content",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Lab definitions as JSON data (future-proof for SaaS authoring)"
+}

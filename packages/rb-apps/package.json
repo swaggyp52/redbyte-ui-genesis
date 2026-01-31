@@ -18,10 +18,12 @@
     "test:audit": "pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/audit-determinism.test.ts packages/rb-apps/src/__tests__/contract-enforcement.test.tsx"
   },
   "dependencies": {
+    "@redbyte/rb-board-profiles": "workspace:*",
     "@redbyte/rb-fpga-signing": "workspace:*",
     "@redbyte/rb-fpga-proof-core": "workspace:*",
     "@redbyte/rb-icons": "workspace:*",
     "@redbyte/rb-instruments": "workspace:*",
+    "@redbyte/rb-lab-engine": "workspace:*",
     "@redbyte/rb-logic-3d": "workspace:*",
     "@redbyte/rb-logic-adapter": "workspace:*",
     "@redbyte/rb-logic-core": "workspace:*",

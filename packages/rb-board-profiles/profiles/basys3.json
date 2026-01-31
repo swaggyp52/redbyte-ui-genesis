@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1.0",
+  "id": "basys3",
+  "name": "Digilent Basys 3",
+  "vendor": "Xilinx",
+  "fpga": "Artix-7 XC7A35T",
+  "components": {
+    "leds": [
+      { "id": "LED0", "pin": "U16", "type": "output" },
+      { "id": "LED1", "pin": "E19", "type": "output" },
+      { "id": "LED2", "pin": "U19", "type": "output" },
+      { "id": "LED3", "pin": "V19", "type": "output" },
+      { "id": "LED4", "pin": "W18", "type": "output" },
+      { "id": "LED5", "pin": "U15", "type": "output" },
+      { "id": "LED6", "pin": "U14", "type": "output" },
+      { "id": "LED7", "pin": "V14", "type": "output" },
+      { "id": "LED8", "pin": "V13", "type": "output" },
+      { "id": "LED9", "pin": "V3", "type": "output" },
+      { "id": "LED10", "pin": "W3", "type": "output" },
+      { "id": "LED11", "pin": "U3", "type": "output" },
+      { "id": "LED12", "pin": "P3", "type": "output" },
+      { "id": "LED13", "pin": "N3", "type": "output" },
+      { "id": "LED14", "pin": "P1", "type": "output" },
+      { "id": "LED15", "pin": "L1", "type": "output" }
+    ],
+    "switches": [
+      { "id": "SW0", "pin": "V17", "type": "input" },
+      { "id": "SW1", "pin": "V16", "type": "input" },
+      { "id": "SW2", "pin": "W16", "type": "input" },
+      { "id": "SW3", "pin": "W17", "type": "input" },
+      { "id": "SW4", "pin": "W15", "type": "input" },
+      { "id": "SW5", "pin": "V15", "type": "input" },
+      { "id": "SW6", "pin": "W14", "type": "input" },
+      { "id": "SW7", "pin": "W13", "type": "input" },
+      { "id": "SW8", "pin": "V2", "type": "input" },
+      { "id": "SW9", "pin": "T3", "type": "input" },
+      { "id": "SW10", "pin": "T2", "type": "input" },
+      { "id": "SW11", "pin": "R3", "type": "input" },
+      { "id": "SW12", "pin": "W2", "type": "input" },
+      { "id": "SW13", "pin": "U1", "type": "input" },
+      { "id": "SW14", "pin": "T1", "type": "input" },
+      { "id": "SW15", "pin": "R2", "type": "input" }
+    ],
+    "buttons": [
+      { "id": "BTNC", "pin": "U18", "type": "input", "label": "Center" },
+      { "id": "BTNU", "pin": "T18", "type": "input", "label": "Up" },
+      { "id": "BTNL", "pin": "W19", "type": "input", "label": "Left" },
+      { "id": "BTNR", "pin": "T17", "type": "input", "label": "Right" },
+      { "id": "BTND", "pin": "U17", "type": "input", "label": "Down" }
+    ]
+  }
+}

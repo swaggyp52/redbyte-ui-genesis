@@ -1,0 +1,171 @@
+// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Use without permission prohibited.
+// Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+
+/**
+ * Lab Engine Store — Zustand Orchestration Layer
+ *
+ * CRITICAL DESIGN:
+ * - Thin layer over pure reducer + services
+ * - Handles side effects (I/O, async operations)
+ * - Maintains session-level state (project, isSimulating)
+ * - Auto-records all actions to evidence log
+ * - Provides high-level operations for UI (verifyCheckpoint, exportCapsule)
+ *
+ * The store delegates business logic to:
+ * - labReducer (pure state mutations)
+ * - services (verification, export, simulation)
+ */
+
+import { create } from 'zustand';
+import type {
+  LabProjectV1,
+  LabActionV1,
+  CheckpointResult,
+} from '@redbyte/rb-utils/labProjectSchema';
+import { labReducer, recordAction, recordSnapshot } from '../reducer/labReducer';
+
+// ============================================================================
+// Store State
+// ============================================================================
+
+interface LabEngineState {
+  project: LabProjectV1 | null;
+  isSimulating: boolean;
+  sessionId: string;
+
+  // Core actions
+  loadProject: (project: LabProjectV1) => void;
+  dispatch: (action: LabActionV1) => void;
+
+  // High-level operations (async)
+  verifyCheckpoint: (checkpointId: string) => Promise<CheckpointResult>;
+  exportCapsule: () => Promise<Blob>;
+}
+
+// ============================================================================
+// Store Implementation
+// ============================================================================
+
+const SESSION_ID = crypto.randomUUID?.() ?? `s-${Date.now()}`;
+
+export const useLabEngineStore = create<LabEngineState>((set, get) => ({
+  project: null,
+  isSimulating: false,
+  sessionId: SESSION_ID,
+
+  // -------------------------------------------------------------------------
+  // Load Project
+  // -------------------------------------------------------------------------
+
+  loadProject: (project) => {
+    set({ project });
+  },
+
+  // -------------------------------------------------------------------------
+  // Dispatch Action (Core)
+  // -------------------------------------------------------------------------
+
+  dispatch: (action) => {
+    const { project, sessionId } = get();
+    if (!project) {
+      console.warn('[LabEngineStore] Cannot dispatch action: no project loaded', action);
+      return;
+    }
+
+    // Apply reducer
+    let nextState = labReducer(project, action);
+
+    // Record action to evidence
+    nextState = recordAction(nextState, action, {
+      timestamp: new Date().toISOString(),
+      sessionId,
+    });
+
+    set({ project: nextState });
+  },
+
+  // -------------------------------------------------------------------------
+  // Verify Checkpoint (Async)
+  // -------------------------------------------------------------------------
+
+  verifyCheckpoint: async (checkpointId) => {
+    const { project, dispatch } = get();
+    if (!project) throw new Error('No project loaded');
+
+    const checkpoint = project.labSpec?.checkpoints.find((c) => c.id === checkpointId);
+    if (!checkpoint) throw new Error(`Checkpoint ${checkpointId} not found`);
+
+    // Import verification service dynamically (to avoid circular deps)
+    const { verifyCheckpoint: verifyFn } = await import('../verification/verifyCheckpoint');
+
+    // Run verification (service operates on (project, checkpoint spec))
+    const result = await verifyFn(project, checkpoint);
+
+    // Record verification attempt
+    dispatch({
+      v: 1,
+      t: 'checkpoint/verify',
+      p: { checkpointId, result },
+    });
+
+    // Record evidence snapshot if verification completed
+    const snapshot: import('@redbyte/rb-utils/labProjectSchema').EvidenceSnapshot = {
+      timestamp: new Date().toISOString(),
+      checkpointId,
+      tick: project.simulation.currentTick,
+      probeValues: {}, // TODO: extract from simulation
+      circuitHash: await hashCircuit(project.circuit),
+      projectHash: await hashProject(project),
+      boardState: project.boardMap?.virtualIOState
+        ? {
+            leds: [], // TODO: compute from circuit outputs
+            switches: project.boardMap.virtualIOState.switches,
+            buttons: project.boardMap.virtualIOState.buttons ?? [],
+          }
+        : undefined,
+    };
+
+    set(state => ({
+      project: state.project ? recordSnapshot(state.project, snapshot) : state.project
+    }));
+
+    return result;
+  },
+
+  // -------------------------------------------------------------------------
+  // Export Capsule (Async)
+  // -------------------------------------------------------------------------
+
+  exportCapsule: async () => {
+    const { project } = get();
+    if (!project) throw new Error('No project loaded');
+
+    // Import export service dynamically
+    const { exportEvidenceCapsule } = await import('../services/exportService');
+
+    return exportEvidenceCapsule(project);
+  },
+}));
+
+// ============================================================================
+// Helper Functions (Simple hashing to avoid circular dependency)
+// ============================================================================
+
+async function hashCircuit(circuit: import('@redbyte/rb-utils/labProjectSchema').CircuitV1): Promise<string> {
+  const json = JSON.stringify(circuit, Object.keys(circuit).sort());
+  const encoder = new TextEncoder();
+  const data = encoder.encode(json);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return `sha256:${hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
+
+async function hashProject(project: LabProjectV1): Promise<string> {
+  const json = JSON.stringify(project, Object.keys(project).sort());
+  const encoder = new TextEncoder();
+  const data = encoder.encode(json);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return `sha256:${hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+}

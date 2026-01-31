@@ -4,6 +4,8 @@
 
 import React from 'react';
 
+export type PersistenceMode = 'none' | 'session' | 'project';
+
 export interface AppManifest {
   id: string;
   name: string;
@@ -12,6 +14,8 @@ export interface AppManifest {
   minSize?: { width: number; height: number };
   singleton?: boolean;
   category?: 'system' | 'tools' | 'logic' | 'examples';
+  /** How this app's state should persist. Default: 'none'. */
+  persistence?: PersistenceMode;
 }
 
 export interface RedByteApp {

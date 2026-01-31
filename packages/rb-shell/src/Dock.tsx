@@ -63,7 +63,7 @@ const persistDockOrder = (order: string[]) => {
   localStorage.setItem(DOCK_ORDER_STORAGE_KEY, JSON.stringify(order));
 };
 
-export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
+export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
   const windows = useWindowStore((s) => s.windows);
   const [dockOrder, setDockOrder] = useState<string[]>(() => loadDockOrder());
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -156,7 +156,7 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
         <Icon
           name={dock.iconId}
           size={18}
-          style={{ color: isRunning ? 'var(--rb-accent)' : 'var(--rb-text-3)' }}
+          style={{ color: isRunning ? 'var(--rb-accent)' : 'var(--rb-text-2)' }}
           className="transition-colors"
           aria-label={`${dock.label} icon`}
         />
@@ -165,7 +165,8 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
   };
 
   return (
-    <div
+    <nav
+      aria-label="Application Dock"
       className="fixed left-0 top-8 bottom-0 z-40 flex flex-col items-center py-2 border-r"
       title="Alt+Arrow keys to reorder (when focused)"
       style={{
@@ -189,6 +190,7 @@ export const Dock: React.FC<DockProps> = ({ onOpenApp }) => {
       <div className="flex flex-col items-center gap-0.5 flex-1">
         {appItems.map(renderIcon)}
       </div>
-    </div>
+    </nav>
   );
-};
+});
+Dock.displayName = 'Dock';

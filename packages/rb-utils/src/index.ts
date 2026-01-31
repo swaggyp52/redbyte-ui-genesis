@@ -10,3 +10,8 @@ export * from './classroomEdition';
 export * from './runaway-watchdog';
 export * from './fatal-capture';
 export * from './serialization';
+export * from './featureFlags';
+export * from './entitlements';
+export * from './syncAdapter';
+export * from './projectSchema';
+export * from './labProjectSchema';

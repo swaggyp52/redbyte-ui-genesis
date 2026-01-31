@@ -35,6 +35,7 @@ export default defineConfig({
   publicDir: path.resolve(__dirname, '../../public'),
   define: {
     __GIT_SHA__: JSON.stringify(process.env.GIT_SHA ?? process.env.CF_PAGES_COMMIT_SHA ?? 'dev'),
+    __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
   },
   build: {
     // Sourcemaps disabled for production optimization

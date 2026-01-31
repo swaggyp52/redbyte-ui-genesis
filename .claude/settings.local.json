@@ -100,7 +100,8 @@
       "Bash(npm run build:libs:*)",
       "Bash(npm run:*)",
       "Bash(unzip:*)",
-      "Bash(node tools/bridge-smoke.mjs:*)"
+      "Bash(node tools/bridge-smoke.mjs:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

@@ -13,8 +13,55 @@ interface WindowManagerState {
   gridSize: number;
 }
 
+/** Shell layout bounds passed in to avoid circular rb-shell → rb-windowing dependency. */
+export interface ShellLayout {
+  topBarHeight: number;
+  dockWidth: number;
+  truthBarHeight: number;
+  safeMargin: number;
+  minVisibleTitlebar: number;
+  minVisibleSide: number;
+}
+
+/** Default shell layout — matches rb-shell/layout-constants defaults. */
+const DEFAULT_SHELL_LAYOUT: ShellLayout = {
+  topBarHeight: 32,
+  dockWidth: 52,
+  truthBarHeight: 0,
+  safeMargin: 8,
+  minVisibleTitlebar: 24,
+  minVisibleSide: 100,
+};
+
+function getDesktopBoundsFromLayout(layout: ShellLayout): WindowBounds {
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1920;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 1080;
+  return {
+    x: layout.dockWidth,
+    y: layout.topBarHeight,
+    width: vw - layout.dockWidth,
+    height: vh - layout.topBarHeight - layout.truthBarHeight,
+  };
+}
+
+function clampBoundsToDesktop(bounds: WindowBounds, layout: ShellLayout): WindowBounds {
+  const desktop = getDesktopBoundsFromLayout(layout);
+  let { x, y, width, height } = bounds;
+
+  if (y < layout.topBarHeight) y = layout.topBarHeight;
+  if (x < layout.dockWidth - width + layout.minVisibleSide) {
+    x = layout.dockWidth - width + layout.minVisibleSide;
+  }
+  const maxY = desktop.y + desktop.height - layout.minVisibleTitlebar;
+  if (y > maxY) y = maxY;
+  const maxX = desktop.x + desktop.width - layout.minVisibleSide;
+  if (x > maxX) x = maxX;
+
+  return { x, y, width, height };
+}
+
 interface WindowManagerActions {
-  createWindow: (opts: CreateWindowOptions) => WindowState;
+  createWindow: (opts: CreateWindowOptions, shellLayout?: ShellLayout) => WindowState;
   closeWindow: (id: WindowId) => void;
   focusWindow: (id: WindowId) => void;
   moveWindow: (id: WindowId, x: number, y: number) => void;
@@ -29,7 +76,7 @@ interface WindowManagerActions {
   snapWindow: (id: WindowId, direction: 'left' | 'right' | 'top' | 'bottom', desktopBounds: WindowBounds) => void;
   centerWindow: (id: WindowId, desktopBounds: WindowBounds) => void;
   // Session actions
-  restoreSession: (windows: WindowState[], nextZIndex: number) => void;
+  restoreSession: (windows: WindowState[], nextZIndex: number, shellLayout?: ShellLayout) => void;
   // Selectors
   getActiveWindows: () => WindowState[];
   getFocusedWindow: () => WindowState | null;
@@ -136,51 +183,30 @@ function createWindowStore() {
     gridSize: 20,
 
     // Actions
-    createWindow: (opts) => {
+    createWindow: (opts, shellLayout) => {
       const state = get();
       const id = crypto.randomUUID();
+      const layout = shellLayout ?? DEFAULT_SHELL_LAYOUT;
+      const desktop = getDesktopBoundsFromLayout(layout);
 
-      const defaultBounds = {
-        x: 100,
-        y: 100,
-        width: 800,
-        height: 600,
-      };
+      let width = opts.width ?? 800;
+      let height = opts.height ?? 600;
 
-      // Get viewport dimensions (safe for SSR)
-      const vw = typeof window !== 'undefined' ? window.innerWidth : 1920;
-      const vh = typeof window !== 'undefined' ? window.innerHeight : 1080;
-
-      let width = opts.width ?? defaultBounds.width;
-      let height = opts.height ?? defaultBounds.height;
-
-      // Clamp size to viewport
-      if (width > vw) width = vw - 40;
-      if (height > vh) height = vh - 40;
+      // Clamp size to desktop area
+      if (width > desktop.width) width = desktop.width - layout.safeMargin * 2;
+      if (height > desktop.height) height = desktop.height - layout.safeMargin * 2;
 
       const CASCADE_OFFSET = 30;
       const MAX_CASCADE = 8;
 
-      // Default to centered if not cascading
-      let defaultX = Math.max(0, Math.floor((vw - width) / 2));
-      let defaultY = Math.max(0, Math.floor((vh - height) * 0.4));
+      // Center within the desktop area (not the viewport)
+      let defaultX = Math.max(desktop.x, Math.floor(desktop.x + (desktop.width - width) / 2));
+      let defaultY = Math.max(desktop.y, Math.floor(desktop.y + (desktop.height - height) * 0.4));
 
       if (opts.x === undefined || opts.y === undefined) {
         const existingWindows = state.windows.filter(w => w.contentId === opts.contentId);
         if (existingWindows.length > 0) {
-          // Cascade from the LAST opened window of this type
-          const lastWindow = existingWindows[existingWindows.length - 1];
           const cascadeIndex = (existingWindows.length) % MAX_CASCADE;
-
-          // If we have a reference window, cascade from IT, otherwise use center + offset
-          // But simple cascade from top-left is standard for OS.
-          // Let's stick to centering for the FIRST window, and cascading for subsequent.
-          // Or simply: center + cascade offset.
-
-          // Logic: First window centers. Subsequent windows offset from the first one?
-          // Actually, existing logic was absolute 100,100 + offset.
-          // Let's make it: Center + offset.
-
           defaultX = defaultX + (cascadeIndex * CASCADE_OFFSET);
           defaultY = defaultY + (cascadeIndex * CASCADE_OFFSET);
         }
@@ -193,9 +219,8 @@ function createWindowStore() {
         height,
       };
 
-      // Ensure on screen
-      if (bounds.x < 0) bounds.x = 0;
-      if (bounds.y < 0) bounds.y = 0;
+      // Clamp to desktop bounds — never behind TopBar or Dock
+      bounds = clampBoundsToDesktop(bounds, layout);
 
       // Apply snap-to-grid if enabled
       if (state.snapToGrid) {
@@ -205,6 +230,8 @@ function createWindowStore() {
           width: snapToGrid(bounds.width, state.gridSize),
           height: snapToGrid(bounds.height, state.gridSize),
         };
+        // Re-clamp after grid snap
+        bounds = clampBoundsToDesktop(bounds, layout);
       }
 
       const newWindow: WindowState = {
@@ -232,9 +259,26 @@ function createWindowStore() {
     },
 
     closeWindow: (id) => {
-      setWithInvariants(set, get, (state: WindowManagerState) => ({
-        windows: state.windows.filter((w) => w.id !== id),
-      }));
+      setWithInvariants(set, get, (state: WindowManagerState) => {
+        const remaining = state.windows.filter((w) => w.id !== id);
+
+        // Auto-focus next highest z-index window (non-minimized)
+        const visible = remaining.filter((w) => w.mode !== 'minimized');
+        if (visible.length > 0) {
+          const topWindow = visible.reduce((a, b) => (a.zIndex > b.zIndex ? a : b));
+          return {
+            windows: remaining.map((w) => ({
+              ...w,
+              focused: w.id === topWindow.id,
+              zIndex: w.id === topWindow.id ? state.nextZIndex : w.zIndex,
+              lastFocusedAt: w.id === topWindow.id ? Date.now() : w.lastFocusedAt,
+            })),
+            nextZIndex: state.nextZIndex + 1,
+          };
+        }
+
+        return { windows: remaining };
+      });
     },
 
     focusWindow: (id) => {
@@ -437,8 +481,14 @@ function createWindowStore() {
     },
 
     // Session actions
-    restoreSession: (windows, nextZIndex) => {
-      set({ windows, nextZIndex });
+    restoreSession: (windows, nextZIndex, shellLayout) => {
+      const layout = shellLayout ?? DEFAULT_SHELL_LAYOUT;
+      // Migrate windows that are behind chrome (from older sessions)
+      const migrated = windows.map((w) => ({
+        ...w,
+        bounds: clampBoundsToDesktop(w.bounds, layout),
+      }));
+      set({ windows: migrated, nextZIndex });
       // Check invariants after restore
       if (process.env.NODE_ENV !== 'production') {
         assertWindowInvariants(get().windows);

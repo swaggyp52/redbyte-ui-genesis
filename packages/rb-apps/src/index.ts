@@ -12,6 +12,35 @@ export * from './apps/files/fileActionTargets';
 export * from './apps/files/modals';
 export * from './examples';
 export * from './components/EmptyState';
+export * from './components/IntegrityBadge';
+export { stableSerialize, stableHash, hashBytes } from './utils/stableSerialize';
+export {
+  hashBytesOffThread,
+  stableHashOffThread,
+  stableSerializeOffThread,
+  terminateComputeWorker,
+} from './utils/computeWorker';
+export {
+  installErrorHandlers,
+  reportError,
+  reportPerfViolation,
+  addBreadcrumb,
+  getBreadcrumbs,
+  setReportSink,
+  setPerfSampleRate,
+  type ErrorReport,
+  type Breadcrumb,
+  type ReportSink,
+} from './utils/errorReporting';
+export {
+  buildEvidenceManifest,
+  verifyEvidenceManifest,
+  serializeManifest,
+  type EvidenceManifest,
+  type EvidenceFileEntry,
+  type IntegrityStatus,
+  type IntegrityResult,
+} from './utils/evidenceManifest';
 
 // DEFERRED EXPORTS: Do NOT import app modules at the module level.
 // This prevents circular dependencies and temporal dead zone errors
@@ -51,6 +80,7 @@ export async function registerAllApps() {
   // const { StudentLabApp } = await import('./apps/StudentLabApp'); // RB_UNIFY_02: DEPRECATED — use Lab Assignment
   const { SubmissionInspectorApp } = await import('./apps/SubmissionInspectorApp');
   const { VirtualLabApp } = await import('./apps/VirtualLabApp');
+  const { LabWorkspaceApp } = await import('./apps/LabWorkspaceApp');
 
   registerApp(TerminalApp);
   registerApp(SettingsApp);
@@ -80,6 +110,7 @@ export async function registerAllApps() {
   // registerApp(StudentLabApp); // LEGACY: Replaced by ECELabApp (ECE 347 Lab)
   registerApp(SubmissionInspectorApp);
   registerApp(VirtualLabApp);
+  registerApp(LabWorkspaceApp); // RB_UNIFY: Lab Engine vertical slice
 }
 
 export { PlaygroundGoldenPath } from './dev/PlaygroundGoldenPath';

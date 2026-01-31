@@ -47,4 +47,21 @@ if (process.env.GITHUB_ACTIONS || process.env.CF_PAGES) {
     check(buildJson.env === 'production', `build.json env is "production" (detected CI)`);
 }
 
+// 7. Version Stamp Check — ensure build artifacts contain version info
+const osAssets = fs.readdirSync(path.join(OS, 'assets')).filter(f => f.endsWith('.js'));
+const shellChunk = osAssets.find(f => f.includes('rb-shell'));
+if (shellChunk) {
+    const shellJs = fs.readFileSync(path.join(OS, 'assets', shellChunk), 'utf8');
+    check(shellJs.includes('RedByte OS'), 'rb-shell chunk contains "RedByte OS" brand string');
+    // Version string should be present (injected via version.ts)
+    check(shellJs.includes('1.0.0') || shellJs.includes('v1.'), 'rb-shell chunk contains version stamp');
+}
+
+// 8. No source maps leaked in production (if strict mode)
+if (process.env.RB_STRICT_DIST === '1') {
+    const allAssets = fs.readdirSync(path.join(DIST, 'assets'));
+    const mapFiles = allAssets.filter(f => f.endsWith('.map'));
+    check(mapFiles.length === 0, 'No .map files in production dist/assets/');
+}
+
 console.log('✨ dist/ verification complete. Artifact is valid.');

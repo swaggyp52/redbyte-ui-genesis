@@ -21,6 +21,7 @@ import {
   useSystemLogStore,
   logSystemEvent,
   EmptyState,
+  installErrorHandlers,
 } from '@redbyte/rb-apps';
 import { useWindowStore, loadSession, resolveTargetWindowId } from '@redbyte/rb-windowing';
 import { useWorkspaceStore, loadWorkspaces } from './workspaceStore';
@@ -34,6 +35,7 @@ import { WorkspaceSwitcher, MacroRunner, WindowSwitcher } from './modals';
 import { NarrativeOverlay } from './narrative/NarrativeOverlay';
 import type { Intent } from './intent-types';
 import { getVersionString } from './version';
+import { getDesktopBounds, getMaximizedBounds } from './layout/layout-constants';
 import './styles.css';
 import { PerfHud } from './debug/PerfHud';
 import { HitTestDebugHUD } from './debug/HitTestDebugHUD';
@@ -47,6 +49,10 @@ import { TruthBar, type DeterminismMode } from './TruthBar';
 import { OnboardingModal } from './OnboardingModal';
 import { AboutModal } from './AboutModal';
 import { TopBar } from './TopBar';
+import { RecoveryPrompt, type RecoveryAction } from './RecoveryPrompt';
+import { checkForRecovery, clearJournal, unregisterAutosave } from './persistenceStore';
+import { HomeScreen } from './HomeScreen';
+import { trackWindowOpen, runWindowCleanup, startLeakMonitor } from './leakGuard';
 
 export interface ShellProps {
   children?: React.ReactNode;
@@ -72,12 +78,19 @@ interface SnapPreviewState {
   target: SnapPreviewTarget;
 }
 
+interface AppErrorBoundaryProps {
+  appId: string;
+  windowId: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}
+
 /** Per-app error boundary: prevents one crashed app from tearing down the whole shell. */
 class AppErrorBoundary extends React.Component<
-  { appId: string; children: React.ReactNode },
-  { hasError: boolean; error?: Error }
+  AppErrorBoundaryProps,
+  { hasError: boolean; error?: Error; errorStack?: string }
 > {
-  constructor(props: { appId: string; children: React.ReactNode }) {
+  constructor(props: AppErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
   }
@@ -87,32 +100,83 @@ class AppErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error(`[Shell] App "${this.props.appId}" crashed:`, error, info.componentStack);
+    const stack = info.componentStack ?? '';
+    this.setState({ errorStack: stack });
+    console.error(`[Shell] App "${this.props.appId}" crashed:`, error, stack);
+    logSystemEvent({
+      level: 'error',
+      source: this.props.appId,
+      message: `App crashed: ${error.message}`,
+      data: {
+        windowId: this.props.windowId,
+        stack: error.stack?.slice(0, 500),
+        componentStack: stack.slice(0, 500),
+      },
+    });
   }
+
+  private handleExportState = () => {
+    const report = {
+      appId: this.props.appId,
+      windowId: this.props.windowId,
+      timestamp: new Date().toISOString(),
+      error: this.state.error?.message,
+      stack: this.state.error?.stack,
+      componentStack: this.state.errorStack,
+    };
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `crash-report-${this.props.appId}-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   render() {
     if (this.state.hasError) {
+      const btnBase: React.CSSProperties = {
+        padding: '0.4rem 1rem', border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.75rem',
+      };
       return (
         <div style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          height: '100%', background: '#0a0a0a', color: '#e2e8f0', padding: '2rem', textAlign: 'center',
+          height: '100%', background: 'var(--rb-surface-0, #0a0a0a)', color: 'var(--rb-text, #e2e8f0)',
+          padding: '2rem', textAlign: 'center',
         }}>
-          <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ef4444', marginBottom: '0.5rem' }}>
+          <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--rb-danger, #ef4444)', marginBottom: '0.5rem' }}>
             App Crashed
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '1rem', maxWidth: 300 }}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--rb-text-2, #64748b)', marginBottom: '0.25rem' }}>
+            <strong>{this.props.appId}</strong>
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--rb-text-3, #64748b)', marginBottom: '1rem', maxWidth: 300 }}>
             {this.state.error?.message || 'Unknown error'}
           </div>
-          <button
-            type="button"
-            onClick={() => this.setState({ hasError: false, error: undefined })}
-            style={{
-              padding: '0.4rem 1rem', background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '0.375rem', color: '#e2e8f0', cursor: 'pointer', fontSize: '0.75rem',
-            }}
-          >
-            Retry
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={() => this.setState({ hasError: false, error: undefined, errorStack: undefined })}
+              style={{ ...btnBase, background: 'var(--rb-surface-2, #1e293b)', color: 'var(--rb-text, #e2e8f0)' }}
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              onClick={this.handleExportState}
+              style={{ ...btnBase, background: 'transparent', color: 'var(--rb-text-2, #94a3b8)' }}
+            >
+              Export Report
+            </button>
+            <button
+              type="button"
+              onClick={this.props.onClose}
+              style={{ ...btnBase, background: 'var(--rb-danger-bg, rgba(239,68,68,0.12))', color: 'var(--rb-danger, #ef4444)', borderColor: 'var(--rb-danger-border, rgba(239,68,68,0.3))' }}
+            >
+              Close Window
+            </button>
+          </div>
         </div>
       );
     }
@@ -131,6 +195,9 @@ export const Shell: React.FC<ShellProps> = () => {
   const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false);
   const [macroRunnerOpen, setMacroRunnerOpen] = useState(false);
   const [windowSwitcherOpen, setWindowSwitcherOpen] = useState(false);
+  const [showRecoveryPrompt, setShowRecoveryPrompt] = useState<boolean>(() => {
+    return checkForRecovery().length > 0;
+  });
   const [windowSwitcherPreviousFocus, setWindowSwitcherPreviousFocus] = useState<string | null>(null);
   const [openWithModalState, setOpenWithModalState] = useState<OpenWithModalState | null>(null);
   const [determinismPanelOpen, setDeterminismPanelOpen] = useState(false);
@@ -209,7 +276,11 @@ export const Shell: React.FC<ShellProps> = () => {
 
     return ['start-here'];
   });
-  const settings = useSettingsStore();
+  const themeVariant = useSettingsStore((s) => s.themeVariant);
+  const density = useSettingsStore((s) => s.density);
+  const reduceMotion = useSettingsStore((s) => s.reduceMotion);
+  const snapAssist = useSettingsStore((s) => s.snapAssist);
+  const wallpaperId = useSettingsStore((s) => s.wallpaperId);
   const hasSettings = useMemo(() => Boolean(getApp('settings')), []);
 
   const recordRecentApp = useCallback((appId: string) => {
@@ -236,6 +307,8 @@ export const Shell: React.FC<ShellProps> = () => {
     });
   }, []);
 
+  const openDeterminismPanel = useCallback(() => setDeterminismPanelOpen(true), []);
+
   const handleSnapPreviewChange = useCallback((windowId: string, target: SnapPreviewTarget | null) => {
     setSnapPreview((prev) => {
       if (!target) {
@@ -248,12 +321,7 @@ export const Shell: React.FC<ShellProps> = () => {
 
   const handleSnapCommit = useCallback(
     (windowId: string, target: SnapPreviewTarget) => {
-      const desktopBounds = {
-        x: 0,
-        y: 0,
-        width: window.innerWidth,
-        height: window.innerHeight,
-      };
+      const desktopBounds = getDesktopBounds();
       if (target === 'maximize') {
         toggleMaximize(windowId);
       } else {
@@ -287,20 +355,30 @@ export const Shell: React.FC<ShellProps> = () => {
     });
   }, []);
 
+  // Install global error handlers (unhandled exceptions + rejections)
+  useEffect(() => {
+    const cleanupErrors = installErrorHandlers();
+    const cleanupLeaks = import.meta.env.DEV ? startLeakMonitor() : () => {};
+    return () => {
+      cleanupErrors();
+      cleanupLeaks();
+    };
+  }, []);
+
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      applyTheme(document.documentElement, settings.themeVariant);
-      document.documentElement.setAttribute('data-rb-density', settings.density);
-      document.documentElement.setAttribute('data-rb-motion', settings.reduceMotion ? 'reduced' : 'full');
+      applyTheme(document.documentElement, themeVariant);
+      document.documentElement.setAttribute('data-rb-density', density);
+      document.documentElement.setAttribute('data-rb-motion', reduceMotion ? 'reduced' : 'full');
     }
-  }, [settings.themeVariant, settings.density, settings.reduceMotion, settings.snapAssist]);
+  }, [themeVariant, density, reduceMotion, snapAssist]);
 
   useEffect(() => {
     const current = {
-      themeVariant: settings.themeVariant,
-      density: settings.density,
-      reduceMotion: settings.reduceMotion,
-      snapAssist: settings.snapAssist,
+      themeVariant: themeVariant,
+      density: density,
+      reduceMotion: reduceMotion,
+      snapAssist: snapAssist,
     };
     if (!lastSettingsRef.current) {
       lastSettingsRef.current = current;
@@ -320,7 +398,7 @@ export const Shell: React.FC<ShellProps> = () => {
       });
       lastSettingsRef.current = current;
     }
-  }, [settings.themeVariant, settings.density, settings.reduceMotion]);
+  }, [themeVariant, density, reduceMotion]);
 
   // Workspace/Session restore on mount
   useEffect(() => {
@@ -431,6 +509,7 @@ export const Shell: React.FC<ShellProps> = () => {
         contentId: app.manifest.id,
       });
 
+      trackWindowOpen(state.id);
       setBindings((prev) => ({ ...prev, [state.id]: { appId, props } }));
       logSystemEvent({
         level: 'action',
@@ -442,6 +521,11 @@ export const Shell: React.FC<ShellProps> = () => {
     },
     [createWindow, focusWindow, recordRecentApp, windows, restoreWindow]
   );
+
+  // Helper callbacks that depend on openWindow
+  const openLog = useCallback(() => openWindow('system-log'), [openWindow]);
+  const openLauncher = useCallback(() => openWindow('launcher'), [openWindow]);
+  const openSettings = useCallback(() => openWindow('settings'), [openWindow]);
 
   // Auto-launch Logic Playground from URL parameters (Deep Linking)
   useEffect(() => {
@@ -569,6 +653,11 @@ export const Shell: React.FC<ShellProps> = () => {
 
   const handleClose = useCallback(
     (id: string) => {
+      // Clean up autosave + journal + registered cleanups for this window
+      unregisterAutosave(id);
+      clearJournal(id);
+      runWindowCleanup(id);
+
       closeWindow(id);
       setBindings((prev) => {
         const next = { ...prev };
@@ -584,6 +673,51 @@ export const Shell: React.FC<ShellProps> = () => {
     },
     [closeWindow]
   );
+
+  // Stable window event handlers — prevents React.memo bailout failures
+  const windowHandlers = useRef<Record<string, {
+    onClose: () => void;
+    onFocus: () => void;
+    onMove: (x: number, y: number) => void;
+    onResize: (w: number, h: number) => void;
+    onMoveEnd: (bounds: any) => void;
+    onResizeEnd: (bounds: any) => void;
+  }>>({});
+
+  // Create stable callbacks for each window
+  useEffect(() => {
+    const handlers = windowHandlers.current;
+    const currentWindowIds = new Set(windows.map(w => w.id));
+
+    // Remove handlers for closed windows
+    Object.keys(handlers).forEach(id => {
+      if (!currentWindowIds.has(id)) {
+        delete handlers[id];
+      }
+    });
+
+    // Create handlers for new windows
+    windows.forEach(window => {
+      if (!handlers[window.id]) {
+        handlers[window.id] = {
+          onClose: () => handleClose(window.id),
+          onFocus: () => {
+            focusWindow(window.id);
+            logSystemEvent({
+              level: 'action',
+              source: 'shell',
+              message: 'Window focused',
+              data: { windowId: window.id, appId: window.contentId },
+            });
+          },
+          onMove: (x: number, y: number) => moveWindow(window.id, x, y),
+          onResize: (w: number, h: number) => resizeWindow(window.id, w, h),
+          onMoveEnd: (bounds: any) => handleMoveEnd(window.id, bounds),
+          onResizeEnd: (bounds: any) => handleResizeEnd(window.id, bounds),
+        };
+      }
+    });
+  }, [windows, handleClose, focusWindow, moveWindow, resizeWindow, handleMoveEnd, handleResizeEnd]);
 
   // Window state accessors registry (for determinism recording)
   const windowStateAccessorsRef = useRef<Map<string, { getCircuit?: () => any }>>(new Map());
@@ -746,15 +880,8 @@ export const Shell: React.FC<ShellProps> = () => {
           const focused = useWindowStore.getState().getFocusedWindow();
           if (!focused) return;
 
-          const desktopBounds = {
-            x: 0,
-            y: 0,
-            width: window.innerWidth,
-            height: window.innerHeight,
-          };
-
           const direction = command.replace('snap-', '') as 'left' | 'right' | 'top' | 'bottom';
-          snapWindow(focused.id, direction, desktopBounds);
+          snapWindow(focused.id, direction, getDesktopBounds());
           logSystemEvent({
             level: 'action',
             source: 'shell',
@@ -768,14 +895,7 @@ export const Shell: React.FC<ShellProps> = () => {
           const focused = useWindowStore.getState().getFocusedWindow();
           if (!focused) return;
 
-          const desktopBounds = {
-            x: 0,
-            y: 0,
-            width: window.innerWidth,
-            height: window.innerHeight,
-          };
-
-          centerWindow(focused.id, desktopBounds);
+          centerWindow(focused.id, getDesktopBounds());
           logSystemEvent({
             level: 'action',
             source: 'shell',
@@ -1261,21 +1381,34 @@ export const Shell: React.FC<ShellProps> = () => {
 
   const snapPreviewBounds = useMemo(() => {
     if (!snapPreview || typeof window === 'undefined') return null;
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+    const desktop = getDesktopBounds();
     if (snapPreview.target === 'maximize') {
-      return { x: 0, y: 0, width, height };
+      return getMaximizedBounds();
     }
-    const halfWidth = Math.floor(width / 2);
+    const halfWidth = Math.floor(desktop.width / 2);
     if (snapPreview.target === 'left') {
-      return { x: 0, y: 0, width: halfWidth, height };
+      return { x: desktop.x, y: desktop.y, width: halfWidth, height: desktop.height };
     }
-    return { x: width - halfWidth, y: 0, width: halfWidth, height };
+    return { x: desktop.x + halfWidth, y: desktop.y, width: halfWidth, height: desktop.height };
   }, [snapPreview]);
 
   if (!booted) {
     return <BootScreen onComplete={() => setBooted(true)} />;
   }
+
+  const handleRecovery = (entries: RecoveryAction[]) => {
+    // Open recovered windows
+    for (const entry of entries) {
+      if (entry.appId) {
+        openWindow(entry.appId, { recoveredData: entry.data });
+      }
+    }
+    setShowRecoveryPrompt(false);
+  };
+
+  const handleDiscardRecovery = () => {
+    setShowRecoveryPrompt(false);
+  };
 
   const determinismMode: DeterminismMode =
     determinismRecorder.isRecording
@@ -1295,47 +1428,39 @@ export const Shell: React.FC<ShellProps> = () => {
 
   return (
     <div data-testid="shell-container" className="shell-container rb-shell relative w-screen h-screen overflow-hidden">
+      <a href="#rb-desktop-region" className="rb-skip-link">Skip to desktop</a>
+      {showRecoveryPrompt && (
+        <RecoveryPrompt onRecover={handleRecovery} onDiscard={handleDiscardRecovery} />
+      )}
       <TopBar
         isRecording={determinismRecorder.isRecording}
         modeLabel={determinismMode}
         tickCount={determinismRecorder.tickCount}
         versionLabel={getVersionString()}
         unreadCount={unreadLogCount}
-        onOpenLog={() => openWindow('system-log')}
-        onOpenLauncher={() => openWindow('launcher')}
-        onOpenSettings={() => openWindow('settings')}
-        onOpenDeterminism={() => setDeterminismPanelOpen(true)}
+        onOpenLog={openLog}
+        onOpenLauncher={openLauncher}
+        onOpenSettings={openSettings}
+        onOpenDeterminism={openDeterminismPanel}
       />
       <Desktop
         onOpenApp={openWindow}
-        wallpaperId={settings.wallpaperId}
-        themeVariant={settings.themeVariant}
+        wallpaperId={wallpaperId}
+        themeVariant={themeVariant}
       />
 
       <Dock onOpenApp={openWindow} />
 
       {!hasVisibleWindows && (
-        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-          <EmptyState
-            icon="browser"
-            title="Workspace idle"
-            description="Open the Launcher to start an app or use Ctrl/Cmd+Space to search."
-            action={(
-              <button
-                onClick={() => openWindow('launcher')}
-                className="px-3 py-1.5 rounded-md text-xs font-semibold"
-                style={{
-                  background: 'var(--rb-surface-2)',
-                  border: '1px solid var(--rb-border)',
-                  color: 'var(--rb-text)',
-                }}
-              >
-                Open Launcher
-              </button>
-            )}
-            className="pointer-events-auto"
-          />
-        </div>
+        <HomeScreen
+          onOpenApp={openWindow}
+          onOpenExample={(exampleId) => {
+            dispatchIntent({
+              type: 'open-example',
+              payload: { targetAppId: 'logic-playground', exampleId },
+            });
+          }}
+        />
       )}
 
       {snapPreviewBounds && (
@@ -1354,8 +1479,8 @@ export const Shell: React.FC<ShellProps> = () => {
             }}
           >
             {snapPreviewLabel && (
-              <div className="absolute top-3 left-3 px-3 py-1 rounded-full text-[10px] font-semibold tracking-[0.2em] uppercase text-cyan-200 border"
-                style={{ background: 'var(--rb-surface-2)', borderColor: 'var(--rb-border-strong)' }}
+              <div className="absolute top-3 left-3 px-3 py-1 rounded-full text-[10px] font-semibold tracking-[0.2em] uppercase border"
+                style={{ background: 'var(--rb-surface-2)', borderColor: 'var(--rb-border-strong)', color: 'var(--rb-accent)' }}
               >
                 {snapPreviewLabel}
               </div>
@@ -1375,32 +1500,27 @@ export const Shell: React.FC<ShellProps> = () => {
           binding?.props?.initialExampleId ??
           undefined;
 
+        const handlers = windowHandlers.current[window.id];
+        if (!handlers) return null; // Handlers not yet initialized
+
         return (
           <ShellWindow
             key={window.id}
             state={window}
             minSize={app.manifest.minSize}
             iconName={app.manifest.iconId}
-            snapAssistMode={settings.snapAssist}
+            snapAssistMode={snapAssist}
             provenance={{
               appId: app.manifest.id,
               resourceId,
               tick: determinismRecorder.tickCount,
             }}
-            onClose={() => handleClose(window.id)}
-            onFocus={() => {
-              focusWindow(window.id);
-              logSystemEvent({
-                level: 'action',
-                source: 'shell',
-                message: 'Window focused',
-                data: { windowId: window.id, appId: window.contentId },
-              });
-            }}
-            onMove={(x, y) => moveWindow(window.id, x, y)}
-            onResize={(w, h) => resizeWindow(window.id, w, h)}
-            onMoveEnd={(bounds) => handleMoveEnd(window.id, bounds)}
-            onResizeEnd={(bounds) => handleResizeEnd(window.id, bounds)}
+            onClose={handlers.onClose}
+            onFocus={handlers.onFocus}
+            onMove={handlers.onMove}
+            onResize={handlers.onResize}
+            onMoveEnd={handlers.onMoveEnd}
+            onResizeEnd={handlers.onResizeEnd}
             onSnapPreviewChange={handleSnapPreviewChange}
             onSnap={handleSnapCommit}
             onMinimize={() => {
@@ -1431,7 +1551,7 @@ export const Shell: React.FC<ShellProps> = () => {
               });
             }}
           >
-            <AppErrorBoundary appId={app.manifest.id}>
+            <AppErrorBoundary appId={app.manifest.id} windowId={window.id} onClose={() => handleClose(window.id)}>
               <Component
                 windowId={window.id}
                 onOpenApp={openWindow}

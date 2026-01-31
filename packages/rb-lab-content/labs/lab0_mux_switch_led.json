@@ -1,0 +1,82 @@
+{
+  "labId": "lab0-mux-switches",
+  "title": "Switch-Controlled MUX → LEDs",
+  "description": "Build a 2-to-1 multiplexer, verify its truth table, then map it to board switches and LEDs.",
+  "steps": [
+    {
+      "id": "step1",
+      "title": "Build 2-to-1 Multiplexer",
+      "description": "Create a 2-to-1 multiplexer using AND, OR, and NOT gates. Inputs: A, B, SEL. Output: Y.",
+      "hints": [
+        "The formula is: Y = (A AND NOT SEL) OR (B AND SEL)",
+        "You'll need 2 AND gates, 1 OR gate, and 1 NOT gate",
+        "Label your input nodes A, B, and SEL, and your output node Y"
+      ],
+      "requiredProbes": ["Y"],
+      "estimatedMinutes": 10
+    },
+    {
+      "id": "step2",
+      "title": "Verify Truth Table",
+      "description": "Test all input combinations and verify the output matches the expected MUX behavior.",
+      "hints": [
+        "When SEL=0, Y should equal A",
+        "When SEL=1, Y should equal B"
+      ],
+      "estimatedMinutes": 3
+    },
+    {
+      "id": "step3",
+      "title": "Map to Board",
+      "description": "Map your MUX inputs to board switches (SW0-SW2) and output to LED0.",
+      "hints": [
+        "Map A → SW1, B → SW2, SEL → SW0",
+        "Map Y → LED0",
+        "Toggle the switches to see LED0 respond"
+      ],
+      "estimatedMinutes": 5
+    },
+    {
+      "id": "step4",
+      "title": "Verify Board I/O",
+      "description": "Test the board mapping by verifying LEDs respond correctly to switch inputs.",
+      "estimatedMinutes": 2
+    }
+  ],
+  "checkpoints": [
+    {
+      "id": "cp1-truth-table",
+      "stepId": "step2",
+      "type": "truth-table",
+      "spec": {
+        "inputs": ["A", "B", "SEL"],
+        "outputs": ["Y"],
+        "expectedTable": [
+          { "A": 0, "B": 0, "SEL": 0, "Y": 0 },
+          { "A": 1, "B": 0, "SEL": 0, "Y": 1 },
+          { "A": 0, "B": 1, "SEL": 0, "Y": 0 },
+          { "A": 1, "B": 1, "SEL": 0, "Y": 1 },
+          { "A": 0, "B": 0, "SEL": 1, "Y": 0 },
+          { "A": 1, "B": 0, "SEL": 1, "Y": 0 },
+          { "A": 0, "B": 1, "SEL": 1, "Y": 1 },
+          { "A": 1, "B": 1, "SEL": 1, "Y": 1 }
+        ]
+      }
+    },
+    {
+      "id": "cp2-board-io",
+      "stepId": "step4",
+      "type": "board-io",
+      "spec": {
+        "inputSwitches": [false, true, false],
+        "expectedLEDs": [true],
+        "ticksToStabilize": 2
+      }
+    }
+  ],
+  "constraints": {
+    "maxComponents": 10,
+    "allowedComponentTypes": ["AND", "OR", "NOT", "SWITCH", "LED"],
+    "timeLimit": 20
+  }
+}

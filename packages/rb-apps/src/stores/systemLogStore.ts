@@ -6,15 +6,22 @@ import { create } from 'zustand';
 import { stableStringify } from '../utils/digest';
 
 export type SystemLogLevel = 'info' | 'action' | 'warning' | 'error';
+export type SystemLogSeverity = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
 export interface SystemLogEntry {
   id: string;
   seq: number;
   ts_wall: string;
   level: SystemLogLevel;
+  severity?: SystemLogSeverity;
   source: string;
   message: string;
   data?: Record<string, unknown>;
+  context?: string;
+  appId?: string;
+  windowId?: string;
+  perf?: { durationMs?: number; label?: string };
+  sessionId?: string;
 }
 
 interface SystemLogState {
@@ -90,6 +97,34 @@ const persist = (entries: SystemLogEntry[], lastReadSeq: number): void => {
   }
 };
 
+// Session ID — stable per browser session
+const SESSION_ID = typeof crypto !== 'undefined' && crypto.randomUUID
+  ? crypto.randomUUID()
+  : `s-${Date.now().toString(36)}`;
+
+const LOG_LEVEL_COLORS: Record<SystemLogLevel, string> = {
+  info: '#3B82F6',
+  action: '#22C55E',
+  warning: '#F59E0B',
+  error: '#EF4444',
+};
+
+function devLog(entry: SystemLogEntry): void {
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production') return;
+  const color = LOG_LEVEL_COLORS[entry.level] ?? '#8B8B93';
+  const prefix = `%c[${entry.level.toUpperCase()}]%c ${entry.source}:`;
+  const args: any[] = [prefix, `color:${color};font-weight:bold`, 'color:inherit', entry.message];
+  if (entry.data) args.push(entry.data);
+  if (entry.perf) args.push(`(${entry.perf.durationMs}ms)`);
+  if (entry.level === 'error') {
+    console.error(...args);
+  } else if (entry.level === 'warning') {
+    console.warn(...args);
+  } else {
+    console.log(...args);
+  }
+}
+
 // Lazy-init singleton to prevent TDZ crash from circular imports
 let _store: ReturnType<typeof createSystemLogStore> | null = null;
 
@@ -105,7 +140,9 @@ function createSystemLogStore() {
         id: `log-${seq}`,
         seq,
         ts_wall: new Date().toISOString(),
+        sessionId: entry.sessionId ?? SESSION_ID,
       };
+      devLog(payload);
       const next = [payload, ...get().entries].slice(0, MAX_ENTRIES);
       set({ entries: next });
       persist(next, get().lastReadSeq);

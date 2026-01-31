@@ -35,7 +35,7 @@
 .rb-window-control {
   background: transparent;
   border: none;
-  color: var(--rb-text-3);
+  color: var(--rb-text-2);
   border-radius: var(--rb-radius-sm);
   transition: background var(--rb-motion-fast) var(--rb-easing-out),
               color var(--rb-motion-fast) var(--rb-easing-out);
@@ -154,4 +154,36 @@
 .shell-container :focus-visible {
   outline: 2px solid var(--rb-accent);
   outline-offset: 2px;
+}
+
+/* Suppress focus ring on window chrome buttons for mouse users */
+.rb-window-control:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Ensure dock items have visible focus ring */
+.shell-container .dock-item:focus-visible {
+  outline: 2px solid var(--rb-accent);
+  outline-offset: 2px;
+  border-radius: var(--rb-radius-md, 8px);
+}
+
+/* Skip-to-content link for keyboard users */
+.rb-skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  z-index: 99999;
+  padding: 8px 16px;
+  background: var(--rb-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 0 0 var(--rb-radius-sm) 0;
+  transition: top var(--rb-motion-fast) var(--rb-easing-out);
+}
+
+.rb-skip-link:focus {
+  top: 0;
 }

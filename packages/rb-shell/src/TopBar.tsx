@@ -17,7 +17,7 @@ export interface TopBarProps {
   onOpenDeterminism?: () => void;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({
+export const TopBar: React.FC<TopBarProps> = React.memo(({
   isRecording,
   modeLabel,
   tickCount,
@@ -28,7 +28,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenDeterminism,
 }) => {
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
+    <header role="banner" aria-label="System Bar" className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
       <div
         className="h-8 px-3 flex items-center justify-between border-b"
         style={{
@@ -118,6 +118,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </header>
   );
-};
+});
+TopBar.displayName = 'TopBar';
