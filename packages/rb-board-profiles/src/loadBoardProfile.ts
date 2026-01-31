@@ -10,10 +10,12 @@
  */
 
 import basys3Profile from '../profiles/basys3.json';
+import arduinoProfile from '../profiles/arduino.json';
 import type { BoardProfile } from './types';
 
 const BUILT_IN_PROFILES: Record<string, any> = {
   basys3: basys3Profile,
+  arduino: arduinoProfile,
   // Future: nexys4, de10-lite, etc.
 };
 

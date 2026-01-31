@@ -1,0 +1,98 @@
+{
+    "id": "arduino",
+    "name": "Arduino Uno",
+    "vendor": "Arduino",
+    "fpga": "ATmega328P",
+    "schemaVersion": "1.0",
+    "components": {
+        "switches": [
+            {
+                "id": "D2",
+                "pin": "D2"
+            },
+            {
+                "id": "D3",
+                "pin": "D3"
+            },
+            {
+                "id": "D4",
+                "pin": "D4"
+            },
+            {
+                "id": "D5",
+                "pin": "D5"
+            },
+            {
+                "id": "D6",
+                "pin": "D6"
+            },
+            {
+                "id": "D7",
+                "pin": "D7"
+            },
+            {
+                "id": "D8",
+                "pin": "D8"
+            },
+            {
+                "id": "D9",
+                "pin": "D9"
+            },
+            {
+                "id": "D10",
+                "pin": "D10"
+            },
+            {
+                "id": "D11",
+                "pin": "D11"
+            },
+            {
+                "id": "D12",
+                "pin": "D12"
+            },
+            {
+                "id": "D13",
+                "pin": "D13"
+            }
+        ],
+        "leds": [
+            {
+                "id": "L",
+                "pin": "D13"
+            },
+            {
+                "id": "TX",
+                "pin": "D1"
+            },
+            {
+                "id": "RX",
+                "pin": "D0"
+            }
+        ],
+        "buttons": [
+            {
+                "id": "RESET",
+                "pin": "RESET"
+            }
+        ],
+        "sevenSegs": []
+    },
+    "ioCapabilities": {
+        "analogInputs": [
+            "A0",
+            "A1",
+            "A2",
+            "A3",
+            "A4",
+            "A5"
+        ],
+        "pwmOutputs": [
+            "D3",
+            "D5",
+            "D6",
+            "D9",
+            "D10",
+            "D11"
+        ]
+    }
+}

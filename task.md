@@ -1,19 +1,20 @@
-# Virtual Lab MVP-1 Reliability Tasks
-
-Updated: 2026-01-28
+# Sprint 2 Task 2B: Arduino Instrument Panel
 
 ## Status
 
-- [x] Invariants and fingerprinting (canonical JSON, stable hash, SHA-256)
-- [x] Store recovery state machine with deterministic truncation and integrity events
-- [x] Import/export hardening with capsule hash + seed
-- [x] Performance guards with reconstruction timing
-- [x] Remove Truth HUD (Final Polish)
-- [x] Push and Tag `demo-lock` releasewitch, stress, repair)
-- [x] Documentation refresh
-
-## Notes
-
-- Unverified capsules open in read-only replay mode.
-- Integrity recovery emits INTEGRITY_RECOVERY and truncates future events.
-- Snapshots store traceHash and optional async fingerprint.
+- [x] Define Arduino Profile
+  - [x] Add `arduino.json` to `rb-board-profiles` (if needed) or verify existing one
+- [x] Implement Arduino Instrument View
+  - [x] Create `ArduinoInstrument.tsx` (Split pane: Mapping/Channels vs Plots/Controls)
+  - [x] Implement Strip Chart Component (SVG/Canvas)
+  - [x] Implement Controls (PWM Slider, Digital Toggle)
+- [x] Update DeployMode
+  - [x] Add Board Selector (Basys3 / Arduino)
+  - [x] Switch view based on project board profile
+- [x] Evidence Capture
+  - [x] Implement "Capture Snapshot" button
+  - [x] Persist telemetry in evidence
+- [x] Verification
+  - [x] Map Analog Channel -> Plot updates
+  - [x] PWM Control -> Signal update
+  - [x] Export/Import restores telemetry

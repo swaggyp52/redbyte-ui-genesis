@@ -87,6 +87,10 @@ export function labReducer(state: LabProjectV1, action: LabActionV1): LabProject
       // Verification result is recorded but doesn't mutate core state
       return { ...state, updatedAt: new Date().toISOString() };
 
+    // Evidence
+    case 'evidence/addSnapshot':
+      return recordSnapshot(state, action.p);
+
     default:
       // Type narrowing — if this doesn't compile, we missed an action
       const _exhaustive: never = action;
@@ -252,13 +256,35 @@ function removeProbe(state: LabProjectV1, payload: { probeId: string }): LabProj
 // Board Mapping Mutations
 // ============================================================================
 
+// ============================================================================
+// Board Mapping Mutations
+// ============================================================================
+
 function setBoardProfile(state: LabProjectV1, payload: { profileId: string }): LabProjectV1 {
+  // 1. Save current board state to savedBoards
+  const currentProfileId = state.boardMap?.boardProfileId;
+  let savedBoards = state.savedBoards || {};
+
+  if (currentProfileId && state.boardMap) {
+    savedBoards = {
+      ...savedBoards,
+      [currentProfileId]: {
+        signalToPinMap: state.boardMap.signalToPinMap,
+        virtualIOState: state.boardMap.virtualIOState,
+      },
+    };
+  }
+
+  // 2. Load new board state if exists, otherwise default
+  const savedState = savedBoards[payload.profileId];
+
   return {
     ...state,
+    savedBoards, // Persist the updated map of saved boards
     boardMap: {
       boardProfileId: payload.profileId,
-      signalToPinMap: {}, // Reset mapping on profile change
-      virtualIOState: {
+      signalToPinMap: savedState?.signalToPinMap || {},
+      virtualIOState: savedState?.virtualIOState || {
         switches: [],
         buttons: [],
       },
@@ -367,7 +393,7 @@ export function recordAction(
 }
 
 /**
- * Add evidence snapshot (checkpoint verification result).
+ * Add evidence snapshot (checkpoint verification result or manual capture).
  */
 export function recordSnapshot(
   state: LabProjectV1,
