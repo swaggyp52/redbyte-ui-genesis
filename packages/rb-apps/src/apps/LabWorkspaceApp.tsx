@@ -14,13 +14,14 @@
  * Full integration with LogicPlayground deferred until loop is validated.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { RedByteApp } from '../types';
 import { useLabEngineStore } from '@redbyte/rb-lab-engine';
-import type { LabProjectV1 } from '@redbyte/rb-utils/labProjectSchema';
+import type { LabProjectV1, IntegrityResult } from '@redbyte/rb-utils/labProjectSchema';
 import { DesignMode } from '../components/DesignMode';
 import { VerifyMode } from '../components/VerifyMode';
 import { DeployMode } from '../components/DeployMode';
+import { IntegrityBadge } from '../components/IntegrityBadge';
 
 // Lab 0 content (inline for vertical slice)
 const lab0Content = {
@@ -85,7 +86,9 @@ type LabMode = 'design' | 'verify' | 'deploy';
 
 const LabWorkspaceAppComponent: React.FC<{ windowId: string }> = ({ windowId }) => {
   const [mode, setMode] = useState<LabMode>('design');
-  const { project, loadProject, exportCapsule } = useLabEngineStore();
+  const [integrityStatus, setIntegrityStatus] = useState<IntegrityResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { project, loadProject, exportCapsule, importCapsule } = useLabEngineStore();
 
   // Initialize with Lab 0 project
   useEffect(() => {
@@ -130,6 +133,33 @@ const LabWorkspaceAppComponent: React.FC<{ windowId: string }> = ({ windowId }) 
       console.error('Export failed:', err);
       alert(`Export failed: ${err instanceof Error ? err.message : String(err)}`);
     }
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const result = await importCapsule(file);
+      setIntegrityStatus(result.integrity);
+
+      if (result.integrity.status === 'verified') {
+        alert('✅ Evidence capsule verified! Project loaded successfully.');
+      } else {
+        alert(`⚠️ ${result.integrity.message}\n\nModified files: ${result.integrity.details?.modifiedFiles?.join(', ') ?? 'unknown'}`);
+      }
+    } catch (err) {
+      console.error('Import failed:', err);
+      alert(`Import failed: ${err instanceof Error ? err.message : String(err)}`);
+      setIntegrityStatus(null);
+    }
+
+    // Reset input so same file can be selected again
+    e.target.value = '';
   };
 
   if (!project) {
@@ -182,6 +212,35 @@ const LabWorkspaceAppComponent: React.FC<{ windowId: string }> = ({ windowId }) 
         ))}
 
         <div style={{ flex: 1 }} />
+
+        {integrityStatus && (
+          <IntegrityBadge status={integrityStatus.status} />
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".zip"
+          onChange={handleImportFile}
+          style={{ display: 'none' }}
+          aria-label="Import evidence capsule file"
+        />
+
+        <button
+          onClick={handleImportClick}
+          style={{
+            padding: '8px 16px',
+            borderRadius: 6,
+            border: '1px solid var(--rb-border, #333)',
+            background: 'var(--rb-surface-2, #252538)',
+            color: 'var(--rb-text, #e4e4e7)',
+            cursor: 'pointer',
+            fontSize: 13,
+            marginRight: 8,
+          }}
+        >
+          Import Capsule
+        </button>
 
         <button
           onClick={handleExport}

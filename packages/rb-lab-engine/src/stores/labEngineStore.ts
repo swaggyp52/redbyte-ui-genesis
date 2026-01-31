@@ -41,6 +41,10 @@ interface LabEngineState {
   // High-level operations (async)
   verifyCheckpoint: (checkpointId: string) => Promise<CheckpointResult>;
   exportCapsule: () => Promise<Blob>;
+  importCapsule: (file: File) => Promise<{
+    project: LabProjectV1;
+    integrity: import('@redbyte/rb-utils/labProjectSchema').IntegrityResult;
+  }>;
 }
 
 // ============================================================================
@@ -145,6 +149,29 @@ export const useLabEngineStore = create<LabEngineState>((set, get) => ({
     const { exportEvidenceCapsule } = await import('../services/exportService');
 
     return exportEvidenceCapsule(project);
+  },
+
+  // -------------------------------------------------------------------------
+  // Import Capsule (Async)
+  // -------------------------------------------------------------------------
+
+  importCapsule: async (file) => {
+    // Import import service dynamically
+    const { importEvidenceCapsule } = await import('../services/exportService');
+
+    // Read file as blob
+    const blob = new Blob([file], { type: file.type });
+
+    // Import and verify
+    const result = await importEvidenceCapsule(blob);
+
+    // Load the imported project
+    set({ project: result.project });
+
+    return {
+      project: result.project,
+      integrity: result.integrity,
+    };
   },
 }));
 
