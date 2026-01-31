@@ -101,7 +101,9 @@
       "Bash(npm run:*)",
       "Bash(unzip:*)",
       "Bash(node tools/bridge-smoke.mjs:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(timeout 10 tail:*)",
+      "Bash(timeout 15 tail:*)"
     ],
     "deny": [],
     "ask": []

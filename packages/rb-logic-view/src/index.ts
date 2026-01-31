@@ -28,13 +28,4 @@ export type { ToolbarProps } from './components/Toolbar';
 // Tools
 export { renderGrid } from './tools/grid';
 export type { GridConfig } from './tools/grid';
-export {
-  usePanZoomHandlers,
-  screenToWorld,
-  worldToScreen,
-  snapToGrid,
-  calculateFitToView,
-} from './tools/panzoom';
-export type { PanZoomHandlers, PanZoomOptions } from './tools/panzoom';
-
 export { findSmartSpawnPosition } from './tools/placement';

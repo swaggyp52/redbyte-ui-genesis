@@ -47,7 +47,8 @@ import { useViewStateStore } from '../stores/viewStateStore';
 import { useProbeStore } from '../stores/probeStore';
 import { useLayoutStore, type PerspectiveId } from '../stores/layoutStore';
 import { useOscilloscopeStore } from '../stores/oscilloscopeStore';
-import { calculateFitToView, setGlobalViewStateSync, useLogicViewStore, screenToWorld, snapToGrid, findSmartSpawnPosition } from '@redbyte/rb-logic-view';
+import { setGlobalViewStateSync, useLogicViewStore, findSmartSpawnPosition } from '@redbyte/rb-logic-view';
+import { screenToWorld, snapToGrid, fitToBounds } from '@redbyte/rb-viewport';
 import { useHierarchyStore } from '../stores/hierarchyStore';
 import { buildProbeWireHighlights } from '../utils/probeHighlight';
 import { useRunRecorderStore } from '../stores/runRecorderStore';
@@ -2954,7 +2955,22 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
         case 'playground-fit-view': {
           const size = useViewStateStore.getState().circuitViewSize;
           if (!size) return;
-          const nextCamera = calculateFitToView(circuit.nodes, size.width, size.height);
+          if (circuit.nodes.length === 0) {
+            (useLogicViewStore() as any).getState().setCamera({ x: 0, y: 0, zoom: 1 });
+            return;
+          }
+          let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+          circuit.nodes.forEach((node) => {
+            minX = Math.min(minX, node.position.x);
+            maxX = Math.max(maxX, node.position.x);
+            minY = Math.min(minY, node.position.y);
+            maxY = Math.max(maxY, node.position.y);
+          });
+          if (!isFinite(minX)) {
+            (useLogicViewStore() as any).getState().setCamera({ x: 0, y: 0, zoom: 1 });
+            return;
+          }
+          const nextCamera = fitToBounds({ minX, maxX, minY, maxY }, size.width, size.height, 100, 2);
           (useLogicViewStore() as any).getState().setCamera(nextCamera);
           return;
         }

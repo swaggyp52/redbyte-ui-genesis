@@ -10,10 +10,10 @@ import { NodeView, type ChipMetadata } from './components/NodeView';
 import { WireView } from './components/WireView';
 import { Toolbar } from './components/Toolbar';
 import { renderGrid } from './tools/grid';
-import { snapToGrid as snapPointToGrid, calculateFitToView } from './tools/panzoom';
 import { isValidConnection, normalizeConnection, isInputPort } from './tools/wireValidation';
 import { findSmartSpawnPosition } from './tools/placement';
 import { trackRender, useUiTickStore } from '@redbyte/rb-utils';
+import { CanvasHost, snapToGrid as snapPointToGrid, fitToBounds } from '@redbyte/rb-viewport';
 
 export interface LogicCanvasProps {
   engine: TickEngine;
@@ -313,20 +313,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     return unsubscribe;
   }, []); // Empty deps - subscription is stable, uses refs for callbacks
 
-  // Non-passive wheel event listener for zooming (React 19 compatibility)
-  React.useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const delta = e.ctrlKey ? -e.deltaY * 0.5 : -e.deltaY;
-      zoomFn(delta, e.clientX, e.clientY);
-    };
-
-    svg.addEventListener('wheel', handleWheel, { passive: false });
-    return () => svg.removeEventListener('wheel', handleWheel);
-  }, [zoomFn]);
 
   // Mouse handlers for pan/zoom
   const [isPanning, setIsPanning] = React.useState(false);
@@ -608,7 +594,28 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
   // Fit circuit to view
   const fitToView = React.useCallback(() => {
-    const newCamera = calculateFitToView(circuit.nodes, width, height);
+    if (circuit.nodes.length === 0) {
+      setCamera({ x: 0, y: 0, zoom: 1 });
+      return;
+    }
+
+    // Calculate bounds
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+
+    circuit.nodes.forEach((node) => {
+      minX = Math.min(minX, node.position.x);
+      maxX = Math.max(maxX, node.position.x);
+      minY = Math.min(minY, node.position.y);
+      maxY = Math.max(maxY, node.position.y);
+    });
+
+    if (!isFinite(minX)) {
+      setCamera({ x: 0, y: 0, zoom: 1 });
+      return;
+    }
+
+    const newCamera = fitToBounds({ minX, maxX, minY, maxY }, width, height, 100, 2);
     setCamera(newCamera);
   }, [circuit.nodes, width, height, setCamera]);
 
@@ -641,84 +648,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const editingStateRef = React.useRef(editingState);
   editingStateRef.current = editingState;
 
-  // Keyboard handlers - uses refs to avoid re-registering on every render
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't handle keyboard events if focus is in an input
-      const activeElement = document.activeElement;
-      if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
-        return;
-      }
-
-      if (e.key === ' ') {
-        // Space: Enable pan mode
-        e.preventDefault(); // Prevent page scroll
-        setIsSpacePressed(true);
-      } else if (e.key === 'Alt') {
-        // Alt: Temporarily disable snap
-        setIsAltPressed(true);
-      } else if (e.key === 'Delete' || e.key === 'Backspace') {
-        handleDeleteRef.current();
-      } else if (e.key === 'Escape') {
-        clearSelectionRef.current();
-        if (editingStateRef.current.wireStartPort) {
-          endWireRef.current();
-        }
-      } else if (e.key === 'w' || e.key === 'W') {
-        // W: Toggle wire mode
-        if (editingStateRef.current.wireStartPort) {
-          // Cancel active wire
-          endWireRef.current();
-        } else {
-          // Toggle wire mode on/off
-          setToolModeRef.current(toolModeRef.current === 'wire' ? 'select' : 'wire');
-        }
-      } else if (e.key === 'g' || e.key === 'G') {
-        // G: Toggle snap to grid
-        toggleSnapToGridRef.current();
-      } else if (e.key === 'f' || e.key === 'F') {
-        if (e.ctrlKey || e.metaKey) {
-          // Ctrl/Cmd+F: Fit to view
-          e.preventDefault();
-          fitToViewRef.current();
-        } else {
-          // F: Fit to view
-          fitToViewRef.current();
-        }
-      } else if (e.key === 'r' && (e.ctrlKey || e.metaKey)) {
-        // Ctrl/Cmd+R: Reset view
-        e.preventDefault();
-        resetViewRef.current();
-      } else if (e.key === '0') {
-        if (e.ctrlKey || e.metaKey) {
-          // Ctrl/Cmd+0: Reset zoom to 100%
-          e.preventDefault();
-          setCameraRef.current({ ...cameraRef.current, zoom: 1 });
-        } else {
-          // 0: Reset view
-          resetViewRef.current();
-        }
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === ' ') {
-        // Space released: Disable pan mode
-        setIsSpacePressed(false);
-        setIsPanning(false); // Stop panning if in progress
-      } else if (e.key === 'Alt') {
-        // Alt released: Re-enable snap
-        setIsAltPressed(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, []); // Empty deps - uses refs for all callbacks
 
   React.useEffect(() => {
     bumpHud();
@@ -744,8 +673,85 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     };
   }, []);
 
+  // CanvasHost wheel handler
+  const handleWheelActive = React.useCallback((e: WheelEvent) => {
+    const delta = e.ctrlKey ? -e.deltaY * 0.5 : -e.deltaY;
+    zoomFn(delta, e.clientX, e.clientY);
+  }, [zoomFn]);
+
+  // CanvasHost keyboard handlers
+  const handleKeyDownActive = React.useCallback((e: KeyboardEvent) => {
+    if (e.key === ' ') {
+      // Space: Enable pan mode
+      e.preventDefault(); // Prevent page scroll
+      setIsSpacePressed(true);
+    } else if (e.key === 'Alt') {
+      // Alt: Temporarily disable snap
+      setIsAltPressed(true);
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      handleDeleteRef.current();
+    } else if (e.key === 'Escape') {
+      clearSelectionRef.current();
+      if (editingStateRef.current.wireStartPort) {
+        endWireRef.current();
+      }
+    } else if (e.key === 'w' || e.key === 'W') {
+      // W: Toggle wire mode
+      if (editingStateRef.current.wireStartPort) {
+        // Cancel active wire
+        endWireRef.current();
+      } else {
+        // Toggle wire mode on/off
+        setToolModeRef.current(toolModeRef.current === 'wire' ? 'select' : 'wire');
+      }
+    } else if (e.key === 'g' || e.key === 'G') {
+      // G: Toggle snap to grid
+      toggleSnapToGridRef.current();
+    } else if (e.key === 'f' || e.key === 'F') {
+      if (e.ctrlKey || e.metaKey) {
+        // Ctrl/Cmd+F: Fit to view
+        e.preventDefault();
+        fitToViewRef.current();
+      } else {
+        // F: Fit to view
+        fitToViewRef.current();
+      }
+    } else if (e.key === 'r' && (e.ctrlKey || e.metaKey)) {
+      // Ctrl/Cmd+R: Reset view
+      e.preventDefault();
+      resetViewRef.current();
+    } else if (e.key === '0') {
+      if (e.ctrlKey || e.metaKey) {
+        // Ctrl/Cmd+0: Reset zoom to 100%
+        e.preventDefault();
+        setCameraRef.current({ ...cameraRef.current, zoom: 1 });
+      } else {
+        // 0: Reset view
+        resetViewRef.current();
+      }
+    }
+  }, [zoomFn]);
+
+  const handleKeyUpActive = React.useCallback((e: KeyboardEvent) => {
+    if (e.key === ' ') {
+      // Space released: Disable pan mode
+      setIsSpacePressed(false);
+      setIsPanning(false); // Stop panning if in progress
+    } else if (e.key === 'Alt') {
+      // Alt released: Re-enable snap
+      setIsAltPressed(false);
+    }
+  }, []);
+
   return (
-    <div style={{ position: 'relative', width, height, overflow: 'hidden' }}>
+    <CanvasHost
+      id="playground-canvas"
+      onWheelActive={handleWheelActive}
+      onKeyDownActive={handleKeyDownActive}
+      onKeyUpActive={handleKeyUpActive}
+      preventPageScroll={true}
+    >
+      <div style={{ position: 'relative', width, height, overflow: 'hidden' }}>
       {showToolbar && (
         <Toolbar
           engine={engine}
@@ -1054,6 +1060,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             })}
         </g>
       </svg>
-    </div>
+      </div>
+    </CanvasHost>
   );
 };

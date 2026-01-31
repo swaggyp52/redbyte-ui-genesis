@@ -1,0 +1,21 @@
+{
+  "name": "@redbyte/rb-viewport",
+  "version": "1.0.0",
+  "description": "Unified viewport and interaction primitives for RedByte OS canvas views",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "react": "^19.0.0"
+  }
+}

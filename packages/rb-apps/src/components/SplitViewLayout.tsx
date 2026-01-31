@@ -4,7 +4,8 @@
 
 import React from 'react';
 import type { CircuitEngine, Circuit, TickEngine } from '@redbyte/rb-logic-core';
-import { LogicCanvas, calculateFitToView, useLogicViewStore } from '@redbyte/rb-logic-view';
+import { LogicCanvas, useLogicViewStore } from '@redbyte/rb-logic-view';
+import { fitToBounds } from '@redbyte/rb-viewport';
 // Lazy-load 3D scene to avoid loading heavy Three.js stack unless enabled
 const Logic3DSceneLazy = React.lazy(() =>
   import('@redbyte/rb-logic-3d').then((m) => ({ default: m.Logic3DScene }))
@@ -201,7 +202,22 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   }, [view, dimensions, setCircuitViewSize]);
 
   const handleFitToView = React.useCallback(() => {
-    const nextCamera = calculateFitToView(circuit.nodes, dimensions.width, dimensions.height);
+    if (circuit.nodes.length === 0) {
+      setCamera({ x: 0, y: 0, zoom: 1 });
+      return;
+    }
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    circuit.nodes.forEach((node) => {
+      minX = Math.min(minX, node.position.x);
+      maxX = Math.max(maxX, node.position.x);
+      minY = Math.min(minY, node.position.y);
+      maxY = Math.max(maxY, node.position.y);
+    });
+    if (!isFinite(minX)) {
+      setCamera({ x: 0, y: 0, zoom: 1 });
+      return;
+    }
+    const nextCamera = fitToBounds({ minX, maxX, minY, maxY }, dimensions.width, dimensions.height, 100, 2);
     setCamera(nextCamera);
   }, [circuit.nodes, dimensions.width, dimensions.height, setCamera]);
 

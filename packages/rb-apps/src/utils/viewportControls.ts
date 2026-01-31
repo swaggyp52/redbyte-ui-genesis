@@ -3,6 +3,15 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 /**
+ * @deprecated Use @redbyte/rb-viewport instead
+ * This file will be removed in PR 2 (Phase 1.2)
+ *
+ * Migration:
+ * - import { useUnifiedViewport } from '@redbyte/rb-viewport'
+ * - Wrap canvas in <CanvasHost> for event routing
+ */
+
+/**
  * Viewport Controls — Reusable Pan/Zoom/Fit for Circuit/Schematic/Board views
  *
  * Premium interaction contract:

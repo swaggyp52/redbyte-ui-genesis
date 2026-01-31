@@ -5,7 +5,8 @@
 import React from 'react';
 import { shallow } from 'zustand/shallow';
 import type { Circuit } from '@redbyte/rb-logic-core';
-import { calculateFitToView, useLogicViewStore } from '@redbyte/rb-logic-view';
+import { useLogicViewStore } from '@redbyte/rb-logic-view';
+import { fitToBounds } from '@redbyte/rb-viewport';
 import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 
 interface CircuitToolStripProps {
@@ -46,7 +47,22 @@ export const CircuitToolStrip: React.FC<CircuitToolStripProps> = ({
 
   const handleFit = () => {
     if (width <= 0 || height <= 0) return;
-    const nextCamera = calculateFitToView(circuit.nodes, width, height);
+    if (circuit.nodes.length === 0) {
+      setCamera({ x: 0, y: 0, zoom: 1 });
+      return;
+    }
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    circuit.nodes.forEach((node) => {
+      minX = Math.min(minX, node.position.x);
+      maxX = Math.max(maxX, node.position.x);
+      minY = Math.min(minY, node.position.y);
+      maxY = Math.max(maxY, node.position.y);
+    });
+    if (!isFinite(minX)) {
+      setCamera({ x: 0, y: 0, zoom: 1 });
+      return;
+    }
+    const nextCamera = fitToBounds({ minX, maxX, minY, maxY }, width, height, 100, 2);
     setCamera(nextCamera);
   };
 
