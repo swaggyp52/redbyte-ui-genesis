@@ -53,6 +53,45 @@ export async function runBisect(step: number) {
         renderMarker(5, React.createElement('div', { style: { marginTop: 8 } }, shellEl));
         break;
       }
+      case 10: {
+        // Dual Canvas Test: Verify Gate 4 (active state switching)
+        const { CanvasHost } = await import('@redbyte/rb-viewport');
+
+        const TestCanvas = ({ id, color }: { id: string; color: string }) => {
+          return React.createElement(
+            CanvasHost as any,
+            {
+              id,
+              className: "border-2 rounded-md transition-colors border-gray-700 active:border-rb-accent"
+            },
+            React.createElement(
+              'div',
+              {
+                'data-testid': `canvas-${id}`,
+                style: {
+                  width: 300,
+                  height: 200,
+                  backgroundColor: color,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontWeight: 'bold'
+                }
+              },
+              `Canvas: ${id}`
+            )
+          );
+        };
+
+        renderMarker(10, React.createElement(
+          'div',
+          { style: { display: 'flex', gap: 20, marginTop: 20 } },
+          React.createElement(TestCanvas, { id: 'left', color: '#1e293b' }),
+          React.createElement(TestCanvas, { id: 'right', color: '#334155' })
+        ));
+        break;
+      }
       default:
         renderMarker(step);
     }
@@ -65,4 +104,3 @@ export async function runBisect(step: number) {
     ReactDOM.createRoot(root).render(errorDiv);
   }
 }
-

@@ -18,6 +18,7 @@ const systemIcons: Array<{ id: string; label: string; iconId: IconName }> = [
 
 const appIcons: Array<{ id: string; label: string; iconId: IconName }> = [
   { id: 'logic-playground', label: 'Logic Playground', iconId: 'logic' },
+  { id: 'ece-lab', label: 'Lab', iconId: 'cpu' },
   { id: 'start-here', label: 'Start Here', iconId: 'cpu' },
   { id: 'terminal', label: 'Terminal', iconId: 'terminal' },
   { id: 'system-log', label: 'System Log', iconId: 'log' },

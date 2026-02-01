@@ -9,8 +9,6 @@ test.describe('CanvasHost Gates', () => {
     });
 
     // Helper to get logic canvas container
-    // LogicCanvas structure: CanvasHost -> div -> div(HUD) | Toolbar
-    // We locate it via HUD parent's parent
     const getCanvas = (page) => page.getByTestId('circuit-hud').locator('xpath=../..');
 
     test('Gate 1: Wheel zoom does not scroll page when hovering canvas', async ({ page }) => {
@@ -20,8 +18,6 @@ test.describe('CanvasHost Gates', () => {
 
         await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
 
-        // Ensure we are active
-        // We can't easily check internal state, but we can verify behavior
         // Scroll the wheel
         await page.mouse.wheel(0, 500);
 
@@ -34,12 +30,8 @@ test.describe('CanvasHost Gates', () => {
     });
 
     test('Gate 2: Space in sidebar input does not pan/active canvas', async ({ page }) => {
-        const canvas = getCanvas(page);
-
-        // Find an input in the sidebar (e.g. search/filter or properties)
         const sidebarInput = page.locator('input').first();
 
-        // Fallback: if no input found easily, we might skip or fail.
         if (await sidebarInput.count() === 0) {
             test.skip(true, 'No inputs found on page to test Gate 2');
             return;
@@ -58,7 +50,6 @@ test.describe('CanvasHost Gates', () => {
         await hud.hover();
 
         // Wheel over HUD
-        // This should NOT scroll the page (meaning canvas is still active and capturing)
         await page.mouse.wheel(0, 500);
         await page.waitForTimeout(100);
 
@@ -84,8 +75,6 @@ test.describe('CanvasHost Gates', () => {
         await page.mouse.move(rightBox!.x + 10, rightBox!.y + 10);
         await page.mouse.wheel(0, 100);
         await page.waitForTimeout(50);
-
-        // 3. Verify no crash
     });
 
     test('Gate 5: Window blur releases canvas active state', async ({ page }) => {
@@ -98,7 +87,6 @@ test.describe('CanvasHost Gates', () => {
             window.dispatchEvent(new Event('blur'));
         });
 
-        // If deactivated, wheel should NOT be captured (though page might not scroll anyway)
         await page.mouse.wheel(0, 500);
     });
 

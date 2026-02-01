@@ -16,6 +16,8 @@ export interface AppManifest {
   category?: 'system' | 'tools' | 'logic' | 'examples';
   /** How this app's state should persist. Default: 'none'. */
   persistence?: PersistenceMode;
+  /** Hidden from launcher; still accessible via terminal or URL. */
+  hidden?: boolean;
 }
 
 export interface RedByteApp {

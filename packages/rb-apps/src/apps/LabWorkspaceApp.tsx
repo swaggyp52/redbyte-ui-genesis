@@ -289,6 +289,7 @@ export const LabWorkspaceApp: RedByteApp = {
     category: 'logic',
     defaultSize: { width: 900, height: 650 },
     persistence: 'session',
+    hidden: true,
   },
   component: LabWorkspaceAppComponent,
 };

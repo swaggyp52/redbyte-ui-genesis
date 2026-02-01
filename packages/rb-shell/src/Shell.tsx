@@ -52,6 +52,7 @@ import { TopBar } from './TopBar';
 import { RecoveryPrompt, type RecoveryAction } from './RecoveryPrompt';
 import { checkForRecovery, clearJournal, unregisterAutosave } from './persistenceStore';
 import { HomeScreen } from './HomeScreen';
+import { RecentLogWidget } from './RecentLogWidget';
 import { trackWindowOpen, runWindowCleanup, startLeakMonitor } from './leakGuard';
 
 export interface ShellProps {
@@ -1460,6 +1461,23 @@ export const Shell: React.FC<ShellProps> = () => {
               payload: { targetAppId: 'logic-playground', exampleId },
             });
           }}
+          determinismMode={determinismMode}
+          tickCount={determinismRecorder.tickCount}
+          isRecording={determinismRecorder.isRecording}
+          hasRecording={determinismRecorder.hasRecording}
+          logEntryCount={systemLogEntries.length}
+          hasProofPack={
+            determinismRecorder.verificationResult
+              ? determinismRecorder.verificationResult.equal === true
+              : false
+          }
+          verificationStatus={
+            determinismRecorder.verificationResult
+              ? determinismRecorder.verificationResult.equal
+                ? 'pass'
+                : 'fail'
+              : undefined
+          }
         />
       )}
 
@@ -1688,6 +1706,9 @@ export const Shell: React.FC<ShellProps> = () => {
       {import.meta.env.DEV && showDeadZoneScanner && <DeadZoneScanner />}
       {import.meta.env.DEV && showOverlayDebug && <OverlayDebugHUD />}
 
+      {/* Recent Log Widget: above the Evidence Bar */}
+      <RecentLogWidget onOpenLog={openLog} />
+
       {/* Truth Bar: Always-visible determinism status */}
       <TruthBar
         mode={determinismMode}
@@ -1719,6 +1740,12 @@ export const Shell: React.FC<ShellProps> = () => {
             : undefined
         }
         onOpenPanel={() => setDeterminismPanelOpen(true)}
+        recordingEventCount={determinismRecorder.eventCount}
+        hasProofPack={
+          determinismRecorder.verificationResult
+            ? determinismRecorder.verificationResult.equal === true
+            : false
+        }
       />
     </div>
   );

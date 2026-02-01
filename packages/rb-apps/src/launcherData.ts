@@ -7,7 +7,7 @@ export async function getAppsForLauncher() {
   const { listApps } = await import('./AppRegistry');
   const apps = listApps();
   return apps
-    .filter((app) => app.manifest.id !== 'launcher')
+    .filter((app) => app.manifest.id !== 'launcher' && !app.manifest.hidden)
     .map((app) => ({
     id: app.manifest.id,
     name: app.manifest.name,
