@@ -28,7 +28,7 @@ import { useWorkspaceStore, loadWorkspaces } from './workspaceStore';
 import { executeMacro, type MacroExecutionContext } from './macros/executeMacro';
 import { useMacroStore } from './macros/macroStore';
 import BootScreen from './BootScreen';
-import { ToastContainer, toast } from '@redbyte/rb-primitives';
+import { Modal, ToastContainer, toast } from '@redbyte/rb-primitives';
 import { CommandPalette, type Command } from './CommandPalette';
 import { SystemSearch } from './SystemSearch';
 import { WorkspaceSwitcher, MacroRunner, WindowSwitcher } from './modals';
@@ -48,6 +48,9 @@ import { DeterminismPanel, useDeterminismRecorder } from './dev';
 import { TruthBar, type DeterminismMode } from './TruthBar';
 import { OnboardingModal } from './OnboardingModal';
 import { AboutModal } from './AboutModal';
+import type { LabProjectV1, CircuitV1 } from '@redbyte/rb-utils';
+import { exportEvidenceCapsule, importEvidenceCapsule } from '@redbyte/rb-lab-engine';
+import { serialize, type Circuit } from '@redbyte/rb-logic-core';
 import { TopBar } from './TopBar';
 import { RecoveryPrompt, type RecoveryAction } from './RecoveryPrompt';
 import { checkForRecovery, clearJournal, unregisterAutosave } from './persistenceStore';
@@ -77,6 +80,18 @@ type SnapPreviewTarget = 'left' | 'right' | 'maximize';
 interface SnapPreviewState {
   windowId: string;
   target: SnapPreviewTarget;
+}
+
+interface ReproCheckItem {
+  id: string;
+  label: string;
+  passed: boolean;
+  details?: string;
+}
+
+interface ReproCheckReport {
+  passed: boolean;
+  checks: ReproCheckItem[];
 }
 
 interface AppErrorBoundaryProps {
@@ -196,6 +211,9 @@ export const Shell: React.FC<ShellProps> = () => {
   const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false);
   const [macroRunnerOpen, setMacroRunnerOpen] = useState(false);
   const [windowSwitcherOpen, setWindowSwitcherOpen] = useState(false);
+  const [reproCheckOpen, setReproCheckOpen] = useState(false);
+  const [reproCheckReport, setReproCheckReport] = useState<ReproCheckReport | null>(null);
+  const currentProjectRef = useRef<LabProjectV1 | null>(null);
   const [showRecoveryPrompt, setShowRecoveryPrompt] = useState<boolean>(() => {
     return checkForRecovery().length > 0;
   });
@@ -291,6 +309,72 @@ export const Shell: React.FC<ShellProps> = () => {
       const next = [appId, ...prev.filter((id) => id !== appId)];
       return next.slice(0, 5);
     });
+  }, [loadImportedProject]);
+
+  const handleVerifyReproducibility = useCallback(() => {
+    const project = currentProjectRef.current;
+    if (!project) {
+      toast.error('No project available to verify');
+      return;
+    }
+
+    const checks: ReproCheckItem[] = [];
+
+    // Schema version check
+    checks.push({
+      id: 'schema',
+      label: 'Schema version is supported',
+      passed: project.schemaVersion === '1.0',
+      details: `schemaVersion=${project.schemaVersion}`,
+    });
+
+    // Circuit node reference check
+    const nodeIds = new Set(project.circuit.nodes.map((n) => n.id));
+    const invalidConnections = project.circuit.connections.filter(
+      (c) => !nodeIds.has(c.fromNodeId) || !nodeIds.has(c.toNodeId)
+    );
+    checks.push({
+      id: 'circuit',
+      label: 'Circuit references are valid',
+      passed: invalidConnections.length === 0,
+      details: invalidConnections.length ? `${invalidConnections.length} invalid connections` : 'ok',
+    });
+
+    // Probe definitions check
+    const invalidProbes = project.simulation.probes.filter((p) => !p.id || !p.signal);
+    checks.push({
+      id: 'probes',
+      label: 'Probes are well-formed',
+      passed: invalidProbes.length === 0,
+      details: invalidProbes.length ? `${invalidProbes.length} invalid probes` : 'ok',
+    });
+
+    // IO mapping references
+    const ioEntries = [
+      ...(project.ioMapping?.inputs ?? []),
+      ...(project.ioMapping?.outputs ?? []),
+    ];
+    const invalidIo = ioEntries.filter((entry) => !nodeIds.has(entry.nodeId) || !entry.port);
+    checks.push({
+      id: 'io-mapping',
+      label: 'IO mapping references valid nodes/ports',
+      passed: invalidIo.length === 0,
+      details: invalidIo.length ? `${invalidIo.length} invalid mappings` : 'ok',
+    });
+
+    // Recordings check (structure only)
+    const recordings = project.recordings ?? [];
+    const invalidRecordings = recordings.filter((r) => !Array.isArray(r.events));
+    checks.push({
+      id: 'recordings',
+      label: 'Recordings are structurally valid',
+      passed: invalidRecordings.length === 0,
+      details: invalidRecordings.length ? `${invalidRecordings.length} invalid recordings` : 'ok',
+    });
+
+    const passed = checks.every((c) => c.passed);
+    setReproCheckReport({ passed, checks });
+    setReproCheckOpen(true);
   }, []);
 
   const togglePinnedAppId = useCallback((appId: string) => {
@@ -820,6 +904,183 @@ export const Shell: React.FC<ShellProps> = () => {
     [determinismRecorder, getCurrentCircuit]
   );
 
+  // Export handler: convert current circuit to LabProjectV1 and download .rbx.zip
+  const handleExportProof = useCallback(async () => {
+    const circuit = getCurrentCircuit();
+    if (!circuit) {
+      toast.error('No circuit to export');
+      return;
+    }
+
+    try {
+      // Convert Circuit to CircuitV1 (LabProjectV1 schema)
+      const circuitV1: CircuitV1 = {
+        schemaVersion: '1.0',
+        nodes: circuit.nodes.map((node) => ({
+          id: node.id,
+          type: node.type,
+          x: node.x || 0,
+          y: node.y || 0,
+          rotation: node.rotation || 0,
+          params: node.config || {},
+          label: node.label,
+          state: node.state || {},
+        })),
+        connections: circuit.connections.map((conn) => ({
+          id: conn.id,
+          fromNodeId: conn.from,
+          fromPin: conn.fromPin || 'out',
+          toNodeId: conn.to,
+          toPin: conn.toPin || 'in',
+        })),
+        customChips: [],
+      };
+
+      // Build minimal LabProjectV1
+      const now = new Date().toISOString();
+      const project: LabProjectV1 = {
+        schemaVersion: '1.0',
+        projectId: `project-${Date.now()}`,
+        name: 'RedByte Circuit',
+        description: 'Exported from RedByte Logic Playground',
+        createdAt: now,
+        updatedAt: now,
+        circuit: circuitV1,
+        simulation: {
+          tickRate: 20,
+          currentTick: determinismRecorder.tickCount || 0,
+          probes: [],
+        },
+        ioMapping: {
+          inputs: [],
+          outputs: [],
+        },
+        evidence: {
+          actions: [],
+          snapshots: [],
+        },
+        recordings: [],
+      };
+
+      currentProjectRef.current = project;
+
+      // Export to zip blob
+      const blob = await exportEvidenceCapsule(project);
+
+      // Trigger download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `redbyte-circuit-${Date.now()}.rbx.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success('Circuit exported successfully');
+      logSystemEvent({
+        level: 'action',
+        source: 'export',
+        message: `Exported circuit: ${project.name}`,
+      });
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, [getCurrentCircuit, determinismRecorder.tickCount]);
+
+  const loadImportedProject = useCallback(
+    (project: LabProjectV1, circuit: Circuit) => {
+      const baseName = (project.name || 'imported-circuit').trim();
+      const safeName = baseName.replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '');
+      const filename = `${safeName || 'imported-circuit'}.rblogic`;
+      const serialized = serialize(circuit);
+      const contentStr = JSON.stringify(serialized);
+      const fileId = useFileSystemStore.getState().createFile('documents', filename, contentStr);
+
+      openWindow('logic-playground', {
+        resourceId: fileId,
+        resourceType: 'file',
+      });
+    },
+    [openWindow]
+  );
+
+  // Import handler: load .rbx.zip and reconstruct circuit
+  const handleImportProject = useCallback(async () => {
+    try {
+      // Create file input element
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.rbx.zip,.rb-lab.zip,.zip';
+      
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
+        try {
+          // Import and verify
+          const blob = file;
+          const { project, integrity } = await importEvidenceCapsule(blob);
+
+          // Show integrity status
+          if (integrity.status === 'verified') {
+            toast.success(`✅ ${integrity.message}`);
+          } else if (integrity.status === 'modified') {
+            toast.warning(`⚠️ ${integrity.message}`);
+          } else {
+            toast.info(integrity.message);
+          }
+
+          currentProjectRef.current = project;
+
+          // Convert CircuitV1 back to Circuit format for Logic Playground
+          const circuit = {
+            nodes: project.circuit.nodes.map((node) => ({
+              id: node.id,
+              type: node.type,
+              x: node.x,
+              y: node.y,
+              rotation: node.rotation,
+              config: node.params || {},
+              label: node.label,
+              state: node.state || {},
+              inputs: {},
+              outputs: {},
+            })),
+            connections: project.circuit.connections.map((conn) => ({
+              id: conn.id,
+              from: conn.fromNodeId,
+              fromPin: conn.fromPin,
+              to: conn.toNodeId,
+              toPin: conn.toPin,
+            })),
+          };
+
+          // Persist as a .rblogic file and open in Logic Playground
+          loadImportedProject(project, circuit);
+
+          toast.success(`Project imported: ${project.name}`);
+          
+          logSystemEvent({
+            level: 'action',
+            source: 'import',
+            message: `Imported project: ${project.name}`,
+            data: { projectId: project.projectId, integrity: integrity.status },
+          });
+        } catch (error) {
+          console.error('Import failed:', error);
+          toast.error(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      };
+
+      input.click();
+    } catch (error) {
+      console.error('Import dialog failed:', error);
+      toast.error('Failed to open import dialog');
+    }
+  }, []);
+
   // Ref to hold latest executeCommand for macro execution
   const executeCommandRef = useRef<((command: Command) => void) | null>(null);
 
@@ -956,6 +1217,21 @@ export const Shell: React.FC<ShellProps> = () => {
 
         case 'open-user-manual': {
           openWindow('user-manual');
+          break;
+        }
+
+        case 'project-import': {
+          handleImportProject();
+          break;
+        }
+
+        case 'project-export': {
+          handleExportProof();
+          break;
+        }
+
+        case 'project-verify': {
+          handleVerifyReproducibility();
           break;
         }
 
@@ -1612,6 +1888,48 @@ export const Shell: React.FC<ShellProps> = () => {
         />
       )}
 
+      {reproCheckOpen && reproCheckReport && (
+        <Modal
+          isOpen={reproCheckOpen}
+          onClose={() => setReproCheckOpen(false)}
+          title={reproCheckReport.passed ? 'Reproducibility Check: PASS' : 'Reproducibility Check: FAIL'}
+          width={520}
+          height={420}
+        >
+          <div className="p-6 space-y-4">
+            <div className="text-sm text-slate-300">
+              {reproCheckReport.passed
+                ? 'All checks passed. Project should reproduce deterministically.'
+                : 'Some checks failed. Fix issues before exporting to other machines.'}
+            </div>
+            <ul className="space-y-2">
+              {reproCheckReport.checks.map((check) => (
+                <li key={check.id} className="flex items-start gap-2 text-sm">
+                  <span className={check.passed ? 'text-emerald-400' : 'text-red-400'}>
+                    {check.passed ? '✓' : '✕'}
+                  </span>
+                  <div>
+                    <div className="text-slate-200">{check.label}</div>
+                    {check.details && (
+                      <div className="text-slate-500 text-xs">{check.details}</div>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setReproCheckOpen(false)}
+                className="px-3 py-1.5 rounded text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-100"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {workspaceSwitcherOpen && (
         <WorkspaceSwitcher
           workspaces={useWorkspaceStore.getState().listWorkspaces()}
@@ -1746,6 +2064,7 @@ export const Shell: React.FC<ShellProps> = () => {
             ? determinismRecorder.verificationResult.equal === true
             : false
         }
+        onExportProof={handleExportProof}
       />
     </div>
   );

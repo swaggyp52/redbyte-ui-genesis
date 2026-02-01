@@ -14,7 +14,7 @@ import type {
   BoardIOCheckpoint,
   CheckpointResult,
   CheckpointFailure,
-} from '@redbyte/rb-utils/labProjectSchema';
+} from '@redbyte/rb-utils';
 import { CircuitEngine } from '@redbyte/rb-logic-core';
 import { toLegacyCircuit } from '../adapters/circuitAdapter';
 

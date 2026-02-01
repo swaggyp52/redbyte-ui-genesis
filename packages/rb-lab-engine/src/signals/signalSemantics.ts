@@ -1,5 +1,5 @@
 
-import type { LabProject } from '@redbyte/rb-utils/labProjectSchema';
+import type { LabProject } from '@redbyte/rb-utils';
 
 /**
  * Extracts a normalized 0 | 1 | undefined from the project for a given signal name.

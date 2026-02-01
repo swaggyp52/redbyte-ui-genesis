@@ -11,7 +11,7 @@ import type {
   LabProjectV1,
   CustomCheckpoint,
   CheckpointResult,
-} from '@redbyte/rb-utils/labProjectSchema';
+} from '@redbyte/rb-utils';
 
 export async function verifyCustom(
   project: LabProjectV1,

@@ -13,7 +13,7 @@ import type {
   LabProjectV1,
   Checkpoint,
   CheckpointResult,
-} from '@redbyte/rb-utils/labProjectSchema';
+} from '@redbyte/rb-utils';
 
 export async function verifyCheckpoint(
   project: LabProjectV1,

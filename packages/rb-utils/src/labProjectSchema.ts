@@ -84,6 +84,9 @@ export interface LabProjectV1 {
     };
   };
 
+  // Cross-view I/O mapping (Logic Playground ↔ 2D Lab ↔ 3D Lab)
+  ioMapping?: IoMapping;
+
   // Persistence for multi-board switching
   savedBoards?: Record<string, {
     signalToPinMap: Record<string, string>;
@@ -99,9 +102,123 @@ export interface LabProjectV1 {
     snapshots: EvidenceSnapshot[]; // Sparse snapshots (checkpoints only)
     manifest?: EvidenceManifest; // SHA256 integrity (on export)
   };
+
+  // Deterministic recordings (optional)
+  recordings?: RecordingV1[];
 }
 
-// ... (Probes, LabSpec, Checkpoints unchanged) ...
+// ============================================================================
+// Cross-view IO Mapping (Minimal V1)
+// ============================================================================
+
+export interface IoMapping {
+  inputs: IoMappingEntry[];
+  outputs: IoMappingEntry[];
+}
+
+export interface IoMappingEntry {
+  id: string;
+  nodeId: string;
+  port: string;
+  label?: string;
+  pin?: string;
+}
+
+// ============================================================================
+// Recordings (Minimal V1)
+// ============================================================================
+
+export interface RecordingV1 {
+  id: string;
+  createdAt: string; // ISO 8601
+  tickCount: number;
+  eventCount: number;
+  events: unknown[];
+}
+
+// ============================================================================
+// Probe Configuration
+// ============================================================================
+
+export interface ProbeDefinition {
+  id: string;
+  signal: string; // Node ID or pin name
+  label?: string;
+  color?: string; // Waveform color
+}
+
+// ============================================================================
+// Lab Spec (Structured Lab Objectives)
+// ============================================================================
+
+export interface LabSpecV1 {
+  schemaVersion: '1.0';
+  title: string;
+  description?: string;
+  objectives: string[];
+  checkpoints: CheckpointDefinition[];
+}
+
+export interface CheckpointDefinition {
+  id: string;
+  type: 'truth-table' | 'test-vector' | 'waveform' | 'board-io' | 'custom';
+  title: string;
+  description?: string;
+  config: Record<string, unknown>; // Type-specific configuration
+}
+
+// Specific checkpoint types
+export interface TruthTableCheckpoint extends CheckpointDefinition {
+  type: 'truth-table';
+  config: {
+    inputs: string[]; // Signal names
+    outputs: string[]; // Signal names
+    table: TruthTableRow[];
+  };
+}
+
+export interface TruthTableRow {
+  inputs: Record<string, boolean>;
+  outputs: Record<string, boolean>;
+}
+
+export interface TestVectorCheckpoint extends CheckpointDefinition {
+  type: 'test-vector';
+  config: {
+    vectors: TestVector[];
+  };
+}
+
+export interface TestVector {
+  tick: number;
+  inputs: Record<string, boolean | number>;
+  expected: Record<string, boolean | number>;
+}
+
+export interface WaveformCheckpoint extends CheckpointDefinition {
+  type: 'waveform';
+  config: {
+    duration: number; // ticks
+    signals: string[]; // Probe signals
+    pattern?: unknown; // Pattern to match (TBD)
+  };
+}
+
+export interface BoardIOCheckpoint extends CheckpointDefinition {
+  type: 'board-io';
+  config: {
+    switchSettings: boolean[];
+    expectedLEDs: boolean[];
+  };
+}
+
+export interface CustomCheckpoint extends CheckpointDefinition {
+  type: 'custom';
+  config: {
+    validatorCode?: string; // JS code to run (unsafe, future)
+    expected: unknown;
+  };
+}
 
 /**
  * All actions follow versioned namespaced format:

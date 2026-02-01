@@ -23,7 +23,7 @@ import type {
   CircuitNode,
   CircuitConnection,
   ProbeDefinition,
-} from '@redbyte/rb-utils/labProjectSchema';
+} from '@redbyte/rb-utils';
 
 // ============================================================================
 // Core Reducer

@@ -13,7 +13,7 @@
  */
 
 import type { Circuit, Node, Connection as LegacyConnection } from '@redbyte/rb-logic-core';
-import type { CircuitV1, CircuitNode, CircuitConnection } from '@redbyte/rb-utils/labProjectSchema';
+import type { CircuitV1, CircuitNode, CircuitConnection } from '@redbyte/rb-utils';
 
 // ============================================================================
 // Legacy → CircuitV1 Conversion

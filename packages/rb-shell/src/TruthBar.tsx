@@ -227,15 +227,15 @@ export const TruthBar: React.FC<TruthBarProps> = ({
               </button>
             )}
 
-            {/* Export Proof Button */}
-            {onExportProof && hasProofPack && (
+            {/* Export Button */}
+            {onExportProof && canRecord && (
               <button
                 type="button"
                 onClick={onExportProof}
                 className="px-2.5 py-1 rounded text-xs font-semibold bg-emerald-600/80 hover:bg-emerald-500 text-white transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 focus:ring-offset-slate-900"
-                title="Export proof pack"
+                title={hasProofPack ? 'Export proof pack' : 'Export project'}
               >
-                EXPORT
+                {hasProofPack ? 'EXPORT PROOF' : 'EXPORT PROJECT'}
               </button>
             )}
 

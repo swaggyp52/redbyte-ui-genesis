@@ -20,7 +20,9 @@ import type {
   CapsuleIndex,
   EvidenceManifest,
   EvidenceFileEntry,
-} from '@redbyte/rb-utils/labProjectSchema';
+  IntegrityResult,
+} from '@redbyte/rb-utils';
+import { generateReadme } from './readmeGenerator';
 
 // Get build version from environment or fallback
 const BUILD_SHA = import.meta.env.VITE_BUILD_SHA ?? 'dev';
@@ -76,6 +78,13 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
   const actionsHash = await stableHash(actionsLog);
   files.set('actions.log.json', actionsJson);
   zip.file('actions.log.json', actionsJson);
+
+  // -------------------------------------------------------------------------
+  // 2.5. Generate README.md (auto-generated human-readable summary)
+  // -------------------------------------------------------------------------
+
+  const readme = generateReadme(project);
+  zip.file('README.md', readme);
 
   // -------------------------------------------------------------------------
   // 3. Build evidence manifest
@@ -140,7 +149,7 @@ export async function importEvidenceCapsule(
 ): Promise<{
   project: LabProjectV1;
   capsule: CapsuleIndex;
-  integrity: import('@redbyte/rb-utils/labProjectSchema').IntegrityResult;
+  integrity: IntegrityResult;
 }> {
   const zip = await JSZip.loadAsync(blob);
 
@@ -175,7 +184,7 @@ export async function importEvidenceCapsule(
   const manifestIntact = actualManifestHash === capsule.manifestHash;
 
   // Determine integrity status
-  let integrity: import('@redbyte/rb-utils/labProjectSchema').IntegrityResult;
+  let integrity: IntegrityResult;
   if (projectIntact && manifestIntact) {
     integrity = {
       status: 'verified',

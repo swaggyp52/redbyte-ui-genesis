@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { produce } from 'immer';
 import { labReducer } from '../reducer/labReducer';
-import { LabProjectV1, LabActionV1 } from '@redbyte/rb-utils/labProjectSchema';
+import { LabProjectV1, LabActionV1 } from '@redbyte/rb-utils';
 
 // Minimal mock state
 const mockProject: LabProjectV1 = {

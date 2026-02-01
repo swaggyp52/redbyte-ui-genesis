@@ -11,7 +11,7 @@ import type {
   LabProjectV1,
   TestVectorCheckpoint,
   CheckpointResult,
-} from '@redbyte/rb-utils/labProjectSchema';
+} from '@redbyte/rb-utils';
 
 export async function verifyTestVector(
   project: LabProjectV1,

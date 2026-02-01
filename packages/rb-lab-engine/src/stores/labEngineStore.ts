@@ -22,7 +22,10 @@ import type {
   LabProjectV1,
   LabActionV1,
   CheckpointResult,
-} from '@redbyte/rb-utils/labProjectSchema';
+  IntegrityResult,
+  EvidenceSnapshot,
+  CircuitV1,
+} from '@redbyte/rb-utils';
 import { labReducer, recordAction, recordSnapshot } from '../reducer/labReducer';
 
 // ============================================================================
@@ -43,7 +46,7 @@ interface LabEngineState {
   exportCapsule: () => Promise<Blob>;
   importCapsule: (file: File) => Promise<{
     project: LabProjectV1;
-    integrity: import('@redbyte/rb-utils/labProjectSchema').IntegrityResult;
+    integrity: IntegrityResult;
   }>;
 }
 
@@ -114,7 +117,7 @@ export const useLabEngineStore = create<LabEngineState>((set, get) => ({
     });
 
     // Record evidence snapshot if verification completed
-    const snapshot: import('@redbyte/rb-utils/labProjectSchema').EvidenceSnapshot = {
+    const snapshot: EvidenceSnapshot = {
       timestamp: new Date().toISOString(),
       checkpointId,
       tick: project.simulation.currentTick,
@@ -179,7 +182,7 @@ export const useLabEngineStore = create<LabEngineState>((set, get) => ({
 // Helper Functions (Simple hashing to avoid circular dependency)
 // ============================================================================
 
-async function hashCircuit(circuit: import('@redbyte/rb-utils/labProjectSchema').CircuitV1): Promise<string> {
+async function hashCircuit(circuit: CircuitV1): Promise<string> {
   const json = JSON.stringify(circuit, Object.keys(circuit).sort());
   const encoder = new TextEncoder();
   const data = encoder.encode(json);

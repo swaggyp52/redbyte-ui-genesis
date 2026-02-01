@@ -15,7 +15,7 @@ import type {
   CheckpointResult,
   CheckpointFailure,
   TruthTableRow,
-} from '@redbyte/rb-utils/labProjectSchema';
+} from '@redbyte/rb-utils';
 import { CircuitEngine } from '@redbyte/rb-logic-core';
 import { toLegacyCircuit } from '../adapters/circuitAdapter';
 

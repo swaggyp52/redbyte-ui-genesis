@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { labReducer } from '../reducer/labReducer';
 import { getSignalValue, getAvailableSignals } from '../signals/signalSemantics';
-import type { LabProject } from '@redbyte/rb-utils/labProjectSchema';
+import type { LabProject } from '@redbyte/rb-utils';
 
 // Mock initial state
 const initialProject: LabProject = {

@@ -19,6 +19,9 @@ export type Command =
   | 'delete-workspace'
   | 'run-macro'
   | 'open-user-manual'
+  | 'project-import'
+  | 'project-export'
+  | 'project-verify'
   | 'playground-layout-build'
   | 'playground-layout-analyze'
   | 'playground-layout-explain'
@@ -152,6 +155,24 @@ const COMMANDS: CommandItem[] = [
     label: 'Playground: Export Artifacts',
     description: 'Export netlist, Verilog, or debug bundle',
     category: 'Playground',
+  },
+  {
+    id: 'project-import',
+    label: 'Project: Import',
+    description: 'Import a .rbx.zip project file',
+    category: 'System',
+  },
+  {
+    id: 'project-export',
+    label: 'Project: Export',
+    description: 'Export current circuit as .rbx.zip',
+    category: 'System',
+  },
+  {
+    id: 'project-verify',
+    label: 'Project: Verify Reproducibility',
+    description: 'Validate project schema and mapping integrity',
+    category: 'System',
   },
   {
     id: 'playground-layout-build',

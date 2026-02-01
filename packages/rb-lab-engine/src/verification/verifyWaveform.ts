@@ -11,7 +11,7 @@ import type {
   LabProjectV1,
   WaveformCheckpoint,
   CheckpointResult,
-} from '@redbyte/rb-utils/labProjectSchema';
+} from '@redbyte/rb-utils';
 
 export async function verifyWaveform(
   project: LabProjectV1,

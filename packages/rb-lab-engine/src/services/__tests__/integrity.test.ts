@@ -14,7 +14,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { exportEvidenceCapsule, importEvidenceCapsule } from '../exportService';
-import type { LabProjectV1 } from '@redbyte/rb-utils/labProjectSchema';
+import type { LabProjectV1 } from '@redbyte/rb-utils';
 
 // Minimal valid project fixture
 const createTestProject = (): LabProjectV1 => ({
