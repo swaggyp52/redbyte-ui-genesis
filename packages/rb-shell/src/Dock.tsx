@@ -129,10 +129,12 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
   const renderIcon = (dock: typeof allIcons[number]) => {
     const isRunning = runningIds.includes(dock.id);
     const isHovered = hoveredId === dock.id;
-    const title =
+    const tooltipText =
       dock.id === 'launcher'
-        ? `${dock.label} (${LAUNCHER_SHORTCUT_HINT}) — Type to search — ${SETTINGS_SHORTCUT_HINT} for Settings`
-        : dock.label;
+        ? `${dock.label} (${LAUNCHER_SHORTCUT_HINT})`
+        : dock.id === 'settings'
+          ? `${dock.label} (${SETTINGS_SHORTCUT_HINT})`
+          : dock.label;
     const ariaLabel = dock.id === 'launcher' ? `Launcher (${LAUNCHER_SHORTCUT_HINT})` : dock.label;
     const ariaKeyShortcuts =
       dock.id === 'launcher'
@@ -152,8 +154,7 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
         ref={(el) => { buttonRefs.current[dock.id] = el; }}
         aria-label={ariaLabel}
         aria-keyshortcuts={ariaKeyShortcuts}
-        title={title}
-        className="relative h-10 w-10 rounded-lg flex items-center justify-center transition-all"
+        className="relative h-10 w-10 rounded-lg flex items-center justify-center transition-all group"
         style={{
           transform: isHovered ? 'translateX(2px)' : 'translateX(0)',
           transition: `all ${isHovered ? '120ms' : '80ms'} var(--rb-easing-out)`,
@@ -161,6 +162,20 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
         }}
         data-testid={`dock-icon-${dock.id}`}
       >
+        {/* Instant tooltip - appears on hover */}
+        {isHovered && (
+          <span
+            className="absolute left-full ml-2 px-2 py-1 rounded text-xs font-medium whitespace-nowrap pointer-events-none z-50"
+            style={{
+              background: 'var(--rb-surface-3)',
+              color: 'var(--rb-text)',
+              border: '1px solid var(--rb-border)',
+              boxShadow: 'var(--rb-shadow-2)',
+            }}
+          >
+            {tooltipText}
+          </span>
+        )}
         {/* Running indicator — left edge bar */}
         {isRunning && (
           <span

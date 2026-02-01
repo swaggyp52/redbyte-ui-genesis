@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useCallback, useEffect, useState, useRef, useMemo, type ErrorInfo } from 'react';
+import React, { useCallback, useEffect, useState, useRef, useMemo, Suspense, type ErrorInfo } from 'react';
 import { Desktop } from './Desktop';
 import { Dock } from './Dock';
 import { ShellWindow } from './ShellWindow';
@@ -215,6 +215,35 @@ class AppErrorBoundary extends React.Component<
     return this.props.children;
   }
 }
+
+/** Loading fallback shown inside Suspense when lazy-loaded app components are loading. */
+const WindowLoadingFallback: React.FC = () => (
+  <div
+    style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100%',
+      background: 'var(--rb-surface-0)',
+      color: 'var(--rb-text-2)',
+      gap: '12px',
+    }}
+  >
+    <div
+      style={{
+        width: 24,
+        height: 24,
+        border: '2px solid var(--rb-border)',
+        borderTopColor: 'var(--rb-accent)',
+        borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite',
+      }}
+    />
+    <span style={{ fontSize: '12px', fontWeight: 500 }}>Loading...</span>
+    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+  </div>
+);
 
 export const Shell: React.FC<ShellProps> = () => {
   const BOOT_STORAGE_KEY = 'rb:shell:booted:v1';
@@ -2309,22 +2338,24 @@ export const Shell: React.FC<ShellProps> = () => {
             }}
           >
             <AppErrorBoundary appId={app.manifest.id} windowId={window.id} onClose={() => handleClose(window.id)}>
-              <Component
-                windowId={window.id}
-                onOpenApp={openWindow}
-                onClose={() => handleClose(window.id)}
-                onDispatchIntent={dispatchIntent}
-                registerStateAccessor={registerWindowStateAccessor}
-                unregisterStateAccessor={unregisterWindowStateAccessor}
-                determinismRecorder={determinismRecorder}
-                getCurrentCircuit={getCurrentCircuit}
-                versionLabel={getVersionString()}
-                recentAppIds={app.manifest.id === 'launcher' ? recentAppIds : undefined}
-                pinnedAppIds={app.manifest.id === 'launcher' ? pinnedAppIds : undefined}
-                runningAppIds={app.manifest.id === 'launcher' ? runningAppIds : undefined}
-                onTogglePin={app.manifest.id === 'launcher' ? togglePinnedAppId : undefined}
-                {...binding?.props}
-              />
+              <Suspense fallback={<WindowLoadingFallback />}>
+                <Component
+                  windowId={window.id}
+                  onOpenApp={openWindow}
+                  onClose={() => handleClose(window.id)}
+                  onDispatchIntent={dispatchIntent}
+                  registerStateAccessor={registerWindowStateAccessor}
+                  unregisterStateAccessor={unregisterWindowStateAccessor}
+                  determinismRecorder={determinismRecorder}
+                  getCurrentCircuit={getCurrentCircuit}
+                  versionLabel={getVersionString()}
+                  recentAppIds={app.manifest.id === 'launcher' ? recentAppIds : undefined}
+                  pinnedAppIds={app.manifest.id === 'launcher' ? pinnedAppIds : undefined}
+                  runningAppIds={app.manifest.id === 'launcher' ? runningAppIds : undefined}
+                  onTogglePin={app.manifest.id === 'launcher' ? togglePinnedAppId : undefined}
+                  {...binding?.props}
+                />
+              </Suspense>
             </AppErrorBoundary>
           </ShellWindow>
         );
