@@ -107,6 +107,9 @@ export interface LabProjectV1 {
   recordings?: RecordingV1[];
 }
 
+// Backward-compatible alias
+export type LabProject = LabProjectV1;
+
 // ============================================================================
 // Cross-view IO Mapping (Minimal V1)
 // ============================================================================
@@ -153,6 +156,8 @@ export interface ProbeDefinition {
 
 export interface LabSpecV1 {
   schemaVersion: '1.0';
+  labId?: string;
+  id?: string;
   title: string;
   description?: string;
   objectives: string[];
@@ -163,8 +168,10 @@ export interface CheckpointDefinition {
   id: string;
   type: 'truth-table' | 'test-vector' | 'waveform' | 'board-io' | 'custom';
   title: string;
+  label?: string;
   description?: string;
-  config: Record<string, unknown>; // Type-specific configuration
+  config?: Record<string, unknown>; // Type-specific configuration
+  spec?: Record<string, unknown>; // Back-compat with lab-engine spec usage
 }
 
 // Specific checkpoint types

@@ -48,9 +48,13 @@ import { DeterminismPanel, useDeterminismRecorder } from './dev';
 import { TruthBar, type DeterminismMode } from './TruthBar';
 import { OnboardingModal } from './OnboardingModal';
 import { AboutModal } from './AboutModal';
+import { ExamplePicker } from './ExamplePicker';
+import { BitstreamProvenanceModal } from './BitstreamProvenanceModal';
+import { loadExampleAsProject, type ExampleId } from '@redbyte/rb-apps';
+import type { BitstreamProvenanceMetadata } from '@redbyte/rb-fpga-toolchain';
 import type { LabProjectV1, CircuitV1 } from '@redbyte/rb-utils';
-import { exportEvidenceCapsule, importEvidenceCapsule } from '@redbyte/rb-lab-engine';
-import { serialize, type Circuit } from '@redbyte/rb-logic-core';
+import { exportEvidenceCapsule, importEvidenceCapsule, useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
+import { serialize, type Circuit, CircuitEngine } from '@redbyte/rb-logic-core';
 import { TopBar } from './TopBar';
 import { RecoveryPrompt, type RecoveryAction } from './RecoveryPrompt';
 import { checkForRecovery, clearJournal, unregisterAutosave } from './persistenceStore';
@@ -92,6 +96,18 @@ interface ReproCheckItem {
 interface ReproCheckReport {
   passed: boolean;
   checks: ReproCheckItem[];
+}
+
+interface ProjectSummaryItem {
+  id: string;
+  label: string;
+  value: string;
+}
+
+interface ProjectSummaryReport {
+  title: string;
+  items: ProjectSummaryItem[];
+  warnings: string[];
 }
 
 interface AppErrorBoundaryProps {
@@ -213,7 +229,10 @@ export const Shell: React.FC<ShellProps> = () => {
   const [windowSwitcherOpen, setWindowSwitcherOpen] = useState(false);
   const [reproCheckOpen, setReproCheckOpen] = useState(false);
   const [reproCheckReport, setReproCheckReport] = useState<ReproCheckReport | null>(null);
+  const [projectSummaryOpen, setProjectSummaryOpen] = useState(false);
+  const [projectSummaryReport, setProjectSummaryReport] = useState<ProjectSummaryReport | null>(null);
   const currentProjectRef = useRef<LabProjectV1 | null>(null);
+  const loadUnifiedProject = useUnifiedProjectStore((s) => s.loadProject);
   const [showRecoveryPrompt, setShowRecoveryPrompt] = useState<boolean>(() => {
     return checkForRecovery().length > 0;
   });
@@ -222,6 +241,9 @@ export const Shell: React.FC<ShellProps> = () => {
   const [determinismPanelOpen, setDeterminismPanelOpen] = useState(false);
   const [onboardingModalOpen, setOnboardingModalOpen] = useState(false);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
+  const [examplePickerOpen, setExamplePickerOpen] = useState(false);
+  const [bitstreamProvenanceOpen, setBitstreamProvenanceOpen] = useState(false);
+  const [bitstreamMetadata, setBitstreamMetadata] = useState<BitstreamProvenanceMetadata | null>(null);
   const [showPerfHud, setShowPerfHud] = useState(() => isPerfDebugEnabled());
   const [showJankHud, setShowJankHud] = useState(false);
   const [showDeadZoneScanner, setShowDeadZoneScanner] = useState(false);
@@ -309,7 +331,7 @@ export const Shell: React.FC<ShellProps> = () => {
       const next = [appId, ...prev.filter((id) => id !== appId)];
       return next.slice(0, 5);
     });
-  }, [loadImportedProject]);
+  }, []);
 
   const handleVerifyReproducibility = useCallback(() => {
     const project = currentProjectRef.current;
@@ -355,16 +377,22 @@ export const Shell: React.FC<ShellProps> = () => {
       ...(project.ioMapping?.outputs ?? []),
     ];
     const invalidIo = ioEntries.filter((entry) => !nodeIds.has(entry.nodeId) || !entry.port);
+    const hasBoardSignals = Object.keys(project.boardMap?.signalToPinMap ?? {}).length > 0;
+    const missingIoMapping = hasBoardSignals && ioEntries.length === 0;
     checks.push({
       id: 'io-mapping',
       label: 'IO mapping references valid nodes/ports',
-      passed: invalidIo.length === 0,
-      details: invalidIo.length ? `${invalidIo.length} invalid mappings` : 'ok',
+      passed: invalidIo.length === 0 && !missingIoMapping,
+      details: missingIoMapping
+        ? 'Board mappings exist but ioMapping is empty'
+        : invalidIo.length
+        ? `${invalidIo.length} invalid mappings`
+        : 'ok',
     });
 
     // Recordings check (structure only)
     const recordings = project.recordings ?? [];
-    const invalidRecordings = recordings.filter((r) => !Array.isArray(r.events));
+    const invalidRecordings = recordings.filter((r) => !Array.isArray(r.events) || r.events.length === 0);
     checks.push({
       id: 'recordings',
       label: 'Recordings are structurally valid',
@@ -372,9 +400,149 @@ export const Shell: React.FC<ShellProps> = () => {
       details: invalidRecordings.length ? `${invalidRecordings.length} invalid recordings` : 'ok',
     });
 
+    // Replay verification (best-effort)
+    if (recordings.length > 0 && invalidRecordings.length === 0) {
+      const events = recordings[0].events ?? [];
+      const runRecord = events.find((e: any) => e?.kind === 'runRecord')?.data ?? events[0];
+      const proofPack = events.find((e: any) => e?.kind === 'proofPack')?.data;
+
+      if (proofPack?.runRecord && runRecord?.circuitDigest && proofPack.runRecord.circuitDigest) {
+        const matches = proofPack.runRecord.circuitDigest === runRecord.circuitDigest;
+        checks.push({
+          id: 'proof-pack',
+          label: 'Proof pack matches recording',
+          passed: matches,
+          details: matches ? 'ok' : 'Circuit digest mismatch',
+        });
+      }
+
+      if (runRecord?.circuitSnapshot && Array.isArray(runRecord.trace) && Array.isArray(runRecord.probes)) {
+        try {
+          const engine = new CircuitEngine(runRecord.circuitSnapshot as Circuit);
+          const expectedByTick = new Map<number, any>();
+          runRecord.trace.forEach((sample: any) => expectedByTick.set(sample.tick, sample));
+
+          const stimulusByTick = new Map<number, any[]>();
+          (runRecord.stimulus || []).forEach((event: any) => {
+            const list = stimulusByTick.get(event.tick) ?? [];
+            list.push(event);
+            stimulusByTick.set(event.tick, list);
+          });
+
+          const maxTick = runRecord.summary?.tickCount ?? runRecord.trace[runRecord.trace.length - 1]?.tick ?? 0;
+          let mismatchTick: number | null = null;
+
+          for (let tick = 0; tick <= maxTick; tick += 1) {
+            const events = stimulusByTick.get(tick) ?? [];
+            events.forEach((event) => {
+              if (event.type === 'input_toggled') {
+                const prevState = engine.getNodeState(event.nodeId) || {};
+                engine.setNodeState(event.nodeId, { ...prevState, isOn: event.value });
+              }
+            });
+
+            engine.tick();
+
+            const expected = expectedByTick.get(tick);
+            if (!expected) continue;
+
+            const signals = engine.getAllSignals();
+            const actualValues: Record<string, 0 | 1> = {};
+            runRecord.probes.forEach((probe: any) => {
+              const key = `${probe.nodeId}.${probe.portName}`;
+              const value = signals.get(key) ?? 0;
+              actualValues[probe.id] = value;
+            });
+
+            const mismatched = Object.keys(actualValues).some((probeId) => {
+              const expectedValue = expected.values?.[probeId];
+              if (expectedValue === undefined) return false;
+              return expectedValue !== actualValues[probeId];
+            });
+
+            if (mismatched) {
+              mismatchTick = tick;
+              break;
+            }
+          }
+
+          checks.push({
+            id: 'replay',
+            label: 'Replay verification matches recorded trace',
+            passed: mismatchTick === null,
+            details: mismatchTick === null ? 'ok' : `Mismatch at tick ${mismatchTick}`,
+          });
+        } catch (error) {
+          checks.push({
+            id: 'replay',
+            label: 'Replay verification matches recorded trace',
+            passed: false,
+            details: error instanceof Error ? error.message : 'Replay failed',
+          });
+        }
+      } else {
+        checks.push({
+          id: 'replay',
+          label: 'Replay verification matches recorded trace',
+          passed: false,
+          details: 'Recording missing trace/probes data',
+        });
+      }
+    }
+
     const passed = checks.every((c) => c.passed);
     setReproCheckReport({ passed, checks });
     setReproCheckOpen(true);
+  }, []);
+
+  const handleProjectSummary = useCallback(() => {
+    const project = currentProjectRef.current;
+    if (!project) {
+      toast.error('No project available');
+      return;
+    }
+
+    const boardSignals = Object.keys(project.boardMap?.signalToPinMap ?? {}).length;
+    const ioInputs = project.ioMapping?.inputs?.length ?? 0;
+    const ioOutputs = project.ioMapping?.outputs?.length ?? 0;
+    const recordings = project.recordings ?? [];
+    const recordingEvents = recordings.reduce((sum, r) => sum + (r.eventCount ?? r.events?.length ?? 0), 0);
+
+    const items: ProjectSummaryItem[] = [
+      { id: 'name', label: 'Name', value: project.name },
+      { id: 'projectId', label: 'Project ID', value: project.projectId },
+      { id: 'schema', label: 'Schema Version', value: project.schemaVersion },
+      { id: 'created', label: 'Created', value: project.createdAt },
+      { id: 'updated', label: 'Updated', value: project.updatedAt },
+      { id: 'nodes', label: 'Circuit Nodes', value: String(project.circuit.nodes.length) },
+      { id: 'connections', label: 'Connections', value: String(project.circuit.connections.length) },
+      { id: 'customChips', label: 'Custom Chips', value: String(project.circuit.customChips?.length ?? 0) },
+      { id: 'probes', label: 'Probes', value: String(project.simulation.probes.length) },
+      { id: 'breakpoints', label: 'Breakpoints', value: String(project.simulation.breakpoints?.length ?? 0) },
+      { id: 'boardSignals', label: 'Board Mappings', value: String(boardSignals) },
+      { id: 'ioMapping', label: 'IO Mapping', value: `${ioInputs} inputs / ${ioOutputs} outputs` },
+      { id: 'recordings', label: 'Recordings', value: `${recordings.length} runs / ${recordingEvents} events` },
+      { id: 'evidenceActions', label: 'Evidence Actions', value: String(project.evidence.actions.length) },
+      { id: 'evidenceSnapshots', label: 'Evidence Snapshots', value: String(project.evidence.snapshots.length) },
+    ];
+
+    const warnings: string[] = [];
+    if (project.schemaVersion !== '1.0') {
+      warnings.push(`Unsupported schema version: ${project.schemaVersion}`);
+    }
+    if (boardSignals > 0 && ioInputs + ioOutputs === 0) {
+      warnings.push('Board mappings exist but IO mapping is empty');
+    }
+    if (project.simulation.probes.length === 0) {
+      warnings.push('No probes configured (waveforms will be empty)');
+    }
+
+    setProjectSummaryReport({
+      title: project.name || 'Project Summary',
+      items,
+      warnings,
+    });
+    setProjectSummaryOpen(true);
   }, []);
 
   const togglePinnedAppId = useCallback((appId: string) => {
@@ -612,19 +780,92 @@ export const Shell: React.FC<ShellProps> = () => {
   const openLauncher = useCallback(() => openWindow('launcher'), [openWindow]);
   const openSettings = useCallback(() => openWindow('settings'), [openWindow]);
 
+  const loadImportedProject = useCallback(
+    (project: LabProjectV1, circuit: Circuit) => {
+      const baseName = (project.name || 'imported-circuit').trim();
+      const safeName = baseName.replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '');
+      const filename = `${safeName || 'imported-circuit'}.rblogic`;
+      const serialized = serialize(circuit);
+      const contentStr = JSON.stringify(serialized);
+      const fileId = useFileSystemStore.getState().createFile('documents', filename, contentStr);
+
+      openWindow('logic-playground', {
+        resourceId: fileId,
+        resourceType: 'file',
+      });
+    },
+    [openWindow]
+  );
+
+  const handleLoadExample = useCallback(
+    (exampleId: ExampleId) => {
+      try {
+        const project = loadExampleAsProject(exampleId);
+        currentProjectRef.current = project;
+        loadUnifiedProject(project);
+
+        // Convert to Circuit format for Logic Playground
+        const circuit = {
+          nodes: project.circuit.nodes.map((node) => ({
+            id: node.id,
+            type: node.type,
+            x: node.x,
+            y: node.y,
+            rotation: node.rotation,
+            config: node.params || {},
+            label: node.label,
+            state: node.state || {},
+            inputs: {},
+            outputs: {},
+          })),
+          connections: project.circuit.connections.map((conn) => ({
+            id: conn.id,
+            from: conn.fromNodeId,
+            fromPin: conn.fromPin,
+            to: conn.toNodeId,
+            toPin: conn.toPin,
+          })),
+        };
+
+        // Persist example as file and open
+        loadImportedProject(project, circuit);
+
+        toast.success(`Loaded example: ${project.name}`);
+        logSystemEvent({
+          level: 'action',
+          source: 'examples',
+          message: `Loaded example: ${project.name}`,
+          data: { projectId: project.projectId, exampleId },
+        });
+      } catch (error) {
+        console.error('Failed to load example:', error);
+        toast.error(`Failed to load example: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    },
+    [loadUnifiedProject, loadImportedProject]
+  );
+
   // Auto-launch Logic Playground from URL parameters (Deep Linking)
   useEffect(() => {
     if (!booted) return;
     if (typeof window === 'undefined') return;
 
     const params = new URLSearchParams(window.location.search);
+    
+    // Check for rb://demo/{exampleId} URI pattern
+    if (params.has('demo')) {
+      const exampleId = params.get('demo') as ExampleId;
+      handleLoadExample(exampleId);
+      return;
+    }
+    
     // Check for Logic Playground specific parameters
     if (params.has('mode') || params.has('example') || params.has('circuit')) {
       // Open logic-playground (openWindow handles singleton check automatically)
       // We rely on the app itself to parse the params again and apply configuration
       openWindow('logic-playground');
     }
-  }, [booted, openWindow]);
+  }, [booted, openWindow, handleLoadExample]);
 
   const dispatchIntent = useCallback(
     (intent: Intent) => {
@@ -989,22 +1230,212 @@ export const Shell: React.FC<ShellProps> = () => {
     }
   }, [getCurrentCircuit, determinismRecorder.tickCount]);
 
-  const loadImportedProject = useCallback(
-    (project: LabProjectV1, circuit: Circuit) => {
-      const baseName = (project.name || 'imported-circuit').trim();
-      const safeName = baseName.replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '');
-      const filename = `${safeName || 'imported-circuit'}.rblogic`;
-      const serialized = serialize(circuit);
-      const contentStr = JSON.stringify(serialized);
-      const fileId = useFileSystemStore.getState().createFile('documents', filename, contentStr);
 
-      openWindow('logic-playground', {
-        resourceId: fileId,
-        resourceType: 'file',
+
+  const handleExportVerilog = useCallback(async () => {
+    try {
+      const project = currentProjectRef.current;
+      if (!project) {
+        toast.error('No project loaded');
+        return;
+      }
+
+      // Dynamic import to avoid circular deps
+      const { 
+        generateBitstreamArtifacts, 
+        validateVerilog, 
+        validateConstraints,
+        calculateReadinessScore 
+      } = await import('@redbyte/rb-fpga-toolchain');
+      
+      const artifacts = await generateBitstreamArtifacts(project);
+
+      // Validate generated Verilog
+      const verilogResult = validateVerilog(artifacts.verilog);
+      
+      // Extract circuit signal names for constraint validation
+      const circuitSignals = [...(verilogResult.moduleInfo?.inputs || []), ...(verilogResult.moduleInfo?.outputs || [])];
+      const constraintResult = artifacts.constraints 
+        ? validateConstraints(artifacts.constraints, circuitSignals)
+        : { valid: true, errors: [], warnings: [] };
+
+      // Calculate readiness score
+      const readinessScore = calculateReadinessScore(verilogResult, constraintResult);
+
+      // Show validation feedback
+      if (!verilogResult.valid) {
+        toast.error(`Verilog validation failed: ${verilogResult.errors.length} errors`);
+        verilogResult.errors.slice(0, 3).forEach(err => {
+          toast.error(`${err.code}: ${err.message}${err.line ? ` (line ${err.line})` : ''}`);
+        });
+        return; // Don't export invalid Verilog
+      }
+
+      if (verilogResult.warnings.length > 0) {
+        toast.warning(`${verilogResult.warnings.length} validation warnings - synthesis readiness: ${readinessScore}%`);
+      }
+
+      if (artifacts.metadata.unsupportedNodes.length > 0) {
+        toast.warning(`Warning: ${artifacts.metadata.unsupportedNodes.length} unsupported nodes`);
+      }
+
+      // Download Verilog
+      const verilogBlob = new Blob([artifacts.verilog], { type: 'text/plain' });
+      const url = URL.createObjectURL(verilogBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.name.replace(/\s+/g, '_')}.v`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      // Also download constraints if available
+      if (artifacts.constraints) {
+        const xdcBlob = new Blob([artifacts.constraints], { type: 'text/plain' });
+        const xdcUrl = URL.createObjectURL(xdcBlob);
+        const xdcLink = document.createElement('a');
+        xdcLink.href = xdcUrl;
+        xdcLink.download = `${project.name.replace(/\s+/g, '_')}.xdc`;
+        document.body.appendChild(xdcLink);
+        xdcLink.click();
+        document.body.removeChild(xdcLink);
+        URL.revokeObjectURL(xdcUrl);
+      }
+
+      toast.success('Verilog exported successfully');
+      logSystemEvent({
+        level: 'action',
+        source: 'fpga',
+        message: 'Verilog exported',
+        data: { 
+          projectId: project.projectId,
+          verilogHash: artifacts.metadata.verilogHash,
+          nodeCount: artifacts.metadata.nodeCount,
+        },
       });
-    },
-    [openWindow]
-  );
+    } catch (error) {
+      console.error('Verilog export failed:', error);
+      toast.error(`Verilog export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, []);
+
+  const handleBuildBitstream = useCallback(async () => {
+    try {
+      const project = currentProjectRef.current;
+      if (!project) {
+        toast.error('No project loaded');
+        return;
+      }
+
+      // Dynamic import to avoid circular deps (browser-safe parts only)
+      const { generateBitstreamArtifacts } = await import('@redbyte/rb-fpga-toolchain');
+      
+      toast.info('Bitstream synthesis requires Vivado - run locally with toolchain installed');
+      
+      // Generate artifacts to show what would be synthesized
+      const artifacts = await generateBitstreamArtifacts(project);
+
+      if (artifacts.metadata.unsupportedNodes.length > 0) {
+        toast.warning(`Warning: ${artifacts.metadata.unsupportedNodes.length} unsupported nodes - synthesis may fail`);
+      }
+
+      // Note: Actual synthesis requires Node.js environment with Vivado installed
+      // This is a browser environment, so we only generate HDL artifacts
+      toast.info('Verilog and constraints generated - synthesis requires local Vivado installation');
+      
+      logSystemEvent({
+        level: 'action',
+        source: 'fpga',
+        message: 'Bitstream build requested (requires local toolchain)',
+        data: { 
+          projectId: project.projectId,
+          verilogHash: artifacts.metadata.verilogHash,
+          nodeCount: artifacts.metadata.nodeCount,
+        },
+      });
+
+      // Store artifacts for potential download
+      currentProjectRef.current = {
+        ...project,
+        fpgaArtifacts: artifacts,
+      };
+    } catch (error) {
+      console.error('Bitstream build failed:', error);
+      toast.error(`Bitstream build failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      logSystemEvent({
+        level: 'error',
+        source: 'fpga',
+        message: 'Bitstream build error',
+        data: { error: error instanceof Error ? error.message : 'Unknown' },
+      });
+    }
+  }, []);
+
+  const handleProgramBoard = useCallback(async () => {
+    try {
+      const project = currentProjectRef.current;
+      if (!project) {
+        toast.error('No project loaded');
+        return;
+      }
+
+      // Check if bitstream was built
+      const bitstreamPath = (project as any).fpgaArtifacts?.metadata?.bitstreamPath;
+      if (!bitstreamPath) {
+        toast.error('No bitstream available - build bitstream first using local Vivado installation');
+        return;
+      }
+
+      toast.info('Board programming requires local toolchain - use rb-fpga-bridge or Vivado Hardware Manager');
+      
+      logSystemEvent({
+        level: 'action',
+        source: 'fpga',
+        message: 'Board programming requested (requires local hardware)',
+        data: { 
+          projectId: project.projectId, 
+          bitstreamPath 
+        },
+      });
+    } catch (error) {
+      console.error('Board programming failed:', error);
+      toast.error(`Board programming failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      logSystemEvent({
+        level: 'error',
+        source: 'fpga',
+        message: 'Board programming error',
+        data: { error: error instanceof Error ? error.message : 'Unknown' },
+      });
+    }
+  }, []);
+
+  const handleShowBitstreamProvenance = useCallback(async () => {
+    try {
+      const project = currentProjectRef.current;
+      if (!project) {
+        toast.error('No project loaded');
+        return;
+      }
+
+      // Generate metadata
+      const { generateBitstreamArtifacts } = await import('@redbyte/rb-fpga-toolchain');
+      const artifacts = await generateBitstreamArtifacts(project);
+      
+      setBitstreamMetadata(artifacts.metadata);
+      setBitstreamProvenanceOpen(true);
+      
+      logSystemEvent({
+        level: 'action',
+        source: 'fpga',
+        message: 'Bitstream provenance viewed',
+        data: { projectId: project.projectId },
+      });
+    } catch (error) {
+      console.error('Failed to generate bitstream metadata:', error);
+      toast.error(`Failed to generate metadata: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, []);
 
   // Import handler: load .rbx.zip and reconstruct circuit
   const handleImportProject = useCallback(async () => {
@@ -1033,6 +1464,8 @@ export const Shell: React.FC<ShellProps> = () => {
           }
 
           currentProjectRef.current = project;
+
+          loadUnifiedProject(project);
 
           // Convert CircuitV1 back to Circuit format for Logic Playground
           const circuit = {
@@ -1232,6 +1665,36 @@ export const Shell: React.FC<ShellProps> = () => {
 
         case 'project-verify': {
           handleVerifyReproducibility();
+          break;
+        }
+
+        case 'project-summary': {
+          handleProjectSummary();
+          break;
+        }
+
+        case 'open-example': {
+          setExamplePickerOpen(true);
+          break;
+        }
+
+        case 'project-export-verilog': {
+          handleExportVerilog();
+          break;
+        }
+
+        case 'project-build-bitstream': {
+          handleBuildBitstream();
+          break;
+        }
+
+        case 'project-program-board': {
+          handleProgramBoard();
+          break;
+        }
+
+        case 'project-bitstream-provenance': {
+          handleShowBitstreamProvenance();
           break;
         }
 
@@ -1930,6 +2393,37 @@ export const Shell: React.FC<ShellProps> = () => {
         </Modal>
       )}
 
+      {projectSummaryOpen && projectSummaryReport && (
+        <Modal
+          isOpen={projectSummaryOpen}
+          onClose={() => setProjectSummaryOpen(false)}
+          title={`Project Summary: ${projectSummaryReport.title}`}
+          width={560}
+          height={520}
+        >
+          <div className="p-6 space-y-4">
+            {projectSummaryReport.warnings.length > 0 && (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                <div className="font-semibold uppercase tracking-wide text-[10px]">Warnings</div>
+                <ul className="mt-1 list-disc list-inside space-y-1">
+                  {projectSummaryReport.warnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="grid grid-cols-1 gap-3">
+              {projectSummaryReport.items.map((item) => (
+                <div key={item.id} className="flex items-start justify-between gap-4 rounded-lg border border-slate-700/60 bg-slate-900/40 px-3 py-2">
+                  <div className="text-xs uppercase tracking-wide text-slate-400">{item.label}</div>
+                  <div className="text-sm text-slate-100 text-right break-all">{item.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {workspaceSwitcherOpen && (
         <WorkspaceSwitcher
           workspaces={useWorkspaceStore.getState().listWorkspaces()}
@@ -1993,6 +2487,22 @@ export const Shell: React.FC<ShellProps> = () => {
         <AboutModal
           isOpen={aboutModalOpen}
           onClose={() => setAboutModalOpen(false)}
+        />
+      )}
+
+      {/* Example Picker Modal */}
+      <ExamplePicker
+        open={examplePickerOpen}
+        onClose={() => setExamplePickerOpen(false)}
+        onSelectExample={handleLoadExample}
+      />
+
+      {/* Bitstream Provenance Modal */}
+      {bitstreamMetadata && (
+        <BitstreamProvenanceModal
+          isOpen={bitstreamProvenanceOpen}
+          onClose={() => setBitstreamProvenanceOpen(false)}
+          metadata={bitstreamMetadata}
         />
       )}
 

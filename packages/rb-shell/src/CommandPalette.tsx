@@ -22,6 +22,12 @@ export type Command =
   | 'project-import'
   | 'project-export'
   | 'project-verify'
+  | 'project-summary'
+  | 'open-example'
+  | 'project-export-verilog'
+  | 'project-build-bitstream'
+  | 'project-program-board'
+  | 'project-bitstream-provenance'
   | 'playground-layout-build'
   | 'playground-layout-analyze'
   | 'playground-layout-explain'
@@ -172,6 +178,42 @@ const COMMANDS: CommandItem[] = [
     id: 'project-verify',
     label: 'Project: Verify Reproducibility',
     description: 'Validate project schema and mapping integrity',
+    category: 'System',
+  },
+  {
+    id: 'project-summary',
+    label: 'Project: Summary',
+    description: 'View project metadata and integrity hints',
+    category: 'System',
+  },
+  {
+    id: 'open-example',
+    label: 'Open Example',
+    description: 'Load a pre-built example project',
+    category: 'System',
+  },
+  {
+    id: 'project-export-verilog',
+    label: 'Project: Export Verilog',
+    description: 'Generate synthesizable Verilog HDL and constraints from circuit',
+    category: 'System',
+  },
+  {
+    id: 'project-build-bitstream',
+    label: 'Project: Build Bitstream',
+    description: 'Generate HDL artifacts (requires local Vivado for actual synthesis)',
+    category: 'System',
+  },
+  {
+    id: 'project-program-board',
+    label: 'Project: Program Board',
+    description: 'Prepare bitstream for flashing (requires local toolchain for actual programming)',
+    category: 'System',
+  },
+  {
+    id: 'project-bitstream-provenance',
+    label: 'Project: Bitstream Provenance',
+    description: 'View HDL and bitstream integrity metadata',
     category: 'System',
   },
   {

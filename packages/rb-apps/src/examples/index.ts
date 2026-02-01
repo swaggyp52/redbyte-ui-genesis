@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import type { SerializedCircuitV1 } from '@redbyte/rb-logic-core';
+import type { LabProjectV1 } from '@redbyte/rb-utils';
 import example01 from './01_wire-lamp.json';
 import example02 from './02_and-gate.json';
 import example03 from './03_half-adder.json';
@@ -18,6 +19,10 @@ import example12 from './12_2to4-decoder.json';
 import example13 from './13_4to1-mux.json';
 import example14 from './14_4bit-register.json';
 import example15 from './15_not-gate.json';
+import example16 from './16_8bit-counter-basys3.json';
+import example17 from './17_traffic-light-fsm-basys3.json';
+import example18 from './18_4bit-alu-basys3.json';
+import { generateExampleProject, type ExampleSource } from './exampleGenerator';
 
 export type ExampleId =
   | '01_wire-lamp'
@@ -34,11 +39,14 @@ export type ExampleId =
   | '12_2to4-decoder'
   | '13_4to1-mux'
   | '14_4bit-register'
-  | '15_not-gate';
+  | '15_not-gate'
+  | '16_8bit-counter-basys3'
+  | '17_traffic-light-fsm-basys3'
+  | '18_4bit-alu-basys3';
 
 export type CircuitLayer = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
-interface ExampleMetadata {
+export interface ExampleMetadata {
   id: ExampleId;
   name: string;
   description: string;
@@ -199,6 +207,38 @@ const examples: Record<ExampleId, { data: SerializedCircuitV1; metadata: Example
     },
   },
 
+  // Layer 6: FPGA Hardware - Real board examples
+  '16_8bit-counter-basys3': {
+    data: example16 as SerializedCircuitV1,
+    metadata: {
+      id: '16_8bit-counter-basys3',
+      name: '8-bit Counter (Basys3)',
+      description: 'Hardware-ready 8-bit binary counter for Basys3 FPGA board',
+      layer: 6,
+      difficulty: 'advanced',
+    },
+  },
+  '17_traffic-light-fsm-basys3': {
+    data: example17 as SerializedCircuitV1,
+    metadata: {
+      id: '17_traffic-light-fsm-basys3',
+      name: 'Traffic Light FSM (Basys3)',
+      description: '3-state traffic light controller with timer - hardware synthesis ready',
+      layer: 6,
+      difficulty: 'advanced',
+    },
+  },
+  '18_4bit-alu-basys3': {
+    data: example18 as SerializedCircuitV1,
+    metadata: {
+      id: '18_4bit-alu-basys3',
+      name: '4-bit ALU (Basys3)',
+      description: 'Arithmetic Logic Unit with ADD/SUB/AND/OR operations - hardware ready',
+      layer: 6,
+      difficulty: 'advanced',
+    },
+  },
+
   // Layer 6: Simple Processors - 8-bit computers
   '05_simple-cpu': {
     data: example05 as SerializedCircuitV1,
@@ -248,3 +288,23 @@ export async function loadExample(id: ExampleId): Promise<SerializedCircuitV1> {
   }
   return Promise.resolve(example.data);
 }
+
+/** Load example as full LabProjectV1 with probes, IO mapping, and metadata */
+export function loadExampleAsProject(id: ExampleId): LabProjectV1 {
+  const example = examples[id];
+  if (!example) {
+    throw new Error(`Example not found: ${id}`);
+  }
+  
+  const source: ExampleSource = {
+    id: example.metadata.id,
+    name: example.metadata.name,
+    description: example.metadata.description,
+    legacyCircuit: example.data,
+    difficulty: example.metadata.difficulty,
+    layer: example.metadata.layer,
+  };
+  
+  return generateExampleProject(source);
+}
+

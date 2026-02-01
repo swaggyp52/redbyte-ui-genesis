@@ -12,16 +12,14 @@
 // Types
 export * from './types';
 
-// Toolchain detection
-export {
-  detectToolchain,
-  canSynthesize,
-  canProgram,
-  getPreferredSynthesisTool,
-  getPreferredProgrammingTool,
-} from './detection';
+// NOTE: Toolchain detection, Vivado, and openFPGALoader functions
+// require Node.js and should only be imported server-side.
+// They are NOT exported from the main index to keep the package browser-safe.
+// Import them directly if needed in Node.js environments:
+//   import { detectToolchain } from '@redbyte/rb-fpga-toolchain/detection';
+//   import { runVivadoSynthesis } from '@redbyte/rb-fpga-toolchain/vivado';
 
-// Verilog primitives
+// Verilog primitives (browser-safe)
 export {
   VERILOG_PRIMITIVES,
   getPrimitive,
@@ -31,25 +29,30 @@ export {
   getSupportedNodeTypes,
 } from './primitives';
 
-// Vivado synthesis and programming
+// Circuit-to-Verilog generator (browser-safe)
 export {
-  generateVivadoTcl,
-  parseTimingReport,
-  parseUtilizationReport,
-  runVivadoSynthesis,
-  generateVivadoProgramTcl,
-  programFpgaWithVivado,
-} from './vivado';
+  circuitToVerilog,
+  generateConstraints,
+  generateBasys3Constraints,
+  type VerilogGenerationOptions,
+  type VerilogOutput,
+} from './verilog-generator';
 
-// openFPGALoader programming
+// Bitstream provenance tracking (browser-safe)
 export {
-  programFpgaWithOpenFPGALoader,
-  detectBoardsWithOpenFPGALoader,
-  writeFpgaFlashWithOpenFPGALoader,
-} from './openfpgaloader';
+  generateBitstreamArtifacts,
+  verifyBitstreamProvenance,
+  type BitstreamProvenanceMetadata,
+  type BitstreamArtifacts,
+} from './bitstream-provenance';
 
-// Wrapper generator
-export { WRAPPER_VERSION, buildSampleTemplate, generateWrapperVerilog, hashText } from './wrapper.js';
-
-// Interface checker
-export { checkTopInterface, getRequiredInterface } from './interface-checker.js';
+// Verilog and constraint validation (browser-safe)
+export {
+  validateVerilog,
+  validateConstraints,
+  calculateReadinessScore,
+  type VerilogValidationResult,
+  type ConstraintValidationResult,
+  type VerilogError,
+  type VerilogWarning,
+} from './verilog-validator';

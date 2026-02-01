@@ -1,0 +1,151 @@
+{
+  "version": 1,
+  "name": "Traffic Light FSM (Basys3)",
+  "description": "3-state traffic light controller with timer - hardware synthesis ready for Basys3 FPGA",
+  "nodes": [
+    {
+      "id": "clk",
+      "type": "Clock",
+      "label": "CLK",
+      "position": { "x": 100, "y": 200 },
+      "params": { "frequency": 100000000 }
+    },
+    {
+      "id": "reset",
+      "type": "Switch",
+      "label": "RESET",
+      "position": { "x": 100, "y": 300 },
+      "state": { "isOn": false }
+    },
+    {
+      "id": "state0",
+      "type": "DFlipFlop",
+      "label": "State[0]",
+      "position": { "x": 400, "y": 150 },
+      "state": { "q": false }
+    },
+    {
+      "id": "state1",
+      "type": "DFlipFlop",
+      "label": "State[1]",
+      "position": { "x": 400, "y": 250 },
+      "state": { "q": false }
+    },
+    {
+      "id": "timer0",
+      "type": "DFlipFlop",
+      "label": "Timer[0]",
+      "position": { "x": 400, "y": 400 },
+      "state": { "q": false }
+    },
+    {
+      "id": "timer1",
+      "type": "DFlipFlop",
+      "label": "Timer[1]",
+      "position": { "x": 400, "y": 500 },
+      "state": { "q": false }
+    },
+    {
+      "id": "timer2",
+      "type": "DFlipFlop",
+      "label": "Timer[2]",
+      "position": { "x": 400, "y": 600 },
+      "state": { "q": false }
+    },
+    {
+      "id": "next_state_logic",
+      "type": "AND",
+      "label": "Next State Logic",
+      "position": { "x": 700, "y": 200 }
+    },
+    {
+      "id": "timer_reset_logic",
+      "type": "OR",
+      "label": "Timer Reset",
+      "position": { "x": 700, "y": 500 }
+    },
+    {
+      "id": "red_light",
+      "type": "Lamp",
+      "label": "RED",
+      "position": { "x": 1000, "y": 150 }
+    },
+    {
+      "id": "yellow_light",
+      "type": "Lamp",
+      "label": "YELLOW",
+      "position": { "x": 1000, "y": 250 }
+    },
+    {
+      "id": "green_light",
+      "type": "Lamp",
+      "label": "GREEN",
+      "position": { "x": 1000, "y": 350 }
+    },
+    {
+      "id": "red_decoder",
+      "type": "AND",
+      "label": "Red Decode",
+      "position": { "x": 800, "y": 150 }
+    },
+    {
+      "id": "yellow_decoder",
+      "type": "AND",
+      "label": "Yellow Decode",
+      "position": { "x": 800, "y": 250 }
+    },
+    {
+      "id": "green_decoder",
+      "type": "NOT",
+      "label": "Green Decode",
+      "position": { "x": 800, "y": 350 }
+    },
+    {
+      "id": "timer_inc0",
+      "type": "NOT",
+      "label": "Timer Inc[0]",
+      "position": { "x": 600, "y": 400 }
+    },
+    {
+      "id": "timer_inc1",
+      "type": "XOR",
+      "label": "Timer Inc[1]",
+      "position": { "x": 600, "y": 500 }
+    },
+    {
+      "id": "timer_carry",
+      "type": "AND",
+      "label": "Timer Carry",
+      "position": { "x": 550, "y": 550 }
+    }
+  ],
+  "connections": [
+    { "id": "c1", "fromNodeId": "clk", "fromPin": "out", "toNodeId": "state0", "toPin": "CLK" },
+    { "id": "c2", "fromNodeId": "clk", "fromPin": "out", "toNodeId": "state1", "toPin": "CLK" },
+    { "id": "c3", "fromNodeId": "clk", "fromPin": "out", "toNodeId": "timer0", "toPin": "CLK" },
+    { "id": "c4", "fromNodeId": "clk", "fromPin": "out", "toNodeId": "timer1", "toPin": "CLK" },
+    { "id": "c5", "fromNodeId": "clk", "fromPin": "out", "toNodeId": "timer2", "toPin": "CLK" },
+    { "id": "c6", "fromNodeId": "reset", "fromPin": "out", "toNodeId": "state0", "toPin": "D" },
+    { "id": "c7", "fromNodeId": "state0", "fromPin": "Q", "toNodeId": "next_state_logic", "toPin": "A" },
+    { "id": "c8", "fromNodeId": "state1", "fromPin": "Q", "toNodeId": "next_state_logic", "toPin": "B" },
+    { "id": "c9", "fromNodeId": "next_state_logic", "fromPin": "Out", "toNodeId": "state1", "toPin": "D" },
+    { "id": "c10", "fromNodeId": "timer0", "fromPin": "Q", "toNodeId": "timer_inc0", "toPin": "A" },
+    { "id": "c11", "fromNodeId": "timer_inc0", "fromPin": "Y", "toNodeId": "timer0", "toPin": "D" },
+    { "id": "c12", "fromNodeId": "timer0", "fromPin": "Q", "toNodeId": "timer_carry", "toPin": "A" },
+    { "id": "c13", "fromNodeId": "timer1", "fromPin": "Q", "toNodeId": "timer_carry", "toPin": "B" },
+    { "id": "c14", "fromNodeId": "timer1", "fromPin": "Q", "toNodeId": "timer_inc1", "toPin": "A" },
+    { "id": "c15", "fromNodeId": "timer_carry", "fromPin": "Out", "toNodeId": "timer_inc1", "toPin": "B" },
+    { "id": "c16", "fromNodeId": "timer_inc1", "fromPin": "Y", "toNodeId": "timer1", "toPin": "D" },
+    { "id": "c17", "fromNodeId": "timer_carry", "fromPin": "Out", "toNodeId": "timer2", "toPin": "D" },
+    { "id": "c18", "fromNodeId": "state0", "fromPin": "Q", "toNodeId": "red_decoder", "toPin": "A" },
+    { "id": "c19", "fromNodeId": "state1", "fromPin": "Q", "toNodeId": "red_decoder", "toPin": "B" },
+    { "id": "c20", "fromNodeId": "red_decoder", "fromPin": "Out", "toNodeId": "red_light", "toPin": "In" },
+    { "id": "c21", "fromNodeId": "state0", "fromPin": "Q", "toNodeId": "yellow_decoder", "toPin": "A" },
+    { "id": "c22", "fromNodeId": "state1", "fromPin": "Q", "toNodeId": "yellow_decoder", "toPin": "B" },
+    { "id": "c23", "fromNodeId": "yellow_decoder", "fromPin": "Out", "toNodeId": "yellow_light", "toPin": "In" },
+    { "id": "c24", "fromNodeId": "state0", "fromPin": "Q", "toNodeId": "green_decoder", "toPin": "A" },
+    { "id": "c25", "fromNodeId": "green_decoder", "fromPin": "Y", "toNodeId": "green_light", "toPin": "In" },
+    { "id": "c26", "fromNodeId": "timer2", "fromPin": "Q", "toNodeId": "timer_reset_logic", "toPin": "A" },
+    { "id": "c27", "fromNodeId": "reset", "fromPin": "out", "toNodeId": "timer_reset_logic", "toPin": "B" }
+  ]
+}

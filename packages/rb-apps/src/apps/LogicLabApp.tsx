@@ -14,6 +14,7 @@ import {
 } from '../utils/selfCheck';
 import { exportV2Bundle, downloadBlob, type ExportResult } from '../utils/bundleExport';
 import { getLabTemplate } from '../utils/labTemplates';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 // SHIP-GRADE HARDWARE STORE
 import { useHardwareSessionStore } from '../stores/hardwareSessionStore';
@@ -817,4 +818,10 @@ const LogicLabApp = () => {
   );
 };
 
-export default LogicLabApp;
+const LogicLabAppWithBoundary = () => (
+  <ErrorBoundary fallbackTitle="Lab Workbench Error">
+    <LogicLabApp />
+  </ErrorBoundary>
+);
+
+export default LogicLabAppWithBoundary;

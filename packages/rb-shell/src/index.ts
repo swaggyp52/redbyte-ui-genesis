@@ -5,6 +5,8 @@
 export { Shell } from './Shell';
 export type { ShellProps } from './Shell';
 export { ErrorBoundary } from './ErrorBoundary';
+export { WindowShell } from './WindowShell';
+export type { WindowShellProps } from './WindowShell';
 export { useToastStore } from './toastStore';
 export type { Toast, ToastState } from './toastStore';
 export type { Intent, OpenWithIntent, OpenExampleIntent } from './intent-types';

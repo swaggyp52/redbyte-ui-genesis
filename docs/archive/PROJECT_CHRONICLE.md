@@ -779,6 +779,136 @@ After completing ANY work on this project, add an entry here with:
 
 ---
 
+### 2026-02-01T01:10:00Z - Codex (OpenAI)
+
+**Task:** Unified project sync (Logic Playground)
+
+**What was done:**
+- Added unified project store hooks in Logic Playground
+- Added Circuit↔CircuitV1 adapters and project sync effects
+
+**Files touched:**
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+- `AI_STATE.md`
+- `docs/archive/PROJECT_CHRONICLE.md`
+
+**Signature:** Codex (OpenAI)
+
+### 2026-02-01T01:20:00Z - Codex (OpenAI)
+
+**Task:** Import loads unified project store
+
+**What was done:**
+- Shell import now calls unified project store loadProject
+
+**Files touched:**
+- `packages/rb-shell/src/Shell.tsx`
+- `AI_STATE.md`
+- `docs/archive/PROJECT_CHRONICLE.md`
+
+**Signature:** Codex (OpenAI)
+
+### 2026-02-01T01:40:00Z - Codex (OpenAI)
+
+**Task:** Phase 2 sync wiring
+
+**What was done:**
+- ECELab now hydrates circuit from unified project and syncs back
+- VirtualLab syncs board IO state with unified project
+
+**Files touched:**
+- `packages/rb-apps/src/apps/ECELabApp.tsx`
+- `packages/rb-apps/src/apps/VirtualLabApp.tsx`
+- `AI_STATE.md`
+- `docs/archive/PROJECT_CHRONICLE.md`
+
+**Signature:** Codex (OpenAI)
+
+### 2026-02-01T02:05:00Z - Codex (OpenAI)
+
+**Task:** Sync run recorder into project recordings
+
+**What was done:**
+- Logic Playground writes run record into LabProjectV1.recordings
+- Reproducibility check now requires recordings to include events
+
+**Files touched:**
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+- `packages/rb-shell/src/Shell.tsx`
+- `AI_STATE.md`
+- `docs/archive/PROJECT_CHRONICLE.md`
+
+**Signature:** Codex (OpenAI)
+
+### 2026-02-01T02:20:00Z - Codex (OpenAI)
+
+**Task:** Replay verification in reproducibility check
+
+**What was done:**
+- Implemented best-effort replay verification using CircuitEngine and recorded stimuli
+
+**Files touched:**
+- `packages/rb-shell/src/Shell.tsx`
+- `AI_STATE.md`
+- `docs/archive/PROJECT_CHRONICLE.md`
+
+**Signature:** Codex (OpenAI)
+
+### 2026-02-01T02:35:00Z - Codex (OpenAI)
+
+**Task:** Proof pack integration + IO validation
+
+**What was done:**
+- Project recordings now include run record + proof pack
+- Verify command checks proof pack digest match and IO mapping completeness
+
+**Files touched:**
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+- `packages/rb-shell/src/Shell.tsx`
+- `AI_STATE.md`
+- `docs/archive/PROJECT_CHRONICLE.md`
+
+**Signature:** Codex (OpenAI)
+
+
+### 2026-02-01T00:30:00Z - Codex (OpenAI)
+
+**Task:** Phase 0 capability audit report
+
+**What was done:**
+- Added docs/AuditReport.md with implementation vs promise mapping and gap list
+- Logged Phase 0 audit in AI_STATE.md and Project Chronicle
+
+**Files touched:**
+- `docs/AuditReport.md`
+- `AI_STATE.md`
+- `docs/archive/PROJECT_CHRONICLE.md`
+
+**Signature:** Codex (OpenAI)
+
+
+### 2026-02-01T00:00:00Z - Codex (OpenAI)
+
+**Task:** Lab export/import wiring and reproducibility checks
+
+**What was done:**
+- Made Truth Bar export visible for active circuits with proof-aware labeling
+- Wired export/import commands; import loads into filesystem and opens Logic Playground
+- Added reproducibility verification command and modal
+- Extended LabProject schema with IO mapping and recordings placeholders
+- Restored AI_STATE.md to repo root and updated Change Log
+
+**Files touched:**
+- `packages/rb-shell/src/TruthBar.tsx`
+- `packages/rb-shell/src/Shell.tsx`
+- `packages/rb-shell/src/CommandPalette.tsx`
+- `packages/rb-utils/src/labProjectSchema.ts`
+- `AI_STATE.md`
+- `docs/archive/PROJECT_CHRONICLE.md`
+
+**Signature:** Codex (OpenAI)
+
+
 ### 2026-01-08T22:11:02Z - Codex (OpenAI)
 
 **Task:** User Manual app integration
@@ -944,6 +1074,145 @@ After completing ANY work on this project, add an entry here with:
 This section is a high-level timeline of major changes. After completing significant work, add an entry here in reverse chronological order (newest first).
 
 ---
+
+### 2026-02-01 - Unified Project Sync (Logic Playground)
+
+**What:** Bridged Logic Playground circuit state to unified LabProject store with conversion helpers.
+
+**Why:** Begin Phase 1 unification toward single source of truth across views.
+
+**Impact:**
+- Logic Playground now creates/updates LabProjectV1 in unified store
+- Imports can hydrate circuit via project state without manual copy
+
+**Files:**
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+- `AI_STATE.md`
+
+**By:** Codex (OpenAI)
+
+### 2026-02-01 - Import Loads Unified Project
+
+**What:** Import flow now loads the LabProject into the unified project store.
+
+**Why:** Ensure imported projects become canonical state immediately after import.
+
+**Impact:**
+- Shell import updates unified store before opening Logic Playground
+
+**Files:**
+- `packages/rb-shell/src/Shell.tsx`
+- `AI_STATE.md`
+
+**By:** Codex (OpenAI)
+
+### 2026-02-01 - Phase 2 Sync (ECELab + VirtualLab)
+
+**What:** Wired ECELab and VirtualLab to unified project store, syncing circuit and IO state.
+
+**Why:** Start multi-view synchronization for lab readiness.
+
+**Impact:**
+- ECELab hydrates circuit from unified project and pushes edits back
+- VirtualLab syncs board IO state with unified project
+
+**Files:**
+- `packages/rb-apps/src/apps/ECELabApp.tsx`
+- `packages/rb-apps/src/apps/VirtualLabApp.tsx`
+- `AI_STATE.md`
+
+**By:** Codex (OpenAI)
+
+### 2026-02-01 - Recording Sync (Project Recordings)
+
+**What:** Logic Playground now writes run recorder output into LabProject recordings.
+
+**Why:** Ensure exports contain deterministic recordings for reproducibility checks.
+
+**Impact:**
+- Project recordings populated after run recording completes
+- Reproducibility check can validate recording presence
+
+**Files:**
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+- `packages/rb-shell/src/Shell.tsx`
+- `AI_STATE.md`
+
+**By:** Codex (OpenAI)
+
+### 2026-02-01 - Replay Verification (Project Verify)
+
+**What:** Added replay-based verification in Project: Verify Reproducibility.
+
+**Why:** Ensure deterministic replay matches recorded trace after import/export.
+
+**Impact:**
+- Verify command now simulates stimulus and compares probe trace
+
+**Files:**
+- `packages/rb-shell/src/Shell.tsx`
+- `AI_STATE.md`
+
+**By:** Codex (OpenAI)
+
+### 2026-02-01 - Proof Pack Integration + IO Validation
+
+**What:** Added proof pack data to project recordings and verification checks for digest match and IO mapping completeness.
+
+**Why:** Ensure exported projects include proof metadata and mappings are self-consistent.
+
+**Impact:**
+- Recordings now store run record + proof pack
+- Verify checks proof pack digest and IO mapping presence
+
+**Files:**
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+- `packages/rb-shell/src/Shell.tsx`
+- `AI_STATE.md`
+
+**By:** Codex (OpenAI)
+
+
+### 2026-02-01 - Phase 0 Capability Audit Report
+
+**What:** Produced a consolidated audit report mapping documentation promises to current implementation.
+
+**Why:** Establish a baseline for lab-ready gaps and reconcile docs with code.
+
+**Impact:**
+- Identified canonical state drift (ProjectContext vs package architecture)
+- Confirmed demo URI handling and capsule export status
+- Enumerated top gaps for Phase 1–3
+
+**Files:**
+- `docs/AuditReport.md`
+- `AI_STATE.md`
+
+**By:** Codex (OpenAI)
+
+
+### 2026-02-01 - Lab Export/Import Wiring + Repro Check
+
+**What:** Wired Truth Bar export, import command, and reproducibility check; added project schema fields and import loading behavior.
+
+**Why:** Enable real project round-trip and verification as part of lab readiness.
+
+**Impact:**
+- Export button visible for active circuits, with proof-aware labeling
+- Import loads .rbx.zip into filesystem and opens Logic Playground
+- Added basic reproducibility report modal and command palette entries
+- Project schema now includes IO mapping and recordings placeholders
+- AI_STATE restored to repo root and logged
+
+**Files:**
+- `packages/rb-shell/src/TruthBar.tsx`
+- `packages/rb-shell/src/Shell.tsx`
+- `packages/rb-shell/src/CommandPalette.tsx`
+- `packages/rb-utils/src/labProjectSchema.ts`
+- `AI_STATE.md`
+
+**By:** Codex (OpenAI)
+
 
 ### 2026-01-08 - User Manual App Wiring
 

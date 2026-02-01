@@ -1058,7 +1058,7 @@ Netlists are useful for:
 
 **Verilog** is a hardware description language used in professional electronic design.
 
-RedByte can export circuits as **structural Verilog**, which describes the circuit as a list of module instances and wire connections.
+RedByte exports circuits as **synthesizable structural Verilog**, which describes the circuit as module instances and wire connections using standard primitives.
 
 Example Verilog export:
 
@@ -1072,18 +1072,18 @@ module Circuit (
   wire n1_out;
 
   AND gate1 (.A(A), .B(B), .Out(n1_out));
-  Lamp lamp1 (.In(n1_out));
+  // Additional logic here
 
 endmodule
 ```
 
-Verilog export is **not synthesizable**—it cannot be compiled directly to hardware. It serves as documentation or as a starting point for manual conversion to synthesizable code.
+RedByte's Verilog export is **fully synthesizable** and includes `.xdc` constraints for Basys3 FPGA boards. The generated HDL can be compiled directly with Xilinx Vivado without manual modifications.
 
 Verilog export is useful for:
 
-- Sharing circuits with engineers familiar with HDLs
-- Comparing RedByte circuits to industry-standard designs
-- Learning Verilog syntax by example
+- Deploying circuits to physical FPGA hardware
+- Sharing synthesizable designs with EE teams
+- Learning hardware description languages with working examples
 
 ### What Debug Bundles Contain
 
@@ -1611,62 +1611,75 @@ The platform is ready. The question is: What will the user build?
 
 ---
 
-## 16. The Hardware Lab Workflow (Pack -> Run -> Prove)
+## 16. The FPGA Workflow (Design -> Export -> Synthesize)
 
-RedByte v1 introduces a deterministic "One-Command" workflow for moving from browser simulation to hardware execution on Basys 3 FPGA boards.
+RedByte Logic Playground provides a complete FPGA workflow for moving circuits from browser simulation to physical hardware on Basys3 FPGA boards.
 
-### Phase 1: Pack (The Lab Artifact)
+### Phase 1: Design & Validate
 
-Once your circuit is working in the Logic Playground:
+Build and test your circuit in the Logic Playground:
 
-1. **Save your project** (e.g., `my-counter.json`).
-2. **Open the Terminal** app in RedByte.
-3. **Run the pack command** (simulated):
+1. **Create nodes and connections** using the visual editor
+2. **Run simulations** to verify logic behavior  
+3. **Debug with visualization** (truth tables, timing diagrams)
+4. **Save your project** when working correctly
 
-    ```bash
-    pack my-counter
-    ```
+### Phase 2: Export Verilog
 
-    *(Note: On your local machine, use `rb-fpga-toolchain pack ./my-counter-project`)*.
+Export synthesizable HDL from the browser:
 
-This creates a **Lab Packet**—a sealed bundle containing:
+1. **Open Command Palette** (`Ctrl+Shift+P` or `Cmd+Shift+P`)
+2. **Run "Project: Export Verilog"** command
+3. **Receive ZIP bundle** containing:
+   - `design.v` — Synthesizable structural Verilog
+   - `constraints.xdc` — Pin mappings for Basys3 board
+   - `provenance.json` — Integrity metadata with SHA-256 hashes
 
-- Your circuit's netlist and source code
-- A cryptographic manifest (`lab-manifest.v1.json`)
-- The required constraints and pinmap
+The exported Verilog uses standard primitives (`AND`, `OR`, `NOT`, `DFF`, etc.) and is ready for synthesis without manual modifications.
 
-### Phase 2: Run (The One Command)
+### Phase 3: Synthesize Bitstream (Local Toolchain)
 
-To execute your packet on hardware, you do not need to install Vivado manually or manage bitstreams. Use the **One-Command Lab Runner**:
+**Note:** Synthesis requires Xilinx Vivado installed locally (browser cannot run synthesis tools).
 
-```powershell
-./run.ps1 -Packet my-counter.packet
-```
+With the exported files:
 
-**What the Runner Does:**
+1. **Extract the ZIP** to your local machine
+2. **Open Vivado** or use command-line synthesis
+3. **Create project** with `design.v` as top module
+4. **Add constraints** from `constraints.xdc`
+5. **Run synthesis** to generate bitstream (`.bit` file)
+6. **Verify timing** and resource utilization meet requirements
 
-1. **Verifies** the packet integrity (checks hashes against the manifest).
-2. **Programs** the FPGA (automatically handles JTAG).
-3. **Streams** sample data from the board back to your computer.
-4. **Records** the run into a Trace File.
+**Alternative:** Use `rb-fpga-toolchain` CLI tools (future release) to automate synthesis from exported artifacts.
 
-If you do not have hardware connected, add the `-Mock` flag to simulate the hardware board:
+### Phase 4: Program Board (Local Hardware)
 
-```powershell
-./run.ps1 -Packet my-counter.packet -Mock
-```
+**Note:** FPGA programming requires physical board and local toolchain (browser cannot access USB JTAG).
 
-### Phase 3: Prove (Evidence Generation)
+Flash bitstream to Basys3 board:
 
-The Runner automatically "Blesses" your run at the end, generating an **Evidence Capsule** (`evidence.json`).
+1. **Connect Basys3** via USB cable
+2. **Program with Vivado Hardware Manager** or openFPGALoader
+3. **Test I/O behavior** matches simulation
+4. **Capture hardware evidence** using Board I/O panel (if in lab environment)
 
-This capsule contains:
+**Lab Workflow:** If using RedByte in a university lab with Desktop Bridge installed, the Hardware tab provides live board monitoring and snapshot capture for grading submissions.
 
-- The **Lab Artifact** (what you built).
-- The **Trace Data** (what happened on hardware).
-- A **Cryptographic Signature** (proof of integrity).
+### Best Practices
 
-**You submit this `evidence.json` file for grading.** Your instructor uses it to mathematically verify your circuit's behavior.
+**Browser Limitations:**
+- "Build Bitstream" command in browser only generates HDL artifacts—actual synthesis requires local Vivado
+- "Program Board" command prepares files but cannot flash hardware without local toolchain
+- Use browser for design/export, local environment for synthesis/programming
+
+**Evidence Capsules:**
+- Export as `.rbx.zip` to include both project files and FPGA artifacts
+- Contains `verilog/`, `bitstream/`, `fpga/` directories with full provenance chain
+- Suitable for lab submissions requiring hardware verification
+
+**Example Circuits:**
+- Try "8-bit Counter (Basys3)" example from Library for hardware-ready reference design
+- Demonstrates clock-driven sequential logic with proper board constraints
 
 ---
 

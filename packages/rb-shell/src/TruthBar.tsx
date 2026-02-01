@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 
 /**
  * Determinism Mode for the Truth Bar
@@ -54,7 +54,7 @@ export interface TruthBarProps {
  * Row 1: Mode indicator, tick counter, event count, save state
  * Row 2: Recording status, proof status, action buttons
  */
-export const TruthBar: React.FC<TruthBarProps> = ({
+export const TruthBar: React.FC<TruthBarProps> = memo(({
   mode,
   tickCount,
   totalEvents,
@@ -257,4 +257,4 @@ export const TruthBar: React.FC<TruthBarProps> = ({
       </div>
     </div>
   );
-};
+});

@@ -10,13 +10,17 @@
  * and seamless hardware integration.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import JSZip from 'jszip';
 import BoardPanel from '../components/BoardPanel';
+import { BoardIOPanel } from '../components/BoardIOPanel';
 import { CompareView, type CompareSignalCheck } from '../components/CompareView';
 import { CircuitCanvas } from '../components/boards/CircuitCanvas'; // TODO: Remove if unused, but keeping type safely
 import { SplitViewLayout } from '../components/SplitViewLayout';
 import { Circuit, CircuitEngine, TickEngine, Node } from '@redbyte/rb-logic-core';
+import type { CircuitV1, IoMappingEntry } from '@redbyte/rb-utils';
+import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
+import { getAvailableSignals } from '@redbyte/rb-lab-engine/src/signals/signalSemantics';
 import { useViewStateStore } from '../stores/viewStateStore';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import { useHardwareStore } from '../stores/hardwareStore';
@@ -222,6 +226,233 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
   const [circuit, setCircuit] = useState<Circuit>(() => ({ nodes: [], connections: [] }));
   const [engine] = useState(() => new CircuitEngine({ nodes: [], connections: [] }));
   const [tickEngine] = useState(() => new TickEngine({ nodes: [], connections: [] }, { tickRate: 10 }));
+
+  const unifiedProject = useUnifiedProjectStore((s) => s.currentProject);
+  const updateUnifiedProject = useUnifiedProjectStore((s) => s.updateProject);
+  const hasHydratedRef = useRef(false);
+  const [ioTick, setIoTick] = useState(0);
+  const [ioOutputStates, setIoOutputStates] = useState<Record<string, boolean>>({});
+
+  const fromCircuitV1 = useCallback((src: CircuitV1): Circuit => {
+    return {
+      nodes: src.nodes.map((node) => ({
+        id: node.id,
+        type: node.type,
+        x: node.x,
+        y: node.y,
+        rotation: node.rotation,
+        config: node.params || {},
+        label: node.label,
+        state: node.state || {},
+        inputs: {},
+        outputs: {},
+      })),
+      connections: src.connections.map((conn) => ({
+        id: conn.id,
+        from: conn.fromNodeId,
+        fromPin: conn.fromPin,
+        to: conn.toNodeId,
+        toPin: conn.toPin,
+      })),
+    };
+  }, []);
+
+  const toCircuitV1 = useCallback((src: Circuit): CircuitV1 => {
+    return {
+      schemaVersion: '1.0',
+      nodes: src.nodes.map((node) => ({
+        id: node.id,
+        type: node.type,
+        x: node.x || 0,
+        y: node.y || 0,
+        rotation: node.rotation || 0,
+        params: node.config || {},
+        label: node.label,
+        state: node.state || {},
+      })),
+      connections: src.connections.map((conn) => ({
+        id: conn.id,
+        fromNodeId: conn.from,
+        fromPin: conn.fromPin || 'out',
+        toNodeId: conn.to,
+        toPin: conn.toPin || 'in',
+      })),
+      customChips: [],
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!unifiedProject || hasHydratedRef.current) return;
+    if (unifiedProject.circuit.nodes.length === 0 && unifiedProject.circuit.connections.length === 0) return;
+
+    const loaded = fromCircuitV1(unifiedProject.circuit);
+    setCircuit(loaded);
+    hasHydratedRef.current = true;
+  }, [unifiedProject, fromCircuitV1]);
+
+  useEffect(() => {
+    if (!unifiedProject) return;
+    if (!hasHydratedRef.current && circuit.nodes.length === 0 && circuit.connections.length === 0) return;
+
+    updateUnifiedProject((project) => ({
+      ...project,
+      circuit: toCircuitV1(circuit),
+    }));
+  }, [circuit, unifiedProject, updateUnifiedProject, toCircuitV1]);
+
+  const ioMapping = unifiedProject?.ioMapping;
+  const availableSignals = useMemo(() => {
+    if (!unifiedProject) return { inputs: [], outputs: [] };
+    return getAvailableSignals(unifiedProject);
+  }, [unifiedProject]);
+  const virtualIOState = unifiedProject?.boardMap?.virtualIOState ?? { switches: [], buttons: [] };
+  const ioInputStates = useMemo(() => {
+    if (!ioMapping) return {} as Record<string, boolean>;
+    const next: Record<string, boolean> = {};
+    ioMapping.inputs.forEach((entry) => {
+      next[entry.id] = resolveInputValue(entry.pin);
+    });
+    return next;
+  }, [ioMapping, resolveInputValue]);
+
+  const resolveInputValue = useCallback(
+    (pin?: string) => {
+      if (!pin) return false;
+      if (pin.startsWith('SW')) {
+        const idx = parseInt(pin.slice(2), 10);
+        return Boolean(virtualIOState.switches[idx]);
+      }
+      if (pin.startsWith('BTN')) {
+        const idx = parseInt(pin.slice(3), 10);
+        return Boolean(virtualIOState.buttons[idx]);
+      }
+      return false;
+    },
+    [virtualIOState.buttons, virtualIOState.switches]
+  );
+
+  const handleInitializeIoMapping = useCallback(() => {
+    if (!unifiedProject) return;
+    if (availableSignals.inputs.length === 0 && availableSignals.outputs.length === 0) return;
+
+    updateUnifiedProject((project) => {
+      if (project.ioMapping && (project.ioMapping.inputs.length > 0 || project.ioMapping.outputs.length > 0)) {
+        return project;
+      }
+
+      const inputEntries = availableSignals.inputs.map((sig) => ({
+        id: `in:${sig.id}`,
+        nodeId: sig.id,
+        port: 'out',
+        label: sig.label,
+      }));
+      const outputEntries = availableSignals.outputs.map((sig) => ({
+        id: `out:${sig.id}`,
+        nodeId: sig.id,
+        port: 'out',
+        label: sig.label,
+      }));
+
+      return {
+        ...project,
+        ioMapping: {
+          inputs: inputEntries,
+          outputs: outputEntries,
+        },
+      };
+    });
+  }, [availableSignals.inputs, availableSignals.outputs, unifiedProject, updateUnifiedProject]);
+
+  const handleAssignPin = useCallback(
+    (entry: IoMappingEntry, pin: string) => {
+      if (!unifiedProject) return;
+
+      updateUnifiedProject((project) => {
+        const current = project.ioMapping ?? { inputs: [], outputs: [] };
+        const updateEntry = (item: IoMappingEntry) =>
+          item.id === entry.id ? { ...item, pin: pin || undefined } : item;
+        const inputs = current.inputs.map(updateEntry);
+        const outputs = current.outputs.map(updateEntry);
+
+        const signalKey = entry.label || entry.nodeId || entry.id;
+        const signalToPinMap = { ...(project.boardMap?.signalToPinMap ?? {}) };
+        if (pin) {
+          signalToPinMap[signalKey] = pin;
+        } else {
+          delete signalToPinMap[signalKey];
+        }
+
+        const boardMap = {
+          boardProfileId: project.boardMap?.boardProfileId || 'basys3',
+          signalToPinMap,
+          virtualIOState: project.boardMap?.virtualIOState || { switches: [], buttons: [] },
+        };
+
+        return {
+          ...project,
+          ioMapping: { inputs, outputs },
+          boardMap,
+        };
+      });
+    },
+    [unifiedProject, updateUnifiedProject]
+  );
+
+  const handleToggleInput = useCallback(
+    (entry: { id: string; nodeId: string; port: string; pin?: string }) => {
+      if (!unifiedProject) return;
+      const nextValue = !resolveInputValue(entry.pin);
+
+      updateUnifiedProject((project) => {
+        const boardMap = project.boardMap ?? {
+          boardProfileId: 'basys3',
+          signalToPinMap: {},
+          virtualIOState: { switches: [], buttons: [] },
+        };
+        const switches = [...(boardMap.virtualIOState?.switches ?? [])];
+        const buttons = [...(boardMap.virtualIOState?.buttons ?? [])];
+
+        if (entry.pin?.startsWith('SW')) {
+          const idx = parseInt(entry.pin.slice(2), 10);
+          if (!Number.isNaN(idx)) switches[idx] = nextValue;
+        }
+        if (entry.pin?.startsWith('BTN')) {
+          const idx = parseInt(entry.pin.slice(3), 10);
+          if (!Number.isNaN(idx)) buttons[idx] = nextValue;
+        }
+
+        return {
+          ...project,
+          boardMap: {
+            ...boardMap,
+            virtualIOState: { switches, buttons },
+          },
+        };
+      });
+
+      const prevState = engine.getNodeState(entry.nodeId) || {};
+      engine.setNodeState(entry.nodeId, { ...prevState, isOn: nextValue });
+      engine.tick();
+      setIoTick((t) => t + 1);
+    },
+    [engine, resolveInputValue, unifiedProject, updateUnifiedProject]
+  );
+
+  useEffect(() => {
+    if (!ioMapping) return;
+    try {
+      const signals = engine.getAllSignals();
+      const nextOutputs: Record<string, boolean> = {};
+      ioMapping.outputs.forEach((entry) => {
+        const key = `${entry.nodeId}.${entry.port}`;
+        const value = signals.get(key);
+        nextOutputs[entry.id] = Boolean(value);
+      });
+      setIoOutputStates(nextOutputs);
+    } catch {
+      setIoOutputStates({});
+    }
+  }, [engine, ioMapping, ioTick, circuit]);
 
   // Initialize engines
   useEffect(() => {
@@ -946,13 +1177,26 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
           {/* Content */}
           <div className="flex-1 overflow-hidden">
             {rightTab === 'board' ? (
-              <BoardPanel
-                snapshot={effectiveSnapshot}
-                capabilities={effectiveCapabilities}
-                onInteraction={executionSource === 'sim' ? setSimInput : undefined}
-                readOnly={executionSource === 'replay'}
-                executionSource={executionSource}
-              />
+              <div className="flex flex-col h-full">
+                <BoardIOPanel
+                  ioMapping={ioMapping ?? { inputs: [], outputs: [] }}
+                  inputStates={ioInputStates}
+                  outputStates={ioOutputStates}
+                  onToggleInput={handleToggleInput}
+                  availableSignals={availableSignals}
+                  onInitializeMapping={handleInitializeIoMapping}
+                  onAssignPin={handleAssignPin}
+                />
+                <div className="flex-1 overflow-hidden">
+                  <BoardPanel
+                    snapshot={effectiveSnapshot}
+                    capabilities={effectiveCapabilities}
+                    onInteraction={executionSource === 'sim' ? setSimInput : undefined}
+                    readOnly={executionSource === 'replay'}
+                    executionSource={executionSource}
+                  />
+                </div>
+              </div>
             ) : rightTab === 'compare' ? (
               <CompareView ioSnapshot={effectiveSnapshot} checks={checks} />
             ) : (

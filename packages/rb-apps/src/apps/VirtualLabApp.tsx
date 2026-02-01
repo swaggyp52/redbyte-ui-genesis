@@ -22,6 +22,8 @@ import { useFileSystemStore } from '../stores/fileSystemStore';
 import { VIRTUAL_LAB_TEMPLATES } from './virtual-lab-templates';
 import { useVirtualLabSignalSource } from '../instruments/virtualLabSignalSource';
 import { GuidedLabSidebar } from '../components/GuidedLabSidebar';
+import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 // Lazy load panels to break circular dependency / TDZ issues during initialization
 const HardwareRackPanel = React.lazy(() => import('../panels/HardwareRackPanel').then(m => ({ default: m.HardwareRackPanel })));
 const HardwareStatusOverlay = React.lazy(() => import('../panels/HardwareStatusOverlay').then(m => ({ default: m.HardwareStatusOverlay })));
@@ -51,6 +53,7 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
     const toggleSimulation = useLabStore((state) => state.toggleSimulation);
     const runSimulationStep = useLabStore((state) => state.runSimulationStep);
     const setTransport = useLabStore((state) => state.setTransport);
+    const setUserPinState = useLabStore((state) => state.setUserPinState);
 
     // SHIP-GRADE: Override default transport with HardwareClient bridge
     useEffect(() => {
@@ -98,6 +101,11 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
     const sketchSerial = useLabStore((state) => state.sketch.serial);
     const sketchHash = useLabStore((state) => state.sketch.sketchHash);
 
+    const unifiedProject = useUnifiedProjectStore((s) => s.currentProject);
+    const updateUnifiedProject = useUnifiedProjectStore((s) => s.updateProject);
+    const lastAppliedIoRef = useRef<string | null>(null);
+    const lastSyncedIoRef = useRef<string | null>(null);
+
     // Export/Import
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -116,6 +124,51 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
     useEffect(() => {
         return () => useLabStore.getState().reset();
     }, []);
+
+    // Sync unified project IO state -> Virtual Lab pin states
+    useEffect(() => {
+        if (!unifiedProject?.boardMap?.virtualIOState) return;
+        const switches = unifiedProject.boardMap.virtualIOState.switches || [];
+        const buttons = unifiedProject.boardMap.virtualIOState.buttons || [];
+        const ioKey = JSON.stringify({ switches, buttons });
+        if (ioKey === lastAppliedIoRef.current) return;
+
+        const fpgaNode = useLabStore.getState().graph.nodes.find((n) => n.type === 'fpga-basys3');
+        if (!fpgaNode) return;
+
+        switches.forEach((value, idx) => {
+            setUserPinState(fpgaNode.id, `SW${idx}`, value ? 1 : 0);
+        });
+        buttons.forEach((value, idx) => {
+            setUserPinState(fpgaNode.id, `BTN${idx}`, value ? 1 : 0);
+        });
+
+        lastAppliedIoRef.current = ioKey;
+    }, [unifiedProject, setUserPinState]);
+
+    // Sync Virtual Lab pin states -> unified project IO state
+    useEffect(() => {
+        if (!unifiedProject) return;
+        const fpgaNode = useLabStore.getState().graph.nodes.find((n) => n.type === 'fpga-basys3');
+        if (!fpgaNode) return;
+
+        const getPin = (pinId: string) => pinStates[`${fpgaNode.id}:${pinId}`] ?? 0;
+        const switches = Array.from({ length: 8 }, (_, i) => Boolean(getPin(`SW${i}`)));
+        const buttons = Array.from({ length: 4 }, (_, i) => Boolean(getPin(`BTN${i}`)));
+        const ioKey = JSON.stringify({ switches, buttons });
+        if (ioKey === lastSyncedIoRef.current) return;
+
+        updateUnifiedProject((project) => ({
+            ...project,
+            boardMap: {
+                boardProfileId: project.boardMap?.boardProfileId || 'basys3',
+                signalToPinMap: project.boardMap?.signalToPinMap || {},
+                virtualIOState: { switches, buttons },
+            },
+        }));
+
+        lastSyncedIoRef.current = ioKey;
+    }, [pinStates, unifiedProject, updateUnifiedProject]);
 
     useEffect(() => {
         if (!useLabStore.getState().sketch.source) {
@@ -1106,6 +1159,12 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
     );
 };
 
+const VirtualLabAppWithBoundary: React.FC<VirtualLabAppProps> = (props) => (
+  <ErrorBoundary fallbackTitle="Virtual Lab Error">
+    <VirtualLabAppComponent {...props} />
+  </ErrorBoundary>
+);
+
 export const VirtualLabApp: RedByteApp = {
     manifest: {
         id: 'virtual-lab',
@@ -1115,5 +1174,5 @@ export const VirtualLabApp: RedByteApp = {
         defaultSize: { width: 1200, height: 800 },
         minSize: { width: 800, height: 600 },
     },
-    component: VirtualLabAppComponent,
+    component: VirtualLabAppWithBoundary,
 };

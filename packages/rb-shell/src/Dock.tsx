@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState, useCallback } from 'react';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import { Icon, type IconName } from '@redbyte/rb-icons';
 
@@ -69,6 +69,20 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
   const [dockOrder, setDockOrder] = useState<string[]>(() => loadDockOrder());
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const pendingOpenRef = useRef<Set<string>>(new Set());
+
+  const safeDebouncedOpenApp = useCallback((appId: string) => {
+    // Prevent double-clicking from opening the app twice
+    if (pendingOpenRef.current.has(appId)) return;
+    
+    pendingOpenRef.current.add(appId);
+    onOpenApp(appId);
+    
+    // Clear the pending flag after a short delay to allow time for state updates
+    setTimeout(() => {
+      pendingOpenRef.current.delete(appId);
+    }, 300);
+  }, [onOpenApp]);
 
   const dockItems = useMemo(() => {
     const byId = new Map(allIcons.map((dock) => [dock.id, dock]));
@@ -131,7 +145,7 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
       <button
         type="button"
         key={dock.id}
-        onClick={() => onOpenApp(dock.id)}
+        onClick={() => safeDebouncedOpenApp(dock.id)}
         onKeyDown={(event) => handleKeyDown(event, dock.id)}
         onMouseEnter={() => setHoveredId(dock.id)}
         onMouseLeave={() => setHoveredId(null)}

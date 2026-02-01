@@ -87,6 +87,43 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
   zip.file('README.md', readme);
 
   // -------------------------------------------------------------------------
+  // 2.7. Add FPGA artifacts if available (verilog/ and bitstream/)
+  // -------------------------------------------------------------------------
+
+  const fpgaArtifacts = (project as any).fpgaArtifacts;
+  if (fpgaArtifacts) {
+    // Add Verilog source
+    if (fpgaArtifacts.verilog) {
+      zip.file('verilog/design.v', fpgaArtifacts.verilog);
+      files.set('verilog/design.v', fpgaArtifacts.verilog);
+    }
+
+    // Add XDC constraints
+    if (fpgaArtifacts.constraints) {
+      zip.file('verilog/constraints.xdc', fpgaArtifacts.constraints);
+      files.set('verilog/constraints.xdc', fpgaArtifacts.constraints);
+    }
+
+    // Add bitstream if available
+    if (fpgaArtifacts.bitstream) {
+      // Bitstream is binary - handle as Uint8Array or Blob
+      if (fpgaArtifacts.bitstream instanceof Uint8Array) {
+        zip.file('bitstream/design.bit', fpgaArtifacts.bitstream);
+      } else if (typeof fpgaArtifacts.bitstream === 'string') {
+        // If stored as base64 string
+        zip.file('bitstream/design.bit', fpgaArtifacts.bitstream, { base64: true });
+      }
+    }
+
+    // Add provenance metadata
+    if (fpgaArtifacts.metadata) {
+      const metadataJson = stableSerialize(fpgaArtifacts.metadata);
+      zip.file('fpga/provenance.json', metadataJson);
+      files.set('fpga/provenance.json', metadataJson);
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // 3. Build evidence manifest
   // -------------------------------------------------------------------------
 

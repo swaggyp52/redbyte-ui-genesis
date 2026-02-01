@@ -1,0 +1,183 @@
+{
+  "nodes": [
+    {
+      "id": "clock_1",
+      "type": "CLOCK",
+      "x": 100,
+      "y": 200,
+      "rotation": 0,
+      "config": { "frequency": 1 },
+      "label": "CLK"
+    },
+    {
+      "id": "counter_bit0",
+      "type": "D_FLIPFLOP",
+      "x": 300,
+      "y": 100,
+      "rotation": 0,
+      "config": {},
+      "label": "Bit 0"
+    },
+    {
+      "id": "counter_bit1",
+      "type": "D_FLIPFLOP",
+      "x": 300,
+      "y": 200,
+      "rotation": 0,
+      "config": {},
+      "label": "Bit 1"
+    },
+    {
+      "id": "counter_bit2",
+      "type": "D_FLIPFLOP",
+      "x": 300,
+      "y": 300,
+      "rotation": 0,
+      "config": {},
+      "label": "Bit 2"
+    },
+    {
+      "id": "counter_bit3",
+      "type": "D_FLIPFLOP",
+      "x": 300,
+      "y": 400,
+      "rotation": 0,
+      "config": {},
+      "label": "Bit 3"
+    },
+    {
+      "id": "counter_bit4",
+      "type": "D_FLIPFLOP",
+      "x": 500,
+      "y": 100,
+      "rotation": 0,
+      "config": {},
+      "label": "Bit 4"
+    },
+    {
+      "id": "counter_bit5",
+      "type": "D_FLIPFLOP",
+      "x": 500,
+      "y": 200,
+      "rotation": 0,
+      "config": {},
+      "label": "Bit 5"
+    },
+    {
+      "id": "counter_bit6",
+      "type": "D_FLIPFLOP",
+      "x": 500,
+      "y": 300,
+      "rotation": 0,
+      "config": {},
+      "label": "Bit 6"
+    },
+    {
+      "id": "counter_bit7",
+      "type": "D_FLIPFLOP",
+      "x": 500,
+      "y": 400,
+      "rotation": 0,
+      "config": {},
+      "label": "Bit 7"
+    },
+    {
+      "id": "not_0",
+      "type": "NOT",
+      "x": 250,
+      "y": 150,
+      "rotation": 0,
+      "config": {},
+      "label": "INV0"
+    },
+    {
+      "id": "not_1",
+      "type": "NOT",
+      "x": 250,
+      "y": 250,
+      "rotation": 0,
+      "config": {},
+      "label": "INV1"
+    },
+    {
+      "id": "not_2",
+      "type": "NOT",
+      "x": 250,
+      "y": 350,
+      "rotation": 0,
+      "config": {},
+      "label": "INV2"
+    },
+    {
+      "id": "not_3",
+      "type": "NOT",
+      "x": 250,
+      "y": 450,
+      "rotation": 0,
+      "config": {},
+      "label": "INV3"
+    },
+    {
+      "id": "not_4",
+      "type": "NOT",
+      "x": 450,
+      "y": 150,
+      "rotation": 0,
+      "config": {},
+      "label": "INV4"
+    },
+    {
+      "id": "not_5",
+      "type": "NOT",
+      "x": 450,
+      "y": 250,
+      "rotation": 0,
+      "config": {},
+      "label": "INV5"
+    },
+    {
+      "id": "not_6",
+      "type": "NOT",
+      "x": 450,
+      "y": 350,
+      "rotation": 0,
+      "config": {},
+      "label": "INV6"
+    },
+    {
+      "id": "not_7",
+      "type": "NOT",
+      "x": 450,
+      "y": 450,
+      "rotation": 0,
+      "config": {},
+      "label": "INV7"
+    }
+  ],
+  "connections": [
+    { "id": "c1", "from": "clock_1", "fromPin": "out", "to": "counter_bit0", "toPin": "clk" },
+    { "id": "c2", "from": "clock_1", "fromPin": "out", "to": "counter_bit1", "toPin": "clk" },
+    { "id": "c3", "from": "clock_1", "fromPin": "out", "to": "counter_bit2", "toPin": "clk" },
+    { "id": "c4", "from": "clock_1", "fromPin": "out", "to": "counter_bit3", "toPin": "clk" },
+    { "id": "c5", "from": "clock_1", "fromPin": "out", "to": "counter_bit4", "toPin": "clk" },
+    { "id": "c6", "from": "clock_1", "fromPin": "out", "to": "counter_bit5", "toPin": "clk" },
+    { "id": "c7", "from": "clock_1", "fromPin": "out", "to": "counter_bit6", "toPin": "clk" },
+    { "id": "c8", "from": "clock_1", "fromPin": "out", "to": "counter_bit7", "toPin": "clk" },
+    { "id": "c9", "from": "counter_bit0", "fromPin": "q", "to": "not_0", "toPin": "in" },
+    { "id": "c10", "from": "not_0", "fromPin": "out", "to": "counter_bit0", "toPin": "d" },
+    { "id": "c11", "from": "counter_bit1", "fromPin": "q", "to": "not_1", "toPin": "in" },
+    { "id": "c12", "from": "not_1", "fromPin": "out", "to": "counter_bit1", "toPin": "d" },
+    { "id": "c13", "from": "counter_bit2", "fromPin": "q", "to": "not_2", "toPin": "in" },
+    { "id": "c14", "from": "not_2", "fromPin": "out", "to": "counter_bit2", "toPin": "d" },
+    { "id": "c15", "from": "counter_bit3", "fromPin": "q", "to": "not_3", "toPin": "in" },
+    { "id": "c16", "from": "not_3", "fromPin": "out", "to": "counter_bit3", "toPin": "d" },
+    { "id": "c17", "from": "counter_bit4", "fromPin": "q", "to": "not_4", "toPin": "in" },
+    { "id": "c18", "from": "not_4", "fromPin": "out", "to": "counter_bit4", "toPin": "d" },
+    { "id": "c19", "from": "counter_bit5", "fromPin": "q", "to": "not_5", "toPin": "in" },
+    { "id": "c20", "from": "not_5", "fromPin": "out", "to": "counter_bit5", "toPin": "d" },
+    { "id": "c21", "from": "counter_bit6", "fromPin": "q", "to": "not_6", "toPin": "in" },
+    { "id": "c22", "from": "not_6", "fromPin": "out", "to": "counter_bit6", "toPin": "d" },
+    { "id": "c23", "from": "counter_bit7", "fromPin": "q", "to": "not_7", "toPin": "in" },
+    { "id": "c24", "from": "not_7", "fromPin": "out", "to": "counter_bit7", "toPin": "d" }
+  ]
+}

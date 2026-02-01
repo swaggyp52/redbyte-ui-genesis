@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { WindowState, type WindowBounds } from '@redbyte/rb-windowing';
 import type { SnapAssistMode } from '@redbyte/rb-utils';
 import { Icon, type IconName } from '@redbyte/rb-icons';
@@ -15,6 +15,7 @@ type SnapTarget = 'left' | 'right' | 'maximize';
 const SNAP_ENTER_PX = 24;
 const SNAP_EXIT_PX = 48;
 const SNAP_HOVER_MS = 250;
+const THROTTLE_MS = 16; // ~60 FPS, throttle drag/resize calls
 
 interface ShellWindowProps {
   state: WindowState;
@@ -77,6 +78,12 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
   const resizingRef = useRef(false);
   const hasMovedRef = useRef(false);
   const hasResizedRef = useRef(false);
+  
+  // Throttling refs for drag/resize to prevent spamming onMove/onResize
+  const lastMoveTimeRef = useRef<number>(0);
+  const lastResizeTimeRef = useRef<number>(0);
+  const pendingMoveRef = useRef<{ x: number; y: number } | null>(null);
+  const pendingResizeRef = useRef<{ w: number; h: number } | null>(null);
 
   const isMax = state.mode === 'maximized';
   const isMin = state.mode === 'minimized';
@@ -175,6 +182,14 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
     setDragging(false);
     setStart(null);
     dragBoundsRef.current = null;
+    
+    // Flush any pending move calls
+    if (pendingMoveRef.current) {
+      onMove(pendingMoveRef.current.x, pendingMoveRef.current.y);
+      pendingMoveRef.current = null;
+    }
+    lastMoveTimeRef.current = 0;
+    
     if (shouldSnap && activeSnap && onSnap) {
       onSnap(state.id, activeSnap);
     } else if (hasMovedRef.current) {
@@ -189,6 +204,19 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
     setResizing(null);
     setStart(null);
     dragBoundsRef.current = null;
+    
+    // Flush any pending resize/move calls
+    if (pendingResizeRef.current) {
+      onResize(pendingResizeRef.current.w, pendingResizeRef.current.h);
+      pendingResizeRef.current = null;
+    }
+    if (pendingMoveRef.current) {
+      onMove(pendingMoveRef.current.x, pendingMoveRef.current.y);
+      pendingMoveRef.current = null;
+    }
+    lastResizeTimeRef.current = 0;
+    lastMoveTimeRef.current = 0;
+    
     if (hasResizedRef.current) onResizeEnd?.(lastBoundsRef.current);
     clearSnapPreview();
   };
@@ -215,7 +243,16 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
     hasMovedRef.current = true;
     dragBoundsRef.current = nextBounds;
     lastBoundsRef.current = nextBounds;
-    onMove(nextBounds.x, nextBounds.y);
+    
+    // Throttle onMove to reduce system log spam and re-renders
+    const now = Date.now();
+    if (now - lastMoveTimeRef.current >= THROTTLE_MS) {
+      onMove(nextBounds.x, nextBounds.y);
+      lastMoveTimeRef.current = now;
+    } else {
+      pendingMoveRef.current = { x: nextBounds.x, y: nextBounds.y };
+    }
+    
     lastPointerRef.current = { x: e.clientX, y: e.clientY, shiftKey: e.shiftKey };
     handleSnapPreview(e.clientX, e.clientY, e.shiftKey);
     setStart({ x: e.clientX, y: e.clientY });
@@ -251,8 +288,18 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
     hasResizedRef.current = true;
     dragBoundsRef.current = nextBounds;
     lastBoundsRef.current = nextBounds;
-    onResize(width, height);
-    onMove(x, y);
+    
+    // Throttle onResize and onMove to reduce system log spam and re-renders
+    const now = Date.now();
+    if (now - lastResizeTimeRef.current >= THROTTLE_MS) {
+      onResize(width, height);
+      onMove(x, y);
+      lastResizeTimeRef.current = now;
+    } else {
+      pendingResizeRef.current = { w: width, h: height };
+      pendingMoveRef.current = { x, y };
+    }
+    
     setStart({ x: e.clientX, y: e.clientY });
   };
 

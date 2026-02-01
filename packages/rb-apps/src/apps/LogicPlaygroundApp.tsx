@@ -6,6 +6,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { shallow } from 'zustand/shallow';
 import type { RedByteApp } from '../types';
+import type { LabProjectV1, CircuitV1, RecordingV1 } from '@redbyte/rb-utils';
+import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
 import {
   CircuitEngine,
   TickEngine,
@@ -237,6 +239,61 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     () => new TickEngine(circuit, { tickRate })
   );
 
+  const unifiedProject = useUnifiedProjectStore((s) => s.currentProject);
+  const createNewProject = useUnifiedProjectStore((s) => s.createNewProject);
+  const updateProject = useUnifiedProjectStore((s) => s.updateProject);
+
+  const hasSyncedFromProjectRef = useRef(false);
+  const lastRecordingKeyRef = useRef<string | null>(null);
+
+  const toCircuitV1 = useCallback((src: Circuit): CircuitV1 => {
+    return {
+      schemaVersion: '1.0',
+      nodes: src.nodes.map((node) => ({
+        id: node.id,
+        type: node.type,
+        x: node.x || 0,
+        y: node.y || 0,
+        rotation: node.rotation || 0,
+        params: node.config || {},
+        label: node.label,
+        state: node.state || {},
+      })),
+      connections: src.connections.map((conn) => ({
+        id: conn.id,
+        fromNodeId: conn.from,
+        fromPin: conn.fromPin || 'out',
+        toNodeId: conn.to,
+        toPin: conn.toPin || 'in',
+      })),
+      customChips: [],
+    };
+  }, []);
+
+  const fromCircuitV1 = useCallback((src: CircuitV1): Circuit => {
+    return {
+      nodes: src.nodes.map((node) => ({
+        id: node.id,
+        type: node.type,
+        x: node.x,
+        y: node.y,
+        rotation: node.rotation,
+        config: node.params || {},
+        label: node.label,
+        state: node.state || {},
+        inputs: {},
+        outputs: {},
+      })),
+      connections: src.connections.map((conn) => ({
+        id: conn.id,
+        from: conn.fromNodeId,
+        fromPin: conn.fromPin,
+        to: conn.toNodeId,
+        toPin: conn.toPin,
+      })),
+    };
+  }, []);
+
   const addToast = useCallback(
     (message: string, kind: ToastKind = 'info', duration?: number) => {
       toast[kind]({ message, duration });
@@ -262,6 +319,67 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const setHierarchyCircuit = useHierarchyStore((state) => state.setCurrentCircuit);
   const isEditMode = useHierarchyStore((state) => state.isEditMode);
   const toggleEditMode = useHierarchyStore((state) => state.toggleEditMode);
+
+  const createdProjectRef = useRef(false);
+
+  useEffect(() => {
+    if (!unifiedProject && !createdProjectRef.current) {
+      createNewProject('Untitled Project');
+      createdProjectRef.current = true;
+    }
+  }, [unifiedProject, createNewProject]);
+
+  useEffect(() => {
+    if (!unifiedProject || hasSyncedFromProjectRef.current) return;
+    if (circuit.nodes.length > 0 || circuit.connections.length > 0) return;
+    if (unifiedProject.circuit.nodes.length === 0 && unifiedProject.circuit.connections.length === 0) return;
+
+    const loadedCircuit = fromCircuitV1(unifiedProject.circuit);
+    setCircuit(loadedCircuit);
+    setEngine(new CircuitEngine(loadedCircuit));
+    setTickEngine(new TickEngine(loadedCircuit, { tickRate }));
+    hasSyncedFromProjectRef.current = true;
+  }, [unifiedProject, circuit.nodes.length, circuit.connections.length, fromCircuitV1, tickRate]);
+
+  useEffect(() => {
+    if (!unifiedProject) return;
+    if (!hasSyncedFromProjectRef.current && circuit.nodes.length === 0 && circuit.connections.length === 0) return;
+
+    updateProject((project) => ({
+      ...project,
+      circuit: toCircuitV1(circuit),
+    }));
+  }, [circuit, unifiedProject, updateProject, toCircuitV1]);
+
+  useEffect(() => {
+    if (!unifiedProject || !record) return;
+    const recordKey = record.createdAt || `record-${record.summary?.tickCount ?? 0}`;
+    if (recordKey === lastRecordingKeyRef.current) return;
+
+    const proofPack = buildProofPack(record, circuit, {
+      appVersion,
+      tickRate: currentHz,
+      exampleId: selectedExampleId || undefined,
+    });
+
+    const recording: RecordingV1 = {
+      id: `rec-${record.createdAt || Date.now()}`,
+      createdAt: record.createdAt || new Date().toISOString(),
+      tickCount: record.summary?.tickCount ?? 0,
+      eventCount: (record.stimulus?.length ?? 0) + (record.trace?.length ?? 0),
+      events: [
+        { kind: 'runRecord', data: record },
+        { kind: 'proofPack', data: proofPack },
+      ],
+    };
+
+    updateProject((project) => ({
+      ...project,
+      recordings: [recording],
+    }));
+
+    lastRecordingKeyRef.current = recordKey;
+  }, [record, unifiedProject, updateProject, circuit, appVersion, currentHz, selectedExampleId]);
 
 
 

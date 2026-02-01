@@ -1,20 +1,26 @@
 /**
- * ERROR BOUNDARY for PHASE 2A
+ * ERROR BOUNDARY for Production Robustness (Phase 8)
  * 
- * Catches errors thrown by the runaway loop watchdog and displays them
- * with diagnostic information. Ensures test failures are explicit and fast,
- * not timeout-based.
+ * Provides graceful error handling across all RedByte OS applications.
+ * Features:
+ * - User-friendly fallback UI with reset/reload options
+ * - Development-mode error details with stack traces
+ * - Global error flag for test inspection
+ * - Runaway loop watchdog detection
  */
 
 import React from 'react';
+import styles from './ErrorBoundary.module.css';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
+  fallbackTitle?: string;
 }
 
 interface ErrorBoundaryState {
   hasError: boolean;
   error?: Error;
+  errorInfo?: React.ErrorInfo;
 }
 
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -32,7 +38,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     const msg = `RB_FATAL: ${error.message}`;
     console.error(msg);
     console.error('Stack:', error.stack);
-    console.error('Component stack:', errorInfo.componentStack); // ADDED FOR DEBUGGING
+    console.error('Component stack:', errorInfo.componentStack);
 
     // If this is a watchdog error, mark it clearly
     if (error.message.includes('RB_RUNAWAY_LOOP_DETECTED')) {
@@ -47,39 +53,69 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         errorInfo,
       };
     }
+
+    // Store error info for details panel
+    this.setState({ errorInfo });
   }
+
+  handleReset = () => {
+    this.setState({ hasError: false, error: undefined, errorInfo: undefined });
+  };
+
+  handleReload = () => {
+    window.location.reload();
+  };
 
   render() {
     if (this.state.hasError) {
       const isDev = import.meta.env.DEV;
+      const title = this.props.fallbackTitle || 'Application Error';
 
       return (
-        <div className="h-full flex items-center justify-center bg-gray-900 text-white p-8">
-          <div className="max-w-lg text-center">
-            <h2 className="text-2xl font-bold mb-4 text-red-400">
-              Application Error
-            </h2>
+        <div className={styles.errorBoundary}>
+          <div className={styles.errorCard}>
+            <div className={styles.errorIcon}>⚠️</div>
+            <h2 className={styles.errorTitle}>{title}</h2>
+            <p className={styles.errorMessage}>
+              {isDev && this.state.error
+                ? 'An error occurred during rendering. See details below.'
+                : 'An unexpected error occurred. Please try resetting or reloading the application.'}
+            </p>
+            
+            <div className={styles.errorActions}>
+              <button onClick={this.handleReset} className={styles.primaryButton}>
+                Reset
+              </button>
+              <button onClick={this.handleReload} className={styles.secondaryButton}>
+                Reload Page
+              </button>
+            </div>
+
             {isDev && this.state.error && (
-              <>
-                <p className="mb-2 text-sm font-mono bg-gray-800 p-4 rounded text-left overflow-auto max-h-40">
+              <details className={styles.errorDetails}>
+                <summary>Error Details (Dev Mode)</summary>
+                <div className={styles.errorStack}>
+                  <strong>Message:</strong>
                   {this.state.error.message}
-                </p>
-                <p className="text-xs text-gray-400 mb-4">
-                  Check console for full stack trace
-                </p>
-              </>
+                  
+                  {this.state.error.stack && (
+                    <>
+                      <br /><br />
+                      <strong>Stack Trace:</strong>
+                      {this.state.error.stack}
+                    </>
+                  )}
+                  
+                  {this.state.errorInfo?.componentStack && (
+                    <>
+                      <br /><br />
+                      <strong>Component Stack:</strong>
+                      {this.state.errorInfo.componentStack}
+                    </>
+                  )}
+                </div>
+              </details>
             )}
-            {!isDev && (
-              <p className="mb-4">
-                An unexpected error occurred. Please refresh the page.
-              </p>
-            )}
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded text-white"
-            >
-              Reload
-            </button>
           </div>
         </div>
       );
