@@ -351,35 +351,8 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     }));
   }, [circuit, unifiedProject, updateProject, toCircuitV1]);
 
-  useEffect(() => {
-    if (!unifiedProject || !record) return;
-    const recordKey = record.createdAt || `record-${record.summary?.tickCount ?? 0}`;
-    if (recordKey === lastRecordingKeyRef.current) return;
-
-    const proofPack = buildProofPack(record, circuit, {
-      appVersion,
-      tickRate: currentHz,
-      exampleId: selectedExampleId || undefined,
-    });
-
-    const recording: RecordingV1 = {
-      id: `rec-${record.createdAt || Date.now()}`,
-      createdAt: record.createdAt || new Date().toISOString(),
-      tickCount: record.summary?.tickCount ?? 0,
-      eventCount: (record.stimulus?.length ?? 0) + (record.trace?.length ?? 0),
-      events: [
-        { kind: 'runRecord', data: record },
-        { kind: 'proofPack', data: proofPack },
-      ],
-    };
-
-    updateProject((project) => ({
-      ...project,
-      recordings: [recording],
-    }));
-
-    lastRecordingKeyRef.current = recordKey;
-  }, [record, unifiedProject, updateProject, circuit, appVersion, currentHz, selectedExampleId]);
+  // NOTE: useEffect for syncing record to unifiedProject is defined AFTER record is declared
+  // (moved to line ~520 to avoid TDZ error - record comes from useRunRecorderStore)
 
 
 
@@ -504,6 +477,38 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const replayRecord = replayState?.record ?? null;
   const uiTick = useUiTickStore((state) => state.uiTick);
   const isReplayMode = recorderMode === 'replaying';
+
+  // Sync record to unifiedProject (moved here to avoid TDZ - record must be defined first)
+  useEffect(() => {
+    if (!unifiedProject || !record) return;
+    const recordKey = record.createdAt || `record-${record.summary?.tickCount ?? 0}`;
+    if (recordKey === lastRecordingKeyRef.current) return;
+
+    const proofPack = buildProofPack(record, circuit, {
+      appVersion,
+      tickRate: currentHz,
+      exampleId: selectedExampleId || undefined,
+    });
+
+    const recording: RecordingV1 = {
+      id: `rec-${record.createdAt || Date.now()}`,
+      createdAt: record.createdAt || new Date().toISOString(),
+      tickCount: record.summary?.tickCount ?? 0,
+      eventCount: (record.stimulus?.length ?? 0) + (record.trace?.length ?? 0),
+      events: [
+        { kind: 'runRecord', data: record },
+        { kind: 'proofPack', data: proofPack },
+      ],
+    };
+
+    updateProject((project) => ({
+      ...project,
+      recordings: [recording],
+    }));
+
+    lastRecordingKeyRef.current = recordKey;
+  }, [record, unifiedProject, updateProject, circuit, appVersion, currentHz, selectedExampleId]);
+
   const [isRunning, setIsRunning] = useState(false);
   const [currentHz, setCurrentHz] = useState(tickRate);
   const [tickCount, setTickCount] = useState(0);

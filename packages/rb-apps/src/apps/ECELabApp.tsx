@@ -306,15 +306,8 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
     return getAvailableSignals(unifiedProject);
   }, [unifiedProject]);
   const virtualIOState = unifiedProject?.boardMap?.virtualIOState ?? { switches: [], buttons: [] };
-  const ioInputStates = useMemo(() => {
-    if (!ioMapping) return {} as Record<string, boolean>;
-    const next: Record<string, boolean> = {};
-    ioMapping.inputs.forEach((entry) => {
-      next[entry.id] = resolveInputValue(entry.pin);
-    });
-    return next;
-  }, [ioMapping, resolveInputValue]);
 
+  // NOTE: resolveInputValue must be defined BEFORE ioInputStates useMemo that uses it
   const resolveInputValue = useCallback(
     (pin?: string) => {
       if (!pin) return false;
@@ -330,6 +323,15 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
     },
     [virtualIOState.buttons, virtualIOState.switches]
   );
+
+  const ioInputStates = useMemo(() => {
+    if (!ioMapping) return {} as Record<string, boolean>;
+    const next: Record<string, boolean> = {};
+    ioMapping.inputs.forEach((entry) => {
+      next[entry.id] = resolveInputValue(entry.pin);
+    });
+    return next;
+  }, [ioMapping, resolveInputValue]);
 
   const handleInitializeIoMapping = useCallback(() => {
     if (!unifiedProject) return;
