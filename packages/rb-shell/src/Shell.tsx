@@ -2196,7 +2196,7 @@ export const Shell: React.FC<ShellProps> = () => {
     : null;
 
   return (
-    <div data-testid="shell-container" className="shell-container rb-shell relative w-screen h-screen overflow-hidden">
+    <div data-testid="desktop-shell" className="shell-container rb-shell relative w-screen h-screen overflow-hidden">
       <a href="#rb-desktop-region" className="rb-skip-link">Skip to desktop</a>
       {showRecoveryPrompt && (
         <RecoveryPrompt onRecover={handleRecovery} onDiscard={handleDiscardRecovery} />

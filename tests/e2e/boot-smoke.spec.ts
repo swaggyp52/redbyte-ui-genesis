@@ -23,13 +23,13 @@ test.describe('Boot Smoke Test', () => {
     await page.goto('/');
 
     // Wait for desktop to render (login screen should auto-login in dev)
-    await page.waitForSelector('[data-testid="desktop-shell"]', {
+    await page.waitForSelector('[data-testid="shell-container"]', {
       timeout: 10000,
       state: 'visible',
     });
 
     // Verify no white screen - check for key OS elements
-    const desktopVisible = await page.locator('[data-testid="desktop-shell"]').isVisible();
+    const desktopVisible = await page.locator('[data-testid="shell-container"]').isVisible();
     expect(desktopVisible).toBe(true);
 
     // Check for app grid/taskbar
@@ -60,7 +60,7 @@ test.describe('Boot Smoke Test', () => {
 
   test('can open Logic Playground app', async ({ page }) => {
     await page.goto('/');
-    await page.waitForSelector('[data-testid="desktop-shell"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="shell-container"]', { timeout: 10000 });
 
     // Find and click Logic Playground app launcher
     const appLauncher = page.locator('text="Logic Playground"').first();
@@ -82,7 +82,7 @@ test.describe('Boot Smoke Test', () => {
 
   test('can open ECE 347 Lab app', async ({ page }) => {
     await page.goto('/');
-    await page.waitForSelector('[data-testid="desktop-shell"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="shell-container"]', { timeout: 10000 });
 
     // Find and click ECE 347 Lab app launcher
     const appLauncher = page.locator('text="ECE 347 Lab"').first();

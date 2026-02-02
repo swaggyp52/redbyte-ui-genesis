@@ -17,7 +17,9 @@ const STAGES = [
 ];
 
 const BootScreen: React.FC<BootScreenProps> = ({ onComplete }) => {
+  console.log('[BootScreen] Rendering');
   const reduceMotion = useSettingsStore((state) => state.reduceMotion);
+  console.log('[BootScreen] reduceMotion:', reduceMotion);
   const [progress, setProgress] = useState(0);
   const [exiting, setExiting] = useState(false);
 
@@ -36,6 +38,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete }) => {
   }, [progress]);
 
   useEffect(() => {
+    console.log('[BootScreen] useEffect starting, duration:', timing.duration);
     let raf = 0;
     let active = true;
     const start = performance.now();
@@ -44,6 +47,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete }) => {
       if (!active) return;
       const elapsed = now - start;
       const nextProgress = Math.min(100, Math.round((elapsed / timing.duration) * 100));
+      if (nextProgress % 25 === 0) console.log('[BootScreen] progress:', nextProgress);
       setProgress(nextProgress);
 
       if (elapsed < timing.duration) {
