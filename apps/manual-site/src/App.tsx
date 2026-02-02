@@ -1,4 +1,4 @@
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import Home from './pages/Home';
@@ -22,6 +22,12 @@ function App() {
         <main className="flex-1">
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/product" element={<About />} />
+            <Route path="/labs" element={<Examples />} />
+            <Route path="/docs" element={<Guide />} />
+            <Route path="/download" element={<Install />} />
+
+            {/* Legacy/Aliases */}
             <Route path="/students" element={<StudentStart />} />
             <Route path="/lab-0" element={<LabZero />} />
             <Route path="/install" element={<Install />} />
@@ -33,6 +39,15 @@ function App() {
             <Route path="/guide/walkthrough" element={<Walkthrough />} />
             <Route path="/manual" element={<ManualRedirect />} />
             <Route path="/about" element={<About />} />
+
+            {/* 404 Fallback */}
+            <Route path="*" element={
+              <div className="flex flex-col items-center justify-center min-h-[50vh] text-zinc-400">
+                <h1 className="text-4xl font-bold text-white mb-4">404</h1>
+                <p className="mb-8">Page not found.</p>
+                <Link to="/" className="text-blue-400 hover:text-blue-300">Return Home</Link>
+              </div>
+            } />
           </Routes>
         </main>
         <Footer />

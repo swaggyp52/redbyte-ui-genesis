@@ -23,6 +23,18 @@ export interface TestVector {
     holdTicks?: number; // How many ticks to hold these inputs
 }
 
+export interface PresetSuite {
+    id: string;
+    title: string;
+    description: string;
+    presets: {
+        name: string;
+        inputs: Record<string, string | number>;
+        expectedOutputs: Record<string, string | number>;
+        holdTicks?: number;
+    }[];
+}
+
 export interface VectorRunResult {
     vectorId: string;
     status: 'PASS' | 'FAIL' | 'RUNNING' | 'PENDING';

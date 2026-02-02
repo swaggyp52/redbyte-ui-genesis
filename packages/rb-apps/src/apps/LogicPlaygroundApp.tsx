@@ -2989,6 +2989,134 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     downloadText('rb-debug-bundle.json', stableStringify(bundle));
   }, [buildProject, circuit, record, appVersion, currentHz, downloadText]);
 
+  // Board IO Handling
+  const ioMapping = unifiedProject?.ioMapping;
+
+  // Sync VirtualIOState -> Circuit Nodes (from 3D Lab or other apps)
+  useEffect(() => {
+    if (!unifiedProject?.boardMap?.virtualIOState || !ioMapping) return;
+
+    const { switches = [], buttons = [] } = unifiedProject.boardMap.virtualIOState;
+    let hasChanges = false;
+    const nextNodes = circuit.nodes.map((node) => {
+      const mapping = ioMapping.inputs.find((m) => m.nodeId === node.id);
+      if (!mapping || !mapping.pin) return node;
+
+      let shouldBeOn = false;
+      if (mapping.pin.startsWith('SW')) {
+        const idx = parseInt(mapping.pin.slice(2), 10);
+        shouldBeOn = !!switches[idx];
+      } else if (mapping.pin.startsWith('BTN')) {
+        const idx = parseInt(mapping.pin.slice(3), 10);
+        shouldBeOn = !!buttons[idx];
+      }
+
+      const current = !!node.state?.on;
+      if (current !== shouldBeOn) {
+        hasChanges = true;
+        return { ...node, state: { ...node.state, on: shouldBeOn } };
+      }
+      return node;
+    });
+
+    if (hasChanges) {
+      setCircuit({ ...circuit, nodes: nextNodes });
+      // Also update engine instance
+      const nextCircuit = { ...circuit, nodes: nextNodes };
+      engine.setCircuit(nextCircuit);
+      tickEngine.setCircuit(nextCircuit);
+    }
+  }, [unifiedProject?.boardMap?.virtualIOState, ioMapping, circuit, engine, tickEngine]);
+
+  const ioInputStates = useMemo(() => {
+    if (!ioMapping) return {};
+    const states: Record<string, boolean> = {};
+    ioMapping.inputs.forEach((entry) => {
+      const node = circuit.nodes.find((n) => n.id === entry.nodeId);
+      if (node && node.state && entry.pin) {
+        states[entry.pin] = !!node.state.on;
+      }
+    });
+    return states;
+  }, [ioMapping, circuit]);
+
+  const ioOutputStates = useMemo(() => {
+    if (!ioMapping) return {};
+    const states: Record<string, boolean> = {};
+    const signals = engine.getAllSignals();
+    ioMapping.outputs.forEach((entry) => {
+      if (entry.pin && entry.nodeId) {
+        const val = signals.get(entry.nodeId);
+        states[entry.pin] = (val ?? 0) > 0;
+      }
+    });
+    return states;
+  }, [ioMapping, tickCount, engine]);
+
+  const handleIoToggleInput = useCallback((entry: any) => {
+    if (!entry.nodeId) return;
+    const node = circuit.nodes.find((n) => n.id === entry.nodeId);
+    if (!node) return;
+
+    // Toggle switch state
+    const newState = !node.state?.on;
+    const nextCircuit = {
+      ...circuit,
+      nodes: circuit.nodes.map((n) =>
+        n.id === entry.nodeId ? { ...n, state: { ...n.state, on: newState } } : n
+      ),
+    };
+    setCircuit(nextCircuit);
+    engine.setCircuit(nextCircuit);
+    tickEngine.setCircuit(nextCircuit);
+
+    // Sync to Unified Project (VirtualIOState)
+    if (entry.pin && unifiedProject) {
+      const currentMap = unifiedProject.boardMap ?? {
+        boardProfileId: 'basys3',
+        virtualIOState: { switches: [], buttons: [] },
+        signalToPinMap: {}
+      };
+
+      const nextSwitches = [...(currentMap.virtualIOState?.switches ?? [])];
+      const nextButtons = [...(currentMap.virtualIOState?.buttons ?? [])];
+      let changed = false;
+
+      if (entry.pin.startsWith('SW')) {
+        const idx = parseInt(entry.pin.slice(2), 10);
+        if (!Number.isNaN(idx)) {
+          nextSwitches[idx] = newState;
+          changed = true;
+        }
+      } else if (entry.pin.startsWith('BTN')) {
+        const idx = parseInt(entry.pin.slice(3), 10);
+        if (!Number.isNaN(idx)) {
+          nextButtons[idx] = newState;
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        updateProject((p) => ({
+          ...p,
+          boardMap: {
+            ...currentMap,
+            virtualIOState: { switches: nextSwitches, buttons: nextButtons },
+          },
+        }));
+      }
+    }
+  }, [circuit, engine, tickEngine, unifiedProject, updateProject]);
+
+  const handleIoInitialize = useCallback(() => {
+    // TODO: Auto-map?
+  }, []);
+
+  const handleIoAssignPin = useCallback((entry: any, pin: string) => {
+    // Logic to update mapping in project
+    console.log('Assign pin:', entry, pin);
+  }, []);
+
   useEffect(() => {
     const handlePlaygroundCommand = (event: Event) => {
       const detail = (event as CustomEvent<{ command?: string; windowId?: string }>).detail;
@@ -3495,8 +3623,15 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
               isReplayMode={isReplayMode}
               onRun={handleRun}
               onPause={handlePause}
+              onPause={handlePause}
               onStep={handleStep}
               onResetTickCount={handleResetTickCount}
+              ioMapping={ioMapping}
+              ioInputStates={ioInputStates}
+              ioOutputStates={ioOutputStates}
+              onIoToggleInput={handleIoToggleInput}
+              onIoInitialize={handleIoInitialize}
+              onIoAssignPin={handleIoAssignPin}
               lastTickAt={lastTickAt}
               highlightProbePaths={highlightProbePaths}
               onToggleHighlightProbePaths={setHighlightProbePaths}

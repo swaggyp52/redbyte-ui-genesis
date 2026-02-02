@@ -7,6 +7,7 @@ import { useFileSystemStore } from '../stores/fileSystemStore';
 import { useHardwareStore } from '../stores/hardwareStore';
 import { useLabStore as usePedagogicalLabStore } from '../labs/labStore';
 import { useLabStore as useModelLabStore, evaluateAtTick, fingerprintLabTemplate } from '@redbyte/rb-logic-3d';
+import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
 import { VIRTUAL_LAB_TEMPLATES } from '../apps/virtual-lab-templates';
 import { createTrace, type HardwareTraceV1 } from '../hardware/traceFormat';
 
@@ -105,6 +106,7 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
                     port: 'CONNECTED',
                     agent: '127.0.0.1:4242',
                     verified: modelLab.activeTransport.getStatus().deviceVerified === true,
+                    runVerified: lab.hardwareVerified, // Added per Phase 3 req
                 } : undefined
             }
         };
@@ -133,6 +135,8 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
                 capsule: 'proofs/capsule.json',
                 events: hw.traceBuffer.length > 0 ? 'proofs/events.ndjson' : null,
                 circuit_snapshot: 'proofs/circuit_snapshot.json',
+                project: 'project.json', // Added per validation requirement
+                readme: 'README.md'      // Added per validation requirement
             }
         };
 
@@ -155,6 +159,36 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
             wireCount: modelLab.graph.wires.length,
             graph: modelLab.graph,
         }, null, 2));
+
+        // Project JSON: The complete unified project state
+        const project = useUnifiedProjectStore.getState().currentProject;
+        if (project) {
+            zip.file('project.json', JSON.stringify(project, null, 2));
+        }
+
+        // README.md: Human readable summary
+        const readmeContent = `# ${lab.activeLabId.toUpperCase()} Submission
+        
+**Student:** ${capsule.student.name} (${capsule.student.id})
+**Date:** ${new Date().toLocaleString()}
+**Board:** ${capsule.deviceBoardId || 'N/A'}
+
+## Self Check Status
+${lab.selfCheckResults ? (lab.selfCheckResults.passed ? '✅ PASSED' : '❌ FAILED') : '❓ NOT RUN'}
+${lab.selfCheckResults ? `Suite: ${lab.selfCheckResults.suiteId}` : ''}
+
+## Completed Steps
+${lab.completedSteps.map(s => `- Step ${s + 1}`).join('\n')}
+
+## Evidence
+- Trace Event Buffer: ${capsule.trace?.samples.length || 0} samples
+`;
+        zip.file('README.md', readmeContent);
+
+        // Self Check JSON
+        if (lab.selfCheckResults) {
+            zip.file('evidence/selfcheck.json', JSON.stringify(lab.selfCheckResults, null, 2));
+        }
 
         // 4. Generate and Save
         const blob = await zip.generateAsync({ type: 'blob' });

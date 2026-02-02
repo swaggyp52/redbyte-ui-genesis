@@ -22,6 +22,18 @@ interface LabState {
     resetLab: () => void;
     setPass: (pass: boolean) => void;
     setStudentInfo: (name: string, id: string) => void;
+
+    // Self-Check Evidence
+    selfCheckResults?: any;
+    setSelfCheckResults: (results: any) => void;
+
+    // Hardware Verification
+    hardwareVerified: boolean;
+    setHardwareVerified: (verified: boolean) => void;
+
+    // Data Safety
+    isDirty: boolean;
+    setIsDirty: (dirty: boolean) => void;
 }
 
 export const useLabStore = create<LabState>((set, get) => ({
@@ -40,10 +52,26 @@ export const useLabStore = create<LabState>((set, get) => ({
         set({ studentName: name, studentId: id });
     },
 
+    setSelfCheckResults: (results) => {
+        set({ selfCheckResults: results });
+    },
+
+    // Hardware Verification logic
+    hardwareVerified: false,
+    setHardwareVerified: (verified: boolean) => {
+        set({ hardwareVerified: verified, isDirty: true });
+    },
+
+    // Data Safety
+    isDirty: false,
+    setIsDirty: (dirty: boolean) => set({ isDirty: dirty }),
+    // TODO: Implement actual persistence logic here or in middleware
+
     nextStep: () => {
         const { currentStepIndex, activeLabId } = get();
         const content = LABS[activeLabId] || LABS['lab-1'];
-        if (currentStepIndex < content.length - 1) {
+        const totalSteps = Array.isArray(content) ? content.length : content.steps.length;
+        if (currentStepIndex < totalSteps - 1) {
             set({ currentStepIndex: currentStepIndex + 1 });
         }
     },

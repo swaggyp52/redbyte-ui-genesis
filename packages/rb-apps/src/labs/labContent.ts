@@ -2,6 +2,11 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
+import { LAB_2_ADDER_CONTENT, type LabDefinition } from './lab2-adder';
+export type { LabDefinition } from './lab2-adder';
+
+export type LabContent = LabStep[] | LabDefinition;
+
 export interface LabStep {
     id: string;
     title: string;
@@ -78,55 +83,107 @@ Click **Export Evidence** to save a snapshot of your work (Trace + Report) to th
 export const LAB_2_CONTENT: LabStep[] = [
     {
         id: 'intro',
-        title: 'Lab 2: Combinational Logic',
+        title: 'Lab 2: 4-Bit Binary Adder',
         markdown: `
-# Lab 2: Logic Gates (AND/XOR)
+# Lab 2: 4-Bit Binary Adder
 
-In this lab, you will implement basic combinational logic using switches and LEDs.
+In this lab, you will design and implement a 4-bit ripple-carry adder and verify it on hardware. You will also integrate an analog light sensor (LDR) using a hardware comparator.
 
 **Objectives:**
-1. Implement an **AND** gate (SW0 & SW1 -> LED0).
-2. Implement an **XOR** gate (SW2 ^ SW3 -> LED1).
+1. Design a 4-bit adder using logic gates (or Full Adder components).
+2. Simulate the adder to verify correctness (Truth Table).
+3. Connect the LDR sensor input via a hardware comparator.
+4. Deployment to FPGA and hardware verification.
         `
     },
     {
-        id: 'and_gate',
-        title: 'Task 1: AND Gate',
+        id: 'design',
+        title: 'Task 1: Circuit Design',
         markdown: `
-# Task 1: The AND Gate
+# Task 1: 4-Bit Adder Design
 
-Connect **SW0** and **SW1** such that **LED0** turns ON only when **BOTH** switches are ON.
+Construct a 4-bit adder that adds two 4-bit numbers **A** and **B** to produce a 4-bit **Sum** and a **Carry Out**.
 
-**Truth Table:**
-| SW0 | SW1 | LED0 |
-|---|---|---|
-| 0 | 0 | 0 |
-| 0 | 1 | 0 |
-| 1 | 0 | 0 |
-| 1 | 1 | 1 |
+**Requirements:**
+- Inputs: **A[3:0]**, **B[3:0]**, **Cin**
+- Outputs: **Sum[3:0]**, **Cout**
+- Use Full Adders cascaded together.
 
-Click **Verify** when you have set **SW0=1, SW1=1**.
+**Board Mapping:**
+- A[0-3] -> SW0-SW3
+- B[0-3] -> SW4-SW7
+- Cin -> SW15 (Optional manual carry)
+- Sum[0-3] -> LED0-LED3
+- Cout -> LED4
+        `
+    },
+    {
+        id: 'simulation',
+        title: 'Task 2: Simulation Verification',
+        markdown: `
+# Task 2: Simulation Verification
+
+Verify your design by testing the following cases:
+
+1. **0 + 0**: Set all switches to 0. Correct Sum = 0.
+2. **1 + 1**: Set A=1, B=1. Correct Sum = 2 (LED1 ON).
+3. **15 + 1**: Set A=1111 (15), B=0001 (1). Correct Sum = 0, Cout = 1.
+4. **General Case**: Try 3 + 5 = 8.
+
+Click **Run Self-Check** to automatically verify all combinations.
         `,
         checkpoint: {
-            signal: 'LED0',
+            signal: 'Cout',
             expectedValue: 1,
-            description: 'Verify LED0 is ON (High) when SW0 & SW1 are ON'
+            description: 'Verify 15 + 1 produces Carry Out'
         }
     },
     {
-        id: 'completion',
-        title: 'Lab Completion',
+        id: 'sensor',
+        title: 'Task 3: Analog Sensor Integration',
         markdown: `
-# Lab 2 Complete!
+# Task 3: LDR Sensor Integration
 
-You have implemented combinational logic.
-Click **Export Evidence** to submit your work.
+Integrate the Light Dependent Resistor (LDR) circuit.
+
+1. Build the LDR + LM358 comparator circuit on your breadboard.
+2. Connect the LM358 output to **JB1** (or designated input pin).
+3. Map this input to influence your adder (e.g. use it as **Cin** instead of SW15).
+
+**Observation:**
+- Cover the LDR -> Comparator Low -> Cin=0
+- Shine light -> Comparator High -> Cin=1
+- Verify that light levels change your add result (e.g. 5+5+1 vs 5+5+0).
+        `
+    },
+    {
+        id: 'hardware',
+        title: 'Task 4: Hardware Deployment',
+        markdown: `
+# Task 4: FPGA Verification
+
+1. Connect your Basys3 board.
+2. Click **Program FPGA** in the Hardware tab.
+3. Once programmed, manipulate the physical switches and observe the physical LEDs.
+4. Verify the LDR sensor interaction on real hardware.
+        `
+    },
+    {
+        id: 'submit',
+        title: 'Lab Submission',
+        markdown: `
+# Lab Completion
+
+You have successfully built and tested a mixed-signal digital system!
+
+**Submission:**
+Click **Export Project** to generate your `.rbx.zip` submission file. This file contains your circuit, test results, and hardware configuration.
         `
     }
 ];
 
-export const LABS: Record<string, LabStep[]> = {
+export const LABS: Record<string, LabContent> = {
     'lab-1': LAB_1_CONTENT,
-    'lab-2': LAB_2_CONTENT
+    'lab-2': LAB_2_CONTENT,
+    'lab2_adder': LAB_2_ADDER_CONTENT
 };
-

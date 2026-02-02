@@ -415,8 +415,8 @@ export const Shell: React.FC<ShellProps> = () => {
       details: missingIoMapping
         ? 'Board mappings exist but ioMapping is empty'
         : invalidIo.length
-        ? `${invalidIo.length} invalid mappings`
-        : 'ok',
+          ? `${invalidIo.length} invalid mappings`
+          : 'ok',
     });
 
     // Recordings check (structure only)
@@ -640,7 +640,7 @@ export const Shell: React.FC<ShellProps> = () => {
   // Install global error handlers (unhandled exceptions + rejections)
   useEffect(() => {
     const cleanupErrors = installErrorHandlers();
-    const cleanupLeaks = import.meta.env.DEV ? startLeakMonitor() : () => {};
+    const cleanupLeaks = import.meta.env.DEV ? startLeakMonitor() : () => { };
     return () => {
       cleanupErrors();
       cleanupLeaks();
@@ -880,14 +880,14 @@ export const Shell: React.FC<ShellProps> = () => {
     if (typeof window === 'undefined') return;
 
     const params = new URLSearchParams(window.location.search);
-    
+
     // Check for rb://demo/{exampleId} URI pattern
     if (params.has('demo')) {
       const exampleId = params.get('demo') as ExampleId;
       handleLoadExample(exampleId);
       return;
     }
-    
+
     // Check for Logic Playground specific parameters
     if (params.has('mode') || params.has('example') || params.has('circuit')) {
       // Open logic-playground (openWindow handles singleton check automatically)
@@ -1270,21 +1270,21 @@ export const Shell: React.FC<ShellProps> = () => {
       }
 
       // Dynamic import to avoid circular deps
-      const { 
-        generateBitstreamArtifacts, 
-        validateVerilog, 
+      const {
+        generateBitstreamArtifacts,
+        validateVerilog,
         validateConstraints,
-        calculateReadinessScore 
+        calculateReadinessScore
       } = await import('@redbyte/rb-fpga-toolchain');
-      
+
       const artifacts = await generateBitstreamArtifacts(project);
 
       // Validate generated Verilog
       const verilogResult = validateVerilog(artifacts.verilog);
-      
+
       // Extract circuit signal names for constraint validation
       const circuitSignals = [...(verilogResult.moduleInfo?.inputs || []), ...(verilogResult.moduleInfo?.outputs || [])];
-      const constraintResult = artifacts.constraints 
+      const constraintResult = artifacts.constraints
         ? validateConstraints(artifacts.constraints, circuitSignals)
         : { valid: true, errors: [], warnings: [] };
 
@@ -1337,7 +1337,7 @@ export const Shell: React.FC<ShellProps> = () => {
         level: 'action',
         source: 'fpga',
         message: 'Verilog exported',
-        data: { 
+        data: {
           projectId: project.projectId,
           verilogHash: artifacts.metadata.verilogHash,
           nodeCount: artifacts.metadata.nodeCount,
@@ -1359,9 +1359,9 @@ export const Shell: React.FC<ShellProps> = () => {
 
       // Dynamic import to avoid circular deps (browser-safe parts only)
       const { generateBitstreamArtifacts } = await import('@redbyte/rb-fpga-toolchain');
-      
+
       toast.info('Bitstream synthesis requires Vivado - run locally with toolchain installed');
-      
+
       // Generate artifacts to show what would be synthesized
       const artifacts = await generateBitstreamArtifacts(project);
 
@@ -1372,12 +1372,12 @@ export const Shell: React.FC<ShellProps> = () => {
       // Note: Actual synthesis requires Node.js environment with Vivado installed
       // This is a browser environment, so we only generate HDL artifacts
       toast.info('Verilog and constraints generated - synthesis requires local Vivado installation');
-      
+
       logSystemEvent({
         level: 'action',
         source: 'fpga',
         message: 'Bitstream build requested (requires local toolchain)',
-        data: { 
+        data: {
           projectId: project.projectId,
           verilogHash: artifacts.metadata.verilogHash,
           nodeCount: artifacts.metadata.nodeCount,
@@ -1417,14 +1417,14 @@ export const Shell: React.FC<ShellProps> = () => {
       }
 
       toast.info('Board programming requires local toolchain - use rb-fpga-bridge or Vivado Hardware Manager');
-      
+
       logSystemEvent({
         level: 'action',
         source: 'fpga',
         message: 'Board programming requested (requires local hardware)',
-        data: { 
-          projectId: project.projectId, 
-          bitstreamPath 
+        data: {
+          projectId: project.projectId,
+          bitstreamPath
         },
       });
     } catch (error) {
@@ -1450,10 +1450,10 @@ export const Shell: React.FC<ShellProps> = () => {
       // Generate metadata
       const { generateBitstreamArtifacts } = await import('@redbyte/rb-fpga-toolchain');
       const artifacts = await generateBitstreamArtifacts(project);
-      
+
       setBitstreamMetadata(artifacts.metadata);
       setBitstreamProvenanceOpen(true);
-      
+
       logSystemEvent({
         level: 'action',
         source: 'fpga',
@@ -1473,7 +1473,7 @@ export const Shell: React.FC<ShellProps> = () => {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = '.rbx.zip,.rb-lab.zip,.zip';
-      
+
       input.onchange = async (e) => {
         const file = (e.target as HTMLInputElement).files?.[0];
         if (!file) return;
@@ -1523,7 +1523,7 @@ export const Shell: React.FC<ShellProps> = () => {
           loadImportedProject(project, circuit);
 
           toast.success(`Project imported: ${project.name}`);
-          
+
           logSystemEvent({
             level: 'action',
             source: 'import',
@@ -2222,7 +2222,13 @@ export const Shell: React.FC<ShellProps> = () => {
 
       {!hasVisibleWindows && (
         <HomeScreen
-          onOpenApp={openWindow}
+          onOpenApp={(appId) => {
+            if (appId === 'import-project') {
+              handleImportProject();
+            } else {
+              openWindow(appId);
+            }
+          }}
           onOpenExample={(exampleId) => {
             dispatchIntent({
               type: 'open-example',

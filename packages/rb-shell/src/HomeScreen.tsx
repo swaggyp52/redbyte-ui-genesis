@@ -119,6 +119,7 @@ const StateChip: React.FC<{ label: string; value: string; accent?: boolean }> = 
 const QUICK_ACTIONS = [
   { id: 'logic-playground', label: 'New Circuit', icon: '\u229E', description: 'Open the freeform circuit editor' },
   { id: 'ece-lab', label: 'Lab Assignment', icon: '\u2394', description: 'Start a guided lab with verification' },
+  { id: 'import-project', label: 'Import', icon: '\u2193', description: 'Open an existing .rbx project' },
   { id: 'files', label: 'Files', icon: '\u229F', description: 'Browse project files' },
 ] as const;
 

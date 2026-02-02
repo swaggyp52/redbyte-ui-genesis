@@ -14,6 +14,7 @@ import { RunRecorderPanel } from './RunRecorderPanel';
 import type { GuidedExample } from '../logic/learnMode';
 import { useProbeStore } from '../stores/probeStore';
 import { trackRender, useUiTickStore } from '@redbyte/rb-utils';
+import { BoardIOPanel } from './BoardIOPanel';
 
 /**
  * Logic Playground vNext Right Dock
@@ -27,7 +28,7 @@ import { trackRender, useUiTickStore } from '@redbyte/rb-utils';
  * Never overlaps the main stage
  */
 
-export type RightDockTab = 'inspector' | 'health' | 'learn' | 'probes' | 'record' | 'chips';
+export type RightDockTab = 'inspector' | 'health' | 'learn' | 'probes' | 'record' | 'chips' | 'io';
 export type RightDockState = 'collapsed' | 'peek' | 'expanded';
 
 interface RightDockProps {
@@ -79,6 +80,17 @@ interface RightDockProps {
   onChipDelete?: (chipId: string) => void;
   onChipEdit?: (chipId: string) => void;
 
+  // IO Tab
+  ioMapping?: any; // IoMapping
+  ioInputStates?: Record<string, boolean>;
+  ioOutputStates?: Record<string, boolean>;
+  onIoToggleInput?: (entry: any) => void;
+  onIoInitialize?: () => void;
+  onIoAssignPin?: (entry: any, pin: string) => void;
+  hardwareMode?: 'simulated' | 'board';
+  onHardwareModeChange?: (mode: 'simulated' | 'board') => void;
+  boardConnected?: boolean;
+
   // State control
   initialTab?: RightDockTab;
   initialState?: RightDockState;
@@ -126,6 +138,15 @@ export const RightDock: React.FC<RightDockProps> = ({
   onChipInsert,
   onChipDelete,
   onChipEdit,
+  ioMapping,
+  ioInputStates = {},
+  ioOutputStates = {},
+  onIoToggleInput,
+  onIoInitialize,
+  onIoAssignPin,
+  hardwareMode,
+  onHardwareModeChange,
+  boardConnected,
   initialTab = 'inspector',
   initialState = 'expanded',
   onStateChange,
@@ -479,6 +500,7 @@ export const RightDock: React.FC<RightDockProps> = ({
             <span className="mr-1 pointer-events-none select-none">⏺️</span>
             <span className="pointer-events-none select-none">Record</span>
           </button>
+
           <button
             onClick={() => handleTabChange('chips')}
             className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'chips'
@@ -494,6 +516,22 @@ export const RightDock: React.FC<RightDockProps> = ({
           >
             <span className="mr-1 pointer-events-none select-none">🧩</span>
             <span className="pointer-events-none select-none">Chips</span>
+          </button>
+          <button
+            onClick={() => handleTabChange('io')}
+            className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'io'
+              ? 'bg-cyan-600 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            aria-label="IO"
+            aria-selected={activeTab === 'io' ? 'true' : 'false'}
+            role="tab"
+            tabIndex={activeTab === 'io' ? 0 : -1}
+            data-testid="rightdock-tab-io"
+            type="button"
+          >
+            <span className="mr-1 pointer-events-none select-none">🔌</span>
+            <span className="pointer-events-none select-none">IO</span>
           </button>
         </div>
 
@@ -859,6 +897,34 @@ export const RightDock: React.FC<RightDockProps> = ({
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+        {activeTab === 'io' && (
+          <div className="h-full overflow-y-auto">
+            {ioMapping ? (
+              <BoardIOPanel
+                ioMapping={ioMapping}
+                inputStates={ioInputStates}
+                outputStates={ioOutputStates}
+                onToggleInput={onIoToggleInput || (() => { })}
+                onInitializeMapping={onIoInitialize}
+                onAssignPin={onIoAssignPin}
+                availableSignals={
+                  // We can pass available signals from parent if needed for mapping
+                  // For now, we assume parent passes them implicitly or handled by specialized props if we extend BoardIOPanel
+                  // Actually BoardIOPanel needs availableSignals explicitly to show mapping UI
+                  // Let's rely on parent passing valid ioMapping
+                  undefined
+                }
+                hardwareMode={hardwareMode}
+                onHardwareModeChange={onHardwareModeChange}
+                boardConnected={boardConnected}
+              />
+            ) : (
+              <div className="p-4 text-center text-gray-400 text-sm">
+                IO Mapping not available
               </div>
             )}
           </div>

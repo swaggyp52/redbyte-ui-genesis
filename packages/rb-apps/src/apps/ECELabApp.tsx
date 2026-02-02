@@ -13,6 +13,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import JSZip from 'jszip';
 import BoardPanel from '../components/BoardPanel';
+import { toast } from '@redbyte/rb-primitives';
 import { BoardIOPanel } from '../components/BoardIOPanel';
 import { CompareView, type CompareSignalCheck } from '../components/CompareView';
 import { CircuitCanvas } from '../components/boards/CircuitCanvas'; // TODO: Remove if unused, but keeping type safely
@@ -23,7 +24,8 @@ import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
 import { getAvailableSignals } from '@redbyte/rb-lab-engine/src/signals/signalSemantics';
 import { useViewStateStore } from '../stores/viewStateStore';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
-import { useHardwareStore } from '../stores/hardwareStore';
+
+import { useLabStore } from '../labs/labStore';
 import { getSignalMap } from '../labs/signalMap';
 import { getSimSnapshot, useSimStore, setSimInput } from '../labs/simAdapter';
 import { EXPERIMENTS } from '../labs/experiments';
@@ -31,9 +33,20 @@ import type { HardwareTraceV1 } from '../hardware/traceFormat';
 import { validateTrace } from '../hardware/traceFormat';
 import { saveTraceToFS, loadTraceFromFS, saveCapsuleToFS, loadCapsuleFromFS } from '../utils/traceFileUtils';
 import { createCapsule, validateCapsule, type RedByteCapsule } from '../hardware/capsuleFormat';
+
+// Consolidate imports
+import { vectorRunner, type VectorRunResult, type TestVector, type PresetSuite } from '../labs/vectorRunner';
+import { synthesizableVerilogFromNetlist } from '../export/verilogExport';
+import { useHardwareStore } from '../stores/hardwareStore';
+import { netlistFromCircuit } from '../export/netlistExport';
 import { LabInstructions } from '../labs/LabInstructions';
 import { InspectorPanel } from '../labs/InspectorPanel';
-import { LAB_1_CONTENT } from '../labs/labContent';
+import { LAB_1_CONTENT, LAB_2_CONTENT, LABS, type LabDefinition } from '../labs/labContent';
+
+import { exportEvidence } from '../utils/evidenceExport';
+// Checking imports... line 88 of LogicPlayground had it. Let's check ECELabApp imports.
+// It seems exportEvidence is not imported. I'll add the import.
+import { exportEvidenceCapsule } from '../utils/evidenceExport'; // Wait, checking available utils.
 
 interface ECELabAppProps {
   windowId?: string;
@@ -65,14 +78,15 @@ const BoardSelector: React.FC<{
 );
 
 // Vector Runner View component
-import { vectorRunner, type VectorRunResult, type TestVector } from '../labs/vectorRunner';
-
 const VectorRunnerView: React.FC<{
   mode: 'sim' | 'hardware';
-}> = ({ mode }) => {
+  presets?: PresetSuite[];
+}> = ({ mode, presets }) => {
   const [results, setResults] = useState<VectorRunResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [selectedSuiteId, setSelectedSuiteId] = useState<string>(presets?.[0]?.id || '');
 
+  // Default loopback if no presets
   const loopbackVectors: TestVector[] = [
     { id: 'v1', name: 'All Off', inputs: { SW: 0 }, expected: { LED: 0 } },
     { id: 'v2', name: 'SW0 On', inputs: { SW: 1 }, expected: { LED: 1 } },
@@ -80,14 +94,65 @@ const VectorRunnerView: React.FC<{
     { id: 'v4', name: 'All On', inputs: { SW: 0xFFFF }, expected: { LED: 0xFFFF } },
   ];
 
+  const activeVectors = useMemo(() => {
+    if (!presets || presets.length === 0) return loopbackVectors;
+    const suite = presets.find(s => s.id === selectedSuiteId) || presets[0];
+    if (!suite) return loopbackVectors;
+
+    return suite.presets.map((p, idx) => ({
+      id: `t${idx + 1}`,
+      name: p.name,
+      inputs: Object.entries(p.inputs).reduce((acc, [k, v]) => {
+        acc[k as keyof TestVector['inputs']] = typeof v === 'string' ? parseInt(v.replace(/_/g, ''), 2) : v;
+        return acc;
+      }, {} as any),
+      expected: Object.entries(p.expectedOutputs).reduce((acc, [k, v]) => {
+        acc[k as keyof TestVector['expected']] = typeof v === 'string' ? parseInt(v.replace(/_/g, ''), 2) : v;
+        return acc;
+      }, {} as any),
+      holdTicks: p.holdTicks
+    })) as TestVector[];
+  }, [presets, selectedSuiteId]);
+
+  const setSelfCheckResults = useLabStore(s => s.setSelfCheckResults);
+  const setPass = useLabStore(s => s.setPass);
+
   const handleRun = async () => {
     setIsRunning(true);
+    setResults([]); // Clear previous
     try {
-      await vectorRunner.runVectors(loopbackVectors, {
+      // Run vectors
+      const finalResults = await vectorRunner.runVectors(activeVectors, {
         mode,
         delayMs: 200,
         onUpdate: (latest) => setResults([...latest]),
       });
+
+      // Analyze results
+      const allPassed = finalResults.every(r => r.status === 'PASS');
+      setPass(allPassed);
+
+      if (allPassed) {
+        toast.success({ message: 'Self-check passed! Ready for verification.', title: 'Verification Success' });
+      } else {
+        toast.warning({ message: 'Some checks failed. Review vector results.', title: 'Verification Failed' });
+      }
+
+      // Log to evidence (if using presets)
+      if (selectedSuiteId && presets?.some(p => p.id === selectedSuiteId)) {
+        setSelfCheckResults({
+          suiteId: selectedSuiteId,
+          passed: allPassed,
+          timestamp: new Date().toISOString(),
+          vectors: finalResults.map(r => ({
+            id: r.vectorId,
+            status: r.status,
+            error: r.error,
+            actual: r.actual
+          }))
+        });
+      }
+
     } finally {
       setIsRunning(false);
     }
@@ -96,7 +161,19 @@ const VectorRunnerView: React.FC<{
   return (
     <div className="flex flex-col h-full p-4 overflow-auto custom-scrollbar">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[10px] font-black tracking-widest text-cyan-500 uppercase">Vector Runner</h3>
+        <div className="flex flex-col">
+          <h3 className="text-[10px] font-black tracking-widest text-cyan-500 uppercase">Vector Runner</h3>
+          {presets && presets.length > 0 && (
+            <select
+              value={selectedSuiteId}
+              onChange={(e) => setSelectedSuiteId(e.target.value)}
+              className="mt-1 bg-black/40 text-[10px] text-gray-300 border border-gray-700 rounded"
+              aria-label="Select test vector suite"
+            >
+              {presets.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+            </select>
+          )}
+        </div>
         <button
           type="button"
           onClick={handleRun}
@@ -128,7 +205,7 @@ const VectorRunnerView: React.FC<{
               <div className="flex flex-col">
                 <span className="text-[9px] font-bold text-gray-400 uppercase">{r.vectorId}</span>
                 <span className="text-[10px] text-gray-200">
-                  {loopbackVectors.find(v => v.id === r.vectorId)?.name || 'Unknown'}
+                  {activeVectors.find(v => v.id === r.vectorId)?.name || 'Unknown'}
                 </span>
               </div>
 
@@ -177,6 +254,111 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
   const [rightTab, setRightTab] = useState<RightPanelTab>('board');
   const [selectedBoard, setSelectedBoard] = useState<string>('basys3');
   const [showStartGuide, setShowStartGuide] = useState(!labId);
+
+  // Lab Management
+  const setActiveLab = useLabStore((s) => s.setActiveLab);
+  const {
+    activeLabId,
+    startLab,
+    activeLabState,
+    currentStepIndex, // Added for onboarding hint
+    completeStep,
+    setHardwareVerified,
+    isDirty,
+    setIsDirty,
+  } = useLabStore();
+
+  // Data Safety: Warn on exit
+  React.useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
+  // Mark dirty on meaningful interaction
+  const handleCircuitChange = React.useCallback(() => {
+    if (!isDirty) setIsDirty(true);
+  }, [isDirty, setIsDirty]);
+
+  // Auto-save (Every 30s)
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      if (isDirty) {
+        // Persist to localStorage
+        const saveState = {
+          labId,
+          stepIndex: useLabStore.getState().currentStepIndex,
+          timestamp: Date.now()
+        };
+        localStorage.setItem('rb-lab-autosave', JSON.stringify(saveState));
+
+        setIsDirty(false);
+        toast.info({ message: 'Progress saved automatically.', title: 'Auto-Save', duration: 2000 });
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [isDirty, setIsDirty, labId]);
+  // Hardware Store
+  const hardwareConnect = useHardwareStore(s => s.connect);
+  const hardwareConnectionState = useHardwareStore(s => s.connectionState);
+  const hardwareSnapshot = useHardwareStore(s => s.ioSnapshot);
+
+  const handleDownloadSynthesisPack = async () => {
+    if (!circuit.nodes.length) {
+      alert("Circuit is empty!");
+      return;
+    }
+
+    try {
+      const netlist = netlistFromCircuit(circuit);
+      const verilog = synthesizableVerilogFromNetlist(netlist, { board: 'basys3', includeClock: true });
+
+      const zip = new JSZip();
+      zip.file("top.v", verilog.topModule);
+      zip.file("rb_primitives.v", verilog.primitivesLibrary);
+      zip.file("basys3.xdc", verilog.constraintsXdc);
+      zip.file("instructions.txt",
+        `RedByte Manual Synthesis Instructions:
+
+1. Create a new Vivado Project (RTL Project).
+2. Select target part: xc7a35tcpg236-1 (Basys 3).
+3. Add the following source files:
+   - top.v
+   - rb_primitives.v
+4. Add constraints file:
+   - basys3.xdc
+5. Run Synthesis, Implementation, and Generate Bitstream.
+6. Open Hardware Manager and program the device.
+`);
+
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = "lab_synthesis_pack.zip";
+      a.click();
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success({ message: 'Synthesis pack generated successfully.', title: 'Download Started' });
+    } catch (e) {
+      console.error("Export failed", e);
+      // alert("Failed to generate synthesis pack. See console.");
+      toast.error({ message: 'Failed to generate synthesis pack.', title: 'Export Error' });
+    }
+  };
+
+  useEffect(() => {
+    if (labId) {
+      setActiveLab(labId);
+      // Ensure mode switches to guided lab if ID is provided
+      setMode('guided-lab');
+    }
+  }, [labId, setActiveLab]);
 
   // Hardware state
   const ioSnapshot = useHardwareStore((s) => s.ioSnapshot);
@@ -546,7 +728,12 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
             trace: trace
           });
           saveCapsuleToFS(capsule, name).then(ok => {
-            if (!ok) console.error('Save failed');
+            if (!ok) {
+              console.error('Save failed');
+              toast.error({ message: 'Failed to save evidence capsule.', title: 'Export Error' });
+            } else {
+              toast.success({ message: 'Lab evidence exported successfully.', title: 'Export Complete' });
+            }
           });
         }
       }
@@ -628,24 +815,11 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
   }, [rightTab, effectiveSnapshot, effectiveCapabilities, replayTrace]);
 
   return (
-    <div
-      className="flex flex-col h-full"
-      style={{
-        background: 'linear-gradient(180deg, #08101a 0%, #040810 100%)',
-        fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
-      }}
-    >
+    <div className="flex flex-col h-full bg-gradient-to-b from-gray-950 to-black font-mono">
       {/* === HEADER BAR === */}
-      <div
-        className="flex items-center justify-between px-4 py-2"
-        style={{
-          background: 'linear-gradient(180deg, #101820 0%, #0a1018 100%)',
-          borderBottom: '1px solid #1a2a3a',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-        }}
-      >
+      <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-b from-gray-900 to-black border-b border-gray-800">
         {/* Left: Logo & Mode Switcher */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3">
           {/* Logo */}
           <div className="flex items-center gap-2">
             <div
@@ -798,9 +972,32 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
                 </button>
                 {isRecording && (
                   <span className="text-[9px] font-mono text-gray-600">
-                    {traceBuffer.length} samples
+                    {recordingStartTick > 0 ? simTick - recordingStartTick : 0} ticks
                   </span>
                 )}
+
+                {/* EXPORT BUTTON */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const filename = `lab_submission_${new Date().toISOString().replace(/[:.]/g, '-')}`;
+                    exportEvidenceCapsule(filename).then(ok => {
+                      if (ok) {
+                        // Optional: toast or alert
+                      } else {
+                        alert('Export failed. See console.');
+                      }
+                    });
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded text-[10px] font-bold tracking-wider hover:bg-white/10 transition-all border border-transparent hover:border-white/20"
+                  style={{ color: '#e4e4e7' }}
+                >
+                  EXPORT
+                </button>
+                <span className="text-[9px] text-gray-600 font-mono">
+                  {traceBuffer.length} samples
+                </span>
+
                 {!isRecording && (
                   <button
                     type="button"
@@ -836,322 +1033,270 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
                 </button>
               </div>
             )}
-          </div>
 
-          {/* Export Evidence Button */}
-          <button
-            type="button"
-            onClick={async () => {
-              if (isRecording) stopRecording();
-
-              // Prefer replay trace, fallback to active buffer if valid
-              const trace = replayTrace || (traceBuffer.length > 0 ? {
-                version: 1,
-                samples: [...traceBuffer],
-                metadata: {
-                  boardId: effectiveCapabilities?.boardId || 'unknown',
-                  recordedAt: new Date().toISOString(),
-                  sampleRate: 0
-                }
-              } : null);
-
-              if (!trace) {
-                window.alert("No evidence recorded.\n\n1. Click REC\n2. Toggle switches\n3. Click STOP");
-                return;
-              }
-
-              const zip = new JSZip();
-              zip.file("manifest.json", JSON.stringify({
-                version: 1,
-                labId: mode === 'guided-lab' ? 'lab-1' : 'free-play',
-                timestamp: new Date().toISOString(),
-                agent: "RedByte ECELab"
-              }, null, 2));
-
-              const capsule = createCapsule({
-                labId: mode === 'guided-lab' ? 'lab-1' : 'free-play',
-                executionSource: executionSource,
-                mode: mode,
-                deviceBoardId: effectiveCapabilities?.boardId || 'unknown',
-                trace: trace as any
-              });
-              zip.file("evidence.json", JSON.stringify(capsule, null, 2));
-
-              const blob = await zip.generateAsync({ type: 'blob' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `lab-evidence-${Date.now()}.rb-lab.zip`;
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-            className="px-3 py-1 rounded text-[10px] font-bold tracking-wider transition-all hover:scale-105 active:scale-95 shadow-lg bg-green-600 hover:bg-green-500 text-white border border-green-400"
-            title="Download verified evidence (.rb-lab.zip)"
-          >
-            EXPORT EVIDENCE
-          </button>
-
-          {/* Status Badge */}
-          <div
-            className="px-2 py-0.5 rounded text-[9px] font-bold tracking-wider"
-            style={{
-              background: mode === 'sim-only' ? 'rgba(0,255,136,0.1)' : 'rgba(0,212,255,0.1)',
-              color: mode === 'sim-only' ? '#00ff88' : '#00d4ff',
-              border: `1px solid ${mode === 'sim-only' ? '#00ff8833' : '#00d4ff33'}`,
-            }}
-          >
-            {executionSource === 'sim' ? 'SIMULATION' : executionSource === 'hardware' ? 'LIVE HARDWARE' : 'REPLAY'}
-          </div>
-        </div>
-      </div>
-
-      {/* === START HERE GUIDE === */}
-      {showStartGuide && (
-        <div className="bg-[#0a1520] border-b border-[#1a2a3a] px-4 py-2 flex items-center justify-between animate-fade-in relative z-10">
-          <div className="flex items-center gap-6 text-[10px] font-medium text-gray-400">
-            <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-cyan-900/30 text-cyan-400 flex items-center justify-center font-bold text-xs ring-1 ring-cyan-500/20">1</span>
-              <span>Select Source (Sim / Hardware)</span>
+            {/* Status Badge */}
+            <div
+              className="px-2 py-0.5 rounded text-[9px] font-bold tracking-wider"
+              style={{
+                background: mode === 'sim-only' ? 'rgba(0,255,136,0.1)' : 'rgba(0,212,255,0.1)',
+                color: mode === 'sim-only' ? '#00ff88' : '#00d4ff',
+                border: `1px solid ${mode === 'sim-only' ? '#00ff8833' : '#00d4ff33'}`,
+              }}
+            >
+              {executionSource === 'sim' ? 'SIMULATION' : executionSource === 'hardware' ? 'LIVE HARDWARE' : 'REPLAY'}
             </div>
-            <div className="w-px h-4 bg-[#1a2a3a]" />
-            <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-cyan-900/30 text-cyan-400 flex items-center justify-center font-bold text-xs ring-1 ring-cyan-500/20">2</span>
-              <span>Choose Experiment or Lab</span>
-            </div>
-            <div className="w-px h-4 bg-[#1a2a3a]" />
-            <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-cyan-900/30 text-cyan-400 flex items-center justify-center font-bold text-xs ring-1 ring-cyan-500/20">3</span>
-              <span>Interact & Capture Evidence</span>
-            </div>
-          </div>
-          <button
-            onClick={() => setShowStartGuide(false)}
-            className="text-gray-600 hover:text-gray-300 text-xs px-2"
-          >
-            ✕
-          </button>
-        </div>
-      )}
+          </div >
+        </div >
 
-      {/* === MAIN CONTENT === */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* LEFT PANE: Circuit Canvas / Lab Instructions / Inspector */}
-        <div
-          className="flex-1 flex flex-col relative"
-          style={{
-            borderRight: '1px solid #1a2a3a',
-          }}
-        >
-          {mode === 'guided-lab' ? (
-            <LabInstructions />
-          ) : mode === 'inspector' ? (
-            <InspectorPanel />
-          ) : (
-            <>
-              {/* Experiment Controls Bar - Only active if Sim source */}
-              <div
-                className={`flex items-center justify-between px-4 py-2 transition-opacity ${executionSource !== 'sim' ? 'opacity-50 pointer-events-none grayscale' : ''
-                  }`}
-                style={{
-                  background: 'linear-gradient(180deg, #0a1520 0%, #080f18 100%)',
-                  borderBottom: '1px solid #1a2a3a',
-                }}
+        {/* === START HERE GUIDE === */}
+        {
+          showStartGuide && (
+            <div className="bg-[#0a1520] border-b border-[#1a2a3a] px-4 py-2 flex items-center justify-between animate-fade-in relative z-10">
+              <div className="flex items-center gap-6 text-[10px] font-medium text-gray-400">
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-cyan-900/30 text-cyan-400 flex items-center justify-center font-bold text-xs ring-1 ring-cyan-500/20">1</span>
+                  <span>Select Source (Sim / Hardware)</span>
+                </div>
+                <div className="w-px h-4 bg-[#1a2a3a]" />
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-cyan-900/30 text-cyan-400 flex items-center justify-center font-bold text-xs ring-1 ring-cyan-500/20">2</span>
+                  <span>Choose Experiment or Lab</span>
+                </div>
+                <div className="w-px h-4 bg-[#1a2a3a]" />
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-cyan-900/30 text-cyan-400 flex items-center justify-center font-bold text-xs ring-1 ring-cyan-500/20">3</span>
+                  <span>Interact & Capture Evidence</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowStartGuide(false)}
+                className="text-gray-600 hover:text-gray-300 text-xs px-2"
               >
-                <div className="flex items-center gap-4">
-                  <span className="text-[9px] font-bold tracking-wider text-gray-600">EXPERIMENT</span>
-                  <select
-                    value={activeExperimentId}
-                    onChange={(e) => setSimExperiment(e.target.value)}
-                    aria-label="Select experiment"
-                    className="bg-transparent text-xs font-medium text-gray-300 border-none outline-none cursor-pointer"
-                  >
-                    {Object.values(EXPERIMENTS).map((exp) => (
-                      <option key={exp.id} value={exp.id} className="bg-gray-900">
-                        {exp.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                ✕
+              </button>
+            </div>
+          )
+        }
 
-                <div className="flex items-center gap-3">
-                  {/* Sim Controls */}
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={simRunTick}
-                      disabled={simAutoRun}
-                      className="px-2 py-1 text-[10px] font-bold tracking-wider rounded transition-all disabled:opacity-30"
-                      style={{
-                        background: '#1a2a3a',
-                        color: '#8899aa',
-                        border: '1px solid #2a3a4a',
-                      }}
-                    >
-                      STEP
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSimAutoRun(!simAutoRun)}
-                      className="px-2 py-1 text-[10px] font-bold tracking-wider rounded transition-all"
-                      style={{
-                        background: simAutoRun ? 'rgba(0,255,136,0.15)' : '#1a2a3a',
-                        color: simAutoRun ? '#00ff88' : '#8899aa',
-                        border: simAutoRun ? '1px solid #00ff8833' : '1px solid #2a3a4a',
-                      }}
-                    >
-                      {simAutoRun ? 'RUNNING' : 'RUN'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={simReset}
-                      className="px-2 py-1 text-[10px] font-bold tracking-wider rounded transition-all"
-                      style={{
-                        background: '#1a2a3a',
-                        color: '#8899aa',
-                        border: '1px solid #2a3a4a',
-                      }}
-                    >
-                      RESET
-                    </button>
-                  </div>
-
-                  {/* Tick Counter */}
-                  <div
-                    className="px-2 py-0.5 rounded font-mono text-[10px]"
-                    style={{
-                      background: 'rgba(0,0,0,0.3)',
-                      color: '#00d4ff',
-                      border: '1px solid #1a3a4a',
-                    }}
-                  >
-                    T:{simSnapshot.tick}
-                  </div>
-                </div>
-              </div>
-
-              {/* Circuit Visualization / Interactive Canvas */}
-              <div className="flex-1 relative overflow-hidden bg-gray-950">
-                {currentExperiment ? (
-                  /* Legacy Experiment Mode: Use Static Canvas for 'canned' experiments */
-                  <div className="absolute inset-0 flex flex-col">
-                    <CircuitCanvas
-                      experiment={currentExperiment}
-                      inputs={{
-                        SW: typeof simInputs.SW === 'number' ? simInputs.SW : parseInt(String(simInputs.SW || '0'), 2),
-                        BTN: typeof simInputs.BTN === 'number' ? simInputs.BTN : parseInt(String(simInputs.BTN || '0'), 2),
-                      }}
-                      outputs={{
-                        LED: typeof simOutputs.LED === 'number' ? simOutputs.LED : parseInt(String(simOutputs.LED || '0'), 2),
-                        SEG: typeof simOutputs.SEG === 'number' ? simOutputs.SEG : parseInt(String(simOutputs.SEG || '0'), 2),
-                        AN: typeof simOutputs.AN === 'number' ? simOutputs.AN : parseInt(String(simOutputs.AN || '0'), 2),
-                        DP: typeof simOutputs.DP === 'number' ? simOutputs.DP : parseInt(String(simOutputs.DP || '0'), 2),
-                      }}
-                      tick={simSnapshot.tick}
-                    />
-                    <div className="absolute top-2 left-2 px-2 py-1 bg-gray-900/80 text-[10px] text-cyan-500 border border-cyan-500/30 rounded pointer-events-none">
-                      PRE-BUILT EXPERIMENT
-                    </div>
-                  </div>
-                ) : (
-                  /* Interactive Mode: SplitViewLayout */
-                  /* Interactive Mode: SplitViewLayout */
-                  <div className="absolute inset-0">
-                    <SplitViewLayout
-                      mode="single"
-                      views={['circuit']}
-                      engine={engine}
-                      tickEngine={tickEngine}
-                      circuit={circuit}
-                      isRunning={simAutoRun}
-                      tickCount={simSnapshot.tick}
-                      onCircuitChange={(newCircuit) => {
-                        setCircuit(newCircuit);
-                        engine.setCircuit(newCircuit);
-                        tickEngine.setCircuit(newCircuit);
-                      }}
-                      viewStateStore={useViewStateStore}
-                      // Connect simulation inputs if handling standard nodes
-                      onInputToggled={(nodeId, port, val) => {
-                        // forward to engine (using setNodeState for built-in nodes)
-                        // Logic Core uses 'isOn' for Switch/Input state
-                        engine.setNodeState(nodeId, { isOn: val });
-                        engine.tick();
-                      }}
-                    />
-
-                    {/* Empty State Overlay */}
-                    {circuit.nodes.length === 0 && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none">
-                        <div className="bg-[#0a1520] border border-[#1a2a3a] p-6 rounded-lg shadow-2xl text-center pointer-events-auto max-w-sm">
-                          <h3 className="text-sm font-bold text-gray-200 mb-2">Empty Circuit</h3>
-                          <p className="text-xs text-gray-400 mb-6">
-                            Start by building a circuit or load a template to begin testing.
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              // Create simple starter: Switch -> LED
-                              const starter: Circuit = {
-                                nodes: [
-                                  { id: 'sw0', type: 'switch', position: { x: 100, y: 100 }, state: { isOn: 0 }, config: { label: 'SW0' }, rotation: 0 },
-                                  { id: 'led0', type: 'lamp', position: { x: 300, y: 100 }, state: { isOn: 0 }, config: { label: 'LED0', color: 'red' }, rotation: 0 }
-                                ],
-                                connections: [
-                                  { from: { nodeId: 'sw0', portName: 'out' }, to: { nodeId: 'led0', portName: 'in' } }
-                                ]
-                              };
-                              setCircuit(starter);
-                              engine.setCircuit(starter);
-                              tickEngine.setCircuit(starter);
-                            }}
-                            className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold px-4 py-2 rounded transition-colors w-full mb-3"
-                          >
-                            LOAD STARTER CIRCUIT
-                          </button>
+        {/* === MAIN CONTENT === */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* LEFT PANE: Circuit Canvas / Lab Instructions / Inspector */}
+          <div
+            className="flex-1 flex flex-col relative"
+            style={{
+              borderRight: '1px solid #1a2a3a',
+            }}
+          >
+            {mode === 'guided-lab' ? (
+              <LabInstructions />
+            ) : mode === 'inspector' ? (
+              <InspectorPanel />
+            ) : (
+              <>
+                {/* Experiment Controls Bar - Only active if Sim source */}
+                <div
+                  className={`flex items-center justify-between px-4 py-2 transition-opacity ${executionSource !== 'sim' ? 'opacity-50 pointer-events-none grayscale' : ''
+                    }`}
+                  style={{
+                    background: 'linear-gradient(180deg, #0a1520 0%, #080f18 100%)',
+                    borderBottom: '1px solid #1a2a3a',
+                  }}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] font-bold tracking-wider text-gray-600">EXPERIMENT</span>
+                      {/* Onboarding Hint */}
+                      {currentStepIndex === 1 && (
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-cyan-500/10 border border-cyan-500/30 rounded animate-pulse">
+                          <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                          <span className="text-[9px] font-bold text-cyan-400">START HERE</span>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
+                    <select
+                      value={activeExperimentId}
+                      onChange={(e) => setSimExperiment(e.target.value)}
+                      aria-label="Select experiment"
+                      className="bg-transparent text-xs font-medium text-gray-300 border-none outline-none cursor-pointer"
+                    >
+                      {Object.values(EXPERIMENTS).map((exp) => (
+                        <option key={exp.id} value={exp.id} className="bg-gray-900">
+                          {exp.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                )}
 
-                {/* Experiment description overlay */}
-                {currentExperiment && (
-                  <div
-                    className="absolute bottom-4 left-4 right-4 px-4 py-2 rounded pointer-events-none"
-                    style={{
-                      background: 'rgba(0,0,0,0.7)',
-                      backdropFilter: 'blur(8px)',
-                      border: '1px solid #1a2a3a',
-                    }}
-                  >
-                    <div className="text-[10px] font-bold tracking-wider text-gray-500 mb-1">
-                      {currentExperiment?.name.toUpperCase()}
+                  <div className="flex items-center gap-3">
+                    {/* Sim Controls */}
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={simRunTick}
+                        disabled={simAutoRun}
+                        className="px-2 py-1 text-[10px] font-bold tracking-wider rounded transition-all disabled:opacity-30"
+                        style={{
+                          background: '#1a2a3a',
+                          color: '#8899aa',
+                          border: '1px solid #2a3a4a',
+                        }}
+                      >
+                        STEP
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSimAutoRun(!simAutoRun)}
+                        className="px-2 py-1 text-[10px] font-bold tracking-wider rounded transition-all"
+                        style={{
+                          background: simAutoRun ? 'rgba(0,255,136,0.15)' : '#1a2a3a',
+                          color: simAutoRun ? '#00ff88' : '#8899aa',
+                          border: simAutoRun ? '1px solid #00ff8833' : '1px solid #2a3a4a',
+                        }}
+                      >
+                        {simAutoRun ? 'RUNNING' : 'RUN'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={simReset}
+                        className="px-2 py-1 text-[10px] font-bold tracking-wider rounded transition-all"
+                        style={{
+                          background: '#1a2a3a',
+                          color: '#8899aa',
+                          border: '1px solid #2a3a4a',
+                        }}
+                      >
+                        RESET
+                      </button>
                     </div>
-                    <div className="text-xs text-gray-400">
-                      {currentExperiment?.description}
+
+                    {/* Tick Counter */}
+                    <div
+                      className="px-2 py-0.5 rounded font-mono text-[10px]"
+                      style={{
+                        background: 'rgba(0,0,0,0.3)',
+                        color: '#00d4ff',
+                        border: '1px solid #1a3a4a',
+                      }}
+                    >
+                      T:{simSnapshot.tick}
                     </div>
                   </div>
-                )}
-              </div>
-            </>
-          )}
+                </div>
+
+                {/* Circuit Visualization / Interactive Canvas */}
+                <div className="flex-1 relative overflow-hidden bg-gray-950">
+                  {currentExperiment ? (
+                    /* Legacy Experiment Mode: Use Static Canvas for 'canned' experiments */
+                    <div className="absolute inset-0 flex flex-col">
+                      <CircuitCanvas
+                        experiment={currentExperiment}
+                        inputs={{
+                          SW: typeof simInputs.SW === 'number' ? simInputs.SW : parseInt(String(simInputs.SW || '0'), 2),
+                          BTN: typeof simInputs.BTN === 'number' ? simInputs.BTN : parseInt(String(simInputs.BTN || '0'), 2),
+                        }}
+                        outputs={{
+                          LED: typeof simOutputs.LED === 'number' ? simOutputs.LED : parseInt(String(simOutputs.LED || '0'), 2),
+                          SEG: typeof simOutputs.SEG === 'number' ? simOutputs.SEG : parseInt(String(simOutputs.SEG || '0'), 2),
+                          AN: typeof simOutputs.AN === 'number' ? simOutputs.AN : parseInt(String(simOutputs.AN || '0'), 2),
+                          DP: typeof simOutputs.DP === 'number' ? simOutputs.DP : parseInt(String(simOutputs.DP || '0'), 2),
+                        }}
+                        tick={simSnapshot.tick}
+                      />
+                      <div className="absolute top-2 left-2 px-2 py-1 bg-gray-900/80 text-[10px] text-cyan-500 border border-cyan-500/30 rounded pointer-events-none">
+                        PRE-BUILT EXPERIMENT
+                      </div>
+                    </div>
+                  ) : (
+                    /* Interactive Mode: SplitViewLayout */
+                    /* Interactive Mode: SplitViewLayout */
+                    <div className="absolute inset-0">
+                      <SplitViewLayout
+                        mode="single"
+                        views={['circuit']}
+                        engine={engine}
+                        tickEngine={tickEngine}
+                        circuit={circuit}
+                        isRunning={simAutoRun}
+                        tickCount={simSnapshot.tick}
+                        onCircuitChange={(newCircuit) => {
+                          setCircuit(newCircuit);
+                          engine.setCircuit(newCircuit);
+                          tickEngine.setCircuit(newCircuit);
+                        }}
+                        viewStateStore={useViewStateStore}
+                        // Connect simulation inputs if handling standard nodes
+                        onInputToggled={(nodeId, port, val) => {
+                          // forward to engine (using setNodeState for built-in nodes)
+                          // Logic Core uses 'isOn' for Switch/Input state
+                          engine.setNodeState(nodeId, { isOn: val });
+                          engine.tick();
+                        }}
+                      />
+
+                      {/* Empty State Overlay */}
+                      {circuit.nodes.length === 0 && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none">
+                          <div className="bg-[#0a1520] border border-[#1a2a3a] p-6 rounded-lg shadow-2xl text-center pointer-events-auto max-w-sm">
+                            <h3 className="text-sm font-bold text-gray-200 mb-2">Empty Circuit</h3>
+                            <p className="text-xs text-gray-400 mb-6">
+                              Start by building a circuit or load a template to begin testing.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // Create simple starter: Switch -> LED
+                                const starter: Circuit = {
+                                  nodes: [
+                                    { id: 'sw0', type: 'switch', position: { x: 100, y: 100 }, state: { isOn: 0 }, config: { label: 'SW0' }, rotation: 0 },
+                                    { id: 'led0', type: 'lamp', position: { x: 300, y: 100 }, state: { isOn: 0 }, config: { label: 'LED0', color: 'red' }, rotation: 0 }
+                                  ],
+                                  connections: [
+                                    { from: { nodeId: 'sw0', portName: 'out' }, to: { nodeId: 'led0', portName: 'in' } }
+                                  ]
+                                };
+                                setCircuit(starter);
+                                engine.setCircuit(starter);
+                                tickEngine.setCircuit(starter);
+                              }}
+                              className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold px-4 py-2 rounded transition-colors w-full mb-3"
+                            >
+                              LOAD STARTER CIRCUIT
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Experiment description overlay */}
+                  {currentExperiment && (
+                    <div
+                      className="absolute bottom-4 left-4 right-4 px-4 py-2 rounded pointer-events-none"
+                      style={{
+                        background: 'rgba(0,0,0,0.7)',
+                        backdropFilter: 'blur(8px)',
+                        border: '1px solid #1a2a3a',
+                      }}
+                    >
+                      <div className="text-[10px] font-bold tracking-wider text-gray-500 mb-1">
+                        {currentExperiment?.name.toUpperCase()}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {currentExperiment?.description}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* RIGHT PANE: Board Visualization */}
-        <div
-          className="w-[480px] flex flex-col"
-          style={{
-            background: 'linear-gradient(180deg, #060a10 0%, #040608 100%)',
-          }}
-        >
+        <div className="w-[480px] flex flex-col bg-gradient-to-b from-gray-900 to-black">
           {/* Tab Switcher */}
-          <div
-            className="flex"
-            style={{
-              background: '#0a1018',
-              borderBottom: '1px solid #1a2a3a',
-            }}
-          >
+          {/* Tab Switcher */}
+          <div className="flex bg-gray-900 border-b border-gray-800">
             {(['board', 'compare', 'test'] as RightPanelTab[]).map((tab) => {
               const isActive = rightTab === tab;
               const labels = { board: 'HARDWARE', compare: 'COMPARE', test: 'TEST' };
@@ -1179,11 +1324,89 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
           {/* Content */}
           <div className="flex-1 overflow-hidden">
             {rightTab === 'board' ? (
-              <div className="flex flex-col h-full">
+              <>
+                {/* Hardware Control Bar */}
+                <div className="flex items-center justify-between px-3 py-2 bg-black border-b border-gray-800">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${hardwareConnectionState === 'ready' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' :
+                      hardwareConnectionState === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+                        'bg-red-500'
+                      }`} />
+                    <span className="text-[10px] font-bold text-gray-400">
+                      {hardwareConnectionState === 'ready' ? 'CONNECTED' :
+                        hardwareConnectionState === 'connecting' ? 'CONNECTING...' : 'DISCONNECTED'}
+                    </span>
+                    {hardwareConnectionState !== 'ready' && (
+                      <button
+                        onClick={hardwareConnect}
+                        className="text-[10px] text-cyan-500 hover:text-cyan-400 ml-2 font-bold"
+                      >
+                        CONNECT
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={handleDownloadSynthesisPack}
+                    className="flex items-center gap-1.5 px-2 py-1 bg-cyan-900/30 hover:bg-cyan-900/50 text-cyan-400 border border-cyan-500/30 rounded text-[10px] font-bold transition-all"
+                    title="Download Manual Synthesis Pack"
+                  >
+                    SYNTH PACK
+                  </button>
+                </div>
+
+                {/* Flashed Confirmation Toggle */}
+                {hardwareConnectionState === 'ready' && (
+                  <div className="flex items-center gap-2 px-3 py-1 bg-gray-900 border-b border-gray-800">
+                    <input
+                      type="checkbox"
+                      id="flashed-toggle"
+                      className="rounded border-gray-600 bg-[#040608] text-cyan-500 focus:ring-0 focus:ring-offset-0"
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setExecutionSource('hardware');
+                          toast.info({
+                            message: 'Hardware Mode Active',
+                            title: 'Live IO enabled. Run self-check to verify.',
+                            duration: 4000
+                          });
+                        } else {
+                          setExecutionSource('sim');
+                        }
+                      }}
+                      checked={executionSource === 'hardware'}
+                    />
+                    <label htmlFor="flashed-toggle" className="text-[10px] text-gray-400 select-none cursor-pointer">
+                      I have flashed the board
+                      {executionSource === 'hardware' && <span className="text-cyan-500 ml-1">(Live IO Active)</span>}
+                    </label>
+
+                    {executionSource === 'hardware' && (
+                      <div className="flex-1 flex justify-end">
+                        <button
+                          onClick={() => {
+                            setExecutionSource('hardware');
+                            setRightTab('test');
+                          }}
+                          className="text-[9px] px-1.5 py-0.5 bg-green-900/30 text-green-400 border border-green-500/30 rounded font-mono hover:bg-green-900/50"
+                          title="Run automated verification on hardware before exporting"
+                        >
+                          RUN SELF-CHECK
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <BoardIOPanel
                   ioMapping={ioMapping ?? { inputs: [], outputs: [] }}
-                  inputStates={ioInputStates}
-                  outputStates={ioOutputStates}
+                  // Use hardware snapshot if in hardware mode and connected
+                  inputStates={executionSource === 'hardware' && hardwareSnapshot ?
+                    (hardwareSnapshot.inputs as any)
+                    : (ioInputStates as any)}
+                  outputStates={executionSource === 'hardware' && hardwareSnapshot ?
+                    (hardwareSnapshot.outputs as any)
+                    : (ioOutputStates as any)}
                   onToggleInput={handleToggleInput}
                   availableSignals={availableSignals}
                   onInitializeMapping={handleInitializeIoMapping}
@@ -1198,24 +1421,21 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
                     executionSource={executionSource}
                   />
                 </div>
-              </div>
+              </>
             ) : rightTab === 'compare' ? (
               <CompareView ioSnapshot={effectiveSnapshot} checks={checks} />
             ) : (
-              <VectorRunnerView mode={executionSource === 'sim' ? 'sim' : 'hardware'} />
+              <VectorRunnerView
+                mode={executionSource === 'sim' ? 'sim' : 'hardware'}
+                presets={(LABS[activeLabId || ''] as LabDefinition)?.presets}
+              />
             )}
           </div>
         </div>
       </div>
 
       {/* === FOOTER STATUS BAR === */}
-      <div
-        className="flex items-center justify-between px-4 py-1 text-[9px] font-mono"
-        style={{
-          background: '#040608',
-          borderTop: '1px solid #1a2a3a',
-        }}
-      >
+      <div className="flex items-center justify-between px-4 py-1 text-[9px] font-mono bg-black border-t border-gray-800">
         <div className="flex items-center gap-4 text-gray-600">
           <span>ECE 347 Lab Environment</span>
           <span>|</span>
@@ -1226,6 +1446,6 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
           <span className="text-cyan-600">v2.0.0</span>
         </div>
       </div>
-    </div>
+    </div >
   );
 };

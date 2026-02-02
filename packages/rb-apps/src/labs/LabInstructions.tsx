@@ -11,7 +11,8 @@ import { exportEvidenceCapsule } from '../utils/evidenceExport';
 import { PanelLayout } from '../components/PanelLayout';
 
 // Styled Markdown Renderer
-const SimpleMarkdown: React.FC<{ content: string }> = ({ content }) => {
+const SimpleMarkdown: React.FC<{ content?: string }> = ({ content }) => {
+    if (!content) return null;
     const lines = content.split('\n');
     return (
         <div className="space-y-3 text-sm font-sans">
@@ -163,12 +164,18 @@ export const LabInstructions: React.FC = () => {
     const { activeLabId, setActiveLab, currentStepIndex, completedSteps, nextStep, prevStep } = useLabStore();
 
     const labs = Object.keys(LABS);
-    const content = LABS[activeLabId] || LABS['lab-1'];
-    const step = content[currentStepIndex];
+    const rawContent = LABS[activeLabId] || LABS['lab-1'];
+
+    // Normalize content
+    const isLabDefinition = !Array.isArray(rawContent);
+    const steps = isLabDefinition ? rawContent.steps : rawContent;
+    const labTitle = isLabDefinition ? rawContent.title : undefined;
+
+    const step = steps[currentStepIndex] as any;
     if (!step) return null;
 
     const isFirst = currentStepIndex === 0;
-    const isLast = currentStepIndex === content.length - 1;
+    const isLast = currentStepIndex === steps.length - 1;
     const isCompleted = completedSteps.includes(currentStepIndex);
 
     const handleExport = async () => {
@@ -196,14 +203,13 @@ export const LabInstructions: React.FC = () => {
                             </select>
                         </div>
                         <div className="text-[9px] font-mono text-gray-500">
-                            STEP <span className="text-white">{currentStepIndex + 1}</span> / {content.length}
+                            STEP <span className="text-white">{currentStepIndex + 1}</span> / {steps.length}
                         </div>
                     </div>
-                    {/* Progress Bar */}
                     <div className="w-full bg-[#05080a] h-1 rounded-full overflow-hidden border border-[#1a2a3a]/30">
                         <div
                             className="bg-cyan-500 h-full transition-all duration-500 ease-out shadow-[0_0_8px_rgba(0,255,255,0.5)]"
-                            style={{ width: `${((currentStepIndex + 1) / content.length) * 100}%` }}
+                            style={{ width: `${((currentStepIndex + 1) / steps.length) * 100}%` }}
                         />
                     </div>
                 </div>
@@ -224,9 +230,51 @@ export const LabInstructions: React.FC = () => {
                 <div className="flex-1">
                     {isFirst && <StudentIdentity />}
 
+                    {isFirst && <StudentIdentity />}
+
+                    {/* Lab Title for Definition Type */}
+                    {isFirst && isLabDefinition && (
+                        <div className="mb-6 pb-4 border-b border-cyan-900/30">
+                            <h1 className="text-lg font-black text-white uppercase tracking-widest">{labTitle}</h1>
+                            {/* @ts-ignore - LabDefinition objectives */}
+                            {rawContent.objectives && (
+                                <ul className="mt-4 space-y-2">
+                                    {rawContent.objectives.map((obj: string, i: number) => (
+                                        <li key={i} className="flex gap-2 text-xs text-gray-300">
+                                            <span className="text-cyan-500">›</span>
+                                            {obj}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="mb-4">
+                        <h2 className="text-lg font-bold text-white mb-2">{step.title}</h2>
+                        {/* @ts-ignore - description exists on LabStepDef */}
+                        {step.description && !step.markdown && (
+                            <p className="text-sm text-gray-400 mb-4">{step.description}</p>
+                        )}
+                    </div>
+
                     <SimpleMarkdown content={step.markdown} />
 
-                    {/* Checkpoint UI */}
+                    {/* Checklist UI (New Schema) */}
+                    {/* @ts-ignore */}
+                    {step.checklist && (
+                        <div className="mt-6 space-y-3 bg-black/20 p-4 rounded border border-white/5">
+                            <div className="text-[10px] uppercase tracking-widest text-cyan-500 font-bold mb-2">Requirement Checklist</div>
+                            {step.checklist.map((item: string, i: number) => (
+                                <div key={i} className="flex gap-3 text-xs text-gray-300">
+                                    <div className="w-4 h-4 rounded border border-gray-600 flex-shrink-0" />
+                                    <span>{item}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Checkpoint UI (Legacy Schema) */}
                     {step.checkpoint && (
                         <div className={`mt-10 p-5 rounded-lg border transition-all duration-300 ${isCompleted
                             ? 'border-green-500/30 bg-green-500/5 shadow-[0_0_20px_rgba(0,255,100,0.05)]'
@@ -298,7 +346,7 @@ export const LabInstructions: React.FC = () => {
                     </button>
 
                     <div className="flex gap-1">
-                        {content.map((_, idx) => (
+                        {steps.map((_, idx) => (
                             <div
                                 key={idx}
                                 className={`w-1 h-1 rounded-full transition-all duration-300 ${idx === currentStepIndex ? 'w-4 bg-cyan-400' : (completedSteps.includes(idx) ? 'bg-green-600' : 'bg-gray-800')}`}

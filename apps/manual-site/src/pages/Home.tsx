@@ -12,182 +12,136 @@ const Home = () => {
             background: 'linear-gradient(145deg, #09090B 0%, #18181B 50%, #09090B 100%)',
           }}
         />
-        <div className="relative container mx-auto px-6 pt-24 pb-16 max-w-5xl">
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-zinc-50 mb-6 leading-[1.08]">
-            The operating system for<br />
-            hardware engineering education.
+        <div className="relative container mx-auto px-6 py-24 md:py-32 max-w-5xl text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-[10px] font-medium text-zinc-400 tracking-wider uppercase">v1.0.0 Stable Release</span>
+          </div>
+
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6 leading-[1.05]">
+            Digital Logic,<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">Redefined.</span>
           </h1>
 
-          <p className="text-lg text-zinc-400 mb-10 leading-relaxed max-w-2xl">
-            Build digital circuits visually. Simulate deterministically.
-            Deploy instant virtual labs verified on real FPGA hardware.
+          <p className="text-lg md:text-xl text-zinc-400 mb-10 leading-relaxed max-w-2xl mx-auto">
+            The operating system for hands-on hardware labs. <br className="hidden md:block" />
+            Design circuits, simulate IO, and verify on real FPGAs—all in one shell.
           </p>
 
-          <div className="flex flex-wrap gap-3 mb-16">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
+            <Link
+              to="/download"
+              className="px-8 py-3.5 rounded-lg font-semibold text-sm text-white bg-blue-600 hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20"
+            >
+              Download RedByte OS
+            </Link>
             <Link
               to="/demo"
-              className="px-6 py-3 rounded-md font-semibold text-sm text-white transition-opacity hover:opacity-90"
-              style={{ background: '#3B82F6' }}
+              className="px-8 py-3.5 rounded-lg font-semibold text-sm text-zinc-300 border border-zinc-700 hover:border-zinc-600 hover:text-white transition-all bg-zinc-900/50"
             >
               Try Live Demo
             </Link>
-            <a
-              href="https://github.com/swaggyp52/redbyte-ui-genesis/archive/refs/heads/main.zip"
-              className="px-6 py-3 rounded-md font-semibold text-sm text-zinc-200 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-700/50 transition-colors"
-            >
-              Download
-            </a>
-            <Link
-              to="/instructors"
-              className="px-6 py-3 rounded-md font-semibold text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
-            >
-              Instructor Guide
-            </Link>
           </div>
 
-          {/* Live OS Embed */}
-          <div className="rounded-lg border border-zinc-700/50 overflow-hidden" style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
-            <div className="bg-zinc-900 px-4 py-2 border-b border-zinc-800 flex items-center gap-3">
-              <div className="flex gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
-                <div className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
-                <div className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
-              </div>
-              <div className="text-[10px] font-mono text-zinc-500 flex-1 text-center tracking-wider uppercase">
-                RedByte OS Genesis
-              </div>
-              <div className="px-2 py-0.5 rounded text-[9px] font-mono font-medium uppercase tracking-wider"
-                style={{ color: '#3B82F6', background: 'rgba(59, 130, 246, 0.1)' }}>
-                Live
-              </div>
+          {/* Hero Visual */}
+          <div className="relative rounded-xl border border-zinc-800 bg-zinc-900/50 shadow-2xl overflow-hidden aspect-video max-w-4xl mx-auto group">
+            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent z-10 pointer-events-none" />
+            <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
+
+            {/* Window Controls */}
+            <div className="absolute top-0 inset-x-0 h-8 bg-zinc-950/80 border-b border-zinc-800 flex items-center px-4 gap-2 z-20">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/50" />
+              <div className="w-2.5 h-2.5 rounded-full bg-amber-500/20 border border-amber-500/50" />
+              <div className="w-2.5 h-2.5 rounded-full bg-green-500/20 border border-green-500/50" />
+              <div className="ml-4 text-[10px] font-mono text-zinc-500 flex-1 text-center">lab-01-adder.rbl</div>
             </div>
-            <div className="relative aspect-video w-full bg-zinc-950">
-              <iframe
-                src="/os/"
-                className="w-full h-full border-0"
-                title="RedByte OS Interactive Preview"
-                loading="lazy"
-              />
+
+            <img
+              src="/screenshot-lab.png"
+              alt="RedByte Interface"
+              className="w-full h-full object-cover opacity-90 group-hover:scale-[1.02] transition-transform duration-700"
+              onError={(e) => {
+                // Fallback if image missing
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+            {/* Fallback Preview IF image fails/missing */}
+            <div className="w-full h-full flex items-center justify-center text-zinc-700 font-mono text-sm">
+              [ Interactive Lab Environment Preview ]
             </div>
           </div>
         </div>
       </section>
 
-      {/* Capabilities */}
-      <section className="py-20 bg-zinc-950 border-b border-zinc-800">
-        <div className="container mx-auto px-6 max-w-5xl">
-          <div className="grid md:grid-cols-3 gap-12">
-            <Capability
-              title="Design."
-              desc="Build circuits visually with a component palette and wire editor. From simple gates to complex sequential logic."
+      {/* Feature Grid */}
+      <section className="py-24 bg-zinc-950 border-b border-zinc-800">
+        <div className="container mx-auto px-6 max-w-6xl">
+          <div className="grid md:grid-cols-3 gap-8">
+            <FeatureCard
+              icon="⚡"
+              title="Unified Simulation"
+              desc="Simulate circuits with real-time feedback. Toggle switches, watch LEDs, and verify logic before touching hardware."
             />
-            <Capability
-              title="Simulate."
-              desc="Run deterministic simulations with real-time truth table evaluation and waveform analysis. Every tick is reproducible."
+            <FeatureCard
+              icon="🔌"
+              title="Hardware Verified"
+              desc="One-click bridge to Basys3 FPGAs. Run your virtual circuit on physical silicon with zero configuration."
             />
-            <Capability
-              title="Verify."
-              desc="Export bit-perfect evidence capsules for grading and academic integrity. Replay exactly what happened."
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Audience Split */}
-      <section className="py-20 bg-zinc-900/50 border-b border-zinc-800">
-        <div className="container mx-auto px-6 max-w-5xl">
-          <div className="grid md:grid-cols-2 gap-16">
-            <AudienceColumn
-              heading="For Students"
-              items={[
-                'Virtual labs with guided workflows',
-                'FPGA bridge for hardware verification',
-                'Circuit export and project sharing',
-                'Integrated help and truth table HUD',
-              ]}
-              cta={{ label: 'Get Started', to: '/students' }}
-            />
-            <AudienceColumn
-              heading="For Instructors"
-              items={[
-                'Deterministic grading with replay',
-                'Submission inspector with annotations',
-                'Lab specification authoring',
-                'Evidence export for academic integrity',
-              ]}
-              cta={{ label: 'Instructor Guide', to: '/instructors' }}
+            <FeatureCard
+              icon="📦"
+              title="Evidence Capsules"
+              desc="Export verifiable .rbx.zip snapshots containing circuit state, simulation traces, and hardware logs for grading."
             />
           </div>
         </div>
       </section>
 
-      {/* Trust Indicators */}
-      <section className="py-16 bg-zinc-950 border-b border-zinc-800">
-        <div className="container mx-auto px-6 max-w-5xl">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 text-center">
-            <TrustStat value="<10ms" label="Latency" />
-            <TrustStat value="100%" label="Deterministic" />
-            <TrustStat value="Basys3" label="FPGA Support" />
-            <TrustStat value="Browser" label="Native" />
-            <TrustStat value="Zero" label="Install Required" />
-            <TrustStat value="Open" label="Source" />
+      {/* Workflow Section */}
+      <section className="py-24 bg-zinc-900/30">
+        <div className="container mx-auto px-6 max-w-4xl text-center">
+          <h2 className="text-3xl font-bold text-white mb-12">From Logic to Lab.</h2>
+
+          <div className="grid md:grid-cols-4 gap-4 relative">
+            {/* Connecting Line (Desktop) */}
+            <div className="hidden md:block absolute top-8 left-0 w-full h-0.5 bg-zinc-800 -z-10" />
+
+            <Step number="01" title="Design" desc="Drag & drop gates" />
+            <Step number="02" title="Simulate" desc="Verify behavior" />
+            <Step number="03" title="Flash" desc="Push to FPGA" />
+            <Step number="04" title="Submit" desc="Export Evidence" />
           </div>
         </div>
       </section>
 
-      {/* Transparency */}
-      <section className="py-12 bg-zinc-900/30">
-        <div className="container mx-auto px-6 max-w-3xl text-center">
-          <p className="text-xs text-zinc-500 leading-relaxed">
-            <strong className="text-zinc-400">Transparency:</strong> RedByte is a deterministic learning instrument.
-            It does not solve labs for students. It records, verifies, and evaluates student work
-            using bit-perfect replay.
-          </p>
-        </div>
+      {/* CTA Footer */}
+      <section className="py-20 border-t border-zinc-800 bg-zinc-950 text-center">
+        <h2 className="text-2xl font-bold text-white mb-6">Ready to upgrade your lab?</h2>
+        <Link
+          to="/download"
+          className="inline-flex px-8 py-3 rounded-lg font-semibold text-sm text-zinc-950 bg-white hover:bg-zinc-200 transition-colors"
+        >
+          Get Started Now
+        </Link>
       </section>
     </div>
   );
 };
 
-const Capability = ({ title, desc }: { title: string; desc: string }) => (
-  <div>
-    <h3 className="text-2xl font-bold text-zinc-50 mb-3 tracking-tight">{title}</h3>
+const FeatureCard = ({ icon, title, desc }: { icon: string; title: string; desc: string }) => (
+  <div className="p-6 rounded-xl bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 transition-colors">
+    <div className="text-3xl mb-4">{icon}</div>
+    <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
     <p className="text-sm text-zinc-400 leading-relaxed">{desc}</p>
   </div>
 );
 
-const AudienceColumn = ({
-  heading,
-  items,
-  cta,
-}: {
-  heading: string;
-  items: string[];
-  cta: { label: string; to: string };
-}) => (
-  <div>
-    <h3 className="text-xl font-bold text-zinc-50 mb-5 tracking-tight">{heading}</h3>
-    <ul className="space-y-3 mb-6">
-      {items.map((item) => (
-        <li key={item} className="flex items-start gap-2.5 text-sm text-zinc-400">
-          <span className="mt-1.5 h-1 w-1 rounded-full bg-blue-500 shrink-0" />
-          {item}
-        </li>
-      ))}
-    </ul>
-    <Link
-      to={cta.to}
-      className="text-sm font-semibold text-blue-400 hover:text-blue-300 transition-colors"
-    >
-      {cta.label} &rarr;
-    </Link>
-  </div>
-);
-
-const TrustStat = ({ value, label }: { value: string; label: string }) => (
-  <div>
-    <div className="text-xl font-bold text-zinc-50 font-mono mb-1">{value}</div>
-    <div className="text-[10px] font-medium text-zinc-500 uppercase tracking-widest">{label}</div>
+const Step = ({ number, title, desc }: { number: string; title: string; desc: string }) => (
+  <div className="flex flex-col items-center relative z-10">
+    <div className="w-16 h-16 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4 text-zinc-500 font-mono font-bold text-lg shadow-lg">
+      {number}
+    </div>
+    <div className="text-base font-bold text-white mb-1">{title}</div>
+    <div className="text-xs text-zinc-500">{desc}</div>
   </div>
 );
 

@@ -6,10 +6,10 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 const navLinks = [
-  { to: '/', label: 'Product' },
-  { to: '/students', label: 'Students' },
-  { to: '/instructors', label: 'Instructors' },
-  { to: '/install', label: 'Download' },
+  { to: '/product', label: 'Product' },
+  { to: '/labs', label: 'Labs' },
+  { to: '/docs', label: 'Docs' },
+  { to: '/download', label: 'Download' },
 ];
 
 export default function Header() {
@@ -41,11 +41,10 @@ export default function Header() {
               <Link
                 key={to}
                 to={to}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-                  isActive(to)
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${isActive(to)
                     ? 'text-zinc-50 bg-zinc-800'
                     : 'text-zinc-400 hover:text-zinc-200'
-                }`}
+                  }`}
               >
                 {label}
               </Link>
@@ -96,11 +95,10 @@ export default function Header() {
                   key={to}
                   to={to}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`px-3 py-2 text-sm rounded transition-colors ${
-                    isActive(to)
+                  className={`px-3 py-2 text-sm rounded transition-colors ${isActive(to)
                       ? 'text-zinc-50 bg-zinc-800'
                       : 'text-zinc-400 hover:text-zinc-200'
-                  }`}
+                    }`}
                 >
                   {label}
                 </Link>
