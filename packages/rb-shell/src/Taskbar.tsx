@@ -31,7 +31,7 @@ const TaskbarIcon: React.FC<TaskbarIconProps> = ({ id, iconId, label, onClick })
     </button>
 );
 
-import { useCapabilitiesStore } from '@redbyte/rb-apps';
+import { useCapabilitiesStore } from './stores/capabilitiesStore';
 
 const PINNED_APPS: Array<{ id: string; label: string; iconId: IconName; studentHidden?: boolean }> = [
     { id: 'start-here', label: 'Start Here', iconId: 'browser' },

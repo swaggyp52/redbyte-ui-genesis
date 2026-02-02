@@ -1,220 +1,196 @@
 # scripts/bootstrap.ps1
-# One-command bootstrap for fresh Windows machines.
-# Installs: Git, Node LTS, pnpm, (optional) VS Code, clones repo, installs deps, builds, runs.
-# Run: powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap.ps1
+# REDBYTE GOLDEN BOOTSTRAP (Fresh Machine Edition)
+# Run: powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr -useb 'https://raw.githubusercontent.com/swaggyp52/redbyte-ui-genesis/main/scripts/bootstrap.ps1' | iex"
 
 $ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
 
 # ====== CONFIG ======
-# You should set these to match your repo.
-$RepoUrl = "https://github.com/swaggyp52/redbyte-ui-genesis.git" # HTTPS for public/tokenless clone
-$RepoFolder = "redbyte-ui-genesis"        # target folder name
-$NodeMajor = 20                  # keep aligned with your project
-$PnpmVer = "10.24.0"           # keep aligned with packageManager in package.json
-$InstallVSCode = $true            # set false if you don't want to install Code
+$NodeMinVersion = [version]"20.19.0"
+$NodeMsiUrl = "https://nodejs.org/dist/v20.19.0/node-v20.19.0-x64.msi"
+$PnpmVersion = "10.24.0"
+$RepoZipUrl = "https://github.com/swaggyp52/redbyte-ui-genesis/archive/refs/heads/main.zip"
+$InstallRoot = "C:\RedByte"
 # ====================
 
-function Write-Step($msg) {
-  Write-Host ""
-  Write-Host "==> $msg" -ForegroundColor Cyan
-}
+function Write-Step($msg) { Write-Host ""; Write-Host "==> $msg" -ForegroundColor Cyan }
+function Write-Ok($msg) { Write-Host "    v $msg" -ForegroundColor Green }
+function Write-Warn($msg) { Write-Host "    ! $msg" -ForegroundColor Yellow }
+function Write-Fail($msg) { Write-Host ""; Write-Host "X $msg" -ForegroundColor Red; exit 1 }
 
-function Write-Ok($msg) {
-  Write-Host "    ✔ $msg" -ForegroundColor Green
+# 1. Admin Check
+Write-Step "Checking Permissions"
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
+if (-not $isAdmin) {
+  Write-Host "This script requires Administrator privileges." -ForegroundColor Red
+  Write-Fail "Please run as Administrator."
 }
+Write-Ok "Running as Administrator."
 
-function Write-Warn($msg) {
-  Write-Host "    ⚠ $msg" -ForegroundColor Yellow
-}
-
-function Write-Fail($msg) {
-  Write-Host ""
-  Write-Host "✖ $msg" -ForegroundColor Red
-  exit 1
-}
-
-function Command-Exists($name) {
-  return [bool](Get-Command $name -ErrorAction SilentlyContinue)
-}
-
-function Ensure-AdminOrProceed() {
-  # We try without admin first; if WinGet needs admin it will prompt.
-  $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
-  ).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
-  if ($isAdmin) { Write-Ok "Running as Administrator." }
-  else { Write-Warn "Not running as Administrator. Some installs may prompt or fail. If it fails, re-run PowerShell as Admin." }
-}
-
-function Ensure-WinGet() {
-  Write-Step "Checking WinGet"
-  if (Command-Exists "winget") {
-    Write-Ok "WinGet found."
-    return
+# 2. Node.js Install
+Write-Step "Checking Node.js"
+$nodeOk = $false
+if (Get-Command node -ErrorAction SilentlyContinue) {
+  $vRaw = (node -v).TrimStart("v")
+  $vCurrent = [version]$vRaw
+  if ($vCurrent -ge $NodeMinVersion) { 
+    $nodeOk = $true 
+    Write-Ok "Node found."
   }
-
-  Write-Warn "WinGet not found. Attempting to enable it via Microsoft App Installer."
-  Write-Warn "If this fails, you must install 'App Installer' from Microsoft Store, then rerun."
-
-  # No reliable silent install of App Installer without Store access.
-  Write-Fail "WinGet is missing. Install 'App Installer' from Microsoft Store (or update Windows), then rerun this command."
 }
 
-function Winget-Install($id, $name) {
-  Write-Step "Installing $name"
-  # --accept-source-agreements and --accept-package-agreements prevent interactive prompts
-  winget install --id $id --exact --silent --accept-source-agreements --accept-package-agreements | Out-Host
-  Write-Ok "$name install attempted."
-}
-
-function Ensure-Git() {
-  Write-Step "Checking Git"
-  if (Command-Exists "git") {
-    Write-Ok "Git found: $(git --version)"
-    return
+if (-not $nodeOk) {
+  Write-Warn "Installing Node.js..."
+  $msiPath = Join-Path $env:TEMP "node-lts.msi"
+  try {
+    Invoke-WebRequest -Uri $NodeMsiUrl -OutFile $msiPath -UseBasicParsing
   }
-  Ensure-WinGet
-  Winget-Install "Git.Git" "Git"
-  if (-not (Command-Exists "git")) {
-    Write-Fail "Git install did not succeed. Re-run PowerShell as Admin, or install Git manually, then rerun."
+  catch {
+    Write-Fail "Failed to download Node MSI."
   }
-  Write-Ok "Git ready: $(git --version)"
+    
+  $msiArgs = "/i " + [char]34 + $msiPath + [char]34 + " /qn /norestart"
+  Start-Process msiexec.exe -ArgumentList $msiArgs -Wait
+    
+  # Refresh PATH
+  $pMachine = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+  $pUser = [System.Environment]::GetEnvironmentVariable("Path", "User")
+  $env:Path = $pMachine + ";" + $pUser
+    
+  if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+    Write-Fail "Node install failed. Restart PowerShell."
+  }
+  Write-Ok "Node installed."
 }
 
-function Ensure-Node() {
-  Write-Step "Checking Node.js"
-  if (Command-Exists "node") {
-    $v = (node -v).TrimStart("v")
-    $major = [int]($v.Split(".")[0])
-    if ($major -eq $NodeMajor) {
-      Write-Ok "Node found: v$v"
-      return
+# 3. Enable pnpm
+Write-Step "Enabling pnpm"
+try {
+  corepack enable
+  corepack prepare "pnpm@$PnpmVersion" --activate
+}
+catch {
+  Write-Fail "Failed to enable corepack."
+}
+
+if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
+  Write-Fail "pnpm installation failed."
+}
+$null = (pnpm -v)
+Write-Ok "pnpm ready."
+
+# 4. Download Repo
+Write-Step "Setting up Environment"
+if (-not (Test-Path $InstallRoot)) { New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null }
+
+$SrcDir = Join-Path $InstallRoot "src"
+if (-not (Test-Path $SrcDir)) { New-Item -ItemType Directory -Force -Path $SrcDir | Out-Null }
+Set-Location $SrcDir
+
+if (Test-Path "redbyte-ui-genesis-main\package.json") {
+  Write-Ok "Repo exists. Skipping download."
+  Set-Location "redbyte-ui-genesis-main"
+}
+else {
+  Write-Warn "Downloading latest source code..."
+  $zipPath = Join-Path $SrcDir "source.zip"
+  Invoke-WebRequest -Uri $RepoZipUrl -OutFile $zipPath -UseBasicParsing
+    
+  Write-Warn "Extracting..."
+  Expand-Archive -Path $zipPath -DestinationPath $SrcDir -Force
+  Remove-Item $zipPath
+    
+  Set-Location "redbyte-ui-genesis-main"
+  Write-Ok "Source code ready."
+}
+
+$RepoRoot = (Get-Location).Path
+
+# 5. Install & Build
+Write-Step "Installing Dependencies"
+pnpm install --frozen-lockfile
+if ($LASTEXITCODE -ne 0) { Write-Fail "Dependency install failed." }
+Write-Ok "Dependencies installed."
+
+Write-Step "Approving Build Scripts"
+try {
+  pnpm approve-builds --all | Out-Null
+  Write-Ok "Approved build scripts."
+}
+catch {
+  Write-Warn "Approval skipped (not supported/needed)."
+}
+
+
+Write-Step "Building Workspace"
+pnpm -r build
+if ($LASTEXITCODE -ne 0) { Write-Fail "Build failed." }
+Write-Ok "Build complete."
+
+# 6. Launch
+Write-Step "Launching Components"
+
+# Validate Bridge Script
+$bridgeExists = (pnpm -w run | Select-String "bridge:dev").Length -gt 0
+if (-not $bridgeExists) { Write-Fail "bridge:dev script not found." }
+
+# Launch Bridge
+Write-Warn "Launching Hardware Bridge..."
+$cmd = "cd '" + $RepoRoot + "'; Write-Host 'Starting Bridge...' -ForegroundColor Cyan; pnpm bridge:dev"
+Start-Process powershell -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $cmd -WindowStyle Normal
+Write-Ok "Bridge window started."
+
+# Launch OS
+Write-Step "Starting OS and detecting URL"
+
+$logPath = Join-Path $InstallRoot "redbyte-dev.log"
+if (Test-Path $logPath) { Remove-Item $logPath -Force }
+
+$psi = New-Object System.Diagnostics.ProcessStartInfo
+$psi.FileName = "pnpm.cmd"
+$psi.Arguments = "-w dev"
+$psi.WorkingDirectory = $RepoRoot
+$psi.RedirectStandardOutput = $true
+$psi.RedirectStandardError = $true
+$psi.UseShellExecute = $false
+$psi.CreateNoWindow = $false
+
+$p = New-Object System.Diagnostics.Process
+$p.StartInfo = $psi
+$p.Start() | Out-Null
+
+Write-Host "    Waiting for Vite..." -ForegroundColor Gray
+
+$opened = $false
+while (-not $p.HasExited) {
+  while (-not $p.StandardOutput.EndOfStream) {
+    try {
+      $line = $p.StandardOutput.ReadLine()
     }
-    else {
-      Write-Warn "Node found (v$v) but expected major $NodeMajor. Installing Node $NodeMajor LTS."
+    catch {
+      break 
+    }
+    
+    if ($line) {
+      $line | Tee-Object -FilePath $logPath -Append | Out-Host
+
+      if (-not $opened) {
+        if ($line -match "Local:\s+(http://localhost:\d+/os/)") {
+          $url = $Matches[1]
+          Write-Ok "Detected URL: $url"
+          try { Start-Process $url } catch { Write-Warn "Auto-open failed." }
+          $opened = $true
+        }
+      }
     }
   }
-  else {
-    Write-Warn "Node not found. Installing Node $NodeMajor LTS."
-  }
-
-  Ensure-WinGet
-  # Node.js LTS package
-  Winget-Install "OpenJS.NodeJS.LTS" "Node.js LTS"
-
-  # Refresh PATH for current session (best effort)
-  $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-
-  if (-not (Command-Exists "node")) {
-    Write-Fail "Node install did not succeed. Re-run PowerShell as Admin, then rerun."
-  }
-  $v2 = (node -v).TrimStart("v")
-  $major2 = [int]($v2.Split(".")[0])
-  if ($major2 -ne $NodeMajor) {
-    Write-Fail "Node version mismatch after install (got v$v2). Install Node $NodeMajor LTS manually, then rerun."
-  }
-  Write-Ok "Node ready: v$v2"
-}
-
-function Ensure-Pnpm() {
-  Write-Step "Enabling pnpm via Corepack"
-  if (-not (Command-Exists "corepack")) {
-    Write-Fail "Corepack not found. This usually means Node install is incomplete. Reboot or reinstall Node, then rerun."
-  }
-
-  corepack enable | Out-Null
-  corepack prepare "pnpm@$PnpmVer" --activate | Out-Null
-
-  if (-not (Command-Exists "pnpm")) {
-    Write-Fail "pnpm not available after Corepack activation."
-  }
-
-  $pv = (pnpm -v)
-  Write-Ok "pnpm ready: $pv"
-}
-
-function Ensure-VSCode() {
-  if (-not $InstallVSCode) { return }
-  Write-Step "Checking VS Code"
-  if (Command-Exists "code") {
-    Write-Ok "VS Code found."
-    return
-  }
-  Ensure-WinGet
-  Winget-Install "Microsoft.VisualStudioCode" "VS Code"
-  Write-Warn "VS Code install attempted. If 'code' isn't on PATH yet, restart PowerShell after install."
-}
-
-function Clone-Or-Update-Repo() {
-  Write-Step "Cloning repo"
-  if ($RepoUrl -eq "REPO_URL") {
-    Write-Fail "bootstrap.ps1 not configured: set `$RepoUrl to your real GitHub repo URL."
-  }
-
-  $target = Join-Path (Get-Location) $RepoFolder
-
-  if (Test-Path $target) {
-    Write-Warn "Folder '$RepoFolder' already exists. Pulling latest."
-    Set-Location $target
-    git pull | Out-Host
-  }
-  else {
-    git clone $RepoUrl $RepoFolder | Out-Host
-    Set-Location $target
-  }
-
-  Write-Ok "Repo ready at: $target"
   
-  if (-not (Test-Path ".env") -and (Test-Path ".env.example")) {
-    Write-Step "Creating .env from template"
-    Copy-Item ".env.example" ".env"
-    Write-Ok ".env created."
+  # Flush stderr
+  while (-not $p.StandardError.EndOfStream) { 
+    try { $null = $p.StandardError.ReadLine() } catch { break }
   }
+  
+  Start-Sleep -Milliseconds 150
 }
 
-function Install-And-Build() {
-  Write-Step "Installing dependencies (pnpm install --frozen-lockfile)"
-  pnpm install --frozen-lockfile | Out-Host
-  Write-Ok "Dependencies installed."
-
-  Write-Step "Building workspace packages"
-  # Best practice: build everything deterministically so downstream packages have dist/types
-  pnpm -r build | Out-Host
-  Write-Ok "Build complete."
-
-  Write-Step "Running quick health checks"
-  # Optional: if you have a doctor script, keep it here
-  if (Test-Path ".\scripts\doctor.mjs") {
-    node .\scripts\doctor.mjs | Out-Host
-    Write-Ok "Doctor check complete."
-  }
-  else {
-    Write-Warn "No scripts/doctor.mjs found. Skipping doctor check."
-  }
-}
-
-function Run-Dev() {
-  Write-Step "Starting RedByte OS dev server"
-  Write-Warn "If ports 5173--5176 are taken, Vite will choose a new port."
-  # Use your canonical dev command. Replace if you have a better root-level script.
-  pnpm -w dev | Out-Host
-}
-
-# ====== MAIN ======
-Clear-Host
-Write-Host "RedByte Bootstrap (Fresh Machine)" -ForegroundColor White
-Write-Host "Repo: $RepoUrl" -ForegroundColor Gray
-Write-Host "Folder: $RepoFolder" -ForegroundColor Gray
-
-Ensure-AdminOrProceed
-Ensure-Git
-Ensure-Node
-Ensure-Pnpm
-Ensure-VSCode
-Clone-Or-Update-Repo
-Install-And-Build
-
-Write-Host ""
-Write-Host "✔ Setup finished." -ForegroundColor Green
-Write-Host "Next: starting the app..." -ForegroundColor Green
-
-Run-Dev
+if ($p.ExitCode -ne 0) { Write-Fail "Dev server exited. See log." }

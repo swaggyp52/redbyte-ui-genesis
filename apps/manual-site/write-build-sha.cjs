@@ -5,13 +5,21 @@ const { execSync } = require('child_process');
 
 function getHeadSha() {
   try {
-    return execSync('git rev-parse HEAD').toString().trim();
+    // stdio: 'pipe' prevents the error from leaking to console if git is missing/fails
+    return execSync('git rev-parse HEAD', { stdio: 'pipe' }).toString().trim();
   } catch (e) {
-    return 'unknown';
+    return 'zip-install';
   }
 }
 
 const sha = getHeadSha();
-const outPath = path.join(__dirname, 'public', 'build.txt');
+
+// Ensure public dir exists
+const publicDir = path.join(__dirname, 'public');
+if (!fs.existsSync(publicDir)) {
+  fs.mkdirSync(publicDir, { recursive: true });
+}
+
+const outPath = path.join(publicDir, 'build.txt');
 fs.writeFileSync(outPath, sha + '\n');
 console.log('Wrote build.txt with SHA:', sha);
