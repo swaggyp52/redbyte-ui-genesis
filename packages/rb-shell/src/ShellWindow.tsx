@@ -78,7 +78,7 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
   const resizingRef = useRef(false);
   const hasMovedRef = useRef(false);
   const hasResizedRef = useRef(false);
-  
+
   // Throttling refs for drag/resize to prevent spamming onMove/onResize
   const lastMoveTimeRef = useRef<number>(0);
   const lastResizeTimeRef = useRef<number>(0);
@@ -182,14 +182,14 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
     setDragging(false);
     setStart(null);
     dragBoundsRef.current = null;
-    
+
     // Flush any pending move calls
     if (pendingMoveRef.current) {
       onMove(pendingMoveRef.current.x, pendingMoveRef.current.y);
       pendingMoveRef.current = null;
     }
     lastMoveTimeRef.current = 0;
-    
+
     if (shouldSnap && activeSnap && onSnap) {
       onSnap(state.id, activeSnap);
     } else if (hasMovedRef.current) {
@@ -204,7 +204,7 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
     setResizing(null);
     setStart(null);
     dragBoundsRef.current = null;
-    
+
     // Flush any pending resize/move calls
     if (pendingResizeRef.current) {
       onResize(pendingResizeRef.current.w, pendingResizeRef.current.h);
@@ -216,7 +216,7 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
     }
     lastResizeTimeRef.current = 0;
     lastMoveTimeRef.current = 0;
-    
+
     if (hasResizedRef.current) onResizeEnd?.(lastBoundsRef.current);
     clearSnapPreview();
   };
@@ -243,7 +243,7 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
     hasMovedRef.current = true;
     dragBoundsRef.current = nextBounds;
     lastBoundsRef.current = nextBounds;
-    
+
     // Throttle onMove to reduce system log spam and re-renders
     const now = Date.now();
     if (now - lastMoveTimeRef.current >= THROTTLE_MS) {
@@ -252,7 +252,7 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
     } else {
       pendingMoveRef.current = { x: nextBounds.x, y: nextBounds.y };
     }
-    
+
     lastPointerRef.current = { x: e.clientX, y: e.clientY, shiftKey: e.shiftKey };
     handleSnapPreview(e.clientX, e.clientY, e.shiftKey);
     setStart({ x: e.clientX, y: e.clientY });
@@ -288,7 +288,7 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
     hasResizedRef.current = true;
     dragBoundsRef.current = nextBounds;
     lastBoundsRef.current = nextBounds;
-    
+
     // Throttle onResize and onMove to reduce system log spam and re-renders
     const now = Date.now();
     if (now - lastResizeTimeRef.current >= THROTTLE_MS) {
@@ -299,7 +299,7 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
       pendingResizeRef.current = { w: width, h: height };
       pendingMoveRef.current = { x, y };
     }
-    
+
     setStart({ x: e.clientX, y: e.clientY });
   };
 
@@ -342,6 +342,7 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
         if (resizingRef.current) finishResize();
       }}
       onMouseDown={onFocus}
+      onPointerDown={onFocus}
     >
       {/* Title bar — 36px */}
       <div

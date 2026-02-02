@@ -81,6 +81,7 @@ export async function registerAllApps() {
   const { SubmissionInspectorApp } = await import('./apps/SubmissionInspectorApp');
   const { VirtualLabApp } = await import('./apps/VirtualLabApp');
   const { LabWorkspaceApp } = await import('./apps/LabWorkspaceApp');
+  const { LabsApp } = await import('./apps/LabsApp');
 
   registerApp(TerminalApp);
   registerApp(SettingsApp);
@@ -111,6 +112,7 @@ export async function registerAllApps() {
   registerApp(SubmissionInspectorApp);
   registerApp(VirtualLabApp);
   registerApp(LabWorkspaceApp); // RB_UNIFY: Lab Engine vertical slice
+  registerApp(LabsApp);
 }
 
 export { PlaygroundGoldenPath } from './dev/PlaygroundGoldenPath';

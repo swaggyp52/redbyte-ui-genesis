@@ -54,7 +54,7 @@ export interface TruthBarProps {
  * Row 1: Mode indicator, tick counter, event count, save state
  * Row 2: Recording status, proof status, action buttons
  */
-export const TruthBar: React.FC<TruthBarProps> = memo(({
+const TruthBarComponent: React.FC<TruthBarProps> = memo(({
   mode,
   tickCount,
   totalEvents,
@@ -70,6 +70,56 @@ export const TruthBar: React.FC<TruthBarProps> = memo(({
   onExportProof,
   recordingEventCount = 0,
 }) => {
+  // Draggable state
+  const [position, setPosition] = React.useState({ x: 16, y: window.innerHeight - 64 });
+  const [isDragging, setIsDragging] = React.useState(false);
+  const dragStartRef = React.useRef<{ x: number; y: number } | null>(null);
+  const initialPosRef = React.useRef<{ x: number; y: number } | null>(null);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    // Only drag from the container background or drag handle
+    const target = e.target as HTMLElement;
+    if (target.closest('button')) return; // Check if click is on a button
+
+    e.preventDefault();
+    target.setPointerCapture(e.pointerId);
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    initialPosRef.current = { ...position };
+    setIsDragging(true);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging || !dragStartRef.current || !initialPosRef.current) return;
+
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+
+    setPosition({
+      x: initialPosRef.current.x + dx,
+      y: initialPosRef.current.y + dy,
+    });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    setIsDragging(false);
+    dragStartRef.current = null;
+    initialPosRef.current = null;
+    const target = e.target as HTMLElement;
+    target.releasePointerCapture(e.pointerId);
+  };
+
+  // Ensure initial position is at bottom left on mount/resize
+  React.useEffect(() => {
+    const handleResize = () => {
+      setPosition(prev => ({
+        x: Math.min(prev.x, window.innerWidth - 100),
+        y: Math.min(prev.y, window.innerHeight - 50)
+      }));
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const modeConfig = useMemo(() => {
     switch (mode) {
       case 'recording':
@@ -111,116 +161,102 @@ export const TruthBar: React.FC<TruthBarProps> = memo(({
   }, [verificationStatus]);
 
   const saveLabelText = lastSaveLabel ?? (saveState === 'never' ? 'Never saved' : saveState === 'saved' ? 'Saved' : 'Unsaved');
-
-  /* Recording status line */
-  const recordingText = mode === 'recording'
-    ? `Recording (${recordingEventCount} events)`
-    : 'Recording: Off';
-
-  /* Proof status line */
-  const proofText = hasProofPack
-    ? `Proof: Valid${hashPrefix ? ` (H:${hashPrefix})` : ''}`
-    : 'Proof: None';
+  const recordingText = mode === 'recording' ? `Recording (${recordingEventCount})` : null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-20">
+    <div
+      className="fixed z-50 select-none"
+      style={{
+        left: position.x,
+        top: position.y,
+        touchAction: 'none',
+      }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+    >
       <div
-        className="px-3 py-1.5 flex flex-col gap-1 border-t backdrop-blur-md"
-        style={{ background: 'rgba(8, 12, 20, 0.94)', borderColor: 'var(--rb-border)' }}
+        className={`flex items-center gap-3 px-3 py-2 rounded-full border shadow-lg backdrop-blur-md transition-shadow cursor-grab active:cursor-grabbing ${isDragging ? 'shadow-xl scale-[1.02]' : 'shadow-md'}`}
+        style={{
+          background: 'var(--rb-surface-0)',
+          borderColor: 'var(--rb-border-strong)',
+          opacity: 0.98
+        }}
       >
-        {/* Row 1: Status indicators */}
-        <div className="flex items-center gap-3">
-          {/* Mode Indicator */}
-          <div
-            className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-bold tracking-wider ${modeConfig.bg} ${modeConfig.border} border ${modeConfig.color}`}
-          >
-            {modeConfig.pulse && (
-              <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            )}
-            <span>{modeConfig.label}</span>
-          </div>
-
-          {/* Tick Counter */}
-          <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
-            <span className="text-slate-500">T:</span>
-            <span className="text-cyan-400 font-semibold tabular-nums">
-              {tickCount.toString().padStart(5, '0')}
-            </span>
-            {mode === 'replay' && totalEvents !== undefined && (
-              <span className="text-slate-500">/ {totalEvents}</span>
-            )}
-          </div>
-
-          {/* Separator */}
-          <div className="w-px h-4 bg-slate-700" />
-
-          {/* Events */}
-          <div className="text-xs text-slate-400 font-mono">
-            Events: <span className="text-slate-300">{totalEvents ?? recordingEventCount}</span>
-          </div>
-
-          {/* Verification Status */}
-          {verifyConfig && (
-            <>
-              <div className="w-px h-4 bg-slate-700" />
-              <div
-                className={`flex items-center gap-1 text-xs font-semibold ${verifyConfig.color}`}
-                title={verifyConfig.title}
-              >
-                <span>{verifyConfig.icon}</span>
-                <span>{verificationStatus === 'pass' ? 'PROVEN' : 'DIVERGED'}</span>
-              </div>
-            </>
-          )}
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* Save State */}
-          <div className="text-[11px] text-slate-500 font-mono">
-            {saveLabelText}
-          </div>
+        {/* Drag Handle (Visual) */}
+        <div className="flex flex-col gap-0.5 px-0.5 opacity-30">
+          <div className="w-0.5 h-0.5 bg-slate-400 rounded-full" />
+          <div className="w-0.5 h-0.5 bg-slate-400 rounded-full" />
+          <div className="w-0.5 h-0.5 bg-slate-400 rounded-full" />
         </div>
 
-        {/* Row 2: Recording / Proof status + Actions */}
-        <div className="flex items-center gap-3">
-          {/* Recording status text */}
-          <span className="text-[11px] text-slate-500 font-mono">{recordingText}</span>
+        {/* Mode Indicator */}
+        <div
+          className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider ${modeConfig.bg} ${modeConfig.border} border ${modeConfig.color}`}
+        >
+          {modeConfig.pulse && (
+            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+          )}
+          <span>{modeConfig.label}</span>
+        </div>
 
-          <div className="w-px h-3 bg-slate-700/60" />
+        {/* Tick Counter */}
+        <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono border-r border-slate-700/50 pr-3">
+          <span className="text-slate-500">T:</span>
+          <span className="text-cyan-400 font-semibold tabular-nums">
+            {tickCount.toString().padStart(5, '0')}
+          </span>
+          {mode === 'replay' && totalEvents !== undefined && (
+            <span className="text-[10px] text-slate-500">/{totalEvents}</span>
+          )}
+        </div>
 
-          {/* Proof status text */}
-          <span className="text-[11px] text-slate-500 font-mono">{proofText}</span>
+        {/* Dynamic Status / Actions Area */}
+        <div className="flex items-center gap-2">
+          {recordingText && (
+            <span className="text-[10px] text-red-400 font-mono animate-pulse">{recordingText}</span>
+          )}
 
-          {/* Spacer */}
-          <div className="flex-1" />
+          {saveState !== 'never' && !recordingText && (
+            <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">
+              {saveLabelText}
+            </span>
+          )}
+
+          {verifyConfig && (
+            <div
+              className={`flex items-center gap-1 text-[10px] font-bold ${verifyConfig.color} bg-slate-800/50 px-1.5 py-0.5 rounded`}
+              title={verifyConfig.title}
+            >
+              <span>{verifyConfig.icon}</span>
+              <span className="hidden xs:inline">{verificationStatus === 'pass' ? 'PROVEN' : 'DIVERGED'}</span>
+            </div>
+          )}
 
           {/* Action buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 pl-1 border-l border-slate-700/50 ml-1">
             {/* Record Button */}
             <button
               type="button"
-              onClick={onToggleRecording}
+              onClick={(e) => { e.stopPropagation(); onToggleRecording(); }}
               disabled={!canRecord && mode !== 'recording'}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-slate-900 ${
-                mode === 'recording'
+              className={`w-7 h-7 flex items-center justify-center rounded-full transition-all focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-offset-slate-900 ${mode === 'recording'
                   ? 'bg-red-600 hover:bg-red-500 text-white focus:ring-red-500'
                   : canRecord
-                  ? 'bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white focus:ring-cyan-500'
-                  : 'bg-slate-800 text-slate-600 cursor-not-allowed'
-              }`}
+                    ? 'bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white focus:ring-cyan-500'
+                    : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                }`}
               title={mode === 'recording' ? 'Stop Recording' : canRecord ? 'Start Recording' : 'Open a circuit first'}
             >
-              <span className={`w-2 h-2 rounded-full ${mode === 'recording' ? 'bg-white' : 'bg-red-500'}`} />
-              <span>{mode === 'recording' ? 'STOP' : 'REC'}</span>
+              <div className={`w-2.5 h-2.5 rounded-full ${mode === 'recording' ? 'bg-white rounded-sm' : 'bg-red-500'}`} />
             </button>
 
             {/* Verify Button */}
             {mode !== 'recording' && onVerify && (
               <button
                 type="button"
-                onClick={onVerify}
-                className="px-2.5 py-1 rounded text-xs font-semibold bg-blue-600/80 hover:bg-blue-500 text-white transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:ring-offset-slate-900"
+                onClick={(e) => { e.stopPropagation(); onVerify(); }}
+                className="h-7 px-2.5 flex items-center justify-center rounded-full text-[10px] font-bold bg-blue-600/80 hover:bg-blue-500 text-white transition-all duration-150 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 title="Verify determinism via replay"
               >
                 VERIFY
@@ -228,14 +264,14 @@ export const TruthBar: React.FC<TruthBarProps> = memo(({
             )}
 
             {/* Export Button */}
-            {onExportProof && canRecord && (
+            {onExportProof && canRecord && mode === 'live' && (
               <button
                 type="button"
-                onClick={onExportProof}
-                className="px-2.5 py-1 rounded text-xs font-semibold bg-emerald-600/80 hover:bg-emerald-500 text-white transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 focus:ring-offset-slate-900"
+                onClick={(e) => { e.stopPropagation(); onExportProof(); }}
+                className="h-7 px-2.5 flex items-center justify-center rounded-full text-[10px] font-bold bg-emerald-600/80 hover:bg-emerald-500 text-white transition-all duration-150 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 title={hasProofPack ? 'Export proof pack' : 'Export project'}
               >
-                {hasProofPack ? 'EXPORT PROOF' : 'EXPORT PROJECT'}
+                {hasProofPack ? 'EXPORT PROOF' : 'EXPORT'}
               </button>
             )}
 
@@ -243,12 +279,12 @@ export const TruthBar: React.FC<TruthBarProps> = memo(({
             {onOpenPanel && (
               <button
                 type="button"
-                onClick={onOpenPanel}
-                className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-white hover:bg-white/10 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                onClick={(e) => { e.stopPropagation(); onOpenPanel(); }}
+                className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-all duration-150 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                 title="Open Determinism Panel"
               >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <path d="M2 5L7 10L12 5" />
+                <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M2 5L7 10L12 5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
             )}
@@ -258,3 +294,5 @@ export const TruthBar: React.FC<TruthBarProps> = memo(({
     </div>
   );
 });
+
+export const TruthBar = TruthBarComponent;

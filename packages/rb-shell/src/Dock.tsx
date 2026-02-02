@@ -18,8 +18,10 @@ const systemIcons: Array<{ id: string; label: string; iconId: IconName }> = [
 
 const appIcons: Array<{ id: string; label: string; iconId: IconName }> = [
   { id: 'logic-playground', label: 'Logic Playground', iconId: 'logic' },
-  { id: 'ece-lab', label: 'Lab', iconId: 'cpu' },
-  { id: 'start-here', label: 'Start Here', iconId: 'cpu' },
+  { id: 'ece-lab', label: 'ECE Lab', iconId: 'chip' },
+  { id: 'virtual-lab', label: 'Virtual Lab', iconId: 'circuit-board' },
+  { id: 'labs', label: 'Labs', iconId: 'book' },
+  { id: 'start-here', label: 'Start Here', iconId: 'browser' },
   { id: 'terminal', label: 'Terminal', iconId: 'terminal' },
   { id: 'system-log', label: 'System Log', iconId: 'log' },
 ];
@@ -55,7 +57,7 @@ const loadDockOrder = () => {
     if (Array.isArray(parsed)) {
       return normalizeDockOrder(parsed.filter((id): id is string => typeof id === 'string'));
     }
-  } catch {}
+  } catch { }
   return DEFAULT_DOCK_IDS;
 };
 
@@ -74,10 +76,10 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
   const safeDebouncedOpenApp = useCallback((appId: string) => {
     // Prevent double-clicking from opening the app twice
     if (pendingOpenRef.current.has(appId)) return;
-    
+
     pendingOpenRef.current.add(appId);
     onOpenApp(appId);
-    
+
     // Clear the pending flag after a short delay to allow time for state updates
     setTimeout(() => {
       pendingOpenRef.current.delete(appId);
@@ -148,6 +150,9 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
         type="button"
         key={dock.id}
         onClick={() => safeDebouncedOpenApp(dock.id)}
+        onPointerDown={(e) => {
+          if (e.button === 0) safeDebouncedOpenApp(dock.id);
+        }}
         onKeyDown={(event) => handleKeyDown(event, dock.id)}
         onMouseEnter={() => setHoveredId(dock.id)}
         onMouseLeave={() => setHoveredId(null)}
@@ -185,7 +190,7 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
         )}
         <Icon
           name={dock.iconId}
-          size={18}
+          size={20}
           style={{ color: isRunning ? 'var(--rb-accent)' : 'var(--rb-text-2)' }}
           className="transition-colors"
           aria-label={`${dock.label} icon`}

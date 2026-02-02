@@ -792,6 +792,7 @@ export const Shell: React.FC<ShellProps> = () => {
       });
 
       trackWindowOpen(state.id);
+      focusWindow(state.id);
       setBindings((prev) => ({ ...prev, [state.id]: { appId, props } }));
       logSystemEvent({
         level: 'action',

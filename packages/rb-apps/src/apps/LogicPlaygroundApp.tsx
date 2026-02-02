@@ -90,6 +90,11 @@ import { useEvidenceViewerStore } from '../stores/evidenceViewerStore';
 
 
 // Placeholder for evidence viewer (feature in development)
+// Place appVersion at module scope to avoid ReferenceError in hooks
+const appVersion =
+  (import.meta as ImportMeta & { env?: { VITE_APP_VERSION?: string } }).env?.VITE_APP_VERSION ??
+  'dev';
+
 import { EvidenceViewerPanel } from '../components/EvidenceViewerPanel';
 
 const LOGIC_PLAYGROUND_INVARIANTS = {
@@ -507,7 +512,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     }));
 
     lastRecordingKeyRef.current = recordKey;
-  }, [record, unifiedProject, updateProject, circuit, appVersion, currentHz, selectedExampleId]);
+  }, [record, unifiedProject, updateProject, circuit, appVersion, tickRate, selectedExampleId]);
 
   const [isRunning, setIsRunning] = useState(false);
   const [currentHz, setCurrentHz] = useState(tickRate);
@@ -575,9 +580,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const isDemoMode =
     (import.meta as ImportMeta & { env?: { VITE_PUBLIC_DEMO?: string } }).env?.VITE_PUBLIC_DEMO ===
     'true';
-  const appVersion =
-    (import.meta as ImportMeta & { env?: { VITE_APP_VERSION?: string } }).env?.VITE_APP_VERSION ??
-    'dev';
+
   const lastRecognizedPatternRef = useRef<string | null>(null);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
   const projectFileInputRef = useRef<HTMLInputElement>(null);
@@ -3623,7 +3626,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
               isReplayMode={isReplayMode}
               onRun={handleRun}
               onPause={handlePause}
-              onPause={handlePause}
+
               onStep={handleStep}
               onResetTickCount={handleResetTickCount}
               ioMapping={ioMapping}

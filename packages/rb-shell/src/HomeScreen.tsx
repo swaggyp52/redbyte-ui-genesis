@@ -4,6 +4,7 @@
 
 import React, { useMemo } from 'react';
 import { listExamples } from '@redbyte/rb-apps';
+import { Icon } from '@redbyte/rb-icons';
 import type { DeterminismMode } from './TruthBar';
 
 type ExampleMetadata = ReturnType<typeof listExamples>[number];
@@ -116,11 +117,35 @@ const StateChip: React.FC<{ label: string; value: string; accent?: boolean }> = 
 
 /* ─── Quick Actions ─────────────────────────────────────────── */
 
-const QUICK_ACTIONS = [
-  { id: 'logic-playground', label: 'New Circuit', icon: '\u229E', description: 'Open the freeform circuit editor' },
-  { id: 'ece-lab', label: 'Lab Assignment', icon: '\u2394', description: 'Start a guided lab with verification' },
-  { id: 'import-project', label: 'Import', icon: '\u2193', description: 'Open an existing .rbx project' },
-  { id: 'files', label: 'Files', icon: '\u229F', description: 'Browse project files' },
+/* ─── Sections ──────────────────────────────────────────────── */
+
+const SECTIONS = [
+  {
+    title: 'Learning Tools',
+    apps: [
+      { id: 'logic-playground', label: 'Logic Playground', icon: 'logic', description: 'Freestyle circuit design' },
+      { id: 'ece-lab', label: 'ECE Lab', icon: 'chip', description: 'Guided hardware labs' },
+      { id: 'virtual-lab', label: 'Virtual Lab', icon: 'tool-build', description: 'Simulated breadboard' },
+      { id: 'labs', label: 'Labs', icon: 'book', description: 'Course assignments' },
+      { id: 'start-here', label: 'Start Here', icon: 'browser', description: 'Introduction & Basics' },
+    ]
+  },
+  {
+    title: 'System Tools',
+    apps: [
+      { id: 'files', label: 'Files', icon: 'files', description: 'Project management' },
+      { id: 'terminal', label: 'Terminal', icon: 'terminal', description: 'Command line interface' },
+      { id: 'settings', label: 'Settings', icon: 'settings', description: 'System configuration' },
+      { id: 'system-log', label: 'Logs', icon: 'log', description: 'Debug logs' },
+    ]
+  },
+  {
+    title: 'Grading & Export',
+    apps: [
+      { id: 'submission-inspector', label: 'Inspector', icon: 'search', description: 'Verify submissions' },
+      { id: 'fpga-proof-viewer', label: 'Proof Viewer', icon: 'shield-check', description: 'Analyze proofs' },
+    ]
+  }
 ] as const;
 
 /* ─── App Guide ─────────────────────────────────────────────── */
@@ -144,23 +169,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   logEntryCount,
   verificationStatus,
 }) => {
+  const buildStatus: StepStatus = 'complete';
+  const buildSublabel = 'Ready';
+
+  const recordStatus: StepStatus = isRecording ? 'active' : hasRecording ? 'complete' : 'pending';
+  const recordSublabel = isRecording ? 'Recording...' : hasRecording ? 'Captured' : 'Waiting';
+
+  const verifyStatus: StepStatus = verificationStatus ? 'complete' : 'pending';
+  const verifySublabel = verificationStatus === 'pass' ? 'Passed' : verificationStatus === 'fail' ? 'Failed' : 'Untested';
+
+  const exportStatus: StepStatus = hasProofPack ? 'complete' : 'pending';
+  const exportSublabel = hasProofPack ? 'Packaged' : 'No Data';
+
   const starterExamples = useMemo(() => {
     const all = listExamples();
-    const beginner = all.filter((e) => e.difficulty === 'beginner').slice(0, 3);
-    const intermediate = all.filter((e) => e.difficulty === 'intermediate').slice(0, 2);
-    return [...beginner, ...intermediate].slice(0, 4);
+    // Prioritize basic gates and simpler circuits for the start screen
+    const priority = ['basic-gates', 'full-adder', 'multiplexer', 'd-latch'];
+    return all.filter(e => priority.includes(e.id)).slice(0, 4);
   }, []);
-
-  /* Pipeline status derivation */
-  const buildStatus: StepStatus = 'pending'; // no circuit on home screen
-  const recordStatus: StepStatus = isRecording ? 'active' : hasRecording ? 'complete' : 'pending';
-  const verifyStatus: StepStatus = verificationStatus === 'pass' ? 'complete' : 'pending';
-  const exportStatus: StepStatus = hasProofPack ? 'complete' : 'pending';
-
-  const buildSublabel = 'Open a circuit';
-  const recordSublabel = isRecording ? 'Recording...' : hasRecording ? 'Recorded' : 'Not recorded';
-  const verifySublabel = verificationStatus === 'pass' ? 'Proven' : verificationStatus === 'fail' ? 'Diverged' : 'Unverified';
-  const exportSublabel = hasProofPack ? 'Ready' : 'No proof pack';
 
   return (
     <div
@@ -177,13 +203,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       <div
         style={{
           pointerEvents: 'auto',
-          maxWidth: 560,
+          maxWidth: 800,
           width: '90%',
           fontFamily: 'var(--rb-font-mono, monospace)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 24,
+          maxHeight: '80vh',
+          overflowY: 'auto',
+          padding: '24px',
+          background: 'rgba(0,0,0,0.4)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: 16,
+          border: '1px solid rgba(255,255,255,0.1)',
         }}
       >
         {/* ── Branding & Purpose ── */}
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+        <div style={{ textAlign: 'center', marginBottom: 8 }}>
           <div
             style={{
               fontSize: 22,
@@ -194,64 +230,78 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           >
             RedByte OS
           </div>
-          <p
-            style={{
-              fontSize: 12,
-              color: 'var(--rb-text-3, #71717a)',
-              marginTop: 6,
-              lineHeight: 1.5,
-              maxWidth: 400,
-              marginLeft: 'auto',
-              marginRight: 'auto',
-            }}
-          >
-            A deterministic engineering OS. Every circuit run can be recorded,
-            replayed, and verified. Your submission is a proof pack, not a screenshot.
+          <p style={{ fontSize: 12, color: 'var(--rb-text-3, #71717a)', marginTop: 4 }}>
+            Deterministic Engineering Environment
           </p>
         </div>
 
-        {/* ── Quick Actions ── */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 8,
-            marginBottom: 20,
-          }}
-        >
-          {QUICK_ACTIONS.map((action) => (
-            <button
-              key={action.id}
-              type="button"
-              onClick={() => onOpenApp(action.id)}
-              title={action.description}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 6,
-                padding: '14px 8px',
-                borderRadius: 10,
-                border: '1px solid var(--rb-border, #333)',
-                background: 'var(--rb-surface-1, #1e1e2e)',
-                color: 'var(--rb-text, #e4e4e7)',
-                cursor: 'pointer',
+        {/* ── Sections ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {SECTIONS.map((section) => (
+            <div key={section.title}>
+              <h3 style={{
                 fontSize: 11,
-                fontFamily: 'inherit',
-                transition: 'background 150ms, border-color 150ms',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'var(--rb-surface-2, #252538)';
-                e.currentTarget.style.borderColor = 'var(--rb-accent, #3b82f6)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'var(--rb-surface-1, #1e1e2e)';
-                e.currentTarget.style.borderColor = 'var(--rb-border, #333)';
-              }}
-            >
-              <span style={{ fontSize: 20, lineHeight: 1 }}>{action.icon}</span>
-              <span style={{ fontWeight: 600 }}>{action.label}</span>
-            </button>
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: 'var(--rb-text-3)',
+                marginBottom: 12,
+                fontWeight: 600,
+                borderBottom: '1px solid var(--rb-border-subtle)',
+                paddingBottom: 4
+              }}>
+                {section.title}
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+                {section.apps.map((app) => (
+                  <button
+                    key={app.id}
+                    type="button"
+                    onClick={() => onOpenApp(app.id)}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '16px 8px',
+                      borderRadius: 8,
+                      border: '1px solid transparent',
+                      background: 'var(--rb-surface-2)', // slight bg
+                      color: 'var(--rb-text)',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--rb-surface-3)';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'var(--rb-surface-2)';
+                      e.currentTarget.style.transform = 'none';
+                    }}
+                  >
+                    {/* Use the Icon component if available, otherwise just text/emoji fallback if imports are tricky. 
+                         Wait, I need to Import Icon. The instruction assumes I can default to text/emoji if I can't import easily?
+                         No, I should import Icon. I'll add the import in a separate tool call if needed or use full file replace if safer.
+                         Replacing just this block implies I have access to Icon.
+                         I'll assume Icon is available in scope or I need to add it.
+                         Actually, previous view_file showed NO Icon import.
+                         So I need to add import { Icon } from '@redbyte/rb-icons'; at the top too.
+                         I'll use a MULTI-REPLACE to handle both.
+                      */}
+                    {/* Using a placeholder rendering for now, assuming I will handle the import in the same turn via multi_replace */}
+                    <div style={{ color: 'var(--rb-accent)' }}>
+                      {/* @ts-ignore - dynamic icon lookup */}
+                      <Icon name={app.icon as any} size={24} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600 }}>{app.label}</span>
+                      <span style={{ fontSize: 10, color: 'var(--rb-text-2)', lineHeight: 1.2 }}>{app.description}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
 

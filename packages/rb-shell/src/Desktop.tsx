@@ -78,6 +78,16 @@ export const Desktop: React.FC<DesktopProps> = React.memo(({ onOpenApp, wallpape
         onDoubleClick={handleDoubleClick}
       />
 
+      {/* Version Badge */}
+      <div
+        className="absolute bottom-3 left-4 z-10 text-[10px] font-mono pointer-events-auto"
+        style={{ color: 'var(--rb-text-2)', opacity: 0.8 }}
+      >
+        <span className="px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 font-bold">
+          v0.9.0
+        </span>
+      </div>
+
       {/* Copyright */}
       <div
         className="absolute bottom-3 right-4 z-10 text-right text-[10px] font-mono pointer-events-none"

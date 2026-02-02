@@ -177,7 +177,7 @@ Integrate the Light Dependent Resistor (LDR) circuit.
 You have successfully built and tested a mixed-signal digital system!
 
 **Submission:**
-Click **Export Project** to generate your `.rbx.zip` submission file. This file contains your circuit, test results, and hardware configuration.
+Click **Export Project** to generate your .rbx.zip submission file. This file contains your circuit, test results, and hardware configuration.
         `
     }
 ];
