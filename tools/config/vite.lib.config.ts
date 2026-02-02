@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
+import dts from "vite-plugin-dts";
 import path from "node:path";
 import fs from "node:fs";
 
@@ -12,7 +13,12 @@ const pkgName = pkg.name || "rb-lib";
 const baseName = pkgName.includes("/") ? pkgName.split("/")[1] : pkgName;
 
 export default defineConfig({
-  plugins: [tsconfigPaths()],
+  plugins: [
+    tsconfigPaths(),
+    dts({
+      insertTypesEntry: true,
+    }),
+  ],
   build: {
     lib: {
       entry: path.resolve(process.cwd(), "src/index.ts"),

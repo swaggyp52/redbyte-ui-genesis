@@ -1,230 +1,220 @@
-# RedByte FPGA MVP bootstrap script (Windows)
-# Usage:
-#   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bootstrap.ps1
+# scripts/bootstrap.ps1
+# One-command bootstrap for fresh Windows machines.
+# Installs: Git, Node LTS, pnpm, (optional) VS Code, clones repo, installs deps, builds, runs.
+# Run: powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap.ps1
 
-Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$RequiredNodeVersion = "20.19.0"
-$RequiredPnpmVersion = "10.24.0"
-$RequiredVivadoVersion = "2024.1"
-$RepoUrl = "https://github.com/swaggyp52/redbyte-ui-genesis.git"
-$DefaultRepoRef = "fpga-mvp-0.1.0"
-$RepoRef = if ($env:RB_GIT_REF) { $env:RB_GIT_REF } else { $DefaultRepoRef }
-$RepoDir = Join-Path (Get-Location) "redbyte-ui-genesis"
-$ExpectedUiUrl = "http://localhost:5173"
+# ====== CONFIG ======
+# You should set these to match your repo.
+$RepoUrl = "https://github.com/swaggyp52/redbyte-ui-genesis.git" # HTTPS for public/tokenless clone
+$RepoFolder = "redbyte-ui-genesis"        # target folder name
+$NodeMajor = 20                  # keep aligned with your project
+$PnpmVer = "10.24.0"           # keep aligned with packageManager in package.json
+$InstallVSCode = $true            # set false if you don't want to install Code
+# ====================
 
-function Write-Section([string]$Text) {
+function Write-Step($msg) {
   Write-Host ""
-  Write-Host "=== $Text ===" -ForegroundColor Cyan
+  Write-Host "==> $msg" -ForegroundColor Cyan
 }
 
-function Write-Ok([string]$Text) {
-  Write-Host "  [OK] $Text" -ForegroundColor Green
+function Write-Ok($msg) {
+  Write-Host "    ✔ $msg" -ForegroundColor Green
 }
 
-function Write-Fail([string]$Text) {
-  Write-Host "  [FAIL] $Text" -ForegroundColor Red
+function Write-Warn($msg) {
+  Write-Host "    ⚠ $msg" -ForegroundColor Yellow
 }
 
-function Update-SessionPath {
-  $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
-  $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-  $env:Path = "$machinePath;$userPath"
+function Write-Fail($msg) {
+  Write-Host ""
+  Write-Host "✖ $msg" -ForegroundColor Red
+  exit 1
 }
 
-function Get-NodeVersion {
-  if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-    return $null
+function Command-Exists($name) {
+  return [bool](Get-Command $name -ErrorAction SilentlyContinue)
+}
+
+function Ensure-AdminOrProceed() {
+  # We try without admin first; if WinGet needs admin it will prompt.
+  $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
+  ).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
+  if ($isAdmin) { Write-Ok "Running as Administrator." }
+  else { Write-Warn "Not running as Administrator. Some installs may prompt or fail. If it fails, re-run PowerShell as Admin." }
+}
+
+function Ensure-WinGet() {
+  Write-Step "Checking WinGet"
+  if (Command-Exists "winget") {
+    Write-Ok "WinGet found."
+    return
   }
-  $raw = (node --version).Trim()
-  return $raw.TrimStart("v")
+
+  Write-Warn "WinGet not found. Attempting to enable it via Microsoft App Installer."
+  Write-Warn "If this fails, you must install 'App Installer' from Microsoft Store, then rerun."
+
+  # No reliable silent install of App Installer without Store access.
+  Write-Fail "WinGet is missing. Install 'App Installer' from Microsoft Store (or update Windows), then rerun this command."
 }
 
-function Get-PnpmVersion {
-  if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
-    return $null
+function Winget-Install($id, $name) {
+  Write-Step "Installing $name"
+  # --accept-source-agreements and --accept-package-agreements prevent interactive prompts
+  winget install --id $id --exact --silent --accept-source-agreements --accept-package-agreements | Out-Host
+  Write-Ok "$name install attempted."
+}
+
+function Ensure-Git() {
+  Write-Step "Checking Git"
+  if (Command-Exists "git") {
+    Write-Ok "Git found: $(git --version)"
+    return
   }
-  return (pnpm --version).Trim()
-}
-
-function Get-GitVersion {
-  if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-    return $null
+  Ensure-WinGet
+  Winget-Install "Git.Git" "Git"
+  if (-not (Command-Exists "git")) {
+    Write-Fail "Git install did not succeed. Re-run PowerShell as Admin, or install Git manually, then rerun."
   }
-  return (git --version).Trim()
+  Write-Ok "Git ready: $(git --version)"
 }
 
-function Get-VivadoInfo {
-  $vivadoExe = "vivado.bat"
-  try {
-    $out = & $vivadoExe -version 2>$null
-    if ($out -match "Vivado v?([0-9.]+)") {
-      return @{ Path = $vivadoExe; Version = $Matches[1] }
+function Ensure-Node() {
+  Write-Step "Checking Node.js"
+  if (Command-Exists "node") {
+    $v = (node -v).TrimStart("v")
+    $major = [int]($v.Split(".")[0])
+    if ($major -eq $NodeMajor) {
+      Write-Ok "Node found: v$v"
+      return
     }
-  } catch {
-    # Not on PATH
-  }
-
-  $paths = @(
-    "C:\Xilinx\Vivado",
-    "D:\Xilinx\Vivado",
-    "C:\Program Files\Xilinx\Vivado"
-  )
-  foreach ($base in $paths) {
-    if (-not (Test-Path $base)) { continue }
-    $versions = Get-ChildItem -Path $base -Directory -ErrorAction SilentlyContinue |
-      Where-Object { $_.Name -match "^\d+\.\d+" } |
-      Sort-Object -Property Name -Descending
-    foreach ($version in $versions) {
-      $candidate = Join-Path $version.FullName "bin\vivado.bat"
-      if (Test-Path $candidate) {
-        return @{ Path = $candidate; Version = $version.Name }
-      }
+    else {
+      Write-Warn "Node found (v$v) but expected major $NodeMajor. Installing Node $NodeMajor LTS."
     }
   }
-  return $null
-}
-
-function Require-Installer {
-  if (Get-Command winget -ErrorAction SilentlyContinue) {
-    return "winget"
-  }
-  if (Get-Command choco -ErrorAction SilentlyContinue) {
-    return "choco"
-  }
-  throw "Neither winget nor choco is installed. Install one package manager first."
-}
-
-function Install-Tool {
-  param(
-    [string]$Name,
-    [string]$WingetId,
-    [string]$ChocoId,
-    [string]$Version = ""
-  )
-
-  $installer = Require-Installer
-  Write-Host "  Installing $Name via $installer..."
-
-  if ($installer -eq "winget") {
-    $args = @("install", "--id", $WingetId, "--exact", "--accept-source-agreements", "--accept-package-agreements", "--silent")
-    if ($Version) {
-      $args += @("--version", $Version)
-    }
-    & winget @args | Out-Null
-  } else {
-    $args = @("install", $ChocoId, "-y", "--no-progress")
-    if ($Version) {
-      $args += @("--version", $Version)
-    }
-    & choco @args | Out-Null
+  else {
+    Write-Warn "Node not found. Installing Node $NodeMajor LTS."
   }
 
-  Update-SessionPath
+  Ensure-WinGet
+  # Node.js LTS package
+  Winget-Install "OpenJS.NodeJS.LTS" "Node.js LTS"
+
+  # Refresh PATH for current session (best effort)
+  $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+
+  if (-not (Command-Exists "node")) {
+    Write-Fail "Node install did not succeed. Re-run PowerShell as Admin, then rerun."
+  }
+  $v2 = (node -v).TrimStart("v")
+  $major2 = [int]($v2.Split(".")[0])
+  if ($major2 -ne $NodeMajor) {
+    Write-Fail "Node version mismatch after install (got v$v2). Install Node $NodeMajor LTS manually, then rerun."
+  }
+  Write-Ok "Node ready: v$v2"
 }
 
-Write-Section "Prerequisites"
-
-$gitVersion = Get-GitVersion
-if (-not $gitVersion) {
-  Install-Tool -Name "Git" -WingetId "Git.Git" -ChocoId "git"
-  $gitVersion = Get-GitVersion
-}
-if (-not $gitVersion) {
-  Write-Fail "Git not found after install."
-  throw "Git install failed."
-}
-Write-Ok $gitVersion
-
-$nodeVersion = Get-NodeVersion
-if ($nodeVersion -ne $RequiredNodeVersion) {
-  Install-Tool -Name "Node.js $RequiredNodeVersion" -WingetId "OpenJS.NodeJS" -ChocoId "nodejs" -Version $RequiredNodeVersion
-  $nodeVersion = Get-NodeVersion
-}
-if ($nodeVersion -ne $RequiredNodeVersion) {
-  Write-Fail "Node.js $RequiredNodeVersion required, found '$nodeVersion'."
-  throw "Node.js version mismatch."
-}
-Write-Ok "Node.js v$nodeVersion"
-
-$pnpmVersion = Get-PnpmVersion
-if ($pnpmVersion -ne $RequiredPnpmVersion) {
-  Install-Tool -Name "pnpm $RequiredPnpmVersion" -WingetId "pnpm.pnpm" -ChocoId "pnpm" -Version $RequiredPnpmVersion
-  $pnpmVersion = Get-PnpmVersion
-}
-if ($pnpmVersion -ne $RequiredPnpmVersion) {
-  Write-Fail "pnpm $RequiredPnpmVersion required, found '$pnpmVersion'."
-  throw "pnpm version mismatch."
-}
-Write-Ok "pnpm $pnpmVersion"
-
-$vivado = Get-VivadoInfo
-if (-not $vivado) {
-  Write-Fail "Vivado $RequiredVivadoVersion not detected."
-  throw "Install AMD Vivado WebPACK $RequiredVivadoVersion and ensure vivado.bat is on PATH."
-}
-if (-not ($vivado.Version -like "$RequiredVivadoVersion*")) {
-  Write-Fail "Vivado $RequiredVivadoVersion required, found '$($vivado.Version)'."
-  throw "Vivado version mismatch."
-}
-Write-Ok "Vivado $($vivado.Version) ($($vivado.Path))"
-
-Write-Section "Repository"
-
-if (-not (Test-Path $RepoDir)) {
-  Write-Host "  Cloning $RepoUrl..."
-  git clone $RepoUrl $RepoDir | Out-Null
-}
-if (-not (Test-Path (Join-Path $RepoDir ".git"))) {
-  Write-Fail "Target directory exists but is not a git repo: $RepoDir"
-  throw "Repo clone failed."
-}
-
-Push-Location $RepoDir
-try {
-  Write-Ok "Using repo ref: $RepoRef"
-  $status = git status --porcelain
-  if ($status) {
-    Write-Fail "Repo has local changes. Clean the directory or clone into a new folder."
-    throw "Working tree is not clean."
+function Ensure-Pnpm() {
+  Write-Step "Enabling pnpm via Corepack"
+  if (-not (Command-Exists "corepack")) {
+    Write-Fail "Corepack not found. This usually means Node install is incomplete. Reboot or reinstall Node, then rerun."
   }
 
-  $head = (git rev-parse HEAD).Trim()
-  if ($head -ne $RepoRef) {
-    git fetch --all --tags | Out-Null
-    git checkout $RepoRef | Out-Null
+  corepack enable | Out-Null
+  corepack prepare "pnpm@$PnpmVer" --activate | Out-Null
+
+  if (-not (Command-Exists "pnpm")) {
+    Write-Fail "pnpm not available after Corepack activation."
   }
 
-  $finalHead = (git rev-parse HEAD).Trim()
-  if ($finalHead -ne $RepoRef) {
-    Write-Fail "Expected commit $RepoRef but found $finalHead."
-    throw "Pinned commit checkout failed."
+  $pv = (pnpm -v)
+  Write-Ok "pnpm ready: $pv"
+}
+
+function Ensure-VSCode() {
+  if (-not $InstallVSCode) { return }
+  Write-Step "Checking VS Code"
+  if (Command-Exists "code") {
+    Write-Ok "VS Code found."
+    return
   }
-  Write-Ok "Checked out $RepoRef"
-} finally {
-  Pop-Location
+  Ensure-WinGet
+  Winget-Install "Microsoft.VisualStudioCode" "VS Code"
+  Write-Warn "VS Code install attempted. If 'code' isn't on PATH yet, restart PowerShell after install."
 }
 
-Write-Section "Install and Build"
+function Clone-Or-Update-Repo() {
+  Write-Step "Cloning repo"
+  if ($RepoUrl -eq "REPO_URL") {
+    Write-Fail "bootstrap.ps1 not configured: set `$RepoUrl to your real GitHub repo URL."
+  }
 
-Push-Location $RepoDir
-try {
-  Write-Host "  Running: pnpm install --frozen-lockfile"
-  pnpm install --frozen-lockfile
-  Write-Ok "pnpm install complete"
+  $target = Join-Path (Get-Location) $RepoFolder
 
-  Write-Host "  Running: pnpm -r build"
-  pnpm -r build
-  Write-Ok "Build complete"
-} finally {
-  Pop-Location
+  if (Test-Path $target) {
+    Write-Warn "Folder '$RepoFolder' already exists. Pulling latest."
+    Set-Location $target
+    git pull | Out-Host
+  }
+  else {
+    git clone $RepoUrl $RepoFolder | Out-Host
+    Set-Location $target
+  }
+
+  Write-Ok "Repo ready at: $target"
+  
+  if (-not (Test-Path ".env") -and (Test-Path ".env.example")) {
+    Write-Step "Creating .env from template"
+    Copy-Item ".env.example" ".env"
+    Write-Ok ".env created."
+  }
 }
 
-Write-Section "Next Steps"
-Write-Host "  cd $RepoDir"
-Write-Host "  pnpm --filter @redbyte/playground dev"
-Write-Host "  Open $ExpectedUiUrl"
+function Install-And-Build() {
+  Write-Step "Installing dependencies (pnpm install --frozen-lockfile)"
+  pnpm install --frozen-lockfile | Out-Host
+  Write-Ok "Dependencies installed."
+
+  Write-Step "Building workspace packages"
+  # Best practice: build everything deterministically so downstream packages have dist/types
+  pnpm -r build | Out-Host
+  Write-Ok "Build complete."
+
+  Write-Step "Running quick health checks"
+  # Optional: if you have a doctor script, keep it here
+  if (Test-Path ".\scripts\doctor.mjs") {
+    node .\scripts\doctor.mjs | Out-Host
+    Write-Ok "Doctor check complete."
+  }
+  else {
+    Write-Warn "No scripts/doctor.mjs found. Skipping doctor check."
+  }
+}
+
+function Run-Dev() {
+  Write-Step "Starting RedByte OS dev server"
+  Write-Warn "If ports 5173--5176 are taken, Vite will choose a new port."
+  # Use your canonical dev command. Replace if you have a better root-level script.
+  pnpm -w dev | Out-Host
+}
+
+# ====== MAIN ======
+Clear-Host
+Write-Host "RedByte Bootstrap (Fresh Machine)" -ForegroundColor White
+Write-Host "Repo: $RepoUrl" -ForegroundColor Gray
+Write-Host "Folder: $RepoFolder" -ForegroundColor Gray
+
+Ensure-AdminOrProceed
+Ensure-Git
+Ensure-Node
+Ensure-Pnpm
+Ensure-VSCode
+Clone-Or-Update-Repo
+Install-And-Build
+
 Write-Host ""
-Write-Host "Expected success output: === BOOTSTRAP COMPLETE ==="
-Write-Host "=== BOOTSTRAP COMPLETE ===" -ForegroundColor Green
+Write-Host "✔ Setup finished." -ForegroundColor Green
+Write-Host "Next: starting the app..." -ForegroundColor Green
+
+Run-Dev
