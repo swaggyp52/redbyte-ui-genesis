@@ -129,9 +129,18 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
                     if (booted) return;
                     booted = true;
 
+                    // Lazy import to avoid circular dependency if any
+                    const { useCapabilitiesStore } = require('./capabilitiesStore');
+
                     // Subscribe to global singleton
                     hardwareClient.subscribe((state) => {
                         syncState(state);
+
+                        // Update Capabilities
+                        useCapabilitiesStore.getState().updateHardwareStatus({
+                            bridgeOnline: state.status === 'connected',
+                            connected: state.status === 'connected' && Object.values(get().sessions).some(s => s.status === 'connected')
+                        });
                     });
 
                     // Initial connect
@@ -139,6 +148,11 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
 
                     // Subscribe to IO for HUD heartbeat
                     hardwareClient.subscribeIO((snapshot: any) => {
+                        // Update Capabilities Heartbeat
+                        useCapabilitiesStore.getState().updateHardwareStatus({
+                            lastHeartbeatAt: Date.now()
+                        });
+
                         set(state => {
                             // Find target associated with this snapshot
                             for (const target of Object.keys(state.sessions) as Target[]) {

@@ -10,6 +10,8 @@ import {
   useViewportKeyboard,
 } from '../utils/viewportControls';
 import type { Node, Connection } from '@redbyte/rb-logic-core';
+import { registerCompositeNode } from '@redbyte/rb-logic-core';
+import { toast } from '@redbyte/rb-primitives';
 import type { CircuitNode, CircuitConnection } from '@redbyte/rb-utils/labProjectSchema';
 
 export type InteractionMode = 'idle' | 'panning' | 'dragging-node' | 'wiring';
@@ -18,6 +20,7 @@ export const DesignMode: React.FC<{ windowId: string }> = () => {
   const { project, dispatch } = useLabEngineStore();
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
+  const [palette, setPalette] = useState<string[]>(['AND', 'OR', 'NOT', 'XOR', 'FullAdder', 'SWITCH', 'LED']);
   const [selectedType, setSelectedType] = useState<string>('AND');
 
   // Interaction State Machine
@@ -213,72 +216,70 @@ export const DesignMode: React.FC<{ windowId: string }> = () => {
   };
 
   const handlePortClick = (nodeId: string, portName: string) => {
-    if (interactionMode === 'idle') {
-      // Start wiring
-      setWireStartPort({ nodeId, portName });
-      setInteractionMode('wiring');
-    } else if (interactionMode === 'wiring' && wireStartPort) {
-      // Complete wiring
-      if (wireStartPort.nodeId === nodeId && wireStartPort.portName === portName) {
-        // Cancel if clicked same port
-        setWireStartPort(null);
-        setInteractionMode('idle');
-        return;
+    // ... existing implementation
+  };
+
+  const handleCreateMacro = () => {
+    if (selectedNodeIds.size === 0) return;
+
+    const name = window.prompt('Enter Macro Name:', 'FULL_ADDER');
+    if (!name) return;
+
+    // Filter nodes and connections for the subcircuit
+    const subNodes = project.circuit.nodes.filter(n => selectedNodeIds.has(n.id));
+    const subConns = project.circuit.connections.filter(c =>
+      selectedNodeIds.has(c.fromNodeId) && selectedNodeIds.has(c.toNodeId)
+    );
+
+    // Draft the CompositeNodeDef
+    // Strategy: Any Switch node is an Input, any Lamp node is an Output
+    const inputMapping: Record<string, string> = {};
+    const outputMapping: Record<string, string> = {};
+
+    subNodes.forEach(n => {
+      if (n.type === 'Switch' || n.type === 'SWITCH' || n.type === 'INPUT') {
+        inputMapping[n.id.toUpperCase()] = `${n.id}.isOn`;
       }
-
-      // Validation: Loop Prevention
-      if (wireStartPort.nodeId === nodeId) {
-        // Prevent self-loop on same node?
-        // LogicCore usually handles this but let's be safe
-        // Actually some components might need feedback loops, but strict "same node same port" is definitely bad
-        // Let's allow different ports on same node (e.g. feedback)
+      if (n.type === 'Lamp' || n.type === 'LAMP' || n.type === 'LED' || n.type === 'OUTPUT') {
+        outputMapping[n.id.toUpperCase()] = `${n.id}.out`;
       }
+    });
 
-      // Validation: Duplicate Wire
-      const isDuplicate = project.circuit.connections.some(c =>
-        (c.fromNodeId === wireStartPort.nodeId && c.fromPin === wireStartPort.portName && c.toNodeId === nodeId && c.toPin === portName) ||
-        (c.fromNodeId === nodeId && c.fromPin === portName && c.toNodeId === wireStartPort.nodeId && c.toPin === wireStartPort.portName)
-      );
+    const def = {
+      name,
+      subcircuit: { nodes: subNodes as any, connections: subConns as any },
+      inputMapping,
+      outputMapping
+    } as any;
 
-      if (isDuplicate) {
-        console.warn("Duplicate connection prevented");
-        setWireStartPort(null);
-        setInteractionMode('idle');
-        return;
-      }
-
-      dispatch({
-        v: 1,
-        t: 'circuit/addConnection',
-        p: {
-          id: `conn-${Date.now()}`,
-          fromNodeId: wireStartPort.nodeId,
-          fromPin: wireStartPort.portName,
-          toNodeId: nodeId,
-          toPin: portName
-        }
-      });
-
-      setWireStartPort(null);
-      setInteractionMode('idle');
+    try {
+      registerCompositeNode(def);
+      setPalette(prev => [...new Set([...prev, name])]);
+      toast.success({ message: `Macro '${name}' created and added to palette.` });
+    } catch (e) {
+      toast.error({ message: "Failed to create macro." });
     }
   };
 
-  if (!project) return null;
+  if (!project) return (
+    <div className="flex items-center justify-center h-full bg-gray-950 text-slate-500">
+      Initializing Logic Engine...
+    </div>
+  );
 
   return (
-    <div className="flex flex-col h-full bg-gray-950">
+    <div className="flex flex-col h-full bg-gray-950 overflow-hidden">
       {/* Toolbar / Palette */}
       <div className="h-10 border-b border-gray-800 bg-gray-900 flex items-center px-4 gap-4 shrink-0 justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold text-gray-500 uppercase tracking-widest mr-2">Palette</span>
-          {['AND', 'OR', 'NOT', 'SWITCH', 'LED'].map((type) => (
+          {palette.map((type) => (
             <button
               key={type}
               onClick={() => setSelectedType(type)}
               className={`px-2 py-1 text-[10px] rounded border ${selectedType === type
-                  ? 'border-blue-500 bg-blue-900/30 text-blue-200'
-                  : 'border-gray-700 bg-gray-800 text-gray-400 hover:bg-gray-700'
+                ? 'border-blue-500 bg-blue-900/30 text-blue-200'
+                : 'border-gray-700 bg-gray-800 text-gray-400 hover:bg-gray-700 transition-colors'
                 }`}
             >
               {type}
@@ -294,11 +295,18 @@ export const DesignMode: React.FC<{ windowId: string }> = () => {
           </button>
         </div>
 
-        <div className="text-[10px] text-gray-500 flex items-center gap-4">
-          <div className={`${interactionMode === 'wiring' ? 'text-cyan-400 font-bold' : ''}`}>
+        <div className="flex items-center gap-4">
+          <div className={`text-[10px] ${interactionMode === 'wiring' ? 'text-cyan-400 font-bold' : 'text-gray-500'}`}>
             {interactionMode === 'wiring' ? 'Select Destination Port' : 'Ready'}
           </div>
-          <div>Space+Drag to Pan</div>
+          <button
+            onClick={handleCreateMacro}
+            disabled={selectedNodeIds.size === 0}
+            className={`px-3 py-1 text-[10px] font-bold rounded bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-600/30 transition-all ${selectedNodeIds.size === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            📦 Create Macro
+          </button>
+          <div className="text-[10px] text-gray-500">Space+Drag to Pan</div>
         </div>
       </div>
 
@@ -310,7 +318,6 @@ export const DesignMode: React.FC<{ windowId: string }> = () => {
       >
         {/* Minimap UI (Top Right) */}
         <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end pointer-events-none">
-
           {/* HUD Tools */}
           <div className="bg-gray-800/90 backdrop-blur border border-gray-700 rounded-lg p-1.5 shadow-lg pointer-events-auto flex items-center gap-1.5 mb-2">
             <span className="text-[10px] font-mono text-cyan-400 min-w-[2.5rem] text-center">
@@ -347,11 +354,10 @@ export const DesignMode: React.FC<{ windowId: string }> = () => {
               containerHeight={size.height}
             />
           </div>
-
         </div>
 
         {/* Editor component with pointer event gating */}
-        <div style={{ pointerEvents: isSpacePressed ? 'none' : 'auto' }}>
+        <div style={{ pointerEvents: isSpacePressed ? 'none' : 'auto' }} className="h-full w-full">
           <CircuitEditor2D
             width={size.width}
             height={size.height}

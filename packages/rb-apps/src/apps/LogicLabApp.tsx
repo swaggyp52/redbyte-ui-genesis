@@ -12,6 +12,7 @@ import { useHardwareSessionStore } from '../stores/hardwareSessionStore';
 import { useRunRecorderStore } from '../stores/runRecorderStore';
 import { exportV2Bundle, downloadBlob } from '../utils/bundleExport';
 import { hardwareClient } from '../services/hardwareClient';
+import { ConnectionCenterPanel } from '../components/ConnectionCenterPanel';
 
 // Lazy load heavy components
 const DesignMode = React.lazy(() => import('../components/DesignMode').then(m => ({ default: m.DesignMode })));
@@ -160,7 +161,7 @@ const LogicLabApp: React.FC<LogicLabAppProps> = ({ windowId }) => {
       case 'design':
         return (
           <Suspense fallback={<div className="p-8 text-slate-400">Loading Design Mode...</div>}>
-            <DesignMode />
+            <DesignMode windowId={windowId} />
           </Suspense>
         );
       case 'simulation': // ... skipping for brevity in thought, but implementing below ...
@@ -203,39 +204,13 @@ const LogicLabApp: React.FC<LogicLabAppProps> = ({ windowId }) => {
             <div className="text-center space-y-2">
               <h2 className="text-3xl font-bold text-white">FPGA Deployment</h2>
               <p className="text-slate-400">
-                {hasSession
-                  ? `Connected to Basys 3 on ${hardware.sessions.basys3.port || 'COM7'}`
-                  : isOnline ? 'Bridge online. Tap below to connect COM7.' : 'Bridge offline. Start RedByte Bridge.'}
+                {isOnline ? 'Bridge online. Configure and verify your physical connection below.' : 'Bridge offline. Start RedByte Bridge to continue.'}
               </p>
             </div>
 
-            {hasSession && (
-              <div className="w-full bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-2xl">
-                <div className="flex justify-between items-center text-[10px] uppercase font-black tracking-widest text-slate-500">
-                  <span>Live I/O Monitor</span>
-                  <span className="text-indigo-400">HIL Active</span>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <div className="flex justify-between font-mono text-xs">
-                    <span className="text-slate-500">Switches [15..0]</span>
-                    <span className="text-white">{swBinary.replace(/(.{4})/g, '$1 ')}</span>
-                  </div>
-                  <div className="grid grid-cols-16 gap-1 h-2">
-                    {swBinary.split('').map((bit, idx) => (
-                      <div key={idx} className={`rounded-sm ${bit === '1' ? 'bg-indigo-500 shadow-[0_0_4px_rgba(99,102,241,0.5)]' : 'bg-slate-800'}`} />
-                    ))}
-                  </div>
-                </div>
-                <div className="pt-2">
-                  <button
-                    onClick={handleCaptureSnapshot}
-                    className="w-full py-2 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-400 rounded-xl text-xs font-bold transition-all"
-                  >
-                    📸 Capture Evidence Snapshot
-                  </button>
-                </div>
-              </div>
-            )}
+            <div className="w-full max-w-md">
+              <ConnectionCenterPanel />
+            </div>
 
             <div className="flex flex-col gap-4 w-full px-12">
               <button
@@ -247,14 +222,17 @@ const LogicLabApp: React.FC<LogicLabAppProps> = ({ windowId }) => {
                     : 'bg-slate-800 text-slate-500 cursor-not-allowed'}
                   `}
               >
-                {hasSession ? 'Reprogram Board' : 'Connect Basys 3 (COM7)'}
+                {hasSession ? 'Reprogram Board' : 'Bridge Required to Program'}
               </button>
               {hasSession && (
                 <button
-                  onClick={() => setStep('verification')}
-                  className="w-full py-2 text-slate-500 hover:text-white text-xs font-bold"
+                  onClick={() => {
+                    completeStep('hardware');
+                    setStep('verification');
+                  }}
+                  className="w-full py-2 text-indigo-400 hover:text-white text-xs font-bold"
                 >
-                  Skip to Verification
+                  Proceed to Physical Verification →
                 </button>
               )}
             </div>

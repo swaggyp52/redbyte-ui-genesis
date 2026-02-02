@@ -31,15 +31,19 @@ const TaskbarIcon: React.FC<TaskbarIconProps> = ({ id, iconId, label, onClick })
     </button>
 );
 
-const PINNED_APPS: Array<{ id: string; label: string; iconId: IconName }> = [
+import { useCapabilitiesStore } from '@redbyte/rb-apps';
+
+const PINNED_APPS: Array<{ id: string; label: string; iconId: IconName; studentHidden?: boolean }> = [
     { id: 'start-here', label: 'Start Here', iconId: 'browser' },
-    { id: 'logic-playground', label: 'Playground', iconId: 'logic' },
-    { id: 'ece-lab', label: 'ECE Lab', iconId: 'chip' },
-    { id: 'logic-lab-app', label: 'Labs', iconId: 'book' }, // User called it "Labs"
+    { id: 'logic-playground', label: 'Playground', iconId: 'logic', studentHidden: true },
+    { id: 'ece-lab', label: 'ECE Lab', iconId: 'chip', studentHidden: true },
+    { id: 'logic-lab-app', label: 'Labs', iconId: 'book' },
     { id: 'terminal', label: 'Terminal', iconId: 'terminal' },
 ];
 
 export const Taskbar: React.FC<{ onOpenApp: (id: string) => void }> = ({ onOpenApp }) => {
+    const studentMode = useCapabilitiesStore(state => state.studentMode);
+
     return (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1.5 bg-slate-900/40 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[1000] select-none">
             <div className="flex items-center gap-1 px-2 border-r border-white/5 mr-1">
@@ -52,7 +56,7 @@ export const Taskbar: React.FC<{ onOpenApp: (id: string) => void }> = ({ onOpenA
             </div>
 
             <div className="flex items-center gap-1">
-                {PINNED_APPS.map(app => (
+                {PINNED_APPS.filter(app => !studentMode || !app.studentHidden).map(app => (
                     <TaskbarIcon
                         key={app.id}
                         id={app.id}

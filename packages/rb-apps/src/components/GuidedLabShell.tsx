@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { useLabWorkflowStore, type LabStep } from '../stores/useLabWorkflowStore';
+import { useCapabilitiesStore } from '../stores/capabilitiesStore';
 
 interface StepItem {
     id: LabStep;
@@ -22,6 +23,7 @@ const STEPS: StepItem[] = [
 export const GuidedLabShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { currentStep, completedSteps, setStep, getMaxUnlockedStepIndex } = useLabWorkflowStore();
     const maxUnlockedIndex = getMaxUnlockedStepIndex();
+    const bridgeOnline = useCapabilitiesStore(state => state.hardware.bridgeOnline);
 
     return (
         <div className="flex flex-col lg:flex-row h-full w-full bg-slate-950 text-slate-100 font-sans overflow-hidden">
@@ -84,10 +86,17 @@ export const GuidedLabShell: React.FC<{ children: React.ReactNode }> = ({ childr
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20">
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                            <span className="text-[10px] font-black text-green-500 uppercase tracking-tighter">Bridge Online</span>
-                        </div>
+                        {bridgeOnline ? (
+                            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20">
+                                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                <span className="text-[10px] font-black text-green-500 uppercase tracking-tighter">Bridge Online</span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/30">
+                                <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                <span className="text-[10px] font-black text-red-500 uppercase tracking-tighter">Bridge Offline</span>
+                            </div>
+                        )}
                     </div>
                 </header>
 
