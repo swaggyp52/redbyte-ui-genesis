@@ -5,6 +5,7 @@
 import React, { useCallback, useEffect, useState, useRef, useMemo, Suspense, type ErrorInfo } from 'react';
 import { Desktop } from './Desktop';
 import { Dock } from './Dock';
+import { Taskbar } from './Taskbar';
 import { ShellWindow } from './ShellWindow';
 import { applyTheme } from '@redbyte/rb-theme';
 import { isPerfDebugEnabled, startPerfSummaryLogger, startUiTickSampler, useSettingsStore } from '@redbyte/rb-utils';
@@ -1179,7 +1180,7 @@ export const Shell: React.FC<ShellProps> = () => {
   const handleExportProof = useCallback(async () => {
     const circuit = getCurrentCircuit();
     if (!circuit) {
-      toast.error('No circuit to export');
+      toast.error({ message: 'No circuit to export' });
       return;
     }
 
@@ -1294,9 +1295,9 @@ export const Shell: React.FC<ShellProps> = () => {
 
       // Show validation feedback
       if (!verilogResult.valid) {
-        toast.error(`Verilog validation failed: ${verilogResult.errors.length} errors`);
+        toast.error({ message: `Verilog validation failed: ${verilogResult.errors.length} errors` });
         verilogResult.errors.slice(0, 3).forEach(err => {
-          toast.error(`${err.code}: ${err.message}${err.line ? ` (line ${err.line})` : ''}`);
+          toast.error({ message: `${err.code}: ${err.message}${err.line ? ` (line ${err.line})` : ''}` });
         });
         return; // Don't export invalid Verilog
       }
@@ -2220,6 +2221,7 @@ export const Shell: React.FC<ShellProps> = () => {
       />
 
       <Dock onOpenApp={openWindow} />
+      <Taskbar onOpenApp={openWindow} />
 
       {!hasVisibleWindows && (
         <HomeScreen
