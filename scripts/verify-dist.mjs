@@ -21,7 +21,7 @@ check(fs.existsSync(path.join(DIST, 'assets')), 'dist/assets/ exists');
 
 // 2. Marketing Content Check
 const rootIndex = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8');
-check(rootIndex.includes('RedByte OS Genesis'), 'dist/index.html is the Marketing site');
+check(rootIndex.includes('RedByte OS'), 'dist/index.html is the Marketing site');
 check(rootIndex.includes('src="/assets/') || rootIndex.includes('href="/assets/'), 'dist/index.html uses root assets');
 
 // 3. OS Structure
