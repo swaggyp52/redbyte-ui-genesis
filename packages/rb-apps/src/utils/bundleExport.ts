@@ -1,60 +1,10 @@
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
-// Bundle export utility: generates .rb-lab.zip bundles
-// Schema: STUDENT_EXPORT_SCHEMA.md (v1 + v2)
 
 import JSZip from 'jszip';
-import { buildCapsule, normalizeCapsulePath } from '@redbyte/rb-fpga-signing';
-
-interface EventEntry {
-  type: string;
-  timestamp: string;
-  data: Record<string, unknown>;
-}
-
-interface CapsuleVector {
-  id: string;
-  name: string;
-  pass: boolean;
-  error?: string;
-}
-
-interface HardwareSnapshot {
-  timestamp: string;
-  inputs: Record<string, number>;
-  outputs: Record<string, number>;
-  notes?: string;
-  source: 'bridge' | 'manual';
-}
-
-interface HardwareEvidence {
-  bridgeStatus: 'online' | 'offline';
-  boardStatus: 'connected' | 'disconnected';
-  boardModel?: string;
-  snapshots: HardwareSnapshot[];
-}
-
-interface ExportOptions {
-  labId: string;
-  studentId: string;
-  studentName: string;
-  eventLog: EventEntry[];
-  capsuleVectors: CapsuleVector[];
-  selfCheckSummary: {
-    pass: number;
-    fail: number;
-    total: number;
-  };
-  presetId?: string;
-  presetName?: string;
-  hardwareEvidence?: HardwareEvidence;
-}
-
-export interface ExportResult {
-  filename: string;
-  blob: Blob;
-  hash?: string;
-  timestamp: string;
-}
+import {
+  buildCapsule,
+  normalizeCapsulePath
+} from '@redbyte/rb-fpga-signing';
 
 export interface BoardProfile {
   board: string;
@@ -68,6 +18,7 @@ export interface ExportV2Options {
   labVersion?: string;
   scaffoldHash?: string;
   studentId?: string;
+  studentName?: string;
   redbyteVersion?: string;
   board?: string;
   binSizeMs?: number;
@@ -76,27 +27,27 @@ export interface ExportV2Options {
   crcFailures?: number;
   bitstreamBytes?: Uint8Array | Blob;
   boardProfile?: BoardProfile;
+  hardwareSnapshots?: any[];
+  eventLog?: any[];
+}
+
+export interface ExportResult {
+  filename: string;
+  blob: Blob;
+  hash: string;
+  timestamp: string;
 }
 
 /**
- * Compute SHA-256 hash of a blob
+ * Hash computation for integrity
  */
-async function computeHash(blob: Blob | ArrayBuffer | Uint8Array): Promise<string | undefined> {
+async function computeHash(input: Uint8Array | Blob): Promise<string | undefined> {
   try {
-    let view: Uint8Array | null = null;
-    if (blob instanceof Uint8Array) {
-      view = new Uint8Array(blob);
-    } else if (blob instanceof ArrayBuffer) {
-      view = new Uint8Array(blob);
-    } else if (typeof (blob as Blob).arrayBuffer === 'function') {
-      const buffer = await (blob as Blob).arrayBuffer();
-      view = new Uint8Array(buffer);
-    } else {
-      return undefined;
-    }
-    const hashBuffer = await crypto.subtle.digest('SHA-256', view);
+    const buffer = input instanceof Blob ? await input.arrayBuffer() : input.buffer;
+    // @ts-ignore
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer as ArrayBuffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
   } catch (e) {
     console.warn('Failed to compute hash:', e);
     return undefined;
@@ -137,19 +88,13 @@ export function downloadBlob(blob: Blob, filename: string): void {
 }
 
 /**
- * Export a valid .rb-lab.zip bundle with schema v2:
- * - manifest.json
- * - trace/hw_trace.ndjson
- * - bitstream/design.bit (optional)
- * - meta/board_profile.json
- * - integrity/capsule.json (always)
- * - integrity/signature.sig (optional, not created here)
+ * Export a valid .rb-lab.zip bundle with schema v2
  */
 export async function exportV2Bundle(options: ExportV2Options): Promise<ExportResult> {
   const timestamp = new Date().toISOString();
-  const redbyteVersion =
-    options.redbyteVersion ??
-    (import.meta as ImportMeta & { env?: { VITE_APP_VERSION?: string } }).env?.VITE_APP_VERSION ??
+  // @ts-ignore - Handle Vite env if present, otherwise default
+  const redbyteVersion = options.redbyteVersion ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_APP_VERSION) ||
     'dev';
 
   const board = options.board ?? 'basys3';
@@ -165,6 +110,10 @@ export async function exportV2Bundle(options: ExportV2Options): Promise<ExportRe
     lab_id: options.labId,
     lab_version: options.labVersion ?? 'unversioned',
     scaffold_hash: options.scaffoldHash ?? 'unknown',
+    student: {
+      id: options.studentId,
+      name: options.studentName
+    },
     board,
     bin_size_ms: binSizeMs,
     trace_summary: {
@@ -177,15 +126,8 @@ export async function exportV2Bundle(options: ExportV2Options): Promise<ExportRe
   const boardProfile: BoardProfile = options.boardProfile ?? {
     board,
     uart_baud: 115200,
-    digital_signals: {
-      "0": "SW0",
-      "1": "SW1",
-      "2": "BTN0",
-    },
-    analog_signals: {
-      "0": "ComparatorOut",
-      "1": "LDR_Level",
-    },
+    digital_signals: { "0": "SW0", "1": "SW1", "2": "BTN0" },
+    analog_signals: { "0": "ComparatorOut", "1": "LDR_Level" },
   };
 
   const zip = new JSZip();
@@ -206,6 +148,15 @@ export async function exportV2Bundle(options: ExportV2Options): Promise<ExportRe
     await addFile('bitstream/design.bit', options.bitstreamBytes);
   }
 
+  if (options.hardwareSnapshots) {
+    await addFile('proofs/snapshots.json', JSON.stringify(options.hardwareSnapshots, null, 2));
+  }
+
+  if (options.eventLog) {
+    const ndjson = options.eventLog.map(e => JSON.stringify(e)).join('\n');
+    await addFile('proofs/events.ndjson', ndjson);
+  }
+
   const { capsuleJsonUtf8 } = await buildCapsule(capsuleFiles);
   zip.file('integrity/capsule.json', new Uint8Array(capsuleJsonUtf8));
 
@@ -215,117 +166,7 @@ export async function exportV2Bundle(options: ExportV2Options): Promise<ExportRe
     : `${options.labId}-${safeTimestamp}.rb-lab.zip`;
 
   const blob = await zip.generateAsync({ type: 'blob' });
-  let hash = await computeHash(blob);
-  if (!hash) {
-    const bytes = await zip.generateAsync({ type: 'uint8array' });
-    hash = await computeHash(bytes);
-  }
-
-  if (!hash) {
-    throw new Error('bundle_hash_failed');
-  }
-  downloadBlob(blob, filename);
-
-  return {
-    filename,
-    blob,
-    hash,
-    timestamp,
-  };
-}
-
-/**
- * Export a valid .rb-lab.zip bundle with IMMUTABLE schema v1:
- * - manifest.json (with proof.capsule_path + proof.events_path pointers)
- * - proofs/capsule.json
- * - proofs/events.ndjson (always present; contains event log)
- *
- * Manifest contract (required fields):
- *   schema_version: 'v1'
- *   lab_id
- *   student.id
- *   student.name
- *   created_at
- *   proof.capsule_path
- *   proof.events_path
- *
- * @returns Promise with filename, blob, and hash
- */
-export async function exportBundle(options: ExportOptions): Promise<ExportResult> {
-  const { labId, studentId, studentName, eventLog, capsuleVectors, selfCheckSummary, presetId, presetName, hardwareEvidence } = options;
-  const timestamp = new Date().toISOString();
-
-  // Generate manifest matching ingest contract
-  const manifest = {
-    schema_version: 'v1',
-    lab_id: labId,
-    student: {
-      id: studentId,
-      name: studentName,
-    },
-    created_at: timestamp,
-    proof: {
-      capsule_path: 'proofs/capsule.json',
-      events_path: 'proofs/events.ndjson',
-    },
-    ...(hardwareEvidence && {
-      hardware: {
-        evidence_path: 'proofs/hardware.json',
-        bridge_status: hardwareEvidence.bridgeStatus,
-        board_status: hardwareEvidence.boardStatus,
-        snapshots_count: hardwareEvidence.snapshots.length,
-      },
-    }),
-  };
-
-  // Generate capsule with self-check results
-  // Vectors are already in proof-core format (pass: boolean)
-  const capsule = {
-    session_id: `capsule-${Date.now()}`,
-    lab_id: labId,
-    student_id: studentId,
-    timestamp,
-    vectors: capsuleVectors,
-    summary: selfCheckSummary,
-    ...(presetId && { preset_id: presetId }),
-    ...(presetName && { preset_name: presetName }),
-  };
-
-  // Convert event log to NDJSON (one JSON object per line)
-  const eventsNdjson = eventLog
-    .map((event) => JSON.stringify(event))
-    .join('\n');
-
-  // Create ZIP
-  const zip = new JSZip();
-  zip.file('manifest.json', JSON.stringify(manifest, null, 2));
-  zip.file('proofs/capsule.json', JSON.stringify(capsule, null, 2));
-  zip.file('proofs/events.ndjson', eventsNdjson);
-  
-  // Include hardware evidence if present
-  if (hardwareEvidence && hardwareEvidence.snapshots.length > 0) {
-    const hardwareData = {
-      bridge_status: hardwareEvidence.bridgeStatus,
-      board_status: hardwareEvidence.boardStatus,
-      board_model: hardwareEvidence.boardModel,
-      snapshots: hardwareEvidence.snapshots,
-      captured_at: timestamp,
-    };
-    zip.file('proofs/hardware.json', JSON.stringify(hardwareData, null, 2));
-  }
-
-  // Generate filename
-  const safeTimestamp = timestamp.replace(/[:.]/g, '-');
-  const filename = `${labId}-${studentId}-${safeTimestamp}.rb-lab.zip`;
-
-  // Generate blob
-  const blob = await zip.generateAsync({ type: 'blob' });
-  
-  // Compute hash
-  const hash = await computeHash(blob);
-
-  // Trigger download
-  downloadBlob(blob, filename);
+  const hash = await computeHash(blob) || 'unknown';
 
   return {
     filename,

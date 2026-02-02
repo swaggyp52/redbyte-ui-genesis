@@ -50,7 +50,7 @@ export interface HardwareStoreState {
     shutdown: () => void;
 
     refreshDevices: () => Promise<void>;
-    ensureSession: (target: Target) => Promise<void>;
+    ensureSession: (target: Target, forcedPort?: string) => Promise<void>;
     disconnect: (target: Target) => Promise<void>;
     autoAdopt: () => Promise<void>;
 }
@@ -141,15 +141,8 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
                     hardwareClient.subscribeIO((snapshot: any) => {
                         set(state => {
                             // Find target associated with this snapshot
-                            // In Lab 0, we can assume if we have a session for basys3, 
-                            // and the snapshot matches its deviceId, we update it.
                             for (const target of Object.keys(state.sessions) as Target[]) {
                                 const session = state.sessions[target];
-                                // We don't have deviceId in snapshot yet? 
-                                // Actually snapshot doesn't have deviceId. 
-                                // But and the bridge sends target in payload if we are lucky.
-                                // Let's use a simpler heuristic for Lab 0: 
-                                // if basys3 is connected, update it.
                                 if (session.status === 'connected') {
                                     session.lastIoAt = Date.now();
                                     session.messageCount++;
@@ -169,35 +162,29 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
                             }
                         });
                     });
-
-                    // Auto-Adopt trigger: when bridge goes online, try to adopt orphans
-                    // This is moved to a subscription effect in the store or component
-                    // for React-driven apps, but here we can trigger it manually on sync
                 },
 
                 shutdown: () => {
-                    // No-op for singleton, or could setMode('off')
-                    // hardwareClient.setMode('off');
                 },
 
                 // Commands
                 refreshDevices: async () => {
-                    // Client polls, but maybe we can force it?
-                    // HardwareClient doesn't expose force refresh publicly yet, 
-                    // but it polls every 10s. For now, rely on polling.
                 },
 
-                ensureSession: async (target: Target) => {
+                ensureSession: async (target: Target, forcedPort?: string) => {
                     const s = get().sessions[target];
 
                     // IDEMPOTENCY CHECK
                     if (s.status === 'connected' || s.status === 'connecting') {
-                        console.log(`[HardwareStore] ${target} check: already ${s.status}, ignoring request.`);
-                        return;
+                        if (s.status === 'connected' && forcedPort && s.port !== forcedPort) {
+                            console.log(`[HardwareStore] Reconnecting ${target} to forced port ${forcedPort}`);
+                        } else {
+                            console.log(`[HardwareStore] ${target} check: already ${s.status}, ignoring request.`);
+                            return;
+                        }
                     }
 
                     // 1. FIND THE DEVICE
-                    // The "hard rule": Payload must be derived from the discovered Device object.
                     const devices = hardwareClient.getDevices();
                     let candidate: any = null;
 
@@ -216,21 +203,25 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
                         return;
                     }
 
-                    console.log(`[HardwareStore] Requesting session for ${target} using deviceId: ${candidate.deviceId}`);
+                    const deviceId = candidate.deviceId;
+                    const finalPort = forcedPort || candidate.runtime?.port;
+
+                    console.log(`[HardwareStore] Requesting session for ${target} using deviceId: ${deviceId} on port: ${finalPort}`);
 
                     set((state) => {
                         state.sessions[target].status = 'connecting';
                         state.sessions[target].error = null;
+                        state.sessions[target].port = finalPort;
                     });
 
-                    // 2. USE SINGLETON TO CONNECT
-                    const success = await hardwareClient.selectDevice(candidate.deviceId);
+                    // 2. USE CLIENT TO CONNECT
+                    const success = await hardwareClient.selectDevice(deviceId);
 
                     if (success) {
                         set((state) => {
                             state.sessions[target].status = 'connected';
-                            state.sessions[target].deviceId = candidate.deviceId;
-                            state.sessions[target].port = candidate.runtime?.port;
+                            state.sessions[target].deviceId = deviceId;
+                            state.sessions[target].port = finalPort;
                             state.sessions[target].verified = true;
                             state.sessions[target].connectedAt = Date.now();
                         });
@@ -241,7 +232,7 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
                             recorder.recordEvent({
                                 tick: (window as any).rbTickCount || 0,
                                 type: 'hw_connect',
-                                deviceId: candidate.deviceId,
+                                deviceId,
                                 target: target
                             });
                         }
@@ -254,8 +245,6 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
                 },
 
                 disconnect: async (target: Target) => {
-                    // Singleton doesn't support specific disconnect yet, 
-                    // but we can at least reset local state
                     set(state => {
                         state.sessions[target] = { ...DEFAULT_SESSION };
                     });
@@ -265,18 +254,13 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
                     const { bridge, devices, sessions, ensureSession } = get();
                     if (bridge.status !== 'online') return;
 
-                    console.log('[HardwareStore] Running Auto-Adopt...');
-
-                    // Standard RedByte targets we care about
                     const targets: Target[] = ['basys3', 'arduino-uno'];
-
                     for (const target of targets) {
                         const session = sessions[target];
                         if (session.status === 'idle') {
                             // Find if there is a device available for this target
                             const hasDevice = devices.some(d => d.target === target);
                             if (hasDevice) {
-                                console.log(`[HardwareStore] Auto-Adopting: ${target}`);
                                 await ensureSession(target);
                             }
                         }
