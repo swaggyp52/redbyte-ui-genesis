@@ -5,7 +5,7 @@
     "type": "module",
     "scripts": {
         "dev": "tsx src/index.ts",
-        "build": "tsc",
+        "build": "pnpm -w exec tsc",
         "start": "node dist/index.js"
     },
     "dependencies": {
