@@ -1,0 +1,38 @@
+name: Smoke Test (Zip Install)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  zip-install-simulation:
+    name: Simulate Student Zip Install (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Simulate Zip Download (Remove .git)
+        run: |
+          Remove-Item -Path .git -Recurse -Force
+          Write-Host "Removed .git directory to simulate raw zip download."
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.0'
+
+      - name: Install pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.24.0 --activate
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Workspace
+        run: pnpm -r build
+        env:
+          CI: true
