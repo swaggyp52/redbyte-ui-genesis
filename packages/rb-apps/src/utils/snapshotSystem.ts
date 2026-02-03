@@ -23,6 +23,7 @@ const SNAPSHOT_KEYS = {
 } as const;
 
 let debounceTimer: number | null = null;
+const AUTOSAVE_DEBOUNCE_MS = 5000;
 
 /**
  * Save workspace snapshot (debounced for autosaves)
@@ -82,14 +83,14 @@ export function saveSnapshot(
     }
     save();
   } else {
-    // Debounced autosave (1s)
+    // Debounced autosave (short interval for lab reliability)
     if (debounceTimer !== null) {
       clearTimeout(debounceTimer);
     }
     debounceTimer = window.setTimeout(() => {
       save();
       debounceTimer = null;
-    }, 1000);
+    }, AUTOSAVE_DEBOUNCE_MS);
   }
 }
 

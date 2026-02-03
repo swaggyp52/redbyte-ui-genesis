@@ -70,6 +70,7 @@ export async function registerAllApps() {
   const { StartHereApp } = await import('./apps/StartHereApp');
   const { LauncherApp } = await import('./apps/LauncherApp');
   const { SystemLogApp } = await import('./apps/SystemLogApp');
+  const { StatusPanelApp } = await import('./apps/StatusPanelApp');
   const { TextViewerApp } = await import('./apps/TextViewerApp');
   const LogicHelpApp = (await import('./apps/LogicHelpApp')).default;
   const { UserManualApp } = await import('./apps/UserManualApp');
@@ -101,6 +102,7 @@ export async function registerAllApps() {
   registerApp(StartHereApp);
   registerApp(LauncherApp);
   registerApp(SystemLogApp);
+  registerApp(StatusPanelApp);
   registerApp(TextViewerApp);
   registerApp(LogicHelpApp);
   registerApp(UserManualApp);

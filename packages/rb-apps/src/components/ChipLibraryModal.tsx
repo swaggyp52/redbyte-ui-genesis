@@ -3,7 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useState, useMemo, useRef } from 'react';
-import { Modal, Input, Select, Button } from '@redbyte/rb-primitives';
+import { Modal, Input, Select, Button, GuardrailConfirmModal } from '@redbyte/rb-primitives';
 import type { ChipDefinition } from '../stores/chipStore';
 
 export interface ChipLibraryModalProps {
@@ -26,6 +26,7 @@ export const ChipLibraryModal: React.FC<ChipLibraryModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLayer, setSelectedLayer] = useState<number | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ChipDefinition | null>(null);
 
   // Filter chips by search query and layer
   const filteredChips = useMemo(() => {
@@ -64,11 +65,28 @@ export const ChipLibraryModal: React.FC<ChipLibraryModalProps> = ({
     onClose();
   };
 
+  const exportChip = (chip: ChipDefinition) => {
+    try {
+      const blob = new Blob([JSON.stringify(chip, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeName = chip.name.replace(/[\\/:*?"<>|]+/g, '_');
+      a.download = `${safeName}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('[ChipLibrary] Export failed:', error);
+    }
+  };
+
   const handleDeleteChip = (e: React.MouseEvent, chipId: string) => {
     e.stopPropagation();
-    if (onDeleteChip && confirm('Delete this chip? This action cannot be undone.')) {
-      onDeleteChip(chipId);
-    }
+    const chip = chips.find((item) => item.id === chipId) ?? null;
+    if (!onDeleteChip || !chip) return;
+    setDeleteTarget(chip);
   };
 
   return (
@@ -82,6 +100,23 @@ export const ChipLibraryModal: React.FC<ChipLibraryModalProps> = ({
       closeOnBackdrop={true}
       initialFocusRef={searchInputRef}
     >
+      {deleteTarget && (
+        <GuardrailConfirmModal
+          isOpen={Boolean(deleteTarget)}
+          title="Delete Chip?"
+          message={`This will permanently remove "${deleteTarget.name}".`}
+          lossItems={['Chip definition', 'Associated references']}
+          confirmLabel="Delete Chip"
+          confirmTone="danger"
+          onConfirm={() => {
+            onDeleteChip?.(deleteTarget.id);
+            setDeleteTarget(null);
+          }}
+          onCancel={() => setDeleteTarget(null)}
+          onExport={() => exportChip(deleteTarget)}
+          exportLabel="Export First"
+        />
+      )}
       <div className="flex flex-col max-h-[60vh]">
         {/* Search and Filters */}
         <div className="flex gap-3 mb-4">

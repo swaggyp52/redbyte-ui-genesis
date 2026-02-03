@@ -28,6 +28,12 @@ import { generateReadme } from './readmeGenerator';
 const BUILD_SHA = import.meta.env.VITE_BUILD_SHA ?? 'dev';
 const BUILD_DATE = import.meta.env.VITE_BUILD_DATE ?? new Date().toISOString();
 
+interface ExportWarning {
+  step: string;
+  message: string;
+  error?: string;
+}
+
 // Simple stable serialization (breaks circular dependency with rb-apps)
 function stableSerialize(obj: any): string {
   // Deterministic serialization with sorted keys at all levels
@@ -55,13 +61,53 @@ async function stableHash(obj: any): Promise<string> {
 export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob> {
   const zip = new JSZip();
   const files = new Map<string, string>();
+  const warnings: ExportWarning[] = [];
+
+  const pushWarning = (step: string, message: string, error?: unknown) => {
+    warnings.push({
+      step,
+      message,
+      error: error instanceof Error ? error.message : error ? String(error) : undefined,
+    });
+  };
+
+  const safeSerialize = (value: unknown, step: string, fallback: unknown): string => {
+    try {
+      return stableSerialize(value);
+    } catch (error) {
+      pushWarning(step, 'Serialization failed; using fallback payload.', error);
+      return stableSerialize(fallback);
+    }
+  };
+
+  const safeHash = async (value: unknown, step: string): Promise<string> => {
+    try {
+      return await stableHash(value);
+    } catch (error) {
+      pushWarning(step, 'Hashing failed; using placeholder hash.', error);
+      return 'sha256:ERROR';
+    }
+  };
 
   // -------------------------------------------------------------------------
   // 1. Serialize project.json
   // -------------------------------------------------------------------------
 
-  const projectJson = stableSerialize(project);
-  const projectHash = await stableHash(project);
+  const safeProjectFallback: LabProjectV1 = {
+    schemaVersion: '1.0',
+    projectId: (project as any)?.projectId ?? `export-fallback-${Date.now()}`,
+    name: (project as any)?.name ?? 'Recovered Project',
+    description: (project as any)?.description ?? '',
+    createdAt: (project as any)?.createdAt ?? new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    circuit: (project as any)?.circuit ?? { schemaVersion: '1.0', nodes: [], connections: [] },
+    simulation: (project as any)?.simulation ?? { tickRate: 20, currentTick: 0, probes: [] },
+    labSpec: (project as any)?.labSpec ?? null,
+    evidence: (project as any)?.evidence ?? { actions: [], snapshots: [] },
+  };
+
+  const projectJson = safeSerialize(project, 'project', safeProjectFallback);
+  const projectHash = await safeHash(project, 'project-hash');
   files.set('project.json', projectJson);
   zip.file('project.json', projectJson);
 
@@ -74,8 +120,8 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
     projectId: project.projectId,
     sessionActions: project.evidence.actions,
   };
-  const actionsJson = stableSerialize(actionsLog);
-  const actionsHash = await stableHash(actionsLog);
+  const actionsJson = safeSerialize(actionsLog, 'actions', actionsLog);
+  const actionsHash = await safeHash(actionsLog, 'actions-hash');
   files.set('actions.log.json', actionsJson);
   zip.file('actions.log.json', actionsJson);
 
@@ -83,8 +129,13 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
   // 2.5. Generate README.md (auto-generated human-readable summary)
   // -------------------------------------------------------------------------
 
-  const readme = generateReadme(project);
-  zip.file('README.md', readme);
+  try {
+    const readme = generateReadme(project);
+    zip.file('README.md', readme);
+  } catch (error) {
+    pushWarning('readme', 'README generation failed; using fallback.', error);
+    zip.file('README.md', '# RedByte Export\n\nREADME generation failed. See warnings.json for details.');
+  }
 
   // -------------------------------------------------------------------------
   // 2.7. Add FPGA artifacts if available (verilog/ and bitstream/)
@@ -124,6 +175,21 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
   }
 
   // -------------------------------------------------------------------------
+  // 2.9. Add warnings.json if needed
+  // -------------------------------------------------------------------------
+
+  if (warnings.length > 0) {
+    const warningsPayload = {
+      schemaVersion: '1.0',
+      createdAt: new Date().toISOString(),
+      warnings,
+    };
+    const warningsJson = stableSerialize(warningsPayload);
+    zip.file('warnings.json', warningsJson);
+    files.set('warnings.json', warningsJson);
+  }
+
+  // -------------------------------------------------------------------------
   // 3. Build evidence manifest
   // -------------------------------------------------------------------------
 
@@ -142,11 +208,11 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
     buildDate: BUILD_DATE,
     createdAt: new Date().toISOString(),
     files: fileEntries,
-    rootHash: await hashString(fileEntries.map((f) => f.hash).join('')),
+    rootHash: await safeHash(fileEntries.map((f) => f.hash).join(''), 'manifest-root-hash'),
   };
 
-  const manifestJson = stableSerialize(manifest);
-  const manifestHash = await stableHash(manifest);
+  const manifestJson = safeSerialize(manifest, 'manifest', manifest);
+  const manifestHash = await safeHash(manifest, 'manifest-hash');
   zip.file('manifest.json', manifestJson);
 
   // -------------------------------------------------------------------------
@@ -168,7 +234,7 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
     },
   };
 
-  const capsuleJson = stableSerialize(capsule);
+  const capsuleJson = safeSerialize(capsule, 'capsule', capsule);
   zip.file('capsule.json', capsuleJson);
 
   // -------------------------------------------------------------------------

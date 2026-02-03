@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { toast } from '@redbyte/rb-primitives';
+import { toast, GuardrailConfirmModal } from '@redbyte/rb-primitives';
 import {
     Rb3DSceneLab,
     useLabStore,
@@ -24,6 +24,7 @@ import { useVirtualLabSignalSource } from '../instruments/virtualLabSignalSource
 import { GuidedLabSidebar } from '../components/GuidedLabSidebar';
 import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { useClassroomModeStore } from '../stores/classroomModeStore';
 // Lazy load panels to break circular dependency / TDZ issues during initialization
 const HardwareRackPanel = React.lazy(() => import('../panels/HardwareRackPanel').then(m => ({ default: m.HardwareRackPanel })));
 const HardwareStatusOverlay = React.lazy(() => import('../panels/HardwareStatusOverlay').then(m => ({ default: m.HardwareStatusOverlay })));
@@ -57,6 +58,7 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
 
     // SHIP-GRADE: Override default transport with HardwareClient bridge
     useEffect(() => {
+        if (safeMode) return;
         const transport = new HardwareClientTransport();
         transport.connect().then(() => {
             useLabStore.setState({ activeTransport: transport });
@@ -64,7 +66,7 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
         return () => {
             void transport.disconnect();
         };
-    }, []);
+    }, [safeMode]);
     const setPlaybackMode = useLabStore((state) => state.setPlaybackMode);
     const scrub = useLabStore((state) => state.scrub);
     const recover = useLabStore((state) => state.recover);
@@ -77,6 +79,20 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
     const setSelectedNetId = useLabStore((state) => state.setSelectedNetId);
     const getFile = useFileSystemStore((state) => state.getFile);
     const getAllFiles = useFileSystemStore((state) => state.getAllFiles);
+    const { safeMode } = useClassroomModeStore();
+
+    type GuardrailConfig = {
+        title: string;
+        message: string;
+        lossItems?: string[];
+        confirmLabel?: string;
+        confirmTone?: 'danger' | 'warning';
+        onConfirm: () => void;
+        onExport?: () => void;
+    };
+    const [guardrail, setGuardrail] = useState<GuardrailConfig | null>(null);
+    const closeGuardrail = () => setGuardrail(null);
+    const openGuardrail = (config: GuardrailConfig) => setGuardrail(config);
 
     // Selectors
     const isRunning = useLabStore((state) => state.simulation.isRunning);
@@ -677,6 +693,23 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
 
     return (
         <div className="flex h-full w-full bg-[#1e1e1e] text-gray-200 overflow-hidden relative">
+            {guardrail && (
+                <GuardrailConfirmModal
+                    isOpen={Boolean(guardrail)}
+                    title={guardrail.title}
+                    message={guardrail.message}
+                    lossItems={guardrail.lossItems}
+                    confirmLabel={guardrail.confirmLabel}
+                    confirmTone={guardrail.confirmTone}
+                    onConfirm={() => {
+                        guardrail.onConfirm();
+                        closeGuardrail();
+                    }}
+                    onCancel={closeGuardrail}
+                    onExport={guardrail.onExport}
+                    exportLabel="Export First"
+                />
+            )}
             {pendingCapsule && (
                 <div className="absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center">
                     <div className="bg-[#111] border border-gray-700 rounded-lg p-6 w-[420px] text-sm">
@@ -739,7 +772,15 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                         </button>
                         {labSession && activeTemplate && (
                             <button
-                                onClick={() => clearLabSession()}
+                                onClick={() => openGuardrail({
+                                    title: 'End Lab Session?',
+                                    message: 'This will clear the current lab session and its runtime progress.',
+                                    lossItems: ['Current lab progress', 'Session trace buffers', 'Unsaved changes'],
+                                    confirmLabel: 'End Session',
+                                    confirmTone: 'warning',
+                                    onConfirm: () => clearLabSession(),
+                                    onExport: handleExportCapsule,
+                                })}
                                 className="w-full px-3 py-2 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-200"
                             >
                                 End Lab Session
@@ -786,7 +827,15 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                     <div className="h-px bg-gray-700 my-2" />
 
                     <button
-                        onClick={() => reset()}
+                        onClick={() => openGuardrail({
+                            title: 'Clear Bench?',
+                            message: 'This will remove all placed parts and reset the bench.',
+                            lossItems: ['Placed parts', 'Wiring', 'Simulation state'],
+                            confirmLabel: 'Clear Bench',
+                            confirmTone: 'danger',
+                            onConfirm: () => reset(),
+                            onExport: handleExportCapsule,
+                        })}
                         className="w-full px-3 py-2 rounded bg-red-900/50 hover:bg-red-900 text-red-100 text-xs transition-colors"
                     >
                         Clear Bench
@@ -796,7 +845,17 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
 
             {/* Main 3D View */}
             <div className={`flex-1 relative bg-black ${playbackMode === 'replay' ? 'border-4 border-amber-500 box-border' : ''} ${integrityError ? 'border-4 border-red-600 box-border' : ''}`}>
-                <Rb3DSceneLab />
+                {safeMode ? (
+                    <div className="absolute inset-0 flex items-center justify-center text-center">
+                        <div className="bg-slate-900/80 border border-amber-600/40 rounded-xl px-6 py-5 text-xs text-amber-200 max-w-xs">
+                            <div className="text-sm font-bold mb-2">Safe Mode Active</div>
+                            <div>3D rendering and hardware transport are disabled for stability.</div>
+                            <div className="mt-2 text-[10px] text-amber-300/80">Disable Safe Mode from the main toolbar to resume.</div>
+                        </div>
+                    </div>
+                ) : (
+                    <Rb3DSceneLab />
+                )}
 
                 {/* Overlay UI */}
                 <div className="absolute top-4 left-4 bg-black/50 backdrop-blur rounded px-3 py-1.5 text-xs text-gray-300 pointer-events-none">
@@ -1014,7 +1073,15 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                                 <div className="flex items-center justify-between">
                                     <div className="text-[11px] text-gray-300 font-semibold">Parts</div>
                                     <button
-                                        onClick={() => useLabStore.getState().resetLayout()}
+                                        onClick={() => openGuardrail({
+                                            title: 'Reset Layout?',
+                                            message: 'This will restore the default panel layout for the lab.',
+                                            lossItems: ['Panel positions', 'Layout tweaks'],
+                                            confirmLabel: 'Reset Layout',
+                                            confirmTone: 'warning',
+                                            onConfirm: () => useLabStore.getState().resetLayout(),
+                                            onExport: handleExportCapsule,
+                                        })}
                                         className="text-[10px] text-red-400 hover:text-red-300"
                                     >
                                         Reset Layout

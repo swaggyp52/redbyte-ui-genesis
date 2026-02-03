@@ -61,6 +61,9 @@ function createClassroomModeStore() {
     setSafeMode: (enabled: boolean) => {
       localStorage.setItem('rb_safe_mode', enabled ? '1' : '0');
       set({ safeMode: enabled });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('rb:safe-mode', { detail: { enabled } }));
+      }
     },
 
     lastKnownGoodSnapshot: null,

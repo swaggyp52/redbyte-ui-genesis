@@ -37,6 +37,9 @@ export type { PortalProviderProps } from './PortalContext';
 export { Modal } from './Modal';
 export type { ModalProps } from './Modal';
 
+export { GuardrailConfirmModal } from './GuardrailConfirmModal';
+export type { GuardrailConfirmModalProps } from './GuardrailConfirmModal';
+
 export { OverlayRoot, OverlayPanel, OverlayBackdrop } from './OverlayRoot';
 export type { OverlayProps, OverlayPanelProps, OverlayBackdropProps } from './OverlayRoot';
 

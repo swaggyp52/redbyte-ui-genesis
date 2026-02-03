@@ -66,6 +66,7 @@ import {
 import { serialize, type Circuit, type Connection, CircuitEngine } from '@redbyte/rb-logic-core';
 import { TopBar } from './TopBar';
 import { RecoveryPrompt, type RecoveryAction } from './RecoveryPrompt';
+import { useSessionDiagnosticsStore, getDiagnosticsSnapshot } from './sessionDiagnosticsStore';
 import { checkForRecovery, clearJournal, unregisterAutosave } from './persistenceStore';
 import { HomeScreen } from './HomeScreen';
 import { RecentLogWidget } from './RecentLogWidget';
@@ -265,6 +266,7 @@ export const Shell: React.FC<ShellProps> = () => {
   const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false);
   const [macroRunnerOpen, setMacroRunnerOpen] = useState(false);
   const [windowSwitcherOpen, setWindowSwitcherOpen] = useState(false);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [reproCheckOpen, setReproCheckOpen] = useState(false);
   const [reproCheckReport, setReproCheckReport] = useState<ReproCheckReport | null>(null);
   const [projectSummaryOpen, setProjectSummaryOpen] = useState(false);
@@ -307,6 +309,49 @@ export const Shell: React.FC<ShellProps> = () => {
   }, [windows]);
   const systemLogEntries = useSystemLogStore((s) => s.entries);
   const systemLogLastRead = useSystemLogStore((s) => s.lastReadSeq);
+  const logDiagnosticEvent = useSessionDiagnosticsStore((s) => s.logEvent);
+  const recordDiagnosticAction = useSessionDiagnosticsStore((s) => s.recordAction);
+  const diagnosticEvents = useSessionDiagnosticsStore((s) => s.events);
+  const diagnosticsSnapshot = diagnosticsOpen ? getDiagnosticsSnapshot() : null;
+
+  const handleCopyDiagnostics = useCallback(async () => {
+    try {
+      const snapshot = getDiagnosticsSnapshot();
+      const payload = JSON.stringify(snapshot, null, 2);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(payload);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = payload;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      toast.success('Diagnostics copied to clipboard.');
+    } catch (error) {
+      console.error('[Diagnostics] Copy failed:', error);
+      toast.error('Failed to copy diagnostics.');
+    }
+  }, []);
+
+  const handleExportDiagnostics = useCallback(() => {
+    try {
+      const snapshot = getDiagnosticsSnapshot();
+      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `redbyte-diagnostics-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('[Diagnostics] Export failed:', error);
+      toast.error('Failed to export diagnostics.');
+    }
+  }, []);
   const unreadLogCount = useMemo(
     () => systemLogEntries.filter((entry) => entry.seq > systemLogLastRead).length,
     [systemLogEntries, systemLogLastRead]
@@ -658,6 +703,40 @@ export const Shell: React.FC<ShellProps> = () => {
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleError = (event: ErrorEvent) => {
+      logDiagnosticEvent({
+        type: 'error',
+        message: event.message || 'Unhandled error',
+        details: event.error?.stack || event.filename || 'unknown',
+      });
+    };
+
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      const reason = event.reason;
+      const message =
+        reason instanceof Error
+          ? reason.message
+          : typeof reason === 'string'
+            ? reason
+            : 'Unhandled promise rejection';
+      logDiagnosticEvent({
+        type: 'rejection',
+        message,
+        details: reason instanceof Error ? reason.stack : undefined,
+      });
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleRejection);
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleRejection);
+    };
+  }, [logDiagnosticEvent]);
+
+  useEffect(() => {
     if (typeof document !== 'undefined') {
       applyTheme(document.documentElement, themeVariant);
       document.documentElement.setAttribute('data-rb-density', density);
@@ -790,6 +869,7 @@ export const Shell: React.FC<ShellProps> = () => {
             message: 'Window focused',
             data: { appId, windowId: existing.id, mode: existing.mode },
           });
+          recordDiagnosticAction(`Focus window: ${appId}`);
           return existing.id;
         }
       }
@@ -810,9 +890,10 @@ export const Shell: React.FC<ShellProps> = () => {
         message: 'Window opened',
         data: { appId, windowId: state.id },
       });
+      recordDiagnosticAction(`Open window: ${appId}`);
       return state.id;
     },
-    [createWindow, focusWindow, recordRecentApp, windows, restoreWindow]
+    [createWindow, focusWindow, recordRecentApp, windows, restoreWindow, recordDiagnosticAction]
   );
 
   // Helper callbacks that depend on openWindow
@@ -1937,6 +2018,29 @@ export const Shell: React.FC<ShellProps> = () => {
       const tag = target?.tagName?.toLowerCase();
       const isEditable = tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'option' || target?.isContentEditable;
 
+      if (event.key === 'Escape') {
+        const closed =
+          (diagnosticsOpen && (setDiagnosticsOpen(false), true)) ||
+          (commandPaletteOpen && (setCommandPaletteOpen(false), true)) ||
+          (systemSearchOpen && (setSystemSearchOpen(false), true)) ||
+          (windowSwitcherOpen && (setWindowSwitcherOpen(false), true)) ||
+          (workspaceSwitcherOpen && (setWorkspaceSwitcherOpen(false), true)) ||
+          (macroRunnerOpen && (setMacroRunnerOpen(false), true)) ||
+          (reproCheckOpen && (setReproCheckOpen(false), true)) ||
+          (projectSummaryOpen && (setProjectSummaryOpen(false), true)) ||
+          (openWithModalState && (setOpenWithModalState(null), true)) ||
+          (examplePickerOpen && (setExamplePickerOpen(false), true)) ||
+          (aboutModalOpen && (setAboutModalOpen(false), true)) ||
+          (onboardingModalOpen && (setOnboardingModalOpen(false), true)) ||
+          (bitstreamProvenanceOpen && (setBitstreamProvenanceOpen(false), true));
+
+        if (closed) {
+          event.preventDefault();
+          recordDiagnosticAction('Escape: close overlay');
+          return;
+        }
+      }
+
       // Ctrl+Tab: Window Switcher (check before other ctrl checks)
       if ((event.ctrlKey || event.metaKey) && event.key === 'Tab' && !isEditable) {
         event.preventDefault();
@@ -1948,6 +2052,37 @@ export const Shell: React.FC<ShellProps> = () => {
 
       if (!(event.ctrlKey || event.metaKey)) return;
       if (isEditable) return;
+
+      const focusedWindow = useWindowStore.getState().getFocusedWindow();
+      const focusedWindowId = focusedWindow?.id;
+
+      if (event.shiftKey && event.key.toLowerCase() === 'i') {
+        event.preventDefault();
+        setDiagnosticsOpen(true);
+        recordDiagnosticAction('Shortcut: open diagnostics');
+        return;
+      }
+
+      if (event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        recordDiagnosticAction('Shortcut: export/save');
+        window.dispatchEvent(new CustomEvent('rb:export-request', { detail: { windowId: focusedWindowId } }));
+        return;
+      }
+
+      if (event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        recordDiagnosticAction(event.shiftKey ? 'Shortcut: redo' : 'Shortcut: undo');
+        window.dispatchEvent(new CustomEvent(event.shiftKey ? 'rb:history-redo' : 'rb:history-undo', { detail: { windowId: focusedWindowId } }));
+        return;
+      }
+
+      if (event.key.toLowerCase() === 'y') {
+        event.preventDefault();
+        recordDiagnosticAction('Shortcut: redo');
+        window.dispatchEvent(new CustomEvent('rb:history-redo', { detail: { windowId: focusedWindowId } }));
+        return;
+      }
 
       if (import.meta.env.DEV && event.shiftKey && event.key.toLowerCase() === 'h') {
         event.preventDefault();
@@ -2068,7 +2203,26 @@ export const Shell: React.FC<ShellProps> = () => {
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [hasSettings, openWindow, executeCommand, isDemoMode]);
+  }, [
+    hasSettings,
+    openWindow,
+    executeCommand,
+    isDemoMode,
+    diagnosticsOpen,
+    commandPaletteOpen,
+    systemSearchOpen,
+    windowSwitcherOpen,
+    workspaceSwitcherOpen,
+    macroRunnerOpen,
+    reproCheckOpen,
+    projectSummaryOpen,
+    openWithModalState,
+    examplePickerOpen,
+    aboutModalOpen,
+    onboardingModalOpen,
+    bitstreamProvenanceOpen,
+    recordDiagnosticAction,
+  ]);
 
   useEffect(() => {
     startUiTickSampler();
@@ -2484,6 +2638,73 @@ export const Shell: React.FC<ShellProps> = () => {
                 </div>
               ))}
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {diagnosticsOpen && diagnosticsSnapshot && (
+        <Modal
+          isOpen={diagnosticsOpen}
+          onClose={() => setDiagnosticsOpen(false)}
+          title="Session Diagnostics"
+          width={620}
+          height={560}
+        >
+          <div className="p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-slate-400">
+                Captures last action, autosave timestamp, and error events for support.
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyDiagnostics}
+                  className="px-2.5 py-1 rounded text-[11px] font-semibold bg-slate-700 hover:bg-slate-600 text-slate-100"
+                >
+                  Copy
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportDiagnostics}
+                  className="px-2.5 py-1 rounded text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200"
+                >
+                  Export JSON
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-700/60 bg-slate-900/40 px-3 py-2 text-[11px] text-slate-200">
+              <div><strong>Last Action:</strong> {diagnosticsSnapshot.session.lastAction ?? 'None'}</div>
+              <div>
+                <strong>Last Autosave:</strong>{' '}
+                {diagnosticsSnapshot.session.lastAutosaveAt
+                  ? new Date(diagnosticsSnapshot.session.lastAutosaveAt).toLocaleString()
+                  : 'Unknown'}
+              </div>
+              <div><strong>Open Windows:</strong> {diagnosticsSnapshot.session.openWindows.length}</div>
+              <div><strong>Safe Mode:</strong> {diagnosticsSnapshot.session.safeMode ? 'On' : 'Off'}</div>
+            </div>
+
+            <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-[10px] text-slate-400 overflow-auto h-64">
+              <pre className="whitespace-pre-wrap">{JSON.stringify(diagnosticsSnapshot, null, 2)}</pre>
+            </div>
+
+            {diagnosticEvents.length === 0 ? (
+              <div className="text-xs text-slate-500">No diagnostic events recorded.</div>
+            ) : (
+              <div className="space-y-2">
+                <div className="text-[11px] uppercase tracking-wide text-slate-500">Recent Events</div>
+                <div className="space-y-1 max-h-32 overflow-auto">
+                  {diagnosticEvents.slice(0, 10).map((eventItem) => (
+                    <div key={eventItem.id} className="text-[11px] text-slate-300 flex items-start gap-2">
+                      <span className="text-slate-500">{new Date(eventItem.timestamp).toLocaleTimeString()}</span>
+                      <span className="uppercase text-[10px] text-slate-400">{eventItem.type}</span>
+                      <span>{eventItem.message}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </Modal>
       )}

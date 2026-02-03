@@ -31,6 +31,14 @@ export interface LabEvidenceCapsule {
 
 export async function exportEvidenceCapsule(filename: string): Promise<boolean> {
     try {
+        const warnings: Array<{ step: string; message: string; error?: string }> = [];
+        const pushWarning = (step: string, message: string, error?: unknown) => {
+            warnings.push({
+                step,
+                message,
+                error: error instanceof Error ? error.message : error ? String(error) : undefined,
+            });
+        };
         const hw = useHardwareStore.getState();
         const lab = usePedagogicalLabStore.getState();
 
@@ -39,13 +47,19 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
         }
 
         // 1. Prepare Metadata + embedded trace
-        const embeddedTrace = hw.traceBuffer.length > 0
-            ? createTrace(
-                hw.capabilities?.boardId || 'unknown',
-                hw.recordingStartTick ?? 0,
-                [...hw.traceBuffer]
-            )
-            : undefined;
+        let embeddedTrace: HardwareTraceV1 | undefined;
+        try {
+            embeddedTrace = hw.traceBuffer.length > 0
+                ? createTrace(
+                    hw.capabilities?.boardId || 'unknown',
+                    hw.recordingStartTick ?? 0,
+                    [...hw.traceBuffer]
+                )
+                : undefined;
+        } catch (error) {
+            pushWarning('trace', 'Failed to build hardware trace; continuing without trace.', error);
+            embeddedTrace = undefined;
+        }
 
         const modelLab = useModelLabStore.getState();
         const recorder = (await import('../stores/runRecorderStore')).useRunRecorderStore.getState();
@@ -56,20 +70,26 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
         let gradeScore = 0;
 
         if (template && modelLab.labSession) {
-            const templateHash = fingerprintLabTemplate(template);
-            const report = evaluateAtTick(
-                modelLab.graph,
-                modelLab.timeline,
-                template,
-                templateHash,
-                modelLab.simulation.tick
-            );
-            gradeScore = report.score;
-            vectors = report.checks.map(check => ({
-                name: check.label || check.id,
-                pass: check.status === 'pass',
-                error: check.status !== 'pass' ? (check.details || check.hint || `Status: ${check.status}`) : undefined,
-            }));
+            try {
+                const templateHash = fingerprintLabTemplate(template);
+                const report = evaluateAtTick(
+                    modelLab.graph,
+                    modelLab.timeline,
+                    template,
+                    templateHash,
+                    modelLab.simulation.tick
+                );
+                gradeScore = report.score;
+                vectors = report.checks.map(check => ({
+                    name: check.label || check.id,
+                    pass: check.status === 'pass',
+                    error: check.status !== 'pass' ? (check.details || check.hint || `Status: ${check.status}`) : undefined,
+                }));
+            } catch (error) {
+                pushWarning('evaluation', 'Failed to evaluate lab vectors; continuing with empty results.', error);
+                vectors = [];
+                gradeScore = 0;
+            }
         }
 
         const passed = vectors.filter(v => v.pass).length;
@@ -113,8 +133,12 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
 
         // Compute integrity hash (SHA-256 when available)
         const canonical = canonicalizeEvidence(capsule);
-        const { hash } = await hashEvidenceAsync(canonical);
-        capsule.evidenceHash = hash;
+        try {
+            const { hash } = await hashEvidenceAsync(canonical);
+            capsule.evidenceHash = hash;
+        } catch (error) {
+            pushWarning('hash', 'Failed to compute evidence hash; leaving hash blank.', error);
+        }
 
         // 3. Build ZIP (v1-compatible format for inspector)
         const zip = new JSZip();
@@ -164,10 +188,12 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
         const project = useUnifiedProjectStore.getState().currentProject;
         if (project) {
             zip.file('project.json', JSON.stringify(project, null, 2));
+        } else {
+            pushWarning('project', 'Unified project store is empty; project.json omitted.');
         }
 
         // README.md: Human readable summary
-        const readmeContent = `# ${lab.activeLabId.toUpperCase()} Submission
+        let readmeContent = `# ${lab.activeLabId.toUpperCase()} Submission
         
 **Student:** ${capsule.student.name} (${capsule.student.id})
 **Date:** ${new Date().toLocaleString()}
@@ -183,6 +209,9 @@ ${lab.completedSteps.map(s => `- Step ${s + 1}`).join('\n')}
 ## Evidence
 - Trace Event Buffer: ${capsule.trace?.samples.length || 0} samples
 `;
+        if (warnings.length > 0) {
+            readmeContent += `\n## Export Warnings\n${warnings.map(w => `- ${w.step}: ${w.message}`).join('\n')}\n`;
+        }
         zip.file('README.md', readmeContent);
 
         // Self Check JSON
@@ -191,6 +220,10 @@ ${lab.completedSteps.map(s => `- Step ${s + 1}`).join('\n')}
         }
 
         // 4. Generate and Save
+        if (warnings.length > 0) {
+            zip.file('warnings.json', JSON.stringify({ schemaVersion: 1, createdAt: new Date().toISOString(), warnings }, null, 2));
+        }
+
         const blob = await zip.generateAsync({ type: 'blob' });
 
         let safeName = filename.replace(/\.json$/, '').replace(/\.zip$/, '');

@@ -5,6 +5,7 @@ import { BridgeDevice, BridgeHealth } from '@redbyte/rb-protocol';
 import { hardwareClient } from '../services/hardwareClient';
 import type { ConnectionState } from '../services/hardwareClient';
 import { useRunRecorderStore } from './runRecorderStore';
+import { isSafeMode } from './classroomModeStore';
 
 // ============================================================================
 // Types
@@ -12,7 +13,7 @@ import { useRunRecorderStore } from './runRecorderStore';
 
 export type Target = 'basys3' | 'arduino-uno';
 
-export type BridgeStatus = 'disconnected' | 'connecting' | 'online';
+export type BridgeStatus = 'disconnected' | 'connecting' | 'reconnecting' | 'online';
 
 export interface BridgeState {
     status: BridgeStatus;
@@ -21,7 +22,7 @@ export interface BridgeState {
     lastSeenAt: number | null;
 }
 
-export type SessionStatus = 'idle' | 'connecting' | 'connected' | 'error';
+export type SessionStatus = 'idle' | 'connecting' | 'reconnecting' | 'connected' | 'error';
 
 export interface HardwareSession {
     status: SessionStatus;
@@ -72,6 +73,10 @@ const DEFAULT_SESSION: HardwareSession = {
 };
 
 let booted = false;
+const emitHardwareEvent = (detail: Record<string, unknown>) => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('rb:hardware-session', { detail }));
+};
 
 // ============================================================================
 // Store Implementation
@@ -84,6 +89,7 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
             // Sync logic from HardwareClient state to Store state
             const syncState = (clientState: ConnectionState) => {
                 set((state) => {
+                    const wasOnline = state.bridge.status === 'online';
                     if (clientState.status === 'connected') {
                         state.bridge.status = 'online';
                         state.bridge.version = clientState.bridge.version;
@@ -99,14 +105,23 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
                         })) as any;
 
                         // Trigger auto-adopt after sync if bridge just came online
-                        const wasOffline = state.bridge.status !== 'online';
-                        if (wasOffline) {
+                        if (!wasOnline) {
                             setTimeout(() => get().autoAdopt(), 100);
                         }
                     } else if (clientState.status === 'connecting') {
-                        state.bridge.status = 'connecting';
+                        state.bridge.status = wasOnline ? 'reconnecting' : 'connecting';
                     } else {
-                        state.bridge.status = 'disconnected';
+                        state.bridge.status = wasOnline ? 'reconnecting' : 'disconnected';
+                    }
+
+                    if (clientState.status !== 'connected' && wasOnline) {
+                        (Object.keys(state.sessions) as Target[]).forEach((target) => {
+                            const session = state.sessions[target];
+                            if (session.status === 'connected') {
+                                session.status = 'reconnecting';
+                                session.error = 'Bridge disconnected';
+                            }
+                        });
                     }
                 });
             };
@@ -131,6 +146,37 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
 
                     // Lazy import to avoid circular dependency if any
                     const { useCapabilitiesStore } = require('./capabilitiesStore');
+
+                    if (isSafeMode()) {
+                        hardwareClient.setMode('off');
+                        set((state) => {
+                            state.bridge.status = 'disconnected';
+                            state.bridge.version = null;
+                            state.devices = [];
+                        });
+                    }
+
+                    if (typeof window !== 'undefined') {
+                        window.addEventListener('rb:safe-mode', (event: Event) => {
+                            const detail = (event as CustomEvent).detail as { enabled?: boolean } | undefined;
+                            const enabled = Boolean(detail?.enabled);
+                            if (enabled) {
+                                hardwareClient.setMode('off');
+                                set((state) => {
+                                    state.bridge.status = 'disconnected';
+                                    state.devices = [];
+                                    (Object.keys(state.sessions) as Target[]).forEach((target) => {
+                                        state.sessions[target] = { ...DEFAULT_SESSION };
+                                    });
+                                });
+                                emitHardwareEvent({ target: 'basys3', status: 'disconnected' });
+                                emitHardwareEvent({ target: 'arduino-uno', status: 'disconnected' });
+                            } else {
+                                hardwareClient.setMode('auto');
+                                hardwareClient.connect();
+                            }
+                        });
+                    }
 
                     // Subscribe to global singleton
                     hardwareClient.subscribe((state) => {
@@ -186,6 +232,15 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
                 },
 
                 ensureSession: async (target: Target, forcedPort?: string) => {
+                    if (isSafeMode()) {
+                        set(state => {
+                            state.sessions[target].status = 'error';
+                            state.sessions[target].error = 'Safe Mode is enabled';
+                        });
+                        emitHardwareEvent({ target, status: 'error', error: 'Safe Mode is enabled' });
+                        return;
+                    }
+
                     const s = get().sessions[target];
 
                     // IDEMPOTENCY CHECK
@@ -234,6 +289,7 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
                             state.sessions[target].status = 'error';
                             state.sessions[target].error = 'Device not found';
                         });
+                        emitHardwareEvent({ target, status: 'error', error: 'Device not found' });
                         return;
                     }
 
@@ -259,6 +315,15 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
                             state.sessions[target].verified = true;
                             state.sessions[target].connectedAt = Date.now();
                         });
+                        emitHardwareEvent({ target, status: 'connected', port: finalPort, deviceId });
+
+                        if (target === 'basys3') {
+                            const safePins: Record<string, number> = {};
+                            for (let i = 0; i < 16; i++) {
+                                safePins[`LED${i}`] = 0;
+                            }
+                            void hardwareClient.setPins(safePins);
+                        }
 
                         // RECORD CONNECT
                         const recorder = useRunRecorderStore.getState();
@@ -275,13 +340,17 @@ export const useHardwareSessionStore = create<HardwareStoreState>()(
                             state.sessions[target].status = 'error';
                             state.sessions[target].error = 'Connection refused';
                         });
+                        emitHardwareEvent({ target, status: 'error', error: 'Connection refused' });
                     }
                 },
 
                 disconnect: async (target: Target) => {
+                    hardwareClient.disconnect();
                     set(state => {
                         state.sessions[target] = { ...DEFAULT_SESSION };
+                        state.bridge.status = 'disconnected';
                     });
+                    emitHardwareEvent({ target, status: 'disconnected' });
                 },
 
                 autoAdopt: async () => {

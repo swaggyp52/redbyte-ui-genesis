@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { getDiagnosticsSnapshot } from './sessionDiagnosticsStore';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -42,9 +43,73 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Log error to console for debugging
     console.error('ErrorBoundary caught error:', error, errorInfo);
+    try {
+      localStorage.setItem('rb_error_boundary_hit', 'true');
+    } catch {
+      // Ignore storage failures
+    }
   }
 
   handleReload = (): void => {
+    window.location.reload();
+  };
+
+  handleExportRecovery = (): void => {
+    try {
+      const diagnostics = getDiagnosticsSnapshot();
+      const payload = {
+        schemaVersion: 1,
+        timestamp: new Date().toISOString(),
+        error: this.state.error?.message ?? 'Unknown error',
+        stack: this.state.error?.stack ?? null,
+        diagnostics,
+        snapshot: (() => {
+          try {
+            return JSON.parse(localStorage.getItem('rb_workspace_latest') || 'null');
+          } catch {
+            return null;
+          }
+        })(),
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `redbyte-recovery-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export recovery bundle:', err);
+    }
+  };
+
+  handleCopyDiagnostics = async (): Promise<void> => {
+    try {
+      const diagnostics = getDiagnosticsSnapshot();
+      const payload = JSON.stringify(diagnostics, null, 2);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(payload);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = payload;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+    } catch (err) {
+      console.error('Failed to copy diagnostics:', err);
+    }
+  };
+
+  handleSafeMode = (): void => {
+    try {
+      localStorage.setItem('rb_safe_mode', '1');
+    } catch {
+      // ignore storage errors
+    }
     window.location.reload();
   };
 
@@ -73,6 +138,24 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 className="w-full px-4 py-2 text-sm rounded bg-cyan-600 hover:bg-cyan-500 text-white font-medium"
               >
                 Reload Page
+              </button>
+              <button
+                onClick={this.handleExportRecovery}
+                className="w-full px-4 py-2 text-sm rounded bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium"
+              >
+                Export Recovery Bundle
+              </button>
+              <button
+                onClick={this.handleCopyDiagnostics}
+                className="w-full px-4 py-2 text-sm rounded bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium"
+              >
+                Copy Diagnostics
+              </button>
+              <button
+                onClick={this.handleSafeMode}
+                className="w-full px-4 py-2 text-sm rounded bg-amber-700 hover:bg-amber-600 text-white font-medium"
+              >
+                Restart in Safe Mode
               </button>
 
               <div className="bg-slate-800 border border-yellow-700/30 rounded p-3">

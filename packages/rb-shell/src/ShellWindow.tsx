@@ -6,7 +6,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { WindowState, type WindowBounds } from '@redbyte/rb-windowing';
 import type { SnapAssistMode } from '@redbyte/rb-utils';
 import { Icon, type IconName } from '@redbyte/rb-icons';
-import { PortalProvider } from '@redbyte/rb-primitives';
+import { PortalProvider, GuardrailConfirmModal } from '@redbyte/rb-primitives';
 import { getMaximizedBounds, TOPBAR_HEIGHT, DOCK_WIDTH, MIN_VISIBLE_SIDE } from './layout/layout-constants';
 import { usePersistenceStore, type SaveStatus } from './persistenceStore';
 
@@ -64,6 +64,7 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
 }) => {
   const [dragging, setDragging] = useState(false);
   const [resizing, setResizing] = useState<ResizeDirection | null>(null);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
   const [mounted, setMounted] = useState(false);
   const boundsRef = useRef<HTMLDivElement>(null);
@@ -88,6 +89,21 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
   const isMax = state.mode === 'maximized';
   const isMin = state.mode === 'minimized';
   const saveStatus: SaveStatus = usePersistenceStore((s) => s.windows[state.id]?.status ?? 'clean');
+  const hasUnsavedChanges = saveStatus === 'dirty' || saveStatus === 'saving' || saveStatus === 'error';
+
+  const requestExport = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const detail = { windowId: state.id, appId: provenance?.appId };
+    window.dispatchEvent(new CustomEvent('rb:export-request', { detail }));
+  }, [state.id, provenance]);
+
+  const handleCloseRequest = useCallback(() => {
+    if (hasUnsavedChanges) {
+      setShowCloseConfirm(true);
+      return;
+    }
+    onClose();
+  }, [hasUnsavedChanges, onClose]);
 
   useEffect(() => {
     const timer = requestAnimationFrame(() => setMounted(true));
@@ -414,7 +430,7 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
           <button
             type="button"
             className="rb-window-control h-6 w-6 rounded flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 hover:!bg-red-500/20 hover:!text-red-400"
-            onClick={onClose}
+            onClick={handleCloseRequest}
             title="Close"
             data-testid="window-close-button"
           >
@@ -422,6 +438,22 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
           </button>
         </div>
       </div>
+
+      <GuardrailConfirmModal
+        isOpen={showCloseConfirm}
+        title="Close window with unsaved changes?"
+        message="This window has unsaved changes that may be lost."
+        lossItems={['Unsaved edits', 'Autosave recovery state']}
+        confirmLabel="Close Anyway"
+        confirmTone="warning"
+        onConfirm={() => {
+          setShowCloseConfirm(false);
+          onClose();
+        }}
+        onCancel={() => setShowCloseConfirm(false)}
+        onExport={requestExport}
+        exportLabel="Export First"
+      />
 
       {/* App content — fills remaining space */}
       <div

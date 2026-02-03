@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { Icon } from '@redbyte/rb-icons';
+import { GuardrailConfirmModal, toast } from '@redbyte/rb-primitives';
 import { useHardwareSessionStore } from '../stores/hardwareSessionStore';
 import { useCapabilitiesStore } from '../stores/capabilitiesStore';
 import { useLabWorkflowStore } from '../stores/useLabWorkflowStore';
+import { useHardwareStore } from '../stores/hardwareStore';
+import { downloadBlob } from '../utils/bundleExport';
+import { useClassroomModeStore } from '../stores/classroomModeStore';
 
 /**
  * ConnectionCenterPanel: The single source of truth for Hardware/System status.
@@ -19,9 +23,11 @@ export const ConnectionCenterPanel: React.FC = () => {
     const { bridge, sessions, ensureSession, disconnect } = useHardwareSessionStore();
     const { hardware: hwCap, studentMode } = useCapabilitiesStore();
     const { hardwareSnapshots } = useLabWorkflowStore();
+    const { safeMode } = useClassroomModeStore();
+    const [disconnectTarget, setDisconnectTarget] = useState<'basys3' | 'arduino-uno' | null>(null);
 
     const isBasys3Connected = sessions.basys3.status === 'connected';
-    const isBasys3Connecting = sessions.basys3.status === 'connecting';
+    const isBasys3Connecting = sessions.basys3.status === 'connecting' || sessions.basys3.status === 'reconnecting';
     const bridgeStatus = bridge.status;
     
     // PHASE 1.6: Helper to get actionable error messages
@@ -51,18 +57,53 @@ export const ConnectionCenterPanel: React.FC = () => {
     
     const errorGuidance = getErrorGuidance(sessions.basys3.error);
 
+    const handleExport = useCallback(async () => {
+        try {
+            const blob = await useHardwareStore.getState().exportV2Bundle();
+            if (!blob) {
+                toast.error('No hardware evidence to export yet.');
+                return;
+            }
+            const filename = `hardware-evidence-${new Date().toISOString().replace(/[:.]/g, '-')}.rb-lab.zip`;
+            downloadBlob(blob, filename);
+            toast.success('Hardware evidence exported.');
+        } catch (error) {
+            console.error('[ConnectionCenter] Export failed:', error);
+            toast.error('Failed to export hardware evidence.');
+        }
+    }, []);
+
     return (
         <div className="flex flex-col gap-4 p-4 bg-slate-900/50 border border-slate-800 rounded-2xl shadow-2xl">
+            <GuardrailConfirmModal
+                isOpen={disconnectTarget === 'basys3'}
+                title="Disconnect Basys 3?"
+                message="Disconnecting will stop live hardware synchronization."
+                lossItems={['Live hardware link', 'Pending hardware traces']}
+                confirmLabel="Disconnect"
+                confirmTone="warning"
+                onConfirm={() => {
+                    if (disconnectTarget) disconnect(disconnectTarget);
+                    setDisconnectTarget(null);
+                }}
+                onCancel={() => setDisconnectTarget(null)}
+                onExport={handleExport}
+                exportLabel="Export First"
+            />
             {/* Bridge Status Section - PHASE 1.6: Enhanced state indicators */}
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
                     <div className={`w-2.5 h-2.5 rounded-full ${
                         bridgeStatus === 'online' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
-                        bridgeStatus === 'connecting' ? 'bg-amber-500 animate-pulse' : 
+                        bridgeStatus === 'connecting' || bridgeStatus === 'reconnecting' ? 'bg-amber-500 animate-pulse' :
                         'bg-red-500'
                     }`} />
                     <span className="text-xs font-black uppercase tracking-widest text-slate-400">
-                        Bridge: {bridgeStatus === 'connecting' ? 'CONNECTING...' : bridgeStatus.toUpperCase()}
+                        Bridge: {bridgeStatus === 'connecting'
+                          ? 'CONNECTING...'
+                          : bridgeStatus === 'reconnecting'
+                            ? 'RECONNECTING...'
+                            : bridgeStatus.toUpperCase()}
                     </span>
                 </div>
                 {bridgeStatus === 'online' && (
@@ -70,7 +111,7 @@ export const ConnectionCenterPanel: React.FC = () => {
                         v{bridge.version || '1.0.0'}
                     </span>
                 )}
-                {bridgeStatus === 'connecting' && (
+                {(bridgeStatus === 'connecting' || bridgeStatus === 'reconnecting') && (
                     <span className="text-[10px] text-amber-400 animate-pulse">
                         ⟳ Handshaking...
                     </span>
@@ -96,6 +137,11 @@ export const ConnectionCenterPanel: React.FC = () => {
                     </div>
                 </div>
             )}
+            {safeMode && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-xs text-amber-200">
+                    Safe Mode is enabled. Hardware connections are disabled until Safe Mode is turned off.
+                </div>
+            )}
 
             {/* Hardware Selection/Status - PHASE 1.6: Connecting/Reconnecting states */}
             <div className="space-y-3">
@@ -114,8 +160,14 @@ export const ConnectionCenterPanel: React.FC = () => {
                         </span>
                     </div>
                     <button
-                        onClick={() => isBasys3Connected ? disconnect('basys3') : ensureSession('basys3', 'COM7')}
-                        disabled={bridgeStatus !== 'online' || isBasys3Connecting}
+                        onClick={() => {
+                            if (isBasys3Connected) {
+                                setDisconnectTarget('basys3');
+                            } else {
+                                ensureSession('basys3', 'COM7');
+                            }
+                        }}
+                        disabled={bridgeStatus !== 'online' || isBasys3Connecting || safeMode}
                         className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
                             isBasys3Connected
                             ? 'bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20'

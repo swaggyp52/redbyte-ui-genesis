@@ -6,7 +6,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { RedByteApp } from '../types';
 import type { Intent } from '@redbyte/rb-shell';
 import type { FileEntry } from './files/fsTypes';
-import { TextInputModal, ConfirmModal, OpenWithModal } from './files/modals';
+import { TextInputModal, OpenWithModal } from './files/modals';
+import { GuardrailConfirmModal } from '@redbyte/rb-primitives';
 import { Icon } from '@redbyte/rb-icons';
 import { EmptyState } from '../components/EmptyState';
 import {
@@ -233,6 +234,44 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
     setModal(null);
     setModalValue('');
     setModalError(null);
+  };
+
+  const buildEntryExport = (entry: FileEntry): unknown => {
+    if (entry.type === 'file') {
+      return {
+        type: 'file',
+        name: entry.name,
+        modified: entry.modified,
+        content: entry.content ?? '',
+      };
+    }
+
+    const folder = folders[entry.id];
+    const children = folder?.entries ?? [];
+    return {
+      type: 'folder',
+      name: entry.name,
+      modified: entry.modified,
+      children: children.map(buildEntryExport),
+    };
+  };
+
+  const exportEntry = (entry: FileEntry) => {
+    try {
+      const payload = buildEntryExport(entry);
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeName = entry.name.replace(/[\\/:*?"<>|]+/g, '_');
+      a.download = `${safeName}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('[Files] Export failed:', error);
+    }
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -571,18 +610,28 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
         />
       )}
 
-      {modal && modal.type === 'delete' && modal.targetId && (
-        <ConfirmModal
-          title="Delete"
-          message={`Are you sure you want to delete "${entries.find((e) => e.id === modal.targetId)?.name}"? ${
-            entries.find((e) => e.id === modal.targetId)?.type === 'folder'
-              ? 'This will delete all contents recursively.'
-              : ''
-          }`}
-          onConfirm={handleModalConfirm}
-          onCancel={handleModalCancel}
-        />
-      )}
+      {modal && modal.type === 'delete' && modal.targetId && (() => {
+        const target = entries.find((e) => e.id === modal.targetId);
+        if (!target) return null;
+        const lossItems =
+          target.type === 'folder'
+            ? ['Folder contents', 'Nested files and folders', 'Unsaved changes']
+            : ['File contents', 'Unsaved changes'];
+        return (
+          <GuardrailConfirmModal
+            isOpen={true}
+            title={`Delete ${target.type === 'folder' ? 'Folder' : 'File'}?`}
+            message={`This will permanently remove \"${target.name}\".`}
+            lossItems={lossItems}
+            confirmLabel="Delete"
+            confirmTone="danger"
+            onConfirm={handleModalConfirm}
+            onCancel={handleModalCancel}
+            onExport={() => exportEntry(target)}
+            exportLabel="Export First"
+          />
+        );
+      })()}
 
       {modal && modal.type === 'open-with' && modal.targets && modal.resourceType && modal.extension !== undefined && (
         <OpenWithModal

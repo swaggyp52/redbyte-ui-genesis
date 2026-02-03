@@ -74,14 +74,17 @@ import { ComponentPalette } from '../components/ComponentPalette';
 import { QuickAddPalette } from '../components/QuickAddPalette';
 import { StatusBar } from '../components/StatusBar';
 import { TopCommandBar } from '../components/TopCommandBar';
+import { GuardrailConfirmModal } from '@redbyte/rb-primitives';
 import { RightDock, type RightDockTab } from '../components/RightDock';
 import { EnhancedPalette } from '../components/EnhancedPalette';
 import { HelpDock } from '../components/HelpDock';
 import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 import { useAutosaveCircuit, useRestoreCircuit, loadSavedCircuit, clearSavedCircuit } from '../utils/ceAutosave';
+import { saveSnapshot, loadSnapshot, initSnapshotSystem, clearAllSnapshots, wasLastShutdownClean } from '../utils/snapshotSystem';
 import { isCEMode, getCEConfig, isHeavyCircuit } from '../utils/ceMode';
 import { ResetWorkspaceModal, ExampleGalleryModal, ExportBundleModal } from '../components/CEUIComponents';
 import { ClassroomModeBanner } from '../components/ClassroomModeBanner';
+import { RecoveryBanner } from '../components/RecoveryBanner';
 import { useClassroomModeStore } from '../stores/classroomModeStore';
 import { validateCircuitData } from '../utils/circuitValidation';
 import { StartHerePanel } from '../components/StartHerePanel';
@@ -224,6 +227,17 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const e2eCpuLite = e2eParams.get('cpuLite') === '1';
 
   const tickRate = useSettingsStore((state) => state.tickRate);
+  type GuardrailConfig = {
+    title: string;
+    message: string;
+    lossItems?: string[];
+    confirmLabel?: string;
+    confirmTone?: 'danger' | 'warning';
+    onConfirm: () => void;
+    onExport?: () => void;
+  };
+  const [guardrail, setGuardrail] = useState<GuardrailConfig | null>(null);
+  const closeGuardrail = useCallback(() => setGuardrail(null), []);
 
   const [circuit, setCircuit] = useState<Circuit>(() => {
     // Try to restore saved CE circuit first
@@ -250,6 +264,8 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
   const hasSyncedFromProjectRef = useRef(false);
   const lastRecordingKeyRef = useRef<string | null>(null);
+  const isReconcilingRef = useRef(false);
+  const [syncWarning, setSyncWarning] = useState<string | null>(null);
 
   const normalizeConnection = useCallback((conn: Connection) => {
     const fromIsString = typeof conn.from === 'string';
@@ -368,6 +384,10 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   useEffect(() => {
     if (!unifiedProject) return;
     if (!hasSyncedFromProjectRef.current && circuit.nodes.length === 0 && circuit.connections.length === 0) return;
+    if (isReconcilingRef.current) {
+      isReconcilingRef.current = false;
+      return;
+    }
 
     updateProject((project) => ({
       ...project,
@@ -377,6 +397,23 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
   // NOTE: useEffect for syncing record to unifiedProject is defined AFTER record is declared
   // (moved to line ~520 to avoid TDZ error - record comes from useRunRecorderStore)
+
+  useEffect(() => {
+    if (!unifiedProject) return;
+    if (!hasSyncedFromProjectRef.current) return;
+
+    const projectSignature = JSON.stringify(unifiedProject.circuit);
+    const circuitSignature = JSON.stringify(toCircuitV1(circuit));
+
+    if (projectSignature !== circuitSignature) {
+      const loadedCircuit = fromCircuitV1(unifiedProject.circuit);
+      isReconcilingRef.current = true;
+      setCircuit(loadedCircuit);
+      setEngine(new CircuitEngine(loadedCircuit));
+      setTickEngine(new TickEngine(loadedCircuit, { tickRate }));
+      setSyncWarning('State divergence detected. Unified project restored as canonical.');
+    }
+  }, [unifiedProject, circuit, toCircuitV1, fromCircuitV1, tickRate]);
 
 
 
@@ -445,7 +482,6 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const activeViews = useLayoutStore((state) => state.activeViews);
   const perspective = useLayoutStore((state) => state.perspective);
   const storeSetPerspective = useLayoutStore((state) => state.setPerspective);
-
   const { safeMode, isComplexityWarning } = useClassroomModeStore();
 
   const handleSetPerspective = useCallback((p: PerspectiveId) => {
@@ -471,6 +507,106 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const setRightDockTab = useLayoutStore((state) => state.setRightDockTab);
   const setShowHelpDock = useLayoutStore((state) => state.setShowHelpDock);
   const setHelpDockSection = useLayoutStore((state) => state.setHelpDockSection);
+
+  const [showRecoveryBanner, setShowRecoveryBanner] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && (!wasLastShutdownClean() || Boolean(loadSnapshot()));
+  });
+
+  const handleRecoverSnapshot = useCallback(() => {
+    const snapshot = loadSnapshot();
+    if (!snapshot) {
+      setShowRecoveryBanner(false);
+      return;
+    }
+    try {
+      const payload = snapshot.payload || {};
+      if (payload.circuit) {
+        useCircuitStore.getState().updateCircuit(payload.circuit as Circuit, { skipHistory: true, enforceLimits: true });
+        setCircuit(payload.circuit as Circuit);
+        engineRef.current.setCircuit(payload.circuit as Circuit);
+      }
+      if (payload.layout) {
+        applyLayoutSnapshot(payload.layout);
+      }
+      addToast('Recovered last session snapshot', 'success');
+    } catch (error) {
+      console.error('[Recovery] Failed to restore snapshot', error);
+      addToast('Recovery failed; starting fresh', 'error');
+    } finally {
+      setShowRecoveryBanner(false);
+    }
+  }, [addToast, applyLayoutSnapshot, setCircuit]);
+
+  const handleStartFresh = useCallback(() => {
+    clearAllSnapshots();
+    setShowRecoveryBanner(false);
+  }, []);
+
+  const applyLayoutSnapshot = useCallback((layout: any) => {
+    if (!layout || typeof layout !== 'object') return;
+    if (layout.perspective) storeSetPerspective(layout.perspective);
+    if (typeof layout.splitRatio === 'number') setSplitRatio(layout.splitRatio);
+    if (layout.rightDockState) setRightDockState(layout.rightDockState);
+    if (layout.rightDockTab) setRightDockTab(layout.rightDockTab);
+    if (typeof layout.showHelpDock === 'boolean') setShowHelpDock(layout.showHelpDock);
+    if (layout.helpDockSection) setHelpDockSection(layout.helpDockSection);
+    if (typeof layout.schematicMiniEnabled === 'boolean') {
+      const currentMini = useLayoutStore.getState().schematicMiniEnabled;
+      if (currentMini !== layout.schematicMiniEnabled) {
+        useLayoutStore.getState().toggleSchematicMini();
+      }
+    }
+  }, [setHelpDockSection, setRightDockState, setRightDockTab, setShowHelpDock, setSplitRatio, storeSetPerspective]);
+
+  const getLayoutSnapshot = useCallback(() => ({
+    perspective,
+    splitScreenMode,
+    activeViews,
+    splitRatio,
+    rightDockState,
+    rightDockTab,
+    showHelpDock,
+    helpDockSection,
+    schematicMiniEnabled,
+  }), [
+    perspective,
+    splitScreenMode,
+    activeViews,
+    splitRatio,
+    rightDockState,
+    rightDockTab,
+    showHelpDock,
+    helpDockSection,
+    schematicMiniEnabled,
+  ]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    initSnapshotSystem(() => ({
+      circuit: useCircuitStore.getState().circuit,
+      layout: {
+        perspective: useLayoutStore.getState().perspective,
+        splitScreenMode: useLayoutStore.getState().splitScreenMode,
+        activeViews: useLayoutStore.getState().activeViews,
+        splitRatio: useLayoutStore.getState().splitRatio,
+        rightDockState: useLayoutStore.getState().rightDockState,
+        rightDockTab: useLayoutStore.getState().rightDockTab,
+        showHelpDock: useLayoutStore.getState().showHelpDock,
+        helpDockSection: useLayoutStore.getState().helpDockSection,
+        schematicMiniEnabled: useLayoutStore.getState().schematicMiniEnabled,
+      },
+      flags: { safeMode: useClassroomModeStore.getState().safeMode },
+    }));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    saveSnapshot(circuit, getLayoutSnapshot(), { safeMode }, 'autosave', false);
+  }, [
+    circuit,
+    getLayoutSnapshot,
+    safeMode,
+  ]);
   const probes = useProbeStore((state) => state.probes);
   const toggleProbeForPort = useProbeStore((state) => state.toggleProbeForPort);
   const highlightProbePaths = useViewStateStore((state) => state.highlightProbePaths);
@@ -698,23 +834,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     replayPausedRef.current = replayPaused;
   }, [replayPaused]);
 
-  // Crash recovery: Save to localStorage every 10 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      try {
-        const backup = {
-          circuit: serialize(circuit),
-          timestamp: Date.now(),
-          fileId: currentFileId,
-        };
-        localStorage.setItem('rblogic_crash_backup', JSON.stringify(backup));
-      } catch (error) {
-        console.error('Crash backup error:', error);
-      }
-    }, 10000); // Every 10 seconds
-
-    return () => clearInterval(interval);
-  }, [circuit, currentFileId]);
+  // Crash recovery handled by snapshot system.
 
   // Track circuit complexity for classroom guardrails
   useEffect(() => {
@@ -734,39 +854,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     setComplexity(nodeCount, edgeCount, maxFanOut);
   }, [circuit]);
 
-  // Crash recovery: Check for backup on mount
-  useEffect(() => {
-    try {
-      const backupStr = localStorage.getItem('rblogic_crash_backup');
-      if (backupStr) {
-        const backup = JSON.parse(backupStr);
-        const ageMinutes = (Date.now() - backup.timestamp) / 60000;
-
-        // Only restore if backup is less than 30 minutes old and we don't have a file loaded
-        if (ageMinutes < 30 && !initialFileId && !initialExampleId && backup.circuit) {
-          const shouldRestore = confirm(
-            `Found an auto-saved circuit from ${Math.round(ageMinutes)} minute(s) ago. Would you like to restore it?`
-          );
-
-          if (shouldRestore) {
-            const restored = deserialize(backup.circuit);
-            setCircuit(restored);
-            engineRef.current.setCircuit(restored);
-            setIsDirty(true);
-
-            // Milestone D: Record circuit loaded event
-            if (determinismRecorder?.isRecording) {
-              determinismRecorder.recordCircuitLoaded(restored);
-            }
-
-            addToast('Circuit restored from auto-save', 'success', 4000);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Crash recovery error:', error);
-    }
-  }, []); // Only run once on mount
+  // Crash recovery handled by snapshot system.
 
   // Show Start Here panel on first open
   useEffect(() => {
@@ -1591,10 +1679,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     useLogicViewStore.getState().clearSelection();
   }, []);
 
-  const handleNew = () => {
-    // New phrasing: "Creating a new project will discard your current unsaved circuit. Are you sure?"
-    if (!confirmReplacement('Creating a new project')) return;
-
+  const executeNew = () => {
     // FIX (P1): Reset all auxiliary stores (probes, recorder, scope)
     resetAppStores();
 
@@ -1621,6 +1706,10 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     isHydratingRef.current = false;
   };
 
+  const handleNew = () => {
+    confirmReplacement('Create a new project', executeNew);
+  };
+
   const handleUndo = () => {
     const circuitStore = useCircuitStore.getState();
     if (!circuitStore.canUndo()) {
@@ -1640,6 +1729,26 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     circuitStore.redo();
     addToast('Redo', 'info');
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const undoHandler = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { windowId?: string } | undefined;
+      if (detail?.windowId && windowId && detail.windowId !== windowId) return;
+      handleUndo();
+    };
+    const redoHandler = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { windowId?: string } | undefined;
+      if (detail?.windowId && windowId && detail.windowId !== windowId) return;
+      handleRedo();
+    };
+    window.addEventListener('rb:history-undo', undoHandler as EventListener);
+    window.addEventListener('rb:history-redo', redoHandler as EventListener);
+    return () => {
+      window.removeEventListener('rb:history-undo', undoHandler as EventListener);
+      window.removeEventListener('rb:history-redo', redoHandler as EventListener);
+    };
+  }, [windowId, handleUndo, handleRedo]);
 
   const handleNodeUpdate = (nodeId: string, updates: Partial<Node>) => {
     if (recorderMode === 'replaying') return;
@@ -1684,16 +1793,18 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     viewStore.requestFocusNode(nodeId);
   };
 
-  const handleLoadLearnExample = useCallback((example: any) => {
-    if (!confirmReplacement('Loading a tutorial')) return;
-
-    // Load the example's initial circuit
-    const newCircuit = example.initialCircuit || { nodes: [], connections: [] };
-    setCircuit(newCircuit);
-    engineRef.current.setCircuit(newCircuit);
-    setIsDirty(false);
-    addToast(`Loaded: ${example.title}`, 'success');
-  }, [addToast]);
+  const handleLoadLearnExample = useCallback(
+    (example: any) => {
+      confirmReplacement('Load tutorial', () => {
+        const newCircuit = example.initialCircuit || { nodes: [], connections: [] };
+        setCircuit(newCircuit);
+        engineRef.current.setCircuit(newCircuit);
+        setIsDirty(false);
+        addToast(`Loaded: ${example.title}`, 'success');
+      });
+    },
+    [addToast, confirmReplacement]
+  );
 
   const handleExitLearnMode = useCallback(() => {
     // Just a placeholder - user can manually clear or load a file
@@ -2185,24 +2296,40 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   };
 
   // Helper for destructive actions
-  const confirmReplacement = useCallback((actionDescription: string) => {
-    if (isDirty) {
-      return window.confirm(`${actionDescription} will discard your current unsaved circuit. Are you sure?`);
-    }
-    return true;
-  }, [isDirty]);
+  const openGuardrail = useCallback((config: GuardrailConfig) => {
+    setGuardrail(config);
+  }, []);
+
+  const confirmReplacement = useCallback(
+    (actionDescription: string, onProceed: () => void) => {
+      if (!isDirty) {
+        onProceed();
+        return true;
+      }
+      openGuardrail({
+        title: `${actionDescription}?`,
+        message: `${actionDescription} will discard your current unsaved circuit.`,
+        lossItems: ['Current circuit', 'Undo/redo history', 'Unsaved changes'],
+        confirmLabel: actionDescription,
+        confirmTone: 'danger',
+        onConfirm: onProceed,
+        onExport: () => setShowCEExportModal(true),
+      });
+      return false;
+    },
+    [isDirty, openGuardrail, setShowCEExportModal]
+  );
 
   const handleLoadFile = async (fileId: string | null) => {
     if (!fileId) return;
-    if (!confirmReplacement('Opening a file')) return;
-
-    const file = getFile(fileId);
-    if (!file) {
-      addToast('File not found', 'error');
-      return;
-    }
-    // Set hydration guard to prevent marking dirty during load
-    isHydratingRef.current = true;
+    confirmReplacement('Open file', async () => {
+      const file = getFile(fileId);
+      if (!file) {
+        addToast('File not found', 'error');
+        return;
+      }
+      // Set hydration guard to prevent marking dirty during load
+      isHydratingRef.current = true;
 
     // Reset stores before loading file
     resetAppStores();
@@ -2228,8 +2355,9 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     }
     // Clear pattern recognition state
     lastRecognizedPatternRef.current = null;
-    // Clear hydration guard after load completes
-    isHydratingRef.current = false;
+      // Clear hydration guard after load completes
+      isHydratingRef.current = false;
+    });
   };
 
   const seedExampleProbes = (exampleId: ExampleId, loadedCircuit: Circuit) => {
@@ -2259,99 +2387,8 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
   const handleLoadExample = async (exampleId: ExampleId | '') => {
     if (!exampleId) return;
-    // Note: confirmReplacement is not defined in the snippet I see above, but it was in the file content I read.
-    // Wait, I saw confirmReplacement in line 1936 in Step 77.
-    // I need to make sure I don't break if confirmReplacement is not available in scope if it's a helper?
-    // It seems to be a helper or imported. I'll include it.
-    // Actually, looking at previous file reads, I don't see confirmReplacement definition. 
-    // Is it a local helper? I better check if I can just leave it or if I need to define it?
-    // Based on the view (Step 77), it is used. So I must keep it.
-    // The previous error was matching content.
-    // I'll assume confirmReplacement is available as I see it used.
-
-    // WAIT. In step 50 (lines 1600-2399), I did NOT see confirmReplacement in handleLoadExample (lines 1922+).
-    // In step 77 (lines 1922-2008), I DO see confirmReplacement on line 1936.
-    // This implies the file changed or I missed it?
-    // Actually, looking closer at Step 50 output:
-    // 1922:   const handleLoadExample = async (exampleId: ExampleId | '') => {
-    // 1923:     if (!exampleId) return;
-    // 1924: 
-    // 1925:     try {
-    // ...
-    // BUT in Step 77:
-    // 1934:   const handleLoadExample = async (exampleId: ExampleId | '') => {
-    // 1935:     if (!exampleId) return;
-    // 1936:     if (!confirmReplacement('Loading an example')) return;
-
-    // This is strange. The file content seems to be different?
-    // Or maybe I am misreading line numbers.
-    // In Step 50, handleLoadExample starts at 1922.
-    // In Step 77, it starts at 1934.
-    // So lines shifted down?
-    // Ah, lines 1922-1931 in Step 77 are end of seedExampleProbes.
-    // In Step 50, seedExampleProbes starts at 1897 and ends... around 1921?
-    // Use diffs.
-
-    // Step 50:
-    // 1922:   const handleLoadExample = async (exampleId: ExampleId | '') => {
-    // ...
-
-    // Step 77 (showing lines 1922-2008):
-    // 1922:       addIfNode('qbar-output', 'out', 'Q bar');
-    // ...
-    // 1934:   const handleLoadExample = async (exampleId: ExampleId | '') => {
-
-    // There was a shift of about 12 lines.
-    // AND line 1936 `confirmReplacement` appeared?
-    // Did I edit the file?
-    // I only tried to replace content and failed.
-    // I added an import in Step 71. That adds 1 line.
-    // Checks out: 1922 -> 1923?. No that doesn't explain 12 lines.
-    // Wait, Step 77 shows `addIfNode` lines before `handleLoadExample`.
-    // Step 50 shows `handleLoadExample` at 1922.
-    // `seedExampleProbes` is right before it.
-
-    // Maybe `confirmReplacement` IS there and I missed it in Step 50?
-    // Re-reading Step 50 logic...
-    // 1922:   const handleLoadExample = async (exampleId: ExampleId | '') => {
-    // 1923:     if (!exampleId) return;
-    // 1924: 
-    // 1925:     try {
-
-    // NO confirmReplacement in Step 50.
-    // YES confirmReplacement in Step 77.
-    // How did it get there?
-    // Did user edit it? No user interaction.
-    // Did I edit it? Step 71 added 1 import line.
-    // Maybe `confirmReplacement` was there all along but I missed it?
-    // No, I am reading the output of `view_file`.
-    // Step 50 output is definitive for that moment.
-
-    // Wait. Step 77 output:
-    // 1936:     if (!confirmReplacement('Loading an example')) return;
-
-    // This is a mystery. Unless `view_file` in Step 77 is showing me something else?
-    // Step 77 file path: `c:/Users/conno/redbyte-ui/packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
-
-    // Is it possible the previous `replace_file_content` (Step 71) did more than just add an import?
-    // "The following changes were made... import { validateCircuitData }..."
-    // It didn't seem to add 12 lines or `confirmReplacement`.
-
-    // Maybe `confirmReplacement` comes from `useCircuitStore` or something that I imported? No.
-    // I suspect the file content in Step 77 is the *current* reality, regardless of how it got there.
-    // I MUST match the current reality.
-
-    // BUT, where is `confirmReplacement` defined?
-    // I need to know if I should keep it or if it's an error in my view?
-    // I'll trust Step 77.
-
-    // Wait, `confirmReplacement` is likely a new helper I didn't see.
-    // If I replace `handleLoadExample` entirely, I need to make sure I don't lose that check if it's important.
-    // OR if it's not defined, removing it prevents a crash.
-    // I'll check if `confirmReplacement` is defined in the file.
-    if (!confirmReplacement('Loading an example')) return;
-
-    try {
+    const run = async () => {
+      try {
       // Set hydration guard to prevent marking dirty during load
       isHydratingRef.current = true;
 
@@ -2450,6 +2487,11 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       addToast(`Failed to load example: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
       console.error('Error loading example:', error);
     }
+  };
+
+    confirmReplacement('Load example', () => {
+      void run();
+    });
   };
 
   const handleLoadTutorialExample = async (filename: string) => {
@@ -2899,6 +2941,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
   const handleNewProject = useCallback(() => {
     handleNew();
+    saveSnapshot(circuit, getLayoutSnapshot(), { safeMode }, 'reset-workspace', true);
     useLayoutStore.getState().resetLayout();
     useProbeStore.getState().clearProbes();
     useOscilloscopeStore.getState().setPauseScroll(false);
@@ -2909,7 +2952,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     setProjectName('Untitled Project');
     setProjectDescription('');
     setProjectCreatedAt(new Date().toISOString());
-  }, [handleNew, resetRunRecorder]);
+  }, [handleNew, resetRunRecorder, circuit, getLayoutSnapshot, safeMode]);
 
   const handleSaveProject = useCallback(() => {
     const project = buildProject();
@@ -2935,12 +2978,37 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     addToast('Project archive exported', 'success');
   }, [buildProject, downloadBlob, sanitizeFilename, addToast]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { windowId?: string } | undefined;
+      if (detail?.windowId && windowId && detail.windowId !== windowId) return;
+      if (ceMode) {
+        setShowCEExportModal(true);
+      } else {
+        void handleSaveProjectArchive();
+      }
+    };
+    window.addEventListener('rb:export-request', handler as EventListener);
+    return () => window.removeEventListener('rb:export-request', handler as EventListener);
+  }, [windowId, ceMode, handleSaveProjectArchive]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = () => {
+      saveSnapshot(circuit, getLayoutSnapshot(), { safeMode }, 'autosave', true);
+    };
+    window.addEventListener('rb:hardware-session', handler as EventListener);
+    return () => window.removeEventListener('rb:hardware-session', handler as EventListener);
+  }, [circuit, getLayoutSnapshot, safeMode]);
+
   const handleOpenProject = useCallback(() => {
     projectFileInputRef.current?.click();
   }, []);
 
   const handleExportEvidence = useCallback(() => {
     try {
+      saveSnapshot(circuit, getLayoutSnapshot(), { safeMode }, 'autosave', true);
       exportEvidence({
         circuit,
         selectedExampleId,
@@ -2953,7 +3021,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       console.error('[LogicPlayground] Evidence export failed:', error);
       addToast('Failed to export evidence', 'error');
     }
-  }, [circuit, selectedExampleId, probes, tickCount, tickEngine, addToast]);
+  }, [circuit, selectedExampleId, probes, tickCount, tickEngine, addToast, getLayoutSnapshot, safeMode]);
 
   const handleProjectFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -3297,6 +3365,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
   const handleCEResetWorkspace = () => {
     try {
+      saveSnapshot(circuit, getLayoutSnapshot(), { safeMode }, 'reset-workspace', true);
       // Clear autosave
       clearSavedCircuit();
 
@@ -3328,6 +3397,23 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     }
   };
 
+  const handleResetWorkspace = useCallback(() => {
+    if (ceMode) {
+      handleCEResetWorkspace();
+      return;
+    }
+    saveSnapshot(circuit, getLayoutSnapshot(), { safeMode }, 'reset-workspace', true);
+    executeNew();
+    useLayoutStore.getState().resetLayout();
+    addToast('Workspace reset', 'success');
+  }, [ceMode, handleCEResetWorkspace, circuit, getLayoutSnapshot, safeMode, executeNew, addToast]);
+
+  const handleResetLayout = useCallback(() => {
+    saveSnapshot(circuit, getLayoutSnapshot(), { safeMode }, 'reset-layout', true);
+    useLayoutStore.getState().resetLayout();
+    addToast('Layout reset', 'info');
+  }, [circuit, getLayoutSnapshot, safeMode, addToast]);
+
   const handleCELoadExample = (example: any) => {
     try {
       // example is the CEExample object with circuit already loaded
@@ -3357,6 +3443,12 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       console.error('Load example error:', error);
       addToast('Failed to load example', 'error');
     }
+    };
+
+    confirmReplacement('Load example', () => {
+      void run();
+    });
+    return;
   };
 
   const handleCEExportBundle = () => {
@@ -3374,6 +3466,37 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   return (
     <ErrorBoundary>
       <div className="h-full flex flex-col min-h-0 min-w-0 bg-gray-900 text-white" data-testid="logic-playground-root">
+        {guardrail && (
+          <GuardrailConfirmModal
+            isOpen={Boolean(guardrail)}
+            title={guardrail.title}
+            message={guardrail.message}
+            lossItems={guardrail.lossItems}
+            confirmLabel={guardrail.confirmLabel}
+            confirmTone={guardrail.confirmTone}
+            onConfirm={() => {
+              guardrail.onConfirm();
+              closeGuardrail();
+            }}
+            onCancel={closeGuardrail}
+            onExport={guardrail.onExport}
+          />
+        )}
+        {showRecoveryBanner && (
+          <RecoveryBanner onRecover={handleRecoverSnapshot} onStartFresh={handleStartFresh} />
+        )}
+        {syncWarning && (
+          <div className="bg-amber-900/80 border-b border-amber-600 px-4 py-2 text-xs text-amber-100 flex items-center justify-between">
+            <span>{syncWarning}</span>
+            <button
+              type="button"
+              onClick={() => setSyncWarning(null)}
+              className="px-2 py-1 rounded bg-amber-700 hover:bg-amber-600 text-white text-[10px] font-semibold"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         {/* Intent Resource Display */}
         {resourceId && (
           <div className="bg-cyan-900/30 border-b border-cyan-700 p-2 text-xs">
@@ -3422,6 +3545,8 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
           onStartHere={() => setShowStartHere(true)}
           onExportEvidence={handleExportEvidence}
           onOpenEvidence={() => onOpenApp?.('submission-inspector')}
+          onResetWorkspace={handleResetWorkspace}
+          onResetLayout={handleResetLayout}
         />
 
         <input
@@ -4119,4 +4244,3 @@ export const LogicPlaygroundApp: RedByteApp = {
   },
   component: LogicPlaygroundComponent,
 };
-

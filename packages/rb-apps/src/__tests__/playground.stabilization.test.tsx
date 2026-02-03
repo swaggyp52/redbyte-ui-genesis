@@ -15,7 +15,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useCircuitStore } from '../stores/circuitStore';
-import { CircuitEngine } from '@redbyte/rb-logic-core';
+import { CircuitEngine, TickEngine } from '@redbyte/rb-logic-core';
 import type { Circuit, Node } from '@redbyte/rb-logic-core';
 
 describe('Playground Stabilization', () => {
@@ -32,7 +32,9 @@ describe('Playground Stabilization', () => {
     store.updateCircuit(initialCircuit, { skipHistory: true, enforceLimits: false }); // Test setup: skip both
 
     const engine = new CircuitEngine(initialCircuit);
+    const tickEngine = new TickEngine(initialCircuit, { tickRate: 20 });
     store.setEngine(engine);
+    store.setTickEngine(tickEngine);
   });
 
   describe('QuickAdd Component Addition', () => {

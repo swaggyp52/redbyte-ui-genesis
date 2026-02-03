@@ -5,7 +5,7 @@
 import React from 'react';
 import type { PerspectiveId } from '../stores/layoutStore';
 import { useClassroomModeStore, isSafeMode } from '../stores/classroomModeStore';
-import { Button, Tooltip, Menu } from '@redbyte/rb-primitives';
+import { Button, Tooltip, Menu, GuardrailConfirmModal } from '@redbyte/rb-primitives';
 import { cn } from '../utils/cn'; // Assuming we have a cn utility, or I'll inline it if not exists. I'll assume cn is needed.
 // Wait, I saw earlier I failed to import cn from primitives.
 // Let's use a simple util or clsx if available.
@@ -110,32 +110,43 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
 }) => {
   const { safeMode, setSafeMode, isComplexityWarning } = useClassroomModeStore();
   const [showResetMenu, setShowResetMenu] = React.useState(false);
+  const [resetConfirm, setResetConfirm] = React.useState<null | 'workspace' | 'layout'>(null);
 
   const handleSafeModeToggle = () => {
     setSafeMode(!safeMode);
   };
 
+  const handleExportQuickAction = onExportProject ?? onExportEvidence ?? onSaveProject ?? onSave;
+
   const handleResetWorkspace = () => {
-    if (onResetWorkspace) {
-      onResetWorkspace();
-    } else {
-      if (confirm('Clear all circuits and reset to blank workspace?')) {
-        localStorage.removeItem('rb_circuit');
-        localStorage.removeItem('rb_layout');
-        window.location.reload();
-      }
-    }
+    setResetConfirm('workspace');
     setShowResetMenu(false);
   };
 
   const handleResetLayout = () => {
+    setResetConfirm('layout');
+    setShowResetMenu(false);
+  };
+
+  const executeResetWorkspace = () => {
+    if (onResetWorkspace) {
+      onResetWorkspace();
+    } else {
+      localStorage.removeItem('rb_circuit');
+      localStorage.removeItem('rb_layout');
+      window.location.reload();
+    }
+    setResetConfirm(null);
+  };
+
+  const executeResetLayout = () => {
     if (onResetLayout) {
       onResetLayout();
     } else {
       localStorage.removeItem('rb_layout');
       window.location.reload();
     }
-    setShowResetMenu(false);
+    setResetConfirm(null);
   };
 
   // PHASE 2C: Mount breadcrumb
@@ -154,6 +165,28 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
       role="toolbar"
       aria-label="Main Toolbar"
     >
+      <GuardrailConfirmModal
+        isOpen={resetConfirm === 'workspace'}
+        title="Reset Workspace?"
+        message="This will clear the current circuit, reset simulation state, and remove any unsaved changes."
+        lossItems={['Current circuit', 'Undo/redo history', 'Unsaved changes']}
+        confirmLabel="Reset Workspace"
+        confirmTone="danger"
+        onConfirm={executeResetWorkspace}
+        onCancel={() => setResetConfirm(null)}
+        onExport={handleExportQuickAction}
+        exportLabel="Export First"
+      />
+      <GuardrailConfirmModal
+        isOpen={resetConfirm === 'layout'}
+        title="Reset Layout?"
+        message="This will reset layout preferences (dock state, split view, camera) back to defaults."
+        lossItems={['Layout preferences', 'Panel positions', 'View split settings']}
+        confirmLabel="Reset Layout"
+        confirmTone="warning"
+        onConfirm={executeResetLayout}
+        onCancel={() => setResetConfirm(null)}
+      />
       {/* LEFT: Project */}
       <div className="flex flex-wrap items-center gap-2 min-w-0">
         <span className="text-xs text-gray-500 uppercase tracking-wide mr-2">Project</span>
