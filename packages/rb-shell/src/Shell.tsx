@@ -55,6 +55,14 @@ import { loadExampleAsProject, type ExampleId } from '@redbyte/rb-apps';
 import type { BitstreamProvenanceMetadata } from '@redbyte/rb-fpga-toolchain';
 import type { LabProjectV1, CircuitV1 } from '@redbyte/rb-utils';
 import { exportEvidenceCapsule, importEvidenceCapsule, useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
+import {
+  convertCircuitV1ToCircuit,
+  prepareImportedProjectState,
+  getVirtualLabSimulationState,
+  getImportWarnings,
+  generateImportSummary,
+  validateUnifiedProjectStoreCompatibility,
+} from '@redbyte/rb-lab-engine';
 import { serialize, type Circuit, type Connection, CircuitEngine } from '@redbyte/rb-logic-core';
 import { TopBar } from './TopBar';
 import { RecoveryPrompt, type RecoveryAction } from './RecoveryPrompt';
@@ -1485,60 +1493,68 @@ export const Shell: React.FC<ShellProps> = () => {
         if (!file) return;
 
         try {
-          // Import and verify
+          // Import and verify integrity
           const blob = file;
           const { project, integrity } = await importEvidenceCapsule(blob);
 
-          // Show integrity status
-          if (integrity.status === 'verified') {
-            toast.success(`✅ ${integrity.message}`);
-          } else if (integrity.status === 'modified') {
-            toast.warning(`⚠️ ${integrity.message}`);
-          } else {
-            toast.info(integrity.message);
+          // Validate project structure for compatibility
+          const compatibility = validateUnifiedProjectStoreCompatibility(project);
+          if (!compatibility.compatible) {
+            toast.error(
+              `Import failed: Missing required fields: ${compatibility.missingFields.join(', ')}`
+            );
+            console.error('Incompatible project structure:', compatibility);
+            return;
           }
 
+          // Prepare project state with full conversions
+          const importedState = prepareImportedProjectState(project, 'user-file');
+
+          // Get any warnings but continue with import
+          const warnings = getImportWarnings(project);
+          if (warnings.length > 0) {
+            console.warn('Import warnings:', warnings);
+          }
+
+          // Store in ref for cross-app access
           currentProjectRef.current = project;
 
+          // Load into unified project store (for Virtual Lab)
+          // This handles the core project state
           loadUnifiedProject(project);
 
-          // Convert CircuitV1 back to Circuit format for Logic Playground
-          const circuit = {
-            nodes: project.circuit.nodes.map((node) => ({
-              id: node.id,
-              type: node.type,
-              x: node.x,
-              y: node.y,
-              rotation: node.rotation,
-              config: node.params || {},
-              label: node.label,
-              state: node.state || {},
-              inputs: {},
-              outputs: {},
-            })),
-            connections: project.circuit.connections.map((conn) => ({
-              id: conn.id,
-              from: conn.fromNodeId,
-              fromPin: conn.fromPin,
-              to: conn.toNodeId,
-              toPin: conn.toPin,
-            })),
-          };
-
-          // Persist as a .rblogic file and open in Logic Playground
+          // Convert circuit to Logic Playground format and persist
+          const circuit = convertCircuitV1ToCircuit(project.circuit);
           loadImportedProject(project, circuit);
 
-          toast.success(`Project imported: ${project.name}`);
+          // Show status with summary
+          const summary = generateImportSummary(project, true, warnings);
+          toast.success(summary);
 
+          // Log event for evidence trail
           logSystemEvent({
             level: 'action',
             source: 'import',
             message: `Imported project: ${project.name}`,
-            data: { projectId: project.projectId, integrity: integrity.status },
+            data: {
+              projectId: project.projectId,
+              integrity: integrity.status,
+              nodeCount: project.circuit.nodes.length,
+              connectionCount: project.circuit.connections.length,
+              hasWarnings: warnings.length > 0,
+            },
           });
         } catch (error) {
           console.error('Import failed:', error);
-          toast.error(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          toast.error(`Import failed: ${errorMessage}`);
+
+          logSystemEvent({
+            level: 'error',
+            source: 'import',
+            message: 'Project import failed',
+            data: { error: errorMessage },
+          });
         }
       };
 
@@ -1547,7 +1563,7 @@ export const Shell: React.FC<ShellProps> = () => {
       console.error('Import dialog failed:', error);
       toast.error('Failed to open import dialog');
     }
-  }, []);
+  }, [loadUnifiedProject, loadImportedProject]);
 
   // Ref to hold latest executeCommand for macro execution
   const executeCommandRef = useRef<((command: Command) => void) | null>(null);
