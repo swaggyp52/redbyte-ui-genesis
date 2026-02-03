@@ -1,4 +1,4 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
@@ -360,7 +360,7 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
       onMouseDown={onFocus}
       onPointerDown={onFocus}
     >
-      {/* Title bar — 36px */}
+      {/* Title bar - 36px */}
       <div
         className="flex h-9 items-center gap-2.5 px-3 text-sm select-none border-b"
         style={{
@@ -455,7 +455,7 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
         exportLabel="Export First"
       />
 
-      {/* App content — fills remaining space */}
+      {/* App content - fills remaining space */}
       <div
         className="flex-1 min-h-0 min-w-0 overflow-hidden relative"
         style={{
@@ -492,7 +492,7 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
 };
 
 /**
- * ShellWindow — Render-Optimized Window Container
+ * ShellWindow - Render-Optimized Window Container
  *
  * Wrapped with React.memo to prevent unnecessary re-renders.
  * Only re-renders when:

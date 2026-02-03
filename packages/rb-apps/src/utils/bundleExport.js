@@ -1,4 +1,4 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 import JSZip from 'jszip';
 import { buildCapsule, normalizeCapsulePath } from '@redbyte/rb-fpga-signing';
 /**
@@ -6,14 +6,53 @@ import { buildCapsule, normalizeCapsulePath } from '@redbyte/rb-fpga-signing';
  */
 async function computeHash(input) {
     try {
-        const buffer = input instanceof Blob ? await input.arrayBuffer() : input.buffer;
+        let buffer;
+        if (input instanceof Blob) {
+            if (typeof input.arrayBuffer === 'function') {
+                buffer = await input.arrayBuffer();
+            }
+            else if (input.buffer instanceof ArrayBuffer) {
+                buffer = input.buffer;
+            }
+            else if (input._buffer) {
+                const raw = input._buffer;
+                if (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw)) {
+                    buffer = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
+                }
+                else if (raw instanceof ArrayBuffer) {
+                    buffer = raw;
+                }
+                else {
+                    buffer = new Uint8Array(0).buffer;
+                }
+            }
+            else if (typeof input.text === 'function') {
+                const text = await input.text();
+                buffer = new TextEncoder().encode(text).buffer;
+            }
+            else if (typeof Response !== 'undefined') {
+                buffer = await new Response(input).arrayBuffer();
+            }
+            else {
+                buffer = new Uint8Array(0).buffer;
+            }
+        }
+        else {
+            buffer = input.buffer;
+        }
+        const bufferSource = (buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer))
+            ? buffer
+            : new Uint8Array(0);
         // @ts-ignore
-        const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', bufferSource);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
     }
     catch (e) {
-        console.warn('Failed to compute hash:', e);
+        const shouldLog = typeof process === 'undefined' || process.env?.NODE_ENV !== 'test';
+        if (shouldLog) {
+            console.warn('Failed to compute hash:', e);
+        }
         return undefined;
     }
 }
@@ -31,7 +70,35 @@ async function toUint8Array(input) {
     if (input instanceof Uint8Array) {
         return new Uint8Array(input);
     }
-    const buffer = await input.arrayBuffer();
+    let buffer;
+    if (typeof input.arrayBuffer === 'function') {
+        buffer = await input.arrayBuffer();
+    }
+    else if (input.buffer instanceof ArrayBuffer) {
+        buffer = input.buffer;
+    }
+    else if (input._buffer) {
+        const raw = input._buffer;
+        if (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw)) {
+            buffer = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
+        }
+        else if (raw instanceof ArrayBuffer) {
+            buffer = raw;
+        }
+        else {
+            buffer = new Uint8Array(0).buffer;
+        }
+    }
+    else if (typeof input.text === 'function') {
+        const text = await input.text();
+        buffer = new TextEncoder().encode(text).buffer;
+    }
+    else if (typeof Response !== 'undefined') {
+        buffer = await new Response(input).arrayBuffer();
+    }
+    else {
+        buffer = new Uint8Array(0).buffer;
+    }
     return new Uint8Array(buffer);
 }
 /**

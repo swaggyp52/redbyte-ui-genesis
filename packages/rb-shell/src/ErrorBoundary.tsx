@@ -1,4 +1,4 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
@@ -20,7 +20,7 @@ interface ErrorBoundaryState {
  * Catches unhandled errors and displays a minimal recovery UI instead of white-screen.
  * Provides two recovery paths:
  * 1. Reload (window.location.reload())
- * 2. Factory Reset hint (Settings → Filesystem Data → F → type RESET)
+ * 2. Factory Reset hint (Settings -> Filesystem Data -> F -> type RESET)
  *
  * No timers or async operations; deterministic recovery flow.
  */

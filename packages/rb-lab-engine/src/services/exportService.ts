@@ -1,9 +1,9 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 /**
- * Export Service — Evidence Capsule Generation
+ * Export Service - Evidence Capsule Generation
  *
  * Creates ZIP archives with:
  * - capsule.json (index with hashes)
@@ -59,40 +59,6 @@ async function stableHash(obj: any): Promise<string> {
 }
 
 export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob> {
-  const zip = new JSZip();
-  const files = new Map<string, string>();
-  const warnings: ExportWarning[] = [];
-
-  const pushWarning = (step: string, message: string, error?: unknown) => {
-    warnings.push({
-      step,
-      message,
-      error: error instanceof Error ? error.message : error ? String(error) : undefined,
-    });
-  };
-
-  const safeSerialize = (value: unknown, step: string, fallback: unknown): string => {
-    try {
-      return stableSerialize(value);
-    } catch (error) {
-      pushWarning(step, 'Serialization failed; using fallback payload.', error);
-      return stableSerialize(fallback);
-    }
-  };
-
-  const safeHash = async (value: unknown, step: string): Promise<string> => {
-    try {
-      return await stableHash(value);
-    } catch (error) {
-      pushWarning(step, 'Hashing failed; using placeholder hash.', error);
-      return 'sha256:ERROR';
-    }
-  };
-
-  // -------------------------------------------------------------------------
-  // 1. Serialize project.json
-  // -------------------------------------------------------------------------
-
   const safeProjectFallback: LabProjectV1 = {
     schemaVersion: '1.0',
     projectId: (project as any)?.projectId ?? `export-fallback-${Date.now()}`,
@@ -105,6 +71,41 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
     labSpec: (project as any)?.labSpec ?? null,
     evidence: (project as any)?.evidence ?? { actions: [], snapshots: [] },
   };
+
+  try {
+    const zip = new JSZip();
+    const files = new Map<string, string>();
+    const warnings: ExportWarning[] = [];
+
+    const pushWarning = (step: string, message: string, error?: unknown) => {
+      warnings.push({
+        step,
+        message,
+        error: error instanceof Error ? error.message : error ? String(error) : undefined,
+      });
+    };
+
+    const safeSerialize = (value: unknown, step: string, fallback: unknown): string => {
+      try {
+        return stableSerialize(value);
+      } catch (error) {
+        pushWarning(step, 'Serialization failed; using fallback payload.', error);
+        return stableSerialize(fallback);
+      }
+    };
+
+    const safeHash = async (value: unknown, step: string): Promise<string> => {
+      try {
+        return await stableHash(value);
+      } catch (error) {
+        pushWarning(step, 'Hashing failed; using placeholder hash.', error);
+        return 'sha256:ERROR';
+      }
+    };
+
+    // -------------------------------------------------------------------------
+    // 1. Serialize project.json
+    // -------------------------------------------------------------------------
 
   const projectJson = safeSerialize(project, 'project', safeProjectFallback);
   const projectHash = await safeHash(project, 'project-hash');
@@ -241,7 +242,23 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
   // 5. Generate ZIP blob
   // -------------------------------------------------------------------------
 
-  return zip.generateAsync({ type: 'blob' });
+    return zip.generateAsync({ type: 'blob' });
+  } catch (error) {
+    const fallbackZip = new JSZip();
+    const warningPayload = {
+      schemaVersion: '1.0',
+      createdAt: new Date().toISOString(),
+      warnings: [{
+        step: 'export',
+        message: 'Export failed; generated recovery bundle instead.',
+        error: error instanceof Error ? error.message : String(error),
+      }],
+    };
+    fallbackZip.file('project.json', stableSerialize(safeProjectFallback));
+    fallbackZip.file('warnings.json', JSON.stringify(warningPayload, null, 2));
+    fallbackZip.file('README.md', '# RedByte Export\n\nExport failed and produced a recovery bundle. See warnings.json for details.');
+    return fallbackZip.generateAsync({ type: 'blob' });
+  }
 }
 
 /**
@@ -291,12 +308,12 @@ export async function importEvidenceCapsule(
   if (projectIntact && manifestIntact) {
     integrity = {
       status: 'verified',
-      message: '✅ Integrity verified — all hashes match',
+      message: 'Integrity verified - all hashes match',
     };
   } else if (!projectIntact) {
     integrity = {
       status: 'modified',
-      message: '⚠ Project modified — hash mismatch detected',
+      message: 'Integrity warning: project modified (hash mismatch detected)',
       details: {
         expectedHash: capsule.projectHash,
         actualHash: actualProjectHash,
@@ -306,7 +323,7 @@ export async function importEvidenceCapsule(
   } else {
     integrity = {
       status: 'modified',
-      message: '⚠ Manifest modified — hash mismatch detected',
+      message: 'Integrity warning: manifest modified (hash mismatch detected)',
       details: {
         expectedHash: capsule.manifestHash,
         actualHash: actualManifestHash,

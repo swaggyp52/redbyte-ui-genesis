@@ -10,6 +10,7 @@
  */
 
 import React from 'react';
+import { setErrorBoundaryMarker } from '../utils/snapshotSystem';
 import styles from './ErrorBoundary.module.css';
 
 interface ErrorBoundaryProps {
@@ -52,6 +53,11 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         error: error.message,
         errorInfo,
       };
+      try {
+        setErrorBoundaryMarker();
+      } catch {
+        // Ignore marker failures
+      }
     }
 
     // Store error info for details panel
@@ -74,7 +80,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       return (
         <div className={styles.errorBoundary}>
           <div className={styles.errorCard}>
-            <div className={styles.errorIcon}>⚠️</div>
+            <div className={styles.errorIcon}>WARN</div>
             <h2 className={styles.errorTitle}>{title}</h2>
             <p className={styles.errorMessage}>
               {isDev && this.state.error

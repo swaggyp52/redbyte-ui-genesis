@@ -1,4 +1,4 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 
 import JSZip from 'jszip';
 import {
@@ -43,13 +43,44 @@ export interface ExportResult {
  */
 async function computeHash(input: Uint8Array | Blob): Promise<string | undefined> {
   try {
-    const buffer = input instanceof Blob ? await input.arrayBuffer() : input.buffer;
+    let buffer: ArrayBuffer;
+    if (input instanceof Blob) {
+      if (typeof input.arrayBuffer === 'function') {
+        buffer = await input.arrayBuffer();
+      } else if ((input as any).buffer instanceof ArrayBuffer) {
+        buffer = (input as any).buffer as ArrayBuffer;
+      } else if ((input as any)._buffer) {
+        const raw = (input as any)._buffer;
+        if (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw)) {
+          buffer = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
+        } else if (raw instanceof ArrayBuffer) {
+          buffer = raw;
+        } else {
+          buffer = new Uint8Array(0).buffer;
+        }
+      } else if (typeof input.text === 'function') {
+        const text = await input.text();
+        buffer = new TextEncoder().encode(text).buffer;
+      } else if (typeof Response !== 'undefined') {
+        buffer = await new Response(input as any).arrayBuffer();
+      } else {
+        buffer = new Uint8Array(0).buffer;
+      }
+    } else {
+      buffer = input.buffer;
+    }
+    const bufferSource = (buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer))
+      ? buffer
+      : new Uint8Array(0);
     // @ts-ignore
-    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer as ArrayBuffer);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', bufferSource as ArrayBuffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
   } catch (e) {
-    console.warn('Failed to compute hash:', e);
+    const shouldLog = typeof process === 'undefined' || process.env?.NODE_ENV !== 'test';
+    if (shouldLog) {
+      console.warn('Failed to compute hash:', e);
+    }
     return undefined;
   }
 }
@@ -69,7 +100,28 @@ async function toUint8Array(input: string | Uint8Array | Blob): Promise<Uint8Arr
   if (input instanceof Uint8Array) {
     return new Uint8Array(input);
   }
-  const buffer = await input.arrayBuffer();
+  let buffer: ArrayBuffer;
+  if (typeof input.arrayBuffer === 'function') {
+    buffer = await input.arrayBuffer();
+  } else if ((input as any).buffer instanceof ArrayBuffer) {
+    buffer = (input as any).buffer as ArrayBuffer;
+  } else if ((input as any)._buffer) {
+    const raw = (input as any)._buffer;
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw)) {
+      buffer = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
+    } else if (raw instanceof ArrayBuffer) {
+      buffer = raw;
+    } else {
+      buffer = new Uint8Array(0).buffer;
+    }
+  } else if (typeof input.text === 'function') {
+    const text = await input.text();
+    buffer = new TextEncoder().encode(text).buffer;
+  } else if (typeof Response !== 'undefined') {
+    buffer = await new Response(input as any).arrayBuffer();
+  } else {
+    buffer = new Uint8Array(0).buffer;
+  }
   return new Uint8Array(buffer);
 }
 

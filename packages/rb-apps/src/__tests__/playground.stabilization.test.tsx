@@ -1,4 +1,4 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
@@ -29,12 +29,12 @@ describe('Playground Stabilization', () => {
     };
 
     const store = useCircuitStore.getState();
-    store.updateCircuit(initialCircuit, { skipHistory: true, enforceLimits: false }); // Test setup: skip both
 
     const engine = new CircuitEngine(initialCircuit);
     const tickEngine = new TickEngine(initialCircuit, { tickRate: 20 });
     store.setEngine(engine);
     store.setTickEngine(tickEngine);
+    store.updateCircuit(initialCircuit, { skipHistory: true, enforceLimits: false }); // Test setup: skip both
   });
 
   describe('QuickAdd Component Addition', () => {
@@ -182,7 +182,7 @@ describe('Playground Stabilization', () => {
       const switch1 = circuit.nodes.find(n => n.type === 'Switch');
       const power1 = circuit.nodes.find(n => n.type === 'PowerSource');
 
-      // Attempt invalid connection (output → output)
+      // Attempt invalid connection (output -> output)
       // This should be prevented at the UI layer, but store should handle gracefully
       const invalidCircuit = {
         ...circuit,

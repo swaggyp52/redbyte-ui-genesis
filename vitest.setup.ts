@@ -27,6 +27,86 @@ const originalRAF = globalThis.requestAnimationFrame;
 const originalCAF = globalThis.cancelAnimationFrame;
 
 beforeAll(async () => {
+  if (typeof Blob !== 'undefined' && typeof Blob.prototype.arrayBuffer !== 'function') {
+    // Polyfill Blob.arrayBuffer for Node test environments
+    Blob.prototype.arrayBuffer = async function arrayBuffer() {
+      const anyBlob = this as any;
+      if (anyBlob?.buffer instanceof ArrayBuffer) {
+        return anyBlob.buffer;
+      }
+      if (anyBlob?._buffer) {
+        const raw = anyBlob._buffer;
+        if (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw)) {
+          return raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
+        }
+        if (raw instanceof ArrayBuffer) {
+          return raw;
+        }
+      }
+      if (typeof anyBlob?.text === 'function') {
+        const text = await anyBlob.text();
+        return new TextEncoder().encode(text).buffer;
+      }
+      return new Uint8Array(0).buffer;
+    };
+  }
+
+  class MockWebSocket {
+    static CONNECTING = 0;
+    static OPEN = 1;
+    static CLOSING = 2;
+    static CLOSED = 3;
+
+    readyState = MockWebSocket.OPEN;
+    url: string;
+    onopen: ((event: Event) => void) | null = null;
+    onmessage: ((event: MessageEvent) => void) | null = null;
+    onclose: ((event: CloseEvent) => void) | null = null;
+    onerror: ((event: Event) => void) | null = null;
+    private listeners: Record<string, Array<(event: any) => void>> = {};
+
+    constructor(url: string) {
+      this.url = url;
+      queueMicrotask(() => {
+        const event = typeof Event !== 'undefined' ? new Event('open') : ({ type: 'open' } as Event);
+        this.onopen?.(event);
+        this.emit('open', event);
+      });
+    }
+
+    send(_data: any) {
+      // no-op for tests
+    }
+
+    close() {
+      this.readyState = MockWebSocket.CLOSED;
+      const event = typeof CloseEvent !== 'undefined'
+        ? new CloseEvent('close')
+        : ({ type: 'close' } as CloseEvent);
+      this.onclose?.(event);
+      this.emit('close', event);
+    }
+
+    addEventListener(type: string, listener: (event: any) => void) {
+      if (!this.listeners[type]) this.listeners[type] = [];
+      this.listeners[type].push(listener);
+    }
+
+    removeEventListener(type: string, listener: (event: any) => void) {
+      const stack = this.listeners[type];
+      if (!stack) return;
+      this.listeners[type] = stack.filter((l) => l !== listener);
+    }
+
+    private emit(type: string, event: any) {
+      const stack = this.listeners[type];
+      if (!stack) return;
+      stack.forEach((listener) => listener(event));
+    }
+  }
+
+  (globalThis as any).WebSocket = MockWebSocket;
+
   await registerTestApps();
 }, 30000);
 

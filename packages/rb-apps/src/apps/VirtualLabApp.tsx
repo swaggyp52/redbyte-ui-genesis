@@ -46,9 +46,10 @@ const DEFAULT_SKETCH = `void setup() {
 interface VirtualLabAppProps {
     resourceId?: string;
     resourceType?: 'file' | 'folder';
+    windowId?: string;
 }
 
-const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, resourceType }) => {
+const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, resourceType, windowId }) => {
     const addNode = useLabStore((state) => state.addNode);
     const reset = useLabStore((state) => state.reset);
     const toggleSimulation = useLabStore((state) => state.toggleSimulation);
@@ -310,7 +311,7 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                     case 'PLACE_PART':
                         return { tick: event.tick, label: `Placed ${event.part.type}`, seq: event.seq };
                     case 'ADD_WIRE':
-                        return { tick: event.tick, label: `Added wire ${event.wire.sourcePinId} → ${event.wire.targetPinId}`, seq: event.seq };
+                        return { tick: event.tick, label: `Added wire ${event.wire.sourcePinId} -> ${event.wire.targetPinId}`, seq: event.seq };
                     case 'REMOVE_WIRE':
                         return { tick: event.tick, label: `Removed wire ${event.wireId}`, seq: event.seq };
                     case 'SERIAL_OUTPUT':
@@ -570,6 +571,17 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
         URL.revokeObjectURL(url);
     };
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const handler = (event: Event) => {
+            const detail = (event as CustomEvent).detail as { windowId?: string } | undefined;
+            if (detail?.windowId && windowId && detail.windowId !== windowId) return;
+            void handleExportCapsule();
+        };
+        window.addEventListener('rb:export-request', handler as EventListener);
+        return () => window.removeEventListener('rb:export-request', handler as EventListener);
+    }, [handleExportCapsule, windowId]);
+
     const prepareCapsule = async (json: any) => {
         if (json.meta?.capsuleVersion !== 'labcapsule.v1') {
             throw new Error(`Unsupported capsule version: ${json.meta?.capsuleVersion}`);
@@ -814,13 +826,13 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                         onClick={handleExportCapsule}
                         className="w-full px-3 py-2 rounded bg-blue-900/50 hover:bg-blue-900 text-blue-100 text-xs transition-colors flex items-center justify-center gap-2"
                     >
-                        <span>💾</span> Export Capsule
+                        <span>[Export]</span> Export Capsule
                     </button>
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         className="w-full px-3 py-2 rounded bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs transition-colors"
                     >
-                        📂 Import Capsule
+                        [Import] Import Capsule
                     </button>
                     <input type="file" ref={fileInputRef} onChange={handleImportCapsule} accept=".json" className="hidden" title="Upload Capsule Input" />
 
@@ -866,7 +878,7 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                 <div className="absolute top-4 right-4 flex flex-col items-end gap-2 pointer-events-none">
                     {integrityError && (
                         <div className="bg-red-600 text-white font-bold px-4 py-1 rounded-full shadow-lg animate-pulse flex items-center gap-2">
-                            <span>⚠️ {integrityError}</span>
+                            <span>WARN {integrityError}</span>
                         </div>
                     )}
                     {playbackMode === 'replay' && (
@@ -943,7 +955,7 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                                 ${integrityError ? 'bg-gray-700 text-gray-500 cursor-not-allowed' :
                                     isRunning ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'}`}
                         >
-                            {isRunning ? '⬛' : '▶'}
+                            {isRunning ? '#' : '>'}
                         </button>
 
                         {/* Tick Display */}
@@ -989,7 +1001,7 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                                     }}
                                     className="w-full text-left text-blue-300 hover:text-blue-200"
                                 >
-                                    {mark.label} · {mark.tick}
+                                    {mark.label}   {mark.tick}
                                 </button>
                             ))}
                         </div>
@@ -1067,7 +1079,7 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                                 </div>
                             </div>
                             <div className="mt-2 text-[10px] text-gray-500 bg-[#111] border border-gray-800 rounded px-2 py-1">
-                                Template: {activeTemplate.name} · Version {activeTemplate.lab_version} · Integrity {integrityError ? 'Unverified' : 'Verified'}
+                                Template: {activeTemplate.name}   Version {activeTemplate.lab_version}   Integrity {integrityError ? 'Unverified' : 'Verified'}
                             </div>
                             <div className="mt-2 space-y-2">
                                 <div className="flex items-center justify-between">

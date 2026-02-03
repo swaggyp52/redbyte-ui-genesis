@@ -1,4 +1,4 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 // v1.0.1 - Multi-view enhancement with null safety
@@ -869,7 +869,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     const hasSeenScopeHint = localStorage.getItem('rb-seen-scope-hint');
     if (!hasSeenScopeHint && !initialExampleId) {
       const timer = setTimeout(() => {
-        addToast('💡 Press 4 to open Oscilloscope view and monitor signals', 'info', 6000);
+        addToast('IDEA Press 4 to open Oscilloscope view and monitor signals', 'info', 6000);
         localStorage.setItem('rb-seen-scope-hint', '1');
       }, 2000); // Delay to avoid overwhelming on first load
       return () => clearTimeout(timer);
@@ -1656,7 +1656,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
     // Add dirty indicator
     if (isDirty) {
-      title = `${title} •`;
+      title = `${title} *`;
     }
 
     setWindowTitle(windowId, title);
@@ -1841,7 +1841,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
           lastRecognizedPatternRef.current = pattern.name;
           setRecognizedPattern(pattern);
           addToast(
-            `🎉 You just built a ${pattern.name}! ${pattern.description} (Layer ${pattern.layer})`,
+            `! You just built a ${pattern.name}! ${pattern.description} (Layer ${pattern.layer})`,
             'success',
             6000
           );
@@ -2654,7 +2654,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
     // Enter the chip's internal circuit
     enterChip(chip, nodeId);
-    addToast(`Entered ${chip.name} • Press Esc to exit`, 'info', 3000);
+    addToast(`Entered ${chip.name} * Press Esc to exit`, 'info', 3000);
   };
 
   const getNodeDescription = (nodeType: string): string => {
@@ -2665,13 +2665,13 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       Lamp: 'Visual indicator - lights up when signal is HIGH',
       OUTPUT: 'Visual indicator - lights up when signal is HIGH',
       Wire: 'Pass-through connection',
-      AND: 'TRUE if both inputs are TRUE | Truth: 0,0→0 | 0,1→0 | 1,0→0 | 1,1→1',
-      OR: 'TRUE if either input is TRUE | Truth: 0,0→0 | 0,1→1 | 1,0→1 | 1,1→1',
-      NOT: 'Inverts input | Truth: 0→1 | 1→0',
-      NAND: 'NOT AND - opposite of AND gate | Truth: 0,0→1 | 0,1→1 | 1,0→1 | 1,1→0',
-      NOR: 'NOT OR - opposite of OR gate | Truth: 0,0→1 | 0,1→0 | 1,0→0 | 1,1→0',
-      XOR: 'TRUE if inputs differ | Truth: 0,0→0 | 0,1→1 | 1,0→1 | 1,1→0',
-      XNOR: 'TRUE if inputs are same | Truth: 0,0→1 | 0,1→0 | 1,0→0 | 1,1→1',
+      AND: 'TRUE if both inputs are TRUE | Truth: 0,0->0 | 0,1->0 | 1,0->0 | 1,1->1',
+      OR: 'TRUE if either input is TRUE | Truth: 0,0->0 | 0,1->1 | 1,0->1 | 1,1->1',
+      NOT: 'Inverts input | Truth: 0->1 | 1->0',
+      NAND: 'NOT AND - opposite of AND gate | Truth: 0,0->1 | 0,1->1 | 1,0->1 | 1,1->0',
+      NOR: 'NOT OR - opposite of OR gate | Truth: 0,0->1 | 0,1->0 | 1,0->0 | 1,1->0',
+      XOR: 'TRUE if inputs differ | Truth: 0,0->0 | 0,1->1 | 1,0->1 | 1,1->0',
+      XNOR: 'TRUE if inputs are same | Truth: 0,0->1 | 0,1->0 | 1,0->0 | 1,1->1',
       Clock: 'Oscillates between HIGH/LOW periodically',
       Delay: 'Delays signal by configured number of ticks',
       VoltageSource: 'Analog supply - outputs a constant voltage (set in state/config)',
@@ -2724,9 +2724,9 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       VoltageDivider: { inputs: [{ id: 'v_in', name: 'v_in' }, { id: 'r1', name: 'r1' }, { id: 'r2', name: 'r2' }], outputs: [{ id: 'v_out', name: 'v_out' }], layer: 2, color: '#60a5fa' },
       LM358: { inputs: [{ id: 'V_plus', name: 'V+' }, { id: 'V_minus', name: 'V-' }], outputs: [{ id: 'out', name: 'out' }], layer: 2, color: '#fb7185' },
       // Composite nodes
-      RSLatch: { inputs: [{ id: 'R', name: 'R' }, { id: 'S', name: 'S' }], outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q̅' }], layer: 3, color: '#ec4899' },
-      DFlipFlop: { inputs: [{ id: 'D', name: 'D' }, { id: 'CLK', name: 'CLK' }], outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q̅' }], layer: 3, color: '#ec4899' },
-      JKFlipFlop: { inputs: [{ id: 'J', name: 'J' }, { id: 'K', name: 'K' }, { id: 'CLK', name: 'CLK' }], outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q̅' }], layer: 3, color: '#ec4899' },
+      RSLatch: { inputs: [{ id: 'R', name: 'R' }, { id: 'S', name: 'S' }], outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q' }], layer: 3, color: '#ec4899' },
+      DFlipFlop: { inputs: [{ id: 'D', name: 'D' }, { id: 'CLK', name: 'CLK' }], outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q' }], layer: 3, color: '#ec4899' },
+      JKFlipFlop: { inputs: [{ id: 'J', name: 'J' }, { id: 'K', name: 'K' }, { id: 'CLK', name: 'CLK' }], outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q' }], layer: 3, color: '#ec4899' },
       FullAdder: { inputs: [{ id: 'A', name: 'A' }, { id: 'B', name: 'B' }, { id: 'Cin', name: 'Cin' }], outputs: [{ id: 'Sum', name: 'Sum' }, { id: 'Cout', name: 'Cout' }], layer: 2, color: '#14b8a6' },
       Counter4Bit: { inputs: [{ id: 'CLK', name: 'CLK' }], outputs: [{ id: 'Q0', name: 'Q0' }, { id: 'Q1', name: 'Q1' }, { id: 'Q2', name: 'Q2' }, { id: 'Q3', name: 'Q3' }], layer: 4, color: '#f97316' },
     };
@@ -2986,12 +2986,13 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       if (ceMode) {
         setShowCEExportModal(true);
       } else {
+        saveSnapshot(circuit, getLayoutSnapshot(), { safeMode }, 'autosave', true);
         void handleSaveProjectArchive();
       }
     };
     window.addEventListener('rb:export-request', handler as EventListener);
     return () => window.removeEventListener('rb:export-request', handler as EventListener);
-  }, [windowId, ceMode, handleSaveProjectArchive]);
+  }, [windowId, ceMode, handleSaveProjectArchive, circuit, getLayoutSnapshot, safeMode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -3900,7 +3901,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
                 rel="noopener noreferrer"
                 className="block mt-4 text-xs text-cyan-400 hover:text-cyan-300"
               >
-                Report Issue →
+                Report Issue ->
               </a>
             </OverlayPanel>
           </OverlayRoot>

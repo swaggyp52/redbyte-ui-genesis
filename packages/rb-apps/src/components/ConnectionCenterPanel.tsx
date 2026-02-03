@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import { Icon } from '@redbyte/rb-icons';
 import { GuardrailConfirmModal, toast } from '@redbyte/rb-primitives';
 import { useHardwareSessionStore } from '../stores/hardwareSessionStore';
-import { useCapabilitiesStore } from '../stores/capabilitiesStore';
 import { useLabWorkflowStore } from '../stores/useLabWorkflowStore';
 import { useHardwareStore } from '../stores/hardwareStore';
 import { downloadBlob } from '../utils/bundleExport';
@@ -21,7 +20,6 @@ import { useClassroomModeStore } from '../stores/classroomModeStore';
  */
 export const ConnectionCenterPanel: React.FC = () => {
     const { bridge, sessions, ensureSession, disconnect } = useHardwareSessionStore();
-    const { hardware: hwCap, studentMode } = useCapabilitiesStore();
     const { hardwareSnapshots } = useLabWorkflowStore();
     const { safeMode } = useClassroomModeStore();
     const [disconnectTarget, setDisconnectTarget] = useState<'basys3' | 'arduino-uno' | null>(null);
@@ -113,12 +111,12 @@ export const ConnectionCenterPanel: React.FC = () => {
                 )}
                 {(bridgeStatus === 'connecting' || bridgeStatus === 'reconnecting') && (
                     <span className="text-[10px] text-amber-400 animate-pulse">
-                        ⟳ Handshaking...
+                        Handshaking...
                     </span>
                 )}
                 {bridgeStatus === 'disconnected' && (
                     <span className="text-[10px] text-red-400">
-                        ⚠ Offline
+                        Offline
                     </span>
                 )}
             </div>
@@ -150,13 +148,17 @@ export const ConnectionCenterPanel: React.FC = () => {
                         <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-white">Basys 3 Board</span>
                             {isBasys3Connecting && (
-                                <span className="text-[10px] text-amber-400 animate-pulse">⟳</span>
+                                <span className="text-[10px] text-amber-400 animate-pulse">...</span>
                             )}
                         </div>
                         <span className="text-[10px] text-slate-500 font-mono">
-                            {isBasys3Connected ? `Connected on ${sessions.basys3.port}` : 
-                             isBasys3Connecting ? 'Connecting...' : 
-                             'Not connected'}
+                            {isBasys3Connected
+                                ? `Connected on ${sessions.basys3.port}`
+                                : sessions.basys3.status === 'reconnecting'
+                                  ? 'Reconnecting...'
+                                  : isBasys3Connecting
+                                    ? 'Connecting...'
+                                    : 'Not connected'}
                         </span>
                     </div>
                     <button
@@ -176,9 +178,13 @@ export const ConnectionCenterPanel: React.FC = () => {
                             : 'bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed'
                         }`}
                     >
-                        {isBasys3Connected ? 'Disconnect' : 
-                         isBasys3Connecting ? 'Connecting...' : 
-                         'Connect COM7'}
+                        {isBasys3Connected
+                            ? 'Disconnect'
+                            : sessions.basys3.status === 'reconnecting'
+                              ? 'Reconnecting...'
+                              : isBasys3Connecting
+                                ? 'Connecting...'
+                                : 'Connect COM7'}
                     </button>
                 </div>
 

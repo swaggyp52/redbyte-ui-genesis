@@ -1,4 +1,4 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
@@ -1121,7 +1121,7 @@ export const Shell: React.FC<ShellProps> = () => {
     [closeWindow]
   );
 
-  // Stable window event handlers — prevents React.memo bailout failures
+  // Stable window event handlers - prevents React.memo bailout failures
   const windowHandlers = useRef<Record<string, {
     onClose: () => void;
     onFocus: () => void;
@@ -2587,7 +2587,7 @@ export const Shell: React.FC<ShellProps> = () => {
               {reproCheckReport.checks.map((check) => (
                 <li key={check.id} className="flex items-start gap-2 text-sm">
                   <span className={check.passed ? 'text-emerald-400' : 'text-red-400'}>
-                    {check.passed ? '✓' : '✕'}
+                    {check.passed ? 'OK' : 'X'}
                   </span>
                   <div>
                     <div className="text-slate-200">{check.label}</div>

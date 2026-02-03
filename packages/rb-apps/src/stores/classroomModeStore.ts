@@ -1,4 +1,4 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 // Classroom-ready runtime flags and Safe Mode management
 
 import { create } from 'zustand';
@@ -19,8 +19,8 @@ interface ClassroomModeState {
   setComplexity: (nodeCount: number, edgeCount: number, maxFanOut: number) => void;
 
   // Complexity thresholds
-  isComplexityWarning: boolean; // ≥15 nodes
-  isComplexityBlocked: boolean; // ≥20 nodes
+  isComplexityWarning: boolean; // >=15 nodes
+  isComplexityBlocked: boolean; // >=20 nodes
 
   // Auto-degrade state
   isStepOnlyMode: boolean;

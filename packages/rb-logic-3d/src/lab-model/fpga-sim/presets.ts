@@ -73,6 +73,11 @@ export const FPGA_PRESETS: Record<string, FpgaPresetFn> = {
     }
 };
 
+// Basys3 preset aliases (UI presets use basys3-* ids)
+FPGA_PRESETS['basys3-passthrough'] = FPGA_PRESETS['passthrough'];
+FPGA_PRESETS['basys3-counter'] = FPGA_PRESETS['counter'];
+FPGA_PRESETS['basys3-blink'] = FPGA_PRESETS['blink'];
+
 export interface FpgaPresetDefinition {
     id: string; // "basys3-blink"
     name: string; // "Blink Demo"

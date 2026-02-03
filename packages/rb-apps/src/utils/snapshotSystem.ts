@@ -1,4 +1,4 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 // Workspace snapshot persistence for crash recovery
 
 export interface WorkspaceSnapshot {
@@ -44,7 +44,7 @@ export function saveSnapshot(
 
   const save = () => {
     try {
-      // Move latest → previous
+      // Move latest -> previous
       const latest = localStorage.getItem(SNAPSHOT_KEYS.LATEST);
       if (latest) {
         localStorage.setItem(SNAPSHOT_KEYS.PREVIOUS, latest);

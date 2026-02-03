@@ -48,6 +48,10 @@ export const FPGA_PRESETS = {
         };
     }
 };
+// Basys3 preset aliases (UI presets use basys3-* ids)
+FPGA_PRESETS['basys3-passthrough'] = FPGA_PRESETS['passthrough'];
+FPGA_PRESETS['basys3-counter'] = FPGA_PRESETS['counter'];
+FPGA_PRESETS['basys3-blink'] = FPGA_PRESETS['blink'];
 export const FPGA_PRESET_DEFS = [
     {
         id: 'basys3-passthrough',

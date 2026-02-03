@@ -1,4 +1,4 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
@@ -200,7 +200,7 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
 **Board:** ${capsule.deviceBoardId || 'N/A'}
 
 ## Self Check Status
-${lab.selfCheckResults ? (lab.selfCheckResults.passed ? '✅ PASSED' : '❌ FAILED') : '❓ NOT RUN'}
+${lab.selfCheckResults ? (lab.selfCheckResults.passed ? 'PASSED' : 'FAILED') : 'NOT RUN'}
 ${lab.selfCheckResults ? `Suite: ${lab.selfCheckResults.suiteId}` : ''}
 
 ## Completed Steps
@@ -245,7 +245,39 @@ ${lab.completedSteps.map(s => `- Step ${s + 1}`).join('\n')}
         return true;
     } catch (error) {
         console.error('Failed to export evidence capsule', error);
-        return false;
+        try {
+            const zip = new JSZip();
+            const warningPayload = {
+                schemaVersion: 1,
+                createdAt: new Date().toISOString(),
+                warnings: [{
+                    step: 'export',
+                    message: 'Export failed; generated recovery bundle instead.',
+                    error: error instanceof Error ? error.message : String(error),
+                }],
+            };
+            zip.file('warnings.json', JSON.stringify(warningPayload, null, 2));
+            zip.file('README.md', '# RedByte Export\n\nExport failed and produced a recovery bundle. See warnings.json for details.');
+
+            const blob = await zip.generateAsync({ type: 'blob' });
+            const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const safeName = `evidence-recovery-${ts}.rb-lab.zip`;
+
+            if (typeof document !== 'undefined') {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = safeName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+            return true;
+        } catch (fallbackError) {
+            console.error('Failed to export recovery bundle', fallbackError);
+            return false;
+        }
     }
 }
 
