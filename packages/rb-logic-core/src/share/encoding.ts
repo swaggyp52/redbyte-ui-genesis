@@ -140,7 +140,12 @@ export function decodeCircuit(encoded: string): Circuit {
 
     // Log warnings for potential issues
     if (validation.warnings.length > 0) {
-      console.warn('[Circuit] Validation warnings:', validation.warnings.join(', '));
+      const isTestEnv = (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
+        !!import.meta.env.VITEST ||
+        import.meta.env.MODE === 'test';
+      if (!isTestEnv) {
+        console.warn('[Circuit] Validation warnings:', validation.warnings.join(', '));
+      }
     }
 
     return circuit;

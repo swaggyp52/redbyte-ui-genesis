@@ -102,7 +102,11 @@ export function decodeCircuit(encoded) {
         }
         // Log warnings for potential issues
         if (validation.warnings.length > 0) {
-            console.warn('[Circuit] Validation warnings:', validation.warnings.join(', '));
+            const isTestEnv = (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
+                (typeof import.meta !== 'undefined' && import.meta.env?.VITEST);
+            if (!isTestEnv) {
+                console.warn('[Circuit] Validation warnings:', validation.warnings.join(', '));
+            }
         }
         return circuit;
     }

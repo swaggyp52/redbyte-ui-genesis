@@ -49,7 +49,9 @@ export const useLabWorkflowStore = create<LabWorkflowState>()(
             setStep: (step) => set((state) => {
                 const currentIndex = STEP_ORDER.indexOf(state.currentStep);
                 const targetIndex = STEP_ORDER.indexOf(step);
-                const isTestEnv = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+                const isTestEnv = (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
+                    !!import.meta.env.VITEST ||
+                    import.meta.env.MODE === 'test';
 
                 // Allow moving backward freely
                 if (targetIndex < currentIndex) {

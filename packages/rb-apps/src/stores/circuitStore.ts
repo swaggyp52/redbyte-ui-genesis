@@ -176,7 +176,10 @@ function createCircuitStore() {
 
       // Dev-mode invariant: warn if engines not connected when mutating circuit
       if (import.meta.env.DEV) {
-        const isTestEnv = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+        const isTestEnv = (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
+          // Vite/Vitest expose this during unit tests
+          !!import.meta.env.VITEST ||
+          import.meta.env.MODE === 'test';
         if (!engine || !tickEngine) {
           if (!isTestEnv) {
             console.warn(
