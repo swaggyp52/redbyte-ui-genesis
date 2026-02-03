@@ -1,6 +1,6 @@
 # Documentation Index
 
-**Last Updated:** 2026-01-07
+**Last Updated:** 2026-02-03
 
 This file is your navigation hub for all documentation in the RedByte OS Genesis project.
 
@@ -72,6 +72,14 @@ This project follows these documentation principles:
 - Determinism definition in plain English
 - V1 scope and intent
 - Non-negotiable product statement
+
+#### [V1_STABILIZATION_ROADMAP.md](./V1_STABILIZATION_ROADMAP.md)
+**Purpose:** Phased roadmap for lab-ready v1.0 stabilization
+**Read this if:** You want the end-to-end stabilization plan across labs, simulation, hardware, UI, and CI
+**Contains:**
+- Phase-by-phase work breakdown
+- Testing and CI gates for preventing regressions
+- Cross-references to relevant specs and contracts
 
 #### [ARCHITECTURE.md](./ARCHITECTURE.md)
 **Purpose:** Deep dive into system architecture
@@ -323,5 +331,5 @@ Update documentation when you:
 
 ---
 
-*Last updated: 2026-01-07*
+*Last updated: 2026-02-03*
 *Maintained by: AI Agents + Connor Angiel*

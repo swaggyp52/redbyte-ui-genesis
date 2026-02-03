@@ -1,5 +1,11 @@
 import { SerialPort } from 'serialport';
 import { ReadlineParser } from '@serialport/parser-readline';
+const ARDUINO_PIN_ALIASES = {
+    LED0: 'D13',
+};
+const normalizeArduinoPin = (pinId) => {
+    return ARDUINO_PIN_ALIASES[pinId] ?? pinId;
+};
 export class ArduinoUnoBackend {
     options;
     port = null;
@@ -93,8 +99,12 @@ export class ArduinoUnoBackend {
             return;
         Object.entries(payload.pins).forEach(([pinId, value]) => {
             // Protocol: SET pinId value
-            this.port?.write(`SET ${pinId} ${value}\n`);
-            this.pinState[pinId] = value;
+            const normalizedPin = normalizeArduinoPin(pinId);
+            this.port?.write(`SET ${normalizedPin} ${value}\n`);
+            this.pinState[normalizedPin] = value;
+            if (normalizedPin !== pinId) {
+                this.pinState[pinId] = value;
+            }
         });
     }
     async getPins() {

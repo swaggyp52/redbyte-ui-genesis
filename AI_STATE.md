@@ -6687,6 +6687,58 @@ All TypeScript compilation errors systematically resolved across monorepo:
 
 ---
 
+## Change Log  2026-02-03 (Docs: V1 Stabilization Roadmap)
+
+**Roadmap Document**
+- Added a lab-ready v1.0 stabilization roadmap covering backend, simulation, hardware, UI reliability, testing/CI, and UX polish.
+- Included repo-local source references to canonical contracts/specs.
+
+**Docs Index**
+- Linked the roadmap from `docs/DOC_INDEX.md` and refreshed the index timestamp.
+
+**Files Updated**
+- docs/V1_STABILIZATION_ROADMAP.md
+- docs/DOC_INDEX.md
+
+**Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-03 (Docs: Roadmap Execution Tracker)
+
+**Tracker Blocks**
+- Added phase-level checkbox trackers (P1A-P1D + Phase 2-5 trackers) to turn the roadmap into an executable checklist with explicit gates.
+
+**Files Updated**
+- docs/V1_STABILIZATION_ROADMAP.md
+
+**Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-03 (Test Fixes: Invariants, Evidence Import, Arduino Pin Alias)
+
+**Contract Enforcement Tests**
+- Registered Submission Inspector invariants inside contract enforcement tests to avoid missing invariant registry errors.
+
+**Evidence Verification Tests**
+- Switched evidence hashing imports to static ESM in verifyEvidence tests to avoid CJS require failures in ESM test runtime.
+
+**Arduino Backend Mapping**
+- Normalized Arduino pin aliases so LED0 maps to D13 when issuing SET commands.
+
+**Files Updated**
+- packages/rb-apps/src/__tests__/contract-enforcement.test.tsx
+- packages/rb-apps/src/__tests__/contract-enforcement.test.js
+- packages/rb-apps/src/utils/__tests__/verifyEvidence.test.ts
+- packages/rb-apps/src/utils/__tests__/verifyEvidence.test.js
+- packages/rb-bridge-agent/src/backends/arduino-uno.ts
+- packages/rb-bridge-agent/src/backends/arduino-uno.js
+
+**Attribution**: Connor Angiel
+
+---
+
 ## Change Log 2026-02-02 (Phase 3.3: Import Workflow Integration Complete)
 
 **Session Goal**: Implement Phase 3.3 (Import Workflow Implementation) with comprehensive state management and cross-app synchronization for Logic Playground and Virtual Lab.

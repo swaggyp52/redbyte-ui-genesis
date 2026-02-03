@@ -1,4 +1,5 @@
 import { verifyEvidenceBundle } from '../verifyEvidence';
+import { canonicalizeEvidence, hashEvidence } from '../evidenceExport';
 describe('Evidence Verification', () => {
     const validEvidence = {
         schemaVersion: '1.0',
@@ -13,7 +14,6 @@ describe('Evidence Verification', () => {
     };
     it('passes verification for valid evidence', () => {
         // Compute correct hash
-        const { canonicalizeEvidence, hashEvidence } = require('../evidenceExport');
         const { integrity, ...withoutIntegrity } = validEvidence;
         const canonical = canonicalizeEvidence(withoutIntegrity);
         const { hash, bytes } = hashEvidence(canonical);
@@ -22,7 +22,6 @@ describe('Evidence Verification', () => {
         expect(verifyEvidenceBundle(validEvidence).status).toBe('PASS');
     });
     it('fails verification for tampered evidence', () => {
-        const { canonicalizeEvidence, hashEvidence } = require('../evidenceExport');
         const { integrity, ...withoutIntegrity } = validEvidence;
         const canonical = canonicalizeEvidence(withoutIntegrity);
         const { hash, bytes } = hashEvidence(canonical);

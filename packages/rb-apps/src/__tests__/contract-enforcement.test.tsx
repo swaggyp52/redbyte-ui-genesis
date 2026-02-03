@@ -2,14 +2,20 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { SerializedCircuitV1 } from '@redbyte/rb-logic-core';
 import { createFile, updateFile } from '../stores/filesStore';
-import { assertAppOutput, getAppInvariants } from '../utils/appInvariants';
+import { assertAppOutput, getAppInvariants, registerAppInvariants } from '../utils/appInvariants';
 import { recordAuditTransition } from '../utils/audit';
 import { TerminalApp } from '../apps/TerminalApp';
 
 const BASE_CIRCUIT: SerializedCircuitV1 = { version: 'v1', nodes: [], connections: [] };
+const INSPECTOR_INVARIANTS = {
+  reads: ['bundle', 'lab_templates'],
+  writes: ['replay_cursor'],
+  outputs: ['grading-report.json'],
+};
 
 beforeEach(() => {
   localStorage.clear();
+  registerAppInvariants('submission-inspector', INSPECTOR_INVARIANTS);
 });
 
 afterEach(() => {

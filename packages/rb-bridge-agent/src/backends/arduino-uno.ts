@@ -8,6 +8,14 @@ export interface ArduinoOptions {
     baud?: number;
 }
 
+const ARDUINO_PIN_ALIASES: Record<string, string> = {
+    LED0: 'D13',
+};
+
+const normalizeArduinoPin = (pinId: string): string => {
+    return ARDUINO_PIN_ALIASES[pinId] ?? pinId;
+};
+
 export class ArduinoUnoBackend {
     private port: SerialPort | null = null;
     private parser: ReadlineParser | null = null;
@@ -105,8 +113,12 @@ export class ArduinoUnoBackend {
 
         Object.entries(payload.pins).forEach(([pinId, value]) => {
             // Protocol: SET pinId value
-            this.port?.write(`SET ${pinId} ${value}\n`);
-            this.pinState[pinId] = value;
+            const normalizedPin = normalizeArduinoPin(pinId);
+            this.port?.write(`SET ${normalizedPin} ${value}\n`);
+            this.pinState[normalizedPin] = value;
+            if (normalizedPin !== pinId) {
+                this.pinState[pinId] = value;
+            }
         });
     }
 
