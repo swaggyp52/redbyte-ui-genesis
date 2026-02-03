@@ -1,4 +1,4 @@
-import { canonicalizeEvidence, hashEvidence } from '../utils/evidenceExport';
+import { canonicalizeEvidence, hashEvidence } from '../evidenceExport';
 
 describe('Evidence Export - Determinism', () => {
   it('canonicalizes objects with shuffled keys to the same JSON', () => {

@@ -24,7 +24,15 @@ describe('Evidence Verification', () => {
     expect(verifyEvidenceBundle(validEvidence).status).toBe('PASS');
   });
   it('fails verification for tampered evidence', () => {
-    const tampered = { ...validEvidence, app: { version: 'tampered' } };
+    const { canonicalizeEvidence, hashEvidence } = require('../evidenceExport');
+    const { integrity, ...withoutIntegrity } = validEvidence;
+    const canonical = canonicalizeEvidence(withoutIntegrity);
+    const { hash, bytes } = hashEvidence(canonical);
+    const seeded = {
+      ...validEvidence,
+      integrity: { ...validEvidence.integrity, integrityHash: hash, hashedBytes: bytes },
+    };
+    const tampered = { ...seeded, app: { version: 'tampered' } };
     expect(verifyEvidenceBundle(tampered as any).status).toBe('FAIL');
   });
   it('errors for unsupported schemaVersion', () => {
