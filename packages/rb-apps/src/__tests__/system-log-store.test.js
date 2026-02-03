@@ -15,9 +15,10 @@ describe('System log store', () => {
             source: 'test',
             message: 'hello',
         });
-        expect(store.entries[0].id).toBe(entry.id);
-        expect(store.entries[0].message).toBe('hello');
-        expect(store.lastReadSeq).toBe(0);
+        const afterAdd = useSystemLogStore.getState();
+        expect(afterAdd.entries[0].id).toBe(entry.id);
+        expect(afterAdd.entries[0].message).toBe('hello');
+        expect(afterAdd.lastReadSeq).toBe(0);
         store.markRead();
         expect(useSystemLogStore.getState().lastReadSeq).toBe(entry.seq);
     });
