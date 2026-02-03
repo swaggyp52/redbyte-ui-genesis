@@ -1,0 +1,79 @@
+// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Use without permission prohibited.
+// Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+import { CircuitEngine } from '@redbyte/rb-logic-core';
+import { toLegacyCircuit } from '../adapters/circuitAdapter';
+export async function verifyBoardIO(project, checkpoint) {
+    const { inputSwitches, expectedLEDs, ticksToStabilize = 1 } = checkpoint.spec;
+    if (!project.boardMap) {
+        return {
+            passed: false,
+            headline: '✗ No board mapping configured',
+            failures: [{ message: 'Board profile must be set before verifying board I/O' }],
+            evidence: { expected: expectedLEDs, actual: [] },
+        };
+    }
+    // Convert CircuitV1 to legacy circuit for simulation (temporary during migration)
+    const legacyCircuit = toLegacyCircuit(project.circuit);
+    const engine = new CircuitEngine(legacyCircuit);
+    // Apply input switches to mapped signals
+    const switchSignals = Object.entries(project.boardMap.signalToPinMap)
+        .filter(([_, pin]) => pin.startsWith('SW'))
+        .sort((a, b) => a[1].localeCompare(b[1])); // Sort by pin name (SW0, SW1, ...)
+    for (let i = 0; i < inputSwitches.length; i++) {
+        const switchValue = inputSwitches[i] ? 1 : 0;
+        const [signal] = switchSignals[i] ?? [];
+        if (signal) {
+            const node = project.circuit.nodes.find((n) => n.label === signal || n.id === signal);
+            if (node) {
+                engine.setNodeValue(node.id, switchValue);
+            }
+        }
+    }
+    // Step simulation to stabilize
+    for (let i = 0; i < ticksToStabilize; i++) {
+        engine.tick();
+    }
+    // Read LED outputs from mapped signals
+    const ledSignals = Object.entries(project.boardMap.signalToPinMap)
+        .filter(([_, pin]) => pin.startsWith('LED'))
+        .sort((a, b) => a[1].localeCompare(b[1])); // Sort by pin name (LED0, LED1, ...)
+    const actualLEDs = [];
+    for (const [signal] of ledSignals) {
+        const node = project.circuit.nodes.find((n) => n.label === signal || n.id === signal);
+        if (node) {
+            const value = engine.getNodeValue(node.id, 'Q') ?? 0;
+            actualLEDs.push(value > 0);
+        }
+        else {
+            actualLEDs.push(false);
+        }
+    }
+    // Compare expected vs actual
+    const failures = [];
+    for (let i = 0; i < Math.max(expectedLEDs.length, actualLEDs.length); i++) {
+        const expected = expectedLEDs[i] ?? false;
+        const actual = actualLEDs[i] ?? false;
+        if (expected !== actual) {
+            const ledPin = ledSignals[i]?.[1] ?? `LED${i}`;
+            failures.push({
+                message: `${ledPin}: expected ${expected ? 'ON' : 'OFF'}, got ${actual ? 'ON' : 'OFF'}`,
+                jumpTarget: { type: 'pin', pin: ledPin },
+            });
+        }
+    }
+    const passed = failures.length === 0;
+    const headline = passed
+        ? '✓ Board I/O matches'
+        : `✗ ${failures.length} LED mismatch${failures.length > 1 ? 'es' : ''}`;
+    return {
+        passed,
+        headline,
+        failures,
+        evidence: {
+            expected: expectedLEDs,
+            actual: actualLEDs,
+            diff: failures.map((f) => f.message),
+        },
+    };
+}

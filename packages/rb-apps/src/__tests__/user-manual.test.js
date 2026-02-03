@@ -1,0 +1,27 @@
+import { jsx as _jsx } from "react/jsx-runtime";
+// Copyright Ac 2025 Connor Angiel - RedByte OS Genesis
+// Use without permission prohibited.
+// Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { UserManualApp } from '../apps/UserManualApp';
+const UserManualComponent = UserManualApp.component;
+describe('UserManualApp', () => {
+    it('renders a known manual heading', () => {
+        render(_jsx(UserManualComponent, {}));
+        // Use getAllByRole since "What RedByte Is" appears in both
+        // "1. What RedByte Is" and "13. What RedByte Is Not"
+        const headings = screen.getAllByRole('heading', { name: /What RedByte Is/i });
+        expect(headings.length).toBeGreaterThan(0);
+        expect(headings[0]).toBeInTheDocument();
+    });
+    it('opens a demo link with confirmation', async () => {
+        const user = userEvent.setup();
+        const onOpenApp = vi.fn();
+        render(_jsx(UserManualComponent, { onOpenApp: onOpenApp }));
+        await user.click(screen.getByRole('link', { name: /Open Demo: NOT Gate/i }));
+        await user.click(screen.getByRole('button', { name: /Load Demo/i }));
+        expect(onOpenApp).toHaveBeenCalledWith('logic-playground', { initialExampleId: '15_not-gate' });
+    });
+});

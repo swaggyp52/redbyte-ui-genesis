@@ -1,0 +1,2 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+export const PowerButtonIcon = (props) => (_jsxs("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.7, ...props, children: [_jsx("line", { x1: "12", y1: "3", x2: "12", y2: "12", strokeLinecap: "round" }), _jsx("path", { d: "M7 5.5a8 8 0 1 0 10 0", strokeLinecap: "round", strokeLinejoin: "round", fill: "none" }), _jsx("circle", { cx: "12", cy: "12", r: "9", strokeOpacity: 0.4 })] }));

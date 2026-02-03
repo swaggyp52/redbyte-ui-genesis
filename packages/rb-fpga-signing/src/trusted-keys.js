@@ -1,0 +1,4 @@
+export const TRUSTED_PUBLIC_KEYS_HEX = [
+    // TODO: Replace with instructor public keys.
+    "0000000000000000000000000000000000000000000000000000000000000000",
+];

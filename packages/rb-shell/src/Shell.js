@@ -1,0 +1,1905 @@
+import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
+// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Use without permission prohibited.
+// Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+import React, { useCallback, useEffect, useState, useRef, useMemo, Suspense } from 'react';
+import { Desktop } from './Desktop';
+import { Dock } from './Dock';
+import { Taskbar } from './Taskbar';
+import { ShellWindow } from './ShellWindow';
+import { applyTheme } from '@redbyte/rb-theme';
+import { isPerfDebugEnabled, startPerfSummaryLogger, startUiTickSampler, useSettingsStore } from '@redbyte/rb-utils';
+import { getApp, useFileSystemStore, getFileActionTargets, isFileActionEligible, resolveDefaultTarget, OpenWithModal, useSystemLogStore, logSystemEvent, installErrorHandlers, } from '@redbyte/rb-apps';
+import { useWindowStore, loadSession, resolveTargetWindowId } from '@redbyte/rb-windowing';
+import { useWorkspaceStore, loadWorkspaces } from './workspaceStore';
+import { executeMacro } from './macros/executeMacro';
+import { useMacroStore } from './macros/macroStore';
+import BootScreen from './BootScreen';
+import { Modal, ToastContainer, toast } from '@redbyte/rb-primitives';
+import { CommandPalette } from './CommandPalette';
+import { SystemSearch } from './SystemSearch';
+import { WorkspaceSwitcher, MacroRunner, WindowSwitcher } from './modals';
+import { NarrativeOverlay } from './narrative/NarrativeOverlay';
+import { getVersionString } from './version';
+import { getDesktopBounds, getMaximizedBounds } from './layout/layout-constants';
+import './styles.css';
+import { PerfHud } from './debug/PerfHud';
+import { HitTestDebugHUD } from './debug/HitTestDebugHUD';
+import { RenderStormMonitor } from './debug/RenderStormMonitor';
+import { DeadZoneScanner } from './debug/DeadZoneScanner';
+import { OverlayDebugHUD } from './debug/OverlayDebugHUD';
+// Determinism imports (core to RedByte, not dev-only)
+import { DeterminismPanel, useDeterminismRecorder } from './dev';
+import { TruthBar } from './TruthBar';
+import { OnboardingModal } from './OnboardingModal';
+import { AboutModal } from './AboutModal';
+import { ExamplePicker } from './ExamplePicker';
+import { BitstreamProvenanceModal } from './BitstreamProvenanceModal';
+import { loadExampleAsProject } from '@redbyte/rb-apps';
+import { exportEvidenceCapsule, importEvidenceCapsule, useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
+import { serialize, CircuitEngine } from '@redbyte/rb-logic-core';
+import { TopBar } from './TopBar';
+import { RecoveryPrompt } from './RecoveryPrompt';
+import { checkForRecovery, clearJournal, unregisterAutosave } from './persistenceStore';
+import { HomeScreen } from './HomeScreen';
+import { RecentLogWidget } from './RecentLogWidget';
+import { trackWindowOpen, runWindowCleanup, startLeakMonitor } from './leakGuard';
+/** Per-app error boundary: prevents one crashed app from tearing down the whole shell. */
+class AppErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false };
+    }
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+    componentDidCatch(error, info) {
+        const stack = info.componentStack ?? '';
+        this.setState({ errorStack: stack });
+        console.error(`[Shell] App "${this.props.appId}" crashed:`, error, stack);
+        logSystemEvent({
+            level: 'error',
+            source: this.props.appId,
+            message: `App crashed: ${error.message}`,
+            data: {
+                windowId: this.props.windowId,
+                stack: error.stack?.slice(0, 500),
+                componentStack: stack.slice(0, 500),
+            },
+        });
+    }
+    handleExportState = () => {
+        const report = {
+            appId: this.props.appId,
+            windowId: this.props.windowId,
+            timestamp: new Date().toISOString(),
+            error: this.state.error?.message,
+            stack: this.state.error?.stack,
+            componentStack: this.state.errorStack,
+        };
+        const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `crash-report-${this.props.appId}-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+    render() {
+        if (this.state.hasError) {
+            const btnBase = {
+                padding: '0.4rem 1rem', border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.75rem',
+            };
+            return (_jsxs("div", { style: {
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    height: '100%', background: 'var(--rb-surface-0, #0a0a0a)', color: 'var(--rb-text, #e2e8f0)',
+                    padding: '2rem', textAlign: 'center',
+                }, children: [_jsx("div", { style: { fontSize: '1.25rem', fontWeight: 700, color: 'var(--rb-danger, #ef4444)', marginBottom: '0.5rem' }, children: "App Crashed" }), _jsx("div", { style: { fontSize: '0.75rem', color: 'var(--rb-text-2, #64748b)', marginBottom: '0.25rem' }, children: _jsx("strong", { children: this.props.appId }) }), _jsx("div", { style: { fontSize: '0.75rem', color: 'var(--rb-text-3, #64748b)', marginBottom: '1rem', maxWidth: 300 }, children: this.state.error?.message || 'Unknown error' }), _jsxs("div", { style: { display: 'flex', gap: '0.5rem' }, children: [_jsx("button", { type: "button", onClick: () => this.setState({ hasError: false, error: undefined, errorStack: undefined }), style: { ...btnBase, background: 'var(--rb-surface-2, #1e293b)', color: 'var(--rb-text, #e2e8f0)' }, children: "Retry" }), _jsx("button", { type: "button", onClick: this.handleExportState, style: { ...btnBase, background: 'transparent', color: 'var(--rb-text-2, #94a3b8)' }, children: "Export Report" }), _jsx("button", { type: "button", onClick: this.props.onClose, style: { ...btnBase, background: 'var(--rb-danger-bg, rgba(239,68,68,0.12))', color: 'var(--rb-danger, #ef4444)', borderColor: 'var(--rb-danger-border, rgba(239,68,68,0.3))' }, children: "Close Window" })] })] }));
+        }
+        return this.props.children;
+    }
+}
+/** Loading fallback shown inside Suspense when lazy-loaded app components are loading. */
+const WindowLoadingFallback = () => (_jsxs("div", { style: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        background: 'var(--rb-surface-0)',
+        color: 'var(--rb-text-2)',
+        gap: '12px',
+    }, children: [_jsx("div", { style: {
+                width: 24,
+                height: 24,
+                border: '2px solid var(--rb-border)',
+                borderTopColor: 'var(--rb-accent)',
+                borderRadius: '50%',
+                animation: 'spin 0.8s linear infinite',
+            } }), _jsx("span", { style: { fontSize: '12px', fontWeight: 500 }, children: "Loading..." }), _jsx("style", { children: `@keyframes spin { to { transform: rotate(360deg); } }` })] }));
+export const Shell = () => {
+    const BOOT_STORAGE_KEY = 'rb:shell:booted:v1';
+    const [booted, setBooted] = useState(() => {
+        if (typeof window === 'undefined')
+            return true;
+        return localStorage.getItem(BOOT_STORAGE_KEY) === '1';
+    });
+    const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+    const [systemSearchOpen, setSystemSearchOpen] = useState(false);
+    const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false);
+    const [macroRunnerOpen, setMacroRunnerOpen] = useState(false);
+    const [windowSwitcherOpen, setWindowSwitcherOpen] = useState(false);
+    const [reproCheckOpen, setReproCheckOpen] = useState(false);
+    const [reproCheckReport, setReproCheckReport] = useState(null);
+    const [projectSummaryOpen, setProjectSummaryOpen] = useState(false);
+    const [projectSummaryReport, setProjectSummaryReport] = useState(null);
+    const currentProjectRef = useRef(null);
+    const loadUnifiedProject = useUnifiedProjectStore((s) => s.loadProject);
+    const [showRecoveryPrompt, setShowRecoveryPrompt] = useState(() => {
+        return checkForRecovery().length > 0;
+    });
+    const [windowSwitcherPreviousFocus, setWindowSwitcherPreviousFocus] = useState(null);
+    const [openWithModalState, setOpenWithModalState] = useState(null);
+    const [determinismPanelOpen, setDeterminismPanelOpen] = useState(false);
+    const [onboardingModalOpen, setOnboardingModalOpen] = useState(false);
+    const [aboutModalOpen, setAboutModalOpen] = useState(false);
+    const [examplePickerOpen, setExamplePickerOpen] = useState(false);
+    const [bitstreamProvenanceOpen, setBitstreamProvenanceOpen] = useState(false);
+    const [bitstreamMetadata, setBitstreamMetadata] = useState(null);
+    const [showPerfHud, setShowPerfHud] = useState(() => isPerfDebugEnabled());
+    const [showJankHud, setShowJankHud] = useState(false);
+    const [showDeadZoneScanner, setShowDeadZoneScanner] = useState(false);
+    const [showOverlayDebug, setShowOverlayDebug] = useState(false);
+    const [snapPreview, setSnapPreview] = useState(null);
+    const lastSettingsRef = useRef(null);
+    const hasShownWelcomeRef = useRef(false);
+    const hasInitializedRef = useRef(false);
+    const windowsRaw = useWindowStore((s) => s.windows);
+    const windows = useMemo(() => {
+        return [...windowsRaw].sort((a, b) => a.zIndex - b.zIndex);
+    }, [windowsRaw]);
+    const runningAppIds = useMemo(() => {
+        const ids = windows.filter((w) => w.mode !== 'minimized').map((w) => w.contentId);
+        return Array.from(new Set(ids));
+    }, [windows]);
+    const systemLogEntries = useSystemLogStore((s) => s.entries);
+    const systemLogLastRead = useSystemLogStore((s) => s.lastReadSeq);
+    const unreadLogCount = useMemo(() => systemLogEntries.filter((entry) => entry.seq > systemLogLastRead).length, [systemLogEntries, systemLogLastRead]);
+    const createWindow = useWindowStore((s) => s.createWindow);
+    const closeWindow = useWindowStore((s) => s.closeWindow);
+    const moveWindow = useWindowStore((s) => s.moveWindow);
+    const resizeWindow = useWindowStore((s) => s.resizeWindow);
+    const focusWindow = useWindowStore((s) => s.focusWindow);
+    const toggleMinimize = useWindowStore((s) => s.toggleMinimize);
+    const toggleMaximize = useWindowStore((s) => s.toggleMaximize);
+    const restoreWindow = useWindowStore((s) => s.restoreWindow);
+    const snapWindow = useWindowStore((s) => s.snapWindow);
+    const centerWindow = useWindowStore((s) => s.centerWindow);
+    const restoreSession = useWindowStore((s) => s.restoreSession);
+    const [bindings, setBindings] = useState({});
+    const [recentAppIds, setRecentAppIds] = useState([]);
+    // Determinism recorder (core to RedByte - determinism is the physics, not a debug feature)
+    const isDemoMode = import.meta.env.VITE_PUBLIC_DEMO === 'true';
+    const determinismRecorder = useDeterminismRecorder();
+    const [pinnedAppIds, setPinnedAppIds] = useState(() => {
+        if (typeof localStorage === 'undefined')
+            return ['start-here'];
+        try {
+            const raw = localStorage.getItem('rb:shell:pinnedApps');
+            // Demo mode: Auto-pin demo apps if no pins exist
+            if (!raw && isDemoMode) {
+                const demoApps = ['start-here', 'logic-playground', 'ece-lab', 'submission-inspector'];
+                localStorage.setItem('rb:shell:pinnedApps', JSON.stringify(demoApps));
+                return demoApps;
+            }
+            if (!raw)
+                return ['start-here'];
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                // Always ensure 'start-here' is first unless explicitly removed
+                const filtered = parsed.filter((id) => typeof id === 'string' && id !== 'start-here');
+                return ['start-here', ...filtered];
+            }
+        }
+        catch { }
+        return ['start-here'];
+    });
+    const themeVariant = useSettingsStore((s) => s.themeVariant);
+    const density = useSettingsStore((s) => s.density);
+    const reduceMotion = useSettingsStore((s) => s.reduceMotion);
+    const snapAssist = useSettingsStore((s) => s.snapAssist);
+    const wallpaperId = useSettingsStore((s) => s.wallpaperId);
+    const hasSettings = useMemo(() => Boolean(getApp('settings')), []);
+    const recordRecentApp = useCallback((appId) => {
+        if (appId === 'launcher')
+            return;
+        setRecentAppIds((prev) => {
+            const next = [appId, ...prev.filter((id) => id !== appId)];
+            return next.slice(0, 5);
+        });
+    }, []);
+    const handleVerifyReproducibility = useCallback(() => {
+        const project = currentProjectRef.current;
+        if (!project) {
+            toast.error('No project available to verify');
+            return;
+        }
+        const checks = [];
+        // Schema version check
+        checks.push({
+            id: 'schema',
+            label: 'Schema version is supported',
+            passed: project.schemaVersion === '1.0',
+            details: `schemaVersion=${project.schemaVersion}`,
+        });
+        // Circuit node reference check
+        const nodeIds = new Set(project.circuit.nodes.map((n) => n.id));
+        const invalidConnections = project.circuit.connections.filter((c) => !nodeIds.has(c.fromNodeId) || !nodeIds.has(c.toNodeId));
+        checks.push({
+            id: 'circuit',
+            label: 'Circuit references are valid',
+            passed: invalidConnections.length === 0,
+            details: invalidConnections.length ? `${invalidConnections.length} invalid connections` : 'ok',
+        });
+        // Probe definitions check
+        const invalidProbes = project.simulation.probes.filter((p) => !p.id || !p.signal);
+        checks.push({
+            id: 'probes',
+            label: 'Probes are well-formed',
+            passed: invalidProbes.length === 0,
+            details: invalidProbes.length ? `${invalidProbes.length} invalid probes` : 'ok',
+        });
+        // IO mapping references
+        const ioEntries = [
+            ...(project.ioMapping?.inputs ?? []),
+            ...(project.ioMapping?.outputs ?? []),
+        ];
+        const invalidIo = ioEntries.filter((entry) => !nodeIds.has(entry.nodeId) || !entry.port);
+        const hasBoardSignals = Object.keys(project.boardMap?.signalToPinMap ?? {}).length > 0;
+        const missingIoMapping = hasBoardSignals && ioEntries.length === 0;
+        checks.push({
+            id: 'io-mapping',
+            label: 'IO mapping references valid nodes/ports',
+            passed: invalidIo.length === 0 && !missingIoMapping,
+            details: missingIoMapping
+                ? 'Board mappings exist but ioMapping is empty'
+                : invalidIo.length
+                    ? `${invalidIo.length} invalid mappings`
+                    : 'ok',
+        });
+        // Recordings check (structure only)
+        const recordings = project.recordings ?? [];
+        const invalidRecordings = recordings.filter((r) => !Array.isArray(r.events) || r.events.length === 0);
+        checks.push({
+            id: 'recordings',
+            label: 'Recordings are structurally valid',
+            passed: invalidRecordings.length === 0,
+            details: invalidRecordings.length ? `${invalidRecordings.length} invalid recordings` : 'ok',
+        });
+        // Replay verification (best-effort)
+        if (recordings.length > 0 && invalidRecordings.length === 0) {
+            const events = recordings[0].events ?? [];
+            const runRecord = events.find((e) => e?.kind === 'runRecord')?.data ?? events[0];
+            const proofPack = events.find((e) => e?.kind === 'proofPack')?.data;
+            if (proofPack?.runRecord && runRecord?.circuitDigest && proofPack.runRecord.circuitDigest) {
+                const matches = proofPack.runRecord.circuitDigest === runRecord.circuitDigest;
+                checks.push({
+                    id: 'proof-pack',
+                    label: 'Proof pack matches recording',
+                    passed: matches,
+                    details: matches ? 'ok' : 'Circuit digest mismatch',
+                });
+            }
+            if (runRecord?.circuitSnapshot && Array.isArray(runRecord.trace) && Array.isArray(runRecord.probes)) {
+                try {
+                    const engine = new CircuitEngine(runRecord.circuitSnapshot);
+                    const expectedByTick = new Map();
+                    runRecord.trace.forEach((sample) => expectedByTick.set(sample.tick, sample));
+                    const stimulusByTick = new Map();
+                    (runRecord.stimulus || []).forEach((event) => {
+                        const list = stimulusByTick.get(event.tick) ?? [];
+                        list.push(event);
+                        stimulusByTick.set(event.tick, list);
+                    });
+                    const maxTick = runRecord.summary?.tickCount ?? runRecord.trace[runRecord.trace.length - 1]?.tick ?? 0;
+                    let mismatchTick = null;
+                    for (let tick = 0; tick <= maxTick; tick += 1) {
+                        const events = stimulusByTick.get(tick) ?? [];
+                        events.forEach((event) => {
+                            if (event.type === 'input_toggled') {
+                                const prevState = engine.getNodeState(event.nodeId) || {};
+                                engine.setNodeState(event.nodeId, { ...prevState, isOn: event.value });
+                            }
+                        });
+                        engine.tick();
+                        const expected = expectedByTick.get(tick);
+                        if (!expected)
+                            continue;
+                        const signals = engine.getAllSignals();
+                        const actualValues = {};
+                        runRecord.probes.forEach((probe) => {
+                            const key = `${probe.nodeId}.${probe.portName}`;
+                            const value = signals.get(key) ?? 0;
+                            actualValues[probe.id] = value;
+                        });
+                        const mismatched = Object.keys(actualValues).some((probeId) => {
+                            const expectedValue = expected.values?.[probeId];
+                            if (expectedValue === undefined)
+                                return false;
+                            return expectedValue !== actualValues[probeId];
+                        });
+                        if (mismatched) {
+                            mismatchTick = tick;
+                            break;
+                        }
+                    }
+                    checks.push({
+                        id: 'replay',
+                        label: 'Replay verification matches recorded trace',
+                        passed: mismatchTick === null,
+                        details: mismatchTick === null ? 'ok' : `Mismatch at tick ${mismatchTick}`,
+                    });
+                }
+                catch (error) {
+                    checks.push({
+                        id: 'replay',
+                        label: 'Replay verification matches recorded trace',
+                        passed: false,
+                        details: error instanceof Error ? error.message : 'Replay failed',
+                    });
+                }
+            }
+            else {
+                checks.push({
+                    id: 'replay',
+                    label: 'Replay verification matches recorded trace',
+                    passed: false,
+                    details: 'Recording missing trace/probes data',
+                });
+            }
+        }
+        const passed = checks.every((c) => c.passed);
+        setReproCheckReport({ passed, checks });
+        setReproCheckOpen(true);
+    }, []);
+    const handleProjectSummary = useCallback(() => {
+        const project = currentProjectRef.current;
+        if (!project) {
+            toast.error('No project available');
+            return;
+        }
+        const boardSignals = Object.keys(project.boardMap?.signalToPinMap ?? {}).length;
+        const ioInputs = project.ioMapping?.inputs?.length ?? 0;
+        const ioOutputs = project.ioMapping?.outputs?.length ?? 0;
+        const recordings = project.recordings ?? [];
+        const recordingEvents = recordings.reduce((sum, r) => sum + (r.eventCount ?? r.events?.length ?? 0), 0);
+        const items = [
+            { id: 'name', label: 'Name', value: project.name },
+            { id: 'projectId', label: 'Project ID', value: project.projectId },
+            { id: 'schema', label: 'Schema Version', value: project.schemaVersion },
+            { id: 'created', label: 'Created', value: project.createdAt },
+            { id: 'updated', label: 'Updated', value: project.updatedAt },
+            { id: 'nodes', label: 'Circuit Nodes', value: String(project.circuit.nodes.length) },
+            { id: 'connections', label: 'Connections', value: String(project.circuit.connections.length) },
+            { id: 'customChips', label: 'Custom Chips', value: String(project.circuit.customChips?.length ?? 0) },
+            { id: 'probes', label: 'Probes', value: String(project.simulation.probes.length) },
+            { id: 'breakpoints', label: 'Breakpoints', value: String(project.simulation.breakpoints?.length ?? 0) },
+            { id: 'boardSignals', label: 'Board Mappings', value: String(boardSignals) },
+            { id: 'ioMapping', label: 'IO Mapping', value: `${ioInputs} inputs / ${ioOutputs} outputs` },
+            { id: 'recordings', label: 'Recordings', value: `${recordings.length} runs / ${recordingEvents} events` },
+            { id: 'evidenceActions', label: 'Evidence Actions', value: String(project.evidence.actions.length) },
+            { id: 'evidenceSnapshots', label: 'Evidence Snapshots', value: String(project.evidence.snapshots.length) },
+        ];
+        const warnings = [];
+        if (project.schemaVersion !== '1.0') {
+            warnings.push(`Unsupported schema version: ${project.schemaVersion}`);
+        }
+        if (boardSignals > 0 && ioInputs + ioOutputs === 0) {
+            warnings.push('Board mappings exist but IO mapping is empty');
+        }
+        if (project.simulation.probes.length === 0) {
+            warnings.push('No probes configured (waveforms will be empty)');
+        }
+        setProjectSummaryReport({
+            title: project.name || 'Project Summary',
+            items,
+            warnings,
+        });
+        setProjectSummaryOpen(true);
+    }, []);
+    const togglePinnedAppId = useCallback((appId) => {
+        if (appId === 'launcher')
+            return;
+        setPinnedAppIds((prev) => {
+            const exists = prev.includes(appId);
+            const next = exists ? prev.filter((id) => id !== appId) : [appId, ...prev];
+            try {
+                localStorage.setItem('rb:shell:pinnedApps', JSON.stringify(next));
+            }
+            catch { }
+            return next;
+        });
+    }, []);
+    const openDeterminismPanel = useCallback(() => setDeterminismPanelOpen(true), []);
+    const handleSnapPreviewChange = useCallback((windowId, target) => {
+        setSnapPreview((prev) => {
+            if (!target) {
+                return prev?.windowId === windowId ? null : prev;
+            }
+            if (prev?.windowId === windowId && prev.target === target)
+                return prev;
+            return { windowId, target };
+        });
+    }, []);
+    const handleSnapCommit = useCallback((windowId, target) => {
+        const desktopBounds = getDesktopBounds();
+        if (target === 'maximize') {
+            toggleMaximize(windowId);
+        }
+        else {
+            snapWindow(windowId, target, desktopBounds);
+        }
+        logSystemEvent({
+            level: 'action',
+            source: 'shell',
+            message: 'Window snapped',
+            data: { windowId, target },
+        });
+    }, [snapWindow, toggleMaximize]);
+    const handleMoveEnd = useCallback((windowId, bounds) => {
+        logSystemEvent({
+            level: 'action',
+            source: 'shell',
+            message: 'Window moved',
+            data: { windowId, bounds },
+        });
+    }, []);
+    const handleResizeEnd = useCallback((windowId, bounds) => {
+        logSystemEvent({
+            level: 'action',
+            source: 'shell',
+            message: 'Window resized',
+            data: { windowId, bounds },
+        });
+    }, []);
+    // Install global error handlers (unhandled exceptions + rejections)
+    useEffect(() => {
+        const cleanupErrors = installErrorHandlers();
+        const cleanupLeaks = import.meta.env.DEV ? startLeakMonitor() : () => { };
+        return () => {
+            cleanupErrors();
+            cleanupLeaks();
+        };
+    }, []);
+    useEffect(() => {
+        if (typeof document !== 'undefined') {
+            applyTheme(document.documentElement, themeVariant);
+            document.documentElement.setAttribute('data-rb-density', density);
+            document.documentElement.setAttribute('data-rb-motion', reduceMotion ? 'reduced' : 'full');
+        }
+    }, [themeVariant, density, reduceMotion, snapAssist]);
+    useEffect(() => {
+        const current = {
+            themeVariant: themeVariant,
+            density: density,
+            reduceMotion: reduceMotion,
+            snapAssist: snapAssist,
+        };
+        if (!lastSettingsRef.current) {
+            lastSettingsRef.current = current;
+            return;
+        }
+        if (lastSettingsRef.current.themeVariant !== current.themeVariant ||
+            lastSettingsRef.current.density !== current.density ||
+            lastSettingsRef.current.reduceMotion !== current.reduceMotion ||
+            lastSettingsRef.current.snapAssist !== current.snapAssist) {
+            logSystemEvent({
+                level: 'action',
+                source: 'settings',
+                message: 'Settings updated',
+                data: current,
+            });
+            lastSettingsRef.current = current;
+        }
+    }, [themeVariant, density, reduceMotion]);
+    // Workspace/Session restore on mount
+    useEffect(() => {
+        if (!booted)
+            return;
+        // Check for active workspace first
+        const workspaceData = loadWorkspaces();
+        let snapshot = null;
+        if (workspaceData?.activeWorkspaceId) {
+            const workspace = workspaceData.workspaces.find((w) => w.id === workspaceData.activeWorkspaceId);
+            if (workspace) {
+                snapshot = workspace.snapshot;
+            }
+        }
+        // Fall back to session restore if no active workspace
+        if (!snapshot) {
+            const session = loadSession();
+            if (session) {
+                snapshot = session;
+            }
+        }
+        if (!snapshot)
+            return;
+        // Filter out unknown apps and Launcher
+        const validWindows = snapshot.windows.filter((w) => {
+            if (w.contentId === 'launcher')
+                return false;
+            const app = getApp(w.contentId);
+            return Boolean(app);
+        });
+        if (validWindows.length === 0)
+            return;
+        // Restore session to store
+        restoreSession(validWindows, snapshot.nextZIndex);
+        // Bind all restored windows
+        const newBindings = {};
+        validWindows.forEach((w) => {
+            newBindings[w.id] = { appId: w.contentId };
+        });
+        setBindings(newBindings);
+        // Show autosave recovery toast (demo mode only)
+        if (isDemoMode) {
+            toast.success({
+                title: 'Session Restored',
+                message: 'Recovered your last session',
+                duration: 8000,
+                actions: [
+                    {
+                        label: 'Clear',
+                        onClick: () => {
+                            // Close all restored windows
+                            validWindows.forEach((w) => {
+                                closeWindow(w.id);
+                            });
+                            // Clear bindings
+                            setBindings({});
+                        },
+                    },
+                ],
+            });
+        }
+    }, [booted, restoreSession, isDemoMode, closeWindow]);
+    const openWindow = useCallback((appId, props) => {
+        const app = getApp(appId);
+        if (!app) {
+            logSystemEvent({
+                level: 'error',
+                source: 'shell',
+                message: 'App not found',
+                data: { appId },
+            });
+            return null;
+        }
+        recordRecentApp(appId);
+        if (app.manifest.singleton) {
+            const existing = windows.find((w) => w.contentId === appId);
+            if (existing) {
+                if (existing.mode === 'minimized') {
+                    restoreWindow(existing.id);
+                }
+                focusWindow(existing.id);
+                setBindings((prev) => ({ ...prev, [existing.id]: { appId, props } }));
+                logSystemEvent({
+                    level: 'action',
+                    source: 'shell',
+                    message: 'Window focused',
+                    data: { appId, windowId: existing.id, mode: existing.mode },
+                });
+                return existing.id;
+            }
+        }
+        const state = createWindow({
+            title: app.manifest.name,
+            width: app.manifest.defaultSize?.width,
+            height: app.manifest.defaultSize?.height,
+            contentId: app.manifest.id,
+        });
+        trackWindowOpen(state.id);
+        focusWindow(state.id);
+        setBindings((prev) => ({ ...prev, [state.id]: { appId, props } }));
+        logSystemEvent({
+            level: 'action',
+            source: 'shell',
+            message: 'Window opened',
+            data: { appId, windowId: state.id },
+        });
+        return state.id;
+    }, [createWindow, focusWindow, recordRecentApp, windows, restoreWindow]);
+    // Helper callbacks that depend on openWindow
+    const openLog = useCallback(() => openWindow('system-log'), [openWindow]);
+    const openLauncher = useCallback(() => openWindow('launcher'), [openWindow]);
+    const openSettings = useCallback(() => openWindow('settings'), [openWindow]);
+    const loadImportedProject = useCallback((project, circuit) => {
+        const baseName = (project.name || 'imported-circuit').trim();
+        const safeName = baseName.replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '');
+        const filename = `${safeName || 'imported-circuit'}.rblogic`;
+        const serialized = serialize(circuit);
+        const contentStr = JSON.stringify(serialized);
+        const fileId = useFileSystemStore.getState().createFile('documents', filename, contentStr);
+        openWindow('logic-playground', {
+            resourceId: fileId,
+            resourceType: 'file',
+        });
+    }, [openWindow]);
+    const handleLoadExample = useCallback((exampleId) => {
+        try {
+            const project = loadExampleAsProject(exampleId);
+            currentProjectRef.current = project;
+            loadUnifiedProject(project);
+            // Convert to Circuit format for Logic Playground
+            const circuit = {
+                nodes: project.circuit.nodes.map((node) => ({
+                    id: node.id,
+                    type: node.type,
+                    x: node.x,
+                    y: node.y,
+                    rotation: node.rotation,
+                    config: node.params || {},
+                    label: node.label,
+                    state: node.state || {},
+                    inputs: {},
+                    outputs: {},
+                })),
+                connections: project.circuit.connections.map((conn) => ({
+                    id: conn.id,
+                    from: conn.fromNodeId,
+                    fromPin: conn.fromPin,
+                    to: conn.toNodeId,
+                    toPin: conn.toPin,
+                })),
+            };
+            // Persist example as file and open
+            loadImportedProject(project, circuit);
+            toast.success(`Loaded example: ${project.name}`);
+            logSystemEvent({
+                level: 'action',
+                source: 'examples',
+                message: `Loaded example: ${project.name}`,
+                data: { projectId: project.projectId, exampleId },
+            });
+        }
+        catch (error) {
+            console.error('Failed to load example:', error);
+            toast.error(`Failed to load example: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }, [loadUnifiedProject, loadImportedProject]);
+    // Auto-launch Logic Playground from URL parameters (Deep Linking)
+    useEffect(() => {
+        if (!booted)
+            return;
+        if (typeof window === 'undefined')
+            return;
+        const params = new URLSearchParams(window.location.search);
+        // Check for rb://demo/{exampleId} URI pattern
+        if (params.has('demo')) {
+            const exampleId = params.get('demo');
+            handleLoadExample(exampleId);
+            return;
+        }
+        // Check for Logic Playground specific parameters
+        if (params.has('mode') || params.has('example') || params.has('circuit')) {
+            // Open logic-playground (openWindow handles singleton check automatically)
+            // We rely on the app itself to parse the params again and apply configuration
+            openWindow('logic-playground');
+        }
+    }, [booted, openWindow, handleLoadExample]);
+    const dispatchIntent = useCallback((intent) => {
+        logSystemEvent({
+            level: 'action',
+            source: 'intent',
+            message: 'Intent dispatched',
+            data: { type: intent.type, payload: intent.payload },
+        });
+        switch (intent.type) {
+            case 'open-with': {
+                const { targetAppId, resourceId, resourceType } = intent.payload;
+                const preferNewWindow = intent.routingHint?.preferNewWindow ?? false;
+                // PHASE_AC: Use routing resolver to determine reuse vs create
+                const targetWindowId = resolveTargetWindowId(targetAppId, preferNewWindow, windows);
+                if (targetWindowId) {
+                    // Reuse existing window
+                    const binding = bindings[targetWindowId];
+                    if (binding) {
+                        // Update props with new resource
+                        setBindings((prev) => ({
+                            ...prev,
+                            [targetWindowId]: { ...binding, props: { resourceId, resourceType } },
+                        }));
+                        focusWindow(targetWindowId);
+                        return targetWindowId;
+                    }
+                }
+                // Create new window (no existing window found or preferNewWindow=true)
+                const newWindowId = openWindow(targetAppId, { resourceId, resourceType });
+                if (!newWindowId) {
+                    toast.error({ message: `Failed to open ${resourceId}: App "${targetAppId}" not found` });
+                }
+                return newWindowId;
+            }
+            case 'open-example': {
+                const { targetAppId, exampleId } = intent.payload;
+                const preferNewWindow = intent.routingHint?.preferNewWindow ?? false;
+                // PHASE_AC: Use routing resolver to determine reuse vs create
+                const targetWindowId = resolveTargetWindowId(targetAppId, preferNewWindow, windows);
+                if (targetWindowId) {
+                    // Reuse existing window
+                    const binding = bindings[targetWindowId];
+                    if (binding) {
+                        // Update props with example
+                        setBindings((prev) => ({
+                            ...prev,
+                            [targetWindowId]: { ...binding, props: { initialExampleId: exampleId } },
+                        }));
+                        focusWindow(targetWindowId);
+                        return targetWindowId;
+                    }
+                }
+                // Create new window (no existing window found or preferNewWindow=true)
+                const newWindowId = openWindow(targetAppId, { initialExampleId: exampleId });
+                if (!newWindowId) {
+                    toast.error({ message: `Failed to open example "${exampleId}": App "${targetAppId}" not found` });
+                }
+                return newWindowId;
+            }
+            default:
+                console.warn('Unknown intent type:', intent.type);
+                return null;
+        }
+    }, [openWindow, windows, bindings, focusWindow]);
+    const switchWorkspaceById = useCallback((workspaceId) => {
+        const snapshot = useWorkspaceStore.getState().switchWorkspace(workspaceId);
+        if (!snapshot)
+            return false;
+        // Close all current windows
+        const currentWindows = useWindowStore.getState().windows;
+        currentWindows.forEach((w) => {
+            closeWindow(w.id);
+            setBindings((prev) => {
+                const next = { ...prev };
+                delete next[w.id];
+                return next;
+            });
+        });
+        // Restore workspace snapshot
+        const validWindows = snapshot.windows.filter((w) => {
+            if (w.contentId === 'launcher')
+                return false;
+            const app = getApp(w.contentId);
+            return Boolean(app);
+        });
+        restoreSession(validWindows, snapshot.nextZIndex);
+        const newBindings = {};
+        validWindows.forEach((w) => {
+            newBindings[w.id] = { appId: w.contentId };
+        });
+        setBindings(newBindings);
+        return true;
+    }, [closeWindow, restoreSession]);
+    const handleClose = useCallback((id) => {
+        // Clean up autosave + journal + registered cleanups for this window
+        unregisterAutosave(id);
+        clearJournal(id);
+        runWindowCleanup(id);
+        closeWindow(id);
+        setBindings((prev) => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+        });
+        logSystemEvent({
+            level: 'action',
+            source: 'shell',
+            message: 'Window closed',
+            data: { windowId: id },
+        });
+    }, [closeWindow]);
+    // Stable window event handlers — prevents React.memo bailout failures
+    const windowHandlers = useRef({});
+    // Create stable callbacks for each window
+    useEffect(() => {
+        const handlers = windowHandlers.current;
+        const currentWindowIds = new Set(windows.map(w => w.id));
+        // Remove handlers for closed windows
+        Object.keys(handlers).forEach(id => {
+            if (!currentWindowIds.has(id)) {
+                delete handlers[id];
+            }
+        });
+        // Create handlers for new windows
+        windows.forEach(window => {
+            if (!handlers[window.id]) {
+                handlers[window.id] = {
+                    onClose: () => handleClose(window.id),
+                    onFocus: () => {
+                        focusWindow(window.id);
+                        logSystemEvent({
+                            level: 'action',
+                            source: 'shell',
+                            message: 'Window focused',
+                            data: { windowId: window.id, appId: window.contentId },
+                        });
+                    },
+                    onMove: (x, y) => moveWindow(window.id, x, y),
+                    onResize: (w, h) => resizeWindow(window.id, w, h),
+                    onMoveEnd: (bounds) => handleMoveEnd(window.id, bounds),
+                    onResizeEnd: (bounds) => handleResizeEnd(window.id, bounds),
+                };
+            }
+        });
+    }, [windows, handleClose, focusWindow, moveWindow, resizeWindow, handleMoveEnd, handleResizeEnd]);
+    // Window state accessors registry (for determinism recording)
+    const windowStateAccessorsRef = useRef(new Map());
+    // Register/unregister state accessors for windows
+    const registerWindowStateAccessor = useCallback((windowId, accessor) => {
+        windowStateAccessorsRef.current.set(windowId, accessor);
+    }, []);
+    const unregisterWindowStateAccessor = useCallback((windowId) => {
+        windowStateAccessorsRef.current.delete(windowId);
+    }, []);
+    // Determinism panel helpers (dev only)
+    const getCurrentCircuit = useCallback(() => {
+        // Find the focused Logic Playground window
+        const focusedWindow = useWindowStore.getState().getFocusedWindow();
+        if (!focusedWindow) {
+            return null;
+        }
+        if (focusedWindow.contentId !== 'logic-playground') {
+            return null;
+        }
+        // Check if this window has registered a circuit accessor
+        const accessor = windowStateAccessorsRef.current.get(focusedWindow.id);
+        if (!accessor?.getCircuit) {
+            return null;
+        }
+        return accessor.getCircuit();
+    }, []);
+    const handleDeterminismAction = useCallback((action) => {
+        switch (action.type) {
+            case 'start-recording': {
+                const circuit = getCurrentCircuit();
+                if (circuit) {
+                    determinismRecorder.startRecording(circuit);
+                    logSystemEvent({
+                        level: 'action',
+                        source: 'determinism',
+                        message: 'Recording started',
+                    });
+                }
+                break;
+            }
+            case 'stop-recording':
+                determinismRecorder.stopRecording();
+                logSystemEvent({
+                    level: 'action',
+                    source: 'determinism',
+                    message: 'Recording stopped',
+                });
+                break;
+            case 'verify-replay':
+                determinismRecorder.verifyRecording();
+                logSystemEvent({
+                    level: 'action',
+                    source: 'determinism',
+                    message: 'Verification requested',
+                });
+                break;
+            case 'reset':
+                determinismRecorder.reset();
+                logSystemEvent({
+                    level: 'action',
+                    source: 'determinism',
+                    message: 'Determinism state reset',
+                });
+                break;
+            case 'initialize-timetravel':
+                determinismRecorder.initializeTimeTravel();
+                logSystemEvent({
+                    level: 'action',
+                    source: 'determinism',
+                    message: 'Time travel initialized',
+                });
+                break;
+            case 'step-forward':
+                determinismRecorder.stepForwardInTime();
+                logSystemEvent({
+                    level: 'action',
+                    source: 'determinism',
+                    message: 'Time travel step forward',
+                });
+                break;
+            case 'step-backward':
+                determinismRecorder.stepBackwardInTime();
+                logSystemEvent({
+                    level: 'action',
+                    source: 'determinism',
+                    message: 'Time travel step backward',
+                });
+                break;
+        }
+    }, [determinismRecorder, getCurrentCircuit]);
+    // Export handler: convert current circuit to LabProjectV1 and download .rbx.zip
+    const handleExportProof = useCallback(async () => {
+        const circuit = getCurrentCircuit();
+        if (!circuit) {
+            toast.error({ message: 'No circuit to export' });
+            return;
+        }
+        try {
+            // Convert Circuit to CircuitV1 (LabProjectV1 schema)
+            const circuitV1 = {
+                schemaVersion: '1.0',
+                nodes: circuit.nodes.map((node) => ({
+                    id: node.id,
+                    type: node.type,
+                    x: node.x || 0,
+                    y: node.y || 0,
+                    rotation: node.rotation || 0,
+                    params: node.config || {},
+                    label: node.label,
+                    state: node.state || {},
+                })),
+                connections: circuit.connections.map((conn) => ({
+                    id: conn.id,
+                    fromNodeId: conn.from,
+                    fromPin: conn.fromPin || 'out',
+                    toNodeId: conn.to,
+                    toPin: conn.toPin || 'in',
+                })),
+                customChips: [],
+            };
+            // Build minimal LabProjectV1
+            const now = new Date().toISOString();
+            const project = {
+                schemaVersion: '1.0',
+                projectId: `project-${Date.now()}`,
+                name: 'RedByte Circuit',
+                description: 'Exported from RedByte Logic Playground',
+                createdAt: now,
+                updatedAt: now,
+                circuit: circuitV1,
+                simulation: {
+                    tickRate: 20,
+                    currentTick: determinismRecorder.tickCount || 0,
+                    probes: [],
+                },
+                ioMapping: {
+                    inputs: [],
+                    outputs: [],
+                },
+                evidence: {
+                    actions: [],
+                    snapshots: [],
+                },
+                recordings: [],
+            };
+            currentProjectRef.current = project;
+            // Export to zip blob
+            const blob = await exportEvidenceCapsule(project);
+            // Trigger download
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `redbyte-circuit-${Date.now()}.rbx.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast.success('Circuit exported successfully');
+            logSystemEvent({
+                level: 'action',
+                source: 'export',
+                message: `Exported circuit: ${project.name}`,
+            });
+        }
+        catch (error) {
+            console.error('Export failed:', error);
+            toast.error(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }, [getCurrentCircuit, determinismRecorder.tickCount]);
+    const handleExportVerilog = useCallback(async () => {
+        try {
+            const project = currentProjectRef.current;
+            if (!project) {
+                toast.error('No project loaded');
+                return;
+            }
+            // Dynamic import to avoid circular deps
+            const { generateBitstreamArtifacts, validateVerilog, validateConstraints, calculateReadinessScore } = await import('@redbyte/rb-fpga-toolchain');
+            const artifacts = await generateBitstreamArtifacts(project);
+            // Validate generated Verilog
+            const verilogResult = validateVerilog(artifacts.verilog);
+            // Extract circuit signal names for constraint validation
+            const circuitSignals = [...(verilogResult.moduleInfo?.inputs || []), ...(verilogResult.moduleInfo?.outputs || [])];
+            const constraintResult = artifacts.constraints
+                ? validateConstraints(artifacts.constraints, circuitSignals)
+                : { valid: true, errors: [], warnings: [] };
+            // Calculate readiness score
+            const readinessScore = calculateReadinessScore(verilogResult, constraintResult);
+            // Show validation feedback
+            if (!verilogResult.valid) {
+                toast.error({ message: `Verilog validation failed: ${verilogResult.errors.length} errors` });
+                verilogResult.errors.slice(0, 3).forEach(err => {
+                    toast.error({ message: `${err.code}: ${err.message}${err.line ? ` (line ${err.line})` : ''}` });
+                });
+                return; // Don't export invalid Verilog
+            }
+            if (verilogResult.warnings.length > 0) {
+                toast.warning(`${verilogResult.warnings.length} validation warnings - synthesis readiness: ${readinessScore}%`);
+            }
+            if (artifacts.metadata.unsupportedNodes.length > 0) {
+                toast.warning(`Warning: ${artifacts.metadata.unsupportedNodes.length} unsupported nodes`);
+            }
+            // Download Verilog
+            const verilogBlob = new Blob([artifacts.verilog], { type: 'text/plain' });
+            const url = URL.createObjectURL(verilogBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${project.name.replace(/\s+/g, '_')}.v`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            // Also download constraints if available
+            if (artifacts.constraints) {
+                const xdcBlob = new Blob([artifacts.constraints], { type: 'text/plain' });
+                const xdcUrl = URL.createObjectURL(xdcBlob);
+                const xdcLink = document.createElement('a');
+                xdcLink.href = xdcUrl;
+                xdcLink.download = `${project.name.replace(/\s+/g, '_')}.xdc`;
+                document.body.appendChild(xdcLink);
+                xdcLink.click();
+                document.body.removeChild(xdcLink);
+                URL.revokeObjectURL(xdcUrl);
+            }
+            toast.success('Verilog exported successfully');
+            logSystemEvent({
+                level: 'action',
+                source: 'fpga',
+                message: 'Verilog exported',
+                data: {
+                    projectId: project.projectId,
+                    verilogHash: artifacts.metadata.verilogHash,
+                    nodeCount: artifacts.metadata.nodeCount,
+                },
+            });
+        }
+        catch (error) {
+            console.error('Verilog export failed:', error);
+            toast.error(`Verilog export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }, []);
+    const handleBuildBitstream = useCallback(async () => {
+        try {
+            const project = currentProjectRef.current;
+            if (!project) {
+                toast.error('No project loaded');
+                return;
+            }
+            // Dynamic import to avoid circular deps (browser-safe parts only)
+            const { generateBitstreamArtifacts } = await import('@redbyte/rb-fpga-toolchain');
+            toast.info('Bitstream synthesis requires Vivado - run locally with toolchain installed');
+            // Generate artifacts to show what would be synthesized
+            const artifacts = await generateBitstreamArtifacts(project);
+            if (artifacts.metadata.unsupportedNodes.length > 0) {
+                toast.warning(`Warning: ${artifacts.metadata.unsupportedNodes.length} unsupported nodes - synthesis may fail`);
+            }
+            // Note: Actual synthesis requires Node.js environment with Vivado installed
+            // This is a browser environment, so we only generate HDL artifacts
+            toast.info('Verilog and constraints generated - synthesis requires local Vivado installation');
+            logSystemEvent({
+                level: 'action',
+                source: 'fpga',
+                message: 'Bitstream build requested (requires local toolchain)',
+                data: {
+                    projectId: project.projectId,
+                    verilogHash: artifacts.metadata.verilogHash,
+                    nodeCount: artifacts.metadata.nodeCount,
+                },
+            });
+            // Store artifacts for potential download
+            currentProjectRef.current = {
+                ...project,
+                fpgaArtifacts: artifacts,
+            };
+        }
+        catch (error) {
+            console.error('Bitstream build failed:', error);
+            toast.error(`Bitstream build failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            logSystemEvent({
+                level: 'error',
+                source: 'fpga',
+                message: 'Bitstream build error',
+                data: { error: error instanceof Error ? error.message : 'Unknown' },
+            });
+        }
+    }, []);
+    const handleProgramBoard = useCallback(async () => {
+        try {
+            const project = currentProjectRef.current;
+            if (!project) {
+                toast.error('No project loaded');
+                return;
+            }
+            // Check if bitstream was built
+            const bitstreamPath = project.fpgaArtifacts?.metadata?.bitstreamPath;
+            if (!bitstreamPath) {
+                toast.error('No bitstream available - build bitstream first using local Vivado installation');
+                return;
+            }
+            toast.info('Board programming requires local toolchain - use rb-fpga-bridge or Vivado Hardware Manager');
+            logSystemEvent({
+                level: 'action',
+                source: 'fpga',
+                message: 'Board programming requested (requires local hardware)',
+                data: {
+                    projectId: project.projectId,
+                    bitstreamPath
+                },
+            });
+        }
+        catch (error) {
+            console.error('Board programming failed:', error);
+            toast.error(`Board programming failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            logSystemEvent({
+                level: 'error',
+                source: 'fpga',
+                message: 'Board programming error',
+                data: { error: error instanceof Error ? error.message : 'Unknown' },
+            });
+        }
+    }, []);
+    const handleShowBitstreamProvenance = useCallback(async () => {
+        try {
+            const project = currentProjectRef.current;
+            if (!project) {
+                toast.error('No project loaded');
+                return;
+            }
+            // Generate metadata
+            const { generateBitstreamArtifacts } = await import('@redbyte/rb-fpga-toolchain');
+            const artifacts = await generateBitstreamArtifacts(project);
+            setBitstreamMetadata(artifacts.metadata);
+            setBitstreamProvenanceOpen(true);
+            logSystemEvent({
+                level: 'action',
+                source: 'fpga',
+                message: 'Bitstream provenance viewed',
+                data: { projectId: project.projectId },
+            });
+        }
+        catch (error) {
+            console.error('Failed to generate bitstream metadata:', error);
+            toast.error(`Failed to generate metadata: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }, []);
+    // Import handler: load .rbx.zip and reconstruct circuit
+    const handleImportProject = useCallback(async () => {
+        try {
+            // Create file input element
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.rbx.zip,.rb-lab.zip,.zip';
+            input.onchange = async (e) => {
+                const file = e.target.files?.[0];
+                if (!file)
+                    return;
+                try {
+                    // Import and verify
+                    const blob = file;
+                    const { project, integrity } = await importEvidenceCapsule(blob);
+                    // Show integrity status
+                    if (integrity.status === 'verified') {
+                        toast.success(`✅ ${integrity.message}`);
+                    }
+                    else if (integrity.status === 'modified') {
+                        toast.warning(`⚠️ ${integrity.message}`);
+                    }
+                    else {
+                        toast.info(integrity.message);
+                    }
+                    currentProjectRef.current = project;
+                    loadUnifiedProject(project);
+                    // Convert CircuitV1 back to Circuit format for Logic Playground
+                    const circuit = {
+                        nodes: project.circuit.nodes.map((node) => ({
+                            id: node.id,
+                            type: node.type,
+                            x: node.x,
+                            y: node.y,
+                            rotation: node.rotation,
+                            config: node.params || {},
+                            label: node.label,
+                            state: node.state || {},
+                            inputs: {},
+                            outputs: {},
+                        })),
+                        connections: project.circuit.connections.map((conn) => ({
+                            id: conn.id,
+                            from: conn.fromNodeId,
+                            fromPin: conn.fromPin,
+                            to: conn.toNodeId,
+                            toPin: conn.toPin,
+                        })),
+                    };
+                    // Persist as a .rblogic file and open in Logic Playground
+                    loadImportedProject(project, circuit);
+                    toast.success(`Project imported: ${project.name}`);
+                    logSystemEvent({
+                        level: 'action',
+                        source: 'import',
+                        message: `Imported project: ${project.name}`,
+                        data: { projectId: project.projectId, integrity: integrity.status },
+                    });
+                }
+                catch (error) {
+                    console.error('Import failed:', error);
+                    toast.error(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                }
+            };
+            input.click();
+        }
+        catch (error) {
+            console.error('Import dialog failed:', error);
+            toast.error('Failed to open import dialog');
+        }
+    }, []);
+    // Ref to hold latest executeCommand for macro execution
+    const executeCommandRef = useRef(null);
+    const dispatchPlaygroundCommand = useCallback((command) => {
+        const focused = useWindowStore.getState().getFocusedWindow();
+        if (!focused || focused.contentId !== 'logic-playground')
+            return;
+        window.dispatchEvent(new CustomEvent('rb:playground-command', {
+            detail: { command, windowId: focused.id },
+        }));
+    }, []);
+    const executeCommand = useCallback((command) => {
+        logSystemEvent({
+            level: 'action',
+            source: 'command',
+            message: 'Command executed',
+            data: { command },
+        });
+        switch (command) {
+            case 'focus-next-window': {
+                const activeWindows = useWindowStore.getState().getActiveWindows();
+                if (activeWindows.length < 2)
+                    return;
+                const sortedByZ = [...activeWindows].sort((a, b) => b.zIndex - a.zIndex);
+                const focusedIndex = sortedByZ.findIndex((w) => w.focused);
+                if (focusedIndex === -1) {
+                    focusWindow(sortedByZ[0].id);
+                }
+                else {
+                    const nextIndex = (focusedIndex + 1) % sortedByZ.length;
+                    focusWindow(sortedByZ[nextIndex].id);
+                }
+                break;
+            }
+            case 'close-focused-window': {
+                const focused = useWindowStore.getState().getFocusedWindow();
+                if (focused) {
+                    handleClose(focused.id);
+                }
+                break;
+            }
+            case 'minimize-focused-window': {
+                const focused = useWindowStore.getState().getFocusedWindow();
+                if (focused && focused.minimizable) {
+                    toggleMinimize(focused.id);
+                }
+                break;
+            }
+            case 'snap-left':
+            case 'snap-right':
+            case 'snap-top':
+            case 'snap-bottom': {
+                const focused = useWindowStore.getState().getFocusedWindow();
+                if (!focused)
+                    return;
+                const direction = command.replace('snap-', '');
+                snapWindow(focused.id, direction, getDesktopBounds());
+                logSystemEvent({
+                    level: 'action',
+                    source: 'shell',
+                    message: 'Window snapped',
+                    data: { windowId: focused.id, target: direction, via: 'command' },
+                });
+                break;
+            }
+            case 'center-window': {
+                const focused = useWindowStore.getState().getFocusedWindow();
+                if (!focused)
+                    return;
+                centerWindow(focused.id, getDesktopBounds());
+                logSystemEvent({
+                    level: 'action',
+                    source: 'shell',
+                    message: 'Window centered',
+                    data: { windowId: focused.id, via: 'command' },
+                });
+                break;
+            }
+            case 'create-workspace': {
+                const name = window.prompt('Workspace name:');
+                if (!name)
+                    return;
+                const currentWindows = useWindowStore.getState().windows;
+                const nextZIndex = useWindowStore.getState().nextZIndex;
+                const snapshot = {
+                    windows: currentWindows,
+                    nextZIndex,
+                };
+                useWorkspaceStore.getState().createWorkspace(name, snapshot);
+                break;
+            }
+            case 'switch-workspace': {
+                setWorkspaceSwitcherOpen(true);
+                break;
+            }
+            case 'delete-workspace': {
+                const workspaces = useWorkspaceStore.getState().listWorkspaces();
+                if (workspaces.length === 0) {
+                    alert('No workspaces to delete');
+                    return;
+                }
+                const names = workspaces.map((w, i) => `${i + 1}. ${w.name}`).join('\n');
+                const input = window.prompt(`Delete workspace:\n\n${names}\n\nEnter number:`);
+                if (!input)
+                    return;
+                const index = parseInt(input, 10) - 1;
+                if (isNaN(index) || index < 0 || index >= workspaces.length) {
+                    alert('Invalid selection');
+                    return;
+                }
+                const selectedWorkspace = workspaces[index];
+                useWorkspaceStore.getState().deleteWorkspace(selectedWorkspace.id);
+                break;
+            }
+            case 'run-macro': {
+                setMacroRunnerOpen(true);
+                break;
+            }
+            case 'open-user-manual': {
+                openWindow('user-manual');
+                break;
+            }
+            case 'project-import': {
+                handleImportProject();
+                break;
+            }
+            case 'project-export': {
+                handleExportProof();
+                break;
+            }
+            case 'project-verify': {
+                handleVerifyReproducibility();
+                break;
+            }
+            case 'project-summary': {
+                handleProjectSummary();
+                break;
+            }
+            case 'open-example': {
+                setExamplePickerOpen(true);
+                break;
+            }
+            case 'project-export-verilog': {
+                handleExportVerilog();
+                break;
+            }
+            case 'project-build-bitstream': {
+                handleBuildBitstream();
+                break;
+            }
+            case 'project-program-board': {
+                handleProgramBoard();
+                break;
+            }
+            case 'project-bitstream-provenance': {
+                handleShowBitstreamProvenance();
+                break;
+            }
+            case 'playground-layout-build':
+            case 'playground-layout-analyze':
+            case 'playground-layout-explain':
+            case 'playground-layout-explore':
+            case 'playground-layout-quad':
+            case 'playground-layout-circuit-only':
+            case 'playground-layout-schematic-only':
+            case 'playground-layout-scope-only':
+            case 'playground-layout-3d-only':
+            case 'playground-project-new':
+            case 'playground-project-open':
+            case 'playground-project-save':
+            case 'playground-project-export':
+            case 'playground-dock-info':
+            case 'playground-dock-health':
+            case 'playground-dock-learn':
+            case 'playground-dock-probes':
+            case 'playground-dock-chips':
+            case 'playground-toggle-wire':
+            case 'playground-toggle-pause-scroll':
+            case 'playground-fit-view':
+            case 'playground-reset-view':
+            case 'playground-clear-scope': {
+                dispatchPlaygroundCommand(command);
+                break;
+            }
+        }
+    }, [
+        dispatchPlaygroundCommand,
+        focusWindow,
+        handleClose,
+        openWindow,
+        toggleMinimize,
+        snapWindow,
+        centerWindow,
+        restoreSession,
+        setBindings,
+    ]);
+    // Store ref for macro execution to avoid circular dependency
+    executeCommandRef.current = executeCommand;
+    const executeMacroById = useCallback((macroId) => {
+        const context = {
+            executeCommand: (command) => executeCommandRef.current?.(command),
+            openWindow: (appId, props) => openWindow(appId, props),
+            dispatchIntent: (intent) => dispatchIntent(intent),
+            switchWorkspace: (workspaceId) => switchWorkspaceById(workspaceId),
+            getApp: (appId) => getApp(appId),
+        };
+        const result = executeMacro(macroId, context);
+        if (!result.success) {
+            alert(`Macro failed at step ${result.stepIndex + 1}: ${result.error}`);
+        }
+    }, [openWindow, dispatchIntent, switchWorkspaceById]);
+    const handleWorkspaceSelect = useCallback((workspaceId) => {
+        switchWorkspaceById(workspaceId);
+    }, [switchWorkspaceById]);
+    const handleMacroExecute = useCallback((macroId) => {
+        executeMacroById(macroId);
+    }, [executeMacroById]);
+    const handleWindowSwitcherSelect = useCallback((windowId) => {
+        const window = windows.find((w) => w.id === windowId);
+        if (!window)
+            return;
+        // If minimized, restore first
+        if (window.mode === 'minimized') {
+            restoreWindow(windowId);
+        }
+        // Focus the window
+        focusWindow(windowId);
+        // Close switcher
+        setWindowSwitcherOpen(false);
+        setWindowSwitcherPreviousFocus(null);
+    }, [windows, restoreWindow, focusWindow]);
+    const handleWindowSwitcherCancel = useCallback(() => {
+        // Restore focus to previous window if valid
+        if (windowSwitcherPreviousFocus) {
+            const previousWindow = windows.find((w) => w.id === windowSwitcherPreviousFocus);
+            if (previousWindow) {
+                focusWindow(windowSwitcherPreviousFocus);
+            }
+        }
+        // Close switcher
+        setWindowSwitcherOpen(false);
+        setWindowSwitcherPreviousFocus(null);
+    }, [windowSwitcherPreviousFocus, windows, focusWindow]);
+    const handleSearchExecuteIntent = useCallback((intentId) => {
+        if (intentId === 'open-in-playground') {
+            // Intent handled - no active file context
+        }
+    }, []);
+    const handleSearchExecuteFile = useCallback((fileId, shiftKey) => {
+        // Get the file entry from filesystem store
+        const allFiles = useFileSystemStore.getState().getAllFiles();
+        const file = allFiles.find((f) => f.id === fileId);
+        if (!file) {
+            console.warn(`File not found: ${fileId}`);
+            return;
+        }
+        // Check if file is eligible for file actions
+        if (!isFileActionEligible(file)) {
+            console.warn(`File not eligible for actions: ${file.name}`);
+            return;
+        }
+        // Get eligible targets
+        const eligibleTargets = getFileActionTargets(file);
+        if (eligibleTargets.length === 0) {
+            console.warn(`No eligible targets for file: ${file.name}`);
+            return;
+        }
+        // Extract extension
+        const extension = file.name.includes('.')
+            ? file.name.split('.').pop() || ''
+            : '';
+        if (shiftKey) {
+            // Shift+Enter: Open With modal
+            setOpenWithModalState({
+                resourceId: file.id,
+                resourceType: file.type,
+                resourceName: file.name,
+                extension,
+                eligibleTargets,
+            });
+        }
+        else {
+            // Enter: Default open using PHASE_AA associations + PHASE_AC routing
+            const targetId = resolveDefaultTarget(file.type, extension, eligibleTargets);
+            const target = eligibleTargets.find((t) => t.id === targetId);
+            if (target) {
+                // Dispatch open-with intent with default target
+                dispatchIntent({
+                    type: 'open-with',
+                    payload: {
+                        sourceAppId: 'system-search',
+                        targetAppId: target.appId,
+                        resourceId: file.id,
+                        resourceType: file.type,
+                    },
+                });
+            }
+        }
+    }, [openWindow, dispatchIntent]);
+    useEffect(() => {
+        if (typeof window === 'undefined')
+            return;
+        const handler = (event) => {
+            const target = event.target;
+            const tag = target?.tagName?.toLowerCase();
+            const isEditable = tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'option' || target?.isContentEditable;
+            // Ctrl+Tab: Window Switcher (check before other ctrl checks)
+            if ((event.ctrlKey || event.metaKey) && event.key === 'Tab' && !isEditable) {
+                event.preventDefault();
+                const focused = useWindowStore.getState().getFocusedWindow();
+                setWindowSwitcherPreviousFocus(focused?.id || null);
+                setWindowSwitcherOpen(true);
+                return;
+            }
+            if (!(event.ctrlKey || event.metaKey))
+                return;
+            if (isEditable)
+                return;
+            if (import.meta.env.DEV && event.shiftKey && event.key.toLowerCase() === 'h') {
+                event.preventDefault();
+                setShowPerfHud((prev) => !prev);
+                return;
+            }
+            if (import.meta.env.DEV && event.shiftKey && event.key.toLowerCase() === 'j') {
+                event.preventDefault();
+                setShowJankHud((prev) => !prev);
+                return;
+            }
+            if (import.meta.env.DEV && event.shiftKey && event.key.toLowerCase() === 'k') {
+                event.preventDefault();
+                setShowDeadZoneScanner((prev) => !prev);
+                return;
+            }
+            if (import.meta.env.DEV && event.shiftKey && event.key.toLowerCase() === 'l') {
+                event.preventDefault();
+                setShowOverlayDebug((prev) => !prev);
+                return;
+            }
+            // Cmd/Ctrl+Space: Open System Search
+            if (event.key === ' ') {
+                event.preventDefault();
+                setSystemSearchOpen(true);
+                return;
+            }
+            // Cmd/Ctrl+Shift+P: Open Command Palette
+            if (event.shiftKey && event.key.toLowerCase() === 'p') {
+                event.preventDefault();
+                setCommandPaletteOpen(true);
+                return;
+            }
+            // Cmd/Ctrl+Shift+D: Open Determinism Tools (full panel)
+            if (event.shiftKey && event.key.toLowerCase() === 'd') {
+                event.preventDefault();
+                setDeterminismPanelOpen(true);
+                return;
+            }
+            // Cmd/Ctrl+K: Open Launcher
+            if (event.key.toLowerCase() === 'k') {
+                event.preventDefault();
+                openWindow('launcher');
+                return;
+            }
+            // Cmd/Ctrl+,: Open Settings
+            if (!event.altKey && !event.shiftKey && event.key === ',' && hasSettings) {
+                event.preventDefault();
+                openWindow('settings');
+                return;
+            }
+            // Cmd/Ctrl+/: Open About (demo mode only)
+            if (isDemoMode && event.key === '/') {
+                event.preventDefault();
+                setAboutModalOpen(true);
+                return;
+            }
+            // Cmd/Ctrl+`: Window cycling
+            if (event.key === '`') {
+                event.preventDefault();
+                executeCommand('focus-next-window');
+                return;
+            }
+            // Cmd/Ctrl+W: Close focused window
+            if (event.key.toLowerCase() === 'w') {
+                event.preventDefault();
+                executeCommand('close-focused-window');
+                return;
+            }
+            // Cmd/Ctrl+M: Minimize focused window
+            if (event.key.toLowerCase() === 'm') {
+                event.preventDefault();
+                executeCommand('minimize-focused-window');
+                return;
+            }
+            // Cmd/Ctrl+Alt+Arrow: Window snap
+            if (event.altKey) {
+                if (event.key === 'ArrowLeft') {
+                    event.preventDefault();
+                    executeCommand('snap-left');
+                    return;
+                }
+                if (event.key === 'ArrowRight') {
+                    event.preventDefault();
+                    executeCommand('snap-right');
+                    return;
+                }
+                if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    executeCommand('snap-top');
+                    return;
+                }
+                if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    executeCommand('snap-bottom');
+                    return;
+                }
+                if (event.key.toLowerCase() === 'c') {
+                    event.preventDefault();
+                    executeCommand('center-window');
+                    return;
+                }
+            }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [hasSettings, openWindow, executeCommand, isDemoMode]);
+    useEffect(() => {
+        startUiTickSampler();
+        startPerfSummaryLogger();
+    }, []);
+    // SAFETY: Warn users before closing tab with open windows (potential unsaved work)
+    useEffect(() => {
+        const handleBeforeUnload = (event) => {
+            // Only warn if there are open application windows (excluding launcher)
+            const hasOpenWork = windows.some((w) => w.contentId !== 'launcher' && w.mode !== 'minimized');
+            if (hasOpenWork) {
+                // Standard way to trigger browser's "Are you sure?" dialog
+                event.preventDefault();
+                // Legacy support for older browsers
+                event.returnValue = 'You have unsaved work. Are you sure you want to leave?';
+                return event.returnValue;
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [windows]);
+    // SAFETY: Listen for storage errors and show toast notifications
+    useEffect(() => {
+        const handleStorageError = (event) => {
+            if (event.detail?.type === 'quota-exceeded') {
+                toast.error({
+                    title: 'Storage Full',
+                    message: event.detail.message,
+                    duration: 15000, // Show for 15 seconds - this is important
+                    actions: [
+                        {
+                            label: 'Learn More',
+                            onClick: () => {
+                                // Could open help or settings
+                                openWindow('settings');
+                            },
+                        },
+                    ],
+                });
+                logSystemEvent({
+                    level: 'error',
+                    source: 'storage',
+                    message: 'Storage quota exceeded',
+                    data: { detail: event.detail },
+                });
+            }
+        };
+        window.addEventListener('rb:storage-error', handleStorageError);
+        return () => window.removeEventListener('rb:storage-error', handleStorageError);
+    }, [openWindow]);
+    useEffect(() => {
+        if (!booted || hasInitializedRef.current)
+            return;
+        hasInitializedRef.current = true;
+        try {
+            localStorage.setItem(BOOT_STORAGE_KEY, '1');
+        }
+        catch { }
+        // Auto-open app from query param for automation testing and E2E
+        // Enabled in dev + when navigator.webdriver is present (Playwright/Selenium)
+        if (import.meta.env.DEV || navigator.webdriver) {
+            const params = new URLSearchParams(window.location.search);
+            const openApp = params.get('openApp');
+            if (openApp && getApp(openApp)) {
+                const timer = setTimeout(() => openWindow(openApp), 300);
+                return () => clearTimeout(timer);
+            }
+        }
+        // Demo mode: Show onboarding modal instead of welcome screen
+        if (isDemoMode) {
+            const onboardingDismissed = localStorage.getItem('rb:onboarding:dismissed');
+            if (onboardingDismissed !== 'true') {
+                const timer = setTimeout(() => setOnboardingModalOpen(true), 500);
+                return () => clearTimeout(timer);
+            }
+        }
+        else {
+            // Dev mode: Show welcome screen
+            if (!hasShownWelcomeRef.current) {
+                hasShownWelcomeRef.current = true;
+                const welcomeSeen = localStorage.getItem('rb-os:v1:welcomeSeen');
+                if (welcomeSeen !== 'true') {
+                    const timer = setTimeout(() => openWindow('start-here'), 500);
+                    return () => clearTimeout(timer);
+                }
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [booted, isDemoMode]);
+    const snapPreviewBounds = useMemo(() => {
+        if (!snapPreview || typeof window === 'undefined')
+            return null;
+        const desktop = getDesktopBounds();
+        if (snapPreview.target === 'maximize') {
+            return getMaximizedBounds();
+        }
+        const halfWidth = Math.floor(desktop.width / 2);
+        if (snapPreview.target === 'left') {
+            return { x: desktop.x, y: desktop.y, width: halfWidth, height: desktop.height };
+        }
+        return { x: desktop.x + halfWidth, y: desktop.y, width: halfWidth, height: desktop.height };
+    }, [snapPreview]);
+    if (!booted) {
+        return _jsx(BootScreen, { onComplete: () => setBooted(true) });
+    }
+    const handleRecovery = (entries) => {
+        // Open recovered windows
+        for (const entry of entries) {
+            if (entry.appId) {
+                openWindow(entry.appId, { recoveredData: entry.data });
+            }
+        }
+        setShowRecoveryPrompt(false);
+    };
+    const handleDiscardRecovery = () => {
+        setShowRecoveryPrompt(false);
+    };
+    const determinismMode = determinismRecorder.isRecording
+        ? 'recording'
+        : determinismRecorder.isTimeTraveling
+            ? 'replay'
+            : 'live';
+    const hasVisibleWindows = windows.some((w) => w.mode !== 'minimized');
+    const snapPreviewLabel = snapPreview
+        ? snapPreview.target === 'maximize'
+            ? 'Maximize'
+            : snapPreview.target === 'left'
+                ? 'Snap Left'
+                : 'Snap Right'
+        : null;
+    return (_jsxs("div", { "data-testid": "desktop-shell", className: "shell-container rb-shell relative w-screen h-screen overflow-hidden", children: [_jsx("a", { href: "#rb-desktop-region", className: "rb-skip-link", children: "Skip to desktop" }), showRecoveryPrompt && (_jsx(RecoveryPrompt, { onRecover: handleRecovery, onDiscard: handleDiscardRecovery })), _jsx(TopBar, { isRecording: determinismRecorder.isRecording, modeLabel: determinismMode, tickCount: determinismRecorder.tickCount, versionLabel: getVersionString(), unreadCount: unreadLogCount, onOpenLog: openLog, onOpenLauncher: openLauncher, onOpenSettings: openSettings, onOpenDeterminism: openDeterminismPanel }), _jsx(Desktop, { onOpenApp: openWindow, wallpaperId: wallpaperId, themeVariant: themeVariant }), _jsx(Dock, { onOpenApp: openWindow }), _jsx(Taskbar, { onOpenApp: openWindow }), !hasVisibleWindows && (_jsx(HomeScreen, { onOpenApp: (appId) => {
+                    if (appId === 'import-project') {
+                        handleImportProject();
+                    }
+                    else {
+                        openWindow(appId);
+                    }
+                }, onOpenExample: (exampleId) => {
+                    dispatchIntent({
+                        type: 'open-example',
+                        payload: { targetAppId: 'logic-playground', exampleId },
+                    });
+                }, determinismMode: determinismMode, tickCount: determinismRecorder.tickCount, isRecording: determinismRecorder.isRecording, hasRecording: determinismRecorder.hasRecording, logEntryCount: systemLogEntries.length, hasProofPack: determinismRecorder.verificationResult
+                    ? determinismRecorder.verificationResult.equal === true
+                    : false, verificationStatus: determinismRecorder.verificationResult
+                    ? determinismRecorder.verificationResult.equal
+                        ? 'pass'
+                        : 'fail'
+                    : undefined })), snapPreviewBounds && (_jsx("div", { className: "absolute inset-0 pointer-events-none", style: { zIndex: 9999 }, children: _jsx("div", { className: "absolute rounded-2xl border", style: {
+                        left: snapPreviewBounds.x,
+                        top: snapPreviewBounds.y,
+                        width: snapPreviewBounds.width,
+                        height: snapPreviewBounds.height,
+                        borderColor: 'var(--rb-accent-strong)',
+                        background: 'var(--rb-accent-weak)',
+                        boxShadow: 'var(--rb-shadow-2)',
+                        backdropFilter: 'blur(6px)',
+                    }, children: snapPreviewLabel && (_jsx("div", { className: "absolute top-3 left-3 px-3 py-1 rounded-full text-[10px] font-semibold tracking-[0.2em] uppercase border", style: { background: 'var(--rb-surface-2)', borderColor: 'var(--rb-border-strong)', color: 'var(--rb-accent)' }, children: snapPreviewLabel })) }) })), windows.map((window) => {
+                const binding = bindings[window.id];
+                const app = binding ? getApp(binding.appId) : getApp(window.contentId);
+                if (!app)
+                    return null;
+                const Component = app.component;
+                const resourceId = binding?.props?.resourceId ??
+                    binding?.props?.initialFileId ??
+                    binding?.props?.initialExampleId ??
+                    undefined;
+                const handlers = windowHandlers.current[window.id];
+                if (!handlers)
+                    return null; // Handlers not yet initialized
+                return (_jsx(ShellWindow, { state: window, minSize: app.manifest.minSize, iconName: app.manifest.iconId, snapAssistMode: snapAssist, provenance: {
+                        appId: app.manifest.id,
+                        resourceId,
+                        tick: determinismRecorder.tickCount,
+                    }, onClose: handlers.onClose, onFocus: handlers.onFocus, onMove: handlers.onMove, onResize: handlers.onResize, onMoveEnd: handlers.onMoveEnd, onResizeEnd: handlers.onResizeEnd, onSnapPreviewChange: handleSnapPreviewChange, onSnap: handleSnapCommit, onMinimize: () => {
+                        toggleMinimize(window.id);
+                        logSystemEvent({
+                            level: 'action',
+                            source: 'shell',
+                            message: 'Window minimized',
+                            data: { windowId: window.id, appId: window.contentId },
+                        });
+                    }, onMaximize: () => {
+                        toggleMaximize(window.id);
+                        logSystemEvent({
+                            level: 'action',
+                            source: 'shell',
+                            message: 'Window maximized',
+                            data: { windowId: window.id, appId: window.contentId },
+                        });
+                    }, onRestore: () => {
+                        restoreWindow(window.id);
+                        logSystemEvent({
+                            level: 'action',
+                            source: 'shell',
+                            message: 'Window restored',
+                            data: { windowId: window.id, appId: window.contentId },
+                        });
+                    }, children: _jsx(AppErrorBoundary, { appId: app.manifest.id, windowId: window.id, onClose: () => handleClose(window.id), children: _jsx(Suspense, { fallback: _jsx(WindowLoadingFallback, {}), children: _jsx(Component, { windowId: window.id, onOpenApp: openWindow, onClose: () => handleClose(window.id), onDispatchIntent: dispatchIntent, registerStateAccessor: registerWindowStateAccessor, unregisterStateAccessor: unregisterWindowStateAccessor, determinismRecorder: determinismRecorder, getCurrentCircuit: getCurrentCircuit, versionLabel: getVersionString(), recentAppIds: app.manifest.id === 'launcher' ? recentAppIds : undefined, pinnedAppIds: app.manifest.id === 'launcher' ? pinnedAppIds : undefined, runningAppIds: app.manifest.id === 'launcher' ? runningAppIds : undefined, onTogglePin: app.manifest.id === 'launcher' ? togglePinnedAppId : undefined, ...binding?.props }) }) }) }, window.id));
+            }), _jsx(ToastContainer, {}), _jsx(NarrativeOverlay, {}), systemSearchOpen && (_jsx(SystemSearch, { onExecuteApp: openWindow, onExecuteCommand: executeCommand, onExecuteIntent: handleSearchExecuteIntent, onExecuteMacro: executeMacroById, onExecuteFile: handleSearchExecuteFile, onClose: () => setSystemSearchOpen(false) })), commandPaletteOpen && (_jsx(CommandPalette, { onExecute: executeCommand, onClose: () => setCommandPaletteOpen(false) })), reproCheckOpen && reproCheckReport && (_jsx(Modal, { isOpen: reproCheckOpen, onClose: () => setReproCheckOpen(false), title: reproCheckReport.passed ? 'Reproducibility Check: PASS' : 'Reproducibility Check: FAIL', width: 520, height: 420, children: _jsxs("div", { className: "p-6 space-y-4", children: [_jsx("div", { className: "text-sm text-slate-300", children: reproCheckReport.passed
+                                ? 'All checks passed. Project should reproduce deterministically.'
+                                : 'Some checks failed. Fix issues before exporting to other machines.' }), _jsx("ul", { className: "space-y-2", children: reproCheckReport.checks.map((check) => (_jsxs("li", { className: "flex items-start gap-2 text-sm", children: [_jsx("span", { className: check.passed ? 'text-emerald-400' : 'text-red-400', children: check.passed ? '✓' : '✕' }), _jsxs("div", { children: [_jsx("div", { className: "text-slate-200", children: check.label }), check.details && (_jsx("div", { className: "text-slate-500 text-xs", children: check.details }))] })] }, check.id))) }), _jsx("div", { className: "flex justify-end", children: _jsx("button", { type: "button", onClick: () => setReproCheckOpen(false), className: "px-3 py-1.5 rounded text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-100", children: "Close" }) })] }) })), projectSummaryOpen && projectSummaryReport && (_jsx(Modal, { isOpen: projectSummaryOpen, onClose: () => setProjectSummaryOpen(false), title: `Project Summary: ${projectSummaryReport.title}`, width: 560, height: 520, children: _jsxs("div", { className: "p-6 space-y-4", children: [projectSummaryReport.warnings.length > 0 && (_jsxs("div", { className: "rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200", children: [_jsx("div", { className: "font-semibold uppercase tracking-wide text-[10px]", children: "Warnings" }), _jsx("ul", { className: "mt-1 list-disc list-inside space-y-1", children: projectSummaryReport.warnings.map((warning) => (_jsx("li", { children: warning }, warning))) })] })), _jsx("div", { className: "grid grid-cols-1 gap-3", children: projectSummaryReport.items.map((item) => (_jsxs("div", { className: "flex items-start justify-between gap-4 rounded-lg border border-slate-700/60 bg-slate-900/40 px-3 py-2", children: [_jsx("div", { className: "text-xs uppercase tracking-wide text-slate-400", children: item.label }), _jsx("div", { className: "text-sm text-slate-100 text-right break-all", children: item.value })] }, item.id))) })] }) })), workspaceSwitcherOpen && (_jsx(WorkspaceSwitcher, { workspaces: useWorkspaceStore.getState().listWorkspaces(), currentWorkspaceId: useWorkspaceStore.getState().activeWorkspaceId || undefined, onSelect: handleWorkspaceSelect, onClose: () => setWorkspaceSwitcherOpen(false) })), macroRunnerOpen && (_jsx(MacroRunner, { macros: useMacroStore.getState().listMacros(), onExecute: handleMacroExecute, onClose: () => setMacroRunnerOpen(false) })), windowSwitcherOpen && (_jsx(WindowSwitcher, { windows: windows, onSelect: handleWindowSwitcherSelect, onCancel: handleWindowSwitcherCancel })), openWithModalState && (_jsx(OpenWithModal, { targets: openWithModalState.eligibleTargets, resourceType: openWithModalState.resourceType, extension: openWithModalState.extension, onSelect: (target, preferNewWindow) => {
+                    // Dispatch open-with intent with selected target
+                    dispatchIntent({
+                        type: 'open-with',
+                        payload: {
+                            sourceAppId: 'system-search',
+                            targetAppId: target.appId,
+                            resourceId: openWithModalState.resourceId,
+                            resourceType: openWithModalState.resourceType,
+                        },
+                        routingHint: preferNewWindow ? { preferNewWindow } : undefined,
+                    });
+                    setOpenWithModalState(null);
+                }, onCancel: () => setOpenWithModalState(null) })), isDemoMode && onboardingModalOpen && (_jsx(OnboardingModal, { isOpen: onboardingModalOpen, onClose: () => setOnboardingModalOpen(false), onOpenApp: openWindow, onDispatchIntent: dispatchIntent })), isDemoMode && aboutModalOpen && (_jsx(AboutModal, { isOpen: aboutModalOpen, onClose: () => setAboutModalOpen(false) })), _jsx(ExamplePicker, { open: examplePickerOpen, onClose: () => setExamplePickerOpen(false), onSelectExample: handleLoadExample }), bitstreamMetadata && (_jsx(BitstreamProvenanceModal, { isOpen: bitstreamProvenanceOpen, onClose: () => setBitstreamProvenanceOpen(false), metadata: bitstreamMetadata })), determinismPanelOpen && DeterminismPanel && (_jsx(DeterminismPanel, { isOpen: determinismPanelOpen, onClose: () => setDeterminismPanelOpen(false), getCurrentCircuit: getCurrentCircuit, onRecordAction: handleDeterminismAction, onExportLog: determinismRecorder.exportLog, isRecording: determinismRecorder.isRecording, verificationResult: determinismRecorder.verificationResult, currentSnapshot: determinismRecorder.currentSnapshot, canNavigateForward: determinismRecorder.canNavigateForward(), canNavigateBackward: determinismRecorder.canNavigateBackward() })), showPerfHud && _jsx(PerfHud, { onClose: () => setShowPerfHud(false) }), import.meta.env.DEV && showJankHud && (_jsxs(_Fragment, { children: [_jsx(HitTestDebugHUD, {}), _jsx(RenderStormMonitor, {})] })), import.meta.env.DEV && showDeadZoneScanner && _jsx(DeadZoneScanner, {}), import.meta.env.DEV && showOverlayDebug && _jsx(OverlayDebugHUD, {}), _jsx(RecentLogWidget, { onOpenLog: openLog }), _jsx(TruthBar, { mode: determinismMode, tickCount: determinismRecorder.tickCount, totalEvents: determinismRecorder.currentSnapshot?.totalEvents, hashPrefix: determinismRecorder.verificationResult?.liveHash
+                    ? determinismRecorder.verificationResult.liveHash.slice(0, 8)
+                    : undefined, canRecord: getCurrentCircuit() !== null, onToggleRecording: () => {
+                    if (determinismRecorder.isRecording) {
+                        handleDeterminismAction({ type: 'stop-recording' });
+                    }
+                    else {
+                        handleDeterminismAction({ type: 'start-recording' });
+                    }
+                }, onVerify: determinismRecorder.hasRecording && !determinismRecorder.isRecording
+                    ? () => handleDeterminismAction({ type: 'verify-replay' })
+                    : undefined, verificationStatus: determinismRecorder.verificationResult
+                    ? determinismRecorder.verificationResult.equal
+                        ? 'pass'
+                        : 'fail'
+                    : undefined, onOpenPanel: () => setDeterminismPanelOpen(true), recordingEventCount: determinismRecorder.eventCount, hasProofPack: determinismRecorder.verificationResult
+                    ? determinismRecorder.verificationResult.equal === true
+                    : false, onExportProof: handleExportProof })] }));
+};

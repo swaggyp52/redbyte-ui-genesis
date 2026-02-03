@@ -1,0 +1,45 @@
+import { jsx as _jsx } from "react/jsx-runtime";
+// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Use without permission prohibited.
+// Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+import { useMemo, useState, useEffect } from 'react';
+import { Launcher } from '../Launcher';
+import { getAppsForLauncher } from '../launcherData';
+const LauncherComponent = ({ onOpenApp, onClose, recentAppIds, pinnedAppIds, onTogglePin, runningAppIds, }) => {
+    const [apps, setApps] = useState([]);
+    // Lazy load app list from registry to avoid circular imports
+    useEffect(() => {
+        (async () => {
+            const launcherApps = await getAppsForLauncher();
+            setApps(launcherApps);
+        })();
+    }, []);
+    const recentApps = useMemo(() => {
+        if (!recentAppIds?.length)
+            return [];
+        const lookup = new Map(apps.map((app) => [app.id, app]));
+        return recentAppIds.map((id) => lookup.get(id)).filter(Boolean);
+    }, [apps, recentAppIds]);
+    const pinnedApps = useMemo(() => {
+        if (!pinnedAppIds?.length)
+            return [];
+        const lookup = new Map(apps.map((app) => [app.id, app]));
+        return pinnedAppIds
+            .map((id) => lookup.get(id))
+            .filter(Boolean)
+            .filter((app) => app.id !== 'launcher');
+    }, [apps, pinnedAppIds]);
+    return (_jsx(Launcher, { apps: apps, recentApps: recentApps, pinnedApps: pinnedApps, runningAppIds: runningAppIds, onTogglePin: onTogglePin, onLaunch: (id) => onOpenApp?.(id), onClose: onClose }));
+};
+export const LauncherApp = {
+    manifest: {
+        id: 'launcher',
+        name: 'Launcher',
+        iconId: 'browser',
+        category: 'system',
+        singleton: true,
+        defaultSize: { width: 640, height: 480 },
+        minSize: { width: 480, height: 360 },
+    },
+    component: LauncherComponent,
+};

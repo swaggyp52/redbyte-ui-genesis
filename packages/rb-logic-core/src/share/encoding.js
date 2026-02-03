@@ -1,0 +1,151 @@
+// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Use without permission prohibited.
+// Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+/**
+ * Validate a circuit object has the expected structure
+ * Returns validation result with specific error messages
+ */
+export function validateCircuit(circuit) {
+    const errors = [];
+    const warnings = [];
+    if (!circuit || typeof circuit !== 'object') {
+        return { valid: false, errors: ['Circuit must be an object'], warnings: [] };
+    }
+    const c = circuit;
+    // Required arrays
+    if (!Array.isArray(c.gates)) {
+        errors.push("Missing or invalid 'gates' array");
+    }
+    if (!Array.isArray(c.wires)) {
+        errors.push("Missing or invalid 'wires' array");
+    }
+    if (!Array.isArray(c.inputs)) {
+        errors.push("Missing or invalid 'inputs' array");
+    }
+    if (!Array.isArray(c.outputs)) {
+        errors.push("Missing or invalid 'outputs' array");
+    }
+    // Warnings for potential issues
+    if (Array.isArray(c.gates) && c.gates.length === 0 && Array.isArray(c.wires) && c.wires.length === 0) {
+        warnings.push('Circuit is empty (no gates or wires)');
+    }
+    if (Array.isArray(c.gates) && c.gates.length > 500) {
+        warnings.push(`Circuit has ${c.gates.length} gates - may impact performance`);
+    }
+    if (Array.isArray(c.wires) && c.wires.length > 2000) {
+        warnings.push(`Circuit has ${c.wires.length} wires - may impact performance`);
+    }
+    return {
+        valid: errors.length === 0,
+        errors,
+        warnings,
+    };
+}
+/**
+ * Encode a circuit to a URL-safe base64 string (legacy uncompressed format)
+ * For compressed encoding, use encoding.compressed.ts (lazy-loaded)
+ */
+export function encodeCircuit(circuit) {
+    try {
+        const json = JSON.stringify(circuit);
+        const base64 = btoa(json);
+        // Make URL-safe: replace + with -, / with _, remove =
+        return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
+    catch (error) {
+        throw new Error(`Failed to encode circuit: ${error instanceof Error ? error.message : String(error)}`);
+    }
+}
+// Module-level cache for lazy-loaded compression module
+let _compressedModule = null;
+/**
+ * Preload the compressed encoding module
+ * Call this during app initialization to avoid async overhead later
+ */
+export async function preloadCompressedCodec() {
+    if (!_compressedModule) {
+        _compressedModule = await import('./encoding.compressed');
+    }
+}
+/**
+ * Decode a URL-safe base64 string to a circuit (synchronous, legacy format only)
+ *
+ * This function only handles legacy uncompressed format.
+ * For compressed format (c1: prefix), use decodeCircuitAsync() or preload with preloadCompressedCodec().
+ *
+ * @throws Error if encoded string uses compressed format (c1:) and module not preloaded
+ */
+export function decodeCircuit(encoded) {
+    // Check for compressed format prefix
+    if (encoded.startsWith('c1:')) {
+        if (_compressedModule) {
+            // Module was preloaded, use it synchronously
+            return _compressedModule.decodeCircuitCompressed(encoded);
+        }
+        throw new Error('Compressed circuit format (c1:) requires async decoding. ' +
+            'Use decodeCircuitAsync() or call preloadCompressedCodec() during initialization.');
+    }
+    // Legacy uncompressed format
+    try {
+        // Restore standard base64: - to +, _ to /
+        let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+        // Add padding
+        while (base64.length % 4) {
+            base64 += '=';
+        }
+        const json = atob(base64);
+        const circuit = JSON.parse(json);
+        // Validate the decoded circuit structure
+        const validation = validateCircuit(circuit);
+        if (!validation.valid) {
+            throw new Error(`Invalid circuit structure: ${validation.errors.join(', ')}`);
+        }
+        // Log warnings for potential issues
+        if (validation.warnings.length > 0) {
+            console.warn('[Circuit] Validation warnings:', validation.warnings.join(', '));
+        }
+        return circuit;
+    }
+    catch (error) {
+        throw new Error(`Failed to decode circuit: ${error instanceof Error ? error.message : String(error)}`);
+    }
+}
+/**
+ * Decode a URL-safe base64 string to a circuit (async, supports all formats)
+ *
+ * Handles both legacy uncompressed format and compressed format (c1: prefix).
+ * Automatically lazy-loads compression module if needed.
+ *
+ * @param encoded - URL-safe base64 encoded circuit string
+ * @returns Promise resolving to decoded Circuit
+ */
+export async function decodeCircuitAsync(encoded) {
+    // Check for compressed format prefix
+    if (encoded.startsWith('c1:')) {
+        // Ensure compression module is loaded
+        await preloadCompressedCodec();
+        return _compressedModule.decodeCircuitCompressed(encoded);
+    }
+    // Legacy uncompressed format (reuse sync implementation)
+    return decodeCircuit(encoded);
+}
+/**
+ * Encode a circuit to compressed format (async, lazy-loads compression module)
+ *
+ * This is a convenience wrapper that lazy-loads the compression module.
+ * Use this for share/export functionality.
+ *
+ * @param circuit - Circuit to encode
+ * @returns Promise resolving to compressed URL-safe string with c1: prefix
+ */
+export async function encodeCircuitCompressed(circuit) {
+    await preloadCompressedCodec();
+    return _compressedModule.encodeCircuitCompressed(circuit);
+}
+/**
+ * Check if an encoded string uses compressed format
+ * Useful for detecting format without loading compression module
+ */
+export function isCompressedFormat(encoded) {
+    return encoded.startsWith('c1:');
+}

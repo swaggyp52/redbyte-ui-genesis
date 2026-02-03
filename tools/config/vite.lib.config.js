@@ -1,0 +1,36 @@
+import { defineConfig } from "vite";
+import tsconfigPaths from "vite-tsconfig-paths";
+import dts from "vite-plugin-dts";
+import path from "node:path";
+import fs from "node:fs";
+const pkg = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), "package.json"), "utf-8"));
+// Turn "@redbyte/rb-tokens" -> "rb-tokens"
+const pkgName = pkg.name || "rb-lib";
+const baseName = pkgName.includes("/") ? pkgName.split("/")[1] : pkgName;
+export default defineConfig({
+    plugins: [
+        tsconfigPaths(),
+        dts({
+            insertTypesEntry: true,
+        }),
+    ],
+    build: {
+        lib: {
+            entry: path.resolve(process.cwd(), "src/index.ts"),
+            name: baseName,
+            fileName: baseName,
+            formats: ["es", "cjs"],
+        },
+        rollupOptions: {
+            // keep externals small & safe
+            external: ["react", "react-dom", "react/jsx-runtime"],
+            output: {
+                globals: {
+                    react: "React",
+                    "react-dom": "ReactDOM",
+                    "react/jsx-runtime": "jsxRuntime",
+                },
+            },
+        },
+    },
+});
