@@ -6336,5 +6336,49 @@ Status: Task 1.4 COMPLETE. Virtual Lab now automatically removes 3D hardware nod
   
 Status: Task 1.5 COMPLETE. Arduino Uno boards now auto-detected with VID/PID matching and friendly naming. Default firmware ready for deployment. Ready for Task 1.6 (connection stability hardening).
 
+## Change Log  2026-02-02 (FPGA Task 1.6 - Connection Stability Hardening)
+
+- **Enhanced ConnectionCenterPanel** with comprehensive connection state indicators:
+  - "CONNECTING..." state with amber spinner (⟳ Handshaking...)
+  - "RECONNECTING" animation with pulse effect
+  - Hardware-specific connecting states (Basys3 shows "Connecting..." during handshake)
+  - Button disabled states during connection attempts (prevents double-connect)
+  
+- **Implemented actionable error guidance** system:
+  - getErrorGuidance() helper maps errors to user-friendly messages + actions
+  - "Device not found" → "Check USB connection and power. Verify COM port."
+  - "Connection refused/timeout" → "Restart bridge agent or replug device."
+  - "Port already in use" → "Close other applications using this port."
+  - Each error message includes "Clear Error & Retry" button
+  
+- **Added bridge offline guidance**:
+  - Red warning banner when bridge status = 'disconnected'
+  - Message: "Bridge Agent Not Running"
+  - Action: "Start RedByte Bridge or run: `pnpm bridge:start`"
+  - Code snippet with syntax highlighting for quick copy-paste
+  
+- **Enhanced visual feedback**:
+  - Amber pulsing dots for connecting states (⟳)
+  - Red warning icons (⚠) for offline/error states
+  - Emerald glow for successful connections
+  - Disabled button styling with cursor-wait during connection
+  
+- **Graceful recovery workflow**:
+  - Session errors don't block future connection attempts
+  - "Clear Error & Retry" button resets session state via disconnect()
+  - Error state visible until user explicitly clears
+  - Bridge reconnection triggers auto-adopt after 100ms delay
+  
+- **Test scenarios covered**:
+  - Bridge agent not running: Shows "Bridge: OFFLINE" with start instructions
+  - Device unplugged mid-session: Error state with "Device not found" guidance
+  - Connection timeout: Shows actionable retry message
+  - Graceful recovery: Clear error → reconnect workflow
+  
+- **Files modified**:
+  - packages/rb-apps/src/components/ConnectionCenterPanel.tsx (state indicators + error guidance)
+  
+Status: Task 1.6 COMPLETE. Connection panel now provides real-time feedback for all connection states with actionable error messages. Ready for Task 1.7 (lab setup documentation).
+
 
 
