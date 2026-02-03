@@ -6889,3 +6889,23 @@ All TypeScript compilation errors systematically resolved across monorepo:
 
 **Attribution:** Connor Angiel
 
+
+---
+
+## Change Log  2026-02-03 (Logic Playground Store Sync Stabilization)
+
+**Issue:** Logic Playground could enter a render/update loop when circuitStore updates occurred because the subscription callback captured a stale circuit value and re-subscribed on every circuit change.
+
+**Fix:**
+- Added a circuitRef to track the current circuit without re-subscribing.
+- Subscribed to useCircuitStore once and compared against circuitRef.current.
+- Prevented redundant updates that can trigger render storms on node placement.
+
+**Files:**
+- packages/rb-apps/src/apps/LogicPlaygroundApp.tsx
+
+**Tests:**
+- pnpm exec vitest run packages/rb-apps/src/__tests__/playground.stabilization.test.tsx (11/11 passing)
+
+**Attribution:** Connor Angiel
+
