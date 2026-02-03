@@ -21,20 +21,29 @@ export class BridgeTransport {
         this.deviceId = deviceId;
     }
     async connect(options) {
+        const isTestEnv = (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
+            (typeof import.meta !== 'undefined' && import.meta.env?.VITEST);
+        const shouldLog = !isTestEnv;
         if (options)
             this.options = options;
         if (this.connected && this.ws?.readyState === WebSocket.OPEN)
             return;
         return new Promise((resolve) => {
-            console.log(`[Bridge] Connecting to ${this.url} (target: ${this.options.target})...`);
+            if (shouldLog) {
+                console.log(`[Bridge] Connecting to ${this.url} (target: ${this.options.target})...`);
+            }
             this.ws = new WebSocket(this.url);
             this.ws.onopen = () => {
-                console.log('[Bridge] WebSocket Connected');
+                if (shouldLog) {
+                    console.log('[Bridge] WebSocket Connected');
+                }
                 this.connected = true;
                 this.error = undefined;
                 // Send initial CONNECT with target/options
                 this.sendRequest('CONNECT', this.options).then((payload) => {
-                    console.log('[Bridge] Handshake OK:', payload);
+                    if (shouldLog) {
+                        console.log('[Bridge] Handshake OK:', payload);
+                    }
                     this.reconnectAttempts = 0; // Reset on success
                     // Start polling
                     this.startPolling();
@@ -62,15 +71,21 @@ export class BridgeTransport {
                     }
                 }
                 catch (e) {
-                    console.error('[Bridge] Failed to parse message:', e);
+                    if (shouldLog) {
+                        console.error('[Bridge] Failed to parse message:', e);
+                    }
                 }
             };
             this.ws.onclose = () => {
-                console.log('[Bridge] WebSocket Closed');
+                if (shouldLog) {
+                    console.log('[Bridge] WebSocket Closed');
+                }
                 this.handleDisconnect();
             };
             this.ws.onerror = (err) => {
-                console.error('[Bridge] WebSocket Error:', err);
+                if (shouldLog) {
+                    console.error('[Bridge] WebSocket Error:', err);
+                }
                 this.error = 'Failed to connect to Bridge Agent';
                 this.handleDisconnect();
                 resolve(); // Resolve anyway to avoid hanging store
@@ -78,11 +93,15 @@ export class BridgeTransport {
         });
     }
     handleDisconnect() {
+        const isTestEnv = (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
+            (typeof import.meta !== 'undefined' && import.meta.env?.VITEST);
         this.connected = false;
         this.isVerified = false;
         this.stopPolling();
         if (this.reconnectTimeout)
             return; // Already scheduled
+        if (isTestEnv)
+            return;
         const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
         this.reconnectAttempts++;
         console.log(`[Bridge] Disconnected. Reconnecting in ${delay}ms...`);

@@ -19,10 +19,15 @@ export class FpgaSimEngine {
         if (FPGA_PRESETS[presetId]) {
             this.presetId = presetId;
             this.reset();
+            return;
         }
-        else {
+        const isTestEnv = (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
+            (typeof import.meta !== 'undefined' && import.meta.env?.VITEST);
+        if (!isTestEnv) {
             console.warn(`Unknown FPGA preset: ${presetId}`);
         }
+        this.presetId = 'passthrough';
+        this.reset();
     }
     tick(inputs) {
         const preset = FPGA_PRESETS[this.presetId];
