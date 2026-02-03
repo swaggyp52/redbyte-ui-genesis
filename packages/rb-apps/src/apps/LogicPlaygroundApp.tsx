@@ -399,6 +399,12 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       return;
     }
 
+    const projectSignature = JSON.stringify(unifiedProject.circuit);
+    const circuitSignature = JSON.stringify(toCircuitV1(circuit));
+    if (projectSignature === circuitSignature) {
+      return;
+    }
+
     updateProject((project) => ({
       ...project,
       circuit: toCircuitV1(circuit),
