@@ -56,6 +56,7 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
     const runSimulationStep = useLabStore((state) => state.runSimulationStep);
     const setTransport = useLabStore((state) => state.setTransport);
     const setUserPinState = useLabStore((state) => state.setUserPinState);
+    const { safeMode } = useClassroomModeStore();
 
     // SHIP-GRADE: Override default transport with HardwareClient bridge
     useEffect(() => {
@@ -83,7 +84,6 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
     const setSelectedNetId = useLabStore((state) => state.setSelectedNetId);
     const getFile = useFileSystemStore((state) => state.getFile);
     const getAllFiles = useFileSystemStore((state) => state.getAllFiles);
-    const { safeMode } = useClassroomModeStore();
 
     type GuardrailConfig = {
         title: string;
