@@ -33,8 +33,8 @@ describe('Settings app lifecycle', () => {
     });
     it('changes theme when button is clicked', () => {
         render(_jsx(SettingsComponent, {}));
-        const instrumentButton = screen.getByRole('button', { name: /Instrument/i });
-        fireEvent.click(instrumentButton);
+        const lightButton = screen.getByRole('button', { name: /Light High-clarity light mode/i });
+        fireEvent.click(lightButton);
         const state = useSettingsStore.getState();
         expect(state.themeVariant).toBe('instrument');
     });
@@ -93,7 +93,7 @@ describe('Settings persistence', () => {
         expect(stored).toBeTruthy();
         if (stored) {
             const parsed = JSON.parse(stored);
-            expect(parsed.themeVariant).toBe('instrument');
+            expect(parsed.themeVariant).toBe('light');
         }
     });
     it('persists wallpaper changes to localStorage', () => {
