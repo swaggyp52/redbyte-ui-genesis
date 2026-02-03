@@ -6380,5 +6380,53 @@ Status: Task 1.5 COMPLETE. Arduino Uno boards now auto-detected with VID/PID mat
   
 Status: Task 1.6 COMPLETE. Connection panel now provides real-time feedback for all connection states with actionable error messages. Ready for Task 1.7 (lab setup documentation).
 
+## Change Log  2026-02-02 (FPGA Task 1.7 - Lab Setup Documentation)
+
+- **Comprehensive Hardware Deployment guide** added to LAB_SPECS.md:
+  - Prerequisites: Vivado installation (40GB, Artix-7 support), USB drivers (Digilent/CH340), bridge agent setup
+  - Environment variables: VIVADO_PATH, RB_FPGA_CABLE, RB_FPGA_DEVICE, RB_FPGA_DRYRUN
+  - One-time setup instructions with verification steps
+  
+- **Deploy to Basys 3 workflow** documented (4-step process):
+  - Step 1: Design circuit in Logic Playground/Virtual Lab
+  - Step 2: Export Verilog with validation (syntax/signals/readiness score)
+  - Step 3: Synthesize bitstream via Vivado batch mode (synthesis→implementation→bitstream)
+  - Step 4: Program FPGA via USB-JTAG with progress feedback
+  
+- **Arduino Uno workflow** documented (2-step process):
+  - Step 1: Upload RedByte firmware via arduino-cli
+  - Step 2: Live control with GET/SET/PIN commands over serial
+  - Integration with Virtual Lab 3D scene (auto-spawn Arduino node)
+  
+- **Troubleshooting guide** with 8 common scenarios:
+  - Bridge not connecting → Start agent, check firewall, kill port conflicts
+  - Device not found → Check USB/power/drivers, verify Device Manager
+  - Vivado not found → Verify installation, set VIVADO_PATH, add to PATH
+  - Synthesis fails → Check validation score, review error log, fix signal mismatches
+  - Programming timeout → Direct USB connection, check JTAG mode jumper, power cycle
+  - Arduino not responding → Re-upload firmware, verify baud rate, press reset
+  - Port already in use → Close Arduino IDE/PuTTY, restart bridge, reboot if stuck
+  - Each with Symptom → Causes → Solutions format
+  
+- **Best practices** documented for students/instructors/lab admins:
+  - Students: Test in simulation first, save before programming, disconnect when idle
+  - Instructors: Provide validated examples, test workflow, keep spare cables
+  - Lab admins: Pre-install drivers, create startup scripts, label COM ports
+  
+- **Hardware lab examples** referenced:
+  - Example #16: 4-bit counter on Basys 3
+  - Example #17: Traffic light FSM
+  - Arduino blink test with SET commands
+  
+- **Additional resources** linked:
+  - Environment variable reference table
+  - Dry run mode instructions for testing without hardware
+  - External documentation (Digilent, Xilinx, Arduino, RedByte firmware)
+  
+- **Files modified**:
+  - LAB_SPECS.md (+310 lines: hardware deployment, workflows, troubleshooting)
+  
+Status: Task 1.7 COMPLETE. LAB_SPECS.md now includes comprehensive hardware deployment guide with setup, workflows, and troubleshooting. Phase 1 hardware integration documentation complete.
+
 
 
