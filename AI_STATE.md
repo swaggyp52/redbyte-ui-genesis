@@ -6981,3 +6981,26 @@ All TypeScript compilation errors systematically resolved across monorepo:
 - packages/rb-logic-3d/src/lab-model/fpga-sim/engine.js
 
 **Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-03 (Test Suite Fixes: Settings + Evidence + System Log)
+
+**Evidence Export Test Resolution**
+- Fixed module resolution in evidenceExport.js by adding explicit .js extensions for local imports.
+- Unblocked erifyEvidence and evidenceExport tests that were failing with module not found.
+
+**Settings Persistence Test Update**
+- Updated Settings wallpaper test to match current UI label (Grid Faint blue gridlines).
+
+**System Log Store Test Fix**
+- Adjusted test to read store state after mutation, preventing undefined entry access.
+
+**Files Updated**
+- packages/rb-apps/src/utils/evidenceExport.js
+- packages/rb-apps/src/__tests__/settings.test.tsx
+- packages/rb-apps/src/__tests__/settings.test.js
+- packages/rb-apps/src/__tests__/system-log-store.test.ts
+- packages/rb-apps/src/__tests__/system-log-store.test.js
+
+**Attribution**: Connor Angiel
