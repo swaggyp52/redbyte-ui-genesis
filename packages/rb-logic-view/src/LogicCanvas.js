@@ -85,7 +85,11 @@ export const LogicCanvas = ({ engine, circuit: externalCircuit, width = 800, hei
         return x >= viewBounds.left && x <= viewBounds.right && y >= viewBounds.top && y <= viewBounds.bottom;
     }), [circuit.nodes, viewBounds]);
     const visibleNodeIds = React.useMemo(() => new Set(visibleNodes.map((node) => node.id)), [visibleNodes]);
-    const visibleConnections = React.useMemo(() => circuit.connections.filter((connection) => visibleNodeIds.has(connection.from.nodeId) || visibleNodeIds.has(connection.to.nodeId)), [circuit.connections, visibleNodeIds]);
+    const visibleConnections = React.useMemo(() => circuit.connections.filter((connection) => {
+        const fromNodeId = typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
+        const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+        return visibleNodeIds.has(fromNodeId) || visibleNodeIds.has(toNodeId);
+    }), [circuit.connections, visibleNodeIds]);
     // Invariant: controlled mode requires onCircuitChange callback
     if (import.meta.env.DEV) {
         if (externalCircuit && !onCircuitChange) {
@@ -628,14 +632,22 @@ export const LogicCanvas = ({ engine, circuit: externalCircuit, width = 800, hei
                             majorLineInterval: 5,
                             majorLineColor: '#2a2a2a',
                         }), visibleConnections.map((conn) => {
-                            const wireId = `${conn.from.nodeId}.${conn.from.portName}-${conn.to.nodeId}.${conn.to.portName}`;
-                            const signal = renderSignals.get(`${conn.from.nodeId}.${conn.from.portName}`);
+                            const fromNodeId = typeof conn.from === 'string' ? conn.from : conn.from.nodeId;
+                            const toNodeId = typeof conn.to === 'string' ? conn.to : conn.to.nodeId;
+                            const fromPortName = typeof conn.from === 'string'
+                                ? (conn.fromPin ?? conn.fromPort ?? 'out')
+                                : (conn.from.portName ?? conn.from.port ?? 'out');
+                            const toPortName = typeof conn.to === 'string'
+                                ? (conn.toPin ?? conn.toPort ?? 'in')
+                                : (conn.to.portName ?? conn.to.port ?? 'in');
+                            const wireId = `${fromNodeId}.${fromPortName}-${toNodeId}.${toPortName}`;
+                            const signal = renderSignals.get(`${fromNodeId}.${fromPortName}`);
                             const probeColors = probeWireHighlights?.get(wireId);
                             const mismatchColors = mismatchWireHighlights?.get(wireId);
                             return (_jsx(WireView, { connection: conn, nodes: circuit.nodes, camera: camera, isSelected: selection.wires.has(wireId), onSelect: selectWire, signal: signal, probeColors: probeColors, mismatchColors: mismatchColors }, wireId));
                         }), editingState.wireStartPort && (() => {
                             const startNode = circuit.nodes.find(n => n.id === editingState.wireStartPort.nodeId);
-                            if (!startNode)
+                            if (!startNode || !startNode.position)
                                 return null;
                             const startX = startNode.position.x * camera.zoom + camera.x;
                             const startY = startNode.position.y * camera.zoom + camera.y;
@@ -648,6 +660,7 @@ export const LogicCanvas = ({ engine, circuit: externalCircuit, width = 800, hei
                             return (_jsx("line", { x1: startX, y1: startY, x2: mousePosition.x, y2: mousePosition.y, stroke: isValid ? "#00ffff" : "#ef4444", strokeWidth: "2", strokeDasharray: "5,5", opacity: "0.7", pointerEvents: "none" }));
                         })(), visibleNodes.map((node) => (_jsx(NodeView, { node: node, camera: camera, isSelected: selection.nodes.has(node.id), isHighlighted: node.id === highlightedNodeId, isMismatchHighlighted: mismatchNodeIds?.has(node.id) ?? false, onSelect: selectNode, onMove: handleNodeMove, onPortClick: handlePortClick, onToggleSwitch: handleToggleSwitch, onNodeDoubleClick: onNodeDoubleClick, onProbeToggle: onProbeToggle, signals: renderSignals, chipMetadata: getChipMetadata?.(node.type), wireStartPort: editingState.wireStartPort, onPortHover: (portName) => setHoveredPort({ nodeId: node.id, portName }), onPortLeave: () => setHoveredPort(null), probedPorts: probedPorts, highlightedPort: highlightedPort, debugTick: debugTick, mismatchPortKeys: mismatchPortKeys }, node.id))), _jsx("g", { id: "rb-switch-overlay", style: { pointerEvents: 'none' }, children: visibleNodes
                                 .filter((node) => node.type === 'Switch' || node.type === 'INPUT')
+                                .filter((node) => node.position) // Ensure position exists
                                 .map((node) => {
                                 const screenX = node.position.x * camera.zoom + camera.x;
                                 const screenY = node.position.y * camera.zoom + camera.y;

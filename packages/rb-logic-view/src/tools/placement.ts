@@ -26,6 +26,7 @@ export function findSmartSpawnPosition(
 
     const occupied = new Set<string>();
     for (const node of existingNodes) {
+        if (!node.position) continue;
         const nx = Math.round(node.position.x / gridSize);
         const ny = Math.round(node.position.y / gridSize);
         occupied.add(`${nx},${ny}`);

@@ -5,10 +5,6 @@ import { CircuitEngine } from './CircuitEngine';
 import { TraceRecorder } from './TraceRecorder';
 /**
  * Tick engine that runs circuit simulation at a specific Hz
- * 
- * Supports two modes:
- * - Interactive mode (default): Real-time 50ms (20Hz) tick intervals with visual feedback
- * - Fast mode: Immediate execution for automated test benches and vector runs
  */
 export class TickEngine {
     circuitEngine;
@@ -17,11 +13,9 @@ export class TickEngine {
     intervalId;
     tickCount;
     traceRecorder;
-    fastMode = false;
-    constructor(circuit, config = { tickRate: 20, fastMode: false }) {
+    constructor(circuit, config = { tickRate: 20 }) {
         this.circuitEngine = new CircuitEngine(circuit);
         this.tickRate = config.tickRate;
-        this.fastMode = config.fastMode ?? false;
         this.running = false;
         this.intervalId = null;
         this.tickCount = 0;
@@ -62,44 +56,16 @@ export class TickEngine {
         }
     }
     /**
-     * Enable or disable fast mode
-     * Fast mode: Immediate ticks (no delay), used for test automation
-     * Interactive mode: Real-time 50ms delays for visual feedback
-     */
-    setFastMode(enabled) {
-        this.fastMode = enabled;
-        if (this.running) {
-            this.pause();
-            this.start();
-        }
-    }
-    /**
-     * Get current mode state
-     */
-    isFastMode() {
-        return this.fastMode;
-    }
-    /**
      * Start the simulation
-     * In fast mode: runs immediately without interval
-     * In interactive mode: runs at tickRate Hz with delays
      */
     start() {
         if (this.running)
             return;
         this.running = true;
-        
-        if (this.fastMode) {
-            // Fast mode: Run all ticks synchronously
-            // This is used for test benches and vector runs
-            // The caller typically runs ticks in a tight loop or batch
-        } else {
-            // Interactive mode: Run at tickRate Hz
-            const intervalMs = 1000 / this.tickRate;
-            this.intervalId = setInterval(() => {
-                this.stepOnce();
-            }, intervalMs);
-        }
+        const intervalMs = 1000 / this.tickRate;
+        this.intervalId = setInterval(() => {
+            this.stepOnce();
+        }, intervalMs);
     }
     /**
      * Pause the simulation

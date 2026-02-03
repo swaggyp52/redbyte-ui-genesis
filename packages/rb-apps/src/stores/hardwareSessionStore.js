@@ -127,14 +127,31 @@ export const useHardwareSessionStore = create()(devtools(immer((set, get) => {
                     return;
                 }
             }
-            // 1. FIND THE DEVICE
+            // 1. FIND THE DEVICE (PHASE 1 Task 1.5: Enhanced Arduino detection)
             const devices = hardwareClient.getDevices();
             let candidate = null;
             if (target === 'basys3') {
-                candidate = devices.find(d => d.deviceId === 'basys3' || d.boardModel.toLowerCase().includes('basys'));
+                // Basys3 detection: Look for Digilent/Xilinx devices
+                candidate = devices.find(d => d.deviceId === 'basys3' ||
+                    d.boardModel?.toLowerCase().includes('basys') ||
+                    d.boardModel?.toLowerCase().includes('digilent'));
             }
             else if (target === 'arduino-uno') {
-                candidate = devices.find(d => d.deviceId === 'uno' || d.boardModel.toLowerCase().includes('uno'));
+                // Arduino detection: Look for Arduino VID/PID or manufacturer string
+                candidate = devices.find(d => {
+                    if (d.deviceId === 'uno')
+                        return true;
+                    // Check board model
+                    const modelLower = (d.boardModel || '').toLowerCase();
+                    if (modelLower.includes('uno') || modelLower.includes('arduino'))
+                        return true;
+                    // Check manufacturer
+                    const mfgLower = (d.manufacturer || '').toLowerCase();
+                    if (mfgLower.includes('arduino') || mfgLower.includes('ch340') || mfgLower.includes('ftdi')) {
+                        return true;
+                    }
+                    return false;
+                });
             }
             if (!candidate) {
                 console.error(`[HardwareStore] Cannot connect to ${target}: Device not found in discovery list.`);

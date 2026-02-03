@@ -105,6 +105,14 @@ export interface LabProjectV1 {
 
   // Deterministic recordings (optional)
   recordings?: RecordingV1[];
+
+  // FPGA export artifacts (optional)
+  fpgaArtifacts?: {
+    verilog?: string;
+    constraints?: string;
+    bitstream?: Uint8Array | string;
+    metadata?: Record<string, unknown>;
+  };
 }
 
 // Backward-compatible alias

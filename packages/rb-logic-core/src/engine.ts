@@ -3,7 +3,28 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import { getNodeDefinition } from "./registry";
-import type { Circuit, LogicValue } from "./types";
+import type { Circuit, Connection, LogicValue, PortRef } from "./types";
+
+function normalizeConnection(conn: Connection): { from: PortRef; to: PortRef } {
+  const fromIsString = typeof conn.from === "string";
+  const toIsString = typeof conn.to === "string";
+
+  const fromNodeId = fromIsString ? conn.from : conn.from.nodeId;
+  const toNodeId = toIsString ? conn.to : conn.to.nodeId;
+
+  const fromPortName = fromIsString
+    ? conn.fromPin ?? conn.fromPort ?? "out"
+    : conn.from.portName ?? conn.from.port ?? conn.fromPin ?? conn.fromPort ?? "out";
+
+  const toPortName = toIsString
+    ? conn.toPin ?? conn.toPort ?? "in"
+    : conn.to.portName ?? conn.to.port ?? conn.toPin ?? conn.toPort ?? "in";
+
+  return {
+    from: { nodeId: fromNodeId, portName: fromPortName },
+    to: { nodeId: toNodeId, portName: toPortName },
+  };
+}
 
 /**
  * Simple tick-based logic engine:
@@ -39,13 +60,14 @@ export class LogicEngine {
 
     // Build input maps from connections
     for (const conn of this.circuit.connections) {
-      const src = this.signals.get(conn.from.nodeId);
-      const v = src?.get(conn.from.portName) ?? 0;
+      const normalized = normalizeConnection(conn);
+      const src = this.signals.get(normalized.from.nodeId);
+      const v = src?.get(normalized.from.portName) ?? 0;
 
-      if (!inputMap[conn.to.nodeId]) {
-        inputMap[conn.to.nodeId] = {};
+      if (!inputMap[normalized.to.nodeId]) {
+        inputMap[normalized.to.nodeId] = {};
       }
-      inputMap[conn.to.nodeId][conn.to.portName] = v;
+      inputMap[normalized.to.nodeId][normalized.to.portName] = v;
     }
 
     // Update each node

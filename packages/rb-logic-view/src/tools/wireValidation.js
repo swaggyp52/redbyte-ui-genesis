@@ -1,6 +1,22 @@
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+const normalizeExistingConnection = (conn) => {
+    const fromIsString = typeof conn.from === 'string';
+    const toIsString = typeof conn.to === 'string';
+    const fromNodeId = fromIsString ? conn.from : conn.from.nodeId;
+    const toNodeId = toIsString ? conn.to : conn.to.nodeId;
+    const fromPortName = fromIsString
+        ? conn.fromPin ?? conn.fromPort ?? 'out'
+        : conn.from.portName ?? conn.from.port ?? conn.fromPin ?? conn.fromPort ?? 'out';
+    const toPortName = toIsString
+        ? conn.toPin ?? conn.toPort ?? 'in'
+        : conn.to.portName ?? conn.to.port ?? conn.toPin ?? conn.toPort ?? 'in';
+    return {
+        from: { nodeId: fromNodeId, portName: fromPortName },
+        to: { nodeId: toNodeId, portName: toPortName },
+    };
+};
 /**
  * Determine if a port is an input or output based on naming convention and metadata
  */
@@ -28,14 +44,17 @@ export function isValidConnection(from, to, circuit, getChipMetadata) {
         return { valid: false, reason: 'Cannot connect node to itself' };
     }
     // Check if connection already exists
-    const duplicate = circuit.connections.some(conn => (conn.from.nodeId === from.nodeId &&
-        conn.from.portName === from.portName &&
-        conn.to.nodeId === to.nodeId &&
-        conn.to.portName === to.portName) ||
-        (conn.from.nodeId === to.nodeId &&
-            conn.from.portName === to.portName &&
-            conn.to.nodeId === from.nodeId &&
-            conn.to.portName === from.portName));
+    const duplicate = circuit.connections.some((conn) => {
+        const normalized = normalizeExistingConnection(conn);
+        return ((normalized.from.nodeId === from.nodeId &&
+            normalized.from.portName === from.portName &&
+            normalized.to.nodeId === to.nodeId &&
+            normalized.to.portName === to.portName) ||
+            (normalized.from.nodeId === to.nodeId &&
+                normalized.from.portName === to.portName &&
+                normalized.to.nodeId === from.nodeId &&
+                normalized.to.portName === from.portName));
+    });
     if (duplicate) {
         return { valid: false, reason: 'Connection already exists' };
     }

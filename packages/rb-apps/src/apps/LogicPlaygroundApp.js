@@ -169,6 +169,19 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
     const updateProject = useUnifiedProjectStore((s) => s.updateProject);
     const hasSyncedFromProjectRef = useRef(false);
     const lastRecordingKeyRef = useRef(null);
+    const normalizeConnection = useCallback((conn) => {
+        const fromIsString = typeof conn.from === 'string';
+        const toIsString = typeof conn.to === 'string';
+        const fromNodeId = fromIsString ? conn.from : conn.from.nodeId;
+        const toNodeId = toIsString ? conn.to : conn.to.nodeId;
+        const fromPin = fromIsString
+            ? conn.fromPin ?? conn.fromPort ?? 'out'
+            : conn.from.portName ?? conn.from.port ?? conn.fromPin ?? conn.fromPort ?? 'out';
+        const toPin = toIsString
+            ? conn.toPin ?? conn.toPort ?? 'in'
+            : conn.to.portName ?? conn.to.port ?? conn.toPin ?? conn.toPort ?? 'in';
+        return { fromNodeId, toNodeId, fromPin, toPin };
+    }, []);
     const toCircuitV1 = useCallback((src) => {
         return {
             schemaVersion: '1.0',
@@ -182,16 +195,19 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
                 label: node.label,
                 state: node.state || {},
             })),
-            connections: src.connections.map((conn) => ({
-                id: conn.id,
-                fromNodeId: conn.from,
-                fromPin: conn.fromPin || 'out',
-                toNodeId: conn.to,
-                toPin: conn.toPin || 'in',
-            })),
+            connections: src.connections.map((conn) => {
+                const normalized = normalizeConnection(conn);
+                return {
+                    id: conn.id || `${normalized.fromNodeId}-${normalized.fromPin}-${normalized.toNodeId}-${normalized.toPin}`,
+                    fromNodeId: normalized.fromNodeId,
+                    fromPin: normalized.fromPin,
+                    toNodeId: normalized.toNodeId,
+                    toPin: normalized.toPin,
+                };
+            }),
             customChips: [],
         };
-    }, []);
+    }, [normalizeConnection]);
     const fromCircuitV1 = useCallback((src) => {
         return {
             nodes: src.nodes.map((node) => ({
@@ -208,10 +224,8 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
             })),
             connections: src.connections.map((conn) => ({
                 id: conn.id,
-                from: conn.fromNodeId,
-                fromPin: conn.fromPin,
-                to: conn.toNodeId,
-                toPin: conn.toPin,
+                from: { nodeId: conn.fromNodeId, portName: conn.fromPin || 'out' },
+                to: { nodeId: conn.toNodeId, portName: conn.toPin || 'in' },
             })),
         };
     }, []);

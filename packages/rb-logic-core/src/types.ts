@@ -3,10 +3,18 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 /**
- * Signal state in the circuit (digital or analog).
- * Digital nodes use 0/1, analog nodes use numeric values.
+ * Digital logic value.
+ * - 0/1: Driven low/high
+ * - Z: High-impedance (floating)
+ * - X: Contention/undefined
  */
-export type Signal = number;
+export type LogicValue = 0 | 1 | 'Z' | 'X';
+
+/**
+ * Signal state in the circuit (digital or analog).
+ * Digital nodes use 0/1/Z/X, analog nodes use numeric values.
+ */
+export type Signal = number | LogicValue;
 
 /**
  * Port connection identifier
@@ -14,14 +22,22 @@ export type Signal = number;
 export interface PortRef {
   nodeId: string;
   portName: string;
+  /** Legacy alias (deprecated) */
+  port?: string;
 }
 
 /**
  * Connection between two ports
  */
 export interface Connection {
-  from: PortRef;
-  to: PortRef;
+  id?: string;
+  from: PortRef | string;
+  to: PortRef | string;
+  /** Legacy pin aliases */
+  fromPin?: string;
+  toPin?: string;
+  fromPort?: string;
+  toPort?: string;
 }
 
 /**
@@ -38,9 +54,24 @@ export interface Position {
 export interface Node {
   id: string;
   type: string;
-  position: Position;
-  rotation: number; // degrees
-  config: Record<string, any>;
+  position?: Position;
+  /** Legacy coordinates (deprecated) */
+  x?: number;
+  y?: number;
+  rotation?: number; // degrees
+  config?: Record<string, any>;
+  /** Legacy params alias (deprecated) */
+  params?: Record<string, any>;
+  label?: string;
+  state?: Record<string, any>;
+  inputs?: Record<string, any>;
+  outputs?: Record<string, any>;
+}
+
+/**
+ * Runtime node with state available
+ */
+export interface RuntimeNode extends Node {
   state?: Record<string, any>;
 }
 
@@ -75,6 +106,39 @@ export interface NodeBehavior {
     outputs: NodeOutputs;
     state: Record<string, any>;
   };
+}
+
+/**
+ * Node definition used by registry-based engines
+ */
+export interface NodeDefinition {
+  type: string;
+  inputs?: string[];
+  outputs?: string[];
+  update: (
+    node: RuntimeNode,
+    inputs: Record<string, LogicValue>,
+    dt?: number,
+    tickIndex?: number
+  ) => Record<string, LogicValue>;
+}
+
+/**
+ * Circuit schema V1 (normalized)
+ */
+export interface CircuitSchemaV1Node {
+  id: string;
+  type: string;
+  position?: Position;
+  rotation?: number;
+  config?: Record<string, any>;
+  state?: Record<string, any>;
+}
+
+export interface CircuitSchemaV1 {
+  version: 1;
+  nodes: CircuitSchemaV1Node[];
+  connections: Connection[];
 }
 
 /**

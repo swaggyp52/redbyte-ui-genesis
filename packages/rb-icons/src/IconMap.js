@@ -92,5 +92,6 @@ export const Icon = ({ name, size = 20, title, ...props }) => {
     const Component = IconMap[name];
     if (!Component)
         return null;
-    return (_jsx(Component, { width: size, height: size, "aria-hidden": props['aria-label'] ? undefined : true, focusable: "false", role: props['aria-label'] ? 'img' : 'presentation', title: title, ...props }));
+    const ariaLabel = props['aria-label'] ?? title;
+    return (_jsx(Component, { width: size, height: size, "aria-hidden": ariaLabel ? undefined : true, focusable: "false", role: ariaLabel ? 'img' : 'presentation', "aria-label": ariaLabel, ...props, children: title ? _jsx("title", { children: title }) : null }));
 };

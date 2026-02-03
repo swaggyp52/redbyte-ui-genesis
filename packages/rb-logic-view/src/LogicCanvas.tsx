@@ -148,6 +148,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const visibleNodes = React.useMemo(
     () =>
       circuit.nodes.filter((node) => {
+        if (!node.position) return false; // Skip nodes without position
         const x = node.position.x;
         const y = node.position.y;
         return x >= viewBounds.left && x <= viewBounds.right && y >= viewBounds.top && y <= viewBounds.bottom;
@@ -159,9 +160,11 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
   const visibleConnections = React.useMemo(
     () =>
-      circuit.connections.filter(
-        (connection) => visibleNodeIds.has(connection.from.nodeId) || visibleNodeIds.has(connection.to.nodeId)
-      ),
+      circuit.connections.filter((connection) => {
+        const fromNodeId = typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
+        const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+        return visibleNodeIds.has(fromNodeId) || visibleNodeIds.has(toNodeId);
+      }),
     [circuit.connections, visibleNodeIds]
   );
 
@@ -893,8 +896,17 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
         {/* Wires */}
         {visibleConnections.map((conn) => {
-          const wireId = `${conn.from.nodeId}.${conn.from.portName}-${conn.to.nodeId}.${conn.to.portName}`;
-          const signal = renderSignals.get(`${conn.from.nodeId}.${conn.from.portName}`);
+          const fromNodeId = typeof conn.from === 'string' ? conn.from : conn.from.nodeId;
+          const toNodeId = typeof conn.to === 'string' ? conn.to : conn.to.nodeId;
+          const fromPortName = typeof conn.from === 'string'
+            ? (conn.fromPin ?? conn.fromPort ?? 'out')
+            : (conn.from.portName ?? conn.from.port ?? 'out');
+          const toPortName = typeof conn.to === 'string'
+            ? (conn.toPin ?? conn.toPort ?? 'in')
+            : (conn.to.portName ?? conn.to.port ?? 'in');
+          
+          const wireId = `${fromNodeId}.${fromPortName}-${toNodeId}.${toPortName}`;
+          const signal = renderSignals.get(`${fromNodeId}.${fromPortName}`);
           const probeColors = probeWireHighlights?.get(wireId);
           const mismatchColors = mismatchWireHighlights?.get(wireId);
 
@@ -916,7 +928,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         {/* Wire Preview - shows while drawing */}
         {editingState.wireStartPort && (() => {
           const startNode = circuit.nodes.find(n => n.id === editingState.wireStartPort!.nodeId);
-          if (!startNode) return null;
+          if (!startNode || !startNode.position) return null;
 
           const startX = startNode.position.x * camera.zoom + camera.x;
           const startY = startNode.position.y * camera.zoom + camera.y;
@@ -979,9 +991,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         <g id="rb-switch-overlay" style={{ pointerEvents: 'none' }}>
           {visibleNodes
             .filter((node) => node.type === 'Switch' || node.type === 'INPUT')
+            .filter((node) => node.position) // Ensure position exists
             .map((node) => {
-              const screenX = node.position.x * camera.zoom + camera.x;
-              const screenY = node.position.y * camera.zoom + camera.y;
+              const screenX = node.position!.x * camera.zoom + camera.x;
+              const screenY = node.position!.y * camera.zoom + camera.y;
               const size = 48 * camera.zoom;
               const switchState = node.state?.isOn ?? 0;
 

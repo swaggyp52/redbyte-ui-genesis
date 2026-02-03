@@ -3,7 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import { useState, useCallback, useRef } from 'react';
-import type { Circuit } from '@redbyte/rb-logic-core';
+import type { Circuit, LogicValue } from '@redbyte/rb-logic-core';
 import { LogicEngine } from '../../../rb-logic-core/src/engine';
 import {
   createRecorder,
@@ -69,7 +69,7 @@ export function useDeterminismRecorder() {
     setIsRecording(false);
   }, [isRecording]);
 
-  const recordInputToggled = useCallback((nodeId: string, portName: string, value: number) => {
+  const recordInputToggled = useCallback((nodeId: string, portName: string, value: LogicValue) => {
     if (!recorderRef.current || !recorderRef.current.isRecording()) return;
     recorderRef.current.recordInputToggled(nodeId, portName, value);
     setEventCount((prev) => prev + 1);

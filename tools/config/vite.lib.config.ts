@@ -17,6 +17,7 @@ export default defineConfig({
     tsconfigPaths(),
     dts({
       insertTypesEntry: true,
+      exclude: ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
     }),
   ],
   build: {
@@ -28,7 +29,12 @@ export default defineConfig({
     },
     rollupOptions: {
       // keep externals small & safe
-      external: ["react", "react-dom", "react/jsx-runtime"],
+      external: [
+        "react",
+        "react-dom",
+        "react/jsx-runtime",
+        /^@redbyte\//,  // externalize all internal packages
+      ],
       output: {
         globals: {
           react: "React",

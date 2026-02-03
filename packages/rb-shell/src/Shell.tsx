@@ -55,7 +55,7 @@ import { loadExampleAsProject, type ExampleId } from '@redbyte/rb-apps';
 import type { BitstreamProvenanceMetadata } from '@redbyte/rb-fpga-toolchain';
 import type { LabProjectV1, CircuitV1 } from '@redbyte/rb-utils';
 import { exportEvidenceCapsule, importEvidenceCapsule, useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
-import { serialize, type Circuit, CircuitEngine } from '@redbyte/rb-logic-core';
+import { serialize, type Circuit, type Connection, CircuitEngine } from '@redbyte/rb-logic-core';
 import { TopBar } from './TopBar';
 import { RecoveryPrompt, type RecoveryAction } from './RecoveryPrompt';
 import { checkForRecovery, clearJournal, unregisterAutosave } from './persistenceStore';
@@ -433,8 +433,8 @@ export const Shell: React.FC<ShellProps> = () => {
     // Replay verification (best-effort)
     if (recordings.length > 0 && invalidRecordings.length === 0) {
       const events = recordings[0].events ?? [];
-      const runRecord = events.find((e: any) => e?.kind === 'runRecord')?.data ?? events[0];
-      const proofPack = events.find((e: any) => e?.kind === 'proofPack')?.data;
+      const runRecord = (events.find((e: any) => e?.kind === 'runRecord') as any)?.data ?? (events[0] as any);
+      const proofPack = (events.find((e: any) => e?.kind === 'proofPack') as any)?.data;
 
       if (proofPack?.runRecord && runRecord?.circuitDigest && proofPack.runRecord.circuitDigest) {
         const matches = proofPack.runRecord.circuitDigest === runRecord.circuitDigest;
@@ -477,10 +477,11 @@ export const Shell: React.FC<ShellProps> = () => {
             if (!expected) continue;
 
             const signals = engine.getAllSignals();
-            const actualValues: Record<string, 0 | 1> = {};
+            const actualValues: Record<string, number> = {};
             runRecord.probes.forEach((probe: any) => {
               const key = `${probe.nodeId}.${probe.portName}`;
-              const value = signals.get(key) ?? 0;
+              const rawValue = signals.get(key) ?? 0;
+              const value = typeof rawValue === 'number' ? rawValue : 0;
               actualValues[probe.id] = value;
             });
 
@@ -1188,7 +1189,7 @@ export const Shell: React.FC<ShellProps> = () => {
       // Convert Circuit to CircuitV1 (LabProjectV1 schema)
       const circuitV1: CircuitV1 = {
         schemaVersion: '1.0',
-        nodes: circuit.nodes.map((node) => ({
+        nodes: circuit.nodes.map((node: any) => ({
           id: node.id,
           type: node.type,
           x: node.x || 0,
@@ -1198,7 +1199,7 @@ export const Shell: React.FC<ShellProps> = () => {
           label: node.label,
           state: node.state || {},
         })),
-        connections: circuit.connections.map((conn) => ({
+        connections: circuit.connections.map((conn: Connection) => ({
           id: conn.id,
           fromNodeId: conn.from,
           fromPin: conn.fromPin || 'out',
@@ -1389,7 +1390,10 @@ export const Shell: React.FC<ShellProps> = () => {
       // Store artifacts for potential download
       currentProjectRef.current = {
         ...project,
-        fpgaArtifacts: artifacts,
+        fpgaArtifacts: {
+          ...artifacts,
+          metadata: artifacts.metadata as unknown as Record<string, unknown>,
+        },
       };
     } catch (error) {
       console.error('Bitstream build failed:', error);
@@ -2235,7 +2239,11 @@ export const Shell: React.FC<ShellProps> = () => {
           onOpenExample={(exampleId) => {
             dispatchIntent({
               type: 'open-example',
-              payload: { targetAppId: 'logic-playground', exampleId },
+              payload: {
+                sourceAppId: 'home',
+                targetAppId: 'logic-playground',
+                exampleId,
+              },
             });
           }}
           determinismMode={determinismMode}

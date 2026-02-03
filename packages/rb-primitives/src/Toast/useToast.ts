@@ -8,44 +8,58 @@ import type { ToastOptions } from './toastTypes';
 const DEFAULT_DURATION = 6000;
 const ERROR_DURATION = 10000;
 
+type ToastInput = ToastOptions | string;
+
+function normalizeToastOptions(input: ToastInput): ToastOptions {
+  return typeof input === 'string' ? { message: input } : input;
+}
+
 export interface UseToastReturn {
-  success: (options: ToastOptions) => string;
-  info: (options: ToastOptions) => string;
-  warning: (options: ToastOptions) => string;
-  error: (options: ToastOptions) => string;
+  success: (options: ToastInput) => string;
+  info: (options: ToastInput) => string;
+  warning: (options: ToastInput) => string;
+  error: (options: ToastInput) => string;
   dismiss: (id: string) => void;
   clear: () => void;
 }
 
 export function useToast(): UseToastReturn {
   return {
-    success: (options) =>
-      toastStore.add({
+    success: (options) => {
+      const normalized = normalizeToastOptions(options);
+      return toastStore.add({
         kind: 'success',
-        duration: options.duration ?? DEFAULT_DURATION,
-        ...options,
-      }),
+        duration: normalized.duration ?? DEFAULT_DURATION,
+        ...normalized,
+      });
+    },
 
-    info: (options) =>
-      toastStore.add({
+    info: (options) => {
+      const normalized = normalizeToastOptions(options);
+      return toastStore.add({
         kind: 'info',
-        duration: options.duration ?? DEFAULT_DURATION,
-        ...options,
-      }),
+        duration: normalized.duration ?? DEFAULT_DURATION,
+        ...normalized,
+      });
+    },
 
-    warning: (options) =>
-      toastStore.add({
+    warning: (options) => {
+      const normalized = normalizeToastOptions(options);
+      return toastStore.add({
         kind: 'warning',
-        duration: options.duration ?? DEFAULT_DURATION,
-        ...options,
-      }),
+        duration: normalized.duration ?? DEFAULT_DURATION,
+        ...normalized,
+      });
+    },
 
-    error: (options) =>
-      toastStore.add({
+    error: (options) => {
+      const normalized = normalizeToastOptions(options);
+      return toastStore.add({
         kind: 'error',
-        duration: options.duration ?? ERROR_DURATION,
-        ...options,
-      }),
+        duration: normalized.duration ?? ERROR_DURATION,
+        ...normalized,
+      });
+    },
 
     dismiss: (id) => toastStore.remove(id),
 
@@ -55,33 +69,41 @@ export function useToast(): UseToastReturn {
 
 // Export a singleton instance for imperative usage
 export const toast: UseToastReturn = {
-  success: (options) =>
-    toastStore.add({
+  success: (options) => {
+    const normalized = normalizeToastOptions(options);
+    return toastStore.add({
       kind: 'success',
-      duration: options.duration ?? DEFAULT_DURATION,
-      ...options,
-    }),
+      duration: normalized.duration ?? DEFAULT_DURATION,
+      ...normalized,
+    });
+  },
 
-  info: (options) =>
-    toastStore.add({
+  info: (options) => {
+    const normalized = normalizeToastOptions(options);
+    return toastStore.add({
       kind: 'info',
-      duration: options.duration ?? DEFAULT_DURATION,
-      ...options,
-    }),
+      duration: normalized.duration ?? DEFAULT_DURATION,
+      ...normalized,
+    });
+  },
 
-  warning: (options) =>
-    toastStore.add({
+  warning: (options) => {
+    const normalized = normalizeToastOptions(options);
+    return toastStore.add({
       kind: 'warning',
-      duration: options.duration ?? DEFAULT_DURATION,
-      ...options,
-    }),
+      duration: normalized.duration ?? DEFAULT_DURATION,
+      ...normalized,
+    });
+  },
 
-  error: (options) =>
-    toastStore.add({
+  error: (options) => {
+    const normalized = normalizeToastOptions(options);
+    return toastStore.add({
       kind: 'error',
-      duration: options.duration ?? ERROR_DURATION,
-      ...options,
-    }),
+      duration: normalized.duration ?? ERROR_DURATION,
+      ...normalized,
+    });
+  },
 
   dismiss: (id) => toastStore.remove(id),
 

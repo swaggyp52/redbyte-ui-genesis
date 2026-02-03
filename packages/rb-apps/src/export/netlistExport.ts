@@ -81,17 +81,41 @@ const BUILTIN_PORTS: Record<string, NetlistPort[]> = {
   ],
 };
 
-const connectionId = (connection: Connection) =>
-  `${connection.from.nodeId}.${connection.from.portName}->${connection.to.nodeId}.${connection.to.portName}`;
+const normalizeConnection = (connection: Connection) => {
+  const fromIsString = typeof connection.from === 'string';
+  const toIsString = typeof connection.to === 'string';
+
+  const fromNodeId = fromIsString ? connection.from : connection.from.nodeId;
+  const toNodeId = toIsString ? connection.to : connection.to.nodeId;
+
+  const fromPort = fromIsString
+    ? connection.fromPin ?? connection.fromPort ?? 'out'
+    : connection.from.portName ?? connection.from.port ?? connection.fromPin ?? connection.fromPort ?? 'out';
+
+  const toPort = toIsString
+    ? connection.toPin ?? connection.toPort ?? 'in'
+    : connection.to.portName ?? connection.to.port ?? connection.toPin ?? connection.toPort ?? 'in';
+
+  return {
+    from: { nodeId: fromNodeId, port: fromPort },
+    to: { nodeId: toNodeId, port: toPort },
+  };
+};
+
+const connectionId = (connection: Connection) => {
+  const normalized = normalizeConnection(connection);
+  return `${normalized.from.nodeId}.${normalized.from.port}->${normalized.to.nodeId}.${normalized.to.port}`;
+};
 
 const inferPortsFromConnections = (node: Node, connections: Connection[]): NetlistPort[] => {
   const portMap = new Map<string, PortDirection>();
   connections.forEach((connection) => {
-    if (connection.from.nodeId === node.id) {
-      portMap.set(connection.from.portName, 'out');
+    const normalized = normalizeConnection(connection);
+    if (normalized.from.nodeId === node.id) {
+      portMap.set(normalized.from.port, 'out');
     }
-    if (connection.to.nodeId === node.id) {
-      portMap.set(connection.to.portName, 'in');
+    if (normalized.to.nodeId === node.id) {
+      portMap.set(normalized.to.port, 'in');
     }
   });
   return Array.from(portMap.entries())
@@ -117,11 +141,14 @@ export const netlistFromCircuit = (circuit: Circuit): Netlist => {
   });
 
   const nets = [...circuit.connections]
-    .map((connection) => ({
-      id: connectionId(connection),
-      from: { nodeId: connection.from.nodeId, port: connection.from.portName },
-      to: { nodeId: connection.to.nodeId, port: connection.to.portName },
-    }))
+    .map((connection) => {
+      const normalized = normalizeConnection(connection);
+      return {
+        id: connectionId(connection),
+        from: normalized.from,
+        to: normalized.to,
+      };
+    })
     .sort((a, b) => a.id.localeCompare(b.id));
 
   return {

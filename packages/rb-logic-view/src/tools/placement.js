@@ -16,6 +16,8 @@ export function findSmartSpawnPosition(existingNodes, center, gridSize = GRID_SI
     // Or better: just scan existing nodes to find ones that are "too close".
     const occupied = new Set();
     for (const node of existingNodes) {
+        if (!node.position)
+            continue;
         const nx = Math.round(node.position.x / gridSize);
         const ny = Math.round(node.position.y / gridSize);
         occupied.add(`${nx},${ny}`);

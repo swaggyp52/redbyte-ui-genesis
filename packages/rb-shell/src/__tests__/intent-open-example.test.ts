@@ -14,9 +14,12 @@ import type { OpenExampleIntent } from '../intent-types';
  * - Respects preferNewWindow routing hint
  */
 describe('Shell open-example Intent Routing', () => {
+  type WindowEntry = { id: string; appId: string };
+  type WindowBindings = Record<string, { appId: string; props: any }>;
+
   // Mock window state
-  let windows: Array<{ id: string; appId: string }> = [];
-  let bindings: Record<string, { appId: string; props: any }> = {};
+  let windows: WindowEntry[] = [];
+  let bindings: WindowBindings = {};
 
   // Mock functions
   const mockFocusWindow = (id: string) => ({ focused: id });
@@ -41,8 +44,8 @@ describe('Shell open-example Intent Routing', () => {
    */
   const dispatchOpenExample = (
     intent: OpenExampleIntent,
-    windows: typeof windows,
-    bindings: typeof bindings
+    windows: WindowEntry[],
+    bindings: WindowBindings
   ) => {
     const { targetAppId, exampleId } = intent.payload;
     const preferNewWindow = intent.routingHint?.preferNewWindow ?? false;

@@ -320,7 +320,8 @@ export const Shell = () => {
                         const actualValues = {};
                         runRecord.probes.forEach((probe) => {
                             const key = `${probe.nodeId}.${probe.portName}`;
-                            const value = signals.get(key) ?? 0;
+                            const rawValue = signals.get(key) ?? 0;
+                            const value = typeof rawValue === 'number' ? rawValue : 0;
                             actualValues[probe.id] = value;
                         });
                         const mismatched = Object.keys(actualValues).some((probeId) => {
@@ -1104,7 +1105,10 @@ export const Shell = () => {
             // Store artifacts for potential download
             currentProjectRef.current = {
                 ...project,
-                fpgaArtifacts: artifacts,
+                fpgaArtifacts: {
+                    ...artifacts,
+                    metadata: artifacts.metadata,
+                },
             };
         }
         catch (error) {
@@ -1810,7 +1814,11 @@ export const Shell = () => {
                 }, onOpenExample: (exampleId) => {
                     dispatchIntent({
                         type: 'open-example',
-                        payload: { targetAppId: 'logic-playground', exampleId },
+                        payload: {
+                            sourceAppId: 'home',
+                            targetAppId: 'logic-playground',
+                            exampleId,
+                        },
                     });
                 }, determinismMode: determinismMode, tickCount: determinismRecorder.tickCount, isRecording: determinismRecorder.isRecording, hasRecording: determinismRecorder.hasRecording, logEntryCount: systemLogEntries.length, hasProofPack: determinismRecorder.verificationResult
                     ? determinismRecorder.verificationResult.equal === true

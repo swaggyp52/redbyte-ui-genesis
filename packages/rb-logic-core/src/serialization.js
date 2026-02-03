@@ -1,6 +1,22 @@
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+function normalizeConnection(conn) {
+    const fromIsString = typeof conn.from === 'string';
+    const toIsString = typeof conn.to === 'string';
+    const fromNodeId = fromIsString ? conn.from : conn.from.nodeId;
+    const toNodeId = toIsString ? conn.to : conn.to.nodeId;
+    const fromPortName = fromIsString
+        ? conn.fromPin ?? conn.fromPort ?? 'out'
+        : conn.from.portName ?? conn.from.port ?? conn.fromPin ?? conn.fromPort ?? 'out';
+    const toPortName = toIsString
+        ? conn.toPin ?? conn.toPort ?? 'in'
+        : conn.to.portName ?? conn.to.port ?? conn.toPin ?? conn.toPort ?? 'in';
+    return {
+        from: { nodeId: fromNodeId, portName: fromPortName },
+        to: { nodeId: toNodeId, portName: toPortName },
+    };
+}
 /**
  * Serialize a circuit to JSON format (V1)
  */
@@ -15,10 +31,13 @@ export function serialize(circuit) {
             config: { ...node.config },
             state: node.state ? { ...node.state } : undefined,
         })),
-        connections: circuit.connections.map(conn => ({
-            from: { ...conn.from },
-            to: { ...conn.to },
-        })),
+        connections: circuit.connections.map(conn => {
+            const normalized = normalizeConnection(conn);
+            return {
+                from: { ...normalized.from },
+                to: { ...normalized.to },
+            };
+        }),
     };
 }
 /**

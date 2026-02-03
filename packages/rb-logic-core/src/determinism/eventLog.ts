@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import type { Circuit } from '../types';
+import type { Circuit, LogicValue } from '../types';
 
 /**
  * Event log schema version 1
@@ -34,7 +34,7 @@ export interface InputToggledEvent {
   timestamp: number;
   nodeId: string;
   portName: string;
-  value: 0 | 1;
+  value: LogicValue;
 }
 
 /**

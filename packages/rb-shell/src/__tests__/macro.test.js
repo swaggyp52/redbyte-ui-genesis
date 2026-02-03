@@ -212,6 +212,12 @@ describe('Macro Store', () => {
 });
 describe('Macro Execution', () => {
     let mockContext;
+    const expectFailure = (result) => {
+        if (result.success) {
+            throw new Error('Expected macro execution to fail');
+        }
+        return result;
+    };
     beforeEach(() => {
         useMacroStore.setState({ macros: [] });
         localStorage.clear();
@@ -252,7 +258,12 @@ describe('Macro Execution', () => {
         it('executes macro with intent step', () => {
             const intent = {
                 type: 'open-with',
-                payload: { targetAppId: 'logic-playground', resourceId: 'file.js', resourceType: 'javascript' },
+                payload: {
+                    sourceAppId: 'macros',
+                    targetAppId: 'logic-playground',
+                    resourceId: 'file.js',
+                    resourceType: 'file',
+                },
             };
             const steps = [{ type: 'intent', intent }];
             const { createMacro } = useMacroStore.getState();
@@ -288,9 +299,9 @@ describe('Macro Execution', () => {
             const { createMacro } = useMacroStore.getState();
             const id = createMacro('Test Macro', steps);
             const result = executeMacro(id, mockContext);
-            expect(result.success).toBe(false);
-            expect(result.error).toContain('Unknown app');
-            expect(result.stepIndex).toBe(0);
+            const failure = expectFailure(result);
+            expect(failure.error).toContain('Unknown app');
+            expect(failure.stepIndex).toBe(0);
         });
         it('aborts on unknown workspace', () => {
             mockContext.switchWorkspace = vi.fn(() => false);
@@ -298,9 +309,9 @@ describe('Macro Execution', () => {
             const { createMacro } = useMacroStore.getState();
             const id = createMacro('Test Macro', steps);
             const result = executeMacro(id, mockContext);
-            expect(result.success).toBe(false);
-            expect(result.error).toContain('Unknown workspace');
-            expect(result.stepIndex).toBe(0);
+            const failure = expectFailure(result);
+            expect(failure.error).toContain('Unknown workspace');
+            expect(failure.stepIndex).toBe(0);
         });
         it('aborts on first error without executing subsequent steps', () => {
             const steps = [
@@ -310,15 +321,15 @@ describe('Macro Execution', () => {
             const { createMacro } = useMacroStore.getState();
             const id = createMacro('Test Macro', steps);
             const result = executeMacro(id, mockContext);
-            expect(result.success).toBe(false);
-            expect(result.stepIndex).toBe(0);
+            const failure = expectFailure(result);
+            expect(failure.stepIndex).toBe(0);
             expect(mockContext.executeCommand).not.toHaveBeenCalled();
         });
         it('returns error for nonexistent macro', () => {
             const result = executeMacro('nonexistent-id', mockContext);
-            expect(result.success).toBe(false);
-            expect(result.error).toContain('Macro not found');
-            expect(result.stepIndex).toBe(-1);
+            const failure = expectFailure(result);
+            expect(failure.error).toContain('Macro not found');
+            expect(failure.stepIndex).toBe(-1);
         });
     });
 });

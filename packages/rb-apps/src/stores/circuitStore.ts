@@ -38,6 +38,21 @@ function hashCircuit(circuit: Circuit): string {
 // Classroom guardrail: hard limit for node count
 const HARD_LIMIT = 20;
 
+function getConnectionNodeId(ref: PortRef | string): string {
+  return typeof ref === 'string' ? ref : ref.nodeId;
+}
+
+function getConnectionPort(conn: Connection, side: 'from' | 'to', fallback: string): string {
+  const ref = conn[side];
+  if (typeof ref === 'string') {
+    return side === 'from'
+      ? conn.fromPin ?? conn.fromPort ?? fallback
+      : conn.toPin ?? conn.toPort ?? fallback;
+  }
+
+  return ref.portName ?? ref.port ?? fallback;
+}
+
 // Clamp circuit to classroom-safe limits
 function clampCircuit(circuit: Circuit, limit: number): { circuit: Circuit; clamped: boolean; dropped: number } {
   if (circuit.nodes.length <= limit) {
@@ -50,7 +65,7 @@ function clampCircuit(circuit: Circuit, limit: number): { circuit: Circuit; clam
 
   // Keep only connections between kept nodes
   const keptConnections = circuit.connections.filter(c =>
-    keptIds.has(c.from.nodeId) && keptIds.has(c.to.nodeId)
+    keptIds.has(getConnectionNodeId(c.from)) && keptIds.has(getConnectionNodeId(c.to))
   );
 
   return {
@@ -210,7 +225,7 @@ function createCircuitStore() {
         // Calculate max fan-out
         const fanOutCounts = new Map<string, number>();
         circuit.connections.forEach((conn) => {
-          const key = `${conn.from.nodeId}:${conn.from.port}`;
+          const key = `${getConnectionNodeId(conn.from)}:${getConnectionPort(conn, 'from', 'out')}`;
           fanOutCounts.set(key, (fanOutCounts.get(key) || 0) + 1);
         });
         const maxFanOut = fanOutCounts.size > 0 ? Math.max(...fanOutCounts.values()) : 0;

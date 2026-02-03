@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import type { Circuit, Node } from '../types';
+import type { Circuit, LogicValue, Node } from '../types';
 import type { EventLogV1, SimulationEventV1 } from './eventLog';
 
 /**
@@ -19,7 +19,7 @@ export interface ReplayResult {
  * This allows replay to work without importing LogicEngine directly (avoiding circular deps)
  */
 export interface ReplayEngine {
-  signals: Map<string, Map<string, number>>;
+  signals: Map<string, Map<string, LogicValue>>;
   tick(dt: number, tickIndex: number): void;
 }
 

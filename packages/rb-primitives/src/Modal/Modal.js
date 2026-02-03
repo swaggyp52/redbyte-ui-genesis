@@ -7,7 +7,7 @@ import { Portal } from '../Portal';
 import { createFocusTrap } from '../focusTrap';
 import { usePortalContainer } from '../PortalContext';
 const MODAL_Z_INDEX = 10000;
-export function Modal({ isOpen, onClose, title, children, footer, size = 'md', variant = 'center', initialFocusRef, closeOnBackdrop = true, closeOnEsc = true, }) {
+export function Modal({ isOpen, onClose, title, children, footer, size = 'md', variant = 'center', width, height, initialFocusRef, closeOnBackdrop = true, closeOnEsc = true, }) {
     const modalRef = useRef(null);
     const previousActiveElementRef = useRef(null);
     const contextContainer = usePortalContainer();
@@ -84,5 +84,7 @@ export function Modal({ isOpen, onClose, title, children, footer, size = 'md', v
                         borderColor: 'var(--rb-border)',
                         boxShadow: variant === 'center' ? 'var(--rb-shadow-3)' : 'var(--rb-shadow-2)',
                         backdropFilter: 'blur(16px)',
+                        width,
+                        height,
                     }, children: [title && (_jsxs("div", { className: "flex items-center justify-between px-6 py-4 border-b", style: { borderColor: 'var(--rb-border)' }, children: [_jsx("div", { className: "text-lg font-semibold", style: { color: 'var(--rb-text)' }, children: title }), _jsx("button", { onClick: onClose, className: "text-gray-400 hover:text-gray-200 transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500", "aria-label": "Close modal", children: _jsx("svg", { width: "20", height: "20", viewBox: "0 0 20 20", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", children: _jsx("path", { d: "M6 6L14 14M14 6L6 14" }) }) })] })), _jsx("div", { className: `${title || footer ? 'px-6 py-4' : 'p-6'}`, children: children }), footer && (_jsx("div", { className: "px-6 py-4 border-t flex justify-end gap-3", style: { borderColor: 'var(--rb-border)' }, children: footer }))] })] }) }));
 }

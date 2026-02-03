@@ -2,6 +2,22 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 import { NodeRegistry } from './NodeRegistry';
+function normalizeConnection(conn) {
+    const fromIsString = typeof conn.from === 'string';
+    const toIsString = typeof conn.to === 'string';
+    const fromNodeId = fromIsString ? conn.from : conn.from.nodeId;
+    const toNodeId = toIsString ? conn.to : conn.to.nodeId;
+    const fromPortName = fromIsString
+        ? conn.fromPin ?? conn.fromPort ?? 'out'
+        : conn.from.portName ?? conn.from.port ?? conn.fromPin ?? conn.fromPort ?? 'out';
+    const toPortName = toIsString
+        ? conn.toPin ?? conn.toPort ?? 'in'
+        : conn.to.portName ?? conn.to.port ?? conn.toPin ?? conn.toPort ?? 'in';
+    return {
+        from: { nodeId: fromNodeId, portName: fromPortName },
+        to: { nodeId: toNodeId, portName: toPortName },
+    };
+}
 /**
  * Circuit evaluation engine
  * Handles signal propagation through the circuit graph
@@ -79,8 +95,9 @@ export class CircuitEngine {
     buildNodeInputs(nodeId, fallbackSignals, missingSignals) {
         const inputs = {};
         for (const conn of this.circuit.connections) {
-            if (conn.to.nodeId === nodeId) {
-                const key = `${conn.from.nodeId}.${conn.from.portName}`;
+            const normalized = normalizeConnection(conn);
+            if (normalized.to.nodeId === nodeId) {
+                const key = `${normalized.from.nodeId}.${normalized.from.portName}`;
                 const cached = this.signalCache.get(key);
                 const fallback = fallbackSignals?.get(key);
                 let value;
@@ -96,7 +113,7 @@ export class CircuitEngine {
                         missingSignals?.add(key);
                     }
                 }
-                inputs[conn.to.portName] = value;
+                inputs[normalized.to.portName] = value;
             }
         }
         return inputs;
@@ -172,8 +189,9 @@ export class CircuitEngine {
             inDegree.set(node.id, 0);
         }
         for (const conn of this.circuit.connections) {
-            edges.get(conn.from.nodeId)?.add(conn.to.nodeId);
-            inDegree.set(conn.to.nodeId, (inDegree.get(conn.to.nodeId) ?? 0) + 1);
+            const normalized = normalizeConnection(conn);
+            edges.get(normalized.from.nodeId)?.add(normalized.to.nodeId);
+            inDegree.set(normalized.to.nodeId, (inDegree.get(normalized.to.nodeId) ?? 0) + 1);
         }
         const queue = [];
         for (const [id, deg] of inDegree.entries()) {

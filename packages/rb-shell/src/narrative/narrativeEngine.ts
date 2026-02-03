@@ -5,6 +5,8 @@
 import { useNarrativeStore } from './narrativeStore';
 import { NARRATIVE_EVENTS, type NarrativeEventId, type NarrativeEventPayload } from './narrativeEvents';
 
+export type { NarrativeEventPayload } from './narrativeEvents';
+
 const COOLDOWN_MS = 60_000; // 60 seconds between any narrative displays
 
 /**

@@ -5,6 +5,27 @@
 import type { Circuit, Connection, PortRef } from '@redbyte/rb-logic-core';
 import type { ChipMetadata } from '../components/NodeView';
 
+const normalizeExistingConnection = (conn: Connection): { from: PortRef; to: PortRef } => {
+  const fromIsString = typeof conn.from === 'string';
+  const toIsString = typeof conn.to === 'string';
+
+  const fromNodeId = fromIsString ? (conn.from as string) : (conn.from as PortRef).nodeId;
+  const toNodeId = toIsString ? (conn.to as string) : (conn.to as PortRef).nodeId;
+
+  const fromPortName = fromIsString
+    ? conn.fromPin ?? conn.fromPort ?? 'out'
+    : (conn.from as PortRef).portName ?? (conn.from as PortRef).port ?? conn.fromPin ?? conn.fromPort ?? 'out';
+
+  const toPortName = toIsString
+    ? conn.toPin ?? conn.toPort ?? 'in'
+    : (conn.to as PortRef).portName ?? (conn.to as PortRef).port ?? conn.toPin ?? conn.toPort ?? 'in';
+
+  return {
+    from: { nodeId: fromNodeId, portName: fromPortName },
+    to: { nodeId: toNodeId, portName: toPortName },
+  };
+};
+
 /**
  * Determine if a port is an input or output based on naming convention and metadata
  */
@@ -45,17 +66,19 @@ export function isValidConnection(
   }
 
   // Check if connection already exists
-  const duplicate = circuit.connections.some(
-    conn =>
-      (conn.from.nodeId === from.nodeId &&
-        conn.from.portName === from.portName &&
-        conn.to.nodeId === to.nodeId &&
-        conn.to.portName === to.portName) ||
-      (conn.from.nodeId === to.nodeId &&
-        conn.from.portName === to.portName &&
-        conn.to.nodeId === from.nodeId &&
-        conn.to.portName === from.portName)
-  );
+  const duplicate = circuit.connections.some((conn) => {
+    const normalized = normalizeExistingConnection(conn);
+    return (
+      (normalized.from.nodeId === from.nodeId &&
+        normalized.from.portName === from.portName &&
+        normalized.to.nodeId === to.nodeId &&
+        normalized.to.portName === to.portName) ||
+      (normalized.from.nodeId === to.nodeId &&
+        normalized.from.portName === to.portName &&
+        normalized.to.nodeId === from.nodeId &&
+        normalized.to.portName === from.portName)
+    );
+  });
 
   if (duplicate) {
     return { valid: false, reason: 'Connection already exists' };
@@ -86,7 +109,7 @@ export function normalizeConnection(
   to: PortRef,
   circuit: Circuit,
   getChipMetadata?: (nodeType: string) => ChipMetadata | undefined
-): Connection {
+): { from: PortRef; to: PortRef } {
   const fromIsInput = isInputPort(from.nodeId, from.portName, circuit, getChipMetadata);
 
   // If from is input and to is output, swap them

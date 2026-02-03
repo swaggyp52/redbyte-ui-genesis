@@ -22,8 +22,12 @@ export interface ModalProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   /** Modal position variant */
   variant?: 'center' | 'bottom-right';
+  /** Optional explicit width for the modal panel */
+  width?: number | string;
+  /** Optional explicit height for the modal panel */
+  height?: number | string;
   /** Optional ref to element that should receive initial focus */
-  initialFocusRef?: RefObject<HTMLElement>;
+  initialFocusRef?: RefObject<HTMLElement | HTMLInputElement | HTMLButtonElement>;
   /** Whether clicking backdrop closes modal (default: true) */
   closeOnBackdrop?: boolean;
   /** Whether Escape key closes modal (default: true) */
@@ -40,6 +44,8 @@ export function Modal({
   footer,
   size = 'md',
   variant = 'center',
+  width,
+  height,
   initialFocusRef,
   closeOnBackdrop = true,
   closeOnEsc = true,
@@ -151,6 +157,8 @@ export function Modal({
             borderColor: 'var(--rb-border)',
             boxShadow: variant === 'center' ? 'var(--rb-shadow-3)' : 'var(--rb-shadow-2)',
             backdropFilter: 'blur(16px)',
+            width,
+            height,
           }}
         >
           {/* Header */}

@@ -179,32 +179,3 @@ export const OUTPUTBehavior = {
         };
     },
 };
-
-/**
- * D Flip-Flop - Edge-triggered data storage
- * Captures D input on rising clock edge (0→1)
- */
-export const D_FLIP_FLOPBehavior = {
-    evaluate(inputs, state) {
-        const d = inputs.d ?? inputs.D ?? 0;
-        const clk = inputs.clk ?? inputs.clock ?? inputs.CLK ?? 0;
-        const prevClk = state.prevClk ?? 0;
-        
-        // Rising edge detection: 0→1 transition
-        if (clk === 1 && prevClk === 0) {
-            // Capture input on rising edge
-            const q = d;
-            return {
-                outputs: { q, qBar: (q ? 0 : 1) },
-                state: { q, prevClk: clk },
-            };
-        }
-        
-        // No edge: maintain previous state
-        const q = state.q ?? 0;
-        return {
-            outputs: { q, qBar: (q ? 0 : 1) },
-            state: { q, prevClk: clk },
-        };
-    },
-};

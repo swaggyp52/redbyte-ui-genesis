@@ -95,27 +95,31 @@ export const IconMap = {
 } as const;
 
 export type IconName = keyof typeof IconMap;
-export type IconSize = 16 | 20 | 24;
+export type IconSize = 14 | 16 | 18 | 20 | 24;
 
 export interface IconProps extends React.SVGProps<SVGSVGElement> {
-  name: IconName;
+  name: IconName | string;
   size?: IconSize;
   title?: string;
 }
 
 export const Icon: React.FC<IconProps> = ({ name, size = 20, title, ...props }) => {
-  const Component = IconMap[name];
+  const Component = IconMap[name as IconName];
   if (!Component) return null;
+
+  const ariaLabel = props['aria-label'] ?? title;
 
   return (
     <Component
       width={size}
       height={size}
-      aria-hidden={props['aria-label'] ? undefined : true}
+      aria-hidden={ariaLabel ? undefined : true}
       focusable="false"
-      role={props['aria-label'] ? 'img' : 'presentation'}
-      title={title}
+      role={ariaLabel ? 'img' : 'presentation'}
+      aria-label={ariaLabel}
       {...props}
-    />
+    >
+      {title ? <title>{title}</title> : null}
+    </Component>
   );
 };

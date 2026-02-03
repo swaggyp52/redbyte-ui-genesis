@@ -21,7 +21,7 @@ interface ShellWindowProps {
   state: WindowState;
   minSize?: { width: number; height: number };
   snapAssistMode?: SnapAssistMode;
-  iconName?: IconName;
+  iconName?: IconName | string;
   onClose: () => void;
   onFocus: () => void;
   onMove: (x: number, y: number) => void;
