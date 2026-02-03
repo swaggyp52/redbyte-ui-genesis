@@ -6,12 +6,15 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, screen } from '@testing-library/react';
 import { TerminalApp } from '../apps/TerminalApp';
+import { SettingsApp } from '../apps/SettingsApp';
+import { registerApp } from '../AppRegistry';
 
 const TerminalComponent = TerminalApp.component;
 
 describe('Terminal commands', () => {
   beforeEach(() => {
     localStorage.clear();
+    registerApp(SettingsApp);
   });
 
   it('opens apps via open command', () => {

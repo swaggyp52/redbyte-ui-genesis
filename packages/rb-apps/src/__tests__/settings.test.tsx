@@ -40,8 +40,9 @@ describe('Settings app lifecycle', () => {
   it('renders theme options in Appearance panel', () => {
     render(<SettingsComponent />);
 
-    expect(screen.getByRole('button', { name: /RedByte Dark/i })).toBeTruthy();
-    expect(screen.getByRole('button', { name: /Instrument/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Dark Default dark surface/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Light High-clarity light mode/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Midnight Deep blue-black/i })).toBeTruthy();
   });
 
   it('changes theme when button is clicked', () => {
@@ -51,17 +52,17 @@ describe('Settings app lifecycle', () => {
     fireEvent.click(lightButton);
 
     const state = useSettingsStore.getState();
-    expect(state.themeVariant).toBe('instrument');
+    expect(state.themeVariant).toBe('light');
   });
 
   it('changes wallpaper when selector is changed', () => {
     render(<SettingsComponent />);
 
-    const neonCircuitButton = screen.getByRole('button', { name: /Neon Circuit/i });
+    const neonCircuitButton = screen.getByRole('button', { name: /Deep Solid dark surface/i });
     fireEvent.click(neonCircuitButton);
 
     const state = useSettingsStore.getState();
-    expect(state.wallpaperId).toBe('default');
+    expect(state.wallpaperId).toBe('neon-circuit');
   });
 
   it('switches to System section when clicked', () => {
@@ -121,8 +122,8 @@ describe('Settings persistence', () => {
   it('persists theme changes to localStorage', () => {
     render(<SettingsComponent />);
 
-    const instrumentButton = screen.getByRole('button', { name: /Instrument/i });
-    fireEvent.click(instrumentButton);
+    const lightButton = screen.getByRole('button', { name: /Light High-clarity light mode/i });
+    fireEvent.click(lightButton);
 
     const stored = localStorage.getItem('rb.shell.settings');
     expect(stored).toBeTruthy();

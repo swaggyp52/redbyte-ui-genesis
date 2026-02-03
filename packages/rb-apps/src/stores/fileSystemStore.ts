@@ -15,7 +15,7 @@ import {
   resolveFolderLink as fsResolveFolderLink,
   getFallbackFolderId as fsGetFallbackFolderId,
 } from '../apps/files/fsModel.js';
-import { recordAuditTransition } from '../utils/audit';
+import { recordAuditTransition } from '../utils/audit.js';
 
 const STORAGE_KEY = 'rb:file-system';
 

@@ -6,7 +6,7 @@ describe('Evidence Export - Determinism', () => {
     const b = { baz: [3, 2, 1], foo: 1, bar: 2 };
     const canonA = canonicalizeEvidence(a as any);
     const canonB = canonicalizeEvidence(b as any);
-    expect(canonA).toBe(canonB);
+    expect(canonA).toStrictEqual(canonB);
   });
 
   it('produces the same hash for the same canonical JSON', () => {
