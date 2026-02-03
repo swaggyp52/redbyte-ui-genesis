@@ -72,6 +72,23 @@ async function run() {
   const logText = fs.readFileSync(dryResult.logPath, "utf8");
   assert.match(logText, /DRY RUN/);
 
+  console.log("[TEST] programBitstream invokes progress callback");
+  resetEnv();
+  process.env.RB_FPGA_DRYRUN = "1";
+  const progressBit = path.join(tmpRoot, "design-progress.bit");
+  fs.writeFileSync(progressBit, "dummy", "utf8");
+  const progressUpdates = [];
+  const onProgress = (update) => {
+    progressUpdates.push(update);
+  };
+  const progressResult = await programBitstream(progressBit, onProgress);
+  assert.equal(progressResult.ok, true);
+  // Verify callback was invoked
+  assert.ok(progressUpdates.length > 0, "Progress callback should be invoked");
+  // Check that at least one update has a phase
+  const hasPhase = progressUpdates.some(u => u.phase);
+  assert.equal(hasPhase, true, "Progress updates should include phase");
+
   resetEnv();
   console.log("[TEST] ALL PASSED");
 }

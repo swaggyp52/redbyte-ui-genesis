@@ -5,6 +5,7 @@ import { exportV2Bundle, type BoardProfile } from "../utils/bundleExport";
 import { buildTraceEvent, computeStreamSilenceMs } from "./hardwarePanelUtils";
 import { hardwareClient, type ConnectionState, type Device } from "../services/hardwareClient";
 import { BridgeDebugPanel } from "../panels/BridgeDebugPanel";
+import { SynthesisDialog, type SynthesisPhase } from "../components/SynthesisDialog";
 
 const BRIDGE_URL = "http://127.0.0.1:4242";
 const DEFAULT_LAB_ID = "basys3_mvp_lab";
@@ -140,6 +141,13 @@ function HardwarePanelComponent() {
   const [captureStartedAt, setCaptureStartedAt] = useState<number | null>(null);
   const [captureStoppedAt, setCaptureStoppedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // PHASE 1: Synthesis Dialog State
+  const [synthesisDialogOpen, setSynthesisDialogOpen] = useState(false);
+  const [synthesisPhase, setSynthesisPhase] = useState<SynthesisPhase>('idle');
+  const [synthesisMessage, setSynthesisMessage] = useState<string | undefined>();
+  const [synthesisError, setSynthesisError] = useState<string | undefined>();
+  const synthesisAbortRef = useRef<AbortController | null>(null);
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const runIdRef = useRef<string | null>(null);
@@ -506,10 +514,55 @@ function HardwarePanelComponent() {
       setProgramError(programBlockedReason);
       return;
     }
+    
+    // PHASE 1: Show synthesis dialog
     setProgramError(null);
     setProgramLogPath(null);
+    setSynthesisDialogOpen(true);
+    setSynthesisPhase('programming');
+    setSynthesisMessage(undefined);
+    setSynthesisError(undefined);
+    
+    // Create abort controller for this programming session
+    const abortCtrl = new AbortController();
+    synthesisAbortRef.current = abortCtrl;
+    
     setPanelState("PROGRAMMING");
     try {
+      // PHASE 1: Use Server-Sent Events or polling for progress updates
+      let eventSource: EventSource | null = null;
+      let pollInterval: NodeJS.Timeout | null = null;
+      
+      // Try SSE-based progress if supported by bridge
+      try {
+        eventSource = new EventSource(
+          `${BRIDGE_URL}/program/stream?device_id=${encodeURIComponent(selectedDeviceId)}`
+        );
+        
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            const { phase, message } = data;
+            if (phase) {
+              setSynthesisPhase(phase);
+            }
+            if (message) {
+              setSynthesisMessage(message);
+            }
+          } catch (err) {
+            console.warn('[handleProgram] Failed to parse SSE message:', err);
+          }
+        };
+        
+        eventSource.onerror = () => {
+          eventSource?.close();
+          eventSource = null;
+        };
+      } catch (err) {
+        // SSE not supported or failed, will fall back to polling
+        console.debug('[handleProgram] SSE not available, using polling');
+      }
+
       const result = await fetchJsonWithRetry<{ ok?: boolean; error?: string; log_path?: string }>(
         `${BRIDGE_URL}/program`,
         {
@@ -520,18 +573,49 @@ function HardwarePanelComponent() {
             board_model_id: selectedDevice?.boardModel ?? DEFAULT_BOARD,
             bitstream_base64: bitstreamBase64,
           }),
+          signal: abortCtrl.signal,
         },
         { timeoutMs: 120000, retries: 1 }
       );
+      
+      // Cleanup event source and polling
+      if (eventSource) {
+        eventSource.close();
+      }
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+      
       if (!result.ok || !result.data?.ok) {
         throw new Error(result.data?.error || `program_failed_${result.status}`);
       }
+      
+      // Success!
+      setSynthesisPhase('success');
       setProgramLogPath(result.data?.log_path || null);
       setPanelState("READY");
+      
+      // Auto-dismiss success dialog after 2 seconds
+      setTimeout(() => {
+        setSynthesisDialogOpen(false);
+        setSynthesisPhase('idle');
+      }, 2000);
+      
     } catch (err) {
-      setProgramError(err instanceof Error ? err.message : "program_failed");
-      setPanelState("ERROR");
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        // User cancelled
+        setSynthesisPhase('idle');
+        setSynthesisDialogOpen(false);
+      } else {
+        const errorMsg = err instanceof Error ? err.message : "program_failed";
+        setSynthesisError(errorMsg);
+        setSynthesisPhase('error');
+        setProgramError(errorMsg);
+        setPanelState("ERROR");
+      }
     }
+    
+    synthesisAbortRef.current = null;
   }, [bitstreamBase64, programBlockedReason, selectedDevice, selectedDeviceId]);
 
   const handleStopCapture = useCallback(async () => {
@@ -600,6 +684,21 @@ function HardwarePanelComponent() {
     selectedDeviceId,
   ]);
 
+  // PHASE 1: Synthesis Dialog Handlers
+  const handleSynthesisDismiss = useCallback(() => {
+    setSynthesisDialogOpen(false);
+    setSynthesisPhase('idle');
+  }, []);
+
+  const handleSynthesisCancel = useCallback(() => {
+    if (synthesisAbortRef.current) {
+      synthesisAbortRef.current.abort();
+    }
+    setSynthesisPhase('idle');
+    setSynthesisDialogOpen(false);
+    setPanelState('IDLE');
+  }, []);
+
   const handleExportBundle = useCallback(async () => {
     if (exportBlockedReason) {
       setError(exportBlockedReason);
@@ -642,6 +741,16 @@ function HardwarePanelComponent() {
 
   return (
     <div style={{ padding: "20px", fontFamily: "monospace", color: "#fff", height: "100%", overflow: "auto" }}>
+      {/* PHASE 1: Synthesis Dialog */}
+      <SynthesisDialog
+        isOpen={synthesisDialogOpen}
+        phase={synthesisPhase}
+        message={synthesisMessage}
+        errorMessage={synthesisError}
+        onCancel={handleSynthesisCancel}
+        onDismiss={handleSynthesisDismiss}
+      />
+
       <BridgeDebugPanel />
       <h2>Hardware Panel</h2>
 

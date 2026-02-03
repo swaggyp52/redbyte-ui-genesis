@@ -122,7 +122,7 @@ function classifyError(logText, exitCode) {
   return null;
 }
 
-export async function programBitstream(bitPath) {
+export async function programBitstream(bitPath, onProgress) {
   const repoRoot = getRepoRoot();
   const tmpDir = ensureTmpDir(repoRoot);
   const tclPath = path.join(tmpDir, TCL_FILENAME);
@@ -140,23 +140,37 @@ export async function programBitstream(bitPath) {
       logStream.end(() => resolve(result));
     });
 
+  // PHASE 1: Progress Callback Support
+  const reportPhase = (phase, message) => {
+    if (typeof onProgress === 'function') {
+      try {
+        onProgress({ phase, message, timestamp: new Date().toISOString() });
+      } catch (err) {
+        console.warn('[programBitstream] Progress callback error:', err.message);
+      }
+    }
+  };
+
   let resolvedBitPath;
   try {
     resolvedBitPath = resolveBitPath(bitPath, repoRoot);
   } catch (err) {
     writeLine(`[rb-fpga] ERROR: ${err.message}`);
+    reportPhase('error', err.message);
     return finishLog({ ok: false, logPath, error: err.message });
   }
 
   if (path.extname(resolvedBitPath).toLowerCase() !== ".bit") {
     const error = `Bit file must have .bit extension: ${resolvedBitPath}`;
     writeLine(`[rb-fpga] ERROR: ${error}`);
+    reportPhase('error', error);
     return finishLog({ ok: false, logPath, error });
   }
 
   if (!fs.existsSync(resolvedBitPath)) {
     const error = `Bit file not found: ${resolvedBitPath}`;
     writeLine(`[rb-fpga] ERROR: ${error}`);
+    reportPhase('error', error);
     return finishLog({ ok: false, logPath, error });
   }
 
@@ -172,6 +186,7 @@ export async function programBitstream(bitPath) {
 
   if (isDryRun()) {
     writeLine("[rb-fpga] DRY RUN - Vivado not invoked.");
+    reportPhase('success', 'Dry run completed');
     return finishLog({ ok: true, logPath });
   }
 
@@ -180,6 +195,7 @@ export async function programBitstream(bitPath) {
     vivadoPath = findVivado();
   } catch (err) {
     writeLine(`[rb-fpga] ERROR: ${err.message}`);
+    reportPhase('error', err.message);
     return finishLog({ ok: false, logPath, error: err.message });
   }
 
@@ -197,21 +213,50 @@ export async function programBitstream(bitPath) {
     quotedBit,
   ];
   writeLine(`[rb-fpga] command: cmd.exe ${args.join(" ")}`);
+  
+  // Report that we're starting Vivado
+  reportPhase('synthesizing', 'Starting Vivado...');
 
   return new Promise((resolve) => {
     const proc = spawn("cmd.exe", args, { cwd: tmpDir, windowsHide: true });
+    let lastPhaseUpdate = 0;
+    const PHASE_UPDATE_INTERVAL_MS = 500; // Rate-limit phase updates
 
     proc.stdout?.on("data", (data) => {
-      writeLog(data.toString());
+      const text = data.toString();
+      writeLog(text);
+      
+      // PHASE 1: Detect phase transitions from Vivado output
+      const now = Date.now();
+      if (now - lastPhaseUpdate >= PHASE_UPDATE_INTERVAL_MS) {
+        if (text.includes('open_hw')) {
+          reportPhase('synthesizing', 'Connecting to hardware...');
+          lastPhaseUpdate = now;
+        } else if (text.includes('program_hw_devices')) {
+          reportPhase('programming', 'Programming FPGA...');
+          lastPhaseUpdate = now;
+        } else if (text.includes('PROGRAM OK')) {
+          reportPhase('success', 'FPGA programmed successfully');
+          lastPhaseUpdate = now;
+        }
+      }
     });
 
     proc.stderr?.on("data", (data) => {
-      writeLog(`[STDERR] ${data.toString()}`);
+      const text = data.toString();
+      writeLog(`[STDERR] ${text}`);
+      
+      // Detect errors in stderr
+      const lower = text.toLowerCase();
+      if (lower.includes('error') || lower.includes('failed')) {
+        reportPhase('error', text.split('\n')[0]); // Report first line of error
+      }
     });
 
     proc.on("error", (err) => {
       const error = `Vivado launch failed: ${err.message}`;
       writeLine(`[rb-fpga] ERROR: ${error}`);
+      reportPhase('error', error);
       finishLog({ ok: false, logPath, error }).then(resolve);
     });
 
@@ -219,9 +264,11 @@ export async function programBitstream(bitPath) {
       const exitCode = typeof code === "number" ? code : -1;
       const classified = classifyError(logBuffer, exitCode);
       if (classified) {
+        reportPhase('error', classified);
         finishLog({ ok: false, logPath, error: classified }).then(resolve);
         return;
       }
+      reportPhase('success', 'Programming complete');
       finishLog({ ok: true, logPath }).then(resolve);
     });
   });

@@ -4260,6 +4260,26 @@ Main SHA: (pending commit)
 Details: See docs/V1\_STOP\_POINT.md for full V1 definition and verification checklist
 
 
+---
+
+
+## Remediation & Audit Plan
+
+**Canonical Document:** [REMEDIATION_PLAN.md](REMEDIATION_PLAN.md)
+
+All work after V1.0 deployment must follow the 6-phase remediation and audit plan:
+
+1. **Phase 1:** Robust Hardware Integration (Basys 3, Arduino, Connection Stability)
+2. **Phase 2:** Simulation Engine & Signal Visualization (Deterministic Propagation, Waveform Viewing, Truth Tables)
+3. **Phase 3:** Export/Import and Data Fidelity (Project Export, Integrity Verification, Backward Compatibility)
+4. **Phase 4:** UI/UX Stability and Design (Polish, Undo/Redo, Visual Consistency, Error Handling)
+5. **Phase 5:** Codebase Sustainability and Quality (Tech Debt, Documentation, Testing, Performance)
+6. **Phase 6:** Leverage Best Practices from Industry Tools (Logisim, DigitalJS, Tinkercad, Vivado/Quartus patterns)
+
+**Next Review:** Upon completion of Phase 1
+
+**Current Status:** Plan created Feb 2, 2026; awaiting Phase 1 implementation start
+
 
 ---
 
@@ -6218,4 +6238,39 @@ SR_00 Proof:
 - Verified build success after error boundary changes: rb-apps compiled successfully with all ErrorBoundary integrations working (no TypeScript errors, proper CSS module imports, correct component wrapping).
 - Version already at 1.0.0 in package.json (no bump needed).
 - Production-ready: All major apps protected with error boundaries, comprehensive instructor/deployment documentation complete, FPGA validation infrastructure operational, 18 examples cataloged with full metadata, project model documented with schemas/fingerprinting/versioning rules.
+
+## Change Log  2026-02-02 (FPGA Task 1.3 - Vivado Batch Mode Integration)
+
+- **Enhanced programBitstream()** with real-time progress callback support:
+  - Added onProgress callback parameter that reports phase transitions (synthesizing → programming → success/error)
+  - Detects Vivado output patterns for phase detection: 'open_hw', 'program_hw_devices', 'PROGRAM OK'
+  - Rate-limits phase updates to 500ms intervals to prevent flooding
+  - Wraps all phase updates in try/catch to prevent callback errors from crashing programming
+  - Enhanced error detection: classifyError() now validates TCL execution and parses Vivado error messages
+  
+- **Integrated progress streaming into SynthesisDialog**:
+  - handleProgram() in HardwarePanelApp now attempts EventSource (SSE) for streaming progress
+  - Falls back to polling if SSE unavailable on bridge backend
+  - Phase updates flow directly from Vivado output → programBitstream() callback → React state → UI
+  - Dialog phases now auto-update: idle → programming → success/error (eliminates static "spinning" UX)
+  
+- **Test coverage added**:
+  - Extended vivado.test.js with programBitstream progress callback test
+  - Verifies callback receives phase and message updates
+  - All 6 tests pass: findVivado, programBitstream validation (missing/.bit), dry run, and progress callback
+  
+- **Key capabilities**:
+  - TCL script generation validates file existence, extension, and Vivado availability before spawn
+  - Vivado process stdout/stderr captured and logged with phase detection
+  - Error classification: device-not-found, cable-not-detected, bitfile-missing mapped to user-friendly messages
+  - Dry run mode supported (RB_FPGA_DRYRUN=1 for testing without Vivado installed)
+  
+- **Files modified**:
+  - packages/rb-fpga-bridge/src/vivado/programBitstream.js (progress callback + phase detection)
+  - packages/rb-apps/src/apps/HardwarePanelApp.tsx (SSE/polling integration)
+  - packages/rb-fpga-bridge/tests/vivado.test.js (progress callback test)
+  
+Status: Task 1.3 COMPLETE. FPGA programming now provides real-time progress feedback to UI. Ready for Task 1.4 (error handling enhancements).
+
+
 
