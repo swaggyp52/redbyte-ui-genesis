@@ -3012,13 +3012,15 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   }, [handleNew, resetRunRecorder, circuit, getLayoutSnapshot, safeMode]);
 
   const handleSaveProject = useCallback(() => {
+    saveSnapshot(circuit, getLayoutSnapshot(), { safeMode }, 'autosave', true, getProjectSnapshot() ?? undefined);
     const project = buildProject();
     assertAppOutput('logic-playground', 'rb-project.json');
     downloadText('rb-project.json', encodeRBProject(project));
     addToast('Project exported', 'success');
-  }, [buildProject, downloadText, addToast]);
+  }, [buildProject, downloadText, addToast, circuit, getLayoutSnapshot, safeMode, getProjectSnapshot]);
 
   const handleSaveProjectArchive = useCallback(async () => {
+    saveSnapshot(circuit, getLayoutSnapshot(), { safeMode }, 'autosave', true, getProjectSnapshot() ?? undefined);
     const project = buildProject();
     assertAppOutput('logic-playground', 'rbproj.zip');
     const zip = new JSZip();
@@ -3033,7 +3035,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     const safeName = sanitizeFilename(project.name ?? 'rb-project');
     downloadBlob(`${safeName}.rbproj.zip`, blob);
     addToast('Project archive exported', 'success');
-  }, [buildProject, downloadBlob, sanitizeFilename, addToast]);
+  }, [buildProject, downloadBlob, sanitizeFilename, addToast, circuit, getLayoutSnapshot, safeMode, getProjectSnapshot]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
