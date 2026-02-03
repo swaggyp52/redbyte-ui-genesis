@@ -2,13 +2,13 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 import JSZip from 'jszip';
-import { useFileSystemStore } from '../stores/fileSystemStore';
-import { useHardwareStore } from '../stores/hardwareStore';
-import { useLabStore as usePedagogicalLabStore } from '../labs/labStore';
+import { useFileSystemStore } from '../stores/fileSystemStore.js';
+import { useHardwareStore } from '../stores/hardwareStore.js';
+import { useLabStore as usePedagogicalLabStore } from '../labs/labStore.js';
 import { useLabStore as useModelLabStore, evaluateAtTick, fingerprintLabTemplate } from '@redbyte/rb-logic-3d';
 import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
-import { VIRTUAL_LAB_TEMPLATES } from '../apps/virtual-lab-templates';
-import { createTrace } from '../hardware/traceFormat';
+import { VIRTUAL_LAB_TEMPLATES } from '../apps/virtual-lab-templates.js';
+import { createTrace } from '../hardware/traceFormat.js';
 export async function exportEvidenceCapsule(filename) {
     try {
         const hw = useHardwareStore.getState();
