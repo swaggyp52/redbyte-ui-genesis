@@ -721,6 +721,76 @@ export class HardwareClient {
     }
   }
 
+  /**
+   * Set pins (LEDs) on the active device via the bridge.
+   * This sends LED values to hardware (Basys3, Arduino, etc.)
+   * 
+   * PHASE 1: Bidirectional Telemetry
+   * Supports simulation → hardware feedback for Labs.
+   * Example: Simulation computes outputs, setPins drives LEDs on physical board.
+   */
+  async setPins(pins: Record<string, number>): Promise<boolean> {
+    if (this.state.status !== 'connected' || !this.state.ws) {
+      console.warn('[HardwareClient] Cannot set pins: not connected to bridge');
+      return false;
+    }
+
+    if (!this.activeDevice) {
+      console.warn('[HardwareClient] Cannot set pins: no active device selected');
+      return false;
+    }
+
+    try {
+      const id = Math.floor(Math.random() * 1000000);
+
+      return new Promise((resolve) => {
+        const handler = (event: MessageEvent) => {
+          try {
+            const msg = JSON.parse(event.data.toString());
+            if (msg.id === id) {
+              this.state.ws?.removeEventListener('message', handler);
+              if (msg.type === 'SET_PINS_OK' || msg.status === 'ok') {
+                console.debug(`[HardwareClient] Pins set successfully: ${JSON.stringify(pins)}`);
+                resolve(true);
+              } else {
+                console.warn(`[HardwareClient] Set pins failed: ${msg.payload?.message || msg.error}`);
+                resolve(false);
+              }
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        };
+
+        if (this.state.ws) {
+          this.state.ws.addEventListener('message', handler);
+
+          // Send SET_PINS message via WebSocket
+          this.state.ws.send(JSON.stringify({
+            v: 'rb-bridge.v1',
+            id,
+            type: 'SET_PINS',
+            deviceId: this.activeDevice?.deviceId,
+            payload: { pins }
+          }));
+
+          // Timeout: resolve false if no response in 2 seconds
+          setTimeout(() => {
+            if (this.state.ws) {
+              this.state.ws.removeEventListener('message', handler);
+            }
+            resolve(false);
+          }, 2000);
+        } else {
+          resolve(false);
+        }
+      });
+    } catch (error: any) {
+      console.error('[HardwareClient] setPins error:', error.message);
+      return false;
+    }
+  }
+
   async getIO(sessionId: string): Promise<IOSnapshot> {
     if (this.state.status !== 'connected') {
       return {

@@ -184,11 +184,79 @@ export class Basys3Backend {
     setPins(payload: SetPinsPayload): void {
         if (!this.connected || !this.port) return;
 
-        // Basys3 usually doesn't accept SET PINS from PC unless we have a specific control protocol.
-        // The current plan is mostly monitoring. 
-        // If we need to drive inputs (Virtual Lab Mode -> Hardware), standard UART would need a command.
-        // For now, we log or ignore.
-        // console.log('[Basys3] setPins not implemented for hardware inputs yet');
+        // PHASE 1: Bidirectional Telemetry
+        // Support setting LED outputs when in Bridge Mode (simulation → hardware feedback)
+        // 
+        // Command Format (host → device):
+        // CMD_SET_LED: "LEDRB" <2 bytes LED state (Big Endian)> <2 bytes CRC-16>
+        // 
+        // This allows:
+        // 1. In Hardware Mode: Simulation outputs can be visualized on physical LEDs
+        // 2. In Bridge Mode: Virtual Lab logic gets feedback loop
+        
+        try {
+            // Extract LED values from payload
+            const ledState = this.buildLedCommand(payload);
+            if (ledState && this.port.isOpen) {
+                this.port.write(ledState, (err) => {
+                    if (err) {
+                        console.warn(`[Basys3] Failed to write LED command: ${err.message}`);
+                    } else {
+                        console.debug(`[Basys3] LED command sent: ${ledState.toString('hex')}`);
+                    }
+                });
+            }
+        } catch (err) {
+            console.error(`[Basys3] setPins error: ${err instanceof Error ? err.message : String(err)}`);
+        }
+    }
+
+    private buildLedCommand(payload: SetPinsPayload): Buffer | null {
+        // Build LED command: "LEDRB" + 2-byte LED state + 2-byte CRC
+        // LED0-LED15 mapped from payload.pins
+        
+        let ledValue = 0;
+        
+        // Extract LED bit values from payload
+        for (let i = 0; i < 16; i++) {
+            const ledKey = `LED${i}`;
+            if (ledKey in payload.pins) {
+                const bitVal = payload.pins[ledKey] ? 1 : 0;
+                ledValue |= (bitVal << i);
+            }
+        }
+        
+        // Create command buffer: "LEDRB" (5 bytes) + ledValue (2 bytes) + CRC (2 bytes)
+        const cmd = Buffer.alloc(9);
+        cmd[0] = 0x4C; // 'L'
+        cmd[1] = 0x45; // 'E'
+        cmd[2] = 0x44; // 'D'
+        cmd[3] = 0x52; // 'R'
+        cmd[4] = 0x42; // 'B'
+        cmd[5] = (ledValue >> 8) & 0xFF;  // High byte
+        cmd[6] = ledValue & 0xFF;          // Low byte
+        
+        // Calculate CRC-16-CCITT over bytes 0-6
+        const crc = this.calculateCrc16(cmd.subarray(0, 7));
+        cmd[7] = (crc >> 8) & 0xFF;
+        cmd[8] = crc & 0xFF;
+        
+        return cmd;
+    }
+
+    private calculateCrc16(data: Buffer): number {
+        let crc = 0xFFFF;
+        for (let i = 0; i < data.length; i++) {
+            crc = crc ^ (data[i] << 8);
+            for (let j = 0; j < 8; j++) {
+                if ((crc & 0x8000) !== 0) {
+                    crc = (crc << 1) ^ 0x1021;
+                } else {
+                    crc = crc << 1;
+                }
+            }
+        }
+        return crc & 0xFFFF;
     }
 
     async getPins(): Promise<Record<string, number>> {
