@@ -24,7 +24,7 @@ import { useViewStateStore } from '../stores/viewStateStore';
 import { useLabStore } from '../labs/labStore';
 import { getSignalMap } from '../labs/signalMap';
 import { getSimSnapshot, useSimStore, setSimInput } from '../labs/simAdapter';
-import { EXPERIMENTS } from '../labs/experiments';
+import { EXPERIMENTS, DEFAULT_EXPERIMENT } from '../labs/experiments';
 import { validateTrace } from '../hardware/traceFormat';
 import { loadTraceFromFS, saveCapsuleToFS, loadCapsuleFromFS } from '../utils/traceFileUtils';
 import { createCapsule } from '../hardware/capsuleFormat';
@@ -535,8 +535,43 @@ export const ECELabAppComponent = ({ windowId, labId }) => {
             simSnapshot; // 'sim' fallback
     // Capabilities come from source if possible, else current board selection
     const effectiveCapabilities = executionSource === 'sim' ? simCapabilities : capabilities;
-    // Current experiment
-    const currentExperiment = EXPERIMENTS[activeExperimentId];
+    const safeSimInputs = useMemo(() => ({
+        SW: typeof (simInputs?.SW) === 'number' ? simInputs.SW : parseInt(String(simInputs?.SW ?? '0'), 2),
+        BTN: typeof (simInputs?.BTN) === 'number' ? simInputs.BTN : parseInt(String(simInputs?.BTN ?? '0'), 2),
+    }), [simInputs]);
+    const safeSimOutputs = useMemo(() => ({
+        LED: typeof (simOutputs?.LED) === 'number' ? simOutputs.LED : parseInt(String(simOutputs?.LED ?? '0'), 2),
+        SEG: typeof (simOutputs?.SEG) === 'number' ? simOutputs.SEG : parseInt(String(simOutputs?.SEG ?? '0'), 2),
+        AN: typeof (simOutputs?.AN) === 'number' ? simOutputs.AN : parseInt(String(simOutputs?.AN ?? '0'), 2),
+        DP: typeof (simOutputs?.DP) === 'number' ? simOutputs.DP : parseInt(String(simOutputs?.DP ?? '0'), 2),
+    }), [simOutputs]);
+    const displayInputs = useMemo(() => {
+        if (executionSource === 'sim')
+            return safeSimInputs;
+        const src = effectiveSnapshot?.inputs;
+        return {
+            SW: typeof (src?.SW) === 'number' ? src.SW : safeSimInputs.SW,
+            BTN: typeof (src?.BTN) === 'number' ? src.BTN : safeSimInputs.BTN,
+        };
+    }, [executionSource, effectiveSnapshot, safeSimInputs]);
+    const displayOutputs = useMemo(() => {
+        if (executionSource === 'sim')
+            return safeSimOutputs;
+        const src = effectiveSnapshot?.outputs;
+        return {
+            LED: typeof (src?.LED) === 'number' ? src.LED : safeSimOutputs.LED,
+            SEG: typeof (src?.SEG) === 'number' ? src.SEG : safeSimOutputs.SEG,
+            AN: typeof (src?.AN) === 'number' ? src.AN : safeSimOutputs.AN,
+            DP: typeof (src?.DP) === 'number' ? src.DP : safeSimOutputs.DP,
+        };
+    }, [executionSource, effectiveSnapshot, safeSimOutputs]);
+    // Current experiment (fallback to default to avoid empty canvas)
+    const currentExperiment = EXPERIMENTS[activeExperimentId] ?? DEFAULT_EXPERIMENT;
+    useEffect(() => {
+        if (!EXPERIMENTS[activeExperimentId]) {
+            setSimExperiment(DEFAULT_EXPERIMENT.id);
+        }
+    }, [activeExperimentId, setSimExperiment]);
     // Recording handlers
     const handleToggleRecording = () => {
         if (isRecording) {
@@ -731,15 +766,7 @@ export const ECELabAppComponent = ({ windowId, labId }) => {
                                                             border: '1px solid #1a3a4a',
                                                         }, children: ["T:", simSnapshot.tick] })] })] }), _jsxs("div", { className: "flex-1 relative overflow-hidden bg-gray-950", children: [currentExperiment ? (
                                             /* Legacy Experiment Mode: Use Static Canvas for 'canned' experiments */
-                                            _jsxs("div", { className: "absolute inset-0 flex flex-col", children: [_jsx(CircuitCanvas, { experiment: currentExperiment, inputs: {
-                                                            SW: typeof simInputs.SW === 'number' ? simInputs.SW : parseInt(String(simInputs.SW || '0'), 2),
-                                                            BTN: typeof simInputs.BTN === 'number' ? simInputs.BTN : parseInt(String(simInputs.BTN || '0'), 2),
-                                                        }, outputs: {
-                                                            LED: typeof simOutputs.LED === 'number' ? simOutputs.LED : parseInt(String(simOutputs.LED || '0'), 2),
-                                                            SEG: typeof simOutputs.SEG === 'number' ? simOutputs.SEG : parseInt(String(simOutputs.SEG || '0'), 2),
-                                                            AN: typeof simOutputs.AN === 'number' ? simOutputs.AN : parseInt(String(simOutputs.AN || '0'), 2),
-                                                            DP: typeof simOutputs.DP === 'number' ? simOutputs.DP : parseInt(String(simOutputs.DP || '0'), 2),
-                                                        }, tick: simSnapshot.tick }), _jsx("div", { className: "absolute top-2 left-2 px-2 py-1 bg-gray-900/80 text-[10px] text-cyan-500 border border-cyan-500/30 rounded pointer-events-none", children: "PRE-BUILT EXPERIMENT" })] })) : (
+                                            _jsxs("div", { className: "absolute inset-0 flex flex-col", children: [_jsx(CircuitCanvas, { experiment: currentExperiment, inputs: displayInputs, outputs: displayOutputs, tick: simSnapshot.tick }), _jsx("div", { className: "absolute top-2 left-2 px-2 py-1 bg-gray-900/80 text-[10px] text-cyan-500 border border-cyan-500/30 rounded pointer-events-none", children: "PRE-BUILT EXPERIMENT" })] })) : (
                                             /* Interactive Mode: SplitViewLayout */
                                             /* Interactive Mode: SplitViewLayout */
                                             _jsxs("div", { className: "absolute inset-0", children: [_jsx(SplitViewLayout, { mode: "single", views: ['circuit'], engine: engine, tickEngine: tickEngine, circuit: circuit, isRunning: simAutoRun, tickCount: simSnapshot.tick, onCircuitChange: (newCircuit) => {

@@ -28,7 +28,7 @@ import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import { useLabStore } from '../labs/labStore';
 import { getSignalMap } from '../labs/signalMap';
 import { getSimSnapshot, useSimStore, setSimInput } from '../labs/simAdapter';
-import { EXPERIMENTS } from '../labs/experiments';
+import { EXPERIMENTS, DEFAULT_EXPERIMENT } from '../labs/experiments';
 import type { HardwareTraceV1 } from '../hardware/traceFormat';
 import { validateTrace } from '../hardware/traceFormat';
 import { saveTraceToFS, loadTraceFromFS, saveCapsuleToFS, loadCapsuleFromFS } from '../utils/traceFileUtils';
@@ -716,8 +716,46 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
   // Capabilities come from source if possible, else current board selection
   const effectiveCapabilities = executionSource === 'sim' ? simCapabilities : capabilities;
 
-  // Current experiment
-  const currentExperiment = EXPERIMENTS[activeExperimentId];
+  const safeSimInputs = useMemo(() => ({
+    SW: typeof simInputs?.SW === 'number' ? simInputs.SW : parseInt(String(simInputs?.SW ?? '0'), 2),
+    BTN: typeof simInputs?.BTN === 'number' ? simInputs.BTN : parseInt(String(simInputs?.BTN ?? '0'), 2),
+  }), [simInputs]);
+
+  const safeSimOutputs = useMemo(() => ({
+    LED: typeof simOutputs?.LED === 'number' ? simOutputs.LED : parseInt(String(simOutputs?.LED ?? '0'), 2),
+    SEG: typeof simOutputs?.SEG === 'number' ? simOutputs.SEG : parseInt(String(simOutputs?.SEG ?? '0'), 2),
+    AN: typeof simOutputs?.AN === 'number' ? simOutputs.AN : parseInt(String(simOutputs?.AN ?? '0'), 2),
+    DP: typeof simOutputs?.DP === 'number' ? simOutputs.DP : parseInt(String(simOutputs?.DP ?? '0'), 2),
+  }), [simOutputs]);
+
+  const displayInputs = useMemo(() => {
+    if (executionSource === 'sim') return safeSimInputs;
+    const src = effectiveSnapshot?.inputs;
+    return {
+      SW: typeof src?.SW === 'number' ? src.SW : safeSimInputs.SW,
+      BTN: typeof src?.BTN === 'number' ? src.BTN : safeSimInputs.BTN,
+    };
+  }, [executionSource, effectiveSnapshot, safeSimInputs]);
+
+  const displayOutputs = useMemo(() => {
+    if (executionSource === 'sim') return safeSimOutputs;
+    const src = effectiveSnapshot?.outputs;
+    return {
+      LED: typeof src?.LED === 'number' ? src.LED : safeSimOutputs.LED,
+      SEG: typeof src?.SEG === 'number' ? src.SEG : safeSimOutputs.SEG,
+      AN: typeof src?.AN === 'number' ? src.AN : safeSimOutputs.AN,
+      DP: typeof src?.DP === 'number' ? src.DP : safeSimOutputs.DP,
+    };
+  }, [executionSource, effectiveSnapshot, safeSimOutputs]);
+
+  // Current experiment (fallback to default to avoid empty canvas)
+  const currentExperiment = EXPERIMENTS[activeExperimentId] ?? DEFAULT_EXPERIMENT;
+
+  useEffect(() => {
+    if (!EXPERIMENTS[activeExperimentId]) {
+      setSimExperiment(DEFAULT_EXPERIMENT.id);
+    }
+  }, [activeExperimentId, setSimExperiment]);
 
   // Recording handlers
   const handleToggleRecording = () => {
@@ -1196,16 +1234,8 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
                     <div className="absolute inset-0 flex flex-col">
                       <CircuitCanvas
                         experiment={currentExperiment}
-                        inputs={{
-                          SW: typeof simInputs.SW === 'number' ? simInputs.SW : parseInt(String(simInputs.SW || '0'), 2),
-                          BTN: typeof simInputs.BTN === 'number' ? simInputs.BTN : parseInt(String(simInputs.BTN || '0'), 2),
-                        }}
-                        outputs={{
-                          LED: typeof simOutputs.LED === 'number' ? simOutputs.LED : parseInt(String(simOutputs.LED || '0'), 2),
-                          SEG: typeof simOutputs.SEG === 'number' ? simOutputs.SEG : parseInt(String(simOutputs.SEG || '0'), 2),
-                          AN: typeof simOutputs.AN === 'number' ? simOutputs.AN : parseInt(String(simOutputs.AN || '0'), 2),
-                          DP: typeof simOutputs.DP === 'number' ? simOutputs.DP : parseInt(String(simOutputs.DP || '0'), 2),
-                        }}
+                        inputs={displayInputs}
+                        outputs={displayOutputs}
                         tick={simSnapshot.tick}
                       />
                       <div className="absolute top-2 left-2 px-2 py-1 bg-gray-900/80 text-[10px] text-cyan-500 border border-cyan-500/30 rounded pointer-events-none">
