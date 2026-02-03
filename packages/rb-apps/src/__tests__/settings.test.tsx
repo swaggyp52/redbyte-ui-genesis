@@ -136,7 +136,7 @@ describe('Settings persistence', () => {
   it('persists wallpaper changes to localStorage', () => {
     render(<SettingsComponent />);
 
-    const frostGridButton = screen.getByRole('button', { name: /Frost Grid/i });
+    const frostGridButton = screen.getByRole('button', { name: /Grid Faint blue gridlines/i });
     fireEvent.click(frostGridButton);
 
     const stored = localStorage.getItem('rb.shell.settings');
