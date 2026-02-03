@@ -59,7 +59,10 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
 
     // SHIP-GRADE: Override default transport with HardwareClient bridge
     useEffect(() => {
-        if (safeMode) return;
+        if (safeMode) {
+            setTransport('sim');
+            return;
+        }
         const transport = new HardwareClientTransport();
         transport.connect().then(() => {
             useLabStore.setState({ activeTransport: transport });
@@ -67,7 +70,7 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
         return () => {
             void transport.disconnect();
         };
-    }, [safeMode]);
+    }, [safeMode, setTransport]);
     const setPlaybackMode = useLabStore((state) => state.setPlaybackMode);
     const scrub = useLabStore((state) => state.scrub);
     const recover = useLabStore((state) => state.recover);

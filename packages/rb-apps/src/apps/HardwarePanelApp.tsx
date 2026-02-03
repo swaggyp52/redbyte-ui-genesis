@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } f
 import type { RedByteApp } from "../types";
 import type { HardwareTraceEvent } from "@redbyte/rb-fpga-proof-core";
 import { exportV2Bundle, type BoardProfile } from "../utils/bundleExport";
+import { toast } from "@redbyte/rb-primitives";
 import { buildTraceEvent, computeStreamSilenceMs } from "./hardwarePanelUtils";
 import { hardwareClient, type ConnectionState, type Device } from "../services/hardwareClient";
 import { BridgeDebugPanel } from "../panels/BridgeDebugPanel";
@@ -132,6 +133,19 @@ function HardwarePanelComponent() {
   const [bitstreamBase64, setBitstreamBase64] = useState<string | null>(null);
   const [programLogPath, setProgramLogPath] = useState<string | null>(null);
   const [programError, setProgramError] = useState<string | null>(null);
+  const handleCopyBridgeCommand = useCallback(async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText("pnpm bridge:start");
+        toast.success("Bridge command copied to clipboard.");
+      } else {
+        toast.error("Clipboard not available. Run: pnpm bridge:start");
+      }
+    } catch (error) {
+      console.error("Failed to copy bridge command:", error);
+      toast.error("Failed to copy bridge command.");
+    }
+  }, []);
   const [runId, setRunId] = useState<string | null>(null);
   const [runStatus, setRunStatus] = useState<string | null>(null);
   const [runStatusHint, setRunStatusHint] = useState<string | null>(null);
@@ -802,8 +816,14 @@ function HardwarePanelComponent() {
           </button>
         </div>
         {!bridgeReady && (
-          <div style={{ marginTop: "6px", fontSize: "11px", color: "#f66" }}>
-            Bridge offline. Start the local daemon to enable devices.
+          <div style={{ marginTop: "6px", fontSize: "11px", color: "#f66", display: "flex", flexDirection: "column", gap: "6px" }}>
+            <span>Bridge offline. Start the local daemon to enable devices.</span>
+            <button
+              onClick={handleCopyBridgeCommand}
+              style={{ padding: "6px 10px", background: "#222", color: "#fff", border: "1px solid #555", borderRadius: "4px", cursor: "pointer", fontSize: "11px", alignSelf: "flex-start" }}
+            >
+              Copy Bridge Command
+            </button>
           </div>
         )}
         {bridgeReady && !hasDevices && (

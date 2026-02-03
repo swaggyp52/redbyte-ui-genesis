@@ -49,6 +49,7 @@ export const useLabWorkflowStore = create<LabWorkflowState>()(
             setStep: (step) => set((state) => {
                 const currentIndex = STEP_ORDER.indexOf(state.currentStep);
                 const targetIndex = STEP_ORDER.indexOf(step);
+                const isTestEnv = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
 
                 // Allow moving backward freely
                 if (targetIndex < currentIndex) {
@@ -59,7 +60,9 @@ export const useLabWorkflowStore = create<LabWorkflowState>()(
                 // Disallow skipping steps unless logic allows
                 const maxIndex = get().getMaxUnlockedStepIndex();
                 if (targetIndex > maxIndex) {
-                    console.warn(`[LabWorkflow] Blocked jump to ${step}: requirement not met.`);
+                    if (!isTestEnv) {
+                        console.warn(`[LabWorkflow] Blocked jump to ${step}: requirement not met.`);
+                    }
                     return;
                 }
 

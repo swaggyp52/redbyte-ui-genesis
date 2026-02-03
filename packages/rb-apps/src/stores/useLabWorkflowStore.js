@@ -22,7 +22,10 @@ export const useLabWorkflowStore = create()(devtools(immer((set, get) => ({
         // Disallow skipping steps unless logic allows
         const maxIndex = get().getMaxUnlockedStepIndex();
         if (targetIndex > maxIndex) {
-            console.warn(`[LabWorkflow] Blocked jump to ${step}: requirement not met.`);
+            const isTestEnv = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+            if (!isTestEnv) {
+                console.warn(`[LabWorkflow] Blocked jump to ${step}: requirement not met.`);
+            }
             return;
         }
         state.currentStep = step;

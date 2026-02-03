@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import { usePersistenceStore, checkForRecovery } from './persistenceStore';
-import { useClassroomModeStore } from '@redbyte/rb-apps';
+import { useClassroomModeStore, loadSnapshot } from '@redbyte/rb-apps';
 
 export type DiagnosticEventType = 'error' | 'rejection' | 'warning' | 'info';
 
@@ -65,9 +65,16 @@ export function getDiagnosticsSnapshot(): DiagnosticsSnapshot {
   const diagnostics = useSessionDiagnosticsStore.getState();
   const safeMode = useClassroomModeStore.getState().safeMode;
 
-  const lastAutosaveAt = Object.values(persistence.windows)
+  let lastAutosaveAt = Object.values(persistence.windows)
     .map((w) => w.lastSavedAt ?? 0)
     .reduce((max, value) => (value > max ? value : max), 0) || null;
+
+  if (!lastAutosaveAt) {
+    const snapshot = loadSnapshot();
+    if (snapshot?.timestamp) {
+      lastAutosaveAt = snapshot.timestamp;
+    }
+  }
 
   const windows = windowState.windows.map((w) => ({
     id: w.id,

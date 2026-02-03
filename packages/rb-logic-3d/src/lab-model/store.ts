@@ -466,6 +466,17 @@ export const useLabStore = create<LabStoreState>()(
 
                         // 2. Poll for Hardware Outputs (Hardware -> Store)
                         // poll() returns coalesced diffs since last tick.
+                        if (typeof (transport as any).tickWithInputs === 'function') {
+                            const node = hardwareNodes[0];
+                            const inputs: Record<string, 0 | 1> = {};
+                            Object.entries(state.simulation.pinStates).forEach(([key, value]) => {
+                                if (key.startsWith(`${node.id}:`)) {
+                                    const pinId = key.slice(node.id.length + 1);
+                                    inputs[pinId] = value as 0 | 1;
+                                }
+                            });
+                            (transport as any).tickWithInputs(inputs);
+                        }
                         const hardwareOutputs = transport.poll();
 
                         // 3. Apply normalized diffs to Store

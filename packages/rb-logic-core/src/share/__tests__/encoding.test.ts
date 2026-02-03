@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { encodeCircuit, decodeCircuit, decodeCircuitAsync, isCompressedFormat, type Circuit } from '../encoding';
 import { encodeCircuitCompressed, decodeCircuitCompressed } from '../encoding.compressed';
 
@@ -53,6 +53,7 @@ describe('Circuit Encoding', () => {
   });
 
   it('handles empty circuit', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const emptyCircuit: Circuit = {
       gates: [],
       wires: [],
@@ -64,6 +65,7 @@ describe('Circuit Encoding', () => {
     const decoded = decodeCircuit(encoded);
 
     expect(decoded).toEqual(emptyCircuit);
+    warnSpy.mockRestore();
   });
 
   it('throws error on invalid encoded string', () => {

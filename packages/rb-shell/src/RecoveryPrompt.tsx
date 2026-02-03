@@ -4,6 +4,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { checkForRecovery, acceptRecovery, discardRecovery, type RecoverableEntry } from './persistenceStore';
+import { loadSnapshot, wasLastShutdownClean, clearAllSnapshots } from '@redbyte/rb-apps';
 
 export interface RecoveryAction {
   windowId: string;
@@ -25,6 +26,16 @@ export const RecoveryPrompt: React.FC<RecoveryPromptProps> = ({ onRecover, onDis
 
   useEffect(() => {
     const found = checkForRecovery();
+    const snapshot = loadSnapshot();
+    if (snapshot && !wasLastShutdownClean()) {
+      found.push({
+        windowId: 'workspace-snapshot',
+        appId: 'logic-playground',
+        timestamp: snapshot.timestamp,
+        data: snapshot,
+        reason: 'interrupted',
+      });
+    }
     setEntries(found);
   }, []);
 
@@ -33,6 +44,11 @@ export const RecoveryPrompt: React.FC<RecoveryPromptProps> = ({ onRecover, onDis
   const handleRecover = () => {
     const recovered: RecoveryAction[] = [];
     for (const entry of entries) {
+      if (entry.windowId === 'workspace-snapshot') {
+        recovered.push({ windowId: entry.windowId, appId: entry.appId, data: entry.data });
+        clearAllSnapshots();
+        continue;
+      }
       const data = acceptRecovery(entry.windowId);
       if (data !== null) {
         recovered.push({ windowId: entry.windowId, appId: entry.appId, data });
@@ -43,7 +59,11 @@ export const RecoveryPrompt: React.FC<RecoveryPromptProps> = ({ onRecover, onDis
 
   const handleDiscard = () => {
     for (const entry of entries) {
-      discardRecovery(entry.windowId);
+      if (entry.windowId === 'workspace-snapshot') {
+        clearAllSnapshots();
+      } else {
+        discardRecovery(entry.windowId);
+      }
     }
     onDiscard();
   };

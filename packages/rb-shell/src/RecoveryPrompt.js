@@ -4,6 +4,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 import { useEffect, useState } from 'react';
 import { checkForRecovery, acceptRecovery, discardRecovery } from './persistenceStore';
+import { loadSnapshot, wasLastShutdownClean, clearAllSnapshots } from '@redbyte/rb-apps';
 /**
  * Shown on shell load when autosave journal entries indicate
  * interrupted saves. Lets the user choose to recover or discard.
@@ -12,6 +13,16 @@ export const RecoveryPrompt = ({ onRecover, onDiscard }) => {
     const [entries, setEntries] = useState([]);
     useEffect(() => {
         const found = checkForRecovery();
+        const snapshot = loadSnapshot();
+        if (snapshot && !wasLastShutdownClean()) {
+            found.push({
+                windowId: 'workspace-snapshot',
+                appId: 'logic-playground',
+                timestamp: snapshot.timestamp,
+                data: snapshot,
+                reason: 'interrupted',
+            });
+        }
         setEntries(found);
     }, []);
     if (entries.length === 0)
@@ -19,6 +30,11 @@ export const RecoveryPrompt = ({ onRecover, onDiscard }) => {
     const handleRecover = () => {
         const recovered = [];
         for (const entry of entries) {
+            if (entry.windowId === 'workspace-snapshot') {
+                recovered.push({ windowId: entry.windowId, appId: entry.appId, data: entry.data });
+                clearAllSnapshots();
+                continue;
+            }
             const data = acceptRecovery(entry.windowId);
             if (data !== null) {
                 recovered.push({ windowId: entry.windowId, appId: entry.appId, data });
@@ -28,7 +44,12 @@ export const RecoveryPrompt = ({ onRecover, onDiscard }) => {
     };
     const handleDiscard = () => {
         for (const entry of entries) {
-            discardRecovery(entry.windowId);
+            if (entry.windowId === 'workspace-snapshot') {
+                clearAllSnapshots();
+            }
+            else {
+                discardRecovery(entry.windowId);
+            }
         }
         onDiscard();
     };

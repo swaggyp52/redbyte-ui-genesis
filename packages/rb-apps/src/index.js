@@ -14,6 +14,7 @@ export * from './examples';
 export * from './components/EmptyState';
 export * from './components/IntegrityBadge';
 export { stableSerialize, stableHash, hashBytes } from './utils/stableSerialize';
+export { loadSnapshot, wasLastShutdownClean, clearAllSnapshots } from './utils/snapshotSystem';
 export { hashBytesOffThread, stableHashOffThread, stableSerializeOffThread, terminateComputeWorker, } from './utils/computeWorker';
 export { installErrorHandlers, reportError, reportPerfViolation, addBreadcrumb, getBreadcrumbs, setReportSink, setPerfSampleRate, } from './utils/errorReporting';
 export { buildEvidenceManifest, verifyEvidenceManifest, serializeManifest, } from './utils/evidenceManifest';

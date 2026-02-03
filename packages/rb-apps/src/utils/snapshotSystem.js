@@ -11,12 +11,12 @@ let debounceTimer = null;
 /**
  * Save workspace snapshot (debounced for autosaves)
  */
-export function saveSnapshot(circuit, layout, flags, reason, immediate = false) {
+export function saveSnapshot(circuit, layout, flags, reason, immediate = false, project) {
     const snapshot = {
         schemaVersion: 1,
         timestamp: Date.now(),
         reason,
-        payload: { circuit, layout, flags },
+        payload: { circuit, layout, flags, project },
     };
     const save = () => {
         try {
@@ -56,14 +56,14 @@ export function saveSnapshot(circuit, layout, flags, reason, immediate = false) 
         save();
     }
     else {
-        // Debounced autosave (1s)
+        // Debounced autosave (short interval for lab reliability)
         if (debounceTimer !== null) {
             clearTimeout(debounceTimer);
         }
         debounceTimer = window.setTimeout(() => {
             save();
             debounceTimer = null;
-        }, 1000);
+        }, 5000);
     }
 }
 /**
@@ -155,7 +155,7 @@ export function initSnapshotSystem(getWorkspaceData) {
     if (typeof window !== 'undefined') {
         window.addEventListener('pagehide', () => {
             const data = getWorkspaceData();
-            saveSnapshot(data.circuit, data.layout, data.flags, 'unload', true);
+            saveSnapshot(data.circuit, data.layout, data.flags, 'unload', true, data.project);
             markCleanShutdown();
         });
     }

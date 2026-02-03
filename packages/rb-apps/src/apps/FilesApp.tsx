@@ -483,6 +483,15 @@ const FilesComponent: React.FC<FilesProps> = ({ onClose, onDispatchIntent }) => 
                 icon="folder"
                 title="Empty folder"
                 description="Create a file or folder with Ctrl/Cmd+N."
+                action={(
+                  <button
+                    type="button"
+                    onClick={openCreateFileModal}
+                    className="px-3 py-1.5 rounded-md border border-slate-700 bg-slate-900 text-[11px] font-semibold hover:border-slate-500"
+                  >
+                    New File
+                  </button>
+                )}
               />
             </div>
           ) : (

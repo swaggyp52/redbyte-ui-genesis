@@ -15,6 +15,7 @@ export * from './examples';
 export * from './components/EmptyState';
 export * from './components/IntegrityBadge';
 export { stableSerialize, stableHash, hashBytes } from './utils/stableSerialize';
+export { loadSnapshot, wasLastShutdownClean, clearAllSnapshots } from './utils/snapshotSystem';
 export {
   hashBytesOffThread,
   stableHashOffThread,

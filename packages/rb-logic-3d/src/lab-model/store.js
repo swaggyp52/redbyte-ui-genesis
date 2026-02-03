@@ -314,6 +314,17 @@ export const useLabStore = create()(subscribeWithSelector((set, get) => {
                 // (Most transport implementations for bridge are per-target).
                 // 2. Poll for Hardware Outputs (Hardware -> Store)
                 // poll() returns coalesced diffs since last tick.
+                if (typeof transport.tickWithInputs === 'function') {
+                    const node = hardwareNodes[0];
+                    const inputs = {};
+                    Object.entries(state.simulation.pinStates).forEach(([key, value]) => {
+                        if (key.startsWith(`${node.id}:`)) {
+                            const pinId = key.slice(node.id.length + 1);
+                            inputs[pinId] = value;
+                        }
+                    });
+                    transport.tickWithInputs(inputs);
+                }
                 const hardwareOutputs = transport.poll();
                 // 3. Apply normalized diffs to Store
                 Object.entries(hardwareOutputs).forEach(([key, value]) => {

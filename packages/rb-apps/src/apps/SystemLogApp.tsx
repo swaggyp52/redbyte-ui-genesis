@@ -95,6 +95,15 @@ const SystemLogComponent: React.FC = () => {
               icon="log"
               title="No log entries yet"
               description="System activity will appear here as deterministic events."
+              action={(
+                <button
+                  type="button"
+                  onClick={exportLog}
+                  className="px-3 py-1.5 rounded-md border border-slate-700 bg-slate-900 text-[11px] font-semibold hover:border-slate-500"
+                >
+                  Export JSON
+                </button>
+              )}
             />
           </div>
         ) : (

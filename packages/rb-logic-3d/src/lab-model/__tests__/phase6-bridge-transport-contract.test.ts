@@ -1,5 +1,5 @@
 
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { WebSocketServer, WebSocket as NodeWS } from 'ws';
 import { BridgeTransport } from '../transport/bridge-transport';
 import { BRIDGE_PROTOCOL_VERSION, BridgeMessage } from '../transport/bridge-protocol';
@@ -8,6 +8,7 @@ describe('Phase 6: BridgeTransport Contract (v1)', () => {
     let wss: WebSocketServer;
     let receivedMessages: BridgeMessage[] = [];
     const PORT = 4243;
+    const originalWebSocket = global.WebSocket;
 
     beforeAll(() => {
         console.log(`[MockServer] Starting on port ${PORT}...`);
@@ -47,6 +48,10 @@ describe('Phase 6: BridgeTransport Contract (v1)', () => {
 
     afterAll(() => {
         wss.close();
+    });
+
+    afterEach(() => {
+        global.WebSocket = originalWebSocket;
     });
 
     it('should connect, handshake, and handle interactions', async () => {

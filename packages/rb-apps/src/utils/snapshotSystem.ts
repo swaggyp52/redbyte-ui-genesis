@@ -11,6 +11,7 @@ export interface WorkspaceSnapshot {
     flags: {
       safeMode: boolean;
     };
+    project?: unknown;
   };
 }
 
@@ -33,13 +34,14 @@ export function saveSnapshot(
   layout: unknown,
   flags: { safeMode: boolean },
   reason: WorkspaceSnapshot['reason'],
-  immediate = false
+  immediate = false,
+  project?: unknown
 ): void {
   const snapshot: WorkspaceSnapshot = {
     schemaVersion: 1,
     timestamp: Date.now(),
     reason,
-    payload: { circuit, layout, flags },
+    payload: { circuit, layout, flags, project },
   };
 
   const save = () => {
@@ -182,7 +184,7 @@ export function clearAllSnapshots(): void {
  * - Marks boot start (lastCleanShutdown=false)
  * - Sets up pagehide handler
  */
-export function initSnapshotSystem(getWorkspaceData: () => { circuit: unknown; layout: unknown; flags: { safeMode: boolean } }): void {
+export function initSnapshotSystem(getWorkspaceData: () => { circuit: unknown; layout: unknown; flags: { safeMode: boolean }; project?: unknown }): void {
   // Mark boot start immediately
   markBootStart();
 
@@ -190,7 +192,7 @@ export function initSnapshotSystem(getWorkspaceData: () => { circuit: unknown; l
   if (typeof window !== 'undefined') {
     window.addEventListener('pagehide', () => {
       const data = getWorkspaceData();
-      saveSnapshot(data.circuit, data.layout, data.flags, 'unload', true);
+      saveSnapshot(data.circuit, data.layout, data.flags, 'unload', true, data.project);
       markCleanShutdown();
     });
   }

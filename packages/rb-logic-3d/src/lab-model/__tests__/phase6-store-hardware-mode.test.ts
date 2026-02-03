@@ -2,7 +2,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useLabStore } from '../store';
 import { BridgeTransport } from '../transport/bridge-transport';
-import { WebSocket as NodeWS } from 'ws';
 
 // Mock the network URL to avoid actual connection attempts to localhost:4242
 vi.mock('../transport/bridge-transport', async (importOriginal) => {
@@ -19,12 +18,19 @@ vi.mock('../transport/bridge-transport', async (importOriginal) => {
 
 describe('Phase 6: Store Hardware Mode Integration', () => {
     beforeEach(() => {
-        vi.clearAllMocks();
-        global.WebSocket = NodeWS as any;
+        vi.restoreAllMocks();
         useLabStore.getState().reset();
     });
 
     it('should switch to bridge transport and handle interactions', async () => {
+        vi.spyOn(BridgeTransport.prototype, 'connect').mockImplementation(async function () {
+            (this as any).connected = true;
+            return Promise.resolve();
+        });
+        vi.spyOn(BridgeTransport.prototype, 'poll').mockReturnValue({
+            'fpga-1:LED0': 1
+        });
+
         const store = useLabStore;
 
         // Setup FPGA node
@@ -42,17 +48,10 @@ describe('Phase 6: Store Hardware Mode Integration', () => {
         store.getState().setTransport('bridge');
         expect(store.getState().getTransportStatus().type).toBe('bridge');
 
-        const transport = store.getState().activeTransport as BridgeTransport;
-        const connectSpy = vi.spyOn(transport, 'connect').mockImplementation(async () => {
-            (transport as any).connected = true;
-            return Promise.resolve();
-        });
+        const transport = store.getState().activeTransport as any;
         const pushSpy = vi.spyOn(transport, 'pushInteraction');
-        const pollSpy = vi.spyOn(transport, 'poll').mockReturnValue({
-            'fpga-1:LED0': 1
-        });
 
-        await store.getState().activeTransport.connect();
+        await transport.connect();
         expect(store.getState().getTransportStatus().connected).toBe(true);
 
         // Interaction should be captured in event log AND pushed to transport

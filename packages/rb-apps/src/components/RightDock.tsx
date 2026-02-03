@@ -339,6 +339,20 @@ export const RightDock: React.FC<RightDockProps> = ({
     });
   };
 
+  const handleAddFirstProbe = () => {
+    if (selectableNodes.length === 0) return;
+    const node = selectableNodes[0];
+    const outputs = engine.getNodeOutputs(node.id);
+    const portName = outputs[0] ?? 'out';
+    setSelectedNodeId(node.id);
+    setSelectedPortName(portName);
+    addProbe({
+      nodeId: node.id,
+      portName,
+      label: `${node.type} ${portName}`,
+    });
+  };
+
   if (dockState === 'collapsed') {
     return (
       <div className="w-14 border-l border-gray-700 bg-gray-900 flex flex-col items-center py-4 gap-4">
@@ -709,12 +723,19 @@ export const RightDock: React.FC<RightDockProps> = ({
 
             <div className="flex-1 overflow-y-auto mt-1">
               {probes.length === 0 ? (
-                <div className="text-center py-12 text-gray-400">
-                  <div className="text-4xl mb-2">📊</div>
-                  <div className="text-sm">No probes added</div>
-                  <div className="text-xs text-gray-500 mt-2">
-                    Select a node and add a probe
+                <div className="text-center py-12 text-gray-400 space-y-2">
+                  <div className="text-sm font-semibold">No probes added</div>
+                  <div className="text-xs text-gray-500">
+                    Select a node output or add the first probe automatically.
                   </div>
+                  <button
+                    type="button"
+                    onClick={handleAddFirstProbe}
+                    disabled={selectableNodes.length === 0}
+                    className="mt-2 px-3 py-1.5 rounded bg-cyan-700 hover:bg-cyan-600 text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Add First Probe
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-2">

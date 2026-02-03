@@ -108,12 +108,15 @@ function createCircuitStore() {
             }
             // Dev-mode invariant: warn if engines not connected when mutating circuit
             if (import.meta.env.DEV) {
+                const isTestEnv = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
                 if (!engine || !tickEngine) {
-                    console.warn('[CircuitStore] Circuit mutation called but engines not connected!\n' +
-                        `  - engine: ${engine ? '✓' : '✗ MISSING'}\n` +
-                        `  - tickEngine: ${tickEngine ? '✓' : '✗ MISSING'}\n` +
-                        'Circuit mutations will not propagate to simulation. ' +
-                        'Call setEngine() and setTickEngine() during app initialization.');
+                    if (!isTestEnv) {
+                        console.warn('[CircuitStore] Circuit mutation called but engines not connected!\n' +
+                            `  - engine: ${engine ? '✓' : '✗ MISSING'}\n` +
+                            `  - tickEngine: ${tickEngine ? '✓' : '✗ MISSING'}\n` +
+                            'Circuit mutations will not propagate to simulation. ' +
+                            'Call setEngine() and setTickEngine() during app initialization.');
+                    }
                 }
             }
             // Add current circuit to history BEFORE updating (if not skipped)

@@ -2225,6 +2225,27 @@ export const Shell: React.FC<ShellProps> = () => {
   ]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleBlur = () => {
+      setDiagnosticsOpen(false);
+      setCommandPaletteOpen(false);
+      setSystemSearchOpen(false);
+      setWindowSwitcherOpen(false);
+      setWorkspaceSwitcherOpen(false);
+      setMacroRunnerOpen(false);
+      setReproCheckOpen(false);
+      setProjectSummaryOpen(false);
+      setOpenWithModalState(null);
+      setExamplePickerOpen(false);
+      setAboutModalOpen(false);
+      setOnboardingModalOpen(false);
+      setBitstreamProvenanceOpen(false);
+    };
+    window.addEventListener('blur', handleBlur);
+    return () => window.removeEventListener('blur', handleBlur);
+  }, []);
+
+  useEffect(() => {
     startUiTickSampler();
     startPerfSummaryLogger();
   }, []);
