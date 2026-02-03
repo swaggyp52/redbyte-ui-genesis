@@ -6298,5 +6298,43 @@ Status: Task 1.3 COMPLETE. FPGA programming now provides real-time progress feed
   
 Status: Task 1.4 COMPLETE. Virtual Lab now automatically removes 3D hardware nodes when devices disconnect. Ready for Task 1.5 (Arduino integration).
 
+## Change Log  2026-02-02 (FPGA Task 1.5 - Arduino Integration)
+
+- **Created default Arduino firmware** (redbyte_io_protocol.ino):
+  - Implements RedByte I/O protocol over serial (115200 baud)
+  - Commands: PING, GET, SET <pin> <value>, PIN <pin> <mode>
+  - Supports digital I/O (D2-D13) and analog input (A0-A5)
+  - JSON state updates every 100ms or on change
+  - Ready for arduino-cli or Arduino IDE upload
+  
+- **Implemented VID/PID-based Arduino detection** (detectArduino.ts):
+  - KNOWN_ARDUINO_BOARDS database with 10+ VID/PID combinations
+  - Supports official Arduino boards (0x2341) and clones (CH340: 0x1a86, FTDI: 0x0403)
+  - detectArduinoModel() maps VID/PID to specific board models
+  - identifyArduino() with manufacturer string fallback heuristics
+  - getArduinoDisplayName() returns "Arduino Uno on COM3" format
+  - getArduinoFQBN() returns arduino-cli FQBN for uploads (arduino:avr:uno)
+  
+- **Enhanced device detection in hardwareSessionStore**:
+  - ensureSession() now checks manufacturer string for Arduino/CH340/FTDI keywords
+  - Improved Arduino vs Basys3 disambiguation
+  - Basys3 detection includes Digilent/Xilinx keywords
+  - Prevents misidentifying FTDI-based devices
+  
+- **Documentation added**:
+  - firmware/README.md with upload instructions (Arduino IDE, arduino-cli, RedByte Platform)
+  - Protocol specification and pin mapping
+  - Troubleshooting guide for common issues
+  
+- **Files created**:
+  - packages/rb-fpga-bridge/src/arduino/firmware/redbyte_io_protocol.ino (208 lines)
+  - packages/rb-fpga-bridge/src/arduino/firmware/README.md (75 lines)
+  - packages/rb-fpga-bridge/src/arduino/detectArduino.ts (181 lines)
+  
+- **Files modified**:
+  - packages/rb-apps/src/stores/hardwareSessionStore.ts (enhanced ensureSession detection)
+  
+Status: Task 1.5 COMPLETE. Arduino Uno boards now auto-detected with VID/PID matching and friendly naming. Default firmware ready for deployment. Ready for Task 1.6 (connection stability hardening).
+
 
 
