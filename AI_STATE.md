@@ -6943,3 +6943,41 @@ All TypeScript compilation errors systematically resolved across monorepo:
 - `packages/rb-apps/src/apps/LogicPlaygroundApp.js` (guard parity)
 
 **Attribution:** Connor Angiel
+
+---
+
+## Change Log  2026-02-03 (Lab Stability: ECE Lab Render + Test Noise Guards)
+
+**ECE Lab Simulation Viewport Stabilization**
+- Added safe input/output normalization for CircuitCanvas rendering.
+- Fallback to DEFAULT_EXPERIMENT if active ID is invalid.
+- Display inputs/outputs now follow execution source (sim/hardware/replay) with safe defaults.
+- Prevents blank/empty simulation viewport in ECE Lab.
+
+**Export Robustness (Test + Node)**
+- Hardened bundle export hashing with a shared ArrayBuffer resolver.
+- Supports Blob, Buffer, ArrayBuffer, Uint8Array, and string inputs safely.
+- Fixes Node test failure where Blob.arrayBuffer was missing.
+
+**Test Environment Noise Suppression**
+- Suppressed expected warnings in test env for CircuitStore and LabWorkflowStore.
+- Suppressed circuit decode warning logs during tests.
+
+**Bridge Transport & FPGA Preset Guards**
+- Reduced console noise in tests by gating BridgeTransport logs.
+- Prevented preset warnings from failing tests; fallback to passthrough if preset missing.
+
+**Files Updated**
+- packages/rb-apps/src/apps/ECELabApp.tsx
+- packages/rb-apps/src/apps/ECELabApp.js
+- packages/rb-apps/src/utils/bundleExport.js
+- packages/rb-apps/src/stores/circuitStore.ts
+- packages/rb-apps/src/stores/useLabWorkflowStore.ts
+- packages/rb-logic-core/src/share/encoding.ts
+- packages/rb-logic-core/src/share/encoding.js
+- packages/rb-logic-3d/src/lab-model/transport/bridge-transport.ts
+- packages/rb-logic-3d/src/lab-model/transport/bridge-transport.js
+- packages/rb-logic-3d/src/lab-model/fpga-sim/engine.ts
+- packages/rb-logic-3d/src/lab-model/fpga-sim/engine.js
+
+**Attribution**: Connor Angiel
