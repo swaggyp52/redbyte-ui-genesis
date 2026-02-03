@@ -80,6 +80,8 @@ export const LogicCanvas = ({ engine, circuit: externalCircuit, width = 800, hei
     }, [camera.x, camera.y, camera.zoom, width, height]);
     // Viewport culling is render-only; selection and interaction use the full circuit model.
     const visibleNodes = React.useMemo(() => circuit.nodes.filter((node) => {
+        if (!node.position)
+            return false; // Skip nodes without position
         const x = node.position.x;
         const y = node.position.y;
         return x >= viewBounds.left && x <= viewBounds.right && y >= viewBounds.top && y <= viewBounds.bottom;

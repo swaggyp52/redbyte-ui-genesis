@@ -135,6 +135,20 @@ export function generateReadme(project, options = {}) {
         lines.push(`- **Integrity**: ${project.evidence.manifest.files.length} files verified`);
     }
     lines.push('');
+    // Summary statistics
+    const nodeCount = project.circuit?.nodes?.length || 0;
+    const connectionCount = project.circuit?.connections?.length || 0;
+    const actionCount = project.evidence?.actions?.length || 0;
+    const snapshotCount = project.evidence?.snapshots?.length || 0;
+    lines.push('## Summary');
+    lines.push('');
+    lines.push('**Project Composition:**');
+    lines.push('');
+    lines.push(`- ${nodeCount} nodes`);
+    lines.push(`- ${connectionCount} connections`);
+    lines.push(`- ${actionCount} action${actionCount !== 1 ? 's' : ''}`);
+    lines.push(`- ${snapshotCount} snapshot${snapshotCount !== 1 ? 's' : ''}`);
+    lines.push('');
     // Footer
     lines.push('---');
     lines.push('');
