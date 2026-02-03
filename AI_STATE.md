@@ -6909,3 +6909,20 @@ All TypeScript compilation errors systematically resolved across monorepo:
 
 **Attribution:** Connor Angiel
 
+---
+
+## Change Log  2026-02-03 (Logic Playground Sync Loop Fix)
+
+**Issue:** Logic Playground could hit "Maximum update depth" because `updateProject()` ran on every render when `updatedAt` changed, even if the circuit did not.
+
+**Fix:**
+- Added circuit equality guard before calling `updateProject()`.
+- Prevents repeated updates when only `updatedAt` changes, eliminating the render loop.
+
+**Files:**
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+
+**Tests:**
+- `pnpm exec vitest run packages/rb-apps/src/__tests__/playground.stabilization.test.tsx` (11/11 passing)
+
+**Attribution:** Connor Angiel
