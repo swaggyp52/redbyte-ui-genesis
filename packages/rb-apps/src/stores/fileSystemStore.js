@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 import { create } from 'zustand';
-import { createInitialFsState, createFolder as fsCreateFolder, createFile as fsCreateFile, renameEntry as fsRenameEntry, deleteEntry as fsDeleteEntry, getChildren as fsGetChildren, getPath as fsGetPath, resolveFolderLink as fsResolveFolderLink, getFallbackFolderId as fsGetFallbackFolderId, } from '../apps/files/fsModel';
+import { createInitialFsState, createFolder as fsCreateFolder, createFile as fsCreateFile, renameEntry as fsRenameEntry, deleteEntry as fsDeleteEntry, getChildren as fsGetChildren, getPath as fsGetPath, resolveFolderLink as fsResolveFolderLink, getFallbackFolderId as fsGetFallbackFolderId, } from '../apps/files/fsModel.js';
 import { recordAuditTransition } from '../utils/audit';
 const STORAGE_KEY = 'rb:file-system';
 /**
