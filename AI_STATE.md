@@ -7036,3 +7036,34 @@ All TypeScript compilation errors systematically resolved across monorepo:
 - packages/rb-apps/src/apps/TerminalApp.js
 
 **Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-03 (Test Failures: Settings/Terminal/Evidence)
+
+**Settings Tests**
+- Updated theme/wallpaper expectations to match current UI labels and theme ids.
+
+**Terminal Command Tests**
+- Registered Settings app in test registry so open settings resolves correctly.
+
+**Evidence Tests**
+- Fixed deterministic evidence test to use deep equality.
+- Seeded integrity hash before tamper test to avoid order dependence.
+
+**Filesystem Store**
+- Fixed ESM import for audit utils to resolve in tests.
+
+**Files Updated**
+- packages/rb-apps/src/__tests__/settings.test.tsx
+- packages/rb-apps/src/__tests__/settings.test.js
+- packages/rb-apps/src/__tests__/terminal-commands.test.tsx
+- packages/rb-apps/src/__tests__/terminal-commands.test.js
+- packages/rb-apps/src/utils/__tests__/verifyEvidence.test.ts
+- packages/rb-apps/src/utils/__tests__/verifyEvidence.test.js
+- packages/rb-apps/src/utils/__tests__/evidenceExport.test.ts
+- packages/rb-apps/src/utils/__tests__/evidenceExport.test.js
+- packages/rb-apps/src/stores/fileSystemStore.ts
+- packages/rb-apps/src/stores/fileSystemStore.js
+
+**Attribution**: Connor Angiel
