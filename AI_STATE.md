@@ -6270,7 +6270,33 @@ SR_00 Proof:
   - packages/rb-apps/src/apps/HardwarePanelApp.tsx (SSE/polling integration)
   - packages/rb-fpga-bridge/tests/vivado.test.js (progress callback test)
   
-Status: Task 1.3 COMPLETE. FPGA programming now provides real-time progress feedback to UI. Ready for Task 1.4 (error handling enhancements).
+Status: Task 1.3 COMPLETE. FPGA programming now provides real-time progress feedback to UI. Ready for Task 1.4 (hardware auto-adopt cleanup).
+
+## Change Log  2026-02-02 (FPGA Task 1.4 - Hardware Auto-Adopt Cleanup)
+
+- **Enhanced HardwareAutoAdopt** component with disconnect cleanup logic:
+  - Added prevSessionsRef to track previous session states across renders
+  - Detects state transitions: 'connected' → 'idle' triggers node removal
+  - removeNode() called for hardware_target matching disconnected hardware
+  - Prevents orphaned 3D nodes when hardware unplugged mid-session
+  - Console logs for add/remove operations enable debugging
+  
+- **Implemented cleanup workflow**:
+  - When Basys3/Arduino connects: spawn 3D node with hardware_target='basys3' or 'arduino-uno'
+  - When hardware disconnects: find node by hardware_target and call removeNode(id)
+  - Idempotent: prevents duplicate nodes (checks alreadyExists before spawn)
+  - Side-effect only component returns null (no visual rendering)
+  
+- **Test coverage added**:
+  - Created HardwareAutoAdopt.spec.tsx with vitest unit tests
+  - Tests: rendering, null return, logging, and integration scenario documentation
+  - Integration test scenario documents full connect → spawn → disconnect → remove flow
+  
+- **Files modified**:
+  - packages/rb-apps/src/components/HardwareAutoAdopt.tsx (cleanup logic)
+  - packages/rb-apps/src/components/HardwareAutoAdopt.spec.tsx (unit tests)
+  
+Status: Task 1.4 COMPLETE. Virtual Lab now automatically removes 3D hardware nodes when devices disconnect. Ready for Task 1.5 (Arduino integration).
 
 
 

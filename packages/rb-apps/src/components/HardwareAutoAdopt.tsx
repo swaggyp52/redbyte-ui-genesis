@@ -4,22 +4,32 @@ import { useLabStore, LabNode } from '@redbyte/rb-logic-3d';
 
 /**
  * HardwareAutoAdopt automatically spawns 3D nodes in the Virtual Lab
- * when a hardware session is established.
+ * when a hardware session is established, and removes them when disconnected.
+ * 
+ * PHASE 1 Task 1.4: Hardware Auto-Adopt Cleanup
+ * 
+ * Features:
+ * - Auto-spawn 3D nodes (Basys3 FPGA, Arduino Uno) when hardware connects
+ * - Auto-remove 3D nodes when hardware disconnects
+ * - Prevent duplicate nodes (idempotent)
+ * - Log add/remove operations for debugging
  */
 export const HardwareAutoAdopt: React.FC = () => {
     const sessions = useHardwareSessionStore((state) => state.sessions);
     const addNode = useLabStore((state) => state.addNode);
+    const removeNode = useLabStore((state) => state.removeNode);
     const graphNodes = useLabStore((state) => state.graph.nodes);
+    const prevSessionsRef = React.useRef(sessions);
 
     useEffect(() => {
-        // Targets we want to auto-adopt
         const targets: Target[] = ['basys3', 'arduino-uno'];
 
         for (const target of targets) {
-            const session = sessions[target];
-            if (session.status === 'connected') {
-                // Check if we already have this node in the 3D scene
-                // We check by hardware_target property
+            const currentSession = sessions[target];
+            const previousSession = prevSessionsRef.current[target];
+
+            // PHASE 1.4: ADOPTION (Add node when hardware connects)
+            if (currentSession.status === 'connected' && previousSession.status !== 'connected') {
                 const alreadyExists = graphNodes.some(n => n.hardware_target === target);
 
                 if (!alreadyExists) {
@@ -42,8 +52,23 @@ export const HardwareAutoAdopt: React.FC = () => {
                     addNode(newNode);
                 }
             }
+
+            // PHASE 1.4: CLEANUP (Remove node when hardware disconnects)
+            if (currentSession.status !== 'connected' && previousSession.status === 'connected') {
+                console.log(`[HardwareAutoAdopt] Cleaning up 3D nodes for: ${target}`);
+
+                const nodeToRemove = graphNodes.find(n => n.hardware_target === target);
+                if (nodeToRemove) {
+                    console.log(`[HardwareAutoAdopt] Removing node ${nodeToRemove.id} for ${target}`);
+                    removeNode(nodeToRemove.id);
+                }
+            }
         }
-    }, [sessions, addNode, graphNodes]);
+
+        // Update previous session ref for next render
+        prevSessionsRef.current = sessions;
+    }, [sessions, addNode, removeNode, graphNodes]);
 
     return null; // Side-effect only component
 };
+
