@@ -6926,3 +6926,20 @@ All TypeScript compilation errors systematically resolved across monorepo:
 - `pnpm exec vitest run packages/rb-apps/src/__tests__/playground.stabilization.test.tsx` (11/11 passing)
 
 **Attribution:** Connor Angiel
+---
+
+## Change Log  2026-02-03 (ECE Lab Unified Project Loop Guard)
+
+**Issue:** ECE Lab synced its circuit into the unified project on every render, which could loop when `updatedAt` changed without circuit changes.
+
+**Fix:**
+- Added a circuit equality guard before calling `updateUnifiedProject()`.
+- Prevents update-depth loops and allows ECE Lab to mount without crashing.
+- Updated JS artifact for parity.
+
+**Files:**
+- `packages/rb-apps/src/apps/ECELabApp.tsx`
+- `packages/rb-apps/src/apps/ECELabApp.js`
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.js` (guard parity)
+
+**Attribution:** Connor Angiel
