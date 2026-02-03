@@ -413,7 +413,13 @@ const TerminalComponent: React.FC<TerminalProps> = ({
   }, [paletteQuery, paletteItems.length]);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
+    const target = scrollRef.current;
+    if (!target) return;
+    if (typeof (target as any).scrollTo === 'function') {
+      target.scrollTo(0, target.scrollHeight);
+    } else {
+      target.scrollTop = target.scrollHeight;
+    }
   }, [lines]);
 
   const addLine = (

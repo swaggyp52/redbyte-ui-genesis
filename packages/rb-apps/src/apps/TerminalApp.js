@@ -384,7 +384,15 @@ const TerminalComponent = ({ onOpenApp, onThemeChange, onTickRateChange, determi
         setPaletteIndex(0);
     }, [paletteQuery, paletteItems.length]);
     useEffect(() => {
-        scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
+        const target = scrollRef.current;
+        if (!target)
+            return;
+        if (typeof target.scrollTo === 'function') {
+            target.scrollTo(0, target.scrollHeight);
+        }
+        else {
+            target.scrollTop = target.scrollHeight;
+        }
     }, [lines]);
     const addLine = (text, type = 'output', title) => {
         setLines((prev) => [...prev, { type, text, title }]);
