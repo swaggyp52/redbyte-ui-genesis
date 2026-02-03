@@ -1,50 +1,61 @@
 // Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 import JSZip from 'jszip';
 import { buildCapsule, normalizeCapsulePath } from '@redbyte/rb-fpga-signing';
+async function resolveArrayBuffer(input) {
+    if (input == null) {
+        return new Uint8Array(0).buffer;
+    }
+    if (typeof input === 'string') {
+        return new TextEncoder().encode(input).buffer;
+    }
+    if (input instanceof ArrayBuffer) {
+        return input;
+    }
+    if (ArrayBuffer.isView(input)) {
+        return input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength);
+    }
+    if (typeof input.arrayBuffer === 'function') {
+        try {
+            return await input.arrayBuffer();
+        }
+        catch (err) {
+            // fall through to other strategies
+        }
+    }
+    if (input.buffer instanceof ArrayBuffer) {
+        return input.buffer;
+    }
+    if (input._buffer) {
+        const raw = input._buffer;
+        if (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw)) {
+            return raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
+        }
+        if (raw instanceof ArrayBuffer) {
+            return raw;
+        }
+    }
+    if (typeof input.text === 'function') {
+        const text = await input.text();
+        return new TextEncoder().encode(text).buffer;
+    }
+    if (typeof Response !== 'undefined') {
+        try {
+            return await new Response(input).arrayBuffer();
+        }
+        catch (err) {
+            // ignore
+        }
+    }
+    return new Uint8Array(0).buffer;
+}
 /**
  * Hash computation for integrity
  */
 async function computeHash(input) {
     try {
-        let buffer;
-        if (input instanceof Blob) {
-            if (typeof input.arrayBuffer === 'function') {
-                buffer = await input.arrayBuffer();
-            }
-            else if (input.buffer instanceof ArrayBuffer) {
-                buffer = input.buffer;
-            }
-            else if (input._buffer) {
-                const raw = input._buffer;
-                if (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw)) {
-                    buffer = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
-                }
-                else if (raw instanceof ArrayBuffer) {
-                    buffer = raw;
-                }
-                else {
-                    buffer = new Uint8Array(0).buffer;
-                }
-            }
-            else if (typeof input.text === 'function') {
-                const text = await input.text();
-                buffer = new TextEncoder().encode(text).buffer;
-            }
-            else if (typeof Response !== 'undefined') {
-                buffer = await new Response(input).arrayBuffer();
-            }
-            else {
-                buffer = new Uint8Array(0).buffer;
-            }
-        }
-        else {
-            buffer = input.buffer;
-        }
-        const bufferSource = (buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer))
-            ? buffer
-            : new Uint8Array(0);
+        const buffer = await resolveArrayBuffer(input);
         // @ts-ignore
-        const hashBuffer = await crypto.subtle.digest('SHA-256', bufferSource);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
     }
@@ -70,35 +81,7 @@ async function toUint8Array(input) {
     if (input instanceof Uint8Array) {
         return new Uint8Array(input);
     }
-    let buffer;
-    if (typeof input.arrayBuffer === 'function') {
-        buffer = await input.arrayBuffer();
-    }
-    else if (input.buffer instanceof ArrayBuffer) {
-        buffer = input.buffer;
-    }
-    else if (input._buffer) {
-        const raw = input._buffer;
-        if (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw)) {
-            buffer = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
-        }
-        else if (raw instanceof ArrayBuffer) {
-            buffer = raw;
-        }
-        else {
-            buffer = new Uint8Array(0).buffer;
-        }
-    }
-    else if (typeof input.text === 'function') {
-        const text = await input.text();
-        buffer = new TextEncoder().encode(text).buffer;
-    }
-    else if (typeof Response !== 'undefined') {
-        buffer = await new Response(input).arrayBuffer();
-    }
-    else {
-        buffer = new Uint8Array(0).buffer;
-    }
+    const buffer = await resolveArrayBuffer(input);
     return new Uint8Array(buffer);
 }
 /**
