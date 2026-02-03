@@ -780,6 +780,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   } | null>(null);
   const engineRef = useRef<CircuitEngine>(engine);
   const tickEngineRef = useRef<TickEngine>(tickEngine);
+  const circuitRef = useRef<Circuit>(circuit);
 
   // Keep refs in sync with state
   // NOTE: Do NOT include setCircuit, setEngine, setTickEngine in dependencies!
@@ -789,6 +790,10 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     engineRef.current = engine;
     tickEngineRef.current = tickEngine;
   }, [engine, tickEngine]);
+
+  useEffect(() => {
+    circuitRef.current = circuit;
+  }, [circuit]);
 
   // Sync circuit store with engine instances
   useEffect(() => {
@@ -801,12 +806,13 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   // Without this, the store updates but local state stays stale, causing "Components: 0" bug.
   useEffect(() => {
     const unsubscribe = useCircuitStore.subscribe((state) => {
+      const current = circuitRef.current;
       // Only update if circuit actually changed (avoid infinite loops)
-      if (state.circuit !== circuit) {
+      if (state.circuit !== current) {
         if (import.meta.env.DEV) {
           console.log('[LogicPlayground] Syncing circuit from store', {
             storeNodes: state.circuit.nodes.length,
-            localNodes: circuit.nodes.length
+            localNodes: current.nodes.length
           });
         }
         setCircuit(state.circuit);
@@ -816,7 +822,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       }
     });
     return unsubscribe;
-  }, [circuit]); // Re-subscribe when circuit changes
+  }, []);
 
   // Initialize global view state sync
   useEffect(() => {
