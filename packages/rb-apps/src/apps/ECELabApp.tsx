@@ -476,6 +476,12 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
     if (!unifiedProject) return;
     if (!hasHydratedRef.current && circuit.nodes.length === 0 && circuit.connections.length === 0) return;
 
+    const projectSignature = JSON.stringify(unifiedProject.circuit);
+    const circuitSignature = JSON.stringify(toCircuitV1(circuit));
+    if (projectSignature === circuitSignature) {
+      return;
+    }
+
     updateUnifiedProject((project) => ({
       ...project,
       circuit: toCircuitV1(circuit),

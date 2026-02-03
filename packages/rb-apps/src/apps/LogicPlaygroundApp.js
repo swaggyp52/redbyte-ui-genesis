@@ -276,9 +276,14 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
             return;
         if (!hasSyncedFromProjectRef.current && circuit.nodes.length === 0 && circuit.connections.length === 0)
             return;
+        // Convert circuit and check if it actually changed before updating
+        const newCircuitV1 = toCircuitV1(circuit);
+        const circuitChanged = JSON.stringify(unifiedProject.circuit) !== JSON.stringify(newCircuitV1);
+        if (!circuitChanged)
+            return;
         updateProject((project) => ({
             ...project,
-            circuit: toCircuitV1(circuit),
+            circuit: newCircuitV1,
         }));
     }, [circuit, unifiedProject, updateProject, toCircuitV1]);
     // NOTE: useEffect for syncing record to unifiedProject is defined AFTER record is declared
