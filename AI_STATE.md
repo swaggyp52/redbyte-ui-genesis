@@ -7004,3 +7004,35 @@ All TypeScript compilation errors systematically resolved across monorepo:
 - packages/rb-apps/src/__tests__/system-log-store.test.js
 
 **Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-03 (Test Fixes: Settings, Evidence, Terminal, FS Store)
+
+**Filesystem Store Module Resolution**
+- Added explicit .js extension for fsModel import in filesystem store (TS + JS).
+- Fixes Node ESM test resolution error from fileSystemStore.
+
+**Settings Theme Persistence Test**
+- Updated theme persistence test to target current Light theme label.
+
+**Evidence Verification Tests**
+- Ensured integrity hash computed per test to avoid order dependency.
+- Corrected evidenceExport test import path.
+
+**Terminal Scroll Guard**
+- Added scroll fallback when scrollTo is unavailable (jsdom), preventing Terminal command tests from failing.
+
+**Files Updated**
+- packages/rb-apps/src/stores/fileSystemStore.ts
+- packages/rb-apps/src/stores/fileSystemStore.js
+- packages/rb-apps/src/__tests__/settings.test.tsx
+- packages/rb-apps/src/__tests__/settings.test.js
+- packages/rb-apps/src/utils/__tests__/verifyEvidence.test.ts
+- packages/rb-apps/src/utils/__tests__/verifyEvidence.test.js
+- packages/rb-apps/src/utils/__tests__/evidenceExport.test.ts
+- packages/rb-apps/src/utils/__tests__/evidenceExport.test.js
+- packages/rb-apps/src/apps/TerminalApp.tsx
+- packages/rb-apps/src/apps/TerminalApp.js
+
+**Attribution**: Connor Angiel
