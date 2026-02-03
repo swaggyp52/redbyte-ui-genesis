@@ -6871,3 +6871,21 @@ All TypeScript compilation errors systematically resolved across monorepo:
 - Documentation: 1,200+ lines
 
 **Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-03 (Virtual Lab Safe Mode Boot Fix)
+
+**Issue:** Virtual Lab boot could throw a TDZ ReferenceError because safeMode was referenced in a useEffect before its hook was declared.
+
+**Fix:**
+- Moved const { safeMode } = useClassroomModeStore() above the hardware transport useEffect in VirtualLabApp.
+- Preserves Safe Mode transport override and prevents runtime crash on boot.
+
+**Files:**
+- packages/rb-apps/src/apps/VirtualLabApp.tsx
+
+**Status:** Virtual Lab now boots without Safe Mode reference errors.
+
+**Attribution:** Connor Angiel
+
