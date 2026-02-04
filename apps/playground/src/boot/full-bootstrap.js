@@ -16,7 +16,8 @@ export async function bootstrap() {
     try {
         const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
         const isE2ELite = params.get('e2e') === '1';
-        await registerAllApps(isE2ELite ? { mode: 'e2e-lite' } : undefined);
+        const isBootOnly = params.get('boot') === '1';
+        await registerAllApps(isBootOnly ? { mode: 'e2e-boot' } : isE2ELite ? { mode: 'e2e-lite' } : undefined);
         console.log('RB_APPS_REGISTERED');
     }
     catch (err) {

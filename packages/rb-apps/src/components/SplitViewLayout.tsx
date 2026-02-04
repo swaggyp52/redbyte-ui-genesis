@@ -8,7 +8,7 @@ import { LogicCanvas, useLogicViewStore } from '@redbyte/rb-logic-view';
 import { fitToBounds } from '@redbyte/rb-viewport';
 // Lazy-load 3D scene to avoid loading heavy Three.js stack unless enabled
 const Logic3DSceneLazy = React.lazy(() =>
-  import('@redbyte/rb-logic-3d').then((m) => ({ default: m.Logic3DScene }))
+  import('../lazy/logic3d').then((m) => ({ default: m.Logic3DScene }))
 );
 import { SchematicView } from './SchematicView';
 import { OscilloscopeView } from './OscilloscopeView';

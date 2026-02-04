@@ -129,7 +129,10 @@ const CheckpointVerifier: React.FC<{ signal: string, expected: number, stepIndex
 
 // Student Identity Card
 const StudentIdentity: React.FC = () => {
-    const { studentName, studentId, setStudentInfo } = useLabStore();
+    // Per-field selectors to avoid subscribing to the entire store (prevents render storms).
+    const studentName = useLabStore((s) => s.studentName);
+    const studentId = useLabStore((s) => s.studentId);
+    const setStudentInfo = useLabStore((s) => s.setStudentInfo);
 
     return (
         <div className="p-4 bg-gray-950/50 border border-[#1a3a4a] rounded-lg mb-6 shadow-inner">
@@ -161,7 +164,13 @@ const StudentIdentity: React.FC = () => {
 };
 
 export const LabInstructions: React.FC = () => {
-    const { activeLabId, setActiveLab, currentStepIndex, completedSteps, nextStep, prevStep } = useLabStore();
+    // Per-field selectors to avoid subscribing to the entire store (prevents render storms).
+    const activeLabId = useLabStore((s) => s.activeLabId);
+    const setActiveLab = useLabStore((s) => s.setActiveLab);
+    const currentStepIndex = useLabStore((s) => s.currentStepIndex);
+    const completedSteps = useLabStore((s) => s.completedSteps);
+    const nextStep = useLabStore((s) => s.nextStep);
+    const prevStep = useLabStore((s) => s.prevStep);
 
     const labs = Object.keys(LABS);
     const rawContent = LABS[activeLabId] || LABS['lab-1'];

@@ -133,8 +133,15 @@ export const ECELabAppComponent = ({ windowId, labId }) => {
     const [showStartGuide, setShowStartGuide] = useState(!labId);
     // Lab Management
     const setActiveLab = useLabStore((s) => s.setActiveLab);
-    const { activeLabId, startLab, activeLabState, currentStepIndex, // Added for onboarding hint
-    completeStep, setHardwareVerified, isDirty, setIsDirty, } = useLabStore();
+    // Per-field selectors to avoid subscribing to the entire store (prevents render storms).
+    const activeLabId = useLabStore((s) => s.activeLabId);
+    const startLab = useLabStore((s) => s.startLab);
+    const activeLabState = useLabStore((s) => s.activeLabState);
+    const currentStepIndex = useLabStore((s) => s.currentStepIndex);
+    const completeStep = useLabStore((s) => s.completeStep);
+    const setHardwareVerified = useLabStore((s) => s.setHardwareVerified);
+    const isDirty = useLabStore((s) => s.isDirty);
+    const setIsDirty = useLabStore((s) => s.setIsDirty);
     // Data Safety: Warn on exit
     React.useEffect(() => {
         const handleBeforeUnload = (e) => {

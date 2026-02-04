@@ -9,7 +9,7 @@ import { Taskbar } from './Taskbar';
 import { ShellWindow } from './ShellWindow';
 import { applyTheme } from '@redbyte/rb-theme';
 import { isPerfDebugEnabled, startPerfSummaryLogger, startUiTickSampler, useSettingsStore } from '@redbyte/rb-utils';
-import { getApp, useFileSystemStore, getFileActionTargets, isFileActionEligible, resolveDefaultTarget, OpenWithModal, useSystemLogStore, logSystemEvent, installErrorHandlers, } from '@redbyte/rb-apps';
+import { getApp, useFileSystemStore, getFileActionTargets, isFileActionEligible, resolveDefaultTarget, OpenWithModal, useSystemLogStore, logSystemEvent, installErrorHandlers, useRenderStormDetector, } from '@redbyte/rb-apps';
 import { useWindowStore, loadSession, resolveTargetWindowId } from '@redbyte/rb-windowing';
 import { useWorkspaceStore, loadWorkspaces } from './workspaceStore';
 import { executeMacro } from './macros/executeMacro';
@@ -126,6 +126,32 @@ export const Shell = () => {
             return true;
         return localStorage.getItem(BOOT_STORAGE_KEY) === '1';
     });
+    // P1C manual gate support: ensures the render-storm reporter API is available even before apps open.
+    useRenderStormDetector('Shell', 9999);
+    // E2E/DEV boot sentinel: used by Playwright gates to fail fast on boot-time crashes.
+    useEffect(() => {
+        if (typeof window === 'undefined')
+            return;
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const isE2E = params.get('e2e') === '1' || navigator.webdriver;
+            if (!import.meta.env.DEV && !isE2E)
+                return;
+            window.__RB_BOOT_OK__ = true;
+            window.__RB_BOOT_TS__ = performance.now();
+            try {
+                document.documentElement?.setAttribute('data-rb-boot-ok', '1');
+                document.documentElement?.setAttribute('data-rb-boot-ts', String(window.__RB_BOOT_TS__));
+            }
+            catch {
+                // ignore
+            }
+            console.info('RB_BOOT_OK', { ts: window.__RB_BOOT_TS__ });
+        }
+        catch {
+            // Never break boot for instrumentation
+        }
+    }, []);
     const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
     const [systemSearchOpen, setSystemSearchOpen] = useState(false);
     const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false);
@@ -801,6 +827,44 @@ export const Shell = () => {
         });
     }, [closeWindow]);
     // Stable window event handlers — prevents React.memo bailout failures
+    // E2E convenience bridge: allow tests (and scripted P1C validation runs) to open/close windows
+    // without brittle UI selectors. This is DEV/E2E only.
+    const e2eWindowsRef = useRef(windows);
+    const e2eOpenWindowRef = useRef(openWindow);
+    const e2eHandleCloseRef = useRef(handleClose);
+    useEffect(() => {
+        e2eWindowsRef.current = windows;
+    }, [windows]);
+    useEffect(() => {
+        e2eOpenWindowRef.current = openWindow;
+    }, [openWindow]);
+    useEffect(() => {
+        e2eHandleCloseRef.current = handleClose;
+    }, [handleClose]);
+    useEffect(() => {
+        if (typeof window === 'undefined')
+            return;
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const isE2E = params.get('e2e') === '1' || navigator.webdriver;
+            if (!import.meta.env.DEV && !isE2E)
+                return;
+            window.__RB_SHELL_E2E__ = {
+                openWindow: (appId, props) => e2eOpenWindowRef.current(appId, props),
+                listWindows: () => e2eWindowsRef.current.map((w) => ({ id: w.id, appId: w.contentId, mode: w.mode })),
+                closeFirstWindowByAppId: (appId) => {
+                    const match = e2eWindowsRef.current.find((w) => w.contentId === appId);
+                    if (!match)
+                        return false;
+                    e2eHandleCloseRef.current(match.id);
+                    return true;
+                },
+            };
+        }
+        catch {
+            // Never break boot for instrumentation
+        }
+    }, []);
     const windowHandlers = useRef({});
     // Create stable callbacks for each window
     useEffect(() => {
@@ -1465,6 +1529,84 @@ export const Shell = () => {
             alert(`Macro failed at step ${result.stepIndex + 1}: ${result.error}`);
         }
     }, [openWindow, dispatchIntent, switchWorkspaceById]);
+    // P1C self-run (manual gate helper): if `?p1c=1` is present, automate a small,
+    // deterministic open/mutate/close flow and emit a single `[render-storm:report]` JSON blob.
+    // This enables "one paste" validation without hand-driving DevTools.
+    useEffect(() => {
+        if (typeof window === 'undefined')
+            return;
+        try {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('p1c') !== '1')
+                return;
+            const anyWin = window;
+            if (anyWin.__RB_P1C_SELF_RUN_STARTED__)
+                return;
+            anyWin.__RB_P1C_SELF_RUN_STARTED__ = true;
+            // Ensure render-storm reporting is enabled from the first render.
+            try {
+                if (localStorage.getItem('rb:renderStormReport') !== '1') {
+                    localStorage.setItem('rb:renderStormReport', '1');
+                    console.info('RB_P1C_SELF_RUN_RELOAD');
+                    window.location.reload();
+                    return;
+                }
+            }
+            catch {
+                // ignore
+            }
+            const sleep = (ms) => new Promise((r) => window.setTimeout(r, ms));
+            const run = async () => {
+                // Wait for API to exist (provided by `useRenderStormDetector` when reporting is enabled).
+                for (let i = 0; i < 60; i++) {
+                    if (typeof anyWin.__RB_RENDER_STORM_API__?.markStep === 'function')
+                        break;
+                    await sleep(100);
+                }
+                anyWin.__RB_RENDER_STORM_API__?.markStep?.('os-idle');
+                await sleep(1500);
+                openWindow('logic-playground');
+                anyWin.__RB_RENDER_STORM_API__?.markStep?.('logic-playground:open');
+                await sleep(1500);
+                // Mutate the canonical circuit store (no brittle UI selectors).
+                try {
+                    const mod = await import('@redbyte/rb-apps/stores/circuitStore');
+                    const s = mod.useCircuitStore.getState();
+                    if (typeof s.reset === 'function')
+                        s.reset();
+                    s.addNode('NOT', { x: 80, y: 120 });
+                    s.addNode('NOT', { x: 92, y: 120 });
+                    s.addNode('NOT', { x: 104, y: 120 });
+                }
+                catch (err) {
+                    console.error('RB_P1C_SELF_RUN_MUTATION_ERROR', err);
+                }
+                anyWin.__RB_RENDER_STORM_API__?.markStep?.('logic-playground:mutate');
+                await sleep(1000);
+                const closedLP = anyWin.__RB_SHELL_E2E__?.closeFirstWindowByAppId?.('logic-playground');
+                if (!closedLP) {
+                    console.warn('RB_P1C_SELF_RUN_CLOSE_WARN', { appId: 'logic-playground' });
+                }
+                await sleep(750);
+                openWindow('ece-lab');
+                anyWin.__RB_RENDER_STORM_API__?.markStep?.('ece-lab:open');
+                await sleep(1500);
+                const closedLab = anyWin.__RB_SHELL_E2E__?.closeFirstWindowByAppId?.('ece-lab');
+                if (!closedLab) {
+                    console.warn('RB_P1C_SELF_RUN_CLOSE_WARN', { appId: 'ece-lab' });
+                }
+                await sleep(750);
+                anyWin.__RB_RENDER_STORM_API__?.markStep?.('open-close-cycle');
+                await sleep(1000);
+                const report = anyWin.__RB_RENDER_STORM_API__?.finalize?.();
+                console.info('RB_P1C_SELF_RUN_DONE', { pass: report?.pass });
+            };
+            void run();
+        }
+        catch {
+            // ignore
+        }
+    }, [openWindow]);
     const handleWorkspaceSelect = useCallback((workspaceId) => {
         switchWorkspaceById(workspaceId);
     }, [switchWorkspaceById]);

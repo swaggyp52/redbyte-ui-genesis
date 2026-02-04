@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { Launcher } from '../Launcher';
 import type { RedByteApp } from '../types';
 
@@ -23,7 +23,7 @@ describe('Launcher component', () => {
     expect(screen.getByText('Terminal')).toBeTruthy();
     expect(screen.getByText('Files')).toBeTruthy();
 
-    fireEvent.click(screen.getByText('Terminal'));
+    fireEvent.click(screen.getByRole('option', { name: 'Terminal' }));
     expect(onLaunch).toHaveBeenCalledWith('terminal');
   });
 
@@ -53,8 +53,8 @@ describe('Launcher component', () => {
       />
     );
 
-    const listbox = screen.getByRole('listbox');
-    fireEvent.keyDown(listbox, { key: ',', ctrlKey: true });
+    const dialog = screen.getByRole('dialog', { name: /app launcher/i });
+    fireEvent.keyDown(dialog, { key: ',', ctrlKey: true });
 
     expect(onLaunch).toHaveBeenCalledWith('settings');
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -72,10 +72,10 @@ describe('Launcher component', () => {
       />
     );
 
-    const listbox = screen.getByRole('listbox');
-    fireEvent.keyDown(listbox, { key: ',', ctrlKey: true, shiftKey: true });
-    fireEvent.keyDown(listbox, { key: ',', ctrlKey: true, altKey: true });
-    fireEvent.keyDown(listbox, { key: ',', metaKey: true, shiftKey: true });
+    const dialog = screen.getByRole('dialog', { name: /app launcher/i });
+    fireEvent.keyDown(dialog, { key: ',', ctrlKey: true, shiftKey: true });
+    fireEvent.keyDown(dialog, { key: ',', ctrlKey: true, altKey: true });
+    fireEvent.keyDown(dialog, { key: ',', metaKey: true, shiftKey: true });
 
     expect(onLaunch).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
@@ -93,9 +93,9 @@ describe('Launcher component', () => {
       />
     );
 
-    const listbox = screen.getByRole('listbox');
+    const dialog = screen.getByRole('dialog', { name: /app launcher/i });
     const input = document.createElement('input');
-    listbox.appendChild(input);
+    dialog.appendChild(input);
     input.focus();
 
     fireEvent.keyDown(input, { key: ',', ctrlKey: true });
@@ -110,7 +110,7 @@ describe('Launcher component', () => {
 
     render(<Launcher apps={sampleApps} onLaunch={onLaunch} onClose={onClose} />);
 
-    fireEvent.click(screen.getByText('Terminal'));
+    fireEvent.click(screen.getByRole('option', { name: 'Terminal' }));
 
     expect(onLaunch).toHaveBeenCalledWith('terminal');
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -122,14 +122,14 @@ describe('Launcher component', () => {
 
     render(<Launcher apps={sampleApps} onLaunch={onLaunch} onClose={onClose} />);
 
-    const listbox = screen.getByRole('listbox');
+    const dialog = screen.getByRole('dialog', { name: /app launcher/i });
 
     expect(screen.queryByText('Help')).toBeNull();
 
-    fireEvent.keyDown(listbox, { key: '?' });
+    fireEvent.keyDown(dialog, { key: '?' });
     expect(screen.getByText('Help')).toBeTruthy();
 
-    fireEvent.keyDown(listbox, { key: '?' });
+    fireEvent.keyDown(dialog, { key: '?' });
     expect(screen.queryByText('Help')).toBeNull();
     expect(onLaunch).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
@@ -146,8 +146,11 @@ describe('Launcher component', () => {
       />
     );
 
-    expect(screen.getByText('Recent')).toBeTruthy();
-    const recentButton = screen.getByRole('option', { name: 'Files' });
+    const recentHeading = screen.getByRole('heading', { name: 'Recent' });
+    const recentSection = recentHeading.parentElement;
+    expect(recentSection).toBeTruthy();
+
+    const recentButton = within(recentSection as HTMLElement).getByRole('option', { name: 'Files' });
     expect(recentButton).toHaveFocus();
 
     fireEvent.click(recentButton);
@@ -190,12 +193,13 @@ describe('Launcher component', () => {
 
     render(<Launcher apps={sampleApps} onLaunch={onLaunch} />);
 
+    const dialog = screen.getByRole('dialog', { name: /app launcher/i });
     const firstButton = screen.getByRole('option', { name: 'Terminal' });
     const secondButton = screen.getByRole('option', { name: 'Files' });
 
-    fireEvent.keyDown(firstButton, { key: 'ArrowDown' });
+    fireEvent.keyDown(dialog, { key: 'ArrowDown' });
     expect(secondButton).toHaveFocus();
-    fireEvent.keyDown(secondButton, { key: 'Enter' });
+    fireEvent.keyDown(dialog, { key: 'Enter' });
 
     expect(onLaunch).toHaveBeenCalledWith('files');
   });
@@ -214,17 +218,17 @@ describe('Launcher component', () => {
       />
     );
 
-    const listbox = screen.getByRole('listbox');
+    const dialog = screen.getByRole('dialog', { name: /app launcher/i });
 
-    fireEvent.keyDown(listbox, { key: 't' });
-    fireEvent.keyDown(listbox, { key: 'e' });
+    fireEvent.keyDown(dialog, { key: 't' });
+    fireEvent.keyDown(dialog, { key: 'e' });
 
     expect(screen.getByText('Search: te')).toBeTruthy();
     expect(screen.getByText('Terminal')).toBeTruthy();
     expect(screen.queryByText('Files')).toBeNull();
     expect(screen.queryByText('Settings')).toBeNull();
 
-    fireEvent.keyDown(listbox, { key: 'Enter' });
+    fireEvent.keyDown(dialog, { key: 'Enter' });
     expect(onLaunch).toHaveBeenCalledWith('terminal');
   });
 
@@ -241,12 +245,12 @@ describe('Launcher component', () => {
       />
     );
 
-    const listbox = screen.getByRole('listbox');
+    const dialog = screen.getByRole('dialog', { name: /app launcher/i });
 
-    fireEvent.keyDown(listbox, { key: 't' });
+    fireEvent.keyDown(dialog, { key: 't' });
     expect(screen.getByText('Search: t')).toBeTruthy();
 
-    fireEvent.keyDown(listbox, { key: 'Escape' });
+    fireEvent.keyDown(dialog, { key: 'Escape' });
 
     expect(screen.queryByText('Search: t')).toBeNull();
     expect(onClose).not.toHaveBeenCalled();
@@ -265,15 +269,15 @@ describe('Launcher component', () => {
       />
     );
 
-    const listbox = screen.getByRole('listbox');
+    const dialog = screen.getByRole('dialog', { name: /app launcher/i });
 
-    fireEvent.keyDown(listbox, { key: 'z' });
-    fireEvent.keyDown(listbox, { key: 'z' });
+    fireEvent.keyDown(dialog, { key: 'z' });
+    fireEvent.keyDown(dialog, { key: 'z' });
 
     expect(screen.getByText('No matches')).toBeTruthy();
 
-    fireEvent.keyDown(listbox, { key: 'Backspace' });
-    fireEvent.keyDown(listbox, { key: 'Backspace' });
+    fireEvent.keyDown(dialog, { key: 'Backspace' });
+    fireEvent.keyDown(dialog, { key: 'Backspace' });
 
     expect(screen.queryByText('No matches')).toBeNull();
     expect(screen.getByText('Terminal')).toBeTruthy();
@@ -285,9 +289,9 @@ describe('Launcher component', () => {
 
     render(<Launcher apps={sampleApps} onClose={onClose} />);
 
-    const listbox = screen.getByRole('listbox');
+    const dialog = screen.getByRole('dialog', { name: /app launcher/i });
 
-    fireEvent.keyDown(listbox, { key: 'Escape' });
+    fireEvent.keyDown(dialog, { key: 'Escape' });
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });

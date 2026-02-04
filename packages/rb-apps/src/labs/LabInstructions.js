@@ -80,11 +80,20 @@ const CheckpointVerifier = ({ signal, expected, stepIndex }) => {
 };
 // Student Identity Card
 const StudentIdentity = () => {
-    const { studentName, studentId, setStudentInfo } = useLabStore();
+    // Per-field selectors to avoid subscribing to the entire store (prevents render storms).
+    const studentName = useLabStore((s) => s.studentName);
+    const studentId = useLabStore((s) => s.studentId);
+    const setStudentInfo = useLabStore((s) => s.setStudentInfo);
     return (_jsxs("div", { className: "p-4 bg-gray-950/50 border border-[#1a3a4a] rounded-lg mb-6 shadow-inner", children: [_jsx("div", { className: "text-[9px] font-black text-cyan-600 tracking-widest uppercase mb-3", children: "STUDENT IDENTITY" }), _jsxs("div", { className: "space-y-3", children: [_jsxs("div", { className: "flex flex-col gap-1", children: [_jsx("label", { className: "text-[8px] text-gray-500 uppercase font-bold", children: "Lab Member Name" }), _jsx("input", { type: "text", value: studentName, onChange: (e) => setStudentInfo(e.target.value, studentId), className: "bg-black/40 border border-[#1a2a3a] rounded px-2 py-1 text-xs text-cyan-300 outline-none focus:border-cyan-500/50 transition-colors", placeholder: "John Doe" })] }), _jsxs("div", { className: "flex flex-col gap-1", children: [_jsx("label", { className: "text-[8px] text-gray-500 uppercase font-bold", children: "University ID / SSN Reference" }), _jsx("input", { type: "text", value: studentId, onChange: (e) => setStudentInfo(studentName, e.target.value), className: "bg-black/40 border border-[#1a2a3a] rounded px-2 py-1 text-xs text-cyan-300 font-mono outline-none focus:border-cyan-500/50 transition-colors", placeholder: "E12345678" })] })] })] }));
 };
 export const LabInstructions = () => {
-    const { activeLabId, setActiveLab, currentStepIndex, completedSteps, nextStep, prevStep } = useLabStore();
+    // Per-field selectors to avoid subscribing to the entire store (prevents render storms).
+    const activeLabId = useLabStore((s) => s.activeLabId);
+    const setActiveLab = useLabStore((s) => s.setActiveLab);
+    const currentStepIndex = useLabStore((s) => s.currentStepIndex);
+    const completedSteps = useLabStore((s) => s.completedSteps);
+    const nextStep = useLabStore((s) => s.nextStep);
+    const prevStep = useLabStore((s) => s.prevStep);
     const labs = Object.keys(LABS);
     const rawContent = LABS[activeLabId] || LABS['lab-1'];
     // Normalize content

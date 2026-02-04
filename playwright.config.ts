@@ -42,9 +42,9 @@ export default defineConfig({
   use: {
     headless: process.env.CI ? true : false,
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL ?? 'http://127.0.0.1:4173',
-    trace: 'on',
-    video: 'on',
-    screenshot: 'only-on-failure',
+    trace,
+    video,
+    screenshot,
   },
   expect: { timeout: 15_000 },  // Increased for state propagation
 

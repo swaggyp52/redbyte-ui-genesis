@@ -1,6 +1,43 @@
 import '@testing-library/jest-dom';
 import { afterEach, beforeAll, beforeEach, vi } from 'vitest';
 
+// jsdom does not provide several browser APIs we rely on in UI components.
+// Stub them globally to avoid per-test mocks and worker-crashing unhandled errors.
+if (typeof (globalThis as any).ResizeObserver === 'undefined') {
+  class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  (globalThis as any).ResizeObserver = ResizeObserver;
+}
+
+if (typeof (globalThis as any).IntersectionObserver === 'undefined') {
+  class IntersectionObserver {
+    constructor(_callback: any) {}
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords() {
+      return [];
+    }
+  }
+  (globalThis as any).IntersectionObserver = IntersectionObserver;
+}
+
+if (typeof (globalThis as any).matchMedia === 'undefined') {
+  (globalThis as any).matchMedia = (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  });
+}
+
 // Pre-register all apps for search tests
 // This allows searchRegistry.ts to find apps via listApps()
 let appsRegistered = false;

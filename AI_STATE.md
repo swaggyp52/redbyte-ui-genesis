@@ -7296,6 +7296,98 @@ All TypeScript compilation errors systematically resolved across monorepo:
 
 ---
 
+## Change Log  2026-02-04 (P1C Harness Hardening + Selector Discipline)
+
+**Vitest/JSDOM Harness Stabilization**
+- Added global stubs for browser-only APIs used by UI components in tests (e.g. `ResizeObserver`, `IntersectionObserver`, `matchMedia`) to prevent worker crashes and cascade failures.
+- Updated Launcher tests to match the current accessibility contract (dialog + option entries) instead of asserting a `listbox` role.
+- Fixed duplicate `data-testid` in LogicCanvas switch overlay by making container and hitbox test IDs unique (prevents ambiguous RTL queries).
+
+**Playwright Boot Gate Stabilization**
+- Added a lightweight Shell mount sentinel for E2E (`window.__RB_BOOT_OK__` + `RB_BOOT_OK` console marker in DEV/E2E contexts).
+- Removed custom Vite `manualChunks` configuration and disabled module preload for the playground build to eliminate a production-preview init-order (TDZ) crash caused by circular chunk dependencies.
+- Hardened the P1C boot gate test to wait for the boot sentinel and fail fast on crash/disconnect.
+
+**Selector Discipline (P1C-2 seed)**
+- Converted ECE Lab and Lab instructions components away from whole-store subscriptions (`useLabStore()`) to per-field selectors to reduce unnecessary re-renders and prevent store-driven UI churn.
+
+**Docs**
+- Added a Phase 1C manual smoke checklist (`docs/P1C_SMOKE_CHECKLIST.md`) for OS + lab-window stability verification using the dev-only render storm reporter.
+
+**Validation**
+- `pnpm -s p1c:boot-gate`
+- `pnpm -s rbproj:roundtrip-gate`
+- `pnpm -s rbx:evidence-determinism-gate`
+- `pnpm -s ops:diff-gate`
+- `pnpm -r build`
+
+**Files Updated**
+- `vitest.setup.ts`
+- `packages/rb-apps/src/__tests__/launcher.test.tsx`
+- `packages/rb-apps/src/apps/ECELabApp.tsx`
+- `packages/rb-apps/src/apps/ECELabApp.js`
+- `packages/rb-apps/src/labs/LabInstructions.tsx`
+- `packages/rb-apps/src/labs/LabInstructions.js`
+- `packages/rb-logic-view/src/LogicCanvas.tsx`
+- `packages/rb-logic-view/src/LogicCanvas.js`
+- `apps/playground/vite.config.js`
+- `apps/playground/vite.config.ts`
+- `apps/playground/src/boot/full-bootstrap.ts`
+- `apps/playground/src/boot/full-bootstrap.js`
+- `packages/rb-shell/src/Shell.tsx`
+- `packages/rb-shell/src/Shell.js`
+- `tests/e2e/p1c-boot-gate.spec.ts`
+- `tests/e2e/p1c-render-storm-baseline.spec.ts`
+- `playwright.config.ts`
+- `package.json`
+- `docs/P1C_SMOKE_CHECKLIST.md`
+
+**Attribution:** Connor Angiel
+
+---
+
+## Change Log  2026-02-04 (P1C Manual Gate: Report + Leak Counters)
+
+**Render Storm Report Artifact (Dev-only)**
+- Extended `useRenderStormDetector` to expose a manual-gate API when reporting is enabled (`localStorage rb:renderStormReport=1`):
+  - `window.__RB_RENDER_STORM_API__.markStep(name)` to mark checklist steps
+  - `window.__RB_RENDER_STORM_API__.finalize()` to emit a single JSON report (`window.__RB_RENDER_STORM_REPORT__`) and print `[render-storm:report]` to console
+- Report includes steps, warning list, max renders/sec summary, and leak deltas.
+
+**Leak Counters (Dev-only)**
+- When reporting is enabled, patches browser timers in DEV to count active `setInterval`, `setTimeout`, and `requestAnimationFrame` handles and report deltas vs baseline.
+- This is intended for manual stability runs to catch “open/close drift” leaks.
+
+**Docs**
+- Updated `docs/P1C_SMOKE_CHECKLIST.md` to optionally mark steps and finalize a single report artifact for pasting into `AI_STATE.md` run notes.
+- Added a `?p1c=1` self-run helper in Shell to automate a small open/mutate/close flow and emit the report without hand-driving DevTools.
+
+**Files Updated**
+- `packages/rb-apps/src/hooks/useRenderStormDetector.ts`
+- `packages/rb-apps/src/hooks/useRenderStormDetector.js`
+- `packages/rb-shell/src/Shell.tsx`
+- `packages/rb-shell/src/Shell.js`
+- `docs/P1C_SMOKE_CHECKLIST.md`
+
+**Attribution:** Connor Angiel
+
+---
+
+## Change Log  2026-02-04 (P1C Closeout: Manual Gate + Deferred E2E Baseline)
+
+**Decision**
+- Phase 1C (State + Performance) is closed using:
+  - manual smoke checklist (`docs/P1C_SMOKE_CHECKLIST.md`)
+  - dev-only render-storm detector + report artifact API (`window.__RB_RENDER_STORM_API__`)
+- Automated E2E render-storm baselining is deferred; only the minimal boot gate remains required for regression detection.
+
+**Rationale**
+- Stability work is blocked by headless rendering variability (especially around 3D/WebGL) and is better validated via a repeatable manual checklist until Phase 4 test expansion.
+
+**Attribution:** Connor Angiel
+
+---
+
 ## Change Log  2026-02-03 (ECE Lab Unified Project Loop Guard)
 
 **Issue:** ECE Lab synced its circuit into the unified project on every render, which could loop when `updatedAt` changed without circuit changes.

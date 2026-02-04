@@ -1011,6 +1011,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               return (
                 <g
                   key={`switch-toggle-${node.id}`}
+                  data-testid={`switch-toggle-${node.id}-container`}
                   transform={`translate(${screenX}, ${screenY})`}
                   style={{ pointerEvents: 'auto' }}
                 >

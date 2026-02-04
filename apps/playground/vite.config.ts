@@ -43,86 +43,15 @@ export default defineConfig({
     // Increase chunk size warning threshold to 750kB to accommodate vendor-3d (Three.js)
     // This chunk is only loaded when user opens Logic Playground, not on cold load
     chunkSizeWarningLimit: 750,
-    modulePreload: {
-      // Ensure vendor-react loads before any chunk that depends on it
-      resolveDependencies: (filename, deps, { hostId, hostType }) => {
-        // If loading vendor-3d, ensure vendor-react is preloaded first
-        if (filename.includes('vendor-3d')) {
-          const reactChunk = deps.find(dep => dep.includes('vendor-react'));
-          if (reactChunk) {
-            return [reactChunk, ...deps.filter(d => d !== reactChunk)];
-          }
-        }
-        return deps;
-      },
-    },
+    // Disable Vite's production preload helper.
+    // In this repo it can get hoisted into a heavy shared chunk (e.g. app-logic),
+    // which forces `main` to statically import that chunk and triggers TDZ crashes
+    // in headless/preview boot gates.
+    modulePreload: false,
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
         lab: path.resolve(__dirname, 'lab.html'),
-      },
-      output: {
-        manualChunks(id) {
-          // Ensure Zustand + use-sync-external-store load with React to avoid prod init-order crash
-          if (id.includes('zustand') || id.includes('use-sync-external-store')) return 'vendor-react';
-
-          // Vendor chunk: React ecosystem
-          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
-            return 'vendor-react';
-          }
-
-          // State management: Zustand
-          if (id.includes('node_modules/zustand')) {
-            return 'vendor-react';
-          }
-
-          // React Three Fiber MUST bundle with React to access createContext
-          if (id.includes('node_modules/@react-three')) {
-            return 'vendor-react';
-          }
-
-          // 3D graphics: Three.js only (React Three Fiber moved to vendor-react)
-          if (id.includes('node_modules/three')) {
-            return 'vendor-3d';
-          }
-
-          // Split heavy apps from rb-apps into separate chunks
-          // Files app + file system (largest)
-          if (id.includes('packages/rb-apps/src/apps/files') ||
-            id.includes('packages/rb-apps/src/apps/FilesApp')) {
-            return 'app-files';
-          }
-
-          // Settings app + panels (second largest)
-          if (id.includes('packages/rb-apps/src/apps/settings') ||
-            id.includes('packages/rb-apps/src/apps/SettingsApp')) {
-            return 'app-settings';
-          }
-
-          // Logic Playground (contains 3D logic)
-          if (id.includes('packages/rb-apps/src/apps/LogicPlaygroundApp') ||
-            id.includes('packages/rb-logic-3d/src')) {
-            return 'app-logic';
-          }
-
-          // Other rb-apps (Launcher, Welcome, Terminal, TextViewer, AppStore)
-          if (id.includes('packages/rb-apps/src')) {
-            return 'rb-apps';
-          }
-
-          // RedByte shell (Shell, modals, search)
-          if (id.includes('packages/rb-shell/src')) {
-            return 'rb-shell';
-          }
-
-          // RedByte windowing
-          if (id.includes('packages/rb-windowing/src')) {
-            return 'rb-windowing';
-          }
-
-          // Other RedByte packages (theme, icons, utils) stay in main chunk
-          // They're small and needed early
-        },
       },
     },
   },

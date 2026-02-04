@@ -16,6 +16,7 @@ export * from './components/EmptyState';
 export * from './components/IntegrityBadge';
 export { stableSerialize, stableHash, hashBytes } from './utils/stableSerialize';
 export { loadSnapshot, wasLastShutdownClean, clearAllSnapshots } from './utils/snapshotSystem';
+export { useRenderStormDetector } from './hooks/useRenderStormDetector';
 export { hashBytesOffThread, stableHashOffThread, stableSerializeOffThread, terminateComputeWorker, } from './utils/computeWorker';
 export { installErrorHandlers, reportError, reportPerfViolation, addBreadcrumb, getBreadcrumbs, setReportSink, setPerfSampleRate, } from './utils/errorReporting';
 export { buildEvidenceManifest, verifyEvidenceManifest, serializeManifest, } from './utils/evidenceManifest';
@@ -34,6 +35,14 @@ export async function registerAllApps(options) {
     const mode = options?.mode ?? 'full';
     // Dynamic imports: only load app modules when explicitly requested
     const { registerApp } = await import('./AppRegistry');
+    // E2E-boot: minimal boot smoke (Shell mounts; no heavy apps).
+    if (mode === 'e2e-boot') {
+        const { LauncherApp } = await import('./apps/LauncherApp');
+        const { SettingsApp } = await import('./apps/SettingsApp');
+        registerApp(LauncherApp);
+        registerApp(SettingsApp);
+        return;
+    }
     // E2E-lite: keep startup lean and avoid importing 3D-heavy modules that can
     // crash headless Chromium or slow boot-time smoke tests.
     if (mode === 'e2e-lite') {

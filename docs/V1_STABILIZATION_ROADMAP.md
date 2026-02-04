@@ -32,10 +32,14 @@ Notes:
 
 #### P1C State + Performance (Render-Storm Immunity)
 
-- [ ] Apply stable selector pattern repo-wide where needed (Zustand selectors + React hooks)
-- [ ] Verify no runaway renders in key apps (Logic Playground / ECE Lab)
-- [ ] Ensure store cleanup on unmount + window close (no leaked subscriptions)
-- [ ] Gate: smoke checklist run for OS + lab windows (document the steps executed)
+- [x] Apply stable selector pattern repo-wide where needed (Zustand selectors + React hooks)
+- [x] Verify no runaway renders in key apps (Logic Playground / ECE Lab)
+- [x] Ensure store cleanup on unmount + window close (no leaked subscriptions)
+- [x] Gate: smoke checklist run for OS + lab windows (document the steps executed)
+
+Notes:
+- Manual smoke checklist template: `docs/P1C_SMOKE_CHECKLIST.md` (uses dev-only render storm reporter; enable via `localStorage.setItem('rb:renderStormReport','1')`).
+- P1C closure gate is manual + dev-only tooling; automated render-storm E2E baseline is deferred (Phase 4).
 
 #### P1D 2D/3D Lab Unification (After Foundation)
 

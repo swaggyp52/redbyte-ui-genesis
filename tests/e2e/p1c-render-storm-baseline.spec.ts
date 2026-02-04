@@ -41,12 +41,14 @@ function attachRenderStormFailFast(page: any) {
 }
 
 test.describe('P1C Render Storm Baseline', () => {
-  test.describe.configure({ timeout: 120_000 });
+  test.describe.configure({ timeout: 90_000 });
 
   test('Logic Playground: idle + short run has no render-storm warnings', async ({ page }) => {
     // Enable render-storm offender reporting (enabled in Playwright runs).
     await page.addInitScript(() => {
       try {
+        // Skip boot screen so automation can reach app surfaces deterministically.
+        localStorage.setItem('rb:shell:booted:v1', '1');
         localStorage.setItem('rb:renderStormReport', '1');
       } catch {}
     });
@@ -55,13 +57,23 @@ test.describe('P1C Render Storm Baseline', () => {
     const { stormPromise, topReportPromise, dispose: disposeStorm } = attachRenderStormFailFast(page);
 
     try {
-      await page.goto(`${OS_URL}&openApp=logic-playground&${BASELINE_FLAGS}`, { waitUntil: 'domcontentloaded' });
+      await page.goto(`${OS_URL}&openApp=logic-playground&${BASELINE_FLAGS}`, { waitUntil: 'domcontentloaded', timeout: 15_000 });
+      // Fail fast if Shell never mounts (boot-time crash/hang).
+      const bootOkConsole = page.waitForEvent(
+        'console',
+        (msg) => msg.type() === 'info' && msg.text().includes('RB_BOOT_OK'),
+        { timeout: 15_000 }
+      );
+      await Promise.race([
+        failPromise,
+        bootOkConsole,
+      ]);
 
       const root = page.locator('[data-testid="logic-playground-root"]');
-      await expect(root).toBeVisible({ timeout: 60_000 });
+      await expect(root).toBeVisible({ timeout: 30_000 });
 
       // Watchdog gates on data-ready="true"
-      await expect(root).toHaveAttribute('data-ready', 'true', { timeout: 60_000 });
+      await expect(root).toHaveAttribute('data-ready', 'true', { timeout: 30_000 });
 
       // Ensure the top-offenders reporter is actually producing output.
       await Promise.race([topReportPromise, stormPromise, failPromise, page.waitForTimeout(5_000)]);
