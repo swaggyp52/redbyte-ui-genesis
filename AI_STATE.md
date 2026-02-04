@@ -6980,6 +6980,46 @@ All TypeScript compilation errors systematically resolved across monorepo:
 **Attribution:** Connor Angiel
 ---
 
+## Change Log  2026-02-04 (P1A-1 Instructor Ops Contract Fix)
+
+**Canonical Ops Contract Alignment (Instructor UIs)**
+- Updated instructor-facing apps to match canonical ops server response shapes (no server contract changes).
+- Lab Examiner ingest now uploads `.rb-lab.zip` as raw bytes with `Content-Type: application/zip`.
+- Instructor runs list accepts `GET /api/labs/runs` returning an array; run detail renders with lean data + artifacts endpoint.
+
+**Build Gate Reliability**
+- Fixed workspace build scripts that were invoking root `tsc` instead of package-local configs.
+- Exported missing JS entrypoint symbols (`useClassroomModeStore`, `GuardrailConfirmModal`) to unblock `apps/playground` build.
+
+**Validation**
+- `pnpm -r build` passes.
+- `pnpm ops:student-export:pass` passes (ops-liveness: start server + ingest fixture + artifacts).
+
+**Manual QA**
+- Start canonical ops server (`node api/server.mjs` or `pnpm ops:server`).
+- In Lab Examiner: upload `packages/ops/labs/fixtures/student-export-pass.rb-lab.zip`.
+- Confirm: run appears in Instructor runs list; run detail renders `grade.md` / `grade.json` via artifacts.
+
+**Files Updated**
+- `packages/rb-apps/src/apps/LabExaminerApp.tsx`
+- `packages/rb-apps/src/apps/LabExaminerApp.js`
+- `packages/rb-apps/src/apps/InstructorApp.tsx`
+- `packages/rb-apps/src/apps/InstructorApp.js`
+- `packages/rb-apps/src/apps/InstructorRunDetailApp.tsx`
+- `packages/rb-apps/src/apps/InstructorRunDetailApp.js`
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.js`
+- `packages/rb-apps/src/index.ts`
+- `packages/rb-apps/src/index.js`
+- `packages/rb-primitives/src/index.js`
+- `packages/rb-fpga-signing/package.json`
+- `packages/rb-viewport/package.json`
+- `packages/rb-bridge-agent/package.json`
+
+**Attribution:** Connor Angiel
+
+---
+
 ## Change Log  2026-02-03 (ECE Lab Unified Project Loop Guard)
 
 **Issue:** ECE Lab synced its circuit into the unified project on every render, which could loop when `updatedAt` changed without circuit changes.

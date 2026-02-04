@@ -10,7 +10,7 @@
     "bin"
   ],
   "scripts": {
-    "build": "pnpm -w exec tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json",
     "test": "vitest run --config vitest.config.ts"
   },
   "bin": {

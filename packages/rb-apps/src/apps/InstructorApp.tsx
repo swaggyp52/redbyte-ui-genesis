@@ -6,12 +6,15 @@ import React, { useEffect, useState } from 'react';
 import type { RedByteApp } from '../types';
 import styles from './InstructorApp.module.css';
 
+const OPS_SERVER = 'http://127.0.0.1:3001';
+
 interface LabRun {
   run_id: string;
-  timestamp: string;
-  student?: string;
-  lab_name?: string;
-  verdict?: 'PASS' | 'FAIL' | 'INVALID';
+  created_at?: string;
+  timestamp?: string; // legacy/back-compat
+  student_id?: string;
+  lab_id?: string;
+  verdict?: 'PASS' | 'FAIL' | 'INVALID' | 'UNKNOWN';
   exit_code?: number;
 }
 
@@ -25,18 +28,19 @@ export const InstructorAppContent: React.FC<InstructorAppProps> = ({ onNavigate 
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/labs/runs')
+    fetch(`${OPS_SERVER}/api/labs/runs`)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
         return res.json();
       })
       .then((data) => {
-        setRuns(data.runs || []);
+        const nextRuns = Array.isArray(data) ? data : (data?.runs || []);
+        setRuns(nextRuns);
         setLoading(false);
       })
       .catch((err) => {
         console.error('Failed to fetch runs:', err);
-        setError(err.message);
+        setError(err instanceof Error ? err.message : String(err));
         setLoading(false);
       });
   }, []);
@@ -104,9 +108,9 @@ export const InstructorAppContent: React.FC<InstructorAppProps> = ({ onNavigate 
                   onClick={() => handleRunClick(run.run_id)}
                   data-testid={`run-row-${run.run_id}`}
                 >
-                  <td>{new Date(run.timestamp).toLocaleString()}</td>
-                  <td>{run.student || '—'}</td>
-                  <td>{run.lab_name || '—'}</td>
+                  <td>{run.created_at || run.timestamp ? new Date(run.created_at || run.timestamp).toLocaleString() : '—'}</td>
+                  <td>{run.student_id || '—'}</td>
+                  <td>{run.lab_id || '—'}</td>
                   <td>
                     <span className={getBadgeClass(run.verdict)}>
                       {run.verdict || '—'}

@@ -6,6 +6,8 @@ import React, { useEffect, useState } from 'react';
 import type { RedByteApp } from '../types';
 import styles from './InstructorRunDetailApp.module.css';
 
+const OPS_SERVER = 'http://127.0.0.1:3001';
+
 interface VectorResult {
   name: string;
   result: 'PASS' | 'FAIL' | string;
@@ -16,11 +18,14 @@ interface VectorResult {
 
 interface RunDetail {
   run_id: string;
-  timestamp: string;
-  student?: string;
-  lab_name?: string;
-  verdict?: 'PASS' | 'FAIL' | 'INVALID';
+  created_at?: string;
+  timestamp?: string; // legacy/back-compat
+  student_id?: string;
+  lab_id?: string;
+  verdict?: 'PASS' | 'FAIL' | 'INVALID' | 'UNKNOWN';
   exit_code?: number;
+  grade_json?: any;
+  grade_md?: string;
   summary?: {
     passed?: number;
     failed?: number;
@@ -53,18 +58,34 @@ export const InstructorRunDetailAppContent: React.FC<InstructorRunDetailAppProps
       return;
     }
 
-    fetch(`/api/labs/runs/${runId}`)
+    setError(null);
+
+    fetch(`${OPS_SERVER}/api/labs/runs/${runId}`)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
         return res.json();
       })
       .then((data) => {
-        setDetail(data);
+        const inferredArtifacts: NonNullable<RunDetail['artifacts']> = {
+          'grade.json': `${OPS_SERVER}/api/labs/runs/${runId}/artifacts/grade.json`,
+          'grade.md': `${OPS_SERVER}/api/labs/runs/${runId}/artifacts/grade.md`,
+          'capsule.json': `${OPS_SERVER}/api/labs/runs/${runId}/artifacts/capsule.json`,
+          'events.ndjson': `${OPS_SERVER}/api/labs/runs/${runId}/artifacts/events.ndjson`,
+        };
+
+        const normalized: RunDetail = {
+          ...(data || {}),
+          timestamp: data?.timestamp ?? data?.created_at,
+          exit_code: data?.exit_code ?? data?.grade_json?.exit_code,
+          artifacts: data?.artifacts ?? inferredArtifacts,
+        };
+
+        setDetail(normalized);
         setLoading(false);
       })
       .catch((err) => {
         console.error('Failed to fetch run detail:', err);
-        setError(err.message);
+        setError(err instanceof Error ? err.message : String(err));
         setLoading(false);
       });
   }, [runId]);
@@ -123,15 +144,15 @@ export const InstructorRunDetailAppContent: React.FC<InstructorRunDetailAppProps
         <div className={styles.metaRow}>
           <div className={styles.metaItem}>
             <span className={styles.metaLabel}>Student:</span>
-            <span className={styles.metaValue}>{detail.student || '—'}</span>
+            <span className={styles.metaValue}>{detail.student_id || '—'}</span>
           </div>
           <div className={styles.metaItem}>
             <span className={styles.metaLabel}>Lab:</span>
-            <span className={styles.metaValue}>{detail.lab_name || '—'}</span>
+            <span className={styles.metaValue}>{detail.lab_id || '—'}</span>
           </div>
           <div className={styles.metaItem}>
             <span className={styles.metaLabel}>Time:</span>
-            <span className={styles.metaValue}>{new Date(detail.timestamp).toLocaleString()}</span>
+            <span className={styles.metaValue}>{detail.created_at || detail.timestamp ? new Date(detail.created_at || detail.timestamp).toLocaleString() : '—'}</span>
           </div>
           <div className={styles.metaItem}>
             <span className={styles.metaLabel}>Exit Code:</span>
@@ -164,7 +185,13 @@ export const InstructorRunDetailAppContent: React.FC<InstructorRunDetailAppProps
       <div className={styles.tabContent}>
         {activeTab === 'summary' && (
           <div className={styles.summarySection}>
-            {detail.summary && (
+            {detail.grade_md && detail.grade_md.trim().length > 0 ? (
+              <div className={styles.vectorCard}>
+                <div className={styles.vectorValue} style={{ whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                  {detail.grade_md}
+                </div>
+              </div>
+            ) : detail.summary ? (
               <div className={styles.summaryCards}>
                 <div className={styles.summaryCard}>
                   <div className={styles.summaryLabel}>Passed</div>
@@ -179,9 +206,8 @@ export const InstructorRunDetailAppContent: React.FC<InstructorRunDetailAppProps
                   <div className={styles.summaryValue}>{detail.summary.total || 0}</div>
                 </div>
               </div>
-            )}
-            {!detail.summary && (
-              <div className={styles.empty}>No summary data available</div>
+            ) : (
+              <div className={styles.empty}>No grade report available</div>
             )}
           </div>
         )}

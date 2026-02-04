@@ -13,5 +13,6 @@ export { createFocusTrap } from './focusTrap';
 export { Portal } from './Portal';
 export { PortalProvider, usePortalContainer } from './PortalContext';
 export { Modal } from './Modal';
+export { GuardrailConfirmModal } from './GuardrailConfirmModal';
 export { OverlayRoot, OverlayPanel, OverlayBackdrop } from './OverlayRoot';
 export { Toast, ToastContainer, useToast, toast, toastStore, subscribeToToasts } from './Toast';

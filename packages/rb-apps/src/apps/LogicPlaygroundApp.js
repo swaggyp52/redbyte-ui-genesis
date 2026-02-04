@@ -2905,32 +2905,37 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
         }
     };
     const handleCELoadExample = (example) => {
-        try {
-            // example is the CEExample object with circuit already loaded
-            const exampleCircuit = example.circuit || example;
-            setCircuit(exampleCircuit);
-            engine.setCircuit(exampleCircuit);
-            tickEngine.setCircuit(exampleCircuit);
-            // Pause simulation on load (especially for heavy circuits)
-            if (isRunning) {
-                tickEngine.pause();
-                setIsRunning(false);
+        const run = async () => {
+            try {
+                // example is the CEExample object with circuit already loaded
+                const exampleCircuit = example.circuit || example;
+                setCircuit(exampleCircuit);
+                engine.setCircuit(exampleCircuit);
+                tickEngine.setCircuit(exampleCircuit);
+                // Pause simulation on load (especially for heavy circuits)
+                if (isRunning) {
+                    tickEngine.pause();
+                    setIsRunning(false);
+                }
+                // Check if heavy and warn
+                const nodeCount = exampleCircuit.nodes.length;
+                const connCount = exampleCircuit.connections.length;
+                if (isHeavyCircuit(nodeCount, connCount)) {
+                    addToast(`Large circuit loaded (${nodeCount} nodes). Simulation paused.`, 'info', 4000);
+                }
+                else {
+                    addToast(`Example loaded successfully`, 'success');
+                }
+                setShowCEExamplesModal(false);
             }
-            // Check if heavy and warn
-            const nodeCount = exampleCircuit.nodes.length;
-            const connCount = exampleCircuit.connections.length;
-            if (isHeavyCircuit(nodeCount, connCount)) {
-                addToast(`Large circuit loaded (${nodeCount} nodes). Simulation paused.`, 'info', 4000);
+            catch (error) {
+                console.error('Load example error:', error);
+                addToast('Failed to load example', 'error');
             }
-            else {
-                addToast(`Example loaded successfully`, 'success');
-            }
-            setShowCEExamplesModal(false);
-        }
-        catch (error) {
-            console.error('Load example error:', error);
-            addToast('Failed to load example', 'error');
-        }
+        };
+        confirmReplacement('Load example', () => {
+            void run();
+        });
     };
     const handleCEExportBundle = () => {
         // ExportBundleModal handles the download internally

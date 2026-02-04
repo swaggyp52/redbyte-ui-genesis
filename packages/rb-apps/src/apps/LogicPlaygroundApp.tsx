@@ -1447,16 +1447,11 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const lastSyncedHierarchyRef = useRef<Circuit | null>(null);
   const lastSyncedCircuitRef = useRef<Circuit | null>(null);
   const hierarchyCircuitRef = useRef<Circuit | null>(hierarchyCircuit);
-  const circuitRef = useRef<Circuit>(circuit);
 
   // Keep refs in sync with state without triggering the main effect
   useEffect(() => {
     hierarchyCircuitRef.current = hierarchyCircuit;
   }, [hierarchyCircuit]);
-
-  useEffect(() => {
-    circuitRef.current = circuit;
-  }, [circuit]);
 
   useEffect(() => {
     // Only trigger on hierarchyStack changes, not on circuit/hierarchyCircuit changes
@@ -3490,40 +3485,40 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   }, [circuit, getLayoutSnapshot, safeMode, addToast]);
 
   const handleCELoadExample = (example: any) => {
-    try {
-      // example is the CEExample object with circuit already loaded
-      const exampleCircuit = example.circuit || example;
+    const run = async () => {
+      try {
+        // example is the CEExample object with circuit already loaded
+        const exampleCircuit = example.circuit || example;
 
-      setCircuit(exampleCircuit);
-      engine.setCircuit(exampleCircuit);
-      tickEngine.setCircuit(exampleCircuit);
+        setCircuit(exampleCircuit);
+        engine.setCircuit(exampleCircuit);
+        tickEngine.setCircuit(exampleCircuit);
 
-      // Pause simulation on load (especially for heavy circuits)
-      if (isRunning) {
-        tickEngine.pause();
-        setIsRunning(false);
+        // Pause simulation on load (especially for heavy circuits)
+        if (isRunning) {
+          tickEngine.pause();
+          setIsRunning(false);
+        }
+
+        // Check if heavy and warn
+        const nodeCount = exampleCircuit.nodes.length;
+        const connCount = exampleCircuit.connections.length;
+        if (isHeavyCircuit(nodeCount, connCount)) {
+          addToast(`Large circuit loaded (${nodeCount} nodes). Simulation paused.`, 'info', 4000);
+        } else {
+          addToast(`Example loaded successfully`, 'success');
+        }
+
+        setShowCEExamplesModal(false);
+      } catch (error) {
+        console.error('Load example error:', error);
+        addToast('Failed to load example', 'error');
       }
-
-      // Check if heavy and warn
-      const nodeCount = exampleCircuit.nodes.length;
-      const connCount = exampleCircuit.connections.length;
-      if (isHeavyCircuit(nodeCount, connCount)) {
-        addToast(`Large circuit loaded (${nodeCount} nodes). Simulation paused.`, 'info', 4000);
-      } else {
-        addToast(`Example loaded successfully`, 'success');
-      }
-
-      setShowCEExamplesModal(false);
-    } catch (error) {
-      console.error('Load example error:', error);
-      addToast('Failed to load example', 'error');
-    }
     };
 
     confirmReplacement('Load example', () => {
       void run();
     });
-    return;
   };
 
   const handleCEExportBundle = () => {
@@ -3975,7 +3970,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
                 rel="noopener noreferrer"
                 className="block mt-4 text-xs text-cyan-400 hover:text-cyan-300"
               >
-                Report Issue ->
+                Report Issue -&gt;
               </a>
             </OverlayPanel>
           </OverlayRoot>

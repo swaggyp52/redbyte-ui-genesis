@@ -12,10 +12,10 @@ import styles from './LabExaminerApp.module.css';
 
 interface GradeData {
   run_id: string;
-  verdict: 'PASS' | 'FAIL' | 'INVALID';
+  verdict: 'PASS' | 'FAIL' | 'INVALID' | 'UNKNOWN';
   lab_id: string;
   student_id: string;
-  timestamp: string;
+  created_at: string;
   grade_json: {
     run_id: string;
     timestamp: string;
@@ -30,8 +30,8 @@ interface GradeData {
 
 interface Run {
   run_id: string;
-  timestamp: string;
-  verdict: string;
+  created_at: string;
+  verdict: 'PASS' | 'FAIL' | 'INVALID' | 'UNKNOWN';
 }
 
 const OPS_SERVER = 'http://127.0.0.1:3001';
@@ -115,12 +115,12 @@ const LabExaminerApp: React.FC = () => {
     setGradeData(null);
 
     try {
-      const formData = new FormData();
-      formData.append('submission', file);
+      const bytes = await file.arrayBuffer();
 
       const response = await fetch(`${OPS_SERVER}/api/labs/ingest`, {
         method: 'POST',
-        body: formData,
+        headers: { 'content-type': 'application/zip' },
+        body: bytes,
       });
 
       if (!response.ok) {
@@ -129,8 +129,12 @@ const LabExaminerApp: React.FC = () => {
       }
 
       const result = await response.json();
-      setGradeData(result);
-      setTab('grade');
+      const runId = result?.run_id;
+      if (!runId || typeof runId !== 'string') {
+        throw new Error('Upload succeeded but server did not return a run_id');
+      }
+
+      await loadRunDetail(runId);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Upload failed');
     } finally {
@@ -146,6 +150,7 @@ const LabExaminerApp: React.FC = () => {
 
   const loadRunDetail = async (runId: string) => {
     try {
+      setError(null);
       const response = await fetch(`${OPS_SERVER}/api/labs/runs/${runId}`);
       if (!response.ok) throw new Error('Failed to load run');
       const data = await response.json();
@@ -246,7 +251,7 @@ const LabExaminerApp: React.FC = () => {
               <strong>Run ID:</strong> {gradeData.run_id}
             </div>
             <div className={styles.metadataItem}>
-              <strong>Timestamp:</strong> {new Date(gradeData.timestamp).toLocaleString()}
+              <strong>Timestamp:</strong> {new Date(gradeData.created_at).toLocaleString()}
             </div>
           </div>
 
@@ -272,7 +277,7 @@ const LabExaminerApp: React.FC = () => {
                 <div key={run.run_id} className={styles.runItem}>
                   <div className={styles.runInfo}>
                     <div className={styles.runId}>{run.run_id}</div>
-                    <div className={styles.runTimestamp}>{new Date(run.timestamp).toLocaleString()}</div>
+                    <div className={styles.runTimestamp}>{new Date(run.created_at).toLocaleString()}</div>
                   </div>
                   <div className={styles.runVerdict + ' ' + (run.verdict === 'PASS' ? styles.pass : run.verdict === 'FAIL' ? styles.fail : styles.invalid)}>
                     {run.verdict}
