@@ -7,5 +7,8 @@
 // package into unrelated chunks. Keeping a dedicated wrapper lets the app bundle
 // load 3D only when the user enables it.
 
-export { Logic3DScene } from '@redbyte/rb-logic-3d';
+if (import.meta.env.DEV) {
+  console.log('[lazy] Loading @redbyte/rb-logic-3d chunk (Logic3DScene)');
+}
 
+export { Logic3DScene } from '@redbyte/rb-logic-3d';

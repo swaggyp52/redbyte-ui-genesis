@@ -7388,6 +7388,45 @@ All TypeScript compilation errors systematically resolved across monorepo:
 
 ---
 
+## Change Log  2026-02-04 (P1D-1 3D Boot Isolation: Lazy Virtual Lab + Lazy Logic3D)
+
+**Goal**
+- Ensure the 3D stack (`@redbyte/rb-logic-3d` / Three.js) is not pulled into the OS boot graph.
+- 3D loads only when a user explicitly opens a 3D surface (Virtual Lab / 3D view).
+
+**Terminal: Lazy Hardware Store**
+- Removed the boot-time import of `@redbyte/rb-logic-3d` from Terminal.
+- Hardware/Arduino commands now dynamically import the lab store only when invoked.
+
+**Virtual Lab: Stub + Implementation Split**
+- Split Virtual Lab into:
+  - `VirtualLabApp` (boot-safe stub that lazy-loads implementation)
+  - `VirtualLabAppImpl` (3D-heavy implementation importing `@redbyte/rb-logic-3d`)
+- Adds DEV-only console breadcrumbs when the 3D stack is requested/loaded.
+
+**Evidence Export: Lazy Logic-3D Access**
+- Removed the module-level import of `@redbyte/rb-logic-3d` from `evidenceExport`.
+- Evidence export functions dynamically import logic-3d only during export (explicit user action).
+
+**Validation**
+- `pnpm -r build` passes.
+
+**Files Updated**
+- `packages/rb-apps/src/apps/TerminalApp.tsx`
+- `packages/rb-apps/src/apps/TerminalApp.js`
+- `packages/rb-apps/src/apps/VirtualLabApp.tsx`
+- `packages/rb-apps/src/apps/VirtualLabApp.js`
+- `packages/rb-apps/src/apps/VirtualLabAppImpl.tsx`
+- `packages/rb-apps/src/apps/VirtualLabAppImpl.js`
+- `packages/rb-apps/src/utils/evidenceExport.ts`
+- `packages/rb-apps/src/utils/evidenceExport.js`
+- `packages/rb-apps/src/lazy/logic3d.ts`
+- `packages/rb-apps/src/lazy/logic3d.js`
+
+**Attribution:** Connor Angiel
+
+---
+
 ## Change Log  2026-02-03 (ECE Lab Unified Project Loop Guard)
 
 **Issue:** ECE Lab synced its circuit into the unified project on every render, which could loop when `updatedAt` changed without circuit changes.

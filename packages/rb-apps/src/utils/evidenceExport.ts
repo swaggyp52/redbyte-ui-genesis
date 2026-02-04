@@ -6,10 +6,21 @@ import JSZip from 'jszip';
 import { useFileSystemStore } from '../stores/fileSystemStore';
 import { useHardwareStore } from '../stores/hardwareStore';
 import { useLabStore as usePedagogicalLabStore } from '../labs/labStore';
-import { useLabStore as useModelLabStore, evaluateAtTick, fingerprintLabTemplate } from '@redbyte/rb-logic-3d';
 import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
 import { VIRTUAL_LAB_TEMPLATES } from '../apps/virtual-lab-templates';
 import { createTrace, type HardwareTraceV1 } from '../hardware/traceFormat';
+
+// IMPORTANT: keep @redbyte/rb-logic-3d out of the boot graph.
+// This module is imported by 2D lab surfaces, but only needs logic-3d when
+// exporting evidence (explicit user action).
+let logic3dModulePromise: Promise<typeof import('@redbyte/rb-logic-3d')> | null = null;
+
+async function loadLogic3dModule() {
+    if (!logic3dModulePromise) {
+        logic3dModulePromise = import('@redbyte/rb-logic-3d');
+    }
+    return logic3dModulePromise;
+}
 
 export interface LabEvidenceCapsule {
     schemaVersion: 1 | 2;
@@ -61,6 +72,7 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
             embeddedTrace = undefined;
         }
 
+        const { useLabStore: useModelLabStore, evaluateAtTick, fingerprintLabTemplate } = await loadLogic3dModule();
         const modelLab = useModelLabStore.getState();
         const recorder = (await import('../stores/runRecorderStore')).useRunRecorderStore.getState();
 
@@ -342,6 +354,7 @@ export async function loadEvidenceCapsule(fileId: string): Promise<LabEvidenceCa
 // Matches usage in LogicPlaygroundApp.tsx
 export async function exportEvidence(data: any): Promise<void> {
     const fs = useFileSystemStore.getState();
+    const { useLabStore: useModelLabStore } = await loadLogic3dModule();
     const lab = useModelLabStore.getState();
     const status = lab.getTransportStatus();
 

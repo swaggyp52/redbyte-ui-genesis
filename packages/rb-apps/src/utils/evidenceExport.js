@@ -5,10 +5,20 @@ import JSZip from 'jszip';
 import { useFileSystemStore } from '../stores/fileSystemStore.js';
 import { useHardwareStore } from '../stores/hardwareStore.js';
 import { useLabStore as usePedagogicalLabStore } from '../labs/labStore.js';
-import { useLabStore as useModelLabStore, evaluateAtTick, fingerprintLabTemplate } from '@redbyte/rb-logic-3d';
 import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
 import { VIRTUAL_LAB_TEMPLATES } from '../apps/virtual-lab-templates.js';
 import { createTrace } from '../hardware/traceFormat.js';
+
+// IMPORTANT: keep @redbyte/rb-logic-3d out of the boot graph.
+// This module is imported by 2D lab surfaces, but only needs logic-3d when
+// exporting evidence (explicit user action).
+let logic3dModulePromise = null;
+async function loadLogic3dModule() {
+    if (!logic3dModulePromise) {
+        logic3dModulePromise = import('@redbyte/rb-logic-3d');
+    }
+    return logic3dModulePromise;
+}
 export async function exportEvidenceCapsule(filename) {
     try {
         const hw = useHardwareStore.getState();
@@ -20,6 +30,7 @@ export async function exportEvidenceCapsule(filename) {
         const embeddedTrace = hw.traceBuffer.length > 0
             ? createTrace(hw.capabilities?.boardId || 'unknown', hw.recordingStartTick ?? 0, [...hw.traceBuffer])
             : undefined;
+        const { useLabStore: useModelLabStore, evaluateAtTick, fingerprintLabTemplate } = await loadLogic3dModule();
         const modelLab = useModelLabStore.getState();
         const recorder = (await import('../stores/runRecorderStore')).useRunRecorderStore.getState();
         // 2. Run lab evaluator for grade report (vectors + summary)
@@ -220,6 +231,7 @@ export async function loadEvidenceCapsule(fileId) {
 // Matches usage in LogicPlaygroundApp.tsx
 export async function exportEvidence(data) {
     const fs = useFileSystemStore.getState();
+    const { useLabStore: useModelLabStore } = await loadLogic3dModule();
     const lab = useModelLabStore.getState();
     const status = lab.getTransportStatus();
     const filename = `grading_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;

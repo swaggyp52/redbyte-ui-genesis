@@ -14,7 +14,6 @@ import { useFileSystemStore } from '../stores/fileSystemStore';
 import { logSystemEvent, useSystemLogStore } from '../stores/systemLogStore';
 import { digestValue, stableStringify } from '../utils/digest';
 import { Icon } from '@redbyte/rb-icons';
-import { useLabStore } from '@redbyte/rb-logic-3d';
 
 interface TerminalProps {
   onOpenApp?: (appId: string, props?: any) => void;
@@ -48,6 +47,23 @@ const COMMAND_LOG_KEY = 'rb:terminal:log:v1';
 const COMMAND_SEQ_KEY = 'rb:terminal:log:seq:v1';
 const MAX_LOG_ENTRIES = 200;
 let fallbackCommandSeq = 1;
+
+// IMPORTANT: keep @redbyte/rb-logic-3d out of the boot graph.
+// Terminal is registered at boot, but hardware/3D functionality is only needed
+// when the user explicitly runs related commands.
+let labStoreModulePromise: Promise<typeof import('@redbyte/rb-logic-3d')> | null = null;
+
+async function loadLabStoreModule() {
+  if (!labStoreModulePromise) {
+    labStoreModulePromise = import('@redbyte/rb-logic-3d');
+  }
+  return labStoreModulePromise;
+}
+
+async function getActiveTransport() {
+  const { useLabStore } = await loadLabStoreModule();
+  return useLabStore.getState().activeTransport as any;
+}
 
 const COMMAND_SPECS: Record<string, CommandSpec> = {
   help: {
@@ -975,15 +991,16 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         const sub = args[0];
 
         if (sub === 'list-ports') {
-          const transport = useLabStore.getState().activeTransport;
-          if (!transport || typeof transport.listDevices !== 'function') {
-            addLine('No active bridge transport.', 'error');
-            break;
-          }
-          addLine('Scanning for serial devices...');
-          const listFn = transport.listDevices.bind(transport);
           (async () => {
             try {
+              const transport = await getActiveTransport();
+              if (!transport || typeof transport.listDevices !== 'function') {
+                addLine('No active bridge transport.', 'error');
+                addLine('');
+                return;
+              }
+              addLine('Scanning for serial devices...');
+              const listFn = transport.listDevices.bind(transport);
               const result = await listFn();
               if (result && result.devices) {
                 addLine('Available Arduino/Serial Devices:');
@@ -1029,18 +1046,18 @@ const TerminalComponent: React.FC<TerminalProps> = ({
         }
 
         addLine(`Preparing upload for ${board} on ${port}...`);
-
-        const transport = useLabStore.getState().activeTransport;
-        if (!transport || typeof transport.uploadSketch !== 'function') {
-          addLine('Active transport does not support sketch uploads (switch to HARDWARE mode).', 'error');
-          break;
-        }
-
         const fqbn = board === 'arduino-uno' ? 'arduino:avr:uno' : 'arduino:avr:nano';
-        const uploadFn = transport.uploadSketch.bind(transport);
 
         (async () => {
           try {
+            const transport = await getActiveTransport();
+            if (!transport || typeof transport.uploadSketch !== 'function') {
+              addLine('Active transport does not support sketch uploads (switch to HARDWARE mode).', 'error');
+              addLine('');
+              return;
+            }
+
+            const uploadFn = transport.uploadSketch.bind(transport);
             const result = await uploadFn({
               target: board,
               port,
