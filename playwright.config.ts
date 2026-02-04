@@ -69,6 +69,9 @@ export default defineConfig({
           args: [
             // SAFETY: Disable GPU and sandbox for stability
             '--disable-gpu',
+            // Prefer software GL for headless stability (WebGL/3D boot can crash otherwise)
+            '--use-gl=swiftshader',
+            '--enable-unsafe-swiftshader',
             // '--disable-software-rasterizer',
             '--disable-dev-shm-usage',
             '--no-sandbox',

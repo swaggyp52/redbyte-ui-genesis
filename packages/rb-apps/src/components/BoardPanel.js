@@ -16,9 +16,11 @@ import { ConnectionStatusBadge } from './ConnectionStatusBadge';
 import { GenericIOGrid } from './GenericIOGrid';
 import { Basys3Board } from './boards/Basys3Board';
 import { Spartan3EBoard } from './boards/Spartan3EBoard';
+import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 // Helper: robust device ID extraction
 const getDeviceKey = (d) => d.deviceId ?? d.id ?? '';
 export const BoardPanel = ({ className = '', snapshot: propSnapshot, capabilities: propCapabilities, onInteraction, readOnly = false, compact = false, executionSource = 'sim', }) => {
+    useRenderStormDetector('BoardPanel');
     const connectionState = useHardwareStore((s) => s.connectionState);
     const storeCapabilities = useHardwareStore((s) => s.capabilities);
     const capabilities = propCapabilities ?? storeCapabilities;

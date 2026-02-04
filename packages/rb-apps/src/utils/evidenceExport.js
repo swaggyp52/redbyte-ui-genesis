@@ -125,7 +125,7 @@ export async function exportEvidenceCapsule(filename) {
         const readmeContent = `# ${lab.activeLabId.toUpperCase()} Submission
         
 **Student:** ${capsule.student.name} (${capsule.student.id})
-**Date:** ${new Date().toLocaleString()}
+**Date:** ${capsule.timestamp}
 **Board:** ${capsule.deviceBoardId || 'N/A'}
 
 ## Self Check Status

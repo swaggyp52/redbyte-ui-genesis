@@ -5,6 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import type { RedByteApp } from '../types';
 import styles from './InstructorRunDetailApp.module.css';
+import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 
 const OPS_SERVER = 'http://127.0.0.1:3001';
 
@@ -46,6 +47,7 @@ interface InstructorRunDetailAppProps {
 }
 
 export const InstructorRunDetailAppContent: React.FC<InstructorRunDetailAppProps> = ({ runId, onNavigate }) => {
+  useRenderStormDetector('InstructorRunDetailAppContent');
   const [detail, setDetail] = useState<RunDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -4,8 +4,10 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 import { useEffect, useState } from 'react';
 import styles from './InstructorRunDetailApp.module.css';
+import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 const OPS_SERVER = 'http://127.0.0.1:3001';
 export const InstructorRunDetailAppContent = ({ runId, onNavigate }) => {
+    useRenderStormDetector('InstructorRunDetailAppContent');
     const [detail, setDetail] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);

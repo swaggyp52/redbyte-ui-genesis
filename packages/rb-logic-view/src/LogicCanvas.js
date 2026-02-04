@@ -677,7 +677,7 @@ export const LogicCanvas = ({ engine, circuit: externalCircuit, width = 800, hei
                                 const toggleHitHeight = 28;
                                 const toggleHitX = -toggleHitWidth / 2;
                                 const toggleHitY = toggleY - (toggleHitHeight - toggleHeight) / 2;
-                                return (_jsxs("g", { transform: `translate(${screenX}, ${screenY})`, style: { pointerEvents: 'auto' }, "data-testid": `switch-toggle-${node.id}`, children: [_jsx("rect", { x: toggleHitX, y: toggleHitY, width: toggleHitWidth, height: toggleHitHeight, rx: toggleHitHeight / 2, fill: "transparent", style: { cursor: 'pointer', pointerEvents: 'all' }, "data-testid": `switch-toggle-${node.id}`, onMouseDown: (e) => {
+                                return (_jsxs("g", { transform: `translate(${screenX}, ${screenY})`, style: { pointerEvents: 'auto' }, children: [_jsx("rect", { x: toggleHitX, y: toggleHitY, width: toggleHitWidth, height: toggleHitHeight, rx: toggleHitHeight / 2, fill: "transparent", style: { cursor: 'pointer', pointerEvents: 'all' }, "data-testid": `switch-toggle-${node.id}`, onMouseDown: (e) => {
                                                 e.preventDefault();
                                                 e.stopPropagation();
                                             }, onClick: (e) => {

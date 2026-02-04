@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0",
+  "projectId": "fixture-rbx-evidence-determinism",
+  "name": "RBX Evidence Determinism Fixture",
+  "description": "Small but representative project used for determinism gating.",
+  "createdAt": "2026-02-02T10:00:00.000Z",
+  "updatedAt": "2026-02-02T10:00:05.000Z",
+  "circuit": {
+    "schemaVersion": "1.0",
+    "nodes": [
+      { "id": "sw1", "type": "SWITCH", "x": 100, "y": 100, "rotation": 0, "params": { "initial": false } },
+      { "id": "and1", "type": "AND", "x": 200, "y": 100, "rotation": 0 },
+      { "id": "dff1", "type": "DFF", "x": 300, "y": 100, "rotation": 0, "state": { "q": 0 } },
+      { "id": "led1", "type": "LED", "x": 400, "y": 100, "rotation": 0 }
+    ],
+    "connections": [
+      { "id": "c1", "fromNodeId": "sw1", "fromPin": "out", "toNodeId": "and1", "toPin": "a" },
+      { "id": "c2", "fromNodeId": "and1", "fromPin": "out", "toNodeId": "dff1", "toPin": "d" },
+      { "id": "c3", "fromNodeId": "dff1", "fromPin": "q", "toNodeId": "led1", "toPin": "in" }
+    ]
+  },
+  "simulation": {
+    "tickRate": 20,
+    "currentTick": 0,
+    "probes": [
+      { "id": "p_q", "signal": "dff1.q", "label": "Q", "color": "#22c55e" }
+    ],
+    "breakpoints": [10]
+  },
+  "boardMap": {
+    "boardProfileId": "basys3",
+    "signalToPinMap": { "dff1.q": "LD0" },
+    "virtualIOState": { "switches": [false, false, false, false], "buttons": [false, false, false, false] }
+  },
+  "evidence": {
+    "actions": [
+      {
+        "timestamp": "2026-02-02T10:00:02.000Z",
+        "sessionId": "fixture-session",
+        "action": { "v": 1, "t": "circuit/addNode", "p": { "id": "and1", "type": "AND" } },
+        "appId": "logic-playground"
+      }
+    ],
+    "snapshots": []
+  }
+}
+

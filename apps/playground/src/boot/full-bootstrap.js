@@ -14,7 +14,9 @@ export async function bootstrap() {
     }
     // Register all apps BEFORE rendering Shell to avoid lazy loading during render
     try {
-        await registerAllApps();
+        const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+        const isE2ELite = params.get('e2e') === '1';
+        await registerAllApps(isE2ELite ? { mode: 'e2e-lite' } : undefined);
         console.log('RB_APPS_REGISTERED');
     }
     catch (err) {

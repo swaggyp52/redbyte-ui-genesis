@@ -1,6 +1,6 @@
-# OPS GREEN LOCK
+﻿# OPS GREEN LOCK
 
-**Status: PASSING** ✅  
+**Status: PASSING** âœ…  
 **Date: 2026-01-17**  
 **Verification Chain**: All 3 gates pass locally on the lab desktop
 
@@ -16,7 +16,7 @@ pnpm -r build 2>&1 | Select-Object -Last 40
 ```
 **Expected**: Build completes with no errors. Last output shows:
 ```
-apps/playground build: Γ£ô built in X.XXs
+apps/playground build: Î“Â£Ã´ built in X.XXs
 apps/playground build: Done
 ```
 
@@ -74,33 +74,38 @@ All root-level scripts are registered in `package.json`. Run `pnpm -s run | Sele
 - `ops:smoke` - Smoke test for ops machinery
 - `ops:make-bundle` - Create test bundles
 - `ops:ingest-test` - Ingest pipeline validation
-- `ops:student-export-fixture-test` - Student export contract lock ⭐
+- `ops:student-export-fixture-test` - Student export contract lock â­
+- `ops:diff-gate` - Diff endpoint regression gate â­
+
+### Project Persistence Gates
+- `rbproj:roundtrip-gate` - RBProject codec roundtrip + hash gate â­
+- `rbx:evidence-determinism-gate` - RBX export determinism gate ⭐
 
 ---
 
 ## Architecture Locks
 
-### ✅ LOCKED: packages/ops-server is Disabled
+### âœ… LOCKED: packages/ops-server is Disabled
 - **File**: `packages/ops-server/package.json`
 - **Status**: Disabled (all build/dev/start/test scripts are noops)
 - **Reason**: Redundant TypeScript package; canonical server is `api/server.mjs`
 - **Impact**: Zero TypeScript compilation errors, no Node type pollution
 
-### ✅ LOCKED: Canonical Server at api/server.mjs
+### âœ… LOCKED: Canonical Server at api/server.mjs
 - **Location**: `api/server.mjs` (binds 127.0.0.1, port 3001 dev / 8787 prod)
 - **Status**: Canonical local ops server
 - **Type**: JavaScript (not TypeScript package)
 - **Rules**: All endpoints live here; UI calls via fetch() only
 
-### ✅ LOCKED: UI Layer is Pure
+### âœ… LOCKED: UI Layer is Pure
 - **File**: `packages/rb-apps/src/apps/LabExaminerApp.tsx`
 - **Status**: No server code, no Node imports
 - **Type**: React UI component only
 - **Rules**: Calls server endpoints via fetch(); no proof-core imports
 
-### ✅ LOCKED: proof-core is Canonical for Diff Logic
+### âœ… LOCKED: proof-core is Canonical for Diff Logic
 - **Location**: `packages/rb-fpga-proof-core/src/index.ts`
-- **Exports**: `diffCapsules(a, b, aEvents, bEvents, strictHash)` → `{verdict, exitCode: 0|1|2, summary, ...}`
+- **Exports**: `diffCapsules(a, b, aEvents, bEvents, strictHash)` â†’ `{verdict, exitCode: 0|1|2, summary, ...}`
 - **Rules**: Single source of truth for diff semantics; used by server and tests only
 
 ---
@@ -137,12 +142,12 @@ All root-level scripts are registered in `package.json`. Run `pnpm -s run | Sele
 ## Last Verification Results
 
 ```
-Gate 1 (pnpm -r build):        ✅ PASSED (all 20 projects, ops-server skipped)
-Gate 2 (pnpm agent:verify):    ✅ PASSED (dist assets present, URLs OK)
-Gate 3 (pnpm ops:student-export-fixture-test): ✅ PASSED (grade.json valid)
+Gate 1 (pnpm -r build):        âœ… PASSED (all 20 projects, ops-server skipped)
+Gate 2 (pnpm agent:verify):    âœ… PASSED (dist assets present, URLs OK)
+Gate 3 (pnpm ops:student-export-fixture-test): âœ… PASSED (grade.json valid)
 ```
 
-**Overall Status**: 🟢 **ALL GREEN** — repo is ready for feature development
+**Overall Status**: ðŸŸ¢ **ALL GREEN** â€” repo is ready for feature development
 
 ---
 
@@ -168,16 +173,90 @@ Gate 3 (pnpm ops:student-export-fixture-test): ✅ PASSED (grade.json valid)
 
 ## Next Steps
 
-1. **Feature 3 Diff Endpoint**: Implement in `api/server.mjs`
+1. **Feature 3 Diff Endpoint**: Implemented in `api/server.mjs`
    - Endpoint: `POST /api/labs/diff`
-   - Input: `{run_id, strict_hash?}`
-   - Output: `{verdict, exit_code: 0|1|2, summary, ...}`
-   - Uses: `diffCapsules()` from proof-core
+   - Input: `{run_id, golden_fixture?, strict_hash?}` (`golden_fixture` defaults to `lab-traffic-light-minimal`)
+   - Output: `{ok, run_id, golden_fixture, strict_hash, summary, diff}`
+   - Artifacts: `diff.json`, `diff.md` (retrievable via `/api/labs/runs/:run_id/artifacts/diff.json`)
+   - Uses: `diffCapsules()` from proof-core (via `packages/rb-fpga-proof-core/scripts/lab-diff.js`)
+   - Verification: `pnpm ops:diff-gate`
 
 2. **UI Diff Button**: Wire LabExaminerApp to call server endpoint
    - Only after Feature 3 server is ready
    - Call `fetch('http://127.0.0.1:3001/api/labs/diff', ...)`
-   - Display verdict badge with exit code
+    - Display verdict badge with exit code
+
+---
+
+## Diff Gate (CI-Grade)
+
+Run:
+```powershell
+pnpm ops:diff-gate
+```
+
+Fixture + golden:
+- Fixture ZIP: `packages/ops/labs/fixtures/student-export-pass.rb-lab.zip`
+- Golden fixture name: `lab-traffic-light-minimal`
+- Golden hash: `scripts/ops-diff-gate.golden.sha256`
+
+What it guarantees:
+- Ops server can ingest a known fixture zip.
+- `/api/labs/diff` executes proof-core diff deterministically and writes `diff.json`.
+- `diff.json` is retrievable via artifact endpoint and matches a committed golden SHA256 (normalized, excluding `run_id`).
+
+Updating the golden hash (intentional changes only):
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ops-diff-test.ps1 -UpdateGolden
+```
+
+Expected runtime:
+- ~5â€“15 seconds on a typical dev machine (starts server, ingests, diffs, fetches artifacts).
+
+---
+
+## RBProject Roundtrip Gate (CI-Grade)
+
+Run:
+```powershell
+pnpm rbproj:roundtrip-gate
+```
+
+Fixture + golden:
+- Fixture: `packages/rb-apps/src/__tests__/fixtures/rbproject-roundtrip.fixture.json`
+- Golden hash: `scripts/rbproj-roundtrip-gate.golden.sha256`
+
+What it guarantees:
+- `encodeRBProject`/`decodeRBProject` are deterministic (encodeâ†’decodeâ†’encode idempotent).
+- A minimal sequential circuit remains behavior-equivalent across roundtrip.
+- Normalized project payload hash matches golden (detects codec/normalization drift).
+
+Updating the golden hash (intentional changes only):
+```powershell
+pnpm rbproj:roundtrip-gate:update
+```
+
+---
+
+## RBX Evidence Determinism Gate (CI-Grade)
+
+Run:
+```powershell
+pnpm rbx:evidence-determinism-gate
+```
+
+Fixture + golden:
+- Fixture: `packages/rb-lab-engine/src/services/__tests__/fixtures/rbx-evidence-determinism.fixture.project.json`
+- Golden hash: `scripts/rbx-evidence-determinism-gate.golden.sha256`
+
+What it guarantees:
+- `exportEvidenceCapsule()` produces deterministic `manifest.json`, `capsule.json`, `project.json`, `actions.log.json`, and `README.md` for the same project input.
+- Export output does not depend on machine locale or wall-clock time.
+
+Updating the golden hash (intentional changes only):
+```powershell
+pnpm rbx:evidence-determinism-gate:update
+```
 
 3. **Contract Evolution**: If any script changes, update this lock file
 

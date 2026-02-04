@@ -163,15 +163,29 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       }
     };
 
-    const observer = new ResizeObserver(() => {
+    // Initial measure
+    updateDimensions();
+
+    const ResizeObserverCtor = (globalThis as any).ResizeObserver as
+      | (new (cb: () => void) => { observe: (el: Element) => void; disconnect: () => void })
+      | undefined;
+
+    if (!ResizeObserverCtor) {
+      window.addEventListener('resize', updateDimensions);
+      return () => window.removeEventListener('resize', updateDimensions);
+    }
+
+    const raf =
+      typeof window.requestAnimationFrame === 'function'
+        ? window.requestAnimationFrame.bind(window)
+        : (cb: () => void) => window.setTimeout(cb, 0);
+
+    const observer = new ResizeObserverCtor(() => {
       // Wrap in requestAnimationFrame to avoid "ResizeObserver loop limit exceeded"
-      window.requestAnimationFrame(updateDimensions);
+      raf(updateDimensions);
     });
 
     observer.observe(canvasContainerRef.current);
-
-    // Initial measure
-    updateDimensions();
 
     return () => observer.disconnect();
   }, []);

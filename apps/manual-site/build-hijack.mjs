@@ -11,7 +11,9 @@ import path from 'path';
  * It uses UNIFIED_BUILD_INTERNAL to break the recursion loop when pnpm -r build is called.
  */
 
-const isInternal = process.env.UNIFIED_BUILD_INTERNAL === '1';
+const repoRootFromHere = path.resolve(process.cwd(), '../..');
+const initCwd = process.env.INIT_CWD ? path.resolve(process.env.INIT_CWD) : '';
+const isInternal = process.env.UNIFIED_BUILD_INTERNAL === '1' || (initCwd && initCwd === repoRootFromHere);
 
 if (isInternal) {
     console.log('🏗️ [Internal Build] Building manual-site assets...');

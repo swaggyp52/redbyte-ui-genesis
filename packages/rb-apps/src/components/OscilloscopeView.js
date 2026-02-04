@@ -95,13 +95,21 @@ export const OscilloscopeView = ({ engine, tickEngine, circuit, isRunning, width
                 });
             }
         };
-        const observer = new ResizeObserver(() => {
-            // Wrap in requestAnimationFrame to avoid "ResizeObserver loop limit exceeded"
-            window.requestAnimationFrame(updateDimensions);
-        });
-        observer.observe(canvasContainerRef.current);
         // Initial measure
         updateDimensions();
+        const ResizeObserverCtor = globalThis.ResizeObserver;
+        if (!ResizeObserverCtor) {
+            window.addEventListener('resize', updateDimensions);
+            return () => window.removeEventListener('resize', updateDimensions);
+        }
+        const raf = typeof window.requestAnimationFrame === 'function'
+            ? window.requestAnimationFrame.bind(window)
+            : (cb) => window.setTimeout(cb, 0);
+        const observer = new ResizeObserverCtor(() => {
+            // Wrap in requestAnimationFrame to avoid "ResizeObserver loop limit exceeded"
+            raf(updateDimensions);
+        });
+        observer.observe(canvasContainerRef.current);
         return () => observer.disconnect();
     }, []);
     // Auto-populate interesting nodes on initial load

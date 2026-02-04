@@ -39,6 +39,7 @@ import { LABS } from '../labs/labContent';
 // Checking imports... line 88 of LogicPlayground had it. Let's check ECELabApp imports.
 // It seems exportEvidence is not imported. I'll add the import.
 import { exportEvidenceCapsule } from '../utils/evidenceExport'; // Wait, checking available utils.
+import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 // Board selector dropdown
 const BoardSelector = ({ value, onChange }) => (_jsxs("div", { className: "flex items-center gap-2", children: [_jsx("span", { className: "text-[9px] font-bold tracking-wider text-gray-600", children: "BOARD" }), _jsxs("select", { value: value, onChange: (e) => onChange(e.target.value), "aria-label": "Select board", className: "bg-transparent text-[10px] font-mono text-cyan-400 border-none outline-none cursor-pointer", style: { textShadow: '0 0 8px rgba(0, 212, 255, 0.5)' }, children: [_jsx("option", { value: "basys3", children: "Basys3" }), _jsx("option", { value: "spartan3e-starter", children: "Spartan-3E" })] })] }));
 // Vector Runner View component
@@ -124,6 +125,7 @@ const VectorRunnerView = ({ mode, presets }) => {
                                                 'text-gray-600'}`, children: r.status })] })] }, r.vectorId)))) }), results.length > 0 && !isRunning && (_jsxs("div", { className: "mt-6 p-3 rounded bg-gray-950 border border-gray-900 border-l-2 border-l-cyan-500", children: [_jsx("div", { className: "text-[9px] font-bold text-gray-500 mb-1 uppercase", children: "Summary" }), _jsxs("div", { className: "flex gap-4", children: [_jsxs("div", { className: "text-[10px]", children: [_jsx("span", { className: "text-gray-500", children: "TOTAL:" }), " ", _jsx("span", { className: "text-gray-200", children: results.length })] }), _jsxs("div", { className: "text-[10px]", children: [_jsx("span", { className: "text-green-500", children: "PASS:" }), " ", _jsx("span", { className: "text-green-400", children: results.filter(r => r.status === 'PASS').length })] }), _jsxs("div", { className: "text-[10px]", children: [_jsx("span", { className: "text-red-500", children: "FAIL:" }), " ", _jsx("span", { className: "text-red-400", children: results.filter(r => r.status === 'FAIL').length })] })] })] }))] }));
 };
 export const ECELabAppComponent = ({ windowId, labId }) => {
+    useRenderStormDetector('ECELabAppComponent');
     const [mode, setMode] = useState(labId ? 'guided-lab' : 'sim-only');
     const [executionSource, setExecutionSource] = useState('sim');
     const [rightTab, setRightTab] = useState('board');

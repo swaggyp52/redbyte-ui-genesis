@@ -1,13 +1,14 @@
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, statSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join, dirname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..");
 const RUNS_DIR = join(REPO_ROOT, "packages/ops/labs/runs");
 const TMP_DIR = join(REPO_ROOT, "packages/ops/labs/tmp");
+const FIXTURES_DIR = join(REPO_ROOT, "packages/ops/labs/fixtures");
 const CONTRACTS_VERSION = 2;
 const HOST = "127.0.0.1";
 const PORT = 3001;
@@ -26,6 +27,16 @@ function json(res, code, obj) {
   res.end(body);
 }
 
+function text(res, code, bodyText) {
+  const body = Buffer.from(String(bodyText ?? ""), "utf8");
+  res.writeHead(code, {
+    "content-type": "text/plain; charset=utf-8",
+    "content-length": body.length,
+    "access-control-allow-origin": "*",
+  });
+  res.end(body);
+}
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -33,6 +44,13 @@ function readBody(req) {
     req.on("end", () => resolve(Buffer.concat(chunks)));
     req.on("error", reject);
   });
+}
+
+function isSafeFixtureName(name) {
+  if (typeof name !== "string") return false;
+  if (name.length < 1 || name.length > 200) return false;
+  if (name.includes("..") || name.includes("/") || name.includes("\\")) return false;
+  return /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(name);
 }
 
 function findLatestRun() {
@@ -169,6 +187,15 @@ const server = createServer(async (req, res) => {
         // fall back to tmpRunId and null exit code
       }
 
+      // Persist original submission ZIP for reproducibility/diff/regrade
+      try {
+        const runDir = join(RUNS_DIR, runId);
+        if (!existsSync(runDir)) mkdirSync(runDir, { recursive: true });
+        writeFileSync(join(runDir, "submission.rb-lab.zip"), body);
+      } catch (e) {
+        return json(res, 500, { error: `Failed to persist submission archive for run ${runId}` });
+      }
+
       // Load grade from the actual run directory created by agent
       const grade = loadGradeJson(runId);
       if (!grade) {
@@ -207,6 +234,220 @@ const server = createServer(async (req, res) => {
     return json(res, 200, listRuns());
   }
 
+  // POST /api/labs/diff - Compare a submitted run to a golden fixture (deterministic)
+  if (req.method === "POST" && url.pathname === "/api/labs/diff") {
+    try {
+      const contentType = req.headers["content-type"] || "";
+      if (!contentType.includes("application/json")) {
+        return json(res, 400, { error: "Content-Type must be application/json" });
+      }
+
+      const body = await readBody(req);
+      let payload;
+      try {
+        payload = JSON.parse(body.toString("utf8"));
+      } catch {
+        return json(res, 400, { error: "Invalid JSON body" });
+      }
+
+      const runId = payload?.run_id;
+      const goldenFixture = payload?.golden_fixture ?? "lab-traffic-light-minimal";
+      const strictHash = Boolean(payload?.strict_hash);
+
+      if (typeof runId !== "string" || !/^run-\d+$/.test(runId)) {
+        return json(res, 400, { error: "run_id must be a string like run-<timestamp>" });
+      }
+      if (!isSafeFixtureName(goldenFixture)) {
+        return json(res, 400, { error: "golden_fixture must be a safe fixture name (no slashes or ..)" });
+      }
+
+      const runDir = join(RUNS_DIR, runId);
+      if (!existsSync(runDir)) {
+        return json(res, 404, { error: "Run not found" });
+      }
+
+      const submissionZipPath = join(runDir, "submission.rb-lab.zip");
+      if (!existsSync(submissionZipPath)) {
+        return json(res, 409, { error: "submission.rb-lab.zip not found for run; re-ingest required" });
+      }
+
+      const fixturesDirAbs = resolve(FIXTURES_DIR);
+      const fixtureCandidateAbs = resolve(FIXTURES_DIR, goldenFixture);
+      if (!(fixtureCandidateAbs === fixturesDirAbs || fixtureCandidateAbs.startsWith(fixturesDirAbs + sep))) {
+        return json(res, 400, { error: "golden_fixture resolves outside fixtures dir" });
+      }
+
+      const fixtureZipAbs = resolve(FIXTURES_DIR, `${goldenFixture}.rb-lab.zip`);
+      const fixtureIsDir = existsSync(fixtureCandidateAbs) && statSync(fixtureCandidateAbs).isDirectory();
+      const fixtureIsZip = existsSync(fixtureZipAbs) && statSync(fixtureZipAbs).isFile();
+      if (!fixtureIsDir && !fixtureIsZip) {
+        return json(res, 404, { error: `Golden fixture not found: ${goldenFixture}` });
+      }
+
+      const diffScript = join(REPO_ROOT, "packages/rb-fpga-proof-core/scripts/lab-diff.js");
+      if (!existsSync(diffScript)) {
+        return json(res, 500, { error: "Diff engine not found (packages/rb-fpga-proof-core/scripts/lab-diff.js)" });
+      }
+
+      const goldenPath = fixtureIsDir ? fixtureCandidateAbs : fixtureZipAbs;
+      const diffErrPath = join(runDir, "diff-error.txt");
+      const diffOutPath = join(runDir, "diff-stdout.txt");
+      const diffTimeoutMs = 30_000;
+      let diffOutput = "";
+      let diffError = "";
+      const proc = spawn(
+        "node",
+        [
+          diffScript,
+          "--submission",
+          submissionZipPath,
+          "--golden",
+          goldenPath,
+          ...(strictHash ? ["--strict-hash"] : []),
+        ],
+        {
+          cwd: REPO_ROOT,
+          shell: true,
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      );
+
+      proc.stdout.on("data", (chunk) => {
+        const text = chunk.toString();
+        diffOutput += text;
+      });
+
+      proc.stderr.on("data", (chunk) => {
+        diffError += chunk.toString();
+      });
+
+      const exitCode = await new Promise((resolvePromise, reject) => {
+        const timeout = setTimeout(() => {
+          try {
+            proc.kill("SIGKILL");
+          } catch {
+            // ignore
+          }
+          resolvePromise(2);
+        }, diffTimeoutMs);
+
+        proc.on("close", (code) => {
+          clearTimeout(timeout);
+          resolvePromise(code ?? 2);
+        });
+        proc.on("error", reject);
+      });
+
+      const lines = diffOutput.split(/\r?\n/).filter(Boolean);
+      const jsonLine = [...lines].reverse().find((l) => l.startsWith("[DIFF_JSON] "));
+      if (!jsonLine) {
+        try {
+          writeFileSync(diffOutPath, diffOutput || "", "utf8");
+          writeFileSync(
+            diffErrPath,
+            `Diff engine did not emit [DIFF_JSON]\nexit_code=${exitCode}\n\nSTDERR:\n${diffError || ""}\n`,
+            "utf8",
+          );
+        } catch {
+          // ignore secondary persistence failures
+        }
+        return json(res, 500, { error: "Diff engine did not emit [DIFF_JSON]" });
+      }
+
+      let diff;
+      try {
+        const parsed = JSON.parse(jsonLine.slice("[DIFF_JSON] ".length));
+        diff = parsed?.diff;
+      } catch (e) {
+        try {
+          writeFileSync(diffOutPath, diffOutput || "", "utf8");
+          writeFileSync(
+            diffErrPath,
+            `Failed to parse [DIFF_JSON] payload\nexit_code=${exitCode}\n\nSTDERR:\n${diffError || ""}\n`,
+            "utf8",
+          );
+        } catch {
+          // ignore
+        }
+        return json(res, 500, { error: "Failed to parse [DIFF_JSON] payload" });
+      }
+
+      if (!diff || typeof diff !== "object") {
+        try {
+          writeFileSync(diffOutPath, diffOutput || "", "utf8");
+          writeFileSync(
+            diffErrPath,
+            `Diff engine returned invalid diff payload\nexit_code=${exitCode}\n\nSTDERR:\n${diffError || ""}\n`,
+            "utf8",
+          );
+        } catch {
+          // ignore
+        }
+        return json(res, 500, { error: "Diff engine returned invalid diff payload" });
+      }
+
+      const diffRecord = {
+        ok: true,
+        run_id: runId,
+        golden_fixture: goldenFixture,
+        strict_hash: strictHash,
+        summary: {
+          verdict: diff.verdict,
+          exit_code: diff.exitCode,
+          summary: diff.summary,
+        },
+        diff: diff,
+      };
+
+      writeFileSync(join(runDir, "diff.json"), JSON.stringify(diffRecord, null, 2) + "\n");
+      writeFileSync(
+        join(runDir, "diff.md"),
+        [
+          "# Diff Report",
+          "",
+          `Run: ${runId}`,
+          `Fixture: ${goldenFixture}`,
+          `Strict Hash: ${strictHash ? "true" : "false"}`,
+          "",
+          `Verdict: ${diff.verdict}`,
+          `Exit Code: ${diff.exitCode}`,
+          "",
+          diff.summary ? `Summary: ${diff.summary}` : "",
+          "",
+        ].join("\n"),
+      );
+
+      // Persist stdout/stderr for debugging when diff engine exits unexpectedly (or returns INVALID)
+      if (exitCode !== 0 && exitCode !== 1) {
+        try {
+          writeFileSync(diffOutPath, diffOutput || "", "utf8");
+          writeFileSync(diffErrPath, diffError || "", "utf8");
+        } catch {
+          // ignore
+        }
+        return json(res, 500, { error: "Diff engine failed", run_id: runId, golden_fixture: goldenFixture });
+      }
+
+      if (diff.exitCode === 2) {
+        try {
+          writeFileSync(diffOutPath, diffOutput || "", "utf8");
+          writeFileSync(
+            diffErrPath,
+            `Diff verdict INVALID (exit_code=2)\n\nSTDERR:\n${diffError || ""}\n`,
+            "utf8",
+          );
+        } catch {
+          // ignore
+        }
+      }
+
+      return json(res, 200, diffRecord);
+    } catch (err) {
+      console.error("[diff error]", err);
+      return json(res, 500, { error: err.message });
+    }
+  }
+
   // GET /api/labs/runs/:id - Get run detail
   const runMatch = url.pathname.match(/^\/api\/labs\/runs\/(run-\d+)$/);
   if (req.method === "GET" && runMatch) {
@@ -231,7 +472,18 @@ const server = createServer(async (req, res) => {
   const artifactMatch = url.pathname.match(/^\/api\/labs\/runs\/(run-\d+)\/artifacts\/([^\/]+)$/);
   if (req.method === "GET" && artifactMatch) {
     const [, runId, artifactName] = artifactMatch;
-    const allowlist = ["grade.json", "grade.md", "manifest.json", "capsule.json", "events.ndjson", "activity.json"];
+    const allowlist = [
+      "grade.json",
+      "grade.md",
+      "diff.json",
+      "diff.md",
+      "diff-error.txt",
+      "diff-stdout.txt",
+      "manifest.json",
+      "capsule.json",
+      "events.ndjson",
+      "activity.json",
+    ];
     if (!allowlist.includes(artifactName)) {
       return json(res, 400, { error: "Artifact not in allowlist" });
     }
@@ -255,6 +507,8 @@ const server = createServer(async (req, res) => {
         ? "application/json"
         : ext === "md"
         ? "text/markdown"
+        : ext === "txt"
+        ? "text/plain"
         : ext === "ndjson"
         ? "application/x-ndjson"
         : "application/octet-stream";

@@ -196,7 +196,7 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
         let readmeContent = `# ${lab.activeLabId.toUpperCase()} Submission
         
 **Student:** ${capsule.student.name} (${capsule.student.id})
-**Date:** ${new Date().toLocaleString()}
+**Date:** ${capsule.timestamp}
 **Board:** ${capsule.deviceBoardId || 'N/A'}
 
 ## Self Check Status
@@ -221,7 +221,7 @@ ${lab.completedSteps.map(s => `- Step ${s + 1}`).join('\n')}
 
         // 4. Generate and Save
         if (warnings.length > 0) {
-            zip.file('warnings.json', JSON.stringify({ schemaVersion: 1, createdAt: new Date().toISOString(), warnings }, null, 2));
+            zip.file('warnings.json', JSON.stringify({ schemaVersion: 1, createdAt: capsule.timestamp, warnings }, null, 2));
         }
 
         const blob = await zip.generateAsync({ type: 'blob' });

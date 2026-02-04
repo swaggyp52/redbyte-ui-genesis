@@ -12,6 +12,7 @@
 
 import React, { useMemo } from 'react';
 import type { Experiment } from '../../labs/experiments';
+import { useRenderStormDetector } from '../../hooks/useRenderStormDetector';
 
 interface CircuitCanvasProps {
   experiment: Experiment;
@@ -594,6 +595,7 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
   outputs,
   tick,
 }) => {
+  useRenderStormDetector('CircuitCanvas');
   const circuitContent = useMemo(() => {
     switch (experiment.id) {
       case 'loopback':

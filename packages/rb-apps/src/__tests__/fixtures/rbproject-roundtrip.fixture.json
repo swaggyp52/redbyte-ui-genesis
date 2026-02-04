@@ -1,0 +1,51 @@
+{
+  "kind": "rb-project",
+  "version": 1,
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "name": "RBProject Roundtrip Fixture",
+  "description": "Deterministic fixture for roundtrip export/import gate",
+  "circuit": {
+    "nodes": [
+      {
+        "id": "out",
+        "type": "OUTPUT",
+        "position": { "x": 320, "y": 120 }
+      },
+      {
+        "id": "delay",
+        "type": "Delay",
+        "position": { "x": 220, "y": 120 },
+        "config": { "delay": 1 }
+      },
+      {
+        "id": "a",
+        "type": "INPUT",
+        "position": { "x": 120, "y": 120 },
+        "state": { "isOn": 0 }
+      }
+    ],
+    "connections": [
+      {
+        "from": { "nodeId": "delay", "portName": "out" },
+        "to": { "nodeId": "out", "portName": "in" }
+      },
+      {
+        "from": { "nodeId": "a", "portName": "out" },
+        "to": { "nodeId": "delay", "portName": "in" }
+      }
+    ]
+  },
+  "layout": {
+    "dock": { "open": true, "tab": "probes" },
+    "splitRatio": 0.55,
+    "perspectiveId": "analyze"
+  },
+  "meta": {
+    "appVersion": "0.0.0-test",
+    "gitCommit": "deadbeef",
+    "tickRate": 20,
+    "tags": ["fixture", "roundtrip"]
+  }
+}
+

@@ -16,7 +16,9 @@ import JSZip from 'jszip';
 import { generateReadme } from './readmeGenerator';
 // Get build version from environment or fallback
 const BUILD_SHA = import.meta.env.VITE_BUILD_SHA ?? 'dev';
-const BUILD_DATE = import.meta.env.VITE_BUILD_DATE ?? new Date().toISOString();
+const BUILD_DATE = import.meta.env.VITE_BUILD_DATE ?? 'dev';
+const DEFAULT_ISO_DATE = '1970-01-01T00:00:00.000Z';
+const ZIP_ENTRY_DATE = new Date('1980-01-01T00:00:00.000Z');
 // Simple stable serialization (breaks circular dependency with rb-apps)
 function stableSerialize(obj) {
     // Deterministic serialization with sorted keys at all levels
@@ -40,15 +42,22 @@ async function stableHash(obj) {
     return await hashString(json);
 }
 export async function exportEvidenceCapsule(project) {
+    const exportTimestamp = project?.updatedAt ?? project?.createdAt ?? DEFAULT_ISO_DATE;
     const zip = new JSZip();
     const files = new Map();
+    const addTextFile = (path, content) => {
+        zip.file(path, content, { date: ZIP_ENTRY_DATE });
+        files.set(path, content);
+    };
+    const addZipFile = (path, content, options) => {
+        zip.file(path, content, { ...(options ?? {}), date: ZIP_ENTRY_DATE });
+    };
     // -------------------------------------------------------------------------
     // 1. Serialize project.json
     // -------------------------------------------------------------------------
     const projectJson = stableSerialize(project);
     const projectHash = await stableHash(project);
-    files.set('project.json', projectJson);
-    zip.file('project.json', projectJson);
+    addTextFile('project.json', projectJson);
     // -------------------------------------------------------------------------
     // 2. Serialize actions.log.json
     // -------------------------------------------------------------------------
@@ -59,13 +68,12 @@ export async function exportEvidenceCapsule(project) {
     };
     const actionsJson = stableSerialize(actionsLog);
     const actionsHash = await stableHash(actionsLog);
-    files.set('actions.log.json', actionsJson);
-    zip.file('actions.log.json', actionsJson);
+    addTextFile('actions.log.json', actionsJson);
     // -------------------------------------------------------------------------
     // 2.5. Generate README.md (auto-generated human-readable summary)
     // -------------------------------------------------------------------------
-    const readme = generateReadme(project);
-    zip.file('README.md', readme);
+    const readme = generateReadme(project, { exportDate: exportTimestamp });
+    addZipFile('README.md', readme);
     // -------------------------------------------------------------------------
     // 2.7. Add FPGA artifacts if available (verilog/ and bitstream/)
     // -------------------------------------------------------------------------
@@ -73,37 +81,35 @@ export async function exportEvidenceCapsule(project) {
     if (fpgaArtifacts) {
         // Add Verilog source
         if (fpgaArtifacts.verilog) {
-            zip.file('verilog/design.v', fpgaArtifacts.verilog);
-            files.set('verilog/design.v', fpgaArtifacts.verilog);
+            addTextFile('verilog/design.v', fpgaArtifacts.verilog);
         }
         // Add XDC constraints
         if (fpgaArtifacts.constraints) {
-            zip.file('verilog/constraints.xdc', fpgaArtifacts.constraints);
-            files.set('verilog/constraints.xdc', fpgaArtifacts.constraints);
+            addTextFile('verilog/constraints.xdc', fpgaArtifacts.constraints);
         }
         // Add bitstream if available
         if (fpgaArtifacts.bitstream) {
             // Bitstream is binary - handle as Uint8Array or Blob
             if (fpgaArtifacts.bitstream instanceof Uint8Array) {
-                zip.file('bitstream/design.bit', fpgaArtifacts.bitstream);
+                addZipFile('bitstream/design.bit', fpgaArtifacts.bitstream);
             }
             else if (typeof fpgaArtifacts.bitstream === 'string') {
                 // If stored as base64 string
-                zip.file('bitstream/design.bit', fpgaArtifacts.bitstream, { base64: true });
+                addZipFile('bitstream/design.bit', fpgaArtifacts.bitstream, { base64: true });
             }
         }
         // Add provenance metadata
         if (fpgaArtifacts.metadata) {
             const metadataJson = stableSerialize(fpgaArtifacts.metadata);
-            zip.file('fpga/provenance.json', metadataJson);
-            files.set('fpga/provenance.json', metadataJson);
+            addTextFile('fpga/provenance.json', metadataJson);
         }
     }
     // -------------------------------------------------------------------------
     // 3. Build evidence manifest
     // -------------------------------------------------------------------------
     const fileEntries = [];
-    for (const [path, content] of files.entries()) {
+    const sortedFiles = Array.from(files.entries()).sort(([a], [b]) => a.localeCompare(b));
+    for (const [path, content] of sortedFiles) {
         fileEntries.push({
             path,
             hash: await hashString(content),
@@ -114,13 +120,13 @@ export async function exportEvidenceCapsule(project) {
         schemaVersion: '1.0',
         buildVersion: BUILD_SHA,
         buildDate: BUILD_DATE,
-        createdAt: new Date().toISOString(),
+        createdAt: exportTimestamp,
         files: fileEntries,
         rootHash: await hashString(fileEntries.map((f) => f.hash).join('')),
     };
     const manifestJson = stableSerialize(manifest);
     const manifestHash = await stableHash(manifest);
-    zip.file('manifest.json', manifestJson);
+    addZipFile('manifest.json', manifestJson);
     // -------------------------------------------------------------------------
     // 4. Build capsule index (top-level metadata)
     // -------------------------------------------------------------------------
@@ -131,7 +137,7 @@ export async function exportEvidenceCapsule(project) {
         manifestHash,
         buildSHA: BUILD_SHA,
         buildDate: BUILD_DATE,
-        createdAt: new Date().toISOString(),
+        createdAt: exportTimestamp,
         files: {
             project: 'project.json',
             actions: 'actions.log.json',
@@ -139,7 +145,7 @@ export async function exportEvidenceCapsule(project) {
         },
     };
     const capsuleJson = stableSerialize(capsule);
-    zip.file('capsule.json', capsuleJson);
+    addZipFile('capsule.json', capsuleJson);
     // -------------------------------------------------------------------------
     // 5. Generate ZIP blob
     // -------------------------------------------------------------------------

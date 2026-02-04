@@ -1,4 +1,4 @@
-# Logic Playground UX Smoke Test Checklist
+﻿# Logic Playground UX Smoke Test Checklist
 
 **Purpose**: Quick manual verification that core "buildability" workflows function correctly.
 **When to Run**: After UI changes, before deployment, after dependency updates.
@@ -14,7 +14,35 @@
 
 ---
 
-## 1. Component Palette → Add Node
+## P1C Render Storm Baseline (Dev-only)
+
+**Goal**: Make render storms measurable before applying selector fixes.
+
+### Enable top-offenders reporting
+Run in the browser console (dev builds only):
+```js
+localStorage.setItem('rb:renderStormReport', '1');
+location.reload();
+```
+Disable:
+```js
+localStorage.removeItem('rb:renderStormReport');
+location.reload();
+```
+
+### Baseline scenario (2 minutes)
+1. [ ] Boot to desktop.
+2. [ ] Open **Logic Playground**.
+3. [ ] Open **Lab Assignment (ECE Lab)**.
+4. [ ] (If available) Open **Virtual Lab (3D)**.
+5. [ ] Run simulation for ~10s in one app; watch the console for `[render-storm:top]` reports and `[render-storm]` warnings.
+6. [ ] Close/minimize the app windows; confirm offender counts drop to near-zero when idle.
+
+**Expected**: No `Maximum update depth exceeded`. Offenders are stable and actionable (top-N list points to specific labels).
+
+---
+
+## 1. Component Palette â†’ Add Node
 
 **Goal**: Verify users can add components to canvas
 
@@ -81,7 +109,7 @@
 **Goal**: Verify simulation runs and steps
 
 ### Steps:
-1. [ ] Add Switch → AND → LED circuit
+1. [ ] Add Switch â†’ AND â†’ LED circuit
 2. [ ] Click **Step** button
 3. [ ] Verify tick count increases
 4. [ ] Click **Run** button
@@ -98,7 +126,7 @@
 **Goal**: Verify input toggles propagate
 
 ### Steps:
-1. [ ] Add Switch → LED circuit
+1. [ ] Add Switch â†’ LED circuit
 2. [ ] Click switch to toggle ON
 3. [ ] Verify LED lights up
 4. [ ] Click switch to toggle OFF
@@ -109,7 +137,7 @@
 
 ---
 
-## 7. Multi-View Sync (Circuit ↔ Schematic)
+## 7. Multi-View Sync (Circuit â†” Schematic)
 
 **Goal**: Verify single source of truth across views
 

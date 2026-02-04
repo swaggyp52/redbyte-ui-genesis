@@ -11,6 +11,7 @@ interface StatusBarProps {
   isRunning: boolean;
   tickRate: number;
   isDirty: boolean;
+  saveStatusText?: string;
   canUndo: boolean;
   canRedo: boolean;
   viewMode: string;
@@ -24,6 +25,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   isRunning,
   tickRate,
   isDirty,
+  saveStatusText,
   canUndo,
   canRedo,
   viewMode,
@@ -58,6 +60,13 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           <div className="flex items-center gap-1.5 text-orange-400 animate-pulse">
             <span>●</span>
             <span>Unsaved</span>
+          </div>
+        )}
+
+        {saveStatusText && (
+          <div className="flex items-center gap-1.5 text-gray-500">
+            <span>💾</span>
+            <span>{saveStatusText}</span>
           </div>
         )}
       </div>

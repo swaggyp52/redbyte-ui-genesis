@@ -7020,6 +7020,282 @@ All TypeScript compilation errors systematically resolved across monorepo:
 
 ---
 
+## Change Log  2026-02-04 (P1A-2 Ops Diff Endpoint + Submission Archiving)
+
+**Submission Archive Persistence**
+- `POST /api/labs/ingest` now writes `submission.rb-lab.zip` into `packages/ops/labs/runs/<run_id>/` for reproducible diff/regrade.
+
+**Diff Endpoint**
+- Implemented `POST /api/labs/diff` in `api/server.mjs` (JSON body: `run_id`, `golden_fixture` (default: `lab-traffic-light-minimal`), optional `strict_hash`) to produce deterministic `diff.json` + `diff.md`.
+- Extended artifact allowlist to include `diff.json` and `diff.md` for retrieval via `/api/labs/runs/:run_id/artifacts/:name`.
+
+**Diff Engine (proof-core)**
+- Added `packages/rb-fpga-proof-core/scripts/lab-diff.js` to load bundles and compute diff via `diffCapsules()` (canonical proof-core semantics).
+
+**Build Gate Reliability**
+- Updated `apps/manual-site/build-hijack.mjs` to detect workspace recursive builds via `INIT_CWD` and avoid triggering nested root unified builds.
+
+**Validation**
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ops-diff-test.ps1` passes (ingest fixture → diff → artifact fetch).
+- `pnpm -r build` passes.
+
+**Files Updated**
+- `api/server.mjs`
+- `packages/rb-fpga-proof-core/scripts/lab-diff.js`
+- `scripts/ops-diff-test.ps1`
+- `apps/manual-site/build-hijack.mjs`
+
+**Attribution:** Connor Angiel
+
+---
+
+## Change Log  2026-02-04 (P1A-3 Ops Diff Gate Hardening)
+
+**Server Robustness (`/api/labs/diff`)**
+- Captures diff engine stdout/stderr, enforces a timeout, and writes `diff-error.txt` / `diff-stdout.txt` on failures.
+- Added `diff-error.txt` and `diff-stdout.txt` to the artifact allowlist for instructor debugging.
+
+**Deterministic Regression Gate**
+- Hardened `scripts/ops-diff-test.ps1` into a repeatable gate:
+  - Verifies `submission.rb-lab.zip` is persisted post-ingest.
+  - Hashes a normalized subset of `diff.json` (excluding `run_id`) and compares to `scripts/ops-diff-gate.golden.sha256`.
+  - Supports `-UpdateGolden` for intentional contract updates.
+- Added `pnpm ops:diff-gate` script alias.
+
+**Documentation**
+- Updated `OPS_GREEN_LOCK.md` with a Diff Gate section and usage.
+
+**Validation**
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ops-diff-test.ps1 -UpdateGolden`
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ops-diff-test.ps1` (hash stable across runs)
+
+**Files Updated**
+- `api/server.mjs`
+- `scripts/ops-diff-test.ps1`
+- `scripts/ops-diff-gate.golden.sha256`
+- `package.json`
+- `OPS_GREEN_LOCK.md`
+
+**Attribution:** Connor Angiel
+
+---
+
+## Change Log  2026-02-04 (P1B-1 Project Roundtrip Gate Seed)
+
+**Canonical Project Format Roundtrip (RBProject)**
+- Added deterministic export→import idempotence test for `rb-project.json` (canonical project format via `encodeRBProject` / `decodeRBProject`).
+- Added a minimal behavior check that runs a deterministic AND-circuit through `CircuitEngine` pre/post roundtrip to ensure behavior matches, not just JSON shape.
+
+**Validation**
+- `pnpm exec vitest run packages/rb-apps/src/__tests__/rbproject-roundtrip.test.ts` passes.
+- `pnpm -r build` passes.
+
+**Files Updated**
+- `packages/rb-apps/src/__tests__/rbproject-roundtrip.test.ts`
+
+**Attribution:** Connor Angiel
+
+---
+
+## Change Log  2026-02-04 (P1B-2 RBProject Roundtrip Gate Hardening)
+
+**Fixture Discipline**
+- Added a stable RBProject fixture at `packages/rb-apps/src/__tests__/fixtures/rbproject-roundtrip.fixture.json` (includes a minimal sequential Delay-based circuit).
+
+**Deterministic Hash Gate**
+- Added `rbproj:roundtrip-gate` which enforces:
+  - encode→decode→encode idempotence for `encodeRBProject` / `decodeRBProject`
+  - sequential behavior equivalence trace across roundtrip
+  - SHA256 hash of a normalized project payload (excludes `updatedAt`, `meta.appVersion`, `meta.gitCommit`) against `scripts/rbproj-roundtrip-gate.golden.sha256`
+- Added `rbproj:roundtrip-gate:update` to intentionally regenerate the golden hash.
+
+**Documentation**
+- Documented the RBProject Roundtrip Gate in `OPS_GREEN_LOCK.md`.
+
+**Validation**
+- `pnpm -s rbproj:roundtrip-gate:update`
+- `pnpm -s rbproj:roundtrip-gate`
+- `pnpm -r build`
+
+**Files Updated**
+- `packages/rb-apps/src/__tests__/rbproject-roundtrip-gate.test.ts`
+- `packages/rb-apps/src/__tests__/fixtures/rbproject-roundtrip.fixture.json`
+- `scripts/rbproj-roundtrip-gate.golden.sha256`
+- `package.json`
+- `OPS_GREEN_LOCK.md`
+
+**Attribution:** Connor Angiel
+
+---
+
+## Change Log  2026-02-04 (P1B-3 RBProject Autosave + Crash Restore)
+
+**RBProject Autosave (Logic Playground)**
+- Added a `useRbprojAutosave` hook that persists the canonical RBProject JSON (`encodeRBProject`) to localStorage with a content hash that ignores `updatedAt` churn.
+- Autosaves every ~30s while dirty and also on a debounced edit timer (default ~1.5s after last change).
+- On launch, if an autosave exists and differs from the current snapshot, prompts the user to Restore or Discard.
+- Added a small save status indicator in the Logic Playground status bar (e.g. “Autosaved 12:34:56”).
+
+**Determinism + Safety**
+- Content hash normalization excludes only runtime-only metadata (`updatedAt`, `meta.appVersion`, `meta.gitCommit`) so real project changes still invalidate the autosave hash.
+- No UI purity violations (frontend uses Web APIs only).
+
+**Tests**
+- Added unit tests for RBProject autosave content hashing to ensure:
+  - `updatedAt` and `meta.appVersion`/`meta.gitCommit` do not affect the hash
+  - meaningful changes (e.g. `meta.tickRate`, circuit edits) do affect the hash
+
+**Manual QA**
+1. Open Logic Playground.
+2. Make an edit (add a gate or wire).
+3. Wait for the status bar to show an “Autosaved …” message.
+4. Hard refresh the page.
+5. Confirm the “Restore autosave?” prompt appears; click Restore.
+6. Verify the circuit and project metadata restore correctly.
+
+**Validation**
+- `pnpm -s rbproj:roundtrip-gate`
+- `pnpm -s exec vitest run packages/rb-apps/src/utils/__tests__/rbprojAutosave.test.ts`
+- `pnpm -r build`
+
+**Files Updated**
+- `packages/rb-apps/src/utils/rbprojAutosave.ts`
+- `packages/rb-apps/src/utils/rbprojAutosave.js`
+- `packages/rb-apps/src/utils/__tests__/rbprojAutosave.test.ts`
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.js`
+- `packages/rb-apps/src/components/StatusBar.tsx`
+- `packages/rb-apps/src/components/StatusBar.js`
+- `docs/V1_STABILIZATION_ROADMAP.md`
+
+**Attribution:** Connor Angiel
+
+---
+
+## Change Log  2026-02-04 (Test Stabilization: Launcher + Oscilloscope + Switch Toggle)
+
+**Launcher A11y + Test Contract**
+- Restored `role="listbox"` + `role="option"` semantics in `Launcher` so keyboard-driven tests can reliably target the list surface.
+- Aligned launcher UI strings to the test contract (`Help`, `Search: <query>`, `No matches`).
+
+**OscilloscopeView ResizeObserver Guard**
+- Prevented `ReferenceError: ResizeObserver is not defined` in jsdom by adding a safe fallback when `ResizeObserver` is unavailable (falls back to window resize events).
+
+**Switch Toggle TestId Uniqueness**
+- Removed duplicate `data-testid` on the switch toggle overlay so `getByTestId('switch-toggle-...')` resolves uniquely.
+
+**Validation**
+- `pnpm -s exec vitest run packages/rb-apps/src/__tests__/launcher.test.tsx`
+- `pnpm -s exec vitest run packages/rb-apps/src/__tests__/oscilloscope-controls.test.tsx packages/rb-apps/src/__tests__/oscilloscope-hardening.test.tsx`
+- `pnpm -s exec vitest run packages/rb-logic-view/src/__tests__/replay-lock.test.tsx`
+
+**Files Updated**
+- `packages/rb-apps/src/Launcher.tsx`
+- `packages/rb-apps/src/Launcher.js`
+- `packages/rb-apps/src/components/OscilloscopeView.tsx`
+- `packages/rb-apps/src/components/OscilloscopeView.js`
+- `packages/rb-logic-view/src/LogicCanvas.tsx`
+- `packages/rb-logic-view/src/LogicCanvas.js`
+
+**Attribution:** Connor Angiel
+
+---
+
+## Change Log  2026-02-04 (P1B-4 Evidence Determinism Gate)
+
+**RBX Export Determinism (rb-lab-engine)**
+- Made `.rbx.zip` evidence capsule exports deterministic by removing wall-clock and locale dependencies:
+  - `manifest.json.createdAt` and `capsule.json.createdAt` now derive from the project timestamp (`updatedAt` fallback to `createdAt`) instead of `new Date()`.
+  - `buildDate` fallback is stable (`dev`) when `VITE_BUILD_DATE` is not set.
+  - ZIP entry timestamps use a fixed DOS-safe date (1980-01-01) to avoid binary drift between exports.
+  - `manifest.files` ordering is stable (sorted by path).
+
+**README Generation Determinism**
+- Replaced locale-dependent date formatting (`toLocaleString`) with ISO 8601 output.
+- README “Export date” is derived from the export timestamp instead of wall-clock time.
+
+**Determinism Gate (CI-Grade)**
+- Added `pnpm rbx:evidence-determinism-gate` (fixture + golden SHA256) to lock the RBX export contract.
+- Added `pnpm rbx:evidence-determinism-gate:update` workflow for intentional contract updates.
+- Documented the gate in `OPS_GREEN_LOCK.md`.
+
+**Student Evidence README (rb-lab.zip)**
+- Removed locale-dependent timestamp rendering in the `.rb-lab.zip` README (uses the capsule ISO timestamp).
+- `warnings.json.createdAt` now uses the capsule timestamp for consistency.
+
+**Validation**
+- `pnpm -s rbx:evidence-determinism-gate:update`
+- `pnpm -s rbx:evidence-determinism-gate` (run twice; stable hash)
+- `pnpm -s exec vitest run packages/rb-lab-engine/src/services/__tests__/integrity-verification.test.ts`
+- `pnpm -s exec vitest run packages/rb-lab-engine/src/services/__tests__/readme-generation-enhanced.test.ts`
+- `pnpm -s ops:student-export-fixture-test`
+- `pnpm -r build`
+
+**Files Updated**
+- `packages/rb-lab-engine/src/services/exportService.ts`
+- `packages/rb-lab-engine/src/services/exportService.js`
+- `packages/rb-lab-engine/src/services/readmeGenerator.ts`
+- `packages/rb-lab-engine/src/services/readmeGenerator.js`
+- `packages/rb-lab-engine/src/services/__tests__/rbx-evidence-determinism-gate.test.ts`
+- `packages/rb-lab-engine/src/services/__tests__/fixtures/rbx-evidence-determinism.fixture.project.json`
+- `scripts/rbx-evidence-determinism-gate.golden.sha256`
+- `packages/rb-apps/src/utils/evidenceExport.ts`
+- `packages/rb-apps/src/utils/evidenceExport.js`
+- `packages/rb-lab-engine/src/services/__tests__/integrity-verification.test.ts`
+- `packages/rb-lab-engine/src/services/__tests__/integrity-verification.test.js`
+- `package.json`
+- `OPS_GREEN_LOCK.md`
+- `docs/V1_STABILIZATION_ROADMAP.md`
+
+**Attribution:** Connor Angiel
+
+---
+
+## Change Log  2026-02-04 (P1C-1 Render Storm Instrumentation + Baseline)
+
+**Render Storm Instrumentation (Dev-only)**
+- Extended `useRenderStormDetector` to optionally emit a once-per-second top-offenders report (`[render-storm:top]`) when enabled via `localStorage` (`rb:renderStormReport=1`).
+- Reporter is dev-only and does not run unless explicitly enabled.
+
+**Wiring (High-signal Surfaces)**
+- Added render storm hooks to the key lab surfaces to capture baseline behavior:
+  - Logic Playground (`LogicPlaygroundComponent`, `LogicPlaygroundInner`)
+  - ECE Lab (`ECELabAppComponent`)
+  - Virtual Lab 3D (`VirtualLabAppComponent`)
+  - Hardware Board visualization (`BoardPanel`)
+  - 2D circuit visualization (`CircuitCanvas`)
+  - Instructor run detail (`InstructorRunDetailAppContent`)
+
+**Baseline Procedure**
+- Added a short, repeatable dev-only baseline procedure to `docs/playground-ux-smoke-test.md` (enable reporting + 2-minute scenario).
+
+**Validation**
+- `pnpm -s rbx:evidence-determinism-gate`
+- `pnpm -s rbproj:roundtrip-gate`
+- `pnpm -s ops:diff-gate`
+- `pnpm -r build`
+
+**Files Updated**
+- `packages/rb-apps/src/hooks/useRenderStormDetector.ts`
+- `packages/rb-apps/src/hooks/useRenderStormDetector.js`
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+- `packages/rb-apps/src/apps/LogicPlaygroundApp.js`
+- `packages/rb-apps/src/apps/ECELabApp.tsx`
+- `packages/rb-apps/src/apps/ECELabApp.js`
+- `packages/rb-apps/src/apps/VirtualLabApp.tsx`
+- `packages/rb-apps/src/apps/VirtualLabApp.js`
+- `packages/rb-apps/src/components/BoardPanel.tsx`
+- `packages/rb-apps/src/components/BoardPanel.js`
+- `packages/rb-apps/src/components/boards/CircuitCanvas.tsx`
+- `packages/rb-apps/src/components/boards/CircuitCanvas.js`
+- `packages/rb-apps/src/apps/InstructorRunDetailApp.tsx`
+- `packages/rb-apps/src/apps/InstructorRunDetailApp.js`
+- `docs/playground-ux-smoke-test.md`
+
+**Attribution:** Connor Angiel
+
+---
+
 ## Change Log  2026-02-03 (ECE Lab Unified Project Loop Guard)
 
 **Issue:** ECE Lab synced its circuit into the unified project on every render, which could loop when `updatedAt` changed without circuit changes.

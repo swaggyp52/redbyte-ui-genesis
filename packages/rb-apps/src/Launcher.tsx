@@ -31,7 +31,7 @@ export const Launcher: React.FC<LauncherProps> = ({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [query, setQuery] = useState('');
   const [showHelp, setShowHelp] = useState(false);
-  const selectedRef = useRef<HTMLDivElement | null>(null);
+  const selectedRef = useRef<HTMLButtonElement | null>(null);
 
   const hasQuery = Boolean(query);
 
@@ -198,6 +198,8 @@ export const Launcher: React.FC<LauncherProps> = ({
           tabIndex={isSelected ? 0 : -1}
           onClick={() => handleLaunch(app.id)}
           className="flex-1 text-left bg-transparent border-0 outline-none focus:outline-none cursor-pointer"
+          role="option"
+          aria-selected={isSelected}
           aria-current={isSelected ? 'true' : undefined}
         >
           <span className="text-sm font-medium" style={{ color: 'var(--rb-text)' }}>
@@ -243,12 +245,18 @@ export const Launcher: React.FC<LauncherProps> = ({
     >
       <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--rb-text)' }}>App Launcher</h2>
 
+      <div
+        role="listbox"
+        aria-label="Apps"
+        tabIndex={0}
+        className="focus:outline-none"
+      >
       {showHelp && (
         <div
           className="mb-4 p-3 rounded-md"
           style={{ background: 'var(--rb-surface-2)', border: '1px solid var(--rb-border)' }}
         >
-          <h3 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--rb-text-3)' }}>Keyboard Shortcuts</h3>
+          <h3 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--rb-text-3)' }}>Help</h3>
           <ul className="text-xs space-y-1" style={{ color: 'var(--rb-text-2)' }}>
             <li><kbd className="px-1 rounded" style={{ background: 'var(--rb-surface-3)' }}>↑</kbd> <kbd className="px-1 rounded" style={{ background: 'var(--rb-surface-3)' }}>↓</kbd> Move selection</li>
             <li><kbd className="px-1 rounded" style={{ background: 'var(--rb-surface-3)' }}>Enter</kbd> Launch app</li>
@@ -263,8 +271,7 @@ export const Launcher: React.FC<LauncherProps> = ({
           className="mb-4 px-2 py-1.5 rounded text-sm"
           style={{ background: 'var(--rb-surface-2)', border: '1px solid var(--rb-accent)', color: 'var(--rb-text)' }}
         >
-          <span className="mr-2" style={{ color: 'var(--rb-text-3)' }}>Search:</span>
-          {query}
+          <span style={{ color: 'var(--rb-text-3)' }}>{`Search: ${query}`}</span>
         </div>
       )}
 
@@ -285,7 +292,7 @@ export const Launcher: React.FC<LauncherProps> = ({
       <div>
         <h3 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--rb-text-3)' }}>All Apps</h3>
         {hasQuery && pinnedList.length === 0 && filteredAllApps.length === 0 && (
-          <p className="text-sm italic px-2" style={{ color: 'var(--rb-text-3)' }}>No matches found</p>
+          <p className="text-sm italic px-2" style={{ color: 'var(--rb-text-3)' }}>No matches</p>
         )}
         {!hasQuery && apps.length === 0 && pinnedList.length === 0 && recentList.length === 0 && (
           <p className="text-sm italic px-2" style={{ color: 'var(--rb-text-3)' }}>No apps registered</p>
@@ -317,6 +324,7 @@ export const Launcher: React.FC<LauncherProps> = ({
             </button>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

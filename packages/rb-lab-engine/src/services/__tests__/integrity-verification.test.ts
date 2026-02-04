@@ -1,4 +1,4 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+﻿// Copyright Â© 2025 Connor Angiel â€” RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
@@ -18,12 +18,12 @@ import JSZip from 'jszip';
  */
 function createTestProject(): LabProjectV1 {
   return {
-    projectId: 'integrity-test-' + Math.random().toString(36).slice(2),
+    projectId: 'integrity-test-project',
     name: 'Integrity Test Project',
     description: 'Test project for SHA-256 verification',
     labId: 'lab-001',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: '2026-02-02T10:00:00.000Z',
+    updatedAt: '2026-02-02T10:00:00.000Z',
     circuit: {
       schemaVersion: '1.0',
       nodes: [
@@ -36,7 +36,7 @@ function createTestProject(): LabProjectV1 {
     },
     evidence: {
       snapshots: [],
-      actions: [{ timestamp: new Date().toISOString(), type: 'create', description: 'Created' }],
+      actions: [{ timestamp: '2026-02-02T10:00:00.000Z', type: 'create', description: 'Created' }],
     },
     simulation: {
       currentTick: 0,
@@ -88,7 +88,7 @@ describe('SHA-256 Integrity Verification', () => {
       const { integrity } = await importEvidenceCapsule(blob);
 
       expect(integrity.status).toBe('verified');
-      expect(integrity.message).toContain('✅');
+      expect(integrity.message).toContain('Integrity verified');
     });
 
     it('should include descriptive integrity messages', async () => {
@@ -153,16 +153,9 @@ describe('SHA-256 Integrity Verification', () => {
 
     it('should record creation timestamp', async () => {
       const project = createTestProject();
-      const before = new Date();
-
       const blob = await exportEvidenceCapsule(project);
-
-      const after = new Date();
       const { capsule } = await importEvidenceCapsule(blob);
-
-      const createdAt = new Date(capsule.createdAt);
-      expect(createdAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
-      expect(createdAt.getTime()).toBeLessThanOrEqual(after.getTime());
+      expect(capsule.createdAt).toBe(project.updatedAt);
     });
 
     it('should include file entries in manifest', async () => {
@@ -265,3 +258,4 @@ describe('SHA-256 Integrity Verification', () => {
     });
   });
 });
+

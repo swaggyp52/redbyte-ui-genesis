@@ -9,6 +9,7 @@ import { useVirtualLabSignalSource } from '../instruments/virtualLabSignalSource
 import { GuidedLabSidebar } from '../components/GuidedLabSidebar';
 import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 // Lazy load panels to break circular dependency / TDZ issues during initialization
 const HardwareRackPanel = React.lazy(() => import('../panels/HardwareRackPanel').then(m => ({ default: m.HardwareRackPanel })));
 const HardwareStatusOverlay = React.lazy(() => import('../panels/HardwareStatusOverlay').then(m => ({ default: m.HardwareStatusOverlay })));
@@ -25,6 +26,7 @@ const DEFAULT_SKETCH = `void setup() {
     delay(1000);
 }`;
 const VirtualLabAppComponent = ({ resourceId, resourceType }) => {
+    useRenderStormDetector('VirtualLabAppComponent');
     const addNode = useLabStore((state) => state.addNode);
     const reset = useLabStore((state) => state.reset);
     const toggleSimulation = useLabStore((state) => state.toggleSimulation);

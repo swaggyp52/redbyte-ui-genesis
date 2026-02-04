@@ -80,6 +80,7 @@ import { EnhancedPalette } from '../components/EnhancedPalette';
 import { HelpDock } from '../components/HelpDock';
 import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 import { useAutosaveCircuit, useRestoreCircuit, loadSavedCircuit, clearSavedCircuit } from '../utils/ceAutosave';
+import { getRbprojAutosaveKey, useRbprojAutosave } from '../utils/rbprojAutosave';
 import { saveSnapshot, loadSnapshot, initSnapshotSystem, clearAllSnapshots, wasLastShutdownClean } from '../utils/snapshotSystem';
 import { isCEMode, getCEConfig, isHeavyCircuit } from '../utils/ceMode';
 import { ResetWorkspaceModal, ExampleGalleryModal, ExportBundleModal } from '../components/CEUIComponents';
@@ -88,7 +89,6 @@ import { RecoveryBanner } from '../components/RecoveryBanner';
 import { useClassroomModeStore } from '../stores/classroomModeStore';
 import { validateCircuitData } from '../utils/circuitValidation';
 import { StartHerePanel } from '../components/StartHerePanel';
-import { exportEvidence } from '../utils/evidenceExport';
 import { useEvidenceViewerStore } from '../stores/evidenceViewerStore';
 
 
@@ -160,6 +160,7 @@ interface LogicPlaygroundProps {
 
 // Outer gate component: handles feature gates with stable hook set
 export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = (props) => {
+  useRenderStormDetector('LogicPlaygroundComponent');
   // Gate-only hooks (stable and minimal - ALWAYS called)
   const evidenceBundle = useEvidenceViewerStore((s) => s.evidenceBundle);
 
@@ -219,14 +220,18 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   determinismRecorder,
   debugFlags,
 }) => {
+  useRenderStormDetector('LogicPlaygroundInner');
   const disableToolStrip = debugFlags.has('disable-toolstrip');
   const disableRightDock = debugFlags.has('disable-rightdock');
-  const disableSplitView = debugFlags.has('disable-splitview');
 
   // E2E flags via querystring (test-only)
   const e2eParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const e2eDisableQuad = e2eParams.get('disableQuad') === '1';
   const e2eCpuLite = e2eParams.get('cpuLite') === '1';
+  const e2eDisableSplitView =
+    e2eParams.get('disableSplitView') === '1' || e2eParams.get('disable3d') === '1';
+
+  const disableSplitView = debugFlags.has('disable-splitview') || e2eDisableSplitView;
 
   const tickRate = useSettingsStore((state) => state.tickRate);
   type GuardrailConfig = {
@@ -704,6 +709,30 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const [projectCreatedAt, setProjectCreatedAt] = useState(() => new Date().toISOString());
   const [currentFileId, setCurrentFileId] = useState<string | null>(initialFileId ?? null);
   const [isDirty, setIsDirty] = useState(false);
+
+  const rbprojAutosaveKey = useMemo(
+    () => getRbprojAutosaveKey('logic-playground', props.windowId),
+    [props.windowId],
+  );
+  const applyRbprojProject = useCallback(
+    (project: RBProject) => {
+      const applier = applyProjectRef.current;
+      if (applier) applier(project);
+    },
+    [],
+  );
+  const {
+    saveStatusText: rbprojSaveStatusText,
+    restorePrompt: rbprojRestorePrompt,
+    restore: restoreRbprojAutosave,
+    discard: discardRbprojAutosave,
+  } = useRbprojAutosave({
+    autosaveKey: rbprojAutosaveKey,
+    isDirty,
+    getProject: getProjectSnapshot,
+    applyProject: applyRbprojProject,
+    changeDeps: [circuit, projectName, projectDescription],
+  });
   const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
   const [draggingNodeType, setDraggingNodeType] = useState<string | null>(null);
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
@@ -3074,8 +3103,10 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   }, []);
 
   const handleExportEvidence = useCallback(() => {
-    try {
-      saveSnapshot(circuit, getLayoutSnapshot(), { safeMode }, 'autosave', true, getProjectSnapshot() ?? undefined);
+    saveSnapshot(circuit, getLayoutSnapshot(), { safeMode }, 'autosave', true, getProjectSnapshot() ?? undefined);
+
+    void (async () => {
+      const { exportEvidence } = await import('../utils/evidenceExport');
       exportEvidence({
         circuit,
         selectedExampleId,
@@ -3084,11 +3115,11 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
         traceRecorder: tickEngine?.getTraceRecorder?.() ?? null,
       });
       addToast('Lab evidence exported', 'success');
-    } catch (error) {
+    })().catch((error) => {
       console.error('[LogicPlayground] Evidence export failed:', error);
       addToast('Failed to export evidence', 'error');
-    }
-  }, [circuit, selectedExampleId, probes, tickCount, tickEngine, addToast, getLayoutSnapshot, safeMode]);
+    });
+  }, [circuit, selectedExampleId, probes, tickCount, tickEngine, addToast, getLayoutSnapshot, safeMode, getProjectSnapshot]);
 
   const handleProjectFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -3550,6 +3581,21 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
             }}
             onCancel={closeGuardrail}
             onExport={guardrail.onExport}
+          />
+        )}
+        {rbprojRestorePrompt.isOpen && (
+          <GuardrailConfirmModal
+            isOpen={rbprojRestorePrompt.isOpen}
+            title="Restore autosave?"
+            message={`An autosave is available from ${new Date(
+              rbprojRestorePrompt.savedAtMs ?? Date.now(),
+            ).toLocaleString()}. Restore it now?`}
+            lossItems={['Discarding autosave will permanently delete the autosaved copy.']}
+            confirmLabel="Restore"
+            cancelLabel="Discard"
+            confirmTone="warning"
+            onConfirm={restoreRbprojAutosave}
+            onCancel={discardRbprojAutosave}
           />
         )}
         {showRecoveryBanner && (
@@ -4290,6 +4336,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
           isRunning={isRunning}
           tickRate={currentHz}
           isDirty={isDirty}
+          saveStatusText={rbprojSaveStatusText}
           canUndo={canUndo}
           canRedo={canRedo}
           viewMode={viewLabel}

@@ -47,6 +47,7 @@ import { exportEvidence } from '../utils/evidenceExport';
 // Checking imports... line 88 of LogicPlayground had it. Let's check ECELabApp imports.
 // It seems exportEvidence is not imported. I'll add the import.
 import { exportEvidenceCapsule } from '../utils/evidenceExport'; // Wait, checking available utils.
+import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 
 interface ECELabAppProps {
   windowId?: string;
@@ -249,6 +250,7 @@ const VectorRunnerView: React.FC<{
 };
 
 export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }) => {
+  useRenderStormDetector('ECELabAppComponent');
   const [mode, setMode] = useState<ECELabMode>(labId ? 'guided-lab' : 'sim-only');
   const [executionSource, setExecutionSource] = useState<ExecutionSource>('sim');
   const [rightTab, setRightTab] = useState<RightPanelTab>('board');

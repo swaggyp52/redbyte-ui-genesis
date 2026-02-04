@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
 import { CircuitEngine, TickEngine, serialize, deserialize, decodeCircuitAsync, encodeCircuitCompressed, } from '@redbyte/rb-logic-core';
 import { useSettingsStore, useUiTickStore, enableWatchdog, installFatalCapture, pushMount } from '@redbyte/rb-utils';
-import { toast, OverlayRoot, OverlayPanel } from '@redbyte/rb-primitives';
+import { toast, OverlayRoot, OverlayPanel, GuardrailConfirmModal } from '@redbyte/rb-primitives';
 import { useWindowStore } from '@redbyte/rb-windowing';
 import { loadExample, listExamples, listExamplesByLayer, getLayerDescription } from '../examples';
 import { useFileSystemStore } from '../stores/fileSystemStore';
@@ -21,6 +21,7 @@ import { ChipLibraryModal } from '../components/ChipLibraryModal';
 import { TraceViewer } from '../components/TraceViewer';
 import { SplitViewLayout } from '../components/SplitViewLayout';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 import { registerAllChips, registerChip, unregisterChip } from '../utils/chipRegistry';
 import { useViewStateStore } from '../stores/viewStateStore';
 import { useProbeStore } from '../stores/probeStore';
@@ -54,13 +55,13 @@ import { RightDock } from '../components/RightDock';
 import { EnhancedPalette } from '../components/EnhancedPalette';
 import { HelpDock } from '../components/HelpDock';
 import { useAutosaveCircuit, loadSavedCircuit, clearSavedCircuit } from '../utils/ceAutosave';
+import { getRbprojAutosaveKey, useRbprojAutosave } from '../utils/rbprojAutosave';
 import { isCEMode, getCEConfig, isHeavyCircuit } from '../utils/ceMode';
 import { ResetWorkspaceModal, ExampleGalleryModal, ExportBundleModal } from '../components/CEUIComponents';
 import { ClassroomModeBanner } from '../components/ClassroomModeBanner';
 import { useClassroomModeStore } from '../stores/classroomModeStore';
 import { validateCircuitData } from '../utils/circuitValidation';
 import { StartHerePanel } from '../components/StartHerePanel';
-import { exportEvidence } from '../utils/evidenceExport';
 import { useEvidenceViewerStore } from '../stores/evidenceViewerStore';
 // Placeholder for evidence viewer (feature in development)
 // Place appVersion at module scope to avoid ReferenceError in hooks
@@ -108,6 +109,7 @@ const EXAMPLE_NOTES = {
 };
 // Outer gate component: handles feature gates with stable hook set
 export const LogicPlaygroundComponent = (props) => {
+    useRenderStormDetector('LogicPlaygroundComponent');
     // Gate-only hooks (stable and minimal - ALWAYS called)
     const evidenceBundle = useEvidenceViewerStore((s) => s.evidenceBundle);
     // Debug flags (useMemo is stable)
@@ -142,13 +144,15 @@ export const LogicPlaygroundComponent = (props) => {
     return _jsx(LogicPlaygroundInner, { ...props, debugFlags: debugFlags });
 };
 const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resourceId, resourceType, onOpenApp, registerStateAccessor, unregisterStateAccessor, determinismRecorder, debugFlags, }) => {
+    useRenderStormDetector('LogicPlaygroundInner');
     const disableToolStrip = debugFlags.has('disable-toolstrip');
     const disableRightDock = debugFlags.has('disable-rightdock');
-    const disableSplitView = debugFlags.has('disable-splitview');
     // E2E flags via querystring (test-only)
     const e2eParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
     const e2eDisableQuad = e2eParams.get('disableQuad') === '1';
     const e2eCpuLite = e2eParams.get('cpuLite') === '1';
+    const e2eDisableSplitView = e2eParams.get('disableSplitView') === '1' || e2eParams.get('disable3d') === '1';
+    const disableSplitView = debugFlags.has('disable-splitview') || e2eDisableSplitView;
     const tickRate = useSettingsStore((state) => state.tickRate);
     const [circuit, setCircuit] = useState(() => {
         // Try to restore saved CE circuit first
@@ -252,6 +256,12 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
     const isEditMode = useHierarchyStore((state) => state.isEditMode);
     const toggleEditMode = useHierarchyStore((state) => state.toggleEditMode);
     const createdProjectRef = useRef(false);
+    const buildProjectRef = useRef(null);
+    const applyProjectRef = useRef(null);
+    const getProjectSnapshot = useCallback(() => {
+        const builder = buildProjectRef.current;
+        return builder ? builder() : null;
+    }, []);
     useEffect(() => {
         if (!unifiedProject && !createdProjectRef.current) {
             createNewProject('Untitled Project');
@@ -422,6 +432,19 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
     const [projectCreatedAt, setProjectCreatedAt] = useState(() => new Date().toISOString());
     const [currentFileId, setCurrentFileId] = useState(initialFileId ?? null);
     const [isDirty, setIsDirty] = useState(false);
+    const rbprojAutosaveKey = useMemo(() => getRbprojAutosaveKey('logic-playground', props.windowId), [props.windowId]);
+    const applyRbprojProject = useCallback((project) => {
+        const applier = applyProjectRef.current;
+        if (applier)
+            applier(project);
+    }, []);
+    const { saveStatusText: rbprojSaveStatusText, restorePrompt: rbprojRestorePrompt, restore: restoreRbprojAutosave, discard: discardRbprojAutosave, } = useRbprojAutosave({
+        autosaveKey: rbprojAutosaveKey,
+        isDirty,
+        getProject: getProjectSnapshot,
+        applyProject: applyRbprojProject,
+        changeDeps: [circuit, projectName, projectDescription],
+    });
     const [selectedNodeType, setSelectedNodeType] = useState(null);
     const [draggingNodeType, setDraggingNodeType] = useState(null);
     const [dragPosition, setDragPosition] = useState(null);
@@ -2442,6 +2465,9 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
         appVersion,
         currentHz,
     ]);
+    useEffect(() => {
+        buildProjectRef.current = buildProject;
+    }, [buildProject]);
     const applyProject = useCallback((project) => {
         isHydratingRef.current = true;
         resetAppStores(); // Clear everything before applying project state
@@ -2504,6 +2530,9 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
         setEngine,
         setTickEngine,
     ]);
+    useEffect(() => {
+        applyProjectRef.current = applyProject;
+    }, [applyProject]);
     const handleNewProject = useCallback(() => {
         handleNew();
         useLayoutStore.getState().resetLayout();
@@ -2539,7 +2568,9 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
         projectFileInputRef.current?.click();
     }, []);
     const handleExportEvidence = useCallback(() => {
-        try {
+        saveSnapshot(circuit, getLayoutSnapshot(), { safeMode }, 'autosave', true, getProjectSnapshot() ?? undefined);
+        void (async () => {
+            const { exportEvidence } = await import('../utils/evidenceExport');
             exportEvidence({
                 circuit,
                 selectedExampleId,
@@ -2548,12 +2579,11 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
                 traceRecorder: tickEngine?.getTraceRecorder?.() ?? null,
             });
             addToast('Lab evidence exported', 'success');
-        }
-        catch (error) {
+        })().catch((error) => {
             console.error('[LogicPlayground] Evidence export failed:', error);
             addToast('Failed to export evidence', 'error');
-        }
-    }, [circuit, selectedExampleId, probes, tickCount, tickEngine, addToast]);
+        });
+    }, [circuit, selectedExampleId, probes, tickCount, tickEngine, addToast, getLayoutSnapshot, safeMode, getProjectSnapshot]);
     const handleProjectFileChange = useCallback((event) => {
         const file = event.target.files?.[0];
         if (!file)
@@ -2947,7 +2977,7 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
     if (import.meta.env.DEV || navigator.webdriver) {
         pushMount('LogicPlaygroundApp:return');
     }
-    return (_jsx(ErrorBoundary, { children: _jsxs("div", { className: "h-full flex flex-col min-h-0 min-w-0 bg-gray-900 text-white", "data-testid": "logic-playground-root", children: [resourceId && (_jsxs("div", { className: "bg-cyan-900/30 border-b border-cyan-700 p-2 text-xs", children: ["Opened from Files: ", _jsx("span", { className: "font-semibold", children: resourceId }), " (", resourceType, ")"] })), _jsx(HierarchyBreadcrumbs, {}), _jsx(ClassroomModeBanner, {}), _jsx(TopCommandBar, { onExamples: ceMode ? () => setShowCEExamplesModal(true) : () => setShowExamplesModal(true), projectName: projectName, onNew: handleNew, onNewProject: handleNewProject, onSaveProject: handleSaveProject, onOpenProject: handleOpenProject, onExportProject: ceMode ? () => setShowCEExportModal(true) : handleExportProject, onSave: handleSave, onSaveAs: handleSaveAs, onShare: handleShare, isDirty: isDirty, onUndo: handleUndo, onRedo: handleRedo, canUndo: canUndo, canRedo: canRedo, isRunning: isRunning, onRun: handleRun, onPause: handlePause, onStep: handleStep, tickCount: tickCount, tickRate: currentHz, onTickRateChange: handleHzChange, onResetTickCount: handleResetTickCount, onReset: ceMode ? () => setShowCEResetModal(true) : undefined, perspective: perspective, onPerspectiveChange: setPerspective, schematicMiniEnabled: schematicMiniEnabled, onToggleSchematicMini: toggleSchematicMini, onManual: () => onOpenApp?.('user-manual'), onHelp: () => setShowKeyboardHelp(true), onStartHere: () => setShowStartHere(true), onExportEvidence: handleExportEvidence, onOpenEvidence: () => onOpenApp?.('submission-inspector') }), _jsx("input", { ref: projectFileInputRef, type: "file", accept: "application/json,.json", onChange: handleProjectFileChange, className: "hidden", "aria-label": "Open project file" }), _jsxs("div", { className: "flex-1 flex min-h-0 min-w-0 overflow-hidden", children: [_jsx(EnhancedPalette, { primitiveNodes: PRIMITIVE_NODES, compositeNodes: COMPOSITE_NODES, chips: allChips, onNodeDragStart: handleNodeDragStart, onAddNode: handleAddNode, onChipLibraryOpen: () => setShowChipLibrary(true), getChipMetadata: getChipMetadataForNode, getNodeDescription: getNodeDescription, isReplayMode: isReplayMode }), _jsxs("div", { ref: canvasAreaRef, tabIndex: -1, className: "flex-1 min-h-0 min-w-0 relative outline-none", "data-testid": "logic-canvas", onDragOver: handleNodeDragOver, onDrop: handleNodeDrop, onDragEnd: () => {
+    return (_jsx(ErrorBoundary, { children: _jsxs("div", { className: "h-full flex flex-col min-h-0 min-w-0 bg-gray-900 text-white", "data-testid": "logic-playground-root", children: [rbprojRestorePrompt.isOpen && (_jsx(GuardrailConfirmModal, { isOpen: rbprojRestorePrompt.isOpen, title: "Restore autosave?", message: "An autosave is available from " + new Date(rbprojRestorePrompt.savedAtMs ?? Date.now()).toLocaleString() + ". Restore it now?", lossItems: ['Discarding autosave will permanently delete the autosaved copy.'], confirmLabel: "Restore", cancelLabel: "Discard", confirmTone: "warning", onConfirm: restoreRbprojAutosave, onCancel: discardRbprojAutosave })), resourceId && (_jsxs("div", { className: "bg-cyan-900/30 border-b border-cyan-700 p-2 text-xs", children: ["Opened from Files: ", _jsx("span", { className: "font-semibold", children: resourceId }), " (", resourceType, ")"] })), _jsx(HierarchyBreadcrumbs, {}), _jsx(ClassroomModeBanner, {}), _jsx(TopCommandBar, { onExamples: ceMode ? () => setShowCEExamplesModal(true) : () => setShowExamplesModal(true), projectName: projectName, onNew: handleNew, onNewProject: handleNewProject, onSaveProject: handleSaveProject, onOpenProject: handleOpenProject, onExportProject: ceMode ? () => setShowCEExportModal(true) : handleExportProject, onSave: handleSave, onSaveAs: handleSaveAs, onShare: handleShare, isDirty: isDirty, onUndo: handleUndo, onRedo: handleRedo, canUndo: canUndo, canRedo: canRedo, isRunning: isRunning, onRun: handleRun, onPause: handlePause, onStep: handleStep, tickCount: tickCount, tickRate: currentHz, onTickRateChange: handleHzChange, onResetTickCount: handleResetTickCount, onReset: ceMode ? () => setShowCEResetModal(true) : undefined, perspective: perspective, onPerspectiveChange: setPerspective, schematicMiniEnabled: schematicMiniEnabled, onToggleSchematicMini: toggleSchematicMini, onManual: () => onOpenApp?.('user-manual'), onHelp: () => setShowKeyboardHelp(true), onStartHere: () => setShowStartHere(true), onExportEvidence: handleExportEvidence, onOpenEvidence: () => onOpenApp?.('submission-inspector') }), _jsx("input", { ref: projectFileInputRef, type: "file", accept: "application/json,.json", onChange: handleProjectFileChange, className: "hidden", "aria-label": "Open project file" }), _jsxs("div", { className: "flex-1 flex min-h-0 min-w-0 overflow-hidden", children: [_jsx(EnhancedPalette, { primitiveNodes: PRIMITIVE_NODES, compositeNodes: COMPOSITE_NODES, chips: allChips, onNodeDragStart: handleNodeDragStart, onAddNode: handleAddNode, onChipLibraryOpen: () => setShowChipLibrary(true), getChipMetadata: getChipMetadataForNode, getNodeDescription: getNodeDescription, isReplayMode: isReplayMode }), _jsxs("div", { ref: canvasAreaRef, tabIndex: -1, className: "flex-1 min-h-0 min-w-0 relative outline-none", "data-testid": "logic-canvas", onDragOver: handleNodeDragOver, onDrop: handleNodeDrop, onDragEnd: () => {
                                 // Clean up drag state when drag ends
                                 setDraggingNodeType(null);
                                 setDragPosition(null);
@@ -3048,7 +3078,7 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
                         else {
                             addToast('Lab Assignment App not available in this environment', 'error');
                         }
-                    } }), ceMode && (_jsxs(_Fragment, { children: [_jsx(ResetWorkspaceModal, { isOpen: showCEResetModal, onConfirm: handleCEResetWorkspace, onCancel: () => setShowCEResetModal(false) }), _jsx(ExampleGalleryModal, { isOpen: showCEExamplesModal, examples: [], onSelectExample: handleCELoadExample, onClose: () => setShowCEExamplesModal(false) }), _jsx(ExportBundleModal, { isOpen: showCEExportModal, circuit: circuit, exampleName: projectName, onClose: () => setShowCEExportModal(false) })] })), _jsx(StatusBar, { nodeCount: circuit.nodes.length, connectionCount: circuit.connections.length, selectedCount: 0, isRunning: isRunning, tickRate: currentHz, isDirty: isDirty, canUndo: canUndo, canRedo: canRedo, viewMode: viewLabel })] }) }));
+                    } }), ceMode && (_jsxs(_Fragment, { children: [_jsx(ResetWorkspaceModal, { isOpen: showCEResetModal, onConfirm: handleCEResetWorkspace, onCancel: () => setShowCEResetModal(false) }), _jsx(ExampleGalleryModal, { isOpen: showCEExamplesModal, examples: [], onSelectExample: handleCELoadExample, onClose: () => setShowCEExamplesModal(false) }), _jsx(ExportBundleModal, { isOpen: showCEExportModal, circuit: circuit, exampleName: projectName, onClose: () => setShowCEExportModal(false) })] })), _jsx(StatusBar, { nodeCount: circuit.nodes.length, connectionCount: circuit.connections.length, selectedCount: 0, isRunning: isRunning, tickRate: currentHz, isDirty: isDirty, saveStatusText: rbprojSaveStatusText, canUndo: canUndo, canRedo: canRedo, viewMode: viewLabel })] }) }));
 };
 // End of LogicPlaygroundApp components
 export const LogicPlaygroundApp = {

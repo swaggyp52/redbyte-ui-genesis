@@ -26,7 +26,9 @@ import { generateReadme } from './readmeGenerator';
 
 // Get build version from environment or fallback
 const BUILD_SHA = import.meta.env.VITE_BUILD_SHA ?? 'dev';
-const BUILD_DATE = import.meta.env.VITE_BUILD_DATE ?? new Date().toISOString();
+const BUILD_DATE = import.meta.env.VITE_BUILD_DATE ?? 'dev';
+const DEFAULT_ISO_DATE = '1970-01-01T00:00:00.000Z';
+const ZIP_ENTRY_DATE = new Date('1980-01-01T00:00:00.000Z');
 
 interface ExportWarning {
   step: string;
@@ -59,13 +61,21 @@ async function stableHash(obj: any): Promise<string> {
 }
 
 export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob> {
+  const exportTimestamp =
+    (project as any)?.updatedAt ??
+    (project as any)?.createdAt ??
+    DEFAULT_ISO_DATE;
+
   const safeProjectFallback: LabProjectV1 = {
     schemaVersion: '1.0',
-    projectId: (project as any)?.projectId ?? `export-fallback-${Date.now()}`,
+    projectId: (project as any)?.projectId ?? 'export-fallback',
     name: (project as any)?.name ?? 'Recovered Project',
     description: (project as any)?.description ?? '',
-    createdAt: (project as any)?.createdAt ?? new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: (project as any)?.createdAt ?? DEFAULT_ISO_DATE,
+    updatedAt:
+      (project as any)?.updatedAt ??
+      (project as any)?.createdAt ??
+      DEFAULT_ISO_DATE,
     circuit: (project as any)?.circuit ?? { schemaVersion: '1.0', nodes: [], connections: [] },
     simulation: (project as any)?.simulation ?? { tickRate: 20, currentTick: 0, probes: [] },
     labSpec: (project as any)?.labSpec ?? null,
@@ -76,6 +86,19 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
     const zip = new JSZip();
     const files = new Map<string, string>();
     const warnings: ExportWarning[] = [];
+
+    const addTextFile = (path: string, content: string) => {
+      zip.file(path, content, { date: ZIP_ENTRY_DATE });
+      files.set(path, content);
+    };
+
+    const addZipFile = (
+      path: string,
+      content: string | Uint8Array,
+      options?: Record<string, unknown>
+    ) => {
+      zip.file(path, content as any, { ...(options ?? {}), date: ZIP_ENTRY_DATE } as any);
+    };
 
     const pushWarning = (step: string, message: string, error?: unknown) => {
       warnings.push({
@@ -109,8 +132,7 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
 
   const projectJson = safeSerialize(project, 'project', safeProjectFallback);
   const projectHash = await safeHash(project, 'project-hash');
-  files.set('project.json', projectJson);
-  zip.file('project.json', projectJson);
+  addTextFile('project.json', projectJson);
 
   // -------------------------------------------------------------------------
   // 2. Serialize actions.log.json
@@ -123,19 +145,18 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
   };
   const actionsJson = safeSerialize(actionsLog, 'actions', actionsLog);
   const actionsHash = await safeHash(actionsLog, 'actions-hash');
-  files.set('actions.log.json', actionsJson);
-  zip.file('actions.log.json', actionsJson);
+  addTextFile('actions.log.json', actionsJson);
 
   // -------------------------------------------------------------------------
   // 2.5. Generate README.md (auto-generated human-readable summary)
   // -------------------------------------------------------------------------
 
   try {
-    const readme = generateReadme(project);
-    zip.file('README.md', readme);
+    const readme = generateReadme(project, { exportDate: exportTimestamp });
+    addZipFile('README.md', readme);
   } catch (error) {
     pushWarning('readme', 'README generation failed; using fallback.', error);
-    zip.file('README.md', '# RedByte Export\n\nREADME generation failed. See warnings.json for details.');
+    addZipFile('README.md', '# RedByte Export\n\nREADME generation failed. See warnings.json for details.');
   }
 
   // -------------------------------------------------------------------------
@@ -146,32 +167,29 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
   if (fpgaArtifacts) {
     // Add Verilog source
     if (fpgaArtifacts.verilog) {
-      zip.file('verilog/design.v', fpgaArtifacts.verilog);
-      files.set('verilog/design.v', fpgaArtifacts.verilog);
+      addTextFile('verilog/design.v', fpgaArtifacts.verilog);
     }
 
     // Add XDC constraints
     if (fpgaArtifacts.constraints) {
-      zip.file('verilog/constraints.xdc', fpgaArtifacts.constraints);
-      files.set('verilog/constraints.xdc', fpgaArtifacts.constraints);
+      addTextFile('verilog/constraints.xdc', fpgaArtifacts.constraints);
     }
 
     // Add bitstream if available
     if (fpgaArtifacts.bitstream) {
       // Bitstream is binary - handle as Uint8Array or Blob
       if (fpgaArtifacts.bitstream instanceof Uint8Array) {
-        zip.file('bitstream/design.bit', fpgaArtifacts.bitstream);
+        addZipFile('bitstream/design.bit', fpgaArtifacts.bitstream);
       } else if (typeof fpgaArtifacts.bitstream === 'string') {
         // If stored as base64 string
-        zip.file('bitstream/design.bit', fpgaArtifacts.bitstream, { base64: true });
+        addZipFile('bitstream/design.bit', fpgaArtifacts.bitstream, { base64: true });
       }
     }
 
     // Add provenance metadata
     if (fpgaArtifacts.metadata) {
       const metadataJson = stableSerialize(fpgaArtifacts.metadata);
-      zip.file('fpga/provenance.json', metadataJson);
-      files.set('fpga/provenance.json', metadataJson);
+      addTextFile('fpga/provenance.json', metadataJson);
     }
   }
 
@@ -182,12 +200,11 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
   if (warnings.length > 0) {
     const warningsPayload = {
       schemaVersion: '1.0',
-      createdAt: new Date().toISOString(),
+      createdAt: exportTimestamp,
       warnings,
     };
     const warningsJson = stableSerialize(warningsPayload);
-    zip.file('warnings.json', warningsJson);
-    files.set('warnings.json', warningsJson);
+    addTextFile('warnings.json', warningsJson);
   }
 
   // -------------------------------------------------------------------------
@@ -195,7 +212,8 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
   // -------------------------------------------------------------------------
 
   const fileEntries: EvidenceFileEntry[] = [];
-  for (const [path, content] of files.entries()) {
+  const sortedFiles = Array.from(files.entries()).sort(([a], [b]) => a.localeCompare(b));
+  for (const [path, content] of sortedFiles) {
     fileEntries.push({
       path,
       hash: await hashString(content),
@@ -207,14 +225,14 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
     schemaVersion: '1.0',
     buildVersion: BUILD_SHA,
     buildDate: BUILD_DATE,
-    createdAt: new Date().toISOString(),
+    createdAt: exportTimestamp,
     files: fileEntries,
     rootHash: await safeHash(fileEntries.map((f) => f.hash).join(''), 'manifest-root-hash'),
   };
 
   const manifestJson = safeSerialize(manifest, 'manifest', manifest);
   const manifestHash = await safeHash(manifest, 'manifest-hash');
-  zip.file('manifest.json', manifestJson);
+  addZipFile('manifest.json', manifestJson);
 
   // -------------------------------------------------------------------------
   // 4. Build capsule index (top-level metadata)
@@ -227,7 +245,7 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
     manifestHash,
     buildSHA: BUILD_SHA,
     buildDate: BUILD_DATE,
-    createdAt: new Date().toISOString(),
+    createdAt: exportTimestamp,
     files: {
       project: 'project.json',
       actions: 'actions.log.json',
@@ -236,7 +254,7 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
   };
 
   const capsuleJson = safeSerialize(capsule, 'capsule', capsule);
-  zip.file('capsule.json', capsuleJson);
+  addZipFile('capsule.json', capsuleJson);
 
   // -------------------------------------------------------------------------
   // 5. Generate ZIP blob
@@ -245,18 +263,26 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
     return zip.generateAsync({ type: 'blob' });
   } catch (error) {
     const fallbackZip = new JSZip();
+    const fallbackTimestamp =
+      (project as any)?.updatedAt ??
+      (project as any)?.createdAt ??
+      DEFAULT_ISO_DATE;
     const warningPayload = {
       schemaVersion: '1.0',
-      createdAt: new Date().toISOString(),
+      createdAt: fallbackTimestamp,
       warnings: [{
         step: 'export',
         message: 'Export failed; generated recovery bundle instead.',
         error: error instanceof Error ? error.message : String(error),
       }],
     };
-    fallbackZip.file('project.json', stableSerialize(safeProjectFallback));
-    fallbackZip.file('warnings.json', JSON.stringify(warningPayload, null, 2));
-    fallbackZip.file('README.md', '# RedByte Export\n\nExport failed and produced a recovery bundle. See warnings.json for details.');
+    fallbackZip.file('project.json', stableSerialize(safeProjectFallback), { date: ZIP_ENTRY_DATE });
+    fallbackZip.file('warnings.json', JSON.stringify(warningPayload, null, 2), { date: ZIP_ENTRY_DATE });
+    fallbackZip.file(
+      'README.md',
+      '# RedByte Export\n\nExport failed and produced a recovery bundle. See warnings.json for details.',
+      { date: ZIP_ENTRY_DATE }
+    );
     return fallbackZip.generateAsync({ type: 'blob' });
   }
 }

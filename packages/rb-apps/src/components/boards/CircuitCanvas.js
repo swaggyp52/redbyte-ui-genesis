@@ -10,6 +10,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
  * has a unique circuit visualization.
  */
 import { useMemo } from 'react';
+import { useRenderStormDetector } from '../../hooks/useRenderStormDetector';
 // Wire component with animated data flow
 const Wire = ({ x1, y1, x2, y2, active, label, labelPos = 'middle' }) => {
     const mx = (x1 + x2) / 2;
@@ -89,6 +90,7 @@ const DefaultCircuit = ({ experiment, inputs, outputs }) => {
     return (_jsxs("svg", { width: "100%", height: "100%", viewBox: "0 0 400 200", children: [_jsx("text", { x: "200", y: "30", fill: "#4a5a6a", fontSize: "14", fontFamily: "monospace", textAnchor: "middle", children: experiment.name.toUpperCase() }), _jsxs("g", { transform: "translate(60, 80)", children: [_jsx("text", { y: "-10", fill: "#667788", fontSize: "10", fontFamily: "monospace", children: "INPUTS" }), _jsx(Terminal, { x: 40, y: 20, label: "SW", value: inputs.SW, type: "input" }), _jsx(Terminal, { x: 40, y: 60, label: "BTN", value: inputs.BTN, type: "input" })] }), _jsxs("g", { transform: "translate(200, 100)", children: [_jsx("rect", { x: "-40", y: "-30", width: "80", height: "60", rx: "4", fill: "#1a2a3a", stroke: "#4a5a6a", strokeWidth: "2", strokeDasharray: "4" }), _jsx("text", { y: "5", fill: "#667788", fontSize: "9", fontFamily: "monospace", textAnchor: "middle", children: "LOGIC" })] }), _jsxs("g", { transform: "translate(340, 80)", children: [_jsx("text", { y: "-10", fill: "#667788", fontSize: "10", fontFamily: "monospace", children: "OUTPUTS" }), _jsx(Terminal, { x: 0, y: 20, label: "LED", value: outputs.LED, type: "output" })] }), _jsx(Wire, { x1: 100, y1: 100, x2: 160, y2: 100, active: inputs.SW > 0 || inputs.BTN > 0 }), _jsx(Wire, { x1: 240, y1: 100, x2: 300, y2: 100, active: outputs.LED > 0 }), _jsx("text", { x: "200", y: "180", fill: "#3a4a5a", fontSize: "9", fontFamily: "monospace", textAnchor: "middle", children: experiment.description })] }));
 };
 export const CircuitCanvas = ({ experiment, inputs, outputs, tick, }) => {
+    useRenderStormDetector('CircuitCanvas');
     const circuitContent = useMemo(() => {
         switch (experiment.id) {
             case 'loopback':

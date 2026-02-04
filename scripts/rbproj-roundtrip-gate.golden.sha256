@@ -1,0 +1,3 @@
+fixture=packages/rb-apps/src/__tests__/fixtures/rbproject-roundtrip.fixture.json
+normalize=exclude(updatedAt,meta.appVersion,meta.gitCommit)
+sha256=60dc0f1dff6354d81391ed181e4438eef573532e9df5a2f3744998141259c1f5

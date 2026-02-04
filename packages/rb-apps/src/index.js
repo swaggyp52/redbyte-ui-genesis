@@ -30,9 +30,25 @@ export { buildEvidenceManifest, verifyEvidenceManifest, serializeManifest, } fro
 // DEFERRED: Auto-registration moved to a separate function to avoid circular deps + TDZ errors
 // when Three.js or other heavy modules are imported at the module level.
 // Call registerAllApps() explicitly when the app is ready to initialize apps.
-export async function registerAllApps() {
+export async function registerAllApps(options) {
+    const mode = options?.mode ?? 'full';
     // Dynamic imports: only load app modules when explicitly requested
     const { registerApp } = await import('./AppRegistry');
+    // E2E-lite: keep startup lean and avoid importing 3D-heavy modules that can
+    // crash headless Chromium or slow boot-time smoke tests.
+    if (mode === 'e2e-lite') {
+        const { SettingsApp } = await import('./apps/SettingsApp');
+        const { FilesApp } = await import('./apps/FilesApp');
+        const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundApp');
+        const { LauncherApp } = await import('./apps/LauncherApp');
+        const { SystemLogApp } = await import('./apps/SystemLogApp');
+        registerApp(SettingsApp);
+        registerApp(FilesApp);
+        registerApp(LogicPlaygroundApp);
+        registerApp(LauncherApp);
+        registerApp(SystemLogApp);
+        return;
+    }
     const { TerminalApp } = await import('./apps/TerminalApp');
     const { SettingsApp } = await import('./apps/SettingsApp');
     const { FilesApp } = await import('./apps/FilesApp');

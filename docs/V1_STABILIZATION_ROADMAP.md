@@ -10,22 +10,25 @@ This plan ensures students can visually build circuits, use probes/inspector too
 
 #### P1A Canonical Server (Backend First)
 
-- [ ] Inventory existing API routes and lab UI call sites (`api/server.mjs` + frontend fetch clients)
-- [ ] Implement `POST /api/labs/ingest` (request/response aligned with repo docs)
-- [ ] Implement `GET /api/labs/runs` (or confirm existing; request/response aligned with repo docs)
-- [ ] Implement `GET /api/labs/runs/:run_id` + artifact serving (or confirm existing)
-- [ ] Implement `POST /api/labs/diff` (or confirm existing; request/response aligned with repo docs)
-- [ ] Confirm retirement of legacy server paths (no UI calls to retired endpoints)
-- [ ] Add minimal API verification (unit/fixture test or lightweight integration)
-- [ ] Gate: `pnpm -r build`
+- [x] Inventory existing API routes and lab UI call sites (`api/server.mjs` + frontend fetch clients)
+- [x] Implement `POST /api/labs/ingest` (request/response aligned with repo docs)
+- [x] Implement `GET /api/labs/runs` (or confirm existing; request/response aligned with repo docs)
+- [x] Implement `GET /api/labs/runs/:run_id` + artifact serving (or confirm existing)
+- [x] Implement `POST /api/labs/diff` (or confirm existing; request/response aligned with repo docs)
+- [x] Confirm retirement of legacy server paths (no UI calls to retired endpoints)
+- [x] Add minimal API verification (unit/fixture test or lightweight integration)
+- [x] Gate: `pnpm -r build`
+
+Notes:
+- See `OPS_GREEN_LOCK.md` Diff Gate section; command: `pnpm ops:diff-gate`.
 
 #### P1B Persistence + Deterministic Evidence (No Data Loss)
 
-- [ ] Confirm canonical project store + schema (`packages/rb-lab-engine` unified project store + LabProjectV1)
-- [ ] Save/load across sessions works (manual QA steps documented)
-- [ ] Add export/import roundtrip equality test for project format (`.rbproj` or canonical equivalent)
-- [ ] Verify `.rb-lab.zip`/`.rbx.zip` evidence capsule metadata is deterministic (no hidden randomness)
-- [ ] Gate: `pnpm ops:student-export-fixture-test` (if defined) and `pnpm -r build`
+- [x] Confirm canonical project format + codec (RBProject: `packages/rb-apps/src/export/projectFormat.ts`)
+- [x] Add export/import roundtrip equality gate for project format (`pnpm rbproj:roundtrip-gate`)
+- [x] Save/load across sessions works (manual QA steps documented in `AI_STATE.md` changelog)
+- [x] Verify `.rb-lab.zip`/`.rbx.zip` evidence capsule metadata is deterministic (no hidden randomness)
+- [x] Gate: `pnpm rbx:evidence-determinism-gate`, `pnpm ops:student-export-fixture-test`, and `pnpm -r build`
 
 #### P1C State + Performance (Render-Storm Immunity)
 
