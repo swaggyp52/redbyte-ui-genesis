@@ -5277,6 +5277,12 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-02-05 (Phase 3: Cross-Browser Sanity Checklist - docs-only)
+- Created `docs/P3B_CROSS_BROWSER_CHECKLIST.md` (manual 10-15 min browser testing procedure for Chrome/Edge/Firefox on Windows)
+- Linked checklist in `V1_STABILIZATION_ROADMAP.md` under Phase 3 "Cross-browser sanity" deliverable
+- No code changes; builds remain green
+- Deferred automated cross-browser CI (Playwright multi-browser) as Phase 4 work per roadmap priorities
+
 ### 2026-02-01 (Phase 7: FPGA Validation & Testing Infrastructure - COMPLETE)
 - **COMPLETED PHASE 7: VALIDATION PIPELINE & TESTING FOR FPGA PRODUCTION WORKFLOW**: Implemented comprehensive validation infrastructure ensuring exported HDL is synthesis-ready. Deliverables: (1) Created verilog-validator.ts module in rb-fpga-toolchain with browser-safe static analysis functions: validateVerilog() checks module structure, port declarations, signal references, syntax errors (parentheses, semicolons, module names); validateConstraints() verifies XDC constraints match circuit signals, checks pin assignments, validates timing constraints, warns about unconstrained signals; calculateReadinessScore() computes 0-100% synthesis readiness based on errors (-20 pts), warnings (-5 pts), and bonuses for proper structure/timing. (2) Integrated validation into Shell.tsx handleExportVerilog: dynamic imports validation functions, runs Verilog and constraint validation before export, calculates readiness score, blocks export on errors (shows first 3 error messages in toasts), displays warnings with readiness score on success, provides immediate feedback to users about HDL quality. (3) Created 2 additional hardware-ready FPGA examples: 17_traffic-light-fsm-basys3.json (18 nodes: 3-state FSM with timer using D flip-flops, AND/OR/NOT logic for state transitions, separate decoders for red/yellow/green lights), 18_4bit-alu-basys3.json (26 nodes: 4-bit ALU with A/B inputs, OP select, XOR/AND/OR operations, suitable for arithmetic demonstrations); both registered in examples index with Layer 6 metadata and advanced difficulty. (4) Created comprehensive Playwright test suite in tests/e2e/fpga-export.spec.ts: 8 test cases covering export workflow (8-bit counter example → Verilog download → content verification), validation feedback (readiness score display, warning messages), XDC constraints export (both .v and .xdc files), invalid circuit rejection (empty/broken circuits blocked), .rbx.zip FPGA artifacts (verilog/ and fpga/ directories in ZIP), UI feedback visibility (toasts for success/errors/warnings). (5) Created docs/fpga-validation-guide.md (comprehensive troubleshooting documentation): validation pipeline explanation (4-step process), validation rules with code examples (module structure, port declarations, signal assignments, module names, pin constraints, clock constraints), common errors with fixes (NO_MODULE, NO_ENDMODULE, UNMATCHED_PARENS, INVALID_MODULE_NAME, MISSING_SEMICOLON), common warnings with impact analysis (NO_PORTS, UNDECLARED_SIGNAL, UNCONSTRAINED_SIGNAL), readiness score interpretation (90-100%=excellent, 70-89%=good, 50-69%=fair, 0-49%=poor, negative=failed), troubleshooting workflows (validation errors, low scores, synthesis failures, hardware mismatches), best practices checklists (pre-export, post-export, hardware deployment), hardware-ready examples catalog, validation API reference for developers, FAQ section. (6) Exported validation types and functions from rb-fpga-toolchain/index.ts for browser-safe usage. Architecture: Validation runs client-side using pure TypeScript (no Node.js dependencies), analyzes generated Verilog/XDC before download, provides immediate feedback via toast notifications, prevents export of syntactically invalid HDL (students get clear error messages rather than silent failures in Vivado). Build validated: Full `pnpm -r build` succeeds (rb-shell: 5.47s, rb-apps: 11.96s, playground: 9.84s). Files created: verilog-validator.ts (validation engine), fpga-validation-guide.md (documentation), fpga-export.spec.ts (test suite), 17_traffic-light-fsm-basys3.json (example), 18_4bit-alu-basys3.json (example). Files modified: Shell.tsx (validation integration), index.ts (toolchain exports, example registry), AI_STATE.md (this changelog). Objectives: Phase 7 complete (6/6 tasks: Verilog validation, constraint validation, hardware examples expansion, E2E tests, UI feedback integration, validation guide documentation); RedByte now provides classroom-grade FPGA workflow with pre-synthesis validation catching 90% of common HDL errors before hardware deployment; students receive immediate synthesis readiness feedback (0-100% score) and actionable error messages; phase: FPGA validation infrastructure complete, system ready for Phase 8 (final polish).
 
@@ -6687,6 +6693,166 @@ All TypeScript compilation errors systematically resolved across monorepo:
 
 ---
 
+## Change Log  2026-02-05 (Phase 3A-3: Performance Mode)
+
+**Performance Mode (Global OS Setting)**
+- Added `performanceMode` to the settings store (persisted in `rb.shell.settings`) with `setPerformanceMode()`.
+- Settings UI includes a Performance Mode toggle (Motion section).
+- Shell propagates Performance Mode via `data-rb-perf` and forces effective reduced motion (`data-rb-motion='reduced'` when enabled).
+
+**Expensive Surface Throttles**
+- Split view 3D pane is disabled when Performance Mode is enabled (no 3D scene mount).
+- Oscilloscope trace polling is throttled in Performance Mode (reduces interval rate).
+
+**Gates + Docs**
+- Added `os:performance-mode-gate` (store persist verification).
+- Added `docs/P3A3_SMOKE_CHECKLIST.md` and referenced it from the Phase 3 tracker.
+
+**Files Updated**
+- AI_STATE.md
+- package.json
+- docs/P3A3_SMOKE_CHECKLIST.md
+- docs/V1_STABILIZATION_ROADMAP.md
+- packages/rb-utils/src/settingsStore.ts
+- packages/rb-utils/src/settingsStore.js
+- packages/rb-utils/src/__tests__/performance-mode-gate.test.ts
+- packages/rb-utils/src/__tests__/performance-mode-gate.test.js
+- packages/rb-shell/src/Shell.tsx
+- packages/rb-shell/src/Shell.js
+- packages/rb-apps/src/apps/SettingsApp.tsx
+- packages/rb-apps/src/apps/SettingsApp.js
+- packages/rb-apps/src/components/SplitViewLayout.tsx
+- packages/rb-apps/src/components/SplitViewLayout.js
+- packages/rb-apps/src/components/OscilloscopeView.tsx
+- packages/rb-apps/src/components/OscilloscopeView.js
+- packages/rb-apps/src/__tests__/__mocks__/rb-utils.ts
+- packages/rb-apps/src/__tests__/__mocks__/rb-utils.js
+- packages/rb-apps/src/__tests__/settings.test.tsx
+- packages/rb-apps/src/__tests__/settings.test.js
+- packages/rb-apps/src/__tests__/app-launch.test.tsx
+- packages/rb-apps/src/__tests__/app-launch.test.js
+- packages/rb-apps/src/__tests__/os-playground-flow.test.tsx
+- packages/rb-apps/src/__tests__/os-playground-flow.test.js
+
+**Validation**
+- `pnpm -s os:performance-mode-gate`
+- `pnpm -r build`
+
+**Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-05 (Phase 3B-2a: Instrument Visibility Gating)
+
+**Oscilloscope Update Gating**
+- Added deterministic update-rate policy for live instruments based on:
+  - window minimized state (0Hz)
+  - window focus (15Hz when unfocused)
+  - Performance Mode (10Hz)
+  - focused + visible baseline (60Hz)
+- Oscilloscope polling now respects page visibility + window minimized/focus state (reduces background CPU work).
+
+**Plumbing**
+- Threaded `windowId` through `SplitViewLayout` and into `OscilloscopeView` so window activity can be resolved via `@redbyte/rb-windowing`.
+
+**Gates**
+- Added `os:instrument-hz-gate` to lock the Hz contract.
+
+**Files Updated**
+- AI_STATE.md
+- package.json
+- docs/P3A3_SMOKE_CHECKLIST.md
+- docs/V1_STABILIZATION_ROADMAP.md
+- packages/rb-apps/src/instruments/computeInstrumentHz.ts
+- packages/rb-apps/src/instruments/computeInstrumentHz.js
+- packages/rb-apps/src/hooks/useWindowActivity.ts
+- packages/rb-apps/src/hooks/useWindowActivity.js
+- packages/rb-apps/src/components/OscilloscopeView.tsx
+- packages/rb-apps/src/components/OscilloscopeView.js
+- packages/rb-apps/src/components/SplitViewLayout.tsx
+- packages/rb-apps/src/components/SplitViewLayout.js
+- packages/rb-apps/src/apps/LogicPlaygroundApp.tsx
+- packages/rb-apps/src/apps/LogicPlaygroundApp.js
+- packages/rb-apps/src/apps/ECELabApp.tsx
+- packages/rb-apps/src/apps/ECELabApp.js
+- packages/rb-apps/src/__tests__/instrument-hz-gate.test.ts
+- packages/rb-apps/src/__tests__/instrument-hz-gate.test.js
+
+**Validation**
+- `pnpm -s os:instrument-hz-gate`
+- `pnpm -r build`
+
+**Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-05 (Phase 3A-1: Windowing Debug Dump)
+
+**Windowing Debug Dump (Dev-only)**
+- Added optional `window.__RB_WINDOWING__.dump()` debug API (enabled via `localStorage.setItem('rb:windowDebug','1')`) to make manual windowing smoke runs high-signal. Dump is intentionally minimal (focused window + z-order + modes + bounds).
+- Refactored the rb-windowing store lazy-init path to a single `initStoreIfNeeded()` flow (TS + JS parity), avoiding duplicated initialization blocks.
+
+**Docs**
+- Updated `docs/P3A_SMOKE_CHECKLIST.md` with the debug flag and dump command.
+
+**Files Updated**
+- docs/P3A_SMOKE_CHECKLIST.md
+- packages/rb-windowing/src/store.ts
+- packages/rb-windowing/src/store.js
+
+**Validation**
+- `pnpm -s os:window-raise-gate`
+- `pnpm -r build`
+
+**Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-05 (Phase 3A-2: Error Boundaries + Student-Friendly Errors)
+
+**Student-Friendly Error Model**
+- Added `RbUserError` + `toStudentFacingError()` helper in `@redbyte/rb-utils` to standardize student-facing error text and avoid raw exception messages by default.
+- Aligned codes/messages to `docs/ERROR_MESSAGE_MATRIX.md` (Bridge unreachable, evidence invalid, etc.) with a safe `UNEXPECTED_ERROR` fallback.
+
+**Error Boundaries**
+- App-level boundary (`packages/rb-apps/src/components/ErrorBoundary.*`) now renders student-friendly messages, includes **Copy Error Details**, and supports **Reload App** via remount key.
+- Shell per-window crash boundary (`packages/rb-shell/src/Shell.*`) now renders student-friendly messages, adds **Copy Details**, and supports **Reload App** via remount key.
+- Shell top-level boundary (`packages/rb-shell/src/ErrorBoundary.*`) now displays student-friendly message text while preserving recovery actions (reload/export/copy/safe mode).
+
+**New Gate**
+- Added `os:error-boundary-gate` to assert student-friendly fallback UI renders and **Reload App** recovers from a thrown `RbUserError` deterministically.
+
+**Docs**
+- Added `docs/P3A2_SMOKE_CHECKLIST.md`.
+- Updated `docs/ERROR_MESSAGE_MATRIX.md` to include stable error codes.
+- Updated Phase 3 tracker to reference the new gate/checklist.
+
+**Files Updated**
+- AI_STATE.md
+- package.json
+- docs/ERROR_MESSAGE_MATRIX.md
+- docs/P3A2_SMOKE_CHECKLIST.md
+- docs/V1_STABILIZATION_ROADMAP.md
+- packages/rb-utils/src/studentError.ts
+- packages/rb-utils/src/studentError.js
+- packages/rb-utils/src/index.ts
+- packages/rb-utils/src/index.js
+- packages/rb-apps/src/components/ErrorBoundary.tsx
+- packages/rb-apps/src/components/ErrorBoundary.js
+- packages/rb-apps/src/__tests__/error-boundary-gate.test.tsx
+- packages/rb-shell/src/Shell.tsx
+- packages/rb-shell/src/Shell.js
+- packages/rb-shell/src/ErrorBoundary.tsx
+- packages/rb-shell/src/ErrorBoundary.js
+
+**Validation**
+- `pnpm -s os:error-boundary-gate`
+- `pnpm -r build`
+
+**Attribution**: Connor Angiel
+
+---
+
 ## Change Log  2026-02-05 (Phase 2B: No Data Loss - Canonical Autosave + Undo/Redo Gates)
 
 **Canonical Autosave Contract (RBProject)**
@@ -7899,6 +8065,27 @@ Notes:
 - `pnpm -s sim:repeatability-gate`
 - `pnpm -s sim:loop-detection-gate`
 - `pnpm -s sim:probe-stability-gate`
+- `pnpm -r build`
+
+**Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-05 (Phase 3B: Instrument Scheduler Plumbing)
+
+**Instrument Scheduling (Window/Perf-Aware)**
+- Completed JS parity for Right Dock instrument polling by threading `windowId` through `LogicPlaygroundApp` → `RightDock` → `PropertyInspector`.
+- Extended the existing `os:instrument-hz-gate` with a scheduler safety check to ensure the instrument scheduler does not schedule timers when the page is hidden/minimized (uses mocks to avoid window-store flake).
+
+**Files Updated**
+- packages/rb-apps/src/components/RightDock.js
+- packages/rb-apps/src/apps/LogicPlaygroundApp.tsx
+- packages/rb-apps/src/apps/LogicPlaygroundApp.js
+- packages/rb-apps/src/__tests__/instrument-hz-gate.test.ts
+- packages/rb-apps/src/__tests__/instrument-hz-gate.test.js
+
+**Validation**
+- `pnpm -s os:instrument-hz-gate`
 - `pnpm -r build`
 
 **Attribution**: Connor Angiel

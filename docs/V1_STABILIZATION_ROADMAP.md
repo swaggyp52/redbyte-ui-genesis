@@ -256,8 +256,14 @@ Make SIM <-> HW mode switching seamless:
   - Scripted gate: `pnpm -s os:window-raise-gate`
 - [ ] React stability: no infinite update depth issues; render storm detector clean on key apps
 - [ ] Performance: 2D/3D rendering gated by visibility; performance mode works
+  - Smoke checklist: `docs/P3A3_SMOKE_CHECKLIST.md`
+  - Scripted gates: `pnpm -s os:performance-mode-gate`, `pnpm -s os:instrument-hz-gate`
 - [ ] Error handling: Error Boundary verified; student-friendly errors replace raw exceptions
+  - Smoke checklist: `docs/P3A2_SMOKE_CHECKLIST.md`
+  - Scripted gate: `pnpm -s os:error-boundary-gate`
 - [ ] Cross-browser sanity: Chrome/Firefox/Edge smoke pass (documented)
+  - Manual checklist: `docs/P3B_CROSS_BROWSER_CHECKLIST.md`
+  - Note: CI matrix deferred; manual pre-class run recommended
 - [ ] Gate: `pnpm -r build` + selected Playwright/Vitest smoke gates
 
 ### Windowing and OS Polishing
