@@ -9,11 +9,13 @@ import type { Circuit, Node, Connection, Signal } from '@redbyte/rb-logic-core';
 import { CircuitEngine } from '@redbyte/rb-logic-core';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import { useProbeStore } from '../stores/probeStore';
+import { useInstrumentScheduler } from '../hooks/useInstrumentScheduler';
 
 interface PropertyInspectorProps {
   circuit: Circuit;
   engine: CircuitEngine;
   isRunning: boolean;
+  windowId?: string;
   isReplayMode?: boolean;
   onNodeUpdate?: (nodeId: string, updates: Partial<Node>) => void;
   onConnectionDelete?: (connectionId: string) => void;
@@ -23,6 +25,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
   circuit,
   engine,
   isRunning,
+  windowId,
   isReplayMode = false,
   onNodeUpdate,
   onConnectionDelete,
@@ -54,34 +57,45 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
   const [analogUiState, setAnalogUiState] = React.useState<Record<string, number>>({});
   const analogCommitTimerRef = React.useRef<number | null>(null);
 
+  const refreshSignals = React.useCallback(() => {
+    const signals = new Map<string, Record<string, Signal>>();
+    const inputs = new Map<string, Record<string, { value: Signal; source?: string }>>();
+    const allSignals = engine.getAllSignals();
+    for (const node of selectedNodes) {
+      signals.set(node.id, engine.getNodeOutputs(node.id));
+      const inputValues: Record<string, { value: Signal; source?: string }> = {};
+      for (const connection of circuit.connections) {
+        if (connection.to.nodeId !== node.id) continue;
+        const sourceKey = `${connection.from.nodeId}.${connection.from.portName}`;
+        const value = allSignals.get(sourceKey) ?? 0;
+        inputValues[connection.to.portName] = { value, source: sourceKey };
+      }
+      inputs.set(node.id, inputValues);
+    }
+    setNodeSignals(signals);
+    setNodeInputs(inputs);
+  }, [circuit.connections, engine, selectedNodes]);
+
+  const { isActive: signalPollingActive } = useInstrumentScheduler({
+    windowId,
+    enabled: isRunning && selectedNodes.length > 0,
+    onTick: refreshSignals,
+    maxHz: 5, // 200ms (matches prior interval; keeps inspector lightweight)
+  });
+
   React.useEffect(() => {
     if (!isRunning || selectedNodes.length === 0) {
       setNodeSignals(new Map());
       setNodeInputs(new Map());
       return;
     }
+  }, [isRunning, selectedNodes.length]);
 
-    const interval = setInterval(() => {
-      const signals = new Map<string, Record<string, Signal>>();
-      const inputs = new Map<string, Record<string, { value: Signal; source?: string }>>();
-      const allSignals = engine.getAllSignals();
-      for (const node of selectedNodes) {
-        signals.set(node.id, engine.getNodeOutputs(node.id));
-        const inputValues: Record<string, { value: Signal; source?: string }> = {};
-        for (const connection of circuit.connections) {
-          if (connection.to.nodeId !== node.id) continue;
-          const sourceKey = `${connection.from.nodeId}.${connection.from.portName}`;
-          const value = allSignals.get(sourceKey) ?? 0;
-          inputValues[connection.to.portName] = { value, source: sourceKey };
-        }
-        inputs.set(node.id, inputValues);
-      }
-      setNodeSignals(signals);
-      setNodeInputs(inputs);
-    }, 200); // Reduced from 50ms to 200ms for better performance
-
-    return () => clearInterval(interval);
-  }, [isRunning, selectedNodes, engine, circuit.connections]);
+  // On activation (or selection change), refresh immediately so the panel isn't stale.
+  React.useEffect(() => {
+    if (!signalPollingActive) return;
+    refreshSignals();
+  }, [refreshSignals, signalPollingActive]);
 
   React.useEffect(() => {
     if (selectedNodes.length === 0) {

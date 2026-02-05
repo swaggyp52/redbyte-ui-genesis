@@ -1331,6 +1331,7 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
                       <SplitViewLayout
                         mode="single"
                         views={['circuit']}
+                        windowId={windowId}
                         engine={engine}
                         tickEngine={tickEngine}
                         circuit={circuit}

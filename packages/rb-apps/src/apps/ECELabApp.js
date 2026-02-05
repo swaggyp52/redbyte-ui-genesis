@@ -839,7 +839,7 @@ export const ECELabAppComponent = ({ windowId, labId }) => {
                                             _jsxs("div", { className: "absolute inset-0 flex flex-col", children: [_jsx(CircuitCanvas, { experiment: currentExperiment, inputs: displayInputs, outputs: displayOutputs, tick: simSnapshot.tick }), _jsx("div", { className: "absolute top-2 left-2 px-2 py-1 bg-gray-900/80 text-[10px] text-cyan-500 border border-cyan-500/30 rounded pointer-events-none", children: "PRE-BUILT EXPERIMENT" })] })) : (
                                             /* Interactive Mode: SplitViewLayout */
                                             /* Interactive Mode: SplitViewLayout */
-                                            _jsxs("div", { className: "absolute inset-0", children: [_jsx(SplitViewLayout, { mode: "single", views: ['circuit'], engine: engine, tickEngine: tickEngine, circuit: circuit, isRunning: simAutoRun, tickCount: simSnapshot.tick, onCircuitChange: (newCircuit) => {
+                                            _jsxs("div", { className: "absolute inset-0", children: [_jsx(SplitViewLayout, { mode: "single", views: ['circuit'], windowId: windowId, engine: engine, tickEngine: tickEngine, circuit: circuit, isRunning: simAutoRun, tickCount: simSnapshot.tick, onCircuitChange: (newCircuit) => {
                                                             setCircuit(newCircuit);
                                                             engine.setCircuit(newCircuit);
                                                             tickEngine.setCircuit(newCircuit);

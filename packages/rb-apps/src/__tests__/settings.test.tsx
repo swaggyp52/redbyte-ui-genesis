@@ -18,6 +18,7 @@ describe('Settings app lifecycle', () => {
       accentColor: 'blue',
       tickRate: 20,
       reduceMotion: false,
+      performanceMode: false,
       density: 'comfortable',
       snapAssist: 'manual',
     });

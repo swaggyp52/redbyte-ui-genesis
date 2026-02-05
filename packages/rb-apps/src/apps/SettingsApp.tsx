@@ -29,20 +29,22 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
   const [selectedSection, setSelectedSection] = useState<SettingsSectionId>('appearance');
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const {
-    themeVariant,
-    wallpaperId,
-    setThemeVariant,
-    setWallpaperId,
-    tickRate,
-    setTickRate,
-    reduceMotion,
-    setReduceMotion,
-    density,
-    setDensity,
-    snapAssist,
-    setSnapAssist,
-  } = useSettingsStore();
+	  const {
+	    themeVariant,
+	    wallpaperId,
+	    setThemeVariant,
+	    setWallpaperId,
+	    tickRate,
+	    setTickRate,
+	    reduceMotion,
+	    setReduceMotion,
+	    performanceMode,
+	    setPerformanceMode,
+	    density,
+	    setDensity,
+	    snapAssist,
+	    setSnapAssist,
+	  } = useSettingsStore();
 
   useEffect(() => {
     containerRef.current?.focus();
@@ -185,33 +187,59 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold mb-3" style={{ color: 'var(--rb-text)' }}>Motion</label>
-                <div
-                  className="flex items-center justify-between rounded-lg px-4 py-3"
-                  style={{ border: '1px solid var(--rb-border)', background: 'var(--rb-surface-1)' }}
-                >
-                  <div>
-                    <div className="text-sm font-medium" style={{ color: 'var(--rb-text)' }}>Reduce Motion</div>
-                    <div className="text-xs" style={{ color: 'var(--rb-text-3)' }}>Disable non-essential animation</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setReduceMotion(!reduceMotion)}
-                    className="relative h-6 w-11 rounded-full transition-colors"
-                    style={{ background: reduceMotion ? 'var(--rb-accent)' : 'var(--rb-surface-3)' }}
-                    aria-label="Toggle reduced motion"
-                  >
-                    <span
-                      className="absolute top-0.5 h-5 w-5 rounded-full transition-transform"
-                      style={{
-                        background: 'var(--rb-surface-0)',
-                        transform: reduceMotion ? 'translateX(20px)' : 'translateX(2px)',
-                      }}
-                    />
-                  </button>
-                </div>
-              </div>
+	              <div>
+	                <label className="block text-sm font-semibold mb-3" style={{ color: 'var(--rb-text)' }}>Motion</label>
+	                <div
+	                  className="flex items-center justify-between rounded-lg px-4 py-3"
+	                  style={{ border: '1px solid var(--rb-border)', background: 'var(--rb-surface-1)' }}
+	                >
+	                  <div>
+	                    <div className="text-sm font-medium" style={{ color: 'var(--rb-text)' }}>Reduce Motion</div>
+	                    <div className="text-xs" style={{ color: 'var(--rb-text-3)' }}>Disable non-essential animation</div>
+	                  </div>
+	                  <button
+	                    type="button"
+	                    onClick={() => setReduceMotion(!reduceMotion)}
+	                    className="relative h-6 w-11 rounded-full transition-colors"
+	                    style={{ background: reduceMotion ? 'var(--rb-accent)' : 'var(--rb-surface-3)' }}
+	                    aria-label="Toggle reduced motion"
+	                  >
+	                    <span
+	                      className="absolute top-0.5 h-5 w-5 rounded-full transition-transform"
+	                      style={{
+	                        background: 'var(--rb-surface-0)',
+	                        transform: reduceMotion ? 'translateX(20px)' : 'translateX(2px)',
+	                      }}
+	                    />
+	                  </button>
+	                </div>
+	                <div
+	                  className="flex items-center justify-between rounded-lg px-4 py-3 mt-2"
+	                  style={{ border: '1px solid var(--rb-border)', background: 'var(--rb-surface-1)' }}
+	                >
+	                  <div>
+	                    <div className="text-sm font-medium" style={{ color: 'var(--rb-text)' }}>Performance Mode</div>
+	                    <div className="text-xs" style={{ color: 'var(--rb-text-3)' }}>
+	                      Reduce rendering load (may disable 3D and throttle instruments)
+	                    </div>
+	                  </div>
+	                  <button
+	                    type="button"
+	                    onClick={() => setPerformanceMode(!performanceMode)}
+	                    className="relative h-6 w-11 rounded-full transition-colors"
+	                    style={{ background: performanceMode ? 'var(--rb-accent)' : 'var(--rb-surface-3)' }}
+	                    aria-label="Toggle performance mode"
+	                  >
+	                    <span
+	                      className="absolute top-0.5 h-5 w-5 rounded-full transition-transform"
+	                      style={{
+	                        background: 'var(--rb-surface-0)',
+	                        transform: performanceMode ? 'translateX(20px)' : 'translateX(2px)',
+	                      }}
+	                    />
+	                  </button>
+	                </div>
+	              </div>
 
               {/* Wallpaper Section */}
               <div>

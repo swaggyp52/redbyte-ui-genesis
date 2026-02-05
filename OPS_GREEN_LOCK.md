@@ -1,8 +1,27 @@
 ﻿# OPS GREEN LOCK
 
-**Status: PASSING** âœ…  
-**Date: 2026-01-17**  
-**Verification Chain**: All 3 gates pass locally on the lab desktop
+**Status: GREEN LOCK ENFORCED** ✅  
+**Date: 2026-02-05**  
+**Verification Chain**: verify:all is the single source of truth
+
+---
+
+## GREEN LOCK RULE
+
+**No forward feature work until `pnpm verify:all` passes.**
+
+This is the **canonical verification script** that runs:
+1. Full workspace build (`pnpm -r build`)
+2. All Phase 1-4 deterministic gates (11 gates total)
+3. Ops contract locks (diff-gate, student-export-fixture-test)
+
+Run it locally before any commit:
+```powershell
+pnpm verify:all
+```
+
+GitHub Actions enforces this via `.github/workflows/quality.yml` (required check).
+Cloudflare build must run `pnpm -r build` and succeed (subset of verify:all).
 
 ---
 
@@ -258,10 +277,26 @@ Updating the golden hash (intentional changes only):
 pnpm rbx:evidence-determinism-gate:update
 ```
 
+---
+
+## Cloudflare Build Parity
+
+**Build Command**: `.github/workflows/deploy-cloudflare.yml` runs `pnpm build:unified`
+
+**Verification Subset**:
+- Cloudflare build **must** run `pnpm -r build` and succeed (via `build:unified`)
+- This is a **subset** of `verify:all` (build only, no gate tests)
+- Local `verify:all` is the **truth source** for greenness
+- CI enforces `verify:all` via `.github/workflows/quality.yml` (required check)
+
+**Parity Guarantee**:
+- If `verify:all` passes locally → Cloudflare build will succeed
+- If Cloudflare build fails → `verify:all` will catch it (build errors)
+- Gate tests run in CI but not in Cloudflare (deployment optimized for speed)
+
 3. **Contract Evolution**: If any script changes, update this lock file
 
 ---
 
-**Locked by**: GitHub Copilot (claude-haiku)  
-**Last Updated**: 2026-01-17  
-**Maintainer**: Connor Angiel (canonical contact)
+**Locked by**: GitHub Copilot (Claude Sonnet 4.5)  
+**Last Updated**: 2026-02-05  

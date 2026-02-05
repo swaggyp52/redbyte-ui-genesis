@@ -42,8 +42,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run quality gate
-        run: pnpm quality
+      - name: Run comprehensive verification
+        run: pnpm verify:all
 
       - name: Verify Unified Artifact
         run: node scripts/merge-dist.mjs && node scripts/verify-dist.mjs

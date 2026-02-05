@@ -4,6 +4,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { getDiagnosticsSnapshot } from './sessionDiagnosticsStore';
+import { toStudentFacingError } from '@redbyte/rb-utils';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -115,6 +116,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   render(): ReactNode {
     if (this.state.hasError) {
+      const studentError = toStudentFacingError(this.state.error);
       return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-red-700 rounded-lg shadow-xl max-w-md w-full p-6">
@@ -127,7 +129,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             {this.state.error && (
               <div className="bg-slate-800 border border-slate-700 rounded p-3 mb-4">
                 <p className="text-xs font-mono text-red-400 break-all">
-                  {this.state.error.message}
+                  {studentError.message}
                 </p>
               </div>
             )}

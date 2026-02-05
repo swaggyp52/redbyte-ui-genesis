@@ -18,6 +18,7 @@ interface SettingsState {
   accentColor: AccentColor;
   tickRate: number;
   reduceMotion: boolean;
+  performanceMode: boolean;
   density: DensityMode;
   snapAssist: SnapAssistMode;
 }
@@ -28,6 +29,7 @@ interface SettingsActions {
   setAccentColor: (color: AccentColor) => void;
   setTickRate: (rate: number) => void;
   setReduceMotion: (enabled: boolean) => void;
+  setPerformanceMode: (enabled: boolean) => void;
   setDensity: (mode: DensityMode) => void;
   setSnapAssist: (mode: SnapAssistMode) => void;
 }
@@ -42,6 +44,7 @@ const DEFAULT_SETTINGS: SettingsState = {
   accentColor: 'blue',
   tickRate: 20,
   reduceMotion: false,
+  performanceMode: false,
   density: 'comfortable',
   snapAssist: 'manual',
 };
@@ -96,6 +99,9 @@ function loadSettings(): SettingsState {
       reduceMotion: typeof parsed.reduceMotion === 'boolean'
         ? parsed.reduceMotion
         : DEFAULT_SETTINGS.reduceMotion,
+      performanceMode: typeof parsed.performanceMode === 'boolean'
+        ? parsed.performanceMode
+        : DEFAULT_SETTINGS.performanceMode,
       density,
       snapAssist,
     };
@@ -157,6 +163,11 @@ function createSettingsStore() {
 
     setReduceMotion: (enabled) => {
       set({ reduceMotion: enabled });
+      persistSettings(get());
+    },
+
+    setPerformanceMode: (enabled) => {
+      set({ performanceMode: enabled });
       persistSettings(get());
     },
 

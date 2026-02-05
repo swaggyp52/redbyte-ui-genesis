@@ -7,7 +7,8 @@ import { useShallow } from 'zustand/react/shallow';
 import { REPLAY_LOCK_MESSAGE } from '../utils/replayLock';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import { useProbeStore } from '../stores/probeStore';
-export const PropertyInspector = ({ circuit, engine, isRunning, isReplayMode = false, onNodeUpdate, onConnectionDelete, }) => {
+import { useInstrumentScheduler } from '../hooks/useInstrumentScheduler';
+export const PropertyInspector = ({ circuit, engine, isRunning, windowId, isReplayMode = false, onNodeUpdate, onConnectionDelete, }) => {
     // Use shallow comparison to prevent re-renders when selection object reference changes but content is the same
     const selection = useLogicViewStore(useShallow((s) => s.selection));
     const addProbe = useProbeStore((s) => s.addProbe);
@@ -31,33 +32,44 @@ export const PropertyInspector = ({ circuit, engine, isRunning, isReplayMode = f
     const [nodeInputs, setNodeInputs] = React.useState(new Map());
     const [analogUiState, setAnalogUiState] = React.useState({});
     const analogCommitTimerRef = React.useRef(null);
+    const refreshSignals = React.useCallback(() => {
+        const signals = new Map();
+        const inputs = new Map();
+        const allSignals = engine.getAllSignals();
+        for (const node of selectedNodes) {
+            signals.set(node.id, engine.getNodeOutputs(node.id));
+            const inputValues = {};
+            for (const connection of circuit.connections) {
+                if (connection.to.nodeId !== node.id)
+                    continue;
+                const sourceKey = `${connection.from.nodeId}.${connection.from.portName}`;
+                const value = allSignals.get(sourceKey) ?? 0;
+                inputValues[connection.to.portName] = { value, source: sourceKey };
+            }
+            inputs.set(node.id, inputValues);
+        }
+        setNodeSignals(signals);
+        setNodeInputs(inputs);
+    }, [circuit.connections, engine, selectedNodes]);
+    const { isActive: signalPollingActive } = useInstrumentScheduler({
+        windowId,
+        enabled: isRunning && selectedNodes.length > 0,
+        onTick: refreshSignals,
+        maxHz: 5, // 200ms (matches prior interval; keeps inspector lightweight)
+    });
     React.useEffect(() => {
         if (!isRunning || selectedNodes.length === 0) {
             setNodeSignals(new Map());
             setNodeInputs(new Map());
             return;
         }
-        const interval = setInterval(() => {
-            const signals = new Map();
-            const inputs = new Map();
-            const allSignals = engine.getAllSignals();
-            for (const node of selectedNodes) {
-                signals.set(node.id, engine.getNodeOutputs(node.id));
-                const inputValues = {};
-                for (const connection of circuit.connections) {
-                    if (connection.to.nodeId !== node.id)
-                        continue;
-                    const sourceKey = `${connection.from.nodeId}.${connection.from.portName}`;
-                    const value = allSignals.get(sourceKey) ?? 0;
-                    inputValues[connection.to.portName] = { value, source: sourceKey };
-                }
-                inputs.set(node.id, inputValues);
-            }
-            setNodeSignals(signals);
-            setNodeInputs(inputs);
-        }, 200); // Reduced from 50ms to 200ms for better performance
-        return () => clearInterval(interval);
-    }, [isRunning, selectedNodes, engine, circuit.connections]);
+    }, [isRunning, selectedNodes.length]);
+    // On activation (or selection change), refresh immediately so the panel isn't stale.
+    React.useEffect(() => {
+        if (!signalPollingActive)
+            return;
+        refreshSignals();
+    }, [refreshSignals, signalPollingActive]);
     React.useEffect(() => {
         if (selectedNodes.length === 0) {
             setAnalogUiState({});

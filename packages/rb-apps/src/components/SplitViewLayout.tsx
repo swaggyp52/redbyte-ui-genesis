@@ -16,6 +16,7 @@ import { CodeView } from './CodeView';
 import { CircuitToolStrip } from './CircuitToolStrip';
 import { HardwareMapper } from './HardwareMapper';
 import { Icon, type IconName } from '@redbyte/rb-icons';
+import { useSettingsStore } from '@redbyte/rb-utils';
 import type { SplitScreenMode, ViewMode } from '../stores/viewStateStore';
 import { useViewStateStore } from '../stores/viewStateStore';
 import type { HelpSectionId } from './HelpDock';
@@ -24,6 +25,7 @@ interface SplitViewLayoutProps {
   mode: SplitScreenMode;
   views: ViewMode[];
   splitRatio?: number;
+  windowId?: string;
   engine: CircuitEngine;
   tickEngine: TickEngine;
   circuit: Circuit;
@@ -68,6 +70,7 @@ interface ViewRendererProps {
   tickEngine: TickEngine;
   circuit: Circuit;
   isRunning: boolean;
+  windowId?: string;
   tickCount?: number;
   debugSignals?: Map<string, 0 | 1> | null;
   debugTick?: number | null;
@@ -119,6 +122,8 @@ const VIEW_METADATA: Record<ViewMode, { icon: IconName; label: string; color: st
   code: { icon: 'code', label: 'HDL Code', color: 'yellow' },
 };
 
+const selectPerformanceMode = (s: { performanceMode: boolean }) => s.performanceMode;
+
 const setsEqual = (a: Set<string>, b: Set<string>) => {
   if (a === b) return true;
   if (a.size !== b.size) return false;
@@ -134,6 +139,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   tickEngine,
   circuit,
   isRunning,
+  windowId,
   tickCount,
   debugSignals,
   debugTick,
@@ -175,6 +181,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = React.useState({ width: 800, height: 600 });
+  const performanceMode = useSettingsStore(selectPerformanceMode);
   const toolMode = useLogicViewStore((state) => state.toolMode);
   const setToolMode = useLogicViewStore((state) => state.setToolMode);
   const snapToGrid = useLogicViewStore((state) => state.snapToGrid);
@@ -394,6 +401,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               tickEngine={tickEngine}
               circuit={circuit}
               isRunning={isRunning}
+              windowId={windowId}
               width={dimensions.width}
               height={dimensions.height}
               showHints={showOscilloscopeHints}
@@ -413,10 +421,10 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
             typeof window !== 'undefined' &&
             new URLSearchParams(window.location.search).get('disable3d') === '1';
 
-          if (disable3d) {
+          if (disable3d || performanceMode) {
             return (
               <div ref={containerRef} style={containerStyle} className="flex items-center justify-center text-sm text-gray-300">
-                3D view disabled by flag.
+                {performanceMode ? '3D view disabled in Performance Mode.' : '3D view disabled by flag.'}
               </div>
             );
           }
@@ -499,6 +507,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   mode,
   views,
   splitRatio = 0.5,
+  windowId,
   engine,
   tickEngine,
   circuit,
@@ -667,6 +676,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             tickEngine={tickEngine}
             circuit={circuit}
             isRunning={isRunning}
+            windowId={windowId}
             tickCount={tickCount}
             debugSignals={debugSignals}
             debugTick={debugTick}
@@ -711,6 +721,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             tickEngine={tickEngine}
             circuit={circuit}
             isRunning={isRunning}
+            windowId={windowId}
             tickCount={tickCount}
             debugSignals={debugSignals}
             debugTick={debugTick}
@@ -947,6 +958,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             tickEngine={tickEngine}
             circuit={circuit}
             isRunning={isRunning}
+            windowId={windowId}
             tickCount={tickCount}
             debugSignals={debugSignals}
             debugTick={debugTick}
@@ -990,6 +1002,7 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             tickEngine={tickEngine}
             circuit={circuit}
             isRunning={isRunning}
+            windowId={windowId}
             canUndo={canUndo}
             canRedo={canRedo}
             onUndo={onUndo}

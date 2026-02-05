@@ -35,6 +35,7 @@ interface RightDockProps {
   circuit: Circuit;
   engine: CircuitEngine;
   isRunning: boolean;
+  windowId?: string;
   isReplayMode?: boolean;
   onNodeUpdate?: (nodeId: string, updates: any) => void;
   onConnectionDelete?: (connectionId: string) => void;
@@ -102,6 +103,7 @@ export const RightDock: React.FC<RightDockProps> = ({
   circuit,
   engine,
   isRunning,
+  windowId,
   isReplayMode = false,
   onNodeUpdate,
   onConnectionDelete,
@@ -630,6 +632,7 @@ export const RightDock: React.FC<RightDockProps> = ({
                 circuit={circuit}
                 engine={engine}
                 isRunning={isRunning}
+                windowId={windowId}
                 isReplayMode={isReplayMode}
                 onNodeUpdate={onNodeUpdate}
                 onConnectionDelete={onConnectionDelete}

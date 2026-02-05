@@ -6,16 +6,28 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useViewStateStore } from '../stores/viewStateStore';
 import { useProbeStore } from '../stores/probeStore';
 import { useOscilloscopeStore } from '../stores/oscilloscopeStore';
-import { mark, measure, trackRender } from '@redbyte/rb-utils';
+import { mark, measure, trackRender, useSettingsStore } from '@redbyte/rb-utils';
+import { usePageVisibility } from '../hooks/usePageVisibility';
+import { useWindowActivity } from '../hooks/useWindowActivity';
+import { computeInstrumentHz } from '../instruments/computeInstrumentHz';
 import { calculateMeasurements, } from '../utils/signalMeasurements';
 import { getOscilloscopeHoverInfo } from '../utils/oscilloscopeHover';
 const MAX_SAMPLES = 500; // Maximum samples to keep in buffer
 const SAMPLE_INTERVAL = 50; // ms between samples (20 Hz)
-export const OscilloscopeView = ({ engine, tickEngine, circuit, isRunning, width = 800, height = 600, showHints = true, onDismissHints, onHelp, debugTick, }) => {
+const selectPerformanceMode = (s) => s.performanceMode;
+export const OscilloscopeView = ({ engine, tickEngine, circuit, isRunning, windowId, width = 800, height = 600, showHints = true, onDismissHints, onHelp, debugTick, }) => {
     trackRender('OscilloscopeView');
     const canvasRef = useRef(null);
     const canvasContainerRef = useRef(null);
     const pendingDrawRef = useRef(null);
+    const performanceMode = useSettingsStore(selectPerformanceMode);
+    const pageVisible = usePageVisibility();
+    const { isVisible: windowVisible, isFocused: windowFocused } = useWindowActivity(windowId);
+    const hz = computeInstrumentHz({
+        performanceMode,
+        focused: windowFocused,
+        minimized: !pageVisible || !windowVisible,
+    });
     const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 600 });
     const probes = useProbeStore((state) => state.probes);
     const activeProbeId = useProbeStore((state) => state.activeProbeId);
@@ -241,7 +253,7 @@ export const OscilloscopeView = ({ engine, tickEngine, circuit, isRunning, width
     // Poll TraceRecorder for updates
     useEffect(() => {
         const traceRecorder = tickEngine.getTraceRecorder();
-        if (isRunning) {
+        if (isRunning && hz > 0) {
             // Start trace recording if not already active
             if (!traceRecorder) {
                 tickEngine.enableTracing(2000); // Keep last 2000 ticks
@@ -253,10 +265,11 @@ export const OscilloscopeView = ({ engine, tickEngine, circuit, isRunning, width
             startTimeRef.current = Date.now();
             setTotalSamples(0);
             setViewEndTime(0);
-            // Poll trace data at 60fps (16ms interval)
+            const pollMs = Math.max(1, Math.round(1000 / hz));
+            // Poll trace data (gated by window visibility/focus + Performance Mode)
             const pollInterval = window.setInterval(() => {
                 sampleSignals();
-            }, 16);
+            }, pollMs);
             // Start measurement updates (every 1 second)
             measurementUpdateRef.current = window.setInterval(() => {
                 setMeasurementUpdateCounter((prev) => prev + 1);
@@ -265,17 +278,20 @@ export const OscilloscopeView = ({ engine, tickEngine, circuit, isRunning, width
                 clearInterval(pollInterval);
                 if (measurementUpdateRef.current) {
                     clearInterval(measurementUpdateRef.current);
+                    measurementUpdateRef.current = null;
                 }
             };
         }
-        else {
-            // Stop measurement updates when paused
-            if (measurementUpdateRef.current) {
-                clearInterval(measurementUpdateRef.current);
-                measurementUpdateRef.current = null;
-            }
+
+        // When paused/hidden/minimized, stop recording to avoid background work.
+        if (traceRecorder?.isActive()) {
+            traceRecorder.stop();
         }
-    }, [isRunning, sampleSignals, tickEngine]);
+        if (measurementUpdateRef.current) {
+            clearInterval(measurementUpdateRef.current);
+            measurementUpdateRef.current = null;
+        }
+    }, [hz, isRunning, sampleSignals, tickEngine]);
     // Input changes are now captured by TraceRecorder automatically
     // No need for separate input-change sampling
     // Update measurements periodically

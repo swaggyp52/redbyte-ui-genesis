@@ -14,3 +14,4 @@ export * from './entitlements';
 export * from './syncAdapter';
 export * from './projectSchema';
 export * from './labProjectSchema';
+export * from './studentError';

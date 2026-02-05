@@ -7,7 +7,10 @@ import type { CircuitEngine, Node, TickEngine } from '@redbyte/rb-logic-core';
 import { useViewStateStore } from '../stores/viewStateStore';
 import { useProbeStore } from '../stores/probeStore';
 import { useOscilloscopeStore } from '../stores/oscilloscopeStore';
-import { mark, measure, trackRender } from '@redbyte/rb-utils';
+import { mark, measure, trackRender, useSettingsStore } from '@redbyte/rb-utils';
+import { usePageVisibility } from '../hooks/usePageVisibility';
+import { useWindowActivity } from '../hooks/useWindowActivity';
+import { computeInstrumentHz } from '../instruments/computeInstrumentHz';
 import {
   calculateMeasurements,
   type SignalSample,
@@ -41,6 +44,7 @@ interface OscilloscopeViewProps {
   tickEngine: TickEngine;
   circuit: { nodes: Node[] };
   isRunning: boolean;
+  windowId?: string;
   width?: number;
   height?: number;
   showHints?: boolean;
@@ -54,12 +58,14 @@ interface OscilloscopeViewProps {
 
 const MAX_SAMPLES = 500; // Maximum samples to keep in buffer
 const SAMPLE_INTERVAL = 50; // ms between samples (20 Hz)
+const selectPerformanceMode = (s: { performanceMode: boolean }) => s.performanceMode;
 
 export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   engine,
   tickEngine,
   circuit,
   isRunning,
+  windowId,
   width = 800,
   height = 600,
   showHints = true,
@@ -71,6 +77,14 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const pendingDrawRef = useRef<number | null>(null);
+  const performanceMode = useSettingsStore(selectPerformanceMode);
+  const pageVisible = usePageVisibility();
+  const { isVisible: windowVisible, isFocused: windowFocused } = useWindowActivity(windowId);
+  const hz = computeInstrumentHz({
+    performanceMode,
+    focused: windowFocused,
+    minimized: !pageVisible || !windowVisible,
+  });
 
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 600 });
   const probes = useProbeStore((state) => state.probes);
@@ -345,7 +359,7 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
   useEffect(() => {
     const traceRecorder = tickEngine.getTraceRecorder();
 
-    if (isRunning) {
+    if (isRunning && hz > 0) {
       // Start trace recording if not already active
       if (!traceRecorder) {
         tickEngine.enableTracing(2000); // Keep last 2000 ticks
@@ -358,10 +372,11 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
       setTotalSamples(0);
       setViewEndTime(0);
 
-      // Poll trace data at 60fps (16ms interval)
+      const pollMs = Math.max(1, Math.round(1000 / hz));
+      // Poll trace data (gated by window visibility/focus + Performance Mode)
       const pollInterval = window.setInterval(() => {
         sampleSignals();
-      }, 16);
+      }, pollMs);
 
       // Start measurement updates (every 1 second)
       measurementUpdateRef.current = window.setInterval(() => {
@@ -372,16 +387,20 @@ export const OscilloscopeView: React.FC<OscilloscopeViewProps> = ({
         clearInterval(pollInterval);
         if (measurementUpdateRef.current) {
           clearInterval(measurementUpdateRef.current);
+          measurementUpdateRef.current = null;
         }
       };
-    } else {
-      // Stop measurement updates when paused
-      if (measurementUpdateRef.current) {
-        clearInterval(measurementUpdateRef.current);
-        measurementUpdateRef.current = null;
-      }
     }
-  }, [isRunning, sampleSignals, tickEngine]);
+
+    // When paused/hidden/minimized, stop recording to avoid background work.
+    if (traceRecorder?.isActive()) {
+      traceRecorder.stop();
+    }
+    if (measurementUpdateRef.current) {
+      clearInterval(measurementUpdateRef.current);
+      measurementUpdateRef.current = null;
+    }
+  }, [isRunning, hz, sampleSignals, tickEngine]);
 
   // Input changes are now captured by TraceRecorder automatically
   // No need for separate input-change sampling

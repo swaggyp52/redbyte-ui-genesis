@@ -10,6 +10,7 @@ const DEFAULT_SETTINGS = {
     accentColor: 'blue',
     tickRate: 20,
     reduceMotion: false,
+    performanceMode: false,
     density: 'comfortable',
     snapAssist: 'manual',
 };
@@ -61,6 +62,9 @@ function loadSettings() {
             reduceMotion: typeof parsed.reduceMotion === 'boolean'
                 ? parsed.reduceMotion
                 : DEFAULT_SETTINGS.reduceMotion,
+            performanceMode: typeof parsed.performanceMode === 'boolean'
+                ? parsed.performanceMode
+                : DEFAULT_SETTINGS.performanceMode,
             density,
             snapAssist,
         };
@@ -117,6 +121,10 @@ function createSettingsStore() {
         },
         setReduceMotion: (enabled) => {
             set({ reduceMotion: enabled });
+            persistSettings(get());
+        },
+        setPerformanceMode: (enabled) => {
+            set({ performanceMode: enabled });
             persistSettings(get());
         },
         setDensity: (mode) => {

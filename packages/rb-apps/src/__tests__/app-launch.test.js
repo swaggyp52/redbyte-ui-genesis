@@ -38,6 +38,7 @@ describe.skip('OS launch integration', () => {
             accentColor: 'blue',
             tickRate: 20,
             reduceMotion: false,
+            performanceMode: false,
             density: 'comfortable',
             snapAssist: 'manual',
         });

@@ -8,7 +8,7 @@ import { Dock } from './Dock';
 import { Taskbar } from './Taskbar';
 import { ShellWindow } from './ShellWindow';
 import { applyTheme } from '@redbyte/rb-theme';
-import { isPerfDebugEnabled, startPerfSummaryLogger, startUiTickSampler, useSettingsStore } from '@redbyte/rb-utils';
+import { isPerfDebugEnabled, startPerfSummaryLogger, startUiTickSampler, toStudentFacingError, useSettingsStore } from '@redbyte/rb-utils';
 import { getApp, useFileSystemStore, getFileActionTargets, isFileActionEligible, resolveDefaultTarget, OpenWithModal, useSystemLogStore, logSystemEvent, installErrorHandlers, useRenderStormDetector, } from '@redbyte/rb-apps';
 import { useWindowStore, loadSession, resolveTargetWindowId } from '@redbyte/rb-windowing';
 import { useWorkspaceStore, loadWorkspaces } from './workspaceStore';
@@ -49,7 +49,7 @@ import { trackWindowOpen, runWindowCleanup, startLeakMonitor } from './leakGuard
 class AppErrorBoundary extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { hasError: false };
+        this.state = { hasError: false, resetNonce: 0 };
     }
     static getDerivedStateFromError(error) {
         return { hasError: true, error };
@@ -86,8 +86,36 @@ class AppErrorBoundary extends React.Component {
         a.click();
         URL.revokeObjectURL(url);
     };
+    handleCopyDetails = async () => {
+        try {
+            const payload = {
+                appId: this.props.appId,
+                windowId: this.props.windowId,
+                error: this.state.error?.message ?? 'Unknown error',
+                stack: this.state.error?.stack ?? null,
+                componentStack: this.state.errorStack ?? null,
+            };
+            const text = JSON.stringify(payload, null, 2);
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(text);
+                return;
+            }
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+        }
+        catch (err) {
+            console.error('[Shell] Failed to copy crash details:', err);
+        }
+    };
     render() {
         if (this.state.hasError) {
+            const studentError = toStudentFacingError(this.state.error);
             const btnBase = {
                 padding: '0.4rem 1rem', border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.75rem',
@@ -96,9 +124,14 @@ class AppErrorBoundary extends React.Component {
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                     height: '100%', background: 'var(--rb-surface-0, #0a0a0a)', color: 'var(--rb-text, #e2e8f0)',
                     padding: '2rem', textAlign: 'center',
-                }, children: [_jsx("div", { style: { fontSize: '1.25rem', fontWeight: 700, color: 'var(--rb-danger, #ef4444)', marginBottom: '0.5rem' }, children: "App Crashed" }), _jsx("div", { style: { fontSize: '0.75rem', color: 'var(--rb-text-2, #64748b)', marginBottom: '0.25rem' }, children: _jsx("strong", { children: this.props.appId }) }), _jsx("div", { style: { fontSize: '0.75rem', color: 'var(--rb-text-3, #64748b)', marginBottom: '1rem', maxWidth: 300 }, children: this.state.error?.message || 'Unknown error' }), _jsxs("div", { style: { display: 'flex', gap: '0.5rem' }, children: [_jsx("button", { type: "button", onClick: () => this.setState({ hasError: false, error: undefined, errorStack: undefined }), style: { ...btnBase, background: 'var(--rb-surface-2, #1e293b)', color: 'var(--rb-text, #e2e8f0)' }, children: "Retry" }), _jsx("button", { type: "button", onClick: this.handleExportState, style: { ...btnBase, background: 'transparent', color: 'var(--rb-text-2, #94a3b8)' }, children: "Export Report" }), _jsx("button", { type: "button", onClick: this.props.onClose, style: { ...btnBase, background: 'var(--rb-danger-bg, rgba(239,68,68,0.12))', color: 'var(--rb-danger, #ef4444)', borderColor: 'var(--rb-danger-border, rgba(239,68,68,0.3))' }, children: "Close Window" })] })] }));
+                }, children: [_jsx("div", { style: { fontSize: '1.25rem', fontWeight: 700, color: 'var(--rb-danger, #ef4444)', marginBottom: '0.5rem' }, children: "App Crashed" }), _jsx("div", { style: { fontSize: '0.75rem', color: 'var(--rb-text-2, #64748b)', marginBottom: '0.25rem' }, children: _jsx("strong", { children: this.props.appId }) }), _jsx("div", { style: { fontSize: '0.75rem', color: 'var(--rb-text-3, #64748b)', marginBottom: '1rem', maxWidth: 300 }, children: studentError.message }), _jsxs("div", { style: { display: 'flex', gap: '0.5rem' }, children: [_jsx("button", { type: "button", onClick: () => this.setState((prev) => ({
+                                    hasError: false,
+                                    error: undefined,
+                                    errorStack: undefined,
+                                    resetNonce: prev.resetNonce + 1,
+                                })), style: { ...btnBase, background: 'var(--rb-surface-2, #1e293b)', color: 'var(--rb-text, #e2e8f0)' }, children: "Reload App" }), _jsx("button", { type: "button", onClick: this.handleCopyDetails, style: { ...btnBase, background: 'transparent', color: 'var(--rb-text-2, #94a3b8)' }, children: "Copy Details" }), _jsx("button", { type: "button", onClick: this.handleExportState, style: { ...btnBase, background: 'transparent', color: 'var(--rb-text-2, #94a3b8)' }, children: "Export Report" }), _jsx("button", { type: "button", onClick: this.props.onClose, style: { ...btnBase, background: 'var(--rb-danger-bg, rgba(239,68,68,0.12))', color: 'var(--rb-danger, #ef4444)', borderColor: 'var(--rb-danger-border, rgba(239,68,68,0.3))' }, children: "Close Window" })] })] }));
         }
-        return this.props.children;
+        return _jsx("div", { style: { height: '100%' }, children: this.props.children }, this.state.resetNonce);
     }
 }
 /** Loading fallback shown inside Suspense when lazy-loaded app components are loading. */
@@ -235,6 +268,7 @@ export const Shell = () => {
     const themeVariant = useSettingsStore((s) => s.themeVariant);
     const density = useSettingsStore((s) => s.density);
     const reduceMotion = useSettingsStore((s) => s.reduceMotion);
+    const performanceMode = useSettingsStore((s) => s.performanceMode);
     const snapAssist = useSettingsStore((s) => s.snapAssist);
     const wallpaperId = useSettingsStore((s) => s.wallpaperId);
     const hasSettings = useMemo(() => Boolean(getApp('settings')), []);
@@ -500,28 +534,32 @@ export const Shell = () => {
             cleanupLeaks();
         };
     }, []);
+	    useEffect(() => {
+	        if (typeof document !== 'undefined') {
+	            applyTheme(document.documentElement, themeVariant);
+	            document.documentElement.setAttribute('data-rb-density', density);
+	            const effectiveReduceMotion = reduceMotion || performanceMode;
+	            document.documentElement.setAttribute('data-rb-motion', effectiveReduceMotion ? 'reduced' : 'full');
+	            document.documentElement.setAttribute('data-rb-perf', performanceMode ? 'on' : 'off');
+	        }
+	    }, [themeVariant, density, reduceMotion, performanceMode, snapAssist]);
     useEffect(() => {
-        if (typeof document !== 'undefined') {
-            applyTheme(document.documentElement, themeVariant);
-            document.documentElement.setAttribute('data-rb-density', density);
-            document.documentElement.setAttribute('data-rb-motion', reduceMotion ? 'reduced' : 'full');
-        }
-    }, [themeVariant, density, reduceMotion, snapAssist]);
-    useEffect(() => {
-        const current = {
-            themeVariant: themeVariant,
-            density: density,
-            reduceMotion: reduceMotion,
-            snapAssist: snapAssist,
-        };
+	        const current = {
+	            themeVariant: themeVariant,
+	            density: density,
+	            reduceMotion: reduceMotion || performanceMode,
+	            performanceMode: performanceMode,
+	            snapAssist: snapAssist,
+	        };
         if (!lastSettingsRef.current) {
             lastSettingsRef.current = current;
             return;
         }
-        if (lastSettingsRef.current.themeVariant !== current.themeVariant ||
-            lastSettingsRef.current.density !== current.density ||
-            lastSettingsRef.current.reduceMotion !== current.reduceMotion ||
-            lastSettingsRef.current.snapAssist !== current.snapAssist) {
+	        if (lastSettingsRef.current.themeVariant !== current.themeVariant ||
+	            lastSettingsRef.current.density !== current.density ||
+	            lastSettingsRef.current.reduceMotion !== current.reduceMotion ||
+	            lastSettingsRef.current.performanceMode !== current.performanceMode ||
+	            lastSettingsRef.current.snapAssist !== current.snapAssist) {
             logSystemEvent({
                 level: 'action',
                 source: 'settings',
@@ -530,7 +568,7 @@ export const Shell = () => {
             });
             lastSettingsRef.current = current;
         }
-    }, [themeVariant, density, reduceMotion]);
+	    }, [themeVariant, density, reduceMotion, performanceMode]);
     // Workspace/Session restore on mount
     useEffect(() => {
         if (!booted)

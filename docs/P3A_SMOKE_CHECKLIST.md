@@ -12,6 +12,9 @@
 - Start OS (dev or preview)
 - Ensure a clean workspace (no saved weird layout)
 - Optional: disable perf mode (default)
+- Optional: enable window debug dump:
+  - DevTools console: `localStorage.setItem('rb:windowDebug','1'); location.reload();`
+  - Inspect state: `window.__RB_WINDOWING__ && window.__RB_WINDOWING__.dump()`
 
 ## Checklist
 
@@ -69,4 +72,3 @@ Re-run this checklist when changing any of:
 - `packages/rb-shell/src/Shell.*` (open/restore/focus routing)
 - `packages/rb-shell/src/Dock.*` (open-existing behavior)
 - `packages/rb-shell/src/ShellWindow.*` (focus/active styling + pointer handlers)
-

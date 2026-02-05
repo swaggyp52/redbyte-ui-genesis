@@ -3773,6 +3773,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
                 mode={e2eDisableQuad && splitScreenMode === 'quad' ? 'single' : splitScreenMode}
                 views={e2eDisableQuad ? [activeViews[0] ?? 'circuit'] : activeViews}
                 splitRatio={splitRatio}
+                windowId={windowId}
                 engine={engine}
                 tickEngine={tickEngine}
                 circuit={circuit}
@@ -3910,6 +3911,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
               circuit={circuit}
               engine={engine}
               isRunning={isRunning}
+              windowId={windowId}
               isReplayMode={isReplayMode}
               onRun={handleRun}
               onPause={handlePause}

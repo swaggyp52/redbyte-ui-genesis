@@ -8,7 +8,7 @@ import { Dock } from './Dock';
 import { Taskbar } from './Taskbar';
 import { ShellWindow } from './ShellWindow';
 import { applyTheme } from '@redbyte/rb-theme';
-import { isPerfDebugEnabled, startPerfSummaryLogger, startUiTickSampler, useSettingsStore } from '@redbyte/rb-utils';
+import { isPerfDebugEnabled, startPerfSummaryLogger, startUiTickSampler, toStudentFacingError, useSettingsStore } from '@redbyte/rb-utils';
 import {
   getApp,
   type RedByteApp,
@@ -131,11 +131,11 @@ interface AppErrorBoundaryProps {
 /** Per-app error boundary: prevents one crashed app from tearing down the whole shell. */
 class AppErrorBoundary extends React.Component<
   AppErrorBoundaryProps,
-  { hasError: boolean; error?: Error; errorStack?: string }
+  { hasError: boolean; error?: Error; errorStack?: string; resetNonce: number }
 > {
   constructor(props: AppErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, resetNonce: 0 };
   }
 
   static getDerivedStateFromError(error: Error) {
@@ -176,8 +176,38 @@ class AppErrorBoundary extends React.Component<
     URL.revokeObjectURL(url);
   };
 
+  private handleCopyDetails = async () => {
+    try {
+      const payload = {
+        appId: this.props.appId,
+        windowId: this.props.windowId,
+        error: this.state.error?.message ?? 'Unknown error',
+        stack: this.state.error?.stack ?? null,
+        componentStack: this.state.errorStack ?? null,
+      };
+      const text = JSON.stringify(payload, null, 2);
+
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    } catch (err) {
+      console.error('[Shell] Failed to copy crash details:', err);
+    }
+  };
+
   render() {
     if (this.state.hasError) {
+      const studentError = toStudentFacingError(this.state.error);
       const btnBase: React.CSSProperties = {
         padding: '0.4rem 1rem', border: '1px solid rgba(255,255,255,0.1)',
         borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.75rem',
@@ -195,15 +225,29 @@ class AppErrorBoundary extends React.Component<
             <strong>{this.props.appId}</strong>
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--rb-text-3, #64748b)', marginBottom: '1rem', maxWidth: 300 }}>
-            {this.state.error?.message || 'Unknown error'}
+            {studentError.message}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
               type="button"
-              onClick={() => this.setState({ hasError: false, error: undefined, errorStack: undefined })}
+              onClick={() =>
+                this.setState((prev) => ({
+                  hasError: false,
+                  error: undefined,
+                  errorStack: undefined,
+                  resetNonce: prev.resetNonce + 1,
+                }))
+              }
               style={{ ...btnBase, background: 'var(--rb-surface-2, #1e293b)', color: 'var(--rb-text, #e2e8f0)' }}
             >
-              Retry
+              Reload App
+            </button>
+            <button
+              type="button"
+              onClick={this.handleCopyDetails}
+              style={{ ...btnBase, background: 'transparent', color: 'var(--rb-text-2, #94a3b8)' }}
+            >
+              Copy Details
             </button>
             <button
               type="button"
@@ -223,7 +267,7 @@ class AppErrorBoundary extends React.Component<
         </div>
       );
     }
-    return this.props.children;
+    return <div key={this.state.resetNonce} style={{ height: '100%' }}>{this.props.children}</div>;
   }
 }
 
@@ -319,6 +363,7 @@ export const Shell: React.FC<ShellProps> = () => {
     themeVariant: string;
     density: string;
     reduceMotion: boolean;
+    performanceMode: boolean;
     snapAssist: string;
   } | null>(null);
 
@@ -429,6 +474,7 @@ export const Shell: React.FC<ShellProps> = () => {
   const themeVariant = useSettingsStore((s) => s.themeVariant);
   const density = useSettingsStore((s) => s.density);
   const reduceMotion = useSettingsStore((s) => s.reduceMotion);
+  const performanceMode = useSettingsStore((s) => s.performanceMode);
   const snapAssist = useSettingsStore((s) => s.snapAssist);
   const wallpaperId = useSettingsStore((s) => s.wallpaperId);
   const hasSettings = useMemo(() => Boolean(getApp('settings')), []);
@@ -766,15 +812,18 @@ export const Shell: React.FC<ShellProps> = () => {
     if (typeof document !== 'undefined') {
       applyTheme(document.documentElement, themeVariant);
       document.documentElement.setAttribute('data-rb-density', density);
-      document.documentElement.setAttribute('data-rb-motion', reduceMotion ? 'reduced' : 'full');
+      const effectiveReduceMotion = reduceMotion || performanceMode;
+      document.documentElement.setAttribute('data-rb-motion', effectiveReduceMotion ? 'reduced' : 'full');
+      document.documentElement.setAttribute('data-rb-perf', performanceMode ? 'on' : 'off');
     }
-  }, [themeVariant, density, reduceMotion, snapAssist]);
+  }, [themeVariant, density, reduceMotion, performanceMode, snapAssist]);
 
   useEffect(() => {
     const current = {
       themeVariant: themeVariant,
       density: density,
-      reduceMotion: reduceMotion,
+      reduceMotion: reduceMotion || performanceMode,
+      performanceMode: performanceMode,
       snapAssist: snapAssist,
     };
     if (!lastSettingsRef.current) {
@@ -785,6 +834,7 @@ export const Shell: React.FC<ShellProps> = () => {
       lastSettingsRef.current.themeVariant !== current.themeVariant ||
       lastSettingsRef.current.density !== current.density ||
       lastSettingsRef.current.reduceMotion !== current.reduceMotion ||
+      lastSettingsRef.current.performanceMode !== current.performanceMode ||
       lastSettingsRef.current.snapAssist !== current.snapAssist
     ) {
       logSystemEvent({
@@ -795,7 +845,7 @@ export const Shell: React.FC<ShellProps> = () => {
       });
       lastSettingsRef.current = current;
     }
-  }, [themeVariant, density, reduceMotion]);
+  }, [themeVariant, density, reduceMotion, performanceMode]);
 
   // Workspace/Session restore on mount
   useEffect(() => {

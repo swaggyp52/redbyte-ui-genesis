@@ -174,6 +174,69 @@ function setWithInvariants(
 // Lazy-init singleton to prevent TDZ crash from circular imports
 let _store: ReturnType<typeof createWindowStore> | null = null;
 
+function maybeExposeWindowDebugApi(store: any) {
+  const isProd =
+    typeof process !== 'undefined' &&
+    typeof process.env !== 'undefined' &&
+    process.env.NODE_ENV === 'production';
+  if (isProd) return;
+
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+
+  try {
+    if (localStorage.getItem('rb:windowDebug') !== '1') return;
+  } catch {
+    return;
+  }
+
+  try {
+    (window as any).__RB_WINDOWING__ = {
+      dump: () => {
+        const state = (store as any).getState?.();
+        if (!state || typeof state !== 'object') return null;
+
+        const windows = Array.isArray((state as any).windows)
+          ? [...((state as any).windows as WindowState[])]
+              .sort((a, b) => a.zIndex - b.zIndex)
+              .map((w) => ({
+                id: w.id,
+                contentId: w.contentId,
+                title: w.title,
+                mode: w.mode,
+                zIndex: w.zIndex,
+                focused: w.focused,
+                lastFocusedAt: w.lastFocusedAt ?? null,
+                bounds: w.bounds,
+              }))
+          : [];
+
+        const focusedWindowId =
+          windows.find((w) => w.focused)?.id ?? null;
+
+        return {
+          focusedWindowId,
+          nextZIndex: typeof (state as any).nextZIndex === 'number' ? (state as any).nextZIndex : null,
+          windows,
+        };
+      },
+    };
+  } catch {
+    // Ignore failures in restricted environments
+  }
+}
+
+function initStoreIfNeeded() {
+  if (_store) return _store;
+
+  _store = createWindowStore();
+  // Auto-persist session on window state changes
+  _store.subscribe((state) => {
+    saveSession(state.windows, state.nextZIndex);
+  });
+  maybeExposeWindowDebugApi(_store);
+  return _store;
+}
+
 function createWindowStore() {
   return create<WindowManagerStore>((set, get) => ({
     // State
@@ -514,43 +577,22 @@ function createWindowStore() {
 
 // Export lazy-initialized store with same API as direct Zustand hook
 export const useWindowStore: ReturnType<typeof createWindowStore> = ((...args: any[]) => {
-  if (!_store) {
-    _store = createWindowStore();
-    // Auto-persist session on window state changes
-    _store.subscribe((state) => {
-      saveSession(state.windows, state.nextZIndex);
-    });
-  }
-  return (_store as any)(...args);
+  const store = initStoreIfNeeded();
+  return (store as any)(...args);
 }) as any;
 
 // Forward Zustand store methods so external code works
 (useWindowStore as any).getState = () => {
-  if (!_store) {
-    _store = createWindowStore();
-    _store.subscribe((state) => {
-      saveSession(state.windows, state.nextZIndex);
-    });
-  }
-  return (_store as any).getState();
+  const store = initStoreIfNeeded();
+  return (store as any).getState();
 };
 
 (useWindowStore as any).setState = (...a: any[]) => {
-  if (!_store) {
-    _store = createWindowStore();
-    _store.subscribe((state) => {
-      saveSession(state.windows, state.nextZIndex);
-    });
-  }
-  return (_store as any).setState(...a);
+  const store = initStoreIfNeeded();
+  return (store as any).setState(...a);
 };
 
 (useWindowStore as any).subscribe = (...a: any[]) => {
-  if (!_store) {
-    _store = createWindowStore();
-    _store.subscribe((state) => {
-      saveSession(state.windows, state.nextZIndex);
-    });
-  }
-  return (_store as any).subscribe(...a);
+  const store = initStoreIfNeeded();
+  return (store as any).subscribe(...a);
 };

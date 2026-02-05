@@ -39,6 +39,7 @@ describe.skip('OS to Playground circuit flow', () => {
             accentColor: 'blue',
             tickRate: 20,
             reduceMotion: false,
+            performanceMode: false,
             density: 'comfortable',
             snapAssist: 'manual',
         });

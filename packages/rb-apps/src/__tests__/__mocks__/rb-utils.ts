@@ -10,6 +10,7 @@ const mockSettingsState = {
   accentColor: 'blue' as const,
   tickRate: 20,
   reduceMotion: false,
+  performanceMode: false,
   density: 'comfortable' as const,
   snapAssist: 'manual' as const,
   setThemeVariant: vi.fn(),
@@ -17,6 +18,7 @@ const mockSettingsState = {
   setAccentColor: vi.fn(),
   setTickRate: vi.fn(),
   setReduceMotion: vi.fn(),
+  setPerformanceMode: vi.fn(),
   setDensity: vi.fn(),
   setSnapAssist: vi.fn(),
 };
