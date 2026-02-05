@@ -2,7 +2,7 @@
 
 **Status: GREEN LOCK ENFORCED** ✅  
 **Date: 2026-02-05**  
-**Verification Chain**: verify:all is the single source of truth
+**Verification Chain**: verify:all is the single source of truth (cross-platform)
 
 ---
 
@@ -12,15 +12,19 @@
 
 This is the **canonical verification script** that runs:
 1. Full workspace build (`pnpm -r build`)
-2. All Phase 1-4 deterministic gates (11 gates total)
-3. Ops contract locks (diff-gate, student-export-fixture-test)
+2. All Phase 1-4 deterministic gates (8 Vitest gates, cross-platform)
 
-Run it locally before any commit:
+**Cross-platform compatible** (Linux, macOS, Windows):
 ```powershell
 pnpm verify:all
 ```
 
-GitHub Actions enforces this via `.github/workflows/quality.yml` (required check).
+**Windows-only full verification** (adds PowerShell ops scripts):
+```powershell
+pnpm verify:gates:full
+```
+
+GitHub Actions enforces `verify:all` (cross-platform) via `.github/workflows/quality.yml` (required check).
 Cloudflare build must run `pnpm -r build` and succeed (subset of verify:all).
 
 ---

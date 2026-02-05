@@ -50,6 +50,20 @@ function logError(msg, error) {
   if (error?.stack) results.push(error.stack);
 }
 
+async function killProcessOnPort(port) {
+  // Kill any existing process using the port (cross-platform)
+  const cmd = process.platform === "win32"
+    ? `taskkill /F /FI "PID eq $(netstat -ano | findstr :${port} | findstr LISTENING | ForEach-Object {($_ -split '\\s+')[4]})"`
+    : `lsof -ti:${port} | xargs kill -9 2>/dev/null || true`;
+  
+  try {
+    const { execSync } = await import("child_process");
+    execSync(cmd, { stdio: "ignore" });
+  } catch (e) {
+    // Ignore errors (port might not be in use)
+  }
+}
+
 async function cleanup() {
   if (bridgeProcess) {
     log("[PROOF] Cleaning up bridge process...");
@@ -57,6 +71,9 @@ async function cleanup() {
     await new Promise((r) => setTimeout(r, 500));
     if (!bridgeProcess.killed) bridgeProcess.kill("SIGKILL");
   }
+  // Clean up ports
+  await killProcessOnPort(HTTP_PORT);
+  await killProcessOnPort(WS_PORT);
 }
 
 async function waitForHealth() {
@@ -159,6 +176,11 @@ async function runProof() {
     log("════════════════════════════════════════");
     log("[PROOF] === FPGA Bridge Proof Runner ===");
     log("════════════════════════════════════════");
+
+    // Clean up any lingering processes on the ports
+    log("[PROOF] Cleaning up ports...");
+    await killProcessOnPort(HTTP_PORT);
+    await killProcessOnPort(WS_PORT);
 
     // Start bridge
     log("[PROOF] Starting bridge in MOCK mode...");
