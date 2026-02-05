@@ -6,6 +6,18 @@ import { WireMesh } from '../meshes/WireMesh';
 import { SignalParticleSystem } from '../components/SignalParticle';
 import { NodeLabel } from '../components/NodeLabel';
 
+export const NET_HIGHLIGHT_COLOR = '#fbbf24';
+
+export const mergeWireProbeColorsForNetHighlight = (
+    probeColors: string[] | undefined,
+    isNetHighlighted: boolean
+) => {
+    if (!isNetHighlighted) return probeColors;
+    if (!probeColors) return [NET_HIGHLIGHT_COLOR];
+    if (probeColors.includes(NET_HIGHLIGHT_COLOR)) return probeColors;
+    return [...probeColors, NET_HIGHLIGHT_COLOR];
+};
+
 interface Rb3DSceneCircuitProps {
     nodes: any[]; // Replace with ViewStateNode type from adapter if available
     wires: any[]; // Replace with ViewStateWire type
@@ -20,6 +32,7 @@ interface Rb3DSceneCircuitProps {
 
     // Highlighting Props
     probeWireHighlights?: Map<string, string[]>;
+    netHighlightWireIds?: Set<string>;
     mismatchWireHighlights?: Map<string, string[]> | null;
     mismatchNodeIds?: Set<string> | null;
 }
@@ -36,6 +49,7 @@ export const Rb3DSceneCircuit: React.FC<Rb3DSceneCircuitProps> = ({
     onNodeHover,
     onNodeMove,
     probeWireHighlights,
+    netHighlightWireIds,
     mismatchWireHighlights,
     mismatchNodeIds,
 }) => {
@@ -138,6 +152,8 @@ export const Rb3DSceneCircuit: React.FC<Rb3DSceneCircuitProps> = ({
                 const from: [number, number, number] = [wire.from.x / 20, 0.25, wire.from.y / 20];
                 const to: [number, number, number] = [wire.to.x / 20, 0.25, wire.to.y / 20];
                 const probeColors = probeWireHighlights?.get(wire.id);
+                const isNetHighlighted = netHighlightWireIds?.has(wire.id) ?? false;
+                const mergedProbeColors = mergeWireProbeColorsForNetHighlight(probeColors, isNetHighlighted);
                 const mismatchColors = mismatchWireHighlights?.get(wire.id);
 
                 return (
@@ -147,7 +163,7 @@ export const Rb3DSceneCircuit: React.FC<Rb3DSceneCircuitProps> = ({
                             to={to}
                             isActive={isActive}
                             pulse={pulse}
-                            probeColors={probeColors}
+                            probeColors={mergedProbeColors}
                             mismatchColors={mismatchColors}
                         />
                         {isActive && animateSignalFlow && (

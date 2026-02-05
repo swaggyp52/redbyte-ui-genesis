@@ -25,10 +25,14 @@ export function evaluateCheckpoint(circuit, checkpoint) {
                     engine.setNodeState(nodeId, { ...prev, isOn: value });
                 }
             }
-            // Stabilize
-            engine.stabilize(50);
-            // Compare expected outputs against OUTPUT node state.isOn or signal input
-            const got = {};
+        // Stabilize
+        engine.stabilize(50);
+        const issue = engine.getLastIssue?.();
+        if (issue && issue.code === 'COMBINATIONAL_LOOP') {
+            return { status: 'failed', feedback: issue.message };
+        }
+        // Compare expected outputs against OUTPUT node state.isOn or signal input
+        const got = {};
             const expected = vector.expectedOutputs;
             const signals = engine.getAllSignals();
             for (const [outNodeId] of Object.entries(expected)) {

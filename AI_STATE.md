@@ -6687,6 +6687,188 @@ All TypeScript compilation errors systematically resolved across monorepo:
 
 ---
 
+## Change Log  2026-02-05 (Phase 2B: No Data Loss - Canonical Autosave + Undo/Redo Gates)
+
+**Canonical Autosave Contract (RBProject)**
+- Standardized circuit/project autosave on the RBProject codec using canonical keys: `rb:autosave:<projectId>` (+ `rb:autosave-meta:<projectId>`).
+- Virtual Lab (ECE Lab) now autosaves/restores via RBProject codec (removing legacy `rb-lab-autosave` writes; legacy progress is best-effort migrated and then retired).
+- Workspace snapshot system no longer persists circuit payload; it stores layout + a projectRef (projectId) and recovery loads the RBProject autosave instead.
+- Logic Playground now includes a stable `projectId` in RBProject meta and uses canonical autosave keys; legacy autosaves are copied forward once.
+
+**New Gates**
+- Added `proj:autosave-recovery-gate` (pure, deterministic) to verify autosave → restore preserves canonical circuit semantics.
+- Added `proj:undo-redo-gate` (pure, deterministic) to verify core `labReducer` edit sequences are reversible without dangling references.
+
+**Docs**
+- Added `docs/P2B_SMOKE_CHECKLIST.md` and Phase 2B tracker bullets.
+
+**Files Updated**
+- AI_STATE.md
+- docs/V1_STABILIZATION_ROADMAP.md
+- docs/P2B_SMOKE_CHECKLIST.md
+- package.json
+- packages/rb-apps/src/apps/ECELabApp.tsx
+- packages/rb-apps/src/apps/ECELabApp.js
+- packages/rb-apps/src/apps/LogicPlaygroundApp.tsx
+- packages/rb-apps/src/apps/LogicPlaygroundApp.js
+- packages/rb-apps/src/export/projectFormat.ts
+- packages/rb-apps/src/utils/rbprojAutosave.ts
+- packages/rb-apps/src/utils/rbprojAutosave.js
+- packages/rb-apps/src/utils/snapshotSystem.ts
+- packages/rb-apps/src/utils/snapshotSystem.js
+- packages/rb-apps/src/utils/labProjectRbprojAdapter.ts
+- packages/rb-apps/src/utils/labProjectRbprojAdapter.js
+- packages/rb-apps/src/__tests__/proj-autosave-recovery-gate.test.ts
+- packages/rb-lab-engine/src/__tests__/proj-undo-redo-gate.test.ts
+
+**Validation**
+- `pnpm -s proj:autosave-recovery-gate`
+- `pnpm -s proj:undo-redo-gate`
+- `pnpm -r build`
+
+**Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-05 (Phase 2C: Bridge Dry-run + HW Mode Fallback Gates)
+
+**Bridge Dry-run (No Hardware Required)**
+- Added `RB_BRIDGE_DRYRUN` / `VITE_RB_BRIDGE_DRYRUN` support to the canonical bridge-agent client (`HardwareClient`).
+- Dry-run mode connects instantly, exposes deterministic fake devices (`basys3`, `uno`), and emits deterministic tick-indexed I/O samples for UI testing without hardware.
+- Updated offline/unreachable messaging to use student-friendly Error Matrix wording (no raw fetch errors).
+
+**HW Live Mode Safety**
+- Virtual Lab (ECE Lab) now auto-falls back to Simulation when hardware mode is active and the bridge disconnects (toast: "Bridge disconnected — returned to Simulation.").
+- Added a pure helper (`decideExecutionSourceOnHardwareState`) to keep fallback behavior deterministic and testable (no UI harness needed).
+
+**New Gates**
+- Added `bridge:dryrun-gate` (pure vitest) to prove dry-run device discovery + IO sampling works and stops on disconnect.
+- Added `hw:mode-fallback-gate` (pure vitest) to prove HW → SIM fallback decision is stable and does not trigger during connecting.
+
+**Build Hygiene**
+- Manual site build no longer dirties the worktree during local builds: `apps/manual-site/public/build.txt` is only written when `CI=true` or `RB_WRITE_BUILD_SHA=1`.
+
+**Files Updated**
+- AI_STATE.md
+- docs/V1_STABILIZATION_ROADMAP.md
+- docs/P2C_SMOKE_CHECKLIST.md
+- package.json
+- apps/manual-site/write-build-sha.cjs
+- packages/rb-apps/src/services/hardwareClient.ts
+- packages/rb-apps/src/services/hardwareClient.js
+- packages/rb-apps/src/apps/ECELabApp.tsx
+- packages/rb-apps/src/apps/ECELabApp.js
+- packages/rb-apps/src/hardware/hardwareModeFallback.ts
+- packages/rb-apps/src/hardware/hardwareModeFallback.js
+- packages/rb-apps/src/__tests__/bridge-dryrun-gate.test.ts
+- packages/rb-apps/src/__tests__/hw-mode-fallback-gate.test.ts
+
+**Validation**
+- `pnpm -s bridge:dryrun-gate`
+- `pnpm -s hw:mode-fallback-gate`
+- `pnpm -r build`
+
+**Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-05 (Phase 2D: Wire Tracing - Full Net Highlight in 2D)
+
+**Net Highlight (2D)**
+- Added deterministic net identity resolution for wires (`computeWireNetIds`) based on connected components of port refs.
+- Logic canvas now highlights the full connected net on wire hover, and preserves net highlight for selected wires.
+- WireView now supports net highlight styling (amber) without affecting selection (blue) or existing probe/mismatch overlays.
+
+**New Gate**
+- Added `net:highlight-resolution-gate` to validate deterministic wire→net mapping (fanout wires share a net id; ordering is stable).
+
+**Docs**
+- Added `docs/P2D_SMOKE_CHECKLIST.md`.
+- Updated Phase 2 tracker to include Phase 2D and marked wire tracing (2D) complete; cross-surface net mapping is deferred.
+
+**Files Updated**
+- AI_STATE.md
+- docs/V1_STABILIZATION_ROADMAP.md
+- docs/P2D_SMOKE_CHECKLIST.md
+- package.json
+- packages/rb-logic-view/src/tools/netHighlight.ts
+- packages/rb-logic-view/src/tools/netHighlight.js
+- packages/rb-logic-view/src/LogicCanvas.tsx
+- packages/rb-logic-view/src/LogicCanvas.js
+- packages/rb-logic-view/src/components/WireView.tsx
+- packages/rb-logic-view/src/components/WireView.js
+- packages/rb-logic-view/src/__tests__/net-highlight-resolution-gate.test.ts
+
+**Validation**
+- `pnpm -s net:highlight-resolution-gate`
+- `pnpm -r build`
+
+**Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-05 (Phase 2E: Net Highlight Reflection - 2D -> 3D)
+
+**Cross-Surface Net Highlight (2D -> 3D)**
+- LogicCanvas can optionally emit the set of wire ids participating in the hovered/selected net(s) (`onNetHighlightWiresChanged`).
+- SplitViewLayout forwards the highlighted wire-id set to the lazy-loaded 3D scene only when the 3D view is open (no boot coupling).
+- 3D circuit renderer highlights matching wires visually (adds a deterministic amber highlight to existing wire highlight rendering; no topology writes).
+- Added a tiny pure helper (`mergeWireProbeColorsForNetHighlight`) and unit tests to ensure highlight merge semantics stay stable without needing a WebGL/UI harness.
+
+**Docs**
+- Updated `docs/P2D_SMOKE_CHECKLIST.md` to include optional 3D reflection steps.
+- Updated Phase 2 tracker to add Phase 2E and mark cross-surface net highlight reflection complete.
+
+**Files Updated**
+- AI_STATE.md
+- docs/V1_STABILIZATION_ROADMAP.md
+- docs/P2D_SMOKE_CHECKLIST.md
+- packages/rb-logic-view/src/LogicCanvas.tsx
+- packages/rb-logic-view/src/LogicCanvas.js
+- packages/rb-apps/src/components/SplitViewLayout.tsx
+- packages/rb-apps/src/components/SplitViewLayout.js
+- packages/rb-logic-3d/src/Logic3DScene.tsx
+- packages/rb-logic-3d/src/Logic3DScene.js
+- packages/rb-logic-3d/src/components/Rb3DSceneCircuit.tsx
+- packages/rb-logic-3d/src/components/Rb3DSceneCircuit.js
+- packages/rb-logic-3d/src/__tests__/net-highlight-reflection.test.ts
+- packages/rb-logic-3d/src/__tests__/net-highlight-reflection.test.js
+
+**Validation**
+- `pnpm -r build`
+- `pnpm -w exec vitest run packages/rb-logic-3d/src/__tests__/selection-sync.test.tsx packages/rb-logic-3d/src/__tests__/net-highlight-reflection.test.ts`
+
+**Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-05 (Phase 3A-1: Windowing Stability - Smoke + Raise Gate)
+
+**Windowing Validation Assets**
+- Added a Phase 3A smoke checklist for window focus/z-index/minimize/restore and launcher/dock interactions (`docs/P3A_SMOKE_CHECKLIST.md`).
+- Added `os:window-raise-gate` (pure vitest) to validate window raise/restore semantics without a UI harness.
+
+**Hardening**
+- `focusWindow()` now restores minimized windows to normal mode when focusing (prevents invariant violations and avoids “restore behind other windows” footguns when callers forget to restore explicitly).
+
+**Files Updated**
+- AI_STATE.md
+- docs/V1_STABILIZATION_ROADMAP.md
+- docs/P3A_SMOKE_CHECKLIST.md
+- package.json
+- packages/rb-windowing/src/store.ts
+- packages/rb-windowing/src/store.js
+- packages/rb-windowing/src/__tests__/window-raise-gate.test.ts
+- packages/rb-windowing/src/__tests__/window-raise-gate.test.js
+
+**Validation**
+- `pnpm -s os:window-raise-gate`
+- `pnpm -r build`
+
+**Attribution**: Connor Angiel
+
+---
+
 ## Change Log  2026-02-03 (Docs: V1 Stabilization Roadmap)
 
 **Roadmap Document**
@@ -7668,5 +7850,55 @@ All TypeScript compilation errors systematically resolved across monorepo:
 
 Notes:
 - Gate procedure is captured in `docs/P1D_SMOKE_CHECKLIST.md`.
+
+**Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-05 (CI: Non-blocking P1D Smoke)
+
+**Non-blocking CI Smoke**
+- Added a scheduled + manual GitHub Actions workflow to run the P1D scripted smoke gates on Windows (separate workflow; not intended to block merges by default).
+- Documented revalidation triggers in the P1D smoke checklist.
+
+**Files Updated**
+- .github/workflows/p1d-smoke-nonblocking.yml
+- docs/P1D_SMOKE_CHECKLIST.md
+
+**Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-05 (Phase 2A: Simulation Determinism Gates)
+
+**Deterministic Simulation Gates (P2A)**
+- Added `sim:repeatability-gate` (repeat-run trace equality + expected output sanity) for the `CircuitEngine` tick path.
+- Added `sim:loop-detection-gate` to ensure obvious combinational feedback loops are detected and never hang the stabilization path.
+- Added `sim:probe-stability-gate` to ensure probe sampling captures one sample per tick with bounded memory (ring buffer overwrite policy).
+- `CircuitEngine` now exposes `getLastIssue()` for student-friendly loop warnings; lab checkpoint evaluator surfaces the message when detected.
+
+**Docs**
+- Added Phase 2A tracker bullets to the Phase 2 section of the roadmap.
+- Added `docs/P2A_SMOKE_CHECKLIST.md` (scripted + optional UI sanity pass).
+
+**Files Updated**
+- docs/V1_STABILIZATION_ROADMAP.md
+- docs/P2A_SMOKE_CHECKLIST.md
+- package.json
+- packages/rb-logic-core/src/CircuitEngine.ts
+- packages/rb-logic-core/src/CircuitEngine.js
+- packages/rb-logic-core/src/ProbeRecorder.ts
+- packages/rb-logic-core/src/ProbeRecorder.js
+- packages/rb-logic-core/src/lab/evaluator.ts
+- packages/rb-logic-core/src/lab/evaluator.js
+- packages/rb-logic-core/src/__tests__/sim-repeatability-gate.test.ts
+- packages/rb-logic-core/src/__tests__/sim-loop-detection-gate.test.ts
+- packages/rb-logic-core/src/__tests__/sim-probe-stability-gate.test.ts
+
+**Validation**
+- `pnpm -s sim:repeatability-gate`
+- `pnpm -s sim:loop-detection-gate`
+- `pnpm -s sim:probe-stability-gate`
+- `pnpm -r build`
 
 **Attribution**: Connor Angiel

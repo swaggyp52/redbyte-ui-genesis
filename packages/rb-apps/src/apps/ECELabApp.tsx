@@ -13,7 +13,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import JSZip from 'jszip';
 import BoardPanel from '../components/BoardPanel';
-import { toast } from '@redbyte/rb-primitives';
+import { toast, GuardrailConfirmModal } from '@redbyte/rb-primitives';
 import { BoardIOPanel } from '../components/BoardIOPanel';
 import { CompareView, type CompareSignalCheck } from '../components/CompareView';
 import { CircuitCanvas } from '../components/boards/CircuitCanvas'; // TODO: Remove if unused, but keeping type safely
@@ -38,6 +38,7 @@ import { createCapsule, validateCapsule, type RedByteCapsule } from '../hardware
 import { vectorRunner, type VectorRunResult, type TestVector, type PresetSuite } from '../labs/vectorRunner';
 import { synthesizableVerilogFromNetlist } from '../export/verilogExport';
 import { useHardwareStore } from '../stores/hardwareStore';
+import { decideExecutionSourceOnHardwareState } from '../hardware/hardwareModeFallback';
 import { netlistFromCircuit } from '../export/netlistExport';
 import { LabInstructions } from '../labs/LabInstructions';
 import { InspectorPanel } from '../labs/InspectorPanel';
@@ -48,6 +49,9 @@ import { exportEvidence } from '../utils/evidenceExport';
 // It seems exportEvidence is not imported. I'll add the import.
 import { exportEvidenceCapsule } from '../utils/evidenceExport'; // Wait, checking available utils.
 import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
+import type { RBProject } from '../export/projectFormat';
+import { getCanonicalProjectAutosaveKey, useRbprojAutosave } from '../utils/rbprojAutosave';
+import { labProjectToRBProject, rbProjectToLabProject } from '../utils/labProjectRbprojAdapter';
 
 interface ECELabAppProps {
   windowId?: string;
@@ -268,46 +272,109 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
   const setHardwareVerified = useLabStore((s) => s.setHardwareVerified);
   const isDirty = useLabStore((s) => s.isDirty);
   const setIsDirty = useLabStore((s) => s.setIsDirty);
+  const legacyLabProgressRef = useRef<{ labId?: string; stepIndex?: number } | null>(null);
+
+  const unifiedProject = useUnifiedProjectStore((s) => s.currentProject);
+  const loadUnifiedProject = useUnifiedProjectStore((s) => s.loadProject);
+  const markUnifiedClean = useUnifiedProjectStore((s) => s.markClean);
+  const unifiedIsDirty = useUnifiedProjectStore((s) => s.isDirty);
+
+  const autosaveKey = useMemo(() => {
+    const projectId = unifiedProject?.projectId ? String(unifiedProject.projectId).trim() : '';
+    return projectId.length > 0 ? getCanonicalProjectAutosaveKey(projectId) : 'rb:autosave:__none__';
+  }, [unifiedProject?.projectId]);
+
+  useEffect(() => {
+    if (legacyLabProgressRef.current) return;
+    try {
+      const raw = localStorage.getItem('rb-lab-autosave');
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { labId?: string; stepIndex?: number } | null;
+      if (!parsed || typeof parsed !== 'object') return;
+      legacyLabProgressRef.current = {
+        labId: typeof parsed.labId === 'string' ? parsed.labId : undefined,
+        stepIndex: typeof parsed.stepIndex === 'number' ? parsed.stepIndex : undefined,
+      };
+    } catch {
+      // ignore legacy parse failures
+    }
+  }, []);
 
   // Data Safety: Warn on exit
   React.useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirty) {
+      if (isDirty || unifiedIsDirty) {
         e.preventDefault();
         e.returnValue = '';
       }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDirty]);
+  }, [isDirty, unifiedIsDirty]);
 
   // Mark dirty on meaningful interaction
   const handleCircuitChange = React.useCallback(() => {
     if (!isDirty) setIsDirty(true);
   }, [isDirty, setIsDirty]);
 
-  // Auto-save (Every 30s)
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      if (isDirty) {
-        // Persist to localStorage
-        const saveState = {
-          labId,
-          stepIndex: useLabStore.getState().currentStepIndex,
-          timestamp: Date.now()
-        };
-        localStorage.setItem('rb-lab-autosave', JSON.stringify(saveState));
-
-        setIsDirty(false);
-        toast.info({ message: 'Progress saved automatically.', title: 'Auto-Save', duration: 2000 });
+  const applyRbprojProject = useCallback(
+    (project: RBProject) => {
+      const restored = rbProjectToLabProject(project, unifiedProject ?? null);
+      loadUnifiedProject(restored);
+      markUnifiedClean();
+      setIsDirty(false);
+      try {
+        localStorage.removeItem('rb-lab-autosave');
+      } catch {
+        // ignore
       }
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [isDirty, setIsDirty, labId]);
+      toast.success({ title: 'Autosave Restored', message: 'Recovered your lab project from autosave.' });
+    },
+    [loadUnifiedProject, markUnifiedClean, setIsDirty, unifiedProject],
+  );
+  const getRbprojSnapshot = useCallback((): RBProject | null => {
+    if (!unifiedProject) return null;
+    const fallback = legacyLabProgressRef.current;
+    return labProjectToRBProject(unifiedProject, {
+      appSurface: 'ece-lab',
+      labId: labId ?? fallback?.labId,
+      labStepIndex: typeof currentStepIndex === 'number' ? currentStepIndex : fallback?.stepIndex,
+    });
+  }, [currentStepIndex, labId, unifiedProject]);
+
+  const {
+    saveStatusText: rbprojSaveStatusText,
+    restorePrompt: rbprojRestorePrompt,
+    restore: restoreRbprojAutosave,
+    discard: discardRbprojAutosave,
+  } = useRbprojAutosave({
+    autosaveKey,
+    isDirty: Boolean(unifiedIsDirty),
+    getProject: getRbprojSnapshot,
+    applyProject: applyRbprojProject,
+    changeDeps: [unifiedProject, currentStepIndex, labId],
+  });
+  const lastSaveToastRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!rbprojSaveStatusText) return;
+    if (lastSaveToastRef.current === rbprojSaveStatusText) return;
+    lastSaveToastRef.current = rbprojSaveStatusText;
+    toast.info({ title: 'Auto-Save', message: rbprojSaveStatusText, duration: 1500 });
+  }, [rbprojSaveStatusText]);
   // Hardware Store
   const hardwareConnect = useHardwareStore(s => s.connect);
   const hardwareConnectionState = useHardwareStore(s => s.connectionState);
   const hardwareSnapshot = useHardwareStore(s => s.ioSnapshot);
+
+  useEffect(() => {
+    const decision = decideExecutionSourceOnHardwareState(executionSource, hardwareConnectionState);
+    if (!decision.shouldFallback) return;
+
+    setExecutionSource(decision.nextSource);
+    if (decision.toast) {
+      toast.warning({ title: decision.toast.title, message: decision.toast.message, duration: 4000 });
+    }
+  }, [executionSource, hardwareConnectionState]);
 
   const handleDownloadSynthesisPack = async () => {
     if (!circuit.nodes.length) {
@@ -410,7 +477,6 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
   const [engine] = useState(() => new CircuitEngine({ nodes: [], connections: [] }));
   const [tickEngine] = useState(() => new TickEngine({ nodes: [], connections: [] }, { tickRate: 10 }));
 
-  const unifiedProject = useUnifiedProjectStore((s) => s.currentProject);
   const updateUnifiedProject = useUnifiedProjectStore((s) => s.updateProject);
   const hasHydratedRef = useRef(false);
   const [ioTick, setIoTick] = useState(0);
@@ -861,6 +927,21 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
 
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-gray-950 to-black font-mono">
+      {rbprojRestorePrompt.isOpen && (
+        <GuardrailConfirmModal
+          isOpen={rbprojRestorePrompt.isOpen}
+          title="Restore autosave?"
+          message={`An autosave is available from ${new Date(
+            rbprojRestorePrompt.savedAtMs ?? Date.now(),
+          ).toLocaleString()}. Restore it now?`}
+          lossItems={['Discarding autosave will permanently delete the autosaved copy.']}
+          confirmLabel="Restore"
+          cancelLabel="Discard"
+          confirmTone="warning"
+          onConfirm={restoreRbprojAutosave}
+          onCancel={discardRbprojAutosave}
+        />
+      )}
       {/* === HEADER BAR === */}
       <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-b from-gray-900 to-black border-b border-gray-800">
         {/* Left: Logo & Mode Switcher */}

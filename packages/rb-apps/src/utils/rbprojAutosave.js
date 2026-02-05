@@ -3,9 +3,25 @@ import { decodeRBProject, encodeRBProject } from "../export/projectFormat";
 import { stableStringify } from "../export/stableStringify";
 import { fnv1a32 } from "./fnv1a32";
 const RBPROJ_AUTOSAVE_VERSION = 1;
+const PROJECT_AUTOSAVE_META_VERSION = 1;
 export function getRbprojAutosaveKey(appId, windowId) {
     const scope = windowId && String(windowId).trim().length > 0 ? windowId : "global";
     return `rb:rbproj_autosave:v${RBPROJ_AUTOSAVE_VERSION}:${appId}:${scope}`;
+}
+export function getCanonicalProjectAutosaveKey(projectId) {
+    return `rb:autosave:${String(projectId).trim()}`;
+}
+export function getCanonicalProjectAutosaveMetaKey(projectId) {
+    return `rb:autosave-meta:${String(projectId).trim()}`;
+}
+export function tryParseCanonicalProjectAutosaveKey(key) {
+    const prefix = "rb:autosave:";
+    if (!key.startsWith(prefix))
+        return null;
+    const projectId = key.slice(prefix.length).trim();
+    if (!projectId)
+        return null;
+    return { projectId };
 }
 export function loadRbprojAutosave(key) {
     try {
@@ -29,9 +45,43 @@ export function loadRbprojAutosave(key) {
         return null;
     }
 }
+export function loadProjectAutosaveMeta(key) {
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw)
+            return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object")
+            return null;
+        if (parsed.version !== PROJECT_AUTOSAVE_META_VERSION)
+            return null;
+        if (parsed.codec !== "rbproj")
+            return null;
+        if (typeof parsed.projectId !== "string" || parsed.projectId.length === 0)
+            return null;
+        if (typeof parsed.savedAtMs !== "number")
+            return null;
+        if (typeof parsed.contentHash !== "string")
+            return null;
+        if (parsed.appSurface !== undefined && typeof parsed.appSurface !== "string")
+            return null;
+        return parsed;
+    }
+    catch {
+        return null;
+    }
+}
 export function saveRbprojAutosave(key, record) {
     try {
         localStorage.setItem(key, JSON.stringify(record));
+    }
+    catch {
+        // ignore
+    }
+}
+export function saveProjectAutosaveMeta(key, meta) {
+    try {
+        localStorage.setItem(key, JSON.stringify(meta));
     }
     catch {
         // ignore
@@ -44,6 +94,26 @@ export function clearRbprojAutosave(key) {
     catch {
         // ignore
     }
+}
+export function clearProjectAutosaveMeta(key) {
+    try {
+        localStorage.removeItem(key);
+    }
+    catch {
+        // ignore
+    }
+}
+export function migrateRbprojAutosaveIfNeeded(fromKey, toKey) {
+    if (fromKey === toKey)
+        return false;
+    const existing = loadRbprojAutosave(toKey);
+    if (existing)
+        return false;
+    const legacy = loadRbprojAutosave(fromKey);
+    if (!legacy)
+        return false;
+    saveRbprojAutosave(toKey, legacy);
+    return true;
 }
 export function normalizeRbprojForContentHash(project) {
     const { meta, updatedAt: _updatedAt, ...rest } = project;
@@ -84,6 +154,17 @@ export function useRbprojAutosave({ autosaveKey, isDirty, getProject, applyProje
         if (record.contentHash === lastSavedHashRef.current)
             return;
         saveRbprojAutosave(autosaveKey, record);
+        const canonical = tryParseCanonicalProjectAutosaveKey(autosaveKey);
+        if (canonical) {
+            saveProjectAutosaveMeta(getCanonicalProjectAutosaveMetaKey(canonical.projectId), {
+                version: PROJECT_AUTOSAVE_META_VERSION,
+                codec: "rbproj",
+                projectId: canonical.projectId,
+                savedAtMs: record.savedAtMs,
+                contentHash: record.contentHash,
+                appSurface: project.meta?.appSurface,
+            });
+        }
         lastSavedHashRef.current = record.contentHash;
         setSaveStatusText(`Autosaved ${formatTimeLocal(record.savedAtMs)}`);
     }, [autosaveKey, getProject]);
@@ -154,4 +235,3 @@ export function useRbprojAutosave({ autosaveKey, isDirty, getProject, applyProje
     const restorePrompt = useMemo(() => ({ isOpen: !!restoreRecord, savedAtMs: restoreRecord?.savedAtMs }), [restoreRecord]);
     return { saveStatusText, restorePrompt, restore, discard };
 }
-

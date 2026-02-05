@@ -10,10 +10,11 @@ import { WireView } from './components/WireView';
 import { Toolbar } from './components/Toolbar';
 import { renderGrid } from './tools/grid';
 import { isValidConnection, normalizeConnection } from './tools/wireValidation';
+import { computeWireNetIds } from './tools/netHighlight';
 import { findSmartSpawnPosition } from './tools/placement';
 import { trackRender, useUiTickStore } from '@redbyte/rb-utils';
 import { CanvasHost, snapToGrid as snapPointToGrid, fitToBounds } from '@redbyte/rb-viewport';
-export const LogicCanvas = ({ engine, circuit: externalCircuit, width = 800, height = 600, showToolbar = true, getChipMetadata, onNodeDoubleClick, onCircuitChange, onSignalsUpdated, showHints = true, onDismissHints, onInputToggled, onProbeToggle, probedPorts, probeWireHighlights, mismatchWireHighlights, mismatchNodeIds, mismatchPortKeys, debugSignals, debugTick, highlightedPort, isRunning = false, isReplayMode = false, tickRate = 0, tickCount = 0, }) => {
+export const LogicCanvas = ({ engine, circuit: externalCircuit, width = 800, height = 600, showToolbar = true, getChipMetadata, onNodeDoubleClick, onCircuitChange, onSignalsUpdated, showHints = true, onDismissHints, onInputToggled, onProbeToggle, probedPorts, probeWireHighlights, mismatchWireHighlights, mismatchNodeIds, mismatchPortKeys, debugSignals, debugTick, highlightedPort, onNetHighlightWiresChanged, isRunning = false, isReplayMode = false, tickRate = 0, tickCount = 0, }) => {
     trackRender('LogicCanvas');
     const uiTick = useUiTickStore((state) => state.uiTick);
     const camera = useLogicViewStore(useShallow((state) => state.camera));
@@ -46,6 +47,55 @@ export const LogicCanvas = ({ engine, circuit: externalCircuit, width = 800, hei
     // Use external circuit if provided, otherwise poll from engine
     const [internalCircuit, setInternalCircuit] = React.useState(engine.getCircuit());
     const circuit = externalCircuit ?? internalCircuit;
+    const [hoveredWireId, setHoveredWireId] = React.useState(null);
+    const wireToNetId = React.useMemo(() => computeWireNetIds(circuit.connections), [circuit.connections]);
+    const hoveredNetId = hoveredWireId ? wireToNetId.get(hoveredWireId) ?? null : null;
+    const selectedNetIds = React.useMemo(() => {
+        const ids = new Set();
+        selection.wires.forEach((wireId) => {
+            const netId = wireToNetId.get(wireId);
+            if (netId)
+                ids.add(netId);
+        });
+        return ids;
+    }, [selection.wires, wireToNetId]);
+    const highlightNetIds = React.useMemo(() => {
+        const ids = new Set(selectedNetIds);
+        if (hoveredNetId)
+            ids.add(hoveredNetId);
+        return ids;
+    }, [hoveredNetId, selectedNetIds]);
+    const highlightWireIds = React.useMemo(() => {
+        if (!onNetHighlightWiresChanged)
+            return null;
+        if (highlightNetIds.size === 0)
+            return new Set();
+        const result = new Set();
+        wireToNetId.forEach((netId, wireId) => {
+            if (highlightNetIds.has(netId))
+                result.add(wireId);
+        });
+        return result;
+    }, [highlightNetIds, onNetHighlightWiresChanged, wireToNetId]);
+    const lastReportedHighlightRef = React.useRef(new Set());
+    React.useEffect(() => {
+        if (!onNetHighlightWiresChanged || !highlightWireIds)
+            return;
+        const prev = lastReportedHighlightRef.current;
+        if (prev.size === highlightWireIds.size) {
+            let same = true;
+            for (const id of highlightWireIds) {
+                if (!prev.has(id)) {
+                    same = false;
+                    break;
+                }
+            }
+            if (same)
+                return;
+        }
+        lastReportedHighlightRef.current = highlightWireIds;
+        onNetHighlightWiresChanged(new Set(highlightWireIds));
+    }, [highlightWireIds, onNetHighlightWiresChanged]);
     const [signals, setSignals] = React.useState(new Map());
     const [signalsVersion, setSignalsVersion] = React.useState(0);
     const renderSignals = debugSignals ?? signals;
@@ -642,12 +692,14 @@ export const LogicCanvas = ({ engine, circuit: externalCircuit, width = 800, hei
                             const toPortName = typeof conn.to === 'string'
                                 ? (conn.toPin ?? conn.toPort ?? 'in')
                                 : (conn.to.portName ?? conn.to.port ?? 'in');
-                            const wireId = `${fromNodeId}.${fromPortName}-${toNodeId}.${toPortName}`;
-                            const signal = renderSignals.get(`${fromNodeId}.${fromPortName}`);
-                            const probeColors = probeWireHighlights?.get(wireId);
-                            const mismatchColors = mismatchWireHighlights?.get(wireId);
-                            return (_jsx(WireView, { connection: conn, nodes: circuit.nodes, camera: camera, isSelected: selection.wires.has(wireId), onSelect: selectWire, signal: signal, probeColors: probeColors, mismatchColors: mismatchColors }, wireId));
-                        }), editingState.wireStartPort && (() => {
+	                            const wireId = `${fromNodeId}.${fromPortName}-${toNodeId}.${toPortName}`;
+	                            const signal = renderSignals.get(`${fromNodeId}.${fromPortName}`);
+	                            const probeColors = probeWireHighlights?.get(wireId);
+	                            const mismatchColors = mismatchWireHighlights?.get(wireId);
+	                            const netId = wireToNetId.get(wireId) ?? null;
+	                            const isNetHighlighted = (hoveredNetId !== null && netId === hoveredNetId) || (netId !== null && selectedNetIds.has(netId));
+	                            return (_jsx(WireView, { connection: conn, nodes: circuit.nodes, camera: camera, isSelected: selection.wires.has(wireId), isNetHighlighted: isNetHighlighted, onSelect: selectWire, onHover: setHoveredWireId, signal: signal, probeColors: probeColors, mismatchColors: mismatchColors }, wireId));
+	                        }), editingState.wireStartPort && (() => {
                             const startNode = circuit.nodes.find(n => n.id === editingState.wireStartPort.nodeId);
                             if (!startNode || !startNode.position)
                                 return null;

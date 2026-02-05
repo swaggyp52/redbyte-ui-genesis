@@ -20,6 +20,8 @@ interface Logic3DSceneProps {
   onDismissHints?: () => void;
   onHelp?: () => void;
   probeWireHighlights?: Map<string, string[]>;
+  /** Optional wire highlight set for cross-surface net highlighting (2D -> 3D). */
+  netHighlightWireIds?: Set<string> | null;
   mismatchWireHighlights?: Map<string, string[]> | null;
   mismatchNodeIds?: Set<string> | null;
   mismatchPortKeys?: Set<string> | null;
@@ -78,6 +80,7 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
   onDismissHints,
   onHelp,
   probeWireHighlights,
+  netHighlightWireIds,
   mismatchWireHighlights,
   mismatchNodeIds,
   debugSignals,
@@ -214,6 +217,7 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
             });
           }}
           probeWireHighlights={probeWireHighlights}
+          netHighlightWireIds={netHighlightWireIds ?? undefined}
           mismatchWireHighlights={mismatchWireHighlights}
           mismatchNodeIds={mismatchNodeIds}
         />

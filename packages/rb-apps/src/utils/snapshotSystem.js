@@ -12,11 +12,22 @@ let debounceTimer = null;
  * Save workspace snapshot (debounced for autosaves)
  */
 export function saveSnapshot(circuit, layout, flags, reason, immediate = false, project) {
+    const projectId = project &&
+        typeof project === "object" &&
+        typeof project.meta === "object" &&
+        typeof project.meta?.projectId === "string" &&
+        String(project.meta.projectId).trim().length > 0
+        ? String(project.meta.projectId).trim()
+        : null;
     const snapshot = {
         schemaVersion: 1,
         timestamp: Date.now(),
         reason,
-        payload: { circuit, layout, flags, project },
+        payload: {
+            layout,
+            flags,
+            projectRef: projectId ? { kind: "rbproj", projectId } : undefined,
+        },
     };
     const save = () => {
         try {

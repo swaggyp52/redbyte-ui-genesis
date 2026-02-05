@@ -3,7 +3,7 @@ import { jsx as _jsx, Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-run
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 import React from 'react';
-const WireViewComponent = ({ connection, nodes, camera, isSelected, onSelect, signal, probeColors, mismatchColors, }) => {
+const WireViewComponent = ({ connection, nodes, camera, isSelected, isNetHighlighted = false, onSelect, onHover, signal, probeColors, mismatchColors, }) => {
     const fromNode = nodes.find((n) => n.id === connection.from.nodeId);
     const toNode = nodes.find((n) => n.id === connection.to.nodeId);
     if (!fromNode || !toNode)
@@ -23,7 +23,8 @@ const WireViewComponent = ({ connection, nodes, camera, isSelected, onSelect, si
     };
     const strokeColor = signal === 1 ? '#22c55e' : '#6b7280';
     const isActive = signal === 1;
-    return (_jsxs("g", { onClick: handleClick, style: { cursor: 'pointer' }, children: [_jsx("path", { d: path, fill: "none", stroke: "transparent", strokeWidth: 10 }), probeColors?.map((color, index) => (_jsx("path", { d: path, fill: "none", stroke: color, strokeWidth: 6, opacity: 0.35, filter: "blur(3px)" }, `${wireId}-probe-${index}`))), mismatchColors?.map((color, index) => (_jsx("path", { d: path, fill: "none", stroke: color, strokeWidth: 7, opacity: 0.45, filter: "blur(3px)" }, `${wireId}-mismatch-${index}`))), isActive && !isSelected && (_jsx("path", { d: path, fill: "none", stroke: strokeColor, strokeWidth: 6, opacity: 0.3, filter: "blur(3px)" })), isSelected && (_jsx("path", { d: path, fill: "none", stroke: "#3b82f6", strokeWidth: 8, opacity: 0.4, filter: "blur(4px)" })), _jsx("path", { d: path, fill: "none", stroke: isSelected ? '#3b82f6' : strokeColor, strokeWidth: isSelected ? 4 : 2, opacity: signal === 1 ? 1 : 0.5 }), isActive && (_jsxs(_Fragment, { children: [_jsx("circle", { r: "3", fill: strokeColor, opacity: 0.9, children: _jsx("animateMotion", { dur: "1.5s", repeatCount: "indefinite", path: path }) }), _jsx("circle", { r: "3", fill: strokeColor, opacity: 0.9, children: _jsx("animateMotion", { dur: "1.5s", repeatCount: "indefinite", path: path, begin: "0.5s" }) }), _jsx("circle", { r: "3", fill: strokeColor, opacity: 0.9, children: _jsx("animateMotion", { dur: "1.5s", repeatCount: "indefinite", path: path, begin: "1s" }) })] }))] }));
+    const netHighlightColor = '#fbbf24';
+    return (_jsxs("g", { onClick: handleClick, onMouseEnter: () => onHover?.(wireId), onMouseLeave: () => onHover?.(null), style: { cursor: 'pointer' }, children: [_jsx("path", { d: path, fill: "none", stroke: "transparent", strokeWidth: 10 }), isNetHighlighted && !isSelected && (_jsx("path", { d: path, fill: "none", stroke: netHighlightColor, strokeWidth: 9, opacity: 0.25, filter: "blur(5px)" })), probeColors?.map((color, index) => (_jsx("path", { d: path, fill: "none", stroke: color, strokeWidth: 6, opacity: 0.35, filter: "blur(3px)" }, `${wireId}-probe-${index}`))), mismatchColors?.map((color, index) => (_jsx("path", { d: path, fill: "none", stroke: color, strokeWidth: 7, opacity: 0.45, filter: "blur(3px)" }, `${wireId}-mismatch-${index}`))), isActive && !isSelected && (_jsx("path", { d: path, fill: "none", stroke: strokeColor, strokeWidth: 6, opacity: 0.3, filter: "blur(3px)" })), isSelected && (_jsx("path", { d: path, fill: "none", stroke: "#3b82f6", strokeWidth: 8, opacity: 0.4, filter: "blur(4px)" })), _jsx("path", { d: path, fill: "none", stroke: isSelected ? '#3b82f6' : isNetHighlighted ? netHighlightColor : strokeColor, strokeWidth: isSelected ? 4 : 2, opacity: signal === 1 ? 1 : 0.5 }), isActive && (_jsxs(_Fragment, { children: [_jsx("circle", { r: "3", fill: strokeColor, opacity: 0.9, children: _jsx("animateMotion", { dur: "1.5s", repeatCount: "indefinite", path: path }) }), _jsx("circle", { r: "3", fill: strokeColor, opacity: 0.9, children: _jsx("animateMotion", { dur: "1.5s", repeatCount: "indefinite", path: path, begin: "0.5s" }) }), _jsx("circle", { r: "3", fill: strokeColor, opacity: 0.9, children: _jsx("animateMotion", { dur: "1.5s", repeatCount: "indefinite", path: path, begin: "1s" }) })] }))] }));
 };
 // Memoize WireView to prevent unnecessary re-renders
 export const WireView = React.memo(WireViewComponent, (prevProps, nextProps) => {
@@ -41,6 +42,7 @@ export const WireView = React.memo(WireViewComponent, (prevProps, nextProps) => 
         prevProps.connection.to.nodeId === nextProps.connection.to.nodeId &&
         prevProps.connection.to.portName === nextProps.connection.to.portName &&
         prevProps.isSelected === nextProps.isSelected &&
+        prevProps.isNetHighlighted === nextProps.isNetHighlighted &&
         prevProps.signal === nextProps.signal &&
         prevProbeKey === nextProbeKey &&
         prevMismatchKey === nextMismatchKey &&

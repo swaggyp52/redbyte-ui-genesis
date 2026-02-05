@@ -55,7 +55,7 @@ import { RightDock } from '../components/RightDock';
 import { EnhancedPalette } from '../components/EnhancedPalette';
 import { HelpDock } from '../components/HelpDock';
 import { useAutosaveCircuit, loadSavedCircuit, clearSavedCircuit } from '../utils/ceAutosave';
-import { getRbprojAutosaveKey, useRbprojAutosave } from '../utils/rbprojAutosave';
+import { getRbprojAutosaveKey, getCanonicalProjectAutosaveKey, loadRbprojAutosave, migrateRbprojAutosaveIfNeeded, useRbprojAutosave } from '../utils/rbprojAutosave';
 import { isCEMode, getCEConfig, isHeavyCircuit } from '../utils/ceMode';
 import { ResetWorkspaceModal, ExampleGalleryModal, ExportBundleModal } from '../components/CEUIComponents';
 import { ClassroomModeBanner } from '../components/ClassroomModeBanner';
@@ -430,9 +430,14 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
     const [projectName, setProjectName] = useState('Untitled Project');
     const [projectDescription, setProjectDescription] = useState('');
     const [projectCreatedAt, setProjectCreatedAt] = useState(() => new Date().toISOString());
+    const [projectId, setProjectId] = useState(() => crypto.randomUUID?.() ?? `proj-${Date.now()}`);
     const [currentFileId, setCurrentFileId] = useState(initialFileId ?? null);
     const [isDirty, setIsDirty] = useState(false);
-    const rbprojAutosaveKey = useMemo(() => getRbprojAutosaveKey('logic-playground', props.windowId), [props.windowId]);
+    const legacyRbprojAutosaveKey = useMemo(() => getRbprojAutosaveKey('logic-playground', props.windowId), [props.windowId]);
+    const rbprojAutosaveKey = useMemo(() => getCanonicalProjectAutosaveKey(projectId), [projectId]);
+    useEffect(() => {
+        migrateRbprojAutosaveIfNeeded(legacyRbprojAutosaveKey, rbprojAutosaveKey);
+    }, [legacyRbprojAutosaveKey, rbprojAutosaveKey]);
     const applyRbprojProject = useCallback((project) => {
         const applier = applyProjectRef.current;
         if (applier)
@@ -2446,6 +2451,8 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
             meta: {
                 appVersion,
                 tickRate: currentHz,
+                projectId,
+                appSurface: 'logic-playground',
             },
         });
     }, [
@@ -2464,6 +2471,7 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
         record,
         appVersion,
         currentHz,
+        projectId,
     ]);
     useEffect(() => {
         buildProjectRef.current = buildProject;
@@ -2490,6 +2498,9 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
         setProjectName(project.name ?? 'Untitled Project');
         setProjectDescription(project.description ?? '');
         setProjectCreatedAt(project.createdAt ?? new Date().toISOString());
+        if (typeof project.meta?.projectId === "string" && project.meta.projectId.trim().length > 0) {
+            setProjectId(project.meta.projectId.trim());
+        }
         if (project.layout?.perspectiveId) {
             const perspectiveId = project.layout.perspectiveId;
             const validPerspectives = ['build', 'analyze', 'explain', 'explore', 'quad', 'circuit-only', 'schematic-only', 'scope-only', '3d-only', 'code-only', 'inspect', 'debug', 'schematic', 'learn'];

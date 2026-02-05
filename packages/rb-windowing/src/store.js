@@ -208,6 +208,8 @@ function createWindowStore() {
                 return {
                     windows: state.windows.map((w) => ({
                         ...w,
+                        // Contract: focusing a minimized window should restore it (prevents invariant violations).
+                        mode: w.id === id && w.mode === 'minimized' ? 'normal' : w.mode,
                         focused: w.id === id,
                         zIndex: w.id === id ? state.nextZIndex : w.zIndex,
                         lastFocusedAt: w.id === id ? Date.now() : w.lastFocusedAt, // PHASE_AC: track focus history

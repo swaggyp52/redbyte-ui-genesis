@@ -105,6 +105,9 @@ interface ViewRendererProps {
   latestSignals?: Map<string, 0 | 1>;
   signalsUpdateReason?: 'input' | 'tick';
   signalsVersion?: number;
+  /** Optional (advanced) cross-surface net highlight reflection (2D -> 3D). */
+  onNetHighlightWiresChanged?: (wireIds: Set<string>) => void;
+  netHighlightWireIds?: Set<string>;
 }
 
 // View metadata for headers
@@ -114,6 +117,15 @@ const VIEW_METADATA: Record<ViewMode, { icon: IconName; label: string; color: st
   '3d': { icon: 'chip', label: '3D View', color: 'purple' },
   oscilloscope: { icon: 'neon-wave', label: 'Oscilloscope', color: 'green' },
   code: { icon: 'code', label: 'HDL Code', color: 'yellow' },
+};
+
+const setsEqual = (a: Set<string>, b: Set<string>) => {
+  if (a === b) return true;
+  if (a.size !== b.size) return false;
+  for (const v of a) {
+    if (!b.has(v)) return false;
+  }
+  return true;
 };
 
 const ViewRenderer: React.FC<ViewRendererProps> = ({
@@ -158,6 +170,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   latestSignals,
   signalsUpdateReason,
   signalsVersion,
+  onNetHighlightWiresChanged,
+  netHighlightWireIds,
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = React.useState({ width: 800, height: 600 });
@@ -332,6 +346,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
               debugSignals={debugSignals}
               debugTick={debugTick}
               onSignalsUpdated={onSignalsUpdated}
+              onNetHighlightWiresChanged={onNetHighlightWiresChanged}
             />
             {onUndo && onRedo && !disableToolStrip && (
               <CircuitToolStrip
@@ -424,6 +439,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
                   showHints={show3DHints}
                   onDismissHints={onDismiss3DHints}
                   probeWireHighlights={probeWireHighlights}
+                  netHighlightWireIds={netHighlightWireIds}
                   mismatchWireHighlights={mismatchWireHighlights}
                   mismatchNodeIds={mismatchNodeIds}
                   mismatchPortKeys={mismatchPortKeys}
@@ -521,6 +537,17 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   const [latestSignals, setLatestSignals] = React.useState<Map<string, 0 | 1> | undefined>();
   const [signalsUpdateReason, setSignalsUpdateReason] = React.useState<'input' | 'tick' | undefined>();
   const [signalsVersion, setSignalsVersion] = React.useState(0);
+
+  const has3DView = views.includes('3d');
+  const [netHighlightWireIds, setNetHighlightWireIds] = React.useState<Set<string>>(() => new Set());
+  const handleNetHighlightWiresChanged = React.useCallback((wireIds: Set<string>) => {
+    setNetHighlightWireIds((prev) => (setsEqual(prev, wireIds) ? prev : wireIds));
+  }, []);
+
+  React.useEffect(() => {
+    if (has3DView) return;
+    setNetHighlightWireIds((prev) => (prev.size === 0 ? prev : new Set()));
+  }, [has3DView]);
 
   // Handle logic updates from LogicCanvas
   const handleSignalsUpdated = React.useCallback((signals: Map<string, 0 | 1>, reason: 'input' | 'tick') => {
@@ -620,6 +647,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
           onSignalsUpdated={handleSignalsUpdated}
           latestSignals={latestSignals}
           signalsUpdateReason={signalsUpdateReason}
+          onNetHighlightWiresChanged={has3DView ? handleNetHighlightWiresChanged : undefined}
+          netHighlightWireIds={has3DView ? netHighlightWireIds : undefined}
         />
       </div>
     );
@@ -671,6 +700,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             latestSignals={latestSignals}
             signalsUpdateReason={signalsUpdateReason}
             signalsVersion={signalsVersion}
+            onNetHighlightWiresChanged={has3DView ? handleNetHighlightWiresChanged : undefined}
+            netHighlightWireIds={has3DView ? netHighlightWireIds : undefined}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden" style={secondaryStyle}>
@@ -712,6 +743,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             latestSignals={latestSignals}
             signalsUpdateReason={signalsUpdateReason}
             signalsVersion={signalsVersion}
+            onNetHighlightWiresChanged={has3DView ? handleNetHighlightWiresChanged : undefined}
+            netHighlightWireIds={has3DView ? netHighlightWireIds : undefined}
           />
         </div>
       </div>
@@ -764,6 +797,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             latestSignals={latestSignals}
             signalsUpdateReason={signalsUpdateReason}
             signalsVersion={signalsVersion}
+            onNetHighlightWiresChanged={has3DView ? handleNetHighlightWiresChanged : undefined}
+            netHighlightWireIds={has3DView ? netHighlightWireIds : undefined}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden" style={secondaryStyle}>
@@ -805,6 +840,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             latestSignals={latestSignals}
             signalsUpdateReason={signalsUpdateReason}
             signalsVersion={signalsVersion}
+            onNetHighlightWiresChanged={has3DView ? handleNetHighlightWiresChanged : undefined}
+            netHighlightWireIds={has3DView ? netHighlightWireIds : undefined}
           />
         </div>
       </div>
@@ -855,6 +892,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             latestSignals={latestSignals}
             signalsUpdateReason={signalsUpdateReason}
             signalsVersion={signalsVersion}
+            onNetHighlightWiresChanged={has3DView ? handleNetHighlightWiresChanged : undefined}
+            netHighlightWireIds={has3DView ? netHighlightWireIds : undefined}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden">
@@ -897,6 +936,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             latestSignals={latestSignals}
             signalsUpdateReason={signalsUpdateReason}
             signalsVersion={signalsVersion}
+            onNetHighlightWiresChanged={has3DView ? handleNetHighlightWiresChanged : undefined}
+            netHighlightWireIds={has3DView ? netHighlightWireIds : undefined}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden">
@@ -938,6 +979,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             latestSignals={latestSignals}
             signalsUpdateReason={signalsUpdateReason}
             signalsVersion={signalsVersion}
+            onNetHighlightWiresChanged={has3DView ? handleNetHighlightWiresChanged : undefined}
+            netHighlightWireIds={has3DView ? netHighlightWireIds : undefined}
           />
         </div>
         <div className="bg-gray-900 overflow-hidden">
@@ -972,6 +1015,8 @@ export const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
             latestSignals={latestSignals}
             signalsUpdateReason={signalsUpdateReason}
             signalsVersion={signalsVersion}
+            onNetHighlightWiresChanged={has3DView ? handleNetHighlightWiresChanged : undefined}
+            netHighlightWireIds={has3DView ? netHighlightWireIds : undefined}
           />
         </div>
       </div>

@@ -80,7 +80,13 @@ import { EnhancedPalette } from '../components/EnhancedPalette';
 import { HelpDock } from '../components/HelpDock';
 import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 import { useAutosaveCircuit, useRestoreCircuit, loadSavedCircuit, clearSavedCircuit } from '../utils/ceAutosave';
-import { getRbprojAutosaveKey, useRbprojAutosave } from '../utils/rbprojAutosave';
+import {
+  getRbprojAutosaveKey,
+  getCanonicalProjectAutosaveKey,
+  loadRbprojAutosave,
+  migrateRbprojAutosaveIfNeeded,
+  useRbprojAutosave,
+} from '../utils/rbprojAutosave';
 import { saveSnapshot, loadSnapshot, initSnapshotSystem, clearAllSnapshots, wasLastShutdownClean } from '../utils/snapshotSystem';
 import { isCEMode, getCEConfig, isHeavyCircuit } from '../utils/ceMode';
 import { ResetWorkspaceModal, ExampleGalleryModal, ExportBundleModal } from '../components/CEUIComponents';
@@ -541,10 +547,19 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     }
     try {
       const payload = snapshot.payload || {};
-      const projectPayload = payload.project as RBProject | undefined;
-      if (projectPayload && applyProjectRef.current) {
-        applyProjectRef.current(projectPayload);
+      const projectRef = payload.projectRef as { kind?: string; projectId?: string } | undefined;
+      if (projectRef?.kind === 'rbproj' && typeof projectRef.projectId === 'string') {
+        const key = getCanonicalProjectAutosaveKey(projectRef.projectId);
+        const saved = loadRbprojAutosave(key);
+        if (saved && applyProjectRef.current) {
+          const decoded = decodeRBProject(saved.projectJson);
+          applyProjectRef.current(decoded);
+        }
       } else {
+        const projectPayload = payload.project as RBProject | undefined;
+        if (projectPayload && applyProjectRef.current) {
+          applyProjectRef.current(projectPayload);
+        } else {
         if (payload.circuit) {
           useCircuitStore.getState().updateCircuit(payload.circuit as Circuit, { skipHistory: true, enforceLimits: true });
           setCircuit(payload.circuit as Circuit);
@@ -552,6 +567,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
         }
         if (payload.layout) {
           applyLayoutSnapshot(payload.layout);
+        }
         }
       }
       addToast('Recovered last session snapshot', 'success');
@@ -707,13 +723,18 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const [projectName, setProjectName] = useState('Untitled Project');
   const [projectDescription, setProjectDescription] = useState('');
   const [projectCreatedAt, setProjectCreatedAt] = useState(() => new Date().toISOString());
+  const [projectId, setProjectId] = useState(() => crypto.randomUUID?.() ?? `proj-${Date.now()}`);
   const [currentFileId, setCurrentFileId] = useState<string | null>(initialFileId ?? null);
   const [isDirty, setIsDirty] = useState(false);
 
-  const rbprojAutosaveKey = useMemo(
+  const legacyRbprojAutosaveKey = useMemo(
     () => getRbprojAutosaveKey('logic-playground', props.windowId),
     [props.windowId],
   );
+  const rbprojAutosaveKey = useMemo(() => getCanonicalProjectAutosaveKey(projectId), [projectId]);
+  useEffect(() => {
+    migrateRbprojAutosaveIfNeeded(legacyRbprojAutosaveKey, rbprojAutosaveKey);
+  }, [legacyRbprojAutosaveKey, rbprojAutosaveKey]);
   const applyRbprojProject = useCallback(
     (project: RBProject) => {
       const applier = applyProjectRef.current;
@@ -2901,6 +2922,8 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       meta: {
         appVersion,
         tickRate: currentHz,
+        projectId,
+        appSurface: 'logic-playground',
       },
     });
   }, [
@@ -2919,6 +2942,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     record,
     appVersion,
     currentHz,
+    projectId,
   ]);
 
   useEffect(() => {
@@ -2951,6 +2975,9 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       setProjectName(project.name ?? 'Untitled Project');
       setProjectDescription(project.description ?? '');
       setProjectCreatedAt(project.createdAt ?? new Date().toISOString());
+      if (typeof project.meta?.projectId === 'string' && project.meta.projectId.trim().length > 0) {
+        setProjectId(project.meta.projectId.trim());
+      }
 
       if (project.layout?.perspectiveId) {
         const perspectiveId = project.layout.perspectiveId;

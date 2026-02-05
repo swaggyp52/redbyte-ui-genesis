@@ -14,6 +14,8 @@ export { CircuitEngine } from './CircuitEngine';
 export { TickEngine } from './TickEngine';
 export { TraceRecorder } from './TraceRecorder';
 export type { TraceEntry, TraceSnapshot } from './TraceRecorder';
+export { ProbeRecorder } from './ProbeRecorder';
+export type { ProbeSample } from './ProbeRecorder';
 
 // Serialization
 export { serialize, deserialize } from './serialization';

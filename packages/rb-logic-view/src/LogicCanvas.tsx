@@ -11,6 +11,7 @@ import { WireView } from './components/WireView';
 import { Toolbar } from './components/Toolbar';
 import { renderGrid } from './tools/grid';
 import { isValidConnection, normalizeConnection, isInputPort } from './tools/wireValidation';
+import { computeWireNetIds } from './tools/netHighlight';
 import { findSmartSpawnPosition } from './tools/placement';
 import { trackRender, useUiTickStore } from '@redbyte/rb-utils';
 import { CanvasHost, snapToGrid as snapPointToGrid, fitToBounds } from '@redbyte/rb-viewport';
@@ -39,6 +40,8 @@ export interface LogicCanvasProps {
   debugSignals?: Map<string, 0 | 1> | null;
   debugTick?: number | null;
   highlightedPort?: { nodeId: string; portName: string } | null;
+  /** Optional callback (dev/advanced) to reflect net highlight across surfaces (e.g., 2D -> 3D). */
+  onNetHighlightWiresChanged?: (wireIds: Set<string>) => void;
   isRunning?: boolean;
   isReplayMode?: boolean;
   tickRate?: number;
@@ -67,6 +70,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   debugSignals,
   debugTick,
   highlightedPort,
+  onNetHighlightWiresChanged,
   isRunning = false,
   isReplayMode = false,
   tickRate = 0,
@@ -109,6 +113,51 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   // Use external circuit if provided, otherwise poll from engine
   const [internalCircuit, setInternalCircuit] = React.useState(engine.getCircuit());
   const circuit = externalCircuit ?? internalCircuit;
+  const [hoveredWireId, setHoveredWireId] = React.useState<string | null>(null);
+  const wireToNetId = React.useMemo(() => computeWireNetIds(circuit.connections), [circuit.connections]);
+  const hoveredNetId = hoveredWireId ? wireToNetId.get(hoveredWireId) ?? null : null;
+  const selectedNetIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    selection.wires.forEach((wireId) => {
+      const netId = wireToNetId.get(wireId);
+      if (netId) ids.add(netId);
+    });
+    return ids;
+  }, [selection.wires, wireToNetId]);
+
+  const highlightNetIds = React.useMemo(() => {
+    const ids = new Set<string>(selectedNetIds);
+    if (hoveredNetId) ids.add(hoveredNetId);
+    return ids;
+  }, [hoveredNetId, selectedNetIds]);
+
+  const highlightWireIds = React.useMemo(() => {
+    if (!onNetHighlightWiresChanged) return null;
+    if (highlightNetIds.size === 0) return new Set<string>();
+    const result = new Set<string>();
+    wireToNetId.forEach((netId, wireId) => {
+      if (highlightNetIds.has(netId)) result.add(wireId);
+    });
+    return result;
+  }, [highlightNetIds, onNetHighlightWiresChanged, wireToNetId]);
+
+  const lastReportedHighlightRef = React.useRef<Set<string>>(new Set());
+  React.useEffect(() => {
+    if (!onNetHighlightWiresChanged || !highlightWireIds) return;
+    const prev = lastReportedHighlightRef.current;
+    if (prev.size === highlightWireIds.size) {
+      let same = true;
+      for (const id of highlightWireIds) {
+        if (!prev.has(id)) {
+          same = false;
+          break;
+        }
+      }
+      if (same) return;
+    }
+    lastReportedHighlightRef.current = highlightWireIds;
+    onNetHighlightWiresChanged(new Set(highlightWireIds));
+  }, [highlightWireIds, onNetHighlightWiresChanged]);
   const [signals, setSignals] = React.useState<Map<string, 0 | 1>>(new Map());
   const [signalsVersion, setSignalsVersion] = React.useState(0);
   const renderSignals = debugSignals ?? signals;
@@ -909,6 +958,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           const signal = renderSignals.get(`${fromNodeId}.${fromPortName}`);
           const probeColors = probeWireHighlights?.get(wireId);
           const mismatchColors = mismatchWireHighlights?.get(wireId);
+          const netId = wireToNetId.get(wireId) ?? null;
+          const isNetHighlighted =
+            (hoveredNetId !== null && netId === hoveredNetId) ||
+            (netId !== null && selectedNetIds.has(netId));
 
           return (
             <WireView
@@ -917,7 +970,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               nodes={circuit.nodes}
               camera={camera}
               isSelected={selection.wires.has(wireId)}
+              isNetHighlighted={isNetHighlighted}
               onSelect={selectWire}
+              onHover={setHoveredWireId}
               signal={signal}
               probeColors={probeColors}
               mismatchColors={mismatchColors}

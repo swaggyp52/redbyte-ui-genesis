@@ -34,6 +34,10 @@ export interface RBProject {
     gitCommit?: string;
     tickRate?: number;
     tags?: string[];
+    projectId?: string;
+    labId?: string;
+    labStepIndex?: number;
+    appSurface?: string;
   };
 }
 

@@ -11,7 +11,9 @@ export interface WireViewProps {
   nodes: Node[];
   camera: Camera;
   isSelected: boolean;
+  isNetHighlighted?: boolean;
   onSelect: (wireId: string, addToSelection: boolean) => void;
+  onHover?: (wireId: string | null) => void;
   signal?: 0 | 1;
   probeColors?: string[];
   mismatchColors?: string[];
@@ -22,7 +24,9 @@ const WireViewComponent: React.FC<WireViewProps> = ({
   nodes,
   camera,
   isSelected,
+  isNetHighlighted = false,
   onSelect,
+  onHover,
   signal,
   probeColors,
   mismatchColors,
@@ -51,11 +55,29 @@ const WireViewComponent: React.FC<WireViewProps> = ({
 
   const strokeColor = signal === 1 ? '#22c55e' : '#6b7280';
   const isActive = signal === 1;
+  const netHighlightColor = '#fbbf24'; // amber-400
 
   return (
-    <g onClick={handleClick} style={{ cursor: 'pointer' }}>
+    <g
+      onClick={handleClick}
+      onMouseEnter={() => onHover?.(wireId)}
+      onMouseLeave={() => onHover?.(null)}
+      style={{ cursor: 'pointer' }}
+    >
       {/* Invisible wider path for easier clicking */}
       <path d={path} fill="none" stroke="transparent" strokeWidth={10} />
+
+      {/* Net highlight glow (hover/select net) */}
+      {isNetHighlighted && !isSelected && (
+        <path
+          d={path}
+          fill="none"
+          stroke={netHighlightColor}
+          strokeWidth={9}
+          opacity={0.25}
+          filter="blur(5px)"
+        />
+      )}
 
       {/* Probe glow highlight */}
       {probeColors?.map((color, index) => (
@@ -111,7 +133,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
       <path
         d={path}
         fill="none"
-        stroke={isSelected ? '#3b82f6' : strokeColor}
+        stroke={isSelected ? '#3b82f6' : isNetHighlighted ? netHighlightColor : strokeColor}
         strokeWidth={isSelected ? 4 : 2}
         opacity={signal === 1 ? 1 : 0.5}
       />
@@ -152,6 +174,7 @@ export const WireView = React.memo(WireViewComponent, (prevProps, nextProps) => 
     prevProps.connection.to.nodeId === nextProps.connection.to.nodeId &&
     prevProps.connection.to.portName === nextProps.connection.to.portName &&
     prevProps.isSelected === nextProps.isSelected &&
+    prevProps.isNetHighlighted === nextProps.isNetHighlighted &&
     prevProps.signal === nextProps.signal &&
     prevProbeKey === nextProbeKey &&
     prevMismatchKey === nextMismatchKey &&

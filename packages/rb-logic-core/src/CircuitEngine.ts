@@ -30,6 +30,14 @@ export interface CircuitEngineOptions {
   debug?: boolean;
 }
 
+export type SimulationIssueCode = 'COMBINATIONAL_LOOP';
+
+export interface SimulationIssue {
+  code: SimulationIssueCode;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
 /**
  * Circuit evaluation engine
  * Handles signal propagation through the circuit graph
@@ -39,12 +47,14 @@ export class CircuitEngine {
   private nodeStates: Map<string, Record<string, any>>;
   private signalCache: Map<string, Signal>;
   private debug: boolean;
+  private lastIssue: SimulationIssue | null;
 
   constructor(circuit: Circuit, options: CircuitEngineOptions = {}) {
     this.debug = options.debug ?? false;
     this.circuit = { nodes: [], connections: [] };
     this.nodeStates = new Map();
     this.signalCache = new Map();
+    this.lastIssue = null;
     this.setCircuit(circuit);
   }
 
@@ -79,6 +89,87 @@ export class CircuitEngine {
       const state = node.state ? { ...node.state } : {};
       this.nodeStates.set(node.id, state);
     }
+  }
+
+  /**
+   * Get the most recent simulation issue (if any).
+   *
+   * Issues are best-effort diagnostics intended for UI messaging (student-friendly warnings)
+   * and for preventing non-terminating stabilization loops.
+   */
+  getLastIssue(): SimulationIssue | null {
+    return this.lastIssue ? { ...this.lastIssue } : null;
+  }
+
+  clearLastIssue(): void {
+    this.lastIssue = null;
+  }
+
+  private setIssue(issue: SimulationIssue): void {
+    this.lastIssue = issue;
+  }
+
+  private detectCombinationalLoop(): { hasLoop: boolean; cycleNodeIds?: string[] } {
+    // Memory/delay elements break combinational feedback loops.
+    const memoryTypes = new Set(['Delay', 'DFlipFlop', 'JKFlipFlop', 'RSLatch', 'Counter4Bit']);
+
+    const nodesById = new Map<string, Node>();
+    for (const node of this.circuit.nodes) nodesById.set(node.id, node);
+
+    const edges = new Map<string, Set<string>>();
+    for (const node of this.circuit.nodes) edges.set(node.id, new Set());
+
+    for (const conn of this.circuit.connections) {
+      const normalized = normalizeConnection(conn);
+      const fromNode = nodesById.get(normalized.from.nodeId);
+      if (!fromNode) continue;
+      if (memoryTypes.has(fromNode.type)) continue;
+      edges.get(fromNode.id)?.add(normalized.to.nodeId);
+    }
+
+    const visited = new Set<string>();
+    const inStack = new Set<string>();
+    const parent = new Map<string, string>();
+
+    const buildCycle = (start: string, end: string): string[] => {
+      const cycle: string[] = [end];
+      let cur = start;
+      while (cur !== end && parent.has(cur)) {
+        cycle.push(cur);
+        cur = parent.get(cur)!;
+      }
+      cycle.push(end);
+      cycle.reverse();
+      return cycle;
+    };
+
+    const dfs = (id: string): string[] | null => {
+      visited.add(id);
+      inStack.add(id);
+
+      for (const to of edges.get(id) ?? []) {
+        if (!visited.has(to)) {
+          parent.set(to, id);
+          const cycle = dfs(to);
+          if (cycle) return cycle;
+        } else if (inStack.has(to)) {
+          // Found back edge -> cycle
+          parent.set(to, id);
+          return buildCycle(id, to);
+        }
+      }
+
+      inStack.delete(id);
+      return null;
+    };
+
+    for (const node of this.circuit.nodes) {
+      if (visited.has(node.id)) continue;
+      const cycle = dfs(node.id);
+      if (cycle) return { hasLoop: true, cycleNodeIds: cycle };
+    }
+
+    return { hasLoop: false };
   }
 
   /**
@@ -152,6 +243,16 @@ export class CircuitEngine {
    * Returns true if any state changed
    */
   tick(): boolean {
+    this.clearLastIssue();
+    const loop = this.detectCombinationalLoop();
+    if (loop.hasLoop) {
+      this.setIssue({
+        code: 'COMBINATIONAL_LOOP',
+        message: 'Feedback loop detected — add a Delay or clocked element to break the loop.',
+        details: { cycleNodeIds: loop.cycleNodeIds ?? [] },
+      });
+    }
+
     const previousSignals = new Map(this.signalCache);
     this.signalCache.clear();
     const missingSignals = new Set<string>();
@@ -267,11 +368,31 @@ export class CircuitEngine {
    * Run simulation until stable (or max iterations)
    */
   stabilize(maxIterations = 100): number {
+    this.clearLastIssue();
+    const loop = this.detectCombinationalLoop();
+    if (loop.hasLoop) {
+      this.setIssue({
+        code: 'COMBINATIONAL_LOOP',
+        message: 'Feedback loop detected — add a Delay or clocked element to break the loop.',
+        details: { cycleNodeIds: loop.cycleNodeIds ?? [] },
+      });
+    }
+
     let iterations = 0;
+    let changedLast = false;
     while (iterations < maxIterations) {
       iterations++;
       const changed = this.tick();
+      changedLast = changed;
       if (!changed) break;
+    }
+
+    if (iterations >= maxIterations && changedLast) {
+      this.setIssue({
+        code: 'COMBINATIONAL_LOOP',
+        message: 'Feedback loop detected — add a Delay or clocked element to break the loop.',
+        details: { maxIterations },
+      });
     }
     return iterations;
   }

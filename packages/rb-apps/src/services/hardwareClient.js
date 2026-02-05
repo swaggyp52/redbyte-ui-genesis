@@ -1,12 +1,40 @@
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+function isBridgeDryrunEnabled() {
+    try {
+        if (typeof process !== "undefined" && process.env?.RB_BRIDGE_DRYRUN === "1")
+            return true;
+    }
+    catch {
+        // ignore
+    }
+    try {
+        const env = import.meta?.env;
+        return env?.VITE_RB_BRIDGE_DRYRUN === "1";
+    }
+    catch {
+        return false;
+    }
+}
+function getDefaultSingletonMode() {
+    try {
+        const env = process?.env;
+        const isVitest = env?.VITEST === 'true' || env?.VITEST === '1' || env?.NODE_ENV === 'test';
+        return isVitest ? 'off' : 'auto';
+    }
+    catch {
+        return 'auto';
+    }
+}
+const BRIDGE_PROTOCOL_VERSION = "rb-bridge.v1";
 export class HardwareClient {
     config;
     state;
     healthCheckInterval = null;
     wsReconnectTimeout = null;
     backgroundReconnectInterval = null;
+    dryrunInterval = null;
     listeners = new Set();
     ioListeners = new Set();
     statusListeners = new Set();
@@ -16,6 +44,7 @@ export class HardwareClient {
     HEALTH_CHECK_INTERVAL_MS = 10000;
     BACKGROUND_RECONNECT_MS = 30000; // Try to recover every 30s when offline
     DEMO_MODE_ENABLED = typeof process !== 'undefined' && process.env.RB_DEMO_MODE === '1';
+    DRYRUN_ENABLED = isBridgeDryrunEnabled();
     FETCH_TIMEOUT_MS = this.DEMO_MODE_ENABLED ? 500 : 2000; // Fast fail in demo mode
     // Active device state
     activeDevice = null;
@@ -31,7 +60,7 @@ export class HardwareClient {
         this.state = {
             status: 'offline',
             reason: 'disabled',
-            message: 'Hardware integration disabled (demo mode)',
+            message: this.DRYRUN_ENABLED ? 'Hardware bridge dry-run enabled' : 'Hardware integration disabled (demo mode)',
         };
         if (typeof window !== 'undefined') {
             const savedMode = localStorage.getItem('rb-hardware-mode');
@@ -64,7 +93,7 @@ export class HardwareClient {
             this.state = {
                 status: 'offline',
                 reason: 'disabled',
-                message: 'Hardware integration disabled (demo mode)',
+                message: this.DRYRUN_ENABLED ? 'Hardware bridge dry-run enabled' : 'Hardware integration disabled (demo mode)',
             };
             this.notifyListeners();
         }
@@ -72,11 +101,62 @@ export class HardwareClient {
             this.connect();
         }
     }
+    startDryrun() {
+        const bridge = {
+            ok: true,
+            version: BRIDGE_PROTOCOL_VERSION,
+            status: 'dryrun',
+        };
+        const bridgeDevices = [
+            { deviceId: 'basys3', target: 'basys3', port: 'DRYRUN', manufacturer: 'dryrun', serialNumber: 'dryrun-basys3' },
+            { deviceId: 'uno', target: 'arduino-uno', port: 'DRYRUN', manufacturer: 'dryrun', serialNumber: 'dryrun-uno' },
+        ];
+        const devices = bridgeDevices.map((bd) => ({
+            deviceId: bd.deviceId || 'unknown',
+            boardModel: bd.target === 'arduino-uno' ? 'Arduino Uno' : bd.target === 'basys3' ? 'Basys 3' : 'Unknown Board',
+            boardFamily: bd.target === 'basys3' ? 'fpga' : 'avr',
+            serial: bd.serialNumber || '',
+            transport: 'dryrun',
+            toolchain: bd.target === 'basys3' ? 'vivado' : 'arduino-cli',
+            status: 'ready',
+            runtime: { port: bd.port, baud_default: 115200, status: 'ready' },
+        }));
+        this.state = {
+            status: 'connected',
+            bridge,
+            devices,
+            ws: null,
+        };
+        this.retryAttempts = 0;
+        this.stopBackgroundReconnect();
+        this.notifyListeners();
+        if (this.healthCheckInterval)
+            clearInterval(this.healthCheckInterval);
+        this.healthCheckInterval = setInterval(() => this.checkHealth(), this.HEALTH_CHECK_INTERVAL_MS);
+        if (this.dryrunInterval)
+            clearInterval(this.dryrunInterval);
+        let tick = 0;
+        this.dryrunInterval = setInterval(() => {
+            tick += 1;
+            const snapshot = {
+                timestamp: new Date().toISOString(),
+                tick,
+                inputs: { SW: tick % 2, BTN: 0 },
+                outputs: { LED: tick % 2 },
+            };
+            this.latestIOSnapshot = snapshot;
+            this.ioListeners.forEach((cb) => cb(snapshot));
+        }, 250);
+    }
     async connect() {
         if (this.config.mode === 'off') {
             return;
         }
         if (this.state.status === 'connecting' || this.state.status === 'connected') {
+            return;
+        }
+        if (this.DRYRUN_ENABLED) {
+            this.startDryrun();
             return;
         }
         this.state = {
@@ -133,7 +213,7 @@ export class HardwareClient {
                 this.state = {
                     status: 'offline',
                     reason: 'unavailable',
-                    message: 'Hardware bridge offline (expected in demo mode)',
+                    message: 'RedByte Bridge Unreachable. Ensure the bridge agent is running on your machine.',
                 };
                 this.notifyListeners();
                 console.debug('[HardwareClient] Bridge unavailable, entering offline mode');
@@ -152,6 +232,8 @@ export class HardwareClient {
     }
     async checkHealth() {
         if (this.state.status !== 'connected')
+            return;
+        if (this.DRYRUN_ENABLED)
             return;
         try {
             const res = await fetch(`${this.config.httpUrl}/health`, {
@@ -181,7 +263,7 @@ export class HardwareClient {
             this.state = {
                 status: 'offline',
                 reason: 'failed',
-                message: 'Connection to hardware bridge lost',
+                message: 'RedByte Bridge Unreachable. Ensure the bridge agent is running on your machine.',
             };
             this.notifyListeners();
             this.startBackgroundReconnect();
@@ -279,6 +361,10 @@ export class HardwareClient {
         }
     }
     disconnect() {
+        if (this.dryrunInterval) {
+            clearInterval(this.dryrunInterval);
+            this.dryrunInterval = null;
+        }
         if (this.healthCheckInterval) {
             clearInterval(this.healthCheckInterval);
             this.healthCheckInterval = null;
@@ -416,6 +502,11 @@ export class HardwareClient {
             port: device.port || device.runtime?.port, // Bridge sends port at top level
             baud: device.runtime?.baud_default
         };
+        if (this.DRYRUN_ENABLED) {
+            this.activeDevice = device;
+            this.capabilities = this.buildCapabilitiesFromDevice(device);
+            return true;
+        }
         return new Promise((resolve) => {
             // Type Guard: Ensure we are connected and have a WS
             if (this.state.status !== 'connected' || !this.state.ws) {
@@ -731,4 +822,4 @@ export class HardwareClient {
     }
 }
 // Singleton instance
-export const hardwareClient = new HardwareClient();
+export const hardwareClient = new HardwareClient({ mode: getDefaultSingletonMode() });

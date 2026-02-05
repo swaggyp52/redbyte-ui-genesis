@@ -40,6 +40,10 @@ export function evaluateCheckpoint(circuit: unknown, checkpoint: CheckpointDef):
 
       // Stabilize
       engine.stabilize(50);
+      const issue = engine.getLastIssue?.();
+      if (issue && issue.code === 'COMBINATIONAL_LOOP') {
+        return { status: 'failed', feedback: issue.message };
+      }
 
       // Compare expected outputs against OUTPUT node state.isOn or signal input
       const got: Record<string, Signal> = {};

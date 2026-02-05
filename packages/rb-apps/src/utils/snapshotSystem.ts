@@ -6,11 +6,16 @@ export interface WorkspaceSnapshot {
   timestamp: number;
   reason: 'autosave' | 'reset-workspace' | 'reset-layout' | 'unload';
   payload: {
-    circuit: unknown;
     layout: unknown;
     flags: {
       safeMode: boolean;
     };
+    projectRef?: {
+      kind: 'rbproj';
+      projectId: string;
+    };
+    // Legacy fields (schemaVersion 1) retained for backward-compatible restore paths.
+    circuit?: unknown;
     project?: unknown;
   };
 }
@@ -37,11 +42,26 @@ export function saveSnapshot(
   immediate = false,
   project?: unknown
 ): void {
+  const projectId =
+    project &&
+    typeof project === 'object' &&
+    typeof (project as any).meta === 'object' &&
+    typeof (project as any).meta?.projectId === 'string' &&
+    String((project as any).meta.projectId).trim().length > 0
+      ? String((project as any).meta.projectId).trim()
+      : null;
+
   const snapshot: WorkspaceSnapshot = {
     schemaVersion: 1,
     timestamp: Date.now(),
     reason,
-    payload: { circuit, layout, flags, project },
+    // Stabilization invariant: snapshot system persists workspace/layout recovery only.
+    // Circuit/project payloads are handled via RBProject autosave (rb:autosave:<projectId>).
+    payload: {
+      layout,
+      flags,
+      projectRef: projectId ? { kind: 'rbproj', projectId } : undefined,
+    },
   };
 
   const save = () => {

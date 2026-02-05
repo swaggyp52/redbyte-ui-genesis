@@ -49,3 +49,13 @@ In `AI_STATE.md`, add a short validation entry with:
 - Date
 - Commands run (copy/paste list)
 - PASS/FAIL
+
+## Revalidate When...
+
+Re-run this checklist when making changes to any of:
+
+- Lab app IDs/manifests (especially `ece-lab` / `virtual-lab`)
+- 3D lazy-load boundaries (`rb-logic-3d` / `three` / `@react-three` imports)
+- Export/import/evidence codepaths (project codec, capsule/evidence writers)
+
+CI note: a non-blocking scheduled run is defined in `.github/workflows/p1d-smoke-nonblocking.yml`.

@@ -1,0 +1,57 @@
+name: P1D Smoke (Non-blocking)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Daily (UTC). Non-blocking: separate workflow, not a required check.
+    - cron: '0 8 * * *'
+
+jobs:
+  p1d-smoke:
+    name: P1D End-to-End Smoke (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.0'
+          cache: 'pnpm'
+
+      - name: Enable pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.24.0 --activate
+          pnpm -v
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace
+        run: pnpm -r build
+        env:
+          CI: true
+
+      - name: P1D scripted smoke gates
+        run: |
+          pnpm -s ops:student-export-fixture-test
+          pnpm -s ops:diff-gate
+          pnpm -s rbx:evidence-determinism-gate
+          pnpm -s rbproj:roundtrip-gate
+        env:
+          CI: true
+
+      - name: Upload ops run artifacts (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1d-smoke-artifacts
+          path: |
+            packages/ops/labs/runs/**
+            ops-liveness.json
+          retention-days: 7
+

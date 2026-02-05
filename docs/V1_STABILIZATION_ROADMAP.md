@@ -138,12 +138,38 @@ Solidifying state management prevents subtle bugs and provides a stable base for
 
 ### Phase 2 Tracker
 
-- [ ] Deterministic tick engine: repeatability tests + UI controls stable (pause/step/run/Hz)
-- [ ] Combinatorial loop detection: clear error/warning path, no hangs
-- [ ] Probes/inspector: stable live updates at speed (no dropped samples for moderate circuits)
-- [ ] Wire tracing: net highlight consistency across 2D/3D (tick-synced animations if enabled)
-- [ ] Save/load + undo/redo reliability: edge cases covered, auto-save and crash recovery verified
-- [ ] SIM <-> HW live mode: robust bridge disconnect handling + student-friendly errors
+- **Phase 2A: Deterministic Simulation Core (Repeatability + Loop Safety + Probes)**
+  - [x] P2A-1 Deterministic tick repeatability gate (`pnpm sim:repeatability-gate`)
+  - [x] P2A-2 Combinational loop detection gate (`pnpm sim:loop-detection-gate`)
+  - [x] P2A-3 Probe stability smoke gate (`pnpm sim:probe-stability-gate`) + bounded ring buffer
+  - [x] P2A Gate: `pnpm -r build` + P2A gates
+
+- **Phase 2B: No Data Loss (Canonical Autosave + Undo/Redo Contracts)**
+  - [x] P2B-1 Canonical RBProject autosave key (`rb:autosave:<projectId>`) used across student lab surfaces
+  - [x] P2B-2 Gate: autosave recovery (`pnpm proj:autosave-recovery-gate`)
+  - [x] P2B-3 Gate: undo/redo reversibility (`pnpm proj:undo-redo-gate`)
+  - [x] P2B Smoke: `docs/P2B_SMOKE_CHECKLIST.md`
+
+- **Phase 2C: HW Live Mode Robustness (Bridge Dry-run + Disconnect Fallback)**
+  - [x] P2C-1 Bridge dry-run contract (`RB_BRIDGE_DRYRUN`/`VITE_RB_BRIDGE_DRYRUN`) + gate (`pnpm bridge:dryrun-gate`)
+  - [x] P2C-2 HW mode disconnect fallback (HW → SIM) + gate (`pnpm hw:mode-fallback-gate`)
+  - [x] P2C Smoke: `docs/P2C_SMOKE_CHECKLIST.md`
+
+- **Phase 2D: Wire Tracing / Net Highlight Consistency (2D)**
+  - [x] P2D-1 Canonical net identity resolution (wire → net id) (`packages/rb-logic-view/src/tools/netHighlight.*`)
+  - [x] P2D-2 2D highlight pipeline (hover/select highlights full net)
+  - [x] P2D Gate: `pnpm -s net:highlight-resolution-gate` + `pnpm -r build`
+  - [x] P2D Smoke: `docs/P2D_SMOKE_CHECKLIST.md`
+
+- **Phase 2E: Cross-Surface Net Highlight Reflection (2D -> 3D)**
+  - [x] When 3D view is open, 2D net highlight reflects into 3D wire visuals (no boot coupling; 3D remains view-only)
+
+- [x] Deterministic tick engine: repeatability tests + UI controls stable (pause/step/run/Hz)
+- [x] Combinatorial loop detection: clear error/warning path, no hangs
+- [x] Probes/inspector: stable live updates at speed (no dropped samples for moderate circuits)
+- [x] Wire tracing: net highlight covers full connected net in 2D; when 3D view is open, highlight reflects into 3D wire visuals (visual-only)
+- [x] Save/load + undo/redo reliability: edge cases covered, auto-save and crash recovery verified
+- [x] SIM <-> HW live mode: robust bridge disconnect handling + student-friendly errors
 - [ ] Gate: `pnpm -r build` + relevant unit/integration tests
 
 ### Deterministic Tick-Based Simulation
@@ -226,6 +252,8 @@ Make SIM <-> HW mode switching seamless:
 ### Phase 3 Tracker
 
 - [ ] Windowing stability: focus/z-index/minimize/maximize contracts verified (smoke checklist)
+  - Smoke checklist: `docs/P3A_SMOKE_CHECKLIST.md`
+  - Scripted gate: `pnpm -s os:window-raise-gate`
 - [ ] React stability: no infinite update depth issues; render storm detector clean on key apps
 - [ ] Performance: 2D/3D rendering gated by visibility; performance mode works
 - [ ] Error handling: Error Boundary verified; student-friendly errors replace raw exceptions

@@ -5,7 +5,17 @@ import { NodeMesh } from '../meshes/NodeMesh';
 import { WireMesh } from '../meshes/WireMesh';
 import { SignalParticleSystem } from '../components/SignalParticle';
 import { NodeLabel } from '../components/NodeLabel';
-export const Rb3DSceneCircuit = ({ nodes, wires, signals, pulseMap, currentTime, animateSignalFlow, selectedNodeIds = new Set(), onNodeSelect, onNodeHover, onNodeMove, probeWireHighlights, mismatchWireHighlights, mismatchNodeIds, }) => {
+export const NET_HIGHLIGHT_COLOR = '#fbbf24';
+export const mergeWireProbeColorsForNetHighlight = (probeColors, isNetHighlighted) => {
+    if (!isNetHighlighted)
+        return probeColors;
+    if (!probeColors)
+        return [NET_HIGHLIGHT_COLOR];
+    if (probeColors.includes(NET_HIGHLIGHT_COLOR))
+        return probeColors;
+    return [...probeColors, NET_HIGHLIGHT_COLOR];
+};
+export const Rb3DSceneCircuit = ({ nodes, wires, signals, pulseMap, currentTime, animateSignalFlow, selectedNodeIds = new Set(), onNodeSelect, onNodeHover, onNodeMove, probeWireHighlights, netHighlightWireIds, mismatchWireHighlights, mismatchNodeIds, }) => {
     const selectionMap = useMemo(() => {
         const map = new Map();
         nodes.forEach(node => map.set(node.id, selectedNodeIds.has(node.id)));
@@ -66,7 +76,9 @@ export const Rb3DSceneCircuit = ({ nodes, wires, signals, pulseMap, currentTime,
                 const from = [wire.from.x / 20, 0.25, wire.from.y / 20];
                 const to = [wire.to.x / 20, 0.25, wire.to.y / 20];
                 const probeColors = probeWireHighlights?.get(wire.id);
+                const isNetHighlighted = netHighlightWireIds?.has(wire.id) ?? false;
+                const mergedProbeColors = mergeWireProbeColorsForNetHighlight(probeColors, isNetHighlighted);
                 const mismatchColors = mismatchWireHighlights?.get(wire.id);
-                return (_jsxs(React.Fragment, { children: [_jsx(WireMesh, { from: from, to: to, isActive: isActive, pulse: pulse, probeColors: probeColors, mismatchColors: mismatchColors }), isActive && animateSignalFlow && (_jsx(SignalParticleSystem, { from: from, to: to, isActive: isActive, wireId: wire.id, currentTime: currentTime }))] }, wire.id));
+                return (_jsxs(React.Fragment, { children: [_jsx(WireMesh, { from: from, to: to, isActive: isActive, pulse: pulse, probeColors: mergedProbeColors, mismatchColors: mismatchColors }), isActive && animateSignalFlow && (_jsx(SignalParticleSystem, { from: from, to: to, isActive: isActive, wireId: wire.id, currentTime: currentTime }))] }, wire.id));
             })] }));
 };

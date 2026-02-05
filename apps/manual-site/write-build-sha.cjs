@@ -3,6 +3,12 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
+function shouldWriteBuildSha() {
+  // Avoid dirtying the worktree during local builds.
+  // This file is tracked for release/CI provenance only.
+  return process.env.CI === 'true' || process.env.RB_WRITE_BUILD_SHA === '1';
+}
+
 function getHeadSha() {
   try {
     // stdio: 'pipe' prevents the error from leaking to console if git is missing/fails
@@ -13,6 +19,11 @@ function getHeadSha() {
 }
 
 const sha = getHeadSha();
+
+if (!shouldWriteBuildSha()) {
+  console.log('Skipping build.txt SHA write (set CI=true or RB_WRITE_BUILD_SHA=1 to enable).');
+  process.exit(0);
+}
 
 // Ensure public dir exists
 const publicDir = path.join(__dirname, 'public');
