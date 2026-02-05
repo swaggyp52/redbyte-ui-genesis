@@ -89,6 +89,8 @@
         "verify:all": "pnpm -s verify:gates",
         "verify:gates": "pnpm -r build && pnpm -s sim:repeatability-gate && pnpm -s sim:loop-detection-gate && pnpm -s sim:probe-stability-gate && pnpm -s rbproj:roundtrip-gate && pnpm -s rbx:evidence-determinism-gate && pnpm -s lab:workflow-export-verify-gate && pnpm -s lab:probe-sampling-gate && pnpm -s hw:dryrun-program-flow-gate",
         "verify:gates:full": "pnpm -s verify:gates && pnpm -s ops:diff-gate && pnpm -s ops:student-export-fixture-test",
+        "ci:parity": "pnpm install --frozen-lockfile && pnpm verify:all",
+        "ci:parity:pages": "pnpm -r build",
         "bless:artifacts": "node ./scripts/bless-latest-artifacts.js",
         "verify:install": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/verify-install.ps1",
         "bridge:smoke": "node tools/bridge-smoke.mjs",

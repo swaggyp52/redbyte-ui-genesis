@@ -30,13 +30,9 @@ jobs:
         run: |
           if (Test-Path ".git") { Remove-Item -Recurse -Force ".git" }
 
-      - name: Install (frozen)
+      - name: Install and build (Cloudflare parity)
         shell: pwsh
-        run: pnpm -w install --frozen-lockfile
-
-      - name: Build (Cloudflare-equivalent)
-        shell: pwsh
-        run: pnpm -r build
+        run: pnpm ci:parity:pages
 
       - name: Capture build log
         if: failure()
