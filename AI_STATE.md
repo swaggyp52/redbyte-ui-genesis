@@ -7427,6 +7427,68 @@ All TypeScript compilation errors systematically resolved across monorepo:
 
 ---
 
+## Change Log  2026-02-05 (P1D-2 3D Read-Only Enforcement: “Edit in 2D”)
+
+**Goal**
+- Enforce the Phase 1D contract: 3D surfaces are view-only and must not support wiring/moving/bench topology edits.
+- Any edit attempt in 3D should route the user to the 2D editor with a clear message.
+
+**3D Scene Read-Only Mode**
+- Added `readOnly` + `onEditAttempt` to `Rb3DSceneLab`:
+  - Disables `TransformControls` (no node dragging / pose edits).
+  - Disables wiring interactions (pin clicks in 3D trigger `onEditAttempt` instead of starting wires).
+  - Disables ghost-wire + pointer-move wiring layer when read-only.
+
+**Virtual Lab View-Only UX**
+- Virtual Lab now runs in view-only mode and shows a consistent toast: “3D is view-only. Edit in 2D.”
+- Adds an “Edit in 2D” button and an “Open 2D editor” toast action to open Logic Playground.
+- Prevents bench mutation actions (add parts / clear bench) by routing to the same “Edit in 2D” flow.
+- Disables auto-adopt spawning while view-only (prevents hidden topology edits).
+
+**Validation**
+- `pnpm -r build` passes.
+
+**Files Updated**
+- `packages/rb-logic-3d/src/components/Rb3DSceneLab.tsx`
+- `packages/rb-logic-3d/src/components/Rb3DSceneLab.js`
+- `packages/rb-apps/src/apps/VirtualLabAppImpl.tsx`
+- `packages/rb-apps/src/apps/VirtualLabAppImpl.js`
+
+**Attribution:** Connor Angiel
+
+---
+
+## Change Log  2026-02-05 (P1D-3 3D Pause When Hidden/Minimized)
+
+**Goal**
+- Reduce lab CPU usage by pausing 3D rendering when the Virtual Lab is not meaningfully visible.
+- Do not pause the canonical 2D simulation/engine; only pause 3D rendering.
+
+**Page Visibility + Minimize Detection**
+- Added `usePageVisibility()` hook for a stable `document.visibilityState` signal (TS + JS).
+- Virtual Lab computes `is3DActive = pageVisible && !windowMinimized` using the window store and feeds it to the 3D scene.
+
+**Render Loop Pause (React Three Fiber)**
+- Added `active` prop to `Rb3DViewport` which switches the R3F `<Canvas>` to `frameloop="never"` when inactive.
+- On re-activation, a small in-canvas invalidator triggers a redraw so the scene resumes immediately.
+
+**Validation**
+- `pnpm -r build` passes.
+
+**Files Updated**
+- `packages/rb-apps/src/hooks/usePageVisibility.ts`
+- `packages/rb-apps/src/hooks/usePageVisibility.js`
+- `packages/rb-apps/src/apps/VirtualLabAppImpl.tsx`
+- `packages/rb-apps/src/apps/VirtualLabAppImpl.js`
+- `packages/rb-logic-3d/src/components/Rb3DViewport.tsx`
+- `packages/rb-logic-3d/src/components/Rb3DViewport.js`
+- `packages/rb-logic-3d/src/components/Rb3DSceneLab.tsx`
+- `packages/rb-logic-3d/src/components/Rb3DSceneLab.js`
+
+**Attribution:** Connor Angiel
+
+---
+
 ## Change Log  2026-02-03 (ECE Lab Unified Project Loop Guard)
 
 **Issue:** ECE Lab synced its circuit into the unified project on every render, which could loop when `updatedAt` changed without circuit changes.
@@ -7564,5 +7626,47 @@ All TypeScript compilation errors systematically resolved across monorepo:
 - packages/rb-apps/src/utils/__tests__/evidenceExport.test.js
 - packages/rb-apps/src/stores/fileSystemStore.ts
 - packages/rb-apps/src/stores/fileSystemStore.js
+
+**Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-05 (P1D Consolidation: Single Student-Facing Lab Surface)
+
+**Launcher Consolidation (Lab Surface)**
+- Renamed the student-facing lab app (`ece-lab`) to "Virtual Lab" (manifest label) to match the unified 2D/3D contract.
+- Demoted the 3D-heavy bench/capsule replay app (`virtual-lab`) to a hidden "Virtual Bench" app (still launchable via Terminal/open-with flows).
+- Updated Start Here copy/launch target so "Virtual Lab" opens the canonical lab surface (`ece-lab`).
+
+**Docs**
+- Recorded stabilization failure-mode notes to avoid re-opening test treadmill work.
+- Updated Phase 1 tracker checkboxes/notes to reflect P1D status and the student-facing consolidation decision.
+
+**Files Updated**
+- docs/V1_STABILIZATION_ROADMAP.md
+- packages/rb-apps/src/apps/ECELabManifest.ts
+- packages/rb-apps/src/apps/ECELabManifest.js
+- packages/rb-apps/src/apps/VirtualLabApp.tsx
+- packages/rb-apps/src/apps/VirtualLabApp.js
+- packages/rb-apps/src/apps/StartHereApp.tsx
+- packages/rb-apps/src/apps/StartHereApp.js
+- packages/rb-apps/src/apps/files/fileActionTargets.ts
+- packages/rb-apps/src/apps/files/fileActionTargets.js
+
+**Attribution**: Connor Angiel
+
+---
+
+## Validation  2026-02-05 (P1D Gate: End-to-End Lab Flow Smoke)
+
+**Scripted Gate (PASS)**
+- `pnpm -r build`
+- `pnpm -s ops:student-export-fixture-test`
+- `pnpm -s ops:diff-gate`
+- `pnpm -s rbx:evidence-determinism-gate`
+- `pnpm -s rbproj:roundtrip-gate`
+
+Notes:
+- Gate procedure is captured in `docs/P1D_SMOKE_CHECKLIST.md`.
 
 **Attribution**: Connor Angiel

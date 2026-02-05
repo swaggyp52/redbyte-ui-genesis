@@ -43,11 +43,29 @@ Notes:
 
 #### P1D 2D/3D Lab Unification (After Foundation)
 
-- [ ] Confirm 2D is canonical state; 3D is read-only subscriber (no topology edits in 3D)
-- [ ] 3D edit attempts route to "Edit in 2D" action/message
-- [ ] Remove duplicate lab apps/modules and consolidate to one lab module
-- [ ] 3D render loop pauses when hidden/inactive
-- [ ] Gate: end-to-end lab flow smoke test (ingest -> run -> export/import -> verify)
+- [x] Confirm 2D is canonical state; 3D is read-only subscriber (no topology edits in 3D)
+- [x] 3D edit attempts route to "Edit in 2D" action/message
+- [x] Remove duplicate lab apps/modules and consolidate to one lab module (student-facing)
+- [x] 3D render loop pauses when hidden/inactive
+- [x] Gate: end-to-end lab flow smoke test (ingest -> run -> export/import -> verify)
+
+Notes:
+- Student-facing lab surface is `ece-lab` (labeled "Virtual Lab").
+- `virtual-lab` is now a hidden "Virtual Bench" app for capsule replay/inspection paths.
+- Gate procedure: `docs/P1D_SMOKE_CHECKLIST.md`
+- Guarantee: 3D is lazy-loaded, view-only, and pauses when minimized; lab surface is consolidated (Virtual Lab student-facing; Virtual Bench hidden).
+
+## Stabilization Notes (Why we avoided test treadmill)
+
+We hit recurring low-signal failures caused by harness/environment mismatches and accidental 3D boot coupling:
+
+- RTL/Vitest contract mismatch: Launcher tests expected role="listbox" but UI is dialog+buttons.
+- jsdom missing browser APIs: ResizeObserver undefined caused oscilloscope crashes + worker cascades.
+- Non-unique test IDs: duplicate data-testid in SVG made RTL queries ambiguous.
+- Worker instability: unhandled mount crashes caused "Worker exited unexpectedly" and noisy follow-on failures.
+- E2E/boot flake: three/@react-three pulled into boot graph in some paths, triggering headless GPU/WebGL crashes/timeouts.
+
+Decision: P1C validated via manual smoke gate + render-storm report artifact; automated render-storm E2E baseline deferred.
 
 ### Unify Lab Surfaces (2D & 3D)
 

@@ -23,7 +23,7 @@ export const StartHereAppContent: React.FC<StartHereAppProps> = ({ onOpenApp }) 
   };
 
   const handleOpenVirtualLab = () => {
-    onOpenApp?.('virtual-lab', {});
+    onOpenApp?.('ece-lab', {});
   };
 
   const handleOpenInspector = () => {
@@ -50,7 +50,9 @@ export const StartHereAppContent: React.FC<StartHereAppProps> = ({ onOpenApp }) 
 
         <button type="button" className={styles.card} onClick={handleOpenVirtualLab}>
           <div className={styles.cardTitle}>Virtual Lab</div>
-          <p className={styles.cardBody}>3D bench — MCU + wiring + scope + serial. Export lab capsules.</p>
+          <p className={styles.cardBody}>
+            Unified lab surface — 2D circuit editor (canonical) with optional 3D read-only visualization.
+          </p>
           <div className={styles.cardAction}>Open Virtual Lab</div>
         </button>
 
@@ -66,7 +68,7 @@ export const StartHereAppContent: React.FC<StartHereAppProps> = ({ onOpenApp }) 
         <h2 className={styles.labMapTitle}>Lab Map</h2>
         <ul className={styles.labMapList}>
           <li><strong>Logic Playground</strong> — 2D circuits + truth tables + replay</li>
-          <li><strong>Virtual Lab</strong> — 3D bench + MCU sketch + instruments + capsule export</li>
+          <li><strong>Virtual Lab</strong> — 2D canonical editor + optional 3D read-only view</li>
           <li><strong>Lab Assignment</strong> — Course lab wrapper + template + submit</li>
           <li><strong>Lab Examiner</strong> — Read-only inspection + integrity verification</li>
         </ul>

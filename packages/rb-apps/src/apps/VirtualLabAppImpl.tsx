@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast, GuardrailConfirmModal } from '@redbyte/rb-primitives';
 import {
     Rb3DSceneLab,
@@ -25,12 +25,14 @@ import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useClassroomModeStore } from '../stores/classroomModeStore';
 import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
+import { useWindowStore } from '@redbyte/rb-windowing';
 // Lazy load panels to break circular dependency / TDZ issues during initialization
 const HardwareRackPanel = React.lazy(() => import('../panels/HardwareRackPanel').then(m => ({ default: m.HardwareRackPanel })));
 const HardwareStatusOverlay = React.lazy(() => import('../panels/HardwareStatusOverlay').then(m => ({ default: m.HardwareStatusOverlay })));
 
 import { HardwareAutoAdopt } from '../components/HardwareAutoAdopt';
 import { HardwareClientTransport } from '../services/hardwareClientTransport';
+import { usePageVisibility } from '../hooks/usePageVisibility';
 
 const DEFAULT_SKETCH = `void setup() {
         pinMode(13, OUTPUT);
@@ -47,10 +49,53 @@ interface VirtualLabAppProps {
     resourceId?: string;
     resourceType?: 'file' | 'folder';
     windowId?: string;
+    onOpenApp?: (appId: string, props?: any) => void;
 }
 
-const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, resourceType, windowId }) => {
+const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, resourceType, windowId, onOpenApp }) => {
     useRenderStormDetector('VirtualLabAppComponent');
+    const is3DViewOnly = true;
+    const lastEditToastRef = useRef(0);
+    const open2DEditor = useCallback(() => {
+        if (onOpenApp) {
+            onOpenApp('logic-playground');
+            return;
+        }
+        const shellApi = (window as any).__RB_SHELL_E2E__;
+        if (shellApi && typeof shellApi.openWindow === 'function') {
+            shellApi.openWindow('logic-playground');
+            return;
+        }
+        toast.info({ message: 'Open the 2D editor from the Launcher (Ctrl/Cmd+K) → Logic Playground.' });
+    }, [onOpenApp]);
+
+    const promptEditIn2D = useCallback(
+        (reason?: string) => {
+            const now = Date.now();
+            if (now - lastEditToastRef.current < 1500) return;
+            lastEditToastRef.current = now;
+
+            toast.info({
+                title: '3D is view-only',
+                message: reason ? `3D is view-only. Edit in 2D (${reason}).` : '3D is view-only. Edit in 2D.',
+                actions: [{ label: 'Open 2D editor', onClick: open2DEditor }],
+            });
+        },
+        [open2DEditor]
+    );
+
+    const pageVisible = usePageVisibility();
+    const windowMinimized = useWindowStore(
+        useMemo(
+            () => (state) => {
+                if (!windowId) return false;
+                const w = state.windows.find((entry) => entry.id === windowId);
+                return w?.mode === 'minimized';
+            },
+            [windowId]
+        )
+    );
+    const is3DActive = pageVisible && !windowMinimized;
     const addNode = useLabStore((state) => state.addNode);
     const reset = useLabStore((state) => state.reset);
     const toggleSimulation = useLabStore((state) => state.toggleSimulation);
@@ -362,6 +407,10 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
     }, [integrityError]);
 
     const handleAddPart = (type: string) => {
+        if (is3DViewOnly) {
+            promptEditIn2D('add parts');
+            return;
+        }
         if (playbackMode === 'replay') {
             window.alert('Cannot edit graph in Replay Mode. Switch to Live Mode first.');
             return;
@@ -849,7 +898,13 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                             lossItems: ['Placed parts', 'Wiring', 'Simulation state'],
                             confirmLabel: 'Clear Bench',
                             confirmTone: 'danger',
-                            onConfirm: () => reset(),
+                            onConfirm: () => {
+                                if (is3DViewOnly) {
+                                    promptEditIn2D('clear bench');
+                                    return;
+                                }
+                                reset();
+                            },
                             onExport: handleExportCapsule,
                         })}
                         className="w-full px-3 py-2 rounded bg-red-900/50 hover:bg-red-900 text-red-100 text-xs transition-colors"
@@ -870,12 +925,23 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
                         </div>
                     </div>
                 ) : (
-                    <Rb3DSceneLab />
+                    <Rb3DSceneLab
+                        active={is3DActive}
+                        readOnly={is3DViewOnly}
+                        onEditAttempt={() => promptEditIn2D('wiring / move')}
+                    />
                 )}
 
                 {/* Overlay UI */}
-                <div className="absolute top-4 left-4 bg-black/50 backdrop-blur rounded px-3 py-1.5 text-xs text-gray-300 pointer-events-none">
-                    Virtual Lab Bench (MVP)
+                <div className="absolute top-4 left-4 bg-black/50 backdrop-blur rounded px-3 py-1.5 text-xs text-gray-300 pointer-events-auto flex items-center gap-2">
+                    <span className="pointer-events-none">Virtual Lab Bench (View-only)</span>
+                    <button
+                        type="button"
+                        onClick={() => open2DEditor()}
+                        className="px-2 py-0.5 rounded bg-blue-700/60 hover:bg-blue-600 text-[10px] text-white"
+                    >
+                        Edit in 2D
+                    </button>
                 </div>
 
                 {/* Replay Mode / Integrity Indicator */}
@@ -1234,10 +1300,8 @@ const VirtualLabAppComponent: React.FC<VirtualLabAppProps> = ({ resourceId, reso
             {/* Right Sidebar: Guided Lab Mode */}
             <GuidedLabSidebar />
 
-
-
             {/* AUTO-ADOPT LOGIC */}
-            <HardwareAutoAdopt />
+            {!is3DViewOnly && <HardwareAutoAdopt />}
         </div>
     );
 };

@@ -295,7 +295,15 @@ const FpgaBoardVisual: React.FC<{ node: any }> = ({ node }) => {
 };
 
 
-const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string>; isSelected?: boolean; onSelect?: (id: string) => void; nodeRefs: React.MutableRefObject<Map<string, THREE.Mesh>> }> = ({ node, pinToNetId, isSelected, onSelect, nodeRefs }) => {
+const PartMesh: React.FC<{
+    node: any;
+    pinToNetId: Record<string, string>;
+    isSelected?: boolean;
+    onSelect?: (id: string) => void;
+    nodeRefs: React.MutableRefObject<Map<string, THREE.Mesh>>;
+    readOnly?: boolean;
+    onEditAttempt?: () => void;
+}> = ({ node, pinToNetId, isSelected, onSelect, nodeRefs, readOnly, onEditAttempt }) => {
     const def = PART_DEFINITIONS[node.type];
     const { handlePinHover, handlePinUnhover, handlePinClick } = useLabInteraction();
 
@@ -368,7 +376,14 @@ const PartMesh: React.FC<{ node: any; pinToNetId: Record<string, string>; isSele
                             visible={false}
                             onPointerOver={(e) => handlePinHover(node.id, pin.id, e as any)}
                             onPointerOut={(e) => handlePinUnhover(node.id, pin.id, e as any)}
-                            onClick={(e) => handlePinClick(node.id, pin.id, e as any)}
+                            onClick={(e) => {
+                                if (readOnly) {
+                                    e.stopPropagation();
+                                    onEditAttempt?.();
+                                    return;
+                                }
+                                handlePinClick(node.id, pin.id, e as any);
+                            }}
                         >
                             <boxGeometry args={[0.3, 0.4, 0.3]} />
                             <meshBasicMaterial transparent opacity={0.0} />
@@ -463,7 +478,19 @@ const LabInteractionLayer = () => {
     );
 };
 
-export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: number | string, height?: number | string }) => {
+export const Rb3DSceneLab = ({
+    width = '100%',
+    height = '100%',
+    active = true,
+    readOnly = false,
+    onEditAttempt,
+}: {
+    width?: number | string;
+    height?: number | string;
+    active?: boolean;
+    readOnly?: boolean;
+    onEditAttempt?: () => void;
+}) => {
     const { graph, selectedNetId, selectedNodeId, pinStates: wirePinStates } = useLabStore(
         useShallow(state => ({
             graph: state.graph,
@@ -485,6 +512,10 @@ export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: numb
     }, [selectedNodeId, graph.nodes]);
 
     const handleTransformEnd = (e: any) => {
+        if (readOnly) {
+            onEditAttempt?.();
+            return;
+        }
         const target = e?.target?.object;
         if (target && selectedNodeId) {
             updateNodePose(
@@ -499,10 +530,11 @@ export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: numb
         <Rb3DViewport
             width={width}
             height={height}
+            active={active}
             cameraPosition={[0, 8, 4]}
             cameraTarget={[0, 0, 0]}
         >
-            {activeTransformTarget && (
+            {!readOnly && activeTransformTarget && (
                 <TransformControls
                     object={activeTransformTarget}
                     mode="translate"
@@ -510,7 +542,7 @@ export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: numb
                     onMouseUp={handleTransformEnd}
                 />
             )}
-            <LabInteractionLayer />
+            {!readOnly && <LabInteractionLayer />}
 
             <ambientLight intensity={0.5} />
             <directionalLight position={[5, 10, 5]} intensity={1} />
@@ -524,6 +556,8 @@ export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: numb
                     isSelected={selectedNodeId === node.id}
                     onSelect={setSelectedNodeId}
                     nodeRefs={nodeRefs}
+                    readOnly={readOnly}
+                    onEditAttempt={onEditAttempt}
                 />
             ))}
 
@@ -572,7 +606,7 @@ export const Rb3DSceneLab = ({ width = '100%', height = '100%' }: { width?: numb
                 );
             })}
 
-            <GhostWire />
+            {!readOnly && <GhostWire />}
 
         </Rb3DViewport>
     );

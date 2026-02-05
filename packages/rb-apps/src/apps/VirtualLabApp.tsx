@@ -36,12 +36,12 @@ const VirtualLabAppStub: React.FC<VirtualLabAppProps> = (props) => (
 export const VirtualLabApp: RedByteApp = {
   manifest: {
     id: 'virtual-lab',
-    name: 'Virtual Lab',
+    name: 'Virtual Bench',
     iconId: 'tool-build',
     category: 'tools',
     defaultSize: { width: 1200, height: 800 },
     minSize: { width: 800, height: 600 },
+    hidden: true,
   },
   component: VirtualLabAppStub,
 };
-

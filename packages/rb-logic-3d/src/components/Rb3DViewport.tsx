@@ -8,6 +8,7 @@ interface Rb3DViewportProps {
     width?: number | string;
     height?: number | string;
     className?: string;
+    active?: boolean;
 
     // Camera Control Props
     cameraPosition?: [number, number, number];
@@ -67,6 +68,7 @@ export const Rb3DViewport: React.FC<Rb3DViewportProps> = ({
     width = '100%',
     height = '100%',
     className,
+    active = true,
     cameraPosition = [10, 10, 10],
     cameraTarget = [0, 0, 0],
     onCameraChange,
@@ -114,10 +116,12 @@ export const Rb3DViewport: React.FC<Rb3DViewportProps> = ({
         );
     }
 
+    const effectiveFrameloop = active ? frameloop : 'never';
+
     return (
         <div style={{ width, height, position: 'relative' }} className={className}>
             <Canvas
-                frameloop={frameloop}
+                frameloop={effectiveFrameloop}
                 camera={{ position: cameraPosition, fov: 50 }}
                 gl={{
                     antialias: true,
@@ -146,8 +150,24 @@ export const Rb3DViewport: React.FC<Rb3DViewportProps> = ({
                     reduceMotion={reduceMotion}
                 />
 
+                <ViewportActiveInvalidator active={active} />
+
                 {children}
             </Canvas>
         </div>
     );
+};
+
+const ViewportActiveInvalidator: React.FC<{ active: boolean }> = ({ active }) => {
+    const { invalidate } = useThree();
+    const lastActiveRef = useRef(active);
+
+    useEffect(() => {
+        if (!lastActiveRef.current && active) {
+            invalidate();
+        }
+        lastActiveRef.current = active;
+    }, [active, invalidate]);
+
+    return null;
 };

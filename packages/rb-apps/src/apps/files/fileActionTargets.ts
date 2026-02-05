@@ -48,7 +48,7 @@ export const FILE_ACTION_TARGETS: FileActionTarget[] = [
   },
   {
     id: 'virtual-lab',
-    name: 'Virtual Lab',
+    name: 'Virtual Bench',
     appId: 'virtual-lab',
     isEligible: (type, name) => type === 'file' && name.endsWith('.labcapsule.json'),
   },

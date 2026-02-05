@@ -78,7 +78,7 @@ const FpgaBoardVisual = ({ node }) => {
                 return (_jsxs("group", { position: [pos[0], pos[1], pos[2]], children: [_jsxs("mesh", { position: [0, isPressed ? -0.05 : 0.05, 0], children: [_jsx("cylinderGeometry", { args: [0.2, 0.2, 0.1, 16] }), _jsx("meshStandardMaterial", { color: "#111" })] }), _jsxs("mesh", { position: [0, -0.05, 0], children: [_jsx("cylinderGeometry", { args: [0.25, 0.25, 0.1, 16] }), _jsx("meshStandardMaterial", { color: "#333" })] }), _jsx(Text, { position: [0, 0.11, 0.35], fontSize: 0.15, rotation: [-Math.PI / 2, 0, 0], color: "white", children: lbl })] }, `btn-${lbl}`));
             }), _jsxs(Box, { args: [1.5, 0.1, 1.5], position: [0, 0.1, -0.5], children: [_jsx("meshStandardMaterial", { color: "#111", roughness: 0.2 }), _jsx(Text, { position: [0, 0.06, 0], fontSize: 0.2, rotation: [-Math.PI / 2, 0, 0], color: "#666", children: "ARTIX-7" })] })] }));
 };
-const PartMesh = ({ node, pinToNetId, isSelected, onSelect, nodeRefs }) => {
+const PartMesh = ({ node, pinToNetId, isSelected, onSelect, nodeRefs, readOnly, onEditAttempt }) => {
     const def = PART_DEFINITIONS[node.type];
     const { handlePinHover, handlePinUnhover, handlePinClick } = useLabInteraction();
     const { hoveredPin, highlightedPins, selectedNetId, pinStates, transportConnected } = useLabStore(useShallow(state => ({
@@ -105,7 +105,14 @@ const PartMesh = ({ node, pinToNetId, isSelected, onSelect, nodeRefs }) => {
                     : isHighlighted ? '#00d4ff'
                         : isNetSelected ? '#00d4ff'
                             : '#c0a000';
-                return (_jsxs("group", { position: [pin.position.x, pin.position.y, pin.position.z], children: [_jsxs("mesh", { visible: false, onPointerOver: (e) => handlePinHover(node.id, pin.id, e), onPointerOut: (e) => handlePinUnhover(node.id, pin.id, e), onClick: (e) => handlePinClick(node.id, pin.id, e), children: [_jsx("boxGeometry", { args: [0.3, 0.4, 0.3] }), _jsx("meshBasicMaterial", { transparent: true, opacity: 0.0 })] }), 
+                return (_jsxs("group", { position: [pin.position.x, pin.position.y, pin.position.z], children: [_jsxs("mesh", { visible: false, onPointerOver: (e) => handlePinHover(node.id, pin.id, e), onPointerOut: (e) => handlePinUnhover(node.id, pin.id, e), onClick: (e) => {
+                            if (readOnly) {
+                                e.stopPropagation();
+                                onEditAttempt?.();
+                                return;
+                            }
+                            handlePinClick(node.id, pin.id, e);
+                        }, children: [_jsx("boxGeometry", { args: [0.3, 0.4, 0.3] }), _jsx("meshBasicMaterial", { transparent: true, opacity: 0.0 })] }), 
                         // Only show pin visual if not buried inside breadboard (breadboard holes are implicit)
                         node.type !== 'breadboard-half' && (_jsx(Box, { args: [0.08, 0.08, 0.08], children: _jsx("meshBasicMaterial", { color: pinColor }) })), node.type === 'breadboard-half' && (isHovered || isHighlighted || isNetSelected) && (_jsx(Box, { args: [0.15, 0.02, 0.15], position: [0, 0.06, 0], children: _jsx("meshBasicMaterial", { color: pinColor }) })), isHovered && (_jsx(Text, { position: [0, 0.25, 0], fontSize: 0.15, color: "white", anchorX: "center", anchorY: "bottom", outlineWidth: 0.02, outlineColor: "black", children: pin.id }))] }, pin.id));
             })] }));
@@ -139,7 +146,7 @@ const LabInteractionLayer = () => {
     const { handlePointerMove } = useLabInteraction();
     return (_jsx("mesh", { visible: false, onPointerMove: handlePointerMove, position: [0, 0, 0], rotation: [-Math.PI / 2, 0, 0], children: _jsx("planeGeometry", { args: [100, 100] }) }));
 };
-export const Rb3DSceneLab = ({ width = '100%', height = '100%' }) => {
+export const Rb3DSceneLab = ({ width = '100%', height = '100%', active = true, readOnly = false, onEditAttempt, }) => {
     const { graph, selectedNetId, selectedNodeId, pinStates: wirePinStates } = useLabStore(useShallow(state => ({
         graph: state.graph,
         selectedNetId: state.interaction.selectedNetId,
@@ -157,12 +164,16 @@ export const Rb3DSceneLab = ({ width = '100%', height = '100%' }) => {
         return nodeRefs.current.get(selectedNodeId);
     }, [selectedNodeId, graph.nodes]);
     const handleTransformEnd = (e) => {
+        if (readOnly) {
+            onEditAttempt?.();
+            return;
+        }
         const target = e?.target?.object;
         if (target && selectedNodeId) {
             updateNodePose(selectedNodeId, { x: target.position.x, y: target.position.y, z: target.position.z }, { x: target.quaternion.x, y: target.quaternion.y, z: target.quaternion.z, w: target.quaternion.w });
         }
     };
-    return (_jsxs(Rb3DViewport, { width: width, height: height, cameraPosition: [0, 8, 4], cameraTarget: [0, 0, 0], children: [activeTransformTarget && (_jsx(TransformControls, { object: activeTransformTarget, mode: "translate", showY: false, onMouseUp: handleTransformEnd })), _jsx(LabInteractionLayer, {}), _jsx("ambientLight", { intensity: 0.5 }), _jsx("directionalLight", { position: [5, 10, 5], intensity: 1 }), _jsx("gridHelper", { args: [20, 20, 0x444444, 0x222222] }), graph.nodes.map(node => (_jsx(PartMesh, { node: node, pinToNetId: netlist.pinToNetId, isSelected: selectedNodeId === node.id, onSelect: setSelectedNodeId, nodeRefs: nodeRefs }, node.id))), graph.wires.map(wire => {
+    return (_jsxs(Rb3DViewport, { width: width, height: height, active: active, cameraPosition: [0, 8, 4], cameraTarget: [0, 0, 0], children: [!readOnly && activeTransformTarget && (_jsx(TransformControls, { object: activeTransformTarget, mode: "translate", showY: false, onMouseUp: handleTransformEnd })), !readOnly && _jsx(LabInteractionLayer, {}), _jsx("ambientLight", { intensity: 0.5 }), _jsx("directionalLight", { position: [5, 10, 5], intensity: 1 }), _jsx("gridHelper", { args: [20, 20, 0x444444, 0x222222] }), graph.nodes.map(node => (_jsx(PartMesh, { node: node, pinToNetId: netlist.pinToNetId, isSelected: selectedNodeId === node.id, onSelect: setSelectedNodeId, nodeRefs: nodeRefs, readOnly: readOnly, onEditAttempt: onEditAttempt }, node.id))), graph.wires.map(wire => {
                 const sourceNode = graph.nodes.find(n => n.id === wire.sourceNodeId);
                 const targetNode = graph.nodes.find(n => n.id === wire.targetNodeId);
                 if (!sourceNode || !targetNode)
@@ -191,5 +202,5 @@ export const Rb3DSceneLab = ({ width = '100%', height = '100%' }) => {
                     netlist.pinToNetId[sourceKey] === selectedNetId &&
                     netlist.pinToNetId[targetKey] === selectedNetId;
                 return (_jsx(WireMesh, { from: from, to: to, isActive: isActive, pulse: isActive ? 1 : 0, probeColors: isSelectedNet ? ['#00d4ff'] : undefined }, wire.id));
-            }), _jsx(GhostWire, {})] }));
+            }), !readOnly && _jsx(GhostWire, {})] }));
 };
