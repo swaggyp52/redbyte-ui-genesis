@@ -4,7 +4,7 @@
 
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { ViewState, ViewNode, ViewWire } from '../types';
-import { getNodeDimensions } from './shared-helpers';
+import { getNodeDimensions, pos } from './shared-helpers';
 
 /**
  * Isometric projection formula
@@ -26,8 +26,8 @@ export function isometricTransform(circuit: Circuit): ViewState {
   const nodes: ViewNode[] = circuit.nodes.map((node) => {
     const { width, height } = getNodeDimensions(node.type);
 
-    let x = node.position.x;
-    let y = node.position.y;
+    let x = pos(node).x;
+    let y = pos(node).y;
 
     // DETERMINISTIC AUTO-SPACING for stacked components (usually at 0,0)
     const posKey = `${x},${y}`;

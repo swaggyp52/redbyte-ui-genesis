@@ -22,7 +22,8 @@ export async function verifyBoardIO(
   project: LabProjectV1,
   checkpoint: BoardIOCheckpoint
 ): Promise<CheckpointResult> {
-  const { inputSwitches, expectedLEDs, ticksToStabilize = 1 } = checkpoint.spec;
+  const { switchSettings: inputSwitches, expectedLEDs } = checkpoint.config;
+  const ticksToStabilize = checkpoint.spec?.ticksToStabilize ?? 1;
 
   if (!project.boardMap) {
     return {

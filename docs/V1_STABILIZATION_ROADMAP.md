@@ -395,11 +395,13 @@ Set up staging deployments + production monitoring:
 ### Phase 5 Tracker
 
 **Phase 5A: Workflow Friction Killers (Highest Classroom ROI)**
-- [ ] P5A-1: Progress/toasts that never lie (hardware + export + ingest)
+- [x] P5A-1: Progress/toasts that never lie (hardware + export + ingest) ✅ 2026-02-05
   - `progress.ts` helper API (start/update/succeed/fail)
   - Wire into: export (.rbproj/.rbx), lab ingest/run, hardware connect/select/program/stream
   - Student-friendly default messages + "Copy details" for failures
   - Gate: `pnpm ui:progress-contract-gate` (validates event sequence invariants)
+  - **Implementation**: Stable actionIds (Option A: resource-based), AbortSignal support, all errors mapped to student-facing codes
+  - **Slices complete**: 1 (infrastructure), 2 (toast adapter + export), 3a (opsClient), 3b (hardwareClient)
 - [ ] P5A-2: "You can't lose your work" UX reinforcement
   - "Autosaved" heartbeat indicator (subtle)
   - Idiot-proof restore prompt copy

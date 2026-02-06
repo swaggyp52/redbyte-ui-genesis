@@ -5,6 +5,26 @@
 import type { Node, Connection } from '@redbyte/rb-logic-core';
 
 /**
+ * Get node position with fallback to origin
+ */
+export function pos(node: { position?: { x: number; y: number } }): { x: number; y: number } {
+  return node.position ?? { x: 0, y: 0 };
+}
+
+/**
+ * Normalize connection endpoint to PortRef
+ */
+export function normalizePortRef(ref: any, fallbackPort: string = 'out'): { nodeId: string; portName: string } {
+  if (typeof ref === 'string') {
+    return { nodeId: ref, portName: fallbackPort };
+  }
+  return {
+    nodeId: ref.nodeId,
+    portName: ref.portName ?? ref.port ?? fallbackPort
+  };
+}
+
+/**
  * Calculate port position based on node position and rotation
  */
 export function calculatePortPosition(
@@ -13,7 +33,7 @@ export function calculatePortPosition(
   nodeWidth: number,
   nodeHeight: number
 ): { x: number; y: number } {
-  const { x, y } = node.position;
+  const { x, y } = pos(node);
   const rotation = node.rotation || 0;
 
   // Default ports: input on left, output on right

@@ -4,7 +4,7 @@
 
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { ViewState, ViewNode, ViewWire } from '../types';
-import { calculatePortPosition, getNodeDimensions, manhattanRoute } from './shared-helpers';
+import { calculatePortPosition, getNodeDimensions, manhattanRoute, pos, normalizePortRef } from './shared-helpers';
 
 /**
  * Schematic transform - symbolic representation with Manhattan routing
@@ -21,20 +21,20 @@ export function schematicTransform(circuit: Circuit): ViewState {
 
     // Input port
     if (!['PowerSource', 'Clock'].includes(node.type)) {
-      ports.in = { x: node.position.x - schematicWidth / 2, y: node.position.y };
+      ports.in = { x: pos(node).x - schematicWidth / 2, y: pos(node).y };
     }
 
     // Output port
     if (!['Lamp'].includes(node.type)) {
-      ports.out = { x: node.position.x + schematicWidth / 2, y: node.position.y };
+      ports.out = { x: pos(node).x + schematicWidth / 2, y: pos(node).y };
     }
 
     return {
       id: node.id,
       type: node.type,
       view: {
-        x: node.position.x,
-        y: node.position.y,
+        x: pos(node).x,
+        y: pos(node).y,
         w: schematicWidth,
         h: schematicHeight,
       },
@@ -43,8 +43,11 @@ export function schematicTransform(circuit: Circuit): ViewState {
   });
 
   const wires: ViewWire[] = circuit.connections.map((conn, idx) => {
-    const fromNode = circuit.nodes.find((n) => n.id === conn.from.nodeId);
-    const toNode = circuit.nodes.find((n) => n.id === conn.to.nodeId);
+    const fromRef = normalizePortRef(conn.from, conn.fromPin ?? conn.fromPort ?? 'out');
+    const toRef = normalizePortRef(conn.to, conn.toPin ?? conn.toPort ?? 'in');
+    
+    const fromNode = circuit.nodes.find((n) => n.id === fromRef.nodeId);
+    const toNode = circuit.nodes.find((n) => n.id === toRef.nodeId);
 
     if (!fromNode || !toNode) {
       return {
@@ -58,14 +61,14 @@ export function schematicTransform(circuit: Circuit): ViewState {
     const fromNodeView = nodes.find((n) => n.id === fromNode.id)!;
     const toNodeView = nodes.find((n) => n.id === toNode.id)!;
 
-    const from = fromNodeView.ports[conn.from.portName] || { x: fromNode.position.x, y: fromNode.position.y };
-    const to = toNodeView.ports[conn.to.portName] || { x: toNode.position.x, y: toNode.position.y };
+    const from = fromNodeView.ports[fromRef.portName] || { x: pos(fromNode).x, y: pos(fromNode).y };
+    const to = toNodeView.ports[toRef.portName] || { x: pos(toNode).x, y: pos(toNode).y };
 
     // Use Manhattan routing for schematic wires
     const points = manhattanRoute(from, to);
 
     return {
-      id: `${conn.from.nodeId}.${conn.from.portName}-${conn.to.nodeId}.${conn.to.portName}`,
+      id: `${fromRef.nodeId}.${fromRef.portName}-${toRef.nodeId}.${toRef.portName}`,
       from,
       to,
       points,

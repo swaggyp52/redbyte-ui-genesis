@@ -236,6 +236,16 @@ export interface CustomCheckpoint extends CheckpointDefinition {
 }
 
 /**
+ * Union of all checkpoint types for verification dispatch
+ */
+export type Checkpoint =
+  | TruthTableCheckpoint
+  | TestVectorCheckpoint
+  | WaveformCheckpoint
+  | BoardIOCheckpoint
+  | CustomCheckpoint;
+
+/**
  * All actions follow versioned namespaced format:
  * { v: 1; t: 'category/action'; p: {...} }
  */

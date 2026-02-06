@@ -5277,6 +5277,25 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-02-05 (Phase 5A-1: Ops + Hardware Progress Wiring - Slice 3a & 3b)
+- **P5A-1 complete**: Progress bus wiring for opsClient and hardwareClient with stable actionIds and AbortSignal support.
+- **Slice 3a (opsClient)**: Refactored all async operations to use stable resource-based actionIds:
+  - `rb:ops:ingest:pending` (before runId known)
+  - `rb:ops:runs:list` (singleton list request)
+  - `rb:ops:run:${runId}:detail` (one per run)
+  - `rb:ops:run:${runId}:diff` (one per run)
+- **Slice 3b (hardwareClient)**: Added progress events to connect, selectDevice, exportProof, streamVectors:
+  - `rb:hw:connect` (singleton)
+  - `rb:hw:device:${deviceId}:select` (one per device)
+  - `rb:hw:export:proof` (singleton)
+  - `rb:hw:stream:vectors` (singleton)
+- **AbortSignal support**: All async operations now accept `opts?: { signal?: AbortSignal }` for cancellation.
+- **Error mapping**: All errors routed through `toStudentFacingError()` with stable codes (HW_NOT_CONNECTED, HW_TIMEOUT, RB_CANCELED, UNEXPECTED_ERROR).
+- **Stable actionId benefit**: Resource-based IDs prevent toast spam; retry attempts reuse same toast rather than spawning new ones.
+- **GREEN LOCK maintained**: `pnpm ci:parity` passes (exit code 0, all 8 contract gates, 25 tests).
+- Files modified: `packages/rb-apps/src/services/opsClient.ts`, `packages/rb-apps/src/services/hardwareClient.ts`, `AI_STATE.md` (this changelog).
+- **Pre-commit**: Build fix session restored GREEN LOCK across rb-utils, rb-logic-core, rb-logic-adapter, rb-lab-engine before progress wiring.
+
 ### 2026-02-05 (Phase 5A-1: Progress Toasts + Export Integration - Slice 2)
 - **Added ProgressToasts adapter** in rb-shell to map progressBus events to student-visible toasts.
 - **Toast behavior**: deduplicates per actionId, caps active toasts at 5, and provides Copy details on failures.
