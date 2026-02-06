@@ -16,3 +16,4 @@ export * from './syncAdapter';
 export * from './projectSchema';
 export * from './labProjectSchema';
 export * from './studentError';
+export * from './progress';

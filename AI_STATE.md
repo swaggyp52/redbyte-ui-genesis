@@ -5277,6 +5277,18 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-02-05 (Phase 5A-1: Progress System Infrastructure - Slice 1)
+- **Created progress reporting system** for long-running operations (export, ops, hardware actions).
+- **Progress API**: `progressStart()`, `progressUpdate()`, `progressSucceed()`, `progressFail()` in `packages/rb-utils/src/progress.ts/.js`.
+- **Progress bus**: Bounded event bus (max 50 events) with subscribe/emit/getSnapshot; singleton `progressBus` exported for v1.0 convenience.
+- **Contract gate**: Added `ui:progress-contract-gate` (6 tests) validating event sequence invariants (start before update/succeed/fail, actionId isolation, terminal events).
+- **Script added**: `pnpm ui:progress-contract-gate` in root package.json.
+- **GREEN LOCK maintained**: `pnpm -r build` passes, `pnpm verify:all` passes (8/8 gates, 26 tests).
+- **Deferred to follow-up**: Toast adapter (needs rb-shell layer), export/ops/hardware integrations.
+- Files created: `packages/rb-utils/src/progress.ts`, `progress.js`, `__tests__/progress-contract-gate.test.ts`.
+- Files modified: `packages/rb-utils/src/index.ts`, `index.js`, `package.json` (added gate script).
+- Phase 5A-1 status: Infrastructure complete, integrations pending (small slice strategy for GREEN LOCK safety).
+
 ### 2026-02-05 (CI Command Parity System - Bulletproof GREEN LOCK)
 - **Established CI command parity** to eliminate workflow drift between local and CI environments.
 - **Created parity scripts**: `ci:parity` (install + verify:all) for required checks; `ci:parity:pages` (build only) for Cloudflare Pages.
