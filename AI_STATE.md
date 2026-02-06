@@ -5277,6 +5277,22 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-02-05 (Phase 5A-3: Help/Troubleshooting App - Slice 1)
+- **P5A-3 Slice 1 complete**: Help & Troubleshooting app provides student-facing troubleshooting guidance for common errors.
+- **Data-driven architecture**: Help topics stored in `helpTopics.ts` as JSON-like structure (not hardcoded JSX), enabling future dynamic updates.
+- **7 initial topics**: Bridge offline, Export/Submission, Autosave/Recovery, Performance Mode, Error Codes, Hardware Timeout, Firmware Upload.
+- **Search functionality**: Topics searchable by title, error codes (e.g., HW_NOT_CONNECTED, BRIDGE_UNREACHABLE), or step content; auto-selects first result.
+- **Copy Diagnostics**: Button collects system state (timestamp, app version, performance mode, bridge dryrun flag, selected topic, recent progress failures) and copies to clipboard as JSON for instructor troubleshooting.
+- **App registration**: HelpAppManifest registered in `registerAllApps()` with id='help', singleton=true, iconId='help-circle', category='system'.
+- **Contract gate**: `ui:help-topics-contract-gate` (9 tests) validates topic structure (id/title/steps), enforces 2-8 actionable steps per topic, verifies error codes are well-formed UPPER_SNAKE_CASE, checks for duplicate IDs.
+- **GREEN LOCK maintained**: `pnpm ci:parity` passes (exit code 0, 10 contract gates including new help topics gate, 45 tests).
+- **File structure**: `packages/rb-apps/src/help/helpTopics.ts` (data), `packages/rb-apps/src/apps/HelpApp.tsx` (UI), `packages/rb-apps/src/apps/HelpAppManifest.ts` (registration), `packages/rb-apps/src/__tests__/ui-help-topics-contract-gate.test.ts` (gate), `docs/P5A3_SMOKE_CHECKLIST.md` (manual validation).
+- **UI layout**: 320px left sidebar (topic list) + flex-1 right pane (selected topic content), dark theme with cyan accents, search box at top.
+- **Slice 2 deferred**: Automatic Help entry points from ErrorBoundary and hardware failures (not yet wired per user directive "don't do Slice 2 yet").
+- Files created: `helpTopics.ts`, `HelpApp.tsx`, `HelpAppManifest.ts`, `ui-help-topics-contract-gate.test.ts`, `P5A3_SMOKE_CHECKLIST.md`.
+- Files modified: `packages/rb-apps/src/index.ts` (app registration), `package.json` (ui:help-topics-contract-gate script + verify:gates entry), `AI_STATE.md` (this changelog).
+- **Attribution**: Connor Angiel
+
 ### 2026-02-05 (Phase 5A-2: Unified Recovery Flow - "You Can't Lose Your Work")
 - **P5A-2 complete**: Unified recovery coordinator eliminates competing restore prompts (autosave vs workspace crash).
 - **Priority order (hard rule)**: RBProject autosave → workspace crash → nothing.

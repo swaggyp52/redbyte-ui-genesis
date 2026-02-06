@@ -106,6 +106,7 @@ export async function registerAllApps(options?: { mode?: RegisterAllAppsMode }) 
   const { TextViewerApp } = await import('./apps/TextViewerApp');
   const LogicHelpApp = (await import('./apps/LogicHelpApp')).default;
   const { UserManualApp } = await import('./apps/UserManualApp');
+  const { HelpAppManifest } = await import('./apps/HelpAppManifest');
   const { HardwarePanelApp } = await import('./apps/HardwarePanelApp');
   const { FpgaProofViewerApp } = await import('./apps/FpgaProofViewerApp');
   const LabExaminerAppRegistry = (await import('./apps/LabExaminerAppRegistry')).default;
@@ -138,6 +139,7 @@ export async function registerAllApps(options?: { mode?: RegisterAllAppsMode }) 
   registerApp(TextViewerApp);
   registerApp(LogicHelpApp);
   registerApp(UserManualApp);
+  registerApp(HelpAppManifest);
   registerApp(HardwarePanelApp);
   registerApp(FpgaProofViewerApp);
   registerApp(LabExaminerAppRegistry);
