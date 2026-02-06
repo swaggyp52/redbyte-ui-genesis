@@ -5277,6 +5277,19 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-02-05 (Phase 5A-2: Unified Recovery Flow - "You Can't Lose Your Work")
+- **P5A-2 complete**: Unified recovery coordinator eliminates competing restore prompts (autosave vs workspace crash).
+- **Priority order (hard rule)**: RBProject autosave → workspace crash → nothing.
+- **Mutual exclusion**: Only one recovery surface shows at a time; autosave wins when both exist.
+- **Coordinator hook**: `useUnifiedRecoverySurface()` in `packages/rb-apps/src/utils/unifiedRecovery.ts`.
+- **Pure gate**: `proj:recovery-priority-gate` validates priority invariant across all state combinations (11 tests).
+- **Integration**: LogicPlaygroundApp and ECELabApp now use unified coordinator instead of separate `showRecoveryBanner` + `rbprojRestorePrompt` states.
+- **Student messaging**: Autosave = "We found unsaved work for this project" (Restore/Discard); Workspace = "RedByte didn't shut down cleanly" (Restore layout/Dismiss).
+- **GREEN LOCK maintained**: `pnpm ci:parity` passes (exit code 0, 9 contract gates including new recovery gate, 36 tests).
+- Files created: `packages/rb-apps/src/utils/unifiedRecovery.ts`, `packages/rb-apps/src/__tests__/proj-recovery-priority-gate.test.ts`.
+- Files modified: `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`, `packages/rb-apps/src/apps/ECELabApp.tsx`, `package.json` (added proj:recovery-priority-gate script + verify:gates entry), `AI_STATE.md` (this changelog).
+- **Attribution**: Connor Angiel
+
 ### 2026-02-05 (Phase 5A-1: Ops + Hardware Progress Wiring - Slice 3a & 3b)
 - **P5A-1 complete**: Progress bus wiring for opsClient and hardwareClient with stable actionIds and AbortSignal support.
 - **Slice 3a (opsClient)**: Refactored all async operations to use stable resource-based actionIds:

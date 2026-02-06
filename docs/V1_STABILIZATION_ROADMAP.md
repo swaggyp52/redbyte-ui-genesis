@@ -402,11 +402,13 @@ Set up staging deployments + production monitoring:
   - Gate: `pnpm ui:progress-contract-gate` (validates event sequence invariants)
   - **Implementation**: Stable actionIds (Option A: resource-based), AbortSignal support, all errors mapped to student-facing codes
   - **Slices complete**: 1 (infrastructure), 2 (toast adapter + export), 3a (opsClient), 3b (hardwareClient)
-- [ ] P5A-2: "You can't lose your work" UX reinforcement
-  - "Autosaved" heartbeat indicator (subtle)
-  - Idiot-proof restore prompt copy
-  - One-click "Export for submission" from Virtual Lab
-  - Gate: `pnpm proj:autosave-meta-contract-gate` (ensures meta always written, no null projectId)
+- [x] P5A-2: "You can't lose your work" UX reinforcement ✅ 2026-02-05
+  - **Unified recovery coordinator**: `useUnifiedRecoverySurface()` eliminates competing prompts (autosave > workspace > none)
+  - **Mutual exclusion**: Only one recovery surface shows at a time
+  - **Priority logic**: RBProject autosave (data loss risk) → workspace crash (layout convenience) → nothing
+  - Student messaging: Autosave = "We found unsaved work" (Restore/Discard), Workspace = "Didn't shut down cleanly" (Restore layout/Dismiss)
+  - Gate: `pnpm proj:recovery-priority-gate` (validates priority invariant, 11 tests)
+  - **Implementation**: Coordinator hook in rb-apps, integrated into LogicPlaygroundApp + ECELabApp
 - [ ] P5A-3: Help/Troubleshooting surface in OS
   - Help app/panel with: bridge offline steps, export/submit steps, common errors (ERROR_MESSAGE_MATRIX), copy/paste diagnostics
   - Gate: `pnpm os:help-surface-gate` (ensures Help app registers and renders minimal view)

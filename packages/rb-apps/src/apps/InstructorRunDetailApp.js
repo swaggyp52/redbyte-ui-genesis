@@ -5,7 +5,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useState } from 'react';
 import styles from './InstructorRunDetailApp.module.css';
 import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
-const OPS_SERVER = 'http://127.0.0.1:3001';
+import { OPS_SERVER, fetchLabRunDetail } from '../services/opsClient';
 export const InstructorRunDetailAppContent = ({ runId, onNavigate }) => {
     useRenderStormDetector('InstructorRunDetailAppContent');
     const [detail, setDetail] = useState(null);
@@ -19,12 +19,7 @@ export const InstructorRunDetailAppContent = ({ runId, onNavigate }) => {
             return;
         }
         setError(null);
-        fetch(`${OPS_SERVER}/api/labs/runs/${runId}`)
-            .then((res) => {
-            if (!res.ok)
-                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-            return res.json();
-        })
+        fetchLabRunDetail(runId)
             .then((data) => {
             const inferredArtifacts = {
                 'grade.json': `${OPS_SERVER}/api/labs/runs/${runId}/artifacts/grade.json`,

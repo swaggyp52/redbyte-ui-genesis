@@ -4,21 +4,15 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 import { useEffect, useState } from 'react';
 import styles from './InstructorApp.module.css';
-const OPS_SERVER = 'http://127.0.0.1:3001';
+import { fetchLabRuns } from '../services/opsClient';
 export const InstructorAppContent = ({ onNavigate }) => {
     const [runs, setRuns] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     useEffect(() => {
-        fetch(`${OPS_SERVER}/api/labs/runs`)
-            .then((res) => {
-            if (!res.ok)
-                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-            return res.json();
-        })
+        fetchLabRuns()
             .then((data) => {
-            const nextRuns = Array.isArray(data) ? data : (data?.runs || []);
-            setRuns(nextRuns);
+            setRuns(data);
             setLoading(false);
         })
             .catch((err) => {
