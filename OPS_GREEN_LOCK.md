@@ -24,8 +24,12 @@ pnpm verify:all
 pnpm verify:gates:full
 ```
 
-GitHub Actions enforces `verify:all` (cross-platform) via `.github/workflows/quality.yml` (required check).
-Cloudflare build must run `pnpm -r build` and succeed (subset of verify:all).
+**CI Command Parity** (all required workflows use these):
+- `pnpm ci:parity` → full CI check (install + verify:all)
+- `pnpm ci:parity:pages` → Pages build only (--frozen-lockfile + build)
+
+GitHub Actions enforces `ci:parity` via `.github/workflows/quality.yml` (required check).
+Cloudflare smoke test runs `ci:parity:pages` to match Pages deployment command exactly.
 
 ---
 

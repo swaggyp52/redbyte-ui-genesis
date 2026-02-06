@@ -5277,6 +5277,18 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-02-05 (CI Command Parity System - Bulletproof GREEN LOCK)
+- **Established CI command parity** to eliminate workflow drift between local and CI environments.
+- **Created parity scripts**: `ci:parity` (install + verify:all) for required checks; `ci:parity:pages` (build only) for Cloudflare Pages.
+- **Updated quality.yml**: Simplified to use `pnpm ci:parity` (replaces separate install + verify steps).
+- **Updated fpga-proof.yml**: Normalized Node.js version from 24.13.0 to 20.19.0 (matches engines spec and other workflows).
+- **Updated cloudflare-smoke.yml**: Changed to use `pnpm ci:parity:pages` (exact match with Cloudflare Pages build command).
+- **Workflow parity guarantee**: All required CI workflows now use identical commands (no drift between quality/smoke/pages-build).
+- **Documentation updates**: `OPS_GREEN_LOCK.md` now documents ci:parity system; all verification commands centralized.
+- Files modified: `package.json` (ci:parity scripts), `.github/workflows/quality.yml`, `.github/workflows/fpga-proof.yml`, `.github/workflows/cloudflare-smoke.yml`, `OPS_GREEN_LOCK.md`, `AI_STATE.md` (this changelog).
+- Local validation: `pnpm verify:all` passes (8/8 gates green, build clean).
+- Commit SHA: `854fdb5e` (pushed to origin/main).
+
 ### 2026-02-05 (CI Cross-Platform Fixes - Achieving True Green Lock)
 - **Fixed Quality Gate CI failures**: Removed PowerShell-only scripts (`ops:diff-gate`, `ops:student-export-fixture-test`) from `verify:gates` for Linux CI compatibility.
 - **Created Windows-only verification**: Added `verify:gates:full` script that includes PowerShell ops scripts for local Windows testing.
