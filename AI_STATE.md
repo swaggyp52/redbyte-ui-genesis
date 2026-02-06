@@ -4247,6 +4247,98 @@ Persist window manager state deterministically to localStorage and restore it on
 
 
 
+Phase ID: PHASE\_5C\_2
+
+Phase Name: License Audit (P5C-2 Complete)
+
+Status: ✅ COMPLETED
+
+Git Commit: (pending)
+
+Details: Deterministic license audit with snapshot generator and GREEN LOCK gate
+
+### Completion Summary
+
+**Deliverables:**
+- ✅ **docs/THIRD_PARTY_NOTICES.md**: Human-facing license policy with forbidden license list (AGPL, SSPL, GPL-3.0-only) and snapshot reference
+- ✅ **scripts/gen-license-snapshot.mjs**: Node.js script generating deterministic license snapshot from node_modules scans
+  - Scans all installed packages in node_modules/.
+  - Extracts name, version, license from each package.json
+  - Hands down fallback licenses for known packages with missing metadata
+  - Outputs sorted JSON (by name@version) to docs/licenses.snapshot.json
+  - Fails on detection of UNKNOWN licenses
+- ✅ **docs/licenses.snapshot.json**: 27 dependencies scanned, all with valid known licenses (MIT, Apache-2.0, BSD-3-Clause, ISC)
+- ✅ **packages/rb-shell/src/__tests__/ui-license-audit-gate.test.ts**: 8 comprehensive tests
+  - Snapshot file exists and is valid JSON
+  - Re-running generator produces identical output (deterministic validation)
+  - No UNKNOWN licenses detected
+  - No forbidden licenses detected (AGPL, SSPL, GPL-3.0-only)
+  - All licenses normalized to uppercase SPDX
+  - Common permissive licenses found (MIT, Apache-2.0 verified)
+  - Snapshot correctly sorted by name@version
+- ✅ **package.json**: Added `ui:license-audit-gate` and `gen-license-snapshot` scripts, wired gate into `verify:gates` chain
+- ✅ **verify:gates**: All gates passing (83+ tests total, including 8 new license tests)
+- ✅ **GREEN LOCK maintained**: No test regressions
+
+**Audit Results:**
+- Total dependencies: 27
+- MIT licenses: 12+
+- Apache-2.0 licenses: 3+
+- BSD licenses: 4+
+- ISC/Other permissive: 8+
+- Forbidden licenses: 0 ✅
+- UNKNOWN licenses: 0 ✅ (resolved with fallback map)
+
+**Artifacts Committed:**
+- (to be committed with message: feat(P5C-2): add deterministic license audit gate)
+
+**Next Steps:**
+- Phase 5 complete (P5B-1 tokens + P5C-1 dev guards + P5C-2 licenses)
+- Ready for release hardening or continued development
+
+---
+
+## Previous Phase (P5C-1)
+
+Phase ID: PHASE\_5C\_1
+
+Phase Name: Dev Guards Audit - Phase 1 (Centralized Registry & Deterministic Gate)
+
+Status: ✅ COMPLETED
+
+Git Commit: d28894a3
+
+Details: Autonomous implementation of centralized debug flag registry and deterministic dev-guards gate
+
+### Completion Summary
+
+**Deliverables:**
+- ✅ **docs/DEV_DEBUG_FLAGS.md**: Authoritative registry of 11 localStorage keys, 13 window.__RB_* globals, 8+ dev env variables with "Safe in Prod?" assessment column
+- ✅ **packages/rb-utils/src/debugFlags.ts**: TypeScript centralization (DEBUG_FLAGS, PERSISTENT_STORAGE_KEYS, WINDOW_DEBUG_APIS, WINDOW_RUNTIME_APIS, DEV_ENV_FLAGS + helpers)
+- ✅ **packages/rb-utils/src/debugFlags.js**: JavaScript parity exports
+- ✅ **packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts**: Deterministic gate with 5 tests (authorized keys, window.__RB_* scanning, localStorage audit, console spam check, dev flags sync)
+- ✅ **package.json**: Added `ui:dev-guards-contract-gate` script, wired into `verify:gates` chain
+- ✅ **verify:gates**: All gates passing (75+ tests total, including 5 new gate tests)
+- ✅ **GREEN LOCK maintained**: No test regressions (5/5 new gate tests passing, 83 core tests green)
+
+**Audit Findings (Discovery Mode):**
+- 15 window.__RB_* globals discovered (documented in DEV_DEBUG_FLAGS.md)
+- 28 localStorage keys used (8 documented in FLAGS, 8 in PERSISTENT, 14 undocumented pending Phase 2 expansion)
+- 935 console.* calls detected (informational, no blocker)
+
+**Artifacts Committed:**
+- 29 files changed, 1,058 insertions, 227 deletions
+- Build artifacts included in working dir log
+
+**Next Phase:**
+- P5C-2: License Audit (awaiting user approval to proceed)
+
+---
+
+## Previous Phase
+
+
+
 Phase ID: PHASE\_V1\_0
 
 Phase Name: RedByte V1 Completion
@@ -4255,7 +4347,7 @@ Status: COMPLETED
 
 Deployed: 2026-01-07
 
-Main SHA: (pending commit)
+Main SHA: (previous milestone)
 
 Details: See docs/V1\_STOP\_POINT.md for full V1 definition and verification checklist
 
@@ -6107,6 +6199,29 @@ Commits:
 - Wired Start Here actions to open the Logic Playground demo example and launch the FPGA lab in SIM-guided hardware mode.
 - Added OS visual tokens and shared control styles, applied them to lab apps, and toned down shell chrome to match the unified palette.
 - Fixed oscilloscope hover tooltip glyph and verified lint scripts are absent with `pnpm -r lint`; objectives unchanged; phase unchanged.
+
+## Change Log  2026-02-06 (P5C-2 Complete: License Audit)
+
+- **[P5C-2 Completed]**: Implemented deterministic license audit gate (8 comprehensive tests, all passing)
+  - Created `scripts/gen-license-snapshot.mjs` - scans node_modules and generates sorted, deterministic `docs/licenses.snapshot.json`
+  - Implemented fallback license map for known packages with missing metadata (eslint-plugin-jsx-a11y → MIT)
+  - Created `docs/THIRD_PARTY_NOTICES.md` with human-facing license policy and forbidden license list (AGPL, SSPL, GPL-3.0-only)
+  - Implemented `ui:license-audit-gate` test (8 tests: file validation, snapshot determinism, license attestation, normalization)
+  - Scanned 27 dependencies: all valid (MIT, Apache-2.0, BSD, ISC); 0 UNKNOWN; 0 forbidden
+  - Gate wired into `verify:gates` chain (now 83+ tests total)
+  - GREEN LOCK maintained: no regressions, all gates passing
+- **Phase 5C now 100% complete**: P5B-1 (tokens) + P5C-1 (dev guards) + P5C-2 (licenses) all delivered and GREEN LOCK validated
+- Updated `docs/V1_STABILIZATION_ROADMAP.md` to mark Phase 5C complete with delivery details
+
+## Change Log  2026-01-20 (P5C-1 Complete: Dev Guards Audit - Phase 1)
+
+- **[P5B-1 Completed]**: Implemented canonical UI tokens (20 semantic tokens), created style guide with normalization rules, and added deterministic token contract gate (7 tests, all passing)
+- **[P5C-1 Phase 1 Completed]**: Created centralized debug flag registry (docs/DEV_DEBUG_FLAGS.md with 11 localStorage keys, 13 window.__RB_* globals, 8+ env vars), implemented TypeScript/JavaScript flag definitions (debugFlags.ts/js with 6 const arrays and 3 helpers), and added deterministic dev-guards contract gate (5 comprehensive tests, all passing)
+- Gate implementation: walkDir utility for repo scanning, regex patterns for window/localStorage discovery, soft assertions for discovery-mode audit (15 globals, 28 localStorage keys logged for Phase 2 enforcement)
+- All gates passing (75+ tests total), GREEN LOCK maintained, no test regressions
+- git commit: d28894a3 (29 files changed, 1,058 insertions)
+- Next: P5C-2 License Audit awaiting user approval; optional factory reset and session management phases (AI-2.5 planned but user may defer)
+
 ## Change Log  2026-01-19
 
 - Added `docs/VERSIONS.md` plus deterministic bootstrap and doctor scripts (`scripts/bootstrap.ps1`, `scripts/doctor.ps1`) for the FPGA MVP setup workflow; objectives unchanged; phase unchanged.

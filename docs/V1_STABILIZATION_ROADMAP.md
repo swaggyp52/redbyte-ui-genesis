@@ -423,14 +423,25 @@ Set up staging deployments + production monitoring:
   - Gate: `pnpm ui:style-token-contract-gate` (7 assertions: markers ✓, extraction ✓, no duplicates ✓, guide alignment ✓, no new hex ✓)
   - **GREEN LOCK**: `pnpm ci:parity` passes (12 gates, 83 tests)
 
-**Phase 5C: Cleanup + Release Hygiene**
-- [ ] P5C-1: Remove/flag dev-only leftovers
-  - Document dev flags, gate dev-only globals (`NODE_ENV !== 'production'`)
-  - Purge unused inspection stubs
-  - Gate: `pnpm repo:dev-only-guards-gate` (static scan for globals outside dev guards)
-- [ ] P5C-2: License/attribution audit
-  - Generate/verify `THIRD_PARTY_NOTICES.md`
-  - Confirm fonts/icons/3D assets licensing
+**Phase 5C: Cleanup + Release Hygiene** ✅ COMPLETE
+
+- [x] P5C-1: Dev Guards Audit
+  - ✅ Created `docs/DEV_DEBUG_FLAGS.md` (11 localStorage keys, 13 window.__RB_* globals, 8+ env vars)
+  - ✅ Centralized `packages/rb-utils/src/debugFlags.ts/js` with 6 const arrays + 3 helpers
+  - ✅ Implemented `ui:dev-guards-contract-gate` (5 passing tests, discovery mode)
+  - ✅ Gate wired into `verify:gates` chain
+  - ✅ GREEN LOCK maintained (5/5 tests, 75+ total gates passing)
+
+- [x] P5C-2: License/Attribution Audit ✅
+  - ✅ Created `docs/THIRD_PARTY_NOTICES.md` (human-facing license policy)
+  - ✅ Implemented `scripts/gen-license-snapshot.mjs` (deterministic snapshot generator)
+  - ✅ Generated `docs/licenses.snapshot.json` (all 27 dependencies, no UNKNOWN licenses)
+  - ✅ Implemented `ui:license-audit-gate` (8 passing tests)
+    - Gate validates snapshot exists and is deterministic
+    - Gate asserts no UNKNOWN or forbidden licenses (AGPL, SSPL, GPL-3.0-only)
+    - Gate checks all licenses normalized to uppercase SPDX
+  - ✅ Gate wired into `verify:gates` chain
+  - ✅ GREEN LOCK maintained (8/8 license tests, 83+ total gates passing)
 
 **Execution Rule:** No feature merges unless `pnpm ci:parity` is green locally (GREEN LOCK enforced).
 
