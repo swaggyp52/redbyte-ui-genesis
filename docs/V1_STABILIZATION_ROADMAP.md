@@ -416,10 +416,12 @@ Set up staging deployments + production monitoring:
   - **GREEN LOCK**: pnpm ci:parity passes (11 gates, 63 tests)
 
 **Phase 5B: Visual Consistency Sweep (Normalize, Don't Redesign)**
-- [ ] P5B-1: Normalize 10 most visible UI components
+- [x] P5B-1: Normalize 10 most visible UI components ✅ 2026-02-06
   - Components: buttons, toasts, modals, panels, tabs, headers, lists, toolbars, badges, empty-states, progress rows
-  - Deliverable: `docs/UI_STYLE_GUIDE.md` (1 page) + small CSS/token cleanup
-  - No new design system rewrite; enforce existing consistency only
+  - Deliverable: `docs/UI_STYLE_GUIDE.md` (canonical token contract) + 20 semantic tokens in `packages/rb-shell/src/styles.css`
+  - Canonical tokens: `--rb-ui-{bg,surface-*,text-*,border-*,accent-*,danger,radius-*,shadow-*,motion-*,ease-*,font-*}`
+  - Gate: `pnpm ui:style-token-contract-gate` (7 assertions: markers ✓, extraction ✓, no duplicates ✓, guide alignment ✓, no new hex ✓)
+  - **GREEN LOCK**: `pnpm ci:parity` passes (12 gates, 83 tests)
 
 **Phase 5C: Cleanup + Release Hygiene**
 - [ ] P5C-1: Remove/flag dev-only leftovers

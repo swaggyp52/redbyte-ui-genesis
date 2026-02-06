@@ -8225,3 +8225,17 @@ Notes:
 - `pnpm -r build`
 
 **Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-06 (P5B-1: Visual Normalization + Style Guide)
+
+**P5B-1: UI Style Token Contract & Deterministic Gate (Option 1 Complete)**
+- Implemented canonical token block in packages/rb-shell/src/styles.css with explicit RB_CORE_TOKENS_START / RB_CORE_TOKENS_END markers.
+- Defined 20 semantic tokens (--rb-ui-*): bg, surface-{1,2,3}, text-{1,2,3}, border, border-strong, accent, accent-soft, danger, radius-{sm,md}, shadow-{2,3}, motion-fast, ease-out, font-{sans,mono}.
+- Created docs/UI_STYLE_GUIDE.md with canonical token contract and 10 normalized surfaces.
+- Implemented ui:style-token-contract-gate test (7 assertions).
+- Verified gate passes (7/7 tests, exit 0); ci:parity GREEN LOCK (83 tests, exit 0).
+- No new hex literals; tokens map to os-tokens.css.
+
+**Attribution**: Connor Angiel
