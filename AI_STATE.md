@@ -5277,6 +5277,19 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-02-05 (Phase 5A-3: Help/Troubleshooting App - Slice 2 - Entry Points)
+- **P5A-3 Slice 2 complete**: Help entry points from ErrorBoundary crash screens and hardware failure toasts.
+- **AppErrorBoundary integration**: Added "Open Help" button to per-app crash screen (Shell.tsx AppErrorBoundary), extracts student error code via `toStudentFacingError()`, passes to HelpApp via `openWindow('help', { initialErrorCode })`.
+- **ProgressToasts integration**: Added "Troubleshoot" action to hardware failure toasts (7 error codes: HW_NOT_CONNECTED, HW_DEVICE_NOT_FOUND, HW_TIMEOUT, HW_STREAM_FAILED, BRIDGE_UNREACHABLE, FIRMWARE_UPLOAD_FAILED, DEVICE_VERIFICATION_FAILED), appears before "Copy details" action.
+- **HelpApp seed contract**: Accepts `initialQuery` (string), `initialErrorCode` (string), `initialTopicId` (string) props; auto-selects topic on mount with priority: topicId > errorCode > query.
+- **Topic ordering**: Reordered HELP_TOPICS array to ensure `getTopicsByErrorCode()` returns specific troubleshooting topics (hardware-timeout, firmware-upload) before generic catch-all (error-codes); new order: bridge-offline, export-submission, autosave-recovery, performance-mode, hardware-timeout, firmware-upload, error-codes.
+- **ui:help-entrypoints-gate**: Pure gate (18 tests) validates HelpApp seed resolution (4 tests), error code extraction from RbUserError (3 tests), hardware error code mapping (8 tests), entry point invariants (3 tests: all codes mapped, no ambiguity, UNEXPECTED_ERROR generic).
+- **GREEN LOCK confirmed**: `pnpm ci:parity` passes (exit code 0, 11 contract gates including new entrypoints gate, 63 tests).
+- Files created: `packages/rb-apps/src/__tests__/ui-help-entrypoints-gate.test.ts`.
+- Files modified: `packages/rb-apps/src/apps/HelpApp.tsx` (seed props + useEffect), `packages/rb-shell/src/Shell.tsx` (AppErrorBoundary onOpenHelp + button), `packages/rb-shell/src/ProgressToasts.tsx` (Troubleshoot action), `packages/rb-apps/src/help/helpTopics.ts` (topic reordering), `package.json` (gate script + verify:gates), `docs/P5A3_SMOKE_CHECKLIST.md` (Slice 2 steps), `AI_STATE.md` (this changelog).
+- **P5A-3 implementation complete** (Slice 1 + Slice 2): Help/Troubleshooting surface fully functional with data-driven topics, search, diagnostics collection, and automatic entry points from crashes and hardware failures; validation pending.
+- **Attribution**: Connor Angiel
+
 ### 2026-02-05 (Phase 5A-3: Help/Troubleshooting App - Slice 1)
 - **P5A-3 Slice 1 complete**: Help & Troubleshooting app provides student-facing troubleshooting guidance for common errors.
 - **Data-driven architecture**: Help topics stored in `helpTopics.ts` as JSON-like structure (not hardcoded JSX), enabling future dynamic updates.

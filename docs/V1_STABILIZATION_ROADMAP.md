@@ -409,9 +409,11 @@ Set up staging deployments + production monitoring:
   - Student messaging: Autosave = "We found unsaved work" (Restore/Discard), Workspace = "Didn't shut down cleanly" (Restore layout/Dismiss)
   - Gate: `pnpm proj:recovery-priority-gate` (validates priority invariant, 11 tests)
   - **Implementation**: Coordinator hook in rb-apps, integrated into LogicPlaygroundApp + ECELabApp
-- [ ] P5A-3: Help/Troubleshooting surface in OS
-  - Help app/panel with: bridge offline steps, export/submit steps, common errors (ERROR_MESSAGE_MATRIX), copy/paste diagnostics
-  - Gate: `pnpm os:help-surface-gate` (ensures Help app registers and renders minimal view)
+- [x] P5A-3: Help/Troubleshooting surface in OS ✅ 2026-02-06
+  - Help app/panel with: bridge offline steps, export/submit steps, common errors, copy/paste diagnostics
+  - Entry points: ErrorBoundary "Open Help" button + hardware failure "Troubleshoot" actions
+  - Gates: `pnpm ui:help-topics-contract-gate` (9 tests) and `pnpm ui:help-entrypoints-gate` (18 tests)
+  - **GREEN LOCK**: pnpm ci:parity passes (11 gates, 63 tests)
 
 **Phase 5B: Visual Consistency Sweep (Normalize, Don't Redesign)**
 - [ ] P5B-1: Normalize 10 most visible UI components
