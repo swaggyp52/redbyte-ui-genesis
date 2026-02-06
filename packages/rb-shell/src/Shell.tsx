@@ -31,6 +31,8 @@ import { executeMacro, type MacroExecutionContext } from './macros/executeMacro'
 import { useMacroStore } from './macros/macroStore';
 import BootScreen from './BootScreen';
 import { Modal, ToastContainer, toast } from '@redbyte/rb-primitives';
+import { progressStart, progressSucceed, progressFail } from '@redbyte/rb-utils';
+import { ProgressToasts } from './ProgressToasts';
 import { CommandPalette, type Command } from './CommandPalette';
 import { SystemSearch } from './SystemSearch';
 import { WorkspaceSwitcher, MacroRunner, WindowSwitcher } from './modals';
@@ -1385,11 +1387,14 @@ export const Shell: React.FC<ShellProps> = () => {
 
   // Export handler: convert current circuit to LabProjectV1 and download .rbx.zip
   const handleExportProof = useCallback(async () => {
+    const actionId = 'export:evidence';
     const circuit = getCurrentCircuit();
     if (!circuit) {
       toast.error({ message: 'No circuit to export' });
       return;
     }
+
+    progressStart(actionId, 'Exporting circuit evidence...');
 
     try {
       // Convert Circuit to CircuitV1 (LabProjectV1 schema)
@@ -1456,7 +1461,7 @@ export const Shell: React.FC<ShellProps> = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast.success('Circuit exported successfully');
+      progressSucceed(actionId, 'Circuit exported successfully');
       logSystemEvent({
         level: 'action',
         source: 'export',
@@ -1464,7 +1469,18 @@ export const Shell: React.FC<ShellProps> = () => {
       });
     } catch (error) {
       console.error('Export failed:', error);
-      toast.error(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      progressFail(actionId, {
+        code: 'EXPORT_FAILED',
+        studentMessage: 'Export failed. Click "Copy details" and send to your instructor.',
+        details: {
+          error: errorMessage,
+          stack: error instanceof Error ? error.stack : undefined,
+          projectId: currentProjectRef.current?.projectId,
+          nodeCount: circuit?.nodes?.length,
+          timestamp: new Date().toISOString(),
+        },
+      });
     }
   }, [getCurrentCircuit, determinismRecorder.tickCount]);
 
@@ -2776,6 +2792,7 @@ export const Shell: React.FC<ShellProps> = () => {
       })}
 
       <ToastContainer />
+      <ProgressToasts />
       <NarrativeOverlay />
 
       {systemSearchOpen && (
