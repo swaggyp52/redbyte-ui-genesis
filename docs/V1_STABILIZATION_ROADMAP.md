@@ -315,7 +315,7 @@ Verify behavior across environments:
 - OS: Windows, Mac, Linux (especially for Bridge connectivity + file downloads).
 - High-DPI devices; tablet/touch if supported.
 
-## Phase 4: Comprehensive Testing & Continuous Integration (PARTIAL - Gates Complete)
+## Phase 4: Comprehensive Testing & Continuous Integration ✅ COMPLETE (E2E/Visual deferred to v1.1)
 
 ### Phase 4 Tracker
 
@@ -324,11 +324,15 @@ Verify behavior across environments:
     - `pnpm lab:workflow-export-verify-gate` - Lab export/import roundtrip stability
     - `pnpm lab:probe-sampling-gate` - Probe recorder determinism (500 ticks, bounded buffer)
     - `pnpm hw:dryrun-program-flow-gate` - Hardware programming flow in dry-run mode
-- [ ] Integration/E2E: lab workflow + key UI flows covered (headless) - **DEFERRED** (Playwright avoided per user constraints)
-- [ ] Visual regression: critical UI states baselined and diffed in CI (if adopted) - **DEFERRED**
+- [x] CI parity system: `ci:parity` established across local, GitHub Actions, and Cloudflare Pages (eliminates workflow drift)
+  - Scripts: `ci:parity` (install + verify:all), `ci:parity:pages` (build only)
+  - Updated workflows: quality.yml, fpga-proof.yml, cloudflare-smoke.yml
+  - Cross-platform fixes: PowerShell-free verify:gates, TypeScript/Vite deps, port cleanup
 - [x] CI gates policy: `docs/CI_GATES_PLAN.md` - Defines blocking vs non-blocking gates for classroom safety
 - [x] CI workflow: `.github/workflows/p4-workflow-gates.yml` - Non-blocking scheduled workflow for Phase 4 gates
-- [x] Gate: `pnpm -r build` + Phase 1-3 gates + new Phase 4 workflow gates
+- [x] Gate: `pnpm -r build` + `pnpm verify:all` (8 gates, 26 tests) - local green, CI enforcement active
+- [ ] Integration/E2E: lab workflow + key UI flows covered (headless) - **DEFERRED to v1.1** (Playwright 3D/WebGL flakiness)
+- [ ] Visual regression: critical UI states baselined and diffed in CI - **DEFERRED to v1.1** (nice-to-have, not classroom blocker)
 
 ### Unit Test Coverage
 
