@@ -9,7 +9,22 @@ import { useToast } from '@redbyte/rb-primitives';
 
 const MAX_ACTIVE_TOASTS = 5;
 
-export function ProgressToasts() {
+// Hardware error codes that should show "Troubleshoot" action
+const HARDWARE_ERROR_CODES = new Set([
+  'HW_NOT_CONNECTED',
+  'HW_DEVICE_NOT_FOUND',
+  'HW_TIMEOUT',
+  'HW_STREAM_FAILED',
+  'BRIDGE_UNREACHABLE',
+  'FIRMWARE_UPLOAD_FAILED',
+  'DEVICE_VERIFICATION_FAILED',
+]);
+
+interface ProgressToastsProps {
+  onOpenHelp: (errorCode?: string) => void;
+}
+
+export function ProgressToasts({ onOpenHelp }: ProgressToastsProps) {
   const toast = useToast();
 
   useEffect(() => {
@@ -77,46 +92,61 @@ export function ProgressToasts() {
         }
 
         case 'fail': {
-          // Dismiss working toast, show error with "Copy details"
+          // Dismiss working toast, show error with "Copy details" and optional "Troubleshoot"
           const prevToastId = activeActions.get(actionId);
           if (prevToastId) {
             toast.dismiss(prevToastId);
           }
 
-          const actions = failPayload?.details
-            ? [
-                {
-                  label: 'Copy details',
-                  onClick: () => {
-                    const details =
-                      typeof failPayload.details === 'string'
-                        ? failPayload.details
-                        : JSON.stringify(failPayload.details, null, 2);
+          const actions = [];
 
-                    navigator.clipboard
-                      .writeText(details)
-                      .then(() => {
-                        toast.info({
-                          message: 'Details copied to clipboard',
-                          duration: 2000,
-                        });
-                      })
-                      .catch((err) => {
-                        console.error('[ProgressToasts] Failed to copy:', err);
-                        toast.error({
-                          message: 'Failed to copy details',
-                          duration: 2000,
-                        });
-                      });
-                  },
-                },
-              ]
-            : undefined;
+          // Extract error code from failPayload
+          const errorCode =
+            typeof failPayload?.code === 'string' ? failPayload.code : undefined;
+
+          // Add "Troubleshoot" action for hardware errors
+          if (errorCode && HARDWARE_ERROR_CODES.has(errorCode)) {
+            actions.push({
+              label: 'Troubleshoot',
+              onClick: () => {
+                onOpenHelp(errorCode);
+              },
+            });
+          }
+
+          // Add "Copy details" action if details available
+          if (failPayload?.details) {
+            actions.push({
+              label: 'Copy details',
+              onClick: () => {
+                const details =
+                  typeof failPayload.details === 'string'
+                    ? failPayload.details
+                    : JSON.stringify(failPayload.details, null, 2);
+
+                navigator.clipboard
+                  .writeText(details)
+                  .then(() => {
+                    toast.info({
+                      message: 'Details copied to clipboard',
+                      duration: 2000,
+                    });
+                  })
+                  .catch((err) => {
+                    console.error('[ProgressToasts] Failed to copy:', err);
+                    toast.error({
+                      message: 'Failed to copy details',
+                      duration: 2000,
+                    });
+                  });
+              },
+            });
+          }
 
           toast.error({
             message: failPayload?.studentMessage || message,
             duration: 10000, // Keep errors visible longer
-            actions,
+            actions: actions.length > 0 ? actions : undefined,
           });
 
           activeActions.delete(actionId);

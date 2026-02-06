@@ -51,6 +51,7 @@ import { exportEvidenceCapsule } from '../utils/evidenceExport'; // Wait, checki
 import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 import type { RBProject } from '../export/projectFormat';
 import { getCanonicalProjectAutosaveKey, useRbprojAutosave } from '../utils/rbprojAutosave';
+import { useUnifiedRecoverySurface } from '../utils/unifiedRecovery';
 import { labProjectToRBProject, rbProjectToLabProject } from '../utils/labProjectRbprojAdapter';
 
 interface ECELabAppProps {
@@ -342,25 +343,29 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
     });
   }, [currentStepIndex, labId, unifiedProject]);
 
-  const {
-    saveStatusText: rbprojSaveStatusText,
-    restorePrompt: rbprojRestorePrompt,
-    restore: restoreRbprojAutosave,
-    discard: discardRbprojAutosave,
-  } = useRbprojAutosave({
+  const rbprojAutosaveResult = useRbprojAutosave({
     autosaveKey,
     isDirty: Boolean(unifiedIsDirty),
     getProject: getRbprojSnapshot,
     applyProject: applyRbprojProject,
     changeDeps: [unifiedProject, currentStepIndex, labId],
   });
+
+  // Unified recovery coordinator (autosave > workspace > none)
+  // Note: Virtual Lab doesn't have workspace crash recovery (no layout state to restore)
+  const unifiedRecovery = useUnifiedRecoverySurface({
+    rbprojAutosave: rbprojAutosaveResult,
+    projectId: unifiedProject.projectId,
+  });
+
   const lastSaveToastRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!rbprojSaveStatusText) return;
-    if (lastSaveToastRef.current === rbprojSaveStatusText) return;
-    lastSaveToastRef.current = rbprojSaveStatusText;
-    toast.info({ title: 'Auto-Save', message: rbprojSaveStatusText, duration: 1500 });
-  }, [rbprojSaveStatusText]);
+    const saveStatusText = rbprojAutosaveResult.saveStatusText;
+    if (!saveStatusText) return;
+    if (lastSaveToastRef.current === saveStatusText) return;
+    lastSaveToastRef.current = saveStatusText;
+    toast.info({ title: 'Auto-Save', message: saveStatusText, duration: 1500 });
+  }, [rbprojAutosaveResult.saveStatusText]);
   // Hardware Store
   const hardwareConnect = useHardwareStore(s => s.connect);
   const hardwareConnectionState = useHardwareStore(s => s.connectionState);
@@ -927,19 +932,20 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
 
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-gray-950 to-black font-mono">
-      {rbprojRestorePrompt.isOpen && (
+      {/* Unified recovery flow (autosave only for Virtual Lab) */}
+      {unifiedRecovery.mode === 'autosave' && (
         <GuardrailConfirmModal
-          isOpen={rbprojRestorePrompt.isOpen}
+          isOpen={true}
           title="Restore autosave?"
           message={`An autosave is available from ${new Date(
-            rbprojRestorePrompt.savedAtMs ?? Date.now(),
+            unifiedRecovery.autosaveMeta?.savedAtMs ?? Date.now(),
           ).toLocaleString()}. Restore it now?`}
           lossItems={['Discarding autosave will permanently delete the autosaved copy.']}
           confirmLabel="Restore"
           cancelLabel="Discard"
           confirmTone="warning"
-          onConfirm={restoreRbprojAutosave}
-          onCancel={discardRbprojAutosave}
+          onConfirm={unifiedRecovery.restoreAutosave}
+          onCancel={unifiedRecovery.discardAutosave}
         />
       )}
       {/* === HEADER BAR === */}

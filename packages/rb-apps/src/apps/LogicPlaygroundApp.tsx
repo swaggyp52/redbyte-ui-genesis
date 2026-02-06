@@ -87,6 +87,7 @@ import {
   migrateRbprojAutosaveIfNeeded,
   useRbprojAutosave,
 } from '../utils/rbprojAutosave';
+import { useUnifiedRecoverySurface } from '../utils/unifiedRecovery';
 import { saveSnapshot, loadSnapshot, initSnapshotSystem, clearAllSnapshots, wasLastShutdownClean } from '../utils/snapshotSystem';
 import { isCEMode, getCEConfig, isHeavyCircuit } from '../utils/ceMode';
 import { ResetWorkspaceModal, ExampleGalleryModal, ExportBundleModal } from '../components/CEUIComponents';
@@ -535,14 +536,9 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const setShowHelpDock = useLayoutStore((state) => state.setShowHelpDock);
   const setHelpDockSection = useLayoutStore((state) => state.setHelpDockSection);
 
-  const [showRecoveryBanner, setShowRecoveryBanner] = useState<boolean>(() => {
-    return typeof window !== 'undefined' && !recoveredData && (!wasLastShutdownClean() || Boolean(loadSnapshot()));
-  });
-
   const handleRecoverSnapshot = useCallback(() => {
     const snapshot = loadSnapshot();
     if (!snapshot) {
-      setShowRecoveryBanner(false);
       return;
     }
     try {
@@ -574,14 +570,11 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     } catch (error) {
       console.error('[Recovery] Failed to restore snapshot', error);
       addToast('Recovery failed; starting fresh', 'error');
-    } finally {
-      setShowRecoveryBanner(false);
     }
   }, [addToast, applyLayoutSnapshot, setCircuit]);
 
   const handleStartFresh = useCallback(() => {
     clearAllSnapshots();
-    setShowRecoveryBanner(false);
   }, []);
 
   const applyLayoutSnapshot = useCallback((layout: any) => {
@@ -742,18 +735,22 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     },
     [],
   );
-  const {
-    saveStatusText: rbprojSaveStatusText,
-    restorePrompt: rbprojRestorePrompt,
-    restore: restoreRbprojAutosave,
-    discard: discardRbprojAutosave,
-  } = useRbprojAutosave({
+  const rbprojAutosaveResult = useRbprojAutosave({
     autosaveKey: rbprojAutosaveKey,
     isDirty,
     getProject: getProjectSnapshot,
     applyProject: applyRbprojProject,
     changeDeps: [circuit, projectName, projectDescription],
   });
+  
+  // Unified recovery coordinator (autosave > workspace > none)
+  const unifiedRecovery = useUnifiedRecoverySurface({
+    rbprojAutosave: rbprojAutosaveResult,
+    projectId,
+    onRestoreWorkspace: handleRecoverSnapshot,
+    onDismissWorkspace: handleStartFresh,
+  });
+  
   const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
   const [draggingNodeType, setDraggingNodeType] = useState<string | null>(null);
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
@@ -3610,23 +3607,24 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
             onExport={guardrail.onExport}
           />
         )}
-        {rbprojRestorePrompt.isOpen && (
+        {/* Unified recovery flow (autosave > workspace > none) */}
+        {unifiedRecovery.mode === 'autosave' && (
           <GuardrailConfirmModal
-            isOpen={rbprojRestorePrompt.isOpen}
+            isOpen={true}
             title="Restore autosave?"
             message={`An autosave is available from ${new Date(
-              rbprojRestorePrompt.savedAtMs ?? Date.now(),
+              unifiedRecovery.autosaveMeta?.savedAtMs ?? Date.now(),
             ).toLocaleString()}. Restore it now?`}
             lossItems={['Discarding autosave will permanently delete the autosaved copy.']}
             confirmLabel="Restore"
             cancelLabel="Discard"
             confirmTone="warning"
-            onConfirm={restoreRbprojAutosave}
-            onCancel={discardRbprojAutosave}
+            onConfirm={unifiedRecovery.restoreAutosave}
+            onCancel={unifiedRecovery.discardAutosave}
           />
         )}
-        {showRecoveryBanner && (
-          <RecoveryBanner onRecover={handleRecoverSnapshot} onStartFresh={handleStartFresh} />
+        {unifiedRecovery.mode === 'workspace' && (
+          <RecoveryBanner onRecover={unifiedRecovery.restoreWorkspace} onStartFresh={unifiedRecovery.dismissWorkspace} />
         )}
         {syncWarning && (
           <div className="bg-amber-900/80 border-b border-amber-600 px-4 py-2 text-xs text-amber-100 flex items-center justify-between">

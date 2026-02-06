@@ -9,7 +9,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
  */
 import React, { useState, useRef } from 'react';
 import styles from './LabExaminerApp.module.css';
-const OPS_SERVER = 'http://127.0.0.1:3001';
+import { OPS_SERVER, fetchLabRunDetail, fetchLabRuns, ingestLabSubmission } from '../services/opsClient';
 const LabExaminerApp = () => {
     const [tab, setTab] = useState('upload');
     const [serverStatus, setServerStatus] = useState('checking');
@@ -40,11 +40,8 @@ const LabExaminerApp = () => {
     }, [tab, serverStatus]);
     const loadRuns = async () => {
         try {
-            const response = await fetch(`${OPS_SERVER}/api/labs/runs`);
-            if (!response.ok)
-                throw new Error('Failed to load runs');
-            const data = await response.json();
-            setRuns(data || []);
+            const data = await fetchLabRuns();
+            setRuns(data);
         }
         catch (e) {
             setError(e instanceof Error ? e.message : 'Failed to load runs');
@@ -83,20 +80,7 @@ const LabExaminerApp = () => {
         setGradeData(null);
         try {
             const bytes = await file.arrayBuffer();
-            const response = await fetch(`${OPS_SERVER}/api/labs/ingest`, {
-                method: 'POST',
-                headers: { 'content-type': 'application/zip' },
-                body: bytes,
-            });
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Upload failed');
-            }
-            const result = await response.json();
-            const runId = result?.run_id;
-            if (!runId || typeof runId !== 'string') {
-                throw new Error('Upload succeeded but server did not return a run_id');
-            }
+            const runId = await ingestLabSubmission(bytes);
             await loadRunDetail(runId);
         }
         catch (e) {
@@ -114,10 +98,7 @@ const LabExaminerApp = () => {
     const loadRunDetail = async (runId) => {
         try {
             setError(null);
-            const response = await fetch(`${OPS_SERVER}/api/labs/runs/${runId}`);
-            if (!response.ok)
-                throw new Error('Failed to load run');
-            const data = await response.json();
+            const data = await fetchLabRunDetail(runId);
             setGradeData(data);
             setTab('grade');
         }

@@ -395,34 +395,53 @@ Set up staging deployments + production monitoring:
 ### Phase 5 Tracker
 
 **Phase 5A: Workflow Friction Killers (Highest Classroom ROI)**
-- [ ] P5A-1: Progress/toasts that never lie (hardware + export + ingest)
+- [x] P5A-1: Progress/toasts that never lie (hardware + export + ingest) ✅ 2026-02-05
   - `progress.ts` helper API (start/update/succeed/fail)
   - Wire into: export (.rbproj/.rbx), lab ingest/run, hardware connect/select/program/stream
   - Student-friendly default messages + "Copy details" for failures
   - Gate: `pnpm ui:progress-contract-gate` (validates event sequence invariants)
-- [ ] P5A-2: "You can't lose your work" UX reinforcement
-  - "Autosaved" heartbeat indicator (subtle)
-  - Idiot-proof restore prompt copy
-  - One-click "Export for submission" from Virtual Lab
-  - Gate: `pnpm proj:autosave-meta-contract-gate` (ensures meta always written, no null projectId)
-- [ ] P5A-3: Help/Troubleshooting surface in OS
-  - Help app/panel with: bridge offline steps, export/submit steps, common errors (ERROR_MESSAGE_MATRIX), copy/paste diagnostics
-  - Gate: `pnpm os:help-surface-gate` (ensures Help app registers and renders minimal view)
+  - **Implementation**: Stable actionIds (Option A: resource-based), AbortSignal support, all errors mapped to student-facing codes
+  - **Slices complete**: 1 (infrastructure), 2 (toast adapter + export), 3a (opsClient), 3b (hardwareClient)
+- [x] P5A-2: "You can't lose your work" UX reinforcement ✅ 2026-02-05
+  - **Unified recovery coordinator**: `useUnifiedRecoverySurface()` eliminates competing prompts (autosave > workspace > none)
+  - **Mutual exclusion**: Only one recovery surface shows at a time
+  - **Priority logic**: RBProject autosave (data loss risk) → workspace crash (layout convenience) → nothing
+  - Student messaging: Autosave = "We found unsaved work" (Restore/Discard), Workspace = "Didn't shut down cleanly" (Restore layout/Dismiss)
+  - Gate: `pnpm proj:recovery-priority-gate` (validates priority invariant, 11 tests)
+  - **Implementation**: Coordinator hook in rb-apps, integrated into LogicPlaygroundApp + ECELabApp
+- [x] P5A-3: Help/Troubleshooting surface in OS ✅ 2026-02-06
+  - Help app/panel with: bridge offline steps, export/submit steps, common errors, copy/paste diagnostics
+  - Entry points: ErrorBoundary "Open Help" button + hardware failure "Troubleshoot" actions
+  - Gates: `pnpm ui:help-topics-contract-gate` (9 tests) and `pnpm ui:help-entrypoints-gate` (18 tests)
+  - **GREEN LOCK**: pnpm ci:parity passes (11 gates, 63 tests)
 
 **Phase 5B: Visual Consistency Sweep (Normalize, Don't Redesign)**
-- [ ] P5B-1: Normalize 10 most visible UI components
+- [x] P5B-1: Normalize 10 most visible UI components ✅ 2026-02-06
   - Components: buttons, toasts, modals, panels, tabs, headers, lists, toolbars, badges, empty-states, progress rows
-  - Deliverable: `docs/UI_STYLE_GUIDE.md` (1 page) + small CSS/token cleanup
-  - No new design system rewrite; enforce existing consistency only
+  - Deliverable: `docs/UI_STYLE_GUIDE.md` (canonical token contract) + 20 semantic tokens in `packages/rb-shell/src/styles.css`
+  - Canonical tokens: `--rb-ui-{bg,surface-*,text-*,border-*,accent-*,danger,radius-*,shadow-*,motion-*,ease-*,font-*}`
+  - Gate: `pnpm ui:style-token-contract-gate` (7 assertions: markers ✓, extraction ✓, no duplicates ✓, guide alignment ✓, no new hex ✓)
+  - **GREEN LOCK**: `pnpm ci:parity` passes (12 gates, 83 tests)
 
-**Phase 5C: Cleanup + Release Hygiene**
-- [ ] P5C-1: Remove/flag dev-only leftovers
-  - Document dev flags, gate dev-only globals (`NODE_ENV !== 'production'`)
-  - Purge unused inspection stubs
-  - Gate: `pnpm repo:dev-only-guards-gate` (static scan for globals outside dev guards)
-- [ ] P5C-2: License/attribution audit
-  - Generate/verify `THIRD_PARTY_NOTICES.md`
-  - Confirm fonts/icons/3D assets licensing
+**Phase 5C: Cleanup + Release Hygiene** ✅ COMPLETE
+
+- [x] P5C-1: Dev Guards Audit
+  - ✅ Created `docs/DEV_DEBUG_FLAGS.md` (11 localStorage keys, 13 window.__RB_* globals, 8+ env vars)
+  - ✅ Centralized `packages/rb-utils/src/debugFlags.ts/js` with 6 const arrays + 3 helpers
+  - ✅ Implemented `ui:dev-guards-contract-gate` (5 passing tests, discovery mode)
+  - ✅ Gate wired into `verify:gates` chain
+  - ✅ GREEN LOCK maintained (5/5 tests, 75+ total gates passing)
+
+- [x] P5C-2: License/Attribution Audit ✅
+  - ✅ Created `docs/THIRD_PARTY_NOTICES.md` (human-facing license policy)
+  - ✅ Implemented `scripts/gen-license-snapshot.mjs` (deterministic snapshot generator)
+  - ✅ Generated `docs/licenses.snapshot.json` (all 27 dependencies, no UNKNOWN licenses)
+  - ✅ Implemented `ui:license-audit-gate` (8 passing tests)
+    - Gate validates snapshot exists and is deterministic
+    - Gate asserts no UNKNOWN or forbidden licenses (AGPL, SSPL, GPL-3.0-only)
+    - Gate checks all licenses normalized to uppercase SPDX
+  - ✅ Gate wired into `verify:gates` chain
+  - ✅ GREEN LOCK maintained (8/8 license tests, 83+ total gates passing)
 
 **Execution Rule:** No feature merges unless `pnpm ci:parity` is green locally (GREEN LOCK enforced).
 

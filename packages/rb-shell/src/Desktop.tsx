@@ -43,9 +43,9 @@ export const Desktop: React.FC<DesktopProps> = React.memo(({ onOpenApp, wallpape
         <div
           className="text-[120px] font-bold leading-none select-none"
           style={{
-            color: 'var(--rb-text)',
+            color: 'var(--rb-ui-text)',
             opacity: 0.02,
-            fontFamily: 'var(--rb-font-sans)',
+            fontFamily: 'var(--rb-ui-font-sans)',
             letterSpacing: '-0.04em',
           }}
         >
@@ -81,9 +81,16 @@ export const Desktop: React.FC<DesktopProps> = React.memo(({ onOpenApp, wallpape
       {/* Version Badge */}
       <div
         className="absolute bottom-3 left-4 z-10 text-[10px] font-mono pointer-events-auto"
-        style={{ color: 'var(--rb-text-2)', opacity: 0.8 }}
+        style={{ color: 'var(--rb-ui-text-2)', opacity: 0.8 }}
       >
-        <span className="px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 font-bold">
+        <span
+          className="px-1.5 py-0.5 rounded font-bold"
+          style={{
+            background: 'var(--rb-ui-accent-soft)',
+            border: '1px solid var(--rb-ui-accent)',
+            color: 'var(--rb-ui-accent)',
+          }}
+        >
           v0.9.0
         </span>
       </div>
@@ -91,7 +98,7 @@ export const Desktop: React.FC<DesktopProps> = React.memo(({ onOpenApp, wallpape
       {/* Copyright */}
       <div
         className="absolute bottom-3 right-4 z-10 text-right text-[10px] font-mono pointer-events-none"
-        style={{ color: 'var(--rb-text-3)', opacity: 0.5 }}
+        style={{ color: 'var(--rb-ui-text-3)', opacity: 0.5 }}
       >
         <div>RedByte OS Genesis</div>
       </div>

@@ -1,14 +1,39 @@
 /* RedByte OS Genesis — Shell Styles
-   Precision Instrument aesthetic. */
+  Precision Instrument aesthetic. */
+
+/* RB_CORE_TOKENS_START */
+:root {
+  --rb-ui-bg: var(--rb-surface-0);
+  --rb-ui-surface-1: var(--rb-surface-1);
+  --rb-ui-surface-2: var(--rb-surface-2);
+  --rb-ui-surface-3: var(--rb-surface-3);
+  --rb-ui-text: var(--rb-text);
+  --rb-ui-text-2: var(--rb-text-2);
+  --rb-ui-text-3: var(--rb-text-3);
+  --rb-ui-border: var(--rb-border);
+  --rb-ui-border-strong: var(--rb-border-strong);
+  --rb-ui-accent: var(--rb-accent);
+  --rb-ui-accent-soft: var(--rb-accent-soft);
+  --rb-ui-danger: var(--rb-danger);
+  --rb-ui-radius-sm: var(--rb-radius-sm);
+  --rb-ui-radius-md: var(--rb-radius-md);
+  --rb-ui-shadow-2: var(--rb-shadow-2);
+  --rb-ui-shadow-3: var(--rb-shadow-3);
+  --rb-ui-motion-fast: var(--rb-motion-fast);
+  --rb-ui-ease-out: var(--rb-easing-out);
+  --rb-ui-font-sans: var(--rb-font-sans);
+  --rb-ui-font-mono: var(--rb-font-mono);
+}
+/* RB_CORE_TOKENS_END */
 
 .shell-container {
-  font-family: var(--rb-font-sans);
-  background: var(--rb-surface-0);
+  font-family: var(--rb-ui-font-sans);
+  background: var(--rb-ui-bg);
 }
 
 .rb-shell {
-  background: var(--rb-surface-0);
-  color: var(--rb-text);
+  background: var(--rb-ui-bg);
+  color: var(--rb-ui-text);
 }
 
 .rb-desktop {
@@ -35,15 +60,15 @@
 .rb-window-control {
   background: transparent;
   border: none;
-  color: var(--rb-text-2);
-  border-radius: var(--rb-radius-sm);
-  transition: background var(--rb-motion-fast) var(--rb-easing-out),
-              color var(--rb-motion-fast) var(--rb-easing-out);
+  color: var(--rb-ui-text-2);
+  border-radius: var(--rb-ui-radius-sm);
+  transition: background var(--rb-ui-motion-fast) var(--rb-ui-ease-out),
+              color var(--rb-ui-motion-fast) var(--rb-ui-ease-out);
 }
 
 .rb-window-control:hover {
-  background: var(--rb-surface-3);
-  color: var(--rb-text);
+  background: var(--rb-ui-surface-3);
+  color: var(--rb-ui-text);
 }
 
 /* ── Density ── */
@@ -78,37 +103,37 @@
   height: 12px;
   background: transparent;
   opacity: 0;
-  transition: opacity var(--rb-motion-fast) var(--rb-easing-out);
+  transition: opacity var(--rb-ui-motion-fast) var(--rb-ui-ease-out);
   z-index: 10;
 }
 
 .resize-handle:hover {
   opacity: 1;
-  background: var(--rb-accent-weak);
+  background: var(--rb-ui-accent-soft);
   border-radius: 2px;
 }
 
 .resize-handle:active {
   opacity: 1;
-  background: var(--rb-accent-soft);
+  background: var(--rb-ui-accent-soft);
 }
 
 .resize-edge {
   position: absolute;
   background: transparent;
   opacity: 0;
-  transition: opacity var(--rb-motion-fast) var(--rb-easing-out);
+  transition: opacity var(--rb-ui-motion-fast) var(--rb-ui-ease-out);
   z-index: 9;
 }
 
 .resize-edge:hover {
   opacity: 1;
-  background: var(--rb-accent-weak);
+  background: var(--rb-ui-accent-soft);
 }
 
 .resize-edge:active {
   opacity: 1;
-  background: var(--rb-accent-soft);
+  background: var(--rb-ui-accent-soft);
 }
 
 .resize-edge[style*='left'],
@@ -152,7 +177,7 @@
 
 /* ── Focus Ring ── */
 .shell-container :focus-visible {
-  outline: 2px solid var(--rb-accent);
+  outline: 2px solid var(--rb-ui-accent);
   outline-offset: 2px;
 }
 
@@ -163,9 +188,9 @@
 
 /* Ensure dock items have visible focus ring */
 .shell-container .dock-item:focus-visible {
-  outline: 2px solid var(--rb-accent);
+  outline: 2px solid var(--rb-ui-accent);
   outline-offset: 2px;
-  border-radius: var(--rb-radius-md, 8px);
+  border-radius: var(--rb-ui-radius-md, 8px);
 }
 
 /* Skip-to-content link for keyboard users */
@@ -175,15 +200,74 @@
   left: 0;
   z-index: 99999;
   padding: 8px 16px;
-  background: var(--rb-accent);
+  background: var(--rb-ui-accent);
   color: #fff;
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
-  border-radius: 0 0 var(--rb-radius-sm) 0;
-  transition: top var(--rb-motion-fast) var(--rb-easing-out);
+  border-radius: 0 0 var(--rb-ui-radius-sm) 0;
+  transition: top var(--rb-ui-motion-fast) var(--rb-ui-ease-out);
 }
 
 .rb-skip-link:focus {
   top: 0;
+}
+
+/* ── Taskbar ── */
+.rb-taskbar {
+  background: var(--rb-ui-surface-1);
+  border: 1px solid var(--rb-ui-border);
+  box-shadow: var(--rb-ui-shadow-3);
+}
+
+.rb-taskbar-divider {
+  border-right: 1px solid var(--rb-ui-border);
+}
+
+.rb-taskbar-launcher {
+  background: var(--rb-ui-accent);
+  box-shadow: var(--rb-ui-shadow-2);
+}
+
+.rb-taskbar-launcher__icon {
+  color: var(--rb-ui-text);
+}
+
+.rb-taskbar-icon {
+  background: transparent;
+}
+
+.rb-taskbar-icon:hover {
+  background: var(--rb-ui-surface-2);
+}
+
+.rb-taskbar-icon__icon {
+  color: var(--rb-ui-text-2);
+}
+
+.rb-taskbar-icon:hover .rb-taskbar-icon__icon {
+  color: var(--rb-ui-text);
+}
+
+.rb-taskbar-icon__dot {
+  background: var(--rb-ui-accent);
+}
+
+.rb-taskbar-tooltip {
+  background: var(--rb-ui-surface-3);
+  color: var(--rb-ui-text);
+  border: 1px solid var(--rb-ui-border);
+  box-shadow: var(--rb-ui-shadow-2);
+}
+
+.rb-taskbar-separator {
+  background: var(--rb-ui-border);
+}
+
+.rb-taskbar-brand {
+  color: var(--rb-ui-text-2);
+}
+
+.rb-taskbar-brand-accent {
+  color: var(--rb-ui-accent);
 }

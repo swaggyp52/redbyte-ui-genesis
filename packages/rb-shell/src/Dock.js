@@ -123,19 +123,19 @@ export const Dock = React.memo(({ onOpenApp }) => {
                 : undefined;
         return (_jsxs("button", { type: "button", onClick: () => safeDebouncedOpenApp(dock.id), onKeyDown: (event) => handleKeyDown(event, dock.id), onMouseEnter: () => setHoveredId(dock.id), onMouseLeave: () => setHoveredId(null), ref: (el) => { buttonRefs.current[dock.id] = el; }, "aria-label": ariaLabel, "aria-keyshortcuts": ariaKeyShortcuts, className: "relative h-10 w-10 rounded-lg flex items-center justify-center transition-all group", style: {
                 transform: isHovered ? 'translateX(2px)' : 'translateX(0)',
-                transition: `all ${isHovered ? '120ms' : '80ms'} var(--rb-easing-out)`,
-                background: isHovered ? 'var(--rb-surface-3)' : 'transparent',
+                transition: `all ${isHovered ? '120ms' : '80ms'} var(--rb-ui-ease-out)`,
+                background: isHovered ? 'var(--rb-ui-surface-3)' : 'transparent',
             }, "data-testid": `dock-icon-${dock.id}`, children: [isHovered && (_jsx("span", { className: "absolute left-full ml-2 px-2 py-1 rounded text-xs font-medium whitespace-nowrap pointer-events-none z-50", style: {
-                        background: 'var(--rb-surface-3)',
-                        color: 'var(--rb-text)',
-                        border: '1px solid var(--rb-border)',
-                        boxShadow: 'var(--rb-shadow-2)',
-                    }, children: tooltipText })), isRunning && (_jsx("span", { className: "absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full", style: { background: 'var(--rb-accent)' } })), _jsx(Icon, { name: dock.iconId, size: 18, style: { color: isRunning ? 'var(--rb-accent)' : 'var(--rb-text-2)' }, className: "transition-colors", "aria-label": `${dock.label} icon` })] }, dock.id));
+                        background: 'var(--rb-ui-surface-3)',
+                        color: 'var(--rb-ui-text)',
+                        border: '1px solid var(--rb-ui-border)',
+                        boxShadow: 'var(--rb-ui-shadow-2)',
+                    }, children: tooltipText })), isRunning && (_jsx("span", { className: "absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full", style: { background: 'var(--rb-ui-accent)' } })), _jsx(Icon, { name: dock.iconId, size: 18, style: { color: isRunning ? 'var(--rb-ui-accent)' : 'var(--rb-ui-text-2)' }, className: "transition-colors", "aria-label": `${dock.label} icon` })] }, dock.id));
     };
     return (_jsxs("nav", { "aria-label": "Application Dock", className: "fixed left-0 top-8 bottom-0 z-40 flex flex-col items-center py-2 border-r", title: "Alt+Arrow keys to reorder (when focused)", style: {
             width: '52px',
-            background: 'var(--rb-surface-1)',
-            borderColor: 'var(--rb-border)',
-        }, children: [_jsx("div", { className: "flex flex-col items-center gap-0.5", children: systemItems.map(renderIcon) }), _jsx("div", { className: "w-6 my-2", style: { height: '1px', background: 'var(--rb-border-strong)' } }), _jsx("div", { className: "flex flex-col items-center gap-0.5 flex-1", children: appItems.map(renderIcon) })] }));
+            background: 'var(--rb-ui-surface-1)',
+            borderColor: 'var(--rb-ui-border)',
+        }, children: [_jsx("div", { className: "flex flex-col items-center gap-0.5", children: systemItems.map(renderIcon) }), _jsx("div", { className: "w-6 my-2", style: { height: '1px', background: 'var(--rb-ui-border-strong)' } }), _jsx("div", { className: "flex flex-col items-center gap-0.5 flex-1", children: appItems.map(renderIcon) })] }));
 });
 Dock.displayName = 'Dock';

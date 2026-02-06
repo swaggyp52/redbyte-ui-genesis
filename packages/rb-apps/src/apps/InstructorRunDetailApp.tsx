@@ -6,8 +6,7 @@ import React, { useEffect, useState } from 'react';
 import type { RedByteApp } from '../types';
 import styles from './InstructorRunDetailApp.module.css';
 import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
-
-const OPS_SERVER = 'http://127.0.0.1:3001';
+import { OPS_SERVER, fetchLabRunDetail } from '../services/opsClient';
 
 interface VectorResult {
   name: string;
@@ -62,11 +61,7 @@ export const InstructorRunDetailAppContent: React.FC<InstructorRunDetailAppProps
 
     setError(null);
 
-    fetch(`${OPS_SERVER}/api/labs/runs/${runId}`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-        return res.json();
-      })
+    fetchLabRunDetail(runId)
       .then((data) => {
         const inferredArtifacts: NonNullable<RunDetail['artifacts']> = {
           'grade.json': `${OPS_SERVER}/api/labs/runs/${runId}/artifacts/grade.json`,

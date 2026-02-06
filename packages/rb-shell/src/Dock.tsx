@@ -157,8 +157,8 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
         className="relative h-10 w-10 rounded-lg flex items-center justify-center transition-all group"
         style={{
           transform: isHovered ? 'translateX(2px)' : 'translateX(0)',
-          transition: `all ${isHovered ? '120ms' : '80ms'} var(--rb-easing-out)`,
-          background: isHovered ? 'var(--rb-surface-3)' : 'transparent',
+          transition: `all ${isHovered ? '120ms' : '80ms'} var(--rb-ui-ease-out)`,
+          background: isHovered ? 'var(--rb-ui-surface-3)' : 'transparent',
         }}
         data-testid={`dock-icon-${dock.id}`}
       >
@@ -167,10 +167,10 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
           <span
             className="absolute left-full ml-2 px-2 py-1 rounded text-xs font-medium whitespace-nowrap pointer-events-none z-50"
             style={{
-              background: 'var(--rb-surface-3)',
-              color: 'var(--rb-text)',
-              border: '1px solid var(--rb-border)',
-              boxShadow: 'var(--rb-shadow-2)',
+              background: 'var(--rb-ui-surface-3)',
+              color: 'var(--rb-ui-text)',
+              border: '1px solid var(--rb-ui-border)',
+              boxShadow: 'var(--rb-ui-shadow-2)',
             }}
           >
             {tooltipText}
@@ -180,13 +180,13 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
         {isRunning && (
           <span
             className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full"
-            style={{ background: 'var(--rb-accent)' }}
+            style={{ background: 'var(--rb-ui-accent)' }}
           />
         )}
         <Icon
           name={dock.iconId}
           size={18}
-          style={{ color: isRunning ? 'var(--rb-accent)' : 'var(--rb-text-2)' }}
+          style={{ color: isRunning ? 'var(--rb-ui-accent)' : 'var(--rb-ui-text-2)' }}
           className="transition-colors"
           aria-label={`${dock.label} icon`}
         />
@@ -201,8 +201,8 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
       title="Alt+Arrow keys to reorder (when focused)"
       style={{
         width: '52px',
-        background: 'var(--rb-surface-1)',
-        borderColor: 'var(--rb-border)',
+        background: 'var(--rb-ui-surface-1)',
+        borderColor: 'var(--rb-ui-border)',
       }}
     >
       {/* System icons */}
@@ -213,7 +213,7 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
       {/* Separator */}
       <div
         className="w-6 my-2"
-        style={{ height: '1px', background: 'var(--rb-border-strong)' }}
+        style={{ height: '1px', background: 'var(--rb-ui-border-strong)' }}
       />
 
       {/* App icons */}

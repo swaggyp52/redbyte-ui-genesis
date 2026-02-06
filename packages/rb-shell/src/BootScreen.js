@@ -57,16 +57,16 @@ const BootScreen = ({ onComplete }) => {
     }, [onComplete, timing.duration, timing.fade]);
     const currentStage = STAGES[stageIndex];
     return (_jsx("div", { "data-testid": "shell-boot-screen", className: "fixed inset-0 flex items-center justify-center overflow-hidden", style: {
-            background: 'var(--rb-surface-0)',
-            color: 'var(--rb-text)',
+            background: 'var(--rb-ui-bg)',
+            color: 'var(--rb-ui-text)',
             opacity: exiting ? 0 : 1,
             transition: reduceMotion
                 ? 'none'
-                : 'opacity 180ms var(--rb-easing-out)',
-        }, children: _jsxs("div", { className: "w-[320px] max-w-[85vw]", children: [_jsxs("div", { className: "flex items-center gap-3 mb-6", children: [_jsx("div", { className: "h-10 w-10 rounded-lg flex items-center justify-center", style: { background: 'var(--rb-accent)' }, children: _jsx("span", { className: "text-sm font-bold text-white leading-none", children: "R" }) }), _jsxs("div", { children: [_jsx("div", { className: "text-lg font-semibold tracking-wide", style: { color: 'var(--rb-text)' }, children: "RedByte OS" }), _jsx("div", { className: "text-[10px] font-mono uppercase tracking-widest", style: { color: 'var(--rb-text-3)' }, children: "Genesis" })] })] }), _jsx("div", { className: "h-1 rounded-full overflow-hidden", style: { background: 'var(--rb-surface-2)' }, children: _jsx("div", { className: "h-full rounded-full", style: {
+                : 'opacity 180ms var(--rb-ui-ease-out)',
+        }, children: _jsxs("div", { className: "w-[320px] max-w-[85vw]", children: [_jsxs("div", { className: "flex items-center gap-3 mb-6", children: [_jsx("div", { className: "h-10 w-10 rounded-lg flex items-center justify-center", style: { background: 'var(--rb-ui-accent)' }, children: _jsx("span", { className: "text-sm font-bold text-white leading-none", children: "R" }) }), _jsxs("div", { children: [_jsx("div", { className: "text-lg font-semibold tracking-wide", style: { color: 'var(--rb-ui-text)' }, children: "RedByte OS" }), _jsx("div", { className: "text-[10px] font-mono uppercase tracking-widest", style: { color: 'var(--rb-ui-text-3)' }, children: "Genesis" })] })] }), _jsx("div", { className: "h-1 rounded-full overflow-hidden", style: { background: 'var(--rb-ui-surface-2)' }, children: _jsx("div", { className: "h-full rounded-full", style: {
                             width: `${progress}%`,
-                            background: 'var(--rb-accent)',
+                            background: 'var(--rb-ui-accent)',
                             transition: reduceMotion ? 'none' : 'width 80ms linear',
-                        } }) }), _jsxs("div", { className: "mt-2 flex items-center justify-between text-[11px] font-mono", style: { color: 'var(--rb-text-3)' }, children: [_jsx("span", { children: currentStage?.label ?? 'Booting' }), _jsxs("span", { children: [progress, "%"] })] })] }) }));
+                        } }) }), _jsxs("div", { className: "mt-2 flex items-center justify-between text-[11px] font-mono", style: { color: 'var(--rb-ui-text-3)' }, children: [_jsx("span", { children: currentStage?.label ?? 'Booting' }), _jsxs("span", { children: [progress, "%"] })] })] }) }));
 };
 export default BootScreen;

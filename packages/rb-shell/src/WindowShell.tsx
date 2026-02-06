@@ -42,8 +42,8 @@ export const WindowShell: React.FC<WindowShellProps> = memo(({
     <div
       className="flex flex-col h-full w-full"
       style={{
-        background: 'var(--rb-surface-0)',
-        color: 'var(--rb-text-base)',
+        background: 'var(--rb-ui-bg)',
+        color: 'var(--rb-ui-text)',
         overflow: 'hidden',
       }}
     >
@@ -52,11 +52,11 @@ export const WindowShell: React.FC<WindowShellProps> = memo(({
         <div
           className="flex items-center justify-between h-9 px-3 border-b bg-surface-1"
           style={{
-            borderColor: focused ? 'var(--rb-border-strong)' : 'var(--rb-border)',
-            background: focused ? 'var(--rb-surface-2)' : 'var(--rb-surface-1)',
+            borderColor: focused ? 'var(--rb-ui-border-strong)' : 'var(--rb-ui-border)',
+            background: focused ? 'var(--rb-ui-surface-2)' : 'var(--rb-ui-surface-1)',
           }}
         >
-          <span className="text-xs font-semibold text-text-2 truncate">
+          <span className="text-xs font-semibold truncate" style={{ color: 'var(--rb-ui-text-2)' }}>
             {title}
           </span>
         </div>
@@ -73,12 +73,24 @@ export const WindowShell: React.FC<WindowShellProps> = memo(({
         {/* Error state */}
         {error && (
           <div className="flex items-center justify-center flex-1 p-4">
-            <div className="rounded border border-red-500/30 bg-red-500/10 p-4 max-w-sm text-center">
-              <p className="text-sm text-red-400 mb-2">{error}</p>
+            <div
+              className="rounded p-4 max-w-sm text-center"
+              style={{
+                border: '1px solid var(--rb-ui-danger)',
+                background: 'var(--rb-ui-surface-2)',
+              }}
+            >
+              <p className="text-sm mb-2" style={{ color: 'var(--rb-ui-danger)' }}>
+                {error}
+              </p>
               {onErrorReset && (
                 <button
                   onClick={onErrorReset}
-                  className="text-xs px-3 py-1 rounded bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
+                  className="text-xs px-3 py-1 rounded transition-colors"
+                  style={{
+                    background: 'var(--rb-ui-surface-3)',
+                    color: 'var(--rb-ui-danger)',
+                  }}
                 >
                   Dismiss
                 </button>
@@ -91,8 +103,16 @@ export const WindowShell: React.FC<WindowShellProps> = memo(({
         {loading && !error && (
           <div className="flex items-center justify-center flex-1">
             <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 rounded-full border-2 border-cyan-500/30 border-t-cyan-500 animate-spin" />
-              <span className="text-xs text-text-2">Loading...</span>
+              <div
+                className="w-8 h-8 rounded-full border-2 animate-spin"
+                style={{
+                  borderColor: 'var(--rb-ui-border)',
+                  borderTopColor: 'var(--rb-ui-accent)',
+                }}
+              />
+              <span className="text-xs" style={{ color: 'var(--rb-ui-text-2)' }}>
+                Loading...
+              </span>
             </div>
           </div>
         )}

@@ -8,16 +8,16 @@ function normalizeConnection(conn: Connection): { from: PortRef; to: PortRef } {
   const fromIsString = typeof conn.from === 'string';
   const toIsString = typeof conn.to === 'string';
 
-  const fromNodeId = fromIsString ? conn.from : conn.from.nodeId;
-  const toNodeId = toIsString ? conn.to : conn.to.nodeId;
+  const fromNodeId = fromIsString ? conn.from as string : (conn.from as PortRef).nodeId;
+  const toNodeId = toIsString ? conn.to as string : (conn.to as PortRef).nodeId;
 
   const fromPortName = fromIsString
-    ? conn.fromPin ?? conn.fromPort ?? 'out'
-    : conn.from.portName ?? conn.from.port ?? conn.fromPin ?? conn.fromPort ?? 'out';
+    ? (conn as any).fromPin ?? (conn as any).fromPort ?? 'out'
+    : (conn.from as PortRef).portName ?? (conn.from as PortRef).port ?? (conn as any).fromPin ?? (conn as any).fromPort ?? 'out';
 
   const toPortName = toIsString
-    ? conn.toPin ?? conn.toPort ?? 'in'
-    : conn.to.portName ?? conn.to.port ?? conn.toPin ?? conn.toPort ?? 'in';
+    ? (conn as any).toPin ?? (conn as any).toPort ?? 'in'
+    : (conn.to as PortRef).portName ?? (conn.to as PortRef).port ?? (conn as any).toPin ?? (conn as any).toPort ?? 'in';
 
   return {
     from: { nodeId: fromNodeId, portName: fromPortName },
@@ -31,14 +31,17 @@ function normalizeConnection(conn: Connection): { from: PortRef; to: PortRef } {
 export function serialize(circuit: Circuit): SerializedCircuitV1 {
   return {
     version: 1,
-    nodes: circuit.nodes.map(node => ({
-      id: node.id,
-      type: node.type,
-      position: { ...node.position },
-      rotation: node.rotation,
-      config: { ...node.config },
-      state: node.state ? { ...node.state } : undefined,
-    })),
+    nodes: circuit.nodes.map(node => {
+      const position = node.position ?? { x: 0, y: 0 };
+      return {
+        id: node.id,
+        type: node.type,
+        position: { x: position.x, y: position.y },
+        rotation: node.rotation ?? 0,
+        config: node.config ?? {},
+        state: node.state ? { ...node.state } : undefined,
+      };
+    }),
     connections: circuit.connections.map(conn => {
       const normalized = normalizeConnection(conn);
       return {

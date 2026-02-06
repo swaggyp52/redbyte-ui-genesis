@@ -4,7 +4,7 @@
 
 import type { Circuit, Connection } from '@redbyte/rb-logic-core';
 import type { ViewState, ViewNode, ViewWire } from '../types';
-import { calculatePortPosition, getNodeDimensions } from './shared-helpers';
+import { calculatePortPosition, getNodeDimensions, pos, normalizePortRef } from './shared-helpers';
 
 /**
  * Circuit transform - nodes positioned exactly as in engine
@@ -29,8 +29,8 @@ export function circuitTransform(circuit: Circuit): ViewState {
       id: node.id,
       type: node.type,
       view: {
-        x: node.position.x,
-        y: node.position.y,
+        x: pos(node).x,
+        y: pos(node).y,
         w: width,
         h: height,
       },
@@ -39,8 +39,11 @@ export function circuitTransform(circuit: Circuit): ViewState {
   });
 
   const wires: ViewWire[] = circuit.connections.map((conn, idx) => {
-    const fromNode = circuit.nodes.find((n) => n.id === conn.from.nodeId);
-    const toNode = circuit.nodes.find((n) => n.id === conn.to.nodeId);
+    const fromRef = normalizePortRef(conn.from, conn.fromPin ?? conn.fromPort ?? 'out');
+    const toRef = normalizePortRef(conn.to, conn.toPin ?? conn.toPort ?? 'in');
+    
+    const fromNode = circuit.nodes.find((n) => n.id === fromRef.nodeId);
+    const toNode = circuit.nodes.find((n) => n.id === toRef.nodeId);
 
     if (!fromNode || !toNode) {
       return {
@@ -54,9 +57,9 @@ export function circuitTransform(circuit: Circuit): ViewState {
     const toNodeView = nodes.find((n) => n.id === toNode.id)!;
 
     return {
-      id: `${conn.from.nodeId}.${conn.from.portName}-${conn.to.nodeId}.${conn.to.portName}`,
-      from: fromNodeView.ports[conn.from.portName] || { x: fromNode.position.x, y: fromNode.position.y },
-      to: toNodeView.ports[conn.to.portName] || { x: toNode.position.x, y: toNode.position.y },
+      id: `${fromRef.nodeId}.${fromRef.portName}-${toRef.nodeId}.${toRef.portName}`,
+      from: fromNodeView.ports[fromRef.portName] || { x: pos(fromNode).x, y: pos(fromNode).y },
+      to: toNodeView.ports[toRef.portName] || { x: pos(toNode).x, y: pos(toNode).y },
     };
   });
 

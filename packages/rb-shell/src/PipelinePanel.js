@@ -6,9 +6,9 @@ import React from 'react';
 /* ─── Sub-components ───────────────────────────────────────── */
 const DOT_SIZE = 8;
 const stepColors = {
-    complete: '#22c55e',
-    active: '#3b82f6',
-    pending: 'var(--rb-surface-3, #3f3f46)',
+    complete: 'var(--rb-ui-accent)',
+    active: 'var(--rb-ui-accent)',
+    pending: 'var(--rb-ui-surface-3)',
 };
 const Step = ({ step }) => {
     const isClickable = !!step.onClick;
@@ -22,22 +22,22 @@ const Step = ({ step }) => {
             border: 'none',
             background: isClickable ? 'transparent' : 'transparent',
             cursor: isClickable ? 'pointer' : 'default',
-            fontFamily: 'var(--rb-font-mono, monospace)',
+            fontFamily: 'var(--rb-ui-font-mono)',
         }, title: isClickable ? `Go to ${step.label}` : undefined, children: [_jsx("span", { style: {
                     width: DOT_SIZE,
                     height: DOT_SIZE,
                     borderRadius: '50%',
                     background: stepColors[step.state],
                     flexShrink: 0,
-                    boxShadow: step.state === 'active' ? '0 0 5px rgba(59,130,246,0.5)' : 'none',
+                boxShadow: step.state === 'active' ? '0 0 6px var(--rb-ui-accent)' : 'none',
                     animation: step.state === 'active' ? 'rbPipelinePulse 1.5s ease-in-out infinite' : 'none',
                 } }), _jsx("span", { style: {
                     fontSize: 11,
                     fontWeight: 600,
-                    color: step.state === 'pending' ? 'var(--rb-text-3, #71717a)' : 'var(--rb-text, #e4e4e7)',
-                }, children: step.label }), _jsx("span", { style: { fontSize: 10, color: 'var(--rb-text-3, #71717a)' }, children: step.sublabel })] }));
+                color: step.state === 'pending' ? 'var(--rb-ui-text-3)' : 'var(--rb-ui-text)',
+                }, children: step.label }), _jsx("span", { style: { fontSize: 10, color: 'var(--rb-ui-text-3)' }, children: step.sublabel })] }));
 };
-const Arrow = () => (_jsx("span", { style: { fontSize: 10, color: 'var(--rb-text-3, #71717a)', userSelect: 'none' }, children: "\u2192" }));
+    const Arrow = () => (_jsx("span", { style: { fontSize: 10, color: 'var(--rb-ui-text-3)', userSelect: 'none' }, children: "\u2192" }));
 /* ─── Main Component ───────────────────────────────────────── */
 export const PipelinePanel = ({ hasCircuit, hasRecording, isRecording, verificationStatus, hasExport, onGoToRecord, onGoToVerify, onGoToExport, }) => {
     const steps = [
@@ -71,8 +71,8 @@ export const PipelinePanel = ({ hasCircuit, hasRecording, isRecording, verificat
                     gap: 4,
                     padding: '4px 8px',
                     borderRadius: 6,
-                    background: 'var(--rb-surface-1, #18181b)',
-                    border: '1px solid var(--rb-border, #333)',
+                    background: 'var(--rb-ui-surface-1)',
+                    border: '1px solid var(--rb-ui-border)',
                 }, children: steps.map((step, i) => (_jsxs(React.Fragment, { children: [i > 0 && _jsx(Arrow, {}), _jsx(Step, { step: step })] }, step.label))) }), _jsx("style", { children: `
         @keyframes rbPipelinePulse {
           0%, 100% { opacity: 1; }

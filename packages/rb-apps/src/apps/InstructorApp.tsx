@@ -5,8 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import type { RedByteApp } from '../types';
 import styles from './InstructorApp.module.css';
-
-const OPS_SERVER = 'http://127.0.0.1:3001';
+import { fetchLabRuns } from '../services/opsClient';
 
 interface LabRun {
   run_id: string;
@@ -28,14 +27,9 @@ export const InstructorAppContent: React.FC<InstructorAppProps> = ({ onNavigate 
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${OPS_SERVER}/api/labs/runs`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-        return res.json();
-      })
+    fetchLabRuns()
       .then((data) => {
-        const nextRuns = Array.isArray(data) ? data : (data?.runs || []);
-        setRuns(nextRuns);
+        setRuns(data as LabRun[]);
         setLoading(false);
       })
       .catch((err) => {

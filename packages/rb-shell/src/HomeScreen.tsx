@@ -46,11 +46,11 @@ const PipelineStep: React.FC<{ label: string; status: StepStatus; sublabel: stri
     flexShrink: 0,
     background:
       status === 'complete'
-        ? '#22c55e'
+        ? 'var(--rb-ui-accent)'
         : status === 'active'
-          ? '#3b82f6'
-          : 'var(--rb-surface-3, #3f3f46)',
-    boxShadow: status === 'active' ? '0 0 6px rgba(59,130,246,0.5)' : 'none',
+          ? 'var(--rb-ui-accent)'
+          : 'var(--rb-ui-surface-3)',
+    boxShadow: status === 'active' ? '0 0 6px var(--rb-ui-accent)' : 'none',
     animation: status === 'active' ? 'rbPulse 1.5s ease-in-out infinite' : 'none',
   };
 
@@ -62,13 +62,13 @@ const PipelineStep: React.FC<{ label: string; status: StepStatus; sublabel: stri
           style={{
             fontSize: 11,
             fontWeight: 600,
-            color: status === 'pending' ? 'var(--rb-text-3, #71717a)' : 'var(--rb-text, #e4e4e7)',
+            color: status === 'pending' ? 'var(--rb-ui-text-3)' : 'var(--rb-ui-text)',
           }}
         >
           {label}
         </span>
       </div>
-      <span style={{ fontSize: 10, color: 'var(--rb-text-3, #71717a)', textAlign: 'center' }}>
+      <span style={{ fontSize: 10, color: 'var(--rb-ui-text-3)', textAlign: 'center' }}>
         {sublabel}
       </span>
     </div>
@@ -79,7 +79,7 @@ const PipelineArrow: React.FC = () => (
   <span
     style={{
       fontSize: 11,
-      color: 'var(--rb-text-3, #71717a)',
+      color: 'var(--rb-ui-text-3)',
       margin: '0 2px',
       marginBottom: 16,
     }}
@@ -102,14 +102,14 @@ const StateChip: React.FC<{ label: string; value: string; accent?: boolean }> = 
       gap: 6,
       padding: '5px 10px',
       borderRadius: 6,
-      border: '1px solid var(--rb-border, #333)',
-      background: 'var(--rb-surface-1, #1e1e2e)',
+      border: '1px solid var(--rb-ui-border)',
+      background: 'var(--rb-ui-surface-1)',
       fontSize: 11,
-      fontFamily: 'var(--rb-font-mono, monospace)',
+      fontFamily: 'var(--rb-ui-font-mono)',
     }}
   >
-    <span style={{ color: 'var(--rb-text-3, #71717a)', fontWeight: 500 }}>{label}</span>
-    <span style={{ color: accent ? 'var(--rb-accent, #3b82f6)' : 'var(--rb-text, #e4e4e7)', fontWeight: 600 }}>
+    <span style={{ color: 'var(--rb-ui-text-3)', fontWeight: 500 }}>{label}</span>
+    <span style={{ color: accent ? 'var(--rb-ui-accent)' : 'var(--rb-ui-text)', fontWeight: 600 }}>
       {value}
     </span>
   </div>
@@ -205,17 +205,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           pointerEvents: 'auto',
           maxWidth: 800,
           width: '90%',
-          fontFamily: 'var(--rb-font-mono, monospace)',
+          fontFamily: 'var(--rb-ui-font-mono)',
           display: 'flex',
           flexDirection: 'column',
           gap: 24,
           maxHeight: '80vh',
           overflowY: 'auto',
           padding: '24px',
-          background: 'rgba(0,0,0,0.4)',
+          background: 'var(--rb-ui-surface-1)',
           backdropFilter: 'blur(20px)',
           borderRadius: 16,
-          border: '1px solid rgba(255,255,255,0.1)',
+          border: '1px solid var(--rb-ui-border)',
         }}
       >
         {/* ── Branding & Purpose ── */}
@@ -224,13 +224,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             style={{
               fontSize: 22,
               fontWeight: 700,
-              color: 'var(--rb-text, #e4e4e7)',
+              color: 'var(--rb-ui-text)',
               letterSpacing: '-0.02em',
             }}
           >
             RedByte OS
           </div>
-          <p style={{ fontSize: 12, color: 'var(--rb-text-3, #71717a)', marginTop: 4 }}>
+          <p style={{ fontSize: 12, color: 'var(--rb-ui-text-3)', marginTop: 4 }}>
             Deterministic Engineering Environment
           </p>
         </div>
@@ -239,19 +239,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {SECTIONS.map((section) => (
             <div key={section.title}>
-              <h3 style={{
-                fontSize: 11,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                color: 'var(--rb-text-3)',
-                marginBottom: 12,
-                fontWeight: 600,
-                borderBottom: '1px solid var(--rb-border-subtle)',
-                paddingBottom: 4
-              }}>
+              <h3
+                style={{
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: 'var(--rb-ui-text-3)',
+                  marginBottom: 12,
+                  borderBottom: '1px solid var(--rb-ui-border)',
+                  paddingBottom: 4,
+                }}
+              >
                 {section.title}
               </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+                  gap: 8,
+                }}
+              >
                 {section.apps.map((app) => (
                   <button
                     key={app.id}
@@ -265,38 +272,30 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                       padding: '16px 8px',
                       borderRadius: 8,
                       border: '1px solid transparent',
-                      background: 'var(--rb-surface-2)', // slight bg
-                      color: 'var(--rb-text)',
+                      background: 'var(--rb-ui-surface-2)',
+                      color: 'var(--rb-ui-text)',
                       cursor: 'pointer',
                       textAlign: 'center',
                       transition: 'all 0.2s ease',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'var(--rb-surface-3)';
+                      e.currentTarget.style.background = 'var(--rb-ui-surface-3)';
                       e.currentTarget.style.transform = 'translateY(-2px)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'var(--rb-surface-2)';
+                      e.currentTarget.style.background = 'var(--rb-ui-surface-2)';
                       e.currentTarget.style.transform = 'none';
                     }}
                   >
-                    {/* Use the Icon component if available, otherwise just text/emoji fallback if imports are tricky. 
-                         Wait, I need to Import Icon. The instruction assumes I can default to text/emoji if I can't import easily?
-                         No, I should import Icon. I'll add the import in a separate tool call if needed or use full file replace if safer.
-                         Replacing just this block implies I have access to Icon.
-                         I'll assume Icon is available in scope or I need to add it.
-                         Actually, previous view_file showed NO Icon import.
-                         So I need to add import { Icon } from '@redbyte/rb-icons'; at the top too.
-                         I'll use a MULTI-REPLACE to handle both.
-                      */}
-                    {/* Using a placeholder rendering for now, assuming I will handle the import in the same turn via multi_replace */}
-                    <div style={{ color: 'var(--rb-accent)' }}>
+                    <div style={{ color: 'var(--rb-ui-accent)' }}>
                       {/* @ts-ignore - dynamic icon lookup */}
                       <Icon name={app.icon as any} size={24} />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       <span style={{ fontSize: 12, fontWeight: 600 }}>{app.label}</span>
-                      <span style={{ fontSize: 10, color: 'var(--rb-text-2)', lineHeight: 1.2 }}>{app.description}</span>
+                      <span style={{ fontSize: 10, color: 'var(--rb-ui-text-2)', lineHeight: 1.2 }}>
+                        {app.description}
+                      </span>
                     </div>
                   </button>
                 ))}

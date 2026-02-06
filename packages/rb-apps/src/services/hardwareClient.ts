@@ -9,6 +9,14 @@ import {
   BridgeMessage,
   ConnectPayload
 } from '@redbyte/rb-protocol';
+import {
+  progressFail,
+  progressStart,
+  progressSucceed,
+  progressUpdate,
+  RbUserError,
+  toStudentFacingError,
+} from '@redbyte/rb-utils';
 
 function isBridgeDryrunEnabled(): boolean {
   try {
@@ -592,63 +600,75 @@ export class HardwareClient {
   /**
    * Select and connect to a specific device
    */
-  /**
-   * Select and connect to a specific device
-   */
-  async selectDevice(deviceId: string): Promise<boolean> {
+  async selectDevice(deviceId: string, opts?: { signal?: AbortSignal }): Promise<boolean> {
+    const actionId = `rb:hw:device:${deviceId}:select`;
+
     if (this.state.status !== 'connected') {
-      console.warn('[HardwareClient] Cannot select device: not connected to bridge');
+      const error = new RbUserError(
+        'HW_NOT_CONNECTED',
+        'Cannot select device: not connected to bridge'
+      );
+      progressFail(actionId, {
+        code: 'HW_NOT_CONNECTED',
+        studentMessage: error.message,
+        details: { deviceId },
+      });
       return false;
     }
 
     const device = this.state.devices.find(d => d.deviceId === deviceId);
     if (!device) {
-      console.warn(`[HardwareClient] Device not found: ${deviceId}`);
+      const error = new RbUserError(
+        'HW_DEVICE_NOT_FOUND',
+        `Device not found: ${deviceId}`
+      );
+      progressFail(actionId, {
+        code: 'HW_DEVICE_NOT_FOUND',
+        studentMessage: error.message,
+        details: { deviceId },
+      });
       return false;
     }
 
+    progressStart(actionId, `Connecting to ${device.boardModel}...`);
+
     // Determine target from device metadata or ID
-    // Basys3 usually identifies as 'basys3' or via FTDI manufacturer
-    // Uno usually identifies as 'arduino-uno' or 'uno'
     let target = 'unknown';
     if (device.deviceId === 'basys3' || device.boardModel?.toLowerCase().includes('basys')) {
       target = 'basys3';
     } else if (device.deviceId === 'uno' || device.boardModel?.toLowerCase().includes('uno')) {
       target = 'arduino-uno';
     } else {
-      // Fallback: trust the device ID if it looks like a target, or default to unknown
       target = device.deviceId;
     }
 
-    // Explicit override from runtime if available (e.g. from a mockup)
-    // The bridge expects 'arduino-uno', 'basys3', etc. as `target`
-
-    // Construct valid payload for Bridge Agent via WS
-    // Note: We use WS now because HTTP POST /connect does not exist in the bridge agent.
     const payload = {
       target,
-      port: (device as any).port || device.runtime?.port, // Bridge sends port at top level
+      port: (device as any).port || device.runtime?.port,
       baud: device.runtime?.baud_default
     };
 
     if (this.DRYRUN_ENABLED) {
       this.activeDevice = device;
       this.capabilities = this.buildCapabilitiesFromDevice(device);
+      progressSucceed(actionId, `Connected to ${device.boardModel} (dry-run)`);
       return true;
     }
 
     return new Promise((resolve) => {
-      // Type Guard: Ensure we are connected and have a WS
       if (this.state.status !== 'connected' || !this.state.ws) {
+        progressFail(actionId, {
+          code: 'HW_NOT_CONNECTED',
+          studentMessage: 'WebSocket not available',
+          details: { deviceId },
+        });
         resolve(false);
         return;
       }
       const ws = this.state.ws;
 
-      // Generate a correlation ID
       const id = Math.floor(Math.random() * 1000000);
 
-      // One-time listener for the response
       const handler = (event: MessageEvent) => {
         try {
           const msg = JSON.parse(event.data.toString());
@@ -658,10 +678,20 @@ export class HardwareClient {
             if (msg.type === 'CONNECT_OK') {
               this.activeDevice = device;
               this.capabilities = this.buildCapabilitiesFromDevice(device);
-              console.log(`[HardwareClient] Selected device: ${device.boardModel} (${deviceId})`);
+              progressSucceed(actionId, `Connected to ${device.boardModel}`);
               resolve(true);
             } else {
-              console.error(`[HardwareClient] Connect failed: ${msg.payload?.message}`);
+              const error = toStudentFacingError(
+                new RbUserError(
+                  'HW_CONNECT_FAILED',
+                  msg.payload?.message || 'Device connection failed'
+                )
+              );
+              progressFail(actionId, {
+                code: error.code,
+                studentMessage: error.message,
+                details: { deviceId, response: msg },
+              });
               resolve(false);
             }
           }
@@ -672,20 +702,36 @@ export class HardwareClient {
 
       ws.addEventListener('message', handler);
 
-      // Send CONNECT message
       ws.send(JSON.stringify({
         v: 'rb-bridge.v1',
         id,
         type: 'CONNECT',
-        deviceId: deviceId, // Important: Tell bridge WHICH virtual slot to use (uno vs basys3)
+        deviceId: deviceId,
         payload
       }));
 
-      // Timeout fallback
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         ws.removeEventListener('message', handler);
+        progressFail(actionId, {
+          code: 'HW_TIMEOUT',
+          studentMessage: 'Device connection timed out',
+          details: { deviceId },
+        });
         resolve(false);
       }, 5000);
+
+      if (opts?.signal) {
+        opts.signal.addEventListener('abort', () => {
+          clearTimeout(timeoutId);
+          ws.removeEventListener('message', handler);
+          progressFail(actionId, {
+            code: 'RB_CANCELED',
+            studentMessage: 'Device connection canceled',
+            details: { deviceId },
+          });
+          resolve(false);
+        });
+      }
     });
   }
 
@@ -920,55 +966,110 @@ export class HardwareClient {
     }
   }
 
-  /**
-   * Export current session data as a proof capsule (JSON blob).
-   * Used by HardwarePanelApp to export snapshots for submission.
-   */
-  async exportProof(): Promise<Blob> {
+  async exportProof(opts?: { signal?: AbortSignal }): Promise<Blob> {
+    const actionId = 'rb:hw:export:proof';
+
     if (this.state.status !== 'connected') {
-      throw new Error('Hardware bridge not connected');
+      const error = new RbUserError(
+        'HW_NOT_CONNECTED',
+        'Hardware bridge not connected'
+      );
+      progressFail(actionId, {
+        code: 'HW_NOT_CONNECTED',
+        studentMessage: error.message,
+      });
+      throw error;
     }
 
-    const capsule = {
-      timestamp: new Date().toISOString(),
-      version: '1.0.0',
-      bridge: this.state.bridge,
-      devices: this.state.devices,
-      snapshots: [],
-    };
+    try {
+      progressStart(actionId, 'Exporting proof capsule...');
 
-    const json = JSON.stringify(capsule, null, 2);
-    return new Blob([json], { type: 'application/json' });
+      const capsule = {
+        timestamp: new Date().toISOString(),
+        version: '1.0.0',
+        bridge: this.state.bridge,
+        devices: this.state.devices,
+        snapshots: [],
+      };
+
+      const json = JSON.stringify(capsule, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+
+      progressSucceed(actionId, 'Proof capsule exported');
+      return blob;
+    } catch (err) {
+      const studentError = toStudentFacingError(err);
+      progressFail(actionId, {
+        code: studentError.code,
+        studentMessage: studentError.message,
+        details: { error: err },
+      });
+      throw err;
+    }
   }
 
-  /**
-   * Stream a series of test vectors to the hardware.
-   * This sends a batch of inputs to the bridge for execution.
-   */
-  async streamVectors(vectors: Array<{ inputs: Record<string, number>; delayMs?: number }>): Promise<boolean> {
+  async streamVectors(
+    vectors: Array<{ inputs: Record<string, number>; delayMs?: number }>,
+    opts?: { signal?: AbortSignal }
+  ): Promise<boolean> {
+    const actionId = 'rb:hw:stream:vectors';
+
     if (this.state.status !== 'connected') {
-      console.warn('[HardwareClient] Cannot stream vectors: not connected');
+      const error = new RbUserError(
+        'HW_NOT_CONNECTED',
+        'Cannot stream vectors: not connected'
+      );
+      progressFail(actionId, {
+        code: 'HW_NOT_CONNECTED',
+        studentMessage: error.message,
+      });
       return false;
     }
 
     try {
+      progressStart(actionId, `Streaming ${vectors.length} test vectors...`);
+
       const endpoint = `${this.config.httpUrl.replace('/api/v1', '')}/api/vectors/stream`;
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vectors }),
-        signal: AbortSignal.timeout(this.FETCH_TIMEOUT_MS * 5), // Longer timeout for batch
+        signal: opts?.signal ?? AbortSignal.timeout(this.FETCH_TIMEOUT_MS * 5),
       });
 
-      return res.ok;
-    } catch (error) {
-      console.warn('[HardwareClient] Failed to stream vectors:', error);
-      // Fallback: send individually if stream endpoint not available
-      for (const v of vectors) {
-        await this.setOutputs(v.inputs);
-        if (v.delayMs) await new Promise(r => setTimeout(r, v.delayMs));
+      if (!res.ok) {
+        throw new RbUserError('HW_STREAM_FAILED', `Failed to stream vectors: HTTP ${res.status}`);
       }
+
+      progressSucceed(actionId, 'Test vectors streamed');
       return true;
+    } catch (error) {
+      if (opts?.signal?.aborted) {
+        progressFail(actionId, {
+          code: 'RB_CANCELED',
+          studentMessage: 'Vector streaming canceled',
+        });
+        return false;
+      }
+
+      // Fallback: send individually if stream endpoint not available
+      try {
+        progressUpdate(actionId, 0.5, 'Using fallback method...');
+        for (const v of vectors) {
+          await this.setOutputs(v.inputs);
+          if (v.delayMs) await new Promise(r => setTimeout(r, v.delayMs));
+        }
+        progressSucceed(actionId, 'Test vectors streamed (fallback)');
+        return true;
+      } catch (fallbackErr) {
+        const studentError = toStudentFacingError(fallbackErr);
+        progressFail(actionId, {
+          code: studentError.code,
+          studentMessage: studentError.message,
+          details: { error: fallbackErr },
+        });
+        return false;
+      }
     }
   }
 }

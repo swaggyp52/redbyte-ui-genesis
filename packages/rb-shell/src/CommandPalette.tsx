@@ -435,16 +435,16 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ onExecute, onClo
         onClick={(e) => e.stopPropagation()}
         className="border rounded-2xl shadow-2xl w-[560px] overflow-hidden backdrop-blur-xl"
         style={{
-          borderColor: 'var(--rb-border)',
-          background: 'var(--rb-glass)',
-          boxShadow: 'var(--rb-shadow-3)',
+          borderColor: 'var(--rb-ui-border)',
+          background: 'var(--rb-ui-surface-2)',
+          boxShadow: 'var(--rb-ui-shadow-3)',
           outline: 'none',
         }}
       >
-        <div className="p-4 border-b" style={{ borderColor: 'var(--rb-border)' }}>
+        <div className="p-4 border-b" style={{ borderColor: 'var(--rb-ui-border)' }}>
           <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em]">Command Palette</div>
           <div className="mt-2 flex items-center gap-2 rounded-xl border px-3 py-2"
-            style={{ borderColor: 'var(--rb-border)', background: 'var(--rb-surface-2)' }}
+            style={{ borderColor: 'var(--rb-ui-border)', background: 'var(--rb-ui-surface-2)' }}
           >
             <Icon name="search" size={16} />
             <input
@@ -466,7 +466,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ onExecute, onClo
             </div>
           ) : (
             sections.map((section) => (
-              <div key={section.title} className="border-b" style={{ borderColor: 'var(--rb-border)' }}>
+              <div key={section.title} className="border-b" style={{ borderColor: 'var(--rb-ui-border)' }}>
                 <div className="px-4 py-2 text-[10px] uppercase tracking-[0.2em] text-slate-500">
                   {section.title}
                 </div>
@@ -485,12 +485,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ onExecute, onClo
                       className={`w-full text-left px-4 py-3 border-t transition-colors ${
                         isSelected ? 'bg-cyan-900/30 text-cyan-200' : 'text-slate-200 hover:bg-slate-900/60'
                       }`}
-                      style={{ borderColor: 'var(--rb-border)' }}
+                      style={{ borderColor: 'var(--rb-ui-border)' }}
                       data-selected={isSelected ? 'true' : 'false'}
                     >
                       <div className="flex items-start gap-3">
                         <div className="mt-0.5 h-8 w-8 rounded-lg border flex items-center justify-center"
-                          style={{ borderColor: 'var(--rb-border)', background: 'var(--rb-surface-2)' }}
+                          style={{ borderColor: 'var(--rb-ui-border)', background: 'var(--rb-ui-surface-2)' }}
                         >
                           <Icon name={icon} size={16} />
                         </div>
@@ -508,7 +508,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ onExecute, onClo
           )}
         </div>
 
-        <div className="p-3 border-t text-xs text-slate-500" style={{ borderColor: 'var(--rb-border)', background: 'var(--rb-surface-2)' }}>
+        <div className="p-3 border-t text-xs text-slate-500" style={{ borderColor: 'var(--rb-ui-border)', background: 'var(--rb-ui-surface-2)' }}>
           <kbd className="px-1.5 py-0.5 bg-slate-900 rounded">↑↓</kbd> Navigate{' '}
           <kbd className="px-1.5 py-0.5 bg-slate-900 rounded">Enter</kbd> Execute{' '}
           <kbd className="px-1.5 py-0.5 bg-slate-900 rounded">Esc</kbd> Close
