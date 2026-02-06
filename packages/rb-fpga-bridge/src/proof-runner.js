@@ -51,17 +51,29 @@ function logError(msg, error) {
 }
 
 async function killProcessOnPort(port) {
-  // Kill any existing process using the port (cross-platform)
-  const cmd = process.platform === "win32"
-    ? `taskkill /F /FI "PID eq $(netstat -ano | findstr :${port} | findstr LISTENING | ForEach-Object {($_ -split '\\s+')[4]})"`
-    : `lsof -ti:${port} | xargs kill -9 2>/dev/null || true`;
-  
+  // CI is almost certainly linux. Do the reliable thing first.
   try {
     const { execSync } = await import("child_process");
-    execSync(cmd, { stdio: "ignore" });
-  } catch (e) {
-    // Ignore errors (port might not be in use)
-  }
+    execSync(`bash -lc "lsof -ti tcp:${port} | xargs -r kill -9"`, { stdio: "ignore" });
+    return;
+  } catch {}
+
+  // Fallback if lsof isn't present:
+  try {
+    const { execSync } = await import("child_process");
+    execSync(`bash -lc "fuser -k ${port}/tcp || true"`, { stdio: "ignore" });
+    return;
+  } catch {}
+
+  // Windows best-effort (won't run in ubuntu CI, but harmless to keep):
+  try {
+    const { execSync } = await import("child_process");
+    const out = execSync(`powershell -NoProfile -Command "(Get-NetTCPConnection -LocalPort ${port} -ErrorAction SilentlyContinue).OwningProcess"`, { encoding: "utf8" });
+    const pids = out.split(/\s+/).filter(Boolean);
+    for (const pid of pids) {
+      execSync(`powershell -NoProfile -Command "Stop-Process -Id ${pid} -Force -ErrorAction SilentlyContinue"`, { stdio: "ignore" });
+    }
+  } catch {}
 }
 
 async function cleanup() {
