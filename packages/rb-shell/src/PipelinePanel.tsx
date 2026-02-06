@@ -41,9 +41,9 @@ interface StepDef {
 const DOT_SIZE = 8;
 
 const stepColors: Record<StepState, string> = {
-  complete: '#22c55e',
-  active: '#3b82f6',
-  pending: 'var(--rb-surface-3, #3f3f46)',
+  complete: 'var(--rb-ui-accent)',
+  active: 'var(--rb-ui-accent)',
+  pending: 'var(--rb-ui-surface-3)',
 };
 
 const Step: React.FC<{ step: StepDef }> = ({ step }) => {
@@ -62,7 +62,7 @@ const Step: React.FC<{ step: StepDef }> = ({ step }) => {
         border: 'none',
         background: isClickable ? 'transparent' : 'transparent',
         cursor: isClickable ? 'pointer' : 'default',
-        fontFamily: 'var(--rb-font-mono, monospace)',
+        fontFamily: 'var(--rb-ui-font-mono)',
       }}
       title={isClickable ? `Go to ${step.label}` : undefined}
     >
@@ -73,7 +73,7 @@ const Step: React.FC<{ step: StepDef }> = ({ step }) => {
           borderRadius: '50%',
           background: stepColors[step.state],
           flexShrink: 0,
-          boxShadow: step.state === 'active' ? '0 0 5px rgba(59,130,246,0.5)' : 'none',
+          boxShadow: step.state === 'active' ? '0 0 6px var(--rb-ui-accent)' : 'none',
           animation: step.state === 'active' ? 'rbPipelinePulse 1.5s ease-in-out infinite' : 'none',
         }}
       />
@@ -81,18 +81,18 @@ const Step: React.FC<{ step: StepDef }> = ({ step }) => {
         style={{
           fontSize: 11,
           fontWeight: 600,
-          color: step.state === 'pending' ? 'var(--rb-text-3, #71717a)' : 'var(--rb-text, #e4e4e7)',
+          color: step.state === 'pending' ? 'var(--rb-ui-text-3)' : 'var(--rb-ui-text)',
         }}
       >
         {step.label}
       </span>
-      <span style={{ fontSize: 10, color: 'var(--rb-text-3, #71717a)' }}>{step.sublabel}</span>
+      <span style={{ fontSize: 10, color: 'var(--rb-ui-text-3)' }}>{step.sublabel}</span>
     </Tag>
   );
 };
 
 const Arrow: React.FC = () => (
-  <span style={{ fontSize: 10, color: 'var(--rb-text-3, #71717a)', userSelect: 'none' }}>&rarr;</span>
+  <span style={{ fontSize: 10, color: 'var(--rb-ui-text-3)', userSelect: 'none' }}>&rarr;</span>
 );
 
 /* ─── Main Component ───────────────────────────────────────── */
@@ -142,8 +142,8 @@ export const PipelinePanel: React.FC<PipelinePanelProps> = ({
           gap: 4,
           padding: '4px 8px',
           borderRadius: 6,
-          background: 'var(--rb-surface-1, #18181b)',
-          border: '1px solid var(--rb-border, #333)',
+          background: 'var(--rb-ui-surface-1)',
+          border: '1px solid var(--rb-ui-border)',
         }}
       >
         {steps.map((step, i) => (

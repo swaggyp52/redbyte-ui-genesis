@@ -56,18 +56,6 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
-    id: 'error-codes',
-    title: 'Error Codes / Troubleshooting Matrix',
-    errorCodes: ['UNEXPECTED_ERROR', 'DEVICE_VERIFICATION_FAILED', 'FIRMWARE_UPLOAD_FAILED', 'HW_DEVICE_NOT_FOUND', 'HW_TIMEOUT', 'HW_STREAM_FAILED', 'RB_CANCELED'],
-    steps: [
-      'Every error has a code (e.g., HW_NOT_CONNECTED, BRIDGE_UNREACHABLE).',
-      'Use the search box above to find troubleshooting steps for your error code.',
-      'Copy diagnostics using the button below to share with instructors.',
-      'If the error persists, reload the page and try again.',
-      'For unrecognized errors, report the code to your course staff.',
-    ],
-  },
-  {
     id: 'hardware-timeout',
     title: 'Hardware Timeout / Device Not Found',
     errorCodes: ['HW_TIMEOUT', 'HW_DEVICE_NOT_FOUND'],
@@ -89,6 +77,18 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Close any other software that might be accessing the board.',
       'Try a different USB port (avoid hubs if possible).',
       'Verify the board model matches your selection in RedByte.',
+    ],
+  },
+  {
+    id: 'error-codes',
+    title: 'Error Codes / Troubleshooting Matrix',
+    errorCodes: ['UNEXPECTED_ERROR', 'HW_STREAM_FAILED', 'RB_CANCELED'],
+    steps: [
+      'Every error has a code (e.g., HW_NOT_CONNECTED, BRIDGE_UNREACHABLE).',
+      'Use the search box above to find troubleshooting steps for your error code.',
+      'Copy diagnostics using the button below to share with instructors.',
+      'If the error persists, reload the page and try again.',
+      'For unrecognized errors, report the code to your course staff.',
     ],
   },
 ];

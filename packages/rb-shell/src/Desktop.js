@@ -15,9 +15,9 @@ export const Desktop = React.memo(({ onOpenApp, wallpaperId, themeVariant }) => 
         onOpenApp('logic-playground');
     };
     return (_jsxs("div", { ref: desktopRef, id: "rb-desktop-region", "data-testid": "shell-desktop", role: "region", "aria-label": "Desktop", className: "rb-desktop rb-noise absolute inset-0 overflow-hidden pointer-events-none", style: { ...wallpaperStyle }, children: [_jsx("div", { className: "pointer-events-none absolute inset-0 rb-vignette" }), _jsx("div", { className: "pointer-events-none absolute inset-0 flex items-center justify-center", children: _jsx("div", { className: "text-[120px] font-bold leading-none select-none", style: {
-                        color: 'var(--rb-text)',
+                        color: 'var(--rb-ui-text)',
                         opacity: 0.02,
-                        fontFamily: 'var(--rb-font-sans)',
+                        fontFamily: 'var(--rb-ui-font-sans)',
                         letterSpacing: '-0.04em',
                     }, children: "R" }) }), wallpaperId === 'redbyte-field' && (_jsx("div", { className: "pointer-events-none absolute inset-0", children: _jsx("div", { className: "absolute inset-0 rb-anim", style: {
                         opacity: 0.3,
@@ -25,6 +25,10 @@ export const Desktop = React.memo(({ onOpenApp, wallpaperId, themeVariant }) => 
                             'linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px)',
                         backgroundSize: '120px 120px',
                         animation: 'rb-field-drift 60s linear infinite',
-                    } }) })), _jsx("div", { className: "absolute inset-0 pointer-events-auto", style: { zIndex: 0 }, onContextMenu: handleContextMenu, onDoubleClick: handleDoubleClick }), _jsx("div", { className: "absolute bottom-3 left-4 z-10 text-[10px] font-mono pointer-events-auto", style: { color: 'var(--rb-text-2)', opacity: 0.8 }, children: _jsx("span", { className: "px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 font-bold", children: "v0.9.0" }) }), _jsx("div", { className: "absolute bottom-3 right-4 z-10 text-right text-[10px] font-mono pointer-events-none", style: { color: 'var(--rb-text-3)', opacity: 0.5 }, children: _jsx("div", { children: "RedByte OS Genesis" }) })] }));
+                    } }) })), _jsx("div", { className: "absolute inset-0 pointer-events-auto", style: { zIndex: 0 }, onContextMenu: handleContextMenu, onDoubleClick: handleDoubleClick }), _jsx("div", { className: "absolute bottom-3 left-4 z-10 text-[10px] font-mono pointer-events-auto", style: { color: 'var(--rb-ui-text-2)', opacity: 0.8 }, children: _jsx("span", { className: "px-1.5 py-0.5 rounded font-bold", style: {
+                        background: 'var(--rb-ui-accent-soft)',
+                        border: '1px solid var(--rb-ui-accent)',
+                        color: 'var(--rb-ui-accent)',
+                    }, children: "v0.9.0" }) }), _jsx("div", { className: "absolute bottom-3 right-4 z-10 text-right text-[10px] font-mono pointer-events-none", style: { color: 'var(--rb-ui-text-3)', opacity: 0.5 }, children: _jsx("div", { children: "RedByte OS Genesis" }) })] }));
 });
 Desktop.displayName = 'Desktop';

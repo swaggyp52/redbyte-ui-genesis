@@ -127,6 +127,7 @@ interface AppErrorBoundaryProps {
   appId: string;
   windowId: string;
   onClose: () => void;
+  onOpenHelp: (errorCode?: string) => void;
   children: React.ReactNode;
 }
 
@@ -257,6 +258,16 @@ class AppErrorBoundary extends React.Component<
               style={{ ...btnBase, background: 'transparent', color: 'var(--rb-text-2, #94a3b8)' }}
             >
               Export Report
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const studentError = toStudentFacingError(this.state.error);
+                this.props.onOpenHelp(studentError.code !== 'UNEXPECTED_ERROR' ? studentError.code : undefined);
+              }}
+              style={{ ...btnBase, background: 'var(--rb-accent, #0891b2)', color: 'white' }}
+            >
+              Open Help
             </button>
             <button
               type="button"
@@ -2767,7 +2778,12 @@ export const Shell: React.FC<ShellProps> = () => {
               });
             }}
           >
-            <AppErrorBoundary appId={app.manifest.id} windowId={window.id} onClose={() => handleClose(window.id)}>
+            <AppErrorBoundary 
+              appId={app.manifest.id} 
+              windowId={window.id} 
+              onClose={() => handleClose(window.id)}
+              onOpenHelp={(errorCode) => openWindow('help', { initialErrorCode: errorCode })}
+            >
               <Suspense fallback={<WindowLoadingFallback />}>
                 <Component
                   windowId={window.id}
@@ -2792,7 +2808,7 @@ export const Shell: React.FC<ShellProps> = () => {
       })}
 
       <ToastContainer />
-      <ProgressToasts />
+      <ProgressToasts onOpenHelp={(errorCode) => openWindow('help', { initialErrorCode: errorCode })} />
       <NarrativeOverlay />
 
       {systemSearchOpen && (

@@ -1,18 +1,39 @@
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
 // Help / Troubleshooting app for RedByte OS
 
-import React, { useState, useMemo, useCallback } from 'react';
-import { HELP_TOPICS, searchHelpTopics, type HelpTopic } from '../help/helpTopics';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { HELP_TOPICS, searchHelpTopics, getTopicsByErrorCode, type HelpTopic } from '../help/helpTopics';
 import { toast } from '@redbyte/rb-primitives';
 
 interface HelpAppProps {
   windowId?: string;
   initialQuery?: string;
+  initialErrorCode?: string;
+  initialTopicId?: string;
 }
 
-export function HelpApp({ windowId, initialQuery }: HelpAppProps) {
+export function HelpApp({ windowId, initialQuery, initialErrorCode, initialTopicId }: HelpAppProps) {
   const [searchQuery, setSearchQuery] = useState(initialQuery ?? '');
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+
+  // Auto-select topic on mount based on seed parameters
+  useEffect(() => {
+    if (initialTopicId) {
+      const topic = HELP_TOPICS.find((t) => t.id === initialTopicId);
+      if (topic) {
+        setSelectedTopicId(initialTopicId);
+        return;
+      }
+    }
+    if (initialErrorCode) {
+      const topics = getTopicsByErrorCode(initialErrorCode);
+      if (topics.length > 0) {
+        setSelectedTopicId(topics[0].id);
+        setSearchQuery(initialErrorCode); // Show error code in search box
+        return;
+      }
+    }
+  }, [initialTopicId, initialErrorCode]);
 
   const filteredTopics = useMemo(() => searchHelpTopics(searchQuery), [searchQuery]);
 

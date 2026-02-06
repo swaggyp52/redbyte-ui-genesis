@@ -32,8 +32,8 @@ export const TopBar: React.FC<TopBarProps> = React.memo(({
       <div
         className="h-8 px-3 flex items-center justify-between border-b"
         style={{
-          background: 'var(--rb-surface-1)',
-          borderColor: 'var(--rb-border)',
+          background: 'var(--rb-ui-surface-1)',
+          borderColor: 'var(--rb-ui-border)',
         }}
       >
         {/* Left: Logo + workspace */}
@@ -43,11 +43,11 @@ export const TopBar: React.FC<TopBarProps> = React.memo(({
             onClick={onOpenLauncher}
             title="Open Launcher (Ctrl/Cmd+K)"
             aria-label="Open Launcher"
-            style={{ color: 'var(--rb-text)' }}
+            style={{ color: 'var(--rb-ui-text)' }}
           >
             <div
               className="h-5 w-5 rounded flex items-center justify-center"
-              style={{ background: 'var(--rb-accent)' }}
+              style={{ background: 'var(--rb-ui-accent)' }}
             >
               <span className="text-[10px] font-bold text-white leading-none">R</span>
             </div>
@@ -62,24 +62,27 @@ export const TopBar: React.FC<TopBarProps> = React.memo(({
             className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium uppercase tracking-wider"
             style={{
               background: isRecording
-                ? 'rgba(239, 68, 68, 0.12)'
+                ? 'var(--rb-ui-accent-soft)'
                 : modeLabel === 'replay'
-                  ? 'rgba(129, 140, 248, 0.12)'
-                  : 'var(--rb-surface-2)',
+                  ? 'var(--rb-ui-accent-soft)'
+                  : 'var(--rb-ui-surface-2)',
               color: isRecording
-                ? '#F87171'
+                ? 'var(--rb-ui-danger)'
                 : modeLabel === 'replay'
-                  ? '#A5B4FC'
-                  : 'var(--rb-text-2)',
+                  ? 'var(--rb-ui-accent)'
+                  : 'var(--rb-ui-text-2)',
             }}
             title="Determinism Status"
             aria-label="Determinism Status"
           >
             {isRecording && (
-              <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+              <span
+                className="h-1.5 w-1.5 rounded-full animate-pulse"
+                style={{ background: 'var(--rb-ui-danger)' }}
+              />
             )}
             <span>{isRecording ? 'REC' : modeLabel}</span>
-            <span style={{ color: 'var(--rb-text-3)' }}>
+            <span style={{ color: 'var(--rb-ui-text-3)' }}>
               T{tickCount.toString().padStart(4, '0')}
             </span>
           </button>
@@ -92,14 +95,14 @@ export const TopBar: React.FC<TopBarProps> = React.memo(({
             className="relative h-6 px-2 rounded flex items-center gap-1.5 text-[11px] font-medium transition-colors"
             aria-label="Open System Log"
             title="Open System Log"
-            style={{ color: 'var(--rb-text-2)' }}
+            style={{ color: 'var(--rb-ui-text-2)' }}
           >
             <Icon name="log" size={14} />
             <span>Log</span>
             {unreadCount > 0 && (
               <span
                 className="h-4 min-w-[16px] px-1 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
-                style={{ background: 'var(--rb-danger)' }}
+                style={{ background: 'var(--rb-ui-danger)' }}
               >
                 {Math.min(unreadCount, 99)}
               </span>
@@ -111,7 +114,7 @@ export const TopBar: React.FC<TopBarProps> = React.memo(({
               className="h-6 w-6 rounded flex items-center justify-center transition-colors"
               aria-label="Open Settings"
               title="Open Settings (Ctrl/Cmd+,)"
-              style={{ color: 'var(--rb-text-3)' }}
+              style={{ color: 'var(--rb-ui-text-3)' }}
             >
               <Icon name="settings" size={14} />
             </button>
