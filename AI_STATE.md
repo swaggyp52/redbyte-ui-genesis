@@ -5277,6 +5277,14 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-02-05 (Phase 5A-1: Progress Toasts + Export Integration - Slice 2)
+- **Added ProgressToasts adapter** in rb-shell to map progressBus events to student-visible toasts.
+- **Toast behavior**: deduplicates per actionId, caps active toasts at 5, and provides Copy details on failures.
+- **Evidence export integration**: handleExportProof now emits progressStart/progressSucceed/progressFail with structured error details.
+- **GREEN LOCK maintained**: pnpm ci:parity passes (8/8 gates).
+- Files created: packages/rb-shell/src/ProgressToasts.tsx.
+- Files modified: packages/rb-shell/src/Shell.tsx, AI_STATE.md (this changelog).
+
 ### 2026-02-05 (Phase 5A-1: Progress System Infrastructure - Slice 1)
 - **Created progress reporting system** for long-running operations (export, ops, hardware actions).
 - **Progress API**: `progressStart()`, `progressUpdate()`, `progressSucceed()`, `progressFail()` in `packages/rb-utils/src/progress.ts/.js`.
