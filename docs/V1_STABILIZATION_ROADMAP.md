@@ -394,11 +394,37 @@ Set up staging deployments + production monitoring:
 
 ### Phase 5 Tracker
 
-- [ ] Visual consistency sweep: design system alignment across apps (no placeholder UI)
-- [ ] Workflow friction audit: shortcuts, tooltips, guidance, clearer long-operation progress
-- [ ] Notifications/messages: student-friendly, consistent, actionable
-- [ ] Cleanup: remove deprecated paths/TODOs; docs updated; license/attribution audit
-- [ ] Gate: full regression smoke pass + `pnpm -r build`
+**Phase 5A: Workflow Friction Killers (Highest Classroom ROI)**
+- [ ] P5A-1: Progress/toasts that never lie (hardware + export + ingest)
+  - `progress.ts` helper API (start/update/succeed/fail)
+  - Wire into: export (.rbproj/.rbx), lab ingest/run, hardware connect/select/program/stream
+  - Student-friendly default messages + "Copy details" for failures
+  - Gate: `pnpm ui:progress-contract-gate` (validates event sequence invariants)
+- [ ] P5A-2: "You can't lose your work" UX reinforcement
+  - "Autosaved" heartbeat indicator (subtle)
+  - Idiot-proof restore prompt copy
+  - One-click "Export for submission" from Virtual Lab
+  - Gate: `pnpm proj:autosave-meta-contract-gate` (ensures meta always written, no null projectId)
+- [ ] P5A-3: Help/Troubleshooting surface in OS
+  - Help app/panel with: bridge offline steps, export/submit steps, common errors (ERROR_MESSAGE_MATRIX), copy/paste diagnostics
+  - Gate: `pnpm os:help-surface-gate` (ensures Help app registers and renders minimal view)
+
+**Phase 5B: Visual Consistency Sweep (Normalize, Don't Redesign)**
+- [ ] P5B-1: Normalize 10 most visible UI components
+  - Components: buttons, toasts, modals, panels, tabs, headers, lists, toolbars, badges, empty-states, progress rows
+  - Deliverable: `docs/UI_STYLE_GUIDE.md` (1 page) + small CSS/token cleanup
+  - No new design system rewrite; enforce existing consistency only
+
+**Phase 5C: Cleanup + Release Hygiene**
+- [ ] P5C-1: Remove/flag dev-only leftovers
+  - Document dev flags, gate dev-only globals (`NODE_ENV !== 'production'`)
+  - Purge unused inspection stubs
+  - Gate: `pnpm repo:dev-only-guards-gate` (static scan for globals outside dev guards)
+- [ ] P5C-2: License/attribution audit
+  - Generate/verify `THIRD_PARTY_NOTICES.md`
+  - Confirm fonts/icons/3D assets licensing
+
+**Execution Rule:** No feature merges unless `pnpm ci:parity` is green locally (GREEN LOCK enforced).
 
 ### Refine Visual Design & Layout
 
