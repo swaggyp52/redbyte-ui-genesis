@@ -4245,17 +4245,15 @@ Persist window manager state deterministically to localStorage and restore it on
 
 \## Current Phase
 
+Phase ID: PHASE_V1_RELEASE
 
+Phase Name: v1.0.0 Release (Production Hardened)
 
-Phase ID: PHASE\_5C\_2
+Status: ✅ TAGGED & READY FOR DEPLOYMENT
 
-Phase Name: License Audit (P5C-2 Complete)
+Git Tag: v1.0.0
 
-Status: ✅ COMPLETED
-
-Git Commit: (pending)
-
-Details: Deterministic license audit with snapshot generator and GREEN LOCK gate
+Details: Phase 5 Complete. All gates passing (13 gates, 83+ tests). License audit, token normalization, dev guards documented. Ready for classroom deployment and production hardening.
 
 ### Completion Summary
 
@@ -6199,6 +6197,24 @@ Commits:
 - Wired Start Here actions to open the Logic Playground demo example and launch the FPGA lab in SIM-guided hardware mode.
 - Added OS visual tokens and shared control styles, applied them to lab apps, and toned down shell chrome to match the unified palette.
 - Fixed oscilloscope hover tooltip glyph and verified lint scripts are absent with `pnpm -r lint`; objectives unchanged; phase unchanged.
+
+## Change Log  2026-02-06 (v1.0.0 Release Tagged)
+
+- **[v1.0.0 Tagged]**: Phase 5 complete and ready for production deployment
+  - Confirmed all 13 gates passing locally (83+ tests, exit 0)
+  - Created `docs/RELEASE_CHECKLIST.md` - single-page deterministic checklist for release verification
+  - Tagged commit 26b074dd as `v1.0.0` with comprehensive release message
+  - Version string: `v1.0.0` (packages/rb-shell/src/version.ts)
+  - Build metadata: Latest git SHA, 2026-02-06 timestamp
+  - Updated `AI_STATE.md` Current Phase to mark v1.0.0 tagged and ready
+  - Next steps: Verify 5 GitHub Actions checks green on main, then proceed with student pilot run
+- **Remaining before "v1.0.0 bulletproof"**: 
+  - Confirm Quality Gate (Build + Test + Lint) ✅
+  - Confirm FPGA Bridge Proof ✅
+  - Confirm Smoke Test (Zip Install) ✅
+  - Confirm cloudflare-smoke ✅
+  - Confirm Deploy to Cloudflare Pages ✅
+  - Execute 15-minute manual smoke run (boot → virtual lab → export → perf toggle → hw dry-run → error recovery)
 
 ## Change Log  2026-02-06 (P5C-2 Complete: License Audit)
 
