@@ -163,6 +163,8 @@ interface LogicPlaygroundProps {
   dockTab?: string;
   /** Intent: open a specific learn subview on mount (e.g., 'lessons', 'help', 'manual') */
   dockSubview?: string;
+  /** Intent: open examples gallery on mount */
+  showExamples?: boolean;
   // Determinism recording (Milestone D - optional, dev-only)
   registerStateAccessor?: (windowId: string, accessor: { getCircuit?: () => any }) => void;
   unregisterStateAccessor?: (windowId: string) => void;
@@ -228,6 +230,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   onOpenApp,
   dockTab,
   dockSubview,
+  showExamples,
   registerStateAccessor,
   unregisterStateAccessor,
   determinismRecorder,
@@ -541,14 +544,14 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
         if (projectPayload && applyProjectRef.current) {
           applyProjectRef.current(projectPayload);
         } else {
-        if (payload.circuit) {
-          useCircuitStore.getState().updateCircuit(payload.circuit as Circuit, { skipHistory: true, enforceLimits: true });
-          setCircuit(payload.circuit as Circuit);
-          engineRef.current.setCircuit(payload.circuit as Circuit);
-        }
-        if (payload.layout) {
-          applyLayoutSnapshot(payload.layout);
-        }
+          if (payload.circuit) {
+            useCircuitStore.getState().updateCircuit(payload.circuit as Circuit, { skipHistory: true, enforceLimits: true });
+            setCircuit(payload.circuit as Circuit);
+            engineRef.current.setCircuit(payload.circuit as Circuit);
+          }
+          if (payload.layout) {
+            applyLayoutSnapshot(payload.layout);
+          }
         }
       }
       addToast('Recovered last session snapshot', 'success');
@@ -706,8 +709,8 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const [isDirty, setIsDirty] = useState(false);
 
   const legacyRbprojAutosaveKey = useMemo(
-    () => getRbprojAutosaveKey('logic-playground', props.windowId),
-    [props.windowId],
+    () => getRbprojAutosaveKey('logic-playground', windowId),
+    [windowId],
   );
   const rbprojAutosaveKey = useMemo(() => getCanonicalProjectAutosaveKey(projectId), [projectId]);
   useEffect(() => {
@@ -727,7 +730,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     applyProject: applyRbprojProject,
     changeDeps: [circuit, projectName, projectDescription],
   });
-  
+
   // Unified recovery coordinator (autosave > workspace > none)
   const unifiedRecovery = useUnifiedRecoverySurface({
     rbprojAutosave: rbprojAutosaveResult,
@@ -735,7 +738,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     onRestoreWorkspace: handleRecoverSnapshot,
     onDismissWorkspace: handleStartFresh,
   });
-  
+
   const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
   const [draggingNodeType, setDraggingNodeType] = useState<string | null>(null);
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
@@ -1641,6 +1644,9 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
         (dockSubview as LearnSubview) || undefined,
       );
     }
+    if (showExamples) {
+      setShowExamplesModal(true);
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- intent props are mount-only
 
   useEffect(() => {
@@ -2393,30 +2399,30 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       // Set hydration guard to prevent marking dirty during load
       isHydratingRef.current = true;
 
-    // Reset stores before loading file
-    resetAppStores();
+      // Reset stores before loading file
+      resetAppStores();
 
-    // Parse the file content (JSON string) to get the serialized circuit
-    const serialized: SerializedCircuitV1 = file.content
-      ? JSON.parse(file.content)
-      : { version: '1', nodes: [], connections: [] };
+      // Parse the file content (JSON string) to get the serialized circuit
+      const serialized: SerializedCircuitV1 = file.content
+        ? JSON.parse(file.content)
+        : { version: '1', nodes: [], connections: [] };
 
-    const loadedCircuit = deserialize(serialized);
-    setCircuit(loadedCircuit);
-    const newEngine = new CircuitEngine(loadedCircuit);
-    setEngine(newEngine);
-    setTickEngine(new TickEngine(loadedCircuit, { tickRate }));
-    setCurrentFileId(file.id);
-    setSelectedFileId(file.id);
-    setSelectedExampleId('');
-    setIsDirty(false);
+      const loadedCircuit = deserialize(serialized);
+      setCircuit(loadedCircuit);
+      const newEngine = new CircuitEngine(loadedCircuit);
+      setEngine(newEngine);
+      setTickEngine(new TickEngine(loadedCircuit, { tickRate }));
+      setCurrentFileId(file.id);
+      setSelectedFileId(file.id);
+      setSelectedExampleId('');
+      setIsDirty(false);
 
-    // Milestone D: Record circuit loaded event
-    if (determinismRecorder?.isRecording) {
-      determinismRecorder.recordCircuitLoaded(loadedCircuit);
-    }
-    // Clear pattern recognition state
-    lastRecognizedPatternRef.current = null;
+      // Milestone D: Record circuit loaded event
+      if (determinismRecorder?.isRecording) {
+        determinismRecorder.recordCircuitLoaded(loadedCircuit);
+      }
+      // Clear pattern recognition state
+      lastRecognizedPatternRef.current = null;
       // Clear hydration guard after load completes
       isHydratingRef.current = false;
     });
@@ -2451,105 +2457,105 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     if (!exampleId) return;
     const run = async () => {
       try {
-      // Set hydration guard to prevent marking dirty during load
-      isHydratingRef.current = true;
+        // Set hydration guard to prevent marking dirty during load
+        isHydratingRef.current = true;
 
-      // Ensure clean state before loading example
-      resetAppStores();
+        // Ensure clean state before loading example
+        resetAppStores();
 
-      let exampleToLoad: ExampleId = exampleId as ExampleId;
-      // CPU lite mode: swap heavy CPU for a lightweight counter and show a banner
-      if (exampleToLoad === '05_simple-cpu' && e2eCpuLite) {
-        console.info('RB_CPU_LITE_ENABLED', { ts: Date.now() });
-        addToast('CPU lite mode enabled for E2E', 'info');
-        exampleToLoad = '04_4bit-counter';
-      }
+        let exampleToLoad: ExampleId = exampleId as ExampleId;
+        // CPU lite mode: swap heavy CPU for a lightweight counter and show a banner
+        if (exampleToLoad === '05_simple-cpu' && e2eCpuLite) {
+          console.info('RB_CPU_LITE_ENABLED', { ts: Date.now() });
+          addToast('CPU lite mode enabled for E2E', 'info');
+          exampleToLoad = '04_4bit-counter';
+        }
 
-      const exampleData = await loadExample(exampleToLoad);
+        const exampleData = await loadExample(exampleToLoad);
 
-      // PHASE 2: Validation Boundary
-      const validation = validateCircuitData(exampleData);
-      if (!validation.valid) {
-        throw new Error(`Example data invalid: ${validation.error}`);
-      }
+        // PHASE 2: Validation Boundary
+        const validation = validateCircuitData(exampleData);
+        if (!validation.valid) {
+          throw new Error(`Example data invalid: ${validation.error}`);
+        }
 
-      const loadedCircuit = deserialize(exampleData);
+        const loadedCircuit = deserialize(exampleData);
 
-      // PHASE 1.5: DEV-only fault injection for ISSUE-B validation (stack overflow)
-      if (import.meta.env.DEV) {
-        const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-        if (params.get('fault') === 'deep-recursion') {
-          console.warn('[FAULT INJECTION] ISSUE-B: deep-recursion - expect stack overflow');
-          // Recursive function that will exceed stack depth
-          const deepRecurse = (depth: number): any => {
-            if (depth > 5000) return {};
-            return deepRecurse(depth + 1);
-          };
-          try {
-            deepRecurse(0);
-          } catch (e) {
-            console.error(`RB_RUNAWAY_LOOP_DETECTED: DEEP_RECURSION ${String(e)}`);
-            throw e;
+        // PHASE 1.5: DEV-only fault injection for ISSUE-B validation (stack overflow)
+        if (import.meta.env.DEV) {
+          const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+          if (params.get('fault') === 'deep-recursion') {
+            console.warn('[FAULT INJECTION] ISSUE-B: deep-recursion - expect stack overflow');
+            // Recursive function that will exceed stack depth
+            const deepRecurse = (depth: number): any => {
+              if (depth > 5000) return {};
+              return deepRecurse(depth + 1);
+            };
+            try {
+              deepRecurse(0);
+            } catch (e) {
+              console.error(`RB_RUNAWAY_LOOP_DETECTED: DEEP_RECURSION ${String(e)}`);
+              throw e;
+            }
           }
         }
+
+        // PHASE 3: Authoritative Store Update
+        // Use circuitStore.updateCircuit which enforces limits and handles history
+        useCircuitStore.getState().updateCircuit(loadedCircuit, { skipHistory: false, enforceLimits: true });
+
+        // Sync local state immediately
+        setCircuit(loadedCircuit);
+        // NOTE: We do NOT create new Engine/TickEngine here.
+        // The store.updateCircuit call updates the existing engines in the store.
+        // Since local engine state is synced from store, this is strict and correct.
+
+        setCurrentFileId(null);
+        setSelectedFileId('');
+        setSelectedExampleId(exampleId);
+        setIsDirty(true);
+
+        // Trigger narrative events for key examples
+        // Note: Narrative system temporarily disabled to avoid circular dependency
+        // if (exampleId === '10_sr-latch') {
+        //   triggerNarrative('milestone.srLatchBuilt', { exampleId });
+        // } else if (exampleId === '11_d-flipflop') {
+        //   triggerNarrative('milestone.dffUnderstood', { exampleId });
+        // } else if (exampleId === '04_4bit-counter') {
+        //   triggerNarrative('milestone.counterRuns', { exampleId });
+        // } else if (exampleId === '05_simple-cpu') {
+        //   triggerNarrative('milestone.cpuExplored', { exampleId });
+        // }
+
+        // Milestone D: Record circuit loaded event
+        if (determinismRecorder?.isRecording) {
+          determinismRecorder.recordCircuitLoaded(loadedCircuit);
+        }
+
+        seedExampleProbes(exampleToLoad, loadedCircuit);
+        if (exampleToLoad === '11_d-flipflop' || exampleToLoad === '04_4bit-counter') {
+          setPerspective('debug');
+        }
+
+        // UX Polish: Auto-start simulation for examples so they feel "alive" immediately
+        setIsRunning(true);
+        if (tickEngineRef.current) {
+          tickEngineRef.current.start();
+        }
+
+        // Clear pattern recognition state
+        lastRecognizedPatternRef.current = null;
+        // Clear hydration guard after load completes
+        isHydratingRef.current = false;
+
+        const exampleName = examples.current.find((ex) => ex.id === exampleToLoad)?.name ?? exampleToLoad;
+        addToast(`Loaded example: ${exampleName}`, 'success');
+      } catch (error) {
+        isHydratingRef.current = false;
+        addToast(`Failed to load example: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+        console.error('Error loading example:', error);
       }
-
-      // PHASE 3: Authoritative Store Update
-      // Use circuitStore.updateCircuit which enforces limits and handles history
-      useCircuitStore.getState().updateCircuit(loadedCircuit, { skipHistory: false, enforceLimits: true });
-
-      // Sync local state immediately
-      setCircuit(loadedCircuit);
-      // NOTE: We do NOT create new Engine/TickEngine here.
-      // The store.updateCircuit call updates the existing engines in the store.
-      // Since local engine state is synced from store, this is strict and correct.
-
-      setCurrentFileId(null);
-      setSelectedFileId('');
-      setSelectedExampleId(exampleId);
-      setIsDirty(true);
-
-      // Trigger narrative events for key examples
-      // Note: Narrative system temporarily disabled to avoid circular dependency
-      // if (exampleId === '10_sr-latch') {
-      //   triggerNarrative('milestone.srLatchBuilt', { exampleId });
-      // } else if (exampleId === '11_d-flipflop') {
-      //   triggerNarrative('milestone.dffUnderstood', { exampleId });
-      // } else if (exampleId === '04_4bit-counter') {
-      //   triggerNarrative('milestone.counterRuns', { exampleId });
-      // } else if (exampleId === '05_simple-cpu') {
-      //   triggerNarrative('milestone.cpuExplored', { exampleId });
-      // }
-
-      // Milestone D: Record circuit loaded event
-      if (determinismRecorder?.isRecording) {
-        determinismRecorder.recordCircuitLoaded(loadedCircuit);
-      }
-
-      seedExampleProbes(exampleToLoad, loadedCircuit);
-      if (exampleToLoad === '11_d-flipflop' || exampleToLoad === '04_4bit-counter') {
-        setPerspective('debug');
-      }
-
-      // UX Polish: Auto-start simulation for examples so they feel "alive" immediately
-      setIsRunning(true);
-      if (tickEngineRef.current) {
-        tickEngineRef.current.start();
-      }
-
-      // Clear pattern recognition state
-      lastRecognizedPatternRef.current = null;
-      // Clear hydration guard after load completes
-      isHydratingRef.current = false;
-
-      const exampleName = examples.current.find((ex) => ex.id === exampleToLoad)?.name ?? exampleToLoad;
-      addToast(`Loaded example: ${exampleName}`, 'success');
-    } catch (error) {
-      isHydratingRef.current = false;
-      addToast(`Failed to load example: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
-      console.error('Error loading example:', error);
-    }
-  };
+    };
 
     confirmReplacement('Load example', () => {
       void run();

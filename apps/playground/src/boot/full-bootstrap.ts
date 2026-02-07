@@ -14,19 +14,28 @@ export async function bootstrap() {
     console.log('RB_FATAL_CAPTURE_INSTALLED');
   }
 
-  // Register all apps BEFORE rendering Shell to avoid lazy loading during render
-  try {
-    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-    const isE2ELite = params.get('e2e') === '1';
-    const isBootOnly = params.get('boot') === '1';
-    await registerAllApps(
-      isBootOnly ? { mode: 'e2e-boot' } : isE2ELite ? { mode: 'e2e-lite' } : undefined
-    );
-    console.log('RB_APPS_REGISTERED');
-  } catch (err) {
-    console.error('RB_APPS_REGISTRATION_FAILED', err);
-    throw err;
-  }
+  // Register all apps (non-blocking - Shell must boot even if apps fail)
+  const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const isE2ELite = params.get('e2e') === '1';
+  const isBootOnly = params.get('boot') === '1';
+  const opts = isBootOnly ? { mode: 'e2e-boot' } : isE2ELite ? { mode: 'e2e-lite' } : undefined;
+  
+  console.log('RB_APPS_REGISTER_START', opts ?? { mode: 'full' });
+  const startedAt = performance.now();
+
+  // Do NOT await here. Boot must continue even if registration fails/hangs.
+  registerAllApps(opts as any)
+    .then(() => {
+      console.log('RB_APPS_REGISTERED', { ms: Math.round(performance.now() - startedAt) });
+    })
+    .catch((err) => {
+      console.error('RB_APPS_REGISTER_FAILED', err);
+    });
+
+  // Safety: if registration hangs, tell us explicitly.
+  setTimeout(() => {
+    console.warn('RB_APPS_REGISTER_TIMEOUT', { ms: 5000, mode: (opts as any)?.mode ?? 'full' });
+  }, 5000);
 
   // Instrument page lifecycle
   if (navigator.webdriver) {

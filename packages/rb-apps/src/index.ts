@@ -61,6 +61,16 @@ export {
 
 export type RegisterAllAppsMode = 'full' | 'e2e-lite' | 'e2e-boot';
 
+// Helper: safe per-app import/registration - log and continue if one fails
+async function safeRegister(name: string, fn: () => Promise<any>) {
+  try {
+    await fn();
+    console.log('RB_APP_OK', name);
+  } catch (e) {
+    console.error('RB_APP_FAIL', name, e);
+  }
+}
+
 export async function registerAllApps(options?: { mode?: RegisterAllAppsMode }) {
   const mode: RegisterAllAppsMode = options?.mode ?? 'full';
   // Dynamic imports: only load app modules when explicitly requested
@@ -68,65 +78,98 @@ export async function registerAllApps(options?: { mode?: RegisterAllAppsMode }) 
 
   // E2E-boot: minimal boot smoke (Shell mounts; no heavy apps).
   if (mode === 'e2e-boot') {
-    const { LauncherApp } = await import('./apps/LauncherApp');
-    const { SettingsApp } = await import('./apps/SettingsApp');
-    registerApp(LauncherApp);
-    registerApp(SettingsApp);
+    await safeRegister('launcher', async () => {
+      const { LauncherApp } = await import('./apps/LauncherApp');
+      registerApp(LauncherApp);
+    });
+    await safeRegister('settings', async () => {
+      const { SettingsApp } = await import('./apps/SettingsApp');
+      registerApp(SettingsApp);
+    });
     return;
   }
 
   // E2E-lite: keep startup lean and avoid importing 3D-heavy modules that can
   // crash headless Chromium or slow boot-time smoke tests.
   if (mode === 'e2e-lite') {
-    const { HomeApp } = await import('./apps/HomeApp');
-    const { SettingsApp } = await import('./apps/SettingsApp');
-    const { FilesApp } = await import('./apps/FilesApp');
-    const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundApp');
-    const { LauncherApp } = await import('./apps/LauncherApp');
-
-    registerApp(HomeApp);
-    registerApp(SettingsApp);
-    registerApp(FilesApp);
-    registerApp(LogicPlaygroundApp);
-    registerApp(LauncherApp);
+    await safeRegister('home', async () => {
+      const { HomeApp } = await import('./apps/HomeApp');
+      registerApp(HomeApp);
+    });
+    await safeRegister('settings', async () => {
+      const { SettingsApp } = await import('./apps/SettingsApp');
+      registerApp(SettingsApp);
+    });
+    await safeRegister('files', async () => {
+      const { FilesApp } = await import('./apps/FilesApp');
+      registerApp(FilesApp);
+    });
+    await safeRegister('logic-playground', async () => {
+      const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundApp');
+      registerApp(LogicPlaygroundApp);
+    });
+    await safeRegister('launcher', async () => {
+      const { LauncherApp } = await import('./apps/LauncherApp');
+      registerApp(LauncherApp);
+    });
     return;
   }
 
-  // ── Core apps (always registered) ──────────────────────────────────
-  const { HomeApp } = await import('./apps/HomeApp');
-  const { TerminalApp } = await import('./apps/TerminalApp');
-  const { SettingsApp } = await import('./apps/SettingsApp');
-  const { FilesApp } = await import('./apps/FilesApp');
-  const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundApp');
-  const { LauncherApp } = await import('./apps/LauncherApp');
-  const { TextViewerApp } = await import('./apps/TextViewerApp');
-  const { SystemLogApp } = await import('./apps/SystemLogApp');
+  // ── Core apps (always registered) - order matters: essential OS apps first ──────
+  await safeRegister('home', async () => {
+    const { HomeApp } = await import('./apps/HomeApp');
+    registerApp(HomeApp);
+  });
+  await safeRegister('launcher', async () => {
+    const { LauncherApp } = await import('./apps/LauncherApp');
+    registerApp(LauncherApp);
+  });
+  await safeRegister('settings', async () => {
+    const { SettingsApp } = await import('./apps/SettingsApp');
+    registerApp(SettingsApp);
+  });
+  await safeRegister('files', async () => {
+    const { FilesApp } = await import('./apps/FilesApp');
+    registerApp(FilesApp);
+  });
+  await safeRegister('terminal', async () => {
+    const { TerminalApp } = await import('./apps/TerminalApp');
+    registerApp(TerminalApp);
+  });
+  await safeRegister('text-viewer', async () => {
+    const { TextViewerApp } = await import('./apps/TextViewerApp');
+    registerApp(TextViewerApp);
+  });
+  await safeRegister('system-log', async () => {
+    const { SystemLogApp } = await import('./apps/SystemLogApp');
+    registerApp(SystemLogApp);
+  });
 
-  // ── Labs (browser + workspace) ───────────────────────────────────
-  const { LabsApp } = await import('./apps/LabsApp');
-  const { ECELabApp } = await import('./apps/ECELabManifest');
+  // ── Labs ────────────────────────────────────────────────────────
+  await safeRegister('labs', async () => {
+    const { LabsApp } = await import('./apps/LabsApp');
+    registerApp(LabsApp);
+  });
+  await safeRegister('ece-lab', async () => {
+    const { ECELabApp } = await import('./apps/ECELabManifest');
+    registerApp(ECELabApp);
+  });
 
-  // ── Instructor (unified portal with inline run detail) ────────────
-  const { InstructorApp } = await import('./apps/InstructorApp');
-  const { SubmissionInspectorApp } = await import('./apps/SubmissionInspectorApp');
+  // ── Instructor ──────────────────────────────────────────────────
+  await safeRegister('instructor', async () => {
+    const { InstructorApp } = await import('./apps/InstructorApp');
+    registerApp(InstructorApp);
+  });
+  await safeRegister('submission-inspector', async () => {
+    const { SubmissionInspectorApp } = await import('./apps/SubmissionInspectorApp');
+    registerApp(SubmissionInspectorApp);
+  });
 
-  // ── Register: core ────────────────────────────────────────────────
-  registerApp(HomeApp);
-  registerApp(LauncherApp);
-  registerApp(SettingsApp);
-  registerApp(FilesApp);
-  registerApp(TerminalApp);
-  registerApp(TextViewerApp);
-  registerApp(LogicPlaygroundApp);
-  registerApp(SystemLogApp);
-
-  // ── Register: labs ────────────────────────────────────────────────
-  registerApp(LabsApp);
-  registerApp(ECELabApp);
-
-  // ── Register: instructor ──────────────────────────────────────────
-  registerApp(InstructorApp);
-  registerApp(SubmissionInspectorApp);
+  // ── Heavy apps LAST (3D/Three.js) so core OS is usable even if they fail ──
+  await safeRegister('logic-playground', async () => {
+    const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundApp');
+    registerApp(LogicPlaygroundApp);
+  });
 
   // ── REMOVED (consolidated into the apps above) ────────────────────
   // WelcomeApp → replaced by HomeApp

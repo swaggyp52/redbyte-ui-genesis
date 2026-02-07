@@ -1,2 +1,0 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-export const MusicIcon = (props) => (_jsxs("svg", { viewBox: '0 0 24 24', fill: 'currentColor', ...props, children: [_jsx("path", { d: 'M9 18V5l12-2v13', fill: 'none', stroke: 'currentColor', strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' }), _jsx("circle", { cx: '6', cy: '18', r: '3' }), _jsx("circle", { cx: '18', cy: '16', r: '3' })] }));

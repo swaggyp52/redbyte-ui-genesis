@@ -1,2 +1,0 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-export const LogicNorIcon = (props) => (_jsxs("svg", { viewBox: '0 0 24 24', fill: 'currentColor', ...props, children: [_jsx("path", { d: 'M4 4h6c5 0 9 6 0 12H4V4z' }), _jsx("circle", { cx: '17', cy: '12', r: '1.5', fill: 'none', stroke: 'currentColor', strokeWidth: '1.5' })] }));

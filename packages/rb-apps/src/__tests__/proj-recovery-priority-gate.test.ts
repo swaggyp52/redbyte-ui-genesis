@@ -2,34 +2,7 @@
 // Gate: Recovery priority order (autosave > workspace > none)
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-/**
- * Recovery mode decision logic (pure function for gate testing)
- */
-export interface RecoveryContext {
-  hasAutosaveRestore: boolean;
-  hasWorkspaceCrash: boolean;
-  autosaveDiscarded: boolean;
-  autosaveRestored: boolean;
-}
-
-export type RecoveryMode = 'autosave' | 'workspace' | 'none';
-
-export function decideRecoveryMode(ctx: RecoveryContext): RecoveryMode {
-  // Priority 1: Autosave restore (data loss risk)
-  if (ctx.hasAutosaveRestore && !ctx.autosaveDiscarded && !ctx.autosaveRestored) {
-    return 'autosave';
-  }
-
-  // Priority 2: Workspace crash recovery (layout convenience)
-  // Only show if autosave has been handled (restored or discarded) or never existed
-  if (ctx.hasWorkspaceCrash && (ctx.autosaveRestored || ctx.autosaveDiscarded || !ctx.hasAutosaveRestore)) {
-    return 'workspace';
-  }
-
-  // Priority 3: Nothing to recover
-  return 'none';
-}
+import { decideRecoveryMode, type RecoveryContext } from '../utils/recoveryDecision';
 
 describe('proj:recovery-priority-gate (pure deterministic gate)', () => {
   beforeEach(() => {

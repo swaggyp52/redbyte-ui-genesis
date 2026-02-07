@@ -1,2 +1,0 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-export const ClockIcon = (props) => (_jsxs("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.5, ...props, children: [_jsx("circle", { cx: "12", cy: "12", r: "9" }), _jsx("path", { d: "M12 6v6l4 2", strokeLinecap: "round", strokeLinejoin: "round" }), _jsx("path", { d: "M12 3V1", strokeLinecap: "round", strokeOpacity: 0.6 })] }));

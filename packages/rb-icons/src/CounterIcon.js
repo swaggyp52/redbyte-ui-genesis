@@ -1,2 +1,0 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-export const CounterIcon = (props) => (_jsxs("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.5, ...props, children: [_jsx("rect", { x: "3", y: "6", width: "18", height: "12", rx: "2" }), _jsx("text", { x: "5", y: "15", fontSize: "8", fontFamily: "monospace", fill: "currentColor", stroke: "none", children: "0101" }), _jsx("path", { d: "M3 14l2 -1.5 -2 -1.5", fill: "none", strokeOpacity: 0.6 })] }));

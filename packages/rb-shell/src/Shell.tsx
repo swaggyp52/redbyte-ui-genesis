@@ -948,7 +948,9 @@ export const Shell: React.FC<ShellProps> = () => {
       recordRecentApp(appId);
 
       if (app.manifest.singleton) {
-        const existing = windows.find((w) => w.contentId === appId);
+        // Read current windows from the store directly to avoid stale closure
+        const currentWindows = useWindowStore.getState().windows;
+        const existing = currentWindows.find((w) => w.contentId === appId);
         if (existing) {
           if (existing.mode === 'minimized') {
             restoreWindow(existing.id);
@@ -985,7 +987,7 @@ export const Shell: React.FC<ShellProps> = () => {
       recordDiagnosticAction(`Open window: ${appId}`);
       return state.id;
     },
-    [createWindow, focusWindow, recordRecentApp, windows, restoreWindow, recordDiagnosticAction]
+    [createWindow, focusWindow, recordRecentApp, restoreWindow, recordDiagnosticAction]
   );
 
   // Helper callbacks that depend on openWindow
@@ -1265,7 +1267,13 @@ export const Shell: React.FC<ShellProps> = () => {
   }>>({});
 
   // Create stable callbacks for each window
-  useEffect(() => {
+  // Sync window handlers into ref during render (not in useEffect) so they
+  // are available on the SAME render cycle a new window appears.  Using
+  // useEffect caused a one-frame delay: the render ran first (handlers
+  // undefined → window returned null), then the effect populated the ref,
+  // but refs don't trigger re-renders so the window stayed invisible until
+  // an unrelated state change forced another render pass.
+  useMemo(() => {
     const handlers = windowHandlers.current;
     const currentWindowIds = new Set(windows.map(w => w.id));
 

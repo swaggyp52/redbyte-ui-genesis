@@ -98,24 +98,29 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
   }, [refreshSignals, signalPollingActive]);
 
   React.useEffect(() => {
-    if (selectedNodes.length === 0) {
-      setAnalogUiState({});
-      return;
+    let nextState: Record<string, number> = {};
+
+    if (selectedNodes.length > 0) {
+      const node = selectedNodes[0];
+      if (node.type === 'LDR') {
+        const light = typeof node.state?.light === 'number' ? node.state.light : 0.5;
+        nextState = { light };
+      } else if (node.type === 'VoltageSource') {
+        const voltage = typeof node.state?.voltage === 'number'
+          ? node.state.voltage
+          : (node.config?.voltage ?? 5);
+        nextState = { voltage };
+      }
     }
-    const node = selectedNodes[0];
-    if (node.type === 'LDR') {
-      const light = typeof node.state?.light === 'number' ? node.state.light : 0.5;
-      setAnalogUiState({ light });
-      return;
-    }
-    if (node.type === 'VoltageSource') {
-      const voltage = typeof node.state?.voltage === 'number'
-        ? node.state.voltage
-        : (node.config?.voltage ?? 5);
-      setAnalogUiState({ voltage });
-      return;
-    }
-    setAnalogUiState({});
+
+    setAnalogUiState((prev) => {
+      const prevKeys = Object.keys(prev);
+      const nextKeys = Object.keys(nextState);
+      if (prevKeys.length === nextKeys.length && nextKeys.every((key) => prev[key] === nextState[key])) {
+        return prev;
+      }
+      return nextState;
+    });
   }, [selectedNodes]);
 
   React.useEffect(() => {

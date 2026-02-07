@@ -1,2 +1,0 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-export const AdderIcon = (props) => (_jsxs("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.5, ...props, children: [_jsx("rect", { x: "4", y: "4", width: "16", height: "16", rx: "2" }), _jsx("path", { d: "M12 8v8M8 12h8", strokeLinecap: "round", strokeWidth: 2 }), _jsx("text", { x: "17", y: "19", fontSize: "4", fill: "currentColor", stroke: "none", opacity: 0.6, children: "S" })] }));

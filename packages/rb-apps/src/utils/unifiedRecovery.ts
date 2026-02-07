@@ -2,7 +2,7 @@
 // Unified recovery surface coordinator (autosave > workspace > none)
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { decideRecoveryMode, type RecoveryContext, type RecoveryMode } from '../__tests__/proj-recovery-priority-gate.test';
+import { decideRecoveryMode, type RecoveryContext, type RecoveryMode } from './recoveryDecision';
 import { type UseRbprojAutosaveResult } from './rbprojAutosave';
 import { loadSnapshot, wasLastShutdownClean, hasFatalMarkers } from './snapshotSystem';
 
