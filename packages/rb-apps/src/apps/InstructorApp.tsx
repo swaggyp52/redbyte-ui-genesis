@@ -2,10 +2,11 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import type { RedByteApp } from '../types';
 import styles from './InstructorApp.module.css';
 import { fetchLabRuns } from '../services/opsClient';
+import { InstructorRunDetailAppContent } from './InstructorRunDetailApp';
 
 interface LabRun {
   run_id: string;
@@ -25,6 +26,7 @@ export const InstructorAppContent: React.FC<InstructorAppProps> = ({ onNavigate 
   const [runs, setRuns] = useState<LabRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLabRuns()
@@ -39,9 +41,13 @@ export const InstructorAppContent: React.FC<InstructorAppProps> = ({ onNavigate 
       });
   }, []);
 
-  const handleRunClick = (runId: string) => {
-    onNavigate?.('instructor-run-detail', { runId });
-  };
+  const handleRunClick = useCallback((runId: string) => {
+    setSelectedRunId(runId);
+  }, []);
+
+  const handleBackToRuns = useCallback(() => {
+    setSelectedRunId(null);
+  }, []);
 
   const getBadgeClass = (verdict?: string) => {
     if (verdict === 'PASS') return styles.badgePass;
@@ -50,6 +56,20 @@ export const InstructorAppContent: React.FC<InstructorAppProps> = ({ onNavigate 
     return styles.badgeUnknown;
   };
 
+  // ── Run Detail (inline view) ──────────────────────────────────────
+  if (selectedRunId) {
+    return (
+      <InstructorRunDetailAppContent
+        runId={selectedRunId}
+        onNavigate={(_appId, _props) => {
+          // "Back to Runs" from RunDetail navigates back to the runs list
+          handleBackToRuns();
+        }}
+      />
+    );
+  }
+
+  // ── Runs List (dashboard) ─────────────────────────────────────────
   if (loading) {
     return (
       <div className={styles.container}>
@@ -71,7 +91,7 @@ export const InstructorAppContent: React.FC<InstructorAppProps> = ({ onNavigate 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1 className={styles.title}>Lab Runs</h1>
+        <h1 className={styles.title}>Instructor Dashboard</h1>
         <p className={styles.subtitle}>
           {runs.length} {runs.length === 1 ? 'submission' : 'submissions'} ingested
         </p>
@@ -102,7 +122,7 @@ export const InstructorAppContent: React.FC<InstructorAppProps> = ({ onNavigate 
                   onClick={() => handleRunClick(run.run_id)}
                   data-testid={`run-row-${run.run_id}`}
                 >
-                  <td>{run.created_at || run.timestamp ? new Date(run.created_at || run.timestamp).toLocaleString() : '—'}</td>
+                  <td>{run.created_at || run.timestamp ? new Date(run.created_at || run.timestamp!).toLocaleString() : '—'}</td>
                   <td>{run.student_id || '—'}</td>
                   <td>{run.lab_id || '—'}</td>
                   <td>
@@ -129,8 +149,8 @@ export const InstructorApp: RedByteApp = {
     iconId: 'grid',
     singleton: true,
     defaultSize: {
-      width: 900,
-      height: 600,
+      width: 1000,
+      height: 700,
     },
   },
   component: InstructorAppContent,

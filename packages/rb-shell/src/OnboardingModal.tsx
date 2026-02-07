@@ -50,7 +50,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   };
 
   const handleOpenHelp = () => {
-    onOpenApp('help');
+    // Set dock state before Playground mounts so it picks up the initial values
+    void import('@redbyte/rb-apps/stores/layoutStore').then(({ useLayoutStore }) => {
+      useLayoutStore.getState().openDock('learn', 'help');
+    });
+    onOpenApp('logic-playground');
     handleClose();
   };
 

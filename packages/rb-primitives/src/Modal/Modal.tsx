@@ -27,7 +27,7 @@ export interface ModalProps {
   /** Optional explicit height for the modal panel */
   height?: number | string;
   /** Optional ref to element that should receive initial focus */
-  initialFocusRef?: RefObject<HTMLElement | HTMLInputElement | HTMLButtonElement>;
+  initialFocusRef?: RefObject<HTMLElement | HTMLInputElement | HTMLButtonElement | null>;
   /** Whether clicking backdrop closes modal (default: true) */
   closeOnBackdrop?: boolean;
   /** Whether Escape key closes modal (default: true) */

@@ -9,9 +9,9 @@ html, body {
   padding: 0;
   width: 100%;
   height: 100%;
-  background: black;
+  background: #070B14;
   overflow: hidden;
-  font-family: system-ui, sans-serif;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
 }
 
 #root {

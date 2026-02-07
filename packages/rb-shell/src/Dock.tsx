@@ -17,11 +17,10 @@ const systemIcons: Array<{ id: string; label: string; iconId: IconName }> = [
 ];
 
 const appIcons: Array<{ id: string; label: string; iconId: IconName }> = [
-  { id: 'logic-playground', label: 'Logic Playground', iconId: 'logic' },
-  { id: 'ece-lab', label: 'Lab', iconId: 'cpu' },
-  { id: 'start-here', label: 'Start Here', iconId: 'cpu' },
+  { id: 'home', label: 'Home', iconId: 'neon-wave' },
+  { id: 'logic-playground', label: 'Playground', iconId: 'logic' },
+  { id: 'labs', label: 'Labs', iconId: 'book' },
   { id: 'terminal', label: 'Terminal', iconId: 'terminal' },
-  { id: 'system-log', label: 'System Log', iconId: 'log' },
 ];
 
 const allIcons = [...systemIcons, ...appIcons];

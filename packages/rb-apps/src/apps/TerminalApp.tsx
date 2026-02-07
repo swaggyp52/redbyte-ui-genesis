@@ -1176,14 +1176,14 @@ const TerminalComponent: React.FC<TerminalProps> = ({
           }
           addLine(`Opening lab: ${file.name}`);
           // Open in Virtual Lab or Lab Assignment based on file type
-          onOpenApp?.('virtual-lab', { initialCapsuleId: file.id });
+          onOpenApp?.('ece-lab', { initialCapsuleId: file.id });
           logCommandEvent('info', 'Lab opened', { fileId });
           break;
         }
 
         if (sub === 'export') {
           addLine('Exporting current lab session...');
-          addLine('Use the Export button in Virtual Lab for full capsule export.', 'output');
+          addLine('Use the Export button in the Lab workspace for full capsule export.', 'output');
           break;
         }
 
@@ -1225,7 +1225,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
             break;
           }
           addLine(`Opening replay: ${file.name}`);
-          onOpenApp?.('virtual-lab', { initialCapsuleId: file.id, replayMode: true });
+          onOpenApp?.('ece-lab', { initialCapsuleId: file.id, replayMode: true });
           logCommandEvent('info', 'Lab replay', { fileId });
           break;
         }

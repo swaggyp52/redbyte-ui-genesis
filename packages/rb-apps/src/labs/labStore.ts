@@ -5,6 +5,39 @@
 import { create } from 'zustand';
 import { LABS } from './labContent';
 
+// ---------------------------------------------------------------------------
+// Progress persistence (localStorage)
+// ---------------------------------------------------------------------------
+
+export interface LabProgressEntry {
+    status: 'not-started' | 'in-progress' | 'complete';
+    completedStepIndices: number[];
+    lastAccessedAt: number;
+}
+
+const PROGRESS_KEY = 'rb.labs.progress';
+
+function loadProgress(): Record<string, LabProgressEntry> {
+    try {
+        const raw = localStorage.getItem(PROGRESS_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return typeof parsed === 'object' && parsed !== null ? parsed : {};
+    } catch {
+        return {};
+    }
+}
+
+function saveProgress(progress: Record<string, LabProgressEntry>) {
+    try {
+        localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+    } catch { /* quota errors are non-fatal */ }
+}
+
+// ---------------------------------------------------------------------------
+// Store
+// ---------------------------------------------------------------------------
+
 interface LabState {
     currentStepIndex: number;
     completedSteps: number[]; // Array of completed step indices
@@ -13,6 +46,10 @@ interface LabState {
     activeLabId: string;
     studentName: string;
     studentId: string;
+
+    // Persisted progress across all labs
+    labProgress: Record<string, LabProgressEntry>;
+    getLabProgress: (labId: string) => LabProgressEntry;
 
     // Actions
     setActiveLab: (labId: string) => void;
@@ -43,9 +80,39 @@ export const useLabStore = create<LabState>((set, get) => ({
     activeLabId: 'lab-1',
     studentName: '',
     studentId: '',
+    labProgress: loadProgress(),
+
+    getLabProgress: (labId: string): LabProgressEntry => {
+        const progress = get().labProgress;
+        return progress[labId] ?? { status: 'not-started', completedStepIndices: [], lastAccessedAt: 0 };
+    },
 
     setActiveLab: (labId) => {
-        set({ activeLabId: labId, currentStepIndex: 0, completedSteps: [], isPass: false });
+        const progress = get().labProgress;
+        const existing = progress[labId];
+
+        // Restore progress if available, otherwise start fresh
+        const completedSteps = existing?.completedStepIndices ?? [];
+        const currentStep = completedSteps.length > 0 ? Math.max(...completedSteps) + 1 : 0;
+
+        // Update access time
+        const updatedProgress = {
+            ...progress,
+            [labId]: {
+                status: (completedSteps.length > 0 ? 'in-progress' : 'not-started') as LabProgressEntry['status'],
+                completedStepIndices: completedSteps,
+                lastAccessedAt: Date.now(),
+            },
+        };
+        saveProgress(updatedProgress);
+
+        set({
+            activeLabId: labId,
+            currentStepIndex: currentStep,
+            completedSteps,
+            isPass: false,
+            labProgress: updatedProgress,
+        });
     },
 
     setStudentInfo: (name, id) => {
@@ -65,7 +132,6 @@ export const useLabStore = create<LabState>((set, get) => ({
     // Data Safety
     isDirty: false,
     setIsDirty: (dirty: boolean) => set({ isDirty: dirty }),
-    // TODO: Implement actual persistence logic here or in middleware
 
     nextStep: () => {
         const { currentStepIndex, activeLabId } = get();
@@ -84,14 +150,35 @@ export const useLabStore = create<LabState>((set, get) => ({
     },
 
     markComplete: (stepIndex: number) => {
-        const { completedSteps } = get();
-        if (!completedSteps.includes(stepIndex)) {
-            set({ completedSteps: [...completedSteps, stepIndex] });
-        }
+        const { completedSteps, activeLabId, labProgress } = get();
+        if (completedSteps.includes(stepIndex)) return;
+
+        const newCompleted = [...completedSteps, stepIndex];
+        const content = LABS[activeLabId] || LABS['lab-1'];
+        const totalSteps = Array.isArray(content) ? content.length : content.steps.length;
+        const isComplete = newCompleted.length >= totalSteps;
+
+        const updatedProgress: Record<string, LabProgressEntry> = {
+            ...labProgress,
+            [activeLabId]: {
+                status: isComplete ? 'complete' : 'in-progress',
+                completedStepIndices: newCompleted,
+                lastAccessedAt: Date.now(),
+            },
+        };
+        saveProgress(updatedProgress);
+
+        set({ completedSteps: newCompleted, labProgress: updatedProgress });
     },
 
     resetLab: () => {
-        set({ currentStepIndex: 0, completedSteps: [], isPass: false });
+        const { activeLabId, labProgress } = get();
+        const updatedProgress: Record<string, LabProgressEntry> = {
+            ...labProgress,
+            [activeLabId]: { status: 'not-started', completedStepIndices: [], lastAccessedAt: Date.now() },
+        };
+        saveProgress(updatedProgress);
+        set({ currentStepIndex: 0, completedSteps: [], isPass: false, labProgress: updatedProgress });
     },
 
     setPass: (pass: boolean) => {

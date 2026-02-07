@@ -10,6 +10,14 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/rb-apps.js",
       "require": "./dist/rb-apps.js"
+    },
+    "./stores/circuitStore": {
+      "types": "./src/stores/circuitStore.ts",
+      "import": "./src/stores/circuitStore.ts"
+    },
+    "./stores/layoutStore": {
+      "types": "./src/stores/layoutStore.ts",
+      "import": "./src/stores/layoutStore.ts"
     }
   },
   "scripts": {

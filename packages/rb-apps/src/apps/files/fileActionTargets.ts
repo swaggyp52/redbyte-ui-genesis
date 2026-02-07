@@ -36,9 +36,9 @@ export const FILE_ACTION_TARGETS: FileActionTarget[] = [
       type === 'file' && (name.endsWith('.txt') || name.endsWith('.md')),
   },
   {
-    id: 'fpga-proof-viewer',
-    name: 'FPGA Proof Viewer',
-    appId: 'fpga-proof-viewer',
+    id: 'submission-inspector',
+    name: 'Submission Inspector',
+    appId: 'submission-inspector',
     isEligible: (type, name) =>
       type === 'file' && (
         name.endsWith('.capsule.json') ||
@@ -47,9 +47,9 @@ export const FILE_ACTION_TARGETS: FileActionTarget[] = [
       ),
   },
   {
-    id: 'virtual-lab',
-    name: 'Virtual Bench',
-    appId: 'virtual-lab',
+    id: 'ece-lab',
+    name: 'Lab Workspace',
+    appId: 'ece-lab',
     isEligible: (type, name) => type === 'file' && name.endsWith('.labcapsule.json'),
   },
 ];

@@ -2,6 +2,7 @@
 // Classroom-ready runtime flags and Safe Mode management
 
 import { create } from 'zustand';
+import { isCEMode } from '../utils/ceMode';
 
 interface ClassroomModeState {
   // Safe Mode: disables expensive features for reliability
@@ -76,9 +77,13 @@ function createClassroomModeStore() {
     isComplexityBlocked: false,
 
     setComplexity: (nodeCount: number, edgeCount: number, maxFanOut: number) => {
-      const isWarning = nodeCount >= 15;
-      const isBlocked = nodeCount >= 20;
-      const exceeds = nodeCount > 20; // Can happen via undo/redo or old saved circuits
+      const ceMode = isCEMode();
+      // In CE mode: warn at 15, block at 20. Normal mode: warn at 200, block at 500.
+      const warnThreshold = ceMode ? 15 : 200;
+      const blockThreshold = ceMode ? 20 : 500;
+      const isWarning = nodeCount >= warnThreshold;
+      const isBlocked = nodeCount >= blockThreshold;
+      const exceeds = nodeCount > blockThreshold;
 
       set({
         nodeCount,
@@ -88,26 +93,24 @@ function createClassroomModeStore() {
         isComplexityBlocked: isBlocked,
       });
 
-      // Auto-degrade: force Safe Mode + Step-only when workspace exceeds hard limit
-      // (happens when undoing into old state or loading pre-guardrail saves)
-      if (exceeds) {
+      // Auto-degrade only in CE mode when hard limit exceeded
+      if (ceMode && exceeds) {
         const currentState = get();
 
         if (!currentState.safeMode || !currentState.isStepOnlyMode) {
-          console.warn(`[ClassroomMode] Auto-degrading: workspace has ${nodeCount} nodes (limit: 20)`);
+          console.warn(`[ClassroomMode] Auto-degrading: workspace has ${nodeCount} nodes (limit: ${blockThreshold})`);
 
           set({
             safeMode: true,
             isStepOnlyMode: true,
           });
 
-          // Persist Safe Mode so it stays on across page reloads
           localStorage.setItem('rb_safe_mode', '1');
         }
       }
 
-      // Auto-enable step-only mode at warning threshold
-      if (isWarning && !get().isStepOnlyMode) {
+      // Auto-enable step-only mode at warning threshold (CE mode only)
+      if (ceMode && isWarning && !get().isStepOnlyMode) {
         set({ isStepOnlyMode: true });
         if (!get().metrics.nodeCountWarningTriggered) {
           get().recordNodeCountWarning();

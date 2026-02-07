@@ -13,8 +13,11 @@ import { LearnModePanel } from './LearnModePanel';
 import { RunRecorderPanel } from './RunRecorderPanel';
 import type { GuidedExample } from '../logic/learnMode';
 import { useProbeStore } from '../stores/probeStore';
+import { useLayoutStore, type LearnSubview } from '../stores/layoutStore';
 import { trackRender, useUiTickStore } from '@redbyte/rb-utils';
 import { BoardIOPanel } from './BoardIOPanel';
+import { HelpApp } from '../apps/HelpApp';
+import { UserManualAppComponent } from '../apps/UserManualApp';
 
 /**
  * Logic Playground vNext Right Dock
@@ -74,6 +77,7 @@ interface RightDockProps {
   // Learn tab
   onLoadExample?: (example: GuidedExample) => void;
   onExitLearnMode?: () => void;
+  onOpenApp?: (appId: string, props?: Record<string, unknown>) => void;
 
   // Chips tab
   chips?: Array<{ id: string; name: string; description?: string }>;
@@ -136,6 +140,7 @@ export const RightDock: React.FC<RightDockProps> = ({
   onRecordImportProofPack,
   onLoadExample,
   onExitLearnMode,
+  onOpenApp,
   chips = [],
   onChipInsert,
   onChipDelete,
@@ -175,6 +180,17 @@ export const RightDock: React.FC<RightDockProps> = ({
   const setActiveProbe = useProbeStore((state) => state.setActiveProbe);
   const reorderProbes = useProbeStore((state) => state.reorderProbes);
   const uiTick = useUiTickStore((state) => state.uiTick);
+  const learnSubview = useLayoutStore((s) => s.learnSubview);
+  const setLearnSubview = useLayoutStore((s) => s.setLearnSubview);
+  const learnHelpErrorCode = useLayoutStore((s) => s.learnHelpErrorCode);
+
+  // Clear stale errorCode after HelpApp consumes it (one render cycle)
+  useEffect(() => {
+    if (learnHelpErrorCode && activeTab === 'learn' && learnSubview === 'help') {
+      useLayoutStore.setState({ learnHelpErrorCode: null });
+    }
+  }, [learnHelpErrorCode, activeTab, learnSubview]);
+
   const [selectedNodeId, setSelectedNodeId] = useState<string>('');
   const [selectedPortName, setSelectedPortName] = useState<string>('out');
   const [probeValues, setProbeValues] = useState<Record<string, number>>({});
@@ -357,14 +373,14 @@ export const RightDock: React.FC<RightDockProps> = ({
 
   if (dockState === 'collapsed') {
     return (
-      <div className="w-14 border-l border-gray-700 bg-gray-900 flex flex-col items-center py-4 gap-4">
+      <div className="w-14 border-l border-[#1B2028] bg-[#0D1117] flex flex-col items-center py-4 gap-4">
         {/* Collapsed tabs - vertical icons */}
         <button
           onClick={() => {
             handleTabChange('inspector');
             setDockState('peek');
           }}
-          className="w-10 h-10 rounded hover:bg-gray-800 transition-colors flex items-center justify-center"
+          className="w-10 h-10 rounded hover:bg-[#161B22] transition-colors flex items-center justify-center"
           title="Inspector"
           type="button"
         >
@@ -375,7 +391,7 @@ export const RightDock: React.FC<RightDockProps> = ({
             handleTabChange('health');
             setDockState('peek');
           }}
-          className="w-10 h-10 rounded hover:bg-gray-800 transition-colors flex items-center justify-center"
+          className="w-10 h-10 rounded hover:bg-[#161B22] transition-colors flex items-center justify-center"
           title="Health"
           type="button"
         >
@@ -386,7 +402,7 @@ export const RightDock: React.FC<RightDockProps> = ({
             handleTabChange('learn');
             setDockState('peek');
           }}
-          className="w-10 h-10 rounded hover:bg-gray-800 transition-colors flex items-center justify-center"
+          className="w-10 h-10 rounded hover:bg-[#161B22] transition-colors flex items-center justify-center"
           title="Learn"
           type="button"
         >
@@ -397,7 +413,7 @@ export const RightDock: React.FC<RightDockProps> = ({
             handleTabChange('probes');
             setDockState('peek');
           }}
-          className="w-10 h-10 rounded hover:bg-gray-800 transition-colors flex items-center justify-center"
+          className="w-10 h-10 rounded hover:bg-[#161B22] transition-colors flex items-center justify-center"
           title="Probes"
           type="button"
         >
@@ -408,7 +424,7 @@ export const RightDock: React.FC<RightDockProps> = ({
             handleTabChange('record');
             setDockState('peek');
           }}
-          className="w-10 h-10 rounded hover:bg-gray-800 transition-colors flex items-center justify-center"
+          className="w-10 h-10 rounded hover:bg-[#161B22] transition-colors flex items-center justify-center"
           title="Record"
           type="button"
         >
@@ -419,7 +435,7 @@ export const RightDock: React.FC<RightDockProps> = ({
             handleTabChange('chips');
             setDockState('peek');
           }}
-          className="w-10 h-10 rounded hover:bg-gray-800 transition-colors flex items-center justify-center"
+          className="w-10 h-10 rounded hover:bg-[#161B22] transition-colors flex items-center justify-center"
           title="Chips"
           type="button"
         >
@@ -432,15 +448,15 @@ export const RightDock: React.FC<RightDockProps> = ({
   const width = dockState === 'peek' ? 'w-80' : 'w-96';
 
   return (
-    <div className={`${width} border-l border-gray-700 bg-gray-900 flex flex-col transition-all duration-200 shrink-0`} data-testid="right-dock">
+    <div className={`${width} border-l border-[#1B2028] bg-[#0D1117] flex flex-col transition-all duration-200 shrink-0`} data-testid="right-dock">
       {/* Tab Bar */}
-      <div className="flex items-center h-12 bg-gray-850 border-b border-gray-700">
+      <div className="flex items-center h-12 bg-[#0D1117] border-b border-[#1B2028]">
         <div className="flex-1 flex items-stretch h-full px-2 gap-1" role="tablist">
           <button
             onClick={() => handleTabChange('inspector')}
             className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'inspector'
-              ? 'bg-cyan-600 text-white shadow-lg'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
+              : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
               }`}
             aria-label="Inspector"
             aria-selected={activeTab === 'inspector' ? 'true' : 'false'}
@@ -455,8 +471,8 @@ export const RightDock: React.FC<RightDockProps> = ({
           <button
             onClick={() => handleTabChange('health')}
             className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'health'
-              ? 'bg-cyan-600 text-white shadow-lg'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
+              : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
               }`}
             aria-label="Health"
             aria-selected={activeTab === 'health' ? 'true' : 'false'}
@@ -471,8 +487,8 @@ export const RightDock: React.FC<RightDockProps> = ({
           <button
             onClick={() => handleTabChange('learn')}
             className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'learn'
-              ? 'bg-cyan-600 text-white shadow-lg'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
+              : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
               }`}
             aria-label="Learn"
             aria-selected={activeTab === 'learn' ? 'true' : 'false'}
@@ -487,8 +503,8 @@ export const RightDock: React.FC<RightDockProps> = ({
           <button
             onClick={() => handleTabChange('probes')}
             className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'probes'
-              ? 'bg-cyan-600 text-white shadow-lg'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
+              : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
               }`}
             aria-label="Probes"
             aria-selected={activeTab === 'probes' ? 'true' : 'false'}
@@ -503,8 +519,8 @@ export const RightDock: React.FC<RightDockProps> = ({
           <button
             onClick={() => handleTabChange('record')}
             className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'record'
-              ? 'bg-cyan-600 text-white shadow-lg'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
+              : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
               }`}
             aria-label="Record"
             aria-selected={activeTab === 'record' ? 'true' : 'false'}
@@ -520,8 +536,8 @@ export const RightDock: React.FC<RightDockProps> = ({
           <button
             onClick={() => handleTabChange('chips')}
             className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'chips'
-              ? 'bg-cyan-600 text-white shadow-lg'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
+              : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
               }`}
             aria-label="Chips"
             aria-selected={activeTab === 'chips' ? 'true' : 'false'}
@@ -536,8 +552,8 @@ export const RightDock: React.FC<RightDockProps> = ({
           <button
             onClick={() => handleTabChange('io')}
             className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'io'
-              ? 'bg-cyan-600 text-white shadow-lg'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
+              : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
               }`}
             aria-label="IO"
             aria-selected={activeTab === 'io' ? 'true' : 'false'}
@@ -554,7 +570,7 @@ export const RightDock: React.FC<RightDockProps> = ({
         {/* Dock state toggle - OUTSIDE tablist */}
         <button
           onClick={handleStateToggle}
-          className="h-full px-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+          className="h-full px-2 text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22] rounded transition-colors"
           title={dockState === 'peek' ? 'Expand' : 'Collapse'}
           type="button"
           aria-label={dockState === 'peek' ? 'Expand Dock' : 'Collapse Dock'}
@@ -567,26 +583,26 @@ export const RightDock: React.FC<RightDockProps> = ({
       <div className="flex-1 overflow-hidden">
         {activeTab === 'inspector' && (
           <div className="h-full flex flex-col overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-700/60 bg-gray-900/80">
+            <div className="px-4 py-3 border-b border-[#1B2028]/60 bg-[#0D1117]/80">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-gray-500">
+                  <div className="text-[10px] uppercase tracking-wide text-[#6E7681]">
                     Clock
                   </div>
                   <div className="mt-1 flex items-center gap-2 text-xs font-mono">
-                    <span className="text-cyan-300">t{tickCount}</span>
+                    <span className="text-[#22D3EE]">t{tickCount}</span>
                     <span
-                      className={`text-[10px] ${isRunning ? 'text-green-400' : tickCount === 0 ? 'text-gray-400' : 'text-yellow-300'
+                      className={`text-[10px] ${isRunning ? 'text-green-400' : tickCount === 0 ? 'text-[#8B949E]' : 'text-yellow-300'
                         }`}
                     >
                       {isRunning ? 'Running' : tickCount === 0 ? 'Stopped' : 'Paused'}
                     </span>
-                    <span className="text-[10px] text-gray-400">
+                    <span className="text-[10px] text-[#8B949E]">
                       {isRunning ? `${tickRate}Hz` : 'Manual'}
                     </span>
                   </div>
                   {lastTickAt && (
-                    <div className="mt-1 text-[10px] text-gray-500">
+                    <div className="mt-1 text-[10px] text-[#6E7681]">
                       Last step {new Date(lastTickAt).toLocaleTimeString()}
                     </div>
                   )}
@@ -595,7 +611,7 @@ export const RightDock: React.FC<RightDockProps> = ({
                   {onStep && (
                     <button
                       onClick={onStep}
-                      className="px-2 py-1 text-[10px] rounded border border-blue-500/50 text-blue-200 hover:bg-blue-500/20"
+                      className="px-2 py-1 text-[10px] rounded border border-[#22D3EE]/40 text-[#22D3EE] hover:bg-[#22D3EE]/10"
                       type="button"
                       title="Advance one tick"
                     >
@@ -617,7 +633,7 @@ export const RightDock: React.FC<RightDockProps> = ({
                   {onResetTickCount && (
                     <button
                       onClick={onResetTickCount}
-                      className="px-2 py-1 text-[10px] rounded border border-gray-600 text-gray-300 hover:bg-gray-700/60"
+                      className="px-2 py-1 text-[10px] rounded border border-[#2D333B] text-[#8B949E] hover:bg-[#161B22]/60"
                       type="button"
                       title="Reset tick counter"
                     >
@@ -652,22 +668,50 @@ export const RightDock: React.FC<RightDockProps> = ({
         )}
 
         {activeTab === 'learn' && (
-          <div className="h-full overflow-hidden">
-            <LearnModePanel
-              circuit={circuit}
-              onLoadExample={onLoadExample}
-              onExitLearnMode={onExitLearnMode}
-            />
+          <div className="h-full flex flex-col overflow-hidden">
+            {/* Learn subview selector */}
+            <div className="flex items-center gap-1 px-3 py-2 border-b border-[#1B2028]/60 bg-[#0D1117]/80">
+              {(['lessons', 'help', 'manual'] as const).map((sv) => (
+                <button
+                  key={sv}
+                  type="button"
+                  onClick={() => setLearnSubview(sv)}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                    learnSubview === sv
+                      ? 'text-[#E6EDF3] border-b-2 border-[#D4930D]'
+                      : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
+                  }`}
+                >
+                  {sv === 'lessons' ? 'Lessons' : sv === 'help' ? 'Help' : 'Manual'}
+                </button>
+              ))}
+            </div>
+            {/* Subview content */}
+            <div className="flex-1 overflow-hidden">
+              {learnSubview === 'lessons' && (
+                <LearnModePanel
+                  circuit={circuit}
+                  onLoadExample={onLoadExample}
+                  onExitLearnMode={onExitLearnMode}
+                />
+              )}
+              {learnSubview === 'help' && (
+                <HelpApp initialErrorCode={learnHelpErrorCode ?? undefined} />
+              )}
+              {learnSubview === 'manual' && (
+                <UserManualAppComponent onOpenApp={onOpenApp} />
+              )}
+            </div>
           </div>
         )}
 
         {activeTab === 'probes' && (
           <div className="h-full p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-300">Signal Probes</h3>
-              <span className="text-[10px] text-gray-500">Live values</span>
+              <h3 className="text-sm font-semibold text-[#E6EDF3]">Signal Probes</h3>
+              <span className="text-[10px] text-[#6E7681]">Live values</span>
             </div>
-            <label className="flex items-center justify-between text-[10px] text-gray-400 bg-gray-800/40 border border-gray-700/60 rounded px-2 py-1">
+            <label className="flex items-center justify-between text-[10px] text-[#8B949E] bg-[#161B22]/40 border border-[#1B2028]/60 rounded px-2 py-1">
               <span>Highlight probed paths</span>
               <input
                 type="checkbox"
@@ -681,7 +725,7 @@ export const RightDock: React.FC<RightDockProps> = ({
               <select
                 value={selectedNodeId}
                 onChange={(e) => setSelectedNodeId(e.target.value)}
-                className="w-full px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
+                className="w-full px-2 py-1 bg-[#161B22] rounded border border-[#1B2028] text-xs"
                 aria-label="Select node to probe"
               >
                 <option value="">Select node...</option>
@@ -695,7 +739,7 @@ export const RightDock: React.FC<RightDockProps> = ({
               <select
                 value={selectedPortName}
                 onChange={(e) => setSelectedPortName(e.target.value)}
-                className="w-full px-2 py-1 bg-gray-800 rounded border border-gray-700 text-xs"
+                className="w-full px-2 py-1 bg-[#161B22] rounded border border-[#1B2028] text-xs"
                 aria-label="Select port to probe"
               >
                 {portOptions.map((port) => (
@@ -708,7 +752,7 @@ export const RightDock: React.FC<RightDockProps> = ({
               <button
                 onClick={handleAddProbe}
                 disabled={!selectedNodeId}
-                className="w-full px-2 py-1 bg-cyan-700 hover:bg-cyan-600 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-2 py-1 bg-[#D4930D] hover:bg-[#E0A30E] rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                 type="button"
               >
                 Add Probe
@@ -717,7 +761,7 @@ export const RightDock: React.FC<RightDockProps> = ({
               <button
                 onClick={handleAddClockProbe}
                 disabled={!clockNode}
-                className="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-2 py-1 bg-[#21262D] hover:bg-[#2D333B] rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                 type="button"
               >
                 Add Clock Probe
@@ -726,16 +770,16 @@ export const RightDock: React.FC<RightDockProps> = ({
 
             <div className="flex-1 overflow-y-auto mt-1">
               {probes.length === 0 ? (
-                <div className="text-center py-12 text-gray-400 space-y-2">
+                <div className="text-center py-12 text-[#8B949E] space-y-2">
                   <div className="text-sm font-semibold">No probes added</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-[#6E7681]">
                     Select a node output or add the first probe automatically.
                   </div>
                   <button
                     type="button"
                     onClick={handleAddFirstProbe}
                     disabled={selectableNodes.length === 0}
-                    className="mt-2 px-3 py-1.5 rounded bg-cyan-700 hover:bg-cyan-600 text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="mt-2 px-3 py-1.5 rounded bg-[#D4930D] hover:bg-[#E0A30E] text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Add First Probe
                   </button>
@@ -773,15 +817,15 @@ export const RightDock: React.FC<RightDockProps> = ({
                       className={`rounded border p-3 transition-colors cursor-move ${draggedProbeIndex === index
                         ? 'opacity-50'
                         : dragOverIndex === index
-                          ? 'border-cyan-500 bg-cyan-900/30'
+                          ? 'border-[#D4930D] bg-[#D4930D]/30'
                           : activeProbeId === probe.id
-                            ? 'border-cyan-500/60 bg-cyan-900/20'
-                            : 'border-gray-700/50 bg-gray-800/50 hover:bg-gray-800/80'
+                            ? 'border-[#D4930D]/60 bg-[#D4930D]/20'
+                            : 'border-[#1B2028]/50 bg-[#161B22]/50 hover:bg-[#161B22]/80'
                         }`}
                       onClick={() => handleProbeSelect(probe.id)}
                     >
                       <div className="flex items-start gap-2">
-                        <div className="flex flex-col items-center gap-0.5 pt-1 cursor-grab active:cursor-grabbing text-gray-500 hover:text-gray-400">
+                        <div className="flex flex-col items-center gap-0.5 pt-1 cursor-grab active:cursor-grabbing text-[#6E7681] hover:text-[#8B949E]">
                           <div className="w-1 h-1 bg-current rounded-full" />
                           <div className="w-1 h-1 bg-current rounded-full" />
                           <div className="w-1 h-1 bg-current rounded-full" />
@@ -798,21 +842,21 @@ export const RightDock: React.FC<RightDockProps> = ({
                             className="w-full bg-transparent text-sm font-medium text-white outline-none"
                             aria-label="Probe label"
                           />
-                          <div className="text-[10px] text-gray-400 font-mono truncate">
+                          <div className="text-[10px] text-[#8B949E] font-mono truncate">
                             {probe.nodeId} - {probe.portName}
                           </div>
                         </div>
                         <div
                           className={`px-2 py-1 text-xs rounded font-mono ${probeValues[probe.id] === 1
                             ? 'bg-green-500/20 text-green-300'
-                            : 'bg-gray-700/50 text-gray-400'}`}
+                            : 'bg-[#21262D]/50 text-[#8B949E]'}`}
                         >
                           {probeValues[probe.id] ?? 0}
                         </div>
                       </div>
 
                       <div className="mt-2 flex items-center gap-2">
-                        <label className="flex items-center gap-1 text-[10px] text-gray-400 cursor-pointer">
+                        <label className="flex items-center gap-1 text-[10px] text-[#8B949E] cursor-pointer">
                           <input
                             type="checkbox"
                             checked={probe.enabled}
@@ -871,13 +915,13 @@ export const RightDock: React.FC<RightDockProps> = ({
 
         {activeTab === 'chips' && (
           <div className="h-full p-4">
-            <h3 className="text-sm font-semibold text-gray-300 mb-4">Saved Chips</h3>
+            <h3 className="text-sm font-semibold text-[#E6EDF3] mb-4">Saved Chips</h3>
 
             {chips.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
+              <div className="text-center py-12 text-[#8B949E]">
                 <div className="text-4xl mb-2">🧩</div>
                 <div className="text-sm">No saved chips</div>
-                <div className="text-xs text-gray-500 mt-2">
+                <div className="text-xs text-[#6E7681] mt-2">
                   Build a circuit and save it as a chip
                 </div>
               </div>
@@ -886,7 +930,7 @@ export const RightDock: React.FC<RightDockProps> = ({
                 {chips.map((chip) => (
                   <div
                     key={chip.id}
-                    className="bg-gray-800/50 rounded p-3 hover:bg-gray-700/50 transition-colors cursor-pointer"
+                    className="bg-[#161B22]/50 rounded p-3 hover:bg-[#21262D]/50 transition-colors cursor-pointer"
                     onClick={() => onChipInsert?.(chip.id)}
                   >
                     <div className="flex items-center justify-between mb-1">
@@ -898,7 +942,7 @@ export const RightDock: React.FC<RightDockProps> = ({
                               e.stopPropagation();
                               onChipEdit(chip.id);
                             }}
-                            className="px-2 py-1 text-xs text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20 rounded transition-colors"
+                            className="px-2 py-1 text-xs text-[#D4930D] hover:text-[#22D3EE] hover:bg-[#22D3EE]/10 rounded transition-colors"
                           >
                             Edit
                           </button>
@@ -917,7 +961,7 @@ export const RightDock: React.FC<RightDockProps> = ({
                       </div>
                     </div>
                     {chip.description && (
-                      <div className="text-xs text-gray-400">{chip.description}</div>
+                      <div className="text-xs text-[#8B949E]">{chip.description}</div>
                     )}
                   </div>
                 ))}
@@ -947,7 +991,7 @@ export const RightDock: React.FC<RightDockProps> = ({
                 boardConnected={boardConnected}
               />
             ) : (
-              <div className="p-4 text-center text-gray-400 text-sm">
+              <div className="p-4 text-center text-[#8B949E] text-sm">
                 IO Mapping not available
               </div>
             )}

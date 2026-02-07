@@ -4,7 +4,7 @@
 
 import type { Command } from './CommandPalette';
 
-export type SearchResultType = 'app' | 'command' | 'intent' | 'macro' | 'file';
+export type SearchResultType = 'app' | 'command' | 'intent' | 'macro' | 'file' | 'knowledge';
 
 export interface AppSearchResult {
   type: 'app';
@@ -45,7 +45,15 @@ export interface FileSearchResult {
   resourceType: 'file';
 }
 
-export type SearchResult = AppSearchResult | CommandSearchResult | IntentSearchResult | MacroSearchResult | FileSearchResult;
+export interface KnowledgeSearchResult {
+  type: 'knowledge';
+  id: string;
+  name: string;
+  description: string;
+  gateTypes?: string[];
+}
+
+export type SearchResult = AppSearchResult | CommandSearchResult | IntentSearchResult | MacroSearchResult | FileSearchResult | KnowledgeSearchResult;
 
 export interface SearchResults {
   apps: AppSearchResult[];
@@ -53,4 +61,5 @@ export interface SearchResults {
   intents: IntentSearchResult[];
   macros: MacroSearchResult[];
   files: FileSearchResult[];
+  knowledge: KnowledgeSearchResult[];
 }

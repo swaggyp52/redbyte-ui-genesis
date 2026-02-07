@@ -13,7 +13,7 @@ interface SelectionGlowProps {
 export const SelectionGlow: React.FC<SelectionGlowProps> = ({ isSelected, isHovered }) => {
   if (!isSelected && !isHovered) return null;
 
-  const color = isSelected ? '#3b82f6' : '#6366f1'; // Blue for selected, indigo for hover
+  const color = isSelected ? '#D4930D' : '#22D3EE'; // Amber for selected, teal for hover
   const scale = isSelected ? 1.15 : 1.08;
   const linewidth = isSelected ? 3 : 2;
 

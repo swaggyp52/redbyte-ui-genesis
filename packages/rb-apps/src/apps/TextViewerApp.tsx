@@ -103,6 +103,7 @@ export const TextViewerApp: RedByteApp = {
     iconId: 'document',
     singleton: false,
     category: 'utilities',
+    hidden: true,
     defaultSize: { width: 600, height: 500 },
     minSize: { width: 400, height: 300 },
   },

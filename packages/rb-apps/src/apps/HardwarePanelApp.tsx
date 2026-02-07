@@ -1044,6 +1044,7 @@ export const HardwarePanelApp: RedByteApp = {
     iconId: "chip",
     singleton: true,
     category: "tools",
+    hidden: true,
     defaultSize: { width: 900, height: 700 },
     minSize: { width: 700, height: 500 },
   },

@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import type { Circuit, CircuitEngine, Node, Connection, PortRef } from '@redbyte/rb-logic-core';
 import type { TickEngine } from '@redbyte/rb-logic-core';
 import { recordAuditTransition } from '../utils/audit';
+import { isCEMode } from '../utils/ceMode';
 
 // Debug flag for instrumentation (DEV-only)
 const DEBUG_PLAYGROUND = import.meta.env.DEV && false; // Set to true to enable debug logs
@@ -35,8 +36,10 @@ function hashCircuit(circuit: Circuit): string {
   return `nodes:${circuit.nodes.length},conns:${circuit.connections.length}`;
 }
 
-// Classroom guardrail: hard limit for node count
-const HARD_LIMIT = 20;
+// Node count limits: strict in Classroom Edition, generous in normal mode
+const CE_HARD_LIMIT = 20;
+const NORMAL_HARD_LIMIT = 500;
+const HARD_LIMIT = isCEMode() ? CE_HARD_LIMIT : NORMAL_HARD_LIMIT;
 
 function getConnectionNodeId(ref: PortRef | string): string {
   return typeof ref === 'string' ? ref : ref.nodeId;
@@ -286,10 +289,10 @@ function createCircuitStore() {
     addNode: (nodeType, position) => {
       const { circuit } = get();
 
-      // CLASSROOM GUARDRAIL: Hard block at 20 nodes (cannot create #21)
+      // Guardrail: block at node limit (CE: 20, normal: 500)
       if (circuit.nodes.length >= HARD_LIMIT) {
         console.warn(`[CircuitStore] Node creation blocked: limit reached (${circuit.nodes.length}/${HARD_LIMIT})`);
-        return; // Silent return; UI will show banner
+        return;
       }
 
       // Dev-mode invariant: validate node type is registered

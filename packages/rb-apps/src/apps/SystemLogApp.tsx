@@ -140,6 +140,7 @@ export const SystemLogApp: RedByteApp = {
     iconId: 'log',
     singleton: true,
     category: 'system',
+    hidden: true,
     defaultSize: { width: 760, height: 520 },
     minSize: { width: 620, height: 420 },
   },

@@ -961,6 +961,7 @@ export const SubmissionInspectorApp: RedByteApp = {
     name: 'Submission Inspector',
     iconId: 'search',
     category: 'tools',
+    hidden: true,
     defaultSize: {
       width: 1000,
       height: 750,

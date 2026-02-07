@@ -104,7 +104,9 @@
       "Bash(node:*)",
       "Bash(timeout 10 tail:*)",
       "Bash(timeout 15 tail:*)",
-      "Bash(npx vite build:*)"
+      "Bash(npx vite build:*)",
+      "Bash(findstr:*)",
+      "Bash(Select-String \"error TS\")"
     ],
     "deny": [],
     "ask": []

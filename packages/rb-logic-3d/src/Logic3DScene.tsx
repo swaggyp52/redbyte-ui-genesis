@@ -31,6 +31,8 @@ interface Logic3DSceneProps {
   /** Force a specific time for deterministic replay (optional) */
   forcedTime?: number;
   onLayoutChange?: () => void;
+  /** Trigger rise-up entrance animation on mount */
+  enterAnimation?: boolean;
 }
 
 export const buildSelectionMap = (
@@ -86,10 +88,21 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
   debugSignals,
   forcedTime,
   onLayoutChange,
+  enterAnimation: enterAnimationProp = false,
 }) => {
   const [showHelp, setShowHelp] = React.useState(false);
   const [followSelection, setFollowSelection] = useState(false);
   const [animateSignalFlow, setAnimateSignalFlow] = useState(true);
+  const [enterAnimation, setEnterAnimation] = useState(enterAnimationProp);
+  const hasAnimatedRef = useRef(false);
+
+  // Auto-trigger enter animation on first mount
+  useEffect(() => {
+    if (!hasAnimatedRef.current) {
+      hasAnimatedRef.current = true;
+      setEnterAnimation(true);
+    }
+  }, []);
 
   // Camera State used for resets
   const [cameraTarget, setCameraTarget] = useState<[number, number, number]>([0, 0.25, 0]);
@@ -194,6 +207,8 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
         height={height}
         cameraPosition={cameraPosition}
         cameraTarget={cameraTarget}
+        enterAnimation={enterAnimation}
+        frameloop={enterAnimation ? 'always' : 'demand'}
         onCameraChange={(pos, target) => {
           // In a real implementation we might sync this to store
         }}
@@ -209,7 +224,7 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
           onNodeSelect={handleNodeSelect}
           onNodeHover={handleNodeHover}
           onNodeMove={() => {
-            const { toast } = useToast.getState(); // Access store directly or hook if available
+            const { toast } = useToast.getState();
             toast({
               title: "3D View is Read-Only",
               description: "Switch to 2D view to edit the circuit.",
@@ -220,30 +235,32 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
           netHighlightWireIds={netHighlightWireIds ?? undefined}
           mismatchWireHighlights={mismatchWireHighlights}
           mismatchNodeIds={mismatchNodeIds}
+          enterAnimation={enterAnimation}
+          onEnterAnimationComplete={() => setEnterAnimation(false)}
         />
       </Rb3DViewport>
 
       {/* Empty state hints */}
       {!hasNodes && showHints && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-gray-800/90 border border-gray-700 rounded-lg p-4 text-xs text-gray-300 space-y-2 max-w-sm pointer-events-auto">
+          <div className="bg-[#0D1117]/90 border border-[#1B2028] rounded-lg p-4 text-xs text-[#8B949E] space-y-2 max-w-sm pointer-events-auto">
             <div className="flex items-center justify-between mb-2">
               <div className="font-semibold text-white">🎮 3D View</div>
               {onDismissHints && (
                 <button
                   onClick={onDismissHints}
-                  className="text-gray-500 hover:text-gray-300 transition-colors"
+                  className="text-[#6E7681] hover:text-[#8B949E] transition-colors"
                   title="Dismiss hints"
                 >
                   ✕
                 </button>
               )}
             </div>
-            <div><span className="text-cyan-400">Left Click + Drag:</span> Rotate camera</div>
-            <div><span className="text-cyan-400">Right Click + Drag:</span> Pan camera</div>
-            <div><span className="text-cyan-400">Scroll:</span> Zoom in/out</div>
-            <div><span className="text-cyan-400">Click Node:</span> Select component</div>
-            <div className="pt-2 border-t border-gray-700 text-gray-500">
+            <div><span className="text-[#D4930D]">Left Click + Drag:</span> Rotate camera</div>
+            <div><span className="text-[#D4930D]">Right Click + Drag:</span> Pan camera</div>
+            <div><span className="text-[#D4930D]">Scroll:</span> Zoom in/out</div>
+            <div><span className="text-[#D4930D]">Click Node:</span> Select component</div>
+            <div className="pt-2 border-t border-[#1B2028] text-[#6E7681]">
               Visualize circuits in 3D with flowing signal particles!
             </div>
           </div>
@@ -256,12 +273,12 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
       </div>
 
       {/* Micro Toolbar */}
-      <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-gray-900/80 border border-gray-700 rounded px-2 py-1 text-[10px] z-50" data-testid="3d-micro-toolbar">
+      <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-[#070B14]/80 border border-[#1B2028] rounded px-2 py-1 text-[10px] z-50" data-testid="3d-micro-toolbar">
         <button
           onClick={() => setFollowSelection((prev) => !prev)}
           className={`px-1.5 py-0.5 rounded border ${followSelection
-            ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
-            : 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
+            ? 'border-[#D4930D] text-[#D4930D] bg-[#D4930D]/10'
+            : 'border-[#2D333B] text-[#8B949E] hover:bg-[#161B22]/60'
             }`}
           title="Follow selection"
         >
@@ -270,8 +287,8 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
         <button
           onClick={() => setAnimateSignalFlow((prev) => !prev)}
           className={`px-1.5 py-0.5 rounded border ${animateSignalFlow
-            ? 'border-cyan-500 text-cyan-200 bg-cyan-900/30'
-            : 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
+            ? 'border-[#D4930D] text-[#D4930D] bg-[#D4930D]/10'
+            : 'border-[#2D333B] text-[#8B949E] hover:bg-[#161B22]/60'
             }`}
           title="Animate signal flow"
         >
@@ -283,7 +300,7 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
             setCameraPosition([10, 10, 10]);
             setCameraTarget([0, 0.25, 0]);
           }}
-          className="px-1.5 py-0.5 rounded border border-gray-600 text-gray-300 hover:bg-gray-700/60"
+          className="px-1.5 py-0.5 rounded border border-[#2D333B] text-[#8B949E] hover:bg-[#161B22]/60"
           title="Center camera"
         >
           Fit
@@ -291,7 +308,7 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
         {onHelp && (
           <button
             onClick={onHelp}
-            className="px-1.5 py-0.5 rounded border border-gray-600 text-gray-300 hover:bg-gray-700/60"
+            className="px-1.5 py-0.5 rounded border border-[#2D333B] text-[#8B949E] hover:bg-[#161B22]/60"
             title="3D controls"
           >
             ?
@@ -299,7 +316,7 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
         )}
         <button
           onClick={() => setShowHelp(!showHelp)}
-          className="px-1.5 py-0.5 rounded border border-gray-600 text-gray-300 hover:bg-gray-700/60"
+          className="px-1.5 py-0.5 rounded border border-[#2D333B] text-[#8B949E] hover:bg-[#161B22]/60"
           title="Toggle inline help"
         >
           i
@@ -308,16 +325,16 @@ export const Logic3DScene: React.FC<Logic3DSceneProps> = ({
 
       {/* Help overlay */}
       {showHelp && (
-        <div className="absolute top-10 right-2 bg-gray-900 border border-gray-700 rounded p-3 text-xs text-gray-300 space-y-1 shadow-xl z-50">
+        <div className="absolute top-10 right-2 bg-[#0D1117] border border-[#1B2028] rounded p-3 text-xs text-[#8B949E] space-y-1 shadow-xl z-50">
           <div className="font-semibold text-white mb-2">3D View Controls</div>
-          <div><span className="text-cyan-400">Left Click + Drag:</span> Rotate camera</div>
-          <div><span className="text-cyan-400">Right Click + Drag:</span> Pan camera</div>
-          <div><span className="text-cyan-400">Scroll:</span> Zoom in/out</div>
-          <div><span className="text-cyan-400">Click Node:</span> Select</div>
-          <div><span className="text-cyan-400">Ctrl+Click:</span> Multi-select</div>
-          <div className="pt-2 border-t border-gray-700 text-gray-500">
-            <div className="text-green-500">● Green:</div> Active signal (HIGH)
-            <div className="text-gray-500">● Gray:</div> Inactive (LOW)
+          <div><span className="text-[#D4930D]">Left Click + Drag:</span> Rotate camera</div>
+          <div><span className="text-[#D4930D]">Right Click + Drag:</span> Pan camera</div>
+          <div><span className="text-[#D4930D]">Scroll:</span> Zoom in/out</div>
+          <div><span className="text-[#D4930D]">Click Node:</span> Select</div>
+          <div><span className="text-[#D4930D]">Ctrl+Click:</span> Multi-select</div>
+          <div className="pt-2 border-t border-[#1B2028] text-[#6E7681]">
+            <div className="text-[#B87333]">● Green:</div> Active signal (HIGH)
+            <div className="text-[#6E7681]">● Gray:</div> Inactive (LOW)
           </div>
         </div>
       )}

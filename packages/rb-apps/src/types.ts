@@ -10,6 +10,7 @@ export interface AppManifest {
   id: string;
   name: string;
   iconId: string;
+  description?: string;
   defaultSize?: { width: number; height: number };
   minSize?: { width: number; height: number };
   singleton?: boolean;

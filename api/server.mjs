@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, statSync } from "node:fs";
 import { join, dirname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..");
@@ -12,6 +13,9 @@ const FIXTURES_DIR = join(REPO_ROOT, "packages/ops/labs/fixtures");
 const CONTRACTS_VERSION = 2;
 const HOST = "127.0.0.1";
 const PORT = 3001;
+const AUTH_TOKEN = process.env.RB_API_TOKEN || null; // Set RB_API_TOKEN env var to enable auth
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10MB max upload size
+const REQUEST_TIMEOUT = 30000; // 30 seconds
 
 // Ensure directories exist
 if (!existsSync(RUNS_DIR)) mkdirSync(RUNS_DIR, { recursive: true });
@@ -37,10 +41,20 @@ function text(res, code, bodyText) {
   res.end(body);
 }
 
-function readBody(req) {
+function readBody(req, maxSize = MAX_UPLOAD_SIZE) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    req.on("data", (chunk) => chunks.push(chunk));
+    let totalSize = 0;
+
+    req.on("data", (chunk) => {
+      totalSize += chunk.length;
+      if (totalSize > maxSize) {
+        reject(new Error(`Upload size exceeds limit of ${Math.floor(maxSize / 1024 / 1024)}MB`));
+        req.destroy(); // Stop reading
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on("end", () => resolve(Buffer.concat(chunks)));
     req.on("error", reject);
   });
@@ -100,6 +114,35 @@ function listRuns() {
   return entries;
 }
 
+/**
+ * Authentication middleware - validates Bearer token
+ * @param {string} path - Request path
+ * @param {object} req - Request object
+ * @param {object} res - Response object
+ * @returns {boolean} - True if authenticated or auth disabled, false otherwise
+ */
+function requireAuth(path, req, res) {
+  // Skip auth if token not configured
+  if (!AUTH_TOKEN) return true;
+
+  // Skip auth for health endpoint
+  if (path === "/health" || path === "/") return true;
+
+  // Check Authorization header
+  const authHeader = req.headers["authorization"] || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+  if (token !== AUTH_TOKEN) {
+    json(res, 401, {
+      error: "Authentication required",
+      message: "Please provide a valid authorization token. Contact your instructor if you need help."
+    });
+    return false;
+  }
+
+  return true;
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://${HOST}:${PORT}`);
 
@@ -108,22 +151,38 @@ const server = createServer(async (req, res) => {
     res.writeHead(204, {
       "access-control-allow-origin": "*",
       "access-control-allow-methods": "GET,POST,OPTIONS",
-      "access-control-allow-headers": "content-type",
+      "access-control-allow-headers": "content-type,authorization",
     });
     return res.end();
   }
 
+  // Health check (no auth required)
   if (req.method === "GET" && url.pathname === "/health") {
-    return json(res, 200, { status: "ok", timestamp: Date.now() });
+    return json(res, 200, { status: "ok", timestamp: Date.now(), authEnabled: Boolean(AUTH_TOKEN) });
   }
 
-  // Convenience: map root to health to reduce confusion when hitting /
+  // Root redirect to health
   if (req.method === "GET" && url.pathname === "/") {
-    return json(res, 200, { status: "ok", timestamp: Date.now() });
+    return json(res, 200, { status: "ok", timestamp: Date.now(), authEnabled: Boolean(AUTH_TOKEN) });
+  }
+
+  // Protect all /api/* routes with authentication
+  if (url.pathname.startsWith("/api/")) {
+    if (!requireAuth(url.pathname, req, res)) {
+      return; // Auth failed, response already sent
+    }
   }
 
   // POST /api/labs/ingest - Accept raw zip bytes
   if (req.method === "POST" && url.pathname === "/api/labs/ingest") {
+    req.setTimeout(REQUEST_TIMEOUT, () => {
+      json(res, 408, {
+        error: "Request timeout",
+        message: "Upload took too long. Please try again or contact support if the problem persists."
+      });
+      req.destroy();
+    });
+
     try {
       const contentType = req.headers["content-type"] || "";
       if (!contentType.includes("application/zip") && !contentType.includes("application/octet-stream")) {
@@ -131,7 +190,7 @@ const server = createServer(async (req, res) => {
       }
 
       const body = await readBody(req);
-      const tmpRunId = `run-${Date.now()}`;
+      const tmpRunId = `run-${randomUUID()}`;
       const tmpPath = join(TMP_DIR, `${tmpRunId}.rb-lab.zip`);
       writeFileSync(tmpPath, body);
 
@@ -506,12 +565,12 @@ const server = createServer(async (req, res) => {
       ext === "json"
         ? "application/json"
         : ext === "md"
-        ? "text/markdown"
-        : ext === "txt"
-        ? "text/plain"
-        : ext === "ndjson"
-        ? "application/x-ndjson"
-        : "application/octet-stream";
+          ? "text/markdown"
+          : ext === "txt"
+            ? "text/plain"
+            : ext === "ndjson"
+              ? "application/x-ndjson"
+              : "application/octet-stream";
 
     res.writeHead(200, {
       "content-type": contentType,
@@ -528,11 +587,11 @@ server.listen(PORT, HOST, () => {
   console.log(`[ops] listening on http://${HOST}:${PORT}`);
 });
 
-  // Keep process alive and log errors
-  process.on("uncaughtException", (e) => {
-    console.error("[ops] uncaught exception:", e);
-  });
+// Keep process alive and log errors
+process.on("uncaughtException", (e) => {
+  console.error("[ops] uncaught exception:", e);
+});
 
-  process.on("unhandledRejection", (e) => {
-    console.error("[ops] unhandled rejection:", e);
-  });
+process.on("unhandledRejection", (e) => {
+  console.error("[ops] unhandled rejection:", e);
+});

@@ -29,7 +29,7 @@ interface LogicHelpProps {
   onDispatchIntent?: (intent: Intent) => void;
 }
 
-const LogicHelpComponent: React.FC<LogicHelpProps> = ({ onDispatchIntent }) => {
+export const LogicHelpComponent: React.FC<LogicHelpProps> = ({ onDispatchIntent }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('tracks');
   const [selectedTrack, setSelectedTrack] = useState<TrackId | null>(null);
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
@@ -837,6 +837,7 @@ const LogicHelpApp: RedByteApp = {
     id: 'help',
     name: 'Logic Help',
     iconId: 'book',
+    hidden: true,
     defaultSize: { width: 1000, height: 700 },
     minSize: { width: 700, height: 500 },
   },

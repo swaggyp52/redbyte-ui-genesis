@@ -31,19 +31,14 @@ const TaskbarIcon: React.FC<TaskbarIconProps> = ({ id, iconId, label, onClick })
     </button>
 );
 
-import { useCapabilitiesStore } from './stores/capabilitiesStore';
-
-const PINNED_APPS: Array<{ id: string; label: string; iconId: IconName; studentHidden?: boolean }> = [
-    { id: 'start-here', label: 'Start Here', iconId: 'browser' },
-    { id: 'logic-playground', label: 'Playground', iconId: 'logic', studentHidden: true },
-    { id: 'ece-lab', label: 'ECE Lab', iconId: 'chip', studentHidden: true },
-    { id: 'logic-lab-app', label: 'Labs', iconId: 'book' },
-    { id: 'terminal', label: 'Terminal', iconId: 'terminal' },
+const PINNED_APPS: Array<{ id: string; label: string; iconId: IconName }> = [
+    { id: 'home', label: 'Home', iconId: 'neon-wave' },
+    { id: 'logic-playground', label: 'Playground', iconId: 'logic' },
+    { id: 'labs', label: 'Labs', iconId: 'book' },
+    { id: 'settings', label: 'Settings', iconId: 'settings' },
 ];
 
 export const Taskbar: React.FC<{ onOpenApp: (id: string) => void }> = ({ onOpenApp }) => {
-    const studentMode = useCapabilitiesStore(state => state.studentMode);
-
     return (
         <div className="rb-taskbar fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1.5 backdrop-blur-2xl rounded-2xl z-[1000] select-none">
             <div className="rb-taskbar-divider flex items-center gap-1 px-2 mr-1">
@@ -51,12 +46,12 @@ export const Taskbar: React.FC<{ onOpenApp: (id: string) => void }> = ({ onOpenA
                     onClick={() => onOpenApp('launcher')}
                     className="rb-taskbar-launcher w-10 h-10 flex items-center justify-center rounded-lg transition-colors"
                 >
-                    <Icon name="browser" size={18} className="rb-taskbar-launcher__icon" />
+                    <Icon name="search" size={18} className="rb-taskbar-launcher__icon" />
                 </button>
             </div>
 
             <div className="flex items-center gap-1">
-                {PINNED_APPS.filter(app => !studentMode || !app.studentHidden).map(app => (
+                {PINNED_APPS.map(app => (
                     <TaskbarIcon
                         key={app.id}
                         id={app.id}

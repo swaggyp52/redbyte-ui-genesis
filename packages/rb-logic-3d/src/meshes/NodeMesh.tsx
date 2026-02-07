@@ -60,9 +60,9 @@ export const NodeMesh = React.forwardRef<THREE.Mesh, NodeMeshProps>(({
     if (localRef.current) {
       // Update emissive intensity based on active state
       const mat = localRef.current.material as THREE.MeshStandardMaterial;
-      const pulseBoost = pulse * 0.6;
-      const targetIntensity = (isActive ? 0.8 : 0) + pulseBoost;
-      mat.emissiveIntensity = THREE.MathUtils.lerp(mat.emissiveIntensity, targetIntensity, 0.1);
+      const pulseBoost = pulse * 0.3;
+      const targetIntensity = (isActive ? 0.35 : 0) + pulseBoost;
+      mat.emissiveIntensity = THREE.MathUtils.lerp(mat.emissiveIntensity, targetIntensity, 0.08);
     }
   });
 

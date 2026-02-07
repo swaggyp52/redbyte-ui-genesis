@@ -15,6 +15,7 @@ import { OscilloscopeView } from './OscilloscopeView';
 import { CodeView } from './CodeView';
 import { CircuitToolStrip } from './CircuitToolStrip';
 import { HardwareMapper } from './HardwareMapper';
+import { ErrorBoundary } from './ErrorBoundary';
 import { Icon, type IconName } from '@redbyte/rb-icons';
 import { useSettingsStore } from '@redbyte/rb-utils';
 import type { SplitScreenMode, ViewMode } from '../stores/viewStateStore';
@@ -431,34 +432,36 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
 
           return (
             <div ref={containerRef} style={containerStyle}>
-              <React.Suspense
-                fallback={
-                  <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-                    Loading 3D…
-                  </div>
-                }
-              >
-                <Logic3DSceneLazy
-                  engine={engine}
-                  width={dimensions.width}
-                  height={dimensions.height}
-                  viewStateStore={viewStateStore}
-                  getChipMetadata={getChipMetadata}
-                  showHints={show3DHints}
-                  onDismissHints={onDismiss3DHints}
-                  probeWireHighlights={probeWireHighlights}
-                  netHighlightWireIds={netHighlightWireIds}
-                  mismatchWireHighlights={mismatchWireHighlights}
-                  mismatchNodeIds={mismatchNodeIds}
-                  mismatchPortKeys={mismatchPortKeys}
-                  debugSignals={signalsUpdateReason === 'input' ? latestSignals : debugSignals}
-                  onHelp={onHelpOpen ? () => onHelpOpen('3d-controls') : undefined}
-                  onLayoutChange={() => {
-                    // Trigger circuit save when 3D layout changes
-                    onCircuitChange({ ...engine.getCircuit() });
-                  }}
-                />
-              </React.Suspense>
+              <ErrorBoundary fallbackTitle="3D View crashed">
+                <React.Suspense
+                  fallback={
+                    <div className="flex items-center justify-center h-full text-[var(--rb-text-3)] text-sm">
+                      Loading 3D…
+                    </div>
+                  }
+                >
+                  <Logic3DSceneLazy
+                    engine={engine}
+                    width={dimensions.width}
+                    height={dimensions.height}
+                    viewStateStore={viewStateStore}
+                    getChipMetadata={getChipMetadata}
+                    showHints={show3DHints}
+                    onDismissHints={onDismiss3DHints}
+                    probeWireHighlights={probeWireHighlights}
+                    netHighlightWireIds={netHighlightWireIds}
+                    mismatchWireHighlights={mismatchWireHighlights}
+                    mismatchNodeIds={mismatchNodeIds}
+                    mismatchPortKeys={mismatchPortKeys}
+                    debugSignals={signalsUpdateReason === 'input' ? latestSignals : debugSignals}
+                    onHelp={onHelpOpen ? () => onHelpOpen('3d-controls') : undefined}
+                    onLayoutChange={() => {
+                      // Trigger circuit save when 3D layout changes
+                      onCircuitChange({ ...engine.getCircuit() });
+                    }}
+                  />
+                </React.Suspense>
+              </ErrorBoundary>
             </div>
           );
         }

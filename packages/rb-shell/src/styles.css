@@ -52,8 +52,8 @@
 }
 
 .rb-vignette {
-  background: radial-gradient(1200px circle at 50% 20%, rgba(20, 30, 48, 0.08), transparent 55%),
-    radial-gradient(900px circle at 50% 90%, rgba(4, 6, 12, 0.25), transparent 60%);
+  background: radial-gradient(1200px circle at 50% 15%, rgba(212, 147, 13, 0.03), transparent 55%),
+    radial-gradient(900px circle at 50% 90%, rgba(4, 6, 12, 0.35), transparent 60%);
 }
 
 /* ── Window Controls ── */

@@ -78,78 +78,84 @@ export async function registerAllApps(options?: { mode?: RegisterAllAppsMode }) 
   // E2E-lite: keep startup lean and avoid importing 3D-heavy modules that can
   // crash headless Chromium or slow boot-time smoke tests.
   if (mode === 'e2e-lite') {
+    const { HomeApp } = await import('./apps/HomeApp');
     const { SettingsApp } = await import('./apps/SettingsApp');
     const { FilesApp } = await import('./apps/FilesApp');
     const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundApp');
     const { LauncherApp } = await import('./apps/LauncherApp');
-    const { SystemLogApp } = await import('./apps/SystemLogApp');
 
+    registerApp(HomeApp);
     registerApp(SettingsApp);
     registerApp(FilesApp);
     registerApp(LogicPlaygroundApp);
     registerApp(LauncherApp);
-    registerApp(SystemLogApp);
     return;
   }
 
+  // ── Core apps (always registered) ──────────────────────────────────
+  const { HomeApp } = await import('./apps/HomeApp');
   const { TerminalApp } = await import('./apps/TerminalApp');
   const { SettingsApp } = await import('./apps/SettingsApp');
   const { FilesApp } = await import('./apps/FilesApp');
   const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundApp');
-  const { ECELabApp } = await import('./apps/ECELabManifest');
-  const { AppStoreApp } = await import('./apps/AppStoreApp');
-  const { WelcomeApp } = await import('./apps/WelcomeApp');
-  const { StartHereApp } = await import('./apps/StartHereApp');
   const { LauncherApp } = await import('./apps/LauncherApp');
-  const { SystemLogApp } = await import('./apps/SystemLogApp');
-  const { StatusPanelApp } = await import('./apps/StatusPanelApp');
   const { TextViewerApp } = await import('./apps/TextViewerApp');
-  const LogicHelpApp = (await import('./apps/LogicHelpApp')).default;
-  const { UserManualApp } = await import('./apps/UserManualApp');
-  const { HelpAppManifest } = await import('./apps/HelpAppManifest');
-  const { HardwarePanelApp } = await import('./apps/HardwarePanelApp');
-  const { FpgaProofViewerApp } = await import('./apps/FpgaProofViewerApp');
-  const LabExaminerAppRegistry = (await import('./apps/LabExaminerAppRegistry')).default;
-  const { InstructorApp } = await import('./apps/InstructorApp');
-  const { InstructorRunDetailApp } = await import('./apps/InstructorRunDetailApp');
-  // const { StudentLabApp } = await import('./apps/StudentLabApp'); // RB_UNIFY_02: DEPRECATED — use Lab Assignment
-  const { SubmissionInspectorApp } = await import('./apps/SubmissionInspectorApp');
-  const { VirtualLabApp } = await import('./apps/VirtualLabApp');
-  const { LabWorkspaceApp } = await import('./apps/LabWorkspaceApp');
-  const { LabsApp } = await import('./apps/LabsApp');
+  const { SystemLogApp } = await import('./apps/SystemLogApp');
 
-  registerApp(TerminalApp);
+  // ── Labs (browser + workspace) ───────────────────────────────────
+  const { LabsApp } = await import('./apps/LabsApp');
+  const { ECELabApp } = await import('./apps/ECELabManifest');
+
+  // ── Instructor (unified portal with inline run detail) ────────────
+  const { InstructorApp } = await import('./apps/InstructorApp');
+  const { SubmissionInspectorApp } = await import('./apps/SubmissionInspectorApp');
+
+  // ── Register: core ────────────────────────────────────────────────
+  registerApp(HomeApp);
+  registerApp(LauncherApp);
   registerApp(SettingsApp);
   registerApp(FilesApp);
-  if (import.meta.env.DEV) {
-    console.log('[AppRegistry] Registering LogicPlaygroundApp', {
-      hasApp: !!LogicPlaygroundApp,
-      hasComponent: !!LogicPlaygroundApp?.component,
-      componentType: typeof LogicPlaygroundApp?.component,
-    });
-  }
-  registerApp(LogicPlaygroundApp);
-  registerApp(ECELabApp);
-  registerApp(AppStoreApp);
-  registerApp(WelcomeApp);
-  registerApp(StartHereApp);
-  registerApp(LauncherApp);
-  registerApp(SystemLogApp);
-  registerApp(StatusPanelApp);
+  registerApp(TerminalApp);
   registerApp(TextViewerApp);
-  registerApp(LogicHelpApp);
-  registerApp(UserManualApp);
-  registerApp(HelpAppManifest);
-  registerApp(HardwarePanelApp);
-  registerApp(FpgaProofViewerApp);
-  registerApp(LabExaminerAppRegistry);
-  registerApp(InstructorApp);
-  registerApp(InstructorRunDetailApp);
-  // registerApp(StudentLabApp); // LEGACY: Replaced by ECELabApp (ECE 347 Lab)
-  registerApp(SubmissionInspectorApp);
-  registerApp(VirtualLabApp);
-  registerApp(LabWorkspaceApp); // RB_UNIFY: Lab Engine vertical slice
+  registerApp(LogicPlaygroundApp);
+  registerApp(SystemLogApp);
+
+  // ── Register: labs ────────────────────────────────────────────────
   registerApp(LabsApp);
+  registerApp(ECELabApp);
+
+  // ── Register: instructor ──────────────────────────────────────────
+  registerApp(InstructorApp);
+  registerApp(SubmissionInspectorApp);
+
+  // ── REMOVED (consolidated into the apps above) ────────────────────
+  // WelcomeApp → replaced by HomeApp
+  // StartHereApp → replaced by HomeApp
+  // AppStoreApp → removed (no marketplace for v1)
+  // StatusPanelApp → will move into Settings > Advanced
+  // VirtualLabApp → absorbed into ECELabApp
+  // LabWorkspaceApp → absorbed into ECELabApp
+  // HelpAppManifest → redundant with LogicHelpApp
+  // StudentLabApp → deprecated, replaced by ECELabApp
+  // InstructorRunDetailApp → inline view inside InstructorApp
+  // LabExaminerAppRegistry → niche tool, accessible via terminal
+  // FpgaProofViewerApp → niche tool, accessible via terminal
+  // HardwarePanelApp → deregistered; IO tab in Playground covers basics
+  // LogicHelpApp → demoted to Learn > Help subview inside Playground RightDock
+  // UserManualApp → demoted to Learn > Manual subview inside Playground RightDock
 }
 
 export { PlaygroundGoldenPath } from './dev/PlaygroundGoldenPath';
+
+// ── Knowledge graph ──────────────────────────────────────────────────
+export {
+  searchKnowledge,
+  getNodeById,
+  getNodesByGateType,
+  getNodesByExampleId,
+  getNodesByLabId,
+  getNodesByErrorCode,
+  getNodesByTag,
+  getNodesByHelpTopicId,
+  type KnowledgeNode,
+} from './knowledge/knowledgeNodes';

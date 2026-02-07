@@ -1,5 +1,6 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { TransformControls } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { NodeMesh } from '../meshes/NodeMesh';
 import { WireMesh } from '../meshes/WireMesh';
@@ -7,6 +8,11 @@ import { SignalParticleSystem } from '../components/SignalParticle';
 import { NodeLabel } from '../components/NodeLabel';
 
 export const NET_HIGHLIGHT_COLOR = '#fbbf24';
+
+/** Easing: cubic-bezier(0.16, 1, 0.3, 1) approximated */
+function easeOutExpo(t: number): number {
+    return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+}
 
 export const mergeWireProbeColorsForNetHighlight = (
     probeColors: string[] | undefined,
@@ -35,6 +41,10 @@ interface Rb3DSceneCircuitProps {
     netHighlightWireIds?: Set<string>;
     mismatchWireHighlights?: Map<string, string[]> | null;
     mismatchNodeIds?: Set<string> | null;
+
+    // Rise-up entrance animation
+    enterAnimation?: boolean;
+    onEnterAnimationComplete?: () => void;
 }
 
 export const Rb3DSceneCircuit: React.FC<Rb3DSceneCircuitProps> = ({
@@ -52,7 +62,42 @@ export const Rb3DSceneCircuit: React.FC<Rb3DSceneCircuitProps> = ({
     netHighlightWireIds,
     mismatchWireHighlights,
     mismatchNodeIds,
+    enterAnimation = false,
+    onEnterAnimationComplete,
 }) => {
+    // ── Rise-up entrance animation state ──
+    const animStartRef = useRef<number | null>(null);
+    const [animProgress, setAnimProgress] = useState(enterAnimation ? 0 : 1);
+    const animCompleteRef = useRef(!enterAnimation);
+
+    useEffect(() => {
+        if (enterAnimation) {
+            animStartRef.current = null; // Will be set on first frame
+            setAnimProgress(0);
+            animCompleteRef.current = false;
+        }
+    }, [enterAnimation]);
+
+    useFrame((_, delta) => {
+        if (animCompleteRef.current) return;
+
+        if (animStartRef.current === null) {
+            animStartRef.current = performance.now();
+        }
+
+        const elapsed = performance.now() - animStartRef.current;
+        const duration = 1000; // 1 second total animation
+        const raw = Math.min(elapsed / duration, 1);
+        const eased = easeOutExpo(raw);
+
+        setAnimProgress(eased);
+
+        if (raw >= 1 && !animCompleteRef.current) {
+            animCompleteRef.current = true;
+            onEnterAnimationComplete?.();
+        }
+    });
+
     const selectionMap = useMemo(() => {
         const map = new Map<string, boolean>();
         nodes.forEach(node => map.set(node.id, selectedNodeIds.has(node.id)));
@@ -104,10 +149,16 @@ export const Rb3DSceneCircuit: React.FC<Rb3DSceneCircuitProps> = ({
             )}
 
             {/* Nodes */}
-            {nodes.map((node) => {
+            {nodes.map((node, index) => {
                 const signalKey = `${node.id}.out`;
                 const isActive = signals.get(signalKey) === 1;
-                const position: [number, number, number] = [node.view.x / 20, 0.25, node.view.y / 20];
+
+                // Rise-up: stagger each node by index, Y goes from 0 to 0.25
+                const staggerDelay = Math.min(index * 0.03, 0.3); // max 300ms stagger
+                const nodeProgress = animProgress >= 1 ? 1 : Math.max(0, Math.min(1, (animProgress - staggerDelay) / (1 - staggerDelay)));
+                const animatedY = 0.25 * easeOutExpo(nodeProgress);
+                const position: [number, number, number] = [node.view.x / 20, animatedY, node.view.y / 20];
+
                 const isSelected = selectionMap.get(node.id) ?? false;
                 const isMismatch = mismatchNodeIds?.has(node.id) ?? false;
                 const lastChange = pulseMap.get(signalKey) ?? 0;
@@ -140,8 +191,8 @@ export const Rb3DSceneCircuit: React.FC<Rb3DSceneCircuitProps> = ({
                 );
             })}
 
-            {/* Wires */}
-            {wires.map((wire) => {
+            {/* Wires — delayed slightly behind nodes during rise-up */}
+            {animProgress > 0.15 && wires.map((wire) => {
                 const signalKey = wire.id.split('-')[0];
                 const isActive = signals.get(signalKey) === 1;
                 const lastChange = pulseMap.get(signalKey) ?? 0;
@@ -149,8 +200,10 @@ export const Rb3DSceneCircuit: React.FC<Rb3DSceneCircuitProps> = ({
                     ? Math.max(0, 1 - (currentTime - lastChange) / 250)
                     : 0;
 
-                const from: [number, number, number] = [wire.from.x / 20, 0.25, wire.from.y / 20];
-                const to: [number, number, number] = [wire.to.x / 20, 0.25, wire.to.y / 20];
+                // Wire Y also rises with animation
+                const wireY = 0.25 * animProgress;
+                const from: [number, number, number] = [wire.from.x / 20, wireY, wire.from.y / 20];
+                const to: [number, number, number] = [wire.to.x / 20, wireY, wire.to.y / 20];
                 const probeColors = probeWireHighlights?.get(wire.id);
                 const isNetHighlighted = netHighlightWireIds?.has(wire.id) ?? false;
                 const mergedProbeColors = mergeWireProbeColorsForNetHighlight(probeColors, isNetHighlighted);
@@ -166,7 +219,8 @@ export const Rb3DSceneCircuit: React.FC<Rb3DSceneCircuitProps> = ({
                             probeColors={mergedProbeColors}
                             mismatchColors={mismatchColors}
                         />
-                        {isActive && animateSignalFlow && (
+                        {/* Signal particles only after animation completes */}
+                        {animProgress >= 1 && isActive && animateSignalFlow && (
                             <SignalParticleSystem from={from} to={to} isActive={isActive} wireId={wire.id} currentTime={currentTime} />
                         )}
                     </React.Fragment>

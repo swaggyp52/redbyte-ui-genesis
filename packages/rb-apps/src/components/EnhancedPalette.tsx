@@ -28,7 +28,7 @@ interface EnhancedPaletteProps {
   compositeNodes: readonly string[];
   chips: Array<{ id: string; name: string; description?: string; layer?: number }>;
   onNodeDragStart: (type: string, e: React.DragEvent) => void;
-  onAddNode: (type: string, position: { x: number; y: number }) => void;
+  onAddNode: (type: string, position?: { x: number; y: number }) => void;
   onChipLibraryOpen: () => void;
   getChipMetadata: (type: string) => any;
   getNodeDescription: (type: string) => string;
@@ -145,8 +145,8 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
   const handleComponentClick = (type: string) => {
     if (isReplayMode) return;
     addToRecent(type);
-    // Add node at default center position
-    onAddNode(type, { x: 400, y: 300 });
+    // Let the parent decide position (smart spawn at camera center)
+    onAddNode(type);
   };
 
   const renderComponentButton = (type: string, extraClass: string = '') => {

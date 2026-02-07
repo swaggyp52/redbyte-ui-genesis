@@ -24,6 +24,9 @@ export type PerspectiveId =
   | 'schematic'
   | 'learn';
 
+/** Subview within the Learn dock tab */
+export type LearnSubview = 'lessons' | 'help' | 'manual';
+
 interface LayoutState {
   perspective: PerspectiveId;
   splitScreenMode: SplitScreenMode;
@@ -31,6 +34,9 @@ interface LayoutState {
   splitRatio: number;
   rightDockState: RightDockState;
   rightDockTab: RightDockTab;
+  learnSubview: LearnSubview;
+  /** Error code to deep-link into the Help subview (cleared after consumption). */
+  learnHelpErrorCode: string | null;
   showHelpDock: boolean;
   helpDockSection: HelpSectionId | null;
   schematicMiniEnabled: boolean;
@@ -40,6 +46,9 @@ interface LayoutActions {
   setPerspective: (perspective: PerspectiveId) => void;
   setRightDockState: (state: RightDockState) => void;
   setRightDockTab: (tab: RightDockTab) => void;
+  setLearnSubview: (subview: LearnSubview) => void;
+  /** Open the RightDock to a specific tab (and optional Learn subview + errorCode). */
+  openDock: (tab: RightDockTab, subview?: LearnSubview, errorCode?: string) => void;
   setShowHelpDock: (visible: boolean) => void;
   setHelpDockSection: (section: HelpSectionId | null) => void;
   setSplitRatio: (ratio: number) => void;
@@ -61,7 +70,7 @@ const DEFAULT_SPLIT_RATIO = 0.5;
 
 const PERSPECTIVE_PRESETS: Record<
   PerspectiveId,
-  Omit<LayoutState, 'perspective' | 'splitRatio' | 'schematicMiniEnabled' | 'helpDockSection'>
+  Omit<LayoutState, 'perspective' | 'splitRatio' | 'schematicMiniEnabled' | 'helpDockSection' | 'learnSubview' | 'learnHelpErrorCode'>
 > = {
   // NEW PRESETS - Primary workflow layouts
   build: {
@@ -226,6 +235,8 @@ function applyPreset(
     activeViews: schematicLayout?.activeViews ?? preset.activeViews,
     rightDockState: preset.rightDockState,
     rightDockTab: preset.rightDockTab,
+    learnSubview: 'lessons',
+    learnHelpErrorCode: null,
     showHelpDock: preset.showHelpDock,
     helpDockSection: null,
   };
@@ -266,6 +277,24 @@ function createLayoutStore() {
 
     setRightDockTab: (tab) => {
       set((current) => ({ ...current, rightDockTab: tab }));
+    },
+
+    setLearnSubview: (subview) => {
+      set((current) => ({ ...current, learnSubview: subview }));
+    },
+
+    openDock: (tab, subview, errorCode) => {
+      set((current) => {
+        const next = { ...current, rightDockTab: tab };
+        if (next.rightDockState === 'collapsed') {
+          next.rightDockState = 'expanded';
+        }
+        if (tab === 'learn' && subview) {
+          next.learnSubview = subview;
+        }
+        next.learnHelpErrorCode = (tab === 'learn' && subview === 'help' && errorCode) ? errorCode : null;
+        return next;
+      });
     },
 
     setShowHelpDock: (visible) => {

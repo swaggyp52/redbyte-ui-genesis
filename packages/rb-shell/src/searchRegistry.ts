@@ -2,9 +2,9 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import { listApps, useFileSystemStore } from '@redbyte/rb-apps';
+import { listApps, useFileSystemStore, searchKnowledge } from '@redbyte/rb-apps';
 import { useMacroStore } from './macros/macroStore';
-import type { AppSearchResult, CommandSearchResult, IntentSearchResult, MacroSearchResult, FileSearchResult, SearchResults } from './search-types';
+import type { AppSearchResult, CommandSearchResult, IntentSearchResult, MacroSearchResult, FileSearchResult, KnowledgeSearchResult, SearchResults } from './search-types';
 
 const COMMANDS: CommandSearchResult[] = [
   {
@@ -223,6 +223,49 @@ const COMMANDS: CommandSearchResult[] = [
     name: 'Playground: Clear Scope',
     description: 'Clear oscilloscope display',
   },
+  // ── Quick-launch commands ─────────────────────────────────────────
+  {
+    type: 'command',
+    id: 'load-example-full-adder',
+    name: 'Load Example: Full Adder',
+    description: 'Open full adder example in Playground',
+  },
+  {
+    type: 'command',
+    id: 'load-example-half-adder',
+    name: 'Load Example: Half Adder',
+    description: 'Open half adder example in Playground',
+  },
+  {
+    type: 'command',
+    id: 'load-example-xor-gate',
+    name: 'Load Example: XOR Gate',
+    description: 'Open XOR gate (from NANDs) example in Playground',
+  },
+  {
+    type: 'command',
+    id: 'open-lab-1',
+    name: 'Open Lab 1',
+    description: 'Start or continue Lab 1: Introduction to Digital Logic',
+  },
+  {
+    type: 'command',
+    id: 'open-lab-2',
+    name: 'Open Lab 2',
+    description: 'Start or continue Lab 2: 4-Bit Binary Adder',
+  },
+  {
+    type: 'command',
+    id: 'export-evidence',
+    name: 'Export Evidence Capsule',
+    description: 'Export current circuit as a verifiable submission',
+  },
+  {
+    type: 'command',
+    id: 'start-learn-mode',
+    name: 'Start Learn Mode',
+    description: 'Open guided examples in Playground',
+  },
 ];
 
 const INTENT_TARGETS: IntentSearchResult[] = [
@@ -240,7 +283,7 @@ const INTENT_TARGETS: IntentSearchResult[] = [
 
 export function getAllSearchableApps(): AppSearchResult[] {
   return listApps()
-    .filter((app) => app.manifest.id !== 'launcher')
+    .filter((app) => app.manifest.id !== 'launcher' && !app.manifest.hidden)
     .map((app) => ({
       type: 'app' as const,
       id: app.manifest.id,
@@ -287,6 +330,17 @@ export function getAllSearchableFiles(): FileSearchResult[] {
   });
 }
 
+export function getAllSearchableKnowledge(query: string): KnowledgeSearchResult[] {
+  if (!query.trim()) return [];
+  return searchKnowledge(query).slice(0, 5).map((node) => ({
+    type: 'knowledge' as const,
+    id: node.id,
+    name: node.title,
+    description: node.summary,
+    gateTypes: node.maps_to.gateTypes,
+  }));
+}
+
 export function filterSearchResults(query: string): SearchResults {
   const lowerQuery = query.toLowerCase().trim();
 
@@ -297,6 +351,7 @@ export function filterSearchResults(query: string): SearchResults {
       intents: getAllSearchableIntents(),
       macros: getAllSearchableMacros(),
       files: getAllSearchableFiles(),
+      knowledge: [],
     };
   }
 
@@ -358,5 +413,7 @@ export function filterSearchResults(query: string): SearchResults {
 
   const files = filesWithScores.map((item) => item.file);
 
-  return { apps, commands, intents, macros, files };
+  const knowledge = getAllSearchableKnowledge(lowerQuery);
+
+  return { apps, commands, intents, macros, files, knowledge };
 }

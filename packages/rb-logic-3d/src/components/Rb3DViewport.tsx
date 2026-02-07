@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
+import * as THREE from 'three';
 
 interface Rb3DViewportProps {
     children?: React.ReactNode;
@@ -18,6 +19,9 @@ interface Rb3DViewportProps {
     // Determinism & Performance
     frameloop?: 'always' | 'demand' | 'never';
     reduceMotion?: boolean;
+
+    // Entrance animation — camera sweeps from top-down to perspective
+    enterAnimation?: boolean;
 }
 
 const ViewportControls: React.FC<{
@@ -74,6 +78,7 @@ export const Rb3DViewport: React.FC<Rb3DViewportProps> = ({
     onCameraChange,
     frameloop = 'demand',
     reduceMotion = false,
+    enterAnimation = false,
 }) => {
     const [webglFailed, setWebglFailed] = useState(false);
     const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
@@ -104,11 +109,11 @@ export const Rb3DViewport: React.FC<Rb3DViewportProps> = ({
 
     if (webglFailed) {
         return (
-            <div style={{ width, height }} className={`flex items-center justify-center bg-gray-900 ${className}`}>
-                <div className="bg-gray-800/90 border border-yellow-700 rounded-lg p-6 text-center max-w-md">
-                    <div className="text-yellow-500 text-2xl mb-3">⚠️</div>
-                    <div className="font-semibold text-white mb-2">3D View Unavailable</div>
-                    <div className="text-sm text-gray-300">
+            <div style={{ width, height }} className={`flex items-center justify-center bg-[#070B14] ${className}`}>
+                <div className="bg-[#0D1117]/90 border border-[#D4930D]/40 rounded-lg p-6 text-center max-w-md">
+                    <div className="text-[#D4930D] text-2xl mb-3">⚠️</div>
+                    <div className="font-semibold text-[#E6EDF3] mb-2">3D View Unavailable</div>
+                    <div className="text-sm text-[#8B949E]">
                         WebGL context was lost. Switch to 2D view.
                     </div>
                 </div>
@@ -116,7 +121,8 @@ export const Rb3DViewport: React.FC<Rb3DViewportProps> = ({
         );
     }
 
-    const effectiveFrameloop = active ? frameloop : 'never';
+    // Use 'always' during entrance animation for smooth camera sweep
+    const effectiveFrameloop = !active ? 'never' : enterAnimation ? 'always' : frameloop;
 
     return (
         <div style={{ width, height, position: 'relative' }} className={className}>
@@ -132,15 +138,17 @@ export const Rb3DViewport: React.FC<Rb3DViewportProps> = ({
                     setCanvasEl(gl.domElement);
                 }}
             >
-                <color attach="background" args={['#0a0a0a']} />
-                <fog attach="fog" args={['#0a0a0a', 20, 60]} />
+                <color attach="background" args={['#070B14']} />
+                <fog attach="fog" args={['#070B14', 15, 50]} />
 
-                {/* Basic Lighting */}
-                <ambientLight intensity={0.3} />
-                <directionalLight position={[10, 10, 5]} intensity={1} />
+                {/* Three-point instrument lighting */}
+                <ambientLight intensity={0.15} color="#8B949E" />
+                <directionalLight position={[8, 12, 5]} intensity={0.9} color="#E6EDF3" />
+                <directionalLight position={[-5, 3, -5]} intensity={0.25} color="#D4930D" />
+                <pointLight position={[0, 8, 0]} intensity={0.3} color="#22D3EE" distance={30} decay={2} />
 
-                {/* Grid Floor - could make this optional/configurable */}
-                <Grid args={[100, 100]} cellColor="#333" sectionColor="#555" fadeDistance={50} />
+                {/* Grid Floor */}
+                <Grid args={[100, 100]} cellColor="#151B23" sectionColor="#21262D" fadeDistance={40} />
 
                 {/* Camera Controls */}
                 <ViewportControls
@@ -152,10 +160,69 @@ export const Rb3DViewport: React.FC<Rb3DViewportProps> = ({
 
                 <ViewportActiveInvalidator active={active} />
 
+                {enterAnimation && (
+                    <EnterCameraAnimation
+                        targetPosition={cameraPosition}
+                        targetLookAt={cameraTarget}
+                        enabled={enterAnimation}
+                    />
+                )}
+
                 {children}
             </Canvas>
         </div>
     );
+};
+
+/** Animates camera from top-down to the target perspective position over 1.2s */
+const EnterCameraAnimation: React.FC<{
+    targetPosition: [number, number, number];
+    targetLookAt: [number, number, number];
+    enabled: boolean;
+}> = ({ targetPosition, targetLookAt, enabled }) => {
+    const { camera, invalidate } = useThree();
+    const startRef = useRef<number | null>(null);
+    const doneRef = useRef(!enabled);
+
+    // Top-down starting position: directly above the target, looking down
+    const startPos = useRef(new THREE.Vector3(targetLookAt[0], 25, targetLookAt[2] + 0.1));
+    const endPos = useRef(new THREE.Vector3(...targetPosition));
+
+    useEffect(() => {
+        if (enabled) {
+            startRef.current = null;
+            doneRef.current = false;
+            startPos.current.set(targetLookAt[0], 25, targetLookAt[2] + 0.1);
+            endPos.current.set(...targetPosition);
+            camera.position.copy(startPos.current);
+            camera.lookAt(...targetLookAt);
+            invalidate();
+        }
+    }, [enabled]);
+
+    useFrame(() => {
+        if (doneRef.current) return;
+
+        if (startRef.current === null) {
+            startRef.current = performance.now();
+        }
+
+        const elapsed = performance.now() - startRef.current;
+        const duration = 1200;
+        const t = Math.min(elapsed / duration, 1);
+        // Ease out expo
+        const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+
+        camera.position.lerpVectors(startPos.current, endPos.current, eased);
+        camera.lookAt(...targetLookAt);
+        invalidate();
+
+        if (t >= 1) {
+            doneRef.current = true;
+        }
+    });
+
+    return null;
 };
 
 const ViewportActiveInvalidator: React.FC<{ active: boolean }> = ({ active }) => {

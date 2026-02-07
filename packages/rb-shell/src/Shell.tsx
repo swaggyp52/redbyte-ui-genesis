@@ -460,29 +460,30 @@ export const Shell: React.FC<ShellProps> = () => {
   const determinismRecorder = useDeterminismRecorder();
 
   const [pinnedAppIds, setPinnedAppIds] = useState<string[]>(() => {
-    if (typeof localStorage === 'undefined') return ['start-here'];
+    if (typeof localStorage === 'undefined') return ['home'];
 
     try {
       const raw = localStorage.getItem('rb:shell:pinnedApps');
 
       // Demo mode: Auto-pin demo apps if no pins exist
       if (!raw && isDemoMode) {
-        const demoApps = ['start-here', 'logic-playground', 'ece-lab', 'submission-inspector'];
+        const demoApps = ['home', 'logic-playground', 'labs', 'settings'];
         localStorage.setItem('rb:shell:pinnedApps', JSON.stringify(demoApps));
         return demoApps;
       }
 
-      if (!raw) return ['start-here'];
+      if (!raw) return ['home'];
 
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        // Always ensure 'start-here' is first unless explicitly removed
-        const filtered = parsed.filter((id): id is string => typeof id === 'string' && id !== 'start-here');
-        return ['start-here', ...filtered];
+        // Strip removed app IDs from previous versions and ensure 'home' is first
+        const removedIds = new Set(['start-here', 'welcome', 'help', 'user-manual', 'app-store', 'status-panel', 'virtual-lab', 'lab-workspace', 'student-lab']);
+        const filtered = parsed.filter((id): id is string => typeof id === 'string' && id !== 'home' && !removedIds.has(id));
+        return ['home', ...filtered];
       }
     } catch { }
 
-    return ['start-here'];
+    return ['home'];
   });
   const themeVariant = useSettingsStore((s) => s.themeVariant);
   const density = useSettingsStore((s) => s.density);
@@ -939,6 +940,8 @@ export const Shell: React.FC<ShellProps> = () => {
           message: 'App not found',
           data: { appId },
         });
+        console.warn(`[Shell] openWindow: app "${appId}" not found in registry`);
+        toast.error({ title: 'App unavailable', message: `"${appId}" is not registered.` });
         return null;
       }
 
@@ -1925,7 +1928,7 @@ export const Shell: React.FC<ShellProps> = () => {
         }
 
         case 'open-user-manual': {
-          openWindow('user-manual');
+          window.dispatchEvent(new CustomEvent('rb:open-dock', { detail: { tab: 'learn', subview: 'manual' } }));
           break;
         }
 
@@ -2563,14 +2566,14 @@ export const Shell: React.FC<ShellProps> = () => {
         return () => clearTimeout(timer);
       }
     } else {
-      // Dev mode: Show welcome screen
+      // Open Home screen on first visit
       if (!hasShownWelcomeRef.current) {
         hasShownWelcomeRef.current = true;
 
         const welcomeSeen = localStorage.getItem('rb-os:v1:welcomeSeen');
 
         if (welcomeSeen !== 'true') {
-          const timer = setTimeout(() => openWindow('start-here'), 500);
+          const timer = setTimeout(() => openWindow('home'), 500);
           return () => clearTimeout(timer);
         }
       }
@@ -2719,7 +2722,13 @@ export const Shell: React.FC<ShellProps> = () => {
       {windows.map((window) => {
         const binding = bindings[window.id];
         const app: RedByteApp | null = binding ? getApp(binding.appId) : getApp(window.contentId);
-        if (!app) return null;
+        if (!app) {
+          // Auto-close orphan windows whose app was removed (e.g. after version migration)
+          const orphanId = binding?.appId ?? window.contentId;
+          console.warn(`[Shell] Closing orphan window for unregistered app "${orphanId}"`);
+          closeWindow(window.id);
+          return null;
+        }
         const Component = app.component;
         const resourceId =
           binding?.props?.resourceId ??
@@ -2782,7 +2791,15 @@ export const Shell: React.FC<ShellProps> = () => {
               appId={app.manifest.id} 
               windowId={window.id} 
               onClose={() => handleClose(window.id)}
-              onOpenHelp={(errorCode) => openWindow('help', { initialErrorCode: errorCode })}
+              onOpenHelp={(errorCode) => {
+                // Ensure a Playground is open to receive the dock event
+                const pg = windows.find((w) => w.contentId === 'logic-playground');
+                if (!pg) openWindow('logic-playground');
+                // Dispatch after a tick so the Playground has time to mount if just opened
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent('rb:open-dock', { detail: { tab: 'learn', subview: 'help', errorCode } }));
+                }, pg ? 0 : 500);
+              }}
             >
               <Suspense fallback={<WindowLoadingFallback />}>
                 <Component
@@ -2808,7 +2825,7 @@ export const Shell: React.FC<ShellProps> = () => {
       })}
 
       <ToastContainer />
-      <ProgressToasts onOpenHelp={(errorCode) => openWindow('help', { initialErrorCode: errorCode })} />
+      <ProgressToasts onOpenHelp={(errorCode) => window.dispatchEvent(new CustomEvent('rb:open-dock', { detail: { tab: 'learn', subview: 'help', errorCode } }))} />
       <NarrativeOverlay />
 
       {systemSearchOpen && (

@@ -3,13 +3,13 @@
 @tailwind utilities;
 
 :root {
-  --rb-bg: #02040a;
-  --rb-bg-alt: #050816;
-  --rb-panel: #050816;
-  --rb-border-subtle: rgba(148, 163, 184, 0.25);
-  --rb-accent: #cc2c1a; /* redstone core */
-  --rb-accent-soft: rgba(204, 44, 26, 0.45);
-  --rb-text-soft: #94a3b8;
+  --rb-bg: #070B14;
+  --rb-bg-alt: #0D1117;
+  --rb-panel: #0D1117;
+  --rb-border-subtle: rgba(139, 148, 158, 0.18);
+  --rb-accent: #D4930D; /* instrument amber */
+  --rb-accent-soft: rgba(212, 147, 13, 0.35);
+  --rb-text-soft: #8B949E;
 }
 
 /* Base layout */
@@ -20,22 +20,22 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
-  background: radial-gradient(circle at top, #111827 0, #020617 45%, #02040a 100%);
-  color: #e5e7eb;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+  background: radial-gradient(circle at top, #0D1117 0, #070B14 45%, #050910 100%);
+  color: #E6EDF3;
+  font-family: "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont,
     sans-serif;
 }
 
-/* Subtle grid overlay */
+/* Subtle grid overlay — faint amber-tinted engineering grid */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
-  opacity: 0.35;
+  opacity: 0.25;
   background-image:
-    linear-gradient(to right, rgba(15, 23, 42, 0.55) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(15, 23, 42, 0.55) 1px, transparent 1px);
+    linear-gradient(to right, rgba(27, 32, 40, 0.6) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(27, 32, 40, 0.6) 1px, transparent 1px);
   background-size: 64px 64px;
   mix-blend-mode: soft-light;
   z-index: -1;
@@ -44,13 +44,13 @@ body::before {
 /* Generic panel frame */
 .rb-panel {
   background:
-    radial-gradient(circle at top left, rgba(204, 44, 26, 0.16), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(15, 23, 42, 0.9), #020617);
+    radial-gradient(circle at top left, rgba(212, 147, 13, 0.08), transparent 55%),
+    radial-gradient(circle at bottom right, rgba(13, 17, 23, 0.9), #070B14);
   border-radius: 1.25rem;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid rgba(139, 148, 158, 0.15);
   box-shadow:
-    0 18px 45px rgba(15, 23, 42, 0.95),
-    0 0 0 1px rgba(15, 23, 42, 0.9);
+    0 18px 45px rgba(0, 3, 12, 0.95),
+    0 0 0 1px rgba(0, 3, 12, 0.9);
 }
 
 /* Interaction glow: used for buttons / tiles */
@@ -63,28 +63,28 @@ body::before {
 }
 
 .rb-interactive:hover {
-  border-color: rgba(204, 44, 26, 0.9);
+  border-color: rgba(212, 147, 13, 0.7);
   box-shadow:
-    0 0 0 1px rgba(204, 44, 26, 0.9),
+    0 0 0 1px rgba(212, 147, 13, 0.7),
     0 18px 45px rgba(0, 0, 0, 0.95);
 }
 
 .rb-interactive:active {
   transform: translateY(1px);
   box-shadow:
-    0 0 0 1px rgba(204, 44, 26, 1),
+    0 0 0 1px rgba(212, 147, 13, 0.9),
     0 12px 30px rgba(0, 0, 0, 0.98);
 }
 
 /* Inputs */
 .rb-input {
   width: 100%;
-  background-color: rgba(15, 23, 42, 0.95);
+  background-color: rgba(13, 17, 23, 0.95);
   border-radius: 0.75rem;
-  border: 1px solid rgba(51, 65, 85, 0.95);
+  border: 1px solid rgba(45, 51, 59, 0.85);
   padding: 0.7rem 0.9rem;
   font-size: 0.875rem;
-  color: #e5e7eb;
+  color: #E6EDF3;
   outline: none;
   transition:
     border-color 160ms ease,
@@ -93,15 +93,15 @@ body::before {
 }
 
 .rb-input::placeholder {
-  color: rgba(148, 163, 184, 0.8);
+  color: rgba(139, 148, 158, 0.7);
 }
 
 .rb-input:focus-visible {
   border-color: var(--rb-accent);
   box-shadow:
-    0 0 0 1px rgba(204, 44, 26, 0.7),
-    0 0 0 16px rgba(204, 44, 26, 0.15);
-  background-color: rgba(15, 23, 42, 0.98);
+    0 0 0 1px rgba(212, 147, 13, 0.6),
+    0 0 0 16px rgba(212, 147, 13, 0.1);
+  background-color: rgba(13, 17, 23, 0.98);
 }
 
 /* Button focus – keep keyboard users happy */
@@ -114,10 +114,10 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
-/* Desktop scrollbars (if needed later) */
+/* Desktop scrollbars */
 .rb-desktop-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(51, 65, 85, 0.9) transparent;
+  scrollbar-color: rgba(45, 51, 59, 0.8) transparent;
 }
 
 .rb-desktop-scroll::-webkit-scrollbar {
@@ -125,6 +125,6 @@ button:focus-visible {
 }
 
 .rb-desktop-scroll::-webkit-scrollbar-thumb {
-  background-color: rgba(51, 65, 85, 0.9);
+  background-color: rgba(45, 51, 59, 0.8);
   border-radius: 9999px;
 }

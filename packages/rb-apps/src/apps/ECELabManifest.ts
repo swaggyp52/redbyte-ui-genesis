@@ -11,6 +11,7 @@ export const ECELabApp: RedByteApp = {
         name: 'Virtual Lab',
         iconId: 'cpu',
         category: 'logic',
+        hidden: true,
         defaultSize: { width: 1400, height: 900 },
         minSize: { width: 1024, height: 768 }, // Enough for split view
     },

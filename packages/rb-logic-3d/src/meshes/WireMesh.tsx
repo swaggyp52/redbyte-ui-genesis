@@ -26,19 +26,21 @@ export const WireMesh: React.FC<WireMeshProps> = ({
     const points = [new THREE.Vector3(...from), new THREE.Vector3(...to)];
     return new THREE.CatmullRomCurve3(points);
   }, [from[0], from[1], from[2], to[0], to[1], to[2]]);
-  const tubeGeometry = useMemo(() => new THREE.TubeGeometry(curve, 10, 0.05, 8, false), [curve]);
-  const glowGeometry = useMemo(() => new THREE.TubeGeometry(curve, 10, 0.08, 8, false), [curve]);
-  const pulseBoost = pulse * 0.6;
-  const emissiveIntensity = (isActive ? 0.6 : 0.1) + pulseBoost;
+  const tubeGeometry = useMemo(() => new THREE.TubeGeometry(curve, 10, 0.06, 8, false), [curve]);
+  const glowGeometry = useMemo(() => new THREE.TubeGeometry(curve, 10, 0.09, 8, false), [curve]);
+  const pulseBoost = pulse * 0.3;
+  const emissiveIntensity = (isActive ? 0.4 : 0.05) + pulseBoost;
 
   // Track all materials for disposal
   const materialRefs = useRef<THREE.Material[]>([]);
 
   const wireMaterial = useMemo(() => {
     const mat = new THREE.MeshStandardMaterial({
-      color: isActive ? '#22c55e' : '#6b7280',
-      emissive: new THREE.Color(isActive ? '#22c55e' : '#000000'),
+      color: isActive ? '#B87333' : '#2D333B',
+      emissive: new THREE.Color(isActive ? '#D4930D' : '#000000'),
       emissiveIntensity,
+      metalness: 0.6,
+      roughness: 0.35,
     });
     return mat;
   }, [isActive, emissiveIntensity]);

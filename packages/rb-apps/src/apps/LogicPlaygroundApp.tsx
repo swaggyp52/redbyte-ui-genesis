@@ -47,7 +47,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { registerAllChips, registerChip, unregisterChip } from '../utils/chipRegistry';
 import { useViewStateStore } from '../stores/viewStateStore';
 import { useProbeStore } from '../stores/probeStore';
-import { useLayoutStore, type PerspectiveId } from '../stores/layoutStore';
+import { useLayoutStore, type PerspectiveId, type LearnSubview } from '../stores/layoutStore';
 import { useOscilloscopeStore } from '../stores/oscilloscopeStore';
 import { setGlobalViewStateSync, useLogicViewStore, findSmartSpawnPosition } from '@redbyte/rb-logic-view';
 import { screenToWorld, snapToGrid, fitToBounds } from '@redbyte/rb-viewport';
@@ -159,6 +159,10 @@ interface LogicPlaygroundProps {
   resourceType?: 'file' | 'folder';
   recoveredData?: unknown;
   onOpenApp?: (appId: string, props?: Record<string, unknown>) => void;
+  /** Intent: open a specific dock tab on mount (e.g., 'learn', 'info', 'probes') */
+  dockTab?: string;
+  /** Intent: open a specific learn subview on mount (e.g., 'lessons', 'help', 'manual') */
+  dockSubview?: string;
   // Determinism recording (Milestone D - optional, dev-only)
   registerStateAccessor?: (windowId: string, accessor: { getCircuit?: () => any }) => void;
   unregisterStateAccessor?: (windowId: string) => void;
@@ -222,6 +226,8 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   resourceType,
   recoveredData,
   onOpenApp,
+  dockTab,
+  dockSubview,
   registerStateAccessor,
   unregisterStateAccessor,
   determinismRecorder,
@@ -472,37 +478,16 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
 
   const handleAddNode = useCallback((nodeType: string, position?: { x: number; y: number }) => {
-    // HARD_LIMIT = 20 (from circuitStore)
-    if (circuit.nodes.length >= 20) {
-      addToast('Cannot add component: Learning Sandbox limit (20 nodes) reached', 'warning', 4000);
-      return;
-    }
+    // Always use smart spawn positioning (camera-centered + collision avoidance)
+    const viewState = useLogicViewStore.getState();
+    const camera = viewState.camera;
+    const centerX = -camera.x / camera.zoom;
+    const centerY = -camera.y / camera.zoom;
 
-    let pos = position;
-    if (!pos) {
-      // Calculate center of view effectively
-      // We don't have direct access to camera here usually, but we can get it from store
-      // LogicCanvas uses useLogicViewStore.
-      const viewState = useLogicViewStore.getState();
-      const camera = viewState.camera;
-      // Assuming standard 800x600 viewport approximate if width/height not available, 
-      // or we can just spawn at (0,0) world coords corrected for camera
-      // The view usually centers (0,0) initially.
-      // Let's rely on camera being accurate.
-      // Note: LogicPlayground doesn't know exact canvas dimensions easily here without ref.
-      // But we can approximate or just use world (0,0) as base.
-
-      const centerX = -camera.x / camera.zoom;
-      const centerY = -camera.y / camera.zoom;
-
-      pos = findSmartSpawnPosition(circuit.nodes, { x: centerX, y: centerY });
-    }
+    const pos = position ?? findSmartSpawnPosition(circuit.nodes, { x: centerX, y: centerY });
 
     storeAddNode(nodeType, pos);
-
-    // Nice-to-have feedback for keyboard/click add
-    // addToast(`Added ${nodeType}`, 'success', 1000); 
-  }, [circuit.nodes, storeAddNode, addToast]);
+  }, [circuit.nodes, storeAddNode]);
 
 
 
@@ -1647,6 +1632,17 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     loadInitial();
   }, []);
 
+  // Intent props: open a specific dock tab/subview on mount
+  useEffect(() => {
+    if (dockTab) {
+      const store = useLayoutStore.getState();
+      store.openDock(
+        dockTab as any,
+        (dockSubview as LearnSubview) || undefined,
+      );
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- intent props are mount-only
+
   useEffect(() => {
     tickEngine.setTickRate(tickRate);
     setCurrentHz(tickRate);
@@ -2301,10 +2297,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       addToast(`Added ${draggingNodeType}`, 'success');
     } else {
       console.error('[LogicPlayground] Node was NOT added!');
-      // Check if we hit the classroom guardrail (HARD_LIMIT=20)
-      if (beforeCount >= 20) {
-        addToast('Circuit limit reached (20 components max)', 'warning', 5000);
-      }
+      addToast('Could not add component — circuit may be at its limit', 'warning', 5000);
     }
 
     setDraggingNodeType(null);
@@ -3122,6 +3115,24 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     return () => window.removeEventListener('rb:hardware-session', handler as EventListener);
   }, [circuit, getLayoutSnapshot, safeMode]);
 
+  // rb:open-dock event bridge — lets Shell (and other packages) open a dock tab+subview
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const VALID_TABS = new Set<string>(['inspector', 'health', 'learn', 'probes', 'record', 'chips', 'io']);
+    const VALID_SUBVIEWS = new Set<string>(['lessons', 'help', 'manual']);
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail || typeof detail.tab !== 'string' || !VALID_TABS.has(detail.tab)) return;
+      const subview = typeof detail.subview === 'string' && VALID_SUBVIEWS.has(detail.subview)
+        ? (detail.subview as LearnSubview)
+        : undefined;
+      const errorCode = typeof detail.errorCode === 'string' ? detail.errorCode : undefined;
+      useLayoutStore.getState().openDock(detail.tab as RightDockTab, subview, errorCode);
+    };
+    window.addEventListener('rb:open-dock', handler);
+    return () => window.removeEventListener('rb:open-dock', handler);
+  }, []);
+
   const handleOpenProject = useCallback(() => {
     projectFileInputRef.current?.click();
   }, []);
@@ -3681,7 +3692,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
           onPerspectiveChange={setPerspective}
           schematicMiniEnabled={schematicMiniEnabled}
           onToggleSchematicMini={toggleSchematicMini}
-          onManual={() => onOpenApp?.('user-manual')}
+          onManual={() => useLayoutStore.getState().openDock('learn', 'manual')}
           onHelp={() => setShowKeyboardHelp(true)}
           onStartHere={() => setShowStartHere(true)}
           onExportEvidence={handleExportEvidence}
@@ -3955,6 +3966,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
               onRecordImportProofPack={handleRunRecorderImportProofPack}
               onLoadExample={handleLoadLearnExample}
               onExitLearnMode={handleExitLearnMode}
+              onOpenApp={onOpenApp}
               chips={allChips}
               initialState={rightDockState}
               initialTab={rightDockTab}

@@ -121,29 +121,24 @@ const StateChip: React.FC<{ label: string; value: string; accent?: boolean }> = 
 
 const SECTIONS = [
   {
-    title: 'Learning Tools',
+    title: 'Build & Learn',
     apps: [
-      { id: 'logic-playground', label: 'Logic Playground', icon: 'logic', description: 'Freestyle circuit design' },
-      { id: 'ece-lab', label: 'ECE Lab', icon: 'chip', description: 'Guided hardware labs' },
-      { id: 'virtual-lab', label: 'Virtual Lab', icon: 'tool-build', description: 'Simulated breadboard' },
-      { id: 'labs', label: 'Labs', icon: 'book', description: 'Course assignments' },
-      { id: 'start-here', label: 'Start Here', icon: 'browser', description: 'Introduction & Basics' },
+      { id: 'logic-playground', label: 'Playground', icon: 'logic', description: 'Freestyle circuit design' },
+      { id: 'labs', label: 'Labs', icon: 'book', description: 'Guided assignments with verification' },
     ]
   },
   {
-    title: 'System Tools',
+    title: 'System',
     apps: [
       { id: 'files', label: 'Files', icon: 'files', description: 'Project management' },
-      { id: 'terminal', label: 'Terminal', icon: 'terminal', description: 'Command line interface' },
-      { id: 'settings', label: 'Settings', icon: 'settings', description: 'System configuration' },
-      { id: 'system-log', label: 'Logs', icon: 'log', description: 'Debug logs' },
+      { id: 'terminal', label: 'Terminal', icon: 'terminal', description: 'Command line' },
+      { id: 'settings', label: 'Settings', icon: 'settings', description: 'Configuration' },
     ]
   },
   {
-    title: 'Grading & Export',
+    title: 'Instructor',
     apps: [
-      { id: 'submission-inspector', label: 'Inspector', icon: 'search', description: 'Verify submissions' },
-      { id: 'fpga-proof-viewer', label: 'Proof Viewer', icon: 'shield-check', description: 'Analyze proofs' },
+      { id: 'instructor', label: 'Dashboard', icon: 'search', description: 'Review submissions' },
     ]
   }
 ] as const;
@@ -151,9 +146,8 @@ const SECTIONS = [
 /* ─── App Guide ─────────────────────────────────────────────── */
 
 const APP_GUIDE = [
-  { label: 'Logic Playground', desc: 'Build circuits freely' },
-  { label: 'Lab', desc: 'Complete guided assignments with verification' },
-  { label: 'Virtual Lab', desc: 'Test on 3D simulated boards' },
+  { label: 'Playground', desc: 'Build circuits freely — drag, wire, simulate' },
+  { label: 'Labs', desc: 'Complete guided assignments with test vectors' },
 ] as const;
 
 /* ─── Component ─────────────────────────────────────────────── */

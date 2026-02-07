@@ -3,50 +3,54 @@
    Single source of truth for all visual properties. */
 
 :root {
-  /* ── Surfaces (Dark — primary) ── */
-  --rb-surface-0: #09090B;
-  --rb-surface-1: #18181B;
-  --rb-surface-2: #27272A;
-  --rb-surface-3: #3F3F46;
+  /* ── Surfaces (Dark Tech Lab — deep blue-black) ── */
+  --rb-surface-0: #070B14;
+  --rb-surface-1: #0D1117;
+  --rb-surface-2: #161B22;
+  --rb-surface-3: #21262D;
 
   /* Legacy aliases consumed by existing components */
   --rb-bg: var(--rb-surface-0);
   --rb-panel: var(--rb-surface-1);
   --rb-panel-2: var(--rb-surface-2);
 
-  /* ── Text ── */
-  --rb-text: #FAFAFA;
-  --rb-text-2: #A1A1AA;
-  --rb-text-3: #8B8B93;
+  /* ── Text (cool white, high contrast) ── */
+  --rb-text: #E6EDF3;
+  --rb-text-2: #8B949E;
+  --rb-text-3: #6E7681;
   --rb-muted: var(--rb-text-2);
   --rb-faint: var(--rb-text-3);
 
-  /* ── Accent (Blue — precision / engineering) ── */
-  --rb-accent: #3B82F6;
-  --rb-accent-soft: rgba(59, 130, 246, 0.15);
-  --rb-accent-weak: rgba(59, 130, 246, 0.12);
-  --rb-accent-strong: rgba(59, 130, 246, 0.30);
+  /* ── Accent (Instrument Amber — warm precision) ── */
+  --rb-accent: #D4930D;
+  --rb-accent-soft: rgba(212, 147, 13, 0.15);
+  --rb-accent-weak: rgba(212, 147, 13, 0.10);
+  --rb-accent-strong: rgba(212, 147, 13, 0.30);
+
+  /* ── Signal Accent (Teal/Cyan — electrical, alive) ── */
+  --rb-signal: #22D3EE;
+  --rb-signal-soft: rgba(34, 211, 238, 0.15);
 
   /* ── Secondary accent (Amber — active / recording / warnings) ── */
   --rb-amber: #F59E0B;
   --rb-amber-soft: rgba(245, 158, 11, 0.15);
 
-  /* ── Borders ── */
-  --rb-border: #27272A;
-  --rb-border-strong: #3F3F46;
+  /* ── Borders (subtle blue undertone) ── */
+  --rb-border: #1B2028;
+  --rb-border-strong: #2D333B;
 
   /* ── Semantic colors ── */
-  --rb-success: #22C55E;
-  --rb-success-soft: rgba(34, 197, 94, 0.15);
+  --rb-success: #2DD4BF;
+  --rb-success-soft: rgba(45, 212, 191, 0.15);
   --rb-warn-bg: rgba(245, 158, 11, 0.12);
   --rb-warn-border: rgba(245, 158, 11, 0.30);
-  --rb-danger: #EF4444;
-  --rb-danger-bg: rgba(239, 68, 68, 0.12);
-  --rb-danger-border: rgba(239, 68, 68, 0.30);
+  --rb-danger: #F87171;
+  --rb-danger-bg: rgba(248, 113, 113, 0.12);
+  --rb-danger-border: rgba(248, 113, 113, 0.30);
 
-  /* ── Typography ── */
-  --rb-font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --rb-font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* ── Typography (IBM Plex — engineered precision) ── */
+  --rb-font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --rb-font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --rb-font-family-body: var(--rb-font-sans);
 
   --rb-text-xs:   0.6875rem;  /* 11px */
@@ -80,10 +84,10 @@
   --rb-radius-xl: 12px;
   --rb-radius-full: 9999px;
 
-  /* ── Shadows (instrument bezel — inner highlight + outer depth) ── */
-  --rb-shadow-1: 0 1px 2px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.03);
-  --rb-shadow-2: 0 4px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);
-  --rb-shadow-3: 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+  /* ── Shadows (instrument bezel — deep blue-tinted) ── */
+  --rb-shadow-1: 0 1px 3px rgba(0,3,12,0.45), 0 0 0 1px rgba(255,255,255,0.02);
+  --rb-shadow-2: 0 4px 16px rgba(0,3,12,0.55), 0 0 0 1px rgba(255,255,255,0.03);
+  --rb-shadow-3: 0 8px 32px rgba(0,3,12,0.65), 0 0 0 1px rgba(255,255,255,0.04);
 
   /* Legacy aliases */
   --rb-shadow-sm: var(--rb-shadow-1);
@@ -99,11 +103,11 @@
   --rb-easing-inout: cubic-bezier(0.65, 0, 0.35, 1);
 
   /* ── Glass / Material (used by dock, overlays) ── */
-  --rb-glass: rgba(9, 9, 11, 0.80);
-  --rb-metal: rgba(24, 24, 27, 0.92);
+  --rb-glass: rgba(7, 11, 20, 0.85);
+  --rb-metal: rgba(13, 17, 23, 0.94);
 
   /* ── Noise overlay opacity ── */
-  --rb-noise-opacity: 0.03;
+  --rb-noise-opacity: 0.04;
 
   /* ── Theme foreground/background (consumed by ThemeProvider) ── */
   --rb-theme-foreground: var(--rb-text);
@@ -112,35 +116,41 @@
 
 /* ── Light theme ── */
 [data-theme="light"] {
-  --rb-surface-0: #FAFAFA;
-  --rb-surface-1: #F4F4F5;
-  --rb-surface-2: #E4E4E7;
-  --rb-surface-3: #D4D4D8;
+  --rb-surface-0: #FAFAF8;
+  --rb-surface-1: #F3F2EE;
+  --rb-surface-2: #E8E6E1;
+  --rb-surface-3: #D5D3CD;
 
   --rb-bg: var(--rb-surface-0);
   --rb-panel: var(--rb-surface-1);
   --rb-panel-2: var(--rb-surface-2);
 
-  --rb-text: #18181B;
-  --rb-text-2: #52525B;
-  --rb-text-3: #A1A1AA;
+  --rb-text: #1C1917;
+  --rb-text-2: #57534E;
+  --rb-text-3: #A8A29E;
   --rb-muted: var(--rb-text-2);
   --rb-faint: var(--rb-text-3);
 
-  --rb-accent: #2563EB;
-  --rb-accent-soft: rgba(37, 99, 235, 0.10);
-  --rb-accent-weak: rgba(37, 99, 235, 0.08);
-  --rb-accent-strong: rgba(37, 99, 235, 0.22);
+  --rb-accent: #B47A09;
+  --rb-accent-soft: rgba(180, 122, 9, 0.10);
+  --rb-accent-weak: rgba(180, 122, 9, 0.08);
+  --rb-accent-strong: rgba(180, 122, 9, 0.22);
 
-  --rb-border: #E4E4E7;
-  --rb-border-strong: #D4D4D8;
+  --rb-signal: #0891B2;
+  --rb-signal-soft: rgba(8, 145, 178, 0.12);
+
+  --rb-border: #E8E6E1;
+  --rb-border-strong: #D5D3CD;
+
+  --rb-success: #0D9488;
+  --rb-danger: #DC2626;
 
   --rb-shadow-1: 0 1px 2px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04);
   --rb-shadow-2: 0 4px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.05);
   --rb-shadow-3: 0 8px 24px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.06);
 
-  --rb-glass: rgba(250, 250, 250, 0.85);
-  --rb-metal: rgba(244, 244, 245, 0.95);
+  --rb-glass: rgba(250, 250, 248, 0.85);
+  --rb-metal: rgba(243, 242, 238, 0.95);
   --rb-noise-opacity: 0.02;
 
   --rb-theme-foreground: var(--rb-text);
@@ -164,13 +174,19 @@
   --rb-muted: var(--rb-text-2);
   --rb-faint: var(--rb-text-3);
 
-  --rb-accent: #818CF8;
-  --rb-accent-soft: rgba(129, 140, 248, 0.15);
-  --rb-accent-weak: rgba(129, 140, 248, 0.10);
-  --rb-accent-strong: rgba(129, 140, 248, 0.28);
+  --rb-accent: #E0A30E;
+  --rb-accent-soft: rgba(224, 163, 14, 0.15);
+  --rb-accent-weak: rgba(224, 163, 14, 0.10);
+  --rb-accent-strong: rgba(224, 163, 14, 0.28);
+
+  --rb-signal: #67E8F9;
+  --rb-signal-soft: rgba(103, 232, 249, 0.15);
 
   --rb-border: #1E293B;
   --rb-border-strong: #334155;
+
+  --rb-success: #2DD4BF;
+  --rb-danger: #FB7185;
 
   --rb-glass: rgba(2, 6, 23, 0.82);
   --rb-metal: rgba(15, 23, 42, 0.92);

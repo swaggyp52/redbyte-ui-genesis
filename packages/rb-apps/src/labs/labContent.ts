@@ -187,3 +187,62 @@ export const LABS: Record<string, LabContent> = {
     'lab-2': LAB_2_CONTENT,
     'lab2_adder': LAB_2_ADDER_CONTENT
 };
+
+// ---------------------------------------------------------------------------
+// Metadata helper — extracts title, objectives, step count from any lab format
+// ---------------------------------------------------------------------------
+
+export interface LabMetadata {
+    title: string;
+    objectives: string[];
+    stepCount: number;
+    difficulty: 'beginner' | 'intermediate' | 'advanced';
+}
+
+const LAB_META_OVERRIDES: Record<string, Partial<LabMetadata>> = {
+    'lab-1': { title: 'Lab 1: Introduction to Digital Logic', difficulty: 'beginner', objectives: ['Connect hardware board', 'Manipulate physical switches', 'Observe LED output'] },
+    'lab-2': { title: 'Lab 2: 4-Bit Binary Adder', difficulty: 'intermediate', objectives: ['Design a 4-bit adder', 'Simulate and verify', 'Integrate analog sensor', 'Deploy to FPGA'] },
+    'lab2_adder': { title: 'Lab 2: 4-Bit Adder (Extended)', difficulty: 'intermediate', objectives: ['Build ripple-carry adder', 'Magnitude comparator', 'Hardware verification'] },
+};
+
+export function getLabMetadata(labId: string): LabMetadata {
+    const content = LABS[labId];
+    const overrides = LAB_META_OVERRIDES[labId] ?? {};
+
+    if (!content) {
+        return { title: labId, objectives: [], stepCount: 0, difficulty: 'beginner', ...overrides };
+    }
+
+    const isArray = Array.isArray(content);
+    const stepCount = isArray ? content.length : content.steps.length;
+
+    // Extract title from first step if not overridden
+    let title = overrides.title ?? labId;
+    if (!overrides.title) {
+        if (isArray && content.length > 0) {
+            title = content[0].title;
+        } else if (!isArray) {
+            title = content.title ?? labId;
+        }
+    }
+
+    // Extract objectives from the LabDefinition format or use overrides
+    let objectives = overrides.objectives ?? [];
+    if (!overrides.objectives && !isArray && content.objectives) {
+        objectives = content.objectives;
+    }
+
+    return {
+        title,
+        objectives,
+        stepCount,
+        difficulty: overrides.difficulty ?? 'beginner',
+    };
+}
+
+export function getLabStepTitles(labId: string): string[] {
+    const content = LABS[labId];
+    if (!content) return [];
+    if (Array.isArray(content)) return content.map((s) => s.title);
+    return content.steps.map((s: any) => s.title ?? s.id ?? 'Step');
+}

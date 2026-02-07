@@ -21,15 +21,9 @@ interface SignalParticleSystemProps {
   currentTime: number; // ms
 }
 
-const PARTICLE_SPEED = 2; // Units per second (progress per second)
-// Note: progress goes 0..1. Speed = 2 means it traverses the specific curve in 0.5s.
-// The original code had constant PARTICLE_SPEED regardless of length, which means
-// short wires were fast, long wires were fast.
-// Actually, progress 0..1 implies normalized.
-// If existing code used `progress + delta * SPEED`, then `progress = age * SPEED`.
-// So lifetime is determined by `1 / SPEED`.
+const PARTICLE_SPEED = 2;
 const TRAVERSAL_DURATION = 1 / PARTICLE_SPEED;
-const SPAWN_INTERVAL = 0.2; // Seconds between particle spawns
+const SPAWN_INTERVAL = 0.12; // Denser particle flow
 
 export const SignalParticleSystem: React.FC<SignalParticleSystemProps> = ({
   from,
@@ -93,18 +87,17 @@ export const SignalParticleSystem: React.FC<SignalParticleSystemProps> = ({
     <>
       {particles.map(({ k, progress }) => {
         const position = curve.getPointAt(progress);
-        const opacity = 1; // Solid during traversal? Or fade out?
-        // Original had "fade out based on AGE vs PARTICLE_LIFETIME".
-        // Use a simple fade at the very end
+        // Gentle vertical oscillation for arc feel
+        const yOffset = Math.sin(progress * Math.PI) * 0.08;
         const fade = progress > 0.8 ? (1 - progress) / 0.2 : 1;
 
         return (
-          <mesh key={`${wireId}-p-${k}`} position={[position.x, position.y, position.z]}>
-            <sphereGeometry args={[0.1, 8, 8]} />
+          <mesh key={`${wireId}-p-${k}`} position={[position.x, position.y + yOffset, position.z]}>
+            <sphereGeometry args={[0.07, 8, 8]} />
             <meshStandardMaterial
-              color="#00ffff"
-              emissive="#00ffff"
-              emissiveIntensity={1}
+              color="#D4930D"
+              emissive="#D4930D"
+              emissiveIntensity={1.2}
               transparent
               opacity={fade}
             />
