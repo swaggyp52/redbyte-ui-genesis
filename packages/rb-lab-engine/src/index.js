@@ -10,3 +10,4 @@ export * from './verification/verifyCheckpoint';
 export * from './services/exportService';
 export * from './services/readmeGenerator';
 export * from './services/importWorkflowUtils';
+export * from './services/schemaMigration';

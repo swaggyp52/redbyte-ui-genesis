@@ -1,8 +1,8 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 /**
- * Export Service — Evidence Capsule Generation
+ * Export Service - Evidence Capsule Generation
  *
  * Creates ZIP archives with:
  * - capsule.json (index with hashes)
@@ -42,114 +42,195 @@ async function stableHash(obj) {
     return await hashString(json);
 }
 export async function exportEvidenceCapsule(project) {
-    const exportTimestamp = project?.updatedAt ?? project?.createdAt ?? DEFAULT_ISO_DATE;
-    const zip = new JSZip();
-    const files = new Map();
-    const addTextFile = (path, content) => {
-        zip.file(path, content, { date: ZIP_ENTRY_DATE });
-        files.set(path, content);
-    };
-    const addZipFile = (path, content, options) => {
-        zip.file(path, content, { ...(options ?? {}), date: ZIP_ENTRY_DATE });
-    };
-    // -------------------------------------------------------------------------
-    // 1. Serialize project.json
-    // -------------------------------------------------------------------------
-    const projectJson = stableSerialize(project);
-    const projectHash = await stableHash(project);
-    addTextFile('project.json', projectJson);
-    // -------------------------------------------------------------------------
-    // 2. Serialize actions.log.json
-    // -------------------------------------------------------------------------
-    const actionsLog = {
+    const exportTimestamp = project?.updatedAt ??
+        project?.createdAt ??
+        DEFAULT_ISO_DATE;
+    const safeProjectFallback = {
         schemaVersion: '1.0',
-        projectId: project.projectId,
-        sessionActions: project.evidence.actions,
+        projectId: project?.projectId ?? 'export-fallback',
+        name: project?.name ?? 'Recovered Project',
+        description: project?.description ?? '',
+        createdAt: project?.createdAt ?? DEFAULT_ISO_DATE,
+        updatedAt: project?.updatedAt ??
+            project?.createdAt ??
+            DEFAULT_ISO_DATE,
+        circuit: project?.circuit ?? { schemaVersion: '1.0', nodes: [], connections: [] },
+        simulation: project?.simulation ?? { tickRate: 20, currentTick: 0, probes: [] },
+        labSpec: project?.labSpec ?? null,
+        evidence: project?.evidence ?? { actions: [], snapshots: [] },
     };
-    const actionsJson = stableSerialize(actionsLog);
-    const actionsHash = await stableHash(actionsLog);
-    addTextFile('actions.log.json', actionsJson);
-    // -------------------------------------------------------------------------
-    // 2.5. Generate README.md (auto-generated human-readable summary)
-    // -------------------------------------------------------------------------
-    const readme = generateReadme(project, { exportDate: exportTimestamp });
-    addZipFile('README.md', readme);
-    // -------------------------------------------------------------------------
-    // 2.7. Add FPGA artifacts if available (verilog/ and bitstream/)
-    // -------------------------------------------------------------------------
-    const fpgaArtifacts = project.fpgaArtifacts;
-    if (fpgaArtifacts) {
-        // Add Verilog source
-        if (fpgaArtifacts.verilog) {
-            addTextFile('verilog/design.v', fpgaArtifacts.verilog);
-        }
-        // Add XDC constraints
-        if (fpgaArtifacts.constraints) {
-            addTextFile('verilog/constraints.xdc', fpgaArtifacts.constraints);
-        }
-        // Add bitstream if available
-        if (fpgaArtifacts.bitstream) {
-            // Bitstream is binary - handle as Uint8Array or Blob
-            if (fpgaArtifacts.bitstream instanceof Uint8Array) {
-                addZipFile('bitstream/design.bit', fpgaArtifacts.bitstream);
+    try {
+        const zip = new JSZip();
+        const files = new Map();
+        const warnings = [];
+        const addTextFile = (path, content) => {
+            zip.file(path, content, { date: ZIP_ENTRY_DATE });
+            files.set(path, content);
+        };
+        const addZipFile = (path, content, options) => {
+            zip.file(path, content, { ...(options ?? {}), date: ZIP_ENTRY_DATE });
+        };
+        const pushWarning = (step, message, error) => {
+            warnings.push({
+                step,
+                message,
+                error: error instanceof Error ? error.message : error ? String(error) : undefined,
+            });
+        };
+        const safeSerialize = (value, step, fallback) => {
+            try {
+                return stableSerialize(value);
             }
-            else if (typeof fpgaArtifacts.bitstream === 'string') {
-                // If stored as base64 string
-                addZipFile('bitstream/design.bit', fpgaArtifacts.bitstream, { base64: true });
+            catch (error) {
+                pushWarning(step, 'Serialization failed; using fallback payload.', error);
+                return stableSerialize(fallback);
+            }
+        };
+        const safeHash = async (value, step) => {
+            try {
+                return await stableHash(value);
+            }
+            catch (error) {
+                pushWarning(step, 'Hashing failed; using placeholder hash.', error);
+                return 'sha256:ERROR';
+            }
+        };
+        // -------------------------------------------------------------------------
+        // 1. Serialize project.json
+        // -------------------------------------------------------------------------
+        const projectJson = safeSerialize(project, 'project', safeProjectFallback);
+        const projectHash = await safeHash(project, 'project-hash');
+        addTextFile('project.json', projectJson);
+        // -------------------------------------------------------------------------
+        // 2. Serialize actions.log.json
+        // -------------------------------------------------------------------------
+        const actionsLog = {
+            schemaVersion: '1.0',
+            projectId: project.projectId,
+            sessionActions: project.evidence.actions,
+        };
+        const actionsJson = safeSerialize(actionsLog, 'actions', actionsLog);
+        const actionsHash = await safeHash(actionsLog, 'actions-hash');
+        addTextFile('actions.log.json', actionsJson);
+        // -------------------------------------------------------------------------
+        // 2.5. Generate README.md (auto-generated human-readable summary)
+        // -------------------------------------------------------------------------
+        try {
+            const readme = generateReadme(project, { exportDate: exportTimestamp });
+            addZipFile('README.md', readme);
+        }
+        catch (error) {
+            pushWarning('readme', 'README generation failed; using fallback.', error);
+            addZipFile('README.md', '# RedByte Export\n\nREADME generation failed. See warnings.json for details.');
+        }
+        // -------------------------------------------------------------------------
+        // 2.7. Add FPGA artifacts if available (verilog/ and bitstream/)
+        // -------------------------------------------------------------------------
+        const fpgaArtifacts = project.fpgaArtifacts;
+        if (fpgaArtifacts) {
+            // Add Verilog source
+            if (fpgaArtifacts.verilog) {
+                addTextFile('verilog/design.v', fpgaArtifacts.verilog);
+            }
+            // Add XDC constraints
+            if (fpgaArtifacts.constraints) {
+                addTextFile('verilog/constraints.xdc', fpgaArtifacts.constraints);
+            }
+            // Add bitstream if available
+            if (fpgaArtifacts.bitstream) {
+                // Bitstream is binary - handle as Uint8Array or Blob
+                if (fpgaArtifacts.bitstream instanceof Uint8Array) {
+                    addZipFile('bitstream/design.bit', fpgaArtifacts.bitstream);
+                }
+                else if (typeof fpgaArtifacts.bitstream === 'string') {
+                    // If stored as base64 string
+                    addZipFile('bitstream/design.bit', fpgaArtifacts.bitstream, { base64: true });
+                }
+            }
+            // Add provenance metadata
+            if (fpgaArtifacts.metadata) {
+                const metadataJson = stableSerialize(fpgaArtifacts.metadata);
+                addTextFile('fpga/provenance.json', metadataJson);
             }
         }
-        // Add provenance metadata
-        if (fpgaArtifacts.metadata) {
-            const metadataJson = stableSerialize(fpgaArtifacts.metadata);
-            addTextFile('fpga/provenance.json', metadataJson);
+        // -------------------------------------------------------------------------
+        // 2.9. Add warnings.json if needed
+        // -------------------------------------------------------------------------
+        if (warnings.length > 0) {
+            const warningsPayload = {
+                schemaVersion: '1.0',
+                createdAt: exportTimestamp,
+                warnings,
+            };
+            const warningsJson = stableSerialize(warningsPayload);
+            addTextFile('warnings.json', warningsJson);
         }
+        // -------------------------------------------------------------------------
+        // 3. Build evidence manifest
+        // -------------------------------------------------------------------------
+        const fileEntries = [];
+        const sortedFiles = Array.from(files.entries()).sort(([a], [b]) => a.localeCompare(b));
+        for (const [path, content] of sortedFiles) {
+            fileEntries.push({
+                path,
+                hash: await hashString(content),
+                size: new TextEncoder().encode(content).byteLength,
+            });
+        }
+        const manifest = {
+            schemaVersion: '1.0',
+            buildVersion: BUILD_SHA,
+            buildDate: BUILD_DATE,
+            createdAt: exportTimestamp,
+            files: fileEntries,
+            rootHash: await safeHash(fileEntries.map((f) => f.hash).join(''), 'manifest-root-hash'),
+        };
+        const manifestJson = safeSerialize(manifest, 'manifest', manifest);
+        const manifestHash = await safeHash(manifest, 'manifest-hash');
+        addZipFile('manifest.json', manifestJson);
+        // -------------------------------------------------------------------------
+        // 4. Build capsule index (top-level metadata)
+        // -------------------------------------------------------------------------
+        const capsule = {
+            schemaVersion: '1.0',
+            projectHash,
+            actionLogHash: actionsHash,
+            manifestHash,
+            buildSHA: BUILD_SHA,
+            buildDate: BUILD_DATE,
+            createdAt: exportTimestamp,
+            files: {
+                project: 'project.json',
+                actions: 'actions.log.json',
+                manifest: 'manifest.json',
+            },
+        };
+        const capsuleJson = safeSerialize(capsule, 'capsule', capsule);
+        addZipFile('capsule.json', capsuleJson);
+        // -------------------------------------------------------------------------
+        // 5. Generate ZIP blob
+        // -------------------------------------------------------------------------
+        return zip.generateAsync({ type: 'blob' });
     }
-    // -------------------------------------------------------------------------
-    // 3. Build evidence manifest
-    // -------------------------------------------------------------------------
-    const fileEntries = [];
-    const sortedFiles = Array.from(files.entries()).sort(([a], [b]) => a.localeCompare(b));
-    for (const [path, content] of sortedFiles) {
-        fileEntries.push({
-            path,
-            hash: await hashString(content),
-            size: new TextEncoder().encode(content).byteLength,
-        });
+    catch (error) {
+        const fallbackZip = new JSZip();
+        const fallbackTimestamp = project?.updatedAt ??
+            project?.createdAt ??
+            DEFAULT_ISO_DATE;
+        const warningPayload = {
+            schemaVersion: '1.0',
+            createdAt: fallbackTimestamp,
+            warnings: [{
+                    step: 'export',
+                    message: 'Export failed; generated recovery bundle instead.',
+                    error: error instanceof Error ? error.message : String(error),
+                }],
+        };
+        fallbackZip.file('project.json', stableSerialize(safeProjectFallback), { date: ZIP_ENTRY_DATE });
+        fallbackZip.file('warnings.json', JSON.stringify(warningPayload, null, 2), { date: ZIP_ENTRY_DATE });
+        fallbackZip.file('README.md', '# RedByte Export\n\nExport failed and produced a recovery bundle. See warnings.json for details.', { date: ZIP_ENTRY_DATE });
+        return fallbackZip.generateAsync({ type: 'blob' });
     }
-    const manifest = {
-        schemaVersion: '1.0',
-        buildVersion: BUILD_SHA,
-        buildDate: BUILD_DATE,
-        createdAt: exportTimestamp,
-        files: fileEntries,
-        rootHash: await hashString(fileEntries.map((f) => f.hash).join('')),
-    };
-    const manifestJson = stableSerialize(manifest);
-    const manifestHash = await stableHash(manifest);
-    addZipFile('manifest.json', manifestJson);
-    // -------------------------------------------------------------------------
-    // 4. Build capsule index (top-level metadata)
-    // -------------------------------------------------------------------------
-    const capsule = {
-        schemaVersion: '1.0',
-        projectHash,
-        actionLogHash: actionsHash,
-        manifestHash,
-        buildSHA: BUILD_SHA,
-        buildDate: BUILD_DATE,
-        createdAt: exportTimestamp,
-        files: {
-            project: 'project.json',
-            actions: 'actions.log.json',
-            manifest: 'manifest.json',
-        },
-    };
-    const capsuleJson = stableSerialize(capsule);
-    addZipFile('capsule.json', capsuleJson);
-    // -------------------------------------------------------------------------
-    // 5. Generate ZIP blob
-    // -------------------------------------------------------------------------
-    return zip.generateAsync({ type: 'blob' });
 }
 /**
  * Import evidence capsule and verify integrity.
@@ -184,13 +265,13 @@ export async function importEvidenceCapsule(blob) {
     if (projectIntact && manifestIntact) {
         integrity = {
             status: 'verified',
-            message: '✅ Integrity verified — all hashes match',
+            message: 'Integrity verified - all hashes match',
         };
     }
     else if (!projectIntact) {
         integrity = {
             status: 'modified',
-            message: '⚠ Project modified — hash mismatch detected',
+            message: 'Integrity warning: project modified (hash mismatch detected)',
             details: {
                 expectedHash: capsule.projectHash,
                 actualHash: actualProjectHash,
@@ -201,7 +282,7 @@ export async function importEvidenceCapsule(blob) {
     else {
         integrity = {
             status: 'modified',
-            message: '⚠ Manifest modified — hash mismatch detected',
+            message: 'Integrity warning: manifest modified (hash mismatch detected)',
             details: {
                 expectedHash: capsule.manifestHash,
                 actualHash: actualManifestHash,

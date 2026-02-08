@@ -1,0 +1,2 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+export const FileTextIcon = (props) => (_jsxs("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", ...props, children: [_jsx("path", { d: "M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" }), _jsx("path", { d: "M14 3v6h6" }), _jsx("line", { x1: "8.5", y1: "13", x2: "15.5", y2: "13", strokeLinecap: "round" }), _jsx("line", { x1: "8.5", y1: "17", x2: "15.5", y2: "17", strokeLinecap: "round" })] }));

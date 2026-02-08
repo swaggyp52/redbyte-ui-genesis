@@ -50,14 +50,19 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
   }, [circuit.connections, selection]);
 
   // Get real-time signals for selected nodes
-  const [nodeSignals, setNodeSignals] = React.useState<Map<string, Record<string, Signal>>>(new Map());
-  const [nodeInputs, setNodeInputs] = React.useState<
-    Map<string, Record<string, { value: Signal; source?: string }>>
-  >(new Map());
+  const EMPTY_SIGNALS = React.useRef(new Map<string, Record<string, Signal>>()).current;
+  const EMPTY_INPUTS = React.useRef(new Map<string, Record<string, { value: Signal; source?: string }>>()).current;
+  const [nodeSignals, setNodeSignals] = React.useState(EMPTY_SIGNALS);
+  const [nodeInputs, setNodeInputs] = React.useState(EMPTY_INPUTS);
   const [analogUiState, setAnalogUiState] = React.useState<Record<string, number>>({});
   const analogCommitTimerRef = React.useRef<number | null>(null);
 
   const refreshSignals = React.useCallback(() => {
+    if (selectedNodes.length === 0) {
+      setNodeSignals(EMPTY_SIGNALS);
+      setNodeInputs(EMPTY_INPUTS);
+      return;
+    }
     const signals = new Map<string, Record<string, Signal>>();
     const inputs = new Map<string, Record<string, { value: Signal; source?: string }>>();
     const allSignals = engine.getAllSignals();
@@ -74,7 +79,11 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
     }
     setNodeSignals(signals);
     setNodeInputs(inputs);
-  }, [circuit.connections, engine, selectedNodes]);
+  }, [circuit.connections, engine, selectedNodes, EMPTY_SIGNALS, EMPTY_INPUTS]);
+
+  // Keep a ref to the latest refreshSignals so effects don't depend on it
+  const refreshSignalsRef = React.useRef(refreshSignals);
+  React.useEffect(() => { refreshSignalsRef.current = refreshSignals; }, [refreshSignals]);
 
   const { isActive: signalPollingActive } = useInstrumentScheduler({
     windowId,
@@ -85,17 +94,18 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
 
   React.useEffect(() => {
     if (!isRunning || selectedNodes.length === 0) {
-      setNodeSignals(new Map());
-      setNodeInputs(new Map());
+      setNodeSignals(EMPTY_SIGNALS);
+      setNodeInputs(EMPTY_INPUTS);
       return;
     }
-  }, [isRunning, selectedNodes.length]);
+  }, [isRunning, selectedNodes.length, EMPTY_SIGNALS, EMPTY_INPUTS]);
 
   // On activation (or selection change), refresh immediately so the panel isn't stale.
+  // Use ref to avoid re-firing when refreshSignals changes reference (which would loop).
   React.useEffect(() => {
     if (!signalPollingActive) return;
-    refreshSignals();
-  }, [refreshSignals, signalPollingActive]);
+    refreshSignalsRef.current();
+  }, [signalPollingActive, selectedNodes]);
 
   React.useEffect(() => {
     let nextState: Record<string, number> = {};

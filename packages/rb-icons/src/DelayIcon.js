@@ -1,0 +1,2 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+export const DelayIcon = (props) => (_jsxs("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.5, ...props, children: [_jsx("circle", { cx: "12", cy: "13", r: "8" }), _jsx("path", { d: "M12 5V2M10 2h4", strokeLinecap: "round" }), _jsx("path", { d: "M12 9v4l2 2", strokeLinecap: "round", strokeLinejoin: "round" }), _jsx("path", { d: "M8 17l4-6 4 6", strokeOpacity: 0.4, strokeLinecap: "round", strokeLinejoin: "round" })] }));

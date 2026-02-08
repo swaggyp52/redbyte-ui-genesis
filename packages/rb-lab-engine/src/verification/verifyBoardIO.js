@@ -4,7 +4,8 @@
 import { CircuitEngine } from '@redbyte/rb-logic-core';
 import { toLegacyCircuit } from '../adapters/circuitAdapter';
 export async function verifyBoardIO(project, checkpoint) {
-    const { inputSwitches, expectedLEDs, ticksToStabilize = 1 } = checkpoint.spec;
+    const { switchSettings: inputSwitches, expectedLEDs } = checkpoint.config;
+    const ticksToStabilize = checkpoint.spec?.ticksToStabilize ?? 1;
     if (!project.boardMap) {
         return {
             passed: false,

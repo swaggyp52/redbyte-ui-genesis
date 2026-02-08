@@ -40,9 +40,10 @@ export default defineConfig({
         // Increase chunk size warning threshold to 750kB to accommodate vendor-3d (Three.js)
         // This chunk is only loaded when user opens Logic Playground, not on cold load
         chunkSizeWarningLimit: 750,
-        // Vite/rollup boot hardening:
-        // - Disable preload helper to avoid TDZ init-order crashes observed in headless/preview gates
-        //   when shared helpers are hoisted into app chunks.
+        // Disable Vite's production preload helper.
+        // In this repo it can get hoisted into a heavy shared chunk (e.g. app-logic),
+        // which forces `main` to statically import that chunk and triggers TDZ crashes
+        // in headless/preview boot gates.
         modulePreload: false,
         rollupOptions: {
             input: {

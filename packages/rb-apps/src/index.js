@@ -1,0 +1,144 @@
+// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Use without permission prohibited.
+// Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+export * from './types';
+export * from './AppRegistry';
+export * from './stores/capabilitiesStore';
+export * from './stores/classroomModeStore';
+export * from './stores/filesStore';
+export * from './stores/fileAssociationsStore';
+export * from './stores/fileSystemStore';
+export * from './stores/systemLogStore';
+export * from './apps/files/fileActionTargets';
+export * from './apps/files/modals';
+export * from './examples';
+export * from './components/EmptyState';
+export * from './components/IntegrityBadge';
+export { stableSerialize, stableHash, hashBytes } from './utils/stableSerialize';
+export { loadSnapshot, wasLastShutdownClean, clearAllSnapshots } from './utils/snapshotSystem';
+export { useRenderStormDetector } from './hooks/useRenderStormDetector';
+export { hashBytesOffThread, stableHashOffThread, stableSerializeOffThread, terminateComputeWorker, } from './utils/computeWorker';
+export { installErrorHandlers, reportError, reportPerfViolation, addBreadcrumb, getBreadcrumbs, setReportSink, setPerfSampleRate, } from './utils/errorReporting';
+export { buildEvidenceManifest, verifyEvidenceManifest, serializeManifest, } from './utils/evidenceManifest';
+// Helper: safe per-app import/registration - log and continue if one fails
+async function safeRegister(name, fn) {
+    try {
+        await fn();
+        console.log('RB_APP_OK', name);
+    }
+    catch (e) {
+        console.error('RB_APP_FAIL', name, e);
+    }
+}
+export async function registerAllApps(options) {
+    const mode = options?.mode ?? 'full';
+    // Dynamic imports: only load app modules when explicitly requested
+    const { registerApp } = await import('./AppRegistry');
+    // E2E-boot: minimal boot smoke (Shell mounts; no heavy apps).
+    if (mode === 'e2e-boot') {
+        await safeRegister('launcher', async () => {
+            const { LauncherApp } = await import('./apps/LauncherApp');
+            registerApp(LauncherApp);
+        });
+        await safeRegister('settings', async () => {
+            const { SettingsApp } = await import('./apps/SettingsApp');
+            registerApp(SettingsApp);
+        });
+        return;
+    }
+    // E2E-lite: keep startup lean and avoid importing 3D-heavy modules that can
+    // crash headless Chromium or slow boot-time smoke tests.
+    if (mode === 'e2e-lite') {
+        await safeRegister('home', async () => {
+            const { HomeApp } = await import('./apps/HomeApp');
+            registerApp(HomeApp);
+        });
+        await safeRegister('settings', async () => {
+            const { SettingsApp } = await import('./apps/SettingsApp');
+            registerApp(SettingsApp);
+        });
+        await safeRegister('files', async () => {
+            const { FilesApp } = await import('./apps/FilesApp');
+            registerApp(FilesApp);
+        });
+        await safeRegister('logic-playground', async () => {
+            const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundApp');
+            registerApp(LogicPlaygroundApp);
+        });
+        await safeRegister('launcher', async () => {
+            const { LauncherApp } = await import('./apps/LauncherApp');
+            registerApp(LauncherApp);
+        });
+        return;
+    }
+    // ── Core apps (always registered) - order matters: essential OS apps first ──────
+    await safeRegister('home', async () => {
+        const { HomeApp } = await import('./apps/HomeApp');
+        registerApp(HomeApp);
+    });
+    await safeRegister('launcher', async () => {
+        const { LauncherApp } = await import('./apps/LauncherApp');
+        registerApp(LauncherApp);
+    });
+    await safeRegister('settings', async () => {
+        const { SettingsApp } = await import('./apps/SettingsApp');
+        registerApp(SettingsApp);
+    });
+    await safeRegister('files', async () => {
+        const { FilesApp } = await import('./apps/FilesApp');
+        registerApp(FilesApp);
+    });
+    await safeRegister('terminal', async () => {
+        const { TerminalApp } = await import('./apps/TerminalApp');
+        registerApp(TerminalApp);
+    });
+    await safeRegister('text-viewer', async () => {
+        const { TextViewerApp } = await import('./apps/TextViewerApp');
+        registerApp(TextViewerApp);
+    });
+    await safeRegister('system-log', async () => {
+        const { SystemLogApp } = await import('./apps/SystemLogApp');
+        registerApp(SystemLogApp);
+    });
+    // ── Labs ────────────────────────────────────────────────────────
+    await safeRegister('labs', async () => {
+        const { LabsApp } = await import('./apps/LabsApp');
+        registerApp(LabsApp);
+    });
+    await safeRegister('ece-lab', async () => {
+        const { ECELabApp } = await import('./apps/ECELabManifest');
+        registerApp(ECELabApp);
+    });
+    // ── Instructor ──────────────────────────────────────────────────
+    await safeRegister('instructor', async () => {
+        const { InstructorApp } = await import('./apps/InstructorApp');
+        registerApp(InstructorApp);
+    });
+    await safeRegister('submission-inspector', async () => {
+        const { SubmissionInspectorApp } = await import('./apps/SubmissionInspectorApp');
+        registerApp(SubmissionInspectorApp);
+    });
+    // ── Heavy apps LAST (3D/Three.js) so core OS is usable even if they fail ──
+    await safeRegister('logic-playground', async () => {
+        const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundApp');
+        registerApp(LogicPlaygroundApp);
+    });
+    // ── REMOVED (consolidated into the apps above) ────────────────────
+    // WelcomeApp → replaced by HomeApp
+    // StartHereApp → replaced by HomeApp
+    // AppStoreApp → removed (no marketplace for v1)
+    // StatusPanelApp → will move into Settings > Advanced
+    // VirtualLabApp → absorbed into ECELabApp
+    // LabWorkspaceApp → absorbed into ECELabApp
+    // HelpAppManifest → redundant with LogicHelpApp
+    // StudentLabApp → deprecated, replaced by ECELabApp
+    // InstructorRunDetailApp → inline view inside InstructorApp
+    // LabExaminerAppRegistry → niche tool, accessible via terminal
+    // FpgaProofViewerApp → niche tool, accessible via terminal
+    // HardwarePanelApp → deregistered; IO tab in Playground covers basics
+    // LogicHelpApp → demoted to Learn > Help subview inside Playground RightDock
+    // UserManualApp → demoted to Learn > Manual subview inside Playground RightDock
+}
+export { PlaygroundGoldenPath } from './dev/PlaygroundGoldenPath';
+// ── Knowledge graph ──────────────────────────────────────────────────
+export { searchKnowledge, getNodeById, getNodesByGateType, getNodesByExampleId, getNodesByLabId, getNodesByErrorCode, getNodesByTag, getNodesByHelpTopicId, } from './knowledge/knowledgeNodes';
