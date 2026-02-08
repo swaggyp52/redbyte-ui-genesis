@@ -1024,6 +1024,7 @@ export const Shell: React.FC<ShellProps> = () => {
           nodes: project.circuit.nodes.map((node) => ({
             id: node.id,
             type: node.type,
+            position: { x: node.x ?? 0, y: node.y ?? 0 },
             x: node.x,
             y: node.y,
             rotation: node.rotation,
@@ -1425,8 +1426,8 @@ export const Shell: React.FC<ShellProps> = () => {
         nodes: circuit.nodes.map((node: any) => ({
           id: node.id,
           type: node.type,
-          x: node.x || 0,
-          y: node.y || 0,
+          x: node.position?.x ?? node.x ?? 0,
+          y: node.position?.y ?? node.y ?? 0,
           rotation: node.rotation || 0,
           params: node.config || {},
           label: node.label,
@@ -2805,7 +2806,7 @@ export const Shell: React.FC<ShellProps> = () => {
                 if (!pg) openWindow('logic-playground');
                 // Dispatch after a tick so the Playground has time to mount if just opened
                 setTimeout(() => {
-                  window.dispatchEvent(new CustomEvent('rb:open-dock', { detail: { tab: 'learn', subview: 'help', errorCode } }));
+                  globalThis.dispatchEvent(new CustomEvent('rb:open-dock', { detail: { tab: 'learn', subview: 'help', errorCode } }));
                 }, pg ? 0 : 500);
               }}
             >

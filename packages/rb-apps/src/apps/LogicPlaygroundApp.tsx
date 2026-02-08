@@ -314,8 +314,8 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       nodes: src.nodes.map((node) => ({
         id: node.id,
         type: node.type,
-        x: node.x || 0,
-        y: node.y || 0,
+        x: node.position?.x ?? node.x ?? 0,
+        y: node.position?.y ?? node.y ?? 0,
         rotation: node.rotation || 0,
         params: node.config || {},
         label: node.label,
@@ -340,6 +340,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       nodes: src.nodes.map((node) => ({
         id: node.id,
         type: node.type,
+        position: { x: node.x ?? 0, y: node.y ?? 0 },
         x: node.x,
         y: node.y,
         rotation: node.rotation,
@@ -524,6 +525,22 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const setShowHelpDock = useLayoutStore((state) => state.setShowHelpDock);
   const setHelpDockSection = useLayoutStore((state) => state.setHelpDockSection);
 
+  const applyLayoutSnapshot = useCallback((layout: any) => {
+    if (!layout || typeof layout !== 'object') return;
+    if (layout.perspective) storeSetPerspective(layout.perspective);
+    if (typeof layout.splitRatio === 'number') setSplitRatio(layout.splitRatio);
+    if (layout.rightDockState) setRightDockState(layout.rightDockState);
+    if (layout.rightDockTab) setRightDockTab(layout.rightDockTab);
+    if (typeof layout.showHelpDock === 'boolean') setShowHelpDock(layout.showHelpDock);
+    if (layout.helpDockSection) setHelpDockSection(layout.helpDockSection);
+    if (typeof layout.schematicMiniEnabled === 'boolean') {
+      const currentMini = useLayoutStore.getState().schematicMiniEnabled;
+      if (currentMini !== layout.schematicMiniEnabled) {
+        useLayoutStore.getState().toggleSchematicMini();
+      }
+    }
+  }, [setHelpDockSection, setRightDockState, setRightDockTab, setShowHelpDock, setSplitRatio, storeSetPerspective]);
+
   const handleRecoverSnapshot = useCallback(() => {
     const snapshot = loadSnapshot();
     if (!snapshot) {
@@ -564,22 +581,6 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const handleStartFresh = useCallback(() => {
     clearAllSnapshots();
   }, []);
-
-  const applyLayoutSnapshot = useCallback((layout: any) => {
-    if (!layout || typeof layout !== 'object') return;
-    if (layout.perspective) storeSetPerspective(layout.perspective);
-    if (typeof layout.splitRatio === 'number') setSplitRatio(layout.splitRatio);
-    if (layout.rightDockState) setRightDockState(layout.rightDockState);
-    if (layout.rightDockTab) setRightDockTab(layout.rightDockTab);
-    if (typeof layout.showHelpDock === 'boolean') setShowHelpDock(layout.showHelpDock);
-    if (layout.helpDockSection) setHelpDockSection(layout.helpDockSection);
-    if (typeof layout.schematicMiniEnabled === 'boolean') {
-      const currentMini = useLayoutStore.getState().schematicMiniEnabled;
-      if (currentMini !== layout.schematicMiniEnabled) {
-        useLayoutStore.getState().toggleSchematicMini();
-      }
-    }
-  }, [setHelpDockSection, setRightDockState, setRightDockTab, setShowHelpDock, setSplitRatio, storeSetPerspective]);
 
   const getLayoutSnapshot = useCallback(() => ({
     perspective,
@@ -1865,6 +1866,30 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     viewStore.requestFocusNode(nodeId);
   };
 
+  // Helper for destructive actions (must be before handleLoadLearnExample which uses it)
+  const openGuardrail = useCallback((config: GuardrailConfig) => {
+    setGuardrail(config);
+  }, []);
+
+  const confirmReplacement = useCallback(
+    (actionDescription: string, onProceed: () => void) => {
+      openGuardrail({
+        title: `${actionDescription}?`,
+        message: `${actionDescription} will replace the current workspace.`,
+        lossItems: ['Current circuit', 'Undo/redo history', 'Unsaved changes'],
+        confirmLabel: actionDescription,
+        confirmTone: 'danger',
+        onConfirm: () => {
+          saveSnapshot(circuit, getLayoutSnapshot(), { safeMode }, 'autosave', true, getProjectSnapshot() ?? undefined);
+          onProceed();
+        },
+        onExport: () => setShowCEExportModal(true),
+      });
+      return false;
+    },
+    [openGuardrail, setShowCEExportModal, circuit, getLayoutSnapshot, safeMode, getProjectSnapshot]
+  );
+
   const handleLoadLearnExample = useCallback(
     (example: any) => {
       confirmReplacement('Load tutorial', () => {
@@ -2364,29 +2389,6 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     await handleLoadFile(fileId);
   };
 
-  // Helper for destructive actions
-  const openGuardrail = useCallback((config: GuardrailConfig) => {
-    setGuardrail(config);
-  }, []);
-
-  const confirmReplacement = useCallback(
-    (actionDescription: string, onProceed: () => void) => {
-      openGuardrail({
-        title: `${actionDescription}?`,
-        message: `${actionDescription} will replace the current workspace.`,
-        lossItems: ['Current circuit', 'Undo/redo history', 'Unsaved changes'],
-        confirmLabel: actionDescription,
-        confirmTone: 'danger',
-        onConfirm: () => {
-          saveSnapshot(circuit, getLayoutSnapshot(), { safeMode }, 'autosave', true, getProjectSnapshot() ?? undefined);
-          onProceed();
-        },
-        onExport: () => setShowCEExportModal(true),
-      });
-      return false;
-    },
-    [openGuardrail, setShowCEExportModal, circuit, getLayoutSnapshot, safeMode, getProjectSnapshot]
-  );
 
   const handleLoadFile = async (fileId: string | null) => {
     if (!fileId) return;
@@ -3045,7 +3047,6 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
           applyLayoutSnapshot(payload.layout);
         }
       }
-      setShowRecoveryBanner(false);
       addToast('Recovered previous session', 'success');
     } catch (error) {
       console.error('[Recovery] Failed to apply recovered data', error);
@@ -4381,7 +4382,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
           isRunning={isRunning}
           tickRate={currentHz}
           isDirty={isDirty}
-          saveStatusText={rbprojSaveStatusText}
+          saveStatusText={undefined}
           canUndo={canUndo}
           canRedo={canRedo}
           viewMode={viewLabel}

@@ -492,6 +492,7 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
       nodes: src.nodes.map((node) => ({
         id: node.id,
         type: node.type,
+        position: { x: node.x ?? 0, y: node.y ?? 0 },
         x: node.x,
         y: node.y,
         rotation: node.rotation,
@@ -517,8 +518,8 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
       nodes: src.nodes.map((node) => ({
         id: node.id,
         type: node.type,
-        x: node.x || 0,
-        y: node.y || 0,
+        x: node.position?.x ?? node.x ?? 0,
+        y: node.position?.y ?? node.y ?? 0,
         rotation: node.rotation || 0,
         params: node.config || {},
         label: node.label,
