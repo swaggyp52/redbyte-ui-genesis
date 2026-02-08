@@ -3,27 +3,45 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React from 'react';
-import { shallow } from 'zustand/shallow';
 import { useWindowStore } from '@redbyte/rb-windowing';
 
 export function useWindowActivity(windowId?: string): {
   isVisible: boolean;
   isFocused: boolean;
 } {
-  const selector = React.useMemo(() => {
-    return (state: { windows: { id: string; focused: boolean; mode: string }[] }) => {
-      if (!windowId) return [true, false] as const;
+  // Cache the last result to prevent returning new object references when values haven't changed
+  const lastResultRef = React.useRef<{ isVisible: boolean; isFocused: boolean }>({ isVisible: true, isFocused: false });
+
+  const selector = React.useCallback(
+    (state: { windows: { id: string; focused: boolean; mode: string }[] }) => {
+      if (!windowId) {
+        const result = { isVisible: true, isFocused: false };
+        // Always use the same object reference for the no-windowId case
+        if (lastResultRef.current.isVisible === result.isVisible && lastResultRef.current.isFocused === result.isFocused) {
+          return lastResultRef.current;
+        }
+        lastResultRef.current = result;
+        return result;
+      }
       const w = state.windows.find((entry) => entry.id === windowId);
       const focused = !!w?.focused;
       const minimized = w?.mode === 'minimized';
-      return [focused, minimized] as const;
-    };
-  }, [windowId]);
+      const isVisible = !minimized;
+      const isFocused = focused;
+      
+      // Return cached reference if values haven't changed
+      if (lastResultRef.current.isVisible === isVisible && lastResultRef.current.isFocused === isFocused) {
+        return lastResultRef.current;
+      }
+      
+      const result = { isVisible, isFocused };
+      lastResultRef.current = result;
+      return result;
+    },
+    [windowId]
+  );
 
-  const [focused, minimized] = useWindowStore(selector, shallow as any);
-  return {
-    isVisible: !minimized,
-    isFocused: focused,
-  };
+  // Use custom equality function to only re-render when values actually change
+  return useWindowStore(selector, (a, b) => a.isVisible === b.isVisible && a.isFocused === b.isFocused);
 }
 

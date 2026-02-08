@@ -5367,6 +5367,16 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-02-08 (Critical Fix: PropertyInspector Infinite Loop)
+- **Resolved crash**: Fixed "Maximum update depth exceeded" error in Logic Playground caused by unstable selector in `useWindowActivity`.
+- **Root cause**: `useWindowActivity` returned a new object `{ isVisible, isFocused }` on every selector call, triggering infinite re-renders via React's `useSyncExternalStore`.
+- **Solution**: Added `lastResultRef` to cache selector results and return stable object references when values haven't changed.
+- **Warning eliminated**: React warning "The result of getSnapshot should be cached to avoid an infinite loop" no longer appears.
+- **Test coverage**: Added `useWindowActivity.test.ts` with regression test verifying object reference stability across re-renders.
+- **Files modified**: `packages/rb-apps/src/hooks/useWindowActivity.ts` (added ref-based caching), `AI_STATE.md` (this changelog).
+- **Files created**: `packages/rb-apps/src/hooks/useWindowActivity.test.ts` (reference stability test).
+- **Attribution**: Connor Angiel
+
 ### 2026-02-05 (Phase 5A-3: Help/Troubleshooting App - Slice 2 - Entry Points)
 - **P5A-3 Slice 2 complete**: Help entry points from ErrorBoundary crash screens and hardware failure toasts.
 - **AppErrorBoundary integration**: Added "Open Help" button to per-app crash screen (Shell.tsx AppErrorBoundary), extracts student error code via `toStudentFacingError()`, passes to HelpApp via `openWindow('help', { initialErrorCode })`.
