@@ -23,6 +23,19 @@ export { serialize, deserialize } from './serialization';
 // Circuit format conversion
 export { toCircuitV1, fromCircuitV1 } from './convertCircuitV1';
 
+// Project document (canonical schema)
+export type { RBProjectDoc, ProjectMeta, ViewState, AppStateMap } from './projectDoc';
+export {
+  SCHEMA_VERSION,
+  createDefaultMeta,
+  createEmptyCircuit,
+  createBlankProjectDoc,
+  normalizeProjectDoc,
+  serializeProjectDoc,
+  deserializeProjectDoc,
+  updateProjectDocTimestamp,
+} from './projectDoc';
+
 // Built-in behaviors
 export {
   PowerSourceBehavior,
