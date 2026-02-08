@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Circuit, CircuitV1 } from '@redbyte/rb-logic-core';
+import { Circuit, CircuitV1, toCircuitV1, fromCircuitV1 } from '@redbyte/rb-logic-core';
 
 /**
  * Round-trip test for Circuit <-> CircuitV1 conversion
@@ -8,56 +8,6 @@ import { Circuit, CircuitV1 } from '@redbyte/rb-logic-core';
  * Previously, converters read node.x (legacy undefined field) instead of
  * node.position.x, causing all positions to collapse to (0,0) on save/export.
  */
-
-// Test converter functions (will be extracted to shared module in COMMIT 2)
-function toCircuitV1(src: Circuit): CircuitV1 {
-  return {
-    schemaVersion: '1.0',
-    nodes: src.nodes.map((node) => ({
-      id: node.id,
-      type: node.type,
-      x: node.position?.x ?? node.x ?? 0,  // FIXED: read from position first
-      y: node.position?.y ?? node.y ?? 0,  // FIXED: read from position first
-      rotation: node.rotation || 0,
-      params: node.config || {},
-      label: node.label,
-      state: node.state || {},
-    })),
-    connections: src.connections.map((conn) => ({
-      id: conn.id,
-      fromNodeId: typeof conn.from === 'string' ? conn.from : conn.from.nodeId,
-      fromPin: conn.fromPin || 'out',
-      toNodeId: typeof conn.to === 'string' ? conn.to : conn.to.nodeId,
-      toPin: conn.toPin || 'in',
-    })),
-    customChips: [],
-  };
-}
-
-function fromCircuitV1(src: CircuitV1): Circuit {
-  return {
-    nodes: src.nodes.map((node) => ({
-      id: node.id,
-      type: node.type,
-      position: { x: node.x ?? 0, y: node.y ?? 0 },  // FIXED: create position object
-      x: node.x,  // keep legacy field for compatibility
-      y: node.y,
-      rotation: node.rotation,
-      config: node.params || {},
-      label: node.label,
-      state: node.state || {},
-      inputs: {},
-      outputs: {},
-    })),
-    connections: src.connections.map((conn) => ({
-      id: conn.id,
-      from: conn.fromNodeId,
-      fromPin: conn.fromPin,
-      to: conn.toNodeId,
-      toPin: conn.toPin,
-    })),
-  };
-}
 
 describe('CircuitV1 round-trip', () => {
   it('preserves node positions through toCircuitV1 -> fromCircuitV1', () => {

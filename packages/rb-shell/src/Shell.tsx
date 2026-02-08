@@ -66,7 +66,7 @@ import {
   generateImportSummary,
   validateUnifiedProjectStoreCompatibility,
 } from '@redbyte/rb-lab-engine';
-import { serialize, type Circuit, type Connection, CircuitEngine } from '@redbyte/rb-logic-core';
+import { serialize, type Circuit, type Connection, CircuitEngine, toCircuitV1, fromCircuitV1 } from '@redbyte/rb-logic-core';
 import { TopBar } from './TopBar';
 import { RecoveryPrompt, type RecoveryAction } from './RecoveryPrompt';
 import { useSessionDiagnosticsStore, getDiagnosticsSnapshot } from './sessionDiagnosticsStore';
@@ -1020,28 +1020,7 @@ export const Shell: React.FC<ShellProps> = () => {
         loadUnifiedProject(project);
 
         // Convert to Circuit format for Logic Playground
-        const circuit = {
-          nodes: project.circuit.nodes.map((node) => ({
-            id: node.id,
-            type: node.type,
-            position: { x: node.x ?? 0, y: node.y ?? 0 },
-            x: node.x,
-            y: node.y,
-            rotation: node.rotation,
-            config: node.params || {},
-            label: node.label,
-            state: node.state || {},
-            inputs: {},
-            outputs: {},
-          })),
-          connections: project.circuit.connections.map((conn) => ({
-            id: conn.id,
-            from: conn.fromNodeId,
-            fromPin: conn.fromPin,
-            to: conn.toNodeId,
-            toPin: conn.toPin,
-          })),
-        };
+        const circuit = fromCircuitV1(project.circuit);
 
         // Persist example as file and open
         loadImportedProject(project, circuit);
@@ -1421,27 +1400,7 @@ export const Shell: React.FC<ShellProps> = () => {
 
     try {
       // Convert Circuit to CircuitV1 (LabProjectV1 schema)
-      const circuitV1: CircuitV1 = {
-        schemaVersion: '1.0',
-        nodes: circuit.nodes.map((node: any) => ({
-          id: node.id,
-          type: node.type,
-          x: node.position?.x ?? node.x ?? 0,
-          y: node.position?.y ?? node.y ?? 0,
-          rotation: node.rotation || 0,
-          params: node.config || {},
-          label: node.label,
-          state: node.state || {},
-        })),
-        connections: circuit.connections.map((conn: Connection) => ({
-          id: conn.id,
-          fromNodeId: conn.from,
-          fromPin: conn.fromPin || 'out',
-          toNodeId: conn.to,
-          toPin: conn.toPin || 'in',
-        })),
-        customChips: [],
-      };
+      const circuitV1 = toCircuitV1(circuit);
 
       // Build minimal LabProjectV1
       const now = new Date().toISOString();

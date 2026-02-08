@@ -18,7 +18,7 @@ import { BoardIOPanel } from '../components/BoardIOPanel';
 import { CompareView, type CompareSignalCheck } from '../components/CompareView';
 import { CircuitCanvas } from '../components/boards/CircuitCanvas'; // TODO: Remove if unused, but keeping type safely
 import { SplitViewLayout } from '../components/SplitViewLayout';
-import { Circuit, CircuitEngine, TickEngine, Node } from '@redbyte/rb-logic-core';
+import { Circuit, CircuitEngine, TickEngine, Node, toCircuitV1, fromCircuitV1 } from '@redbyte/rb-logic-core';
 import type { CircuitV1, IoMappingEntry } from '@redbyte/rb-utils';
 import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
 import { getAvailableSignals } from '@redbyte/rb-lab-engine/src/signals/signalSemantics';
@@ -486,55 +486,6 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
   const hasHydratedRef = useRef(false);
   const [ioTick, setIoTick] = useState(0);
   const [ioOutputStates, setIoOutputStates] = useState<Record<string, boolean>>({});
-
-  const fromCircuitV1 = useCallback((src: CircuitV1): Circuit => {
-    return {
-      nodes: src.nodes.map((node) => ({
-        id: node.id,
-        type: node.type,
-        position: { x: node.x ?? 0, y: node.y ?? 0 },
-        x: node.x,
-        y: node.y,
-        rotation: node.rotation,
-        config: node.params || {},
-        label: node.label,
-        state: node.state || {},
-        inputs: {},
-        outputs: {},
-      })),
-      connections: src.connections.map((conn) => ({
-        id: conn.id,
-        from: conn.fromNodeId,
-        fromPin: conn.fromPin,
-        to: conn.toNodeId,
-        toPin: conn.toPin,
-      })),
-    };
-  }, []);
-
-  const toCircuitV1 = useCallback((src: Circuit): CircuitV1 => {
-    return {
-      schemaVersion: '1.0',
-      nodes: src.nodes.map((node) => ({
-        id: node.id,
-        type: node.type,
-        x: node.position?.x ?? node.x ?? 0,
-        y: node.position?.y ?? node.y ?? 0,
-        rotation: node.rotation || 0,
-        params: node.config || {},
-        label: node.label,
-        state: node.state || {},
-      })),
-      connections: src.connections.map((conn) => ({
-        id: conn.id,
-        fromNodeId: conn.from,
-        fromPin: conn.fromPin || 'out',
-        toNodeId: conn.to,
-        toPin: conn.toPin || 'in',
-      })),
-      customChips: [],
-    };
-  }, []);
 
   useEffect(() => {
     if (!unifiedProject || hasHydratedRef.current) return;
