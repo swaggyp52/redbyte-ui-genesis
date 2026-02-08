@@ -1,6 +1,7 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { NodeView, WireView, renderGrid } from '@redbyte/rb-logic-view';
+import { screenToWorld } from '@redbyte/rb-viewport';
 import type { Node, Connection } from '@redbyte/rb-logic-core';
 import type { Camera } from '@redbyte/rb-logic-view';
 
@@ -64,17 +65,15 @@ export const CircuitEditor2D: React.FC<CircuitEditor2DProps> = ({
         const handleMouseMove = (e: MouseEvent) => {
             if (!svgRef.current || !ghostLineRef.current) return;
 
-            // Convert screen -> world
-            // WorldX = (ScreenX - PanX) / Zoom
+            // Convert screen -> world using canonical transform
             const rect = svgRef.current.getBoundingClientRect();
             const screenX = e.clientX - rect.left;
             const screenY = e.clientY - rect.top;
-            const worldX = (screenX - camera.x) / camera.zoom;
-            const worldY = (screenY - camera.y) / camera.zoom;
+            const worldPos = screenToWorld(screenX, screenY, camera);
 
             // Direct DOM update for performance
-            ghostLineRef.current.setAttribute('x2', String(worldX));
-            ghostLineRef.current.setAttribute('y2', String(worldY));
+            ghostLineRef.current.setAttribute('x2', String(worldPos.x));
+            ghostLineRef.current.setAttribute('y2', String(worldPos.y));
         };
 
         // Use rAF for throttling if needed, but direct attribute update is often fast enough for simple lines

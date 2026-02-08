@@ -6,6 +6,7 @@ import React, { useMemo, useState, useRef } from 'react';
 import { shallow } from 'zustand/shallow';
 import type { Circuit, Node, Connection, Signal, PortRef } from '@redbyte/rb-logic-core';
 import { CircuitEngine } from '@redbyte/rb-logic-core';
+import { screenToWorld } from '@redbyte/rb-viewport';
 import { useViewStateStore } from '../stores/viewStateStore';
 import { useCircuitStore } from '../stores/circuitStore';
 import { getPortPositions, findNearestPort, type PortPosition } from './schematic/SchematicPortDetector';
@@ -440,16 +441,15 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
       const delta = -e.deltaY * 0.001;
       const newZoom = Math.max(0.25, Math.min(4, camera.zoom * (1 + delta)));
 
-      // Zoom towards cursor
+      // Zoom towards cursor using canonical coordinate transform
       const rect = svg.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
-      const worldX = (mouseX - camera.x) / camera.zoom;
-      const worldY = (mouseY - camera.y) / camera.zoom;
+      const worldPos = screenToWorld(mouseX, mouseY, camera);
 
       setCamera({
-        x: mouseX - worldX * newZoom,
-        y: mouseY - worldY * newZoom,
+        x: mouseX - worldPos.x * newZoom,
+        y: mouseY - worldPos.y * newZoom,
         zoom: newZoom,
       });
     };
