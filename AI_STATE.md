@@ -8434,3 +8434,25 @@ Notes:
 - No new hex literals; tokens map to os-tokens.css.
 
 **Attribution**: Connor Angiel
+
+---
+
+## Change Log  2026-02-06 (Lab 3 MVP: Seven-Segment Display Driver)
+
+**Lab 3 Webapp MVP Complete: Truth Table → Simulator → Verilog Export**
+- Created new `apps/lab3-webapp` package (Vite + React + TypeScript + Zustand)
+- Implemented single-source-of-truth Zustand store with deterministic evaluation
+- Built TruthTableEditor component: 16-input selector, 7-segment toggles, "Fill Standard Digits" button
+- Built Simulator component: 4-bit input toggles, "Run All 16 Vectors" validation grid (0-9 only)
+- Built VerilogExporter component: Case statement generation, Vivado parser (regex-based), JSZip export (truth_table.json + generated_ssd_driver.v + results.json + README.txt)
+- Built DOM-based seven-segment display (7 divs, active-low styling, no SVG reconciliation issues)
+- Implemented canonical DIGIT_PATTERNS (0-9 active-low segments)
+- Production build: 304 KB minified JS, <6 second build time, gzipped to 94 KB
+- Updated GitHub Actions deploy-cloudflare.yml workflow to target lab3-webapp
+- Updated root package.json scripts: "dev" now targets lab3-webapp, added "build:lab3" / "preview:lab3" variants
+- Git commit d9a99b00: 24 files changed, 1430 insertions
+- **Success criteria met**: Truth table editor works → Simulator validates 0-9 → Verilog generates valid case statements → ZIP exports all required files
+- **MVP scope enforced**: No circuit designer, no K-maps, no PDF export (all deferred)
+- **Deployment ready**: Cloudflare Pages workflow staged, ready for `git push main` to go live at redbyteapps.dev
+
+**Attribution**: Connor Angiel
