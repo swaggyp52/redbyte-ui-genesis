@@ -264,8 +264,22 @@ function createCircuitStore() {
       });
 
       // Sync engines
-      engine?.setCircuit(circuit);
-      tickEngine?.setCircuit(circuit);
+      if (engine) {
+        try {
+          engine.setCircuit(circuit);
+          console.log(`[CircuitStore] engine.setCircuit() called successfully`);
+        } catch (e) {
+          console.error(`[CircuitStore] engine.setCircuit() failed:`, e);
+        }
+      }
+      if (tickEngine) {
+        try {
+          tickEngine.setCircuit(circuit);
+          console.log(`[CircuitStore] tickEngine.setCircuit() called successfully`);
+        } catch (e) {
+          console.error(`[CircuitStore] tickEngine.setCircuit() failed:`, e);
+        }
+      }
 
       // Update complexity tracking for classroom guardrails ONLY if circuit fingerprint changed
       // (must happen after state update so new circuit is in place)
