@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import { TruthTableEditor } from './truth-table';
 import { Simulator } from './simulator';
 import { VerilogExporter } from './verilog';
-import { KMapViewer } from './kmap-viewer';
+import { KMapViewer } from './kmap-viewer-interactive';
 import { WaveformViewer } from './waveform-viewer';
 import { LiveValidation } from './live-validation';
 import { ProgressTracker, useLabProgress } from './progress-tracker';
+import { CircuitEditor } from './circuit-editor';
 import { useLabStore } from './store';
 import { useAutoSave } from './use-auto-save';
-import { Settings, Download, Upload, Zap, BookOpen, Table, Target, PlayCircle, FileCode } from 'lucide-react';
+import { Settings, Download, Upload, Zap, BookOpen, Table, Target, PlayCircle, FileCode, Cpu } from 'lucide-react';
 
-type Tab = 'overview' | 'table' | 'kmaps' | 'simulator' | 'verilog';
+type Tab = 'overview' | 'table' | 'kmaps' | 'circuit' | 'simulator' | 'verilog';
 
 export const App: React.FC = () => {
   const [tab, setTab] = useState<Tab>('overview');
@@ -113,6 +114,7 @@ export const App: React.FC = () => {
               { id: 'overview' as Tab, label: 'Overview', icon: BookOpen },
               { id: 'table' as Tab, label: 'Truth Table', icon: Table },
               { id: 'kmaps' as Tab, label: 'K-Maps', icon: Target },
+              { id: 'circuit' as Tab, label: 'Circuit', icon: Cpu },
               { id: 'simulator' as Tab, label: 'Simulator', icon: PlayCircle },
               { id: 'verilog' as Tab, label: 'Export', icon: FileCode },
             ].map((item) => {
@@ -249,6 +251,12 @@ export const App: React.FC = () => {
               <div className="space-y-6">
                 <KMapViewer />
                 <LiveValidation />
+              </div>
+            )}
+
+            {tab === 'circuit' && (
+              <div className="space-y-6">
+                <CircuitEditor />
               </div>
             )}
 
