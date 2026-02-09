@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useLabStore } from './store';
 import { BasysBoard } from './basys-board';
-import { Play, Pause, SkipForward, RotateCcw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { BasysBoardMulti } from './basys-board-multi';
+import { Play, Pause, SkipForward, RotateCcw, CheckCircle2, AlertCircle, LayoutGrid } from 'lucide-react';
 
 export const Simulator: React.FC = () => {
   const simulationInput = useLabStore((s) => s.simulationInput);
@@ -12,6 +13,7 @@ export const Simulator: React.FC = () => {
   
   const [isAnimating, setIsAnimating] = useState(false);
   const [autoRunning, setAutoRunning] = useState(false);
+  const [multiDigitMode, setMultiDigitMode] = useState(false);
 
   const currentOutput = evalSeg(simulationInput);
   const currentSeg: [0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1] = [
@@ -70,21 +72,47 @@ export const Simulator: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-6">
-        <h2 className="font-tech-display text-2xl font-bold text-cyan-400 neon-cyan mb-2">
-          Interactive Simulator
-        </h2>
-        <p className="font-digital text-sm text-slate-400">
-          Test your seven-segment logic with animated signal propagation
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="font-tech-display text-2xl font-bold text-cyan-400 neon-cyan mb-2">
+              Interactive Simulator
+            </h2>
+            <p className="font-digital text-sm text-slate-400">
+              Test your seven-segment logic with animated signal propagation
+            </p>
+          </div>
+          <button
+            onClick={() => setMultiDigitMode(!multiDigitMode)}
+            className={`px-4 py-2 rounded-lg font-tech font-semibold transition-all duration-200 flex items-center gap-2 ${
+              multiDigitMode
+                ? 'bg-gradient-to-r from-cyan-600 to-cyan-700 text-white glow-box-cyan'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+            }`}
+            title="Toggle 4-digit multiplexed display"
+          >
+            <LayoutGrid size={18} />
+            {multiDigitMode ? '4-Digit Mode' : 'Single Digit'}
+          </button>
+        </div>
       </div>
 
       {/* Virtual Board */}
-      <BasysBoard 
-        switches={switches}
-        segments={currentSeg}
-        onSwitchToggle={handleSwitchToggle}
-        inputValue={simulationInput}
-      />
+      {multiDigitMode ? (
+        <BasysBoardMulti
+          switches={switches}
+          segments={currentSeg}
+          onSwitchToggle={handleSwitchToggle}
+          inputValue={simulationInput}
+          enableMultiplexing={true}
+        />
+      ) : (
+        <BasysBoard 
+          switches={switches}
+          segments={currentSeg}
+          onSwitchToggle={handleSwitchToggle}
+          inputValue={simulationInput}
+        />
+      )}
 
       {/* Control Panel */}
       <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-6">
