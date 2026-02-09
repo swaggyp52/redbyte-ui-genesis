@@ -8456,3 +8456,47 @@ Notes:
 - **Deployment ready**: Cloudflare Pages workflow staged, ready for `git push main` to go live at redbyteapps.dev
 
 **Attribution**: Connor Angiel
+
+---
+
+## Change Log 2026-02-XX (Lab 3 v2.0: Advanced Features Elevation Complete)
+
+**Executive**: User directive "Fuck the week to week - build it now" executed in single session.
+
+**New Capabilities** (9 completed):
+- K-Maps: Auto-generate 7 K-maps from truth table (Gray code, Quine-McCluskey simplification)
+- Live Validation: Real-time boolean expression→truth-table comparison (inputs 0-9)
+- Step-Through Simulation: Pause/resume/next controls with waveform recording (16 vectors)
+- Waveform Viewer: Timeline mini-scope (all 4 inputs B3–B0 + 7 outputs a–g)
+- PDF Report Export: Multi-page reports with timestamp, validation results, expressions
+- Enhanced Verilog: Dual code gen (case statement + boolean assign), custom module naming
+- Dark Theme: Gradient backgrounds, cyan/emerald accents, professional typography
+- Responsive UI: 5-tab navigation (Overview → Table → K-Maps → Simulator → Verilog & Export)
+- Auto-Save Persistence: IndexedDB with localStorage fallback, 1-second debounce
+
+**New Files** (7 created):
+- `src/kmap.ts`: K-map generator, minimizer, expression evaluator (240 lines)
+- `src/kmap-viewer.tsx`: Interactive K-map UI (185 lines)
+- `src/waveform-viewer.tsx`: Waveform timeline viewer (155 lines)
+- `src/live-validation.tsx`: Real-time validation grid (80 lines)
+- `src/pdf-exporter.tsx`: jsPDF report generator (290 lines)
+- `src/persistence.ts`: IndexedDB + localStorage wrapper (100 lines)
+- `src/use-auto-save.ts`: Auto-save React hook (40 lines)
+
+**Modified Files** (6 updated):
+- `src/types.ts`: Extended Lab3State v2.0 schema
+- `src/store.ts`: Expanded ~160 → ~400 lines with new actions
+- `src/App.tsx`: Redesigned ~122 → ~265 lines (5-tab nav, dark theme)
+- `src/verilog.tsx`: Enhanced ~221 → ~350 lines (dual code gen, custom naming)
+- `src/main.tsx`: Added auto-save restoration
+- `package.json`: Added jspdf, html2canvas, lucide-react
+
+**Dependencies**: jspdf@2.5.1, html2canvas@1.4.1, lucide-react@0.263.1 (+19 transitive)
+
+**Build**: 890.20 KB minified, 262.25 KB gzipped, 11.55s build time, 0 errors
+
+**Git Commits**: 4 integrated (d2203587, 76e8d327, 9ea74199, d9a99b00)
+
+**Deployment**: Ready for immediate `git push main` to redbyteapps.dev
+
+**Attribution**: Connor Angiel
