@@ -1,6 +1,6 @@
-# Cloudflare Pages Deployment - Manual Site Only
+# Cloudflare Pages Deployment - Lab 3 Web App
 #
-# Deploys apps/manual-site to redbyteapps.dev when:
+# Deploys apps/lab3-webapp to redbyteapps.dev when:
 # - Manually triggered via workflow_dispatch, OR
 # - Pushed to main AND secrets are configured
 # Uses Cloudflare Pages Direct Upload API for full control over build process.
@@ -15,7 +15,7 @@ on:
 
 jobs:
   deploy:
-    name: Build and Deploy to CF Pages
+    name: Build Lab 3 App and Deploy to CF Pages
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -38,8 +38,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build and Verify Unified Artifact
-        run: pnpm build:unified
+      - name: Build Lab 3 Web App
+        run: pnpm --filter @redbyte/lab3-webapp build
         env:
           VITE_APP_ENV: production
           GIT_SHA: ${{ github.sha }}
@@ -50,6 +50,6 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: redbyte-ui-genesis
-          directory: dist
+          directory: apps/lab3-webapp/dist
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: main
