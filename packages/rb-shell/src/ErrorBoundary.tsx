@@ -43,7 +43,16 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Log error to console for debugging
-    console.error('ErrorBoundary caught error:', error, errorInfo);
+    console.error('[LP_SIM_CRASH] ErrorBoundary caught error:', error, errorInfo);
+    if (typeof window !== 'undefined') {
+      const debug = (window as any).__RB_DEBUG__ ?? {};
+      debug.lastSimError = {
+        message: error.message,
+        stack: error.stack ?? null,
+        componentStack: errorInfo?.componentStack ?? null,
+      };
+      (window as any).__RB_DEBUG__ = debug;
+    }
     try {
       localStorage.setItem('rb_error_boundary_hit', 'true');
     } catch {

@@ -148,7 +148,18 @@ class AppErrorBoundary extends React.Component<
   componentDidCatch(error: Error, info: ErrorInfo) {
     const stack = info.componentStack ?? '';
     this.setState({ errorStack: stack });
-    console.error(`[Shell] App "${this.props.appId}" crashed:`, error, stack);
+    console.error(`[LP_SIM_CRASH] [Shell] App "${this.props.appId}" crashed:`, error, stack);
+    if (typeof window !== 'undefined') {
+      const debug = (window as any).__RB_DEBUG__ ?? {};
+      debug.lastSimError = {
+        message: error.message,
+        stack: error.stack ?? null,
+        componentStack: stack,
+        appId: this.props.appId,
+        windowId: this.props.windowId,
+      };
+      (window as any).__RB_DEBUG__ = debug;
+    }
     logSystemEvent({
       level: 'error',
       source: this.props.appId,

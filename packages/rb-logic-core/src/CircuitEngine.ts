@@ -26,6 +26,47 @@ function normalizeConnection(conn: Connection): { from: PortRef; to: PortRef } {
   };
 }
 
+function validateCircuitShape(circuit: Circuit): void {
+  const errors: string[] = [];
+  const nodes = Array.isArray(circuit.nodes) ? circuit.nodes : [];
+  const connections = Array.isArray(circuit.connections) ? circuit.connections : [];
+
+  const nodeIds = new Set<string>();
+  for (const node of nodes) {
+    if (!node || typeof node.id !== 'string' || node.id.trim().length === 0) {
+      errors.push('Node missing valid id');
+      continue;
+    }
+    nodeIds.add(node.id);
+    if (typeof node.type !== 'string' || node.type.trim().length === 0) {
+      errors.push(`Node ${node.id} missing valid type`);
+    }
+    if (node.position) {
+      const { x, y } = node.position;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) {
+        errors.push(`Node ${node.id} has invalid position`);
+      }
+    }
+  }
+
+  for (const conn of connections) {
+    const normalized = normalizeConnection(conn);
+    if (!nodeIds.has(normalized.from.nodeId)) {
+      errors.push(`Connection from missing node: ${normalized.from.nodeId}`);
+    }
+    if (!nodeIds.has(normalized.to.nodeId)) {
+      errors.push(`Connection to missing node: ${normalized.to.nodeId}`);
+    }
+    if (!normalized.from.portName || !normalized.to.portName) {
+      errors.push('Connection missing port name');
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Circuit validation failed:\n- ${errors.join('\n- ')}`);
+  }
+}
+
 export interface CircuitEngineOptions {
   debug?: boolean;
 }
@@ -76,6 +117,7 @@ export class CircuitEngine {
    * Update circuit and reset cached state/signals
    */
   setCircuit(circuit: Circuit): void {
+    validateCircuitShape(circuit);
     const safeCircuit: Circuit = {
       nodes: Array.isArray(circuit.nodes) ? circuit.nodes : [],
       connections: Array.isArray(circuit.connections) ? circuit.connections : [],
@@ -88,6 +130,13 @@ export class CircuitEngine {
     for (const node of safeCircuit.nodes) {
       const state = node.state ? { ...node.state } : {};
       this.nodeStates.set(node.id, state);
+    }
+
+    // Propagate initial signals so getAllSignals() is immediately valid.
+    // Without this, the signal cache is empty after setCircuit until the
+    // first tick(), causing stale reads in UI and tests.
+    if (safeCircuit.nodes.length > 0) {
+      this.tick();
     }
   }
 

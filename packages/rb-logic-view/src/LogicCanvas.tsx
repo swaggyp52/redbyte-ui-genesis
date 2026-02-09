@@ -935,125 +935,131 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         onMouseUp={handleMouseUp}
         onContextMenu={(e) => e.preventDefault()}
       >
-        {/* Grid */}
-        {renderGrid(camera, width, height, {
-          size: gridSize,
-          color: '#1a1a1a',
-          majorLineInterval: 5,
-          majorLineColor: '#2a2a2a',
-        })}
+        {/* Grid — stable container prevents SVG reconciliation mismatch */}
+        <g key="grid-layer">
+          {renderGrid(camera, width, height, {
+            size: gridSize,
+            color: '#1a1a1a',
+            majorLineInterval: 5,
+            majorLineColor: '#2a2a2a',
+          })}
+        </g>
 
-        {/* Wires */}
-        {visibleConnections.map((conn) => {
-          const fromNodeId = typeof conn.from === 'string' ? conn.from : conn.from.nodeId;
-          const toNodeId = typeof conn.to === 'string' ? conn.to : conn.to.nodeId;
-          const fromPortName = typeof conn.from === 'string'
-            ? (conn.fromPin ?? conn.fromPort ?? 'out')
-            : (conn.from.portName ?? conn.from.port ?? 'out');
-          const toPortName = typeof conn.to === 'string'
-            ? (conn.toPin ?? conn.toPort ?? 'in')
-            : (conn.to.portName ?? conn.to.port ?? 'in');
-          
-          const wireId = `${fromNodeId}.${fromPortName}-${toNodeId}.${toPortName}`;
-          const signal = renderSignals.get(`${fromNodeId}.${fromPortName}`);
-          const probeColors = probeWireHighlights?.get(wireId);
-          const mismatchColors = mismatchWireHighlights?.get(wireId);
-          const netId = wireToNetId.get(wireId) ?? null;
-          const isNetHighlighted =
-            (hoveredNetId !== null && netId === hoveredNetId) ||
-            (netId !== null && selectedNetIds.has(netId));
+        {/* Wires — stable container */}
+        <g key="wire-layer">
+          {visibleConnections.map((conn) => {
+            const fromNodeId = typeof conn.from === 'string' ? conn.from : conn.from.nodeId;
+            const toNodeId = typeof conn.to === 'string' ? conn.to : conn.to.nodeId;
+            const fromPortName = typeof conn.from === 'string'
+              ? (conn.fromPin ?? conn.fromPort ?? 'out')
+              : (conn.from.portName ?? conn.from.port ?? 'out');
+            const toPortName = typeof conn.to === 'string'
+              ? (conn.toPin ?? conn.toPort ?? 'in')
+              : (conn.to.portName ?? conn.to.port ?? 'in');
 
-          return (
-            <WireView
-              key={wireId}
-              connection={conn}
-              nodes={circuit.nodes}
-              camera={camera}
-              isSelected={selection.wires.has(wireId)}
-              isNetHighlighted={isNetHighlighted}
-              onSelect={selectWire}
-              onHover={setHoveredWireId}
-              signal={signal}
-              probeColors={probeColors}
-              mismatchColors={mismatchColors}
-            />
-          );
-        })}
+            const wireId = `${fromNodeId}.${fromPortName}-${toNodeId}.${toPortName}`;
+            const signal = renderSignals.get(`${fromNodeId}.${fromPortName}`);
+            const probeColors = probeWireHighlights?.get(wireId);
+            const mismatchColors = mismatchWireHighlights?.get(wireId);
+            const netId = wireToNetId.get(wireId) ?? null;
+            const isNetHighlighted =
+              (hoveredNetId !== null && netId === hoveredNetId) ||
+              (netId !== null && selectedNetIds.has(netId));
 
-        {/* Wire Preview - shows while drawing */}
-        {editingState.wireStartPort && (() => {
-          const startNode = circuit.nodes.find(n => n.id === editingState.wireStartPort!.nodeId);
-          if (!startNode || !startNode.position) return null;
-
-          const startX = startNode.position.x * camera.zoom + camera.x;
-          const startY = startNode.position.y * camera.zoom + camera.y;
-
-          // Check if hovering over a valid target port
-          let isValid = true;
-          if (hoveredPort) {
-            const validation = isValidConnection(
-              editingState.wireStartPort,
-              hoveredPort,
-              circuit,
-              getChipMetadata
+            return (
+              <WireView
+                key={wireId}
+                connection={conn}
+                nodes={circuit.nodes}
+                camera={camera}
+                isSelected={selection.wires.has(wireId)}
+                isNetHighlighted={isNetHighlighted}
+                onSelect={selectWire}
+                onHover={setHoveredWireId}
+                signal={signal}
+                probeColors={probeColors}
+                mismatchColors={mismatchColors}
+              />
             );
-            isValid = validation.valid;
-          }
+          })}
+        </g>
 
-          return (
-            <line
-              x1={startX}
-              y1={startY}
-              x2={mousePosition.x}
-              y2={mousePosition.y}
-              stroke={isValid ? "#00ffff" : "#ef4444"}
-              strokeWidth="2"
-              strokeDasharray="5,5"
-              opacity="0.7"
-              pointerEvents="none"
+        {/* Wire Preview — stable container */}
+        <g key="wire-preview-layer">
+          {editingState.wireStartPort && (() => {
+            const startNode = circuit.nodes.find(n => n.id === editingState.wireStartPort!.nodeId);
+            if (!startNode || !startNode.position) return null;
+
+            const startX = startNode.position.x * camera.zoom + camera.x;
+            const startY = startNode.position.y * camera.zoom + camera.y;
+
+            let isValid = true;
+            if (hoveredPort) {
+              const validation = isValidConnection(
+                editingState.wireStartPort,
+                hoveredPort,
+                circuit,
+                getChipMetadata
+              );
+              isValid = validation.valid;
+            }
+
+            return (
+              <line
+                x1={startX}
+                y1={startY}
+                x2={mousePosition.x}
+                y2={mousePosition.y}
+                stroke={isValid ? "#00ffff" : "#ef4444"}
+                strokeWidth="2"
+                strokeDasharray="5,5"
+                opacity="0.7"
+                pointerEvents="none"
+              />
+            );
+          })()}
+        </g>
+
+        {/* Nodes — stable container */}
+        <g key="node-layer">
+          {visibleNodes.map((node) => (
+            <NodeView
+              key={node.id}
+              node={node}
+              camera={camera}
+              isSelected={selection.nodes.has(node.id)}
+              isHighlighted={node.id === highlightedNodeId}
+              isMismatchHighlighted={mismatchNodeIds?.has(node.id) ?? false}
+              onSelect={selectNode}
+              onMove={handleNodeMove}
+              onPortClick={handlePortClick}
+              onToggleSwitch={handleToggleSwitch}
+              onNodeDoubleClick={onNodeDoubleClick}
+              onProbeToggle={onProbeToggle}
+              signals={renderSignals}
+              chipMetadata={getChipMetadata?.(node.type)}
+              wireStartPort={editingState.wireStartPort}
+              onPortHover={(portName) => setHoveredPort({ nodeId: node.id, portName })}
+              onPortLeave={() => setHoveredPort(null)}
+              probedPorts={probedPorts}
+              highlightedPort={highlightedPort}
+              debugTick={debugTick}
+              mismatchPortKeys={mismatchPortKeys}
             />
-          );
-        })()}
+          ))}
+        </g>
 
-        {/* Nodes */}
-        {visibleNodes.map((node) => (
-          <NodeView
-            key={node.id}
-            node={node}
-            camera={camera}
-            isSelected={selection.nodes.has(node.id)}
-            isHighlighted={node.id === highlightedNodeId}
-            isMismatchHighlighted={mismatchNodeIds?.has(node.id) ?? false}
-            onSelect={selectNode}
-            onMove={handleNodeMove}
-            onPortClick={handlePortClick}
-            onToggleSwitch={handleToggleSwitch}
-            onNodeDoubleClick={onNodeDoubleClick}
-            onProbeToggle={onProbeToggle}
-            signals={renderSignals}
-            chipMetadata={getChipMetadata?.(node.type)}
-            wireStartPort={editingState.wireStartPort}
-            onPortHover={(portName) => setHoveredPort({ nodeId: node.id, portName })}
-            onPortLeave={() => setHoveredPort(null)}
-            probedPorts={probedPorts}
-            highlightedPort={highlightedPort}
-            debugTick={debugTick}
-            mismatchPortKeys={mismatchPortKeys}
-          />
-        ))}
-
-        {/* Switch Toggle Overlay Layer - rendered ABOVE nodes to avoid clipping */}
+        {/* Switch Toggle Overlay Layer */}
         <g id="rb-switch-overlay" style={{ pointerEvents: 'none' }}>
           {visibleNodes
             .filter((node) => node.type === 'Switch' || node.type === 'INPUT')
-            .filter((node) => node.position) // Ensure position exists
+            .filter((node) => node.position)
             .map((node) => {
               const screenX = node.position!.x * camera.zoom + camera.x;
               const screenY = node.position!.y * camera.zoom + camera.y;
               const size = 48 * camera.zoom;
               const switchState = node.state?.isOn ?? 0;
 
-              // Toggle dimensions
               const toggleWidth = size * 0.75;
               const toggleHeight = 16;
               const toggleX = -toggleWidth / 2;
@@ -1070,7 +1076,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                   transform={`translate(${screenX}, ${screenY})`}
                   style={{ pointerEvents: 'auto' }}
                 >
-                  {/* Hit target - large clickable area */}
                   <rect
                     x={toggleHitX}
                     y={toggleHitY}
@@ -1091,7 +1096,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                       }
                     }}
                   />
-                  {/* Toggle pill background */}
                   <rect
                     x={toggleX}
                     y={toggleY}
@@ -1103,7 +1107,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                     strokeWidth={1.5}
                     style={{ pointerEvents: 'none' }}
                   />
-                  {/* Toggle knob */}
                   <circle
                     cx={switchState ? toggleX + toggleWidth - 9 : toggleX + 9}
                     cy={toggleY + toggleHeight / 2}
@@ -1111,7 +1114,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                     fill="#fff"
                     style={{ pointerEvents: 'none' }}
                   />
-                  {/* ON/OFF label */}
                   <text
                     x={0}
                     y={toggleY - 8}

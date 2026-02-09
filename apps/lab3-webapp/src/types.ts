@@ -14,12 +14,41 @@ export interface ValidationResult {
   pass: boolean;
 }
 
+export interface KMapGroup {
+  segmentName: string;
+  cellsAsBinary: string[]; // ['0000', '0001', ...] for Gray code matching
+  simplifiedExpr: string; // e.g., "B3·B2 + B1'·B0"
+}
+
+export interface KMapState {
+  [segmentName: string]: {
+    grid: (0 | 1 | 'X')[]; // 16 cells (flattened 4x4) in Gray code order
+    groups: KMapGroup[];
+    simplifiedExpr: string;
+    minTerms: number[]; // Indices where value=1
+  };
+}
+
+export interface WaveformSample {
+  time: number; // Simulation step
+  inputs: [0 | 1, 0 | 1, 0 | 1, 0 | 1]; // B3, B2, B1, B0
+  outputs: [0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1]; // seg_a..g
+}
+
 export interface Lab3State {
   truthTable: TruthTableRow[];
-  implMode: 'table' | 'verilogCase';
+  implMode: 'table' | 'verilogCase' | 'boolExpr';
   verilogCode: string;
+  booleanExpressions: { [segmentName: string]: string };
+  kMaps: KMapState;
   simulationInput: number;
   validationResults: ValidationResult[];
+  // Step-through simulation
+  simulationMode: 'manual' | 'step'; // manual = instant, step = animated
+  currentStep: number;
+  waveformHistory: WaveformSample[];
+  // Live validation
+  validationErrors: { [segmentName: string]: string[] }; // Track which expressions don't match truth table
 }
 
 // Canonical digit patterns (active-low: 0 = lit, 1 = off)

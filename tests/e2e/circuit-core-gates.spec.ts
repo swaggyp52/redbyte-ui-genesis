@@ -92,9 +92,35 @@ const wireNodes = async (page: any, fromType: string, fromPort: string, toType: 
 };
 
 test.describe('Circuit Core Gates', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    const logs: string[] = [];
+
+    page.on('console', (msg) => {
+      const text = msg.text();
+      logs.push(`[console:${msg.type()}] ${text}`);
+      // Fail immediately on DOM crash errors (NOT debug logs)
+      if (msg.type() === 'error') {
+        // Only fail on actual DOM errors, not debug/info logs
+        const isDomCrash = text.includes('removeChild') ||
+                          text.includes('NotFoundError') ||
+                          text.includes('Failed to execute');
+        if (isDomCrash) {
+          throw new Error(`DOM crash detected: ${text}`);
+        }
+      }
+    });
+
+    page.on('pageerror', (err) => {
+      logs.push(`[pageerror] ${err?.message ?? String(err)}`);
+      if (err?.stack) logs.push(err.stack);
+      // Fail immediately on page errors
+      throw err;
+    });
+
+    (testInfo as any)._browserLogs = logs;
+
     await goldenSetup(page);
-    
+
     // Reset circuit store to empty state
     await page.evaluate(() => {
       const store = (window as any).__RB_CIRCUIT_STORE__;
@@ -103,6 +129,19 @@ test.describe('Circuit Core Gates', () => {
       }
     });
     await page.waitForTimeout(100);
+  });
+
+  test.afterEach(async ({}, testInfo) => {
+    const logs = (testInfo as any)._browserLogs as string[] | undefined;
+    if (!logs) return;
+    if (testInfo.status !== testInfo.expectedStatus) {
+      // eslint-disable-next-line no-console
+      console.error('[Gate E] Browser logs:\n' + logs.join('\n'));
+      await testInfo.attach('browser-logs', {
+        body: logs.join('\n'),
+        contentType: 'text/plain',
+      });
+    }
   });
 
   // ─────────────────────────────────────────────
@@ -240,61 +279,29 @@ test.describe('Circuit Core Gates', () => {
     // Wire Switch → Lamp
     await wireNodes(page, 'Switch', 'out', 'Lamp', 'in');
 
-    // Debug: Check circuit before stepping
-    let circuit = await getCircuit(page);
-    console.log('[Gate E] Circuit before step:', {
-      nodes: circuit.nodes.map((n: any) => ({ type: n.type, state: n.state })),
-      connections: circuit.connections,
+    // Verify initial state: Switch OFF → engine signals should show Switch.out = 0
+    // (setCircuit now propagates initial signals via tick())
+    const initialSignals = await page.evaluate(() => {
+      const store = (window as any).__RB_CIRCUIT_STORE__;
+      if (!store) return null;
+      const state = store.getState();
+      const engine = state.engine;
+      if (!engine) return null;
+      const signals = engine.getAllSignals();
+      const result: Record<string, number> = {};
+      signals.forEach((v: number, k: string) => { result[k] = v; });
+      return result;
     });
+    console.log('[Gate E] Initial signals (switch OFF):', initialSignals);
 
-    // Step simulation to propagate initial state (Switch OFF → Lamp OFF)
-    const stepBtn = page.locator('button:has-text("Step")').first();
-    console.log('[Gate E] About to click Step button');
-    const stepCount = await page.locator('button:has-text("Step")').count();
-    console.log(`[Gate E] Found ${stepCount} Step button(s)`);
-    
-    if (stepCount > 0) {
-      await stepBtn.click();
-      await page.waitForTimeout(500);
-      
-      // Check engine signals after first click
-      const signalsAfterStep1 = await page.evaluate(() => {
-        const store = (window as any).__RB_CIRCUIT_STORE__;
-        if (!store) return null;
-        const state = store.getState();
-        const signals = state.engine?.getAllSignals?.();
-        const result: any = {};
-        if (signals) {
-          signals.forEach((v, k) => {
-            result[k] = v;
-          });
-        }
-        return result;
-      });
-      console.log('[Gate E] Engine signals after first Step:', signalsAfterStep1);
-    } else {
-      console.log('[Gate E] No Step button found - simulating via tickEngine');
-      await page.evaluate(() => {
-        const store = (window as any).__RB_CIRCUIT_STORE__;
-        if (!store) return;
-        const state = store.getState();
-        const tickEngine = state.tickEngine;
-        if (tickEngine) {
-          tickEngine.stepOnce();
-        }
-      });
-    }
+    // Find the Switch output signal key
+    const switchOutputKey = Object.keys(initialSignals || {}).find(
+      (k) => k.includes('.out') && !k.includes('Lamp')
+    );
+    expect(switchOutputKey).toBeTruthy();
+    expect(initialSignals![switchOutputKey!]).toBe(0);
 
-    // Read lamp state before toggle
-    circuit = await getCircuit(page);
-    const switchBefore = circuit.nodes.find((n: any) => n.type === 'Switch');
-    const lampBefore = circuit.nodes.find((n: any) => n.type === 'Lamp');
-    console.log('[Gate E] Before toggle:', {
-      switchState: switchBefore?.state,
-      lampState: lampBefore?.state,
-    });
-
-    // Toggle Switch ON via updateCircuit (avoid commit → subscriber loop)
+    // Toggle Switch ON via updateCircuit
     await page.evaluate(() => {
       const store = (window as any).__RB_CIRCUIT_STORE__;
       if (!store) return;
@@ -302,13 +309,11 @@ test.describe('Circuit Core Gates', () => {
       const circuit = state.circuit;
       const switchNode = circuit.nodes.find((n: any) => n.type === 'Switch');
       if (!switchNode) return;
-      const currentIsOn = switchNode.state?.isOn ?? 0;
-      console.log(`[Gate E from browser] Toggling switch from ${currentIsOn} to ${currentIsOn ? 0 : 1}`);
       const newCircuit = {
         ...circuit,
         nodes: circuit.nodes.map((n: any) =>
           n.id === switchNode.id
-            ? { ...n, state: { ...n.state, isOn: currentIsOn ? 0 : 1 } }
+            ? { ...n, state: { ...n.state, isOn: 1 } }
             : n
         ),
       };
@@ -316,96 +321,40 @@ test.describe('Circuit Core Gates', () => {
     });
     await page.waitForTimeout(100);
 
-    // Step simulation to propagate toggle
-    if (stepCount > 0) {
-      await stepBtn.click();
-      await page.waitForTimeout(500);
-    } else {
-      await page.evaluate(() => {
-        const store = (window as any).__RB_CIRCUIT_STORE__;
-        if (!store) return;
-        const state = store.getState();
-        const tickEngine = state.tickEngine;
-        if (tickEngine) {
-          tickEngine.stepOnce();
-        }
-      });
-    }
-
-    // Debug: Inspect engine state
-    await page.evaluate(() => {
-      const store = (window as any).__RB_CIRCUIT_STORE__;
-      if (!store) return;
-      const state = store.getState();
-      const circuit = state.circuit;
-      const engine = state.engine;
-      
-      if (engine) {
-        const signals = engine.getAllSignals();
-        const signalMap = new Map();
-        signals.forEach((v, k) => signalMap.set(k, v));
-        console.log('[Gate E from browser] Engine signals:', Array.from(signalMap.entries()));
-      }
-      
-      // Also manually step once more to ensure propagation
-      if (state.tickEngine) {
-        console.log('[Gate E from browser] Manually stepping tickEngine...');
-        state.tickEngine.stepOnce();
-      }
-    });
-    await page.waitForTimeout(200);
-
-    // Read lamp state after toggle
-    circuit = await getCircuit(page);
-    const switchAfter = circuit.nodes.find((n: any) => n.type === 'Switch');
-    const lampAfter = circuit.nodes.find((n: any) => n.type === 'Lamp');
-    
-    // Debug: Check if engines are initialized
-    const engineStatus = await page.evaluate(() => {
-      const store = (window as any).__RB_CIRCUIT_STORE__;
-      if (!store) return { storeFound: false };
-      const state = store.getState();
-      return {
-        storeFound: true,
-        hasEngine: !!state.engine,
-        hasTickEngine: !!state.tickEngine,
-        engineType: state.engine?.constructor?.name,
-        tickEngineType: state.tickEngine?.constructor?.name,
-      };
-    });
-    console.log('[Gate E] Engine status:', engineStatus);
-
-    // Get the actual simulation signals from the engine
-    const engineSignals = await page.evaluate(() => {
+    // Read signals after toggle — setCircuit propagates signals immediately
+    const afterSignals = await page.evaluate(() => {
       const store = (window as any).__RB_CIRCUIT_STORE__;
       if (!store) return null;
       const state = store.getState();
       const engine = state.engine;
       if (!engine) return null;
       const signals = engine.getAllSignals();
-      const result: any = {};
-      signals.forEach((v, k) => {
-        result[k] = v;
-      });
+      const result: Record<string, number> = {};
+      signals.forEach((v: number, k: string) => { result[k] = v; });
       return result;
     });
-    
-    console.log('[Gate E] After toggle:', {
-      switchState: switchAfter?.state,
-      lampState: lampAfter?.state,
-      engineSignals: engineSignals,
-    });
+    console.log('[Gate E] After toggle signals (switch ON):', afterSignals);
 
-    // The lamp should show the signal value from the engine
-    // Check if the lamp input signal changed
-    const lampInputSignalKey = Object.keys(engineSignals || {}).find((k) => k.includes('node-v2-2') && k.includes('in'));
-    const lampInputValue = lampInputSignalKey ? engineSignals[lampInputSignalKey] : undefined;
-    
-    console.log('[Gate E] Lamp input signal:', { key: lampInputSignalKey, value: lampInputValue });
-    
-    // The lamp should be ON (input = 1 from the switch output)
-    // Lamp node state doesn't update, but the engine signal should show the switch output on the lamp input
-    expect(lampInputValue).toBe(1);
+    // The Switch output signal should now be 1
+    // Signal keys are "nodeId.portName" for output ports
+    expect(afterSignals).not.toBeNull();
+    const switchOutputAfter = afterSignals![switchOutputKey!];
+    expect(switchOutputAfter).toBe(1);
+
+    // Also verify engine state: Lamp's nodeState should show isOn = 1
+    // (Lamp evaluate stores input in state.isOn)
+    const lampState = await page.evaluate(() => {
+      const store = (window as any).__RB_CIRCUIT_STORE__;
+      if (!store) return null;
+      const state = store.getState();
+      const engine = state.engine;
+      if (!engine) return null;
+      const lampNode = state.circuit.nodes.find((n: any) => n.type === 'Lamp');
+      if (!lampNode) return null;
+      return engine.getNodeState(lampNode.id);
+    });
+    console.log('[Gate E] Lamp engine state:', lampState);
+    expect(lampState?.isOn).toBe(1);
   });
 
   // ─────────────────────────────────────────────

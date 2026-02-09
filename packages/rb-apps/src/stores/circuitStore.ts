@@ -158,8 +158,22 @@ function createCircuitStore() {
     future: [],
     maxHistory: 100,
 
-    setEngine: (engine) => set({ engine }),
-    setTickEngine: (tickEngine) => set({ tickEngine }),
+    setEngine: (engine) => {
+      // Immediately sync the current circuit to the new engine so signals
+      // are never stale when the engine is first registered.
+      const { circuit } = get();
+      if (circuit.nodes.length > 0) {
+        engine.setCircuit(circuit);
+      }
+      set({ engine });
+    },
+    setTickEngine: (tickEngine) => {
+      const { circuit } = get();
+      if (circuit.nodes.length > 0) {
+        tickEngine.setCircuit(circuit);
+      }
+      set({ tickEngine });
+    },
     setDirty: (dirty) => set({ isDirty: dirty }),
 
     updateCircuit: (incoming, opts = {}) => {
@@ -187,8 +201,14 @@ function createCircuitStore() {
         return;
       }
 
-      // CHOKE POINT: Classroom guardrail - clamp incoming circuit BEFORE anything else
-      let circuit = incoming;
+      // CHOKE POINT: normalize and clamp incoming circuit BEFORE anything else
+      let circuit = {
+        ...incoming,
+        nodes: incoming.nodes.map((node) => ({
+          ...node,
+          rotation: Number.isFinite(node.rotation) ? node.rotation : 0,
+        })),
+      };
       let clampEvent: CircuitState['lastClampEvent'] = null;
 
       if (enforceLimits) {
@@ -263,22 +283,12 @@ function createCircuitStore() {
         after: circuit,
       });
 
-      // Sync engines
+      // Sync engines — setCircuit now propagates initial signals via tick()
       if (engine) {
-        try {
-          engine.setCircuit(circuit);
-          console.log(`[CircuitStore] engine.setCircuit() called successfully`);
-        } catch (e) {
-          console.error(`[CircuitStore] engine.setCircuit() failed:`, e);
-        }
+        engine.setCircuit(circuit);
       }
       if (tickEngine) {
-        try {
-          tickEngine.setCircuit(circuit);
-          console.log(`[CircuitStore] tickEngine.setCircuit() called successfully`);
-        } catch (e) {
-          console.error(`[CircuitStore] tickEngine.setCircuit() failed:`, e);
-        }
+        tickEngine.setCircuit(circuit);
       }
 
       // Update complexity tracking for classroom guardrails ONLY if circuit fingerprint changed
@@ -381,6 +391,7 @@ function createCircuitStore() {
         id: getNextNodeId(circuit),
         type: nodeType,
         position,
+        rotation: 0,
         state: {},
         config: defaultConfig,
       };

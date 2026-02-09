@@ -123,7 +123,11 @@
       "Bash(do if [ -f \"$f\" ])",
       "Bash(then rm \"$f\")",
       "Bash(else echo \"Already gone: $f\")",
-      "Bash(npx playwright test:*)"
+      "Bash(npx playwright test:*)",
+      "Bash(Get-ChildItem -Path \"apps/playground/dist/assets/*.js\")",
+      "Bash(Select-String -Pattern \"validateCircuitShape\")",
+      "Bash(Select-Object -First 3)",
+      "Bash(del:*)"
     ],
     "deny": [],
     "ask": []

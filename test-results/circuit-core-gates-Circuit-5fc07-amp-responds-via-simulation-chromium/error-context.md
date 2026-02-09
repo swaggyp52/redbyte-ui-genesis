@@ -26,7 +26,7 @@
             - button "↷" [disabled] [ref=e25]
           - generic [ref=e26]:
             - generic [ref=e27]: Simulate
-            - button "⏭ Step" [active] [ref=e28] [cursor=pointer]:
+            - button "⏭ Step" [ref=e28] [cursor=pointer]:
               - generic [ref=e29]: ⏭
               - generic [ref=e30]: Step
             - button "▶ Run" [ref=e31] [cursor=pointer]:
@@ -39,7 +39,7 @@
               - generic [ref=e38]:
                 - generic [ref=e39]: Clock
                 - generic [ref=e40]:
-                  - generic "A tick is one discrete simulation step." [ref=e41]: T+3
+                  - generic "A tick is one discrete simulation step." [ref=e41]: T+0
                   - generic [ref=e42]: Paused
               - button "Reset" [ref=e44] [cursor=pointer]
           - generic [ref=e46]:
@@ -311,124 +311,125 @@
                     - generic: Paused
                   - generic:
                     - generic: Tick
-                    - generic: "3"
+                    - generic: "0"
                 - img [ref=e314]:
-                  - generic [ref=e323]:
-                    - generic: Switch
-                    - generic: L0
-                    - generic [ref=e330]:
-                      - generic: out
-                  - generic [ref=e332]:
-                    - generic: Lamp
-                    - generic: L0
-                    - generic [ref=e339]:
-                      - generic: in
-                    - generic [ref=e341]:
-                      - generic: out
-                  - generic [ref=e343]:
+                  - generic [ref=e327]:
+                    - generic [ref=e328]:
+                      - generic: Switch
+                      - generic: L0
+                      - generic [ref=e335]:
+                        - generic: out
+                    - generic [ref=e337]:
+                      - generic: Lamp
+                      - generic: L0
+                      - generic [ref=e344]:
+                        - generic: in
+                      - generic [ref=e346]:
+                        - generic: out
+                  - generic [ref=e348]:
                     - generic: "ON"
-              - generic [ref=e345]:
-                - generic [ref=e346]:
-                  - button "Select" [ref=e347] [cursor=pointer]
-                  - button "Wire" [ref=e348] [cursor=pointer]
-                - generic "Hold Space to pan" [ref=e350]: "Space: Pan"
-                - button "Snap On" [ref=e351] [cursor=pointer]
-                - button "Fit" [ref=e353] [cursor=pointer]
-                - button "Reset" [ref=e354] [cursor=pointer]
-                - button "Undo" [ref=e356] [cursor=pointer]
-                - button "Redo" [disabled] [ref=e357]
-          - generic [ref=e358]:
-            - generic [ref=e359]:
-              - tablist [ref=e360]:
-                - tab "Inspector" [selected] [ref=e361] [cursor=pointer]:
+              - generic [ref=e350]:
+                - generic [ref=e351]:
+                  - button "Select" [ref=e352] [cursor=pointer]
+                  - button "Wire" [ref=e353] [cursor=pointer]
+                - generic "Hold Space to pan" [ref=e355]: "Space: Pan"
+                - button "Snap On" [ref=e356] [cursor=pointer]
+                - button "Fit" [ref=e358] [cursor=pointer]
+                - button "Reset" [ref=e359] [cursor=pointer]
+                - button "Undo" [ref=e361] [cursor=pointer]
+                - button "Redo" [disabled] [ref=e362]
+          - generic [ref=e363]:
+            - generic [ref=e364]:
+              - tablist [ref=e365]:
+                - tab "Inspector" [selected] [ref=e366] [cursor=pointer]:
                   - generic: 🔍
                   - generic: Info
-                - tab "Health" [ref=e362] [cursor=pointer]:
+                - tab "Health" [ref=e367] [cursor=pointer]:
                   - generic: 💊
                   - generic: Health
-                - tab "Learn" [ref=e363] [cursor=pointer]:
+                - tab "Learn" [ref=e368] [cursor=pointer]:
                   - generic: 🎓
                   - generic: Learn
-                - tab "Probes" [ref=e364] [cursor=pointer]:
+                - tab "Probes" [ref=e369] [cursor=pointer]:
                   - generic: 📊
                   - generic: Probes
-                - tab "Record" [ref=e365] [cursor=pointer]:
+                - tab "Record" [ref=e370] [cursor=pointer]:
                   - generic: ⏺️
                   - generic: Record
-                - tab "Chips" [ref=e366] [cursor=pointer]:
+                - tab "Chips" [ref=e371] [cursor=pointer]:
                   - generic: 🧩
                   - generic: Chips
-                - tab "IO" [ref=e367] [cursor=pointer]:
+                - tab "IO" [ref=e372] [cursor=pointer]:
                   - generic: 🔌
                   - generic: IO
-              - button "Collapse Dock" [ref=e368] [cursor=pointer]: ←
-            - generic [ref=e370]:
-              - generic [ref=e372]:
-                - generic [ref=e373]:
-                  - generic [ref=e374]: Clock
-                  - generic [ref=e375]:
-                    - generic [ref=e376]: t3
-                    - generic [ref=e377]: Paused
-                    - generic [ref=e378]: Manual
-                  - generic [ref=e379]: Last step 12:55:20 PM
-                - generic [ref=e380]:
-                  - button "Step" [ref=e381] [cursor=pointer]
-                  - button "Run" [ref=e382] [cursor=pointer]
-                  - button "Reset" [ref=e383] [cursor=pointer]
-              - generic [ref=e385]:
-                - generic [ref=e386]:
-                  - generic [ref=e387]: 👆
-                  - generic [ref=e388]: Select a component
-                - generic [ref=e389]:
-                  - generic [ref=e390]: Circuit
-                  - generic [ref=e391]:
-                    - generic [ref=e392]:
-                      - generic [ref=e393]: Components
-                      - generic [ref=e394]: "2"
-                    - generic [ref=e395]:
-                      - generic [ref=e396]: Wires
-                      - generic [ref=e397]: "1"
-        - generic [ref=e398]:
-          - generic [ref=e399]:
-            - generic [ref=e400]:
-              - generic [ref=e401]: 📦
-              - generic [ref=e402]: 2 nodes
-            - generic [ref=e403]:
-              - generic [ref=e404]: 🔌
-              - generic [ref=e405]: 1 wire
-          - generic [ref=e406]:
-            - generic [ref=e407]:
-              - generic [ref=e408]: ●
-              - generic [ref=e409]: Paused
-            - generic [ref=e410]: circuit
+              - button "Collapse Dock" [ref=e373] [cursor=pointer]: ←
+            - generic [ref=e375]:
+              - generic [ref=e377]:
+                - generic [ref=e378]:
+                  - generic [ref=e379]: Clock
+                  - generic [ref=e380]:
+                    - generic [ref=e381]: t0
+                    - generic [ref=e382]: Stopped
+                    - generic [ref=e383]: Manual
+                  - generic [ref=e384]: Last step 4:20:21 PM
+                - generic [ref=e385]:
+                  - button "Step" [ref=e386] [cursor=pointer]
+                  - button "Run" [ref=e387] [cursor=pointer]
+                  - button "Reset" [ref=e388] [cursor=pointer]
+              - generic [ref=e390]:
+                - generic [ref=e391]:
+                  - generic [ref=e392]: 👆
+                  - generic [ref=e393]: Select a component
+                - generic [ref=e394]:
+                  - generic [ref=e395]: Circuit
+                  - generic [ref=e396]:
+                    - generic [ref=e397]:
+                      - generic [ref=e398]: Components
+                      - generic [ref=e399]: "2"
+                    - generic [ref=e400]:
+                      - generic [ref=e401]: Wires
+                      - generic [ref=e402]: "1"
+        - generic [ref=e403]:
+          - generic [ref=e404]:
+            - generic [ref=e405]:
+              - generic [ref=e406]: 📦
+              - generic [ref=e407]: 2 nodes
+            - generic [ref=e408]:
+              - generic [ref=e409]: 🔌
+              - generic [ref=e410]: 1 wire
           - generic [ref=e411]:
             - generic [ref=e412]:
-              - generic [ref=e413]: ↶ Undo
-              - generic [ref=e414]: ↷ Redo
-            - generic [ref=e415]:
-              - generic [ref=e416]: 🔍
-              - generic [ref=e417]: 100%
-            - generic [ref=e418]: Press ? for shortcuts
-  - generic [ref=e420]:
-    - heading "Something went wrong" [level=1] [ref=e421]
-    - paragraph [ref=e422]: RedByte OS encountered an unexpected error. You can try reloading the page, or perform a factory reset to clear all data and start fresh.
-    - paragraph [ref=e424]: An unexpected error occurred. Please try again. If it persists, reload the page.
-    - generic [ref=e425]:
-      - button "Reload Page" [ref=e426] [cursor=pointer]
-      - button "Export Recovery Bundle" [ref=e427] [cursor=pointer]
-      - button "Copy Diagnostics" [ref=e428] [cursor=pointer]
-      - button "Restart in Safe Mode" [ref=e429] [cursor=pointer]
-      - generic [ref=e430]:
-        - paragraph [ref=e431]:
-          - strong [ref=e432]: "Factory Reset (clears all data):"
-        - list [ref=e433]:
-          - listitem [ref=e434]: Reload the page
-          - listitem [ref=e435]: Open Settings (Ctrl+,)
-          - listitem [ref=e436]: Go to Filesystem Data
-          - listitem [ref=e437]: Press F
-          - listitem [ref=e438]:
+              - generic [ref=e413]: ●
+              - generic [ref=e414]: Paused
+            - generic [ref=e415]: circuit
+          - generic [ref=e416]:
+            - generic [ref=e417]:
+              - generic [ref=e418]: ↶ Undo
+              - generic [ref=e419]: ↷ Redo
+            - generic [ref=e420]:
+              - generic [ref=e421]: 🔍
+              - generic [ref=e422]: 100%
+            - generic [ref=e423]: Press ? for shortcuts
+  - generic [ref=e425]:
+    - heading "Something went wrong" [level=1] [ref=e426]
+    - paragraph [ref=e427]: RedByte OS encountered an unexpected error. You can try reloading the page, or perform a factory reset to clear all data and start fresh.
+    - paragraph [ref=e429]: An unexpected error occurred. Please try again. If it persists, reload the page.
+    - generic [ref=e430]:
+      - button "Reload Page" [ref=e431] [cursor=pointer]
+      - button "Export Recovery Bundle" [ref=e432] [cursor=pointer]
+      - button "Copy Diagnostics" [ref=e433] [cursor=pointer]
+      - button "Restart in Safe Mode" [ref=e434] [cursor=pointer]
+      - generic [ref=e435]:
+        - paragraph [ref=e436]:
+          - strong [ref=e437]: "Factory Reset (clears all data):"
+        - list [ref=e438]:
+          - listitem [ref=e439]: Reload the page
+          - listitem [ref=e440]: Open Settings (Ctrl+,)
+          - listitem [ref=e441]: Go to Filesystem Data
+          - listitem [ref=e442]: Press F
+          - listitem [ref=e443]:
             - text: Type
-            - strong [ref=e439]: RESET
+            - strong [ref=e444]: RESET
             - text: and confirm
-    - paragraph [ref=e440]: If this problem persists, please report it on GitHub.
+    - paragraph [ref=e445]: If this problem persists, please report it on GitHub.
 ```

@@ -852,9 +852,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
           });
         }
         setCircuit(state.circuit);
-        // Also sync engines to keep them in sync with the new circuit
-        engineRef.current.setCircuit(state.circuit);
-        tickEngineRef.current.setCircuit(state.circuit);
+        // Engine sync happens in updateCircuit now, no need to duplicate here
       }
     });
     return unsubscribe;
@@ -2672,9 +2670,37 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
   const handleStep = () => {
     if (recorderMode === 'replaying') return;
-    tickEngine.stepOnce();
-    const newTick = tickEngine.getTickCount();
-    setTickCount(newTick);
+    try {
+      const circuitSnapshot = tickEngine.getCircuit();
+      const missingBehaviors = circuitSnapshot.nodes
+        .map((node) => node.type)
+        .filter((type) => !NodeRegistry.has(type));
+      if (missingBehaviors.length > 0) {
+        console.error('[LP_ENGINE] Missing node behaviors:', missingBehaviors);
+      }
+      if (typeof window !== 'undefined') {
+        const debug = (window as any).__RB_DEBUG__ ?? {};
+        debug.lastStep = {
+          tick: tickEngine.getTickCount(),
+          nodes: circuitSnapshot.nodes.length,
+          connections: circuitSnapshot.connections.length,
+          missingBehaviors,
+        };
+        (window as any).__RB_DEBUG__ = debug;
+      }
+      console.error('[LP_ENGINE] stepOnce() before', {
+        tick: tickEngine.getTickCount(),
+        nodes: circuitSnapshot.nodes.length,
+        connections: circuitSnapshot.connections.length,
+      });
+      tickEngine.stepOnce();
+      const newTick = tickEngine.getTickCount();
+      console.error('[LP_ENGINE] stepOnce() after', { tick: newTick });
+      setTickCount(newTick);
+    } catch (err) {
+      console.error('[LP_ENGINE] stepOnce() failed:', err);
+      throw err;
+    }
   };
 
   const handleResetTickCount = () => {

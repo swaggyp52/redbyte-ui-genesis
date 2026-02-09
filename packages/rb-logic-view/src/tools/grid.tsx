@@ -31,15 +31,13 @@ export function renderGrid(
   const startY = Math.floor(-camera.y / (size * camera.zoom)) * size;
   const endY = Math.ceil((height - camera.y) / (size * camera.zoom)) * size;
 
-  let lineKey = 0;
-
   // Vertical lines
   for (let x = startX; x <= endX; x += size) {
     const screenX = x * camera.zoom + camera.x;
     const isMajor = x % (size * majorLineInterval) === 0;
     lines.push(
       <line
-        key={`v${lineKey++}`}
+        key={`v-${x}`}
         x1={screenX}
         y1={0}
         x2={screenX}
@@ -57,7 +55,7 @@ export function renderGrid(
     const isMajor = y % (size * majorLineInterval) === 0;
     lines.push(
       <line
-        key={`h${lineKey++}`}
+        key={`h-${y}`}
         x1={0}
         y1={screenY}
         x2={width}
