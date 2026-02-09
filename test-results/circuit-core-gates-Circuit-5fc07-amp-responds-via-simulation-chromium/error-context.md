@@ -370,7 +370,7 @@
                     - generic [ref=e376]: t3
                     - generic [ref=e377]: Paused
                     - generic [ref=e378]: Manual
-                  - generic [ref=e379]: Last step 12:54:07 PM
+                  - generic [ref=e379]: Last step 12:55:20 PM
                 - generic [ref=e380]:
                   - button "Step" [ref=e381] [cursor=pointer]
                   - button "Run" [ref=e382] [cursor=pointer]
