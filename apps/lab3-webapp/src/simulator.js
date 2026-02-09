@@ -1,12 +1,16 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
+import { useState, useEffect } from 'react';
 import { useLabStore } from './store';
-import { SevenSegmentDisplay } from './seven-segment';
+import { BasysBoard } from './basys-board';
+import { Play, Pause, SkipForward, RotateCcw, CheckCircle2, AlertCircle } from 'lucide-react';
 export const Simulator = () => {
     const simulationInput = useLabStore((s) => s.simulationInput);
     const setSimulationInput = useLabStore((s) => s.setSimulationInput);
     const runAllVectors = useLabStore((s) => s.runAllVectors);
     const evalSeg = useLabStore((s) => s.evalSeg);
     const validationResults = useLabStore((s) => s.validationResults);
+    const [isAnimating, setIsAnimating] = useState(false);
+    const [autoRunning, setAutoRunning] = useState(false);
     const currentOutput = evalSeg(simulationInput);
     const currentSeg = [
         ((currentOutput >> 0) & 1),
@@ -17,29 +21,47 @@ export const Simulator = () => {
         ((currentOutput >> 5) & 1),
         ((currentOutput >> 6) & 1),
     ];
+    const switches = [
+        ((simulationInput >> 3) & 1) === 1,
+        ((simulationInput >> 2) & 1) === 1,
+        ((simulationInput >> 1) & 1) === 1,
+        ((simulationInput >> 0) & 1) === 1,
+    ];
+    const handleSwitchToggle = (bit) => {
+        setIsAnimating(true);
+        const newVal = ((simulationInput >> bit) & 1) === 1
+            ? simulationInput & ~(1 << bit)
+            : simulationInput | (1 << bit);
+        setSimulationInput(newVal);
+        setTimeout(() => setIsAnimating(false), 200);
+    };
+    const handleNext = () => {
+        setIsAnimating(true);
+        setSimulationInput((simulationInput + 1) % 16);
+        setTimeout(() => setIsAnimating(false), 200);
+    };
+    const handleReset = () => {
+        setIsAnimating(true);
+        setSimulationInput(0);
+        setTimeout(() => setIsAnimating(false), 200);
+    };
+    // Auto-run functionality
+    useEffect(() => {
+        if (autoRunning) {
+            const interval = setInterval(() => {
+                setSimulationInput((simulationInput + 1) % 16);
+            }, 800);
+            return () => clearInterval(interval);
+        }
+    }, [autoRunning, setSimulationInput, simulationInput]);
     const passCount = validationResults.filter((r) => r.pass).length;
-    return (_jsxs("div", { style: { padding: '20px' }, children: [_jsx("h2", { children: "Simulator" }), _jsxs("div", { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', marginTop: '20px' }, children: [_jsxs("div", { children: [_jsx("h3", { children: "Input Controls (B3-B0)" }), _jsx("div", { style: { marginBottom: '20px' }, children: [3, 2, 1, 0].map((bit) => (_jsxs("label", { style: { display: 'block', marginBottom: '12px' }, children: [_jsx("input", { type: "checkbox", checked: ((simulationInput >> bit) & 1) === 1, onChange: (e) => {
-                                                const newVal = e.target.checked ? simulationInput | (1 << bit) : simulationInput & ~(1 << bit);
-                                                setSimulationInput(newVal);
-                                            }, style: { marginRight: '8px' } }), `B${bit} = ${((simulationInput >> bit) & 1)}`] }, bit))) }), _jsxs("p", { style: { fontSize: '18px', fontWeight: 'bold', marginBottom: '20px' }, children: ["Input (decimal): ", _jsx("span", { style: { color: '#0066cc' }, children: simulationInput })] }), _jsx("button", { onClick: runAllVectors, style: {
-                                    padding: '12px 24px',
-                                    backgroundColor: '#00aa00',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: 4,
-                                    cursor: 'pointer',
-                                    fontSize: '16px',
-                                    fontWeight: 'bold',
-                                }, children: "Run All 16 Vectors" })] }), _jsxs("div", { children: [_jsx("h3", { children: "Output Display" }), _jsx(SevenSegmentDisplay, { seg: currentSeg, size: 120 }), _jsxs("p", { style: { marginTop: '20px', fontSize: '14px' }, children: ["seg[6:0] = ", currentSeg.map((s) => s).reverse().join('')] })] })] }), validationResults.length > 0 && (_jsxs("div", { style: { marginTop: '40px' }, children: [_jsxs("h3", { children: ["Validation Results: ", passCount, "/10 Correct", ' ', passCount === 10 ? '✅' : passCount >= 8 ? '⚠️' : '❌'] }), _jsx("div", { style: {
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(4, 1fr)',
-                            gap: '12px',
-                            marginTop: '20px',
-                        }, children: validationResults.slice(0, 10).map((result) => (_jsxs("div", { style: {
-                                padding: '12px',
-                                backgroundColor: result.pass ? '#e8f5e9' : '#ffebee',
-                                border: `2px solid ${result.pass ? '#4caf50' : '#f44336'}`,
-                                borderRadius: 4,
-                                textAlign: 'center',
-                            }, children: [_jsxs("div", { style: { fontWeight: 'bold' }, children: ["Input ", result.input] }), _jsxs("div", { style: { fontSize: '12px', marginTop: '4px' }, children: ["Expected: ", result.expected.toString(2).padStart(7, '0')] }), _jsxs("div", { style: { fontSize: '12px' }, children: ["Got: ", result.actual.toString(2).padStart(7, '0')] }), _jsx("div", { style: { marginTop: '8px', fontSize: '14px', fontWeight: 'bold' }, children: result.pass ? '✅' : '❌' })] }, result.input))) })] }))] }));
+    const hasRun = validationResults.length > 0;
+    const allPassed = hasRun && passCount === validationResults.length;
+    return (_jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "bg-slate-900/50 border border-slate-700 rounded-xl p-6", children: [_jsx("h2", { className: "font-tech-display text-2xl font-bold text-cyan-400 neon-cyan mb-2", children: "Interactive Simulator" }), _jsx("p", { className: "font-digital text-sm text-slate-400", children: "Test your seven-segment logic with animated signal propagation" })] }), _jsx(BasysBoard, { switches: switches, segments: currentSeg, onSwitchToggle: handleSwitchToggle, inputValue: simulationInput }), _jsxs("div", { className: "bg-slate-900/50 border border-slate-700 rounded-xl p-6", children: [_jsxs("h3", { className: "font-tech font-semibold text-emerald-400 mb-4 flex items-center gap-2", children: [_jsx("span", { className: "w-2 h-2 rounded-full bg-emerald-400 animate-pulse" }), "Simulation Controls"] }), _jsxs("div", { className: "grid md:grid-cols-2 gap-4", children: [_jsxs("div", { className: "space-y-3", children: [_jsx("div", { className: "text-sm font-digital text-slate-400 mb-2", children: "Manual Control:" }), _jsxs("div", { className: "flex gap-2", children: [_jsx("button", { onClick: () => setAutoRunning(!autoRunning), className: `flex-1 py-3 px-4 rounded-lg font-tech font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${autoRunning
+                                                    ? 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white glow-box-amber'
+                                                    : 'bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white glow-box-cyan'}`, title: autoRunning ? 'Pause auto-increment' : 'Auto-increment through inputs', children: autoRunning ? _jsxs(_Fragment, { children: [_jsx(Pause, { size: 18 }), " Pause"] }) : _jsxs(_Fragment, { children: [_jsx(Play, { size: 18 }), " Auto Run"] }) }), _jsx("button", { onClick: handleNext, disabled: autoRunning, className: "py-3 px-4 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-tech font-semibold transition-all duration-200 flex items-center gap-2", title: "Next input (+1)", children: _jsx(SkipForward, { size: 18 }) }), _jsx("button", { onClick: handleReset, disabled: autoRunning, className: "py-3 px-4 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-tech font-semibold transition-all duration-200 flex items-center gap-2", title: "Reset to 0", children: _jsx(RotateCcw, { size: 18 }) })] })] }), _jsxs("div", { className: "space-y-3", children: [_jsx("div", { className: "text-sm font-digital text-slate-400 mb-2", children: "Full Validation:" }), _jsxs("button", { onClick: runAllVectors, className: "w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-tech font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 glow-box-emerald", title: "Test all 16 input combinations", children: [_jsx(Play, { size: 18 }), "Run All 16 Tests"] })] })] })] }), hasRun && (_jsxs("div", { className: `border rounded-xl p-6 ${allPassed
+                    ? 'bg-emerald-950/30 border-emerald-500/30'
+                    : 'bg-red-950/30 border-red-500/30'}`, children: [_jsx("div", { className: "flex items-center gap-3 mb-4", children: allPassed ? (_jsxs(_Fragment, { children: [_jsx(CheckCircle2, { size: 24, className: "text-emerald-400" }), _jsxs("div", { children: [_jsx("h3", { className: "font-tech-display text-lg font-bold text-emerald-400", children: "All Tests Passed! \u2713" }), _jsx("p", { className: "font-digital text-sm text-emerald-300", children: "Your circuit correctly implements the seven-segment decoder" })] })] })) : (_jsxs(_Fragment, { children: [_jsx(AlertCircle, { size: 24, className: "text-red-400" }), _jsxs("div", { children: [_jsxs("h3", { className: "font-tech-display text-lg font-bold text-red-400", children: [passCount, "/", validationResults.length, " Tests Passed"] }), _jsx("p", { className: "font-digital text-sm text-red-300", children: "Some inputs produce incorrect segment patterns" })] })] })) }), _jsx("div", { className: "grid grid-cols-4 sm:grid-cols-8 gap-2", children: validationResults.map((r, i) => (_jsx("div", { className: `p-2 rounded-lg text-center font-digital text-sm transition-all duration-200 ${r.pass
+                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-red-500/20 text-red-400 border border-red-500/30'}`, title: r.pass ? `Input ${i}: Correct` : `Input ${i}: Expected ${r.expected}, got ${r.actual}`, children: i }, i))) })] }))] }));
 };
