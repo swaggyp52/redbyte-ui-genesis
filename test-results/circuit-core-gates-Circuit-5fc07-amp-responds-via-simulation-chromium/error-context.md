@@ -1,0 +1,434 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]: "[GOLDEN_PATH] OUTER DIV RENDERED NOW"
+    - generic [ref=e5]:
+      - generic [ref=e6]: "[GOLDEN_PATH] Div rendered"
+      - generic [ref=e8]:
+        - toolbar "Main Toolbar" [ref=e9]:
+          - generic [ref=e10]:
+            - generic [ref=e11]: Project
+            - generic [ref=e12]: Untitled Project
+            - button "New Project" [ref=e13] [cursor=pointer]
+            - button "Open Project" [ref=e14] [cursor=pointer]
+            - button "Save Project" [ref=e15] [cursor=pointer]
+            - button "Export..." [ref=e16] [cursor=pointer]
+            - button "New Circuit" [ref=e17] [cursor=pointer]
+            - button "📚 Examples" [ref=e18] [cursor=pointer]
+            - button "📋 Export Lab Evidence" [ref=e19] [cursor=pointer]
+            - button "🗂️ Open Lab Evidence…" [ref=e20] [cursor=pointer]
+            - button "Save" [ref=e21] [cursor=pointer]
+            - button "Save As" [ref=e22] [cursor=pointer]
+            - button "Share" [ref=e23] [cursor=pointer]
+            - button "↶" [ref=e24] [cursor=pointer]
+            - button "↷" [disabled] [ref=e25]
+          - generic [ref=e26]:
+            - generic [ref=e27]: Simulate
+            - button "⏭ Step" [active] [ref=e28] [cursor=pointer]:
+              - generic [ref=e29]: ⏭
+              - generic [ref=e30]: Step
+            - button "▶ Run" [ref=e31] [cursor=pointer]:
+              - generic [ref=e32]: ▶
+              - generic [ref=e33]: Run
+            - generic [ref=e34]:
+              - slider "Tick rate" [ref=e35] [cursor=pointer]: "20"
+              - generic [ref=e36]: 20Hz
+            - generic [ref=e37]:
+              - generic [ref=e38]:
+                - generic [ref=e39]: Clock
+                - generic [ref=e40]:
+                  - generic "A tick is one discrete simulation step." [ref=e41]: T+2
+                  - generic [ref=e42]: Paused
+              - button "Reset" [ref=e44] [cursor=pointer]
+          - generic [ref=e46]:
+            - generic [ref=e47]: Layout
+            - generic [ref=e48]:
+              - button "Editor" [ref=e50] [cursor=pointer]
+              - button "Split" [ref=e52] [cursor=pointer]
+            - button "🛡 Normal" [ref=e53] [cursor=pointer]
+            - button "↻" [ref=e55] [cursor=pointer]
+            - button "Guide" [ref=e56] [cursor=pointer]
+            - button "?" [ref=e57] [cursor=pointer]
+        - generic [ref=e58]:
+          - generic [ref=e59]:
+            - textbox "Search components... (/)" [ref=e61]
+            - generic [ref=e62]:
+              - heading "⭐ FAVORITES" [level=3] [ref=e63]
+              - generic [ref=e64]:
+                - generic "Toggle ON/OFF - click to toggle state" [ref=e65]:
+                  - generic [ref=e66]:
+                    - generic [ref=e67]: Switch
+                    - generic [ref=e68]:
+                      - generic [ref=e69]: L0
+                      - button "⭐" [ref=e70] [cursor=pointer]
+                - generic "Visual indicator - lights up when signal is HIGH" [ref=e71]:
+                  - generic [ref=e72]:
+                    - generic [ref=e73]: Lamp
+                    - generic [ref=e74]:
+                      - generic [ref=e75]: L0
+                      - button "⭐" [ref=e76] [cursor=pointer]
+                - 'generic "TRUE if both inputs are TRUE | Truth: 0,0->0 | 0,1->0 | 1,0->0 | 1,1->1" [ref=e77]':
+                  - generic [ref=e78]:
+                    - generic [ref=e79]: AND
+                    - generic [ref=e80]:
+                      - generic [ref=e81]: L0
+                      - button "⭐" [ref=e82] [cursor=pointer]
+                - 'generic "TRUE if either input is TRUE | Truth: 0,0->0 | 0,1->1 | 1,0->1 | 1,1->1" [ref=e83]':
+                  - generic [ref=e84]:
+                    - generic [ref=e85]: OR
+                    - generic [ref=e86]:
+                      - generic [ref=e87]: L0
+                      - button "⭐" [ref=e88] [cursor=pointer]
+                - 'generic "Inverts input | Truth: 0->1 | 1->0" [ref=e89]':
+                  - generic [ref=e90]:
+                    - generic [ref=e91]: NOT
+                    - generic [ref=e92]:
+                      - generic [ref=e93]: L0
+                      - button "⭐" [ref=e94] [cursor=pointer]
+            - generic [ref=e95]:
+              - heading "🕒 RECENT" [level=3] [ref=e96]
+              - generic [ref=e97]:
+                - generic "Visual indicator - lights up when signal is HIGH" [ref=e98]:
+                  - generic [ref=e99]:
+                    - generic [ref=e100]: Lamp
+                    - generic [ref=e101]:
+                      - generic [ref=e102]: L0
+                      - button "⭐" [ref=e103] [cursor=pointer]
+                - generic "Toggle ON/OFF - click to toggle state" [ref=e104]:
+                  - generic [ref=e105]:
+                    - generic [ref=e106]: Switch
+                    - generic [ref=e107]:
+                      - generic [ref=e108]: L0
+                      - button "⭐" [ref=e109] [cursor=pointer]
+            - generic [ref=e110]:
+              - button "BASIC I/O ▼" [ref=e111] [cursor=pointer]:
+                - generic [ref=e112]: BASIC I/O
+                - generic [ref=e113]: ▼
+              - generic [ref=e114]:
+                - generic "Always ON - provides constant HIGH signal (1)" [ref=e115]:
+                  - generic [ref=e116]:
+                    - generic [ref=e117]: PowerSource
+                    - generic [ref=e118]:
+                      - generic [ref=e119]: L0
+                      - button "☆" [ref=e120] [cursor=pointer]
+                - generic "Toggle ON/OFF - click to toggle state" [ref=e121]:
+                  - generic [ref=e122]:
+                    - generic [ref=e123]: Switch
+                    - generic [ref=e124]:
+                      - generic [ref=e125]: L0
+                      - button "⭐" [ref=e126] [cursor=pointer]
+                - generic "Toggle ON/OFF - click to toggle state" [ref=e127]:
+                  - generic [ref=e128]:
+                    - generic [ref=e129]: INPUT
+                    - generic [ref=e130]:
+                      - generic [ref=e131]: L0
+                      - button "☆" [ref=e132] [cursor=pointer]
+                - generic "Visual indicator - lights up when signal is HIGH" [ref=e133]:
+                  - generic [ref=e134]:
+                    - generic [ref=e135]: Lamp
+                    - generic [ref=e136]:
+                      - generic [ref=e137]: L0
+                      - button "⭐" [ref=e138] [cursor=pointer]
+                - generic "Visual indicator - lights up when signal is HIGH" [ref=e139]:
+                  - generic [ref=e140]:
+                    - generic [ref=e141]: OUTPUT
+                    - generic [ref=e142]:
+                      - generic [ref=e143]: L0
+                      - button "☆" [ref=e144] [cursor=pointer]
+                - generic "Pass-through connection" [ref=e145]:
+                  - generic [ref=e146]:
+                    - generic [ref=e147]: Wire
+                    - generic [ref=e148]:
+                      - generic [ref=e149]: L0
+                      - button "☆" [ref=e150] [cursor=pointer]
+            - generic [ref=e151]:
+              - button "LOGIC GATES ▼" [ref=e152] [cursor=pointer]:
+                - generic [ref=e153]: LOGIC GATES
+                - generic [ref=e154]: ▼
+              - generic [ref=e155]:
+                - 'generic "TRUE if both inputs are TRUE | Truth: 0,0->0 | 0,1->0 | 1,0->0 | 1,1->1" [ref=e156]':
+                  - generic [ref=e157]:
+                    - generic [ref=e158]: AND
+                    - generic [ref=e159]:
+                      - generic [ref=e160]: L0
+                      - button "⭐" [ref=e161] [cursor=pointer]
+                - 'generic "TRUE if either input is TRUE | Truth: 0,0->0 | 0,1->1 | 1,0->1 | 1,1->1" [ref=e162]':
+                  - generic [ref=e163]:
+                    - generic [ref=e164]: OR
+                    - generic [ref=e165]:
+                      - generic [ref=e166]: L0
+                      - button "⭐" [ref=e167] [cursor=pointer]
+                - 'generic "Inverts input | Truth: 0->1 | 1->0" [ref=e168]':
+                  - generic [ref=e169]:
+                    - generic [ref=e170]: NOT
+                    - generic [ref=e171]:
+                      - generic [ref=e172]: L0
+                      - button "⭐" [ref=e173] [cursor=pointer]
+                - 'generic "NOT AND - opposite of AND gate | Truth: 0,0->1 | 0,1->1 | 1,0->1 | 1,1->0" [ref=e174]':
+                  - generic [ref=e175]:
+                    - generic [ref=e176]: NAND
+                    - generic [ref=e177]:
+                      - generic [ref=e178]: L0
+                      - button "☆" [ref=e179] [cursor=pointer]
+                - 'generic "NOT OR - opposite of OR gate | Truth: 0,0->1 | 0,1->0 | 1,0->0 | 1,1->0" [ref=e180]':
+                  - generic [ref=e181]:
+                    - generic [ref=e182]: NOR
+                    - generic [ref=e183]:
+                      - generic [ref=e184]: L0
+                      - button "☆" [ref=e185] [cursor=pointer]
+                - 'generic "TRUE if inputs differ | Truth: 0,0->0 | 0,1->1 | 1,0->1 | 1,1->0" [ref=e186]':
+                  - generic [ref=e187]:
+                    - generic [ref=e188]: XOR
+                    - generic [ref=e189]:
+                      - generic [ref=e190]: L1
+                      - button "☆" [ref=e191] [cursor=pointer]
+                - 'generic "TRUE if inputs are same | Truth: 0,0->1 | 0,1->0 | 1,0->0 | 1,1->1" [ref=e192]':
+                  - generic [ref=e193]:
+                    - generic [ref=e194]: XNOR
+                    - generic [ref=e195]:
+                      - generic [ref=e196]: L1
+                      - button "☆" [ref=e197] [cursor=pointer]
+            - generic [ref=e198]:
+              - button "TIMING ▼" [ref=e199] [cursor=pointer]:
+                - generic [ref=e200]: TIMING
+                - generic [ref=e201]: ▼
+              - generic [ref=e202]:
+                - generic "Oscillates between HIGH/LOW periodically" [ref=e203]:
+                  - generic [ref=e204]:
+                    - generic [ref=e205]: Clock
+                    - generic [ref=e206]:
+                      - generic [ref=e207]: L0
+                      - button "☆" [ref=e208] [cursor=pointer]
+                - generic "Delays signal by configured number of ticks" [ref=e209]:
+                  - generic [ref=e210]:
+                    - generic [ref=e211]: Delay
+                    - generic [ref=e212]:
+                      - generic [ref=e213]: L0
+                      - button "☆" [ref=e214] [cursor=pointer]
+            - generic [ref=e215]:
+              - button "ANALOG ▼" [ref=e216] [cursor=pointer]:
+                - generic [ref=e217]: ANALOG
+                - generic [ref=e218]: ▼
+              - generic [ref=e219]:
+                - generic "Analog supply - outputs a constant voltage (set in state/config)" [ref=e220]:
+                  - generic [ref=e221]:
+                    - generic [ref=e222]: VoltageSource
+                    - generic [ref=e223]:
+                      - generic [ref=e224]: L2
+                      - button "☆" [ref=e225] [cursor=pointer]
+                - generic "Light-dependent resistor - outputs resistance based on light level" [ref=e226]:
+                  - generic [ref=e227]:
+                    - generic [ref=e228]: LDR
+                    - generic [ref=e229]:
+                      - generic [ref=e230]: L2
+                      - button "☆" [ref=e231] [cursor=pointer]
+                - generic "Fixed resistor - outputs a constant resistance value" [ref=e232]:
+                  - generic [ref=e233]:
+                    - generic [ref=e234]: FixedResistor
+                    - generic [ref=e235]:
+                      - generic [ref=e236]: L2
+                      - button "☆" [ref=e237] [cursor=pointer]
+                - generic "Computes Vout from Vin, R1, and R2" [ref=e238]:
+                  - generic [ref=e239]:
+                    - generic [ref=e240]: VoltageDivider
+                    - generic [ref=e241]:
+                      - generic [ref=e242]: L2
+                      - button "☆" [ref=e243] [cursor=pointer]
+                - generic "Comparator - outputs 1 when V+ > V-" [ref=e244]:
+                  - generic [ref=e245]:
+                    - generic [ref=e246]: LM358
+                    - generic [ref=e247]:
+                      - generic [ref=e248]: L2
+                      - button "☆" [ref=e249] [cursor=pointer]
+            - generic [ref=e250]:
+              - button "COMPOSITE ▼" [ref=e251] [cursor=pointer]:
+                - generic [ref=e252]: COMPOSITE
+                - generic [ref=e253]: ▼
+              - generic [ref=e254]:
+                - generic "Set-Reset memory latch - remembers 1 bit using feedback" [ref=e255]:
+                  - generic [ref=e256]:
+                    - generic [ref=e257]: RSLatch
+                    - generic [ref=e258]:
+                      - generic [ref=e259]: L3
+                      - button "☆" [ref=e260] [cursor=pointer]
+                - generic "D Flip-Flop - captures data on clock edge" [ref=e261]:
+                  - generic [ref=e262]:
+                    - generic [ref=e263]: DFlipFlop
+                    - generic [ref=e264]:
+                      - generic [ref=e265]: L3
+                      - button "☆" [ref=e266] [cursor=pointer]
+                - generic "JK Flip-Flop - versatile flip-flop with toggle capability" [ref=e267]:
+                  - generic [ref=e268]:
+                    - generic [ref=e269]: JKFlipFlop
+                    - generic [ref=e270]:
+                      - generic [ref=e271]: L3
+                      - button "☆" [ref=e272] [cursor=pointer]
+                - generic "Adds 2 bits + carry-in, outputs sum + carry-out" [ref=e273]:
+                  - generic [ref=e274]:
+                    - generic [ref=e275]: FullAdder
+                    - generic [ref=e276]:
+                      - generic [ref=e277]: L2
+                      - button "☆" [ref=e278] [cursor=pointer]
+                - generic "4-bit binary counter - counts from 0 to 15" [ref=e279]:
+                  - generic [ref=e280]:
+                    - generic [ref=e281]: Counter4Bit
+                    - generic [ref=e282]:
+                      - generic [ref=e283]: L4
+                      - button "☆" [ref=e284] [cursor=pointer]
+            - generic [ref=e285]:
+              - generic [ref=e286]:
+                - heading "MY CHIPS" [level=3] [ref=e287]
+                - button "Browse" [ref=e288] [cursor=pointer]
+              - paragraph [ref=e290]: No saved chips yet
+          - generic [ref=e293]:
+            - generic [ref=e294]:
+              - img [ref=e295]
+              - generic [ref=e301]: Circuit View
+              - generic [ref=e302]:
+                - button "SEL" [ref=e303] [cursor=pointer]
+                - button "W" [ref=e304] [cursor=pointer]
+                - button "G" [ref=e305] [cursor=pointer]
+                - button "F" [ref=e306] [cursor=pointer]
+                - button "0" [ref=e307] [cursor=pointer]
+                - button "?" [ref=e308] [cursor=pointer]
+              - generic [ref=e309]: 2 nodes • 1 wires
+            - generic [ref=e311]:
+              - generic [ref=e313]:
+                - generic:
+                  - generic:
+                    - generic: Selection
+                    - generic: 0n / 0w
+                  - generic:
+                    - generic: Mode
+                    - generic: Select
+                  - generic:
+                    - generic: Snap
+                    - generic: "On"
+                  - generic:
+                    - generic: Sim
+                    - generic: Paused
+                  - generic:
+                    - generic: Tick
+                    - generic: "2"
+                - img [ref=e314]:
+                  - generic [ref=e323]:
+                    - generic: Switch
+                    - generic: L0
+                    - generic [ref=e330]:
+                      - generic: out
+                  - generic [ref=e332]:
+                    - generic: Lamp
+                    - generic: L0
+                    - generic [ref=e339]:
+                      - generic: in
+                    - generic [ref=e341]:
+                      - generic: out
+                  - generic [ref=e343]:
+                    - generic: "ON"
+              - generic [ref=e345]:
+                - generic [ref=e346]:
+                  - button "Select" [ref=e347] [cursor=pointer]
+                  - button "Wire" [ref=e348] [cursor=pointer]
+                - generic "Hold Space to pan" [ref=e350]: "Space: Pan"
+                - button "Snap On" [ref=e351] [cursor=pointer]
+                - button "Fit" [ref=e353] [cursor=pointer]
+                - button "Reset" [ref=e354] [cursor=pointer]
+                - button "Undo" [ref=e356] [cursor=pointer]
+                - button "Redo" [disabled] [ref=e357]
+          - generic [ref=e358]:
+            - generic [ref=e359]:
+              - tablist [ref=e360]:
+                - tab "Inspector" [selected] [ref=e361] [cursor=pointer]:
+                  - generic: 🔍
+                  - generic: Info
+                - tab "Health" [ref=e362] [cursor=pointer]:
+                  - generic: 💊
+                  - generic: Health
+                - tab "Learn" [ref=e363] [cursor=pointer]:
+                  - generic: 🎓
+                  - generic: Learn
+                - tab "Probes" [ref=e364] [cursor=pointer]:
+                  - generic: 📊
+                  - generic: Probes
+                - tab "Record" [ref=e365] [cursor=pointer]:
+                  - generic: ⏺️
+                  - generic: Record
+                - tab "Chips" [ref=e366] [cursor=pointer]:
+                  - generic: 🧩
+                  - generic: Chips
+                - tab "IO" [ref=e367] [cursor=pointer]:
+                  - generic: 🔌
+                  - generic: IO
+              - button "Collapse Dock" [ref=e368] [cursor=pointer]: ←
+            - generic [ref=e370]:
+              - generic [ref=e372]:
+                - generic [ref=e373]:
+                  - generic [ref=e374]: Clock
+                  - generic [ref=e375]:
+                    - generic [ref=e376]: t2
+                    - generic [ref=e377]: Paused
+                    - generic [ref=e378]: Manual
+                  - generic [ref=e379]: Last step 12:39:55 PM
+                - generic [ref=e380]:
+                  - button "Step" [ref=e381] [cursor=pointer]
+                  - button "Run" [ref=e382] [cursor=pointer]
+                  - button "Reset" [ref=e383] [cursor=pointer]
+              - generic [ref=e385]:
+                - generic [ref=e386]:
+                  - generic [ref=e387]: 👆
+                  - generic [ref=e388]: Select a component
+                - generic [ref=e389]:
+                  - generic [ref=e390]: Circuit
+                  - generic [ref=e391]:
+                    - generic [ref=e392]:
+                      - generic [ref=e393]: Components
+                      - generic [ref=e394]: "2"
+                    - generic [ref=e395]:
+                      - generic [ref=e396]: Wires
+                      - generic [ref=e397]: "1"
+        - generic [ref=e398]:
+          - generic [ref=e399]:
+            - generic [ref=e400]:
+              - generic [ref=e401]: 📦
+              - generic [ref=e402]: 2 nodes
+            - generic [ref=e403]:
+              - generic [ref=e404]: 🔌
+              - generic [ref=e405]: 1 wire
+          - generic [ref=e406]:
+            - generic [ref=e407]:
+              - generic [ref=e408]: ●
+              - generic [ref=e409]: Paused
+            - generic [ref=e410]: circuit
+          - generic [ref=e411]:
+            - generic [ref=e412]:
+              - generic [ref=e413]: ↶ Undo
+              - generic [ref=e414]: ↷ Redo
+            - generic [ref=e415]:
+              - generic [ref=e416]: 🔍
+              - generic [ref=e417]: 100%
+            - generic [ref=e418]: Press ? for shortcuts
+  - generic [ref=e420]:
+    - heading "Something went wrong" [level=1] [ref=e421]
+    - paragraph [ref=e422]: RedByte OS encountered an unexpected error. You can try reloading the page, or perform a factory reset to clear all data and start fresh.
+    - paragraph [ref=e424]: An unexpected error occurred. Please try again. If it persists, reload the page.
+    - generic [ref=e425]:
+      - button "Reload Page" [ref=e426] [cursor=pointer]
+      - button "Export Recovery Bundle" [ref=e427] [cursor=pointer]
+      - button "Copy Diagnostics" [ref=e428] [cursor=pointer]
+      - button "Restart in Safe Mode" [ref=e429] [cursor=pointer]
+      - generic [ref=e430]:
+        - paragraph [ref=e431]:
+          - strong [ref=e432]: "Factory Reset (clears all data):"
+        - list [ref=e433]:
+          - listitem [ref=e434]: Reload the page
+          - listitem [ref=e435]: Open Settings (Ctrl+,)
+          - listitem [ref=e436]: Go to Filesystem Data
+          - listitem [ref=e437]: Press F
+          - listitem [ref=e438]:
+            - text: Type
+            - strong [ref=e439]: RESET
+            - text: and confirm
+    - paragraph [ref=e440]: If this problem persists, please report it on GitHub.
+```

@@ -1,0 +1,1 @@
+{"root":["./src/canvashost.tsx","./src/viewporthud.tsx","./src/activecanvas.ts","./src/index.ts","./src/transforms.ts","./src/types.ts","./src/usecanvasinteraction.ts","./src/useunifiedviewport.ts","./src/__tests__/transforms.test.ts"],"version":"5.9.3"}

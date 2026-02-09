@@ -3,6 +3,7 @@ import { jsx as _jsx, Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-run
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 import React, { useMemo, useState, useRef } from 'react';
+import { screenToWorld } from '@redbyte/rb-viewport';
 import { useViewStateStore } from '../stores/viewStateStore';
 import { useCircuitStore } from '../stores/circuitStore';
 import { getPortPositions } from './schematic/SchematicPortDetector';
@@ -151,15 +152,14 @@ export const SchematicView = ({ circuit, engine, isRunning, width = 800, height 
             e.preventDefault();
             const delta = -e.deltaY * 0.001;
             const newZoom = Math.max(0.25, Math.min(4, camera.zoom * (1 + delta)));
-            // Zoom towards cursor
+            // Zoom towards cursor using canonical coordinate transform
             const rect = svg.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
-            const worldX = (mouseX - camera.x) / camera.zoom;
-            const worldY = (mouseY - camera.y) / camera.zoom;
+            const worldPos = screenToWorld(mouseX, mouseY, camera);
             setCamera({
-                x: mouseX - worldX * newZoom,
-                y: mouseY - worldY * newZoom,
+                x: mouseX - worldPos.x * newZoom,
+                y: mouseY - worldPos.y * newZoom,
                 zoom: newZoom,
             });
         };

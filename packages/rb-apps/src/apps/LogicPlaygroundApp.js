@@ -5,7 +5,7 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
 // v1.0.1 - Multi-view enhancement with null safety
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
-import { CircuitEngine, TickEngine, serialize, deserialize, decodeCircuitAsync, encodeCircuitCompressed, } from '@redbyte/rb-logic-core';
+import { CircuitEngine, TickEngine, serialize, deserialize, decodeCircuitAsync, encodeCircuitCompressed, toCircuitV1, fromCircuitV1, } from '@redbyte/rb-logic-core';
 import { useSettingsStore, useUiTickStore, enableWatchdog, installFatalCapture, pushMount } from '@redbyte/rb-utils';
 import { toast, OverlayRoot, OverlayPanel } from '@redbyte/rb-primitives';
 import { useWindowStore } from '@redbyte/rb-windowing';
@@ -160,27 +160,25 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
     const tickRate = useSettingsStore((state) => state.tickRate);
     const [guardrail, setGuardrail] = useState(null);
     const closeGuardrail = useCallback(() => setGuardrail(null), []);
-    const [circuit, setCircuit] = useState(() => {
-        // Try to restore saved CE circuit first
-        const savedCircuit = loadSavedCircuit();
-        if (savedCircuit) {
-            return savedCircuit;
-        }
-        return {
-            nodes: [],
-            connections: [],
-        };
-    });
-    const setCircuitRef = useRef(setCircuit);
+    // Circuit state is canonical in circuitStore (RC-P1: eliminate dual source)
+    const circuit = useCircuitStore((state) => state.circuit);
+    const storeSetEngine = useCircuitStore((state) => state.setEngine);
+    const storeSetTickEngine = useCircuitStore((state) => state.setTickEngine);
+    const storeCommit = useCircuitStore((state) => state.commit);
+    // Local refs for engine instances
     const [engine, setEngine] = useState(() => new CircuitEngine(circuit));
     const [tickEngine, setTickEngine] = useState(() => new TickEngine(circuit, { tickRate }));
+    // Sync engine instances to store on creation
+    useEffect(() => {
+        storeSetEngine(engine);
+        storeSetTickEngine(tickEngine);
+    }, [engine, tickEngine, storeSetEngine, storeSetTickEngine]);
     const unifiedProject = useUnifiedProjectStore((s) => s.currentProject);
     const createNewProject = useUnifiedProjectStore((s) => s.createNewProject);
     const updateProject = useUnifiedProjectStore((s) => s.updateProject);
     const hasSyncedFromProjectRef = useRef(false);
     const lastRecordingKeyRef = useRef(null);
-    const isReconcilingRef = useRef(false);
-    const [syncWarning, setSyncWarning] = useState(null);
+    // Helper for connection normalization (used by app-specific logic)
     const normalizeConnection = useCallback((conn) => {
         const fromIsString = typeof conn.from === 'string';
         const toIsString = typeof conn.to === 'string';
@@ -193,54 +191,6 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
             ? conn.toPin ?? conn.toPort ?? 'in'
             : conn.to.portName ?? conn.to.port ?? conn.toPin ?? conn.toPort ?? 'in';
         return { fromNodeId, toNodeId, fromPin, toPin };
-    }, []);
-    const toCircuitV1 = useCallback((src) => {
-        return {
-            schemaVersion: '1.0',
-            nodes: src.nodes.map((node) => ({
-                id: node.id,
-                type: node.type,
-                x: node.position?.x ?? node.x ?? 0,
-                y: node.position?.y ?? node.y ?? 0,
-                rotation: node.rotation || 0,
-                params: node.config || {},
-                label: node.label,
-                state: node.state || {},
-            })),
-            connections: src.connections.map((conn) => {
-                const normalized = normalizeConnection(conn);
-                return {
-                    id: conn.id || `${normalized.fromNodeId}-${normalized.fromPin}-${normalized.toNodeId}-${normalized.toPin}`,
-                    fromNodeId: normalized.fromNodeId,
-                    fromPin: normalized.fromPin,
-                    toNodeId: normalized.toNodeId,
-                    toPin: normalized.toPin,
-                };
-            }),
-            customChips: [],
-        };
-    }, [normalizeConnection]);
-    const fromCircuitV1 = useCallback((src) => {
-        return {
-            nodes: src.nodes.map((node) => ({
-                id: node.id,
-                type: node.type,
-                position: { x: node.x ?? 0, y: node.y ?? 0 },
-                x: node.x,
-                y: node.y,
-                rotation: node.rotation,
-                config: node.params || {},
-                label: node.label,
-                state: node.state || {},
-                inputs: {},
-                outputs: {},
-            })),
-            connections: src.connections.map((conn) => ({
-                id: conn.id,
-                from: { nodeId: conn.fromNodeId, portName: conn.fromPin || 'out' },
-                to: { nodeId: conn.toNodeId, portName: conn.toPin || 'in' },
-            })),
-        };
     }, []);
     const addToast = useCallback((message, kind = 'info', duration) => {
         toast[kind]({ message, duration });
@@ -273,66 +223,75 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
         const builder = buildProjectRef.current;
         return builder ? builder() : null;
     }, []);
+    // Single hydration effect: when project loads/opens, hydrate circuitStore from unifiedProject (RC-P1)
+    useEffect(() => {
+        if (!unifiedProject)
+            return;
+        if (hasSyncedFromProjectRef.current)
+            return;
+        const savedCircuit = loadSavedCircuit();
+        const initialCircuit = savedCircuit || { nodes: [], connections: [] };
+        if (unifiedProject.circuit.nodes.length > 0 || unifiedProject.circuit.connections.length > 0) {
+            // Project has circuit data: load it
+            const loadedCircuit = fromCircuitV1(unifiedProject.circuit);
+            storeCommit(loadedCircuit);
+            setEngine(new CircuitEngine(loadedCircuit));
+            setTickEngine(new TickEngine(loadedCircuit, { tickRate }));
+        }
+        else if (initialCircuit.nodes.length > 0 || initialCircuit.connections.length > 0) {
+            // No project circuit, but CE autosave exists: use it
+            storeCommit(initialCircuit);
+            setEngine(new CircuitEngine(initialCircuit));
+            setTickEngine(new TickEngine(initialCircuit, { tickRate }));
+        }
+        else {
+            // Empty: initialize engines with empty circuit
+            setEngine(new CircuitEngine(initialCircuit));
+            setTickEngine(new TickEngine(initialCircuit, { tickRate }));
+        }
+        hasSyncedFromProjectRef.current = true;
+    }, [unifiedProject, tickRate, storeCommit]);
+    // Sync circuitStore changes to unifiedProject (one-way from store → project)
+    useEffect(() => {
+        if (!unifiedProject)
+            return;
+        if (!hasSyncedFromProjectRef.current)
+            return;
+        const nextCircuit = toCircuitV1(circuit);
+        const currentCircuitKey = stableStringify(unifiedProject.circuit);
+        const nextCircuitKey = stableStringify(nextCircuit);
+        if (currentCircuitKey === nextCircuitKey)
+            return;
+        updateProject((project) => ({
+            ...project,
+            circuit: nextCircuit,
+        }));
+    }, [circuit, unifiedProject, updateProject]);
+    // Create new project at startup
     useEffect(() => {
         if (!unifiedProject && !createdProjectRef.current) {
             createNewProject('Untitled Project');
             createdProjectRef.current = true;
         }
     }, [unifiedProject, createNewProject]);
+    // Debug instrumentation for Playwright gates (RC-P1)
     useEffect(() => {
-        if (!unifiedProject || hasSyncedFromProjectRef.current)
-            return;
-        if (circuit.nodes.length > 0 || circuit.connections.length > 0)
-            return;
-        if (unifiedProject.circuit.nodes.length === 0 && unifiedProject.circuit.connections.length === 0)
-            return;
-        const loadedCircuit = fromCircuitV1(unifiedProject.circuit);
-        setCircuit(loadedCircuit);
-        setEngine(new CircuitEngine(loadedCircuit));
-        setTickEngine(new TickEngine(loadedCircuit, { tickRate }));
-        hasSyncedFromProjectRef.current = true;
-    }, [unifiedProject, circuit.nodes.length, circuit.connections.length, fromCircuitV1, tickRate]);
-    useEffect(() => {
-        if (!unifiedProject)
-            return;
-        if (!hasSyncedFromProjectRef.current && circuit.nodes.length === 0 && circuit.connections.length === 0)
-            return;
-        if (isReconcilingRef.current) {
-            isReconcilingRef.current = false;
-            return;
+        if (typeof window !== 'undefined' && import.meta.env.DEV) {
+            window.__RB_DEBUG__ = {
+                ...(window.__RB_DEBUG__ || {}),
+                getCircuit: () => useCircuitStore.getState().circuit,
+            };
         }
-        const projectSignature = JSON.stringify(unifiedProject.circuit);
-        const circuitSignature = JSON.stringify(toCircuitV1(circuit));
-        if (projectSignature === circuitSignature) {
-            return;
-        }
-        updateProject((project) => ({
-            ...project,
-            circuit: toCircuitV1(circuit),
-        }));
-    }, [circuit, unifiedProject, updateProject, toCircuitV1]);
-    // NOTE: useEffect for syncing record to unifiedProject is defined AFTER record is declared
-    // (moved to line ~520 to avoid TDZ error - record comes from useRunRecorderStore)
-    useEffect(() => {
-        if (!unifiedProject)
-            return;
-        if (!hasSyncedFromProjectRef.current)
-            return;
-        const projectSignature = JSON.stringify(unifiedProject.circuit);
-        const circuitSignature = JSON.stringify(toCircuitV1(circuit));
-        if (projectSignature !== circuitSignature) {
-            const loadedCircuit = fromCircuitV1(unifiedProject.circuit);
-            isReconcilingRef.current = true;
-            setCircuit(loadedCircuit);
-            setEngine(new CircuitEngine(loadedCircuit));
-            setTickEngine(new TickEngine(loadedCircuit, { tickRate }));
-            setSyncWarning('State divergence detected. Unified project restored as canonical.');
-        }
-    }, [unifiedProject, circuit, toCircuitV1, fromCircuitV1, tickRate]);
+    }, []);
     // Get stable circuit mutation methods from store (NO closures)
     const storeAddNode = useCircuitStore((state) => state.addNode);
     const storeUpdateNode = useCircuitStore((state) => state.updateNode);
     const storeUpdateCircuit = useCircuitStore((state) => state.updateCircuit);
+    const setCircuit = useCallback((next, opts) => {
+        const current = useCircuitStore.getState().circuit;
+        const resolved = typeof next === 'function' ? next(current) : next;
+        storeUpdateCircuit(resolved, opts);
+    }, [storeUpdateCircuit]);
     const examples = useRef(listExamples());
     // Helper to get all .rblogic files
     const getLogicFiles = () => getAllFiles().filter((f) => f.name.endsWith('.rblogic'));
@@ -606,6 +565,7 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
     const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
     const [showQuickAdd, setShowQuickAdd] = useState(false);
     const [showExamplesModal, setShowExamplesModal] = useState(false);
+    const [syncWarning, setSyncWarning] = useState(null);
     const [showStartHere, setShowStartHere] = useState(() => {
         // Show on first launch unless dismissed
         if (typeof localStorage === 'undefined')
@@ -643,6 +603,7 @@ const LogicPlaygroundInner = ({ windowId, initialFileId, initialExampleId, resou
     const engineRef = useRef(engine);
     const tickEngineRef = useRef(tickEngine);
     const circuitRef = useRef(circuit);
+    const setCircuitRef = useRef(null);
     // Keep refs in sync with state
     // NOTE: Do NOT include setCircuit, setEngine, setTickEngine in dependencies!
     // These are state setters that change on every render, causing infinite loops.

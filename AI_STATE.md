@@ -5367,6 +5367,60 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-02-09 (Circuit Store Recursion Fixed - 5/7 Golden Path Gates Pass)
+- **Recursion bug eliminated**: Fixed infinite loop in `circuitStore.ts::updateCircuit` that caused `structuredClone` stack overflow in E2E tests.
+- **Root cause**: Zustand subscriber chain created unguarded recursion: `updateCircuit` → `set({ circuit })` → subscribers → React re-render → `handleCircuitChange` → `commit` → `updateCircuit` → (loop).
+- **Failed attempts (3)**:
+  1. Circuit equality check in `handleCircuitChange` — mutations already triggered before check
+  2. Module-level recursion guard — Vite compiled stale `.js` file instead of `.ts` source (deleted stale `.js` files in `packages/rb-apps/src/stores/`)
+  3. Store state property `_isUpdating` — calling `set({ _isUpdating })` triggered subscribers synchronously, defeating guard
+- **Solution implemented**: Store instance property `_updateInProgress` on `_store` object (not in Zustand state), set before circuit operations, checked at `updateCircuit` entry, reset in finally block. Bypasses Zustand notification system to break recursion cycle.
+- **E2E Golden Path Gates results (5/7 pass)**:
+  - ✅ **Gate A** (Place 3 components): Pass
+  - ✅ **Gate B** (Move component): Pass — *Primary validation of recursion fix*
+  - ❌ **Gate C** (Pan/zoom placement): Fail — DOM overlays block palette clicks; forced click with `{ force: true }` bypasses check but doesn't trigger smart spawn (0 nodes placed)
+  - ✅ **Gate D** (Wire components): Pass
+  - ❌ **Gate E** (Simulation toggle): Fail — Lamp state remains `{}` before and after switch toggle (simulation engine not responding)
+  - ✅ **Gate F** (Save/reload): Pass
+  - ✅ **Gate G** (Export): Pass
+- **Technical details**:
+  - File: `packages/ rb-apps/src/stores/circuitStore.ts`
+  - Lines modified: 147-155 (guard check), 268 (finally block reset)
+  - Removed debug overlay from `PlaygroundGoldenPath.tsx` (lines 80-86) that blocked E2E clicks with `zIndex: 99999`
+- **Side fixes**:
+  - **Test isolation**: Added `beforeEach` circuit reset to prevent node pollution across tests
+  - **Stale JS cleanup**: Deleted `circuitStore.js` (2/8) in favor of `circuitStore.ts` (2/9) — Vite was compiling outdated transpiled code
+- **Remaining work**: Gate C needs QuickAddPalette state management fix or workspace palette click handler repair; Gate E needs simulation engine integration check.
+
+### 2026-02-08 (D: Root Cause Identified - LogicPlaygroundComponent Event Loop Blocking)
+- **Investigation complete**: E2E test hang at LogicPlayground mount traced to LogicPlaygroundComponent initialization.
+- **Root cause (confirmed via evidence)**: LogicPlaygroundComponent import or initialization causes React's render() call to block the event loop indefinitely, preventing microtasks (setTimeout, Promise callbacks) from executing.
+- **Evidence collected**:
+  1. Playwright test diagnostics added: captures console logs, pageerrors, network failures
+  2. Main.tsx instrumentation (lines 15-48): tracks React import chain and measures whether setTimeout(100ms) fires after render()
+  3. PlaygroundGoldenPath component chain: error boundary + Suspense fallback with 2000ms timeout to detect blocking
+  4. **Binary search result**: Replacing LogicPlaygroundComponent with simple `<div>` → setTimeout FIRES immediately ✓; restoring component → setTimeout NEVER FIRES ✗
+- **Technical findings**:
+  - Golden path activation works (URL param `?golden=1` now recognized, import chain completes, JSX function executes)
+  - PlaygroundGoldenPath return statement was fixed (line 105 in .tsx, line value in .js)
+  - Dual file parity maintained (TSX and JS versions synchronized)
+  - React mounting, Suspense boundaries, error boundaries all work correctly (proven with minimal test component)
+  - **Blocker is LogicPlaygroundComponent specifically**: Either infinite render loop, thrown unresolved promise (Suspense pattern), or synchronous blocking code in initialization
+- **Dual file complexity**: Discovered that `LogicPlaygroundApp.tsx` (4381 lines) must maintain exact parity with `LogicPlaygroundApp.js` (~3230 lines) - changes to one must be mirrored in the other or it silently fails
+- **Next steps (not yet executed)**:
+  1. Restore LogicPlaygroundComponent import with wrapped error/promise handling
+  2. Add console logging inside component constructor/mount to identify exact blocking point
+  3. Check Zustand store subscriptions (circuitStore, unifiedProjectStore) for infinite update loops
+  4. Verify circuit engine initialization doesn't have synchronous blocking code
+  5. Narrow down to exact line/dependency causing the hang
+- **Files modified during investigation** (diagnostic-only): `apps/playground/src/main.tsx` (render lifecycle logging), `packages/rb-apps/src/dev/PlaygroundGoldenPath.tsx` (error boundary + Suspense timeout), `packages/rb-apps/src/dev/PlaygroundGoldenPath.js` (parity), `tests/e2e/dom-layering.spec.ts` (network/console capture)
+- **Files NOT committed**: Changes remain as temporary diagnostics on working branch; awaiting root cause fix before commit
+- **Builds**: Both `pnpm --filter @redbyte/rb-apps build` and `pnpm --filter @redbyte/playground build` succeed
+- **Test infrastructure**: 120s Playwright timeout is sufficient; E2E test waits 60s for DOM element before failing; diagnostics now captured in test output
+- **Evidence-first debugging rule maintained**: No speculative fixes; only changes backed by console/network/error logs from Playwright test runs
+- **Status**: Ready for next debugging session to restore component + narrow down initialization blocker
+- **Attribution**: Connor Angiel
+
 ### 2026-02-08 (Critical Fix: PropertyInspector Infinite Loop)
 - **Resolved crash**: Fixed "Maximum update depth exceeded" error in Logic Playground caused by unstable selector in `useWindowActivity`.
 - **Root cause**: `useWindowActivity` returned a new object `{ isVisible, isFocused }` on every selector call, triggering infinite re-renders via React's `useSyncExternalStore`.

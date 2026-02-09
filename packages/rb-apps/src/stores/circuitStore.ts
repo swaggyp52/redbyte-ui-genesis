@@ -7,6 +7,7 @@ import type { Circuit, CircuitEngine, Node, Connection, PortRef } from '@redbyte
 import type { TickEngine } from '@redbyte/rb-logic-core';
 import { recordAuditTransition } from '../utils/audit';
 import { isCEMode } from '../utils/ceMode';
+import { digestValue } from '../utils/digest';
 
 // Debug flag for instrumentation (DEV-only)
 const DEBUG_PLAYGROUND = import.meta.env.DEV && false; // Set to true to enable debug logs
@@ -24,6 +25,26 @@ function getNextNodeId(circuit: Circuit): string {
     }
   }
   return `${NODE_ID_PREFIX}${max + 1}`;
+}
+
+// Circuit fingerprint for identity checks (prevents no-op updates)
+function computeCircuitFingerprint(circuit: Circuit): string {
+  // Fast fingerprint: node count + edge count + sorted node/edge metadata
+  const nodeData = circuit.nodes
+    .map(n => `${n.id}:${n.type}:${n.position?.x ?? n.x ?? 0}:${n.position?.y ?? n.y ?? 0}:${Number.isFinite(n.rotation) ? n.rotation : 0}`)
+    .sort()
+    .join('|');
+  const edgeData = circuit.connections
+    .map(c => {
+      const fromId = typeof c.from === 'string' ? c.from : c.from?.nodeId ?? '';
+      const toId = typeof c.to === 'string' ? c.to : c.to?.nodeId ?? '';
+      const fromPort = typeof c.from === 'string' ? (c as any).fromPin ?? (c as any).fromPort : (c.from as any)?.portName ?? (c.from as any)?.port ?? '';
+      const toPort = typeof c.to === 'string' ? (c as any).toPin ?? (c as any).toPort : (c.to as any)?.portName ?? (c.to as any)?.port ?? '';
+      return `${fromId}:${fromPort}->${toId}:${toPort}`;
+    })
+    .sort()
+    .join('|');
+  return digestValue({ nodes: nodeData, edges: edgeData });
 }
 
 // Deep clone circuit to avoid mutation leaks in history
@@ -142,8 +163,29 @@ function createCircuitStore() {
     setDirty: (dirty) => set({ isDirty: dirty }),
 
     updateCircuit: (incoming, opts = {}) => {
-      const { skipHistory = false, enforceLimits = true } = opts;
-      const { engine, tickEngine, circuit: currentCircuit } = get();
+      // Recursion guard: prevent infinite loops from Zustand subscribers
+      // Use ref on store instance to avoid triggering subscribers
+      const storeRef = _store as any;
+      if (storeRef && storeRef._updateInProgress) {
+        console.warn('[CircuitStore] Prevented recursive updateCircuit call');
+        return;
+      }
+
+      if (storeRef) storeRef._updateInProgress = true;
+      try {
+        const { skipHistory = false, enforceLimits = true } = opts;
+        const { engine, tickEngine, circuit: currentCircuit } = get();
+
+      // Fingerprint no-op: if circuit is functionally identical, skip all work
+      const incomingFp = computeCircuitFingerprint(incoming);
+      const currentFp = computeCircuitFingerprint(currentCircuit);
+      if (incomingFp === currentFp && !enforceLimits) {
+        // Circuit is identical; no update needed
+        if (DEBUG_PLAYGROUND) {
+          console.log('[CircuitStore] Skipped no-op update (fingerprints match)');
+        }
+        return;
+      }
 
       // CHOKE POINT: Classroom guardrail - clamp incoming circuit BEFORE anything else
       let circuit = incoming;
@@ -225,11 +267,13 @@ function createCircuitStore() {
       engine?.setCircuit(circuit);
       tickEngine?.setCircuit(circuit);
 
-      // Update complexity tracking for classroom guardrails
+      // Update complexity tracking for classroom guardrails ONLY if circuit fingerprint changed
       // (must happen after state update so new circuit is in place)
-      try {
-        const nodeCount = circuit.nodes.length;
-        const edgeCount = circuit.connections.length;
+      const finalFp = computeCircuitFingerprint(circuit);
+      if (finalFp !== currentFp) {
+        try {
+          const nodeCount = circuit.nodes.length;
+          const edgeCount = circuit.connections.length;
 
         // Calculate max fan-out
         const fanOutCounts = new Map<string, number>();
@@ -244,13 +288,18 @@ function createCircuitStore() {
           const classroomStore = (window as any).__RB_CLASSROOM_MODE_STORE__;
           classroomStore.getState().setComplexity(nodeCount, edgeCount, maxFanOut);
         }
-      } catch (err) {
-        // Fail silently - complexity tracking is non-critical
-        if (DEBUG_PLAYGROUND) console.warn('[CircuitStore] Complexity tracking failed:', err);
+        } catch (err) {
+          // Fail silently - complexity tracking is non-critical
+          if (DEBUG_PLAYGROUND) console.warn('[CircuitStore] Complexity tracking failed:', err);
+        }
       }
 
       if (DEBUG_PLAYGROUND) {
         console.log('[CircuitStore] Engines synced with new circuit');
+      }
+      } finally {
+        const storeRef = _store as any;
+        if (storeRef) storeRef._updateInProgress = false;
       }
     },
 
@@ -287,6 +336,7 @@ function createCircuitStore() {
     canRedo: () => get().future.length > 0,
 
     addNode: (nodeType, position) => {
+      console.log(`[CircuitStore.addNode] Called with type=${nodeType}, pos=${JSON.stringify(position)}`);
       const { circuit } = get();
 
       // Guardrail: block at node limit (CE: 20, normal: 500)
@@ -320,10 +370,12 @@ function createCircuitStore() {
         state: {},
         config: defaultConfig,
       };
+      console.log(`[CircuitStore.addNode] Creating new node:`, newNode);
       get().commit({
         ...circuit,
         nodes: [...circuit.nodes, newNode],
       });
+      console.log(`[CircuitStore.addNode] Commit called, circuit now has ${circuit.nodes.length + 1} nodes`);
     },
 
     updateNode: (nodeId, updates) => {

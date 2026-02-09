@@ -176,10 +176,13 @@ export const QuickAddPalette: React.FC<QuickAddPaletteProps> = ({
                     <div
                       key={comp.type}
                       onClick={() => {
+                        console.log(`[QuickAddPalette] Clicked on ${comp.type}`);
                         if (isReplayMode) return;
+                        console.log(`[QuickAddPalette] Calling onSelectComponent for ${comp.type}`);
                         onSelectComponent(comp.type);
                         onClose();
                       }}
+                      data-component-type={comp.type}
                       className={`
                         p-4 cursor-pointer border-b border-gray-800 transition-colors
                         ${isSelected

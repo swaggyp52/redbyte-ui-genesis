@@ -12,19 +12,44 @@ const isE2E = params.get('e2e') === '1' || import.meta.env.VITE_E2E === '1';
 const isAudit = isAuditEnabled(params);
 
 // 3) Temporary Crash Beacon for Playwright triage
-if (import.meta.env.VITE_GOLDEN_PATH === '1') {
+const isGoldenPath = import.meta.env.VITE_GOLDEN_PATH === '1' || params.get('golden') === '1';
+
+if (isGoldenPath) {
   console.log('RB_GOLDEN_PATH_ACTIVE');
   import('react').then(m => {
+    console.log('[GOLDEN_IMPORT] react loaded');
     const React = m.default;
     import('react-dom/client').then(m2 => {
+      console.log('[GOLDEN_IMPORT] react-dom/client loaded');
       const ReactDOM = m2;
       import('@redbyte/rb-apps').then(({ PlaygroundGoldenPath }) => {
+        console.log('[GOLDEN_IMPORT] PlaygroundGoldenPath loaded');
+        console.log('[GOLDEN_IMPORT] About to createRoot');
         const root = document.getElementById('root');
-        if (root) {
-          ReactDOM.createRoot(root).render(React.createElement(PlaygroundGoldenPath));
+        if (!root) {
+          console.error('[GOLDEN_IMPORT] ERROR: no root element found');
+          return;
         }
+        const reactRoot = ReactDOM.createRoot(root);
+        console.log('[GOLDEN_IMPORT] Root created, JSX construction about to begin');
+        const element = React.createElement(PlaygroundGoldenPath);
+        console.log('[GOLDEN_IMPORT] JSX element created, about to render');
+        reactRoot.render(element);
+        console.log('[GOLDEN_IMPORT] Render method called - waiting for React to flush...');
+        
+        // Safety hook to check if React completes render
+        setTimeout(() => {
+          const hasContent = root.children.length > 0;
+          console.log(`[GOLDEN_IMPORT_RENDER_CHECK] React rendered? ${hasContent}, children: ${root.children.length}`);
+        }, 100);
+      }).catch(e => {
+        console.error('[GOLDEN_IMPORT] ERROR loading PlaygroundGoldenPath:', e);
       });
+    }).catch(e => {
+      console.error('[GOLDEN_IMPORT] ERROR loading react-dom/client:', e);
     });
+  }).catch(e => {
+    console.error('[GOLDEN_IMPORT] ERROR loading react:', e);
   });
 } else if (typeof window !== 'undefined') {
   const renderCrashBeacon = (message: string) => {

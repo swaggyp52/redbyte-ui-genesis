@@ -66,6 +66,8 @@ export function enableWatchdog() {
     if (typeof window !== 'undefined') {
         window.__RB_WATCHDOG_CLEANUP__ = () => {
             clearInterval(healthCheckInterval);
+            const microtaskInterval = window.__RB_WATCHDOG_MICROTASK_INTERVAL__;
+            if (microtaskInterval != null) clearInterval(microtaskInterval);
             watchdogState.enabled = false;
         };
     }
@@ -97,30 +99,42 @@ function monitorAnimationFrames() {
 }
 /**
  * Monitor microtask queue depth. A spike indicates Zustand/event loop overload.
+ *
+ * IMPORTANT: Uses a periodic setInterval sample instead of self-queuing microtasks.
+ * The previous approach (queueMicrotask → re-queue) created a microtask starvation
+ * bomb: microtasks drain before ANY macro task fires, so an infinite microtask chain
+ * permanently blocks setTimeout, MessageChannel (React scheduler), and RAF.
  */
 function monitorMicrotasks() {
-    // We can't directly measure microtask count, but we can use Promise microtasks
-    // as a proxy. Count how many promises resolve per second.
-    let microtaskCountThisSecond = 0;
-    let lastCountTime = Date.now();
-    function queueMicrotaskCounter() {
-        if (!watchdogState.enabled)
+    const SAMPLE_INTERVAL_MS = 200;
+    const BURST_SIZE = 20;
+
+    const intervalId = setInterval(() => {
+        if (!watchdogState.enabled) {
+            clearInterval(intervalId);
             return;
-        microtaskCountThisSecond++;
-        // Every 100ms, report microtask rate
-        const now = Date.now();
-        if (now - lastCountTime >= 100) {
-            const rate = Math.round((microtaskCountThisSecond / (now - lastCountTime)) * 1000);
-            watchdogState.microtaskCount = rate;
-            lastCountTime = now;
-            microtaskCountThisSecond = 0;
         }
-        // Re-queue if still enabled
-        if (watchdogState.enabled) {
-            queueMicrotask(queueMicrotaskCounter);
+
+        let burstCount = 0;
+        const burstStart = Date.now();
+
+        function countOne() {
+            burstCount++;
+            if (burstCount < BURST_SIZE) {
+                queueMicrotask(countOne);
+            } else {
+                const elapsed = Math.max(1, Date.now() - burstStart);
+                const rate = Math.round((burstCount / elapsed) * 1000);
+                watchdogState.microtaskCount = rate;
+            }
         }
+
+        queueMicrotask(countOne);
+    }, SAMPLE_INTERVAL_MS);
+
+    if (typeof window !== 'undefined') {
+        window.__RB_WATCHDOG_MICROTASK_INTERVAL__ = intervalId;
     }
-    queueMicrotask(queueMicrotaskCounter);
 }
 /**
  * Periodic check for runaway conditions.

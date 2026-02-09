@@ -10,6 +10,7 @@ export { ProbeRecorder } from './ProbeRecorder';
 export { serialize, deserialize } from './serialization';
 // Circuit format conversion
 export { toCircuitV1, fromCircuitV1 } from './convertCircuitV1';
+export { SCHEMA_VERSION, createDefaultMeta, createEmptyCircuit, createBlankProjectDoc, normalizeProjectDoc, serializeProjectDoc, deserializeProjectDoc, updateProjectDocTimestamp, } from './projectDoc';
 // Built-in behaviors
 export { PowerSourceBehavior, SwitchBehavior, LampBehavior, WireBehavior, ANDBehavior, ORBehavior, NOTBehavior, NANDBehavior, XORBehavior, ClockBehavior, DelayBehavior, } from './builtins';
 export { createCompositeNodeBehavior, registerCompositeNode } from './CompositeNode';

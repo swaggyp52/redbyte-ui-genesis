@@ -78,6 +78,9 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   highlightedPort,
   debugTick,
 }) => {
+  // Safe rotation: default to 0 if undefined to prevent rotate(undefined) SVG errors
+  const safeRotation = Number.isFinite(node.rotation) ? node.rotation : 0;
+
   const [isDragging, setIsDragging] = React.useState(false);
   const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 });
   const [dragPosition, setDragPosition] = React.useState({ x: node.position.x, y: node.position.y });
@@ -257,7 +260,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
 
     return (
       <g
-        transform={`translate(${screenX}, ${screenY}) rotate(${node.rotation})`}
+        transform={`translate(${screenX}, ${screenY}) rotate(${safeRotation})`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -651,7 +654,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   // Standard node rendering
   return (
     <g
-      transform={`translate(${screenX}, ${screenY}) rotate(${node.rotation})`}
+      transform={`translate(${screenX}, ${screenY}) rotate(${safeRotation})`}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

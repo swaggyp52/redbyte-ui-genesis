@@ -23,13 +23,13 @@ test.describe('Boot Smoke Test', () => {
     await page.goto('/');
 
     // Wait for desktop to render (login screen should auto-login in dev)
-    await page.waitForSelector('[data-testid="shell-container"]', {
+    await page.waitForSelector('[data-testid="desktop-shell"]', {
       timeout: 10000,
       state: 'visible',
     });
 
     // Verify no white screen - check for key OS elements
-    const desktopVisible = await page.locator('[data-testid="shell-container"]').isVisible();
+    const desktopVisible = await page.locator('[data-testid="desktop-shell"]').isVisible();
     expect(desktopVisible).toBe(true);
 
     // Check for app grid/taskbar

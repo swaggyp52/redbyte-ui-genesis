@@ -122,7 +122,8 @@
       "Bash(for f in apps/playground/src/debug/e2e-bridge.js apps/playground/src/index.js apps/playground/src/lab-entry.js apps/playground/src/main.js)",
       "Bash(do if [ -f \"$f\" ])",
       "Bash(then rm \"$f\")",
-      "Bash(else echo \"Already gone: $f\")"
+      "Bash(else echo \"Already gone: $f\")",
+      "Bash(npx playwright test:*)"
     ],
     "deny": [],
     "ask": []

@@ -48,6 +48,7 @@ import { SplitViewLayout } from '../components/SplitViewLayout';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { registerAllChips, registerChip, unregisterChip } from '../utils/chipRegistry';
 import { useViewStateStore } from '../stores/viewStateStore';
+import { digestValue } from '../utils/digest';
 import { useProbeStore } from '../stores/probeStore';
 import { useLayoutStore, type PerspectiveId, type LearnSubview } from '../stores/layoutStore';
 import { useOscilloscopeStore } from '../stores/oscilloscopeStore';
@@ -206,16 +207,39 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = (props) 
 
   // Early returns - SAFE because hook set above is stable
   if (disablePlaygroundView) {
+    console.log('[LP_TRACE] Early return: playground view disabled');
     return <div data-testid="playground-debug-disabled">Playground view disabled by debug flag.</div>;
   }
 
   if (evidenceBundle) {
+    console.log('[LP_TRACE] Early return: evidence viewer');
     return <EvidenceViewerPanel />;
   }
 
   // Render inner component with all the real hooks
+  console.log('[LP_TRACE] About to render LogicPlaygroundInner');
   return <LogicPlaygroundInner {...props} debugFlags={debugFlags} />;
 };
+
+// Circuit fingerprint for identity checks (prevents feedback loops)
+function computeCircuitFingerprint(circuit: Circuit): string {
+  // Fast fingerprint: node count + edge count + sorted node/edge metadata
+  const nodeData = circuit.nodes
+    .map(n => `${n.id}:${n.type}:${n.position?.x ?? n.x ?? 0}:${n.position?.y ?? n.y ?? 0}:${Number.isFinite(n.rotation) ? n.rotation : 0}`)
+    .sort()
+    .join('|');
+  const edgeData = circuit.connections
+    .map(c => {
+      const fromId = typeof c.from === 'string' ? c.from : c.from?.nodeId ?? '';
+      const toId = typeof c.to === 'string' ? c.to : c.to?.nodeId ?? '';
+      const fromPort = typeof c.from === 'string' ? (c as any).fromPin ?? (c as any).fromPort : (c.from as any)?.portName ?? (c.from as any)?.port ?? '';
+      const toPort = typeof c.to === 'string' ? (c as any).toPin ?? (c as any).toPort : (c.to as any)?.portName ?? (c.to as any)?.port ?? '';
+      return `${fromId}:${fromPort}->${toId}:${toPort}`;
+    })
+    .sort()
+    .join('|');
+  return digestValue({ nodes: nodeData, edges: edgeData });
+}
 
 // Inner component: all hooks live here, only mounted when gates pass
 interface LogicPlaygroundInnerProps extends LogicPlaygroundProps {
@@ -238,6 +262,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   determinismRecorder,
   debugFlags,
 }) => {
+  console.log('[LP_TRACE] LogicPlaygroundInner render start', { windowId, initialFileId, initialExampleId, resourceId, resourceType });
   useRenderStormDetector('LogicPlaygroundInner');
   const disableToolStrip = debugFlags.has('disable-toolstrip');
   const disableRightDock = debugFlags.has('disable-rightdock');
@@ -269,6 +294,16 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const storeSetEngine = useCircuitStore((state) => state.setEngine);
   const storeSetTickEngine = useCircuitStore((state) => state.setTickEngine);
   const storeCommit = useCircuitStore((state) => state.commit);
+  const storeUpdateCircuit = useCircuitStore((state) => state.updateCircuit);
+
+  const setCircuit = useCallback(
+    (next: Circuit | ((prev: Circuit) => Circuit), opts?: { skipHistory?: boolean; enforceLimits?: boolean }) => {
+      const current = useCircuitStore.getState().circuit;
+      const resolved = typeof next === 'function' ? next(current) : next;
+      storeUpdateCircuit(resolved, opts);
+    },
+    [storeUpdateCircuit]
+  );
 
   // Local refs for engine instances
   const [engine, setEngine] = useState<CircuitEngine>(() => new CircuitEngine(circuit));
@@ -346,6 +381,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
   // Single hydration effect: when project loads/opens, hydrate circuitStore from unifiedProject (RC-P1)
   useEffect(() => {
+    console.log('[LP_TRACE] Hydration effect fired', { hasProject: Boolean(unifiedProject), hasSynced: hasSyncedFromProjectRef.current });
     if (!unifiedProject) return;
     if (hasSyncedFromProjectRef.current) return;
 
@@ -374,18 +410,26 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
   // Sync circuitStore changes to unifiedProject (one-way from store → project)
   useEffect(() => {
+    console.log('[LP_TRACE] updateProject effect fired', { hasProject: Boolean(unifiedProject), hasSynced: hasSyncedFromProjectRef.current });
     if (!unifiedProject) return;
     if (!hasSyncedFromProjectRef.current) return;
 
+    const nextCircuit = toCircuitV1(circuit);
+    const currentCircuitKey = stableStringify(unifiedProject.circuit);
+    const nextCircuitKey = stableStringify(nextCircuit);
+    if (currentCircuitKey === nextCircuitKey) return;
+
     updateProject((project) => ({
       ...project,
-      circuit: toCircuitV1(circuit),
+      circuit: nextCircuit,
     }));
   }, [circuit, unifiedProject, updateProject]);
 
   // Create new project at startup
   useEffect(() => {
+    console.log('[LP_TRACE] Create project effect fired', { hasProject: Boolean(unifiedProject), hasCreated: createdProjectRef.current });
     if (!unifiedProject && !createdProjectRef.current) {
+      console.log('[LP_TRACE] Creating new project');
       createNewProject('Untitled Project');
       createdProjectRef.current = true;
     }
@@ -409,7 +453,6 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   // Get stable circuit mutation methods from store (NO closures)
   const storeAddNode = useCircuitStore((state) => state.addNode);
   const storeUpdateNode = useCircuitStore((state) => state.updateNode);
-  const storeUpdateCircuit = useCircuitStore((state) => state.updateCircuit);
 
 
 
@@ -710,6 +753,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showExamplesModal, setShowExamplesModal] = useState(false);
+  const [syncWarning, setSyncWarning] = useState<string | null>(null);
   const [showStartHere, setShowStartHere] = useState(() => {
     // Show on first launch unless dismissed
     if (typeof localStorage === 'undefined') return false;
@@ -747,6 +791,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const projectFileInputRef = useRef<HTMLInputElement>(null);
   const hasLoadedFromURL = useRef(false);
   const isHydratingRef = useRef(false); // Guard to prevent setting dirty during file load
+  const lastStoreCircuitFpRef = useRef<string | null>(null); // Track last store circuit fingerprint to prevent feedback loops
   const replayIntervalRef = useRef<number | null>(null);
   const replaySetupRef = useRef(false);
   const replayPausedRef = useRef(false);
@@ -771,6 +816,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const engineRef = useRef<CircuitEngine>(engine);
   const tickEngineRef = useRef<TickEngine>(tickEngine);
   const circuitRef = useRef<Circuit>(circuit);
+  const setCircuitRef = useRef<typeof setCircuit | null>(null);
 
   // Keep refs in sync with state
   // NOTE: Do NOT include setCircuit, setEngine, setTickEngine in dependencies!
@@ -1857,19 +1903,41 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   }, [addToast]);
 
   const handleCircuitChange = useCallback((updatedCircuit: Circuit) => {
+    // Compute fingerprint for incoming circuit
+    const incomingFp = computeCircuitFingerprint(updatedCircuit);
+
+    // Prevent feedback loop: if this circuit update came from the store (same fingerprint), skip re-commit
+    if (lastStoreCircuitFpRef.current === incomingFp) {
+      if (import.meta.env.DEV) {
+        console.log('[LogicPlaygroundApp] Suppressed feedback loop (fingerprints match)');
+      }
+      return;
+    }
+
+    // Prevent feedback loop: if circuit is already in store, do nothing
+    const circuitStore = useCircuitStore.getState();
+    if (circuitStore.circuit === updatedCircuit) {
+      return;
+    }
+
     // CRITICAL: Update local state AND store to keep them in sync
     setCircuit(updatedCircuit);
     engineRef.current.setCircuit(updatedCircuit);
 
     // Use circuitStore.commit to add to history
-    const circuitStore = useCircuitStore.getState();
 
     // Only commit to history if not loading a file
     if (!isHydratingRef.current) {
-      circuitStore.commit(updatedCircuit);
+      // Prevent feedback loop: don't commit if circuit is already in store
+      if (circuitStore.circuit !== updatedCircuit) {
+        circuitStore.commit(updatedCircuit);
+        // Update ref to track what we just committed (prevents feedback loop on next store→canvas update)
+        lastStoreCircuitFpRef.current = incomingFp;
+      }
     } else {
       // During file load, update without history but enforce classroom limits
       circuitStore.updateCircuit(updatedCircuit, { skipHistory: true, enforceLimits: true });
+      lastStoreCircuitFpRef.current = incomingFp;
     }
 
     setIsDirty(true);
@@ -3554,6 +3622,8 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     pushMount('LogicPlaygroundApp:return');
   }
 
+  console.log('[LP_TRACE] About to return JSX', { hasUnifiedProject: Boolean(unifiedProject), hasCircuit: Boolean(circuit), nodeCount: circuit?.nodes?.length });
+
   return (
     <ErrorBoundary>
       <div className="h-full flex flex-col min-h-0 min-w-0 bg-gray-900 text-white" data-testid="logic-playground-root">
@@ -4250,8 +4320,12 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
           isOpen={showQuickAdd}
           onClose={() => setShowQuickAdd(false)}
           onSelectComponent={(type) => {
+            console.log(`[LogicPlaygroundApp] onSelectComponent called with: ${type}`);
             if (isReplayMode) return;
-            storeAddNode(type, getDefaultAddPosition());
+            const pos = getDefaultAddPosition();
+            console.log(`[LogicPlaygroundApp] Calling storeAddNode(${type}, ${JSON.stringify(pos)})`);
+            storeAddNode(type, pos);
+            console.log(`[LogicPlaygroundApp] storeAddNode completed`);
             setShowQuickAdd(false);
           }}
           isReplayMode={isReplayMode}
