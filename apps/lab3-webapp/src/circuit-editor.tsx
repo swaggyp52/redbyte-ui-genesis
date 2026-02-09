@@ -312,11 +312,88 @@ export const CircuitEditor: React.FC = () => {
   };
 
   const propagateSignals = (circuitState: CircuitState) => {
-    // Simple signal propagation (will be enhanced)
-    // Start from INPUT gates and propagate through wires
-    const updatedGates = [...circuitState.gates];
-    // TODO: Implement full propagation algorithm
-    setCircuit({ ...circuitState, gates: updatedGates });
+    // Full signal propagation algorithm
+    const updatedGates = circuitState.gates.map(g => ({ ...g, value: g.type === 'INPUT' ? g.value : undefined }));
+    const gateMap = new Map(updatedGates.map(g => [g.id, g]));
+    
+    // Build adjacency list for propagation
+    const wireMap = new Map<string, { gateId: string; pin: number }[]>();
+    circuitState.wires.forEach(wire => {
+      const list = wireMap.get(wire.from.gateId) || [];
+      list.push(wire.to);
+      wireMap.set(wire.from.gateId, list);
+    });
+
+    // Topological traversal with BFS from INPUT gates
+    const queue: string[] = [];
+    const visited = new Set<string>();
+    const inputGates = updatedGates.filter(g => g.type === 'INPUT');
+    inputGates.forEach(g => queue.push(g.id));
+
+    let iterations = 0;
+    const maxIterations = 1000; // Prevent infinite loops
+
+    while (queue.length > 0 && iterations++ < maxIterations) {
+      const gateId = queue.shift()!;
+      if (visited.has(gateId)) continue;
+      visited.add(gateId);
+
+      const gate = gateMap.get(gateId);
+      if (!gate) continue;
+
+      // Propagate to connected gates
+      const targets = wireMap.get(gateId) || [];
+      targets.forEach(target => {
+        const targetGate = gateMap.get(target.gateId);
+        if (!targetGate) return;
+
+        // Get all input values for target gate
+        const inputWires = circuitState.wires.filter(w => w.to.gateId === target.gateId);
+        const inputValues = inputWires.map(w => {
+          const sourceGate = gateMap.get(w.from.gateId);
+          return sourceGate?.value === true;
+        });
+
+        // Calculate gate output based on type
+        let output: boolean | undefined;
+        
+        switch (targetGate.type) {
+          case 'AND':
+            output = inputValues.length > 0 && inputValues.every(v => v === true);
+            break;
+          case 'OR':
+            output = inputValues.some(v => v === true);
+            break;
+          case 'NOT':
+            output = inputValues.length > 0 ? !inputValues[0] : undefined;
+            break;
+          case 'NAND':
+            output = inputValues.length > 0 ? !(inputValues.every(v => v === true)) : undefined;
+            break;
+          case 'NOR':
+            output = inputValues.length > 0 ? !(inputValues.some(v => v === true)) : undefined;
+            break;
+          case 'XOR':
+            output = inputValues.filter(v => v === true).length % 2 === 1;
+            break;
+          case 'XNOR':
+            output = inputValues.filter(v => v === true).length % 2 === 0;
+            break;
+          case 'OUTPUT':
+            output = inputValues.length > 0 ? inputValues[0] : undefined;
+            break;
+        }
+
+        targetGate.value = output;
+        
+        // Add to queue for further propagation
+        if (!visited.has(target.gateId)) {
+          queue.push(target.gateId);
+        }
+      });
+    }
+
+    setCircuit({ ...circuitState, gates: Array.from(gateMap.values()) });
   };
 
   return (

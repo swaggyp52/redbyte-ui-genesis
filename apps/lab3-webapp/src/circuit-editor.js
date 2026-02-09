@@ -247,11 +247,79 @@ export const CircuitEditor = () => {
         }
     };
     const propagateSignals = (circuitState) => {
-        // Simple signal propagation (will be enhanced)
-        // Start from INPUT gates and propagate through wires
-        const updatedGates = [...circuitState.gates];
-        // TODO: Implement full propagation algorithm
-        setCircuit({ ...circuitState, gates: updatedGates });
+        // Full signal propagation algorithm
+        const updatedGates = circuitState.gates.map(g => ({ ...g, value: g.type === 'INPUT' ? g.value : undefined }));
+        const gateMap = new Map(updatedGates.map(g => [g.id, g]));
+        // Build adjacency list for propagation
+        const wireMap = new Map();
+        circuitState.wires.forEach(wire => {
+            const list = wireMap.get(wire.from.gateId) || [];
+            list.push(wire.to);
+            wireMap.set(wire.from.gateId, list);
+        });
+        // Topological traversal with BFS from INPUT gates
+        const queue = [];
+        const visited = new Set();
+        const inputGates = updatedGates.filter(g => g.type === 'INPUT');
+        inputGates.forEach(g => queue.push(g.id));
+        let iterations = 0;
+        const maxIterations = 1000; // Prevent infinite loops
+        while (queue.length > 0 && iterations++ < maxIterations) {
+            const gateId = queue.shift();
+            if (visited.has(gateId))
+                continue;
+            visited.add(gateId);
+            const gate = gateMap.get(gateId);
+            if (!gate)
+                continue;
+            // Propagate to connected gates
+            const targets = wireMap.get(gateId) || [];
+            targets.forEach(target => {
+                const targetGate = gateMap.get(target.gateId);
+                if (!targetGate)
+                    return;
+                // Get all input values for target gate
+                const inputWires = circuitState.wires.filter(w => w.to.gateId === target.gateId);
+                const inputValues = inputWires.map(w => {
+                    const sourceGate = gateMap.get(w.from.gateId);
+                    return sourceGate?.value === true;
+                });
+                // Calculate gate output based on type
+                let output;
+                switch (targetGate.type) {
+                    case 'AND':
+                        output = inputValues.length > 0 && inputValues.every(v => v === true);
+                        break;
+                    case 'OR':
+                        output = inputValues.some(v => v === true);
+                        break;
+                    case 'NOT':
+                        output = inputValues.length > 0 ? !inputValues[0] : undefined;
+                        break;
+                    case 'NAND':
+                        output = inputValues.length > 0 ? !(inputValues.every(v => v === true)) : undefined;
+                        break;
+                    case 'NOR':
+                        output = inputValues.length > 0 ? !(inputValues.some(v => v === true)) : undefined;
+                        break;
+                    case 'XOR':
+                        output = inputValues.filter(v => v === true).length % 2 === 1;
+                        break;
+                    case 'XNOR':
+                        output = inputValues.filter(v => v === true).length % 2 === 0;
+                        break;
+                    case 'OUTPUT':
+                        output = inputValues.length > 0 ? inputValues[0] : undefined;
+                        break;
+                }
+                targetGate.value = output;
+                // Add to queue for further propagation
+                if (!visited.has(target.gateId)) {
+                    queue.push(target.gateId);
+                }
+            });
+        }
+        setCircuit({ ...circuitState, gates: Array.from(gateMap.values()) });
     };
     return (_jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "bg-slate-900/50 border border-slate-700 rounded-xl p-6", children: [_jsx("div", { className: "flex items-start justify-between mb-4", children: _jsxs("div", { children: [_jsx("h2", { className: "font-tech-display text-2xl font-bold text-cyan-400 neon-cyan mb-2", children: "Circuit Designer" }), _jsx("p", { className: "font-digital text-sm text-slate-400", children: "Build your seven-segment decoder with logic gates" })] }) }), _jsxs("div", { className: "flex flex-wrap gap-2", children: [_jsx("div", { className: "flex gap-1 p-1 bg-slate-800/50 rounded-lg border border-slate-700", children: ['AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR'].map(type => (_jsxs("button", { onClick: () => addGate(type), className: "px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded font-tech text-sm transition-all duration-200 flex items-center gap-2", title: `Add ${type} gate`, children: [_jsx(Plus, { size: 14 }), type] }, type))) }), _jsxs("div", { className: "flex gap-1 p-1 bg-slate-800/50 rounded-lg border border-slate-700", children: [_jsx("button", { onClick: () => addGate('INPUT'), className: "px-3 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded font-tech text-sm transition-all duration-200", title: "Add input switch", children: "+ INPUT" }), _jsx("button", { onClick: () => addGate('OUTPUT'), className: "px-3 py-2 bg-red-700 hover:bg-red-600 text-white rounded font-tech text-sm transition-all duration-200", title: "Add segment output", children: "+ OUTPUT" })] }), _jsxs("div", { className: "flex gap-1 p-1 bg-slate-800/50 rounded-lg border border-slate-700 ml-auto", children: [_jsx("button", { onClick: undo, disabled: historyIndex === 0, className: "p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 rounded transition-all duration-200", title: "Undo (Ctrl+Z)", children: _jsx(Undo, { size: 18 }) }), _jsx("button", { onClick: redo, disabled: historyIndex === history.length - 1, className: "p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 rounded transition-all duration-200", title: "Redo (Ctrl+Y)", children: _jsx(Redo, { size: 18 }) }), _jsx("button", { onClick: () => selectedGate && deleteGate(selectedGate), disabled: !selectedGate, className: "p-2 bg-red-700 hover:bg-red-600 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded transition-all duration-200", title: "Delete selected (Delete)", children: _jsx(Trash2, { size: 18 }) })] })] })] }), _jsx("div", { className: "bg-slate-950 border-2 border-cyan-500/30 rounded-xl overflow-hidden", children: _jsx("canvas", { ref: canvasRef, width: 1200, height: 700, onClick: handleCanvasClick, className: "cursor-crosshair" }) }), _jsxs("div", { className: "bg-slate-900/50 border border-slate-700 rounded-lg p-3 flex justify-between items-center font-digital text-xs text-slate-400", children: [_jsxs("span", { children: [circuit.gates.length, " gates, ", circuit.wires.length, " wires"] }), selectedGate && (_jsxs("span", { className: "text-cyan-400", children: ["Selected: ", circuit.gates.find(g => g.id === selectedGate)?.type || 'None'] })), _jsxs("span", { children: ["Zoom: ", Math.round(zoom * 100), "%"] })] })] }));
 };

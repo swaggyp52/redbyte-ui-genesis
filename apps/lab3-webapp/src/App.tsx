@@ -3,7 +3,7 @@ import { TruthTableEditor } from './truth-table';
 import { Simulator } from './simulator';
 import { VerilogExporter } from './verilog';
 import { KMapViewer } from './kmap-viewer-interactive';
-import { WaveformViewer } from './waveform-viewer';
+import { WaveformViewer } from './waveform-viewer-enhanced';
 import { LiveValidation } from './live-validation';
 import { ProgressTracker, useLabProgress } from './progress-tracker';
 import { CircuitEditor } from './circuit-editor';
