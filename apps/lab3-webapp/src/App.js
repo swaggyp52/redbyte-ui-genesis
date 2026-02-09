@@ -7,6 +7,7 @@ import { KMapViewer } from './kmap-viewer';
 import { WaveformViewer } from './waveform-viewer';
 import { LiveValidation } from './live-validation';
 import { useLabStore } from './store';
+import { useAutoSave } from './use-auto-save';
 import { Settings, Download, Upload } from 'lucide-react';
 export const App = () => {
     const [tab, setTab] = useState('overview');
@@ -14,6 +15,8 @@ export const App = () => {
     const reset = useLabStore((s) => s.reset);
     const exportJSON = useLabStore((s) => s.exportJSON);
     const importJSON = useLabStore((s) => s.importJSON);
+    // Enable auto-save
+    useAutoSave(true);
     const handleExportJSON = () => {
         const json = exportJSON();
         const blob = new Blob([json], { type: 'application/json' });
