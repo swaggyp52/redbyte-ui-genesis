@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { LabDoc, LabDocMeta, TruthTableRow } from '../plugins/LabDoc';
+import type { LabDoc, LabDocMeta, LabDocMetaV2, LabDocV2, TruthTableRow, CircuitDesignerDoc } from '../plugins/LabDoc';
 import type { WindowState } from '../window/windowTypes';
 import type { Event } from '../window/windowTypes';
 
@@ -41,8 +41,9 @@ export interface SerializedSnapshot {
 
 /**
  * Create an empty LabDoc with 16 truth table rows (4-bit input: 0000-1111)
+ * Returns v2 format
  */
-export function createEmptyLabDoc(): LabDoc {
+export function createEmptyLabDoc(): LabDocV2 {
   const truthTable: TruthTableRow[] = [];
   
   // Generate all 16 combinations of 4-bit input
@@ -62,21 +63,96 @@ export function createEmptyLabDoc(): LabDoc {
     });
   }
   
-  const meta: LabDocMeta = {
+  const meta: LabDocMetaV2 = {
     id: crypto.randomUUID(),
     name: 'Untitled Lab',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    useProByDefault: false,
   };
   
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     meta,
     truthTable,
     kMaps: {},
     expressions: {},
     results: {},
+    circuitDesigner: createEmptyCircuitDesigner(),
   };
+}
+
+/**
+ * Create empty CircuitDesignerDoc
+ */
+export function createEmptyCircuitDesigner(): CircuitDesignerDoc {
+  return {
+    nodes: [],
+    wires: [],
+    view: { panX: 0, panY: 0, zoom: 1 },
+    selection: null,
+    metadata: {
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      toolVersion: '1.0',
+    },
+  };
+}
+
+/**
+ * Migrate v1 LabDoc to v2
+ * Keeps all v1 fields, adds circuitDesigner + useProByDefault flag
+ */
+export function migrateV1toV2(v1Doc: any): LabDocV2 {
+  return {
+    schemaVersion: 2,
+    meta: {
+      ...v1Doc.meta,
+      useProByDefault: false, // Default to Classic for now
+    },
+    truthTable: v1Doc.truthTable || [],
+    kMaps: v1Doc.kMaps || {},
+    expressions: v1Doc.expressions || {},
+    results: v1Doc.results || {},
+    circuitDesigner: createEmptyCircuitDesigner(),
+  };
+}
+
+/**
+ * Validate v2 snapshot (strict)
+ */
+export function validateSnapshotV2(obj: unknown): obj is LabDocV2 {
+  if (!obj || typeof obj !== 'object') return false;
+  
+  const doc = obj as Record<string, unknown>;
+  
+  // Must be v2
+  if (doc.schemaVersion !== 2) return false;
+  
+  // Check meta
+  if (!doc.meta || typeof doc.meta !== 'object') return false;
+  const meta = doc.meta as Record<string, unknown>;
+  if (typeof meta.id !== 'string') return false;
+  if (typeof meta.name !== 'string') return false;
+  if (typeof meta.createdAt !== 'string') return false;
+  if (typeof meta.updatedAt !== 'string') return false;
+  
+  // Check truthTable array
+  if (!Array.isArray(doc.truthTable)) return false;
+  
+  // Check circuitDesigner block
+  if (!doc.circuitDesigner || typeof doc.circuitDesigner !== 'object') return false;
+  const cd = doc.circuitDesigner as Record<string, unknown>;
+  
+  if (!Array.isArray(cd.nodes)) return false;
+  if (!Array.isArray(cd.wires)) return false;
+  
+  // Check other v2 fields exist
+  if (typeof doc.kMaps !== 'object') return false;
+  if (typeof doc.expressions !== 'object') return false;
+  if (typeof doc.results !== 'object') return false;
+  
+  return true;
 }
 
 /**
@@ -104,10 +180,38 @@ export function serializeStoreSnapshot(doc: LabDoc, windows: WindowState[], even
 }
 
 /**
- * Deserialize a LabDoc from JSON string (no validation)
+ * Deserialize a LabDoc from JSON string + auto-upgrade v1 to v2
  */
-export function deserializeSnapshot(json: string): LabDoc {
-  return JSON.parse(json);
+export function deserializeSnapshot(json: string): LabDocV2 {
+  const parsed = JSON.parse(json) as any;
+  
+  // If v1, migrate to v2
+  if (parsed.schemaVersion === 1) {
+    return migrateV1toV2(parsed);
+  }
+  
+  // If v2, validate and return
+  if (validateSnapshotV2(parsed)) {
+    return parsed;
+  }
+  
+  // If invalid, return empty v2 doc
+  console.warn('Invalid LabDoc snapshot, using empty v2 doc');
+  return {
+    schemaVersion: 2,
+    meta: {
+      id: crypto.randomUUID(),
+      name: 'Untitled Lab',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      useProByDefault: false,
+    },
+    truthTable: [],
+    kMaps: {},
+    expressions: {},
+    results: {},
+    circuitDesigner: createEmptyCircuitDesigner(),
+  };
 }
 
 /**
