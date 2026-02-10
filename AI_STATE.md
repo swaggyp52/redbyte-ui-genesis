@@ -5367,6 +5367,15 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-02-10 (Lab3 Simulator Switch Input Mapping Fix)
+- **Fixed critical bug**: Simulator switch toggle mapping was inverted—clicking SW1 toggled SW2, etc.
+- **Root cause**: Switches array was constructed in reverse bit order [B3, B2, B1, B0] but indexed with direct bit indices [0, 1, 2, 3], causing array indices to mismatch with bit values.
+- **Solution**: Reordered switches array to [B0, B1, B2, B3] to match array index order. Now SW0 correctly toggles B0, SW1 toggles B1, SW2 toggles B2, SW3 toggles B3.
+- **Files modified**: apps/lab3-webapp/src/simulator.tsx, apps/lab3-webapp/src/simulator.js.
+- **Build**: ✓ Successful (11.86s).
+- **Deployment**: ✓ Pushed to Cloudflare Pages (https://b8be9c55.redbyte-ui-genesis.pages.dev).
+- **Git commit**: b653cd5c.
+
 ### 2026-02-10 (Lab3 Visual Linking + SSD Tooltips)
 - Added interactive seven-segment hover tooltips (segment labels, active-low values) with improved glow and tooltip positioning within the display.
 - Added don't-care overlay feedback for inputs 10-15 on simulator SSD displays (single-digit and multiplexed).
