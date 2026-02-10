@@ -7,30 +7,9 @@ import { Simulator } from '../simulator';
 import { WaveformViewer } from '../waveform-viewer-enhanced';
 import { VerilogExporter } from '../verilog';
 import { PdfExporter } from '../pdf-exporter';
-
-/**
- * Stub components for console and inspector (to be implemented in window manager phase)
- */
-const OverviewView: React.FC = () => (
-  <div className="p-4">
-    <h2 className="text-2xl font-bold mb-2">Lab 3: Seven-Segment Display Driver</h2>
-    <p className="text-slate-300">Design a 4-bit to 7-segment decoder | Active-low logic | Digits 0–9</p>
-  </div>
-);
-
-const ConsoleStub: React.FC = () => (
-  <div className="p-4 text-slate-400">
-    <h3 className="font-bold mb-2">Console (events log)</h3>
-    <p className="text-sm">Window manager phase will populate this with emitted events.</p>
-  </div>
-);
-
-const InspectorStub: React.FC = () => (
-  <div className="p-4 text-slate-400">
-    <h3 className="font-bold mb-2">Inspector (state viewer)</h3>
-    <p className="text-sm">Window manager phase will show selected doc state here.</p>
-  </div>
-);
+import { OverviewView } from '../workspace/OverviewView';
+import { ConsoleWindow } from '../workspace/ConsoleWindow';
+import { InspectorWindow } from '../workspace/InspectorWindow';
 
 /**
  * Register Lab 3 plugin with all views
@@ -99,14 +78,14 @@ export function registerLab3(registry: PluginRegistry): void {
       viewId: 'console',
       title: 'Console',
       icon: 'TerminalSquare',
-      Component: ConsoleStub,
+      Component: ConsoleWindow,
     },
     {
       pluginId: 'lab3',
       viewId: 'inspector',
       title: 'Inspector',
       icon: 'Eye',
-      Component: InspectorStub,
+      Component: InspectorWindow,
     },
   ];
 

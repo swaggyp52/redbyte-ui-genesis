@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import { useLabStore } from './store';
 import { Copy, Download, Upload, Code2 } from 'lucide-react';
 import { PdfExporter } from './pdf-exporter';
+import useNewLabStore from './store/labStore';
 
 export const VerilogExporter: React.FC = () => {
   const truthTable = useLabStore((s) => s.truthTable);
@@ -10,6 +11,7 @@ export const VerilogExporter: React.FC = () => {
   const generateVerilogFromExpr = useLabStore((s) => s.generateVerilogFromExpr);
   const booleanExpressions = useLabStore((s) => s.booleanExpressions);
   const validationResults = useLabStore((s) => s.validationResults);
+  const emitEvent = useNewLabStore((s) => s.emitEvent);
   const [pastedVerilog, setPastedVerilog] = useState('');
   const [modulePrefix, setModulePrefix] = useState('ssd_driver');
 
@@ -186,6 +188,11 @@ Timestamp: ${new Date().toLocaleString()}
     a.download = `lab3-submission-${new Date().getTime()}.zip`;
     a.click();
     URL.revokeObjectURL(url);
+    
+    // Emit verilog.export event
+    emitEvent('verilog.export', {
+      format: 'systemverilog',
+    });
   };
 
   const copyToClipboard = (text: string) => {
@@ -269,6 +276,10 @@ Timestamp: ${new Date().toLocaleString()}
         <button
           onClick={() => {
             parseVerilogCase(pastedVerilog);
+            const lineCount = pastedVerilog.split('\n').length;
+            emitEvent('verilog.import', {
+              lines: lineCount,
+            });
             setPastedVerilog('');
             alert('Verilog parsed! Truth table updated.');
           }}

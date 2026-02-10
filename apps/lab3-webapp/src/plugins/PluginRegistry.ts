@@ -40,6 +40,14 @@ export class PluginRegistry {
   }
 
   /**
+   * Get a specific view by pluginId and viewId
+   */
+  getView(pluginId: string, viewId: string): PluginViewSpec | undefined {
+    const views = this.plugins.get(pluginId);
+    return views?.find(v => v.viewId === viewId);
+  }
+
+  /**
    * Get list of all registered plugins
    */
   getAllPlugins() {

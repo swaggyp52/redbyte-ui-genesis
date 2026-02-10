@@ -2,6 +2,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import React, { useState, useEffect } from 'react';
 import { useLabStore } from './store';
 import { ChevronDown, RefreshCw, Trash2, Lightbulb, Check } from 'lucide-react';
+import useNewLabStore from './store/labStore';
 const SEGMENT_NAMES = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
 const GRAY_CODE_LABELS = {
     rows: ['00', '01', '11', '10'], // B3B2
@@ -32,8 +33,15 @@ export const KMapViewerInteractive = () => {
     const generateKMaps = useLabStore((s) => s.generateKMaps);
     const setBooleanExpr = useLabStore((s) => s.setBooleanExpr);
     const booleanExpressions = useLabStore((s) => s.booleanExpressions);
+    const emitEvent = useNewLabStore((s) => s.emitEvent);
     const handleRegenerateKMap = () => {
         generateKMaps();
+        // Count groups across all K-maps
+        const totalGroups = Object.values(kMaps).reduce((sum, kmap) => sum + (kmap.groups?.length || 0), 0);
+        // Emit kmap.regenerated event
+        emitEvent('kmap.regenerated', {
+            groupCount: totalGroups,
+        });
     };
     return (_jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "bg-slate-900/50 border border-slate-700 rounded-xl p-6", children: [_jsxs("div", { className: "flex items-start justify-between mb-4", children: [_jsxs("div", { children: [_jsx("h2", { className: "font-tech-display text-2xl font-bold text-cyan-400 neon-cyan mb-2", children: "Interactive Karnaugh Maps" }), _jsx("p", { className: "font-digital text-sm text-slate-400", children: "Group minterms to simplify boolean expressions" })] }), _jsxs("button", { onClick: handleRegenerateKMap, className: "px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-tech font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 glow-box-emerald", title: "Regenerate K-maps from truth table", children: [_jsx(RefreshCw, { size: 18 }), "Regenerate"] })] }), _jsxs("div", { className: "bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 flex items-start gap-3", children: [_jsx(Lightbulb, { size: 20, className: "text-cyan-400 flex-shrink-0 mt-0.5" }), _jsxs("div", { className: "font-digital text-sm text-cyan-300", children: [_jsx("strong", { children: "How to use:" }), " Click and drag to create rectangular groups of 1s. Groups must be power-of-2 sized (1, 2, 4, 8, or 16 cells). Larger groups = simpler expressions! Groups can wrap around edges."] })] })] }), _jsx("div", { className: "space-y-3", children: SEGMENT_NAMES.map((segName) => (_jsx(KMapSegmentInteractive, { segmentName: segName, isExpanded: expandedSegment === segName, onToggle: () => setExpandedSegment(expandedSegment === segName ? '' : segName), kmap: kMaps[segName], expr: booleanExpressions[segName], onExprChange: (newExpr) => setBooleanExpr(segName, newExpr) }, segName))) })] }));
 };

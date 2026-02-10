@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TruthTableEditor } from './truth-table';
 import { Simulator } from './simulator';
 import { VerilogExporter } from './verilog';
@@ -9,20 +9,75 @@ import { ProgressTracker, useLabProgress } from './progress-tracker';
 import { CircuitEditor } from './circuit-editor';
 import { useLabStore } from './store';
 import { useAutoSave } from './use-auto-save';
-import { Settings, Download, Upload, Zap, BookOpen, Table, Target, PlayCircle, FileCode, Cpu } from 'lucide-react';
+import { Settings, Download, Upload, Zap, BookOpen, Table, Target, PlayCircle, FileCode, Cpu, AlertCircle } from 'lucide-react';
+import useNewLabStore from './store/labStore';
+import { loadSnapshot, initPersistence } from './store/persistence';
+import { WindowManager } from './workspace/WindowManager';
+import { PluginRegistry } from './plugins/PluginRegistry';
+import { registerLab3 } from './plugins/registerLab3';
 
 type Tab = 'overview' | 'table' | 'kmaps' | 'circuit' | 'simulator' | 'verilog';
 
 export const App: React.FC = () => {
   const [tab, setTab] = useState<Tab>('overview');
   const [showSettings, setShowSettings] = useState(false);
+  const [showRecoveryBanner, setShowRecoveryBanner] = useState(false);
+  const [recoverySnapshot, setRecoverySnapshot] = useState<any>(null);
+  const [showWindowManager, setShowWindowManager] = useState(false);
+  const [registry] = useState(() => {
+    const reg = new PluginRegistry();
+    registerLab3(reg);
+    return reg;
+  });
+  
   const reset = useLabStore((s) => s.reset);
   const exportJSON = useLabStore((s) => s.exportJSON);
   const importJSON = useLabStore((s) => s.importJSON);
   const progressSteps = useLabProgress();
+  const openWindow = useNewLabStore((s) => s.openWindow);
+  const windows = useNewLabStore((s) => s.windows);
 
   // Enable auto-save
   useAutoSave(true);
+
+  // Initialize persistence and check for recovery on mount
+  useEffect(() => {
+    initPersistence(useNewLabStore);
+    
+    const snapshot = loadSnapshot();
+    if (snapshot) {
+      setRecoverySnapshot(snapshot);
+      setShowRecoveryBanner(true);
+    }
+  }, []);
+
+  // Open 5 default windows on first load (only once)
+  useEffect(() => {
+    if (windows.length === 0) {
+      // Spawn 5 windows in default layout
+      setTimeout(() => {
+        openWindow('lab3', 'overview', { x: 0, y: 0, w: 800, h: 600 });
+        openWindow('lab3', 'truth-table', { x: 850, y: 0, w: 700, h: 600 });
+        openWindow('lab3', 'circuit', { x: 0, y: 650, w: 1000, h: 600 });
+        openWindow('lab3', 'simulator', { x: 1050, y: 650, w: 700, h: 600 });
+        openWindow('lab3', 'console', { x: 1750, y: 0, w: 400, h: 1250 });
+        setShowWindowManager(true);
+      }, 100);
+    }
+  }, [windows.length, openWindow]);
+
+  const handleRecover = () => {
+    if (recoverySnapshot) {
+      useNewLabStore.getState().hydrateFromSnapshot(recoverySnapshot);
+      setShowRecoveryBanner(false);
+    }
+  };
+
+  const handleDiscard = () => {
+    useNewLabStore.getState().discardRecovery();
+    localStorage.removeItem('rb.lab3.session.v1');
+    setShowRecoveryBanner(false);
+  };
 
   const handleExportJSON = () => {
     const json = exportJSON();
@@ -47,8 +102,88 @@ export const App: React.FC = () => {
     }
   };
 
+  if (showWindowManager) {
+    return (
+      <div className="relative w-full h-screen">
+        {/* Recovery Banner */}
+        {showRecoveryBanner && (
+          <div className="absolute top-0 left-0 right-0 z-50 bg-gradient-to-r from-amber-600 to-orange-600 border-b border-amber-500/50 shadow-xl">
+            <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle size={24} className="text-white flex-shrink-0" />
+                <div>
+                  <p className="font-tech font-bold text-white text-lg">Previous Session Found</p>
+                  <p className="font-digital text-amber-100 text-sm">Would you like to recover your previous work?</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleRecover}
+                  className="px-5 py-2 bg-white text-amber-700 hover:bg-amber-50 rounded-lg font-tech font-bold transition-all duration-200 shadow-lg"
+                >
+                  Recover
+                </button>
+                <button
+                  onClick={handleDiscard}
+                  className="px-5 py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-lg font-tech font-semibold transition-all duration-200"
+                >
+                  Discard
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Fallback Button */}
+        <button
+          onClick={() => setShowWindowManager(false)}
+          className="absolute top-4 left-4 z-40 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-tech text-sm transition-all duration-200"
+          title="Switch to tab view"
+        >
+          ← Back to Tabs
+        </button>
+
+        {/* Window Manager */}
+        <WindowManager registry={registry} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-slate-50 font-tech">
+      {/* Recovery Banner */}
+      {showRecoveryBanner && (
+        <div className="bg-gradient-to-r from-amber-600 to-orange-600 border-b border-amber-500/50 shadow-xl">
+          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle size={24} className="text-white flex-shrink-0" />
+              <div>
+                <p className="font-tech font-bold text-white text-lg">
+                  Previous Session Found
+                </p>
+                <p className="font-digital text-amber-100 text-sm">
+                  Would you like to recover your previous work?
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={handleRecover}
+                className="px-5 py-2 bg-white text-amber-700 hover:bg-amber-50 rounded-lg font-tech font-bold transition-all duration-200 shadow-lg"
+              >
+                Recover
+              </button>
+              <button
+                onClick={handleDiscard}
+                className="px-5 py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-lg font-tech font-semibold transition-all duration-200"
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <header className="bg-gradient-to-r from-slate-950 to-slate-900 border-b border-cyan-500/20 shadow-2xl sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 py-6">
@@ -94,6 +229,14 @@ export const App: React.FC = () => {
                   Import JSON
                   <input type="file" accept=".json" onChange={handleImportJSON} hidden />
                 </label>
+                <button
+                  onClick={() => setShowWindowManager(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 rounded-lg flex items-center gap-2 font-tech font-semibold transition-all duration-200"
+                  title="Open window-based workspace"
+                >
+                  <PlayCircle size={16} />
+                  Window Manager
+                </button>
                 <button
                   onClick={reset}
                   className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 rounded-lg font-tech font-semibold transition-all duration-200 ml-auto"

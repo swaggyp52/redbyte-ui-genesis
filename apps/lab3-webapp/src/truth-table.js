@@ -3,11 +3,13 @@ import React from 'react';
 import { useLabStore } from './store';
 import { SegmentDisplayEnhanced } from './basys-board';
 import { Zap, Info } from 'lucide-react';
+import useNewLabStore from './store/labStore';
 export const TruthTableEditor = () => {
     const truthTable = useLabStore((s) => s.truthTable);
     const setTableRow = useLabStore((s) => s.setTableRow);
     const toggleDontCare = useLabStore((s) => s.toggleDontCare);
     const fillStandardDigits = useLabStore((s) => s.fillStandardDigits);
+    const emitEvent = useNewLabStore((s) => s.emitEvent);
     const [selectedRow, setSelectedRow] = React.useState(0);
     const selectedSeg = truthTable[selectedRow]?.seg || [1, 1, 1, 1, 1, 1, 1];
     const toggleSegment = (segIndex) => {
@@ -15,6 +17,13 @@ export const TruthTableEditor = () => {
         const newSeg = [...row.seg];
         newSeg[segIndex] = newSeg[segIndex] === 0 ? 1 : 0;
         setTableRow(selectedRow, { seg: newSeg });
+        // Emit truthTable.updated event
+        const segLetters = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+        emitEvent('truthTable.updated', {
+            row: selectedRow,
+            cell: segLetters[segIndex],
+            value: newSeg[segIndex],
+        });
     };
     return (_jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "bg-slate-900/50 border border-slate-700 rounded-xl p-6", children: [_jsxs("div", { className: "flex items-start justify-between mb-4", children: [_jsxs("div", { children: [_jsx("h2", { className: "font-tech-display text-2xl font-bold text-cyan-400 neon-cyan mb-2", children: "Truth Table Editor" }), _jsx("p", { className: "font-digital text-sm text-slate-400", children: "Define segment patterns for each 4-bit input (0-15)" })] }), _jsxs("button", { onClick: fillStandardDigits, className: "px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-tech font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 glow-box-emerald group", children: [_jsx(Zap, { size: 18, className: "group-hover:animate-pulse" }), "Auto-Fill (0-9)"] })] }), _jsxs("div", { className: "bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 flex items-start gap-3", children: [_jsx(Info, { size: 20, className: "text-cyan-400 flex-shrink-0 mt-0.5" }), _jsxs("div", { className: "font-digital text-sm text-cyan-300", children: [_jsx("strong", { children: "Active-Low Logic:" }), " Segments light when set to ", _jsx("code", { className: "bg-slate-800 px-1 py-0.5 rounded", children: "0" }), ". Use \"Auto-Fill\" to populate standard digit patterns (0-9), then customize as needed."] })] })] }), _jsxs("div", { className: "grid lg:grid-cols-2 gap-6", children: [_jsxs("div", { className: "bg-slate-900/50 border border-slate-700 rounded-xl p-6", children: [_jsxs("h3", { className: "font-tech font-semibold text-emerald-400 mb-4 flex items-center gap-2", children: [_jsx("span", { className: "w-2 h-2 rounded-full bg-emerald-400 animate-pulse" }), "Select Input (0-15)"] }), _jsx("div", { className: "grid grid-cols-4 gap-2 mb-6", children: truthTable.map((row, i) => (_jsx("button", { onClick: () => setSelectedRow(i), className: `py-3 px-4 rounded-lg font-tech-display font-bold text-lg transition-all duration-200 ${selectedRow === i
                                         ? 'bg-gradient-to-br from-cyan-500 to-cyan-600 text-white glow-box-cyan shadow-lg scale-105'

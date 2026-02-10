@@ -4,12 +4,14 @@ import JSZip from 'jszip';
 import { useLabStore } from './store';
 import { Copy, Download, Upload, Code2 } from 'lucide-react';
 import { PdfExporter } from './pdf-exporter';
+import useNewLabStore from './store/labStore';
 export const VerilogExporter = () => {
     const truthTable = useLabStore((s) => s.truthTable);
     const parseVerilogCase = useLabStore((s) => s.parseVerilogCase);
     const generateVerilogFromExpr = useLabStore((s) => s.generateVerilogFromExpr);
     const booleanExpressions = useLabStore((s) => s.booleanExpressions);
     const validationResults = useLabStore((s) => s.validationResults);
+    const emitEvent = useNewLabStore((s) => s.emitEvent);
     const [pastedVerilog, setPastedVerilog] = useState('');
     const [modulePrefix, setModulePrefix] = useState('ssd_driver');
     const generateVerilogCaseStatement = () => {
@@ -168,12 +170,20 @@ Timestamp: ${new Date().toLocaleString()}
         a.download = `lab3-submission-${new Date().getTime()}.zip`;
         a.click();
         URL.revokeObjectURL(url);
+        // Emit verilog.export event
+        emitEvent('verilog.export', {
+            format: 'systemverilog',
+        });
     };
     const copyToClipboard = (text) => {
         navigator.clipboard.writeText(text);
     };
     return (_jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "bg-gradient-to-br from-slate-900 to-slate-800 text-slate-50 rounded-lg p-6", children: [_jsxs("h3", { className: "text-xl font-bold text-blue-400 mb-4 flex items-center gap-2", children: [_jsx(Code2, { size: 24 }), "Verilog Code Generation"] }), _jsx("div", { className: "space-y-4 mb-6", children: _jsxs("div", { children: [_jsx("label", { className: "block text-sm text-slate-300 mb-2", children: "Module Name:" }), _jsx("input", { type: "text", value: modulePrefix, onChange: (e) => setModulePrefix(e.target.value), className: "w-full max-w-xs bg-slate-800 text-slate-50 border border-slate-700 rounded px-3 py-2 focus:outline-none focus:border-blue-500", placeholder: "ssd_driver" })] }) }), _jsxs("div", { className: "grid grid-cols-1 lg:grid-cols-2 gap-6", children: [_jsxs("div", { children: [_jsx("h4", { className: "font-semibold text-blue-300 mb-3", children: "Case Statement Style" }), _jsx("textarea", { value: generateVerilogCaseStatement(), readOnly: true, className: "w-full h-80 bg-slate-900 text-slate-50 border border-slate-700 rounded p-3 font-mono text-xs focus:outline-none overflow-auto color-scheme-dark" }), _jsxs("button", { onClick: () => copyToClipboard(generateVerilogCaseStatement()), className: "mt-3 px-4 py-2 bg-blue-700 hover:bg-blue-600 rounded flex items-center gap-2 text-sm font-medium transition-colors", children: [_jsx(Copy, { size: 16 }), "Copy to Clipboard"] })] }), _jsxs("div", { children: [_jsx("h4", { className: "font-semibold text-green-300 mb-3", children: "Boolean Assignment Style" }), _jsx("textarea", { value: generateVerilogAssign(), readOnly: true, className: "w-full h-80 bg-slate-900 text-slate-50 border border-slate-700 rounded p-3 font-mono text-xs focus:outline-none overflow-auto color-scheme-dark" }), _jsxs("button", { onClick: () => copyToClipboard(generateVerilogAssign()), className: "mt-3 px-4 py-2 bg-green-700 hover:bg-green-600 rounded flex items-center gap-2 text-sm font-medium transition-colors", children: [_jsx(Copy, { size: 16 }), "Copy to Clipboard"] })] })] })] }), _jsxs("div", { className: "bg-gradient-to-br from-slate-900 to-slate-800 text-slate-50 rounded-lg p-6", children: [_jsxs("h3", { className: "text-xl font-bold text-purple-400 mb-4 flex items-center gap-2", children: [_jsx(Upload, { size: 24 }), "Import from Vivado"] }), _jsx("p", { className: "text-slate-300 text-sm mb-4", children: "Paste a case statement from your Vivado implementation to import and verify against your truth table." }), _jsx("textarea", { value: pastedVerilog, onChange: (e) => setPastedVerilog(e.target.value), placeholder: "Paste your case, endcase block here...", className: "w-full h-40 bg-slate-900 text-slate-50 border border-slate-700 rounded p-3 font-mono text-sm focus:outline-none focus:border-purple-500" }), _jsx("button", { onClick: () => {
                             parseVerilogCase(pastedVerilog);
+                            const lineCount = pastedVerilog.split('\n').length;
+                            emitEvent('verilog.import', {
+                                lines: lineCount,
+                            });
                             setPastedVerilog('');
                             alert('Verilog parsed! Truth table updated.');
                         }, className: "mt-3 px-6 py-2 bg-purple-700 hover:bg-purple-600 rounded font-medium transition-colors", children: "Parse & Update Table" })] }), _jsxs("div", { className: "bg-gradient-to-br from-slate-900 to-slate-800 text-slate-50 rounded-lg p-6", children: [_jsxs("h3", { className: "text-xl font-bold text-orange-400 mb-4 flex items-center gap-2", children: [_jsx(Download, { size: 24 }), "Export Submission Package"] }), _jsx("p", { className: "text-slate-300 text-sm mb-4", children: "Download a complete ZIP archive containing truth table, Verilog code, validation results, and documentation." }), _jsxs("button", { onClick: handleExportZip, className: "px-8 py-3 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 rounded-lg font-bold text-lg transition-all flex items-center gap-2", children: [_jsx(Download, { size: 20 }), "Download ZIP Archive"] })] }), _jsx(PdfExporter, {})] }));

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLabStore } from './store';
 import { ChevronDown, RefreshCw, Plus, Trash2, Lightbulb, Copy, Check } from 'lucide-react';
+import useNewLabStore from './store/labStore';
 
 const SEGMENT_NAMES = ['a', 'b', 'c', 'd', 'e', 'f', 'g'] as const;
 
@@ -44,9 +45,18 @@ export const KMapViewerInteractive: React.FC = () => {
   const generateKMaps = useLabStore((s) => s.generateKMaps);
   const setBooleanExpr = useLabStore((s) => s.setBooleanExpr);
   const booleanExpressions = useLabStore((s) => s.booleanExpressions);
+  const emitEvent = useNewLabStore((s) => s.emitEvent);
 
   const handleRegenerateKMap = () => {
     generateKMaps();
+    
+    // Count groups across all K-maps
+    const totalGroups = Object.values(kMaps).reduce((sum, kmap) => sum + (kmap.groups?.length || 0), 0);
+    
+    // Emit kmap.regenerated event
+    emitEvent('kmap.regenerated', {
+      groupCount: totalGroups,
+    });
   };
 
   return (
