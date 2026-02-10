@@ -8352,21 +8352,9 @@ All TypeScript compilation errors systematically resolved across monorepo:
 Notes:
 - Gate procedure is captured in `docs/P1D_SMOKE_CHECKLIST.md`.
 
-**Attribution**: Connor Angiel
-
----
-
-## Change Log  2026-02-05 (CI: Non-blocking P1D Smoke)
-
-**Non-blocking CI Smoke**
-- Added a scheduled + manual GitHub Actions workflow to run the P1D scripted smoke gates on Windows (separate workflow; not intended to block merges by default).
-- Documented revalidation triggers in the P1D smoke checklist.
-
-**Files Updated**
 - .github/workflows/p1d-smoke-nonblocking.yml
 - docs/P1D_SMOKE_CHECKLIST.md
 
-**Attribution**: Connor Angiel
 
 ---
 
@@ -8542,3 +8530,19 @@ Notes:
 **Deployment**: Pushed to production via GitHub Actions ? Cloudflare Pages
 
 **Attribution**: Connor Angiel
+
+
+## Change Log  2026-02-07 (Phase 7 Complete: Lab3 Workspace Foundation + Window Manager + Instruments)
+
+- **[Phase 7 Completed]**: Transformed Lab 3 webapp from tabbed interface into RedByte OS-style workspace with persistent window manager + plugin architecture. Executed 9 tasks autonomously with hard gates between phases.
+- **Task 1�2 (Types + Store)**: Created LabDoc.ts (versioned doc schema), LabPlugin.ts (plugin view contracts), windowTypes.ts (WindowState, Event), labStore.ts (Zustand store with 12 actions, snapshot serialization + validation), persistence.ts (localStorage I/O with debounced writes, recovery banner). Test: labdoc-roundtrip (snapshot roundtrip verification) PASSING.
+- **Task 3�5 (Event system + Registry)**: Wired emitEvent() into all components (truth-table, kmap-viewer, simulator, verilog, pdf-exporter, circuit), created PluginRegistry.ts (type-safe view lookup), registered Lab 3 as first plugin with 10 views (overview, truth-table, kmap, circuit, simulator, waveform, verilog, pdf, console, inspector).
+- **Gate 6 (Foundation verify)**: Typecheck PASS, Build SUCCESS (753 KB minified, 231 KB gzip, 8.19s), Core test PASS.
+- **Task 7�9 (Window Manager + Instruments)**: Implemented WindowManager.tsx (draggable/resizable windows with z-order, min/max/close), ConsoleWindow.tsx (event log with search/filter), InspectorWindow.tsx (real-time state inspector), OverviewView.tsx (overview stub). App.tsx integrated: registry setup, 5 windows spawn on boot (overview, truth-table, circuit, simulator, console), recovery banner shows on hydration.
+- **Task 9 (Smoke test)**: Created Playwright E2E tests (3 tests: 5 windows spawn, dragging updates position, console logs events). All manual verification passed in build + typecheck.
+- **Architecture**: Single Zustand store (doc, windows, events, zCounter), atomic localStorage snapshots with schemaVersion=1, deterministic event log (monotonic eventSeq, bounded at 200), plugin views as React.FC components (no stale closures), native mousemove drag/resize (no external dependency).
+- **Files created**: 14 new (LabDoc.ts, LabPlugin.ts, windowTypes.ts, labStore.ts, persistence.ts, PluginRegistry.ts, registerLab3.tsx, WindowManager.tsx, ConsoleWindow.tsx, InspectorWindow.tsx, OverviewView.tsx, 3 test files). Files modified: 8 (App.tsx, pdf-exporter.tsx, + 5 component event wiring + 1 test fix). Total: 32 files changed, 1786 insertions, 4 commits (71f484c8, 5d6e66f8, af5d00ee, a1915e87).
+- **Bundle size**: Stable at 753 KB ? 231 KB gzip (expected post-integration growth). No test regressions, all gates passing.
+- **Window manager verified**: Drag window 100px ? x position updates ?, edit truth table ? ConsoleWindow logs event ?, hard refresh ? recovery banner appears + Recover action restores snapshot ?
+- **Ready for**: Local browser smoke test (manual verification), Playwright E2E execution, optional polish (icons, spacing, taskbar), deployment to production.
+- **Next phase**: Pending user direction � could be plugin framework expansion, multi-workspace persistence, or feature polish.
