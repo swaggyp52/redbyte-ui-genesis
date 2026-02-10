@@ -443,8 +443,8 @@ const useLabStore = create<LabStoreState>((set, get) => ({
       const row = state.doc.truthTable[i];
       const expectedSeg = i < 10
         ? (DIGIT_PATTERNS[i] as [0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1])
-        : (row?.seg ?? [1, 1, 1, 1, 1, 1, 1]);
-      const expected = segToNumber(expectedSeg as [0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1]);
+        : (row?.seg ?? [1, 1, 1, 1, 1, 1, 1]) as [0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1];
+      const expected = segToNumber(expectedSeg);
       const pass = i < 10 ? actual === expected : true;
       const actualSeg: [0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1] = [
         ((actual >> 0) & 1) as 0 | 1,

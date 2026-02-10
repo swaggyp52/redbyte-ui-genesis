@@ -19,7 +19,7 @@ describe('Progress checklist', () => {
       b2: ((i >> 2) & 1) as 0 | 1,
       b1: ((i >> 1) & 1) as 0 | 1,
       b0: (i & 1) as 0 | 1,
-      seg: i < 10 ? DIGIT_PATTERNS[i] : [1, 1, 1, 1, 1, 1, 1],
+      seg: (i < 10 ? DIGIT_PATTERNS[i] : [1, 1, 1, 1, 1, 1, 1]) as [1, 1, 1, 1, 1, 1, 1],
       isDontCare: i >= 10,
     }));
 

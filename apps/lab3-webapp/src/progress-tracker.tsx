@@ -215,8 +215,8 @@ export function buildProgressSteps({
 
 // Hook to calculate progress
 export function useLabProgress() {
-  const truthTable = useLabStore((s) => s.doc.truthTable);
-  const kMaps = useLabStore((s) => s.doc.kMaps);
+  const truthTable = useLabStore((s) => s.doc.truthTable) as TruthTableRow[];
+  const kMaps = useLabStore((s) => s.doc.kMaps) as KMapState;
   const validationResults = useLabStore((s) => s.validationResults);
   const verilogCode = useLabStore((s) => s.verilogCode);
   const lastExportAt = useLabStore((s) => s.lastExportAt);
