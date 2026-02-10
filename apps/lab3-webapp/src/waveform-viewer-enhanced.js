@@ -1,6 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useRef, useEffect } from 'react';
-import { useLabStore } from './store';
+import { useLabStore } from './store/labStore';
 import { Play, Pause, RotateCcw, ZoomIn, ZoomOut, Activity } from 'lucide-react';
 export const WaveformViewerEnhanced = () => {
     const canvasRef = useRef(null);

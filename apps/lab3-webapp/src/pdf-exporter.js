@@ -1,19 +1,18 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useState } from 'react';
-import { useLabStore } from './store';
+import { useLabStore } from './store/labStore';
 import { FileText, Download, Loader2, CheckCircle2 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import useNewLabStore from './store/labStore';
 export const PdfExporter = () => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [progress, setProgress] = useState('');
     const [complete, setComplete] = useState(false);
-    const truthTable = useLabStore((s) => s.truthTable);
-    const booleanExpressions = useLabStore((s) => s.booleanExpressions);
+    const truthTable = useLabStore((s) => s.doc.truthTable);
+    const booleanExpressions = useLabStore((s) => s.doc.expressions);
     const verilogCode = useLabStore((s) => s.verilogCode);
-    const kMaps = useLabStore((s) => s.kMaps);
+    const kMaps = useLabStore((s) => s.doc.kMaps);
     const validationResults = useLabStore((s) => s.validationResults);
-    const emitEvent = useNewLabStore((s) => s.emitEvent);
+    const emitEvent = useLabStore((s) => s.emitEvent);
     const handleGeneratePDF = async () => {
         setIsGenerating(true);
         setComplete(false);

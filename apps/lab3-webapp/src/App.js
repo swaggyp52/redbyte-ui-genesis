@@ -8,10 +8,8 @@ import { WaveformViewer } from './waveform-viewer-enhanced';
 import { LiveValidation } from './live-validation';
 import { ProgressTracker, useLabProgress } from './progress-tracker';
 import { CircuitEditor } from './circuit-editor';
-import { useLabStore } from './store';
-import { useAutoSave } from './use-auto-save';
 import { Settings, Download, Upload, Zap, BookOpen, Table, Target, PlayCircle, FileCode, Cpu, AlertCircle } from 'lucide-react';
-import useNewLabStore from './store/labStore';
+import { useLabStore } from './store/labStore';
 import { loadSnapshot, initPersistence } from './store/persistence';
 import { WindowManager } from './workspace/WindowManager';
 import { PluginRegistry } from './plugins/PluginRegistry';
@@ -31,14 +29,12 @@ export const App = () => {
     const exportJSON = useLabStore((s) => s.exportJSON);
     const importJSON = useLabStore((s) => s.importJSON);
     const progressSteps = useLabProgress();
-    const openWindow = useNewLabStore((s) => s.openWindow);
-    const windows = useNewLabStore((s) => s.windows);
-    const doc = useNewLabStore((s) => s.doc);
-    // Enable auto-save
-    useAutoSave(true);
+    const openWindow = useLabStore((s) => s.openWindow);
+    const windows = useLabStore((s) => s.windows);
+    const doc = useLabStore((s) => s.doc);
     // Initialize persistence and check for recovery on mount
     useEffect(() => {
-        initPersistence(useNewLabStore);
+        initPersistence(useLabStore);
         const snapshot = loadSnapshot();
         if (snapshot) {
             setRecoverySnapshot(snapshot);
@@ -64,12 +60,12 @@ export const App = () => {
     }, [windows.length, openWindow, doc]);
     const handleRecover = () => {
         if (recoverySnapshot) {
-            useNewLabStore.getState().hydrateFromSnapshot(recoverySnapshot);
+            useLabStore.getState().hydrateFromSnapshot(recoverySnapshot);
             setShowRecoveryBanner(false);
         }
     };
     const handleDiscard = () => {
-        useNewLabStore.getState().discardRecovery();
+        useLabStore.getState().discardRecovery();
         localStorage.removeItem('rb.lab3.session.v1');
         setShowRecoveryBanner(false);
     };

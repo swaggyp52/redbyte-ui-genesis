@@ -1,6 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import React, { useState } from 'react';
-import { useLabStore } from './store';
+import { useLabStore } from './store/labStore';
 import { ChevronDown, RefreshCw } from 'lucide-react';
 const SEGMENT_NAMES = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
 const GRAY_CODE_LABELS = {
@@ -12,10 +12,10 @@ function getPositionToGrayCode(row, col) {
 }
 export const KMapViewer = () => {
     const [expandedSegment, setExpandedSegment] = useState('a');
-    const kMaps = useLabStore((s) => s.kMaps);
+    const kMaps = useLabStore((s) => s.doc.kMaps);
     const generateKMaps = useLabStore((s) => s.generateKMaps);
     const setBooleanExpr = useLabStore((s) => s.setBooleanExpr);
-    const booleanExpressions = useLabStore((s) => s.booleanExpressions);
+    const booleanExpressions = useLabStore((s) => s.doc.expressions);
     const handleRegenerateKMap = () => {
         generateKMaps();
     };

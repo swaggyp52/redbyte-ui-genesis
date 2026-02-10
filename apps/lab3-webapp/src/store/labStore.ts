@@ -56,6 +56,9 @@ export type LabStoreState = {
 
   // ─── Simulation ───
   setSimulationInput: (value: number) => void;
+  setSimulationMode: (mode: 'manual' | 'step') => void;
+  stepSimulation: () => void;
+  resetSimulation: () => void;
   runAllVectors: () => void;
   evalSeg: (input: number) => number;
 
@@ -260,6 +263,8 @@ const useLabStore = create<LabStoreState>((set, get) => ({
   simulationInput: 0,
   implMode: 'table' as const,
   verilogCode: '',
+  simulationMode: 'manual',
+  currentStep: 0,
   validationResults: [],
   waveformHistory: [],
 
@@ -354,6 +359,53 @@ const useLabStore = create<LabStoreState>((set, get) => ({
     get().emitEvent('sim.inputChange', { value });
   },
 
+  setSimulationMode: (mode) => {
+    const updates: Partial<LabStoreState> = { simulationMode: mode };
+    if (mode === 'step') {
+      updates.currentStep = 0;
+      updates.waveformHistory = [];
+    }
+    set(updates);
+    get().emitEvent('sim.modeChange', { mode });
+  },
+
+  stepSimulation: () => {
+    const state = get();
+    if (state.currentStep >= 16) return;
+
+    const input = state.currentStep;
+    const actual = state.evalSeg(input);
+    const sample: WaveformSample = {
+      time: input,
+      inputs: [
+        ((input >> 3) & 1) as 0 | 1,
+        ((input >> 2) & 1) as 0 | 1,
+        ((input >> 1) & 1) as 0 | 1,
+        (input & 1) as 0 | 1,
+      ],
+      outputs: [
+        ((actual >> 0) & 1) as 0 | 1,
+        ((actual >> 1) & 1) as 0 | 1,
+        ((actual >> 2) & 1) as 0 | 1,
+        ((actual >> 3) & 1) as 0 | 1,
+        ((actual >> 4) & 1) as 0 | 1,
+        ((actual >> 5) & 1) as 0 | 1,
+        ((actual >> 6) & 1) as 0 | 1,
+      ],
+    };
+
+    set({
+      waveformHistory: [...state.waveformHistory, sample],
+      currentStep: state.currentStep + 1,
+    });
+    get().emitEvent('sim.step', { step: input });
+  },
+
+  resetSimulation: () => {
+    set({ waveformHistory: [], currentStep: 0 });
+    get().emitEvent('sim.reset', {});
+  },
+
   runAllVectors: () => {
     const state = get();
     const results: ValidationResult[] = [];
@@ -378,7 +430,7 @@ const useLabStore = create<LabStoreState>((set, get) => ({
       });
     }
 
-    set({ validationResults: results, waveformHistory: waveforms });
+    set({ validationResults: results, waveformHistory: waveforms, currentStep: 16 });
     get().emitEvent('sim.runAllVectors', { passCount: results.filter(r => r.pass).length, total: 16 });
   },
 
@@ -585,6 +637,8 @@ const useLabStore = create<LabStoreState>((set, get) => ({
       simulationInput: 0,
       implMode: 'table',
       verilogCode: '',
+      simulationMode: 'manual',
+      currentStep: 0,
       windows: [],
       events: [],
       eventSeq: 0,

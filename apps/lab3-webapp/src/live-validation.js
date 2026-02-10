@@ -1,9 +1,9 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useLabStore } from './store';
+import { useLabStore } from './store/labStore';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 export const LiveValidation = () => {
-    const validationErrors = useLabStore((s) => s.validationErrors);
-    const booleanExpressions = useLabStore((s) => s.booleanExpressions);
+    const validationErrors = useLabStore((s) => s.doc.results?.validationErrors || {});
+    const booleanExpressions = useLabStore((s) => s.doc.expressions);
     const SEGMENT_NAMES = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
     const hasErrors = Object.keys(validationErrors).length > 0;
     return (_jsxs("div", { className: "bg-gradient-to-br from-slate-900 to-slate-800 text-slate-50 rounded-lg p-6 space-y-4", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsx("h3", { className: "text-xl font-bold text-pink-400", children: "Live Expression Validation" }), hasErrors ? (_jsxs("div", { className: "flex items-center gap-2 text-pink-400", children: [_jsx(AlertCircle, { size: 20 }), _jsx("span", { className: "text-sm font-semibold", children: "Mismatches Found" })] })) : (_jsxs("div", { className: "flex items-center gap-2 text-emerald-400", children: [_jsx(CheckCircle2, { size: 20 }), _jsx("span", { className: "text-sm font-semibold", children: "All Valid" })] }))] }), _jsx("div", { className: "grid grid-cols-7 gap-2", children: SEGMENT_NAMES.map((segName) => {

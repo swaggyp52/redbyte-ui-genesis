@@ -13,8 +13,8 @@ export const ProgressTracker = ({ steps, className = '' }) => {
 };
 // Hook to calculate progress
 export function useLabProgress() {
-    const truthTable = useLabStore((s) => s.truthTable);
-    const kMaps = useLabStore((s) => s.kMaps);
+    const truthTable = useLabStore((s) => s.doc.truthTable);
+    const kMaps = useLabStore((s) => s.doc.kMaps);
     const validationResults = useLabStore((s) => s.validationResults);
     const verilogCode = useLabStore((s) => s.verilogCode);
     // Check if truth table is filled (at least 0-9)
@@ -57,4 +57,4 @@ export function useLabProgress() {
     return steps;
 }
 // Import useLabStore at top of file
-import { useLabStore } from './store';
+import { useLabStore } from './store/labStore';

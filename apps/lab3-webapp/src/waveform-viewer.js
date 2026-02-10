@@ -1,5 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
-import { useLabStore } from './store';
+import { useLabStore } from './store/labStore';
 import { Play, Pause } from 'lucide-react';
 export const WaveformViewer = () => {
     const waveformHistory = useLabStore((s) => s.waveformHistory);
