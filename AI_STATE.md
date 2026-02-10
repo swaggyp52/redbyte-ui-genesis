@@ -5367,6 +5367,16 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-02-10 (Lab3 Production Deployment + UX Hardening)
+- **Fixed Cloudflare Pages deployment**: Root `wrangler.toml` configured to build and deploy ONLY lab3-webapp (not manual-site information page).
+- **Updated GitHub Actions workflow**: `deploy-cloudflare.yml` now explicitly builds `@redbyte/lab3-webapp` with `productionBranch: main` for production routing.
+- **Disabled auto-window-booting**: Removed automatic window spawn on Lab3 startup—app now loads clean into tab-based interface (Overview → Truth Table → K-Maps → Simulator → Verilog → Export).
+- **UX consistency**: Overview tab displays quick-start guide with pedagogy (active-low logic, don't-cares, Gray code, SOP form); students never see confusing window manager on first visit.
+- **Production status**: Lab3 now live at redbyteapps.dev with clean, intentional UX.
+- **Files modified**: wrangler.toml (root), .github/workflows/deploy-cloudflare.yml, apps/lab3-webapp/src/App.tsx, apps/lab3-webapp/src/App.js.
+- **Git commits**: 87db75a2 (deploy config), 755d7722 (disable window boot).
+- **Deployment**: ✓ Complete (redbyteapps.dev now serving lab3-webapp).
+
 ### 2026-02-10 (Lab3 Simulator Switch Input Mapping Fix)
 - **Fixed critical bug**: Simulator switch toggle mapping was inverted—clicking SW1 toggled SW2, etc.
 - **Root cause**: Switches array was constructed in reverse bit order [B3, B2, B1, B0] but indexed with direct bit indices [0, 1, 2, 3], causing array indices to mismatch with bit values.
