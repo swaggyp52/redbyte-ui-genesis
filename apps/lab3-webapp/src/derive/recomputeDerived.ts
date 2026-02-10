@@ -1,6 +1,7 @@
 import type { LabDocV2 } from '../plugins/LabDoc';
 import type { KMapState, TruthTableRow as StrictRow } from '../types';
 import { generateKMapGrid, minimizeBooleanExpr, evaluateBoolExpr } from '../kmap';
+import { validateLabDoc, getValidationMessage } from '../validation';
 
 const SEGMENT_NAMES = ['a', 'b', 'c', 'd', 'e', 'f', 'g'] as const;
 
@@ -9,6 +10,8 @@ const SEGMENT_NAMES = ['a', 'b', 'c', 'd', 'e', 'f', 'g'] as const;
  *
  * Pure function. Same input → same output. Called from updateDoc() only.
  * Returns a partial LabDocV2 patch: { kMaps, expressions, results }.
+ * 
+ * Also runs comprehensive validation and stores results.
  */
 export function recomputeDerived(doc: LabDocV2): Pick<LabDocV2, 'kMaps' | 'expressions' | 'results'> {
   const kMaps: KMapState = {};
@@ -46,9 +49,25 @@ export function recomputeDerived(doc: LabDocV2): Pick<LabDocV2, 'kMaps' | 'expre
     if (errors.length > 0) validationErrors[segName] = errors;
   }
 
-  return {
+  // Run comprehensive validation
+  const validation = validateLabDoc({
+    ...doc,
     kMaps,
     expressions,
     results: { validationErrors },
+  });
+  const validationMessage = getValidationMessage(validation);
+
+  return {
+    kMaps,
+    expressions,
+    results: {
+      validationErrors,
+      validation: {
+        allErrors: validation.allErrors,
+        canAdvance: validation.canAdvance,
+        message: validationMessage,
+      },
+    },
   };
 }
