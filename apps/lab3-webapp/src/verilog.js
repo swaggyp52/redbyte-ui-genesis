@@ -12,6 +12,7 @@ export const VerilogExporter = () => {
     const validationResults = useLabStore((s) => s.validationResults);
     const [pastedVerilog, setPastedVerilog] = useState('');
     const [modulePrefix, setModulePrefix] = useState('ssd_driver');
+    const [exportSuccess, setExportSuccess] = useState(false);
     const generateVerilogCaseStatement = () => {
         let code = `module ${modulePrefix}(
   input [3:0] B,
@@ -168,6 +169,9 @@ Timestamp: ${new Date().toLocaleString()}
         a.download = `lab3-submission-${new Date().getTime()}.zip`;
         a.click();
         URL.revokeObjectURL(url);
+        // Show success feedback
+        setExportSuccess(true);
+        setTimeout(() => setExportSuccess(false), 3000);
     };
     const copyToClipboard = (text) => {
         navigator.clipboard.writeText(text);
@@ -176,5 +180,5 @@ Timestamp: ${new Date().toLocaleString()}
                             parseVerilogCase(pastedVerilog);
                             setPastedVerilog('');
                             alert('Verilog parsed! Truth table updated.');
-                        }, className: "mt-3 px-6 py-2 bg-purple-700 hover:bg-purple-600 rounded font-medium transition-colors", children: "Parse & Update Table" })] }), _jsxs("div", { className: "bg-gradient-to-br from-slate-900 to-slate-800 text-slate-50 rounded-lg p-6", children: [_jsxs("h3", { className: "text-xl font-bold text-orange-400 mb-4 flex items-center gap-2", children: [_jsx(Download, { size: 24 }), "Export Submission Package"] }), _jsx("p", { className: "text-slate-300 text-sm mb-4", children: "Download a complete ZIP archive containing truth table, Verilog code, validation results, and documentation." }), _jsxs("button", { onClick: handleExportZip, className: "px-8 py-3 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 rounded-lg font-bold text-lg transition-all flex items-center gap-2", children: [_jsx(Download, { size: 20 }), "Download ZIP Archive"] })] }), _jsx(PdfExporter, {})] }));
+                        }, className: "mt-3 px-6 py-2 bg-purple-700 hover:bg-purple-600 rounded font-medium transition-colors", children: "Parse & Update Table" })] }), _jsxs("div", { className: "bg-gradient-to-br from-slate-900 to-slate-800 text-slate-50 rounded-lg p-6", children: [_jsxs("h3", { className: "text-xl font-bold text-orange-400 mb-4 flex items-center gap-2", children: [_jsx(Download, { size: 24 }), "Export Submission Package"] }), _jsx("p", { className: "text-slate-300 text-sm mb-4", children: "Download a complete ZIP archive containing truth table, Verilog code, validation results, and documentation." }), _jsxs("button", { onClick: handleExportZip, className: "px-8 py-3 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 rounded-lg font-bold text-lg transition-all flex items-center gap-2", children: [_jsx(Download, { size: 20 }), "Download ZIP Archive"] }), exportSuccess && (_jsxs("div", { className: "mt-4 p-3 bg-emerald-900/30 border border-emerald-500/50 rounded-lg text-emerald-300 text-sm flex items-center gap-2", children: [_jsx(Download, { size: 16 }), _jsx("span", { children: "ZIP file exported successfully!" })] }))] }), _jsx(PdfExporter, {})] }));
 };

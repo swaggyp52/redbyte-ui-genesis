@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLabStore } from './store/labStore';
-import { ChevronDown, RefreshCw } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 const SEGMENT_NAMES = ['a', 'b', 'c', 'd', 'e', 'f', 'g'] as const;
 
@@ -16,26 +16,13 @@ function getPositionToGrayCode(row: number, col: number): string {
 export const KMapViewer: React.FC = () => {
   const [expandedSegment, setExpandedSegment] = useState<string>('a');
   const kMaps = useLabStore((s) => s.doc.kMaps);
-  const generateKMaps = useLabStore((s) => s.generateKMaps);
   const setBooleanExpr = useLabStore((s) => s.setBooleanExpr);
   const booleanExpressions = useLabStore((s) => s.doc.expressions);
-
-  const handleRegenerateKMap = () => {
-    generateKMaps();
-  };
 
   return (
     <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-slate-50 rounded-lg p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-bold text-emerald-400">Karnaugh Maps</h3>
-        <button
-          onClick={handleRegenerateKMap}
-          className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded flex items-center gap-2 text-sm transition-colors"
-          title="Regenerate K-maps from truth table"
-        >
-          <RefreshCw size={16} />
-          Regenerate
-        </button>
       </div>
 
       <div className="space-y-3">

@@ -52,6 +52,7 @@ export const CircuitDesignerPro: React.FC = () => {
   const [wireConnection, setWireConnection] = useState<WireConnectionState | null>(null);
   const [history, setHistory] = useState<CircuitDesignerDoc[]>([circuit]);
   const [historyIndex, setHistoryIndex] = useState(0);
+  const [validationResult, setValidationResult] = useState<{ passed: boolean; passedTests: number; totalTests: number } | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   // Evaluate circuit
@@ -122,6 +123,13 @@ export const CircuitDesignerPro: React.FC = () => {
       totalTests: result.totalTests,
     });
     console.log('Validation result:', result);
+    setValidationResult({
+      passed: result.passed,
+      passedTests: result.passedTests,
+      totalTests: result.totalTests,
+    });
+    // Clear validation result after 5 seconds
+    setTimeout(() => setValidationResult(null), 5000);
   };
 
   // Mouse event handlers for canvas
@@ -303,9 +311,14 @@ export const CircuitDesignerPro: React.FC = () => {
       </div>
 
       {/* Status bar */}
-      <div className="bg-slate-900 border-t border-slate-700 px-4 py-2 text-xs text-slate-400">
-        Nodes: {circuit.nodes.length} | Wires: {circuit.wires.length} | Zoom: {(zoom * 100).toFixed(0)}%
-        {evaluation.error && <span className="ml-4 text-red-400">⚠️ {evaluation.error}</span>}
+      <div className="bg-slate-900 border-t border-slate-700 px-4 py-2 text-xs text-slate-400 flex items-center gap-4">
+        <span>Nodes: {circuit.nodes.length} | Wires: {circuit.wires.length} | Zoom: {(zoom * 100).toFixed(0)}%</span>
+        {evaluation.error && <span className="text-red-400">⚠️ {evaluation.error}</span>}
+        {validationResult && (
+          <span className={`font-semibold ${validationResult.passed ? 'text-emerald-400' : 'text-red-400'}`}>
+            {validationResult.passed ? '✓' : '✗'} Validation: {validationResult.passedTests}/{validationResult.totalTests} tests passed
+          </span>
+        )}
       </div>
     </div>
   );

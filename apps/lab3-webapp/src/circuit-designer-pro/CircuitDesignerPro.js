@@ -33,6 +33,7 @@ export const CircuitDesignerPro = () => {
     const [wireConnection, setWireConnection] = useState(null);
     const [history, setHistory] = useState([circuit]);
     const [historyIndex, setHistoryIndex] = useState(0);
+    const [validationResult, setValidationResult] = useState(null);
     const canvasContainerRef = useRef(null);
     // Evaluate circuit
     const evaluation = evaluateCircuit(circuit);
@@ -95,6 +96,13 @@ export const CircuitDesignerPro = () => {
             totalTests: result.totalTests,
         });
         console.log('Validation result:', result);
+        setValidationResult({
+            passed: result.passed,
+            passedTests: result.passedTests,
+            totalTests: result.totalTests,
+        });
+        // Clear validation result after 5 seconds
+        setTimeout(() => setValidationResult(null), 5000);
     };
     // Mouse event handlers for canvas
     const handleCanvasClick = (x, y) => {
@@ -191,7 +199,7 @@ export const CircuitDesignerPro = () => {
                         updateCircuitDesigner(newCircuit);
                     }, children: node.config?.value ? '1' : '0' }))] }, node.id));
     });
-    return (_jsxs("div", { className: "relative w-full h-full bg-slate-950 overflow-hidden flex flex-col", ref: canvasContainerRef, children: [_jsx(Toolbar, { onAddNode: handleAddNode, onDelete: handleDeleteSelected, onValidate: handleValidate, onUndo: handleUndo, onRedo: handleRedo, canUndo: historyIndex > 0, canRedo: historyIndex < history.length - 1, selectedNodeCount: selectedNodeIds.size }), _jsxs("div", { className: "relative flex-1 mt-16", children: [_jsx(CanvasRenderer, { circuit: circuit, evaluation: evaluation, panX: panX, panY: panY, zoom: zoom, selectedNodeIds: selectedNodeIds, hoveredWireId: hoveredWireId, onCanvasClick: handleCanvasClick }), nodeElements, wireConnection && (_jsx("svg", { className: "absolute inset-0 pointer-events-none", width: "100%", height: "100%", children: _jsx("line", { x1: (circuit.nodes.find(n => n.id === wireConnection.fromNodeId)?.x || 0) * zoom + panX + NODE_SIZE, y1: (circuit.nodes.find(n => n.id === wireConnection.fromNodeId)?.y || 0) * zoom + panY + NODE_SIZE / 2, x2: wireConnection.currentX * zoom + panX, y2: wireConnection.currentY * zoom + panY, stroke: "#3b82f6", strokeWidth: "2", strokeDasharray: "5,5" }) }))] }), _jsxs("div", { className: "bg-slate-900 border-t border-slate-700 px-4 py-2 text-xs text-slate-400", children: ["Nodes: ", circuit.nodes.length, " | Wires: ", circuit.wires.length, " | Zoom: ", (zoom * 100).toFixed(0), "%", evaluation.error && _jsxs("span", { className: "ml-4 text-red-400", children: ["\u26A0\uFE0F ", evaluation.error] })] })] }));
+    return (_jsxs("div", { className: "relative w-full h-full bg-slate-950 overflow-hidden flex flex-col", ref: canvasContainerRef, children: [_jsx(Toolbar, { onAddNode: handleAddNode, onDelete: handleDeleteSelected, onValidate: handleValidate, onUndo: handleUndo, onRedo: handleRedo, canUndo: historyIndex > 0, canRedo: historyIndex < history.length - 1, selectedNodeCount: selectedNodeIds.size }), _jsxs("div", { className: "relative flex-1 mt-16", children: [_jsx(CanvasRenderer, { circuit: circuit, evaluation: evaluation, panX: panX, panY: panY, zoom: zoom, selectedNodeIds: selectedNodeIds, hoveredWireId: hoveredWireId, onCanvasClick: handleCanvasClick }), nodeElements, wireConnection && (_jsx("svg", { className: "absolute inset-0 pointer-events-none", width: "100%", height: "100%", children: _jsx("line", { x1: (circuit.nodes.find(n => n.id === wireConnection.fromNodeId)?.x || 0) * zoom + panX + NODE_SIZE, y1: (circuit.nodes.find(n => n.id === wireConnection.fromNodeId)?.y || 0) * zoom + panY + NODE_SIZE / 2, x2: wireConnection.currentX * zoom + panX, y2: wireConnection.currentY * zoom + panY, stroke: "#3b82f6", strokeWidth: "2", strokeDasharray: "5,5" }) }))] }), _jsxs("div", { className: "bg-slate-900 border-t border-slate-700 px-4 py-2 text-xs text-slate-400 flex items-center gap-4", children: [_jsxs("span", { children: ["Nodes: ", circuit.nodes.length, " | Wires: ", circuit.wires.length, " | Zoom: ", (zoom * 100).toFixed(0), "%"] }), evaluation.error && _jsxs("span", { className: "text-red-400", children: ["\u26A0\uFE0F ", evaluation.error] }), validationResult && (_jsxs("span", { className: `font-semibold ${validationResult.passed ? 'text-emerald-400' : 'text-red-400'}`, children: [validationResult.passed ? '✓' : '✗', " Validation: ", validationResult.passedTests, "/", validationResult.totalTests, " tests passed"] }))] })] }));
 };
 function getNodeColor(type) {
     const colors = {

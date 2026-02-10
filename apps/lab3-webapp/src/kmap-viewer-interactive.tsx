@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLabStore } from './store/labStore';
-import { ChevronDown, RefreshCw, Plus, Trash2, Lightbulb, Copy, Check } from 'lucide-react';
+import { ChevronDown, Plus, Trash2, Lightbulb, Copy, Check } from 'lucide-react';
 
 const SEGMENT_NAMES = ['a', 'b', 'c', 'd', 'e', 'f', 'g'] as const;
 
@@ -41,13 +41,8 @@ function grayCodeToDecimal(grayCode: string): number {
 export const KMapViewerInteractive: React.FC = () => {
   const [expandedSegment, setExpandedSegment] = useState<string>('a');
   const kMaps = useLabStore((s) => s.doc.kMaps);
-  const generateKMaps = useLabStore((s) => s.generateKMaps);
   const setBooleanExpr = useLabStore((s) => s.setBooleanExpr);
   const booleanExpressions = useLabStore((s) => s.doc.expressions);
-
-  const handleRegenerateKMap = () => {
-    generateKMaps();
-  };
 
   return (
     <div className="space-y-6">
@@ -62,14 +57,6 @@ export const KMapViewerInteractive: React.FC = () => {
               Group minterms to simplify boolean expressions
             </p>
           </div>
-          <button
-            onClick={handleRegenerateKMap}
-            className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-tech font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 glow-box-emerald"
-            title="Regenerate K-maps from truth table"
-          >
-            <RefreshCw size={18} />
-            Regenerate
-          </button>
         </div>
 
         <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 flex items-start gap-3">

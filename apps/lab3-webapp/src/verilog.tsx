@@ -12,6 +12,7 @@ export const VerilogExporter: React.FC = () => {
   const validationResults = useLabStore((s) => s.validationResults);
   const [pastedVerilog, setPastedVerilog] = useState('');
   const [modulePrefix, setModulePrefix] = useState('ssd_driver');
+  const [exportSuccess, setExportSuccess] = useState(false);
 
   const generateVerilogCaseStatement = (): string => {
     let code = `module ${modulePrefix}(
@@ -186,6 +187,10 @@ Timestamp: ${new Date().toLocaleString()}
     a.download = `lab3-submission-${new Date().getTime()}.zip`;
     a.click();
     URL.revokeObjectURL(url);
+    
+    // Show success feedback
+    setExportSuccess(true);
+    setTimeout(() => setExportSuccess(false), 3000);
   };
 
   const copyToClipboard = (text: string) => {
@@ -294,6 +299,12 @@ Timestamp: ${new Date().toLocaleString()}
           <Download size={20} />
           Download ZIP Archive
         </button>
+        {exportSuccess && (
+          <div className="mt-4 p-3 bg-emerald-900/30 border border-emerald-500/50 rounded-lg text-emerald-300 text-sm flex items-center gap-2">
+            <Download size={16} />
+            <span>ZIP file exported successfully!</span>
+          </div>
+        )}
       </div>
 
       {/* PDF Report Generator */}

@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import React, { useState } from 'react';
 import { useLabStore } from './store/labStore';
-import { ChevronDown, RefreshCw } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 const SEGMENT_NAMES = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
 const GRAY_CODE_LABELS = {
     rows: ['00', '01', '11', '10'], // B3B2
@@ -13,13 +13,9 @@ function getPositionToGrayCode(row, col) {
 export const KMapViewer = () => {
     const [expandedSegment, setExpandedSegment] = useState('a');
     const kMaps = useLabStore((s) => s.doc.kMaps);
-    const generateKMaps = useLabStore((s) => s.generateKMaps);
     const setBooleanExpr = useLabStore((s) => s.setBooleanExpr);
     const booleanExpressions = useLabStore((s) => s.doc.expressions);
-    const handleRegenerateKMap = () => {
-        generateKMaps();
-    };
-    return (_jsxs("div", { className: "bg-gradient-to-br from-slate-900 to-slate-800 text-slate-50 rounded-lg p-6 space-y-4", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsx("h3", { className: "text-xl font-bold text-emerald-400", children: "Karnaugh Maps" }), _jsxs("button", { onClick: handleRegenerateKMap, className: "px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded flex items-center gap-2 text-sm transition-colors", title: "Regenerate K-maps from truth table", children: [_jsx(RefreshCw, { size: 16 }), "Regenerate"] })] }), _jsx("div", { className: "space-y-3", children: SEGMENT_NAMES.map((segName) => (_jsx(KMapSegment, { segmentName: segName, isExpanded: expandedSegment === segName, onToggle: () => setExpandedSegment(expandedSegment === segName ? '' : segName), kmap: kMaps[segName], expr: booleanExpressions[segName], onExprChange: (newExpr) => setBooleanExpr(segName, newExpr) }, segName))) })] }));
+    return (_jsxs("div", { className: "bg-gradient-to-br from-slate-900 to-slate-800 text-slate-50 rounded-lg p-6 space-y-4", children: [_jsx("div", { className: "flex items-center justify-between", children: _jsx("h3", { className: "text-xl font-bold text-emerald-400", children: "Karnaugh Maps" }) }), _jsx("div", { className: "space-y-3", children: SEGMENT_NAMES.map((segName) => (_jsx(KMapSegment, { segmentName: segName, isExpanded: expandedSegment === segName, onToggle: () => setExpandedSegment(expandedSegment === segName ? '' : segName), kmap: kMaps[segName], expr: booleanExpressions[segName], onExprChange: (newExpr) => setBooleanExpr(segName, newExpr) }, segName))) })] }));
 };
 const KMapSegment = ({ segmentName, isExpanded, onToggle, kmap, expr, onExprChange }) => {
     return (_jsxs("div", { className: "bg-slate-800 rounded border border-slate-700 overflow-hidden", children: [_jsxs("button", { onClick: onToggle, className: "w-full px-4 py-3 flex items-center justify-between hover:bg-slate-700 transition-colors font-semibold", children: [_jsxs("span", { className: "text-lg", children: ["Segment ", segmentName.toUpperCase()] }), _jsx(ChevronDown, { size: 20, style: { transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' } })] }), isExpanded && (_jsxs("div", { className: "border-t border-slate-700 p-4 space-y-4", children: [_jsxs("div", { className: "inline-flex gap-4", children: [_jsxs("div", { children: [_jsx("div", { className: "text-xs text-slate-400 ml-6 mb-1", children: "B1 B0" }), _jsxs("div", { className: "grid gap-1", style: { gridTemplateColumns: 'auto repeat(4, 1fr)' }, children: [_jsx("div", {}), GRAY_CODE_LABELS.cols.map((col) => (_jsx("div", { className: "text-xs text-slate-400 text-center font-mono w-8", children: col }, col))), GRAY_CODE_LABELS.rows.map((row, rowIdx) => (_jsxs(React.Fragment, { children: [_jsxs("div", { className: "text-xs text-slate-400 text-right font-mono w-6", children: ["B3B2 ", row] }), GRAY_CODE_LABELS.cols.map((col, colIdx) => {
