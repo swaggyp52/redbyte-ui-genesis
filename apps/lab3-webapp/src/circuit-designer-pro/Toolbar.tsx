@@ -83,7 +83,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           onClick={onDelete}
           disabled={selectedNodeCount === 0}
           className="px-3 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-100 rounded text-sm flex items-center gap-1 transition"
-          title="Delete selected node(s)"
+          title="Delete selected node(s) — Press Delete"
         >
           <Trash2 size={16} />
           Delete
@@ -92,7 +92,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           onClick={onUndo}
           disabled={!canUndo}
           className="px-3 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-100 rounded text-sm flex items-center gap-1 transition"
-          title="Undo"
+          title="Undo — Ctrl+Z"
         >
           <Undo size={16} />
           Undo
@@ -101,7 +101,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           onClick={onRedo}
           disabled={!canRedo}
           className="px-3 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-100 rounded text-sm flex items-center gap-1 transition"
-          title="Redo"
+          title="Redo — Ctrl+Y or Ctrl+Shift+Z"
         >
           <Redo size={16} />
           Redo

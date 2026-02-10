@@ -53,6 +53,33 @@ export const CircuitDesignerPro = () => {
             updateCircuitDesigner(circuit);
         }
     }, [circuit, doc, updateCircuitDesigner]);
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // Ctrl+Z or Cmd+Z for undo
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                handleUndo();
+            }
+            // Ctrl+Y or Cmd+Y for redo (or Ctrl+Shift+Z)
+            else if (((e.ctrlKey || e.metaKey) && e.key === 'y') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z')) {
+                e.preventDefault();
+                handleRedo();
+            }
+            // Delete key for delete selected
+            else if (e.key === 'Delete' && selectedNodeIds.size > 0) {
+                e.preventDefault();
+                handleDeleteSelected();
+            }
+            // Escape key to deselect
+            else if (e.key === 'Escape') {
+                e.preventDefault();
+                setSelectedNodeIds(new Set());
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [historyIndex, history, selectedNodeIds]);
     // Handlers
     const handleAddNode = (gateType) => {
         // Add at center of viewport
