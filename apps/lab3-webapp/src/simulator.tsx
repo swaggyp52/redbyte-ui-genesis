@@ -26,10 +26,10 @@ export const Simulator: React.FC = () => {
   ];
 
   const switches = [
-    ((simulationInput >> 3) & 1) === 1,
-    ((simulationInput >> 2) & 1) === 1,
-    ((simulationInput >> 1) & 1) === 1,
     ((simulationInput >> 0) & 1) === 1,
+    ((simulationInput >> 1) & 1) === 1,
+    ((simulationInput >> 2) & 1) === 1,
+    ((simulationInput >> 3) & 1) === 1,
   ];
 
   const handleSwitchToggle = (bit: number) => {
