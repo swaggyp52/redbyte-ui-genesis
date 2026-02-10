@@ -11,6 +11,7 @@ import { useLabStore } from '../store/labStore';
  */
 export const ExportPanel = ({ className = '', onExportStart, onExportComplete, }) => {
     const doc = useLabStore((s) => s.doc);
+    const setLastExportAt = useLabStore((s) => s.setLastExportAt);
     const [isExporting, setIsExporting] = useState(null);
     const [lastExportTime, setLastExportTime] = useState(null);
     const circuitCanvasRef = useRef(null);
@@ -58,6 +59,7 @@ export const ExportPanel = ({ className = '', onExportStart, onExportComplete, }
                 }
             }
             setLastExportTime(Date.now());
+            setLastExportAt(Date.now());
             onExportComplete?.(format, true);
         }
         catch (error) {

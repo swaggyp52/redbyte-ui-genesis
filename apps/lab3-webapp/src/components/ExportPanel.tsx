@@ -33,6 +33,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
   onExportComplete,
 }) => {
   const doc = useLabStore((s) => s.doc);
+  const setLastExportAt = useLabStore((s) => s.setLastExportAt);
   const [isExporting, setIsExporting] = useState<ExportFormat | null>(null);
   const [lastExportTime, setLastExportTime] = useState<number | null>(null);
   const circuitCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -88,6 +89,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
       }
 
       setLastExportTime(Date.now());
+      setLastExportAt(Date.now());
       onExportComplete?.(format, true);
     } catch (error) {
       console.error(`Export failed for format ${format}:`, error);

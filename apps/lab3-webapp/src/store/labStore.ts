@@ -48,6 +48,7 @@ export type LabStoreState = {
   // === Transient simulation results ===
   validationResults: ValidationResult[];
   waveformHistory: WaveformSample[];
+  lastExportAt?: number;
 
   // ─── Core mutation ───
   updateDoc: (mutator: (doc: LabDocV2) => LabDocV2, eventType?: string, eventPayload?: unknown) => void;
@@ -68,6 +69,7 @@ export type LabStoreState = {
   resetSimulation: () => void;
   runAllVectors: () => void;
   evalSeg: (input: number) => number;
+  setLastExportAt: (timestamp?: number) => void;
 
   // ─── Verilog ───
   setVerilogCode: (code: string) => void;
@@ -111,6 +113,7 @@ export interface SerializedSnapshot {
     simulationInput: number;
     implMode: 'table' | 'verilogCase' | 'boolExpr';
     verilogCode: string;
+    lastExportAt?: number;
   };
 }
 
@@ -212,7 +215,7 @@ export function serializeStoreSnapshot(
   windows: WindowState[],
   events: Event[],
   eventSeq: number,
-  ui?: { simulationInput: number; implMode: string; verilogCode: string }
+  ui?: { simulationInput: number; implMode: string; verilogCode: string; lastExportAt?: number }
 ): string {
   const snapshot: SerializedSnapshot = {
     schemaVersion: 1,
@@ -274,6 +277,7 @@ const useLabStore = create<LabStoreState>((set, get) => ({
   currentStep: 0,
   validationResults: [],
   waveformHistory: [],
+  lastExportAt: undefined,
   hoveredInputRow: undefined,
   hoveredKmapCell: undefined,
 
@@ -424,17 +428,37 @@ const useLabStore = create<LabStoreState>((set, get) => ({
     get().emitEvent('sim.reset', {});
   },
 
+  setLastExportAt: (timestamp) => {
+    set({ lastExportAt: timestamp ?? Date.now() });
+  },
+
   runAllVectors: () => {
     const state = get();
     const results: ValidationResult[] = [];
     const waveforms: WaveformSample[] = [];
+    const segNames = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
 
     for (let i = 0; i < 16; i++) {
       const actual = state.evalSeg(i);
       const row = state.doc.truthTable[i];
-      const expected = row ? segToNumber(row.seg as [0|1,0|1,0|1,0|1,0|1,0|1,0|1]) : 0b1111111;
+      const expectedSeg = i < 10
+        ? (DIGIT_PATTERNS[i] as [0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1])
+        : (row?.seg ?? [1, 1, 1, 1, 1, 1, 1]);
+      const expected = segToNumber(expectedSeg as [0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1]);
       const pass = i < 10 ? actual === expected : true;
-      results.push({ input: i, expected, actual, pass });
+      const actualSeg: [0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1] = [
+        ((actual >> 0) & 1) as 0 | 1,
+        ((actual >> 1) & 1) as 0 | 1,
+        ((actual >> 2) & 1) as 0 | 1,
+        ((actual >> 3) & 1) as 0 | 1,
+        ((actual >> 4) & 1) as 0 | 1,
+        ((actual >> 5) & 1) as 0 | 1,
+        ((actual >> 6) & 1) as 0 | 1,
+      ];
+      const mismatchSegments = i < 10
+        ? segNames.filter((name, idx) => expectedSeg[idx] !== actualSeg[idx])
+        : [];
+      results.push({ input: i, expected, actual, pass, expectedSeg, actualSeg, mismatchSegments });
 
       waveforms.push({
         time: i,
@@ -612,6 +636,7 @@ const useLabStore = create<LabStoreState>((set, get) => ({
       simulationInput: ui?.simulationInput ?? 0,
       implMode: ui?.implMode ?? 'table',
       verilogCode: ui?.verilogCode ?? '',
+      lastExportAt: ui?.lastExportAt,
     });
 
     get().emitEvent('session.hydrate', { docId: doc.meta.id, windowCount: snapshot.windows.length });
@@ -626,7 +651,12 @@ const useLabStore = create<LabStoreState>((set, get) => ({
       state.windows,
       state.events,
       state.eventSeq,
-      { simulationInput: state.simulationInput, implMode: state.implMode, verilogCode: state.verilogCode }
+      {
+        simulationInput: state.simulationInput,
+        implMode: state.implMode,
+        verilogCode: state.verilogCode,
+        lastExportAt: state.lastExportAt,
+      }
     );
   },
 
@@ -664,6 +694,7 @@ const useLabStore = create<LabStoreState>((set, get) => ({
       activeWindowId: undefined,
       validationResults: [],
       waveformHistory: [],
+      lastExportAt: undefined,
     });
   },
 }));

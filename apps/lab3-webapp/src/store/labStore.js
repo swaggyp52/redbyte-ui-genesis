@@ -166,6 +166,7 @@ const useLabStore = create((set, get) => ({
     currentStep: 0,
     validationResults: [],
     waveformHistory: [],
+    lastExportAt: undefined,
     hoveredInputRow: undefined,
     hoveredKmapCell: undefined,
     // ─── Core mutation: ALL doc changes flow through here ───
@@ -283,16 +284,35 @@ const useLabStore = create((set, get) => ({
         set({ waveformHistory: [], currentStep: 0 });
         get().emitEvent('sim.reset', {});
     },
+    setLastExportAt: (timestamp) => {
+        set({ lastExportAt: timestamp ?? Date.now() });
+    },
     runAllVectors: () => {
         const state = get();
         const results = [];
         const waveforms = [];
+        const segNames = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
         for (let i = 0; i < 16; i++) {
             const actual = state.evalSeg(i);
             const row = state.doc.truthTable[i];
-            const expected = row ? segToNumber(row.seg) : 0b1111111;
+            const expectedSeg = i < 10
+                ? DIGIT_PATTERNS[i]
+                : (row?.seg ?? [1, 1, 1, 1, 1, 1, 1]);
+            const expected = segToNumber(expectedSeg);
             const pass = i < 10 ? actual === expected : true;
-            results.push({ input: i, expected, actual, pass });
+            const actualSeg = [
+                ((actual >> 0) & 1),
+                ((actual >> 1) & 1),
+                ((actual >> 2) & 1),
+                ((actual >> 3) & 1),
+                ((actual >> 4) & 1),
+                ((actual >> 5) & 1),
+                ((actual >> 6) & 1),
+            ];
+            const mismatchSegments = i < 10
+                ? segNames.filter((name, idx) => expectedSeg[idx] !== actualSeg[idx])
+                : [];
+            results.push({ input: i, expected, actual, pass, expectedSeg, actualSeg, mismatchSegments });
             waveforms.push({
                 time: i,
                 inputs: [((i >> 3) & 1), ((i >> 2) & 1), ((i >> 1) & 1), (i & 1)],
@@ -447,13 +467,19 @@ const useLabStore = create((set, get) => ({
             simulationInput: ui?.simulationInput ?? 0,
             implMode: ui?.implMode ?? 'table',
             verilogCode: ui?.verilogCode ?? '',
+            lastExportAt: ui?.lastExportAt,
         });
         get().emitEvent('session.hydrate', { docId: doc.meta.id, windowCount: snapshot.windows.length });
     },
     discardRecovery: () => set({ events: [], eventSeq: 0 }),
     exportJSON: () => {
         const state = get();
-        return serializeStoreSnapshot(state.doc, state.windows, state.events, state.eventSeq, { simulationInput: state.simulationInput, implMode: state.implMode, verilogCode: state.verilogCode });
+        return serializeStoreSnapshot(state.doc, state.windows, state.events, state.eventSeq, {
+            simulationInput: state.simulationInput,
+            implMode: state.implMode,
+            verilogCode: state.verilogCode,
+            lastExportAt: state.lastExportAt,
+        });
     },
     importJSON: (json) => {
         try {
@@ -489,6 +515,7 @@ const useLabStore = create((set, get) => ({
             activeWindowId: undefined,
             validationResults: [],
             waveformHistory: [],
+            lastExportAt: undefined,
         });
     },
 }));

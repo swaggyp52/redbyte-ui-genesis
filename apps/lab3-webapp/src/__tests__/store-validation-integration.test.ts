@@ -16,6 +16,19 @@ describe('Store with Validation Integration', () => {
     expect(validation).toBeDefined();
   });
 
+  it('should flag incorrect truth table rows during runAllVectors()', () => {
+    const store = useLabStore.getState();
+
+    // Force a wrong entry for digit 0
+    store.setTableRow(0, { seg: [1, 1, 1, 1, 1, 1, 1] });
+
+    store.runAllVectors();
+    const result0 = store.validationResults.find((r) => r.input === 0);
+
+    expect(result0).toBeDefined();
+    expect(result0?.pass).toBe(false);
+  });
+
   it('should trigger validation on segment change', () => {
     const store = useLabStore.getState();
     const initialErrorCount = ((store.doc.results as any)?.validation?.allErrors || []).length;

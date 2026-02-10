@@ -5367,6 +5367,13 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-02-10 (Lab3 Validation + Progress Checklist)
+- Added per-vector validation detail (expected/actual segments + mismatches) for required digits 0-9 and simulator failure list UI.
+- Refactored progress tracker into clickable checklist with active/next highlighting; export step now optional and tracked via last export timestamp.
+- Persisted export timestamp in lab store snapshots and wired ExportPanel to update it.
+- Added tests for progress checklist status and runAllVectors mismatch handling.
+- Files modified: apps/lab3-webapp/src/store/labStore.ts, apps/lab3-webapp/src/store/labStore.js, apps/lab3-webapp/src/types.ts, apps/lab3-webapp/src/simulator.tsx, apps/lab3-webapp/src/simulator.js, apps/lab3-webapp/src/progress-tracker.tsx, apps/lab3-webapp/src/progress-tracker.js, apps/lab3-webapp/src/App.tsx, apps/lab3-webapp/src/App.js, apps/lab3-webapp/src/components/ExportPanel.tsx, apps/lab3-webapp/src/components/ExportPanel.js, apps/lab3-webapp/src/__tests__/store-validation-integration.test.ts, apps/lab3-webapp/src/__tests__/progress-checklist.test.ts, AI_STATE.md.
+
 ### 2026-02-10 (Lab3 Production Deployment + UX Hardening)
 - **Fixed Cloudflare Pages deployment**: Root `wrangler.toml` configured to build and deploy ONLY lab3-webapp (not manual-site information page).
 - **Updated GitHub Actions workflow**: `deploy-cloudflare.yml` now explicitly builds `@redbyte/lab3-webapp` with `productionBranch: main` for production routing.

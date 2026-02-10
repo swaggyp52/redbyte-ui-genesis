@@ -12,6 +12,9 @@ export interface ValidationResult {
   expected: number;
   actual: number;
   pass: boolean;
+  expectedSeg?: [0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1];
+  actualSeg?: [0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1];
+  mismatchSegments?: string[];
 }
 
 export interface KMapGroup {

@@ -13,6 +13,7 @@ export const Simulator: React.FC = () => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [autoRunning, setAutoRunning] = useState(false);
   const [multiDigitMode, setMultiDigitMode] = useState(false);
+  const [showFailures, setShowFailures] = useState(false);
 
   const currentOutput = evalSeg(simulationInput);
   const currentSeg: [0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1] = [
@@ -64,9 +65,11 @@ export const Simulator: React.FC = () => {
     }
   }, [autoRunning, setSimulationInput, simulationInput]);
 
-  const passCount = validationResults.filter((r) => r.pass).length;
+  const requiredResults = validationResults.filter((r) => r.input < 10);
+  const passCount = requiredResults.filter((r) => r.pass).length;
+  const failedResults = requiredResults.filter((r) => !r.pass);
   const hasRun = validationResults.length > 0;
-  const allPassed = hasRun && passCount === validationResults.length;
+  const allPassed = hasRun && requiredResults.length > 0 && passCount === requiredResults.length;
 
   return (
     <div className="space-y-6">
@@ -178,16 +181,16 @@ export const Simulator: React.FC = () => {
             ? 'bg-emerald-950/30 border-emerald-500/30' 
             : 'bg-red-950/30 border-red-500/30'
         }`}>
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center justify-between gap-3 mb-4">
             {allPassed ? (
               <>
                 <CheckCircle2 size={24} className="text-emerald-400" />
                 <div>
                   <h3 className="font-tech-display text-lg font-bold text-emerald-400">
-                    All Tests Passed! ✓
+                    ✓ {passCount}/{requiredResults.length} vectors correct
                   </h3>
                   <p className="font-digital text-sm text-emerald-300">
-                    Your circuit correctly implements the seven-segment decoder
+                    All required vectors (0-9) are correct
                   </p>
                 </div>
               </>
@@ -196,15 +199,52 @@ export const Simulator: React.FC = () => {
                 <AlertCircle size={24} className="text-red-400" />
                 <div>
                   <h3 className="font-tech-display text-lg font-bold text-red-400">
-                    {passCount}/{validationResults.length} Tests Passed
+                    ✓ {passCount}/{requiredResults.length} vectors correct — {failedResults.length} failed
                   </h3>
                   <p className="font-digital text-sm text-red-300">
-                    Some inputs produce incorrect segment patterns
+                    Click to view failed cases
                   </p>
                 </div>
               </>
             )}
+            {!allPassed && failedResults.length > 0 && (
+              <button
+                onClick={() => setShowFailures((prev) => !prev)}
+                className="px-3 py-1.5 rounded-md text-xs font-tech font-semibold bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 transition-all"
+              >
+                {showFailures ? 'Hide failures' : 'View failures'}
+              </button>
+            )}
           </div>
+
+          {failedResults.length > 0 && showFailures && (
+            <div className="mb-4 space-y-2">
+              {failedResults.map((r) => {
+                const inputBits = r.input.toString(2).padStart(4, '0');
+                const expectedBits = r.expected.toString(2).padStart(7, '0');
+                const actualBits = r.actual.toString(2).padStart(7, '0');
+                const mismatch = r.mismatchSegments?.length
+                  ? r.mismatchSegments.join(', ')
+                  : 'Unknown';
+                return (
+                  <div
+                    key={r.input}
+                    className="bg-red-950/40 border border-red-500/30 rounded-lg px-4 py-3"
+                  >
+                    <div className="font-tech text-sm text-red-300">
+                      ❌ Input: {inputBits}
+                    </div>
+                    <div className="font-digital text-xs text-red-200/80 mt-1">
+                      Expected: {expectedBits} | Got: {actualBits}
+                    </div>
+                    <div className="font-digital text-xs text-red-200/80 mt-1">
+                      Mismatch: {mismatch}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Results Grid */}
           <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">

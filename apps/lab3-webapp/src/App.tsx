@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 // Static imports (always needed)
-import { ProgressTracker, useLabProgress } from './progress-tracker';
+import { ProgressTracker, useLabProgress, type ProgressStep } from './progress-tracker';
 import { Settings, Download, Upload, Zap, BookOpen, Table, Target, PlayCircle, FileCode, Cpu, AlertCircle } from 'lucide-react';
 import { useLabStore } from './store/labStore';
 import { loadSnapshot, initPersistence } from './store/persistence';
@@ -48,8 +48,25 @@ export const App: React.FC = () => {
   const reset = useLabStore((s) => s.reset);
   const exportJSON = useLabStore((s) => s.exportJSON);
   const importJSON = useLabStore((s) => s.importJSON);
-  const progressSteps = useLabProgress();
+  const { steps: progressSteps, nextStepId } = useLabProgress();
   const openWindow = useLabStore((s) => s.openWindow);
+    const activeStepId = tab === 'table'
+      ? 'truth-table'
+      : tab === 'kmaps'
+        ? 'kmaps'
+        : tab === 'simulator'
+          ? 'validation'
+          : tab === 'verilog'
+            ? 'verilog'
+            : tab === 'export'
+              ? 'export'
+              : undefined;
+
+    const handleStepClick = (step: ProgressStep) => {
+      if (!step.tabId) return;
+      setTab(step.tabId as Tab);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
   const windows = useLabStore((s) => s.windows);
   const doc = useLabStore((s) => s.doc);
 
@@ -483,7 +500,12 @@ export const App: React.FC = () => {
 
           {/* Sidebar: Progress Tracker */}
           <aside className="lg:sticky lg:top-24 h-fit">
-            <ProgressTracker steps={progressSteps} />
+            <ProgressTracker
+              steps={progressSteps}
+              activeStepId={activeStepId}
+              nextStepId={nextStepId}
+              onStepClick={handleStepClick}
+            />
           </aside>
         </div>
       </main>

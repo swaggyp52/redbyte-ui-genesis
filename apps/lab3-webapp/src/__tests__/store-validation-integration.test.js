@@ -53,4 +53,12 @@ describe('Store with Validation Integration', () => {
         expect(store.doc.truthTable).toHaveLength(16);
         expect(store.doc.truthTable.every((r) => r.seg.length === 7)).toBe(true);
     });
+    it('should flag incorrect truth table rows during runAllVectors()', () => {
+        const store = useLabStore.getState();
+        store.setTableRow(0, { seg: [1, 1, 1, 1, 1, 1, 1] });
+        store.runAllVectors();
+        const result0 = store.validationResults.find(r => r.input === 0);
+        expect(result0).toBeDefined();
+        expect(result0?.pass).toBe(false);
+    });
 });
