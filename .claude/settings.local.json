@@ -127,7 +127,8 @@
       "Bash(Get-ChildItem -Path \"apps/playground/dist/assets/*.js\")",
       "Bash(Select-String -Pattern \"validateCircuitShape\")",
       "Bash(Select-Object -First 3)",
-      "Bash(del:*)"
+      "Bash(del:*)",
+      "Bash(if not exist \"c:\\\\Users\\\\conno\\\\redbyte-ui\\\\docs\\\\plans\" mkdir \"c:\\\\Users\\\\conno\\\\redbyte-ui\\\\docs\\\\plans\")"
     ],
     "deny": [],
     "ask": []

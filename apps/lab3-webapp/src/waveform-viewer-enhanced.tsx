@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useLabStore } from './store';
+import { useLabStore } from './store/labStore';
 import { Play, Pause, RotateCcw, ZoomIn, ZoomOut, Maximize2, Activity } from 'lucide-react';
 
 interface WaveformSample {

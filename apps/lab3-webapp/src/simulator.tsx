@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useLabStore } from './store';
+import { useLabStore } from './store/labStore';
 import { BasysBoard } from './basys-board';
 import { BasysBoardMulti } from './basys-board-multi';
 import { Play, Pause, SkipForward, RotateCcw, CheckCircle2, AlertCircle, LayoutGrid } from 'lucide-react';
-import useNewLabStore from './store/labStore';
 
 export const Simulator: React.FC = () => {
   const simulationInput = useLabStore((s) => s.simulationInput);
@@ -11,8 +10,6 @@ export const Simulator: React.FC = () => {
   const runAllVectors = useLabStore((s) => s.runAllVectors);
   const evalSeg = useLabStore((s) => s.evalSeg);
   const validationResults = useLabStore((s) => s.validationResults);
-  const emitEvent = useNewLabStore((s) => s.emitEvent);
-  
   const [isAnimating, setIsAnimating] = useState(false);
   const [autoRunning, setAutoRunning] = useState(false);
   const [multiDigitMode, setMultiDigitMode] = useState(false);
@@ -41,25 +38,6 @@ export const Simulator: React.FC = () => {
       ? simulationInput & ~(1 << bit) 
       : simulationInput | (1 << bit);
     setSimulationInput(newVal);
-    
-    // Emit sim.vectorRun event
-    const newOutput = evalSeg(newVal);
-    emitEvent('sim.vectorRun', {
-      vectorIndex: newVal,
-      results: {
-        output: newOutput,
-        segments: [
-          ((newOutput >> 0) & 1),
-          ((newOutput >> 1) & 1),
-          ((newOutput >> 2) & 1),
-          ((newOutput >> 3) & 1),
-          ((newOutput >> 4) & 1),
-          ((newOutput >> 5) & 1),
-          ((newOutput >> 6) & 1),
-        ],
-      },
-    });
-    
     setTimeout(() => setIsAnimating(false), 200);
   };
 
@@ -67,25 +45,6 @@ export const Simulator: React.FC = () => {
     setIsAnimating(true);
     const nextVal = (simulationInput + 1) % 16;
     setSimulationInput(nextVal);
-    
-    // Emit sim.vectorRun event
-    const newOutput = evalSeg(nextVal);
-    emitEvent('sim.vectorRun', {
-      vectorIndex: nextVal,
-      results: {
-        output: newOutput,
-        segments: [
-          ((newOutput >> 0) & 1),
-          ((newOutput >> 1) & 1),
-          ((newOutput >> 2) & 1),
-          ((newOutput >> 3) & 1),
-          ((newOutput >> 4) & 1),
-          ((newOutput >> 5) & 1),
-          ((newOutput >> 6) & 1),
-        ],
-      },
-    });
-    
     setTimeout(() => setIsAnimating(false), 200);
   };
 

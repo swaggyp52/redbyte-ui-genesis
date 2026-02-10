@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useLabStore } from './store';
+import { useLabStore } from './store/labStore';
 import { Play, Pause } from 'lucide-react';
 
 export const WaveformViewer: React.FC = () => {

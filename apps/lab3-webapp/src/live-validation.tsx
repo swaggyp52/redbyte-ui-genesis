@@ -1,10 +1,10 @@
 import React from 'react';
-import { useLabStore } from './store';
+import { useLabStore } from './store/labStore';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export const LiveValidation: React.FC = () => {
-  const validationErrors = useLabStore((s) => s.validationErrors);
-  const booleanExpressions = useLabStore((s) => s.booleanExpressions);
+  const validationErrors = useLabStore((s) => (s.doc.results as any)?.validationErrors || {});
+  const booleanExpressions = useLabStore((s) => s.doc.expressions);
 
   const SEGMENT_NAMES = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
   const hasErrors = Object.keys(validationErrors).length > 0;

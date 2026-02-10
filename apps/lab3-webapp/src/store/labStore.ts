@@ -34,6 +34,10 @@ export type LabStoreState = {
   implMode: 'table' | 'verilogCase' | 'boolExpr';
   verilogCode: string;
 
+  // === Transient simulation state ===
+  simulationMode: 'manual' | 'step';
+  currentStep: number;
+
   // === Transient simulation results ===
   validationResults: ValidationResult[];
   waveformHistory: WaveformSample[];

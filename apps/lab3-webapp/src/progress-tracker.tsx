@@ -104,8 +104,8 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({ steps, classNa
 
 // Hook to calculate progress
 export function useLabProgress() {
-  const truthTable = useLabStore((s) => s.truthTable);
-  const kMaps = useLabStore((s) => s.kMaps);
+  const truthTable = useLabStore((s) => s.doc.truthTable);
+  const kMaps = useLabStore((s) => s.doc.kMaps);
   const validationResults = useLabStore((s) => s.validationResults);
   const verilogCode = useLabStore((s) => s.verilogCode);
 
@@ -155,4 +155,4 @@ export function useLabProgress() {
 }
 
 // Import useLabStore at top of file
-import { useLabStore } from './store';
+import { useLabStore } from './store/labStore';

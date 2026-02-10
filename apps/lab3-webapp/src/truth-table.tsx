@@ -1,15 +1,13 @@
 import React from 'react';
-import { useLabStore } from './store';
+import { useLabStore } from './store/labStore';
 import { SegmentDisplayEnhanced } from './basys-board';
 import { Zap, RefreshCw, Info } from 'lucide-react';
-import useNewLabStore from './store/labStore';
 
 export const TruthTableEditor: React.FC = () => {
-  const truthTable = useLabStore((s) => s.truthTable);
+  const truthTable = useLabStore((s) => s.doc.truthTable);
   const setTableRow = useLabStore((s) => s.setTableRow);
   const toggleDontCare = useLabStore((s) => s.toggleDontCare);
   const fillStandardDigits = useLabStore((s) => s.fillStandardDigits);
-  const emitEvent = useNewLabStore((s) => s.emitEvent);
   const [selectedRow, setSelectedRow] = React.useState(0);
 
   const selectedSeg = truthTable[selectedRow]?.seg || [1, 1, 1, 1, 1, 1, 1];
@@ -19,14 +17,6 @@ export const TruthTableEditor: React.FC = () => {
     const newSeg = [...row.seg] as [0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1];
     newSeg[segIndex] = newSeg[segIndex] === 0 ? 1 : 0;
     setTableRow(selectedRow, { seg: newSeg });
-    
-    // Emit truthTable.updated event
-    const segLetters = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
-    emitEvent('truthTable.updated', {
-      row: selectedRow,
-      cell: segLetters[segIndex],
-      value: newSeg[segIndex],
-    });
   };
 
   return (

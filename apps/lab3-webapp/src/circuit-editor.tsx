@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { useLabStore } from './store';
+import { useLabStore } from './store/labStore';
 import { Zap, Trash2, Save, Undo, Redo, Plus, Play, Square } from 'lucide-react';
 
 // Gate types
