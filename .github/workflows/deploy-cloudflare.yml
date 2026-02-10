@@ -1,8 +1,7 @@
 # Cloudflare Pages Deployment - Lab 3 Web App
 #
 # Deploys apps/lab3-webapp to redbyteapps.dev when:
-# - Manually triggered via workflow_dispatch, OR
-# - Pushed to main AND secrets are configured
+# - Pushed to main branch
 # Uses Cloudflare Pages Direct Upload API for full control over build process.
 
 name: Deploy to Cloudflare Pages
@@ -38,13 +37,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build Lab 3 Web App
+      - name: Build Lab 3 Web App ONLY
         run: pnpm --filter @redbyte/lab3-webapp build
         env:
           VITE_APP_ENV: production
           GIT_SHA: ${{ github.sha }}
 
-      - name: Publish to Cloudflare Pages
+      - name: Deploy to Cloudflare Pages (Production)
         uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -53,3 +52,4 @@ jobs:
           directory: apps/lab3-webapp/dist
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: main
+          productionBranch: main
