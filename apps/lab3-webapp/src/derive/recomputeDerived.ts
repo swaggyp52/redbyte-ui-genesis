@@ -1,5 +1,5 @@
 import type { LabDocV2 } from '../plugins/LabDoc';
-import type { KMapState } from '../types';
+import type { KMapState, TruthTableRow as StrictRow } from '../types';
 import { generateKMapGrid, minimizeBooleanExpr, evaluateBoolExpr } from '../kmap';
 
 const SEGMENT_NAMES = ['a', 'b', 'c', 'd', 'e', 'f', 'g'] as const;
@@ -17,7 +17,8 @@ export function recomputeDerived(doc: LabDocV2): Pick<LabDocV2, 'kMaps' | 'expre
 
   for (let i = 0; i < SEGMENT_NAMES.length; i++) {
     const segName = SEGMENT_NAMES[i];
-    const grid = generateKMapGrid(doc.truthTable, i as 0 | 1 | 2 | 3 | 4 | 5 | 6);
+    // Cast: LabDoc.TruthTableRow uses `number`, kmap.ts expects `0|1`. Values are always 0|1 at runtime.
+    const grid = generateKMapGrid(doc.truthTable as unknown as StrictRow[], i as 0 | 1 | 2 | 3 | 4 | 5 | 6);
     const simplifiedExpr = minimizeBooleanExpr(grid);
     const minTerms = grid
       .map((val, idx) => (val === 1 ? idx : -1))

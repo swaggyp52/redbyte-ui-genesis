@@ -57,7 +57,8 @@ export function initPersistence(store: any): void {
       state.doc,
       state.windows,
       state.events,
-      state.eventSeq
+      state.eventSeq,
+      { simulationInput: state.simulationInput ?? 0, implMode: state.implMode ?? 'table', verilogCode: state.verilogCode ?? '' }
     );
     saveSnapshotDebounced(snapshot);
   });
