@@ -166,6 +166,8 @@ const useLabStore = create((set, get) => ({
     currentStep: 0,
     validationResults: [],
     waveformHistory: [],
+    hoveredInputRow: undefined,
+    hoveredKmapCell: undefined,
     // ─── Core mutation: ALL doc changes flow through here ───
     updateDoc: (mutator, eventType, eventPayload) => {
         const state = get();
@@ -230,6 +232,13 @@ const useLabStore = create((set, get) => ({
     setSimulationInput: (value) => {
         set({ simulationInput: value });
         get().emitEvent('sim.inputChange', { value });
+    },
+    // ─── Cross-view hover linking ───
+    setHoveredInputRow: (row) => {
+        set({ hoveredInputRow: row });
+    },
+    setHoveredKmapCell: (cell) => {
+        set({ hoveredKmapCell: cell });
     },
     setSimulationMode: (mode) => {
         const updates = { simulationMode: mode };

@@ -64,7 +64,7 @@ export const BasysBoardMulti = ({ switches, segments, onSwitchToggle, inputValue
                                     const isActive = !anodeControl[3 - digitIdx]; // Active-low anode
                                     return (_jsxs("div", { className: `transition-opacity duration-100 ${isActive ? 'opacity-100' : 'opacity-20'}`, style: {
                                             filter: isActive ? 'brightness(1)' : 'brightness(0.3)',
-                                        }, children: [_jsx(SegmentDisplayEnhanced, { segments: segs, size: "medium" }), _jsx("div", { className: "text-center mt-2", children: _jsxs("span", { className: "font-digital text-xs text-slate-500", children: ["AN", 3 - digitIdx] }) })] }, digitIdx));
+                                        }, children: [_jsx(SegmentDisplayEnhanced, { segments: segs, size: "medium", inputValue: digitIdx === 3 ? inputValue : -1 }), _jsx("div", { className: "text-center mt-2", children: _jsxs("span", { className: "font-digital text-xs text-slate-500", children: ["AN", 3 - digitIdx] }) })] }, digitIdx));
                                 }) }), _jsxs("div", { className: "mt-4 p-3 bg-slate-900/50 rounded-lg border border-slate-700", children: [_jsxs("div", { className: "flex items-center justify-between mb-2", children: [_jsx("span", { className: "font-digital text-xs text-slate-400", children: "Anode Select (Active-Low)" }), _jsxs("label", { className: "flex items-center gap-2", children: [_jsx("input", { type: "checkbox", checked: enableMultiplexing, onChange: (e) => {
                                                             // This would need to be passed as prop for external control
                                                             // For now it's controlled by component state

@@ -100,6 +100,8 @@ export const BasysBoard: React.FC<BasysBoardProps> = ({ switches, segments, onSw
 };
 
 // Enhanced Segment Display Component with Interactive Tooltips
+type SegmentKey = 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g';
+
 interface SegmentDisplayEnhancedProps {
   segments: [0|1, 0|1, 0|1, 0|1, 0|1, 0|1, 0|1];
   size?: 'small' | 'medium' | 'large';
@@ -107,8 +109,9 @@ interface SegmentDisplayEnhancedProps {
 }
 
 export const SegmentDisplayEnhanced: React.FC<SegmentDisplayEnhancedProps> = ({ segments, size = 'medium', inputValue = 0 }) => {
-  const [hoveredSegment, setHoveredSegment] = React.useState<string | null>(null);
+  const [hoveredSegment, setHoveredSegment] = React.useState<SegmentKey | null>(null);
   const [tooltipPos, setTooltipPos] = React.useState({ x: 0, y: 0 });
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
   
   const sizeMap = {
     small: { width: 60, height: 90, stroke: 6 },
@@ -120,7 +123,7 @@ export const SegmentDisplayEnhanced: React.FC<SegmentDisplayEnhancedProps> = ({ 
   const pad = stroke * 2;
 
   // Segment metadata: position for tooltip, label, and description
-  const segmentMetadata = {
+  const segmentMetadata: Record<SegmentKey, { label: SegmentKey; position: string; desc: string }> = {
     a: { label: 'a', position: 'top', desc: 'Top horizontal segment' },
     b: { label: 'b', position: 'top-right', desc: 'Top-right vertical segment' },
     c: { label: 'c', position: 'bottom-right', desc: 'Bottom-right vertical segment' },
@@ -131,7 +134,7 @@ export const SegmentDisplayEnhanced: React.FC<SegmentDisplayEnhancedProps> = ({ 
   };
 
   // SVG path definitions for each segment (active-low: 0 = lit)
-  const segmentPaths = {
+  const segmentPaths: Record<SegmentKey, string> = {
     a: `M${pad + 10},${pad} L${width - pad - 10},${pad} L${width - pad - 15},${pad + 8} L${pad + 15},${pad + 8}Z`,
     b: `M${width - pad},${pad + 12} L${width - pad},${height / 2 - 15} L${width - pad - 8},${height / 2 - 10} L${width - pad - 8},${pad + 17}Z`,
     c: `M${width - pad},${height / 2 + 15} L${width - pad},${height - pad - 12} L${width - pad - 8},${height - pad - 17} L${width - pad - 8},${height / 2 + 10}Z`,
@@ -141,19 +144,23 @@ export const SegmentDisplayEnhanced: React.FC<SegmentDisplayEnhancedProps> = ({ 
     g: `M${pad + 12},${height / 2} L${width - pad - 12},${height / 2} L${width - pad - 17},${height / 2 - 5} L${width - pad - 17},${height / 2 + 5} L${width - pad - 12},${height / 2 + 10} L${pad + 12},${height / 2 + 10} L${pad + 17},${height / 2 + 5} L${pad + 17},${height / 2 - 5}Z`,
   };
 
-  const segmentNames: (keyof typeof segmentPaths)[] = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+  const segmentNames: SegmentKey[] = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
   
   // Check if input is in don't-care range (10-15, or A-F in hex)
   const isDontCare = inputValue >= 10 && inputValue <= 15;
 
-  const handleSegmentHover = (name: string, e: React.MouseEvent) => {
+  const handleSegmentHover = (name: SegmentKey, e: React.MouseEvent<SVGGElement>) => {
     setHoveredSegment(name);
-    const rect = (e.currentTarget as SVGElement).getBoundingClientRect();
-    setTooltipPos({ x: rect.left, y: rect.top });
+    const containerRect = wrapperRef.current?.getBoundingClientRect();
+    if (!containerRect) return;
+    setTooltipPos({
+      x: e.clientX - containerRect.left,
+      y: e.clientY - containerRect.top,
+    });
   };
 
   return (
-    <div className="relative inline-block">
+    <div className="relative inline-block" ref={wrapperRef}>
       {/* Don't-Care Warning */}
       {isDontCare && (
         <div className="absolute inset-0 bg-slate-900/60 rounded-lg flex items-center justify-center z-20 backdrop-blur-sm">
@@ -226,8 +233,8 @@ export const SegmentDisplayEnhanced: React.FC<SegmentDisplayEnhancedProps> = ({ 
       {hoveredSegment && !isDontCare && (
         <div className="absolute bg-slate-950 border border-cyan-500/50 rounded-lg p-3 z-30 shadow-xl whitespace-nowrap text-xs font-digital"
           style={{
-            left: `${tooltipPos.x + width / 2 - 50}px`,
-            top: `${tooltipPos.y + height + 10}px`,
+            left: `${tooltipPos.x + 12}px`,
+            top: `${tooltipPos.y + 12}px`,
             minWidth: '120px',
           }}
         >
@@ -235,13 +242,13 @@ export const SegmentDisplayEnhanced: React.FC<SegmentDisplayEnhancedProps> = ({ 
             Segment {hoveredSegment.toUpperCase()}
           </div>
           <div className="text-slate-300 text-xs mb-2">
-            {segmentMetadata[hoveredSegment as keyof typeof segmentMetadata].desc}
+            {segmentMetadata[hoveredSegment].desc}
           </div>
-          <div className={`font-mono font-bold ${segments[segmentNames.indexOf(hoveredSegment as any)] === 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
-            Value: {segments[segmentNames.indexOf(hoveredSegment as any)]}
+          <div className={`font-mono font-bold ${segments[segmentNames.indexOf(hoveredSegment)] === 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
+            Value: {segments[segmentNames.indexOf(hoveredSegment)]}
           </div>
           <div className="text-slate-400 text-xs mt-1">
-            {segments[segmentNames.indexOf(hoveredSegment as any)] === 0 ? '✓ Lit' : '✗ Dark'}
+            {segments[segmentNames.indexOf(hoveredSegment)] === 0 ? '✓ Lit' : '✗ Dark'}
           </div>
         </div>
       )}

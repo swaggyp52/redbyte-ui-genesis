@@ -8,6 +8,8 @@ export const TruthTableEditor: React.FC = () => {
   const setTableRow = useLabStore((s) => s.setTableRow);
   const toggleDontCare = useLabStore((s) => s.toggleDontCare);
   const fillStandardDigits = useLabStore((s) => s.fillStandardDigits);
+  const setHoveredInputRow = useLabStore((s) => s.setHoveredInputRow);
+  const hoveredKmapCell = useLabStore((s) => s.hoveredKmapCell);
   const [selectedRow, setSelectedRow] = React.useState(0);
 
   const selectedSeg = truthTable[selectedRow]?.seg || [1, 1, 1, 1, 1, 1, 1];
@@ -63,9 +65,13 @@ export const TruthTableEditor: React.FC = () => {
               <button
                 key={i}
                 onClick={() => setSelectedRow(i)}
+                onMouseEnter={() => setHoveredInputRow(i)}
+                onMouseLeave={() => setHoveredInputRow(undefined)}
                 className={`py-3 px-4 rounded-lg font-tech-display font-bold text-lg transition-all duration-200 ${
                   selectedRow === i 
                     ? 'bg-gradient-to-br from-cyan-500 to-cyan-600 text-white glow-box-cyan shadow-lg scale-105' 
+                    : hoveredKmapCell === i
+                    ? 'bg-slate-800 text-emerald-300 border border-emerald-400/60 glow-box-emerald'
                     : row.seg.some(s => s === 0)
                     ? 'bg-slate-800 text-emerald-400 hover:bg-slate-750 border border-emerald-500/30'
                     : 'bg-slate-800 text-slate-500 hover:bg-slate-700'

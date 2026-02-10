@@ -108,6 +108,8 @@ const KMapSegmentInteractive: React.FC<KMapSegmentInteractiveProps> = ({
   const [hoveredCells, setHoveredCells] = useState<number[]>([]);
   const [editingExpr, setEditingExpr] = useState(false);
   const [localExpr, setLocalExpr] = useState(expr);
+  const hoveredInputRow = useLabStore((s) => s.hoveredInputRow);
+  const setHoveredKmapCell = useLabStore((s) => s.setHoveredKmapCell);
 
   useEffect(() => {
     setLocalExpr(expr);
@@ -297,15 +299,20 @@ const KMapSegmentInteractive: React.FC<KMapSegmentInteractiveProps> = ({
                         const cellIndex = rowIdx * 4 + colIdx;
                         const cellValue = grid[cellIndex];
                         const decimalValue = grayCodeToDecimal(getPositionToGrayCode(rowIdx, colIdx));
+                        const isLinkedHover = hoveredInputRow === decimalValue;
 
                         return (
                           <div
                             key={`${rowIdx}-${colIdx}`}
-                            className="w-12 h-12 flex items-center justify-center cursor-pointer select-none transition-all duration-200 rounded font-tech-display font-bold"
+                            className={`w-12 h-12 flex items-center justify-center cursor-pointer select-none transition-all duration-200 rounded font-tech-display font-bold ${
+                              isLinkedHover ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-slate-950 shadow-lg' : ''
+                            }`}
                             style={getCellStyle(rowIdx, colIdx)}
                             onMouseDown={() => handleCellMouseDown(rowIdx, colIdx)}
                             onMouseMove={() => handleCellMouseMove(rowIdx, colIdx)}
                             onMouseUp={handleCellMouseUp}
+                            onMouseEnter={() => setHoveredKmapCell(decimalValue)}
+                            onMouseLeave={() => setHoveredKmapCell(undefined)}
                             title={`Input ${decimalValue} (${getPositionToGrayCode(rowIdx, colIdx)})`}
                           >
                             {cellValue === 'X' ? (

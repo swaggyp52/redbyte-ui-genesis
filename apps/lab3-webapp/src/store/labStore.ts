@@ -38,6 +38,13 @@ export type LabStoreState = {
   simulationMode: 'manual' | 'step';
   currentStep: number;
 
+  // === Transient UI hover state (for cross-component highlighting) ===
+  hoveredInputRow?: number; // Currently hovered truth table row (used for K-map linking)
+  hoveredKmapCell?: number; // Currently hovered K-map cell (0-15)
+
+  setHoveredInputRow: (row?: number) => void;
+  setHoveredKmapCell: (cell?: number) => void;
+
   // === Transient simulation results ===
   validationResults: ValidationResult[];
   waveformHistory: WaveformSample[];
@@ -267,6 +274,8 @@ const useLabStore = create<LabStoreState>((set, get) => ({
   currentStep: 0,
   validationResults: [],
   waveformHistory: [],
+  hoveredInputRow: undefined,
+  hoveredKmapCell: undefined,
 
   // ─── Core mutation: ALL doc changes flow through here ───
   updateDoc: (mutator, eventType, eventPayload) => {
@@ -357,6 +366,15 @@ const useLabStore = create<LabStoreState>((set, get) => ({
   setSimulationInput: (value) => {
     set({ simulationInput: value });
     get().emitEvent('sim.inputChange', { value });
+  },
+
+  // ─── Cross-view hover linking ───
+  setHoveredInputRow: (row) => {
+    set({ hoveredInputRow: row });
+  },
+
+  setHoveredKmapCell: (cell) => {
+    set({ hoveredKmapCell: cell });
   },
 
   setSimulationMode: (mode) => {

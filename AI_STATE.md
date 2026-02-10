@@ -5367,6 +5367,13 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-02-10 (Lab3 Visual Linking + SSD Tooltips)
+- Added interactive seven-segment hover tooltips (segment labels, active-low values) with improved glow and tooltip positioning within the display.
+- Added don't-care overlay feedback for inputs 10-15 on simulator SSD displays (single-digit and multiplexed).
+- Added cross-view hover linking between Truth Table and K-map (row hover highlights K-map cell; K-map hover highlights row).
+- Added transient hover state to lab store for cross-component linking.
+- Files modified: apps/lab3-webapp/src/basys-board.tsx, apps/lab3-webapp/src/basys-board-multi.tsx, apps/lab3-webapp/src/truth-table.tsx, apps/lab3-webapp/src/kmap-viewer-interactive.tsx, apps/lab3-webapp/src/store/labStore.ts, AI_STATE.md.
+
 ### 2026-02-09 (Lab3 UX & Interaction Hardening - Phase 1 & 2)
 - **PR #1 (Dead Buttons)**: Removed redundant "Regenerate K-maps" buttons from both kmap viewers (pipeline auto-updates); added success feedback for ZIP export (verilog.tsx); added validation result display in Pro designer status bar (shows pass/fail for 5 seconds).
 - **PR #2 (Cross-View Sync Audit)**: Verified unified store + derived pipeline architecture working correctly; all truth table mutations trigger `recomputeDerived()`; K-maps and expressions auto-update from truth table; components read from `doc.kMaps`/`doc.expressions` with no stale state; `runAllVectors` updates validation + waveform + console; simulator `evalSeg()` uses latest expressions in boolExpr mode. No code changes needed - architecture is solid. Audit documentation added to `apps/lab3-webapp/docs/CROSS_VIEW_SYNC_AUDIT.md`.
