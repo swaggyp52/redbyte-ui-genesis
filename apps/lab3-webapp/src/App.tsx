@@ -15,7 +15,6 @@ const VerilogExporter = lazy(() => import('./verilog').then(m => ({ default: m.V
 const KMapViewer = lazy(() => import('./kmap-viewer-interactive').then(m => ({ default: m.KMapViewer })));
 const WaveformViewer = lazy(() => import('./waveform-viewer-enhanced').then(m => ({ default: m.WaveformViewer })));
 const LiveValidation = lazy(() => import('./live-validation').then(m => ({ default: m.LiveValidation })));
-const CircuitEditor = lazy(() => import('./circuit-editor').then(m => ({ default: m.CircuitEditor })));
 const ExportPanel = lazy(() => import('./components/ExportPanel').then(m => ({ default: m.ExportPanel })));
 
 // Loading fallback component
@@ -28,7 +27,7 @@ const LoadingFallback: React.FC = () => (
   </div>
 );
 
-type Tab = 'overview' | 'table' | 'kmaps' | 'circuit' | 'simulator' | 'verilog' | 'export';
+type Tab = 'overview' | 'table' | 'kmaps' | 'simulator' | 'verilog' | 'export';
 
 export const App: React.FC = () => {
   const [tab, setTab] = useState<Tab>('overview');
@@ -300,9 +299,8 @@ export const App: React.FC = () => {
               { id: 'overview' as Tab, label: 'Overview', icon: BookOpen },
               { id: 'table' as Tab, label: 'Truth Table', icon: Table },
               { id: 'kmaps' as Tab, label: 'K-Maps', icon: Target },
-              { id: 'circuit' as Tab, label: 'Circuit', icon: Cpu },
               { id: 'simulator' as Tab, label: 'Simulator', icon: PlayCircle },
-              { id: 'verilog' as Tab, label: 'Verilog', icon: FileCode },
+              { id: 'verilog' as Tab, label: 'Expressions', icon: FileCode },
               { id: 'export' as Tab, label: 'Export', icon: Download },
             ].map((item) => {
               const Icon = item.icon;
@@ -445,13 +443,7 @@ export const App: React.FC = () => {
               </Suspense>
             )}
 
-            {tab === 'circuit' && (
-              <Suspense fallback={<LoadingFallback />}>
-                <div className="space-y-6">
-                  <CircuitEditor />
-                </div>
-              </Suspense>
-            )}
+
 
             {tab === 'simulator' && (
               <Suspense fallback={<LoadingFallback />}>
