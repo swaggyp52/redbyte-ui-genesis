@@ -5367,6 +5367,12 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-02-09 (Lab3 Unified Store Cleanup)
+- Removed legacy lab3 store and autosave files (apps/lab3-webapp/src/store.ts, use-auto-save.ts, persistence.ts).
+- Updated LabDoc roundtrip test to expect schemaVersion 2.
+- Restored step-through simulation state/actions in lab3 store (simulationMode, currentStep, setSimulationMode, stepSimulation, resetSimulation).
+- Gates run: lab3 typecheck, lab3 vitest suite, lab3 build.
+
 ### 2026-02-09 (Combined Lite Workspace Foundation Plan)
 - Added implementation plan for combined-lite workspace foundation in docs/plans/2026-02-09-combined-lite-workspace-foundation.md.
 - Files modified: docs/plans/2026-02-09-combined-lite-workspace-foundation.md, AI_STATE.md (this changelog).
