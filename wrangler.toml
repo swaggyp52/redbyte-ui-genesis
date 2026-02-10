@@ -2,13 +2,3 @@
 name = "redbyte-ui-genesis"
 pages_build_output_dir = "apps/lab3-webapp/dist"
 compatibility_date = "2024-01-01"
-
-# Build only lab3-webapp for Cloudflare Pages
-build = { command = "pnpm --filter @redbyte/lab3-webapp build" }
-
-[env.production]
-name = "redbyte-ui-genesis"
-routes = [
-  { pattern = "redbyteapps.dev", zone_name = "redbyteapps.dev" },
-  { pattern = "redbyte-ui-genesis.pages.dev", zone_name = "pages.dev" }
-]
