@@ -19,6 +19,6 @@ describe('LabDoc roundtrip serialization', () => {
     // Verify roundtrip
     expect(restored.truthTable).toEqual(doc.truthTable);
     expect(restored.meta.id).toBe(doc.meta.id);
-    expect(restored.schemaVersion).toBe(1);
+    expect(restored.schemaVersion).toBe(2);
   });
 });
