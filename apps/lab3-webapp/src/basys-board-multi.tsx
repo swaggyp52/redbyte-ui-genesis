@@ -156,7 +156,7 @@ export const BasysBoardMulti: React.FC<BasysBoardMultiProps> = ({
                     filter: isActive ? 'brightness(1)' : 'brightness(0.3)',
                   }}
                 >
-                  <SegmentDisplayEnhanced segments={segs} size="medium" />
+                  <SegmentDisplayEnhanced segments={segs} size="medium" inputValue={digitIdx === 3 ? inputValue : -1} />
                   <div className="text-center mt-2">
                     <span className="font-digital text-xs text-slate-500">
                       AN{3 - digitIdx}
