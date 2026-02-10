@@ -8667,4 +8667,48 @@ Notes:
   - Phase C: Code splitting, keyboard shortcuts, ARIA labels
 - **Attribution**: Connor Angiel
 
+---
+
+## Change Log 2026-02-10 (Phase B1+B2 Complete: Console Enhancement & Keyboard Shortcuts)
+
+- **[Phase B1 Completed]**: Enhanced ConsoleWindow.tsx with event type filtering, search combination, JSON export, and copy-to-clipboard functionality
+  - **Event Type Filtering**: Added 7 event type filters (all, set-table-row, fill-digits, set-expression, import, export, error) with visual pill indicators showing event counts per type
+  - **Multi-axis Filtering**: Implemented search + type filter combination for powerful event log analysis (regex text search on type + payload)
+  - **Export Functionality**: New `handleExportLog()` function exports filtered events as JSON file download - enables students to save debug logs
+  - **Copy-to-Clipboard**: Added per-event copy button (appears on hover, shows Check icon with 2s feedback timeout) - facilitates sharing/debugging
+  - **Visual Enhancements**: Color-coded event types (cyan=table-row, emerald=fill-digits, blue=expression, purple=import, amber=export, red=error) with filter pill badges
+  - **UI Components**: Filter pills showing event counts, search box with icon, export button (Download icon), clear button (Trash icon)
+  - **Build Verification**: ✅ PASS (983.23 kB total, 287.79 KB gzip, 10.10s build time, no TypeScript errors)
+  - **Git Commit**: a23b97b3 — "feat: enhance ConsoleWindow with event type filtering, export, and copy-to-clipboard"
+
+- **[Phase B2 Completed]**: Implemented keyboard shortcuts for circuit designer pro with toolbar UI hints
+  - **Keyboard Shortcuts**:
+    - `Ctrl+Z` or `Cmd+Z`: undo last action (cross-platform Mac support)
+    - `Ctrl+Y` or `Cmd+Y` or `Ctrl+Shift+Z`: redo last undone action (multiple redo patterns for user comfort)
+    - `Delete` key: delete selected nodes (only active when nodes are selected)
+    - `Escape` key: deselect all nodes (clears selection state)
+  - **Implementation**: Added new useEffect hook to CircuitDesignerPro.tsx with KeyboardEvent listener, proper event.preventDefault() for all handled keys, dependency array includes [historyIndex, history, selectedNodeIds]
+  - **UI Enhancement**: Updated Toolbar.tsx button tooltips to show keyboard shortcuts (e.g., "Undo — Ctrl+Z", "Delete selected node(s) — Press Delete")
+  - **Build Verification**: ✅ PASS (983.71 kB total, 287.98 KB gzip, 11.31s build time, no TypeScript errors)
+  - **Git Commit**: 26e6bce0 — "feat: add keyboard shortcuts to circuit designer (Ctrl+Z/Y, Delete, Escape)"
+
+- **Phase B Progress**:
+  - ✅ B1 (Console & Event Logging): Complete with filtering, export, copy, color coding
+  - ✅ B2 (Circuit Designer Pro Refinement): Complete with keyboard shortcuts and tooltip enhancement
+  - ⏳ B3 (Progress & UX Polish): Pending — integrate progress tracker, add tab cycling for gate selection, improve mobile responsiveness
+  
+- **Architecture Notes**:
+  - ConsoleWindow reads from `useLabStore()` events + implements local filter state
+  - CircuitDesignerPro manages keyboard events at window level with proper cleanup via useEffect return
+  - Keyboard handler respects existing keyboard shortcuts (no conflicts with browser defaults like Ctrl+S save)
+  - All shortcuts cross-platform (Ctrl on Windows/Linux, Cmd on Mac)
+
+- **Bundle Size Stability**: Stable at ~983 KB minified (287 KB gzip) - no performance regression from enhancements
+
+- **Next Steps**:
+  - Phase B3: Progress & UX Polish (progress tracker integration, gate selection cycling, mobile-first responsive review)
+  - Phase C: Performance & Accessibility (code splitting to reduce 983 KB chunk, ARIA labels, high-contrast mode)
+
+- **Attribution**: Connor Angiel
+
 
