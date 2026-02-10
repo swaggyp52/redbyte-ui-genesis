@@ -99,3 +99,65 @@ textarea:focus-visible {
 .font-tech-display {
   font-family: 'Orbitron', -apple-system, sans-serif;
 }
+/* High Contrast Mode */
+[data-contrast="high"] {
+  --slate-900: #000000;
+  --slate-800: #1a1a1a;
+  --slate-700: #2d2d2d;
+  --slate-600: #404040;
+  --cyan-400: #00d4ff;
+  --cyan-500: #00a8cc;
+  --emerald-400: #00ff88;
+  --emerald-500: #00cc66;
+  --red-400: #ff3333;
+  --red-500: #cc0000;
+  --yellow-400: #ffff00;
+  --yellow-500: #cccc00;
+}
+
+[data-contrast="high"] .neon-cyan,
+[data-contrast="high"] .neon-emerald {
+  text-shadow: 0 0 20px currentColor, 0 0 40px currentColor;
+  font-weight: 600;
+}
+
+[data-contrast="high"] button,
+[data-contrast="high"] .border {
+  border-width: 2px;
+}
+
+[data-contrast="high"] .bg-slate-700,
+[data-contrast="high"] .bg-slate-800 {
+  border: 1px solid rgba(0, 212, 255, 0.5);
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  button, a, input, select, textarea {
+    transition: none;
+  }
+
+  .segment-animate {
+    animation: none;
+    opacity: 1;
+  }
+
+  .pulse-active {
+    animation: none;
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
+  }
+
+  .animate-spin {
+    animation: none;
+  }
+
+  .scroll-smooth {
+    scroll-behavior: auto !important;
+  }
+}

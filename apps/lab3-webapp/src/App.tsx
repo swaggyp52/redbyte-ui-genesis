@@ -1,19 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { TruthTableEditor } from './truth-table';
-import { Simulator } from './simulator';
-import { VerilogExporter } from './verilog';
-import { KMapViewer } from './kmap-viewer-interactive';
-import { WaveformViewer } from './waveform-viewer-enhanced';
-import { LiveValidation } from './live-validation';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+// Static imports (always needed)
 import { ProgressTracker, useLabProgress } from './progress-tracker';
-import { CircuitEditor } from './circuit-editor';
-import { ExportPanel } from './components/ExportPanel';
 import { Settings, Download, Upload, Zap, BookOpen, Table, Target, PlayCircle, FileCode, Cpu, AlertCircle } from 'lucide-react';
 import { useLabStore } from './store/labStore';
 import { loadSnapshot, initPersistence } from './store/persistence';
 import { WindowManager } from './workspace/WindowManager';
 import { PluginRegistry } from './plugins/PluginRegistry';
 import { registerLab3 } from './plugins/registerLab3';
+
+// Lazy-loaded components (only loaded when tab is active)
+const TruthTableEditor = lazy(() => import('./truth-table').then(m => ({ default: m.TruthTableEditor })));
+const Simulator = lazy(() => import('./simulator').then(m => ({ default: m.Simulator })));
+const VerilogExporter = lazy(() => import('./verilog').then(m => ({ default: m.VerilogExporter })));
+const KMapViewer = lazy(() => import('./kmap-viewer-interactive').then(m => ({ default: m.KMapViewer })));
+const WaveformViewer = lazy(() => import('./waveform-viewer-enhanced').then(m => ({ default: m.WaveformViewer })));
+const LiveValidation = lazy(() => import('./live-validation').then(m => ({ default: m.LiveValidation })));
+const CircuitEditor = lazy(() => import('./circuit-editor').then(m => ({ default: m.CircuitEditor })));
+const ExportPanel = lazy(() => import('./components/ExportPanel').then(m => ({ default: m.ExportPanel })));
+
+// Loading fallback component
+const LoadingFallback: React.FC = () => (
+  <div className="flex items-center justify-center h-96">
+    <div className="text-center">
+      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400 mb-4"></div>
+      <p className="text-slate-400 font-digital text-sm">Loading component...</p>
+    </div>
+  </div>
+);
 
 type Tab = 'overview' | 'table' | 'kmaps' | 'circuit' | 'simulator' | 'verilog' | 'export';
 
@@ -23,6 +36,10 @@ export const App: React.FC = () => {
   const [showRecoveryBanner, setShowRecoveryBanner] = useState(false);
   const [recoverySnapshot, setRecoverySnapshot] = useState<any>(null);
   const [showWindowManager, setShowWindowManager] = useState(false);
+  const [highContrast, setHighContrast] = useState(() => {
+    const stored = localStorage.getItem('rb.lab3.highcontrast');
+    return stored ? JSON.parse(stored) : false;
+  });
   const [registry] = useState(() => {
     const reg = new PluginRegistry();
     registerLab3(reg);
@@ -36,6 +53,17 @@ export const App: React.FC = () => {
   const openWindow = useLabStore((s) => s.openWindow);
   const windows = useLabStore((s) => s.windows);
   const doc = useLabStore((s) => s.doc);
+
+  // Sync high-contrast mode to localStorage and DOM
+  useEffect(() => {
+    localStorage.setItem('rb.lab3.highcontrast', JSON.stringify(highContrast));
+    const root = document.documentElement;
+    if (highContrast) {
+      root.setAttribute('data-contrast', 'high');
+    } else {
+      root.removeAttribute('data-contrast');
+    }
+  }, [highContrast]);
 
   // Initialize persistence and check for recovery on mount
   useEffect(() => {
@@ -239,6 +267,20 @@ export const App: React.FC = () => {
                   Window Manager
                 </button>
                 <button
+                  onClick={() => setHighContrast(!highContrast)}
+                  className={`px-4 py-2 rounded-lg flex items-center gap-2 font-tech font-semibold transition-all duration-200 ${
+                    highContrast
+                      ? 'bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-500 hover:to-yellow-600 text-white'
+                      : 'bg-gradient-to-r from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500 text-slate-100'
+                  }`}
+                  title={`${highContrast ? 'Disable' : 'Enable'} high contrast mode for improved visibility`}
+                  aria-pressed={highContrast}
+                  aria-label="Toggle high contrast mode"
+                >
+                  {highContrast ? '● ' : '○ '}
+                  High Contrast {highContrast ? 'ON' : 'OFF'}
+                </button>
+                <button
                   onClick={reset}
                   className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 rounded-lg font-tech font-semibold transition-all duration-200 ml-auto"
                   title="Clear all data and start fresh"
@@ -386,61 +428,73 @@ export const App: React.FC = () => {
             )}
 
             {tab === 'table' && (
-              <div className="space-y-6">
-                <TruthTableEditor />
-                <LiveValidation />
-              </div>
+              <Suspense fallback={<LoadingFallback />}>
+                <div className="space-y-6">
+                  <TruthTableEditor />
+                  <LiveValidation />
+                </div>
+              </Suspense>
             )}
 
             {tab === 'kmaps' && (
-              <div className="space-y-6">
-                <KMapViewer />
-                <LiveValidation />
-              </div>
+              <Suspense fallback={<LoadingFallback />}>
+                <div className="space-y-6">
+                  <KMapViewer />
+                  <LiveValidation />
+                </div>
+              </Suspense>
             )}
 
             {tab === 'circuit' && (
-              <div className="space-y-6">
-                <CircuitEditor />
-              </div>
+              <Suspense fallback={<LoadingFallback />}>
+                <div className="space-y-6">
+                  <CircuitEditor />
+                </div>
+              </Suspense>
             )}
 
             {tab === 'simulator' && (
-              <div className="space-y-6">
-                <Simulator />
-                <WaveformViewer />
-              </div>
+              <Suspense fallback={<LoadingFallback />}>
+                <div className="space-y-6">
+                  <Simulator />
+                  <WaveformViewer />
+                </div>
+              </Suspense>
             )}
 
             {tab === 'verilog' && (
-              <div className="space-y-6">
-                <VerilogExporter />
-              </div>
+              <Suspense fallback={<LoadingFallback />}>
+                <div className="space-y-6">
+                  <VerilogExporter />
+                </div>
+              </Suspense>
             )}
 
             {tab === 'export' && (
-              <div className="space-y-6">
-                <div className="bg-gradient-to-br from-slate-900/80 to-slate-800/80 border border-cyan-500/20 rounded-2xl p-8 glow-box-cyan">
-                  <h2 className="font-tech-display text-3xl font-bold text-cyan-400 neon-cyan mb-6">
-                    📤 Export & Report Your Work
-                  </h2>
-                  <p className="font-digital text-slate-300 leading-relaxed mb-6">
-                    Save your completed lab work in multiple formats for backup, submission, or sharing.
-                    Choose the export format that best fits your needs:
-                  </p>
-                  <ExportPanel className="mb-6" />
-                </div>
-                
-                <div className="bg-gradient-to-br from-slate-900/80 to-slate-800/80 border border-emerald-500/20 rounded-2xl p-8">
-                  <h2 className="font-tech-display text-2xl font-bold text-emerald-400 mb-6">
-                    🔧 Verilog Export for Hardware
-                  </h2>
+              <Suspense fallback={<LoadingFallback />}>
+                <div className="space-y-6">
+                  <div className="bg-gradient-to-br from-slate-900/80 to-slate-800/80 border border-cyan-500/20 rounded-2xl p-8 glow-box-cyan">
+                    <h2 className="font-tech-display text-3xl font-bold text-cyan-400 neon-cyan mb-6">
+                      📤 Export & Report Your Work
+                    </h2>
+                    <p className="font-digital text-slate-300 leading-relaxed mb-6">
+                      Save your completed lab work in multiple formats for backup, submission, or sharing.
+                      Choose the export format that best fits your needs:
+                    </p>
+                    <ExportPanel className="mb-6" />
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-slate-900/80 to-slate-800/80 border border-emerald-500/20 rounded-2xl p-8">
+                    <h2 className="font-tech-display text-2xl font-bold text-emerald-400 mb-6">
+                      🔧 Verilog Export for Hardware
+                    </h2>
                   <p className="font-digital text-slate-300 leading-relaxed mb-6">
                     Generate synthesizable Verilog code to deploy on your FPGA board:
                   </p>
                   <VerilogExporter />
                 </div>
-              </div>
+                </div>
+              </Suspense>
             )}
 
           </div>
