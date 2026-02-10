@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLabStore } from './store';
 import { FileText, Download, Loader2, CheckCircle2 } from 'lucide-react';
 import jsPDF from 'jspdf';
+import useNewLabStore from './store/labStore';
 
 export const PdfExporter: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -13,6 +14,7 @@ export const PdfExporter: React.FC = () => {
   const verilogCode = useLabStore((s) => s.verilogCode);
   const kMaps = useLabStore((s) => s.kMaps);
   const validationResults = useLabStore((s) => s.validationResults);
+  const emitEvent = useNewLabStore((s) => s.emitEvent);
 
   const handleGeneratePDF = async () => {
     setIsGenerating(true);
@@ -312,6 +314,12 @@ export const PdfExporter: React.FC = () => {
       // Save PDF
       setProgress('Generating PDF file...');
       pdf.save(`Lab3_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+      
+      // Emit export.pdf event with page count (use getPages() length if available, else 6)
+      const pageCount = (pdf as any).getPages?.().length ?? 6;
+      emitEvent('export.pdf', {
+        pages: pageCount,
+      });
       
       setProgress('Complete!');
       setComplete(true);
