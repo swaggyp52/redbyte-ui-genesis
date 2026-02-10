@@ -5367,6 +5367,13 @@ After completing work, an AI agent MUST:
 
 \## Change Log
 
+### 2026-02-09 (Lab3 UX & Interaction Hardening - Phase 1 & 2)
+- **PR #1 (Dead Buttons)**: Removed redundant "Regenerate K-maps" buttons from both kmap viewers (pipeline auto-updates); added success feedback for ZIP export (verilog.tsx); added validation result display in Pro designer status bar (shows pass/fail for 5 seconds).
+- **PR #2 (Cross-View Sync Audit)**: Verified unified store + derived pipeline architecture working correctly; all truth table mutations trigger `recomputeDerived()`; K-maps and expressions auto-update from truth table; components read from `doc.kMaps`/`doc.expressions` with no stale state; `runAllVectors` updates validation + waveform + console; simulator `evalSeg()` uses latest expressions in boolExpr mode. No code changes needed - architecture is solid. Audit documentation added to `apps/lab3-webapp/docs/CROSS_VIEW_SYNC_AUDIT.md`.
+- **PR #3 (Safety Test)**: Added `edit-triggers-derived.test.ts` with 3 tests verifying derived pipeline: K-maps/expressions auto-generate after `fillStandardDigits()`, derived state updates on truth table edits, derived state persists through store reset. All tests passing.
+- **Gates**: typecheck ✓, build ✓ (29/29 vitest tests including 3 new tests).
+- **Impact**: Lab3 now has no dead buttons, visible feedback for all actions, verified cross-view sync, and safety tests ensuring derived pipeline remains functional. Ready for classroom use with solid UX foundation.
+
 ### 2026-02-09 (Lab3 Unified Store Cleanup)
 - Removed legacy lab3 store and autosave files (apps/lab3-webapp/src/store.ts, use-auto-save.ts, persistence.ts).
 - Updated LabDoc roundtrip test to expect schemaVersion 2.
