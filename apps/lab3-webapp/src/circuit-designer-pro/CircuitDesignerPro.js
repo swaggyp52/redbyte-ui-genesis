@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useEffect, useRef } from 'react';
 import useLabStore from '../store/labStore';
-import { evaluateCircuit, addNode, deleteNode, connectWire, moveNode, setNodeValue } from './engine';
+import { evaluateCircuit, addNode, deleteNode, connectWire, moveNode, setNodeValue, cycleNodeGateType } from './engine';
 import { validateCircuitAgainstTruthTable } from './validation';
 import { CanvasRenderer } from './CanvasRenderer';
 import { Toolbar } from './Toolbar';
@@ -75,6 +75,18 @@ export const CircuitDesignerPro = () => {
             else if (e.key === 'Escape') {
                 e.preventDefault();
                 setSelectedNodeIds(new Set());
+            }
+            // Tab to cycle gate type (only if single node selected)
+            else if (e.key === 'Tab' && selectedNodeIds.size === 1) {
+                e.preventDefault();
+                const selectedNodeId = Array.from(selectedNodeIds)[0];
+                const newCircuit = cycleNodeGateType(circuit, selectedNodeId);
+                updateCircuitDesigner(newCircuit);
+                emitEvent('circuit.cycleGateType', {
+                    nodeId: selectedNodeId,
+                    oldType: circuit.nodes.find(n => n.id === selectedNodeId)?.type,
+                    newType: newCircuit.nodes.find(n => n.id === selectedNodeId)?.type,
+                });
             }
         };
         window.addEventListener('keydown', handleKeyDown);

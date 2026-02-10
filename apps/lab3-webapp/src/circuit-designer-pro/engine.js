@@ -192,3 +192,26 @@ export function setNodeValue(circuit, nodeId, value) {
         nodes: circuit.nodes.map(n => n.id === nodeId ? { ...n, config: { ...n.config, value } } : n),
     };
 }
+/**
+ * Get list of gate types that can be cycled through
+ * Excludes INPUT/OUTPUT which are structural
+ */
+export function getGateTypes() {
+    return ['AND', 'OR', 'NOT', 'XOR', 'CONST_0', 'CONST_1'];
+}
+/**
+ * Change gate type of a node to next in cycle
+ */
+export function cycleNodeGateType(circuit, nodeId) {
+    const gateTypes = getGateTypes();
+    const node = circuit.nodes.find(n => n.id === nodeId);
+    if (!node || !gateTypes.includes(node.type)) {
+        return circuit;
+    }
+    const currentIndex = gateTypes.indexOf(node.type);
+    const nextType = gateTypes[(currentIndex + 1) % gateTypes.length];
+    return {
+        ...circuit,
+        nodes: circuit.nodes.map(n => n.id === nodeId ? { ...n, type: nextType } : n),
+    };
+}
