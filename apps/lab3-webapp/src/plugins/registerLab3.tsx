@@ -3,6 +3,8 @@ import { PluginRegistry, PluginViewSpec } from './PluginRegistry';
 import { TruthTableEditor } from '../truth-table';
 import { KMapViewer } from '../kmap-viewer-interactive';
 import { CircuitEditor } from '../circuit-editor';
+import { CircuitDesignerPro } from '../circuit-designer-pro/CircuitDesignerPro';
+import { ProErrorBoundary } from '../circuit-designer-pro/ProErrorBoundary';
 import { Simulator } from '../simulator';
 import { WaveformViewer } from '../waveform-viewer-enhanced';
 import { VerilogExporter } from '../verilog';
@@ -26,6 +28,17 @@ export function registerLab3(registry: PluginRegistry): void {
     },
     {
       pluginId: 'lab3',
+      viewId: 'circuit-designer-pro',
+      title: 'Circuit Designer (Pro)',
+      icon: 'Zap',
+      Component: () => (
+        <ProErrorBoundary>
+          <CircuitDesignerPro />
+        </ProErrorBoundary>
+      ),
+    },
+    {
+      pluginId: 'lab3',
       viewId: 'truth-table',
       title: 'Truth Table',
       icon: 'Table',
@@ -41,7 +54,7 @@ export function registerLab3(registry: PluginRegistry): void {
     {
       pluginId: 'lab3',
       viewId: 'circuit',
-      title: 'Circuit',
+      title: 'Circuit (Classic)',
       icon: 'Cpu',
       Component: CircuitEditor,
     },
