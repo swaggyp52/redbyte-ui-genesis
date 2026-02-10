@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import useLabStore from '../store/labStore';
 import type { CircuitDesignerDoc, CircuitNode, LabDocV2 } from '../plugins/LabDoc';
 import { evaluateCircuit, addNode, deleteNode, connectWire, deleteWire, moveNode, setNodeValue } from './engine';
+import { validateCircuitAgainstTruthTable } from './validation';
 import { CanvasRenderer } from './CanvasRenderer';
 import { Toolbar } from './Toolbar';
 
@@ -35,7 +36,7 @@ interface WireConnectionState {
  */
 export const CircuitDesignerPro: React.FC = () => {
   const doc = useLabStore((s) => s.doc) as LabDocV2;
-  const setDoc = useLabStore((s) => s.setDoc);
+  const updateCircuitDesigner = useLabStore((s) => s.updateCircuitDesigner);
   const emitEvent = useLabStore((s) => s.emitEvent);
 
   // Extract circuit from doc (safe cast since we initialize as v2)
@@ -69,13 +70,10 @@ export const CircuitDesignerPro: React.FC = () => {
 
   // Update doc when circuit changes
   useEffect(() => {
-    if (setDoc && 'circuitDesigner' in doc) {
-      setDoc({
-        ...doc,
-        circuitDesigner: circuit,
-      });
+    if (updateCircuitDesigner && 'circuitDesigner' in doc) {
+      updateCircuitDesigner(circuit);
     }
-  }, [circuit, doc, setDoc]);
+  }, [circuit, doc, updateCircuitDesigner]);
 
   // Handlers
   const handleAddNode = (gateType: CircuitNode['type']) => {
@@ -83,25 +81,27 @@ export const CircuitDesignerPro: React.FC = () => {
     const x = -panX / zoom + 200;
     const y = -panY / zoom + 200;
     const newCircuit = addNode(circuit, gateType, x, y);
-    setDoc({ ...doc, circuitDesigner: newCircuit });
+    updateCircuitDesigner(newCircuit);
     emitEvent('circuit.addNode', { type: gateType, x, y });
   };
 
   const handleDeleteSelected = () => {
     let removed = circuit;
+    const nodeIds: string[] = [];
     selectedNodeIds.forEach(nodeId => {
       removed = deleteNode(removed, nodeId);
+      nodeIds.push(nodeId);
     });
-    setDoc({ ...doc, circuitDesigner: removed });
+    updateCircuitDesigner(removed);
     setSelectedNodeIds(new Set());
-    emitEvent('circuit.deleteNode', { nodeIds: Array.from(selectedNodeIds) });
+    emitEvent('circuit.deleteNode', { nodeIds });
   };
 
   const handleUndo = () => {
     if (historyIndex > 0) {
       const newIndex = historyIndex - 1;
       setHistoryIndex(newIndex);
-      setDoc({ ...doc, circuitDesigner: history[newIndex] });
+      updateCircuitDesigner(history[newIndex]);
     }
   };
 
@@ -109,14 +109,19 @@ export const CircuitDesignerPro: React.FC = () => {
     if (historyIndex < history.length - 1) {
       const newIndex = historyIndex + 1;
       setHistoryIndex(newIndex);
-      setDoc({ ...doc, circuitDesigner: history[newIndex] });
+      updateCircuitDesigner(history[newIndex]);
     }
   };
 
   const handleValidate = () => {
-    // Placeholder for task 6
-    console.log('Validate button clicked');
-    emitEvent('circuit.validate', { nodeCount: circuit.nodes.length, wireCount: circuit.wires.length });
+    const result = validateCircuitAgainstTruthTable(circuit, doc);
+    emitEvent('circuit.validate', {
+      passed: result.passed,
+      passedTests: result.passedTests,
+      failedTests: result.failedTests,
+      totalTests: result.totalTests,
+    });
+    console.log('Validation result:', result);
   };
 
   // Mouse event handlers for canvas
@@ -152,10 +157,10 @@ export const CircuitDesignerPro: React.FC = () => {
           clickedNode.id,
           1
         );
-        setDoc({ ...doc, circuitDesigner: newCircuit });
-        emitEvent('circuit.connect', {
-          from: wireConnection.fromNodeId,
-          to: clickedNode.id,
+        updateCircuitDesigner(newCircuit);
+        emitEvent('circuit.connectWire', {
+          fromNodeId: wireConnection.fromNodeId,
+          toNodeId: clickedNode.id,
         });
         setWireConnection(null);
       } else {
@@ -200,7 +205,12 @@ export const CircuitDesignerPro: React.FC = () => {
             const deltaX = (e.clientX - drag.startX) / zoom;
             const deltaY = (e.clientY - drag.startY) / zoom;
             const newCircuit = moveNode(circuit, node.id, drag.offsetX + deltaX, drag.offsetY + deltaY);
-            setDoc({ ...doc, circuitDesigner: newCircuit });
+            updateCircuitDesigner(newCircuit);
+            emitEvent('circuit.moveNode', {
+              nodeId: node.id,
+              x: drag.offsetX + deltaX,
+              y: drag.offsetY + deltaY,
+            });
             setDrag(null);
           }
         }}
@@ -235,7 +245,7 @@ export const CircuitDesignerPro: React.FC = () => {
               e.stopPropagation();
               const newValue = !(node.config?.value === true);
               const newCircuit = setNodeValue(circuit, node.id, newValue);
-              setDoc({ ...doc, circuitDesigner: newCircuit });
+              updateCircuitDesigner(newCircuit);
             }}
           >
             {node.config?.value ? '1' : '0'}

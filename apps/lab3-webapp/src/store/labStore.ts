@@ -17,6 +17,7 @@ export type LabStoreState = {
   
   // Actions
   setDoc: (doc: LabDoc) => void;
+  updateCircuitDesigner: (circuitDesigner: CircuitDesignerDoc) => void;
   setWindows: (windows: WindowState[]) => void;
   emitEvent: (type: string, payload: unknown) => void;
   hydrateFromSnapshot: (snapshot: SerializedSnapshot) => void;
@@ -300,6 +301,16 @@ const useLabStore = create<LabStoreState>((set, get) => ({
   
   setDoc: (doc: LabDoc) => {
     set({ doc });
+  },
+  
+  updateCircuitDesigner: (circuitDesigner: CircuitDesignerDoc) => {
+    const state = get();
+    set({
+      doc: {
+        ...state.doc,
+        circuitDesigner,
+      } as LabDocV2,
+    });
   },
   
   setWindows: (windows: WindowState[]) => {

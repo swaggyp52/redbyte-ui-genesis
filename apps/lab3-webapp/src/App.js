@@ -33,6 +33,7 @@ export const App = () => {
     const progressSteps = useLabProgress();
     const openWindow = useNewLabStore((s) => s.openWindow);
     const windows = useNewLabStore((s) => s.windows);
+    const doc = useNewLabStore((s) => s.doc);
     // Enable auto-save
     useAutoSave(true);
     // Initialize persistence and check for recovery on mount
@@ -49,15 +50,18 @@ export const App = () => {
         if (windows.length === 0) {
             // Spawn 5 windows in default layout
             setTimeout(() => {
+                // Check if Pro should be default
+                const useProByDefault = doc.meta?.useProByDefault ?? false;
+                const circuitViewId = useProByDefault ? 'circuit-designer-pro' : 'circuit';
                 openWindow('lab3', 'overview', { x: 0, y: 0, w: 800, h: 600 });
                 openWindow('lab3', 'truth-table', { x: 850, y: 0, w: 700, h: 600 });
-                openWindow('lab3', 'circuit', { x: 0, y: 650, w: 1000, h: 600 });
+                openWindow('lab3', circuitViewId, { x: 0, y: 650, w: 1000, h: 600 });
                 openWindow('lab3', 'simulator', { x: 1050, y: 650, w: 700, h: 600 });
                 openWindow('lab3', 'console', { x: 1750, y: 0, w: 400, h: 1250 });
                 setShowWindowManager(true);
             }, 100);
         }
-    }, [windows.length, openWindow]);
+    }, [windows.length, openWindow, doc]);
     const handleRecover = () => {
         if (recoverySnapshot) {
             useNewLabStore.getState().hydrateFromSnapshot(recoverySnapshot);

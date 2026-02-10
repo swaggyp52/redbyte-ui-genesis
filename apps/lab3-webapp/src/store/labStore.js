@@ -259,6 +259,15 @@ const useLabStore = create((set, get) => ({
     setDoc: (doc) => {
         set({ doc });
     },
+    updateCircuitDesigner: (circuitDesigner) => {
+        const state = get();
+        set({
+            doc: {
+                ...state.doc,
+                circuitDesigner,
+            },
+        });
+    },
     setWindows: (windows) => {
         set({ windows });
     },
