@@ -78,19 +78,9 @@ export const App: React.FC = () => {
   // Open 5 default windows on first load (only once)
   useEffect(() => {
     if (windows.length === 0) {
-      // Spawn 5 windows in default layout
-      setTimeout(() => {
-        // Check if Pro should be default
-        const useProByDefault = (doc as any).meta?.useProByDefault ?? false;
-        const circuitViewId = useProByDefault ? 'circuit-designer-pro' : 'circuit';
-
-        openWindow('lab3', 'overview', { x: 0, y: 0, w: 800, h: 600 });
-        openWindow('lab3', 'truth-table', { x: 850, y: 0, w: 700, h: 600 });
-        openWindow('lab3', circuitViewId, { x: 0, y: 650, w: 1000, h: 600 });
-        openWindow('lab3', 'simulator', { x: 1050, y: 650, w: 700, h: 600 });
-        openWindow('lab3', 'console', { x: 1750, y: 0, w: 400, h: 1250 });
-        setShowWindowManager(true);
-      }, 100);
+      // DISABLED: Window booting disabled for cleaner UX on startup
+      // Users interact with tabs instead of window management
+      // setShowWindowManager(true);
     }
   }, [windows.length, openWindow, doc]);
 
