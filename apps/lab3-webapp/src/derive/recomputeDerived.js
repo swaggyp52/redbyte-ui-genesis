@@ -1,10 +1,13 @@
 import { generateKMapGrid, minimizeBooleanExpr, evaluateBoolExpr } from '../kmap';
+import { validateLabDoc, getValidationMessage } from '../validation';
 const SEGMENT_NAMES = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
 /**
  * Recompute all derived data from a LabDocV2's truthTable.
  *
  * Pure function. Same input → same output. Called from updateDoc() only.
  * Returns a partial LabDocV2 patch: { kMaps, expressions, results }.
+ *
+ * Also runs comprehensive validation and stores results.
  */
 export function recomputeDerived(doc) {
     const kMaps = {};
@@ -39,9 +42,24 @@ export function recomputeDerived(doc) {
         if (errors.length > 0)
             validationErrors[segName] = errors;
     }
-    return {
+    // Run comprehensive validation
+    const validation = validateLabDoc({
+        ...doc,
         kMaps,
         expressions,
         results: { validationErrors },
+    });
+    const validationMessage = getValidationMessage(validation);
+    return {
+        kMaps,
+        expressions,
+        results: {
+            validationErrors,
+            validation: {
+                allErrors: validation.allErrors,
+                canAdvance: validation.canAdvance,
+                message: validationMessage,
+            },
+        },
     };
 }

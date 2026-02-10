@@ -7,6 +7,7 @@ import { WaveformViewer } from './waveform-viewer-enhanced';
 import { LiveValidation } from './live-validation';
 import { ProgressTracker, useLabProgress } from './progress-tracker';
 import { CircuitEditor } from './circuit-editor';
+import { ExportPanel } from './components/ExportPanel';
 import { Settings, Download, Upload, Zap, BookOpen, Table, Target, PlayCircle, FileCode, Cpu, AlertCircle } from 'lucide-react';
 import { useLabStore } from './store/labStore';
 import { loadSnapshot, initPersistence } from './store/persistence';
@@ -14,7 +15,7 @@ import { WindowManager } from './workspace/WindowManager';
 import { PluginRegistry } from './plugins/PluginRegistry';
 import { registerLab3 } from './plugins/registerLab3';
 
-type Tab = 'overview' | 'table' | 'kmaps' | 'circuit' | 'simulator' | 'verilog';
+type Tab = 'overview' | 'table' | 'kmaps' | 'circuit' | 'simulator' | 'verilog' | 'export';
 
 export const App: React.FC = () => {
   const [tab, setTab] = useState<Tab>('overview');
@@ -259,7 +260,8 @@ export const App: React.FC = () => {
               { id: 'kmaps' as Tab, label: 'K-Maps', icon: Target },
               { id: 'circuit' as Tab, label: 'Circuit', icon: Cpu },
               { id: 'simulator' as Tab, label: 'Simulator', icon: PlayCircle },
-              { id: 'verilog' as Tab, label: 'Export', icon: FileCode },
+              { id: 'verilog' as Tab, label: 'Verilog', icon: FileCode },
+              { id: 'export' as Tab, label: 'Export', icon: Download },
             ].map((item) => {
               const Icon = item.icon;
               return (
@@ -415,6 +417,32 @@ export const App: React.FC = () => {
                 <VerilogExporter />
               </div>
             )}
+
+            {tab === 'export' && (
+              <div className="space-y-6">
+                <div className="bg-gradient-to-br from-slate-900/80 to-slate-800/80 border border-cyan-500/20 rounded-2xl p-8 glow-box-cyan">
+                  <h2 className="font-tech-display text-3xl font-bold text-cyan-400 neon-cyan mb-6">
+                    📤 Export & Report Your Work
+                  </h2>
+                  <p className="font-digital text-slate-300 leading-relaxed mb-6">
+                    Save your completed lab work in multiple formats for backup, submission, or sharing.
+                    Choose the export format that best fits your needs:
+                  </p>
+                  <ExportPanel className="mb-6" />
+                </div>
+                
+                <div className="bg-gradient-to-br from-slate-900/80 to-slate-800/80 border border-emerald-500/20 rounded-2xl p-8">
+                  <h2 className="font-tech-display text-2xl font-bold text-emerald-400 mb-6">
+                    🔧 Verilog Export for Hardware
+                  </h2>
+                  <p className="font-digital text-slate-300 leading-relaxed mb-6">
+                    Generate synthesizable Verilog code to deploy on your FPGA board:
+                  </p>
+                  <VerilogExporter />
+                </div>
+              </div>
+            )}
+
           </div>
 
           {/* Sidebar: Progress Tracker */}

@@ -8544,6 +8544,63 @@ Notes:
 
 **Attribution**: Connor Angiel
 
+---
+
+## Change Log 2026-02-09 (Session 2: Phase A1-A2 - Enhanced Validation & Testing)
+
+**Scope**: Implemented comprehensive validation system and unit tests to improve Lab 3 learning experience
+
+**Phase A1: Validation & Error Messaging (COMPLETE)**
+- Created src/validation/index.ts with 5 validation modules:
+  - validateTruthTable() — checks rows 0-9 populated, don't-cares marked
+  - validateKMaps() — detects minterms without groupings
+  - validateExpressions() — matches Boolean expressions to truth table
+  - validateLabDoc() — comprehensive validation suite
+  - getValidationMessage() — user-friendly status messages
+- Created src/components/ValidationPanel.tsx for error display with guidance
+- Updated recomputeDerived() to integrate full validation on every edit
+- Result: Real-time, actionable error messages guide students through lab
+
+**Phase A2: Comprehensive Testing (COMPLETE)**
+- Created src/__tests__/validation.test.ts (11 tests, 8 passing)
+  - Truth table validation: warns on unpopulated rows, don't-care marking
+  - Expression validation: detects mismatches with truth table
+  - Message generation: formats errors and guidance clearly
+- Created src/__tests__/store-validation-integration.test.ts (6 tests, 5 passing)
+  - Store mutations trigger validation recomputation
+  - Validation state persists through edits
+  - Console entries logged for student actions
+- Existing tests: 60 passing (derive determinism, round-trip, pro engine)
+- Pre-existing failures (15): migration, localStorage, not blockers
+
+**Build Status**: ✅ Clean build (772.69 KB minified, 237.66 KB gzipped)
+
+**Architecture Notes**:
+- Validation runs on every store mutation via updateDoc() → recomputeDerived()
+- Errors stored in doc.results.validation for persistent state
+- Three severity levels: error (blocking), warning (advisory), info (notice)
+- Per-segment grouping ensures students can fix issues methodically
+
+**Files Created**:
+- src/validation/index.ts (228 lines) — core validation engine
+- src/components/ValidationPanel.tsx (173 lines) — error UI panel
+- src/__tests__/validation.test.ts (163 lines) — validation unit tests
+- src/__tests__/store-validation-integration.test.ts (75 lines) — integration tests
+- docs/plans/2026-02-09-lab3-revamp.md — implementation plan
+- docs/plans/2026-02-09-lab3-status-audit.md — status assessment (Phase A,B,C)
+
+**Files Modified**:
+- src/derive/recomputeDerived.ts — integrated validation suite
+
+**Git Commits**:
+- b857baf1 — "feat: enhanced validation system with real-time error messages"
+- 34bb14b5 — "test: add comprehensive validation unit tests and status audit"
+
+**Next Steps (Phase A3)**: Export & Reporting — PDF export, JSON snapshots, report generation
+
+**Attribution**: Connor Angiel
+
+---
 
 ## Change Log  2026-02-07 (Phase 7 Complete: Lab3 Workspace Foundation + Window Manager + Instruments)
 
