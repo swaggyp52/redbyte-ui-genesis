@@ -8758,6 +8758,136 @@ Notes:
   - **Attribution**: Connor Angiel
 
 
+## Change Log 2026-02-11 (Toolchain Probe Schema + Doctor Report Export)
+
+- Introduced shared deterministic toolchain message types (`packages/rb-apps/src/fpga/toolchainTypes.ts`) for logs (`BuildLogEntry`), probe results (`ToolProbeResult`), and doctor report export (`ToolchainDoctorReport`).
+- Added bridge endpoint `/api/toolchain/probe` returning `toolchain_probe_v1` with env + tool statuses + structured logs (stable ts sequence).
+- Updated UI toolchain backend probe to prefer `/api/toolchain/probe` and fall back to legacy `/api/toolchain`.
+- Added deterministic JSON doctor report export (`encodeToolchainDoctorReport`) and wired an "Export Report" button in the HDL panel; JS mirrors are thin wrappers for runtime import resolution.
+
+- **Build Verification**: ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/project-format.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/toolchain-doctor-report.test.ts`
+- **Attribution**: Connor Angiel
+
+
+## Change Log 2026-02-11 (Basys3 Constraints Presets + Project FPGA Config)
+
+- Added `RBProject.fpga` schema (`board`, `constraints`, `preset`, `top`) and persisted it through Logic Playground save/load.
+- Added Basys 3 teaching-first XDC presets (`packages/rb-apps/src/fpga/boards/basys3/presets/`) and HDL panel UI: preset dropdown + apply button + editable XDC textarea.
+- Fixed Basys 3 decimal-point port constraint typo (`dp]` → `dp`) in canonical XDC sources.
+- Converted `packages/rb-apps/src/apps/LogicPlaygroundApp.js` and `packages/rb-apps/src/components/RightDock.js` to thin wrappers around TS/TSX source to prevent drift.
+
+- **Build Verification**: ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/project-format.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/toolchain-doctor-report.test.ts`
+- **Attribution**: Connor Angiel
+
+
+## Change Log 2026-02-11 (Basys3 Contract + Example HDL + Port Lint Readiness)
+
+- Added canonical Basys 3 top-module contract (`packages/rb-apps/src/fpga/boards/basys3/basys3Contract.ts`) with fixed naming for `clk`, `sw[15:0]`, `btn[4:0]`, `led[15:0]`, `seg[6:0]`, `an[3:0]`, `dp`, and optional active-high `rst`.
+- Added teaching-focused Verilog templates (`packages/rb-apps/src/fpga/boards/basys3/examples.ts`): switches-to-LEDs, seven-seg counter, and debounced button toggle.
+- Added deterministic HDL/XDC port linting (`packages/rb-apps/src/fpga/boards/basys3/portLint.ts`) that compares Verilog top ports vs XDC `get_ports` references and reports contract/mismatch gaps.
+- Updated HDL panel (`packages/rb-apps/src/components/HdlEditorPanel.tsx`) with top-module input, example insertion buttons, preflight readiness checklist, and lint warnings emitted into build logs before backend stubs run.
+- Updated switches preset to canonical button bundle naming (`btn[0..4]`) in `packages/rb-apps/src/fpga/boards/basys3/presets/basys3-switches-leds-7seg.xdc`.
+- Added tests for lint behavior and example/preset integration:
+  - `packages/rb-apps/src/__tests__/basys3-port-lint.test.ts`
+  - `packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx` (example insertion + clean lint + mismatch warning coverage)
+
+- **Build Verification**: âœ… `pnpm -w exec vitest run packages/rb-apps/src/__tests__/project-format.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/toolchain-doctor-report.test.ts packages/rb-apps/src/__tests__/basys3-port-lint.test.ts`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Unified Toolchain Preflight Object Across UI + Backend + Bridge)
+
+- Added canonical preflight types in `packages/rb-apps/src/fpga/toolchainTypes.ts`:
+  - `ToolchainPreflightStatus`
+  - `ToolchainPreflightProjectSummary`
+  - `ToolchainPreflightLintSummary`
+  - extended `ToolchainStep` with `preflight`
+- Implemented deterministic preflight generation in `packages/rb-apps/src/fpga/toolchainBackend.ts`:
+  - new backend API `preflight(snapshot, options?)`
+  - deterministic `run_id` hashing from normalized input
+  - strict `overallOk` based on lint errors
+  - local fallback preflight when bridge preflight endpoint is unavailable
+- Added bridge endpoint `POST /api/toolchain/preflight` in `packages/rb-fpga-bridge/src/index.js`:
+  - accepts project subset (`hdl` + `fpga`)
+  - normalizes/sorts input deterministically
+  - computes lint + readiness payload in `toolchain_preflight_v1` shape
+- Updated HDL panel (`packages/rb-apps/src/components/HdlEditorPanel.tsx`) to use backend preflight as the single readiness source:
+  - checklist now renders from preflight object
+  - `Build (stub)` runs preflight first and blocks synthesis stubs when preflight has errors
+  - preflight status surfaced in panel header
+- Added tests:
+  - `packages/rb-apps/src/__tests__/toolchain-preflight.test.ts` (deterministic JSON for identical input)
+  - `packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx` updated to verify preflight-blocked builds on errors
+
+- **Build Verification**: âœ… `pnpm -w exec vitest run packages/rb-apps/src/__tests__/project-format.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/toolchain-doctor-report.test.ts packages/rb-apps/src/__tests__/basys3-port-lint.test.ts packages/rb-apps/src/__tests__/toolchain-preflight.test.ts`
+- **Attribution**: Connor Angiel
+
+
+## Change Log 2026-02-11 (Doctor Report Now Embeds Preflight + Project Readiness)
+
+- Extended `ToolchainDoctorReport` in `packages/rb-apps/src/fpga/toolchainTypes.ts` with deterministic `reportId`, optional `preflight`, and optional `projectSummary` (`board`, `preset`, `top`, `hdlFilesCount`, `hasXdc`).
+- Updated doctor report generation in `packages/rb-apps/src/fpga/toolchainBackend.ts`:
+  - `encodeToolchainDoctorReport` now accepts optional `project` + `preflight`.
+  - Added `createToolchainDoctorReport` to deterministically compute embedded preflight when `project` is supplied.
+  - Added backend method `doctorReport(snapshot, options?)` to centralize report construction and keep UI as renderer/exporter.
+- Updated HDL panel export path (`packages/rb-apps/src/components/HdlEditorPanel.tsx`) to call `backend.doctorReport(...)`, passing current project snapshot + latest probe/preflight/log context.
+- Added bridge endpoint `POST /api/toolchain/doctor-report` in `packages/rb-fpga-bridge/src/index.js`, plus deterministic probe/tool list helpers and merged doctor payload generation in bridge context.
+- Added and expanded tests:
+  - `packages/rb-apps/src/__tests__/toolchain-doctor-report.test.ts` now validates embedded preflight/projectSummary and deterministic `reportId` + identical JSON for identical input.
+  - Existing preflight and HDL panel suites continue to pass against the new report path.
+
+- **Build Verification**: âœ… `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-doctor-report.test.ts packages/rb-apps/src/__tests__/toolchain-preflight.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/basys3-port-lint.test.ts packages/rb-apps/src/__tests__/project-format.test.ts`
+- **Syntax Verification**: âœ… `node --check packages/rb-fpga-bridge/src/index.js`
+- **Attribution**: Connor Angiel
+
+
+## Change Log 2026-02-11 (Basys3 Program Existing .bit via openFPGALoader)
+
+- Added bridge endpoint `POST /api/toolchain/program-bitstream` in `packages/rb-fpga-bridge/src/index.js`:
+  - payload: `{ board: "basys3", bitstream: { kind: "base64", data }, mode: "sram" }`
+  - deterministic `runId` derived from `{ board, mode, bitstream_hash }`
+  - writes deterministic temp bitstream file (`<runId>.bit`) and invokes `openFPGALoader -b basys3 <file>`
+  - returns structured `BuildLogEntry` logs with `step="program"`
+  - preserves stderr/stdout lines and appends actionable driver/device hint on failures
+- Increased bridge JSON payload limit to `50mb` to support base64 bitstream uploads.
+- Added backend `programBitstream(...)` API in `packages/rb-apps/src/fpga/toolchainBackend.ts`:
+  - deterministic `deriveProgramBitstreamRunId(...)`
+  - deterministic payload encoder (`encodeProgramBitstreamRequestPayload`)
+  - hard gate on tool probe (`openFPGALoader` must be present) before invoking bridge endpoint
+- Updated Hardware Panel programming flow in `packages/rb-apps/src/apps/HardwarePanelApp.tsx` to use backend `programBitstream(...)` instead of direct legacy `/program` path for this milestone.
+  - keeps existing `.bit` file picker
+  - adds program log console rendering from structured toolchain logs
+  - displays last programming `run_id` for diagnostics
+- Converted `packages/rb-apps/src/apps/HardwarePanelApp.js` to a thin TSX wrapper to maintain JS mirror policy.
+- Added tests in `packages/rb-apps/src/__tests__/toolchain-program-bitstream.test.ts`:
+  - deterministic runId derivation / payload normalization
+  - backend posts normalized bridge payload after successful probe
+
+- **Build Verification**: âœ… `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-program-bitstream.test.ts packages/rb-apps/src/__tests__/toolchain-doctor-report.test.ts packages/rb-apps/src/__tests__/toolchain-preflight.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/basys3-port-lint.test.ts packages/rb-apps/src/__tests__/project-format.test.ts`
+- **Syntax Verification**: âœ… `node --check packages/rb-fpga-bridge/src/index.js`
+- **Attribution**: Connor Angiel
+
+
+## Change Log  2026-02-10 (HDL Editor Stub + Toolchain Backend API Scaffold)
+
+- Added experimental HDL editor dock tab (flag: `hdl-editor`) with stub “Build” flow and in-project persistence via `RBProject.hdl`.
+- Added minimal toolchain backend API scaffold (`vivado`/`open` stubs) for future real tool invocation.
+- Added tests for HDL roundtrip persistence and stub build log emission; targeted vitest run passed.
+
+- **Attribution**: Connor Angiel
+
+
+## Change Log  2026-02-10 (HDL Toolchain Probe + Feature Gate Hardening)
+
+- Replaced HDL tab gating with a 3-tier flag: env (`RB_TOOLCHAIN_UI=1` / `VITE_RB_TOOLCHAIN_UI=1`) OR URL param (`?rb_hdl=1`) OR localStorage fallback (`rb-debug-playground` contains `hdl-editor`).
+- Locked `RBProject.hdl` schema to `{ sources: Array<{ path, language, text }>, top? }` and added legacy coercion for older `{ kind, language, files, topModule }` saves.
+- Upgraded toolchain backend logs to structured, deterministic entries (`ToolchainLogEntry`) and added `probeTools()` returning tool statuses + logs.
+- Wired a â€œProbe Toolchainâ€ button in the HDL panel that queries the local FPGA bridge `/api/toolchain` and renders results in the build console.
+- Extended the FPGA bridge toolchain detector to also report `nextpnr-xilinx` when available.
+- Added missing JS parity artifacts for runtime resolution: `packages/rb-apps/src/components/HdlEditorPanel.js`, `packages/rb-apps/src/fpga/toolchainBackend.js`.
+
+- **Build Verification**: âœ… `pnpm -w exec vitest run packages/rb-apps/src/__tests__/project-format.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`
+- **Attribution**: Connor Angiel
+
 - **[Phase B1 Completed]**: Enhanced ConsoleWindow.tsx with event type filtering, search combination, JSON export, and copy-to-clipboard functionality
   - **Event Type Filtering**: Added 7 event type filters (all, set-table-row, fill-digits, set-expression, import, export, error) with visual pill indicators showing event counts per type
   - **Multi-axis Filtering**: Implemented search + type filter combination for powerful event log analysis (regex text search on type + payload)
@@ -8856,3 +8986,183 @@ Notes:
     - Performance monitoring: Lighthouse audit, Core Web Vitals collection
   
   - **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Basys3 Program Run Streaming + Polling Fallback)
+
+- Added deterministic in-memory program run registry for toolchain programming in `packages/rb-fpga-bridge/src/toolchain-program-runs.js`:
+  - bounded log retention (`logLimit`)
+  - incremental offsets (`nextOffset`)
+  - run lifecycle (`running|done|error`)
+  - SSE event framing helper
+- Updated bridge programming flow in `packages/rb-fpga-bridge/src/index.js`:
+  - `POST /api/toolchain/program-bitstream` now starts async run execution and returns immediately with `runId`, initial logs, and `nextOffset`
+  - new polling endpoint `GET /api/toolchain/runs/:runId?offset=<n>`
+  - new SSE endpoint `GET /api/toolchain/runs/:runId/stream`
+  - line-buffered `openFPGALoader` stdout/stderr logging with structured `step="program"` entries
+  - TTL cleanup for completed runs
+- Extended backend API in `packages/rb-apps/src/fpga/toolchainBackend.ts`:
+  - `getRunStatus(runId, offset)`
+  - `openRunStream(runId, handlers, { offset })`
+  - `programBitstream(...)` now forwards `state` and `nextOffset` from bridge responses
+- Updated Hardware Panel programming UX in `packages/rb-apps/src/apps/HardwarePanelApp.tsx`:
+  - starts program run and attaches live log streaming
+  - automatic fallback to polling every 500ms if SSE is unavailable/fails
+  - status badge (`Idle/Running/Success/Failed`) + exit code display
+  - `Copy Logs` action and `Export Report` action in the Program section
+- Added tests:
+  - `packages/rb-apps/src/__tests__/toolchain-program-bitstream.test.ts` now covers polling status parsing and SSE event parsing
+  - `packages/rb-fpga-bridge/tests/toolchain-program-runs.test.js` validates registry offsets/log clipping and SSE frame format
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-program-bitstream.test.ts packages/rb-apps/src/__tests__/toolchain-doctor-report.test.ts packages/rb-apps/src/__tests__/toolchain-preflight.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/basys3-port-lint.test.ts packages/rb-apps/src/__tests__/project-format.test.ts`
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-program-runs.test.js`
+  - ⚠️ `packages/rb-apps/src/__tests__/hardware-panel.test.tsx` currently fails due pre-existing assertions tied to older bridge/offline text and device expectations.
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Program Run Identity Split + Hardware Panel Test Stabilization)
+
+- Updated program run identity semantics to prevent registry collisions:
+  - deterministic `artifactId` remains hash-based for bitstream identity
+  - per-invocation `runId` is now derived from `artifactId` plus execution suffix
+- Updated bridge programming endpoint and run summaries in `packages/rb-fpga-bridge/src/index.js` and `packages/rb-fpga-bridge/src/toolchain-program-runs.js` to return both `artifactId` and `runId`.
+- Updated backend program types and parsers in `packages/rb-apps/src/fpga/toolchainBackend.ts` to require and propagate `artifactId` across `programBitstream`, run status polling, and stream done events.
+- Stabilized `packages/rb-apps/src/__tests__/hardware-panel.test.tsx` for the new streaming UI behavior:
+  - offline assertion now tolerates duplicate diagnostic text
+  - program flow assertions now validate SSE->poll fallback and incremental log rendering without brittle text collisions
+- Extended ID-split coverage tests:
+  - `packages/rb-apps/src/__tests__/toolchain-program-bitstream.test.ts`
+  - `packages/rb-fpga-bridge/tests/toolchain-program-runs.test.js`
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-program-bitstream.test.ts packages/rb-apps/src/__tests__/hardware-panel.test.tsx`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-program-runs.test.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Program Run Cancellation: Bridge + Backend + Hardware Panel)
+
+- Added bridge cancellation endpoint `POST /api/toolchain/runs/:runId/cancel` in `packages/rb-fpga-bridge/src/index.js`:
+  - idempotent behavior for missing/already-finished runs
+  - running-run cancellation with platform-aware process termination (`taskkill` on Windows, `SIGTERM`/`SIGKILL` on POSIX)
+  - structured cancellation logs and explicit canceled terminal state
+- Extended program run registry in `packages/rb-fpga-bridge/src/toolchain-program-runs.js`:
+  - added `canceled` state support
+  - process-handle tracking (`attachProcess`, `getProcess`, `clearProcess`)
+  - cancellation tracking (`requestCancel`, `isCancelRequested`)
+  - non-running runs reject new log appends
+- Extended backend API in `packages/rb-apps/src/fpga/toolchainBackend.ts`:
+  - added `cancelRun(runId)` method
+  - accepted `canceled` in program run state normalization/parsing for status and SSE done events
+- Updated run state type in `packages/rb-apps/src/fpga/toolchainTypes.ts`:
+  - `ToolchainRunState` now includes `canceled`
+- Updated Hardware Panel UX in `packages/rb-apps/src/apps/HardwarePanelApp.tsx`:
+  - added `Cancel Program` action while run status is `running`
+  - cancel action calls backend `cancelRun`, appends logs, and transitions status badge to `Canceled`
+  - synthesis dialog cancel now routes to run cancellation when a program run is active
+- Added/updated tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-program-runs.test.js` (cancel transition + idempotent post-done cancel)
+  - `packages/rb-apps/src/__tests__/toolchain-program-bitstream.test.ts` (cancel endpoint normalization + canceled SSE done state)
+  - `packages/rb-apps/src/__tests__/hardware-panel.test.tsx` (UI cancel control and canceled-state transition)
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-program-bitstream.test.ts packages/rb-apps/src/__tests__/hardware-panel.test.tsx`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-program-runs.test.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Basys3 Board Detect: Bridge Endpoint + Backend API + Hardware Panel)
+
+- Added bridge endpoint `GET /api/toolchain/boards/detect` in `packages/rb-fpga-bridge/src/index.js`:
+  - Basys3-only detection semantics (no programming side effects)
+  - openFPGALoader detection command selection from `--help` (`--scan`, `--detect`, `--list-cables`, `--list-boards`)
+  - deterministic payload: `schema_version`, `ok`, `run_id`, `boards[]`, `tools`, `logs[]`
+  - explicit non-detection warning when tool is present but no Basys3 signal is found
+- Added bridge detection helpers in `packages/rb-fpga-bridge/src/toolchain-board-detect.js`:
+  - `selectOpenFPGALoaderDetectCommands(helpText)`
+  - `parseOpenFPGALoaderDetectOutput(rawOutput)` for stable Basys3/XC7A35T line matching
+- Extended backend API in `packages/rb-apps/src/fpga/toolchainBackend.ts`:
+  - added `detectBoards()` to `ToolchainBackend`
+  - added bridge response validation and normalization for board-detect payloads
+- Extended shared toolchain types in `packages/rb-apps/src/fpga/toolchainTypes.ts`:
+  - `BoardDetectResult`, `BoardDetectBoard`, `BoardDetectToolStatus`
+- Updated Hardware Panel in `packages/rb-apps/src/apps/HardwarePanelApp.tsx`:
+  - added **Detect Board** button in Device section
+  - renders detected/not-detected state with actionable hints (cable, drivers, Vivado lock)
+- Added tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-board-detect.test.js` (parser/command selection determinism)
+  - `packages/rb-apps/src/__tests__/hardware-panel.test.tsx` (not-detected rendering from empty board list)
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/hardware-panel.test.tsx packages/rb-apps/src/__tests__/toolchain-program-bitstream.test.ts`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-board-detect.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-program-runs.test.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Basys3 Board Busy Guard: Single Active Program Run)
+
+- Added single-active-run board contention policy in `packages/rb-fpga-bridge/src/index.js` for `POST /api/toolchain/program-bitstream`:
+  - bridge now checks run registry for an active `running` run on `board="basys3"`
+  - if busy, returns deterministic `409` payload with `error: "BOARD_BUSY"`, `board`, `activeRunId`, and structured logs
+- Extended program run registry in `packages/rb-fpga-bridge/src/toolchain-program-runs.js`:
+  - run metadata now includes `board`
+  - added `getActiveRunByBoard(board)` helper for deterministic board-level active-run lookup
+- Extended backend handling in `packages/rb-apps/src/fpga/toolchainBackend.ts`:
+  - added `BOARD_BUSY` response parsing in `programBitstream(...)`
+  - `ProgramBitstreamResult` now includes optional `activeRunId` to drive UI recovery actions
+- Updated Hardware Panel UX in `packages/rb-apps/src/apps/HardwarePanelApp.tsx`:
+  - shows **Board Busy** banner when bridge rejects with `BOARD_BUSY`
+  - banner includes `activeRunId` and **Cancel Active Run** action
+  - cancel action calls existing `cancelRun(activeRunId)` and clears busy state after successful cancellation
+- Added/updated tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-program-runs.test.js` validates active-run-by-board selection
+  - `packages/rb-apps/src/__tests__/toolchain-program-bitstream.test.ts` validates backend `BOARD_BUSY` mapping
+  - `packages/rb-apps/src/__tests__/hardware-panel.test.tsx` validates busy banner rendering and cancel-active-run flow
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-program-bitstream.test.ts packages/rb-apps/src/__tests__/hardware-panel.test.tsx`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-program-runs.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-board-detect.test.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+- **Attribution**: Connor Angiel
+## Change Log 2026-02-11 (Yosys Synth-Only Runs: Registry + Streaming + HDL Panel)
+
+- Added bridge-side Yosys synth helpers in `packages/rb-fpga-bridge/src/toolchain-synth.js`:
+  - deterministic source/top normalization for Verilog-only synth requests
+  - deterministic synth artifact ID generation (`toolchain-synth-*`)
+  - deterministic `run.ys` script generation (`rb_yosys_synth_v1`)
+  - stat-section extraction from Yosys stdout
+- Extended run registry plumbing in `packages/rb-fpga-bridge/src/toolchain-program-runs.js`:
+  - optional per-registry `step` (`program` default, now supports `synth`)
+  - optional `artifact` payload on run snapshots and done summaries
+- Added bridge synth endpoints in `packages/rb-fpga-bridge/src/index.js`:
+  - `POST /api/toolchain/synth`
+  - `GET /api/toolchain/synth/runs/:runId`
+  - `GET /api/toolchain/synth/runs/:runId/stream`
+  - run execution writes normalized sources + deterministic `run.ys`, invokes `yosys -s run.ys`, streams line logs with `step="synth"`, and emits artifact metadata (`netlist.v`, `stat.txt`, `stats.json`) on completion.
+- Extended shared toolchain schema in `packages/rb-apps/src/fpga/toolchainTypes.ts`:
+  - `SynthRequest`, `SynthArtifactRef`, `SynthRunStatus`, `SynthRunDoneSummary`
+- Extended UI backend API in `packages/rb-apps/src/fpga/toolchainBackend.ts`:
+  - deterministic synth request encoding and artifact ID derivation
+  - `synth(...)`, `getSynthRunStatus(...)`, `openSynthRunStream(...)`
+  - synth log normalization and bridge response parsing for synth run payloads
+- Updated HDL UI in `packages/rb-apps/src/components/HdlEditorPanel.tsx`:
+  - new `Synthesize (Yosys)` action
+  - preflight gate before synth submission
+  - SSE synth log streaming with automatic polling fallback
+  - synth status/run ID display and artifact summary panel when run completes
+- Added/updated tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-synth-script.test.js` (script/artifact determinism)
+  - `packages/rb-fpga-bridge/tests/toolchain-program-runs.test.js` (custom step support)
+  - `packages/rb-apps/src/__tests__/toolchain-synth.test.ts` (artifact determinism + synth request/response)
+  - `packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx` (synth preflight block + synth stream success path)
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-program-runs.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-synth-script.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-board-detect.test.js`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-synth.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/toolchain-program-bitstream.test.ts`
+- **Attribution**: Connor Angiel

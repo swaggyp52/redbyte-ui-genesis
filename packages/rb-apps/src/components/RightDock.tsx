@@ -18,6 +18,9 @@ import { trackRender, useUiTickStore } from '@redbyte/rb-utils';
 import { BoardIOPanel } from './BoardIOPanel';
 import { HelpApp } from '../apps/HelpApp';
 import { UserManualAppComponent } from '../apps/UserManualApp';
+import type { ToolchainProjectInput } from '../fpga/toolchainBackend';
+import { HdlEditorPanel } from './HdlEditorPanel';
+import type { RBFpgaConfig } from '../export/projectFormat';
 
 /**
  * Logic Playground vNext Right Dock
@@ -31,7 +34,7 @@ import { UserManualAppComponent } from '../apps/UserManualApp';
  * Never overlaps the main stage
  */
 
-export type RightDockTab = 'inspector' | 'health' | 'learn' | 'probes' | 'record' | 'chips' | 'io';
+export type RightDockTab = 'inspector' | 'health' | 'learn' | 'probes' | 'record' | 'chips' | 'io' | 'hdl';
 export type RightDockState = 'collapsed' | 'peek' | 'expanded';
 
 interface RightDockProps {
@@ -96,6 +99,13 @@ interface RightDockProps {
   onHardwareModeChange?: (mode: 'simulated' | 'board') => void;
   boardConnected?: boolean;
 
+  // HDL Tab (experimental)
+  enableHdlTab?: boolean;
+  hdlProject?: ToolchainProjectInput;
+  onHdlProjectChange?: (next: ToolchainProjectInput) => void;
+  fpgaProject?: RBFpgaConfig;
+  onFpgaProjectChange?: (next: RBFpgaConfig) => void;
+
   // State control
   initialTab?: RightDockTab;
   initialState?: RightDockState;
@@ -154,6 +164,11 @@ export const RightDock: React.FC<RightDockProps> = ({
   hardwareMode,
   onHardwareModeChange,
   boardConnected,
+  enableHdlTab = false,
+  hdlProject,
+  onHdlProjectChange,
+  fpgaProject,
+  onFpgaProjectChange,
   initialTab = 'inspector',
   initialState = 'expanded',
   onStateChange,
@@ -162,6 +177,12 @@ export const RightDock: React.FC<RightDockProps> = ({
   trackRender('RightDock');
   const [activeTab, setActiveTab] = useState<RightDockTab>(initialTab);
   const [dockState, setDockState] = useState<RightDockState>(initialState);
+
+  useEffect(() => {
+    if (!enableHdlTab && activeTab === 'hdl') {
+      setActiveTab('inspector');
+    }
+  }, [activeTab, enableHdlTab]);
   // Use shallow comparison to prevent re-renders when selection object reference changes but content is the same
   const rawSelection = useLogicViewStore(useShallow((state: import('@redbyte/rb-logic-view').LogicViewState) => state.selection));
   const selection = useMemo(() => ({
@@ -327,6 +348,7 @@ export const RightDock: React.FC<RightDockProps> = ({
   };
 
   const handleTabChange = (tab: RightDockTab) => {
+    if (tab === 'hdl' && !enableHdlTab) return;
     setActiveTab(tab);
     onTabChange?.(tab);
   };
@@ -549,6 +571,24 @@ export const RightDock: React.FC<RightDockProps> = ({
             <span className="mr-1 pointer-events-none select-none">🧩</span>
             <span className="pointer-events-none select-none">Chips</span>
           </button>
+          {enableHdlTab && (
+            <button
+              onClick={() => handleTabChange('hdl')}
+              className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'hdl'
+                ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
+                : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
+                }`}
+              aria-label="HDL"
+              aria-selected={activeTab === 'hdl' ? 'true' : 'false'}
+              role="tab"
+              tabIndex={activeTab === 'hdl' ? 0 : -1}
+              data-testid="rightdock-tab-hdl"
+              type="button"
+            >
+              <span className="mr-1 pointer-events-none select-none">{'</>'}</span>
+              <span className="pointer-events-none select-none">HDL</span>
+            </button>
+          )}
           <button
             onClick={() => handleTabChange('io')}
             className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'io'
@@ -966,6 +1006,20 @@ export const RightDock: React.FC<RightDockProps> = ({
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+        )}
+        {enableHdlTab && activeTab === 'hdl' && (
+          <div className="h-full overflow-hidden">
+            {hdlProject && onHdlProjectChange ? (
+              <HdlEditorPanel
+                project={hdlProject}
+                onProjectChange={onHdlProjectChange}
+                fpga={fpgaProject}
+                onFpgaChange={onFpgaProjectChange}
+              />
+            ) : (
+              <div className="p-4 text-center text-[#8B949E] text-sm">HDL project data not available</div>
             )}
           </div>
         )}

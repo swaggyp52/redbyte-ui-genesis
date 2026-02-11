@@ -68,7 +68,13 @@ import { assertAppOutput, registerAppInvariants } from '../utils/appInvariants';
 import { analyzeCircuitHealth } from '../logic/circuitHealth';
 import { buildDebugBundle } from '../export/debugBundle';
 import { netlistFromCircuit } from '../export/netlistExport';
-import { createRBProject, decodeRBProject, encodeRBProject, type RBProject } from '../export/projectFormat';
+import {
+  createRBProject,
+  decodeRBProject,
+  encodeRBProject,
+  type RBProject,
+  type RBFpgaConfig,
+} from '../export/projectFormat';
 import { stableStringify } from '../export/stableStringify';
 import { verilogFromNetlist } from '../export/verilogExport';
 import { HierarchyBreadcrumbs } from '../components/HierarchyBreadcrumbs';
@@ -81,6 +87,7 @@ import { GuardrailConfirmModal } from '@redbyte/rb-primitives';
 import { RightDock, type RightDockTab } from '../components/RightDock';
 import { EnhancedPalette } from '../components/EnhancedPalette';
 import { HelpDock } from '../components/HelpDock';
+import { coerceToolchainProjectInput, type ToolchainProjectInput } from '../fpga/toolchainBackend';
 import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 import { useAutosaveCircuit, useRestoreCircuit, loadSavedCircuit, clearSavedCircuit } from '../utils/ceAutosave';
 import {
@@ -109,6 +116,14 @@ const appVersion =
   'dev';
 
 import { EvidenceViewerPanel } from '../components/EvidenceViewerPanel';
+
+const buildDefaultHdlProject = (): ToolchainProjectInput => ({
+  sources: [],
+});
+
+const buildDefaultFpgaProject = (): RBFpgaConfig => ({
+  board: 'basys3',
+});
 
 const LOGIC_PLAYGROUND_INVARIANTS = {
   reads: ['circuit_store', 'probe_store', 'file_system', 'examples', 'settings'],
@@ -266,6 +281,40 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   useRenderStormDetector('LogicPlaygroundInner');
   const disableToolStrip = debugFlags.has('disable-toolstrip');
   const disableRightDock = debugFlags.has('disable-rightdock');
+
+  // HDL editor enablement: env flag (build-time) OR URL param (runtime) OR localStorage debug flag (fallback)
+  const enableHdlTab = useMemo(() => {
+    const viteEnv = (import.meta as any)?.env ?? {};
+    const envFlag =
+      viteEnv.VITE_RB_TOOLCHAIN_UI === '1' ||
+      viteEnv.RB_TOOLCHAIN_UI === '1' ||
+      (typeof process !== 'undefined' ? (process as any)?.env?.RB_TOOLCHAIN_UI === '1' : false);
+
+    const urlFlag = (() => {
+      if (typeof window === 'undefined') return false;
+      try {
+        return new URLSearchParams(window.location.search).get('rb_hdl') === '1';
+      } catch {
+        return false;
+      }
+    })();
+
+    const localStorageFlag = (() => {
+      if (typeof window === 'undefined') return false;
+      try {
+        const raw = localStorage.getItem('rb-debug-playground') || '';
+        return raw
+          .split(',')
+          .map((f) => f.trim())
+          .filter(Boolean)
+          .includes('hdl-editor');
+      } catch {
+        return false;
+      }
+    })();
+
+    return envFlag || urlFlag || localStorageFlag;
+  }, []);
 
   // E2E flags via querystring (test-only)
   const e2eParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
@@ -697,8 +746,18 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const [projectDescription, setProjectDescription] = useState('');
   const [projectCreatedAt, setProjectCreatedAt] = useState(() => new Date().toISOString());
   const [projectId, setProjectId] = useState(() => crypto.randomUUID?.() ?? `proj-${Date.now()}`);
+  const [hdlProject, setHdlProject] = useState<ToolchainProjectInput>(() => buildDefaultHdlProject());
+  const [fpgaProject, setFpgaProject] = useState<RBFpgaConfig>(() => buildDefaultFpgaProject());
   const [currentFileId, setCurrentFileId] = useState<string | null>(initialFileId ?? null);
   const [isDirty, setIsDirty] = useState(false);
+  const handleHdlProjectChange = useCallback((next: ToolchainProjectInput) => {
+    setHdlProject(next);
+    setIsDirty(true);
+  }, [setHdlProject, setIsDirty]);
+  const handleFpgaProjectChange = useCallback((next: RBFpgaConfig) => {
+    setFpgaProject(next);
+    setIsDirty(true);
+  }, [setFpgaProject, setIsDirty]);
 
   const legacyRbprojAutosaveKey = useMemo(
     () => getRbprojAutosaveKey('logic-playground', windowId),
@@ -720,7 +779,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     isDirty,
     getProject: getProjectSnapshot,
     applyProject: applyRbprojProject,
-    changeDeps: [circuit, projectName, projectDescription],
+    changeDeps: [circuit, projectName, projectDescription, enableHdlTab ? hdlProject : null, enableHdlTab ? fpgaProject : null],
   });
 
   // Unified recovery coordinator (autosave > workspace > none)
@@ -2909,6 +2968,8 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     setTickEngine(new TickEngine(emptyCircuit, { tickRate: currentHz }));
     setCurrentFileId(null);
     setIsDirty(false);
+    setHdlProject(buildDefaultHdlProject());
+    setFpgaProject(buildDefaultFpgaProject());
     setShowDecodeErrorModal(false);
     addToast('Circuit reset', 'info');
   };
@@ -2939,16 +3000,38 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
   const buildProject = useCallback((): RBProject => {
     const name = projectName.trim() || 'Untitled Project';
+    const normalizedConstraintsText =
+      typeof fpgaProject.constraints?.text === 'string'
+        ? fpgaProject.constraints.text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+        : '';
+    const hasFpgaConstraints = normalizedConstraintsText.trim().length > 0;
+    const hasFpgaPreset = typeof fpgaProject.preset === 'string' && fpgaProject.preset.trim().length > 0;
+    const fpga =
+      enableHdlTab && (hasFpgaConstraints || hasFpgaPreset)
+        ? {
+            ...fpgaProject,
+            top: typeof fpgaProject.top === 'string' && fpgaProject.top.trim().length > 0 ? fpgaProject.top : hdlProject.top,
+            constraints: hasFpgaConstraints ? { type: 'xdc' as const, text: normalizedConstraintsText } : undefined,
+            preset: hasFpgaPreset ? fpgaProject.preset : undefined,
+          }
+        : undefined;
     return createRBProject({
       createdAt: projectCreatedAt,
       name,
-      description: projectDescription.trim() || undefined,
-      circuit,
-      layout: {
-        perspectiveId: perspective,
-        splitRatio,
-        dock: {
-          open: rightDockState !== 'collapsed',
+       description: projectDescription.trim() || undefined,
+       circuit,
+       hdl:
+         enableHdlTab &&
+         ((typeof hdlProject.top === 'string' && hdlProject.top.trim().length > 0) ||
+           (Array.isArray(hdlProject.sources) && hdlProject.sources.some((s) => s.text.trim().length > 0)))
+            ? hdlProject
+            : undefined,
+        fpga,
+        layout: {
+          perspectiveId: perspective,
+          splitRatio,
+          dock: {
+           open: rightDockState !== 'collapsed',
           tab: rightDockTab,
         },
       },
@@ -2983,6 +3066,9 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     appVersion,
     currentHz,
     projectId,
+    enableHdlTab,
+    hdlProject,
+    fpgaProject,
   ]);
 
   useEffect(() => {
@@ -3019,6 +3105,23 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
         setProjectId(project.meta.projectId.trim());
       }
 
+      const coercedHdl = coerceToolchainProjectInput(project.hdl);
+      setHdlProject(coercedHdl ?? buildDefaultHdlProject());
+
+      const rawFpga = project.fpga;
+      const nextFpga = rawFpga && rawFpga.board === 'basys3' ? rawFpga : buildDefaultFpgaProject();
+      const normalizedFpgaConstraintsText =
+        typeof nextFpga.constraints?.text === 'string'
+          ? nextFpga.constraints.text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+          : '';
+      const hasFpgaConstraints = normalizedFpgaConstraintsText.trim().length > 0;
+      setFpgaProject({
+        ...nextFpga,
+        constraints: hasFpgaConstraints ? { type: 'xdc', text: normalizedFpgaConstraintsText } : undefined,
+        preset: typeof nextFpga.preset === 'string' && nextFpga.preset.trim().length > 0 ? nextFpga.preset : undefined,
+        top: typeof nextFpga.top === 'string' && nextFpga.top.trim().length > 0 ? nextFpga.top : undefined,
+      });
+
       if (project.layout?.perspectiveId) {
         const perspectiveId = project.layout.perspectiveId;
         const validPerspectives = ['build', 'analyze', 'explain', 'explore', 'quad', 'circuit-only', 'schematic-only', 'scope-only', '3d-only', 'code-only', 'inspect', 'debug', 'schematic', 'learn'] as const;
@@ -3034,6 +3137,9 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
         const dockTab = project.layout.dock.tab;
         if (dockTab && ['inspector', 'health', 'learn', 'probes', 'record', 'chips'].includes(dockTab)) {
           setRightDockTab(dockTab as RightDockTab);
+        }
+        if (dockTab === 'hdl' && enableHdlTab) {
+          setRightDockTab('hdl');
         }
       }
 
@@ -3062,6 +3168,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       setCircuit,
       setEngine,
       setTickEngine,
+      enableHdlTab,
     ]
   );
 
@@ -3984,6 +4091,11 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
               onIoToggleInput={handleIoToggleInput}
               onIoInitialize={handleIoInitialize}
               onIoAssignPin={handleIoAssignPin}
+              enableHdlTab={enableHdlTab}
+              hdlProject={hdlProject}
+              onHdlProjectChange={handleHdlProjectChange}
+              fpgaProject={fpgaProject}
+              onFpgaProjectChange={handleFpgaProjectChange}
               lastTickAt={lastTickAt}
               highlightProbePaths={highlightProbePaths}
               onToggleHighlightProbePaths={setHighlightProbePaths}

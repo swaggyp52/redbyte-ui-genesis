@@ -29,3 +29,7 @@ Environment notes:
 - If `nano` is unavailable, apply edits using `apply_patch`.
 
 If your environment has no git remote configured, report it; do not add or modify remotes unless explicitly instructed.
+
+JS mirror policy:
+- Some `packages/rb-apps/src/**` modules have both `.ts/.tsx` and `.js` siblings, and import resolution can prefer `.js`.
+- Treat `.ts/.tsx` as source-of-truth; keep `.js` siblings 1:1 (prefer thin re-export wrappers) whenever the TS/TSX changes.

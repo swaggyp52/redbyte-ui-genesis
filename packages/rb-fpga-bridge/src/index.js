@@ -13,7 +13,7 @@ import { identifyPort } from "./proto/identify.js";
 import { buildStreamStartFrame, buildStreamStopFrame } from "./proto/stream.js";
 import { createStreamParser } from "./stream-parser.js";
 import { StreamRingBuffer } from "./stream-buffer.js";
-import { exec } from "child_process";
+import { exec, execFile } from "child_process";
 import { promisify } from "util";
 import * as fslib from "fs"; // Renamed to avoid conflict if fs is imported elsewhere or just use consistency
 import * as path from "path";
@@ -29,8 +29,27 @@ import * as os from "os";
 import * as fs from "fs";
 import RbBinV1Parser from "./parsers/rb-bin-v1.js";
 import { RedByteIngestion } from "./ingestion.js";
+import {
+  createProgramExecutionRunId,
+  createProgramRunRegistry,
+  formatSseEvent,
+  normalizeProgramRunOffset,
+} from "./toolchain-program-runs.js";
+import {
+  parseOpenFPGALoaderDetectOutput,
+  selectOpenFPGALoaderDetectCommands,
+} from "./toolchain-board-detect.js";
+import {
+  buildYosysSynthScript,
+  createSynthArtifactId,
+  extractYosysStatText,
+  normalizeSynthSources,
+  normalizeSynthTop,
+  YOSYS_SYNTH_SCRIPT_VERSION,
+} from "./toolchain-synth.js";
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const HTTP_PORT = Number(process.env.RB_FPGA_HTTP_PORT || 4242);
 const WS_PORT = Number(process.env.RB_FPGA_WS_PORT || 4242);
@@ -48,6 +67,12 @@ const PROGRAM_LOG_KEEP = Number(process.env.RB_FPGA_PROGRAM_LOG_KEEP || 50);
 const PROGRAM_LOG_TAIL = Number(process.env.RB_FPGA_PROGRAM_LOG_TAIL || 200);
 const PROGRAM_LOG_TAIL_MAX = Number(process.env.RB_FPGA_PROGRAM_LOG_TAIL_MAX || 2000);
 const PROGRAM_LOG_MAX_BYTES = Number(process.env.RB_FPGA_PROGRAM_LOG_MAX_BYTES || 262144);
+const TOOLCHAIN_PROGRAM_RUN_LOG_LIMIT = Number(process.env.RB_FPGA_TOOLCHAIN_PROGRAM_RUN_LOG_LIMIT || 2000);
+const TOOLCHAIN_PROGRAM_RUN_TTL_MS = Number(process.env.RB_FPGA_TOOLCHAIN_PROGRAM_RUN_TTL_MS || 600000);
+const TOOLCHAIN_PROGRAM_RUN_CLEANUP_MS = Number(process.env.RB_FPGA_TOOLCHAIN_PROGRAM_RUN_CLEANUP_MS || 60000);
+const TOOLCHAIN_SYNTH_RUN_LOG_LIMIT = Number(process.env.RB_FPGA_TOOLCHAIN_SYNTH_RUN_LOG_LIMIT || 2000);
+const TOOLCHAIN_SYNTH_RUN_TTL_MS = Number(process.env.RB_FPGA_TOOLCHAIN_SYNTH_RUN_TTL_MS || 600000);
+const TOOLCHAIN_SYNTH_RUN_CLEANUP_MS = Number(process.env.RB_FPGA_TOOLCHAIN_SYNTH_RUN_CLEANUP_MS || 60000);
 
 function getRepoRoot() {
   try {
@@ -75,6 +100,10 @@ function decodeBase64Payload(payload) {
   const trimmed = payload.trim();
   const cleaned = trimmed.replace(/^data:.*;base64,/, "");
   return Buffer.from(cleaned, "base64");
+}
+
+function hashBufferSha256(buffer) {
+  return createHash("sha256").update(buffer).digest("hex");
 }
 
 function resolveBitstreamPath({ bitstreamPath, bitstreamBase64, deviceId }) {
@@ -173,6 +202,23 @@ function trimLogContent(content, maxBytes) {
   return { content: slice, truncated: true };
 }
 
+function normalizeProgramBitstreamPayload(rawBitstream) {
+  const kind = rawBitstream?.kind === "base64" ? "base64" : null;
+  const data = typeof rawBitstream?.data === "string" ? rawBitstream.data : null;
+  if (!kind || !data) return null;
+  const buffer = decodeBase64Payload(data);
+  if (!buffer || buffer.length === 0) return null;
+  return { kind, data, buffer };
+}
+
+function buildProgramBitstreamRunId({ board, mode, bitstreamHash }) {
+  return deterministicId("program-bitstream", {
+    board,
+    mode,
+    bitstream_sha256: bitstreamHash,
+  });
+}
+
 // Deterministic seeded PRNG (simple LCG)
 class SeededRandom {
   constructor(seed) {
@@ -269,7 +315,7 @@ function parseLine(line) {
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
 
 // ============================================================
 // TOOLCHAIN DETECTION
@@ -378,13 +424,235 @@ async function findOpenFPGALoader() {
   return null;
 }
 
+async function runCommandCollect(commandPath, args, timeoutMs = 8000) {
+  try {
+    const result = await execFileAsync(commandPath, args, {
+      timeout: timeoutMs,
+      maxBuffer: 1024 * 1024,
+      windowsHide: true,
+    });
+    return {
+      ok: true,
+      exitCode: 0,
+      stdout: typeof result?.stdout === "string" ? result.stdout : "",
+      stderr: typeof result?.stderr === "string" ? result.stderr : "",
+      error: null,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      exitCode: typeof error?.code === "number" ? error.code : null,
+      stdout: typeof error?.stdout === "string" ? error.stdout : "",
+      stderr: typeof error?.stderr === "string" ? error.stderr : "",
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+function sleepMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isProcessRunning(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    if (error && typeof error === "object" && error.code === "EPERM") return true;
+    return false;
+  }
+}
+
+async function terminateProcessTree(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) {
+    return { ok: false, error: "invalid_pid" };
+  }
+
+  if (process.platform === "win32") {
+    return new Promise((resolve) => {
+      const killer = spawn("taskkill", ["/PID", String(pid), "/T", "/F"], {
+        shell: false,
+        windowsHide: true,
+      });
+      let stderr = "";
+
+      killer.stderr?.on("data", (chunk) => {
+        stderr += String(chunk || "");
+      });
+
+      killer.on("error", (error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        resolve({ ok: false, error: `taskkill_error:${message}` });
+      });
+
+      killer.on("close", (code) => {
+        if (code === 0) {
+          resolve({ ok: true, signal: "taskkill" });
+          return;
+        }
+        const detail = stderr.trim();
+        resolve({
+          ok: false,
+          error: detail ? `taskkill_exit_${code}:${detail}` : `taskkill_exit_${code}`,
+        });
+      });
+    });
+  }
+
+  try {
+    process.kill(pid, "SIGTERM");
+  } catch (error) {
+    if (error && typeof error === "object" && error.code === "ESRCH") {
+      return { ok: true, signal: "already_exited" };
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    return { ok: false, error: `sigterm_error:${message}` };
+  }
+
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await sleepMs(100);
+    if (!isProcessRunning(pid)) {
+      return { ok: true, signal: "SIGTERM" };
+    }
+  }
+
+  try {
+    process.kill(pid, "SIGKILL");
+  } catch (error) {
+    if (error && typeof error === "object" && error.code === "ESRCH") {
+      return { ok: true, signal: "already_exited" };
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    return { ok: false, error: `sigkill_error:${message}` };
+  }
+
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await sleepMs(100);
+    if (!isProcessRunning(pid)) {
+      return { ok: true, signal: "SIGKILL" };
+    }
+  }
+
+  return { ok: false, error: "process_still_running" };
+}
+
+async function runOpenFpgaLoaderProgram({ loaderPath, board, bitPath, mode, pushLog, onSpawn, isCancelRequested }) {
+  return new Promise((resolve) => {
+    const args = ["-b", board];
+    if (mode === "flash") {
+      args.push("-f");
+    }
+    args.push(bitPath);
+
+    pushLog("info", `[bridge] program: command: ${loaderPath} ${args.join(" ")}`);
+    const proc = spawn(loaderPath, args, { shell: false });
+    onSpawn?.(proc);
+
+    let stdoutText = "";
+    let stderrText = "";
+    let stdoutRemainder = "";
+    let stderrRemainder = "";
+
+    const flushLines = (buffer, level) => {
+      const lines = buffer.split(/\r?\n/);
+      const remainder = lines.pop() || "";
+      for (const lineRaw of lines) {
+        const line = lineRaw.trim();
+        if (!line) continue;
+        pushLog(level, `[openFPGALoader] ${line}`);
+      }
+      return remainder;
+    };
+
+    proc.stdout?.on("data", (chunk) => {
+      const text = String(chunk || "");
+      stdoutText += text;
+      stdoutRemainder = flushLines(`${stdoutRemainder}${text}`, "info");
+    });
+
+    proc.stderr?.on("data", (chunk) => {
+      const text = String(chunk || "");
+      stderrText += text;
+      stderrRemainder = flushLines(`${stderrRemainder}${text}`, "warn");
+    });
+
+    proc.on("error", (error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      if (isCancelRequested?.()) {
+        resolve({
+          ok: false,
+          canceled: true,
+          exitCode: -1,
+          stdout: stdoutText,
+          stderr: stderrText,
+          error: "canceled_by_user",
+        });
+        return;
+      }
+      pushLog("error", `[bridge] program: spawn_failed: ${message}`);
+      resolve({ ok: false, exitCode: null, stdout: stdoutText, stderr: stderrText, error: message });
+    });
+
+    proc.on("close", (code) => {
+      if (isCancelRequested?.()) {
+        resolve({
+          ok: false,
+          canceled: true,
+          exitCode: typeof code === "number" ? code : -1,
+          stdout: stdoutText,
+          stderr: stderrText,
+          error: "canceled_by_user",
+        });
+        return;
+      }
+
+      const trailingStdout = stdoutRemainder.trim();
+      if (trailingStdout) {
+        pushLog("info", `[openFPGALoader] ${trailingStdout}`);
+      }
+      const trailingStderr = stderrRemainder.trim();
+      if (trailingStderr) {
+        pushLog("warn", `[openFPGALoader] ${trailingStderr}`);
+      }
+      const exitCode = typeof code === "number" ? code : null;
+      if (exitCode === 0) {
+        pushLog("info", "[bridge] program: openFPGALoader finished successfully");
+        resolve({ ok: true, exitCode, stdout: stdoutText, stderr: stderrText, error: null });
+      } else {
+        const message = `openFPGALoader_exit_${exitCode ?? "unknown"}`;
+        pushLog("error", `[bridge] program: ${message}`);
+        resolve({ ok: false, exitCode, stdout: stdoutText, stderr: stderrText, error: message });
+      }
+    });
+  });
+}
+
+async function findNextpnrXilinx() {
+  const platform = os.platform();
+  const nextpnrExe = platform === "win32" ? "nextpnr-xilinx.exe" : "nextpnr-xilinx";
+
+  try {
+    const { stdout, stderr } = await execAsync(`${nextpnrExe} --version`, { timeout: 5000 });
+    const combined = `${stdout || ""}\n${stderr || ""}`.trim();
+    const firstLine = combined.split(/\r?\n/).find((l) => l.trim().length > 0) || "";
+    if (firstLine) {
+      return { path: nextpnrExe, version: firstLine.trim() };
+    }
+  } catch {
+    // Not found
+  }
+  return null;
+}
+
 async function detectToolchain() {
   const capabilities = {};
 
-  const [vivado, yosys, openFPGALoader] = await Promise.all([
+  const [vivado, yosys, openFPGALoader, nextpnrXilinx] = await Promise.all([
     findVivado().catch(() => null),
     findYosys().catch(() => null),
     findOpenFPGALoader().catch(() => null),
+    findNextpnrXilinx().catch(() => null),
   ]);
 
   if (vivado) {
@@ -410,6 +678,13 @@ async function detectToolchain() {
     };
   }
 
+  if (nextpnrXilinx) {
+    capabilities.nextpnrXilinx = {
+      version: nextpnrXilinx.version,
+      path: nextpnrXilinx.path,
+    };
+  }
+
   return capabilities;
 }
 
@@ -425,6 +700,361 @@ async function getCachedToolchain() {
     toolchainCacheTime = now;
   }
   return toolchainCache;
+}
+
+function stableStringify(value) {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+  const keys = Object.keys(value).sort((a, b) => a.localeCompare(b));
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
+}
+
+function deterministicId(prefix, payload) {
+  const text = stableStringify(payload);
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  const suffix = (hash >>> 0).toString(16).padStart(8, "0");
+  return `${prefix}-${suffix}`;
+}
+
+const toolchainProgramRuns = createProgramRunRegistry({
+  logLimit: TOOLCHAIN_PROGRAM_RUN_LOG_LIMIT,
+  ttlMs: TOOLCHAIN_PROGRAM_RUN_TTL_MS,
+  step: "program",
+});
+let toolchainProgramExecutionSeq = 0;
+
+setInterval(() => {
+  toolchainProgramRuns.cleanup(Date.now());
+}, TOOLCHAIN_PROGRAM_RUN_CLEANUP_MS);
+
+const toolchainSynthRuns = createProgramRunRegistry({
+  logLimit: TOOLCHAIN_SYNTH_RUN_LOG_LIMIT,
+  ttlMs: TOOLCHAIN_SYNTH_RUN_TTL_MS,
+  step: "synth",
+});
+let toolchainSynthExecutionSeq = 0;
+
+setInterval(() => {
+  toolchainSynthRuns.cleanup(Date.now());
+}, TOOLCHAIN_SYNTH_RUN_CLEANUP_MS);
+
+function normalizePreflightProject(rawProject) {
+  const rawHdl = rawProject?.hdl && typeof rawProject.hdl === "object" ? rawProject.hdl : {};
+  const rawFpga = rawProject?.fpga && typeof rawProject.fpga === "object" ? rawProject.fpga : {};
+
+  const rawSources = Array.isArray(rawHdl.sources) ? rawHdl.sources : [];
+  const sources = rawSources
+    .map((source) => ({
+      path: typeof source?.path === "string" ? source.path : "",
+      language: source?.language === "vhdl" ? "vhdl" : "verilog",
+      text: typeof source?.text === "string" ? source.text : "",
+    }))
+    .filter((source) => source.path.trim().length > 0)
+    .sort((a, b) => a.path.localeCompare(b.path));
+
+  const topRaw = typeof rawHdl.top === "string" && rawHdl.top.trim().length > 0
+    ? rawHdl.top.trim()
+    : typeof rawFpga.top === "string" && rawFpga.top.trim().length > 0
+      ? rawFpga.top.trim()
+      : null;
+
+  const board = rawFpga.board === "basys3" ? "basys3" : "basys3";
+  const preset = typeof rawFpga.preset === "string" && rawFpga.preset.trim().length > 0 ? rawFpga.preset.trim() : null;
+  const constraintsText = rawFpga?.constraints?.type === "xdc" && typeof rawFpga?.constraints?.text === "string"
+    ? rawFpga.constraints.text
+    : "";
+
+  return {
+    hdl: {
+      sources,
+      top: topRaw,
+    },
+    fpga: {
+      board,
+      preset,
+      constraints: constraintsText.trim().length > 0 ? { type: "xdc", text: constraintsText } : null,
+      top: topRaw,
+    },
+  };
+}
+
+function stripVerilogComments(text) {
+  return String(text || "")
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/\/\/.*$/gm, " ");
+}
+
+function extractVerilogPortsFromTop(sources, topName) {
+  const modulePattern = new RegExp(`module\\s+${topName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\(([^;]*?)\\)\\s*;`, "ms");
+
+  for (const source of sources.filter((entry) => entry.language === "verilog")) {
+    const match = stripVerilogComments(source.text).match(modulePattern);
+    if (!match) continue;
+    const portBlock = match[1] || "";
+    const ports = [];
+    for (const tokenRaw of portBlock.split(",").map((part) => part.trim()).filter(Boolean)) {
+      let token = tokenRaw.split("=")[0]?.trim() || "";
+      token = token.replace(/\b(input|output|inout|wire|reg|logic|signed|unsigned)\b/g, " ").trim();
+      if (!token) continue;
+      const matchPort = token.match(/^(?:\[\s*\d+\s*:\s*\d+\s*\]\s*)?([A-Za-z_][A-Za-z0-9_]*)(?:\s*\[\s*\d+\s*:\s*\d+\s*\])?$/);
+      if (!matchPort) continue;
+      const name = matchPort[1];
+      const leadingRange = token.match(/^(\[\s*\d+\s*:\s*\d+\s*\])/)?.[1] || null;
+      const trailingRange = token.match(/\[\s*\d+\s*:\s*\d+\s*\]$/)?.[0] || null;
+      const range = leadingRange || trailingRange;
+      const rangeMatch = range?.match(/\[\s*(\d+)\s*:\s*(\d+)\s*\]/);
+      if (!rangeMatch) {
+        ports.push(name);
+        continue;
+      }
+      const low = Math.min(Number(rangeMatch[1]), Number(rangeMatch[2]));
+      const high = Math.max(Number(rangeMatch[1]), Number(rangeMatch[2]));
+      for (let index = low; index <= high; index += 1) {
+        ports.push(`${name}[${index}]`);
+      }
+    }
+    return { found: true, ports: Array.from(new Set(ports)).sort((a, b) => a.localeCompare(b)) };
+  }
+  return { found: false, ports: [] };
+}
+
+function extractXdcPorts(text) {
+  const ports = [];
+  const pattern = /\[\s*get_ports\s+(?:\{([^}]+)\}|([^\]\s]+))\s*\]/g;
+  let match = pattern.exec(text || "");
+  while (match) {
+    const port = (match[1] || match[2] || "").trim();
+    if (port) ports.push(port);
+    match = pattern.exec(text || "");
+  }
+  return Array.from(new Set(ports)).sort((a, b) => a.localeCompare(b));
+}
+
+function summarizePorts(portNames) {
+  if (portNames.length <= 6) return portNames.join(", ");
+  return `${portNames.slice(0, 6).join(", ")}, +${portNames.length - 6} more`;
+}
+
+function createPreflightEntries(runId, level, messages) {
+  return messages
+    .slice()
+    .sort((a, b) => a.localeCompare(b))
+    .map((msg, index) => ({
+      run_id: runId,
+      ts: index,
+      step: "preflight",
+      level,
+      msg,
+    }));
+}
+
+function buildPreflightFromProject(project, toolList) {
+  const topName = project.hdl.top || null;
+  const xdcText = project.fpga?.constraints?.text || "";
+  const hdlSources = project.hdl.sources || [];
+  const hasHdl = hdlSources.some((source) => String(source.text || "").trim().length > 0);
+  const hasXdc = xdcText.trim().length > 0;
+  const lintErrors = [];
+  const lintWarnings = [];
+
+  if (!hasHdl) lintErrors.push("[preflight] project: missing_hdl_sources");
+  if (!topName) lintErrors.push('[preflight] project: missing_top_module (expected "top")');
+  if (!hasXdc) lintErrors.push("[preflight] project: missing_xdc_constraints");
+
+  let topFound = false;
+  let hdlPorts = [];
+  let xdcPorts = [];
+  if (hasHdl && topName && hasXdc) {
+    const parsed = extractVerilogPortsFromTop(hdlSources, topName);
+    topFound = parsed.found;
+    hdlPorts = parsed.ports;
+    xdcPorts = extractXdcPorts(xdcText);
+    if (!topFound) {
+      lintErrors.push(`[preflight] lint: top module "${topName}" not found`);
+    } else {
+      const hdlSet = new Set(hdlPorts);
+      const xdcSet = new Set(xdcPorts);
+      const requiredPorts = [
+        "clk",
+        "dp",
+        ...Array.from({ length: 16 }, (_, index) => `sw[${index}]`),
+        ...Array.from({ length: 5 }, (_, index) => `btn[${index}]`),
+        ...Array.from({ length: 16 }, (_, index) => `led[${index}]`),
+        ...Array.from({ length: 7 }, (_, index) => `seg[${index}]`),
+        ...Array.from({ length: 4 }, (_, index) => `an[${index}]`),
+      ];
+      const missingInHdl = xdcPorts.filter((port) => !hdlSet.has(port));
+      const missingInXdc = hdlPorts.filter((port) => !xdcSet.has(port));
+      const missingContract = requiredPorts.filter((port) => !hdlSet.has(port));
+      if (missingInHdl.length > 0) {
+        lintErrors.push(`[preflight] lint: xdc_missing_in_hdl (${missingInHdl.length}): ${summarizePorts(missingInHdl)}`);
+      }
+      if (missingInXdc.length > 0) {
+        lintWarnings.push(`[preflight] lint: hdl_unconstrained_in_xdc (${missingInXdc.length}): ${summarizePorts(missingInXdc)}`);
+      }
+      if (missingContract.length > 0) {
+        lintWarnings.push(`[preflight] lint: missing_contract_ports (${missingContract.length}): ${summarizePorts(missingContract)}`);
+      }
+    }
+  }
+
+  const run_id = deterministicId("bridge-preflight", {
+    project,
+    tools: toolList.map((tool) => ({ name: tool.name, ok: tool.ok, version: tool.version || null, error: tool.error || null })),
+    lintErrors,
+    lintWarnings,
+  });
+  const errors = createPreflightEntries(run_id, "error", lintErrors);
+  const warnings = createPreflightEntries(run_id, "warn", lintWarnings);
+  return {
+    schema_version: "toolchain_preflight_v1",
+    run_id,
+    ts: 0,
+    project: {
+      board: "basys3",
+      hasHdl,
+      top: topName,
+      hasXdc,
+      preset: project.fpga.preset || null,
+    },
+    lint: {
+      ok: errors.length === 0,
+      warnings,
+      errors,
+    },
+    tools: toolList,
+    overallOk: errors.length === 0,
+  };
+}
+
+function buildToolListFromCapabilities(capabilities) {
+  return [
+    { name: "openFPGALoader", capKey: "openFPGALoader" },
+    { name: "yosys", capKey: "yosys" },
+    { name: "nextpnr-xilinx", capKey: "nextpnrXilinx" },
+    { name: "vivado", capKey: "vivado" },
+  ]
+    .map((toolDef) => {
+      const cap = capabilities?.[toolDef.capKey];
+      if (!cap) return { name: toolDef.name, ok: false, error: "not_found" };
+      const tool = { name: toolDef.name, ok: true };
+      if (typeof cap.version === "string") tool.version = cap.version;
+      if (typeof cap.path === "string") tool.path = cap.path;
+      return tool;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function buildProbeFromCapabilities(capabilities) {
+  const env = {
+    platform: os.platform(),
+    arch: os.arch(),
+    node: process.version,
+  };
+  const tools = buildToolListFromCapabilities(capabilities);
+  const run_id = deterministicId("bridge-probe", {
+    env,
+    tools: tools.map((tool) => ({
+      name: tool.name,
+      ok: tool.ok,
+      version: tool.version || null,
+      error: tool.error || null,
+    })),
+  });
+  const logs = [];
+  let ts = 0;
+  const push = (level, msg, data) => {
+    const entry = { run_id, ts: ts++, step: "probe", level, msg };
+    if (data && typeof data === "object") entry.data = data;
+    logs.push(entry);
+  };
+
+  push("info", "[bridge] probe: starting");
+  push("info", "[bridge] probe: env", env);
+  for (const tool of tools) {
+    if (tool.ok) {
+      push("info", `[bridge] probe: ${tool.name}: ok${tool.version ? ` (${tool.version})` : ""}`);
+    } else {
+      push("warn", `[bridge] probe: ${tool.name}: missing${tool.error ? ` (${tool.error})` : ""}`);
+    }
+  }
+  const ok = tools.some((tool) => tool.ok);
+  push("info", "[bridge] probe: complete", { ok });
+  return {
+    schema_version: "toolchain_probe_v1",
+    ok,
+    run_id,
+    env,
+    tools,
+    logs,
+  };
+}
+
+function buildDoctorReportFromProject({ backendId, project, probe, preflight, logs }) {
+  const projectSummary = {
+    board: "basys3",
+    preset: project.fpga.preset || null,
+    top: project.hdl.top || null,
+    hdlFilesCount: Array.isArray(project.hdl.sources) ? project.hdl.sources.length : 0,
+    hasXdc: Boolean(project.fpga?.constraints?.text && project.fpga.constraints.text.trim().length > 0),
+  };
+  const sortedLogs = (Array.isArray(logs) ? logs : [])
+    .slice()
+    .sort((a, b) => {
+      if (a.step !== b.step) return String(a.step).localeCompare(String(b.step));
+      if (a.msg !== b.msg) return String(a.msg).localeCompare(String(b.msg));
+      return Number(a.ts || 0) - Number(b.ts || 0);
+    })
+    .slice(-200);
+
+  const reportHashPayload = {
+    backend_id: backendId,
+    probe: {
+      ok: probe.ok,
+      env: probe.env || null,
+      tools: probe.tools.map((tool) => ({
+        name: tool.name,
+        ok: tool.ok,
+        version: tool.version || null,
+        error: tool.error || null,
+      })),
+    },
+    preflight: {
+      project: preflight.project,
+      lint: {
+        ok: preflight.lint.ok,
+        warnings: preflight.lint.warnings.map((entry) => entry.msg),
+        errors: preflight.lint.errors.map((entry) => entry.msg),
+      },
+      overallOk: preflight.overallOk,
+    },
+    projectSummary,
+    logs: sortedLogs.map((entry) => ({
+      step: entry.step,
+      level: entry.level,
+      msg: entry.msg,
+    })),
+  };
+  const reportId = deterministicId("bridge-doctor", reportHashPayload);
+
+  return {
+    schema_version: "rb_toolchain_doctor_v1",
+    reportId,
+    backend_id: backendId,
+    bridge_url: "http://127.0.0.1:4242",
+    probe,
+    preflight,
+    projectSummary,
+    logs: sortedLogs,
+  };
 }
 
 let state = {
@@ -1372,6 +2002,998 @@ app.post("/stop", (req, res) => {
 // TOOLCHAIN API ENDPOINTS
 // ============================================================
 
+app.get("/api/toolchain/probe", async (_req, res) => {
+  try {
+    const capabilities = await getCachedToolchain();
+    return res.json(buildProbeFromCapabilities(capabilities));
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    const fallback = buildProbeFromCapabilities({});
+    fallback.ok = false;
+    fallback.tools = [{ name: "bridge", ok: false, error: "detect_failed" }];
+    fallback.logs = [
+      ...fallback.logs,
+      {
+        run_id: fallback.run_id,
+        ts: fallback.logs.length,
+        step: "probe",
+        level: "error",
+        msg: `[bridge] probe: failed: detect_failed: ${message}`,
+      },
+    ];
+    return res.status(500).json({
+      ...fallback,
+    });
+  }
+});
+
+app.get("/api/toolchain/boards/detect", async (_req, res) => {
+  const schemaVersion = "toolchain_board_detect_v1";
+  try {
+    const capabilities = await getCachedToolchain();
+    const loader = capabilities?.openFPGALoader || null;
+    const toolStatus = loader
+      ? {
+          ok: true,
+          ...(typeof loader.version === "string" ? { version: loader.version } : {}),
+          ...(typeof loader.path === "string" ? { path: loader.path } : {}),
+        }
+      : { ok: false, error: "not_found" };
+    const run_id = deterministicId("bridge-board-detect", {
+      loader: {
+        ok: toolStatus.ok,
+        version: toolStatus.version || null,
+        path: toolStatus.path || null,
+      },
+    });
+
+    const logs = [];
+    let ts = 0;
+    const push = (level, msg, data) => {
+      const entry = { run_id, ts: ts++, step: "probe", level, msg };
+      if (data && typeof data === "object") entry.data = data;
+      logs.push(entry);
+    };
+
+    push("info", "[bridge] board-detect: starting");
+    const boards = [];
+
+    if (!loader?.path) {
+      push("warn", "[bridge] board-detect: openFPGALoader missing");
+      return res.json({
+        schema_version: schemaVersion,
+        ok: true,
+        run_id,
+        boards,
+        tools: { openFPGALoader: toolStatus },
+        logs,
+      });
+    }
+
+    const helpResult = await runCommandCollect(loader.path, ["--help"], 5000);
+    const helpText = `${helpResult.stdout || ""}\n${helpResult.stderr || ""}`;
+    const detectCommands = selectOpenFPGALoaderDetectCommands(helpText);
+    if (!helpResult.ok) {
+      push("warn", `[bridge] board-detect: help command failed (${helpResult.error || "unknown"})`);
+    }
+
+    for (const commandArgs of detectCommands) {
+      push("info", `[bridge] board-detect: trying ${commandArgs.join(" ")}`);
+      const result = await runCommandCollect(loader.path, commandArgs, 8000);
+      const combinedOutput = `${result.stdout || ""}\n${result.stderr || ""}`;
+      const parsedBoards = parseOpenFPGALoaderDetectOutput(combinedOutput);
+
+      if (result.ok) {
+        push("info", `[bridge] board-detect: command succeeded (${commandArgs.join(" ")})`);
+      } else {
+        push(
+          "warn",
+          `[bridge] board-detect: command failed (${commandArgs.join(" ")}): ${result.error || `exit_${result.exitCode ?? "unknown"}`}`
+        );
+      }
+
+      if (parsedBoards.length > 0) {
+        for (const board of parsedBoards) {
+          boards.push({
+            type: board.type,
+            transport: board.transport,
+            detectedBy: board.detectedBy,
+            details: {
+              ...(board.details || {}),
+              command: commandArgs.join(" "),
+            },
+          });
+        }
+        break;
+      }
+    }
+
+    boards.sort((a, b) => {
+      const left = String(a?.details?.raw || "");
+      const right = String(b?.details?.raw || "");
+      if (left !== right) return left.localeCompare(right);
+      return String(a.detectedBy || "").localeCompare(String(b.detectedBy || ""));
+    });
+
+    if (boards.length === 0) {
+      push(
+        "warn",
+        "[bridge] board-detect: openFPGALoader listing did not identify Basys3; tool present but no supported detection signal found."
+      );
+    } else {
+      push("info", `[bridge] board-detect: detected ${boards.length} basys3 board(s)`);
+    }
+
+    return res.json({
+      schema_version: schemaVersion,
+      ok: true,
+      run_id,
+      boards,
+      tools: { openFPGALoader: toolStatus },
+      logs,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const run_id = deterministicId("bridge-board-detect-error", { error: message || "unknown" });
+    return res.status(500).json({
+      schema_version: schemaVersion,
+      ok: false,
+      run_id,
+      boards: [],
+      tools: { openFPGALoader: { ok: false, error: "detect_failed" } },
+      logs: [
+        {
+          run_id,
+          ts: 0,
+          step: "probe",
+          level: "error",
+          msg: `[bridge] board-detect: failed: ${message}`,
+        },
+      ],
+    });
+  }
+});
+
+app.post("/api/toolchain/preflight", async (req, res) => {
+  try {
+    const refreshProbe = req.body?.refresh_probe === true;
+    const normalizedProject = normalizePreflightProject(req.body?.project ?? {});
+    const capabilities = refreshProbe ? await detectToolchain() : await getCachedToolchain();
+    if (refreshProbe) {
+      toolchainCache = capabilities;
+      toolchainCacheTime = Date.now();
+    }
+
+    const tools = buildToolListFromCapabilities(capabilities);
+
+    const status = buildPreflightFromProject(normalizedProject, tools);
+    return res.json(status);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const fallbackProject = normalizePreflightProject(req.body?.project ?? {});
+    const tools = [{ name: "bridge", ok: false, error: "preflight_failed" }];
+    const status = buildPreflightFromProject(fallbackProject, tools);
+    const mergedErrors = [
+      ...status.lint.errors,
+      {
+        run_id: status.run_id,
+        ts: status.lint.errors.length,
+        step: "preflight",
+        level: "error",
+        msg: `[preflight] bridge: failed: ${message}`,
+      },
+    ]
+      .sort((a, b) => a.msg.localeCompare(b.msg))
+      .map((entry, index) => ({ ...entry, ts: index }));
+    status.lint.errors = mergedErrors;
+    status.lint.ok = false;
+    status.overallOk = false;
+    return res.status(500).json(status);
+  }
+});
+
+app.post("/api/toolchain/doctor-report", async (req, res) => {
+  try {
+    const refreshProbe = req.body?.refresh_probe === true;
+    const backendId = typeof req.body?.backend_id === "string" ? req.body.backend_id : "vivado";
+    const normalizedProject = normalizePreflightProject(req.body?.project ?? {});
+    const capabilities = refreshProbe ? await detectToolchain() : await getCachedToolchain();
+    if (refreshProbe) {
+      toolchainCache = capabilities;
+      toolchainCacheTime = Date.now();
+    }
+
+    const probe = buildProbeFromCapabilities(capabilities);
+    const preflight = buildPreflightFromProject(normalizedProject, probe.tools);
+    const logs = Array.isArray(req.body?.logs) ? req.body.logs : [];
+    const report = buildDoctorReportFromProject({
+      backendId,
+      project: normalizedProject,
+      probe,
+      preflight,
+      logs,
+    });
+    return res.json(report);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const normalizedProject = normalizePreflightProject(req.body?.project ?? {});
+    const probe = buildProbeFromCapabilities({});
+    const preflight = buildPreflightFromProject(normalizedProject, [{ name: "bridge", ok: false, error: "doctor_report_failed" }]);
+    preflight.lint.errors = [
+      ...preflight.lint.errors,
+      {
+        run_id: preflight.run_id,
+        ts: preflight.lint.errors.length,
+        step: "preflight",
+        level: "error",
+        msg: `[preflight] bridge: doctor report failed: ${message}`,
+      },
+    ];
+    preflight.lint.ok = false;
+    preflight.overallOk = false;
+    const report = buildDoctorReportFromProject({
+      backendId: "vivado",
+      project: normalizedProject,
+      probe,
+      preflight,
+      logs: [],
+    });
+    return res.status(500).json(report);
+  }
+});
+
+function normalizeSynthRequestPayload(body) {
+  const board = body?.board === "basys3" ? "basys3" : null;
+  const top = normalizeSynthTop(body?.top);
+  const sourceInfo = normalizeSynthSources(body?.sources);
+  return {
+    board,
+    top,
+    sources: sourceInfo.sources,
+    nonVerilogCount: sourceInfo.nonVerilogCount,
+    invalidCount: sourceInfo.invalidCount,
+  };
+}
+
+function writeSynthSources(workDir, sources) {
+  const sourceRoot = path.join(workDir, "src");
+  fs.mkdirSync(sourceRoot, { recursive: true });
+  const sourcePaths = [];
+  for (const source of sources) {
+    const relativePath = source.path.replace(/\\/g, "/");
+    const absolutePath = path.join(sourceRoot, relativePath);
+    fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
+    fs.writeFileSync(absolutePath, source.text, "utf8");
+    sourcePaths.push(path.relative(workDir, absolutePath).replace(/\\/g, "/"));
+  }
+  sourcePaths.sort((left, right) => left.localeCompare(right));
+  return sourcePaths;
+}
+
+async function runYosysSynthesis({ runId, yosysPath, workDir, scriptPath }) {
+  return new Promise((resolve) => {
+    const args = ["-s", scriptPath];
+    const proc = spawn(yosysPath, args, {
+      cwd: workDir,
+      shell: false,
+      windowsHide: true,
+    });
+    toolchainSynthRuns.attachProcess(runId, proc);
+
+    let stdoutText = "";
+    let stderrText = "";
+    let stdoutRemainder = "";
+    let stderrRemainder = "";
+
+    const flushLines = (buffer, level) => {
+      const lines = buffer.split(/\r?\n/);
+      const remainder = lines.pop() || "";
+      for (const lineRaw of lines) {
+        const line = lineRaw.trim();
+        if (!line) continue;
+        toolchainSynthRuns.appendLog(runId, level, `[yosys] ${line}`);
+      }
+      return remainder;
+    };
+
+    toolchainSynthRuns.appendLog(runId, "info", `[bridge] synth: command: ${yosysPath} ${args.join(" ")}`);
+
+    proc.stdout?.on("data", (chunk) => {
+      const text = String(chunk || "");
+      stdoutText += text;
+      stdoutRemainder = flushLines(`${stdoutRemainder}${text}`, "info");
+    });
+
+    proc.stderr?.on("data", (chunk) => {
+      const text = String(chunk || "");
+      stderrText += text;
+      stderrRemainder = flushLines(`${stderrRemainder}${text}`, "warn");
+    });
+
+    proc.on("error", (error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      resolve({
+        ok: false,
+        exitCode: null,
+        stdout: stdoutText,
+        stderr: stderrText,
+        error: `spawn_failed:${message}`,
+      });
+    });
+
+    proc.on("close", (code) => {
+      const trailingStdout = stdoutRemainder.trim();
+      if (trailingStdout) {
+        toolchainSynthRuns.appendLog(runId, "info", `[yosys] ${trailingStdout}`);
+      }
+      const trailingStderr = stderrRemainder.trim();
+      if (trailingStderr) {
+        toolchainSynthRuns.appendLog(runId, "warn", `[yosys] ${trailingStderr}`);
+      }
+      const exitCode = typeof code === "number" ? code : null;
+      resolve({
+        ok: exitCode === 0,
+        exitCode,
+        stdout: stdoutText,
+        stderr: stderrText,
+        error: exitCode === 0 ? null : `yosys_exit_${exitCode ?? "unknown"}`,
+      });
+    });
+  });
+}
+
+async function executeToolchainSynthRun({
+  runId,
+  artifactId,
+  board,
+  top,
+  sources,
+  yosysPath,
+  yosysVersion,
+}) {
+  try {
+    const repoRoot = getRepoRoot();
+    const tmpDir = ensureTmpDir(repoRoot);
+    const runWorkDir = path.join(tmpDir, runId);
+    fs.rmSync(runWorkDir, { recursive: true, force: true });
+    fs.mkdirSync(path.join(runWorkDir, "out"), { recursive: true });
+
+    const sourcePaths = writeSynthSources(runWorkDir, sources);
+    const scriptText = buildYosysSynthScript({ top, sourcePaths });
+    const scriptPath = path.join(runWorkDir, "run.ys");
+    fs.writeFileSync(scriptPath, scriptText, "utf8");
+    const scriptSha256 = hashBufferSha256(Buffer.from(scriptText, "utf8"));
+
+    toolchainSynthRuns.appendLog(runId, "info", "[bridge] synth: prepared run workspace", {
+      artifact_id: artifactId,
+      board,
+      top,
+      source_count: sourcePaths.length,
+      script_version: YOSYS_SYNTH_SCRIPT_VERSION,
+      script_sha256: scriptSha256,
+    });
+
+    const result = await runYosysSynthesis({
+      runId,
+      yosysPath,
+      workDir: runWorkDir,
+      scriptPath,
+    });
+    toolchainSynthRuns.clearProcess(runId);
+
+    if (!result.ok) {
+      toolchainSynthRuns.appendLog(runId, "error", `[bridge] synth: failed: ${result.error || "synth_failed"}`);
+      toolchainSynthRuns.finishRun(runId, {
+        ok: false,
+        exitCode: result.exitCode,
+        error: result.error || "synth_failed",
+      });
+      return;
+    }
+
+    const netlistPath = path.join(runWorkDir, "out", "netlist.v");
+    if (!fs.existsSync(netlistPath)) {
+      toolchainSynthRuns.appendLog(runId, "error", "[bridge] synth: missing output out/netlist.v");
+      toolchainSynthRuns.finishRun(runId, {
+        ok: false,
+        exitCode: result.exitCode,
+        error: "missing_netlist",
+      });
+      return;
+    }
+
+    const statText = extractYosysStatText(result.stdout);
+    const statPath = path.join(runWorkDir, "out", "stat.txt");
+    fs.writeFileSync(statPath, statText, "utf8");
+
+    const statsJsonPath = path.join(runWorkDir, "out", "stats.json");
+    const statsPayload = {
+      schema_version: "toolchain_synth_stats_v1",
+      top,
+      board,
+      scriptVersion: YOSYS_SYNTH_SCRIPT_VERSION,
+      scriptSha256,
+      yosysVersion: yosysVersion || null,
+      statText,
+    };
+    fs.writeFileSync(statsJsonPath, stableStringify(statsPayload), "utf8");
+
+    const artifact = {
+      artifactId,
+      board,
+      top,
+      yosysVersion: yosysVersion || null,
+      scriptVersion: YOSYS_SYNTH_SCRIPT_VERSION,
+      outputs: {
+        netlistVerilog: path.relative(repoRoot, netlistPath).replace(/\\/g, "/"),
+        statText: path.relative(repoRoot, statPath).replace(/\\/g, "/"),
+        statsJson: path.relative(repoRoot, statsJsonPath).replace(/\\/g, "/"),
+      },
+    };
+
+    toolchainSynthRuns.appendLog(runId, "info", "[bridge] synth: completed", {
+      artifact_id: artifactId,
+      netlist: artifact.outputs.netlistVerilog,
+      stat: artifact.outputs.statText,
+    });
+    toolchainSynthRuns.finishRun(runId, {
+      ok: true,
+      exitCode: result.exitCode,
+      artifact,
+    });
+  } catch (error) {
+    toolchainSynthRuns.clearProcess(runId);
+    const message = error instanceof Error ? error.message : String(error);
+    toolchainSynthRuns.appendLog(runId, "error", `[bridge] synth: failed: ${message}`);
+    toolchainSynthRuns.finishRun(runId, {
+      ok: false,
+      exitCode: null,
+      error: "synth_failed",
+    });
+  }
+}
+
+app.post("/api/toolchain/synth", async (req, res) => {
+  const schemaVersion = "toolchain_synth_run_v1";
+  const normalized = normalizeSynthRequestPayload(req.body || {});
+  if (!normalized.board) {
+    return res.status(400).json({
+      schema_version: schemaVersion,
+      ok: false,
+      error: "unsupported_board",
+      logs: [],
+      nextOffset: 0,
+    });
+  }
+  if (!normalized.top) {
+    return res.status(400).json({
+      schema_version: schemaVersion,
+      ok: false,
+      error: "top_required",
+      logs: [],
+      nextOffset: 0,
+    });
+  }
+  if (normalized.nonVerilogCount > 0) {
+    return res.status(400).json({
+      schema_version: schemaVersion,
+      ok: false,
+      error: "verilog_only_for_now",
+      logs: [],
+      nextOffset: 0,
+    });
+  }
+  if (normalized.invalidCount > 0 || normalized.sources.length === 0) {
+    return res.status(400).json({
+      schema_version: schemaVersion,
+      ok: false,
+      error: "invalid_sources",
+      logs: [],
+      nextOffset: 0,
+    });
+  }
+
+  const capabilities = await getCachedToolchain();
+  const yosys = capabilities?.yosys || null;
+  const artifactId = createSynthArtifactId({
+    board: normalized.board,
+    top: normalized.top,
+    sources: normalized.sources,
+    yosysVersion: yosys?.version || null,
+    scriptVersion: YOSYS_SYNTH_SCRIPT_VERSION,
+  });
+  const runId = createProgramExecutionRunId(artifactId, toolchainSynthExecutionSeq++);
+
+  if (!yosys?.path) {
+    const logs = [
+      {
+        run_id: runId,
+        ts: 0,
+        step: "synth",
+        level: "error",
+        msg: "[bridge] synth: yosys_missing",
+      },
+    ];
+    return res.status(400).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      artifactId,
+      state: "error",
+      error: "yosys_missing",
+      logs,
+      nextOffset: logs.length,
+    });
+  }
+
+  const started = toolchainSynthRuns.startRun({
+    runId,
+    artifactId,
+    board: normalized.board,
+  });
+  if (!started.ok) {
+    const existing = toolchainSynthRuns.getStatus(runId, 0);
+    return res.status(409).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      artifactId,
+      state: existing?.state || "running",
+      error: "run_already_running",
+      logs: existing?.logs ?? [],
+      nextOffset: existing?.nextOffset ?? 0,
+      ...(existing?.artifact ? { artifact: existing.artifact } : {}),
+    });
+  }
+
+  toolchainSynthRuns.appendLog(runId, "info", "[bridge] synth: started", {
+    artifact_id: artifactId,
+    board: normalized.board,
+    top: normalized.top,
+    source_count: normalized.sources.length,
+    yosys_version: yosys.version || null,
+    script_version: YOSYS_SYNTH_SCRIPT_VERSION,
+  });
+
+  void executeToolchainSynthRun({
+    runId,
+    artifactId,
+    board: normalized.board,
+    top: normalized.top,
+    sources: normalized.sources,
+    yosysPath: yosys.path,
+    yosysVersion: yosys.version || null,
+  });
+
+  const status = toolchainSynthRuns.getStatus(runId, 0);
+  return res.status(202).json({
+    schema_version: schemaVersion,
+    ok: true,
+    runId,
+    artifactId,
+    state: status?.state || "running",
+    logs: status?.logs ?? [],
+    nextOffset: status?.nextOffset ?? 0,
+    ...(status?.artifact ? { artifact: status.artifact } : {}),
+  });
+});
+
+app.get("/api/toolchain/synth/runs/:runId", (req, res) => {
+  const schemaVersion = "toolchain_synth_run_status_v1";
+  const runId = typeof req.params?.runId === "string" ? req.params.runId : "";
+  const offset = normalizeProgramRunOffset(req.query?.offset);
+  const status = toolchainSynthRuns.getStatus(runId, offset);
+  if (!status) {
+    return res.status(404).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      error: "run_not_found",
+      logs: [],
+      nextOffset: offset,
+    });
+  }
+  return res.json({
+    schema_version: schemaVersion,
+    ...status,
+  });
+});
+
+app.get("/api/toolchain/synth/runs/:runId/stream", (req, res) => {
+  const runId = typeof req.params?.runId === "string" ? req.params.runId : "";
+  const offset = normalizeProgramRunOffset(req.query?.offset);
+  const status = toolchainSynthRuns.getStatus(runId, offset);
+  if (!status) {
+    return res.status(404).json({ ok: false, error: "run_not_found" });
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+  });
+
+  for (const entry of status.logs) {
+    res.write(formatSseEvent("log", entry));
+  }
+
+  if (status.state !== "running") {
+    res.write(
+      formatSseEvent("done", {
+        runId: status.runId,
+        artifactId: status.artifactId,
+        state: status.state,
+        ok: status.ok === true,
+        exitCode: status.exitCode,
+        nextOffset: status.nextOffset,
+        ...(status.artifact ? { artifact: status.artifact } : {}),
+        ...(status.error ? { error: status.error } : {}),
+      })
+    );
+    res.end();
+    return;
+  }
+
+  const unsubscribe = toolchainSynthRuns.subscribe(runId, {
+    onLog(entry) {
+      if (!res.writableEnded) {
+        res.write(formatSseEvent("log", entry));
+      }
+    },
+    onDone(summary) {
+      if (!res.writableEnded) {
+        res.write(formatSseEvent("done", summary));
+        res.end();
+      }
+    },
+  });
+
+  if (!unsubscribe) {
+    res.end();
+    return;
+  }
+
+  req.on("close", () => {
+    unsubscribe();
+  });
+});
+
+async function executeProgramBitstreamRun({ runId, artifactId, board, mode, normalizedBitstream, bitstreamHash }) {
+  const push = (level, msg, data) => {
+    toolchainProgramRuns.appendLog(runId, level, msg, data);
+  };
+
+  try {
+    const capabilities = await getCachedToolchain();
+    const loader = capabilities?.openFPGALoader;
+    if (!loader?.path) {
+      push("error", "[bridge] program: openFPGALoader not found");
+      toolchainProgramRuns.finishRun(runId, { ok: false, exitCode: null, error: "openfpgaloader_missing" });
+      return;
+    }
+
+    const repoRoot = getRepoRoot();
+    const tmpDir = ensureTmpDir(repoRoot);
+    const bitPath = path.join(tmpDir, `${runId}.bit`);
+    fs.writeFileSync(bitPath, normalizedBitstream.buffer);
+    push("info", `[bridge] program: wrote bitstream: ${bitPath}`, {
+      artifact_id: artifactId,
+      bytes: normalizedBitstream.buffer.length,
+      bitstream_sha256: bitstreamHash,
+    });
+
+    const result = await runOpenFpgaLoaderProgram({
+      loaderPath: loader.path,
+      board,
+      bitPath,
+      mode,
+      pushLog: push,
+      onSpawn(proc) {
+        toolchainProgramRuns.attachProcess(runId, proc);
+      },
+      isCancelRequested() {
+        return toolchainProgramRuns.isCancelRequested(runId);
+      },
+    });
+    toolchainProgramRuns.clearProcess(runId);
+
+    if (result.canceled) {
+      toolchainProgramRuns.finishRun(runId, {
+        state: "canceled",
+        ok: false,
+        exitCode: -1,
+        error: "canceled_by_user",
+      });
+      return;
+    }
+
+    if (!result.ok) {
+      push(
+        "warn",
+        "[bridge] program: hint: if device not found, verify Basys3 USB cable/drivers, close Vivado Hardware Manager, and retry another USB port/cable."
+      );
+      toolchainProgramRuns.finishRun(runId, {
+        ok: false,
+        exitCode: result.exitCode,
+        error: result.error || "program_failed",
+      });
+      return;
+    }
+
+    toolchainProgramRuns.finishRun(runId, {
+      ok: true,
+      exitCode: result.exitCode,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    toolchainProgramRuns.clearProcess(runId);
+    push("error", `[bridge] program: failed: ${message}`);
+    push(
+      "warn",
+      "[bridge] program: hint: if device not found, verify Basys3 USB cable/drivers, close Vivado Hardware Manager, and retry another USB port/cable."
+    );
+    toolchainProgramRuns.finishRun(runId, { ok: false, exitCode: null, error: "program_failed" });
+  }
+}
+
+app.post("/api/toolchain/program-bitstream", async (req, res) => {
+  const schemaVersion = "toolchain_program_bitstream_v1";
+  const body = req.body || {};
+  const board = body.board === "basys3" ? "basys3" : null;
+  const mode = body.mode === "sram" ? "sram" : null;
+
+  if (!board) {
+    return res.status(400).json({
+      schema_version: schemaVersion,
+      ok: false,
+      error: "unsupported_board",
+      logs: [],
+      nextOffset: 0,
+    });
+  }
+  if (!mode) {
+    return res.status(400).json({
+      schema_version: schemaVersion,
+      ok: false,
+      error: "unsupported_mode",
+      logs: [],
+      nextOffset: 0,
+    });
+  }
+
+  const activeRun = toolchainProgramRuns.getActiveRunByBoard(board);
+  if (activeRun) {
+    const logs = [
+      {
+        run_id: activeRun.runId,
+        ts: 0,
+        step: "program",
+        level: "warn",
+        msg: `[bridge] program: board busy: another program run is active (runId=${activeRun.runId}). Cancel it or wait.`,
+      },
+    ];
+    return res.status(409).json({
+      schema_version: schemaVersion,
+      ok: false,
+      error: "BOARD_BUSY",
+      board,
+      activeRunId: activeRun.runId,
+      logs,
+      nextOffset: logs.length,
+    });
+  }
+
+  const normalizedBitstream = normalizeProgramBitstreamPayload(body.bitstream);
+  if (!normalizedBitstream) {
+    return res.status(400).json({
+      schema_version: schemaVersion,
+      ok: false,
+      error: "invalid_bitstream_payload",
+      logs: [],
+      nextOffset: 0,
+    });
+  }
+
+  const bitstreamHash = hashBufferSha256(normalizedBitstream.buffer);
+  const artifactId = buildProgramBitstreamRunId({ board, mode, bitstreamHash });
+  const runId = createProgramExecutionRunId(artifactId, toolchainProgramExecutionSeq++);
+  const started = toolchainProgramRuns.startRun({ runId, artifactId, board });
+  if (!started.ok) {
+    const existing = toolchainProgramRuns.getStatus(runId, 0);
+    return res.status(409).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      artifactId,
+      state: existing?.state || "running",
+      error: "run_already_running",
+      logs: existing?.logs ?? [],
+      nextOffset: existing?.nextOffset ?? 0,
+    });
+  }
+
+  toolchainProgramRuns.appendLog(runId, "info", "[bridge] program: started", {
+    artifact_id: artifactId,
+    board,
+    mode,
+    bitstream_sha256: bitstreamHash,
+  });
+  void executeProgramBitstreamRun({ runId, artifactId, board, mode, normalizedBitstream, bitstreamHash });
+
+  const status = toolchainProgramRuns.getStatus(runId, 0);
+  return res.status(202).json({
+    schema_version: schemaVersion,
+    ok: true,
+    runId,
+    artifactId,
+    state: status?.state || "running",
+    logs: status?.logs ?? [],
+    nextOffset: status?.nextOffset ?? 0,
+  });
+});
+
+app.get("/api/toolchain/runs/:runId", (req, res) => {
+  const schemaVersion = "toolchain_program_run_v1";
+  const runId = typeof req.params?.runId === "string" ? req.params.runId : "";
+  const offset = normalizeProgramRunOffset(req.query?.offset);
+  const status = toolchainProgramRuns.getStatus(runId, offset);
+  if (!status) {
+    return res.status(404).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      error: "run_not_found",
+      logs: [],
+      nextOffset: offset,
+    });
+  }
+  return res.json({
+    schema_version: schemaVersion,
+    ...status,
+  });
+});
+
+app.post("/api/toolchain/runs/:runId/cancel", async (req, res) => {
+  const schemaVersion = "toolchain_program_run_cancel_v1";
+  const runId = typeof req.params?.runId === "string" ? req.params.runId : "";
+  const status = toolchainProgramRuns.getStatus(runId, 0);
+  if (!status) {
+    return res.status(404).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      error: "run_not_found",
+      logs: [],
+      nextOffset: 0,
+    });
+  }
+
+  if (status.state !== "running") {
+    return res.json({
+      schema_version: schemaVersion,
+      ...status,
+    });
+  }
+
+  const cancellation = toolchainProgramRuns.requestCancel(runId);
+  if (!cancellation.ok) {
+    return res.status(404).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      error: "run_not_found",
+      logs: [],
+      nextOffset: 0,
+    });
+  }
+
+  toolchainProgramRuns.appendLog(runId, "info", "[bridge] program: cancel requested");
+  const proc = toolchainProgramRuns.getProcess(runId);
+  if (!proc || !Number.isInteger(proc.pid)) {
+    toolchainProgramRuns.appendLog(runId, "warn", "[bridge] program: process handle unavailable; marking canceled");
+    toolchainProgramRuns.appendLog(runId, "warn", "[bridge] program: canceled by user");
+    toolchainProgramRuns.finishRun(runId, {
+      state: "canceled",
+      ok: false,
+      exitCode: -1,
+      error: "canceled_by_user",
+    });
+    const canceledStatus = toolchainProgramRuns.getStatus(runId, 0);
+    return res.json({
+      schema_version: schemaVersion,
+      ...canceledStatus,
+    });
+  }
+
+  const termination = await terminateProcessTree(proc.pid);
+  if (!termination.ok) {
+    toolchainProgramRuns.appendLog(runId, "error", `[bridge] program: cancel_failed: ${termination.error}`);
+    toolchainProgramRuns.appendLog(
+      runId,
+      "warn",
+      "[bridge] program: hint: cancel failed; try unplugging board and closing any Vivado instances."
+    );
+    const failedStatus = toolchainProgramRuns.getStatus(runId, 0);
+    return res.status(500).json({
+      schema_version: schemaVersion,
+      ...failedStatus,
+      error: "cancel_failed",
+    });
+  }
+
+  toolchainProgramRuns.appendLog(runId, "warn", `[bridge] program: process terminated (${termination.signal || "unknown"})`);
+  toolchainProgramRuns.appendLog(runId, "warn", "[bridge] program: canceled by user");
+  toolchainProgramRuns.finishRun(runId, {
+    state: "canceled",
+    ok: false,
+    exitCode: -1,
+    error: "canceled_by_user",
+  });
+  const canceledStatus = toolchainProgramRuns.getStatus(runId, 0);
+  return res.json({
+    schema_version: schemaVersion,
+    ...canceledStatus,
+  });
+});
+
+app.get("/api/toolchain/runs/:runId/stream", (req, res) => {
+  const runId = typeof req.params?.runId === "string" ? req.params.runId : "";
+  const offset = normalizeProgramRunOffset(req.query?.offset);
+  const status = toolchainProgramRuns.getStatus(runId, offset);
+  if (!status) {
+    return res.status(404).json({ ok: false, error: "run_not_found" });
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+  });
+
+  for (const entry of status.logs) {
+    res.write(formatSseEvent("log", entry));
+  }
+
+  if (status.state !== "running") {
+    res.write(
+      formatSseEvent("done", {
+        runId: status.runId,
+        artifactId: status.artifactId,
+        state: status.state,
+        ok: status.ok === true,
+        exitCode: status.exitCode,
+        nextOffset: status.nextOffset,
+        ...(status.error ? { error: status.error } : {}),
+      })
+    );
+    res.end();
+    return;
+  }
+
+  const unsubscribe = toolchainProgramRuns.subscribe(runId, {
+    onLog(entry) {
+      if (!res.writableEnded) {
+        res.write(formatSseEvent("log", entry));
+      }
+    },
+    onDone(summary) {
+      if (!res.writableEnded) {
+        res.write(formatSseEvent("done", summary));
+        res.end();
+      }
+    },
+  });
+
+  if (!unsubscribe) {
+    res.end();
+    return;
+  }
+
+  req.on("close", () => {
+    unsubscribe();
+  });
+});
+
 app.get("/api/toolchain", async (_req, res) => {
   try {
     const capabilities = await getCachedToolchain();
@@ -1408,7 +3030,7 @@ app.post("/api/toolchain/refresh", async (_req, res) => {
 // ============================================================
 
 import { spawn } from "child_process";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 
 // Job storage
 const synthesisJobs = new Map();

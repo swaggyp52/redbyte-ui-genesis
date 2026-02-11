@@ -7,6 +7,14 @@ import { buildTraceEvent, computeStreamSilenceMs } from "./hardwarePanelUtils";
 import { hardwareClient, type ConnectionState, type Device } from "../services/hardwareClient";
 import { BridgeDebugPanel } from "../panels/BridgeDebugPanel";
 import { SynthesisDialog, type SynthesisPhase } from "../components/SynthesisDialog";
+import { stableStringify } from "../export/stableStringify";
+import {
+  getToolchainBackend,
+  type BoardDetectResult,
+  getToolchainBackendId,
+  type BuildLogEntry,
+  type ProgramRunDoneSummary,
+} from "../fpga/toolchainBackend";
 
 const BRIDGE_URL = "http://127.0.0.1:4242";
 const DEFAULT_LAB_ID = "basys3_mvp_lab";
@@ -19,6 +27,7 @@ const NO_DATA_AUTO_STOP_MS = 5000;
 const STREAM_RETRY_LIMIT = 1;
 const DEFAULT_RETRY_DELAY_MS = 600;
 const MAX_SAMPLES = 50000;
+const PROGRAM_STATUS_POLL_MS = 500;
 
 type PanelState =
   | "DISCONNECTED"
@@ -50,6 +59,8 @@ interface StreamSample {
   device_id?: string | null;
   io?: Record<string, unknown> | null;
 }
+
+type ProgramRunUiStatus = "idle" | "running" | "success" | "failed" | "canceled";
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -133,6 +144,14 @@ function HardwarePanelComponent() {
   const [bitstreamBase64, setBitstreamBase64] = useState<string | null>(null);
   const [programLogPath, setProgramLogPath] = useState<string | null>(null);
   const [programError, setProgramError] = useState<string | null>(null);
+  const [programLogs, setProgramLogs] = useState<BuildLogEntry[]>([]);
+  const [programRunStatus, setProgramRunStatus] = useState<ProgramRunUiStatus>("idle");
+  const [programExitCode, setProgramExitCode] = useState<number | null>(null);
+  const [programCanceling, setProgramCanceling] = useState(false);
+  const [boardBusyActiveRunId, setBoardBusyActiveRunId] = useState<string | null>(null);
+  const [boardBusyCanceling, setBoardBusyCanceling] = useState(false);
+  const [boardDetecting, setBoardDetecting] = useState(false);
+  const [boardDetectResult, setBoardDetectResult] = useState<BoardDetectResult | null>(null);
   const handleCopyBridgeCommand = useCallback(async () => {
     try {
       if (navigator.clipboard?.writeText) {
@@ -174,10 +193,18 @@ function HardwarePanelComponent() {
   const streamRetryRef = useRef<number>(0);
   const captureStartRef = useRef<number | null>(null);
   const runStatusRef = useRef<string | null>(null);
+  const programRunStreamRef = useRef<{ close: () => void } | null>(null);
+  const programPollTimerRef = useRef<number | null>(null);
+  const programOffsetRef = useRef<number>(0);
+  const programPollingBusyRef = useRef<boolean>(false);
 
   const selectedDevice = useMemo(
     () => devices.find((device) => device.deviceId === selectedDeviceId) ?? null,
     [devices, selectedDeviceId]
+  );
+  const toolchainBackend = useMemo(
+    () => getToolchainBackend(getToolchainBackendId()),
+    []
   );
 
   const traceEventCount = traceEvents.length;
@@ -190,13 +217,23 @@ function HardwarePanelComponent() {
   // const programmingReady = selectedDevice?.programming?.status === "ready";
   const programmingReady = true; // Assume ready if connected
   const isRunningNoData = runStatus === "running_no_data";
+  const programStatusLabel =
+    programRunStatus === "running"
+      ? "Running"
+      : programRunStatus === "success"
+        ? "Success"
+        : programRunStatus === "canceled"
+          ? "Canceled"
+        : programRunStatus === "failed"
+          ? "Failed"
+          : "Idle";
 
   const programBlockedReason =
     !bridgeReady
       ? "Bridge offline"
-      : !selectedDeviceId
-        ? "Select a device"
-        : isSimDevice
+      : boardBusyActiveRunId
+        ? `Board busy: active run ${boardBusyActiveRunId}`
+      : isSimDevice
           ? "SIM device does not require programming"
           : panelState === "RUNNING"
             ? "Capture running"
@@ -243,6 +280,192 @@ function HardwarePanelComponent() {
     runStatusRef.current = runStatus;
   }, [runStatus]);
 
+  const appendProgramLogs = useCallback((incoming: BuildLogEntry[]) => {
+    if (!incoming || incoming.length === 0) return;
+    setProgramLogs((prev) => {
+      const keys = new Set(prev.map((entry) => `${entry.run_id}:${entry.ts}:${entry.msg}`));
+      const merged = [...prev];
+      for (const entry of incoming) {
+        const key = `${entry.run_id}:${entry.ts}:${entry.msg}`;
+        if (keys.has(key)) continue;
+        keys.add(key);
+        merged.push(entry);
+      }
+      return merged.sort((a, b) => {
+        if (a.ts !== b.ts) return a.ts - b.ts;
+        return a.msg.localeCompare(b.msg);
+      });
+    });
+  }, []);
+
+  const clearProgramMonitoring = useCallback(() => {
+    if (programRunStreamRef.current) {
+      programRunStreamRef.current.close();
+      programRunStreamRef.current = null;
+    }
+    if (programPollTimerRef.current) {
+      window.clearInterval(programPollTimerRef.current);
+      programPollTimerRef.current = null;
+    }
+    programPollingBusyRef.current = false;
+  }, []);
+
+  const finalizeProgramRun = useCallback(
+    (summary: ProgramRunDoneSummary) => {
+      clearProgramMonitoring();
+      setProgramCanceling(false);
+      setProgramExitCode(summary.exitCode);
+      if (summary.state === "canceled") {
+        setProgramRunStatus("canceled");
+        setProgramError(null);
+        setPanelState("IDLE");
+        setSynthesisPhase("idle");
+        setSynthesisMessage(`Programming canceled (run: ${summary.runId})`);
+        setSynthesisDialogOpen(false);
+        return;
+      }
+      if (summary.ok) {
+        setProgramRunStatus("success");
+        setProgramError(null);
+        setPanelState("READY");
+        setSynthesisPhase("success");
+        setSynthesisMessage(`Programmed successfully (run: ${summary.runId})`);
+        setTimeout(() => {
+          setSynthesisDialogOpen(false);
+          setSynthesisPhase("idle");
+        }, 2000);
+        return;
+      }
+
+      const errorMsg = summary.error || `openFPGALoader_exit_${summary.exitCode ?? "unknown"}`;
+      setProgramRunStatus("failed");
+      setProgramError(errorMsg);
+      setPanelState("ERROR");
+      setSynthesisError(errorMsg);
+      setSynthesisPhase("error");
+    },
+    [clearProgramMonitoring]
+  );
+
+  const pollProgramRunStatus = useCallback(
+    async (runId: string) => {
+      if (programPollingBusyRef.current) return;
+      programPollingBusyRef.current = true;
+      try {
+        const status = await toolchainBackend.getRunStatus(runId, programOffsetRef.current);
+        appendProgramLogs(status.logs);
+        programOffsetRef.current = status.nextOffset;
+        setProgramExitCode(status.exitCode);
+        if (status.state === "done" || status.state === "error" || status.state === "canceled") {
+          finalizeProgramRun({
+            runId: status.runId,
+            artifactId: status.artifactId,
+            state: status.state,
+            ok: status.ok === true,
+            exitCode: status.exitCode,
+            nextOffset: status.nextOffset,
+            ...(status.error ? { error: status.error } : {}),
+          });
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "program_status_failed";
+        setProgramError(message);
+        setProgramRunStatus("failed");
+        setPanelState("ERROR");
+        clearProgramMonitoring();
+      } finally {
+        programPollingBusyRef.current = false;
+      }
+    },
+    [appendProgramLogs, clearProgramMonitoring, finalizeProgramRun, toolchainBackend]
+  );
+
+  const startProgramPolling = useCallback(
+    (runId: string, offset: number) => {
+      clearProgramMonitoring();
+      programOffsetRef.current = Math.max(0, offset);
+      setProgramRunStatus("running");
+      void pollProgramRunStatus(runId);
+      programPollTimerRef.current = window.setInterval(() => {
+        void pollProgramRunStatus(runId);
+      }, PROGRAM_STATUS_POLL_MS);
+    },
+    [clearProgramMonitoring, pollProgramRunStatus]
+  );
+
+  const startProgramStreaming = useCallback(
+    (runId: string, offset: number) => {
+      clearProgramMonitoring();
+      programOffsetRef.current = Math.max(0, offset);
+      setProgramRunStatus("running");
+      const subscription = toolchainBackend.openRunStream(
+        runId,
+        {
+          onLog(entry) {
+            appendProgramLogs([entry]);
+            programOffsetRef.current = Math.max(programOffsetRef.current, entry.ts + 1);
+          },
+          onDone(summary) {
+            programOffsetRef.current = Math.max(programOffsetRef.current, summary.nextOffset);
+            finalizeProgramRun(summary);
+          },
+          onError() {
+            startProgramPolling(runId, programOffsetRef.current);
+          },
+        },
+        { offset: programOffsetRef.current }
+      );
+      if (!subscription) {
+        startProgramPolling(runId, programOffsetRef.current);
+        return;
+      }
+      programRunStreamRef.current = subscription;
+    },
+    [appendProgramLogs, clearProgramMonitoring, finalizeProgramRun, startProgramPolling, toolchainBackend]
+  );
+
+  const handleCopyProgramLogs = useCallback(async () => {
+    const text = programLogs.map((entry) => entry.msg).join("\n").trim();
+    if (!text) {
+      toast.error("No program logs to copy.");
+      return;
+    }
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        toast.success("Program logs copied.");
+      } else {
+        toast.error("Clipboard not available.");
+      }
+    } catch (error) {
+      toast.error("Failed to copy program logs.");
+    }
+  }, [programLogs]);
+
+  const handleExportProgramReport = useCallback(() => {
+    void (async () => {
+      const report = await toolchainBackend.doctorReport(
+        {},
+        {
+          logs: programLogs,
+        }
+      );
+      const json = stableStringify(report);
+      const fileTag = report.reportId ? `-${report.reportId}` : "";
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `rb-toolchain-report${fileTag}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    })().catch((error) => {
+      const message = error instanceof Error ? error.message : "doctor_report_export_failed";
+      setProgramError(message);
+      setProgramRunStatus("failed");
+    });
+  }, [programLogs, toolchainBackend]);
+
   // --- Model A Integration ---
   useEffect(() => {
     // 1. Initial state sync
@@ -274,6 +497,41 @@ function HardwarePanelComponent() {
   const refreshBridge = useCallback(() => {
     hardwareClient.connect(); // forceful reconnect attempt
   }, []);
+
+  const handleDetectBoard = useCallback(() => {
+    void (async () => {
+      setBoardDetecting(true);
+      try {
+        const result = await toolchainBackend.detectBoards();
+        setBoardDetectResult(result);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "board_detect_failed";
+        setBoardDetectResult({
+          schema_version: "toolchain_board_detect_v1",
+          ok: false,
+          run_id: "board-detect-failed",
+          boards: [],
+          tools: {
+            openFPGALoader: {
+              ok: false,
+              error: "board_detect_failed",
+            },
+          },
+          logs: [
+            {
+              run_id: "board-detect-failed",
+              ts: 0,
+              step: "probe",
+              level: "error",
+              msg: `[board-detect] failed: ${message}`,
+            },
+          ],
+        });
+      } finally {
+        setBoardDetecting(false);
+      }
+    })();
+  }, [toolchainBackend]);
 
   // Remove internal polling effects!
 
@@ -317,6 +575,14 @@ function HardwarePanelComponent() {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
+      if (programRunStreamRef.current) {
+        programRunStreamRef.current.close();
+        programRunStreamRef.current = null;
+      }
+      if (programPollTimerRef.current) {
+        window.clearInterval(programPollTimerRef.current);
+        programPollTimerRef.current = null;
+      }
       if (runIdRef.current) {
         fetch(`${BRIDGE_URL}/stop`, {
           method: "POST",
@@ -333,9 +599,13 @@ function HardwarePanelComponent() {
   const handleBitstreamSelect = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.currentTarget.files?.[0];
     if (!file) return;
+    clearProgramMonitoring();
     setBitstreamFile(file);
     setProgramLogPath(null);
     setProgramError(null);
+    setProgramLogs([]);
+    setProgramRunStatus("idle");
+    setProgramExitCode(null);
     try {
       const dataUrl = await readFileAsDataUrl(file);
       setBitstreamBase64(dataUrl);
@@ -343,7 +613,7 @@ function HardwarePanelComponent() {
       setBitstreamBase64(null);
       setProgramError("Failed to read bitstream file.");
     }
-  }, []);
+  }, [clearProgramMonitoring]);
 
   const closeStream = useCallback(() => {
     if (eventSourceRef.current) {
@@ -528,96 +798,69 @@ function HardwarePanelComponent() {
       setProgramError(programBlockedReason);
       return;
     }
-    
-    // PHASE 1: Show synthesis dialog
+
+    if (!bitstreamBase64) {
+      setProgramError("bitstream_required");
+      return;
+    }
+
     setProgramError(null);
     setProgramLogPath(null);
+    setProgramLogs([]);
+    setProgramRunStatus("running");
+    setProgramCanceling(false);
+    setBoardBusyCanceling(false);
+    setProgramExitCode(null);
+    clearProgramMonitoring();
     setSynthesisDialogOpen(true);
     setSynthesisPhase('programming');
-    setSynthesisMessage(undefined);
+    setSynthesisMessage("Programming Basys3 with openFPGALoader...");
     setSynthesisError(undefined);
-    
-    // Create abort controller for this programming session
+
     const abortCtrl = new AbortController();
     synthesisAbortRef.current = abortCtrl;
-    
     setPanelState("PROGRAMMING");
+
     try {
-      // PHASE 1: Use Server-Sent Events or polling for progress updates
-      let eventSource: EventSource | null = null;
-      let pollInterval: NodeJS.Timeout | null = null;
-      
-      // Try SSE-based progress if supported by bridge
-      try {
-        eventSource = new EventSource(
-          `${BRIDGE_URL}/program/stream?device_id=${encodeURIComponent(selectedDeviceId)}`
-        );
-        
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            const { phase, message } = data;
-            if (phase) {
-              setSynthesisPhase(phase);
-            }
-            if (message) {
-              setSynthesisMessage(message);
-            }
-          } catch (err) {
-            console.warn('[handleProgram] Failed to parse SSE message:', err);
-          }
-        };
-        
-        eventSource.onerror = () => {
-          eventSource?.close();
-          eventSource = null;
-        };
-      } catch (err) {
-        // SSE not supported or failed, will fall back to polling
-        console.debug('[handleProgram] SSE not available, using polling');
+      const result = await toolchainBackend.programBitstream({
+        board: "basys3",
+        mode: "sram",
+        bitstream: {
+          kind: "base64",
+          data: bitstreamBase64,
+        },
+      });
+      if (abortCtrl.signal.aborted) {
+        return;
       }
 
-      const result = await fetchJsonWithRetry<{ ok?: boolean; error?: string; log_path?: string }>(
-        `${BRIDGE_URL}/program`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            device_id: selectedDeviceId,
-            board_model_id: selectedDevice?.boardModel ?? DEFAULT_BOARD,
-            bitstream_base64: bitstreamBase64,
-          }),
-          signal: abortCtrl.signal,
-        },
-        { timeoutMs: 120000, retries: 1 }
-      );
-      
-      // Cleanup event source and polling
-      if (eventSource) {
-        eventSource.close();
+      appendProgramLogs(result.logs ?? []);
+      setProgramLogPath(result.runId);
+      if (!result.ok) {
+        if (result.error === "BOARD_BUSY") {
+          setBoardBusyActiveRunId(result.activeRunId ?? result.runId);
+          setProgramRunStatus("idle");
+          setProgramError(`Board busy: active run ${result.activeRunId ?? result.runId}`);
+          setPanelState("IDLE");
+          setSynthesisPhase("idle");
+          setSynthesisDialogOpen(false);
+          return;
+        }
+        throw new Error(result.error || "program_failed");
       }
-      if (pollInterval) {
-        clearInterval(pollInterval);
-      }
-      
-      if (!result.ok || !result.data?.ok) {
-        throw new Error(result.data?.error || `program_failed_${result.status}`);
-      }
-      
-      // Success!
-      setSynthesisPhase('success');
-      setProgramLogPath(result.data?.log_path || null);
-      setPanelState("READY");
-      
-      // Auto-dismiss success dialog after 2 seconds
-      setTimeout(() => {
-        setSynthesisDialogOpen(false);
-        setSynthesisPhase('idle');
-      }, 2000);
-      
+      setBoardBusyActiveRunId(null);
+      setPanelState("PROGRAMMING");
+      setSynthesisMessage(`Programming run started (run: ${result.runId})`);
+
+      const initialOffset =
+        typeof result.nextOffset === "number"
+          ? result.nextOffset
+          : (result.logs ?? []).reduce((maxOffset, entry) => Math.max(maxOffset, entry.ts + 1), 0);
+      startProgramStreaming(result.runId, initialOffset);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
-        // User cancelled
+        clearProgramMonitoring();
+        setProgramRunStatus("idle");
         setSynthesisPhase('idle');
         setSynthesisDialogOpen(false);
       } else {
@@ -625,12 +868,98 @@ function HardwarePanelComponent() {
         setSynthesisError(errorMsg);
         setSynthesisPhase('error');
         setProgramError(errorMsg);
+        setProgramRunStatus("failed");
         setPanelState("ERROR");
       }
     }
-    
+
     synthesisAbortRef.current = null;
-  }, [bitstreamBase64, programBlockedReason, selectedDevice, selectedDeviceId]);
+  }, [
+    appendProgramLogs,
+    bitstreamBase64,
+    clearProgramMonitoring,
+    programBlockedReason,
+    startProgramStreaming,
+    toolchainBackend,
+  ]);
+
+  const handleCancelProgram = useCallback(async () => {
+    if (programCanceling) return;
+    if (programRunStatus !== "running") return;
+    if (!programLogPath) return;
+
+    setProgramCanceling(true);
+    try {
+      const status = await toolchainBackend.cancelRun(programLogPath);
+      appendProgramLogs(status.logs ?? []);
+      setProgramExitCode(status.exitCode);
+      if (status.state === "running") {
+        setProgramError(status.error || "cancel_failed");
+        setSynthesisError(status.error || "cancel_failed");
+        setProgramCanceling(false);
+        return;
+      }
+
+      finalizeProgramRun({
+        runId: status.runId,
+        artifactId: status.artifactId,
+        state: status.state,
+        ok: status.ok === true,
+        exitCode: status.exitCode,
+        nextOffset: status.nextOffset,
+        ...(status.error ? { error: status.error } : {}),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "cancel_failed";
+      setProgramError(message);
+      setSynthesisError(message);
+      appendProgramLogs([
+        {
+          run_id: programLogPath,
+          ts: programOffsetRef.current + 1,
+          step: "program",
+          level: "error",
+          msg: "[bridge] program: cancel failed; try unplugging board and closing any Vivado instances.",
+        },
+      ]);
+      setProgramCanceling(false);
+    }
+  }, [
+    appendProgramLogs,
+    finalizeProgramRun,
+    programCanceling,
+    programLogPath,
+    programRunStatus,
+    toolchainBackend,
+  ]);
+
+  const handleCancelActiveRun = useCallback(async () => {
+    if (boardBusyCanceling) return;
+    if (!boardBusyActiveRunId) return;
+
+    setBoardBusyCanceling(true);
+    try {
+      const status = await toolchainBackend.cancelRun(boardBusyActiveRunId);
+      appendProgramLogs(status.logs ?? []);
+      setProgramExitCode(status.exitCode);
+      if (status.state === "running") {
+        setProgramError(status.error || "cancel_failed");
+        setSynthesisError(status.error || "cancel_failed");
+        return;
+      }
+
+      setBoardBusyActiveRunId(null);
+      setProgramError(null);
+      setPanelState("IDLE");
+      setProgramRunStatus("idle");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "cancel_failed";
+      setProgramError(message);
+      setSynthesisError(message);
+    } finally {
+      setBoardBusyCanceling(false);
+    }
+  }, [appendProgramLogs, boardBusyActiveRunId, boardBusyCanceling, toolchainBackend]);
 
   const handleStopCapture = useCallback(async () => {
     if (!runIdRef.current) return;
@@ -708,10 +1037,17 @@ function HardwarePanelComponent() {
     if (synthesisAbortRef.current) {
       synthesisAbortRef.current.abort();
     }
+    if (programRunStatus === "running" && programLogPath) {
+      void handleCancelProgram();
+      return;
+    }
+    clearProgramMonitoring();
+    setProgramCanceling(false);
+    setProgramRunStatus("idle");
     setSynthesisPhase('idle');
     setSynthesisDialogOpen(false);
     setPanelState('IDLE');
-  }, []);
+  }, [clearProgramMonitoring, handleCancelProgram, programLogPath, programRunStatus]);
 
   const handleExportBundle = useCallback(async () => {
     if (exportBlockedReason) {
@@ -814,6 +1150,21 @@ function HardwarePanelComponent() {
           >
             Refresh Devices
           </button>
+          <button
+            onClick={handleDetectBoard}
+            disabled={boardDetecting}
+            style={{
+              padding: "6px 10px",
+              background: boardDetecting ? "#555" : "#0b3b5a",
+              color: "#fff",
+              border: "1px solid #555",
+              borderRadius: "4px",
+              cursor: boardDetecting ? "not-allowed" : "pointer",
+              fontSize: "11px",
+            }}
+          >
+            {boardDetecting ? "Detecting..." : "Detect Board"}
+          </button>
         </div>
         {!bridgeReady && (
           <div style={{ marginTop: "6px", fontSize: "11px", color: "#f66", display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -836,6 +1187,19 @@ function HardwarePanelComponent() {
             model_id: {selectedDevice.boardModel} | transport: hardware
           </div>
         )}
+        {boardDetectResult && (
+          <div style={{ marginTop: "8px", fontSize: "11px", color: "#888" }}>
+            {boardDetectResult.boards.length > 0 ? (
+              <div style={{ color: "#22c55e" }}>
+                Detected: Basys 3 ({boardDetectResult.boards.length}) via openFPGALoader
+              </div>
+            ) : (
+              <div style={{ color: "#f59e0b" }}>
+                Not detected. Check USB cable, FTDI/Digilent drivers, close Vivado Hardware Manager, and retry.
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div style={sectionStyle}>
@@ -854,7 +1218,7 @@ function HardwarePanelComponent() {
           </span>
         </div>
         {programLogPath && (
-          <div style={{ marginTop: "6px", fontSize: "11px", color: "#888" }}>log: {programLogPath}</div>
+          <div style={{ marginTop: "6px", fontSize: "11px", color: "#888" }}>run_id: {programLogPath}</div>
         )}
         {programError && (
           <div style={{ marginTop: "6px", fontSize: "11px", color: "#f66" }}>{programError}</div>
@@ -863,20 +1227,83 @@ function HardwarePanelComponent() {
 
       <div style={sectionStyle}>
         <strong>Program</strong>
+        <div style={{ marginTop: "6px", fontSize: "11px", color: "#888" }}>
+          status:{" "}
+          <span
+            style={{
+              color:
+                programRunStatus === "success"
+                  ? "#22c55e"
+                  : programRunStatus === "canceled"
+                    ? "#f59e0b"
+                  : programRunStatus === "failed"
+                    ? "#ef4444"
+                    : programRunStatus === "running"
+                      ? "#60a5fa"
+                      : "#9ca3af",
+            }}
+          >
+            {programStatusLabel}
+          </span>
+          {programExitCode !== null ? ` | exit_code: ${programExitCode}` : ""}
+        </div>
         <div style={{ marginTop: "8px", display: "flex", gap: "10px" }}>
           <button
             onClick={handleProgram}
-            disabled={!!programBlockedReason}
+            disabled={!!programBlockedReason || programCanceling}
             style={{
               padding: "10px 20px",
-              background: programBlockedReason ? "#555" : "#0a5a0a",
+              background: programBlockedReason || programCanceling ? "#555" : "#0a5a0a",
               color: "#fff",
               border: "none",
               borderRadius: "4px",
-              cursor: programBlockedReason ? "not-allowed" : "pointer",
+              cursor: programBlockedReason || programCanceling ? "not-allowed" : "pointer",
             }}
           >
             {panelState === "PROGRAMMING" ? "Programming..." : "Program FPGA"}
+          </button>
+          {programRunStatus === "running" && (
+            <button
+              onClick={handleCancelProgram}
+              disabled={programCanceling}
+              style={{
+                padding: "10px 20px",
+                background: programCanceling ? "#555" : "#5a0a0a",
+                color: "#fff",
+                border: "none",
+                borderRadius: "4px",
+                cursor: programCanceling ? "not-allowed" : "pointer",
+              }}
+            >
+              {programCanceling ? "Canceling..." : "Cancel Program"}
+            </button>
+          )}
+          <button
+            onClick={handleCopyProgramLogs}
+            disabled={programLogs.length === 0}
+            style={{
+              padding: "10px 20px",
+              background: programLogs.length === 0 ? "#555" : "#334155",
+              color: "#fff",
+              border: "none",
+              borderRadius: "4px",
+              cursor: programLogs.length === 0 ? "not-allowed" : "pointer",
+            }}
+          >
+            Copy Logs
+          </button>
+          <button
+            onClick={handleExportProgramReport}
+            style={{
+              padding: "10px 20px",
+              background: "#3f3f46",
+              color: "#fff",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+            }}
+          >
+            Export Report
           </button>
         </div>
         {programBlockedReason && (
@@ -884,6 +1311,61 @@ function HardwarePanelComponent() {
             {programBlockedReason}
           </div>
         )}
+        {boardBusyActiveRunId && (
+          <div
+            style={{
+              marginTop: "8px",
+              padding: "8px",
+              borderRadius: "4px",
+              border: "1px solid #7c2d12",
+              background: "#431407",
+              color: "#fed7aa",
+              fontSize: "11px",
+            }}
+          >
+            <div>
+              <strong>Board Busy</strong>: another program run is active ({boardBusyActiveRunId}). Cancel it or wait.
+            </div>
+            <div style={{ marginTop: "6px" }}>
+              <button
+                onClick={handleCancelActiveRun}
+                disabled={boardBusyCanceling}
+                style={{
+                  padding: "6px 10px",
+                  background: boardBusyCanceling ? "#555" : "#7f1d1d",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: boardBusyCanceling ? "not-allowed" : "pointer",
+                  fontSize: "11px",
+                }}
+              >
+                {boardBusyCanceling ? "Canceling Active Run..." : "Cancel Active Run"}
+              </button>
+            </div>
+          </div>
+        )}
+        <div style={{ marginTop: "8px", fontSize: "11px", color: "#888" }}>
+          {programLogs.length === 0 ? (
+            <span>No program logs yet.</span>
+          ) : (
+            <pre
+              style={{
+                margin: 0,
+                padding: "8px",
+                borderRadius: "4px",
+                background: "#0f172a",
+                border: "1px solid #1f2937",
+                color: "#d1d5db",
+                maxHeight: "140px",
+                overflow: "auto",
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {programLogs.map((entry) => entry.msg).join("\n")}
+            </pre>
+          )}
+        </div>
       </div>
 
       <div style={sectionStyle}>
@@ -1017,7 +1499,7 @@ function HardwarePanelComponent() {
             <div style={{ marginTop: "4px" }}>Active runs: {bridgeHealth.activeRunCount}</div>
           )}
           {programLogPath && (
-            <div style={{ marginTop: "4px" }}>Last program log: {programLogPath}</div>
+            <div style={{ marginTop: "4px" }}>Last program run_id: {programLogPath}</div>
           )}
           {programError && (
             <div style={{ marginTop: "4px", color: "#f66" }}>Last program error: {programError}</div>

@@ -5,7 +5,20 @@
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { RunRecord } from '../recording/runRecord';
 import type { Probe } from '../stores/probeStore';
+import type { ToolchainProjectInput } from '../fpga/toolchainBackend';
 import { stableStringify } from './stableStringify';
+
+export interface RBFpgaConstraints {
+  type: 'xdc';
+  text: string;
+}
+
+export interface RBFpgaConfig {
+  board: 'basys3';
+  constraints?: RBFpgaConstraints;
+  preset?: string;
+  top?: string;
+}
 
 export interface RBProject {
   kind: 'rb-project';
@@ -15,6 +28,8 @@ export interface RBProject {
   name: string;
   description?: string;
   circuit: Circuit;
+  hdl?: ToolchainProjectInput;
+  fpga?: RBFpgaConfig;
   layout?: {
     perspectiveId?: string;
     splitRatio?: number;

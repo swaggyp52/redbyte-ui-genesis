@@ -1,4 +1,4 @@
-// Source-of-truth: LogicPlaygroundApp.tsx
+// Source-of-truth: toolchainBackend.ts
 // This JS file exists for runtime import resolution and must remain a thin wrapper.
-export * from "./LogicPlaygroundApp.tsx";
+export * from "./toolchainBackend.ts";
 
