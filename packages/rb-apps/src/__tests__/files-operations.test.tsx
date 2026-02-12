@@ -227,8 +227,8 @@ describe('PHASE_W: Files operations', () => {
 
       // Name should update
       const tableAfter = screen.getByRole('table');
-      expect(tableAfter.textContent).toContain('📁 My Projects');
-      expect(tableAfter.textContent).not.toContain('📁 Project Files');
+      expect(tableAfter.textContent).toContain('My Projects');
+      expect(tableAfter.textContent).not.toContain('Project Files');
     });
 
     it('does not open rename modal for root folders', () => {
@@ -269,7 +269,8 @@ describe('PHASE_W: Files operations', () => {
       });
 
       // Confirm modal should appear
-      expect(screen.getByText(/Are you sure you want to delete "Reports"/)).toBeTruthy();
+      expect(screen.getByText('Delete Folder?')).toBeTruthy();
+      expect(screen.getByText('This will permanently remove "Reports".')).toBeTruthy();
 
       // Confirm - find button by role
       const buttons = screen.getAllByRole('button');
@@ -639,7 +640,6 @@ describe('PHASE_W: Files operations', () => {
       // Should auto-suffix to "Notes.txt (2)"
       const table = screen.getByRole('table');
       expect(table.textContent).toContain('Notes.txt (2)');
-      expect(table.textContent).toContain('📁 Notes.txt (2)'); // Folder with suffix
     });
   });
 

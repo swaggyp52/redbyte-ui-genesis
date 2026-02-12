@@ -136,3 +136,12 @@ export function extractYosysStatText(stdoutText) {
   if (startIndex < 0) return text.trim();
   return lines.slice(startIndex).join("\n").trim();
 }
+
+export function resolveSelectedYosysPath(capabilities) {
+  const yosys = capabilities?.yosys;
+  if (!yosys || typeof yosys !== "object") return null;
+  if (yosys.ok === false) return null;
+  if (yosys.status === "missing") return null;
+  const path = typeof yosys.path === "string" ? yosys.path.trim() : "";
+  return path.length > 0 ? path : null;
+}

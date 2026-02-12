@@ -14,7 +14,8 @@
   },
   "scripts": {
     "build": "vite build -c ../../tools/config/vite.lib.config.ts",
-    "test": "echo \"Tests run at root. This package has no direct tests.\""
+    "test": "pnpm -w exec vitest run --config vitest.config.ts packages/rb-shell/src/__tests__",
+    "test:ci": "pnpm -w exec vitest run --config vitest.config.ts packages/rb-shell/src/__tests__"
   },
   "dependencies": {
     "@redbyte/rb-apps": "workspace:*",

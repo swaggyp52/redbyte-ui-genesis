@@ -9,6 +9,10 @@ import {
   type ToolchainProjectInput,
   type SynthRunDoneSummary,
   type SynthArtifactRef,
+  type ImplementRunDoneSummary,
+  type ImplementArtifactRef,
+  type ProgramRunDoneSummary,
+  type ToolchainBuildPath,
 } from '../fpga/toolchainBackend';
 import type { RBFpgaConfig } from '../export/projectFormat';
 import { stableStringify } from '../export/stableStringify';
@@ -60,6 +64,37 @@ function normalizeHdlSourcePath(value: string): string {
   return normalized.length > 0 ? normalized : 'top.v';
 }
 
+type SetupPlatformId = 'windows' | 'macos' | 'linux';
+
+function normalizeSetupPlatform(value: string): SetupPlatformId {
+  const lower = value.toLowerCase();
+  if (lower.includes('win')) return 'windows';
+  if (lower.includes('darwin') || lower.includes('mac')) return 'macos';
+  return 'linux';
+}
+
+function getSetupCommands(platform: SetupPlatformId): Array<{ tool: string; command: string }> {
+  if (platform === 'windows') {
+    return [
+      { tool: 'Vivado (stable backend)', command: 'Install Vivado WebPACK and ensure `vivado` is on PATH.' },
+      { tool: 'Yosys', command: 'winget install YosysHQ.Yosys' },
+      { tool: 'openFPGALoader', command: 'winget install trabucayre.openFPGALoader' },
+    ];
+  }
+  if (platform === 'macos') {
+    return [
+      { tool: 'Vivado (stable backend)', command: 'Install Vivado WebPACK and export XILINX_VIVADO in your shell profile.' },
+      { tool: 'Yosys', command: 'brew install yosys' },
+      { tool: 'openFPGALoader', command: 'brew install openfpgaloader' },
+    ];
+  }
+  return [
+    { tool: 'Vivado (stable backend)', command: 'Install Vivado WebPACK and source settings64.sh before launching RedByte.' },
+    { tool: 'Yosys', command: 'sudo apt-get install -y yosys' },
+    { tool: 'openFPGALoader', command: 'sudo apt-get install -y openfpgaloader' },
+  ];
+}
+
 export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
   project,
   onProjectChange,
@@ -72,17 +107,43 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
   const [logs, setLogs] = useState<BuildLogEntry[]>([]);
   const [lastProbe, setLastProbe] = useState<ToolProbeResult | null>(null);
   const [lastPreflight, setLastPreflight] = useState<ToolchainPreflightStatus | null>(null);
+  const [lastBuildPath, setLastBuildPath] = useState<ToolchainBuildPath | null>(null);
   const [isBuilding, setIsBuilding] = useState(false);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
+  const [isImplementing, setIsImplementing] = useState(false);
+  const [isPlanningImplement, setIsPlanningImplement] = useState(false);
   const [isProbing, setIsProbing] = useState(false);
   const [isPreflighting, setIsPreflighting] = useState(false);
   const [synthRunId, setSynthRunId] = useState<string | null>(null);
-  const [synthStatus, setSynthStatus] = useState<'idle' | 'running' | 'success' | 'failed'>('idle');
+  const [synthStatus, setSynthStatus] = useState<'idle' | 'running' | 'success' | 'failed' | 'canceled'>('idle');
   const [synthArtifact, setSynthArtifact] = useState<SynthArtifactRef | null>(null);
+  const [synthArtifactId, setSynthArtifactId] = useState<string | null>(null);
+  const [isSynthCanceling, setIsSynthCanceling] = useState(false);
+  const [implementRunId, setImplementRunId] = useState<string | null>(null);
+  const [implementStatus, setImplementStatus] = useState<'idle' | 'running' | 'success' | 'failed' | 'canceled'>('idle');
+  const [implementArtifact, setImplementArtifact] = useState<ImplementArtifactRef | null>(null);
+  const [implementArtifactId, setImplementArtifactId] = useState<string | null>(null);
+  const [isImplementCanceling, setIsImplementCanceling] = useState(false);
+  const [programRunId, setProgramRunId] = useState<string | null>(null);
+  const [programArtifactId, setProgramArtifactId] = useState<string | null>(null);
+  const [programStatus, setProgramStatus] = useState<'idle' | 'running' | 'success' | 'failed' | 'canceled'>('idle');
+  const [isProgramCanceling, setIsProgramCanceling] = useState(false);
+  const [isSetupVerifying, setIsSetupVerifying] = useState(false);
+  const [includeSourcesInZip, setIncludeSourcesInZip] = useState(false);
   const buildRunSeqRef = useRef(0);
+  const isMountedRef = useRef(true);
   const synthOffsetRef = useRef(0);
   const synthPollTimerRef = useRef<number | null>(null);
   const synthStreamRef = useRef<{ close: () => void } | null>(null);
+  const synthPollingBusyRef = useRef(false);
+  const implementOffsetRef = useRef(0);
+  const implementPollTimerRef = useRef<number | null>(null);
+  const implementStreamRef = useRef<{ close: () => void } | null>(null);
+  const implementPollingBusyRef = useRef(false);
+  const programOffsetRef = useRef(0);
+  const programPollTimerRef = useRef<number | null>(null);
+  const programStreamRef = useRef<{ close: () => void } | null>(null);
+  const programPollingBusyRef = useRef(false);
   const [presetToApply, setPresetToApply] = useState<Basys3XdcPresetId | ''>('');
 
   const fileName = useMemo(() => {
@@ -154,6 +215,77 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
     ] as const;
   }, [lastPreflight, lastProbe?.ok]);
 
+  const implementHasBitstreamOutput = useMemo(() => {
+    if (!implementArtifact) return false;
+    const outputs = Array.isArray(implementArtifact.outputs) ? implementArtifact.outputs : [];
+    return outputs.some((output) => {
+      const kind = typeof output?.kind === 'string' ? output.kind.toLowerCase() : '';
+      if (kind === 'bitstream') return true;
+      const pathHint = String(output?.pathHint || '').toLowerCase();
+      const storedPath = String(output?.storedPath || '').toLowerCase();
+      const name = String(output?.name || '').toLowerCase();
+      return pathHint.endsWith('.bit') || storedPath.endsWith('.bit') || name.includes('bitstream');
+    });
+  }, [implementArtifact]);
+  const isProgramRunning = programStatus === 'running';
+  const setupPlatform = useMemo(() => {
+    const probePlatform = lastProbe?.env?.platform;
+    if (typeof probePlatform === 'string' && probePlatform.trim().length > 0) {
+      return normalizeSetupPlatform(probePlatform);
+    }
+    const navPlatform =
+      typeof navigator !== 'undefined' && typeof navigator.platform === 'string'
+        ? navigator.platform
+        : 'linux';
+    return normalizeSetupPlatform(navPlatform);
+  }, [lastProbe?.env?.platform]);
+  const setupCommands = useMemo(() => getSetupCommands(setupPlatform), [setupPlatform]);
+  const requiredDemoTools = useMemo(() => {
+    const tools = Array.isArray(lastProbe?.tools) ? lastProbe.tools : [];
+    const find = (name: string) => tools.find((tool) => tool.name === name);
+    const backendTool = find('vivado');
+    const synthTool = find('yosys');
+    const programTool = find('openFPGALoader');
+    return [
+      {
+        name: 'vivado',
+        label: 'Implement backend (stable)',
+        ok: backendTool?.ok === true,
+        detail:
+          backendTool?.status === 'found_not_in_path'
+            ? `source:${backendTool?.source ?? 'found_not_in_path'} found_not_in_path`
+            : backendTool?.ok
+              ? `source:${backendTool?.source ?? 'system'} ${backendTool.version || 'detected'}`
+              : `source:${backendTool?.source ?? 'not_found'} ${backendTool?.error || 'missing'}`,
+        suggestedFix: backendTool?.suggestedFix,
+      },
+      {
+        name: 'yosys',
+        label: 'Synthesis',
+        ok: synthTool?.ok === true,
+        detail:
+          synthTool?.status === 'found_not_in_path'
+            ? `source:${synthTool?.source ?? 'found_not_in_path'} found_not_in_path`
+            : synthTool?.ok
+              ? `source:${synthTool?.source ?? 'system'} ${synthTool.version || 'detected'}`
+              : `source:${synthTool?.source ?? 'not_found'} ${synthTool?.error || 'missing'}`,
+        suggestedFix: synthTool?.suggestedFix,
+      },
+      {
+        name: 'openFPGALoader',
+        label: 'Programming',
+        ok: programTool?.ok === true,
+        detail:
+          programTool?.status === 'found_not_in_path'
+            ? `source:${programTool?.source ?? 'found_not_in_path'} found_not_in_path`
+            : programTool?.ok
+              ? `source:${programTool?.source ?? 'system'} ${programTool.version || 'detected'}`
+              : `source:${programTool?.source ?? 'not_found'} ${programTool?.error || 'missing'}`,
+        suggestedFix: programTool?.suggestedFix,
+      },
+    ] as const;
+  }, [lastProbe?.tools]);
+
   const appendLog = useCallback((entry: BuildLogEntry) => {
     setLogs((prev) => [...prev, entry]);
   }, []);
@@ -171,14 +303,42 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
       window.clearInterval(synthPollTimerRef.current);
       synthPollTimerRef.current = null;
     }
+    synthPollingBusyRef.current = false;
+  }, []);
+
+  const clearImplementMonitoring = useCallback(() => {
+    if (implementStreamRef.current) {
+      implementStreamRef.current.close();
+      implementStreamRef.current = null;
+    }
+    if (implementPollTimerRef.current !== null) {
+      window.clearInterval(implementPollTimerRef.current);
+      implementPollTimerRef.current = null;
+    }
+    implementPollingBusyRef.current = false;
+  }, []);
+
+  const clearProgramMonitoring = useCallback(() => {
+    if (programStreamRef.current) {
+      programStreamRef.current.close();
+      programStreamRef.current = null;
+    }
+    if (programPollTimerRef.current !== null) {
+      window.clearInterval(programPollTimerRef.current);
+      programPollTimerRef.current = null;
+    }
+    programPollingBusyRef.current = false;
   }, []);
 
   const finalizeSynthRun = useCallback(
     (summary: SynthRunDoneSummary) => {
+      if (!isMountedRef.current) return;
       clearSynthMonitoring();
       synthOffsetRef.current = summary.nextOffset;
       setIsSynthesizing(false);
       setSynthRunId(summary.runId);
+      setSynthArtifactId(summary.artifactId);
+      setIsSynthCanceling(false);
       if (summary.artifact) {
         setSynthArtifact(summary.artifact);
       }
@@ -186,19 +346,80 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
         setSynthStatus('success');
         return;
       }
+      if (summary.state === 'canceled') {
+        setSynthStatus('canceled');
+        return;
+      }
       setSynthStatus('failed');
     },
     [clearSynthMonitoring]
   );
 
+  const finalizeImplementRun = useCallback(
+    (summary: ImplementRunDoneSummary) => {
+      if (!isMountedRef.current) return;
+      clearImplementMonitoring();
+      implementOffsetRef.current = summary.nextOffset;
+      setIsImplementing(false);
+      setImplementRunId(summary.runId);
+      setImplementArtifactId(summary.artifactId);
+      if (summary.artifact) {
+        setImplementArtifact(summary.artifact);
+      }
+      if (summary.state === 'done' && summary.ok) {
+        setImplementStatus('success');
+        return;
+      }
+      if (summary.state === 'canceled') {
+        setImplementStatus('canceled');
+        return;
+      }
+      setImplementStatus('failed');
+    },
+    [clearImplementMonitoring]
+  );
+
+  const finalizeProgramRun = useCallback(
+    (summary: ProgramRunDoneSummary) => {
+      if (!isMountedRef.current) return;
+      clearProgramMonitoring();
+      programOffsetRef.current = summary.nextOffset;
+      setProgramRunId(summary.runId);
+      setProgramArtifactId(summary.artifactId);
+      setIsProgramCanceling(false);
+      if (summary.state === 'done' && summary.ok) {
+        setProgramStatus('success');
+        return;
+      }
+      if (summary.state === 'canceled') {
+        setProgramStatus('canceled');
+        return;
+      }
+      setProgramStatus('failed');
+    },
+    [clearProgramMonitoring]
+  );
+
   const runPreflight = useCallback(
-    async (options?: { refreshProbe?: boolean }) => {
-      const status = await backend.preflight(buildSnapshot(), options);
+    async (options?: { refreshProbe?: boolean; snapshot?: ReturnType<typeof buildSnapshot> }) => {
+      const status = await backend.preflight(options?.snapshot ?? buildSnapshot(), {
+        refreshProbe: options?.refreshProbe,
+      });
       setLastPreflight(status);
       return status;
     },
     [backend, buildSnapshot]
   );
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      clearSynthMonitoring();
+      clearImplementMonitoring();
+      clearProgramMonitoring();
+    };
+  }, [clearImplementMonitoring, clearProgramMonitoring, clearSynthMonitoring]);
 
   useEffect(() => {
     let cancelled = false;
@@ -215,16 +436,13 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
     };
   }, [runPreflight]);
 
-  useEffect(() => {
-    return () => {
-      clearSynthMonitoring();
-    };
-  }, [clearSynthMonitoring]);
-
   const pollSynthRunStatus = useCallback(
     async (runId: string) => {
+      if (!isMountedRef.current || synthPollingBusyRef.current) return;
+      synthPollingBusyRef.current = true;
       try {
         const status = await backend.getSynthRunStatus(runId, synthOffsetRef.current);
+        if (!isMountedRef.current) return;
         appendLogs(status.logs ?? []);
         synthOffsetRef.current = status.nextOffset;
         if (status.state !== 'running') {
@@ -240,6 +458,7 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
           });
         }
       } catch (error) {
+        if (!isMountedRef.current) return;
         const message = error instanceof Error ? error.message : 'synth_status_failed';
         appendLog({
           run_id: runId,
@@ -251,6 +470,8 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
         clearSynthMonitoring();
         setIsSynthesizing(false);
         setSynthStatus('failed');
+      } finally {
+        synthPollingBusyRef.current = false;
       }
     },
     [appendLog, appendLogs, backend.id, clearSynthMonitoring, finalizeSynthRun]
@@ -258,6 +479,7 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
 
   const startSynthPolling = useCallback(
     (runId: string, offset: number) => {
+      if (!isMountedRef.current) return;
       clearSynthMonitoring();
       synthOffsetRef.current = Math.max(0, offset);
       void pollSynthRunStatus(runId);
@@ -276,13 +498,16 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
         runId,
         {
           onLog(entry) {
+            if (!isMountedRef.current) return;
             appendLog(entry);
             synthOffsetRef.current = Math.max(synthOffsetRef.current, entry.ts + 1);
           },
           onDone(summary) {
+            if (!isMountedRef.current) return;
             finalizeSynthRun(summary);
           },
           onError() {
+            if (!isMountedRef.current) return;
             startSynthPolling(runId, synthOffsetRef.current);
           },
         },
@@ -295,6 +520,176 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
       synthStreamRef.current = subscription;
     },
     [appendLog, backend, clearSynthMonitoring, finalizeSynthRun, startSynthPolling]
+  );
+
+  const pollImplementRunStatus = useCallback(
+    async (runId: string) => {
+      if (!isMountedRef.current || implementPollingBusyRef.current) return;
+      implementPollingBusyRef.current = true;
+      try {
+        const status = await backend.getImplementRunStatus(runId, implementOffsetRef.current);
+        if (!isMountedRef.current) return;
+        appendLogs(status.logs ?? []);
+        implementOffsetRef.current = status.nextOffset;
+        if (status.state !== 'running') {
+          finalizeImplementRun({
+            runId: status.runId,
+            artifactId: status.artifactId,
+            state: status.state === 'done' || status.state === 'error' || status.state === 'canceled' ? status.state : 'error',
+            ok: status.ok === true,
+            exitCode: status.exitCode,
+            nextOffset: status.nextOffset,
+            ...(status.error ? { error: status.error } : {}),
+            ...(status.artifact ? { artifact: status.artifact } : {}),
+          });
+        }
+      } catch (error) {
+        if (!isMountedRef.current) return;
+        const message = error instanceof Error ? error.message : 'implement_status_failed';
+        appendLog({
+          run_id: runId,
+          ts: implementOffsetRef.current,
+          step: 'implement',
+          level: 'error',
+          msg: `[${backend.id}] implement: poll failed: ${message}`,
+        });
+        clearImplementMonitoring();
+        setIsImplementing(false);
+        setImplementStatus('failed');
+      } finally {
+        implementPollingBusyRef.current = false;
+      }
+    },
+    [appendLog, appendLogs, backend.id, clearImplementMonitoring, finalizeImplementRun]
+  );
+
+  const startImplementPolling = useCallback(
+    (runId: string, offset: number) => {
+      if (!isMountedRef.current) return;
+      clearImplementMonitoring();
+      implementOffsetRef.current = Math.max(0, offset);
+      void pollImplementRunStatus(runId);
+      implementPollTimerRef.current = window.setInterval(() => {
+        void pollImplementRunStatus(runId);
+      }, 500);
+    },
+    [clearImplementMonitoring, pollImplementRunStatus]
+  );
+
+  const startImplementStreaming = useCallback(
+    (runId: string, offset: number) => {
+      clearImplementMonitoring();
+      implementOffsetRef.current = Math.max(0, offset);
+      const subscription = backend.openImplementRunStream(
+        runId,
+        {
+          onLog(entry) {
+            if (!isMountedRef.current) return;
+            appendLog(entry);
+            implementOffsetRef.current = Math.max(implementOffsetRef.current, entry.ts + 1);
+          },
+          onDone(summary) {
+            if (!isMountedRef.current) return;
+            finalizeImplementRun(summary);
+          },
+          onError() {
+            if (!isMountedRef.current) return;
+            startImplementPolling(runId, implementOffsetRef.current);
+          },
+        },
+        { offset: implementOffsetRef.current }
+      );
+      if (!subscription) {
+        startImplementPolling(runId, implementOffsetRef.current);
+        return;
+      }
+      implementStreamRef.current = subscription;
+    },
+    [appendLog, backend, clearImplementMonitoring, finalizeImplementRun, startImplementPolling]
+  );
+
+  const pollProgramRunStatus = useCallback(
+    async (runId: string) => {
+      if (!isMountedRef.current || programPollingBusyRef.current) return;
+      programPollingBusyRef.current = true;
+      try {
+        const status = await backend.getRunStatus(runId, programOffsetRef.current);
+        if (!isMountedRef.current) return;
+        appendLogs(status.logs ?? []);
+        programOffsetRef.current = status.nextOffset;
+        if (status.state !== 'running') {
+          finalizeProgramRun({
+            runId: status.runId,
+            artifactId: status.artifactId,
+            state: status.state === 'done' || status.state === 'error' || status.state === 'canceled' ? status.state : 'error',
+            ok: status.ok === true,
+            exitCode: status.exitCode,
+            nextOffset: status.nextOffset,
+            ...(status.error ? { error: status.error } : {}),
+          });
+        }
+      } catch (error) {
+        if (!isMountedRef.current) return;
+        const message = error instanceof Error ? error.message : 'program_status_failed';
+        appendLog({
+          run_id: runId,
+          ts: programOffsetRef.current,
+          step: 'program',
+          level: 'error',
+          msg: `[${backend.id}] program: poll failed: ${message}`,
+        });
+        clearProgramMonitoring();
+        setProgramStatus('failed');
+      } finally {
+        programPollingBusyRef.current = false;
+      }
+    },
+    [appendLog, appendLogs, backend.id, clearProgramMonitoring, finalizeProgramRun]
+  );
+
+  const startProgramPolling = useCallback(
+    (runId: string, offset: number) => {
+      if (!isMountedRef.current) return;
+      clearProgramMonitoring();
+      programOffsetRef.current = Math.max(0, offset);
+      void pollProgramRunStatus(runId);
+      programPollTimerRef.current = window.setInterval(() => {
+        void pollProgramRunStatus(runId);
+      }, 500);
+    },
+    [clearProgramMonitoring, pollProgramRunStatus]
+  );
+
+  const startProgramStreaming = useCallback(
+    (runId: string, offset: number) => {
+      clearProgramMonitoring();
+      programOffsetRef.current = Math.max(0, offset);
+      const subscription = backend.openRunStream(
+        runId,
+        {
+          onLog(entry) {
+            if (!isMountedRef.current) return;
+            appendLog(entry);
+            programOffsetRef.current = Math.max(programOffsetRef.current, entry.ts + 1);
+          },
+          onDone(summary) {
+            if (!isMountedRef.current) return;
+            finalizeProgramRun(summary);
+          },
+          onError() {
+            if (!isMountedRef.current) return;
+            startProgramPolling(runId, programOffsetRef.current);
+          },
+        },
+        { offset: programOffsetRef.current }
+      );
+      if (!subscription) {
+        startProgramPolling(runId, programOffsetRef.current);
+        return;
+      }
+      programStreamRef.current = subscription;
+    },
+    [appendLog, backend, clearProgramMonitoring, finalizeProgramRun, startProgramPolling]
   );
 
   const handleInsertExample = useCallback(
@@ -323,8 +718,10 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
     if (isSynthesizing) return;
     setLogs([]);
     setSynthArtifact(null);
+    setSynthArtifactId(null);
     setSynthRunId(null);
     setSynthStatus('running');
+    setIsSynthCanceling(false);
     setIsSynthesizing(true);
 
     const run_id = `ui-synth-${buildRunSeqRef.current++}`;
@@ -352,6 +749,13 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
         return;
       }
 
+      const resolvedBuildPath = lastBuildPath ?? (await backend.resolveBuildPath(buildSnapshot(), { refreshProbe: false }));
+      setLastBuildPath(resolvedBuildPath);
+      emitLocal('info', `[${backend.id}] synth: using build-path ${resolvedBuildPath.planId} (${resolvedBuildPath.backend})`, {
+        planId: resolvedBuildPath.planId,
+        backend: resolvedBuildPath.backend,
+      });
+
       const top = (project.top ?? resolvedFpga.top ?? basys3TopModuleContract.topModule).trim();
       const verilogSources = (project.sources ?? [])
         .filter((source) => source.language === 'verilog')
@@ -365,8 +769,13 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
         board: 'basys3',
         top,
         sources: verilogSources,
+        buildPath: {
+          planId: resolvedBuildPath.planId,
+          backend: resolvedBuildPath.backend,
+        },
       });
       setSynthRunId(result.runId);
+      setSynthArtifactId(result.artifactId);
       appendLogs(result.logs ?? []);
       synthOffsetRef.current = result.nextOffset ?? 0;
       if (result.artifact) {
@@ -393,6 +802,7 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
       emitLocal('error', `[${backend.id}] synth: failed: ${message}`);
       setIsSynthesizing(false);
       setSynthStatus('failed');
+      setIsSynthCanceling(false);
       clearSynthMonitoring();
     } finally {
       setIsPreflighting(false);
@@ -401,15 +811,248 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
     appendLog,
     appendLogs,
     backend,
+    buildSnapshot,
     clearSynthMonitoring,
     finalizeSynthRun,
     isSynthesizing,
+    lastBuildPath,
     project.sources,
     project.top,
     resolvedFpga.top,
     runPreflight,
     startSynthStreaming,
   ]);
+
+  const handleCancelSynthRun = useCallback(async () => {
+    if (!synthRunId || isSynthCanceling) return;
+    setIsSynthCanceling(true);
+    try {
+      const canceled = await backend.cancelRun(synthRunId);
+      appendLogs(canceled.logs ?? []);
+      if (canceled.state !== 'running') {
+        finalizeSynthRun({
+          runId: canceled.runId,
+          artifactId: canceled.artifactId,
+          state: canceled.state === 'done' || canceled.state === 'error' || canceled.state === 'canceled' ? canceled.state : 'error',
+          ok: canceled.ok === true,
+          exitCode: canceled.exitCode,
+          nextOffset: canceled.nextOffset,
+          ...(canceled.error ? { error: canceled.error } : {}),
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'synth_cancel_failed';
+      appendLog({
+        run_id: synthRunId,
+        ts: synthOffsetRef.current,
+        step: 'synth',
+        level: 'error',
+        msg: `[${backend.id}] synth cancel failed: ${message}`,
+      });
+      setIsSynthCanceling(false);
+    }
+  }, [appendLog, appendLogs, backend, finalizeSynthRun, isSynthCanceling, synthRunId]);
+
+  const handleImplementRun = useCallback(async (snapshotOverride?: unknown) => {
+    if (isImplementing) return;
+    setLogs([]);
+    setImplementArtifact(null);
+    setImplementArtifactId(null);
+    setImplementRunId(null);
+    setImplementStatus('running');
+    setIsImplementing(true);
+    setProgramRunId(null);
+    setProgramArtifactId(null);
+    setProgramStatus('idle');
+    setIsProgramCanceling(false);
+    clearProgramMonitoring();
+
+    const run_id = `ui-implement-${buildRunSeqRef.current++}`;
+    let ts = 0;
+    const snapshot =
+      snapshotOverride &&
+      typeof snapshotOverride === 'object' &&
+      'hdl' in snapshotOverride &&
+      'fpga' in snapshotOverride
+        ? (snapshotOverride as ReturnType<typeof buildSnapshot>)
+        : buildSnapshot();
+    const emitLocal = (level: 'info' | 'warn' | 'error', msg: string, data?: Record<string, unknown>) => {
+      appendLog({
+        run_id,
+        ts: ts++,
+        step: 'implement',
+        level,
+        msg,
+        ...(data ? { data } : {}),
+      });
+    };
+
+    try {
+      setIsPreflighting(true);
+      const preflight = await runPreflight({ snapshot });
+      setIsPreflighting(false);
+      appendLogs([...(preflight.lint.warnings ?? []), ...(preflight.lint.errors ?? [])]);
+      if (!preflight.overallOk) {
+        emitLocal('error', `[${backend.id}] implement: blocked by preflight (${preflight.lint.errors.length} error(s))`);
+        setImplementStatus('failed');
+        setIsImplementing(false);
+        return;
+      }
+
+      const resolvedBuildPath = lastBuildPath ?? (await backend.resolveBuildPath(snapshot, { refreshProbe: false }));
+      setLastBuildPath(resolvedBuildPath);
+      emitLocal('info', `[${backend.id}] implement: using build-path ${resolvedBuildPath.planId} (${resolvedBuildPath.backend})`, {
+        planId: resolvedBuildPath.planId,
+        backend: resolvedBuildPath.backend,
+      });
+      if (resolvedBuildPath.backend === 'nextpnr-xilinx' || resolvedBuildPath.backend === 'f4pga') {
+        emitLocal('warn', `[${backend.id}] implement: experimental backend selected; expect failures and download artifacts for debugging.`);
+      }
+
+      const result = await backend.implementRun({
+        board: 'basys3',
+        project: {
+          hdl: {
+            sources: snapshot.hdl.sources.map((source) => ({
+              path: source.path,
+              language: source.language,
+              text: source.text,
+            })),
+            top: snapshot.hdl.top ?? null,
+          },
+          fpga: {
+            board: 'basys3',
+            constraints: snapshot.fpga.constraints
+              ? {
+                  type: 'xdc',
+                  text: snapshot.fpga.constraints.text,
+                }
+              : null,
+            preset: snapshot.fpga.preset ?? null,
+            top: snapshot.fpga.top ?? null,
+          },
+        },
+        buildPath: {
+          planId: resolvedBuildPath.planId,
+          backend: resolvedBuildPath.backend,
+        },
+      });
+      setImplementRunId(result.runId);
+      setImplementArtifactId(result.artifactId);
+      appendLogs(result.logs ?? []);
+      implementOffsetRef.current = result.nextOffset ?? 0;
+      if (result.artifact) {
+        setImplementArtifact(result.artifact);
+      }
+
+      if (result.state !== 'running') {
+        finalizeImplementRun({
+          runId: result.runId,
+          artifactId: result.artifactId,
+          state: result.state === 'done' || result.state === 'error' || result.state === 'canceled' ? result.state : 'error',
+          ok: result.ok === true,
+          exitCode: result.exitCode,
+          nextOffset: result.nextOffset,
+          ...(result.error ? { error: result.error } : {}),
+          ...(result.artifact ? { artifact: result.artifact } : {}),
+        });
+        return;
+      }
+
+      startImplementStreaming(result.runId, result.nextOffset);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'implement_run_failed';
+      emitLocal('error', `[${backend.id}] implement: failed: ${message}`);
+      setIsImplementing(false);
+      setImplementStatus('failed');
+      clearImplementMonitoring();
+    } finally {
+      setIsPreflighting(false);
+    }
+  }, [
+    appendLog,
+    appendLogs,
+    backend,
+    buildSnapshot,
+    clearImplementMonitoring,
+    clearProgramMonitoring,
+    finalizeImplementRun,
+    isImplementing,
+    lastBuildPath,
+    runPreflight,
+    startImplementStreaming,
+  ]);
+
+  const handleCancelImplementRun = useCallback(async () => {
+    if (!implementRunId || isImplementCanceling) return;
+    setIsImplementCanceling(true);
+    try {
+      const canceled = await backend.cancelRun(implementRunId);
+      appendLogs(canceled.logs ?? []);
+      if (canceled.state !== 'running') {
+        finalizeImplementRun({
+          runId: canceled.runId,
+          artifactId: canceled.artifactId,
+          state: canceled.state === 'done' || canceled.state === 'error' || canceled.state === 'canceled' ? canceled.state : 'error',
+          ok: canceled.ok === true,
+          exitCode: canceled.exitCode,
+          nextOffset: canceled.nextOffset,
+          ...(canceled.error ? { error: canceled.error } : {}),
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'implement_cancel_failed';
+      appendLog({
+        run_id: implementRunId,
+        ts: implementOffsetRef.current,
+        step: 'implement',
+        level: 'error',
+        msg: `[${backend.id}] implement cancel failed: ${message}`,
+      });
+    } finally {
+      setIsImplementCanceling(false);
+    }
+  }, [appendLog, appendLogs, backend, finalizeImplementRun, implementRunId, isImplementCanceling]);
+
+  const handleGoldenDemo = useCallback(() => {
+    const example = getBasys3VerilogExample('basys3-switches-to-leds');
+    if (!example) return;
+    const nextProject = upsertSource(project, example.defaultPath, {
+      language: example.language,
+      text: example.text,
+    });
+    const nextHdlProject: ToolchainProjectInput = {
+      ...nextProject,
+      top: example.top,
+    };
+    const preset = example.recommendedPreset;
+    const nextFpga: RBFpgaConfig = {
+      ...resolvedFpga,
+      board: 'basys3',
+      top: example.top,
+      preset,
+      constraints: {
+        type: 'xdc',
+        text: getBasys3XdcPresetText(preset),
+      },
+    };
+
+    onProjectChange(nextHdlProject);
+    if (onFpgaChange) {
+      onFpgaChange(nextFpga);
+    }
+    setPresetToApply(preset);
+
+    void handleImplementRun({
+      hdl: nextHdlProject,
+      fpga: {
+        board: 'basys3',
+        constraints: nextFpga.constraints,
+        preset: nextFpga.preset,
+        top: nextFpga.top,
+      },
+    });
+  }, [handleImplementRun, onFpgaChange, onProjectChange, project, resolvedFpga]);
 
   const handleBuild = useCallback(async () => {
     setLogs([]);
@@ -496,12 +1139,125 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
     }
   }, [backend, runPreflight]);
 
+  const handlePlanImplementation = useCallback(async () => {
+    setLogs([]);
+    setIsPlanningImplement(true);
+    try {
+      const buildPath = await backend.resolveBuildPath(buildSnapshot(), { refreshProbe: false });
+      setLastBuildPath(buildPath);
+      setLogs([...(buildPath.warnings ?? []), {
+        run_id: `ui-build-path-${buildPath.planId}`,
+        ts: buildPath.warnings.length,
+        step: 'pnr',
+        level: 'info',
+        msg: `[${backend.id}] build-path: selected ${buildPath.backend} (${buildPath.planId})`,
+      }]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'implement_plan_failed';
+      setLogs([
+        {
+          run_id: 'ui-implement-plan',
+          ts: 0,
+          step: 'pnr',
+          level: 'error',
+          msg: `[${backend.id}] implement-plan: failed: ${message}`,
+        },
+      ]);
+      setLastBuildPath(null);
+    } finally {
+      setIsPlanningImplement(false);
+    }
+  }, [backend, buildSnapshot]);
+
+  const handleVerifySetup = useCallback(() => {
+    void (async () => {
+      setIsSetupVerifying(true);
+      setLogs([]);
+      const snapshot = buildSnapshot();
+      try {
+        const probe = await backend.probeTools();
+        setLastProbe(probe);
+        const preflight = await runPreflight({ snapshot, refreshProbe: false });
+        setLastPreflight(preflight);
+        const buildPath = await backend.resolveBuildPath(snapshot, { refreshProbe: false });
+        setLastBuildPath(buildPath);
+        const mergedLogs: BuildLogEntry[] = [
+          ...(probe.logs ?? []),
+          ...(preflight.lint.warnings ?? []),
+          ...(preflight.lint.errors ?? []),
+          ...(buildPath.warnings ?? []),
+          {
+            run_id: `ui-setup-${buildPath.planId}`,
+            ts: 0,
+            step: 'preflight',
+            level: 'info',
+            msg: `[${backend.id}] setup verify: backend=${buildPath.backend} plan=${buildPath.planId}`,
+          },
+        ];
+        setLogs(mergedLogs);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'setup_verify_failed';
+        setLogs([
+          {
+            run_id: 'ui-setup',
+            ts: 0,
+            step: 'preflight',
+            level: 'error',
+            msg: `[${backend.id}] setup verify failed: ${message}`,
+          },
+        ]);
+      } finally {
+        setIsSetupVerifying(false);
+      }
+    })();
+  }, [backend, buildSnapshot, runPreflight]);
+
+  const handleExportSetupReport = useCallback(() => {
+    void (async () => {
+      const snapshot = buildSnapshot();
+      const probe = lastProbe ?? (await backend.probeTools());
+      if (!lastProbe) setLastProbe(probe);
+      const preflight = lastPreflight ?? (await runPreflight({ snapshot, refreshProbe: false }));
+      if (!lastPreflight) setLastPreflight(preflight);
+      const buildPath = lastBuildPath ?? (await backend.resolveBuildPath(snapshot, { refreshProbe: false }));
+      if (!lastBuildPath) setLastBuildPath(buildPath);
+      const report = await backend.doctorReport(snapshot, {
+        logs,
+        probe,
+        preflight,
+        buildPath,
+      });
+      const json = stableStringify(report);
+      const fileTag = report.reportId ? `-${report.reportId}` : '';
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `rb-toolchain-setup-report${fileTag}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    })().catch((error) => {
+      const message = error instanceof Error ? error.message : 'setup_report_export_failed';
+      setLogs((prev) => [
+        ...prev,
+        {
+          run_id: 'ui-setup-report',
+          ts: prev.length,
+          step: 'preflight',
+          level: 'error',
+          msg: `[${backend.id}] setup report export failed: ${message}`,
+        },
+      ]);
+    });
+  }, [backend, buildSnapshot, lastBuildPath, lastPreflight, lastProbe, logs, runPreflight]);
+
   const handleExportReport = useCallback(() => {
     void (async () => {
       const report = await backend.doctorReport(buildSnapshot(), {
         logs,
         probe: lastProbe,
         preflight: lastPreflight,
+        buildPath: lastBuildPath,
       });
       const json = stableStringify(report);
       const fileTag = report.reportId ? `-${report.reportId}` : lastProbe?.run_id ? `-${lastProbe.run_id}` : '';
@@ -525,7 +1281,166 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
         },
       ]);
     });
-  }, [backend, buildSnapshot, lastPreflight, lastProbe, logs]);
+  }, [backend, buildSnapshot, lastBuildPath, lastPreflight, lastProbe, logs]);
+
+  const handleDownloadSynthArtifacts = useCallback(() => {
+    if (!synthRunId) return;
+    void (async () => {
+      const result = await backend.downloadSynthArtifacts(synthRunId, { includeSources: includeSourcesInZip });
+      const artifactTagRaw = (synthArtifactId ?? synthArtifact?.artifactId ?? synthRunId).trim();
+      const artifactTag = artifactTagRaw.length > 0 ? artifactTagRaw.replace(/[^a-zA-Z0-9._-]/g, '_') : synthRunId;
+      const fileName = `rb-synth-${artifactTag}.zip`;
+      const blob = new Blob([result.bytes], { type: 'application/zip' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+    })().catch((error) => {
+      const message = error instanceof Error ? error.message : 'synth_artifact_download_failed';
+      setLogs((prev) => [
+        ...prev,
+        {
+          run_id: synthRunId,
+          ts: prev.length,
+          step: 'synth',
+          level: 'error',
+          msg: `[${backend.id}] synth artifact download failed: ${message}`,
+        },
+      ]);
+    });
+  }, [backend, includeSourcesInZip, synthArtifact?.artifactId, synthArtifactId, synthRunId]);
+
+  const handleDownloadImplementArtifacts = useCallback(() => {
+    if (!implementRunId) return;
+    void (async () => {
+      const result = await backend.downloadImplementArtifacts(implementRunId, { includeSources: includeSourcesInZip });
+      const artifactTagRaw = (implementArtifactId ?? implementArtifact?.artifactId ?? implementRunId).trim();
+      const artifactTag = artifactTagRaw.length > 0 ? artifactTagRaw.replace(/[^a-zA-Z0-9._-]/g, '_') : implementRunId;
+      const fileName = `rb-implement-${artifactTag}.zip`;
+      const blob = new Blob([result.bytes], { type: 'application/zip' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+    })().catch((error) => {
+      const message = error instanceof Error ? error.message : 'implement_artifact_download_failed';
+      setLogs((prev) => [
+        ...prev,
+        {
+          run_id: implementRunId,
+          ts: prev.length,
+          step: 'implement',
+          level: 'error',
+          msg: `[${backend.id}] implement artifact download failed: ${message}`,
+        },
+      ]);
+    });
+  }, [backend, implementArtifact?.artifactId, implementArtifactId, implementRunId, includeSourcesInZip]);
+
+  const handleProgramGeneratedBitstream = useCallback(() => {
+    if (!implementRunId || programStatus === 'running') return;
+    setProgramRunId(null);
+    setProgramArtifactId(null);
+    setProgramStatus('running');
+    setIsProgramCanceling(false);
+
+    const run_id = `ui-program-${buildRunSeqRef.current++}`;
+    let ts = 0;
+    const emitLocal = (level: 'info' | 'warn' | 'error', msg: string, data?: Record<string, unknown>) => {
+      appendLog({
+        run_id,
+        ts: ts++,
+        step: 'program',
+        level,
+        msg,
+        ...(data ? { data } : {}),
+      });
+    };
+
+    void (async () => {
+      try {
+        emitLocal('info', `[${backend.id}] program: requesting generated bitstream from ${implementRunId}`);
+        const result = await backend.programImplementBitstream(implementRunId, {
+          board: 'basys3',
+          mode: 'sram',
+        });
+        setProgramRunId(result.runId);
+        setProgramArtifactId(result.artifactId);
+        appendLogs(result.logs ?? []);
+        programOffsetRef.current = result.nextOffset ?? 0;
+
+        if (result.state === 'running') {
+          startProgramStreaming(result.runId, result.nextOffset ?? 0);
+          return;
+        }
+
+        finalizeProgramRun({
+          runId: result.runId,
+          artifactId: result.artifactId,
+          state:
+            result.state === 'done' || result.state === 'error' || result.state === 'canceled'
+              ? result.state
+              : 'error',
+          ok: result.ok === true,
+          exitCode: null,
+          nextOffset: result.nextOffset ?? programOffsetRef.current,
+          ...(result.error ? { error: result.error } : {}),
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'program_generated_bitstream_failed';
+        emitLocal('error', `[${backend.id}] program generated bitstream failed: ${message}`);
+        clearProgramMonitoring();
+        setProgramStatus('failed');
+        setIsProgramCanceling(false);
+      }
+    })();
+  }, [
+    appendLog,
+    appendLogs,
+    backend,
+    clearProgramMonitoring,
+    finalizeProgramRun,
+    implementRunId,
+    programStatus,
+    startProgramStreaming,
+  ]);
+
+  const handleCancelProgramRun = useCallback(async () => {
+    if (!programRunId || isProgramCanceling) return;
+    setIsProgramCanceling(true);
+    try {
+      const canceled = await backend.cancelRun(programRunId);
+      appendLogs(canceled.logs ?? []);
+      if (canceled.state !== 'running') {
+        finalizeProgramRun({
+          runId: canceled.runId,
+          artifactId: canceled.artifactId,
+          state:
+            canceled.state === 'done' || canceled.state === 'error' || canceled.state === 'canceled'
+              ? canceled.state
+              : 'error',
+          ok: canceled.ok === true,
+          exitCode: canceled.exitCode,
+          nextOffset: canceled.nextOffset,
+          ...(canceled.error ? { error: canceled.error } : {}),
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'program_cancel_failed';
+      appendLog({
+        run_id: programRunId,
+        ts: programOffsetRef.current,
+        step: 'program',
+        level: 'error',
+        msg: `[${backend.id}] program cancel failed: ${message}`,
+      });
+      setIsProgramCanceling(false);
+    }
+  }, [appendLog, appendLogs, backend, finalizeProgramRun, isProgramCanceling, programRunId]);
 
   const displayLogs = useMemo(() => logs.map((l) => l.msg).join('\n'), [logs]);
 
@@ -540,6 +1455,12 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
             </div>
             <div className="text-[10px] text-[#6E7681]">
               Board: <span className="font-mono text-[#8B949E]">basys3</span>
+            </div>
+            <div className="text-[10px] text-[#6E7681]" data-testid="hdl-build-path-status">
+              Build Path:{' '}
+              <span className="font-mono text-[#8B949E]">
+                {lastBuildPath ? `${lastBuildPath.backend}:${lastBuildPath.planId}` : 'unresolved'}
+              </span>
             </div>
             <div className="text-[10px] text-[#6E7681]" data-testid="hdl-preflight-status">
               Preflight:{' '}
@@ -556,11 +1477,38 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
             <div className="text-[10px] text-[#6E7681]" data-testid="hdl-synth-status">
               Synth:{' '}
               <span className="font-mono text-[#8B949E]">
-                {isSynthesizing ? 'running' : synthStatus}
+                {isSynthesizing ? 'running' : synthStatus === 'canceled' ? 'Canceled' : synthStatus}
               </span>
               {synthRunId ? (
                 <span className="ml-2 text-[#8B949E]">
                   run: <span className="font-mono">{synthRunId}</span>
+                </span>
+              ) : null}
+            </div>
+            <div className="text-[10px] text-[#6E7681]" data-testid="hdl-implement-status">
+              Implement:{' '}
+              <span className="font-mono text-[#8B949E]">
+                {isImplementing ? 'running' : implementStatus === 'canceled' ? 'Canceled' : implementStatus}
+              </span>
+              {implementRunId ? (
+                <span className="ml-2 text-[#8B949E]">
+                  run: <span className="font-mono">{implementRunId}</span>
+                </span>
+              ) : null}
+            </div>
+            <div className="text-[10px] text-[#6E7681]" data-testid="hdl-program-status">
+              Program:{' '}
+              <span className="font-mono text-[#8B949E]">
+                {isProgramRunning ? 'running' : programStatus === 'canceled' ? 'Canceled' : programStatus}
+              </span>
+              {programRunId ? (
+                <span className="ml-2 text-[#8B949E]">
+                  run: <span className="font-mono">{programRunId}</span>
+                </span>
+              ) : null}
+              {programArtifactId ? (
+                <span className="ml-2 text-[#8B949E]">
+                  artifact: <span className="font-mono">{programArtifactId}</span>
                 </span>
               ) : null}
             </div>
@@ -571,7 +1519,7 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
               onClick={handleExportReport}
               className="px-2 py-1 text-[10px] rounded border border-[#8B949E]/30 text-[#8B949E] hover:bg-[#161B22] disabled:opacity-50 disabled:cursor-not-allowed"
               type="button"
-              disabled={!lastProbe || isBuilding || isProbing || isSynthesizing}
+              disabled={!lastProbe || isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
               data-testid="hdl-export-report-button"
               title={!lastProbe ? 'Run Probe Toolchain first' : 'Download a JSON doctor report'}
             >
@@ -581,25 +1529,74 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
               onClick={handleProbe}
               className="px-2 py-1 text-[10px] rounded border border-[#8B949E]/30 text-[#8B949E] hover:bg-[#161B22] disabled:opacity-50 disabled:cursor-not-allowed"
               type="button"
-              disabled={isBuilding || isProbing || isSynthesizing}
+              disabled={isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
               data-testid="hdl-probe-button"
             >
               {isProbing ? 'Probing...' : 'Probe Toolchain'}
             </button>
             <button
+              onClick={handlePlanImplementation}
+              className="px-2 py-1 text-[10px] rounded border border-[#A78BFA]/40 text-[#A78BFA] hover:bg-[#A78BFA]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              type="button"
+              disabled={isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
+              data-testid="hdl-implement-plan-button"
+            >
+              {isPlanningImplement ? 'Planning...' : 'Plan Implementation'}
+            </button>
+            <button
+              onClick={handleGoldenDemo}
+              className="px-2 py-1 text-[10px] rounded border border-[#38BDF8]/40 text-[#38BDF8] hover:bg-[#38BDF8]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              type="button"
+              disabled={isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
+              data-testid="hdl-golden-demo-button"
+            >
+              Golden Demo: Switches → LEDs
+            </button>
+            <button
               onClick={handleSynthesize}
               className="px-2 py-1 text-[10px] rounded border border-[#22C55E]/40 text-[#22C55E] hover:bg-[#22C55E]/10 disabled:opacity-50 disabled:cursor-not-allowed"
               type="button"
-              disabled={isBuilding || isProbing || isSynthesizing}
+              disabled={isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
               data-testid="hdl-synth-button"
             >
               {isSynthesizing ? 'Synthesizing...' : 'Synthesize (Yosys)'}
             </button>
+            {isSynthesizing && synthRunId ? (
+              <button
+                onClick={handleCancelSynthRun}
+                className="px-2 py-1 text-[10px] rounded border border-[#EF4444]/40 text-[#FCA5A5] hover:bg-[#EF4444]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+                disabled={isSynthCanceling}
+                data-testid="hdl-synth-cancel-button"
+              >
+                {isSynthCanceling ? 'Canceling...' : 'Cancel Synthesis'}
+              </button>
+            ) : null}
+            <button
+              onClick={handleImplementRun}
+              className="px-2 py-1 text-[10px] rounded border border-[#F59E0B]/40 text-[#F59E0B] hover:bg-[#F59E0B]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              type="button"
+              disabled={isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
+              data-testid="hdl-implement-run-button"
+            >
+              {isImplementing ? 'Implementing...' : 'Implement (P&R)'}
+            </button>
+            {isImplementing && implementRunId ? (
+              <button
+                onClick={handleCancelImplementRun}
+                className="px-2 py-1 text-[10px] rounded border border-[#EF4444]/40 text-[#FCA5A5] hover:bg-[#EF4444]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+                disabled={isImplementCanceling}
+                data-testid="hdl-implement-cancel-button"
+              >
+                {isImplementCanceling ? 'Canceling...' : 'Cancel Implement'}
+              </button>
+            ) : null}
             <button
               onClick={handleBuild}
               className="px-2 py-1 text-[10px] rounded border border-[#22D3EE]/40 text-[#22D3EE] hover:bg-[#22D3EE]/10 disabled:opacity-50 disabled:cursor-not-allowed"
               type="button"
-              disabled={isBuilding || isProbing || isSynthesizing}
+              disabled={isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
               data-testid="hdl-build-button"
             >
               {isBuilding ? 'Building...' : 'Build (stub)'}
@@ -668,7 +1665,7 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
               onClick={() => handleInsertExample(example.id)}
               className="px-2 py-1 text-[10px] rounded border border-[#8B949E]/30 text-[#8B949E] hover:bg-[#161B22]"
               type="button"
-              disabled={isBuilding || isProbing || isSynthesizing}
+              disabled={isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
               data-testid={`hdl-example-${example.id}`}
               title={example.description}
             >
@@ -724,7 +1721,7 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
               }}
               className="px-2 py-1 text-[10px] rounded border border-[#8B949E]/30 text-[#8B949E] hover:bg-[#161B22] disabled:opacity-50 disabled:cursor-not-allowed"
               type="button"
-              disabled={!onFpgaChange || !presetToApply || isBuilding || isProbing || isSynthesizing}
+              disabled={!onFpgaChange || !presetToApply || isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
               data-testid="hdl-xdc-apply-preset-button"
               title={!onFpgaChange ? 'FPGA project data not available' : undefined}
             >
@@ -749,10 +1746,164 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
           ))}
         </div>
 
+        <div className="mt-2 rounded border border-[#38BDF8]/30 bg-[#38BDF8]/10 px-2 py-2 text-[10px] text-[#BAE6FD]" data-testid="hdl-toolchain-setup">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              setup platform: <span className="font-mono">{setupPlatform}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleVerifySetup}
+                type="button"
+                className="px-2 py-1 text-[10px] rounded border border-[#38BDF8]/40 text-[#38BDF8] hover:bg-[#38BDF8]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isSetupVerifying || isBuilding || isSynthesizing || isImplementing || isProgramRunning}
+                data-testid="hdl-setup-verify-button"
+              >
+                {isSetupVerifying ? 'Verifying...' : 'Verify Setup'}
+              </button>
+              <button
+                onClick={handleExportSetupReport}
+                type="button"
+                className="px-2 py-1 text-[10px] rounded border border-[#38BDF8]/40 text-[#38BDF8] hover:bg-[#38BDF8]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isSetupVerifying || isBuilding || isSynthesizing || isImplementing || isProgramRunning}
+                data-testid="hdl-setup-export-button"
+              >
+                Export Setup Report
+              </button>
+            </div>
+          </div>
+          <div className="mt-1 grid grid-cols-1 gap-1" data-testid="hdl-setup-required-tools">
+            {requiredDemoTools.map((tool) => (
+              <div key={tool.name} data-testid={`hdl-setup-tool-${tool.name}`}>
+                {tool.label}: <span className="font-mono">{tool.ok ? 'ok' : 'missing'}</span>
+                {' · '}
+                <span className="font-mono">{tool.detail}</span>
+                {tool.suggestedFix ? (
+                  <>
+                    {' · '}
+                    <span className="font-mono">{tool.suggestedFix}</span>
+                  </>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <div className="mt-1 text-[10px] text-[#93C5FD]" data-testid="hdl-setup-open-app-hint">
+            Open Launcher and run <span className="font-mono">Toolchain Setup</span> for the dedicated setup page.
+          </div>
+          <pre className="mt-1 whitespace-pre-wrap text-[10px] text-[#93C5FD]" data-testid="hdl-setup-install-commands">
+            {setupCommands.map((entry) => `${entry.tool}: ${entry.command}`).join('\n')}
+          </pre>
+        </div>
+
+        {lastBuildPath ? (
+          <div className="mt-2 rounded border border-[#A78BFA]/30 bg-[#A78BFA]/10 px-2 py-2 text-[10px] text-[#DDD6FE]" data-testid="hdl-implement-plan-summary">
+            <div>
+              backend: <span className="font-mono">{lastBuildPath.backend}</span>
+              {' · '}plan: <span className="font-mono">{lastBuildPath.planId}</span>
+            </div>
+            {lastBuildPath.buildpack ? (
+              <div className="mt-1">
+                buildpack:{' '}
+                <span className="font-mono">
+                  {lastBuildPath.buildpack.name}@{lastBuildPath.buildpack.version}
+                </span>
+              </div>
+            ) : null}
+            <div className="mt-1">
+              required tools:{' '}
+              <span className="font-mono">
+                {lastBuildPath.requiredTools
+                  .map((tool) => `${tool.name}:${tool.ok ? 'ok' : 'missing'}`)
+                  .join(', ')}
+              </span>
+            </div>
+            <pre className="mt-1 whitespace-pre-wrap text-[10px] text-[#C4B5FD]" data-testid="hdl-implement-plan-commands">
+              {lastBuildPath.commands
+                .map((command) => `${command.step}: ${command.argv.join(' ')}`)
+                .join('\n')}
+            </pre>
+          </div>
+        ) : null}
+
         {synthArtifact ? (
           <div className="mt-2 rounded border border-[#22C55E]/30 bg-[#22C55E]/10 px-2 py-1 text-[10px] text-[#86EFAC]" data-testid="hdl-synth-artifact-summary">
             artifact: <span className="font-mono">{synthArtifact.artifactId}</span> - netlist{' '}
             <span className="font-mono">{synthArtifact.outputs.netlistVerilog}</span>
+          </div>
+        ) : null}
+        {implementArtifact ? (
+          <div className="mt-2 rounded border border-[#F59E0B]/30 bg-[#F59E0B]/10 px-2 py-1 text-[10px] text-[#FCD34D]" data-testid="hdl-implement-artifact-summary">
+            artifact: <span className="font-mono">{implementArtifact.artifactId}</span> - backend{' '}
+            <span className="font-mono">{implementArtifact.backend}</span>
+            {' · '}outputs: <span className="font-mono">{implementArtifact.outputs.length}</span>
+          </div>
+        ) : null}
+        {synthRunId && synthStatus !== 'idle' && synthStatus !== 'running' ? (
+          <div className="mt-2 flex items-center gap-3">
+            <label className="flex items-center gap-2 text-[10px] text-[#8B949E]" data-testid="hdl-synth-include-sources-label">
+              <input
+                type="checkbox"
+                checked={includeSourcesInZip}
+                onChange={(event) => setIncludeSourcesInZip(event.target.checked)}
+                data-testid="hdl-synth-include-sources-checkbox"
+              />
+              Include sources in ZIP
+            </label>
+            <button
+              onClick={handleDownloadSynthArtifacts}
+              type="button"
+              className="px-2 py-1 text-[10px] rounded border border-[#22D3EE]/40 text-[#22D3EE] hover:bg-[#22D3EE]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSynthesizing}
+              data-testid="hdl-synth-download-button"
+            >
+              Download Synth Artifacts
+            </button>
+          </div>
+        ) : null}
+        {implementRunId && implementStatus !== 'idle' && implementStatus !== 'running' ? (
+          <div className="mt-2 flex items-center gap-3">
+            <label className="flex items-center gap-2 text-[10px] text-[#8B949E]" data-testid="hdl-implement-include-sources-label">
+              <input
+                type="checkbox"
+                checked={includeSourcesInZip}
+                onChange={(event) => setIncludeSourcesInZip(event.target.checked)}
+                data-testid="hdl-implement-include-sources-checkbox"
+              />
+              Include sources in ZIP
+            </label>
+            <button
+              onClick={handleDownloadImplementArtifacts}
+              type="button"
+              className="px-2 py-1 text-[10px] rounded border border-[#F59E0B]/40 text-[#F59E0B] hover:bg-[#F59E0B]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isImplementing}
+              data-testid="hdl-implement-download-button"
+            >
+              Download Implement Artifacts
+            </button>
+          </div>
+        ) : null}
+        {implementRunId && implementStatus !== 'idle' && implementStatus !== 'running' && implementHasBitstreamOutput ? (
+          <div className="mt-2 flex items-center gap-3" data-testid="hdl-implement-program-actions">
+            <button
+              onClick={handleProgramGeneratedBitstream}
+              type="button"
+              className="px-2 py-1 text-[10px] rounded border border-[#22C55E]/40 text-[#22C55E] hover:bg-[#22C55E]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isProgramRunning || isSynthesizing || isImplementing || isPlanningImplement || isBuilding || isProbing}
+              data-testid="hdl-implement-program-button"
+            >
+              {isProgramRunning ? 'Programming...' : 'Program Generated Bitstream'}
+            </button>
+            {isProgramRunning && programRunId ? (
+              <button
+                onClick={handleCancelProgramRun}
+                type="button"
+                className="px-2 py-1 text-[10px] rounded border border-[#EF4444]/40 text-[#FCA5A5] hover:bg-[#EF4444]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isProgramCanceling}
+                data-testid="hdl-implement-program-cancel-button"
+              >
+                {isProgramCanceling ? 'Canceling...' : 'Cancel Program'}
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>

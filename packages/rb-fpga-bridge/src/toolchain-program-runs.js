@@ -19,8 +19,10 @@ function normalizeStep(step) {
     step === "probe" ||
     step === "preflight" ||
     step === "synth" ||
+    step === "implement" ||
     step === "pnr" ||
     step === "bitgen" ||
+    step === "buildpack" ||
     step === "program"
   ) {
     return step;
@@ -107,14 +109,14 @@ export function createProgramRunRegistry(options = {}) {
     return { ok: true, run };
   }
 
-  function appendLog(runId, level, msg, data) {
+  function appendLog(runId, level, msg, data, stepOverride) {
     const run = runs.get(runId);
     if (!run || run.state !== "running") return null;
 
     const entry = {
       run_id: runId,
       ts: run.nextOffset,
-      step,
+      step: normalizeStep(stepOverride ?? step),
       level: normalizeLogLevel(level),
       msg: typeof msg === "string" ? msg : "[program] invalid_log_message",
       ...(data && typeof data === "object" ? { data } : {}),

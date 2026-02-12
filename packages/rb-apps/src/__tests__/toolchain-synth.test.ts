@@ -46,6 +46,27 @@ describe('toolchain synth', () => {
   it('posts synth request and parses run status response', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input.toString();
+      if (url.endsWith('/api/toolchain/implement/plan')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            schema_version: 'toolchain_implement_plan_v1',
+            ok: true,
+            run_id: 'implement-plan-0',
+            planId: 'plan-0',
+            backend: 'nextpnr-xilinx',
+            requiredTools: [
+              { name: 'yosys', ok: true, version: '0.47', why: 'required for synthesis' },
+              { name: 'nextpnr-xilinx', ok: true, version: '0.4', why: 'required for pnr' },
+            ],
+            commands: [{ step: 'synth', argv: ['yosys', '-p', 'synth_xilinx -top top -family xc7'], envKeysUsed: ['PATH'] }],
+            outputs: [{ name: 'netlist-json', pathHint: 'out/netlist.json' }],
+            warnings: [],
+            logs: [],
+          }),
+        } as any;
+      }
       if (url.endsWith('/api/toolchain/probe')) {
         return {
           ok: true,
@@ -61,11 +82,15 @@ describe('toolchain synth', () => {
       }
       if (url.endsWith('/api/toolchain/synth')) {
         const body = init?.body ? JSON.parse(String(init.body)) : null;
-        expect(body).toEqual({
+        expect(body).toMatchObject({
           board: 'basys3',
           top: 'top',
           sources: [{ path: 'src/top.v', language: 'verilog', text: 'module top; endmodule' }],
+          buildPath: {
+            backend: 'nextpnr-xilinx',
+          },
         });
+        expect(typeof body?.buildPath?.planId).toBe('string');
         return {
           ok: true,
           status: 202,
@@ -77,6 +102,14 @@ describe('toolchain synth', () => {
             exitCode: null,
             nextOffset: 1,
             logs: [{ run_id: 'toolchain-synth-run', ts: 0, step: 'synth', level: 'info', msg: 'synth started' }],
+            artifact: {
+              artifactId: 'toolchain-synth-artifact',
+              board: 'basys3',
+              top: 'top',
+              scriptVersion: 'rb_yosys_synth_v1',
+              buildPath: { planId: 'plan-0', backend: 'nextpnr-xilinx' },
+              outputs: { netlistVerilog: 'out/netlist.v', statText: 'out/stat.txt' },
+            },
           }),
         } as any;
       }
@@ -96,5 +129,58 @@ describe('toolchain synth', () => {
     expect(result.artifactId).toBe('toolchain-synth-artifact');
     expect(result.nextOffset).toBe(1);
     expect(result.logs.map((entry) => entry.msg)).toEqual(['synth started']);
+    expect(result.artifact?.buildPath?.backend).toBe('nextpnr-xilinx');
+    expect(typeof result.artifact?.buildPath?.planId).toBe('string');
+  });
+
+  it('downloads synth artifacts zip from bridge endpoint', async () => {
+    const zipBytes = Uint8Array.from([0x50, 0x4b, 0x03, 0x04, 0x01, 0x02]);
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.endsWith('/api/toolchain/synth/runs/synth-run-1/artifacts.zip')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: {
+            get(name: string) {
+              if (name.toLowerCase() === 'content-disposition') {
+                return 'attachment; filename="rb-synth-toolchain-synth-artifact-1.zip"';
+              }
+              return null;
+            },
+          },
+          arrayBuffer: async () => zipBytes.buffer,
+        } as any;
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock as any);
+
+    const backend = getToolchainBackend('vivado');
+    const result = await backend.downloadSynthArtifacts('synth-run-1');
+    expect(result.filename).toBe('rb-synth-toolchain-synth-artifact-1.zip');
+    expect(Array.from(result.bytes)).toEqual(Array.from(zipBytes));
+  });
+
+  it('passes includeSources=1 when requested', async () => {
+    const zipBytes = Uint8Array.from([0x50, 0x4b, 0x03, 0x04, 0x01, 0x02]);
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.endsWith('/api/toolchain/synth/runs/synth-run-2/artifacts.zip?includeSources=1')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          arrayBuffer: async () => zipBytes.buffer,
+        } as any;
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock as any);
+
+    const backend = getToolchainBackend('vivado');
+    const result = await backend.downloadSynthArtifacts('synth-run-2', { includeSources: true });
+    expect(result.filename).toBe('rb-synth-synth-run-2.zip');
+    expect(Array.from(result.bytes)).toEqual(Array.from(zipBytes));
   });
 });

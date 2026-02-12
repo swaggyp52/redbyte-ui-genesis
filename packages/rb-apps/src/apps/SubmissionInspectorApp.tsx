@@ -17,6 +17,18 @@ import { getLabTemplate, type LabTemplate } from '../utils/labTemplates';
 import { assertAppOutput, registerAppInvariants } from '../utils/appInvariants';
 import { hashEvidence, canonicalizeEvidence } from '../utils/evidenceExport';
 import type { EvidenceBundle } from '../evidenceSchema';
+import type { RBProject } from '../export/projectFormat';
+import { decodeRBProject } from '../export/projectFormat';
+import type {
+  SubmissionBundleManifest,
+  SubmissionReproducibilityReport,
+} from '../export/submissionBundle';
+import {
+  downloadClassroomDiagnosticsBundle,
+  generateClassroomDiagnosticsBundle,
+} from '../export/classroomDiagnosticsBundle';
+import type { ToolchainDoctorReport } from '../fpga/toolchainTypes';
+import { getClassroomLockdownState, getRedByteUiMode } from '../utils/uiMode';
 
 const INSPECTOR_INVARIANTS = {
   reads: ['bundle', 'lab_templates'],
@@ -30,6 +42,7 @@ interface BundleData {
   manifest: Record<string, any>;
   capsule: Record<string, any> | null;
   events: Array<Record<string, any>>;
+  bundleKind?: 'legacy' | 'submission';
   schemaVersion?: 'v1' | 'v2';
   signatureStatus?: SignatureStatus;
   traceEvents?: HardwareTraceEvent[];
@@ -51,6 +64,15 @@ interface BundleData {
     json?: Record<string, any>;
     md?: string | null;
   };
+  fileEntries?: string[];
+  submission?: {
+    manifest: SubmissionBundleManifest;
+    doctorReport: ToolchainDoctorReport | null;
+    reproducibility: SubmissionReproducibilityReport | null;
+    embeddedProject: RBProject | null;
+    targetAppId: 'logic-playground' | 'ece-lab';
+    projectArchiveError: string | null;
+  };
   // v1-json specific
   circuitSnapshot?: any;
   probesSnapshot?: any[];
@@ -60,18 +82,218 @@ interface InspectorProps {
   // Props injected by shell if opening with file
   filePath?: string;
   loadSample?: boolean;
+  onOpenSubmissionProject?: (payload: {
+    project: RBProject;
+    targetAppId: 'logic-playground' | 'ece-lab';
+  }) => void | Promise<void>;
 }
 
-export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSample }) => {
+function resolveSubmissionTargetApp(project: RBProject): 'logic-playground' | 'ece-lab' {
+  const surface = typeof project.meta?.appSurface === 'string' ? project.meta.appSurface.trim().toLowerCase() : '';
+  return surface === 'ece-lab' ? 'ece-lab' : 'logic-playground';
+}
+
+function parseOptionalJson<T>(value: string | null): T | null {
+  if (value == null) return null;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
+}
+
+type InspectorReadinessGateState = 'pass' | 'warn' | 'fail';
+
+interface InspectorReadinessGateSummary {
+  id: string;
+  label: string;
+  state: InspectorReadinessGateState;
+  detail: string;
+  nextAction: string | null;
+}
+
+type InspectorReproStatus = 'pass' | 'fail' | 'skipped';
+
+interface InspectorReproSummary {
+  status: InspectorReproStatus;
+  reason: string;
+}
+
+interface SubmissionGradeSummary {
+  verdict: 'ready' | 'not_ready';
+  verdictLabel: string;
+  verdictDetail: string;
+  gates: InspectorReadinessGateSummary[];
+  topFailingGates: InspectorReadinessGateSummary[];
+  reproducibility: InspectorReproSummary;
+}
+
+const READINESS_PRIORITY_ORDER = [
+  'toolchain_probe',
+  'preflight',
+  'implement_plan',
+  'toolchain_ui',
+  'doctor_export',
+] as const;
+
+function normalizeReadinessState(value: unknown): InspectorReadinessGateState {
+  if (value === 'pass' || value === 'warn' || value === 'fail') return value;
+  return 'fail';
+}
+
+function getReadinessPriority(id: string): number {
+  const index = READINESS_PRIORITY_ORDER.indexOf(id as (typeof READINESS_PRIORITY_ORDER)[number]);
+  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+}
+
+function sortReadinessGates(gates: InspectorReadinessGateSummary[]): InspectorReadinessGateSummary[] {
+  return [...gates].sort((left, right) => {
+    const priorityDelta = getReadinessPriority(left.id) - getReadinessPriority(right.id);
+    if (priorityDelta !== 0) return priorityDelta;
+    return left.id.localeCompare(right.id);
+  });
+}
+
+function collectReadinessGates(
+  submission: BundleData['submission'] | null | undefined,
+): InspectorReadinessGateSummary[] {
+  if (!submission) return [];
+  const gateMap = new Map<string, InspectorReadinessGateSummary>();
+
+  const manifestGates = Array.isArray(submission.manifest?.readiness?.gates)
+    ? submission.manifest.readiness.gates
+    : [];
+  for (const gate of manifestGates) {
+    const id = String(gate.id ?? '').trim();
+    if (id.length === 0) continue;
+    gateMap.set(id, {
+      id,
+      label: id,
+      state: normalizeReadinessState(gate.state),
+      detail: String(gate.detail ?? '').trim() || 'No detail provided.',
+      nextAction: null,
+    });
+  }
+
+  const doctorGates = Array.isArray(submission.doctorReport?.studentReadiness?.gates)
+    ? submission.doctorReport?.studentReadiness?.gates ?? []
+    : [];
+  for (const gate of doctorGates) {
+    const id = String(gate.id ?? '').trim();
+    if (id.length === 0) continue;
+    gateMap.set(id, {
+      id,
+      label: String(gate.label ?? '').trim() || id,
+      state: normalizeReadinessState(gate.state),
+      detail: String(gate.detail ?? '').trim() || 'No detail provided.',
+      nextAction:
+        typeof gate.nextAction === 'string' && gate.nextAction.trim().length > 0
+          ? gate.nextAction.trim()
+          : null,
+    });
+  }
+
+  return sortReadinessGates(Array.from(gateMap.values()));
+}
+
+function toFirstLine(value: string): string {
+  return value.split(/\r?\n/, 1)[0]?.trim() ?? '';
+}
+
+function summarizeReproducibility(
+  reproducibility: SubmissionReproducibilityReport | null | undefined,
+): InspectorReproSummary {
+  if (!reproducibility) {
+    return {
+      status: 'skipped',
+      reason: 'Reproducibility report missing.',
+    };
+  }
+  if (reproducibility.status === 'pass') {
+    return {
+      status: 'pass',
+      reason: toFirstLine(reproducibility.detail || 'Replay verification passed.'),
+    };
+  }
+  if (reproducibility.status === 'fail') {
+    return {
+      status: 'fail',
+      reason: toFirstLine(reproducibility.detail || 'Replay verification failed.'),
+    };
+  }
+  return {
+    status: 'skipped',
+    reason: toFirstLine(reproducibility.detail || 'Replay verification was skipped.'),
+  };
+}
+
+function buildSubmissionGradeSummary(
+  submission: BundleData['submission'] | null | undefined,
+): SubmissionGradeSummary {
+  const gates = collectReadinessGates(submission);
+  const topFailingGates = gates.filter((gate) => gate.state !== 'pass').slice(0, 3);
+  const reproducibility = summarizeReproducibility(submission?.reproducibility);
+  const allGatesPass = gates.length > 0 && gates.every((gate) => gate.state === 'pass');
+  const reproducibilityAcceptable = reproducibility.status !== 'fail';
+  const verdict = allGatesPass && reproducibilityAcceptable ? 'ready' : 'not_ready';
+  const verdictLabel =
+    verdict === 'ready'
+      ? reproducibility.status === 'skipped'
+        ? 'READY (NO REPRO)'
+        : 'READY'
+      : 'NOT READY';
+  const verdictDetail =
+    verdict === 'ready'
+      ? reproducibility.status === 'skipped'
+        ? 'Readiness gates passed; reproducibility was skipped.'
+        : 'Readiness gates and reproducibility checks passed.'
+      : topFailingGates.length > 0
+        ? `Needs action: ${topFailingGates.map((gate) => gate.label).join(', ')}.`
+        : reproducibility.status === 'fail'
+          ? 'Reproducibility verification failed.'
+          : 'Readiness information is incomplete.';
+
+  return {
+    verdict,
+    verdictLabel,
+    verdictDetail,
+    gates,
+    topFailingGates,
+    reproducibility,
+  };
+}
+
+export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
+  loadSample,
+  onOpenSubmissionProject,
+}) => {
   const [bundle, setBundle] = useState<BundleData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'summary' | 'vectors' | 'events' | 'hardware' | 'files'>('summary');
   const [demoMode, setDemoMode] = useState(false);
+  const [openingEmbeddedProject, setOpeningEmbeddedProject] = useState(false);
   const [traceCursor, setTraceCursor] = useState(0);
   const [traceCurrent, setTraceCurrent] = useState<HardwareTraceEvent | null>(null);
   const hasAutoLoadedSample = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uiMode = getRedByteUiMode();
+  const isTaMode = uiMode === 'ta';
+  const classroomLockdownEnabled = getClassroomLockdownState().enabled;
+  const isLockdownRestricted = classroomLockdownEnabled && !isTaMode;
+
+  if (isLockdownRestricted) {
+    return (
+      <div className={styles.container} data-testid="submission-inspector-lockdown">
+        <div className={styles.panel}>
+          <h1 className={styles.title}>Submission Inspector Locked</h1>
+          <p className={styles.description}>
+            Classroom Lockdown is enabled. Use TA mode (`rb:mode=ta` or `?ta=1`) to access grading tools.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const parseJsonEvidence = useCallback(async (file: File) => {
     try {
@@ -96,6 +318,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
         },
         capsule: null,
         events: [],
+        bundleKind: 'legacy',
         schemaVersion: 'v1', // Using v1 for JSON evidence
         signatureStatus,
         traceEvents: [],
@@ -132,11 +355,85 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
       const zipBytes = new Uint8Array(await file.arrayBuffer());
       const zip = new JSZip();
       const loaded = await zip.loadAsync(zipBytes);
+      const fileEntries = Object.keys(loaded.files)
+        .filter((entry) => !loaded.files[entry]?.dir)
+        .sort((left, right) => left.localeCompare(right));
 
       // Parse manifest
       const manifestFile = loaded.file('manifest.json');
       if (!manifestFile) throw new Error('manifest.json not found');
       const manifest = JSON.parse(await manifestFile.async('string'));
+
+      if (manifest?.schema_version === 'rb_submission_manifest_v1') {
+        const signatureStatus = await verifyBundleSignature(zipBytes);
+        const doctorReport = parseOptionalJson<ToolchainDoctorReport>(
+          loaded.file('doctor-report.json')
+            ? await loaded.file('doctor-report.json')!.async('string')
+            : null
+        );
+        const reproducibility = parseOptionalJson<SubmissionReproducibilityReport>(
+          loaded.file('reproducibility.json')
+            ? await loaded.file('reproducibility.json')!.async('string')
+            : null
+        );
+
+        let embeddedProject: RBProject | null = null;
+        let projectArchiveError: string | null = null;
+        let targetAppId: 'logic-playground' | 'ece-lab' = 'logic-playground';
+        const projectArchiveFile = loaded.file('project.rbx.zip');
+        if (!projectArchiveFile) {
+          projectArchiveError = 'project.rbx.zip missing from submission bundle.';
+        } else {
+          try {
+            const projectArchiveBytes = await projectArchiveFile.async('uint8array');
+            const projectArchive = await new JSZip().loadAsync(projectArchiveBytes);
+            const rbProjectFile = projectArchive.file('rb-project.json');
+            if (!rbProjectFile) {
+              projectArchiveError = 'rb-project.json missing inside project.rbx.zip.';
+            } else {
+              embeddedProject = decodeRBProject(await rbProjectFile.async('string'));
+              targetAppId = resolveSubmissionTargetApp(embeddedProject);
+            }
+          } catch (archiveError) {
+            projectArchiveError = archiveError instanceof Error
+              ? archiveError.message
+              : 'Failed to parse project.rbx.zip.';
+          }
+        }
+
+        setBundle({
+          manifest,
+          capsule: null,
+          events: [],
+          bundleKind: 'submission',
+          signatureStatus,
+          traceEvents: [],
+          traceReplay: [],
+          traceFilePresent: false,
+          bitstreamFilePresent: false,
+          missingArtifacts: [],
+          checkResults: [],
+          checksPass: reproducibility?.status === 'pass',
+          traceStats: undefined,
+          hardware: undefined,
+          grade: undefined,
+          fileEntries,
+          submission: {
+            manifest: manifest as SubmissionBundleManifest,
+            doctorReport,
+            reproducibility,
+            embeddedProject,
+            targetAppId,
+            projectArchiveError,
+          },
+        });
+        setTraceCursor(0);
+        setTraceCurrent(null);
+        setDemoMode(false);
+        setActiveTab('summary');
+        return;
+      }
+
       const schemaVersion = manifest.schema_version === 'v2' ? 'v2' : 'v1';
 
       // Parse capsule (v1 proof capsule only)
@@ -221,6 +518,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
         manifest,
         capsule,
         events,
+        bundleKind: 'legacy',
         schemaVersion,
         signatureStatus,
         traceEvents,
@@ -235,6 +533,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
         hardware,
         grade,
         circuitSnapshot,
+        fileEntries,
       });
       setTraceCursor(0);
       setTraceCurrent(null);
@@ -291,7 +590,13 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
     e.preventDefault();
     (e.currentTarget as HTMLElement).style.background = '';
     const file = e.dataTransfer.files?.[0];
-    if (file && (file.name.endsWith('.rb-lab.zip') || file.name.endsWith('.json'))) {
+    if (
+      file &&
+      (file.name.endsWith('.rb-lab.zip') ||
+        file.name.endsWith('.rbx.zip') ||
+        file.name.endsWith('.zip') ||
+        file.name.endsWith('.json'))
+    ) {
       parseBundle(file);
     }
   };
@@ -336,12 +641,78 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
     URL.revokeObjectURL(url);
   };
 
+  const handleOpenEmbeddedProject = useCallback(async () => {
+    if (!bundle?.submission?.embeddedProject || !onOpenSubmissionProject) {
+      return;
+    }
+    setOpeningEmbeddedProject(true);
+    setError(null);
+    try {
+      await onOpenSubmissionProject({
+        project: bundle.submission.embeddedProject,
+        targetAppId: bundle.submission.targetAppId,
+      });
+    } catch (openError) {
+      setError(openError instanceof Error ? openError.message : 'Failed to open embedded project');
+    } finally {
+      setOpeningEmbeddedProject(false);
+    }
+  }, [bundle, onOpenSubmissionProject]);
+
+  const isSubmissionBundle = bundle?.bundleKind === 'submission';
+  const submissionGradeSummary = isSubmissionBundle ? buildSubmissionGradeSummary(bundle?.submission) : null;
+  const handleExportDiagnosticsBundle = useCallback(() => {
+    if (!bundle) return;
+    void (async () => {
+      const doctorReport = bundle.submission?.doctorReport ?? null;
+      const bundleDiagnostics = await generateClassroomDiagnosticsBundle({
+        source: 'submission-inspector',
+        mode: uiMode,
+        app: {
+          envMode: import.meta.env.MODE ?? null,
+          appVersion: import.meta.env.VITE_APP_VERSION ?? null,
+          buildId: import.meta.env.VITE_GIT_SHA ?? null,
+        },
+        environment: {
+          platform: typeof navigator !== 'undefined' ? navigator.platform : null,
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        },
+        doctorReport,
+        readiness: doctorReport?.studentReadiness ?? null,
+        probe: doctorReport?.probe ?? null,
+        preflight: doctorReport?.preflight ?? null,
+        buildPath: doctorReport?.buildPath ?? null,
+        logs: doctorReport?.logs ?? [],
+        context: {
+          bundleKind: bundle.bundleKind ?? null,
+          schemaVersion: bundle.schemaVersion ?? null,
+          signatureStatus: bundle.signatureStatus ?? null,
+          fileEntries: bundle.fileEntries ?? [],
+          submissionManifest: bundle.submission?.manifest ?? null,
+          reproducibility: bundle.submission?.reproducibility ?? null,
+          gradeSummary: submissionGradeSummary
+            ? {
+                verdict: submissionGradeSummary.verdict,
+                verdictLabel: submissionGradeSummary.verdictLabel,
+                verdictDetail: submissionGradeSummary.verdictDetail,
+                reproducibility: submissionGradeSummary.reproducibility,
+                topFailingGateIds: submissionGradeSummary.topFailingGates.map((gate) => gate.id),
+              }
+            : null,
+        },
+      });
+      downloadClassroomDiagnosticsBundle(bundleDiagnostics);
+    })().catch((exportError) => {
+      setError(exportError instanceof Error ? exportError.message : 'Failed to export diagnostics bundle');
+    });
+  }, [bundle, submissionGradeSummary, uiMode]);
+
   if (!bundle) {
     return (
       <div className={styles.container}>
         <div className={styles.header}>
           <h1 className={styles.title}>Submission Inspector</h1>
-          <p className={styles.subtitle}>Open a .rb-lab.zip bundle to inspect student submissions</p>
+          <p className={styles.subtitle}>Open a submission bundle (.rb-lab.zip or rb-submission-*.zip)</p>
         </div>
 
         <div
@@ -351,7 +722,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
           onDrop={handleDrop}
         >
           <div className={styles.dropZoneIcon}>📦</div>
-          <div className={styles.dropZoneTitle}>Drop .rb-lab.zip file here</div>
+          <div className={styles.dropZoneTitle}>Drop submission bundle file here</div>
           <div className={styles.dropZoneOr}>or</div>
           <button
             className={`${styles.browseButton} rbButtonPrimary`}
@@ -370,7 +741,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
           <input
             ref={fileInputRef}
             type="file"
-            accept=".rb-lab.zip,.json"
+            accept=".rb-lab.zip,.rbx.zip,.zip,.json"
             onChange={handleFileSelect}
             style={{ display: 'none' }}
             aria-label="Upload submission file"
@@ -405,6 +776,16 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
           >
             ← Open Another
           </button>
+          {isTaMode ? (
+            <button
+              className={styles.closeButton}
+              onClick={handleExportDiagnosticsBundle}
+              data-testid="submission-inspector-export-diagnostics-button"
+            >
+              Export Diagnostics Bundle
+            </button>
+          ) : null}
+          {!isSubmissionBundle ? (
           <button
             className={styles.closeButton}
             onClick={() => setDemoMode(!demoMode)}
@@ -416,10 +797,11 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
           >
             {demoMode ? '✓ Demo Mode' : 'Demo Mode'}
           </button>
+          ) : null}
         </div>
       </div>
 
-      {demoMode ? (
+      {demoMode && !isSubmissionBundle ? (
         // Demo Mode: Presentation layout
         <div className={styles.demoModeContainer}>
           <div className={styles.demoVerdictSection}>
@@ -516,19 +898,23 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
             >
               Summary
             </button>
-            <button
-              className={`${styles.tab} ${activeTab === 'vectors' ? styles.tabActive : ''}`}
-              onClick={() => setActiveTab('vectors')}
-            >
-              Vectors ({bundle.capsule?.vectors?.length || 0})
-            </button>
-            <button
-              className={`${styles.tab} ${activeTab === 'events' ? styles.tabActive : ''}`}
-              onClick={() => setActiveTab('events')}
-            >
-              Events ({bundle.events.length})
-            </button>
-            {bundle.hardware && (
+            {!isSubmissionBundle && (
+              <button
+                className={`${styles.tab} ${activeTab === 'vectors' ? styles.tabActive : ''}`}
+                onClick={() => setActiveTab('vectors')}
+              >
+                Vectors ({bundle.capsule?.vectors?.length || 0})
+              </button>
+            )}
+            {!isSubmissionBundle && (
+              <button
+                className={`${styles.tab} ${activeTab === 'events' ? styles.tabActive : ''}`}
+                onClick={() => setActiveTab('events')}
+              >
+                Events ({bundle.events.length})
+              </button>
+            )}
+            {!isSubmissionBundle && bundle.hardware && (
               <button
                 className={`${styles.tab} ${activeTab === 'hardware' ? styles.tabActive : ''}`}
                 onClick={() => setActiveTab('hardware')}
@@ -549,12 +935,166 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
             {activeTab === 'summary' && (
               <div className={styles.panel}>
                 <div className={styles.sectionHeader}>
-                  <h2 className={styles.sectionTitle}>Submission Summary</h2>
-                  <button className={styles.exportButton} onClick={handleExportGradingReport}>
-                    Export Grading Report
-                  </button>
+                  <h2 className={styles.sectionTitle}>{isSubmissionBundle ? 'Grader Summary' : 'Submission Summary'}</h2>
+                  {!isSubmissionBundle ? (
+                    <button className={styles.exportButton} onClick={handleExportGradingReport}>
+                      Export Grading Report
+                    </button>
+                  ) : null}
+                  {isSubmissionBundle && bundle.submission?.embeddedProject && onOpenSubmissionProject ? (
+                    <button
+                      className={styles.exportButton}
+                      onClick={() => void handleOpenEmbeddedProject()}
+                      disabled={openingEmbeddedProject}
+                      data-testid="submission-inspector-open-embedded-project"
+                    >
+                      {openingEmbeddedProject ? 'Opening...' : 'Open Embedded Project'}
+                    </button>
+                  ) : null}
                 </div>
 
+                {isSubmissionBundle ? (
+                  <div data-testid="submission-inspector-grader-summary">
+                    <div
+                      className={`${styles.verdictBanner} ${
+                        submissionGradeSummary?.verdict === 'ready' ? styles.verdictReady : styles.verdictNotReady
+                      }`}
+                      data-testid="submission-inspector-grade-verdict"
+                    >
+                      <div className={styles.verdictLabel} data-testid="submission-inspector-grade-verdict-label">
+                        {submissionGradeSummary?.verdictLabel ?? 'NOT READY'}
+                      </div>
+                      <div className={styles.verdictDetail}>
+                        {submissionGradeSummary?.verdictDetail ?? 'Readiness details unavailable.'}
+                      </div>
+                    </div>
+
+                    <div className={styles.quickSummaryRow}>
+                      <div className={styles.quickSummaryCard} data-testid="submission-inspector-repro-summary">
+                        <div className={styles.quickSummaryLabel}>Reproducibility</div>
+                        <div
+                          className={`${styles.quickSummaryPill} ${
+                            submissionGradeSummary?.reproducibility.status === 'pass'
+                              ? styles.quickPillPass
+                              : submissionGradeSummary?.reproducibility.status === 'fail'
+                                ? styles.quickPillFail
+                                : styles.quickPillSkipped
+                          }`}
+                        >
+                          {submissionGradeSummary?.reproducibility.status === 'pass'
+                            ? 'PASS'
+                            : submissionGradeSummary?.reproducibility.status === 'fail'
+                              ? 'FAIL'
+                              : 'SKIPPED'}
+                        </div>
+                        <div className={styles.quickSummaryDetail}>
+                          {submissionGradeSummary?.reproducibility.reason ?? 'No reproducibility details.'}
+                        </div>
+                      </div>
+                      <div className={styles.quickSummaryCard}>
+                        <div className={styles.quickSummaryLabel}>Top Failing Gates</div>
+                        {submissionGradeSummary?.topFailingGates.length ? (
+                          <div className={styles.quickFailingList} data-testid="submission-inspector-top-failing-gates">
+                            {submissionGradeSummary.topFailingGates.map((gate) => (
+                              <div
+                                key={gate.id}
+                                className={styles.quickFailingItem}
+                                data-testid={`submission-inspector-failing-gate-${gate.id}`}
+                              >
+                                <span className={styles.quickFailingLabel}>{gate.label}</span>
+                                <span className={styles.quickFailingDetail}>
+                                  {gate.nextAction ?? gate.detail}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className={styles.quickSummaryDetail}>No failing readiness gates.</div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className={styles.summaryGrid}>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Bundle ID</div>
+                        <div className={styles.summaryValue}>{bundle.submission?.manifest.bundleId ?? 'unknown'}</div>
+                      </div>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Status</div>
+                        <div className={styles.summaryValue}>{bundle.submission?.manifest.status ?? 'unknown'}</div>
+                      </div>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Project</div>
+                        <div className={styles.summaryValue}>{bundle.submission?.manifest.project?.name ?? 'Unknown'}</div>
+                      </div>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Readiness</div>
+                        <div className={styles.summaryValue}>
+                          {submissionGradeSummary?.gates.every((gate) => gate.state === 'pass')
+                            ? 'ready'
+                            : bundle.submission?.manifest.readiness?.overall ?? 'needs_action'}
+                        </div>
+                      </div>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Reproducibility</div>
+                        <div className={styles.summaryValue}>
+                          {submissionGradeSummary?.reproducibility.status === 'pass'
+                            ? 'pass'
+                            : submissionGradeSummary?.reproducibility.status === 'fail'
+                              ? 'fail'
+                              : 'skipped'}
+                        </div>
+                      </div>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Open Target</div>
+                        <div className={styles.summaryValue}>{bundle.submission?.targetAppId ?? 'logic-playground'}</div>
+                      </div>
+                    </div>
+
+                    <div className={styles.summarySection}>
+                      <h3>Readiness Gates</h3>
+                      {submissionGradeSummary?.gates.length ? (
+                        <div className={styles.checkList}>
+                          {submissionGradeSummary.gates.map((gate) => (
+                            <div key={gate.id} className={styles.checkItem}>
+                              <span className={styles.checkLabel}>{gate.label}</span>
+                              <span
+                                className={`${styles.checkStatus} ${
+                                  gate.state === 'pass'
+                                    ? styles.checkPass
+                                    : gate.state === 'fail'
+                                      ? styles.checkFail
+                                      : ''
+                                }`}
+                              >
+                                {gate.state}
+                              </span>
+                              <span className={styles.checkMessage}>{gate.detail}</span>
+                              {gate.nextAction ? (
+                                <span className={styles.checkMessage}>Next action: {gate.nextAction}</span>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className={styles.empty}>No readiness gates in manifest.</div>
+                      )}
+                    </div>
+
+                    {bundle.submission?.projectArchiveError ? (
+                      <div className={styles.error}>Embedded project error: {bundle.submission.projectArchiveError}</div>
+                    ) : null}
+
+                    {!bundle.submission?.embeddedProject ? (
+                      <div className={styles.missingItem}>Embedded project archive is unavailable.</div>
+                    ) : null}
+
+                    {!onOpenSubmissionProject ? (
+                      <div className={styles.missingItem}>Shell import callback unavailable. Open project manually from bundle.</div>
+                    ) : null}
+                  </div>
+                ) : (
+                <>
                 <div className={styles.summaryGrid}>
                   <div className={styles.summaryCard}>
                     <div className={styles.summaryLabel}>Lab ID</div>
@@ -810,11 +1350,13 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
                     <pre className={styles.codeBlock}>{bundle.grade.md}</pre>
                   </div>
                 )}
+              </>
+                )}
               </div>
             )}
 
             {/* Vectors Tab */}
-            {activeTab === 'vectors' && (
+            {!isSubmissionBundle && activeTab === 'vectors' && (
               <div className={styles.panel}>
                 <h2 className={styles.sectionTitle}>Test Vectors</h2>
                 {bundle.capsule?.vectors && bundle.capsule.vectors.length > 0 ? (
@@ -840,7 +1382,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
             )}
 
             {/* Events Tab */}
-            {activeTab === 'events' && (
+            {!isSubmissionBundle && activeTab === 'events' && (
               <div className={styles.panel}>
                 <h2 className={styles.sectionTitle}>Event Timeline</h2>
                 {bundle.events.length > 0 ? (
@@ -864,7 +1406,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
             )}
 
             {/* Hardware Tab */}
-            {activeTab === 'hardware' && (
+            {!isSubmissionBundle && activeTab === 'hardware' && (
               <div className={styles.panel}>
                 <h2 className={styles.sectionTitle}>Hardware Evidence</h2>
                 {bundle.hardware ? (
@@ -922,7 +1464,17 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({ loadSa
               <div className={styles.panel}>
                 <h2 className={styles.sectionTitle}>Bundle Contents</h2>
                 <div className={styles.filesList}>
-                  {bundle.schemaVersion === 'v2' ? (
+                  {isSubmissionBundle ? (
+                    <>
+                      {(bundle.fileEntries ?? []).length > 0 ? (
+                        (bundle.fileEntries ?? []).map((entry) => (
+                          <div key={entry} className={styles.fileItem}>{entry}</div>
+                        ))
+                      ) : (
+                        <div className={styles.empty}>No files listed in bundle.</div>
+                      )}
+                    </>
+                  ) : bundle.schemaVersion === 'v2' ? (
                     <>
                       <div className={styles.fileItem}>manifest.json</div>
                       <div className={`${styles.fileItem} ${!bundle.traceFilePresent ? styles.fileMissing : ''}`}>

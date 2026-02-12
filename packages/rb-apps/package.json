@@ -22,7 +22,8 @@
   },
   "scripts": {
     "build": "vite build -c ../../tools/config/vite.lib.config.ts",
-    "test": "echo \"Tests run at root. This package has no direct tests.\"",
+    "test": "pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__",
+    "test:ci": "pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__",
     "test:audit": "pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/audit-determinism.test.ts packages/rb-apps/src/__tests__/contract-enforcement.test.tsx"
   },
   "dependencies": {

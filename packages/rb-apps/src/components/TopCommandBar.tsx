@@ -32,11 +32,15 @@ interface TopCommandBarProps {
   onSaveProject?: () => void;
   onOpenProject?: () => void;
   onExportProject?: () => void;
+  onGenerateSubmissionBundle?: () => void;
   onSave?: () => void;
   onSaveAs?: () => void;
   onExamples?: () => void;
   onShare?: () => void;
   isDirty?: boolean;
+  autosaveState?: 'saved' | 'unsaved';
+  submissionBundleFilename?: string | null;
+  submissionBundleStatus?: 'pass' | 'fail' | 'unknown';
 
   // Undo/Redo controls
   onUndo?: () => void;
@@ -78,11 +82,15 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   onSaveProject,
   onOpenProject,
   onExportProject,
+  onGenerateSubmissionBundle,
   onSave,
   onSaveAs,
   onExamples,
   onShare,
   isDirty = false,
+  autosaveState = isDirty ? 'unsaved' : 'saved',
+  submissionBundleFilename,
+  submissionBundleStatus = 'unknown',
   onUndo,
   onRedo,
   canUndo = false,
@@ -196,6 +204,16 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             {isDirty ? <span className="ml-1 text-cyan-400">*</span> : null}
           </div>
         )}
+        <span
+          className={`text-[10px] font-semibold px-2 py-1 rounded border ${
+            autosaveState === 'unsaved'
+              ? 'border-amber-500/50 text-amber-100 bg-amber-500/10'
+              : 'border-emerald-500/40 text-emerald-200 bg-emerald-500/10'
+          }`}
+          data-testid="logic-playground-autosave-state"
+        >
+          {autosaveState === 'unsaved' ? 'Unsaved changes' : 'Saved'}
+        </span>
         {onNewProject && (
           <button
             onClick={onNewProject}
@@ -232,6 +250,31 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             Export...
           </button>
         )}
+        {onGenerateSubmissionBundle && (
+          <button
+            onClick={onGenerateSubmissionBundle}
+            className="px-3 py-1.5 text-sm bg-indigo-700 hover:bg-indigo-600 rounded transition-colors"
+            title="Generate deterministic submission bundle"
+            data-testid="logic-playground-generate-submission-bundle"
+          >
+            Generate Submission Bundle
+          </button>
+        )}
+        {submissionBundleFilename ? (
+          <span
+            className={`text-[10px] font-mono px-2 py-1 rounded border ${
+              submissionBundleStatus === 'pass'
+                ? 'border-green-500/40 text-green-200 bg-green-500/10'
+                : submissionBundleStatus === 'fail'
+                  ? 'border-yellow-500/40 text-yellow-100 bg-yellow-500/10'
+                  : 'border-slate-600 text-slate-300 bg-slate-800/60'
+            }`}
+            data-testid="logic-playground-submission-bundle-filename"
+            title={submissionBundleFilename}
+          >
+            {submissionBundleFilename}
+          </span>
+        ) : null}
         {onNew && (
           <button
             onClick={onNew}

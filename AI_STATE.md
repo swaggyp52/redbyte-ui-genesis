@@ -1,5 +1,1370 @@
 # AI State
 
+## Change Log 2026-02-12 (Classroom Deployment v1 Closeout: Instructor Pack + Lockdown Verification Sweep)
+
+- Completed Classroom Deployment v1 closeout verification for Instructor Pack and Classroom Lockdown paths:
+  - deterministic instructor-pack export/import contract validation exercised via targeted app tests
+  - lockdown UI gating verified across launcher/setup/submission-inspector surfaces
+- Stabilized instructor-pack onboarding import test to avoid jsdom `File` byte-read inconsistencies:
+  - `packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx`
+  - updated import flow assertion to use dropzone path with deterministic in-memory file payload object (`arrayBuffer()`-backed), ensuring canonical pack parsing receives intact bytes.
+- Re-ran targeted and full RC validation after the fix:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx packages/rb-apps/src/__tests__/instructor-pack.test.ts`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-apps/src/__tests__/launcher.test.tsx packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx packages/rb-shell/src/__tests__/intent-open-example.test.ts`
+  - ✅ `pnpm rc:check`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Classroom Deployment v1: Instructor Pack Export/Import Wiring)
+
+- Added deterministic instructor-pack artifact module:
+  - `packages/rb-apps/src/starterKits/instructorPack.ts`
+  - supports:
+    - deterministic ZIP export (`createInstructorPack`)
+    - pack parsing (`parseInstructorPack`)
+    - imported-pack localStorage persistence (`load/upsert/remove`)
+  - pack format includes:
+    - `manifest.json`
+    - `labStarterKit.json`
+    - `starter.rbx.zip`
+    - optional `rubric.json`
+- Added JS sibling wrapper for source-of-truth parity:
+  - `packages/rb-apps/src/starterKits/instructorPack.js`
+- Extended Home starter UX for instructor-pack flow:
+  - `packages/rb-apps/src/apps/HomeApp.tsx`
+  - `packages/rb-apps/src/apps/HomeApp.module.css`
+  - added:
+    - **Import Instructor Pack** action
+    - TA-only **Export Pack** action on built-in starter cards
+    - Imported starter section (`Imported by Instructor`) with open/instructions/remove actions
+    - instructions modal open path for imported packs
+    - status surface for import/export feedback
+- Wired imported instructor-pack starter opening through canonical shell hydration:
+  - `packages/rb-shell/src/Shell.tsx`
+  - added `handleOpenInstructorPackProject(...)`:
+    - decodes embedded `starter.rbx.zip` payload
+    - imports via `importEvidenceCapsule(...)`
+    - hydrates using existing `hydrateImportedProject(..., 'starter', ...)`
+    - logs explicit success/failure system events
+  - shell now passes `onOpenInstructorPackProject` callback into app surfaces.
+- Added/updated tests:
+  - `packages/rb-apps/src/__tests__/instructor-pack.test.ts`
+  - `packages/rb-apps/src/__tests__/instructor-pack.test.js`
+  - `packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx`
+    - coverage for imported instructor starter callback dispatch.
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx packages/rb-apps/src/__tests__/instructor-pack.test.ts packages/rb-shell/src/__tests__/intent-open-example.test.ts`
+  - ✅ `pnpm rc:check`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Classroom Pack v1: Lab Starter Instruction Polish + In-App Starter Guidance)
+
+- Reworked lab starter content into a consistent classroom instruction template:
+  - `packages/rb-apps/src/starterKits/labStarterKits.ts`
+  - each starter now defines:
+    - `labId`
+    - `timeEstimate`
+    - structured `instructions` with `steps`, `commonMistakes`, `submit`, and `rubric`
+  - content updated to use short, concrete student-facing steps aligned to visible UI labels.
+- Updated Home starter flow to use structured instruction payloads:
+  - `packages/rb-apps/src/apps/HomeApp.tsx`
+  - starter open callbacks now carry `instructions` instead of free-form markdown/submit strings
+  - instructions modal now renders sectioned guidance:
+    - Do this
+    - Common mistakes
+    - What to submit
+    - Rubric hooks
+- Added in-app pinned starter guidance on starter open:
+  - `packages/rb-shell/src/Shell.tsx`
+    - starter import pipeline now forwards starter instruction payload into app props
+  - `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+    - renders dismissible pinned starter guidance panel when starter metadata is provided
+    - panel includes lab title/time, actionable steps, and explicit submission steps.
+- Updated styling for structured instruction sections:
+  - `packages/rb-apps/src/apps/HomeApp.module.css`
+- Added and updated tests:
+  - `packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx` (structured instructions modal + callback payload assertions)
+  - `packages/rb-apps/src/__tests__/lab-starter-kits.test.ts` (template consistency checks across all starter kits)
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx packages/rb-apps/src/__tests__/lab-starter-kits.test.ts packages/rb-shell/src/__tests__/intent-open-example.test.ts`
+  - ✅ `pnpm rc:check`
+- **Notes**:
+  - Starter opens continue using canonical import/hydration pipeline; instruction payload is additive UI metadata.
+  - Remaining stderr is upstream Vite CJS deprecation chatter.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Classroom Pack v1: Student/TA Mode + Diagnostics Bundle + RC Verification)
+
+- Added explicit UI mode contract with student-first defaults:
+  - `packages/rb-apps/src/utils/uiMode.ts`
+  - default mode is `student`, with `rb:mode` query/localStorage override for `ta`
+  - JS sibling added as thin TS wrapper:
+    - `packages/rb-apps/src/utils/uiMode.js`
+- Extended classroom onboarding and launcher behavior for student mode:
+  - `packages/rb-apps/src/apps/HomeApp.tsx`
+    - student mode now hides advanced mission cards and keeps examples/starter-first flow
+  - `packages/rb-apps/src/launcherData.ts`
+    - student mode filters out advanced app entries (`toolchain-setup`, `terminal`, `system-log`)
+  - JS mirror update:
+    - `packages/rb-apps/src/launcherData.js` now thin TS wrapper
+- Added deterministic classroom diagnostics bundle export:
+  - `packages/rb-apps/src/export/classroomDiagnosticsBundle.ts`
+    - deterministic ZIP ordering + fixed timestamps
+    - manifest with stable hashes and bundle ID
+    - includes doctor/probe/preflight/build-path/log context for TA triage
+  - JS sibling:
+    - `packages/rb-apps/src/export/classroomDiagnosticsBundle.js`
+- Added TA-only diagnostics export surfaces:
+  - `packages/rb-apps/src/apps/ToolchainSetupApp.tsx`
+    - new **Export Diagnostics Bundle** action
+    - TA-only gating for advanced buildpack/triage controls
+    - visible mode label (`student|ta`) for deterministic UI behavior
+  - `packages/rb-apps/src/apps/SubmissionInspectorApp.tsx`
+    - new TA-only **Export Diagnostics Bundle** action from submission context
+- Extended shell starter callback typing for curriculum metadata passthrough:
+  - `packages/rb-shell/src/Shell.tsx`
+    - starter open callback now carries optional instructions/submission/rubric fields
+- Added/updated tests:
+  - `packages/rb-apps/src/__tests__/classroom-diagnostics-bundle.test.ts`
+  - `packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx`
+  - `packages/rb-apps/src/__tests__/launcher.test.tsx`
+  - `packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx`
+  - `packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx`
+
+- **Build Verification**:
+  - ✅ `pnpm rc:check`
+- **Notes**:
+  - RC sweep is green across `rb-apps`, `rb-shell`, and `rb-fpga-bridge`.
+  - Remaining stderr is upstream Vite CJS deprecation chatter, not failing test/runtime behavior.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (RC Warning Cleanup: view-micro-toolbar + quad tests)
+
+- Eliminated recurring React warning noise in targeted suites:
+  - `packages/rb-apps/src/__tests__/view-micro-toolbar.test.tsx`
+    - updated `LogicCanvas` mock to avoid spreading internal component props onto a DOM `<div>`, removing invalid DOM prop warning spam (`showToolbar`, `onProbeToggle`, etc.).
+  - `packages/rb-apps/src/__tests__/quad-crash.test.tsx`
+  - `packages/rb-apps/src/__tests__/quad-signalsVersion.guard.test.tsx`
+    - fixed `useLogicViewStore` mock to honor selector functions (prevented object-valued `onClick` handlers).
+    - forced deterministic non-lazy 3D path in test context via `?disable3d=1` to eliminate Suspense/`act(...)` warning noise from lazy 3D resolution.
+- Updated JS sibling tests to thin TS wrappers per mirror policy:
+  - `packages/rb-apps/src/__tests__/view-micro-toolbar.test.js`
+  - `packages/rb-apps/src/__tests__/quad-crash.test.js`
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/view-micro-toolbar.test.tsx packages/rb-apps/src/__tests__/quad-crash.test.tsx packages/rb-apps/src/__tests__/quad-signalsVersion.guard.test.tsx`
+  - ✅ `pnpm rc:check`
+- **Notes**:
+  - `rc:check` no longer emits the recurring React warnings from `view-micro-toolbar`/`quad-*`.
+  - Remaining stderr output is Vite CJS deprecation messaging, not React test warnings.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Classroom Build Health: Resolver Fixes + Real Test Scripts + Brittle Test Unfreeze)
+
+- Fixed Vitest import-resolution breakages for workspace package aliases in `vitest.config.ts`:
+  - added explicit aliases for `@redbyte/rb-viewport`, `@redbyte/fpga-bridge`, `@redbyte/rb-board-profiles`, `@redbyte/rb-fpga-proof-core`, `@redbyte/rb-fpga-signing`, `@redbyte/rb-instruments`, `@redbyte/rb-lab-engine`, and `@redbyte/rb-protocol`.
+- Replaced placeholder package test scripts with real per-package Vitest runs:
+  - `packages/rb-apps/package.json` now runs `vitest` for `packages/rb-apps/src/__tests__` via root config.
+  - `packages/rb-shell/package.json` now runs `vitest` for `packages/rb-shell/src/__tests__` via root config.
+  - `packages/rb-fpga-bridge/package.json` now exposes `test` by delegating to `test:all`.
+  - root `package.json` now includes `rc:check` to run `rb-apps`, `rb-shell`, and `rb-fpga-bridge` tests in sequence.
+- Removed fragile internal import paths that bypassed package exports:
+  - `packages/rb-apps/src/apps/ECELabApp.tsx`
+  - `packages/rb-apps/src/components/DeployMode.tsx`
+  - `packages/rb-apps/src/components/DeployMode.js`
+  - switched `@redbyte/rb-lab-engine/src/signals/signalSemantics` to `@redbyte/rb-lab-engine/signals/signalSemantics`.
+- Unfroze brittle app tests:
+  - `packages/rb-apps/src/__tests__/apps.test.tsx`
+    - removed brittle exact-count assertions and switched to baseline/required-item checks.
+  - `packages/rb-apps/src/__tests__/files-operations.test.tsx`
+    - updated assertions to stable current modal copy and behavior-focused checks.
+  - `packages/rb-apps/src/__tests__/quad-signalsVersion.guard.test.tsx`
+    - removed unnecessary `react-router-dom` wrapper from the quad guard test render path.
+  - `packages/rb-apps/src/__tests__/inspect-fixture.test.ts`
+    - replaced empty test file with a valid skipped placeholder suite.
+  - updated JS siblings in `packages/rb-apps/src/__tests__` to thin TS re-export wrappers per mirror policy.
+
+- **Build Verification**:
+  - ✅ `pnpm --filter @redbyte/rb-apps test`
+  - ✅ `pnpm --filter @redbyte/rb-apps test:ci`
+  - ✅ `pnpm --filter @redbyte/rb-shell test`
+  - ✅ `pnpm --filter @redbyte/fpga-bridge test`
+  - ✅ `pnpm rc:check`
+- **Notes**:
+  - Current suites pass, but stderr still includes known React prop/suspense warnings in a few tests (`view-micro-toolbar`, `quad-crash`, `quad-signalsVersion.guard`); these are non-fatal under current Vitest console policy.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (RC Hardening: Timer/SSE Cleanup Guards for Toolchain Panels)
+
+- Hardened HDL panel run monitoring lifecycle in `packages/rb-apps/src/components/HdlEditorPanel.tsx`:
+  - added mounted guard (`isMountedRef`) for async poll/stream callbacks.
+  - added per-run polling busy guards for synth/implement/program polling loops.
+  - normalized cleanup to one unmount path that closes stream subscriptions and clears polling intervals.
+  - prevents stale async callbacks from updating state after unmount or run cancellation.
+- Hardened Toolchain Setup buildpack monitor lifecycle in `packages/rb-apps/src/apps/ToolchainSetupApp.tsx`:
+  - added mounted guard and monitor tokening for buildpack stream/poll handoff.
+  - `clearBuildpackMonitoring()` now invalidates stale monitors and resets pending poll state.
+  - poll/stream callbacks now no-op when monitor token is stale or component is unmounted.
+- Hardened Hardware Panel programming lifecycle in `packages/rb-apps/src/apps/HardwarePanelApp.tsx`:
+  - added mounted guard for program poll/stream callbacks.
+  - added tracked synthesis dialog auto-close timer cleanup (`synthesisDialogTimerRef`) on unmount and reruns.
+  - prevents delayed timeout callbacks from mutating state after component teardown.
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-apps/src/__tests__/hardware-panel.test.tsx packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Submission Inspector: 30-Second Grading Verdict + Top Failing Gates)
+
+- Hardened submission grading UX in `packages/rb-apps/src/apps/SubmissionInspectorApp.tsx`:
+  - added deterministic grader summary helpers:
+    - readiness gate normalization/merge (doctor + manifest)
+    - explicit deterministic gate sort (`toolchain_probe`, `preflight`, `implement_plan`, `toolchain_ui`, `doctor_export`, then lexical)
+    - reproducibility normalization (`PASS` / `FAIL` / `SKIPPED`)
+  - added one-line verdict banner for submission bundles:
+    - `READY`
+    - `READY (NO REPRO)` when reproducibility is skipped
+    - `NOT READY` when gates fail or reproducibility fails
+  - added top failing gates panel (max 3) with deterministic ordering and next-action text.
+  - added reproducibility quick-view pill + first-line reason extraction for failures.
+  - kept existing full details surface (readiness table, file list, Open Embedded Project action).
+- Added grader-summary styling in `packages/rb-apps/src/apps/SubmissionInspectorApp.module.css`:
+  - verdict banner states
+  - quick summary cards/pills
+  - failing-gates compact list.
+- Expanded submission inspector coverage in `packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx`:
+  - validates `NOT READY` rendering with deterministic top-3 failing gates.
+  - validates repro fail reason first-line rendering.
+  - validates `READY` with repro `PASS`.
+  - validates `READY (NO REPRO)` with repro skipped (`unknown`).
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Submission Checkpoint Clean-State: Autosave/Recents Hardening)
+
+- Added submission-checkpoint metadata + clean-state transition in canonical autosave utility:
+  - `packages/rb-apps/src/utils/rbprojAutosave.ts`
+  - `RecentProjectEntryV1` now supports:
+    - `lastSubmissionBundleId`
+    - `lastSubmissionAtMs`
+  - new helper `markProjectSubmissionCheckpoint(project, { bundleId, submittedAtMs? })`:
+    - marks dirty state clean (`dirty=false`) for the canonical project autosave key
+    - updates recent-project metadata with latest submission checkpoint fields.
+- Wired submission success paths to persist clean checkpoint metadata:
+  - `packages/rb-apps/src/export/submissionBundleWorkflow.ts`
+    - `persistSubmissionBundleStatus(...)` now accepts optional `{ project, submittedAtMs }`
+    - updates autosave/recent checkpoint metadata when project context is provided.
+  - `packages/rb-apps/src/apps/ECELabApp.tsx`
+  - `packages/rb-apps/src/apps/LogicLabApp.tsx`
+  - `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+    - all now pass current canonical project snapshot into submission-status persistence.
+- Updated Home recent-project surface to show submission checkpoint summary:
+  - `packages/rb-apps/src/apps/HomeApp.tsx`
+  - `packages/rb-apps/src/apps/HomeApp.module.css`
+  - recent rows now include `Last submitted ...` detail when checkpoint metadata exists.
+- Added tests:
+  - `packages/rb-apps/src/__tests__/rbproj-recent-projects.test.ts`
+    - verifies submission checkpoint flips dirty state clean and stores submission metadata.
+  - `packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx`
+    - verifies submitted projects render `Open` (not `Restore`) and show submission summary.
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/rbproj-recent-projects.test.ts packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx packages/rb-apps/src/__tests__/logic-lab-submission-parity.test.tsx packages/rb-apps/src/__tests__/ece-lab-submission-bundle-action.test.tsx`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Autosave + Recent Project Recovery: Home Surface + Shell Hydration)
+
+- Extended canonical RBProject autosave utility with recent-project persistence and dirty-state tracking:
+  - `packages/rb-apps/src/utils/rbprojAutosave.ts`
+  - added:
+    - recent-project index (`rb:recent:v1`)
+    - per-project dirty-state records (`rb:autosave:dirty:v1:<projectId>`)
+    - helpers to upsert/remove recent entries and clear autosave state by project ID
+  - `useRbprojAutosave(...)` now updates recent project metadata and dirty/clean recovery state as autosaves run.
+- Updated JS mirror policy for autosave utility:
+  - `packages/rb-apps/src/utils/rbprojAutosave.js` converted to thin source-of-truth wrapper.
+- Added Home recent-project recovery UI:
+  - `packages/rb-apps/src/apps/HomeApp.tsx`
+  - `packages/rb-apps/src/apps/HomeApp.module.css`
+  - new **Recent Projects** section with restore/open + delete actions
+  - restore actions call a new canonical callback (`onOpenRecentProject`) instead of bypassing shell hydration.
+- Added shell-side recent-project recovery callback:
+  - `packages/rb-shell/src/Shell.tsx`
+  - new `handleOpenRecentProject(...)` loads canonical RBProject autosave by project ID and imports via shared hydrate path (`hydrateImportedProject(..., 'recovery', ...)`).
+- Exported recent/autosave helpers for shell integration:
+  - `packages/rb-apps/src/index.ts`
+  - `packages/rb-apps/src/index.js`
+- Added saved/unsaved command-bar state pill:
+  - `packages/rb-apps/src/components/TopCommandBar.tsx`
+  - `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+  - displays deterministic in-app save state (`Saved` / `Unsaved changes`) in the project command area.
+- Added/updated tests:
+  - `packages/rb-apps/src/__tests__/rbproj-recent-projects.test.ts`
+  - `packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx`
+  - `packages/rb-apps/src/__tests__/top-command-bar-submission.test.tsx`
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx packages/rb-apps/src/__tests__/rbproj-recent-projects.test.ts packages/rb-apps/src/__tests__/top-command-bar-submission.test.tsx packages/rb-apps/src/__tests__/proj-autosave-recovery-gate.test.ts`
+  - ✅ `pnpm -w exec vitest run packages/rb-shell/src/__tests__/intent-open-example.test.ts`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Toolchain Setup CTA: Open Submission Bundle Deep-Link)
+
+- Added a grader-facing Submission Inspector CTA in Toolchain Setup readiness surface:
+  - `packages/rb-apps/src/apps/ToolchainSetupApp.tsx`
+  - new **Open Submission Bundle** action near Student Readiness
+  - CTA routes via existing app navigation callback to `submission-inspector`
+  - added helper subtext: “Grade or troubleshoot a student submission (.zip).”
+- Extended setup app tests for CTA coverage:
+  - `packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx`
+  - verifies CTA render + click navigation to `submission-inspector`
+  - waits for initial async setup status refresh to avoid React `act(...)` warning noise.
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Submission Bundle Import + Grader Summary: Canonical Hydration Path)
+
+- Extended Submission Inspector to support canonical `rb-submission-*.zip` artifacts in addition to legacy `.rb-lab.zip`:
+  - `packages/rb-apps/src/apps/SubmissionInspectorApp.tsx`
+  - parses `manifest.json` (`rb_submission_manifest_v1`), `doctor-report.json`, `reproducibility.json`, and `project.rbx.zip`
+  - adds grader-focused summary surface with readiness gates and submission status
+  - adds **Open Embedded Project** action that passes decoded `RBProject` + target app to shell callback
+  - preserves legacy inspector flows for v1/v2 proof bundles and JSON evidence.
+- Wired canonical submission-project hydration in shell:
+  - `packages/rb-shell/src/Shell.tsx`
+  - added `handleOpenSubmissionProject(...)` callback
+  - converts embedded `RBProject` -> `LabProjectV1` via adapter and imports through existing shared hydrate path (`hydrateImportedProject`), then opens requested app surface.
+- Exported shared project codec/adapter helpers for shell use:
+  - `packages/rb-apps/src/index.ts`
+  - `packages/rb-apps/src/index.js`
+  - added exports for `createRBProject`, `encodeRBProject`, `decodeRBProject`, `labProjectToRBProject`, `rbProjectToLabProject`.
+- Added submission-inspector coverage for canonical submission bundle parsing/open flow:
+  - `packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx`
+  - verifies grader summary render and callback invocation with decoded embedded project.
+- Updated JS mirrors to TS source-of-truth wrappers:
+  - `packages/rb-apps/src/apps/SubmissionInspectorApp.js`
+  - `packages/rb-shell/src/Shell.js`
+
+- **Build Verification**:
+  - PASS `pnpm -w exec vitest run packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx packages/rb-apps/src/__tests__/submission-bundle.test.ts packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-shell/src/__tests__/intent-open-example.test.ts`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Starter Import Hardening: Home Starters -> Canonical Import Pipeline)
+
+- Hardened Home Lab Starters to use canonical starter-import callbacks instead of direct `initialExampleId` app props:
+  - `packages/rb-apps/src/apps/HomeApp.tsx`
+  - added `onOpenStarterProject(...)` app prop contract and routed starter open/reopen actions through it
+  - removed starter shortcut dependency on direct `initialExampleId` window props.
+- Updated shell-side starter loading to pass through evidence import verification pipeline:
+  - `packages/rb-shell/src/Shell.tsx`
+  - added `hydrateImportedProject(...)` shared import hydration path for compatibility checks, warnings, unified-store load, and app open
+  - added `importStarterProject(...)` flow:
+    - `loadExampleAsProject(...)` -> `exportEvidenceCapsule(...)` -> `importEvidenceCapsule(...)`
+    - then hydrates and opens target app via shared import path
+  - wired `onOpenStarterProject` prop into app rendering so Home starters execute canonical import flow.
+- Preserved file-import behavior while removing duplicated import logic:
+  - `handleImportProject` now reuses `hydrateImportedProject(...)`.
+- Added/updated onboarding tests:
+  - `packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx`
+  - asserts starter open triggers canonical starter callback payload and no direct app-open fallback when callback exists.
+- Updated JS mirror wrapper remains TS source-of-truth:
+  - `packages/rb-apps/src/apps/HomeApp.js`.
+
+- **Build Verification**:
+  - PASS `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx packages/rb-apps/src/__tests__/logic-lab-submission-parity.test.tsx packages/rb-apps/src/__tests__/ece-lab-submission-bundle-action.test.tsx packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-apps/src/__tests__/submission-bundle.test.ts packages/rb-apps/src/__tests__/top-command-bar-submission.test.tsx packages/rb-shell/src/__tests__/intent-open-example.test.ts`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Examples-First Onboarding: Home Lab Starters + Quickstart)
+
+- Updated home onboarding flow in `packages/rb-apps/src/apps/HomeApp.tsx` to prioritize curated starters for first-time users:
+  - added deterministic **Lab Starters** section with curriculum-oriented starter cards
+  - starter actions open target app with explicit example payload (`initialExampleId`) and track recent activity
+  - added examples-first fallback hint when no recent activity is present.
+- Added first-run quickstart guidance in Home:
+  - new dismissible **Quickstart** banner with 3-step flow (open starter -> simulate -> generate submission bundle)
+  - dismissal is persisted in localStorage (`rb:home:quickstart-dismissed:v1`).
+- Added styling for new onboarding surfaces:
+  - `packages/rb-apps/src/apps/HomeApp.module.css`
+  - includes starter cards, quickstart banner, and responsive stacking behavior.
+- Updated JS mirror for Home app to thin wrapper per TS source-of-truth policy:
+  - `packages/rb-apps/src/apps/HomeApp.js`.
+- Added onboarding tests:
+  - `packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx`
+  - validates no-recent examples-first visibility, starter open behavior, and persisted quickstart dismissal.
+
+- **Build Verification**:
+  - PASS `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx packages/rb-apps/src/__tests__/logic-lab-submission-parity.test.tsx packages/rb-apps/src/__tests__/ece-lab-submission-bundle-action.test.tsx packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-apps/src/__tests__/submission-bundle.test.ts packages/rb-apps/src/__tests__/top-command-bar-submission.test.tsx`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Legacy LogicLab Submission Bundle Parity + Shared Workflow)
+
+- Added shared submission workflow helpers in `packages/rb-apps/src/export/submissionBundleWorkflow.ts`:
+  - centralizes canonical submission bundle generation (`generateProjectSubmissionBundle`)
+  - centralizes deterministic bundle download (`downloadSubmissionBundle`)
+  - centralizes global submission status persistence + event dispatch (`persistSubmissionBundleStatus`).
+- Refactored ECELab submission action to use the shared workflow:
+  - `packages/rb-apps/src/apps/ECELabApp.tsx`
+  - removes duplicated pipeline wiring while preserving canonical snapshot + readiness event behavior.
+- Added legacy LogicLab submission parity surface:
+  - `packages/rb-apps/src/apps/LogicLabApp.tsx`
+  - adds **Generate Submission Bundle** action in legacy report flow using canonical unified snapshot (`labProjectToRBProject` from unified project store)
+  - emits the same `rb:submission-bundle-generated` readiness event path as other apps
+  - shows friendly legacy CTA (`Open in ECE Lab App`) when canonical snapshot is unavailable.
+- Added legacy parity tests:
+  - `packages/rb-apps/src/__tests__/logic-lab-submission-parity.test.tsx`
+  - validates shared workflow invocation and unavailable-snapshot CTA behavior.
+- Updated JS mirror wrappers per TS source-of-truth policy:
+  - `packages/rb-apps/src/apps/ECELabApp.js`
+  - `packages/rb-apps/src/apps/LogicLabApp.js`
+
+- **Build Verification**:
+  - PASS `pnpm -w exec vitest run packages/rb-apps/src/__tests__/logic-lab-submission-parity.test.tsx packages/rb-apps/src/__tests__/ece-lab-submission-bundle-action.test.tsx packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-apps/src/__tests__/submission-bundle.test.ts packages/rb-apps/src/__tests__/top-command-bar-submission.test.tsx`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (LabApp Submission Bundle Parity: Toolbar Action + Global Readiness Sync)
+
+- Added LabApp submission-bundle parity controls in `packages/rb-apps/src/apps/ECELabApp.tsx`:
+  - added deterministic **Generate Submission Bundle** action in the ECELab header toolbar
+  - action builds from canonical unified-project snapshot (`labProjectToRBProject` via `getRbprojSnapshot`)
+  - action now calls shared submission pipeline (`submissionBundle.ts`) + toolchain doctor report path
+  - reproducibility is included as `unknown`/not-available when run-record data is absent (bundle generation remains unblocked)
+  - writes `rb:submission-bundle:last` and dispatches `rb:submission-bundle-generated` for cross-surface readiness updates.
+- Added reusable toolbar control component:
+  - `packages/rb-apps/src/components/ECELabSubmissionBundleAction.tsx`
+  - includes deterministic button/test IDs and status pill (`pass`/`fail`/`unknown`).
+- Updated JS mirror policy for Lab app source:
+  - `packages/rb-apps/src/apps/ECELabApp.js` converted to thin TSX wrapper (`export * from "./ECELabApp.tsx"`).
+- Extended setup readiness test coverage for global submission event propagation:
+  - `packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx`
+  - validates submission gate transitions from `fail` to `pass` on `rb:submission-bundle-generated`.
+- Added Lab toolbar action test coverage:
+  - `packages/rb-apps/src/__tests__/ece-lab-submission-bundle-action.test.tsx`
+  - validates button render, click trigger, and status filename surface.
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/ece-lab-submission-bundle-action.test.tsx packages/rb-apps/src/__tests__/submission-bundle.test.ts packages/rb-apps/src/__tests__/top-command-bar-submission.test.tsx packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Submission Bundle Gate: One-Click Export + Setup Readiness CTA)
+
+- Added deterministic submission bundle export module:
+  - `packages/rb-apps/src/export/submissionBundle.ts`
+  - new one-call bundle generation for classroom submission artifacts:
+    - `manifest.json`
+    - `project.rbx.zip`
+    - `doctor-report.json`
+    - `reproducibility.json`
+    - `logs/submission-log.json`
+  - deterministic bundle ID derived from project export hash + doctor report ID + reproducibility hash + schema version.
+  - fixed ZIP entry timestamps and sorted file ordering for reproducibility.
+  - added helpers for reproducibility report creation and submission-status encode/decode:
+    - `createSubmissionReproducibilityReport(...)`
+    - `encodeSubmissionBundleStatus(...)`
+    - `decodeSubmissionBundleStatus(...)`
+- Wired Logic Playground one-click submission export:
+  - `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+  - added **Generate Submission Bundle** action flow:
+    - builds project snapshot
+    - computes doctor report from backend
+    - computes reproducibility status from run recorder state
+    - generates deterministic submission ZIP and downloads `rb-submission-<bundleId>.zip`
+    - persists latest submission status to localStorage and dispatches submission-generated event for other surfaces.
+  - updated allowed app outputs with `rb-submission.zip` invariant.
+- Added toolbar surface for the submission gate:
+  - `packages/rb-apps/src/components/TopCommandBar.tsx`
+  - new project action button: **Generate Submission Bundle**
+  - renders last generated submission filename/status badge in the top command bar.
+  - updated JS mirror to source-of-truth wrapper:
+    - `packages/rb-apps/src/components/TopCommandBar.js`
+- Integrated submission-bundle readiness into Toolchain Setup:
+  - `packages/rb-apps/src/apps/ToolchainSetupApp.tsx`
+  - reads latest submission bundle status from localStorage
+  - appends **Submission Bundle** gate to Student Readiness panel
+  - shows **Generate** CTA (opens Logic Playground) when missing or not passing reproducibility
+  - listens to submission-generated event for live readiness updates.
+- Added tests:
+  - `packages/rb-apps/src/__tests__/submission-bundle.test.ts`
+    - verifies required ZIP entries, per-file manifest hashes, deterministic bundle ID/bytes.
+  - `packages/rb-apps/src/__tests__/top-command-bar-submission.test.tsx`
+    - verifies submission action button callback and last-filename rendering.
+  - `packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx`
+    - adds submission readiness gate + CTA coverage.
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/submission-bundle.test.ts packages/rb-apps/src/__tests__/top-command-bar-submission.test.tsx packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-apps/src/__tests__/clock-indicator.test.js`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Student-Ready No-Board Gates: Checklist + Doctor Readiness + Setup UI)
+
+- Added student-ready acceptance gates documentation for no-board classroom workflows:
+  - `docs/student-ready-gates.md`
+  - defines deterministic gate criteria for boot/navigation, sim workflows, import/export, reproducibility, toolchain degradation, and submission artifacts.
+- Extended toolchain doctor schema with student readiness payload:
+  - `packages/rb-apps/src/fpga/toolchainTypes.ts`
+  - added:
+    - `StudentReadinessGate`
+    - `StudentReadinessSummary`
+    - optional `studentReadiness` on `ToolchainDoctorReport`.
+- Implemented deterministic readiness computation in doctor generation:
+  - `packages/rb-apps/src/fpga/toolchainBackend.ts`
+  - added `createStudentReadinessSummary(...)`
+  - integrated readiness into doctor report hash payload and output
+  - added readiness validation guards for inbound doctor reports.
+- Added Setup UI student-readiness checklist rendering:
+  - `packages/rb-apps/src/apps/ToolchainSetupApp.tsx`
+  - page now renders:
+    - overall student readiness state (`ready`/`needs_action`)
+    - ordered gate rows with next-action hints.
+- Added/updated tests:
+  - `packages/rb-apps/src/__tests__/toolchain-doctor-report.test.ts`
+    - validates doctor report includes deterministic readiness gates.
+  - `packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx`
+    - validates setup readiness section rendering and failure-state behavior.
+  - `packages/rb-apps/src/__tests__/student-ready.e2e-lite.test.ts`
+    - adds no-board acceptance-lite checks for readiness report behavior.
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-doctor-report.test.ts packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-apps/src/__tests__/student-ready.e2e-lite.test.ts`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Buildpack Release Check + Golden Demo Acceptance Runner)
+
+- Added Basys3 buildpack contract module:
+  - `packages/rb-fpga-bridge/src/toolchain-buildpack-contracts.js`
+  - defines canonical `basys3-f4pga-v0` signature, required tools/paths, expected outputs, and helper checks used by planner/release scripts.
+- Added deterministic buildpack release checker:
+  - `packages/rb-fpga-bridge/scripts/buildpack-release-check.js`
+  - validates contract signature, required tool entries, required path coverage, manifest file coverage, SHA256 integrity, optional tool execution sanity, and size warnings.
+  - emits deterministic PASS/FAIL summary and non-zero exit on failure.
+- Integrated release check into zip workflow and package scripts:
+  - `packages/rb-fpga-bridge/scripts/buildpack-zip.js` now supports `--release` (runs release-check before packaging) and `--release-tool-timeout-ms`.
+  - `packages/rb-fpga-bridge/package.json` adds:
+    - `"buildpack:check": "node scripts/buildpack-release-check.js"`
+    - `"golden:accept": "node scripts/golden-demo-acceptance.js"`
+- Added Golden Demo acceptance runner (bridge/API driven, no UI dependency):
+  - `packages/rb-fpga-bridge/scripts/golden-demo-acceptance.js`
+  - flow: buildpack install -> probe -> implement-plan validation (`buildpack-open`) -> implement run -> bitstream fetch -> optional program run -> doctor report export.
+  - exports deterministic helpers:
+    - `createGoldenDemoProjectSnapshot(...)`
+    - `deriveGoldenBaselineId(...)`
+  - writes baseline evidence under `artifacts/golden-demo/<hash>/`.
+- Extended buildpack metadata propagation for contract signatures:
+  - `packages/rb-fpga-bridge/src/toolchain-buildpack.js` now preserves optional `contractId` and passes `buildpackContractId` through buildpack tool candidates.
+  - `packages/rb-fpga-bridge/src/index.js` candidate/capability normalization now preserves `buildpackContractId`.
+- Enforced buildpack contract compatibility in planner selection:
+  - `packages/rb-fpga-bridge/src/toolchain-implement-plan.js`
+  - `buildpack-open` now requires compatible Basys3 signature (name/version or contractId) in addition to verified managed tools.
+- Updated dev docs:
+  - `docs/fpga-buildpack-v0-dev.md` now includes `contractId`, release-check usage, release zip usage, and scripted golden acceptance command.
+  - `packages/rb-fpga-bridge/buildpacks/basys3-open-toolchain-0.1.0-dev/README.md` now includes `contractId` fixture note and release-check command.
+- Added/updated tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-buildpack-release-check.test.js`
+  - `packages/rb-fpga-bridge/tests/golden-demo-acceptance.test.js`
+  - `packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js` (contract mismatch fallback coverage).
+- Updated fixture manifest signature:
+  - `packages/rb-fpga-bridge/buildpacks/basys3-open-toolchain-0.1.0-dev/buildpack.json` adds `"contractId": "basys3-f4pga-v0"`.
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-buildpack-contracts.js`
+  - ✅ `node --check packages/rb-fpga-bridge/scripts/buildpack-release-check.js`
+  - ✅ `node --check packages/rb-fpga-bridge/scripts/golden-demo-acceptance.js`
+  - ✅ `node --check packages/rb-fpga-bridge/scripts/buildpack-zip.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-implement-plan.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-buildpack.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-buildpack-release-check.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/golden-demo-acceptance.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-buildpack-hash.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-buildpack-zip.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-buildpack.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js`
+  - ✅ `node packages/rb-fpga-bridge/scripts/buildpack-hash.js packages/rb-fpga-bridge/buildpacks/basys3-open-toolchain-0.1.0-dev`
+  - ✅ `node packages/rb-fpga-bridge/scripts/buildpack-release-check.js packages/rb-fpga-bridge/buildpacks/basys3-open-toolchain-0.1.0-dev --skip-tool-exec`
+  - ✅ `node packages/rb-fpga-bridge/scripts/buildpack-zip.js packages/rb-fpga-bridge/buildpacks/basys3-open-toolchain-0.1.0-dev`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (One-Command Buildpack Packager: Hash + Deterministic Zip + Install URL)
+
+- Added deterministic buildpack packager script:
+  - `packages/rb-fpga-bridge/scripts/buildpack-zip.js`
+  - behavior:
+    - updates `buildpack.json.files[]` hashes via shared hash workflow
+    - creates deterministic zip with stable entry ordering and normalized entry timestamp/mode
+    - writes zip to `buildpacks/dist/<name>-<version>-<platformKey>.zip` by default
+    - prints zip path, zip SHA256, and `file://` install URL for Toolchain Setup.
+- Added test coverage for zip packager behavior:
+  - `packages/rb-fpga-bridge/tests/toolchain-buildpack-zip.test.js`
+  - verifies:
+    - output zip filename format
+    - zip contains expected entries (`buildpack.json`, fixture binary path)
+    - sha256/install URL generation
+    - deterministic manifest file-path ordering.
+- Added package script alias:
+  - `packages/rb-fpga-bridge/package.json`
+  - `"buildpack:zip": "node scripts/buildpack-zip.js"`
+- Updated buildpack v0 docs and fixture readme:
+  - `docs/fpga-buildpack-v0-dev.md`
+  - `packages/rb-fpga-bridge/buildpacks/basys3-open-toolchain-0.1.0-dev/README.md`
+  - now includes one-command `buildpack-zip` workflow and expected output/install URL usage.
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/scripts/buildpack-zip.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-buildpack-zip.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-buildpack-hash.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-buildpack.test.js`
+  - ✅ `node packages/rb-fpga-bridge/scripts/buildpack-zip.js packages/rb-fpga-bridge/buildpacks/basys3-open-toolchain-0.1.0-dev`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Buildpack Fixture v0 + Deterministic Hash Script Workflow)
+
+- Added a dev fixture buildpack tree for Basys3 open toolchain packaging tests:
+  - `packages/rb-fpga-bridge/buildpacks/basys3-open-toolchain-0.1.0-dev/buildpack.json`
+  - `packages/rb-fpga-bridge/buildpacks/basys3-open-toolchain-0.1.0-dev/README.md`
+  - `packages/rb-fpga-bridge/buildpacks/basys3-open-toolchain-0.1.0-dev/bin/README.md`
+  - placeholder platform binaries:
+    - `packages/rb-fpga-bridge/buildpacks/basys3-open-toolchain-0.1.0-dev/bin/win32-x64/f4pga.exe`
+    - `packages/rb-fpga-bridge/buildpacks/basys3-open-toolchain-0.1.0-dev/bin/linux-x64/f4pga`
+    - `packages/rb-fpga-bridge/buildpacks/basys3-open-toolchain-0.1.0-dev/bin/darwin-arm64/f4pga`
+    - `packages/rb-fpga-bridge/buildpacks/basys3-open-toolchain-0.1.0-dev/bin/darwin-x64/f4pga`
+  - placeholders for additional payload classes:
+    - `packages/rb-fpga-bridge/buildpacks/basys3-open-toolchain-0.1.0-dev/share/README.md`
+    - `packages/rb-fpga-bridge/buildpacks/basys3-open-toolchain-0.1.0-dev/licenses/README.md`
+- Added deterministic checksum generator CLI for buildpack manifests:
+  - `packages/rb-fpga-bridge/scripts/buildpack-hash.js`
+  - exports reusable helpers for tests:
+    - `listBuildpackFiles(...)`
+    - `collectBuildpackFileHashes(...)`
+    - `updateBuildpackManifestHashes(...)`
+    - `parseBuildpackHashArgs(...)`
+    - `runBuildpackHashCli(...)`
+  - normalizes manifest file paths to `/`, sorts deterministically, and writes `buildpack.json.files[]`.
+  - prints zip command hints (Windows + Unix) and zip SHA256 when zip exists.
+- Added package script alias:
+  - `packages/rb-fpga-bridge/package.json` -> `"buildpack:hash": "node scripts/buildpack-hash.js"`
+- Added checksum script unit tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-buildpack-hash.test.js`
+  - verifies deterministic ordering + path normalization and manifest inclusion option behavior.
+- Updated buildpack v0 docs with fixture/hash/install workflow:
+  - `docs/fpga-buildpack-v0-dev.md`
+  - now documents fixture location, hash command, zip output expectation, and Toolchain Setup verification steps.
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/scripts/buildpack-hash.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-buildpack-hash.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-buildpack.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js`
+  - ✅ `node packages/rb-fpga-bridge/scripts/buildpack-hash.js packages/rb-fpga-bridge/buildpacks/basys3-open-toolchain-0.1.0-dev`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Basys3 Open Buildpack v0 Planner Mapping + Deterministic Output Contract)
+
+- Updated buildpack-open implement-plan command contract to carry explicit source/constraint placeholders and deterministic output directory:
+  - `packages/rb-fpga-bridge/src/toolchain-implement-plan.js`
+  - `packages/rb-apps/src/fpga/toolchainBackend.ts`
+  - buildpack-open commands now include `--sources <sources>`, `--xdc <constraints>`, and `--out out`
+  - buildpack-open expected outputs now target deterministic `out/*` paths (`out/top.bit`, `out/top.fasm`, `out/top.eblif`).
+- Added executable path resolution for implement-plan commands so planned commands use selected resolved tool paths (buildpack/system) instead of raw command names when available:
+  - `packages/rb-fpga-bridge/src/toolchain-implement-plan.js`
+  - `packages/rb-apps/src/fpga/toolchainBackend.ts`
+  - planner now rewrites command argv[0] using resolved capability path for `yosys`, `nextpnr-xilinx`, `f4pga`, `vivado`.
+- Added developer-facing Basys3 buildpack v0 notes documenting manifest shape, command/output contract, and local `file://` install workflow:
+  - `docs/fpga-buildpack-v0-dev.md`.
+- Updated tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js` validates buildpack-open path selection and command placeholder materialization (`<sources>`, `<constraints>`).
+  - `packages/rb-apps/src/__tests__/toolchain-implement-plan.test.ts` validates buildpack-open command executable path and deterministic bitstream output hint.
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-implement-plan.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-implement-plan.test.ts packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Implement Plan Buildpack Priority + BuildPath Metadata Alignment)
+
+- Updated bridge-side implement planner backend selection priority to prefer verified buildpack open flow first:
+  - `packages/rb-fpga-bridge/src/toolchain-implement-plan.js`
+  - enforced selection order: `buildpack-open` > `vivado-fallback` > system open backends > `none`
+  - required tool readiness now respects `status` and `integrity` (not just tool presence)
+  - plan payload now carries buildpack metadata when `buildpack-open` is selected.
+- Extended app-side implement planner fallback and build-path normalization to match bridge behavior:
+  - `packages/rb-apps/src/fpga/toolchainBackend.ts`
+  - added `buildpack-open` backend support across plan normalization, deterministic plan ID derivation, cache keys, and build-path hashing
+  - propagated required tool provenance (`source`, `integrity`) through implement plan/build path and doctor hash payload
+  - propagated buildpack metadata into build path and implement-run payloads.
+- Extended shared probe schema for buildpack provenance fields:
+  - `packages/rb-apps/src/fpga/toolchainTypes.ts`
+  - `ToolProbeTool`/alternates now include optional `buildpackName` and `buildpackVersion`.
+- Updated setup and HDL plan summary surfaces for buildpack-aware reporting:
+  - `packages/rb-apps/src/apps/ToolchainSetupApp.tsx` now shows selected buildpack name/version in Verify backend step detail
+  - `packages/rb-apps/src/components/HdlEditorPanel.tsx` plan summary now shows buildpack name/version when present.
+- Updated tests for new buildpack-first selection policy:
+  - `packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js`
+  - `packages/rb-apps/src/__tests__/toolchain-implement-plan.test.ts`
+  - `packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx`.
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-implement-plan.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-implement-plan.test.ts packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Buildpack Framework: Install/Status/Remove + Resolver Source:buildpack + Setup UI Controls)
+
+- Added buildpack framework module in bridge:
+  - `packages/rb-fpga-bridge/src/toolchain-buildpack.js`
+  - includes canonical store-root resolution by OS (`RB_FPGA_BUILDPACKS_DIR` override), manifest parsing/normalization, file checksum verification, buildpack tool candidate resolution, install/remove helpers.
+- Extended resolver to include buildpack-managed tool candidates:
+  - `packages/rb-fpga-bridge/src/toolchain-tool-resolver.js`
+  - new `resolveManagedToolCandidates(...)` combines bundled + buildpack candidates with integrity metadata.
+- Extended bridge tool detection policy and capabilities to recognize `source:"buildpack"`:
+  - `packages/rb-fpga-bridge/src/index.js`
+  - candidate priority now includes buildpack verified/corrupt states
+  - `findYosys`, `findOpenFPGALoader`, `findNextpnrXilinx`, `findF4pga` now consume managed candidates.
+- Added buildpack run and API surface to bridge:
+  - `GET /api/toolchain/buildpack/status`
+  - `POST /api/toolchain/buildpack/install`
+  - `GET /api/toolchain/buildpack/runs/:runId`
+  - `GET /api/toolchain/buildpack/runs/:runId/stream`
+  - `POST /api/toolchain/buildpack/remove`
+  - run registry kind `buildpack` with SSE/poll semantics and cancellation compatibility.
+- Generalized run plumbing for buildpack step/kind:
+  - `packages/rb-fpga-bridge/src/toolchain-program-runs.js` (`step:"buildpack"` supported)
+  - `packages/rb-fpga-bridge/src/toolchain-run-cancel.js` (`kind:"buildpack"` supported).
+- Extended app-side shared schema for buildpack:
+  - `packages/rb-apps/src/fpga/toolchainTypes.ts`
+  - added buildpack status/install/run/remove types; extended `ToolchainStep` and probe source unions with `buildpack`.
+- Added app backend methods for buildpack endpoints and streaming:
+  - `packages/rb-apps/src/fpga/toolchainBackend.ts`
+  - added `getBuildpackStatus`, `installBuildpack`, `getBuildpackRunStatus`, `openBuildpackRunStream`, `removeBuildpack`
+  - added normalization/type-guards for buildpack status/run/remove payloads.
+- Added Toolchain Setup UI controls for buildpack lifecycle:
+  - `packages/rb-apps/src/apps/ToolchainSetupApp.tsx`
+  - buildpack section with refresh/install/remove actions
+  - live run logs with SSE-first + polling fallback monitoring
+  - setup source badges now include `Buildpack`.
+- Added/updated tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-buildpack.test.js` (store root mapping, manifest verification, buildpack tool resolution)
+  - `packages/rb-fpga-bridge/tests/toolchain-tool-resolver.test.js` (managed buildpack candidate coverage)
+  - `packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx` (buildpack section/action coverage + mocks for new backend methods)
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-buildpack.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-tool-resolver.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-run-cancel.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-program-runs.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-buildpack.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-tool-resolver.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-board-detect.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-synth-script.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-run-cancel.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-apps/src/__tests__/toolchain-probe-source.test.ts packages/rb-apps/src/__tests__/toolchain-synth.test.ts`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Bundled Yosys Payload + Integrity-Aware Selection + Setup Guidance)
+
+- Added bundled Yosys payload descriptors and platform bins under bridge tools:
+  - `packages/rb-fpga-bridge/tools/manifest.json` now includes `yosys` with version + per-platform `sha256` entries.
+  - added placeholder platform binaries for deterministic resolver/tests:
+    - `packages/rb-fpga-bridge/tools/yosys/win32-x64/yosys.exe`
+    - `packages/rb-fpga-bridge/tools/yosys/linux-x64/yosys`
+    - `packages/rb-fpga-bridge/tools/yosys/darwin-arm64/yosys`
+    - `packages/rb-fpga-bridge/tools/yosys/darwin-x64/yosys`
+- Finalized integrity/provenance selection behavior for Yosys in bridge detection:
+  - `packages/rb-fpga-bridge/src/index.js`
+  - bundled verified candidate is selected first; bundled corruption is surfaced as `source:"bundled"`, `status:"missing"`, `integrity:"corrupt"` with repair guidance (no silent fallback).
+  - probe output now includes selected tool plus deterministic `alternates[]` for all relevant tools.
+- Added explicit synth-side path resolution helper and usage:
+  - `packages/rb-fpga-bridge/src/toolchain-synth.js` adds `resolveSelectedYosysPath(capabilities)`.
+  - `packages/rb-fpga-bridge/src/index.js` synth endpoint now uses resolved selected Yosys path explicitly (bundled/system), instead of implicit PATH assumptions.
+- Updated setup UX for Yosys integrity actionability:
+  - `packages/rb-apps/src/apps/ToolchainSetupApp.tsx`
+  - adds dedicated `Yosys (synthesis)` tool row in setup checklist
+  - surfaces integrity states and corrupt-bundle messaging; corrupt Yosys now shows repair guidance in needs-action filter.
+- Extended shared probe schema/normalization:
+  - `packages/rb-apps/src/fpga/toolchainTypes.ts`
+  - `packages/rb-apps/src/fpga/toolchainBackend.ts`
+  - preserves `integrity` + `alternates` deterministically through probe/preflight/doctor/build-path hashing and cache normalization.
+- Added/updated tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-tool-resolver.test.js`
+    - Yosys bundled hash-match and hash-mismatch coverage
+  - `packages/rb-fpga-bridge/tests/toolchain-synth-script.test.js`
+    - verifies synth path helper picks bundled path and rejects missing/corrupt selection
+  - `packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx`
+    - verifies corrupt Yosys appears as needs-action with repair guidance
+  - `packages/rb-apps/src/__tests__/toolchain-probe-source.test.ts`
+    - verifies probe preserves integrity + alternates fields
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-tool-resolver.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-synth.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-tool-resolver.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-synth-script.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-board-detect.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-apps/src/__tests__/toolchain-probe-source.test.ts packages/rb-apps/src/__tests__/toolchain-synth.test.ts packages/rb-apps/src/__tests__/toolchain-doctor-report.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Bundled-First Tool Selection + Integrity/Alternates in Probe + Setup Actionability)
+
+- Finalized deterministic bundled-first selection behavior in bridge probe detection:
+  - `packages/rb-fpga-bridge/src/index.js`
+  - explicit candidate ranking now enforces: bundled verified > system > found_not_in_path > missing
+  - bundled corruption (`sha256` mismatch / manifest integrity failures) is surfaced as selected `source: "bundled"`, `status: "missing"`, `integrity: "corrupt"` with repair guidance (no silent fallback to system)
+  - selected tool entries now include deterministic `alternates[]` for debugging provenance
+- Extended bundled resolver outcomes for integrity-aware states:
+  - `packages/rb-fpga-bridge/src/toolchain-tool-resolver.js`
+  - bundled manifest corruption/mismatch now returns `source: "bundled"` + `integrity: "corrupt"`
+  - verified manifest binaries return `integrity: "verified"`
+  - legacy bundled path fallback remains supported with `integrity: "unknown"`
+- Propagated integrity + alternates through app-side schema and normalization:
+  - `packages/rb-apps/src/fpga/toolchainTypes.ts`
+  - `packages/rb-apps/src/fpga/toolchainBackend.ts`
+  - probe/preflight/doctor/build-path hashing payloads now include tool `integrity` and `alternates`
+  - bridge-probe responses are normalized/cached with deterministic alternate ordering
+- Updated Toolchain Setup page to surface checksum-aware actionable state:
+  - `packages/rb-apps/src/apps/ToolchainSetupApp.tsx`
+  - tool rows now display integrity (`verified|corrupt|unknown`)
+  - bundled corruption renders explicit `Corrupt bundle detected` text and repair guidance
+  - needs-action filter explicitly treats bundled corrupt state as actionable
+
+- Added/updated tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-tool-resolver.test.js`
+    - verifies `integrity: "verified"` for hash match and `integrity: "corrupt"` for mismatch
+  - `packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx`
+    - verifies corrupt bundled tool is shown in needs-action with repair guidance
+  - `packages/rb-apps/src/__tests__/toolchain-probe-source.test.ts`
+    - verifies probe normalization preserves `integrity` and `alternates`
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-tool-resolver.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-tool-resolver.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-board-detect.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-apps/src/__tests__/toolchain-probe-source.test.ts packages/rb-apps/src/__tests__/toolchain-doctor-report.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Bundled Tool Manifest + SHA256 Verification for openFPGALoader)
+
+- Added bundled tool payload manifest for bridge-managed binaries:
+  - `packages/rb-fpga-bridge/tools/manifest.json`
+  - includes `openFPGALoader` versioned platform bins (`win32-x64`, `linux-x64`, `darwin-arm64`, `darwin-x64`) with pinned `sha256` values.
+- Expanded bundled resolver in `packages/rb-fpga-bridge/src/toolchain-tool-resolver.js`:
+  - added deterministic platform key utility (`platform-arch`)
+  - added manifest loading from `packages/rb-fpga-bridge/tools/manifest.json` (with env-root override support)
+  - added bundled binary integrity verification (file existence + SHA256 match)
+  - added Unix executable-bit enforcement for verified bundled binaries
+  - resolver now returns structured bundled/missing outcomes instead of path-only hits.
+- Updated bridge tool detection in `packages/rb-fpga-bridge/src/index.js`:
+  - tool probes now consume structured resolver outcomes and surface bundled integrity failures as explicit missing-tool statuses with suggested fixes
+  - `openFPGALoader` probe now reports bundled version directly from manifest when bundled binary verification passes
+  - capability-to-probe mapping now preserves missing-tool errors/suggestedFix and avoids treating `status: "missing"` as available.
+- Updated resolver tests in `packages/rb-fpga-bridge/tests/toolchain-tool-resolver.test.js`:
+  - platform key mapping coverage
+  - bundled hash-match acceptance
+  - bundled hash-mismatch rejection
+  - no-manifest-entry fallback behavior (`null` => caller falls back to system PATH).
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-tool-resolver.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-tool-resolver.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-board-detect.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Toolchain Setup Source Badges + Filter Controls)
+
+- Updated `packages/rb-apps/src/apps/ToolchainSetupApp.tsx` to add source-aware setup UX:
+  - per-tool source badges (`Bundled`, `System`, `Found, not in PATH`, `Missing`)
+  - tool list filters: `All`, `Missing / Needs action`, `Bundled only` (default: `Missing / Needs action`)
+  - “Setup complete — no additional downloads needed.” summary when all required tools are ready from bundled/system sources
+- Added deterministic filtering behavior for required tool rows without backend API changes.
+- Updated tests in `packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx`:
+  - verifies filter behavior with mixed tool sources
+  - verifies source badge text (`Bundled`) from `tool.source`
+  - verifies “no installs needed” summary when stable-path tools are ready
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx apps/toolchain-route.test.tsx`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Bundled/System Tool Resolver + Probe Source Metadata)
+
+- Added bundled/system resolver module for bridge tool discovery:
+  - `packages/rb-fpga-bridge/src/toolchain-tool-resolver.js`
+  - supports deterministic bundled lookup roots (`RB_FPGA_BUNDLED_TOOLS_DIR`, `RB_FPGA_TOOLS_DIR`, and `.redbyte/tools[/<platform>]`)
+  - resolves bundled executable candidates for tool-specific subpaths and `bin/` layouts
+- Wired resolver into bridge tool detection in `packages/rb-fpga-bridge/src/index.js`:
+  - `openFPGALoader` now checks bundled binary first, then system PATH
+  - `yosys`, `nextpnr-xilinx`, and `f4pga` now support bundled-first probing and source tagging
+  - tool capabilities now include additive `source` metadata (`bundled|system|found_not_in_path`) and preserve `suggestedFix`
+  - probe/preflight/doctor hashing payloads now include tool `source` fields for deterministic identity
+- Extended probe tool schema in app types:
+  - `packages/rb-apps/src/fpga/toolchainTypes.ts`
+  - `ToolProbeTool` now includes additive `source?: "bundled"|"system"|"not_found"|"found_not_in_path"`
+- Propagated probe source metadata through app backend normalization/hashing in:
+  - `packages/rb-apps/src/fpga/toolchainBackend.ts`
+  - includes bridge-probe path + legacy `/api/toolchain` fallback mapping
+- Surfaced source metadata in setup UIs:
+  - `packages/rb-apps/src/components/HdlEditorPanel.tsx`
+  - `packages/rb-apps/src/apps/ToolchainSetupApp.tsx`
+  - tool rows now display `source:<value>` in setup detail text
+- Added tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-tool-resolver.test.js`
+    - bundled root candidate ordering
+    - bundled executable resolution
+    - null resolution when missing
+  - `packages/rb-apps/src/__tests__/toolchain-probe-source.test.ts`
+    - verifies app backend preserves `source` from probe response
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-tool-resolver.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-tool-resolver.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-vivado-detect.test.js`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-probe-source.test.ts packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/toolchain-doctor-report.test.ts packages/rb-apps/src/__tests__/toolchain-synth.test.ts`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Dedicated Toolchain Setup App Page + Launcher Navigation + Verification Flow)
+
+- Added dedicated student-facing setup page app:
+  - `packages/rb-apps/src/apps/ToolchainSetupApp.tsx`
+  - `packages/rb-apps/src/apps/ToolchainSetupApp.js` (TS source-of-truth thin wrapper)
+  - Features:
+    - overall setup status header (`Ready` / `Found but not in PATH` / `Missing tools`)
+    - stable-path checklist for `vivado` + `openFPGALoader` with `suggestedFix` rendering
+    - ordered setup verification flow: `probeTools -> detectBoards -> resolveBuildPath` (plus preflight capture)
+    - deterministic setup report export via existing doctor-report backend
+    - OS install guidance with Windows primary commands and macOS/Linux expandable alternatives
+    - TA-mode JSON parser for pasted doctor report triage
+- Registered setup app into app boot/launcher paths:
+  - `packages/rb-apps/src/index.ts`
+  - `packages/rb-apps/src/index.js`
+  - Added `toolchain-setup` registration in both `full` and `e2e-lite` registration modes so it is launcher-discoverable.
+- Added dedicated URL route handling for setup page:
+  - `src/App.tsx`
+  - `/toolchain` and `/setup` now render the dedicated setup page directly.
+- Added HDL panel navigation hint to the dedicated setup app:
+  - `packages/rb-apps/src/components/HdlEditorPanel.tsx`
+  - Setup block now explicitly instructs users to open Launcher and run `Toolchain Setup`.
+- Added tests:
+  - `apps/toolchain-route.test.tsx`
+    - route rendering for `/toolchain`
+    - default-shell rendering for `/`
+  - `packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx`
+    - setup page render surface
+    - `found_not_in_path` + `suggestedFix` display
+    - verify call order assertion (`probe -> detect -> plan`)
+    - launcher discoverability assertion
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run apps/toolchain-route.test.tsx packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Vivado Found-Not-In-PATH Probe Signal + Setup Guidance Hardening)
+
+- Added dedicated Vivado detection module `packages/rb-fpga-bridge/src/toolchain-vivado-detect.js`:
+  - deterministic Vivado version parsing (`vivado -version`)
+  - PATH-first detection
+  - Windows/macOS/Linux common-install-path fallback detection
+  - explicit `found_not_in_path` status when executable exists outside PATH
+  - deterministic suggested PATH-fix guidance for setup UX
+- Updated bridge probe plumbing in `packages/rb-fpga-bridge/src/index.js`:
+  - `/api/toolchain/probe` tool entries now include additive `status` and optional `suggestedFix`
+  - Vivado capability now carries `status`, `foundInPath`, and optional setup fix text
+  - probe logs now emit explicit `found_not_in_path` + fix guidance when applicable
+- Updated shared tool schema in `packages/rb-apps/src/fpga/toolchainTypes.ts`:
+  - `ToolProbeTool` now supports additive `status?: "ok"|"found_not_in_path"|"missing"` and optional `suggestedFix`
+- Updated app-side planner/probe normalization in `packages/rb-apps/src/fpga/toolchainBackend.ts`:
+  - preserves new probe status/fix fields through hashing, doctor report payloads, and cache keys
+  - local planner now consistently treats `vivado` backend mode as Vivado-first stable path when Vivado is present
+  - legacy probe fallback logs surface `found_not_in_path` warnings/fix guidance
+- Hardened setup UI messaging in `packages/rb-apps/src/components/HdlEditorPanel.tsx`:
+  - setup tool rows now surface `found_not_in_path` and tool-specific fix guidance directly in the Toolchain Setup block
+
+- Added tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-vivado-detect.test.js`
+    - PATH detection case
+    - `found_not_in_path` case with mocked Windows install path
+    - deterministic version parser coverage
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-vivado-detect.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-vivado-detect.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-artifacts.test.js`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/toolchain-implement-plan.test.ts packages/rb-apps/src/__tests__/toolchain-implement-run.test.ts`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Toolchain Setup Verification UI + Vivado-First Stable Planning)
+
+- Added toolchain setup/verification surface in `packages/rb-apps/src/components/HdlEditorPanel.tsx`:
+  - new setup panel (`data-testid="hdl-toolchain-setup"`) with:
+    - required-tool status for Golden Demo (`vivado`, `yosys`, `openFPGALoader`)
+    - OS-specific install guidance commands (`windows|macos|linux`)
+    - `Verify Setup` action (`data-testid="hdl-setup-verify-button"`) that runs probe + preflight + build-path resolution
+    - `Export Setup Report` action (`data-testid="hdl-setup-export-button"`) that exports doctor report with probe/preflight/build-path context
+- Added one-click Golden Demo orchestration in `packages/rb-apps/src/components/HdlEditorPanel.tsx`:
+  - `Golden Demo: Switches → LEDs` now applies canonical example HDL + matching XDC preset and kicks off implement run with explicit snapshot handoff.
+- Hardened implement action handler in `packages/rb-apps/src/components/HdlEditorPanel.tsx`:
+  - click-event invocations no longer pollute snapshot override handling; only real snapshot-like overrides are accepted.
+- Updated planner backend selection policy to prioritize stable Vivado fallback when using the `vivado` backend id:
+  - bridge planner: `packages/rb-fpga-bridge/src/toolchain-implement-plan.js`
+  - app-side local/fallback planner: `packages/rb-apps/src/fpga/toolchainBackend.ts`
+  - open backend behavior remains open-first (nextpnr/f4pga before vivado fallback).
+- Added/updated tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js` (vivado-preferred selection assertion)
+  - `packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx` (golden demo one-click flow coverage)
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-implement-plan.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/toolchain-implement-plan.test.ts packages/rb-apps/src/__tests__/toolchain-implement-run.test.ts`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Golden Demo One-Click Flow: Example + Preset + Implement Kickoff)
+
+- Added one-click Golden Demo action in `packages/rb-apps/src/components/HdlEditorPanel.tsx`:
+  - new button `Golden Demo: Switches → LEDs` (`data-testid="hdl-golden-demo-button"`)
+  - applies Basys3 switches→LEDs example HDL (`top.v`, `top=top`)
+  - applies matching preset XDC (`basys3-switches-leds-7seg`)
+  - immediately runs existing implement flow using the prepared snapshot
+  - keeps programming as explicit second click (no auto-program)
+- Hardened implement-run handler snapshot override semantics:
+  - `handleImplementRun` now ignores DOM click events and only accepts explicit snapshot-like overrides
+  - prevents accidental preflight against empty event payloads while preserving golden-demo internal override flow
+- Added HDL golden-demo test coverage in `packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`:
+  - validates example + preset are applied to editor/XDC state
+  - validates implement run payload receives the expected top/source/constraints snapshot
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/toolchain-implement-run.test.ts`
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-implement-artifacts.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-artifacts.test.js`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Golden Path Wiring: Implement Output Bitstream -> Program Flow)
+
+- Extended implement artifact bundling in `packages/rb-fpga-bridge/src/toolchain-implement-artifacts.js`:
+  - added output-kind classification (`bitstream|report|output`)
+  - added deterministic `outputs_manifest.json` to implement ZIP bundles
+  - added bitstream extraction helpers (`findImplementBitstreamArtifact`, `readImplementBitstreamArtifact`)
+- Extended bridge implement flow in `packages/rb-fpga-bridge/src/index.js`:
+  - implement output collection now tags outputs with deterministic `kind`
+  - added `GET /api/toolchain/implement/runs/:runId/output/bitstream`
+    - returns base64 bitstream payload when available
+    - returns explicit `404 bitstream_not_found` when absent
+    - returns explicit `409 run_not_ready` while run is active
+- Extended backend API in `packages/rb-apps/src/fpga/toolchainBackend.ts`:
+  - added `getImplementBitstream(runId)`
+  - added `programImplementBitstream(runId)` to chain implement output retrieval into existing program pipeline
+  - added `ImplementBitstreamOutput` typing
+- Extended implement artifact schema in `packages/rb-apps/src/fpga/toolchainTypes.ts`:
+  - added optional implement output `kind` on `ImplementArtifactRef.outputs[]`
+- Added HDL golden-path UI wiring in `packages/rb-apps/src/components/HdlEditorPanel.tsx`:
+  - detects bitstream-capable implement artifacts
+  - shows `Program Generated Bitstream` action when implement output includes a bitstream
+  - reuses existing program run stream/poll/cancel path inline in HDL panel
+  - adds program status surface (`data-testid=\"hdl-program-status\"`) and cancel action while programming
+- Added and updated tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-implement-artifacts.test.js`
+    - validates `outputs_manifest.json` presence
+    - validates bitstream helper returns expected base64 payload
+  - `packages/rb-apps/src/__tests__/toolchain-implement-run.test.ts`
+    - validates `getImplementBitstream(...)`
+    - validates `programImplementBitstream(...)` routes bytes into `program-bitstream`
+  - `packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`
+    - validates program button appears for implement outputs containing bitstream
+    - validates click flow triggers bitstream fetch then program request
+    - validates button hidden when implement outputs contain no bitstream
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-implement-artifacts.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-artifacts.test.js`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-implement-run.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (HDL Synth Cancel UX: One-Click Synthesis Cancellation)
+
+- Added synth cancellation controls in `packages/rb-apps/src/components/HdlEditorPanel.tsx`:
+  - synth status now supports and renders terminal `Canceled` state
+  - new `Cancel Synthesis` button is shown only while a synth run is active
+  - new `handleCancelSynthRun` uses existing backend `cancelRun(runId)` and finalizes synth run state/logs
+  - synth cancellation path now cleanly stops synth stream/poll monitoring through existing terminal-run finalization
+- Added UI test coverage in `packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`:
+  - new test `cancels synth run from the HDL panel`
+  - validates running synth shows cancel button
+  - validates cancel request transitions status badge to `Canceled` and surfaces cancel logs
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-program-bitstream.test.ts packages/rb-apps/src/__tests__/toolchain-implement-run.test.ts packages/rb-apps/src/__tests__/hardware-panel.test.tsx`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Generalized Run Cancellation for Program/Synth/Implement + HDL Implement Cancel UX)
+
+- Generalized bridge cancellation semantics across run kinds:
+  - Added `packages/rb-fpga-bridge/src/toolchain-run-cancel.js` with shared cancel orchestration:
+    - run lookup across registries
+    - idempotent behavior for non-running runs
+    - process termination via injected platform-aware terminator
+    - deterministic transition to `state="canceled"` + `error="canceled_by_user"`
+  - Updated `packages/rb-fpga-bridge/src/index.js`:
+    - `POST /api/toolchain/runs/:runId/cancel` now cancels `program`, `synth`, or `implement` runs through one endpoint
+    - response now includes `kind` and returns terminal run snapshot for canceled runs
+    - bridge now maintains a shared registry list for generalized cancellation routing
+- Extended run registry logging to support per-entry step override for cancel logs:
+  - `packages/rb-fpga-bridge/src/toolchain-program-runs.js`
+    - `appendLog(...)` now accepts optional `stepOverride` to preserve correct step tags (`program|synth|implement|pnr|bitgen`)
+- Updated HDL implement flow to support user cancellation:
+  - `packages/rb-apps/src/components/HdlEditorPanel.tsx`
+    - new `Cancel Implement` button visible while implement run is active
+    - cancel action calls backend `cancelRun(runId)` and updates status/logs
+    - implement status now supports explicit `Canceled` terminal state
+    - canceled implement runs remain artifact-downloadable under existing done-state rules
+- Backend cancel normalization made run-kind safe:
+  - `packages/rb-apps/src/fpga/toolchainBackend.ts`
+    - `cancelRun(...)` now preserves incoming step semantics via generalized log normalization
+- Added tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-run-cancel.test.js` (new):
+    - implement-run cancel path with attached process
+    - cancellation done-event/state verification
+  - `packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`:
+    - implement cancel button flow + canceled status/log assertions
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-run-cancel.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-program-runs.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-run-cancel.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-program-runs.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-artifacts.test.js`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/toolchain-implement-run.test.ts packages/rb-apps/src/__tests__/toolchain-program-bitstream.test.ts packages/rb-apps/src/__tests__/hardware-panel.test.tsx`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Implement Run Scaffolding: Planned Command Execution + Streaming + Artifact Bundles)
+
+- Added implement-run orchestration types and backend contracts:
+  - `packages/rb-apps/src/fpga/toolchainTypes.ts`
+    - added `implement` toolchain step + implement run request/status/artifact interfaces
+  - `packages/rb-apps/src/fpga/toolchainBackend.ts`
+    - implemented `implementRun(...)`, `getImplementRunStatus(...)`, `openImplementRunStream(...)`, `downloadImplementArtifacts(...)`
+    - implement request payload now forwards full build-path command/tool/output metadata
+    - implement run identity is deterministic from build-path + project hashes (`runId` and `artifactId`)
+- Added full bridge implement-run scaffolding in `packages/rb-fpga-bridge/src/index.js`:
+  - new run registry instance for implement runs (bounded logs + TTL cleanup)
+  - new endpoints:
+    - `POST /api/toolchain/implement/run`
+    - `GET /api/toolchain/implement/runs/:runId`
+    - `GET /api/toolchain/implement/runs/:runId/stream`
+    - `GET /api/toolchain/implement/runs/:runId/artifacts.zip`
+  - implement execution now:
+    - normalizes project/build-path payloads
+    - writes HDL sources + optional `constraints.xdc` into deterministic run workspace
+    - executes planned commands sequentially, streams line logs, and records partial outputs
+    - returns completed failed run immediately when backend is `none` (no subprocess)
+  - artifact ZIP endpoint always emits metadata/log bundles and supports `includeSources=1`
+- Added implement artifact bundling helper:
+  - `packages/rb-fpga-bridge/src/toolchain-implement-artifacts.js`
+    - bundles `meta.json`, `commands.json`, `logs.json`, `sources_manifest.json`
+    - includes `error.txt` on failures and includes source files only when opted in
+- Extended run registry for per-log step overrides:
+  - `packages/rb-fpga-bridge/src/toolchain-program-runs.js`
+    - `appendLog(...)` now supports optional step override (used by implement phases)
+- Updated HDL panel UX for implement runs in `packages/rb-apps/src/components/HdlEditorPanel.tsx`:
+  - added `Implement (P&R)` action with preflight gating
+  - added implement run status, live streaming (SSE with polling fallback), and artifact summary
+  - added implement artifact download button + `Include sources in ZIP` option
+  - added explicit warning log when selected backend is experimental (`nextpnr-xilinx`/`f4pga`)
+- Added/updated tests:
+  - `packages/rb-apps/src/__tests__/toolchain-implement-run.test.ts`
+    - deterministic implement identity when bridge unavailable
+    - implement-run request/response normalization
+    - implement artifact download includeSources query behavior
+  - `packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`
+    - preflight-blocked implement run behavior
+    - implement run streaming flow + implement artifact download controls
+  - `packages/rb-fpga-bridge/tests/toolchain-implement-artifacts.test.js` (new)
+    - ZIP bundle minimum entries and includeSources behavior
+  - `packages/rb-fpga-bridge/tests/toolchain-program-runs.test.js`
+    - per-entry step override coverage
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-implement-artifacts.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-program-runs.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-program-runs.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-synth-artifacts.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-artifacts.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-implement-run.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/toolchain-synth.test.ts`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Authoritative Build Path Object + Synth/Doctor Integration)
+
+- Added shared build-path schema in `packages/rb-apps/src/fpga/toolchainTypes.ts`:
+  - new `ToolchainBuildPath` (`schema_version: toolchain_build_path_v1`, `plannerVersion: toolchain_planner_v1`)
+  - `ToolchainDoctorReport` now supports optional `buildPath`
+  - synth request/response artifact pathing now supports optional `buildPath` summary (`planId`, `backend`)
+- Extended backend orchestration in `packages/rb-apps/src/fpga/toolchainBackend.ts`:
+  - added `resolveBuildPath(snapshot, { refreshProbe? })` on `ToolchainBackend`
+  - deterministic build-path ID derivation from normalized project summary + tool versions + planner version
+  - session cache/index for build paths keyed by deterministic project/probe input hash
+  - `implementPlan(...)` now seeds build-path cache from returned plan data
+  - `synth(...)` now auto-resolves build path (if missing), logs selected path, and sends build-path summary to bridge
+  - doctor report generation now embeds `buildPath` (from explicit option, cache, or deterministic local recompute)
+- Updated HDL panel UX in `packages/rb-apps/src/components/HdlEditorPanel.tsx`:
+  - `Plan Implementation` now resolves/stores active build path (single source of routing truth)
+  - added active build-path status line (`backend:planId`)
+  - synth auto-resolves build path before submission and passes it through synth request payload
+  - doctor report export now passes active build path
+- Extended bridge synth/runtime metadata in `packages/rb-fpga-bridge/src/index.js`:
+  - synth request parser accepts optional `buildPath` summary
+  - synth run start metadata/logs include build-path identifiers
+  - synth artifacts now carry build-path summary for run status + downstream packaging
+- Extended synth artifact bundle metadata in `packages/rb-fpga-bridge/src/toolchain-synth-artifacts.js`:
+  - `meta.json` now includes optional `buildPath` (`planId`, `backend`) when present
+- Extended bridge doctor report payload in `packages/rb-fpga-bridge/src/index.js`:
+  - doctor report now includes `buildPath` snapshot derived from deterministic implement-plan selection
+
+- Added/updated tests:
+  - `packages/rb-apps/src/__tests__/toolchain-implement-plan.test.ts` (resolveBuildPath determinism)
+  - `packages/rb-apps/src/__tests__/toolchain-synth.test.ts` (synth payload includes build-path summary; artifact carries buildPath)
+  - `packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx` (plan button + active build-path UI + synth flow with build-path resolution)
+  - `packages/rb-apps/src/__tests__/toolchain-doctor-report.test.ts` (doctor report includes buildPath with project input)
+  - `packages/rb-fpga-bridge/tests/toolchain-synth-artifacts.test.js` (bundle remains valid with buildPath-bearing artifact metadata)
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-implement-plan.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-synth-artifacts.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-synth-artifacts.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-program-runs.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-board-detect.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-synth-script.test.js`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-implement-plan.test.ts packages/rb-apps/src/__tests__/toolchain-synth.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/toolchain-doctor-report.test.ts`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Implementation Plan Dry-Run Endpoint + UI Surface)
+
+- Added shared implement-plan schema in `packages/rb-apps/src/fpga/toolchainTypes.ts`:
+  - `ImplementPlanRequest`, `ImplementPlanResult`, backend union (`nextpnr-xilinx|f4pga|vivado-fallback|none`)
+  - typed required tools, command steps, and expected outputs
+- Extended backend API in `packages/rb-apps/src/fpga/toolchainBackend.ts`:
+  - new `implementPlan(snapshot, { refreshProbe? })` method on `ToolchainBackend`
+  - bridge-first plan retrieval (`POST /api/toolchain/implement/plan`) with deterministic local fallback
+  - deterministic local planner (`createToolchainImplementPlan`) with stable `planId`, sorted tools/commands/outputs, and structured warnings
+  - legacy probe fallback now includes `f4pga` capability mapping
+- Added bridge planner module `packages/rb-fpga-bridge/src/toolchain-implement-plan.js`:
+  - deterministic backend selection priority:
+    1) `nextpnr-xilinx` when known-supported
+    2) `f4pga`
+    3) `vivado-fallback`
+    4) `none`
+  - deterministic command/output plan generation with Basys3-only semantics
+  - structured warnings for missing constraints, VHDL presence, and unsupported construct hints
+- Added bridge endpoint in `packages/rb-fpga-bridge/src/index.js`:
+  - `POST /api/toolchain/implement/plan` (dry-run only, no subprocess/P&R execution)
+  - request validation + deterministic response
+  - fallback error-path plan with structured warnings/logs
+- Expanded bridge capability probing in `packages/rb-fpga-bridge/src/index.js`:
+  - added `findF4pga()` detection and `capabilities.f4pga`
+  - `/api/toolchain/probe` tool list now includes `f4pga`
+- Updated HDL UI in `packages/rb-apps/src/components/HdlEditorPanel.tsx`:
+  - new `Plan Implementation` action
+  - plan summary surface (`backend`, `planId`, required tools, command preview)
+  - build console now shows plan logs/warnings for dry-run output
+- Added tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js` (backend selection determinism + plan shape)
+  - `packages/rb-apps/src/__tests__/toolchain-implement-plan.test.ts` (backend bridge call + normalization)
+  - updated `packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx` with implementation-plan UI coverage
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-implement-plan.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-implement-plan.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-synth-script.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-board-detect.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-program-runs.test.js`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-implement-plan.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/toolchain-synth.test.ts`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Synth ZIP Include Sources Opt-In + Sources Manifest)
+
+- Extended synth artifact packaging in `packages/rb-fpga-bridge/src/toolchain-synth-artifacts.js`:
+  - always emits `sources_manifest.json` with source path + SHA-256 + presence metadata
+  - includes `sources/<path>` file contents only when `includeSources` is explicitly enabled
+- Extended synth artifact metadata in `packages/rb-fpga-bridge/src/index.js` to track source path mapping (`artifact.sources[]` with logical path + stored path) for deterministic packaging.
+- Hardened synth ZIP endpoint query semantics in `packages/rb-fpga-bridge/src/index.js`:
+  - `GET /api/toolchain/synth/runs/:runId/artifacts.zip` now validates `includeSources` as `0|1` when provided
+  - default remains source exclusion (privacy-first)
+- Updated backend download API in `packages/rb-apps/src/fpga/toolchainBackend.ts`:
+  - `downloadSynthArtifacts(runId, { includeSources? })` now appends `?includeSources=1` only on explicit opt-in
+- Updated HDL panel download UX in `packages/rb-apps/src/components/HdlEditorPanel.tsx`:
+  - added checkbox `Include sources in ZIP` (default unchecked)
+  - download action passes checkbox value to backend
+- Added/updated tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-synth-artifacts.test.js` verifies ZIP behavior with includeSources off/on and manifest presence
+  - `packages/rb-apps/src/__tests__/toolchain-synth.test.ts` verifies backend query param behavior (`includeSources=1`)
+  - `packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx` verifies checkbox toggles download request URL behavior
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-synth-artifacts.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-synth-artifacts.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-synth-script.test.js`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-synth.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-program-bitstream.test.ts`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-11 (Yosys Synth Artifacts ZIP Download Endpoint + HDL Download Action)
+
+- Added synth artifact bundle helpers in `packages/rb-fpga-bridge/src/toolchain-synth-artifacts.js`:
+  - `prepareSynthArtifactBundle(...)` builds deterministic ZIP entry lists with safe repo-relative file resolution
+  - `createSynthArtifactsZipBuffer(...)` creates in-memory ZIP bundles containing synth artifacts and logs
+  - bundle contents include `meta.json` + `logs.json` always, `error.txt` on failed runs, and partial outputs when available
+- Extended synth run artifact metadata in `packages/rb-fpga-bridge/src/index.js`:
+  - synth run artifacts now track script hash, source file paths, run script path, and output directory hints for bundle assembly
+- Added bridge download endpoint `GET /api/toolchain/synth/runs/:runId/artifacts.zip` in `packages/rb-fpga-bridge/src/index.js`:
+  - `404` for unknown run
+  - `409` (`run_not_ready`) while synth run is still running
+  - returns `application/zip` with deterministic `Content-Disposition` filename `rb-synth-<artifactId>.zip`
+  - supports optional `?includeSources=1` (sources excluded by default)
+- Added backend helper `downloadSynthArtifacts(runId)` in `packages/rb-apps/src/fpga/toolchainBackend.ts`:
+  - fetches ZIP bytes from bridge
+  - returns `{ filename, bytes }` for UI download flow
+- Updated HDL panel in `packages/rb-apps/src/components/HdlEditorPanel.tsx`:
+  - adds `Download Synth Artifacts` action after synth run completion (success or failure)
+  - saves with deterministic UI filename `rb-synth-<artifactId>.zip`
+- Added/updated tests:
+  - `packages/rb-fpga-bridge/tests/toolchain-synth-artifacts.test.js` validates ZIP entries for completed and failed synth runs
+  - `packages/rb-apps/src/__tests__/toolchain-synth.test.ts` validates backend ZIP download method
+  - `packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx` validates synth download button visibility and artifact-based filename
+
+- **Build Verification**:
+  - ✅ `node --check packages/rb-fpga-bridge/src/index.js`
+  - ✅ `node --check packages/rb-fpga-bridge/src/toolchain-synth-artifacts.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-program-runs.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-synth-script.test.js`
+  - ✅ `node packages/rb-fpga-bridge/tests/toolchain-synth-artifacts.test.js`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-synth.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-program-bitstream.test.ts`
+- **Attribution**: Connor Angiel
+
 This file is the single authoritative source of truth for:
 
 \- Project phase

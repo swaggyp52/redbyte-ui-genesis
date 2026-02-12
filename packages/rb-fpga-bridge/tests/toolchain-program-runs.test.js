@@ -135,6 +135,23 @@ function runCustomStepTest() {
   assert.equal(status.logs[0].step, "synth");
 }
 
+function runStepOverrideTest() {
+  const registry = createProgramRunRegistry({ logLimit: 10, ttlMs: 60000, step: "implement" });
+  registry.startRun({ runId: "run-impl" });
+  registry.appendLog("run-impl", "info", "pnr-line", null, "pnr");
+  registry.appendLog("run-impl", "warn", "bitgen-line", null, "bitgen");
+  const status = registry.getStatus("run-impl", 0);
+  assert.ok(status);
+  assert.equal(status.nextOffset, 2);
+  assert.deepEqual(
+    status.logs.map((entry) => ({ step: entry.step, msg: entry.msg })),
+    [
+      { step: "pnr", msg: "pnr-line" },
+      { step: "bitgen", msg: "bitgen-line" },
+    ]
+  );
+}
+
 runRegistryOffsetTest();
 runSseFrameTest();
 runDoneStateTest();
@@ -143,4 +160,5 @@ runCancelTransitionTest();
 runCancelAfterDoneNoopTest();
 runActiveBoardLockTest();
 runCustomStepTest();
+runStepOverrideTest();
 console.log("[TEST] toolchain program run registry passed");

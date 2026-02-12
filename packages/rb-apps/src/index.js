@@ -17,6 +17,10 @@ export * from './components/IntegrityBadge';
 export { stableSerialize, stableHash, hashBytes } from './utils/stableSerialize';
 export { loadSnapshot, wasLastShutdownClean, clearAllSnapshots } from './utils/snapshotSystem';
 export { useRenderStormDetector } from './hooks/useRenderStormDetector';
+export { createRBProject, decodeRBProject, encodeRBProject } from './export/projectFormat';
+export { labProjectToRBProject, rbProjectToLabProject } from './utils/labProjectRbprojAdapter';
+export { clearProjectAutosaveByProjectId, getCanonicalProjectAutosaveKey, loadRbprojAutosave, loadRecentProjects, } from './utils/rbprojAutosave';
+export { decodeInstructorProjectArchive } from './starterKits/instructorPack';
 export { hashBytesOffThread, stableHashOffThread, stableSerializeOffThread, terminateComputeWorker, } from './utils/computeWorker';
 export { installErrorHandlers, reportError, reportPerfViolation, addBreadcrumb, getBreadcrumbs, setReportSink, setPerfSampleRate, } from './utils/errorReporting';
 export { buildEvidenceManifest, verifyEvidenceManifest, serializeManifest, } from './utils/evidenceManifest';
@@ -61,6 +65,10 @@ export async function registerAllApps(options) {
             const { FilesApp } = await import('./apps/FilesApp');
             registerApp(FilesApp);
         });
+        await safeRegister('toolchain-setup', async () => {
+            const { ToolchainSetupApp } = await import('./apps/ToolchainSetupApp');
+            registerApp(ToolchainSetupApp);
+        });
         await safeRegister('logic-playground', async () => {
             const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundApp');
             registerApp(LogicPlaygroundApp);
@@ -87,6 +95,10 @@ export async function registerAllApps(options) {
     await safeRegister('files', async () => {
         const { FilesApp } = await import('./apps/FilesApp');
         registerApp(FilesApp);
+    });
+    await safeRegister('toolchain-setup', async () => {
+        const { ToolchainSetupApp } = await import('./apps/ToolchainSetupApp');
+        registerApp(ToolchainSetupApp);
     });
     await safeRegister('terminal', async () => {
         const { TerminalApp } = await import('./apps/TerminalApp');

@@ -18,6 +18,18 @@ export * from './components/IntegrityBadge';
 export { stableSerialize, stableHash, hashBytes } from './utils/stableSerialize';
 export { loadSnapshot, wasLastShutdownClean, clearAllSnapshots } from './utils/snapshotSystem';
 export { useRenderStormDetector } from './hooks/useRenderStormDetector';
+export { createRBProject, decodeRBProject, encodeRBProject, type RBProject } from './export/projectFormat';
+export { labProjectToRBProject, rbProjectToLabProject } from './utils/labProjectRbprojAdapter';
+export {
+  clearProjectAutosaveByProjectId,
+  getCanonicalProjectAutosaveKey,
+  loadRbprojAutosave,
+  loadRecentProjects,
+  type RecentProjectEntryV1,
+} from './utils/rbprojAutosave';
+export {
+  decodeInstructorProjectArchive,
+} from './starterKits/instructorPack';
 export {
   hashBytesOffThread,
   stableHashOffThread,
@@ -104,6 +116,10 @@ export async function registerAllApps(options?: { mode?: RegisterAllAppsMode }) 
       const { FilesApp } = await import('./apps/FilesApp');
       registerApp(FilesApp);
     });
+    await safeRegister('toolchain-setup', async () => {
+      const { ToolchainSetupApp } = await import('./apps/ToolchainSetupApp');
+      registerApp(ToolchainSetupApp);
+    });
     await safeRegister('logic-playground', async () => {
       const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundApp');
       registerApp(LogicPlaygroundApp);
@@ -131,6 +147,10 @@ export async function registerAllApps(options?: { mode?: RegisterAllAppsMode }) 
   await safeRegister('files', async () => {
     const { FilesApp } = await import('./apps/FilesApp');
     registerApp(FilesApp);
+  });
+  await safeRegister('toolchain-setup', async () => {
+    const { ToolchainSetupApp } = await import('./apps/ToolchainSetupApp');
+    registerApp(ToolchainSetupApp);
   });
   await safeRegister('terminal', async () => {
     const { TerminalApp } = await import('./apps/TerminalApp');

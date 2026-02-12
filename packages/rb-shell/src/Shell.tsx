@@ -54,7 +54,16 @@ import { OnboardingModal } from './OnboardingModal';
 import { AboutModal } from './AboutModal';
 import { ExamplePicker } from './ExamplePicker';
 import { BitstreamProvenanceModal } from './BitstreamProvenanceModal';
-import { loadExampleAsProject, type ExampleId } from '@redbyte/rb-apps';
+import {
+  decodeInstructorProjectArchive,
+  decodeRBProject,
+  getCanonicalProjectAutosaveKey,
+  loadExampleAsProject,
+  loadRbprojAutosave,
+  rbProjectToLabProject,
+  type ExampleId,
+  type RBProject,
+} from '@redbyte/rb-apps';
 import type { BitstreamProvenanceMetadata } from '@redbyte/rb-fpga-toolchain';
 import type { LabProjectV1, CircuitV1 } from '@redbyte/rb-utils';
 import { exportEvidenceCapsule, importEvidenceCapsule, useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
@@ -66,7 +75,7 @@ import {
   generateImportSummary,
   validateUnifiedProjectStoreCompatibility,
 } from '@redbyte/rb-lab-engine';
-import { serialize, type Circuit, type Connection, CircuitEngine, toCircuitV1, fromCircuitV1 } from '@redbyte/rb-logic-core';
+import { serialize, type Circuit, type Connection, CircuitEngine, toCircuitV1 } from '@redbyte/rb-logic-core';
 import { TopBar } from './TopBar';
 import { RecoveryPrompt, type RecoveryAction } from './RecoveryPrompt';
 import { useSessionDiagnosticsStore, getDiagnosticsSnapshot } from './sessionDiagnosticsStore';
@@ -121,6 +130,17 @@ interface ProjectSummaryReport {
   title: string;
   items: ProjectSummaryItem[];
   warnings: string[];
+}
+
+interface StarterInstructionsPayload {
+  labId: string;
+  title: string;
+  timeEstimate: string;
+  learningGoal: string;
+  steps: string[];
+  commonMistakes: string[];
+  submit: string[];
+  rubric: string[];
 }
 
 interface AppErrorBoundaryProps {
@@ -1007,7 +1027,12 @@ export const Shell: React.FC<ShellProps> = () => {
   const openSettings = useCallback(() => openWindow('settings'), [openWindow]);
 
   const loadImportedProject = useCallback(
-    (project: LabProjectV1, circuit: Circuit) => {
+    (
+      project: LabProjectV1,
+      circuit: Circuit,
+      targetAppId: 'logic-playground' | 'ece-lab' = 'logic-playground',
+      starterInstructions?: StarterInstructionsPayload,
+    ) => {
       const baseName = (project.name || 'imported-circuit').trim();
       const safeName = baseName.replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '');
       const filename = `${safeName || 'imported-circuit'}.rblogic`;
@@ -1015,40 +1040,235 @@ export const Shell: React.FC<ShellProps> = () => {
       const contentStr = JSON.stringify(serialized);
       const fileId = useFileSystemStore.getState().createFile('documents', filename, contentStr);
 
-      openWindow('logic-playground', {
-        resourceId: fileId,
-        resourceType: 'file',
-      });
+      if (targetAppId === 'logic-playground') {
+        openWindow('logic-playground', {
+          resourceId: fileId,
+          resourceType: 'file',
+          starterInstructions: starterInstructions ?? undefined,
+        });
+      } else {
+        openWindow(targetAppId, starterInstructions ? { starterInstructions } : undefined);
+      }
     },
     [openWindow]
   );
 
-  const handleLoadExample = useCallback(
-    (exampleId: ExampleId) => {
-      try {
-        const project = loadExampleAsProject(exampleId);
-        currentProjectRef.current = project;
-        loadUnifiedProject(project);
-
-        // Convert to Circuit format for Logic Playground
-        const circuit = fromCircuitV1(project.circuit);
-
-        // Persist example as file and open
-        loadImportedProject(project, circuit);
-
-        toast.success(`Loaded example: ${project.name}`);
-        logSystemEvent({
-          level: 'action',
-          source: 'examples',
-          message: `Loaded example: ${project.name}`,
-          data: { projectId: project.projectId, exampleId },
-        });
-      } catch (error) {
-        console.error('Failed to load example:', error);
-        toast.error(`Failed to load example: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  const hydrateImportedProject = useCallback(
+    (
+      project: LabProjectV1,
+      source: 'user-file' | 'starter' | 'recovery',
+      targetAppId: 'logic-playground' | 'ece-lab' = 'logic-playground',
+      starterInstructions?: StarterInstructionsPayload,
+    ) => {
+      const compatibility = validateUnifiedProjectStoreCompatibility(project);
+      if (!compatibility.compatible) {
+        throw new Error(`Missing required fields: ${compatibility.missingFields.join(', ')}`);
       }
+
+      prepareImportedProjectState(project, source);
+      const warnings = getImportWarnings(project);
+
+      currentProjectRef.current = project;
+      loadUnifiedProject(project);
+
+      const circuit = convertCircuitV1ToCircuit(project.circuit);
+      loadImportedProject(project, circuit, targetAppId, starterInstructions);
+
+      return {
+        warnings,
+        summary: generateImportSummary(project, true, warnings),
+      };
     },
     [loadUnifiedProject, loadImportedProject]
+  );
+
+  const importStarterProject = useCallback(
+    async (
+      exampleId: ExampleId,
+      targetAppId: 'logic-playground' | 'ece-lab' = 'logic-playground',
+      starterInstructions?: StarterInstructionsPayload,
+    ) => {
+      const starterProject = loadExampleAsProject(exampleId);
+      const capsule = await exportEvidenceCapsule(starterProject);
+      const { project, integrity } = await importEvidenceCapsule(capsule);
+      const { warnings, summary } = hydrateImportedProject(project, 'starter', targetAppId, starterInstructions);
+
+      toast.success(summary);
+      logSystemEvent({
+        level: 'action',
+        source: 'examples',
+        message: `Loaded example starter: ${project.name}`,
+        data: {
+          projectId: project.projectId,
+          exampleId,
+          targetAppId,
+          integrity: integrity.status,
+          warningCount: warnings.length,
+        },
+      });
+    },
+    [hydrateImportedProject]
+  );
+
+  const handleLoadExample = useCallback(
+    (
+      exampleId: ExampleId,
+      targetAppId: 'logic-playground' | 'ece-lab' = 'logic-playground',
+      starterInstructions?: StarterInstructionsPayload,
+    ) => {
+      void importStarterProject(exampleId, targetAppId, starterInstructions).catch((error) => {
+        console.error('Failed to load example starter:', error);
+        toast.error(`Failed to load starter: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      });
+    },
+    [importStarterProject]
+  );
+
+  const handleOpenStarterProject = useCallback(
+    (starter: {
+      exampleId: ExampleId;
+      targetAppId: 'logic-playground' | 'ece-lab';
+      starterId?: string;
+      instructions?: StarterInstructionsPayload;
+    }) => {
+      handleLoadExample(starter.exampleId, starter.targetAppId, starter.instructions);
+    },
+    [handleLoadExample]
+  );
+
+  const decodeBase64Payload = useCallback((value: string): Uint8Array => {
+    const binary = atob(value);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return bytes;
+  }, []);
+
+  const handleOpenInstructorPackProject = useCallback(
+    async (starter: {
+      starterId: string;
+      targetAppId: 'logic-playground' | 'ece-lab';
+      packId: string;
+      projectArchiveBase64: string;
+      instructions: StarterInstructionsPayload;
+    }) => {
+      try {
+        const capsuleBytes = decodeBase64Payload(starter.projectArchiveBase64);
+        const rbProject = await decodeInstructorProjectArchive(capsuleBytes);
+        const project = rbProjectToLabProject(rbProject);
+        const { warnings, summary } = hydrateImportedProject(project, 'starter', starter.targetAppId, starter.instructions);
+
+        toast.success(summary);
+        logSystemEvent({
+          level: 'action',
+          source: 'starter-pack',
+          message: `Loaded instructor starter pack: ${project.name}`,
+          data: {
+            projectId: project.projectId,
+            starterId: starter.starterId,
+            packId: starter.packId,
+            targetAppId: starter.targetAppId,
+            warningCount: warnings.length,
+          },
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.error('Failed to load instructor starter pack:', error);
+        toast.error(`Failed to open instructor pack: ${message}`);
+        logSystemEvent({
+          level: 'error',
+          source: 'starter-pack',
+          message: 'Instructor starter pack import failed',
+          data: {
+            starterId: starter.starterId,
+            packId: starter.packId,
+            error: message,
+          },
+        });
+      }
+    },
+    [decodeBase64Payload, hydrateImportedProject]
+  );
+
+  const handleOpenSubmissionProject = useCallback(
+    async (payload: { project: RBProject; targetAppId: 'logic-playground' | 'ece-lab' }) => {
+      try {
+        const importedProject = rbProjectToLabProject(payload.project);
+        const { warnings, summary } = hydrateImportedProject(importedProject, 'user-file', payload.targetAppId);
+        if (warnings.length > 0) {
+          console.warn('Submission import warnings:', warnings);
+        }
+        toast.success(summary);
+        logSystemEvent({
+          level: 'action',
+          source: 'submission',
+          message: `Opened submission project: ${importedProject.name}`,
+          data: {
+            projectId: importedProject.projectId,
+            targetAppId: payload.targetAppId,
+            warningCount: warnings.length,
+          },
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.error('Failed to open submission project:', error);
+        toast.error(`Failed to open submission project: ${message}`);
+        logSystemEvent({
+          level: 'error',
+          source: 'submission',
+          message: 'Submission project import failed',
+          data: { error: message },
+        });
+      }
+    },
+    [hydrateImportedProject]
+  );
+
+  const handleOpenRecentProject = useCallback(
+    async (payload: { projectId: string; targetAppId: 'logic-playground' | 'ece-lab' }) => {
+      try {
+        const autosaveKey = getCanonicalProjectAutosaveKey(payload.projectId);
+        const autosave = loadRbprojAutosave(autosaveKey);
+        if (!autosave) {
+          toast.error(`No autosave data found for project "${payload.projectId}".`);
+          return;
+        }
+
+        const rbProject = decodeRBProject(autosave.projectJson);
+        const importedProject = rbProjectToLabProject(rbProject);
+        const { warnings, summary } = hydrateImportedProject(importedProject, 'recovery', payload.targetAppId);
+        if (warnings.length > 0) {
+          console.warn('Recent project recovery warnings:', warnings);
+        }
+
+        toast.success(summary);
+        logSystemEvent({
+          level: 'action',
+          source: 'recovery',
+          message: `Recovered autosaved project: ${importedProject.name}`,
+          data: {
+            projectId: payload.projectId,
+            targetAppId: payload.targetAppId,
+            warningCount: warnings.length,
+          },
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.error('Failed to recover recent project:', error);
+        toast.error(`Failed to recover project: ${message}`);
+        logSystemEvent({
+          level: 'error',
+          source: 'recovery',
+          message: 'Recent project recovery failed',
+          data: {
+            projectId: payload.projectId,
+            error: message,
+          },
+        });
+      }
+    },
+    [hydrateImportedProject]
   );
 
   // Auto-launch Logic Playground from URL parameters (Deep Linking)
@@ -1703,39 +1923,10 @@ export const Shell: React.FC<ShellProps> = () => {
           // Import and verify integrity
           const blob = file;
           const { project, integrity } = await importEvidenceCapsule(blob);
-
-          // Validate project structure for compatibility
-          const compatibility = validateUnifiedProjectStoreCompatibility(project);
-          if (!compatibility.compatible) {
-            toast.error(
-              `Import failed: Missing required fields: ${compatibility.missingFields.join(', ')}`
-            );
-            console.error('Incompatible project structure:', compatibility);
-            return;
-          }
-
-          // Prepare project state with full conversions
-          const importedState = prepareImportedProjectState(project, 'user-file');
-
-          // Get any warnings but continue with import
-          const warnings = getImportWarnings(project);
+          const { warnings, summary } = hydrateImportedProject(project, 'user-file', 'logic-playground');
           if (warnings.length > 0) {
             console.warn('Import warnings:', warnings);
           }
-
-          // Store in ref for cross-app access
-          currentProjectRef.current = project;
-
-          // Load into unified project store (for Virtual Lab)
-          // This handles the core project state
-          loadUnifiedProject(project);
-
-          // Convert circuit to Logic Playground format and persist
-          const circuit = convertCircuitV1ToCircuit(project.circuit);
-          loadImportedProject(project, circuit);
-
-          // Show status with summary
-          const summary = generateImportSummary(project, true, warnings);
           toast.success(summary);
 
           // Log event for evidence trail
@@ -1770,7 +1961,7 @@ export const Shell: React.FC<ShellProps> = () => {
       console.error('Import dialog failed:', error);
       toast.error('Failed to open import dialog');
     }
-  }, [loadUnifiedProject, loadImportedProject]);
+  }, [hydrateImportedProject]);
 
   // Ref to hold latest executeCommand for macro execution
   const executeCommandRef = useRef<((command: Command) => void) | null>(null);
@@ -2784,6 +2975,10 @@ export const Shell: React.FC<ShellProps> = () => {
                 <Component
                   windowId={window.id}
                   onOpenApp={openWindow}
+                  onOpenStarterProject={handleOpenStarterProject}
+                  onOpenInstructorPackProject={handleOpenInstructorPackProject}
+                  onOpenRecentProject={handleOpenRecentProject}
+                  onOpenSubmissionProject={handleOpenSubmissionProject}
                   onClose={() => handleClose(window.id)}
                   onDispatchIntent={dispatchIntent}
                   registerStateAccessor={registerWindowStateAccessor}

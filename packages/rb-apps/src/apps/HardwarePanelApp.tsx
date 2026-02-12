@@ -181,6 +181,8 @@ function HardwarePanelComponent() {
   const [synthesisMessage, setSynthesisMessage] = useState<string | undefined>();
   const [synthesisError, setSynthesisError] = useState<string | undefined>();
   const synthesisAbortRef = useRef<AbortController | null>(null);
+  const synthesisDialogTimerRef = useRef<number | null>(null);
+  const isMountedRef = useRef(true);
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const runIdRef = useRef<string | null>(null);
@@ -312,6 +314,7 @@ function HardwarePanelComponent() {
 
   const finalizeProgramRun = useCallback(
     (summary: ProgramRunDoneSummary) => {
+      if (!isMountedRef.current) return;
       clearProgramMonitoring();
       setProgramCanceling(false);
       setProgramExitCode(summary.exitCode);
@@ -330,7 +333,11 @@ function HardwarePanelComponent() {
         setPanelState("READY");
         setSynthesisPhase("success");
         setSynthesisMessage(`Programmed successfully (run: ${summary.runId})`);
-        setTimeout(() => {
+        if (synthesisDialogTimerRef.current) {
+          window.clearTimeout(synthesisDialogTimerRef.current);
+        }
+        synthesisDialogTimerRef.current = window.setTimeout(() => {
+          if (!isMountedRef.current) return;
           setSynthesisDialogOpen(false);
           setSynthesisPhase("idle");
         }, 2000);
@@ -349,10 +356,12 @@ function HardwarePanelComponent() {
 
   const pollProgramRunStatus = useCallback(
     async (runId: string) => {
+      if (!isMountedRef.current) return;
       if (programPollingBusyRef.current) return;
       programPollingBusyRef.current = true;
       try {
         const status = await toolchainBackend.getRunStatus(runId, programOffsetRef.current);
+        if (!isMountedRef.current) return;
         appendProgramLogs(status.logs);
         programOffsetRef.current = status.nextOffset;
         setProgramExitCode(status.exitCode);
@@ -368,6 +377,7 @@ function HardwarePanelComponent() {
           });
         }
       } catch (err) {
+        if (!isMountedRef.current) return;
         const message = err instanceof Error ? err.message : "program_status_failed";
         setProgramError(message);
         setProgramRunStatus("failed");
@@ -395,6 +405,7 @@ function HardwarePanelComponent() {
 
   const startProgramStreaming = useCallback(
     (runId: string, offset: number) => {
+      if (!isMountedRef.current) return;
       clearProgramMonitoring();
       programOffsetRef.current = Math.max(0, offset);
       setProgramRunStatus("running");
@@ -402,14 +413,17 @@ function HardwarePanelComponent() {
         runId,
         {
           onLog(entry) {
+            if (!isMountedRef.current) return;
             appendProgramLogs([entry]);
             programOffsetRef.current = Math.max(programOffsetRef.current, entry.ts + 1);
           },
           onDone(summary) {
+            if (!isMountedRef.current) return;
             programOffsetRef.current = Math.max(programOffsetRef.current, summary.nextOffset);
             finalizeProgramRun(summary);
           },
           onError() {
+            if (!isMountedRef.current) return;
             startProgramPolling(runId, programOffsetRef.current);
           },
         },
@@ -558,7 +572,13 @@ function HardwarePanelComponent() {
     }
   })();
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
+      if (synthesisDialogTimerRef.current) {
+        window.clearTimeout(synthesisDialogTimerRef.current);
+        synthesisDialogTimerRef.current = null;
+      }
       if (stopTimerRef.current) {
         window.clearTimeout(stopTimerRef.current);
         stopTimerRef.current = null;

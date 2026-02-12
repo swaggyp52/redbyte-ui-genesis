@@ -47,8 +47,8 @@ vi.mock('@redbyte/rb-logic-view', () => {
   };
   return {
     // Mock LogicCanvas as a simple div to avoid internal store usage
-    LogicCanvas: React.forwardRef(({ engine, ...props }: any, ref: any) =>
-      React.createElement('div', { 'data-testid': 'mock-logic-canvas', ref, ...props })
+    LogicCanvas: React.forwardRef((_: any, ref: any) =>
+      React.createElement('div', { 'data-testid': 'mock-logic-canvas', ref })
     ),
     calculateFitToView: vi.fn(() => ({ x: 0, y: 0, zoom: 1 })),
     useLogicViewStore: Object.assign(

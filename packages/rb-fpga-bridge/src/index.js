@@ -45,8 +45,39 @@ import {
   extractYosysStatText,
   normalizeSynthSources,
   normalizeSynthTop,
+  resolveSelectedYosysPath,
   YOSYS_SYNTH_SCRIPT_VERSION,
 } from "./toolchain-synth.js";
+import {
+  createSynthArtifactsZipBuffer,
+  prepareSynthArtifactBundle,
+} from "./toolchain-synth-artifacts.js";
+import {
+  classifyImplementOutputKind,
+  createImplementArtifactsZipBuffer,
+  readImplementBitstreamArtifact,
+  prepareImplementArtifactBundle,
+} from "./toolchain-implement-artifacts.js";
+import {
+  buildImplementPlan,
+  isImplementPlanRequest,
+} from "./toolchain-implement-plan.js";
+import {
+  cancelToolchainRun,
+} from "./toolchain-run-cancel.js";
+import {
+  detectVivado,
+} from "./toolchain-vivado-detect.js";
+import {
+  resolveManagedToolCandidates,
+} from "./toolchain-tool-resolver.js";
+import {
+  getBuildpackPlatformKey,
+  getBuildpackStoreRoot,
+  installBuildpackPayload,
+  listInstalledBuildpacks,
+  removeBuildpackPayload,
+} from "./toolchain-buildpack.js";
 
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
@@ -73,6 +104,12 @@ const TOOLCHAIN_PROGRAM_RUN_CLEANUP_MS = Number(process.env.RB_FPGA_TOOLCHAIN_PR
 const TOOLCHAIN_SYNTH_RUN_LOG_LIMIT = Number(process.env.RB_FPGA_TOOLCHAIN_SYNTH_RUN_LOG_LIMIT || 2000);
 const TOOLCHAIN_SYNTH_RUN_TTL_MS = Number(process.env.RB_FPGA_TOOLCHAIN_SYNTH_RUN_TTL_MS || 600000);
 const TOOLCHAIN_SYNTH_RUN_CLEANUP_MS = Number(process.env.RB_FPGA_TOOLCHAIN_SYNTH_RUN_CLEANUP_MS || 60000);
+const TOOLCHAIN_IMPLEMENT_RUN_LOG_LIMIT = Number(process.env.RB_FPGA_TOOLCHAIN_IMPLEMENT_RUN_LOG_LIMIT || 2000);
+const TOOLCHAIN_IMPLEMENT_RUN_TTL_MS = Number(process.env.RB_FPGA_TOOLCHAIN_IMPLEMENT_RUN_TTL_MS || 600000);
+const TOOLCHAIN_IMPLEMENT_RUN_CLEANUP_MS = Number(process.env.RB_FPGA_TOOLCHAIN_IMPLEMENT_RUN_CLEANUP_MS || 60000);
+const TOOLCHAIN_BUILDPACK_RUN_LOG_LIMIT = Number(process.env.RB_FPGA_TOOLCHAIN_BUILDPACK_RUN_LOG_LIMIT || 2000);
+const TOOLCHAIN_BUILDPACK_RUN_TTL_MS = Number(process.env.RB_FPGA_TOOLCHAIN_BUILDPACK_RUN_TTL_MS || 600000);
+const TOOLCHAIN_BUILDPACK_RUN_CLEANUP_MS = Number(process.env.RB_FPGA_TOOLCHAIN_BUILDPACK_RUN_CLEANUP_MS || 60000);
 
 function getRepoRoot() {
   try {
@@ -321,69 +358,234 @@ app.use(express.json({ limit: "50mb" }));
 // TOOLCHAIN DETECTION
 // ============================================================
 
-const VIVADO_SEARCH_PATHS = {
-  win32: [
-    "C:\\Xilinx\\Vivado",
-    "D:\\Xilinx\\Vivado",
-    "C:\\Program Files\\Xilinx\\Vivado",
-  ],
-  linux: ["/opt/Xilinx/Vivado", "/tools/Xilinx/Vivado"],
-  darwin: ["/Applications/Xilinx/Vivado", "/opt/Xilinx/Vivado"],
-};
-
 async function findVivado() {
-  const platform = os.platform();
-  const vivadoExe = platform === "win32" ? "vivado.bat" : "vivado";
+  const result = await detectVivado({
+    platform: os.platform(),
+    execCommand: async (command, timeoutMs = 15000) => {
+      const { stdout } = await execAsync(command, { timeout: timeoutMs });
+      return stdout;
+    },
+    existsSync: (candidatePath) => fs.existsSync(candidatePath),
+    readdirSync: (candidatePath) => fs.readdirSync(candidatePath),
+  });
+  if (!result) return null;
+  return finalizeToolSelection([
+    {
+      ok: true,
+      status: result.status === "found_not_in_path" ? "found_not_in_path" : "ok",
+      source: result.status === "found_not_in_path" ? "found_not_in_path" : "system",
+      integrity: "unknown",
+      version: result.version,
+      path: result.path,
+      foundInPath: result.foundInPath !== false,
+      suggestedFix: result.suggestedFix,
+    },
+  ]);
+}
 
-  // Check PATH first
+async function runToolVersionProbe(commandPath, args, timeoutMs = 5000) {
   try {
-    const { stdout } = await execAsync(`${vivadoExe} -version`, { timeout: 15000 });
-    const versionMatch = stdout.match(/Vivado v?(\d+\.\d+(?:\.\d+)?)/i);
-    if (versionMatch) {
-      const whichCmd = platform === "win32" ? "where" : "which";
-      try {
-        const { stdout: pathOut } = await execAsync(`${whichCmd} ${vivadoExe}`);
-        return { path: pathOut.trim().split("\n")[0], version: versionMatch[1] };
-      } catch {
-        return { path: vivadoExe, version: versionMatch[1] };
-      }
-    }
-  } catch {
-    // Not in PATH
+    const result = await execFileAsync(commandPath, args, {
+      timeout: timeoutMs,
+      maxBuffer: 1024 * 1024,
+      windowsHide: true,
+    });
+    return {
+      ok: true,
+      stdout: typeof result?.stdout === "string" ? result.stdout : "",
+      stderr: typeof result?.stderr === "string" ? result.stderr : "",
+      error: null,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      stdout: typeof error?.stdout === "string" ? error.stdout : "",
+      stderr: typeof error?.stderr === "string" ? error.stderr : "",
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
+}
 
-  // Search common locations
-  const searchPaths = VIVADO_SEARCH_PATHS[platform] || [];
-  for (const basePath of searchPaths) {
-    if (!fs.existsSync(basePath)) continue;
-    try {
-      const versions = fs.readdirSync(basePath).filter((d) => /^\d+\.\d+/.test(d));
-      versions.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
-      for (const version of versions) {
-        const binPath = path.join(basePath, version, "bin", vivadoExe);
-        if (fs.existsSync(binPath)) {
-          return { path: binPath, version };
-        }
-      }
-    } catch {
-      continue;
-    }
-  }
-  return null;
+function parseVersionOrNull(outputText, pattern) {
+  const text = typeof outputText === "string" ? outputText : "";
+  const match = text.match(pattern);
+  return match ? match[1] : null;
+}
+
+function buildFoundOutsidePathFix(commandPath, toolLabel) {
+  const directory = path.dirname(commandPath);
+  return `${toolLabel} found outside PATH. Add "${directory}" to PATH and restart RedByte.`;
+}
+
+function buildBundledToolCorruptResult(toolLabel, bundledResult) {
+  const errorCode = typeof bundledResult?.error === "string" ? bundledResult.error : "bundled_corrupt";
+  const suggestion =
+    `Bundled ${toolLabel} failed integrity verification (${errorCode}). ` +
+    "Repair bundled tools by reinstalling RedByte or replacing the tools payload.";
+  return {
+    ok: false,
+    status: "missing",
+    source: "bundled",
+    integrity: "corrupt",
+    error: errorCode,
+    suggestedFix: suggestion,
+    ...(typeof bundledResult?.version === "string" && bundledResult.version.trim().length > 0
+      ? { version: bundledResult.version.trim() }
+      : {}),
+  };
+}
+
+function normalizeToolCandidate(candidate) {
+  if (!candidate || typeof candidate !== "object") return null;
+  const status =
+    candidate.status === "found_not_in_path" ? "found_not_in_path" : candidate.status === "missing" ? "missing" : "ok";
+  const source =
+    candidate.source === "bundled" ||
+    candidate.source === "buildpack" ||
+    candidate.source === "system" ||
+    candidate.source === "found_not_in_path" ||
+    candidate.source === "not_found"
+      ? candidate.source
+      : status === "found_not_in_path"
+        ? "found_not_in_path"
+        : status === "missing"
+          ? "not_found"
+          : "system";
+  const integrity =
+    source === "bundled" || source === "buildpack"
+      ? candidate.integrity === "verified" || candidate.integrity === "corrupt" ? candidate.integrity : "unknown"
+      : "unknown";
+  const ok = candidate.ok === true || status === "ok" || status === "found_not_in_path";
+  return {
+    ok,
+    status,
+    source,
+    integrity,
+    ...(typeof candidate.path === "string" ? { path: candidate.path } : {}),
+    ...(typeof candidate.version === "string" ? { version: candidate.version } : {}),
+    ...(typeof candidate.buildpackName === "string" ? { buildpackName: candidate.buildpackName } : {}),
+    ...(typeof candidate.buildpackVersion === "string" ? { buildpackVersion: candidate.buildpackVersion } : {}),
+    ...(typeof candidate.buildpackContractId === "string"
+      ? { buildpackContractId: candidate.buildpackContractId }
+      : {}),
+    ...(typeof candidate.error === "string" ? { error: candidate.error } : {}),
+    ...(typeof candidate.suggestedFix === "string" ? { suggestedFix: candidate.suggestedFix } : {}),
+  };
+}
+
+function getToolCandidatePriority(candidate) {
+  if (candidate.source === "bundled" && candidate.integrity === "corrupt") return 500;
+  if (candidate.source === "buildpack" && candidate.integrity === "corrupt") return 480;
+  if (candidate.source === "bundled" && candidate.status === "ok" && candidate.integrity === "verified") return 400;
+  if (candidate.source === "buildpack" && candidate.status === "ok" && candidate.integrity === "verified") return 350;
+  if (candidate.source === "system" && candidate.status === "ok") return 300;
+  if (candidate.source === "found_not_in_path" && candidate.status === "found_not_in_path") return 200;
+  if (candidate.source === "bundled" && candidate.status === "ok") return 150;
+  if (candidate.status === "missing") return 50;
+  return 0;
+}
+
+function toolCandidateSort(left, right) {
+  const score = getToolCandidatePriority(right) - getToolCandidatePriority(left);
+  if (score !== 0) return score;
+  if (left.source !== right.source) return String(left.source).localeCompare(String(right.source));
+  if (left.status !== right.status) return String(left.status).localeCompare(String(right.status));
+  if (left.integrity !== right.integrity) return String(left.integrity).localeCompare(String(right.integrity));
+  if (left.path !== right.path) return String(left.path || "").localeCompare(String(right.path || ""));
+  if (left.version !== right.version) return String(left.version || "").localeCompare(String(right.version || ""));
+  return String(left.error || "").localeCompare(String(right.error || ""));
+}
+
+function finalizeToolSelection(candidates) {
+  const normalized = candidates
+    .map((candidate) => normalizeToolCandidate(candidate))
+    .filter(Boolean)
+    .sort(toolCandidateSort);
+
+  if (normalized.length === 0) return null;
+
+  const selected = normalized[0];
+  const alternates = normalized.slice(1).map((candidate) => ({
+    source: candidate.source,
+    status: candidate.status,
+    integrity: candidate.integrity,
+    ...(typeof candidate.version === "string" ? { version: candidate.version } : {}),
+    ...(typeof candidate.buildpackName === "string" ? { buildpackName: candidate.buildpackName } : {}),
+    ...(typeof candidate.buildpackVersion === "string" ? { buildpackVersion: candidate.buildpackVersion } : {}),
+    ...(typeof candidate.buildpackContractId === "string"
+      ? { buildpackContractId: candidate.buildpackContractId }
+      : {}),
+    ...(typeof candidate.path === "string" ? { path: candidate.path } : {}),
+    ...(typeof candidate.error === "string" ? { error: candidate.error } : {}),
+  }));
+
+  return {
+    ...selected,
+    alternates,
+  };
 }
 
 async function findYosys() {
   const platform = os.platform();
+  const arch = os.arch();
   const yosysExe = platform === "win32" ? "yosys.exe" : "yosys";
+  const repoRoot = getRepoRoot();
+  const candidates = [];
 
-  try {
-    const { stdout } = await execAsync(`${yosysExe} -V`, { timeout: 5000 });
-    const versionMatch = stdout.match(/Yosys (\d+\.\d+(?:\+\d+)?)/i);
-    if (versionMatch) {
-      return { path: yosysExe, version: versionMatch[1] };
+  const managed = resolveManagedToolCandidates({
+    repoRoot,
+    platform,
+    arch,
+    toolId: "yosys",
+    executableName: yosysExe,
+    existsSync: (candidatePath) => fs.existsSync(candidatePath),
+  });
+  for (const managedCandidate of managed) {
+    if (managedCandidate.source === "bundled") {
+      if (managedCandidate.status === "ok" && managedCandidate.path) {
+        candidates.push({
+          ok: true,
+          status: "ok",
+          source: "bundled",
+          integrity: managedCandidate.integrity || "unknown",
+          path: managedCandidate.path,
+          version: managedCandidate.version || "unknown",
+        });
+      } else {
+        candidates.push(buildBundledToolCorruptResult("Yosys", managedCandidate));
+      }
+      continue;
     }
-  } catch {
-    // Not found
+    if (managedCandidate.source === "buildpack") {
+      candidates.push({
+        ok: managedCandidate.ok === true,
+        status: managedCandidate.status === "missing" ? "missing" : "ok",
+        source: "buildpack",
+        integrity: managedCandidate.integrity || "unknown",
+        ...(typeof managedCandidate.path === "string" ? { path: managedCandidate.path } : {}),
+        ...(typeof managedCandidate.version === "string" ? { version: managedCandidate.version } : {}),
+        ...(typeof managedCandidate.buildpackName === "string" ? { buildpackName: managedCandidate.buildpackName } : {}),
+        ...(typeof managedCandidate.buildpackVersion === "string" ? { buildpackVersion: managedCandidate.buildpackVersion } : {}),
+        ...(typeof managedCandidate.buildpackContractId === "string"
+          ? { buildpackContractId: managedCandidate.buildpackContractId }
+          : {}),
+        ...(typeof managedCandidate.error === "string" ? { error: managedCandidate.error } : {}),
+        ...(typeof managedCandidate.suggestedFix === "string" ? { suggestedFix: managedCandidate.suggestedFix } : {}),
+      });
+    }
+  }
+
+  const systemProbe = await runToolVersionProbe(yosysExe, ["-V"]);
+  const systemVersion = parseVersionOrNull(`${systemProbe.stdout}\n${systemProbe.stderr}`, /Yosys (\d+\.\d+(?:\+\d+)?)/i);
+  if (systemProbe.ok || systemVersion) {
+    candidates.push({
+      ok: true,
+      status: "ok",
+      source: "system",
+      integrity: "unknown",
+      path: yosysExe,
+      version: systemVersion || "unknown",
+    });
   }
 
   // Check oss-cad-suite
@@ -394,34 +596,89 @@ async function findYosys() {
   for (const binPath of ossCadPaths) {
     const yosysPath = path.join(binPath, yosysExe);
     if (fs.existsSync(yosysPath)) {
-      try {
-        const { stdout } = await execAsync(`"${yosysPath}" -V`, { timeout: 5000 });
-        const versionMatch = stdout.match(/Yosys (\d+\.\d+(?:\+\d+)?)/i);
-        if (versionMatch) {
-          return { path: yosysPath, version: versionMatch[1] };
-        }
-      } catch {
-        continue;
+      const probe = await runToolVersionProbe(yosysPath, ["-V"]);
+      const version = parseVersionOrNull(`${probe.stdout}\n${probe.stderr}`, /Yosys (\d+\.\d+(?:\+\d+)?)/i);
+      if (probe.ok || version) {
+        candidates.push({
+          ok: true,
+          status: "found_not_in_path",
+          source: "found_not_in_path",
+          integrity: "unknown",
+          path: yosysPath,
+          version: version || "unknown",
+          suggestedFix: buildFoundOutsidePathFix(yosysPath, "Yosys"),
+        });
       }
     }
   }
-  return null;
+
+  return finalizeToolSelection(candidates);
 }
 
 async function findOpenFPGALoader() {
   const platform = os.platform();
+  const arch = os.arch();
   const loaderExe = platform === "win32" ? "openFPGALoader.exe" : "openFPGALoader";
+  const repoRoot = getRepoRoot();
+  const candidates = [];
 
-  try {
-    const { stdout } = await execAsync(`${loaderExe} --version`, { timeout: 5000 });
-    const versionMatch = stdout.match(/openFPGALoader v?(\d+\.\d+(?:\.\d+)?)/i);
-    if (versionMatch) {
-      return { path: loaderExe, version: versionMatch[1] };
+  const managed = resolveManagedToolCandidates({
+    repoRoot,
+    platform,
+    arch,
+    toolId: "openFPGALoader",
+    executableName: loaderExe,
+    existsSync: (candidatePath) => fs.existsSync(candidatePath),
+  });
+  for (const managedCandidate of managed) {
+    if (managedCandidate.source === "bundled") {
+      if (managedCandidate.status === "ok" && managedCandidate.path) {
+        candidates.push({
+          ok: true,
+          status: "ok",
+          source: "bundled",
+          integrity: managedCandidate.integrity || "unknown",
+          path: managedCandidate.path,
+          version: managedCandidate.version || "unknown",
+        });
+      } else {
+        candidates.push(buildBundledToolCorruptResult("openFPGALoader", managedCandidate));
+      }
+      continue;
     }
-  } catch {
-    // Not found
+    if (managedCandidate.source === "buildpack") {
+      candidates.push({
+        ok: managedCandidate.ok === true,
+        status: managedCandidate.status === "missing" ? "missing" : "ok",
+        source: "buildpack",
+        integrity: managedCandidate.integrity || "unknown",
+        ...(typeof managedCandidate.path === "string" ? { path: managedCandidate.path } : {}),
+        ...(typeof managedCandidate.version === "string" ? { version: managedCandidate.version } : {}),
+        ...(typeof managedCandidate.buildpackName === "string" ? { buildpackName: managedCandidate.buildpackName } : {}),
+        ...(typeof managedCandidate.buildpackVersion === "string" ? { buildpackVersion: managedCandidate.buildpackVersion } : {}),
+        ...(typeof managedCandidate.buildpackContractId === "string"
+          ? { buildpackContractId: managedCandidate.buildpackContractId }
+          : {}),
+        ...(typeof managedCandidate.error === "string" ? { error: managedCandidate.error } : {}),
+        ...(typeof managedCandidate.suggestedFix === "string" ? { suggestedFix: managedCandidate.suggestedFix } : {}),
+      });
+    }
   }
-  return null;
+
+  const probe = await runToolVersionProbe(loaderExe, ["--version"]);
+  const version = parseVersionOrNull(`${probe.stdout}\n${probe.stderr}`, /openFPGALoader v?(\d+\.\d+(?:\.\d+)?)/i);
+  if (probe.ok || version) {
+    candidates.push({
+      ok: true,
+      status: "ok",
+      source: "system",
+      integrity: "unknown",
+      path: loaderExe,
+      version: version || "unknown",
+    });
+  }
+
+  return finalizeToolSelection(candidates);
 }
 
 async function runCommandCollect(commandPath, args, timeoutMs = 8000) {
@@ -630,58 +887,257 @@ async function runOpenFpgaLoaderProgram({ loaderPath, board, bitPath, mode, push
 
 async function findNextpnrXilinx() {
   const platform = os.platform();
+  const arch = os.arch();
   const nextpnrExe = platform === "win32" ? "nextpnr-xilinx.exe" : "nextpnr-xilinx";
+  const repoRoot = getRepoRoot();
+  const candidates = [];
 
-  try {
-    const { stdout, stderr } = await execAsync(`${nextpnrExe} --version`, { timeout: 5000 });
-    const combined = `${stdout || ""}\n${stderr || ""}`.trim();
-    const firstLine = combined.split(/\r?\n/).find((l) => l.trim().length > 0) || "";
-    if (firstLine) {
-      return { path: nextpnrExe, version: firstLine.trim() };
+  const managed = resolveManagedToolCandidates({
+    repoRoot,
+    platform,
+    arch,
+    toolId: "nextpnr-xilinx",
+    executableName: nextpnrExe,
+    existsSync: (candidatePath) => fs.existsSync(candidatePath),
+  });
+  for (const managedCandidate of managed) {
+    if (managedCandidate.source === "bundled") {
+      if (managedCandidate.status === "ok" && managedCandidate.path) {
+        candidates.push({
+          ok: true,
+          status: "ok",
+          source: "bundled",
+          integrity: managedCandidate.integrity || "unknown",
+          path: managedCandidate.path,
+          version: managedCandidate.version || "unknown",
+        });
+      } else {
+        candidates.push(buildBundledToolCorruptResult("nextpnr-xilinx", managedCandidate));
+      }
+      continue;
     }
-  } catch {
-    // Not found
+    if (managedCandidate.source === "buildpack") {
+      candidates.push({
+        ok: managedCandidate.ok === true,
+        status: managedCandidate.status === "missing" ? "missing" : "ok",
+        source: "buildpack",
+        integrity: managedCandidate.integrity || "unknown",
+        ...(typeof managedCandidate.path === "string" ? { path: managedCandidate.path } : {}),
+        ...(typeof managedCandidate.version === "string" ? { version: managedCandidate.version } : {}),
+        ...(typeof managedCandidate.buildpackName === "string" ? { buildpackName: managedCandidate.buildpackName } : {}),
+        ...(typeof managedCandidate.buildpackVersion === "string" ? { buildpackVersion: managedCandidate.buildpackVersion } : {}),
+        ...(typeof managedCandidate.buildpackContractId === "string"
+          ? { buildpackContractId: managedCandidate.buildpackContractId }
+          : {}),
+        ...(typeof managedCandidate.error === "string" ? { error: managedCandidate.error } : {}),
+        ...(typeof managedCandidate.suggestedFix === "string" ? { suggestedFix: managedCandidate.suggestedFix } : {}),
+      });
+    }
   }
-  return null;
+
+  const probe = await runToolVersionProbe(nextpnrExe, ["--version"]);
+  const combined = `${probe.stdout || ""}\n${probe.stderr || ""}`.trim();
+  const firstLine = combined.split(/\r?\n/).find((l) => l.trim().length > 0) || "";
+  if (firstLine) {
+    candidates.push({
+      ok: true,
+      status: "ok",
+      source: "system",
+      integrity: "unknown",
+      path: nextpnrExe,
+      version: firstLine.trim(),
+    });
+  }
+
+  return finalizeToolSelection(candidates);
+}
+
+async function findF4pga() {
+  const platform = os.platform();
+  const arch = os.arch();
+  const f4pgaExe = platform === "win32" ? "f4pga.exe" : "f4pga";
+  const repoRoot = getRepoRoot();
+  const candidates = [];
+
+  const managed = resolveManagedToolCandidates({
+    repoRoot,
+    platform,
+    arch,
+    toolId: "f4pga",
+    executableName: f4pgaExe,
+    existsSync: (candidatePath) => fs.existsSync(candidatePath),
+  });
+  for (const managedCandidate of managed) {
+    if (managedCandidate.source === "bundled") {
+      if (managedCandidate.status === "ok" && managedCandidate.path) {
+        candidates.push({
+          ok: true,
+          status: "ok",
+          source: "bundled",
+          integrity: managedCandidate.integrity || "unknown",
+          path: managedCandidate.path,
+          version: managedCandidate.version || "unknown",
+        });
+      } else {
+        candidates.push(buildBundledToolCorruptResult("f4pga", managedCandidate));
+      }
+      continue;
+    }
+    if (managedCandidate.source === "buildpack") {
+      candidates.push({
+        ok: managedCandidate.ok === true,
+        status: managedCandidate.status === "missing" ? "missing" : "ok",
+        source: "buildpack",
+        integrity: managedCandidate.integrity || "unknown",
+        ...(typeof managedCandidate.path === "string" ? { path: managedCandidate.path } : {}),
+        ...(typeof managedCandidate.version === "string" ? { version: managedCandidate.version } : {}),
+        ...(typeof managedCandidate.buildpackName === "string" ? { buildpackName: managedCandidate.buildpackName } : {}),
+        ...(typeof managedCandidate.buildpackVersion === "string" ? { buildpackVersion: managedCandidate.buildpackVersion } : {}),
+        ...(typeof managedCandidate.buildpackContractId === "string"
+          ? { buildpackContractId: managedCandidate.buildpackContractId }
+          : {}),
+        ...(typeof managedCandidate.error === "string" ? { error: managedCandidate.error } : {}),
+        ...(typeof managedCandidate.suggestedFix === "string" ? { suggestedFix: managedCandidate.suggestedFix } : {}),
+      });
+    }
+  }
+
+  const probe = await runToolVersionProbe(f4pgaExe, ["--version"]);
+  const combined = `${probe.stdout || ""}\n${probe.stderr || ""}`.trim();
+  const firstLine = combined.split(/\r?\n/).find((line) => line.trim().length > 0) || "";
+  if (firstLine) {
+    candidates.push({
+      ok: true,
+      status: "ok",
+      source: "system",
+      integrity: "unknown",
+      path: f4pgaExe,
+      version: firstLine.trim(),
+    });
+  }
+
+  return finalizeToolSelection(candidates);
 }
 
 async function detectToolchain() {
   const capabilities = {};
 
-  const [vivado, yosys, openFPGALoader, nextpnrXilinx] = await Promise.all([
+  const [vivado, yosys, openFPGALoader, nextpnrXilinx, f4pga] = await Promise.all([
     findVivado().catch(() => null),
     findYosys().catch(() => null),
     findOpenFPGALoader().catch(() => null),
     findNextpnrXilinx().catch(() => null),
+    findF4pga().catch(() => null),
   ]);
 
-  if (vivado) {
-    capabilities.vivado = {
-      version: vivado.version,
-      path: vivado.path,
-      canSynthesize: true,
-      canProgram: true,
+  const normalizeAlternates = (alternates) => {
+    if (!Array.isArray(alternates)) return [];
+    return alternates
+      .map((alternate) => normalizeToolCandidate(alternate))
+      .filter(Boolean)
+      .map((alternate) => ({
+        source: alternate.source,
+        status: alternate.status,
+        integrity: alternate.integrity,
+        ...(typeof alternate.version === "string" ? { version: alternate.version } : {}),
+        ...(typeof alternate.buildpackName === "string" ? { buildpackName: alternate.buildpackName } : {}),
+        ...(typeof alternate.buildpackVersion === "string" ? { buildpackVersion: alternate.buildpackVersion } : {}),
+        ...(typeof alternate.buildpackContractId === "string"
+          ? { buildpackContractId: alternate.buildpackContractId }
+          : {}),
+        ...(typeof alternate.path === "string" ? { path: alternate.path } : {}),
+        ...(typeof alternate.error === "string" ? { error: alternate.error } : {}),
+      }))
+      .sort(toolCandidateSort);
+  };
+
+  const mapCapability = (tool) => {
+    if (!tool) return null;
+    const status = tool.status === "found_not_in_path" ? "found_not_in_path" : tool.status === "missing" ? "missing" : "ok";
+    const source =
+      tool.source === "bundled" ||
+      tool.source === "buildpack" ||
+      tool.source === "system" ||
+      tool.source === "found_not_in_path" ||
+      tool.source === "not_found"
+        ? tool.source
+        : status === "found_not_in_path"
+          ? "found_not_in_path"
+          : status === "missing"
+            ? "not_found"
+            : "system";
+    const integrity =
+      source === "bundled" || source === "buildpack"
+        ? (tool.integrity === "verified" || tool.integrity === "corrupt" ? tool.integrity : "unknown")
+        : "unknown";
+    return {
+      ok: tool.ok !== false && status !== "missing",
+      status,
+      source,
+      integrity,
+      ...(typeof tool.version === "string" ? { version: tool.version } : {}),
+      ...(typeof tool.buildpackName === "string" ? { buildpackName: tool.buildpackName } : {}),
+      ...(typeof tool.buildpackVersion === "string" ? { buildpackVersion: tool.buildpackVersion } : {}),
+      ...(typeof tool.buildpackContractId === "string" ? { buildpackContractId: tool.buildpackContractId } : {}),
+      ...(typeof tool.path === "string" ? { path: tool.path } : {}),
+      ...(typeof tool.error === "string" ? { error: tool.error } : {}),
+      ...(typeof tool.suggestedFix === "string" ? { suggestedFix: tool.suggestedFix } : {}),
+      alternates: normalizeAlternates(tool.alternates),
     };
+  };
+
+  if (vivado) {
+    const mapped = mapCapability(vivado);
+    if (mapped) {
+      capabilities.vivado = {
+        ...mapped,
+        foundInPath: vivado.foundInPath !== false,
+        canSynthesize: mapped.ok,
+        canProgram: mapped.ok,
+      };
+    }
   }
 
   if (yosys) {
-    capabilities.yosys = {
-      version: yosys.version,
-      path: yosys.path,
-    };
+    const mapped = mapCapability(yosys);
+    if (mapped) {
+      capabilities.yosys = mapped;
+    }
   }
 
   if (openFPGALoader) {
-    capabilities.openFPGALoader = {
-      version: openFPGALoader.version,
-      path: openFPGALoader.path,
-    };
+    const mapped = mapCapability(openFPGALoader);
+    if (mapped) {
+      capabilities.openFPGALoader = mapped;
+    }
   }
 
   if (nextpnrXilinx) {
-    capabilities.nextpnrXilinx = {
-      version: nextpnrXilinx.version,
-      path: nextpnrXilinx.path,
+    const mapped = mapCapability(nextpnrXilinx);
+    if (mapped) {
+      capabilities.nextpnrXilinx = mapped;
+    }
+  }
+
+  if (f4pga) {
+    const mapped = mapCapability(f4pga);
+    if (mapped) {
+      capabilities.f4pga = mapped;
+    }
+  }
+
+  if (vivado && !capabilities.vivado) {
+    capabilities.vivado = {
+      ok: true,
+      status: "ok",
+      source: "system",
+      integrity: "unknown",
+      ...(typeof vivado.version === "string" ? { version: vivado.version } : {}),
+      ...(typeof vivado.path === "string" ? { path: vivado.path } : {}),
+      foundInPath: vivado.foundInPath !== false,
+      canSynthesize: true,
+      canProgram: true,
+      alternates: [],
     };
   }
 
@@ -745,6 +1201,34 @@ let toolchainSynthExecutionSeq = 0;
 setInterval(() => {
   toolchainSynthRuns.cleanup(Date.now());
 }, TOOLCHAIN_SYNTH_RUN_CLEANUP_MS);
+
+const toolchainImplementRuns = createProgramRunRegistry({
+  logLimit: TOOLCHAIN_IMPLEMENT_RUN_LOG_LIMIT,
+  ttlMs: TOOLCHAIN_IMPLEMENT_RUN_TTL_MS,
+  step: "implement",
+});
+let toolchainBuildpackExecutionSeq = 0;
+
+setInterval(() => {
+  toolchainImplementRuns.cleanup(Date.now());
+}, TOOLCHAIN_IMPLEMENT_RUN_CLEANUP_MS);
+
+const toolchainBuildpackRuns = createProgramRunRegistry({
+  logLimit: TOOLCHAIN_BUILDPACK_RUN_LOG_LIMIT,
+  ttlMs: TOOLCHAIN_BUILDPACK_RUN_TTL_MS,
+  step: "buildpack",
+});
+
+setInterval(() => {
+  toolchainBuildpackRuns.cleanup(Date.now());
+}, TOOLCHAIN_BUILDPACK_RUN_CLEANUP_MS);
+
+const TOOLCHAIN_RUN_REGISTRIES = [
+  { kind: "program", registry: toolchainProgramRuns },
+  { kind: "synth", registry: toolchainSynthRuns },
+  { kind: "implement", registry: toolchainImplementRuns },
+  { kind: "buildpack", registry: toolchainBuildpackRuns },
+];
 
 function normalizePreflightProject(rawProject) {
   const rawHdl = rawProject?.hdl && typeof rawProject.hdl === "object" ? rawProject.hdl : {};
@@ -908,7 +1392,27 @@ function buildPreflightFromProject(project, toolList) {
 
   const run_id = deterministicId("bridge-preflight", {
     project,
-    tools: toolList.map((tool) => ({ name: tool.name, ok: tool.ok, version: tool.version || null, error: tool.error || null })),
+    tools: toolList.map((tool) => ({
+      name: tool.name,
+      ok: tool.ok,
+      status: tool.status || null,
+      source: tool.source || null,
+      integrity: tool.integrity || null,
+      version: tool.version || null,
+      path: tool.path || null,
+      error: tool.error || null,
+      suggestedFix: tool.suggestedFix || null,
+      alternates: Array.isArray(tool.alternates)
+        ? tool.alternates.map((alternate) => ({
+            source: alternate.source || null,
+            status: alternate.status || null,
+            integrity: alternate.integrity || null,
+            version: alternate.version || null,
+            path: alternate.path || null,
+            error: alternate.error || null,
+          }))
+        : [],
+    })),
     lintErrors,
     lintWarnings,
   });
@@ -936,18 +1440,94 @@ function buildPreflightFromProject(project, toolList) {
 }
 
 function buildToolListFromCapabilities(capabilities) {
+  const normalizeAlternates = (rawAlternates) => {
+    if (!Array.isArray(rawAlternates)) return [];
+    return rawAlternates
+      .map((alternate) => normalizeToolCandidate(alternate))
+      .filter(Boolean)
+      .map((alternate) => ({
+        source: alternate.source,
+        status: alternate.status,
+        integrity: alternate.integrity,
+        ...(typeof alternate.version === "string" ? { version: alternate.version } : {}),
+        ...(typeof alternate.buildpackName === "string" ? { buildpackName: alternate.buildpackName } : {}),
+        ...(typeof alternate.buildpackVersion === "string" ? { buildpackVersion: alternate.buildpackVersion } : {}),
+        ...(typeof alternate.buildpackContractId === "string"
+          ? { buildpackContractId: alternate.buildpackContractId }
+          : {}),
+        ...(typeof alternate.path === "string" ? { path: alternate.path } : {}),
+        ...(typeof alternate.error === "string" ? { error: alternate.error } : {}),
+      }))
+      .sort(toolCandidateSort);
+  };
+
   return [
     { name: "openFPGALoader", capKey: "openFPGALoader" },
     { name: "yosys", capKey: "yosys" },
     { name: "nextpnr-xilinx", capKey: "nextpnrXilinx" },
+    { name: "f4pga", capKey: "f4pga" },
     { name: "vivado", capKey: "vivado" },
   ]
     .map((toolDef) => {
       const cap = capabilities?.[toolDef.capKey];
-      if (!cap) return { name: toolDef.name, ok: false, error: "not_found" };
-      const tool = { name: toolDef.name, ok: true };
+      if (!cap || cap.status === "missing" || cap.ok === false) {
+        const source =
+          cap?.source === "bundled" ||
+          cap?.source === "buildpack" ||
+          cap?.source === "system" ||
+          cap?.source === "not_found" ||
+          cap?.source === "found_not_in_path"
+            ? cap.source
+            : "not_found";
+        const integrity =
+          source === "bundled" || source === "buildpack"
+            ? cap?.integrity === "verified" || cap?.integrity === "corrupt"
+              ? cap.integrity
+              : "unknown"
+            : "unknown";
+        return {
+          name: toolDef.name,
+          ok: false,
+          status: "missing",
+          source,
+          integrity,
+          error: typeof cap?.error === "string" ? cap.error : "not_found",
+          ...(typeof cap?.suggestedFix === "string" && cap.suggestedFix.trim().length > 0
+            ? { suggestedFix: cap.suggestedFix.trim() }
+            : {}),
+          alternates: normalizeAlternates(cap?.alternates),
+        };
+      }
+      const status = cap?.status === "found_not_in_path" ? "found_not_in_path" : "ok";
+      const source =
+        cap?.source === "bundled" || cap?.source === "buildpack" || cap?.source === "system" || cap?.source === "found_not_in_path"
+          ? cap.source
+          : status === "found_not_in_path"
+            ? "found_not_in_path"
+            : "system";
+      const integrity =
+        source === "bundled" || source === "buildpack"
+          ? cap?.integrity === "verified" || cap?.integrity === "corrupt"
+            ? cap.integrity
+            : "unknown"
+          : "unknown";
+      const tool = {
+        name: toolDef.name,
+        ok: true,
+        status,
+        source,
+        integrity,
+      };
       if (typeof cap.version === "string") tool.version = cap.version;
+      if (typeof cap.buildpackName === "string") tool.buildpackName = cap.buildpackName;
+      if (typeof cap.buildpackVersion === "string") tool.buildpackVersion = cap.buildpackVersion;
+      if (typeof cap.buildpackContractId === "string") tool.buildpackContractId = cap.buildpackContractId;
       if (typeof cap.path === "string") tool.path = cap.path;
+      if (typeof cap.error === "string") tool.error = cap.error;
+      if (typeof cap.suggestedFix === "string" && cap.suggestedFix.trim().length > 0) {
+        tool.suggestedFix = cap.suggestedFix.trim();
+      }
+      tool.alternates = normalizeAlternates(cap.alternates);
       return tool;
     })
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -965,8 +1545,23 @@ function buildProbeFromCapabilities(capabilities) {
     tools: tools.map((tool) => ({
       name: tool.name,
       ok: tool.ok,
+      status: tool.status || null,
+      source: tool.source || null,
+      integrity: tool.integrity || null,
       version: tool.version || null,
+      path: tool.path || null,
       error: tool.error || null,
+      suggestedFix: tool.suggestedFix || null,
+      alternates: Array.isArray(tool.alternates)
+        ? tool.alternates.map((alternate) => ({
+            source: alternate.source || null,
+            status: alternate.status || null,
+            integrity: alternate.integrity || null,
+            version: alternate.version || null,
+            path: alternate.path || null,
+            error: alternate.error || null,
+          }))
+        : [],
     })),
   });
   const logs = [];
@@ -981,9 +1576,34 @@ function buildProbeFromCapabilities(capabilities) {
   push("info", "[bridge] probe: env", env);
   for (const tool of tools) {
     if (tool.ok) {
-      push("info", `[bridge] probe: ${tool.name}: ok${tool.version ? ` (${tool.version})` : ""}`);
+      if (tool.status === "found_not_in_path") {
+        push("warn", `[bridge] probe: ${tool.name}: found_not_in_path${tool.path ? ` (${tool.path})` : ""}`);
+        if (tool.suggestedFix) {
+          push("warn", `[bridge] probe: ${tool.name}: fix: ${tool.suggestedFix}`);
+        }
+        } else if (tool.source === "bundled" && tool.integrity === "verified") {
+          push("info", `[bridge] probe: ${tool.name}: ok bundled_verified${tool.version ? ` (${tool.version})` : ""}`);
+        } else if (tool.source === "buildpack" && tool.integrity === "verified") {
+          push(
+            "info",
+            `[bridge] probe: ${tool.name}: ok buildpack_verified${tool.version ? ` (${tool.version})` : ""}${
+              tool.buildpackName && tool.buildpackVersion ? ` [${tool.buildpackName}@${tool.buildpackVersion}]` : ""
+            }`
+          );
+        } else {
+          push("info", `[bridge] probe: ${tool.name}: ok${tool.version ? ` (${tool.version})` : ""}`);
+        }
     } else {
-      push("warn", `[bridge] probe: ${tool.name}: missing${tool.error ? ` (${tool.error})` : ""}`);
+      if (tool.source === "bundled" && tool.integrity === "corrupt") {
+        push("error", `[bridge] probe: ${tool.name}: bundled_corrupt${tool.error ? ` (${tool.error})` : ""}`);
+      } else if (tool.source === "buildpack" && tool.integrity === "corrupt") {
+        push("error", `[bridge] probe: ${tool.name}: buildpack_corrupt${tool.error ? ` (${tool.error})` : ""}`);
+      } else {
+        push("warn", `[bridge] probe: ${tool.name}: missing${tool.error ? ` (${tool.error})` : ""}`);
+      }
+      if (tool.suggestedFix) {
+        push("warn", `[bridge] probe: ${tool.name}: fix: ${tool.suggestedFix}`);
+      }
     }
   }
   const ok = tools.some((tool) => tool.ok);
@@ -998,7 +1618,7 @@ function buildProbeFromCapabilities(capabilities) {
   };
 }
 
-function buildDoctorReportFromProject({ backendId, project, probe, preflight, logs }) {
+function buildDoctorReportFromProject({ backendId, project, probe, preflight, buildPath, logs }) {
   const projectSummary = {
     board: "basys3",
     preset: project.fpga.preset || null,
@@ -1023,8 +1643,23 @@ function buildDoctorReportFromProject({ backendId, project, probe, preflight, lo
       tools: probe.tools.map((tool) => ({
         name: tool.name,
         ok: tool.ok,
+        status: tool.status || null,
+        source: tool.source || null,
+        integrity: tool.integrity || null,
         version: tool.version || null,
+        path: tool.path || null,
         error: tool.error || null,
+        suggestedFix: tool.suggestedFix || null,
+        alternates: Array.isArray(tool.alternates)
+          ? tool.alternates.map((alternate) => ({
+              source: alternate.source || null,
+              status: alternate.status || null,
+              integrity: alternate.integrity || null,
+              version: alternate.version || null,
+              path: alternate.path || null,
+              error: alternate.error || null,
+            }))
+          : [],
       })),
     },
     preflight: {
@@ -1036,6 +1671,36 @@ function buildDoctorReportFromProject({ backendId, project, probe, preflight, lo
       },
       overallOk: preflight.overallOk,
     },
+    buildPath: buildPath
+      ? {
+          planId: buildPath.planId,
+          backend: buildPath.backend,
+          board: buildPath.board,
+          top: buildPath.top,
+          constraintsPreset: buildPath.constraintsPreset ?? null,
+          buildpack:
+            buildPath.buildpack &&
+            typeof buildPath.buildpack.name === "string" &&
+            typeof buildPath.buildpack.version === "string"
+              ? {
+                  name: buildPath.buildpack.name,
+                  version: buildPath.buildpack.version,
+                }
+              : null,
+          requiredTools: (Array.isArray(buildPath.requiredTools) ? buildPath.requiredTools : [])
+            .map((tool) => ({
+              name: tool.name,
+              ok: tool.ok,
+              version: tool.version || null,
+              source: tool.source || null,
+              integrity: tool.integrity || null,
+            }))
+            .sort((left, right) => String(left.name).localeCompare(String(right.name))),
+          warnings: (Array.isArray(buildPath.warnings) ? buildPath.warnings : [])
+            .map((entry) => String(entry.msg || ""))
+            .sort((left, right) => left.localeCompare(right)),
+        }
+      : null,
     projectSummary,
     logs: sortedLogs.map((entry) => ({
       step: entry.step,
@@ -1052,6 +1717,7 @@ function buildDoctorReportFromProject({ backendId, project, probe, preflight, lo
     bridge_url: "http://127.0.0.1:4242",
     probe,
     preflight,
+    ...(buildPath ? { buildPath } : {}),
     projectSummary,
     logs: sortedLogs,
   };
@@ -2032,11 +2698,16 @@ app.get("/api/toolchain/boards/detect", async (_req, res) => {
   try {
     const capabilities = await getCachedToolchain();
     const loader = capabilities?.openFPGALoader || null;
+    const loaderReady = Boolean(loader && loader.status !== "missing" && typeof loader.path === "string");
     const toolStatus = loader
       ? {
-          ok: true,
+          ok: loaderReady,
+          ...(typeof loader.status === "string" ? { status: loader.status } : {}),
           ...(typeof loader.version === "string" ? { version: loader.version } : {}),
           ...(typeof loader.path === "string" ? { path: loader.path } : {}),
+          ...(typeof loader.error === "string" ? { error: loader.error } : {}),
+          ...(typeof loader.source === "string" ? { source: loader.source } : {}),
+          ...(typeof loader.suggestedFix === "string" ? { suggestedFix: loader.suggestedFix } : {}),
         }
       : { ok: false, error: "not_found" };
     const run_id = deterministicId("bridge-board-detect", {
@@ -2058,7 +2729,7 @@ app.get("/api/toolchain/boards/detect", async (_req, res) => {
     push("info", "[bridge] board-detect: starting");
     const boards = [];
 
-    if (!loader?.path) {
+    if (!loaderReady) {
       push("warn", "[bridge] board-detect: openFPGALoader missing");
       return res.json({
         schema_version: schemaVersion,
@@ -2192,6 +2863,67 @@ app.post("/api/toolchain/preflight", async (req, res) => {
   }
 });
 
+app.post("/api/toolchain/implement/plan", async (req, res) => {
+  try {
+    const refreshProbe = req.body?.refresh_probe === true;
+    const requestPayload = isImplementPlanRequest(req.body)
+      ? req.body
+      : {
+          schema_version: "toolchain_implement_plan_request_v1",
+          backend_id: "vivado",
+          refresh_probe: refreshProbe,
+          project: req.body?.project ?? {},
+        };
+    const normalizedProject = normalizePreflightProject(requestPayload.project ?? {});
+    const capabilities = refreshProbe ? await detectToolchain() : await getCachedToolchain();
+    if (refreshProbe) {
+      toolchainCache = capabilities;
+      toolchainCacheTime = Date.now();
+    }
+
+    const plan = buildImplementPlan({
+      backendId: requestPayload.backend_id,
+      project: normalizedProject,
+      capabilities,
+      platform: os.platform(),
+    });
+    return res.json(plan);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const fallbackProject = normalizePreflightProject(req.body?.project ?? {});
+    const fallbackPlan = buildImplementPlan({
+      backendId: req.body?.backend_id === "open" ? "open" : "vivado",
+      project: fallbackProject,
+      capabilities: {},
+      platform: os.platform(),
+    });
+    fallbackPlan.ok = false;
+    fallbackPlan.warnings = [
+      ...fallbackPlan.warnings,
+      {
+        run_id: fallbackPlan.run_id,
+        ts: fallbackPlan.warnings.length,
+        step: "pnr",
+        level: "warn",
+        msg: `[implement-plan] bridge_fallback: ${message}`,
+      },
+    ]
+      .sort((left, right) => left.msg.localeCompare(right.msg))
+      .map((entry, index) => ({ ...entry, ts: index }));
+    fallbackPlan.logs = [
+      ...fallbackPlan.logs,
+      {
+        run_id: fallbackPlan.run_id,
+        ts: fallbackPlan.logs.length,
+        step: "pnr",
+        level: "error",
+        msg: `[implement-plan] bridge: failed: ${message}`,
+      },
+    ];
+    return res.status(500).json(fallbackPlan);
+  }
+});
+
 app.post("/api/toolchain/doctor-report", async (req, res) => {
   try {
     const refreshProbe = req.body?.refresh_probe === true;
@@ -2205,12 +2937,32 @@ app.post("/api/toolchain/doctor-report", async (req, res) => {
 
     const probe = buildProbeFromCapabilities(capabilities);
     const preflight = buildPreflightFromProject(normalizedProject, probe.tools);
+    const buildPathPlan = buildImplementPlan({
+      backendId,
+      project: normalizedProject,
+      capabilities,
+      platform: os.platform(),
+    });
+    const buildPath = {
+      schema_version: "toolchain_build_path_v1",
+      plannerVersion: "toolchain_planner_v1",
+      planId: buildPathPlan.planId,
+      backend: buildPathPlan.backend,
+      board: normalizedProject.fpga.board,
+      top: normalizedProject.hdl.top || "top",
+      constraintsPreset: normalizedProject.fpga.preset || null,
+      requiredTools: buildPathPlan.requiredTools,
+      commands: buildPathPlan.commands,
+      outputs: buildPathPlan.outputs,
+      warnings: buildPathPlan.warnings,
+    };
     const logs = Array.isArray(req.body?.logs) ? req.body.logs : [];
     const report = buildDoctorReportFromProject({
       backendId,
       project: normalizedProject,
       probe,
       preflight,
+      buildPath,
       logs,
     });
     return res.json(report);
@@ -2236,6 +2988,7 @@ app.post("/api/toolchain/doctor-report", async (req, res) => {
       project: normalizedProject,
       probe,
       preflight,
+      buildPath: null,
       logs: [],
     });
     return res.status(500).json(report);
@@ -2243,6 +2996,20 @@ app.post("/api/toolchain/doctor-report", async (req, res) => {
 });
 
 function normalizeSynthRequestPayload(body) {
+  const rawBuildPath = body?.buildPath && typeof body.buildPath === "object" ? body.buildPath : null;
+  const buildPathPlanId =
+    typeof rawBuildPath?.planId === "string" && rawBuildPath.planId.trim().length > 0
+      ? rawBuildPath.planId.trim()
+      : null;
+  const buildPathBackend = (
+    rawBuildPath?.backend === "buildpack-open" ||
+    rawBuildPath?.backend === "nextpnr-xilinx" ||
+    rawBuildPath?.backend === "f4pga" ||
+    rawBuildPath?.backend === "vivado-fallback" ||
+    rawBuildPath?.backend === "none"
+  )
+    ? rawBuildPath.backend
+    : null;
   const board = body?.board === "basys3" ? "basys3" : null;
   const top = normalizeSynthTop(body?.top);
   const sourceInfo = normalizeSynthSources(body?.sources);
@@ -2252,22 +3019,497 @@ function normalizeSynthRequestPayload(body) {
     sources: sourceInfo.sources,
     nonVerilogCount: sourceInfo.nonVerilogCount,
     invalidCount: sourceInfo.invalidCount,
+    buildPath:
+      buildPathPlanId && buildPathBackend
+        ? {
+            planId: buildPathPlanId,
+            backend: buildPathBackend,
+          }
+        : null,
   };
 }
 
 function writeSynthSources(workDir, sources) {
   const sourceRoot = path.join(workDir, "src");
   fs.mkdirSync(sourceRoot, { recursive: true });
-  const sourcePaths = [];
+  const sourceEntries = [];
   for (const source of sources) {
     const relativePath = source.path.replace(/\\/g, "/");
     const absolutePath = path.join(sourceRoot, relativePath);
     fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
     fs.writeFileSync(absolutePath, source.text, "utf8");
-    sourcePaths.push(path.relative(workDir, absolutePath).replace(/\\/g, "/"));
+    sourceEntries.push({
+      sourcePath: relativePath,
+      runRelativePath: path.relative(workDir, absolutePath).replace(/\\/g, "/"),
+      absolutePath,
+    });
   }
-  sourcePaths.sort((left, right) => left.localeCompare(right));
-  return sourcePaths;
+  sourceEntries.sort((left, right) => left.sourcePath.localeCompare(right.sourcePath));
+  return sourceEntries;
+}
+
+function normalizeImplementBackend(value) {
+  if (value === "buildpack-open" || value === "nextpnr-xilinx" || value === "f4pga" || value === "vivado-fallback" || value === "none") {
+    return value;
+  }
+  return null;
+}
+
+function normalizeImplementCommandStep(step) {
+  return step === "synth" || step === "pnr" || step === "bitgen" ? step : null;
+}
+
+function normalizeImplementSourcePath(pathValue) {
+  if (typeof pathValue !== "string") return null;
+  let value = pathValue.trim().replace(/\\/g, "/");
+  if (!value) return null;
+  if (value.startsWith("/") || /^[A-Za-z]:/.test(value)) return null;
+  while (value.startsWith("./")) value = value.slice(2);
+  const segments = value
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0);
+  if (segments.length === 0) return null;
+  if (segments.some((segment) => segment === "." || segment === "..")) return null;
+  return segments
+    .map((segment) => {
+      const sanitized = segment.replace(/[^a-zA-Z0-9._-]/g, "_");
+      return sanitized.length > 0 ? sanitized : "_";
+    })
+    .join("/");
+}
+
+function normalizeImplementPathHint(pathHint) {
+  if (typeof pathHint !== "string") return null;
+  let value = pathHint.trim().replace(/\\/g, "/");
+  if (!value) return null;
+  if (value.startsWith("/") || /^[A-Za-z]:/.test(value)) return null;
+  while (value.startsWith("./")) value = value.slice(2);
+  const segments = value
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0);
+  if (segments.length === 0 || segments.some((segment) => segment === "." || segment === "..")) return null;
+  return segments.join("/");
+}
+
+function normalizeImplementBuildPathPayload(rawBuildPath) {
+  if (!rawBuildPath || typeof rawBuildPath !== "object") return null;
+  const backend = normalizeImplementBackend(rawBuildPath.backend);
+  const planId =
+    typeof rawBuildPath.planId === "string" && rawBuildPath.planId.trim().length > 0
+      ? rawBuildPath.planId.trim()
+      : null;
+  if (!backend || !planId) return null;
+  const buildpack =
+    rawBuildPath?.buildpack &&
+    typeof rawBuildPath.buildpack === "object" &&
+    typeof rawBuildPath.buildpack.name === "string" &&
+    rawBuildPath.buildpack.name.trim().length > 0 &&
+    typeof rawBuildPath.buildpack.version === "string" &&
+    rawBuildPath.buildpack.version.trim().length > 0
+      ? {
+          name: rawBuildPath.buildpack.name.trim(),
+          version: rawBuildPath.buildpack.version.trim(),
+        }
+      : null;
+
+  const requiredTools = Array.isArray(rawBuildPath.requiredTools)
+    ? rawBuildPath.requiredTools
+        .map((tool) => {
+          if (!tool || typeof tool !== "object") return null;
+          const name = typeof tool.name === "string" ? tool.name.trim() : "";
+          const why = typeof tool.why === "string" ? tool.why.trim() : "";
+          if (!name || !why) return null;
+          const source =
+            tool.source === "bundled" ||
+            tool.source === "buildpack" ||
+            tool.source === "system" ||
+            tool.source === "not_found" ||
+            tool.source === "found_not_in_path"
+              ? tool.source
+              : null;
+          const integrity =
+            tool.integrity === "verified" || tool.integrity === "corrupt" || tool.integrity === "unknown"
+              ? tool.integrity
+              : null;
+          return {
+            name,
+            ok: tool.ok === true,
+            ...(typeof tool.version === "string" && tool.version.trim().length > 0 ? { version: tool.version.trim() } : {}),
+            ...(source ? { source } : {}),
+            ...(integrity ? { integrity } : {}),
+            why,
+          };
+        })
+        .filter(Boolean)
+        .sort((left, right) => left.name.localeCompare(right.name))
+    : [];
+
+  const commands = Array.isArray(rawBuildPath.commands)
+    ? rawBuildPath.commands
+        .map((command) => {
+          if (!command || typeof command !== "object") return null;
+          const step = normalizeImplementCommandStep(command.step);
+          if (!step) return null;
+          const argv = Array.isArray(command.argv)
+            ? command.argv.map((arg) => String(arg)).filter((arg) => arg.trim().length > 0)
+            : [];
+          if (argv.length === 0) return null;
+          const envKeysUsed = Array.isArray(command.envKeysUsed)
+            ? command.envKeysUsed
+                .map((key) => String(key).trim())
+                .filter((key) => key.length > 0)
+                .sort((a, b) => a.localeCompare(b))
+            : [];
+          return {
+            step,
+            argv,
+            envKeysUsed,
+          };
+        })
+        .filter(Boolean)
+        .sort((left, right) => `${left.step}\u0000${left.argv.join("\u0001")}`.localeCompare(`${right.step}\u0000${right.argv.join("\u0001")}`))
+    : [];
+
+  const outputs = Array.isArray(rawBuildPath.outputs)
+    ? rawBuildPath.outputs
+        .map((output) => {
+          if (!output || typeof output !== "object") return null;
+          const name = typeof output.name === "string" ? output.name.trim() : "";
+          const pathHint = normalizeImplementPathHint(output.pathHint);
+          if (!name || !pathHint) return null;
+          return { name, pathHint };
+        })
+        .filter(Boolean)
+        .sort((left, right) => `${left.name}\u0000${left.pathHint}`.localeCompare(`${right.name}\u0000${right.pathHint}`))
+    : [];
+
+  const warnings = Array.isArray(rawBuildPath.warnings)
+    ? rawBuildPath.warnings
+        .map((entry, index) => {
+          if (!entry || typeof entry !== "object") return null;
+          const msg = typeof entry.msg === "string" ? entry.msg : "";
+          if (!msg) return null;
+          return {
+            run_id: typeof entry.run_id === "string" ? entry.run_id : `build-path-${planId}`,
+            ts: typeof entry.ts === "number" ? entry.ts : index,
+            step: normalizeImplementCommandStep(entry.step) || "pnr",
+            level: entry.level === "error" || entry.level === "warn" || entry.level === "info" ? entry.level : "warn",
+            msg,
+          };
+        })
+        .filter(Boolean)
+        .sort((left, right) => left.msg.localeCompare(right.msg))
+    : [];
+
+  return {
+    planId,
+    backend,
+    ...(buildpack ? { buildpack } : {}),
+    requiredTools,
+    commands,
+    outputs,
+    warnings,
+  };
+}
+
+function normalizeImplementRunPayload(body) {
+  const project = normalizePreflightProject(body?.project || {});
+  const board = body?.board === "basys3" ? "basys3" : project.fpga.board;
+  const clientRunId = typeof body?.clientIds?.runId === "string" && body.clientIds.runId.trim().length > 0
+    ? body.clientIds.runId.trim()
+    : null;
+  const clientArtifactId = typeof body?.clientIds?.artifactId === "string" && body.clientIds.artifactId.trim().length > 0
+    ? body.clientIds.artifactId.trim()
+    : null;
+  return {
+    board,
+    project: {
+      ...project,
+      fpga: {
+        ...project.fpga,
+        board,
+      },
+    },
+    buildPath: normalizeImplementBuildPathPayload(body?.buildPath),
+    clientIds: {
+      runId: clientRunId,
+      artifactId: clientArtifactId,
+    },
+  };
+}
+
+function deriveImplementSourceHash(project) {
+  return deterministicId("implement-src", {
+    sources: project.hdl.sources.map((source) => ({
+      path: source.path,
+      language: source.language,
+      text: source.text,
+    })),
+  });
+}
+
+function deriveImplementConstraintsHash(project) {
+  return deterministicId("implement-xdc", project.fpga.constraints?.text || "");
+}
+
+function deriveImplementRunIdentity({ project, buildPath }) {
+  const top = project.hdl.top || project.fpga.top || "top";
+  const sourceHash = deriveImplementSourceHash(project);
+  const constraintsHash = deriveImplementConstraintsHash(project);
+  const identityPayload = {
+    board: project.fpga.board,
+    top,
+    backend: buildPath.backend,
+    buildpack:
+      buildPath.buildpack && typeof buildPath.buildpack === "object"
+        ? {
+            name: buildPath.buildpack.name || null,
+            version: buildPath.buildpack.version || null,
+          }
+        : null,
+    planId: buildPath.planId,
+    sourceHash,
+    constraintsHash,
+  };
+  return {
+    runId: deterministicId("toolchain-implement-run", identityPayload),
+    artifactId: deterministicId("toolchain-implement-artifact", identityPayload),
+    sourceHash,
+    constraintsHash,
+    top,
+  };
+}
+
+function writeImplementSources(workDir, sources) {
+  const sourceRoot = path.join(workDir, "src");
+  fs.mkdirSync(sourceRoot, { recursive: true });
+  const sourceEntries = [];
+  for (const source of Array.isArray(sources) ? sources : []) {
+    const relativePath = normalizeImplementSourcePath(source?.path);
+    if (!relativePath) continue;
+    const absolutePath = path.join(sourceRoot, relativePath);
+    fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
+    fs.writeFileSync(absolutePath, typeof source?.text === "string" ? source.text : "", "utf8");
+    sourceEntries.push({
+      sourcePath: relativePath,
+      language: source?.language === "vhdl" ? "vhdl" : "verilog",
+      runRelativePath: path.relative(workDir, absolutePath).replace(/\\/g, "/"),
+      absolutePath,
+    });
+  }
+  sourceEntries.sort((left, right) => left.sourcePath.localeCompare(right.sourcePath));
+  return sourceEntries;
+}
+
+function writeImplementConstraints(workDir, constraints) {
+  const text = typeof constraints?.text === "string" ? constraints.text : "";
+  if (!text.trim()) return null;
+  const constraintsPath = path.join(workDir, "constraints.xdc");
+  fs.writeFileSync(constraintsPath, text, "utf8");
+  return {
+    runRelativePath: path.relative(workDir, constraintsPath).replace(/\\/g, "/"),
+    absolutePath: constraintsPath,
+  };
+}
+
+function buildImplementExecutionContext({ top, sourceEntries, constraintsEntry }) {
+  const sourcePaths = sourceEntries.map((entry) => entry.runRelativePath);
+  const escapedSources = sourcePaths.map((entry) => (entry.includes(" ") ? `"${entry}"` : entry)).join(" ");
+  return {
+    top,
+    sourcePaths,
+    sourceArgs: escapedSources,
+    constraintsPath: constraintsEntry?.runRelativePath || "constraints.xdc",
+  };
+}
+
+function resolveImplementCommandArg(arg, context) {
+  return String(arg)
+    .split("<top>")
+    .join(context.top)
+    .split("<sources>")
+    .join(context.sourceArgs)
+    .split("<constraints>")
+    .join(context.constraintsPath);
+}
+
+function materializeImplementCommands(commands, context) {
+  return (Array.isArray(commands) ? commands : [])
+    .map((command) => ({
+      step: normalizeImplementCommandStep(command?.step) || "pnr",
+      argv: Array.isArray(command?.argv) ? command.argv.map((arg) => resolveImplementCommandArg(arg, context)) : [],
+      envKeysUsed: Array.isArray(command?.envKeysUsed)
+        ? command.envKeysUsed.map((key) => String(key)).sort((a, b) => a.localeCompare(b))
+        : [],
+    }))
+    .filter((command) => command.argv.length > 0);
+}
+
+function collectFilesRecursive(rootDir, maxDepth = 8) {
+  const results = [];
+  const stack = [{ dir: rootDir, depth: 0 }];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current || current.depth > maxDepth) continue;
+    const entries = fs.existsSync(current.dir) ? fs.readdirSync(current.dir, { withFileTypes: true }) : [];
+    for (const entry of entries) {
+      const fullPath = path.join(current.dir, entry.name);
+      if (entry.isDirectory()) {
+        stack.push({ dir: fullPath, depth: current.depth + 1 });
+      } else if (entry.isFile()) {
+        results.push(fullPath);
+      }
+    }
+  }
+  return results;
+}
+
+function collectImplementArtifactOutputs({ repoRoot, runWorkDir, plannedOutputs }) {
+  const outputMap = new Map();
+  const registerOutput = (name, pathHint, kindHint) => {
+    const normalizedPathHint = normalizeImplementPathHint(pathHint);
+    if (!normalizedPathHint) return;
+    const absolutePath = path.resolve(runWorkDir, normalizedPathHint);
+    const resolvedRunRoot = path.resolve(runWorkDir);
+    if (absolutePath !== resolvedRunRoot && !absolutePath.startsWith(`${resolvedRunRoot}${path.sep}`)) return;
+    if (!fs.existsSync(absolutePath) || !fs.statSync(absolutePath).isFile()) return;
+    const storedPath = path.relative(repoRoot, absolutePath).replace(/\\/g, "/");
+    const kind = classifyImplementOutputKind({
+      kind: kindHint,
+      name,
+      pathHint: normalizedPathHint,
+      storedPath,
+    });
+    outputMap.set(storedPath, {
+      name,
+      kind,
+      pathHint: normalizedPathHint,
+      storedPath,
+    });
+  };
+
+  for (const output of Array.isArray(plannedOutputs) ? plannedOutputs : []) {
+    if (!output || typeof output !== "object") continue;
+    const name = typeof output.name === "string" && output.name.trim().length > 0 ? output.name.trim() : "output";
+    registerOutput(name, output.pathHint, output.kind);
+  }
+
+  for (const candidateDir of ["out", "build"]) {
+    const absoluteDir = path.join(runWorkDir, candidateDir);
+    for (const filePath of collectFilesRecursive(absoluteDir, 8)) {
+      const relativePath = path.relative(runWorkDir, filePath).replace(/\\/g, "/");
+      if (outputMap.has(path.relative(repoRoot, filePath).replace(/\\/g, "/"))) continue;
+      const baseName = path.basename(relativePath, path.extname(relativePath)) || "output";
+      registerOutput(`auto-${baseName}`, relativePath);
+    }
+  }
+
+  return Array.from(outputMap.values()).sort((left, right) =>
+    `${left.kind}\u0000${left.name}\u0000${left.pathHint}`.localeCompare(
+      `${right.kind}\u0000${right.name}\u0000${right.pathHint}`
+    )
+  );
+}
+
+async function executeImplementCommand({ runId, workDir, command }) {
+  return new Promise((resolve) => {
+    const commandName = command.argv[0];
+    const args = command.argv.slice(1);
+    if (!commandName) {
+      resolve({
+        ok: false,
+        exitCode: null,
+        error: "invalid_command",
+      });
+      return;
+    }
+
+    let stdoutRemainder = "";
+    let stderrRemainder = "";
+    const flushLines = (buffer, level) => {
+      const lines = buffer.split(/\r?\n/);
+      const remainder = lines.pop() || "";
+      for (const lineRaw of lines) {
+        const line = lineRaw.trim();
+        if (!line) continue;
+        toolchainImplementRuns.appendLog(
+          runId,
+          level,
+          `[${command.step}] ${line}`,
+          undefined,
+          command.step === "synth" ? "implement" : command.step
+        );
+      }
+      return remainder;
+    };
+
+    toolchainImplementRuns.appendLog(
+      runId,
+      "info",
+      `[bridge] implement: command (${command.step}): ${command.argv.join(" ")}`,
+      { argv: command.argv, envKeysUsed: command.envKeysUsed },
+      command.step === "synth" ? "implement" : command.step
+    );
+
+    const proc = spawn(commandName, args, {
+      cwd: workDir,
+      shell: false,
+      windowsHide: true,
+      env: process.env,
+    });
+    toolchainImplementRuns.attachProcess(runId, proc);
+
+    proc.stdout?.on("data", (chunk) => {
+      const text = String(chunk || "");
+      stdoutRemainder = flushLines(`${stdoutRemainder}${text}`, "info");
+    });
+
+    proc.stderr?.on("data", (chunk) => {
+      const text = String(chunk || "");
+      stderrRemainder = flushLines(`${stderrRemainder}${text}`, "warn");
+    });
+
+    proc.on("error", (error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      resolve({
+        ok: false,
+        exitCode: null,
+        error: `spawn_failed:${message}`,
+      });
+    });
+
+    proc.on("close", (code) => {
+      const trailingStdout = stdoutRemainder.trim();
+      if (trailingStdout) {
+        toolchainImplementRuns.appendLog(
+          runId,
+          "info",
+          `[${command.step}] ${trailingStdout}`,
+          undefined,
+          command.step === "synth" ? "implement" : command.step
+        );
+      }
+      const trailingStderr = stderrRemainder.trim();
+      if (trailingStderr) {
+        toolchainImplementRuns.appendLog(
+          runId,
+          "warn",
+          `[${command.step}] ${trailingStderr}`,
+          undefined,
+          command.step === "synth" ? "implement" : command.step
+        );
+      }
+
+      const exitCode = typeof code === "number" ? code : null;
+      resolve({
+        ok: exitCode === 0,
+        exitCode,
+        error: exitCode === 0 ? null : `${command.step}_exit_${exitCode ?? "unknown"}`,
+      });
+    });
+  });
 }
 
 async function runYosysSynthesis({ runId, yosysPath, workDir, scriptPath }) {
@@ -2350,6 +3592,7 @@ async function executeToolchainSynthRun({
   sources,
   yosysPath,
   yosysVersion,
+  buildPath,
 }) {
   try {
     const repoRoot = getRepoRoot();
@@ -2358,11 +3601,39 @@ async function executeToolchainSynthRun({
     fs.rmSync(runWorkDir, { recursive: true, force: true });
     fs.mkdirSync(path.join(runWorkDir, "out"), { recursive: true });
 
-    const sourcePaths = writeSynthSources(runWorkDir, sources);
+    const sourceEntries = writeSynthSources(runWorkDir, sources);
+    const sourcePaths = sourceEntries.map((entry) => entry.runRelativePath);
     const scriptText = buildYosysSynthScript({ top, sourcePaths });
     const scriptPath = path.join(runWorkDir, "run.ys");
     fs.writeFileSync(scriptPath, scriptText, "utf8");
     const scriptSha256 = hashBufferSha256(Buffer.from(scriptText, "utf8"));
+    const outDir = path.join(runWorkDir, "out");
+    const artifactSources = sourceEntries.map((entry) => ({
+      path: entry.sourcePath,
+      storedPath: path.relative(repoRoot, entry.absolutePath).replace(/\\/g, "/"),
+    }));
+    const artifactBase = {
+      artifactId,
+      board,
+      top,
+      yosysVersion: yosysVersion || null,
+      scriptVersion: YOSYS_SYNTH_SCRIPT_VERSION,
+      ...(buildPath ? { buildPath } : {}),
+      scriptSha256,
+      sources: artifactSources,
+      outputs: {
+        runScript: path.relative(repoRoot, scriptPath).replace(/\\/g, "/"),
+        outputDir: path.relative(repoRoot, outDir).replace(/\\/g, "/"),
+      },
+    };
+
+    const buildArtifact = (extraOutputs = {}) => ({
+      ...artifactBase,
+      outputs: {
+        ...artifactBase.outputs,
+        ...extraOutputs,
+      },
+    });
 
     toolchainSynthRuns.appendLog(runId, "info", "[bridge] synth: prepared run workspace", {
       artifact_id: artifactId,
@@ -2371,6 +3642,12 @@ async function executeToolchainSynthRun({
       source_count: sourcePaths.length,
       script_version: YOSYS_SYNTH_SCRIPT_VERSION,
       script_sha256: scriptSha256,
+      ...(buildPath
+        ? {
+            build_path_plan_id: buildPath.planId,
+            build_path_backend: buildPath.backend,
+          }
+        : {}),
     });
 
     const result = await runYosysSynthesis({
@@ -2387,6 +3664,7 @@ async function executeToolchainSynthRun({
         ok: false,
         exitCode: result.exitCode,
         error: result.error || "synth_failed",
+        artifact: buildArtifact(),
       });
       return;
     }
@@ -2398,6 +3676,7 @@ async function executeToolchainSynthRun({
         ok: false,
         exitCode: result.exitCode,
         error: "missing_netlist",
+        artifact: buildArtifact(),
       });
       return;
     }
@@ -2418,18 +3697,11 @@ async function executeToolchainSynthRun({
     };
     fs.writeFileSync(statsJsonPath, stableStringify(statsPayload), "utf8");
 
-    const artifact = {
-      artifactId,
-      board,
-      top,
-      yosysVersion: yosysVersion || null,
-      scriptVersion: YOSYS_SYNTH_SCRIPT_VERSION,
-      outputs: {
-        netlistVerilog: path.relative(repoRoot, netlistPath).replace(/\\/g, "/"),
-        statText: path.relative(repoRoot, statPath).replace(/\\/g, "/"),
-        statsJson: path.relative(repoRoot, statsJsonPath).replace(/\\/g, "/"),
-      },
-    };
+    const artifact = buildArtifact({
+      netlistVerilog: path.relative(repoRoot, netlistPath).replace(/\\/g, "/"),
+      statText: path.relative(repoRoot, statPath).replace(/\\/g, "/"),
+      statsJson: path.relative(repoRoot, statsJsonPath).replace(/\\/g, "/"),
+    });
 
     toolchainSynthRuns.appendLog(runId, "info", "[bridge] synth: completed", {
       artifact_id: artifactId,
@@ -2449,9 +3721,381 @@ async function executeToolchainSynthRun({
       ok: false,
       exitCode: null,
       error: "synth_failed",
+      artifact: {
+        artifactId,
+        board,
+        top,
+        yosysVersion: yosysVersion || null,
+        scriptVersion: YOSYS_SYNTH_SCRIPT_VERSION,
+        ...(buildPath ? { buildPath } : {}),
+      },
     });
   }
 }
+
+function normalizeBuildpackInstallPayload(raw) {
+  const value = raw && typeof raw === "object" ? raw : {};
+  const name = typeof value.name === "string" && value.name.trim().length > 0 ? value.name.trim() : null;
+  const version = typeof value.version === "string" && value.version.trim().length > 0 ? value.version.trim() : null;
+  const url = typeof value.url === "string" && value.url.trim().length > 0 ? value.url.trim() : null;
+  const sha256 = typeof value.sha256 === "string" && value.sha256.trim().length > 0 ? value.sha256.trim().toLowerCase() : null;
+  return {
+    name,
+    version,
+    url,
+    sha256,
+  };
+}
+
+function normalizeBuildpackRemovePayload(raw) {
+  const value = raw && typeof raw === "object" ? raw : {};
+  const name = typeof value.name === "string" && value.name.trim().length > 0 ? value.name.trim() : null;
+  const version = typeof value.version === "string" && value.version.trim().length > 0 ? value.version.trim() : null;
+  return { name, version };
+}
+
+function buildBuildpackStatusPayload(capabilities, runId = null) {
+  const platform = os.platform();
+  const arch = os.arch();
+  const platformKey = getBuildpackPlatformKey({ platform, arch });
+  const storeRoot = getBuildpackStoreRoot({ platform, arch });
+  const installed = listInstalledBuildpacks({ platform, arch }).map((pack) => ({
+    name: pack.name,
+    version: pack.version,
+    platformKey: pack.manifest?.platformKey || null,
+    installDir: pack.installDir,
+    ok: pack.ok === true,
+    integrity: pack.integrity === "corrupt" ? "corrupt" : "verified",
+    tools: Array.isArray(pack.tools)
+      ? pack.tools.map((tool) => ({
+          name: tool.name,
+          relPath: tool.relPath,
+          version: tool.version || null,
+        }))
+      : [],
+    ...(typeof pack.error === "string" ? { error: pack.error } : {}),
+    ...(typeof pack.details === "string" ? { details: pack.details } : {}),
+  }));
+  const logs = [];
+  let ts = 0;
+  const push = (level, msg, data) => {
+    logs.push({
+      run_id: runId || "toolchain-buildpack-status",
+      ts: ts++,
+      step: "buildpack",
+      level,
+      msg,
+      ...(data && typeof data === "object" ? { data } : {}),
+    });
+  };
+  push("info", "[bridge] buildpack: status collected", {
+    platformKey,
+    storeRoot,
+    installedCount: installed.length,
+  });
+  const buildpackTools = ["yosys", "nextpnr-xilinx", "f4pga", "openFPGALoader"];
+  const tools = {};
+  for (const toolName of buildpackTools) {
+    const capability = capabilities?.[
+      toolName === "nextpnr-xilinx" ? "nextpnrXilinx" : toolName
+    ];
+    tools[toolName] = {
+      ok: capability?.ok === true,
+      source:
+        capability?.source === "buildpack" ||
+        capability?.source === "bundled" ||
+        capability?.source === "system" ||
+        capability?.source === "found_not_in_path" ||
+        capability?.source === "not_found"
+          ? capability.source
+          : "not_found",
+      status: capability?.status === "found_not_in_path" || capability?.status === "missing" ? capability.status : "ok",
+      integrity:
+        capability?.integrity === "verified" || capability?.integrity === "corrupt" || capability?.integrity === "unknown"
+          ? capability.integrity
+          : "unknown",
+      ...(typeof capability?.version === "string" ? { version: capability.version } : {}),
+      ...(typeof capability?.path === "string" ? { path: capability.path } : {}),
+      ...(typeof capability?.error === "string" ? { error: capability.error } : {}),
+      ...(typeof capability?.suggestedFix === "string" ? { suggestedFix: capability.suggestedFix } : {}),
+    };
+  }
+  return {
+    schema_version: "toolchain_buildpack_status_v1",
+    ok: installed.some((pack) => pack.ok),
+    run_id: runId || deterministicId("buildpack-status", { platformKey, installed }),
+    platformKey,
+    storeRoot,
+    installed,
+    tools,
+    logs,
+  };
+}
+
+async function executeBuildpackInstallRun({
+  runId,
+  artifactId,
+  payload,
+}) {
+  const log = (level, msg, data) => {
+    toolchainBuildpackRuns.appendLog(runId, level, msg, data, "buildpack");
+  };
+  try {
+    const result = await installBuildpackPayload({
+      name: payload.name,
+      version: payload.version,
+      url: payload.url,
+      sha256: payload.sha256,
+      runId,
+      platform: os.platform(),
+      arch: os.arch(),
+      env: process.env,
+      homedir: os.homedir(),
+      log,
+    });
+    toolchainCache = null;
+    toolchainCacheTime = 0;
+    log("info", "[bridge] buildpack: install complete", {
+      name: result.manifest.name,
+      version: result.manifest.version,
+      platformKey: result.manifest.platformKey,
+      installDir: result.installDir,
+    });
+    toolchainBuildpackRuns.finishRun(runId, {
+      ok: true,
+      exitCode: 0,
+      artifact: {
+        artifactId,
+        name: result.manifest.name,
+        version: result.manifest.version,
+        platformKey: result.manifest.platformKey,
+        installDir: result.installDir,
+        tools: result.manifest.tools,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    log("error", `[bridge] buildpack: install failed: ${message}`);
+    toolchainBuildpackRuns.finishRun(runId, {
+      ok: false,
+      exitCode: null,
+      error: message || "buildpack_install_failed",
+      artifact: {
+        artifactId,
+        name: payload.name,
+        version: payload.version,
+      },
+    });
+  }
+}
+
+app.get("/api/toolchain/buildpack/status", async (_req, res) => {
+  const capabilities = await getCachedToolchain();
+  return res.json(buildBuildpackStatusPayload(capabilities));
+});
+
+app.post("/api/toolchain/buildpack/install", async (req, res) => {
+  const schemaVersion = "toolchain_buildpack_run_v1";
+  const payload = normalizeBuildpackInstallPayload(req.body);
+  if (!payload.name || !payload.version || !payload.url) {
+    return res.status(400).json({
+      schema_version: schemaVersion,
+      ok: false,
+      error: "buildpack_name_version_url_required",
+      logs: [],
+      nextOffset: 0,
+    });
+  }
+
+  const artifactId = deterministicId("toolchain-buildpack-artifact", {
+    name: payload.name,
+    version: payload.version,
+    url: payload.url,
+    sha256: payload.sha256 || null,
+  });
+  const runId = createProgramExecutionRunId(artifactId, toolchainBuildpackExecutionSeq++);
+  const started = toolchainBuildpackRuns.startRun({
+    runId,
+    artifactId,
+    board: "basys3",
+  });
+  if (!started.ok) {
+    const existing = toolchainBuildpackRuns.getStatus(runId, 0);
+    return res.status(409).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      artifactId,
+      state: existing?.state || "running",
+      error: "run_already_running",
+      logs: existing?.logs ?? [],
+      nextOffset: existing?.nextOffset ?? 0,
+    });
+  }
+
+  toolchainBuildpackRuns.appendLog(runId, "info", "[bridge] buildpack: install requested", {
+    artifact_id: artifactId,
+    name: payload.name,
+    version: payload.version,
+  });
+  void executeBuildpackInstallRun({
+    runId,
+    artifactId,
+    payload,
+  });
+
+  const status = toolchainBuildpackRuns.getStatus(runId, 0);
+  return res.status(202).json({
+    schema_version: schemaVersion,
+    ok: true,
+    runId,
+    artifactId,
+    state: status?.state || "running",
+    logs: status?.logs ?? [],
+    nextOffset: status?.nextOffset ?? 0,
+    ...(status?.artifact ? { artifact: status.artifact } : {}),
+  });
+});
+
+app.get("/api/toolchain/buildpack/runs/:runId", (req, res) => {
+  const schemaVersion = "toolchain_buildpack_run_status_v1";
+  const runId = typeof req.params?.runId === "string" ? req.params.runId : "";
+  const offset = normalizeProgramRunOffset(req.query?.offset);
+  const status = toolchainBuildpackRuns.getStatus(runId, offset);
+  if (!status) {
+    return res.status(404).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      error: "run_not_found",
+      logs: [],
+      nextOffset: offset,
+    });
+  }
+  return res.json({
+    schema_version: schemaVersion,
+    ...status,
+  });
+});
+
+app.get("/api/toolchain/buildpack/runs/:runId/stream", (req, res) => {
+  const runId = typeof req.params?.runId === "string" ? req.params.runId : "";
+  const offset = normalizeProgramRunOffset(req.query?.offset);
+  const status = toolchainBuildpackRuns.getStatus(runId, offset);
+  if (!status) {
+    return res.status(404).json({ ok: false, error: "run_not_found" });
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+  });
+
+  for (const entry of status.logs) {
+    res.write(formatSseEvent("log", entry));
+  }
+
+  if (status.state !== "running") {
+    res.write(formatSseEvent("done", {
+      runId: status.runId,
+      artifactId: status.artifactId,
+      state: status.state,
+      ok: status.ok === true,
+      exitCode: status.exitCode,
+      nextOffset: status.nextOffset,
+      ...(status.error ? { error: status.error } : {}),
+      ...(status.artifact ? { artifact: status.artifact } : {}),
+    }));
+    res.end();
+    return;
+  }
+
+  const unsubscribe = toolchainBuildpackRuns.subscribe(runId, {
+    onLog(entry) {
+      if (!res.writableEnded) {
+        res.write(formatSseEvent("log", entry));
+      }
+    },
+    onDone(summary) {
+      if (!res.writableEnded) {
+        res.write(formatSseEvent("done", summary));
+        res.end();
+      }
+    },
+  });
+
+  if (!unsubscribe) {
+    res.end();
+    return;
+  }
+
+  req.on("close", () => {
+    unsubscribe();
+  });
+});
+
+app.post("/api/toolchain/buildpack/remove", async (req, res) => {
+  const payload = normalizeBuildpackRemovePayload(req.body);
+  const runId = deterministicId("toolchain-buildpack-remove", payload);
+  let ts = 0;
+  const logs = [];
+  const push = (level, msg, data) => {
+    logs.push({
+      run_id: runId,
+      ts: ts++,
+      step: "buildpack",
+      level,
+      msg,
+      ...(data && typeof data === "object" ? { data } : {}),
+    });
+  };
+
+  if (!payload.name || !payload.version) {
+    push("error", "[bridge] buildpack: remove failed: buildpack_name_version_required");
+    return res.status(400).json({
+      schema_version: "toolchain_buildpack_remove_v1",
+      ok: false,
+      run_id: runId,
+      removed: false,
+      logs,
+      error: "buildpack_name_version_required",
+    });
+  }
+
+  const removed = removeBuildpackPayload({
+    name: payload.name,
+    version: payload.version,
+    env: process.env,
+    platform: os.platform(),
+    homedir: os.homedir(),
+  });
+  if (!removed.ok) {
+    push("error", `[bridge] buildpack: remove failed: ${removed.error || "remove_failed"}`);
+    return res.status(500).json({
+      schema_version: "toolchain_buildpack_remove_v1",
+      ok: false,
+      run_id: runId,
+      removed: false,
+      logs,
+      error: removed.error || "remove_failed",
+    });
+  }
+  toolchainCache = null;
+  toolchainCacheTime = 0;
+  push("info", `[bridge] buildpack: remove ${removed.removed ? "complete" : "no-op"}`, {
+    name: payload.name,
+    version: payload.version,
+    storeRoot: removed.storeRoot,
+  });
+  return res.json({
+    schema_version: "toolchain_buildpack_remove_v1",
+    ok: true,
+    run_id: runId,
+    removed: removed.removed === true,
+    logs,
+  });
+});
 
 app.post("/api/toolchain/synth", async (req, res) => {
   const schemaVersion = "toolchain_synth_run_v1";
@@ -2495,6 +4139,7 @@ app.post("/api/toolchain/synth", async (req, res) => {
 
   const capabilities = await getCachedToolchain();
   const yosys = capabilities?.yosys || null;
+  const yosysPath = resolveSelectedYosysPath(capabilities);
   const artifactId = createSynthArtifactId({
     board: normalized.board,
     top: normalized.top,
@@ -2504,7 +4149,7 @@ app.post("/api/toolchain/synth", async (req, res) => {
   });
   const runId = createProgramExecutionRunId(artifactId, toolchainSynthExecutionSeq++);
 
-  if (!yosys?.path) {
+  if (!yosysPath) {
     const logs = [
       {
         run_id: runId,
@@ -2546,13 +4191,35 @@ app.post("/api/toolchain/synth", async (req, res) => {
     });
   }
 
+  if (started.ok && started.run && normalized.buildPath) {
+    started.run.artifact = {
+      artifactId,
+      board: normalized.board,
+      top: normalized.top,
+      scriptVersion: YOSYS_SYNTH_SCRIPT_VERSION,
+      buildPath: normalized.buildPath,
+      outputs: {
+        netlistVerilog: "",
+        statText: "",
+      },
+    };
+  }
+
   toolchainSynthRuns.appendLog(runId, "info", "[bridge] synth: started", {
     artifact_id: artifactId,
     board: normalized.board,
     top: normalized.top,
     source_count: normalized.sources.length,
     yosys_version: yosys.version || null,
+    yosys_source: yosys?.source || null,
+    yosys_integrity: yosys?.integrity || null,
     script_version: YOSYS_SYNTH_SCRIPT_VERSION,
+    ...(normalized.buildPath
+      ? {
+          build_path_plan_id: normalized.buildPath.planId,
+          build_path_backend: normalized.buildPath.backend,
+        }
+      : {}),
   });
 
   void executeToolchainSynthRun({
@@ -2561,8 +4228,9 @@ app.post("/api/toolchain/synth", async (req, res) => {
     board: normalized.board,
     top: normalized.top,
     sources: normalized.sources,
-    yosysPath: yosys.path,
+    yosysPath,
     yosysVersion: yosys.version || null,
+    buildPath: normalized.buildPath,
   });
 
   const status = toolchainSynthRuns.getStatus(runId, 0);
@@ -2656,6 +4324,585 @@ app.get("/api/toolchain/synth/runs/:runId/stream", (req, res) => {
   req.on("close", () => {
     unsubscribe();
   });
+});
+
+app.get("/api/toolchain/synth/runs/:runId/artifacts.zip", async (req, res) => {
+  const schemaVersion = "toolchain_synth_artifacts_v1";
+  const runId = typeof req.params?.runId === "string" ? req.params.runId : "";
+  const status = toolchainSynthRuns.getStatus(runId, 0);
+  if (!status) {
+    return res.status(404).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      error: "run_not_found",
+    });
+  }
+
+  if (status.state === "running") {
+    return res.status(409).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      artifactId: status.artifactId,
+      state: status.state,
+      error: "run_not_ready",
+      msg: "synth run artifacts are not ready yet",
+    });
+  }
+
+  try {
+    const includeSourcesRaw =
+      typeof req.query?.includeSources === "string" ? req.query.includeSources : undefined;
+    if (
+      includeSourcesRaw !== undefined &&
+      includeSourcesRaw !== "0" &&
+      includeSourcesRaw !== "1"
+    ) {
+      return res.status(400).json({
+        schema_version: schemaVersion,
+        ok: false,
+        runId,
+        artifactId: status.artifactId,
+        state: status.state,
+        error: "invalid_include_sources",
+        msg: "includeSources must be 0 or 1",
+      });
+    }
+    const includeSources = includeSourcesRaw === "1";
+    const bundle = prepareSynthArtifactBundle({
+      repoRoot: getRepoRoot(),
+      runId,
+      status,
+      includeSources,
+    });
+    const zipBuffer = await createSynthArtifactsZipBuffer(bundle);
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="${bundle.filename}"`);
+    res.setHeader("Content-Length", String(zipBuffer.length));
+    return res.status(200).send(zipBuffer);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return res.status(500).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      artifactId: status.artifactId,
+      state: status.state,
+      error: "artifact_bundle_failed",
+      msg: message,
+    });
+  }
+});
+
+async function executeToolchainImplementRun({ runId, artifactId, project, buildPath }) {
+  const repoRoot = getRepoRoot();
+  const push = (level, msg, data, step = "implement") => {
+    toolchainImplementRuns.appendLog(runId, level, msg, data, step);
+  };
+  const top = project.hdl.top || project.fpga.top || "top";
+  const constraintsHash = deriveImplementConstraintsHash(project);
+  const fallbackArtifact = {
+    artifactId,
+    board: project.fpga.board,
+    top,
+    planId: buildPath.planId,
+    backend: buildPath.backend,
+    constraintsHash,
+    commands: [],
+    requiredTools: buildPath.requiredTools,
+    sources: [],
+    outputs: [],
+  };
+
+  if (buildPath.backend === "none") {
+    push("error", "[bridge] implement: no viable backend selected; run Plan Implementation and install required tools.");
+    toolchainImplementRuns.finishRun(runId, {
+      state: "error",
+      ok: false,
+      exitCode: null,
+      error: "no_viable_backend",
+      artifact: fallbackArtifact,
+    });
+    return;
+  }
+
+  try {
+    const tmpDir = ensureTmpDir(repoRoot);
+    const runWorkDir = path.join(tmpDir, runId);
+    fs.rmSync(runWorkDir, { recursive: true, force: true });
+    fs.mkdirSync(path.join(runWorkDir, "out"), { recursive: true });
+
+    const sourceEntries = writeImplementSources(runWorkDir, project.hdl.sources);
+    const constraintsEntry = writeImplementConstraints(runWorkDir, project.fpga.constraints);
+    const context = buildImplementExecutionContext({ top, sourceEntries, constraintsEntry });
+    const resolvedCommands = materializeImplementCommands(buildPath.commands, context);
+    const sourceRefs = sourceEntries.map((entry) => ({
+      path: entry.sourcePath,
+      storedPath: path.relative(repoRoot, entry.absolutePath).replace(/\\/g, "/"),
+    }));
+
+    push("info", "[bridge] implement: started", {
+      artifact_id: artifactId,
+      board: project.fpga.board,
+      top,
+      backend: buildPath.backend,
+      plan_id: buildPath.planId,
+      source_count: sourceEntries.length,
+      command_count: resolvedCommands.length,
+    });
+
+    if (constraintsEntry) {
+      push("info", "[bridge] implement: constraints loaded", {
+        constraints: constraintsEntry.runRelativePath,
+      });
+    } else {
+      push("warn", "[bridge] implement: constraints missing; implementation is expected to fail.");
+    }
+
+    let lastExitCode = 0;
+    let runError = null;
+    for (const command of resolvedCommands) {
+      const result = await executeImplementCommand({
+        runId,
+        workDir: runWorkDir,
+        command,
+      });
+      toolchainImplementRuns.clearProcess(runId);
+      if (!result.ok) {
+        lastExitCode = typeof result.exitCode === "number" ? result.exitCode : null;
+        runError = result.error || "implement_command_failed";
+        push("error", `[bridge] implement: command failed (${command.step}): ${runError}`, undefined, command.step === "synth" ? "implement" : command.step);
+        break;
+      }
+      lastExitCode = typeof result.exitCode === "number" ? result.exitCode : 0;
+    }
+
+    const outputs = collectImplementArtifactOutputs({
+      repoRoot,
+      runWorkDir,
+      plannedOutputs: buildPath.outputs,
+    });
+    const artifact = {
+      artifactId,
+      board: project.fpga.board,
+      top,
+      planId: buildPath.planId,
+      backend: buildPath.backend,
+      constraintsHash,
+      commands: resolvedCommands,
+      requiredTools: buildPath.requiredTools,
+      sources: sourceRefs,
+      outputs,
+    };
+
+    if (runError) {
+      toolchainImplementRuns.finishRun(runId, {
+        state: "error",
+        ok: false,
+        exitCode: lastExitCode,
+        error: runError,
+        artifact,
+      });
+      return;
+    }
+
+    push("info", "[bridge] implement: completed", {
+      artifact_id: artifactId,
+      outputs: outputs.map((output) => output.pathHint),
+    });
+    toolchainImplementRuns.finishRun(runId, {
+      state: "done",
+      ok: true,
+      exitCode: lastExitCode,
+      artifact,
+    });
+  } catch (error) {
+    toolchainImplementRuns.clearProcess(runId);
+    const message = error instanceof Error ? error.message : String(error);
+    push("error", `[bridge] implement: failed: ${message}`);
+    toolchainImplementRuns.finishRun(runId, {
+      state: "error",
+      ok: false,
+      exitCode: null,
+      error: "implement_failed",
+      artifact: fallbackArtifact,
+    });
+  }
+}
+
+app.post("/api/toolchain/implement/run", async (req, res) => {
+  const schemaVersion = "toolchain_implement_run_v1";
+  const normalized = normalizeImplementRunPayload(req.body || {});
+  if (normalized.board !== "basys3") {
+    return res.status(400).json({
+      schema_version: schemaVersion,
+      ok: false,
+      error: "unsupported_board",
+      logs: [],
+      nextOffset: 0,
+    });
+  }
+
+  const capabilities = await getCachedToolchain();
+  const planned = buildImplementPlan({
+    backendId: "vivado",
+    project: normalized.project,
+    capabilities,
+    platform: os.platform(),
+  });
+  const effectiveBuildPath = normalized.buildPath
+    ? {
+        planId: normalized.buildPath.planId,
+        backend: normalized.buildPath.backend,
+        ...(normalized.buildPath.buildpack ? { buildpack: normalized.buildPath.buildpack } : {}),
+        requiredTools:
+          normalized.buildPath.requiredTools.length > 0
+            ? normalized.buildPath.requiredTools
+            : planned.requiredTools,
+        commands: normalized.buildPath.commands.length > 0 ? normalized.buildPath.commands : planned.commands,
+        outputs: normalized.buildPath.outputs.length > 0 ? normalized.buildPath.outputs : planned.outputs,
+        warnings: normalized.buildPath.warnings.length > 0 ? normalized.buildPath.warnings : planned.warnings,
+      }
+    : {
+        planId: planned.planId,
+        backend: planned.backend,
+        ...(planned.buildpack ? { buildpack: planned.buildpack } : {}),
+        requiredTools: planned.requiredTools,
+        commands: planned.commands,
+        outputs: planned.outputs,
+        warnings: planned.warnings,
+      };
+
+  const identity = deriveImplementRunIdentity({
+    project: normalized.project,
+    buildPath: effectiveBuildPath,
+  });
+  const runId = identity.runId;
+  const artifactId = identity.artifactId;
+  const started = toolchainImplementRuns.startRun({
+    runId,
+    artifactId,
+    board: normalized.board,
+  });
+  if (!started.ok) {
+    const existing = toolchainImplementRuns.getStatus(runId, 0);
+    return res.status(409).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      artifactId,
+      state: existing?.state || "running",
+      error: "run_already_running",
+      logs: existing?.logs ?? [],
+      nextOffset: existing?.nextOffset ?? 0,
+      ...(existing?.artifact ? { artifact: existing.artifact } : {}),
+    });
+  }
+
+  if (started.ok && started.run) {
+    started.run.artifact = {
+      artifactId,
+      board: normalized.board,
+      top: identity.top,
+      planId: effectiveBuildPath.planId,
+      backend: effectiveBuildPath.backend,
+      constraintsHash: identity.constraintsHash,
+      commands: [],
+      requiredTools: effectiveBuildPath.requiredTools,
+      sources: [],
+      outputs: [],
+    };
+  }
+
+  toolchainImplementRuns.appendLog(
+    runId,
+    "info",
+    `[bridge] implement: queued backend=${effectiveBuildPath.backend} plan=${effectiveBuildPath.planId}`,
+    {
+      artifact_id: artifactId,
+      board: normalized.board,
+      source_hash: identity.sourceHash,
+      constraints_hash: identity.constraintsHash,
+      ...(effectiveBuildPath.buildpack
+        ? {
+            buildpack_name: effectiveBuildPath.buildpack.name,
+            buildpack_version: effectiveBuildPath.buildpack.version,
+          }
+        : {}),
+    }
+  );
+
+  void executeToolchainImplementRun({
+    runId,
+    artifactId,
+    project: normalized.project,
+    buildPath: effectiveBuildPath,
+  });
+
+  const status = toolchainImplementRuns.getStatus(runId, 0);
+  return res.status(202).json({
+    schema_version: schemaVersion,
+    ok: true,
+    runId,
+    artifactId,
+    state: status?.state || "running",
+    logs: status?.logs ?? [],
+    nextOffset: status?.nextOffset ?? 0,
+    ...(status?.artifact ? { artifact: status.artifact } : {}),
+  });
+});
+
+app.get("/api/toolchain/implement/runs/:runId", (req, res) => {
+  const schemaVersion = "toolchain_implement_run_status_v1";
+  const runId = typeof req.params?.runId === "string" ? req.params.runId : "";
+  const offset = normalizeProgramRunOffset(req.query?.offset);
+  const status = toolchainImplementRuns.getStatus(runId, offset);
+  if (!status) {
+    return res.status(404).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      error: "run_not_found",
+      logs: [],
+      nextOffset: offset,
+    });
+  }
+  return res.json({
+    schema_version: schemaVersion,
+    ...status,
+  });
+});
+
+app.get("/api/toolchain/implement/runs/:runId/stream", (req, res) => {
+  const runId = typeof req.params?.runId === "string" ? req.params.runId : "";
+  const offset = normalizeProgramRunOffset(req.query?.offset);
+  const status = toolchainImplementRuns.getStatus(runId, offset);
+  if (!status) {
+    return res.status(404).json({ ok: false, error: "run_not_found" });
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+  });
+
+  for (const entry of status.logs) {
+    res.write(formatSseEvent("log", entry));
+  }
+
+  if (status.state !== "running") {
+    res.write(
+      formatSseEvent("done", {
+        runId: status.runId,
+        artifactId: status.artifactId,
+        state: status.state,
+        ok: status.ok === true,
+        exitCode: status.exitCode,
+        nextOffset: status.nextOffset,
+        ...(status.artifact ? { artifact: status.artifact } : {}),
+        ...(status.error ? { error: status.error } : {}),
+      })
+    );
+    res.end();
+    return;
+  }
+
+  const unsubscribe = toolchainImplementRuns.subscribe(runId, {
+    onLog(entry) {
+      if (!res.writableEnded) {
+        res.write(formatSseEvent("log", entry));
+      }
+    },
+    onDone(summary) {
+      if (!res.writableEnded) {
+        res.write(formatSseEvent("done", summary));
+        res.end();
+      }
+    },
+  });
+
+  if (!unsubscribe) {
+    res.end();
+    return;
+  }
+
+  req.on("close", () => {
+    unsubscribe();
+  });
+});
+
+app.get("/api/toolchain/implement/runs/:runId/artifacts.zip", async (req, res) => {
+  const schemaVersion = "toolchain_implement_artifacts_v1";
+  const runId = typeof req.params?.runId === "string" ? req.params.runId : "";
+  const status = toolchainImplementRuns.getStatus(runId, 0);
+  if (!status) {
+    return res.status(404).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      error: "run_not_found",
+    });
+  }
+
+  if (status.state === "running") {
+    return res.status(409).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      artifactId: status.artifactId,
+      state: status.state,
+      error: "run_not_ready",
+      msg: "implement run artifacts are not ready yet",
+    });
+  }
+
+  try {
+    const includeSourcesRaw =
+      typeof req.query?.includeSources === "string" ? req.query.includeSources : undefined;
+    if (
+      includeSourcesRaw !== undefined &&
+      includeSourcesRaw !== "0" &&
+      includeSourcesRaw !== "1"
+    ) {
+      return res.status(400).json({
+        schema_version: schemaVersion,
+        ok: false,
+        runId,
+        artifactId: status.artifactId,
+        state: status.state,
+        error: "invalid_include_sources",
+        msg: "includeSources must be 0 or 1",
+      });
+    }
+    const includeSources = includeSourcesRaw === "1";
+    const bundle = prepareImplementArtifactBundle({
+      repoRoot: getRepoRoot(),
+      runId,
+      status,
+      includeSources,
+    });
+    const zipBuffer = await createImplementArtifactsZipBuffer(bundle);
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="${bundle.filename}"`);
+    res.setHeader("Content-Length", String(zipBuffer.length));
+    return res.status(200).send(zipBuffer);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return res.status(500).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      artifactId: status.artifactId,
+      state: status.state,
+      error: "artifact_bundle_failed",
+      msg: message,
+    });
+  }
+});
+
+app.get("/api/toolchain/implement/runs/:runId/output/bitstream", (req, res) => {
+  const schemaVersion = "toolchain_implement_output_bitstream_v1";
+  const runId = typeof req.params?.runId === "string" ? req.params.runId : "";
+  const status = toolchainImplementRuns.getStatus(runId, 0);
+  if (!status) {
+    return res.status(404).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      error: "run_not_found",
+      logs: [
+        {
+          run_id: runId,
+          ts: 0,
+          step: "implement",
+          level: "error",
+          msg: "[bridge] implement: run not found",
+        },
+      ],
+    });
+  }
+
+  if (status.state === "running") {
+    return res.status(409).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      artifactId: status.artifactId,
+      state: status.state,
+      error: "run_not_ready",
+      logs: [
+        {
+          run_id: runId,
+          ts: 0,
+          step: "implement",
+          level: "warn",
+          msg: "[bridge] implement: bitstream not ready; run is still active",
+        },
+      ],
+    });
+  }
+
+  try {
+    const bitstream = readImplementBitstreamArtifact({
+      repoRoot: getRepoRoot(),
+      artifact: status.artifact,
+    });
+    if (!bitstream) {
+      return res.status(404).json({
+        schema_version: schemaVersion,
+        ok: false,
+        runId,
+        artifactId: status.artifactId,
+        state: status.state,
+        error: "bitstream_not_found",
+        logs: [
+          {
+            run_id: runId,
+            ts: 0,
+            step: "bitgen",
+            level: "error",
+            msg: "[bridge] implement: no generated bitstream output found",
+          },
+        ],
+      });
+    }
+    return res.status(200).json({
+      schema_version: schemaVersion,
+      ok: true,
+      runId,
+      artifactId: status.artifactId,
+      filename: bitstream.filename,
+      bitstream: {
+        kind: "base64",
+        data: bitstream.dataBase64,
+      },
+      output: {
+        kind: bitstream.kind,
+        name: bitstream.name,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return res.status(500).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      artifactId: status.artifactId,
+      state: status.state,
+      error: "bitstream_read_failed",
+      logs: [
+        {
+          run_id: runId,
+          ts: 0,
+          step: "bitgen",
+          level: "error",
+          msg: `[bridge] implement: failed to read bitstream: ${message}`,
+        },
+      ],
+    });
+  }
 });
 
 async function executeProgramBitstreamRun({ runId, artifactId, board, mode, normalizedBitstream, bitstreamHash }) {
@@ -2854,10 +5101,15 @@ app.get("/api/toolchain/runs/:runId", (req, res) => {
 });
 
 app.post("/api/toolchain/runs/:runId/cancel", async (req, res) => {
-  const schemaVersion = "toolchain_program_run_cancel_v1";
+  const schemaVersion = "toolchain_run_cancel_v1";
   const runId = typeof req.params?.runId === "string" ? req.params.runId : "";
-  const status = toolchainProgramRuns.getStatus(runId, 0);
-  if (!status) {
+  const cancellation = await cancelToolchainRun({
+    runId,
+    registries: TOOLCHAIN_RUN_REGISTRIES,
+    terminateProcessTree,
+  });
+
+  if (!cancellation.ok && cancellation.error === "run_not_found") {
     return res.status(404).json({
       schema_version: schemaVersion,
       ok: false,
@@ -2868,71 +5120,46 @@ app.post("/api/toolchain/runs/:runId/cancel", async (req, res) => {
     });
   }
 
-  if (status.state !== "running") {
-    return res.json({
-      schema_version: schemaVersion,
-      ...status,
-    });
-  }
-
-  const cancellation = toolchainProgramRuns.requestCancel(runId);
-  if (!cancellation.ok) {
-    return res.status(404).json({
-      schema_version: schemaVersion,
-      ok: false,
-      runId,
-      error: "run_not_found",
-      logs: [],
-      nextOffset: 0,
-    });
-  }
-
-  toolchainProgramRuns.appendLog(runId, "info", "[bridge] program: cancel requested");
-  const proc = toolchainProgramRuns.getProcess(runId);
-  if (!proc || !Number.isInteger(proc.pid)) {
-    toolchainProgramRuns.appendLog(runId, "warn", "[bridge] program: process handle unavailable; marking canceled");
-    toolchainProgramRuns.appendLog(runId, "warn", "[bridge] program: canceled by user");
-    toolchainProgramRuns.finishRun(runId, {
-      state: "canceled",
-      ok: false,
-      exitCode: -1,
-      error: "canceled_by_user",
-    });
-    const canceledStatus = toolchainProgramRuns.getStatus(runId, 0);
-    return res.json({
-      schema_version: schemaVersion,
-      ...canceledStatus,
-    });
-  }
-
-  const termination = await terminateProcessTree(proc.pid);
-  if (!termination.ok) {
-    toolchainProgramRuns.appendLog(runId, "error", `[bridge] program: cancel_failed: ${termination.error}`);
-    toolchainProgramRuns.appendLog(
-      runId,
-      "warn",
-      "[bridge] program: hint: cancel failed; try unplugging board and closing any Vivado instances."
-    );
-    const failedStatus = toolchainProgramRuns.getStatus(runId, 0);
+  if (!cancellation.ok && cancellation.error === "cancel_failed") {
     return res.status(500).json({
       schema_version: schemaVersion,
-      ...failedStatus,
+      ...(cancellation.status || {
+        runId,
+        artifactId: runId,
+        state: "error",
+        ok: false,
+        exitCode: null,
+        logs: [],
+        nextOffset: 0,
+      }),
+      kind: cancellation.kind,
       error: "cancel_failed",
     });
   }
 
-  toolchainProgramRuns.appendLog(runId, "warn", `[bridge] program: process terminated (${termination.signal || "unknown"})`);
-  toolchainProgramRuns.appendLog(runId, "warn", "[bridge] program: canceled by user");
-  toolchainProgramRuns.finishRun(runId, {
-    state: "canceled",
-    ok: false,
-    exitCode: -1,
-    error: "canceled_by_user",
-  });
-  const canceledStatus = toolchainProgramRuns.getStatus(runId, 0);
+  if (!cancellation.status) {
+    return res.status(500).json({
+      schema_version: schemaVersion,
+      ok: false,
+      runId,
+      error: "cancel_failed",
+      logs: [],
+      nextOffset: 0,
+    });
+  }
+
+  if (cancellation.status.state !== "running" && cancellation.canceled !== true) {
+    return res.json({
+      schema_version: schemaVersion,
+      ...cancellation.status,
+      kind: cancellation.kind,
+    });
+  }
+
   return res.json({
     schema_version: schemaVersion,
-    ...canceledStatus,
+    ...cancellation.status,
+    kind: cancellation.kind,
   });
 });
 
@@ -2997,8 +5224,13 @@ app.get("/api/toolchain/runs/:runId/stream", (req, res) => {
 app.get("/api/toolchain", async (_req, res) => {
   try {
     const capabilities = await getCachedToolchain();
-    const canSynthesize = !!(capabilities.vivado?.canSynthesize || capabilities.yosys);
-    const canProgram = !!(capabilities.vivado?.canProgram || capabilities.openFPGALoader);
+    const canSynthesize = Boolean(
+      capabilities.vivado?.canSynthesize || (capabilities.yosys && capabilities.yosys.status !== "missing")
+    );
+    const canProgram = Boolean(
+      capabilities.vivado?.canProgram ||
+        (capabilities.openFPGALoader && capabilities.openFPGALoader.status !== "missing")
+    );
 
     res.json({
       ok: true,
@@ -3006,7 +5238,12 @@ app.get("/api/toolchain", async (_req, res) => {
       canSynthesize,
       canProgram,
       preferredSynthesisTool: capabilities.vivado ? "vivado" : capabilities.yosys ? "yosys" : null,
-      preferredProgrammingTool: capabilities.vivado?.canProgram ? "vivado" : capabilities.openFPGALoader ? "openFPGALoader" : null,
+      preferredProgrammingTool:
+        capabilities.vivado?.canProgram
+          ? "vivado"
+          : capabilities.openFPGALoader && capabilities.openFPGALoader.status !== "missing"
+            ? "openFPGALoader"
+            : null,
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e) });

@@ -13,13 +13,28 @@ import { useRunRecorderStore } from '../stores/runRecorderStore';
 import { exportV2Bundle, downloadBlob } from '../utils/bundleExport';
 import { hardwareClient } from '../services/hardwareClient';
 import { ConnectionCenterPanel } from '../components/ConnectionCenterPanel';
+import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
+import { labProjectToRBProject } from '../utils/labProjectRbprojAdapter';
+import { ECELabSubmissionBundleAction } from '../components/ECELabSubmissionBundleAction';
+import {
+  SUBMISSION_BUNDLE_STATUS_STORAGE_KEY,
+  decodeSubmissionBundleStatus,
+  type SubmissionBundleStatusSnapshot,
+} from '../export/submissionBundle';
+import {
+  downloadSubmissionBundle,
+  generateProjectSubmissionBundle,
+  persistSubmissionBundleStatus,
+} from '../export/submissionBundleWorkflow';
 
 // Lazy load heavy components
 const DesignMode = React.lazy(() => import('../components/DesignMode').then(m => ({ default: m.DesignMode })));
 const SelfCheckVectorsTable = React.lazy(() => import('../components/SelfCheckVectorsTable').then(m => ({ default: m.SelfCheckVectorsTable })));
+const LAB_STEP_ORDER = ['selection', 'specification', 'design', 'simulation', 'hardware', 'verification', 'report'] as const;
 
 interface LogicLabAppProps {
   windowId: string;
+  onOpenApp?: (appId: string, props?: Record<string, unknown>) => void;
 }
 
 /**
@@ -27,7 +42,7 @@ interface LogicLabAppProps {
  * This app implements the 7-step guided lab workflow.
  * It uses Tailwind CSS for a responsive, modern laboratory experience.
  */
-const LogicLabApp: React.FC<LogicLabAppProps> = ({ windowId }) => {
+const LogicLabApp: React.FC<LogicLabAppProps> = ({ windowId, onOpenApp }) => {
   const {
     currentStep,
     setStep,
@@ -42,7 +57,15 @@ const LogicLabApp: React.FC<LogicLabAppProps> = ({ windowId }) => {
 
   const hardware = useHardwareSessionStore();
   const recorder = useRunRecorderStore();
+  const unifiedProject = useUnifiedProjectStore((state) => state.currentProject);
   const [liveInputs, setLiveInputs] = useState<Record<string, number>>({});
+  const [isGeneratingSubmissionBundle, setIsGeneratingSubmissionBundle] = useState(false);
+  const [submissionBundleStatus, setSubmissionBundleStatus] = useState<SubmissionBundleStatusSnapshot | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return decodeSubmissionBundleStatus(window.localStorage.getItem(SUBMISSION_BUNDLE_STATUS_STORAGE_KEY));
+  });
+  const [showSubmissionCta, setShowSubmissionCta] = useState(false);
+  const shouldShowSubmissionCta = !unifiedProject || showSubmissionCta;
 
   // Boot hardware bridge once on mount
   useEffect(() => {
@@ -151,6 +174,48 @@ const LogicLabApp: React.FC<LogicLabAppProps> = ({ windowId }) => {
       toast.error({ message: `Export Failed: ${err instanceof Error ? err.message : 'Unknown'}` });
     }
   }, [selectedLabId, studentIdentity, recorder, verificationResults, completedSteps, completeStep, hardwareSnapshots]);
+
+  const handleGenerateSubmissionBundle = useCallback(async () => {
+    if (isGeneratingSubmissionBundle) return;
+    if (!unifiedProject) {
+      setShowSubmissionCta(true);
+      toast.warning({ message: 'Submission bundle requires a canonical project snapshot. Open this lab in ECE Lab App.' });
+      return;
+    }
+
+    setIsGeneratingSubmissionBundle(true);
+    try {
+      const stepIndex = Math.max(0, LAB_STEP_ORDER.indexOf(currentStep));
+      const project = labProjectToRBProject(unifiedProject, {
+        appSurface: 'logic-lab',
+        labId: selectedLabId ?? undefined,
+        labStepIndex: stepIndex,
+      });
+      const recorderState = useRunRecorderStore.getState();
+      const { bundle, status, reproducibility } = await generateProjectSubmissionBundle({
+        project,
+        runRecord: recorderState.record,
+        verificationStatus: recorderState.verificationStatus,
+        replayTraceSampleCount: recorderState.replayTrace.length,
+        includeRecordings: true,
+      });
+      downloadSubmissionBundle(bundle);
+      persistSubmissionBundleStatus(status, { project });
+      setSubmissionBundleStatus(status);
+      setShowSubmissionCta(false);
+      toast.success({
+        message:
+          reproducibility.ok
+            ? `Submission bundle ready (${bundle.filename}).`
+            : `Submission bundle ready with reproducibility warnings (${bundle.filename}).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'submission_bundle_export_failed';
+      toast.error({ message: `Submission bundle failed: ${message}` });
+    } finally {
+      setIsGeneratingSubmissionBundle(false);
+    }
+  }, [currentStep, isGeneratingSubmissionBundle, selectedLabId, unifiedProject]);
 
   const renderContent = () => {
     switch (currentStep) {
@@ -302,6 +367,30 @@ const LogicLabApp: React.FC<LogicLabAppProps> = ({ windowId }) => {
               >
                 Export .rb-lab.zip Bundle
               </button>
+              <div className="w-full rounded-2xl border border-slate-800 bg-slate-900/40 px-3 py-3">
+                <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Canonical Submission</div>
+                <div className="flex items-center gap-2">
+                  <ECELabSubmissionBundleAction
+                    disabled={!unifiedProject}
+                    isGenerating={isGeneratingSubmissionBundle}
+                    status={submissionBundleStatus}
+                    onGenerate={() => void handleGenerateSubmissionBundle()}
+                  />
+                </div>
+                {shouldShowSubmissionCta ? (
+                  <div className="mt-2 text-[11px] text-amber-200">
+                    Canonical project snapshot is unavailable in this legacy flow.
+                    <button
+                      type="button"
+                      className="ml-2 rounded border border-sky-500/40 px-2 py-0.5 text-[10px] font-semibold text-sky-200 hover:bg-sky-500/10"
+                      onClick={() => onOpenApp?.('ece-lab', selectedLabId ? { labId: selectedLabId } : undefined)}
+                      data-testid="logic-lab-open-ece-lab-cta"
+                    >
+                      Open in ECE Lab App
+                    </button>
+                  </div>
+                ) : null}
+              </div>
               <div className="flex flex-col items-center gap-1 opacity-50">
                 <p className="text-[10px] font-bold text-slate-600 tracking-widest uppercase">
                   Integrity Protected

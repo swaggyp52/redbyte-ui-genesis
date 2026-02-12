@@ -6,6 +6,7 @@ import {
   createSynthArtifactId,
   normalizeSynthSources,
   normalizeSynthTop,
+  resolveSelectedYosysPath,
   YOSYS_SYNTH_SCRIPT_VERSION,
 } from "../src/toolchain-synth.js";
 
@@ -68,8 +69,33 @@ function runArtifactDeterminismTest() {
   assert.notEqual(first, changed);
 }
 
+function runSelectedYosysPathTest() {
+  const bundledPath = "C:/redbyte/tools/yosys/win32-x64/yosys.exe";
+  const selected = resolveSelectedYosysPath({
+    yosys: {
+      ok: true,
+      status: "ok",
+      source: "bundled",
+      integrity: "verified",
+      path: bundledPath,
+    },
+  });
+  const missing = resolveSelectedYosysPath({
+    yosys: {
+      ok: false,
+      status: "missing",
+      source: "bundled",
+      integrity: "corrupt",
+    },
+  });
+
+  assert.equal(selected, bundledPath);
+  assert.equal(missing, null);
+}
+
 runTopNormalizationTest();
 runSourceNormalizationTest();
 runScriptSnapshotTest();
 runArtifactDeterminismTest();
+runSelectedYosysPathTest();
 console.log("[TEST] toolchain synth script passed");

@@ -1,2 +1,1 @@
-"use strict";
-// Temporary fixture inspection test removed; retained as empty stub.
+export * from './inspect-fixture.test.ts';

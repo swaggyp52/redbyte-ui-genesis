@@ -21,7 +21,7 @@ import { SplitViewLayout } from '../components/SplitViewLayout';
 import { Circuit, CircuitEngine, TickEngine, Node, toCircuitV1, fromCircuitV1 } from '@redbyte/rb-logic-core';
 import type { CircuitV1, IoMappingEntry } from '@redbyte/rb-utils';
 import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
-import { getAvailableSignals } from '@redbyte/rb-lab-engine/src/signals/signalSemantics';
+import { getAvailableSignals } from '@redbyte/rb-lab-engine/signals/signalSemantics';
 import { useViewStateStore } from '../stores/viewStateStore';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 
@@ -43,16 +43,23 @@ import { netlistFromCircuit } from '../export/netlistExport';
 import { LabInstructions } from '../labs/LabInstructions';
 import { InspectorPanel } from '../labs/InspectorPanel';
 import { LAB_1_CONTENT, LAB_2_CONTENT, LABS, type LabDefinition } from '../labs/labContent';
-
-import { exportEvidence } from '../utils/evidenceExport';
-// Checking imports... line 88 of LogicPlayground had it. Let's check ECELabApp imports.
-// It seems exportEvidence is not imported. I'll add the import.
-import { exportEvidenceCapsule } from '../utils/evidenceExport'; // Wait, checking available utils.
+import { exportEvidenceCapsule } from '../utils/evidenceExport';
 import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 import type { RBProject } from '../export/projectFormat';
 import { getCanonicalProjectAutosaveKey, useRbprojAutosave } from '../utils/rbprojAutosave';
 import { useUnifiedRecoverySurface } from '../utils/unifiedRecovery';
 import { labProjectToRBProject, rbProjectToLabProject } from '../utils/labProjectRbprojAdapter';
+import {
+  SUBMISSION_BUNDLE_STATUS_STORAGE_KEY,
+  decodeSubmissionBundleStatus,
+  type SubmissionBundleStatusSnapshot,
+} from '../export/submissionBundle';
+import { ECELabSubmissionBundleAction } from '../components/ECELabSubmissionBundleAction';
+import {
+  downloadSubmissionBundle,
+  generateProjectSubmissionBundle,
+  persistSubmissionBundleStatus,
+} from '../export/submissionBundleWorkflow';
 
 interface ECELabAppProps {
   windowId?: string;
@@ -261,6 +268,11 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
   const [rightTab, setRightTab] = useState<RightPanelTab>('board');
   const [selectedBoard, setSelectedBoard] = useState<string>('basys3');
   const [showStartGuide, setShowStartGuide] = useState(!labId);
+  const [isGeneratingSubmissionBundle, setIsGeneratingSubmissionBundle] = useState(false);
+  const [submissionBundleStatus, setSubmissionBundleStatus] = useState<SubmissionBundleStatusSnapshot | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return decodeSubmissionBundleStatus(window.localStorage.getItem(SUBMISSION_BUNDLE_STATUS_STORAGE_KEY));
+  });
 
   // Lab Management
   const setActiveLab = useLabStore((s) => s.setActiveLab);
@@ -709,6 +721,45 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
   const [replayTrace, setReplayTrace] = useState<HardwareTraceV1 | null>(null);
   const [replayIndex, setReplayIndex] = useState<number>(0);
 
+  const handleGenerateSubmissionBundle = useCallback(() => {
+    if (isGeneratingSubmissionBundle) return;
+    void (async () => {
+      const project = getRbprojSnapshot();
+      if (!project) {
+        toast.warning({ title: 'Submission Bundle', message: 'Project is still loading. Try again in a moment.' });
+        return;
+      }
+
+      setIsGeneratingSubmissionBundle(true);
+      const { bundle, status, reproducibility } = await generateProjectSubmissionBundle({
+        project,
+        runRecord: null,
+        verificationStatus: { status: 'unknown' },
+        replayTraceSampleCount: Array.isArray(replayTrace?.samples) ? replayTrace.samples.length : 0,
+        includeRecordings: false,
+      });
+
+      downloadSubmissionBundle(bundle);
+      setSubmissionBundleStatus(status);
+      persistSubmissionBundleStatus(status, { project });
+
+      toast.success({
+        title: 'Submission Bundle',
+        message:
+          reproducibility.ok
+            ? `Ready: ${bundle.filename}`
+            : `Ready with reproducibility warnings: ${bundle.filename}`,
+      });
+    })().catch((error) => {
+      const message = error instanceof Error ? error.message : 'submission_bundle_export_failed';
+      toast.error({ title: 'Submission Bundle', message: `Failed to generate bundle: ${message}` });
+    }).finally(() => {
+      setIsGeneratingSubmissionBundle(false);
+    });
+  }, [getRbprojSnapshot, isGeneratingSubmissionBundle, replayTrace]);
+
+  const canGenerateSubmissionBundle = useMemo(() => getRbprojSnapshot() !== null, [getRbprojSnapshot]);
+
   // Replay loader with validation + user feedback (NO auto-switch)
   useEffect(() => {
     const handleReplayLoad = (e: Event) => {
@@ -1078,6 +1129,12 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
                 >
                   EXPORT
                 </button>
+                <ECELabSubmissionBundleAction
+                  disabled={!canGenerateSubmissionBundle}
+                  isGenerating={isGeneratingSubmissionBundle}
+                  status={submissionBundleStatus}
+                  onGenerate={handleGenerateSubmissionBundle}
+                />
                 <span className="text-[9px] text-gray-600 font-mono">
                   {traceBuffer.length} samples
                 </span>

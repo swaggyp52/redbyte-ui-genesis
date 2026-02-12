@@ -2,19 +2,24 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { SplitViewLayout } from '../components/SplitViewLayout';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { CircuitEngine, Circuit, TickEngine } from '@redbyte/rb-logic-core';
 
 // Mock dependencies
 vi.mock('@redbyte/rb-logic-view', () => ({
     LogicCanvas: () => <div data-testid="logic-canvas">LogicCanvas</div>,
     calculateFitToView: vi.fn(),
-    useLogicViewStore: vi.fn(() => ({
-        toolMode: 'select',
-        selection: { nodes: new Set(), wires: new Set() },
-        setCamera: vi.fn(),
-        setToolMode: vi.fn(),
-    })), // Mock selector hook
+    useLogicViewStore: vi.fn((selector?: (state: any) => unknown) => {
+        const mockState = {
+            toolMode: 'select',
+            selection: { nodes: new Set(), wires: new Set() },
+            setCamera: vi.fn(),
+            setToolMode: vi.fn(),
+            snapToGrid: true,
+            toggleSnapToGrid: vi.fn(),
+        };
+        return selector ? selector(mockState) : mockState;
+    }), // Mock selector hook
 }));
 
 vi.mock('../components/OscilloscopeView', () => ({
@@ -33,13 +38,23 @@ vi.mock('../components/CircuitToolStrip', () => ({ CircuitToolStrip: () => <div>
 vi.mock('@redbyte/rb-logic-3d', () => ({ Logic3DScene: () => <div>3DScene</div> }));
 
 describe('SplitViewLayout Crash Guard', () => {
+    const originalUrl = window.location.href;
+
+    beforeEach(() => {
+        window.history.replaceState({}, '', `${window.location.pathname}?disable3d=1`);
+    });
+
+    afterEach(() => {
+        window.history.replaceState({}, '', originalUrl);
+    });
+
     it('renders Quad mode without crashing due to missing signalsVersion', () => {
         // Setup minimal props
         const engine = {} as CircuitEngine;
         const tickEngine = { getTickRate: () => 10 } as unknown as TickEngine; // Partial mock
         const circuit = { nodes: [], connections: [] } as unknown as Circuit;
 
-        const { container } = render(
+        render(
             <SplitViewLayout
                 mode="quad"
                 views={['circuit', 'schematic', '3d', 'oscilloscope']}

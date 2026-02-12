@@ -41,6 +41,15 @@ describe('encodeToolchainDoctorReport', () => {
     expect(parsed.logs).toHaveLength(200);
     expect(parsed.logs[0].msg).toBe('log-50');
     expect(parsed.logs.at(-1).msg).toBe('log-249');
+    expect(parsed.studentReadiness.schema_version).toBe('student_readiness_v1');
+    expect(Array.isArray(parsed.studentReadiness.gates)).toBe(true);
+    expect(parsed.studentReadiness.gates.map((gate: any) => gate.id)).toEqual([
+      'toolchain_probe',
+      'preflight',
+      'implement_plan',
+      'toolchain_ui',
+      'doctor_export',
+    ]);
   });
 
   it('embeds preflight + project summary and is deterministic for same project', () => {
@@ -52,8 +61,24 @@ describe('encodeToolchainDoctorReport', () => {
         ok: true,
         run_id: 'bridge-probe-0',
         env: { platform: 'win32', arch: 'x64', node: 'v20.0.0' },
-        tools: [{ name: 'openFPGALoader', ok: true, version: '0.12.0', path: 'openFPGALoader.exe' }],
+        tools: [
+          { name: 'openFPGALoader', ok: true, status: 'ok' as const, source: 'bundled' as const, version: '0.12.0', path: 'openFPGALoader.exe' },
+          { name: 'vivado', ok: true, status: 'ok' as const, source: 'system' as const, version: '2024.2' },
+        ],
         logs: [{ run_id: 'bridge-probe-0', ts: 0, step: 'probe' as const, level: 'info' as const, msg: '[bridge] ok' }],
+      },
+      buildPath: {
+        schema_version: 'toolchain_build_path_v1' as const,
+        plannerVersion: 'toolchain_planner_v1' as const,
+        planId: 'plan-vivado-ok',
+        backend: 'vivado-fallback' as const,
+        board: 'basys3' as const,
+        top: 'top',
+        constraintsPreset: null,
+        requiredTools: [{ name: 'vivado', ok: true, source: 'system' as const, why: 'stable backend' }],
+        commands: [],
+        outputs: [],
+        warnings: [],
       },
       project: {
         hdl: {
@@ -105,6 +130,7 @@ describe('encodeToolchainDoctorReport', () => {
     expect(jsonA).toBe(jsonB);
     expect(parsedA.reportId).toBe(parsedB.reportId);
     expect(parsedA.preflight).toBeDefined();
+    expect(parsedA.buildPath).toBeDefined();
     expect(parsedA.projectSummary).toEqual({
       board: 'basys3',
       preset: null,
@@ -114,5 +140,9 @@ describe('encodeToolchainDoctorReport', () => {
     });
     expect(parsedA.preflight.project.hasHdl).toBe(true);
     expect(parsedA.preflight.lint.ok).toBe(true);
+    expect(typeof parsedA.buildPath.planId).toBe('string');
+    expect(parsedA.buildPath.backend).toBeDefined();
+    expect(parsedA.studentReadiness.overall).toBe('ready');
+    expect(parsedA.studentReadiness.gates.every((gate: any) => gate.state === 'pass')).toBe(true);
   });
 });

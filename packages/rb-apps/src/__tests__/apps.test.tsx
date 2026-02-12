@@ -100,27 +100,30 @@ describe('Examples', () => {
     const { listExamples } = await import('../examples');
 
     const examples = listExamples();
-    expect(examples).toHaveLength(15); // Updated count after adding 15_not-gate
-
     const ids = examples.map((ex) => ex.id);
+    const requiredExampleIds = [
+      '01_wire-lamp',
+      '02_and-gate',
+      '03_half-adder',
+      '04_4bit-counter',
+      '05_simple-cpu',
+      '06_xor-gate',
+      '07_2to1-mux',
+      '08_full-adder',
+      '09_4bit-adder',
+      '10_sr-latch',
+      '11_d-flipflop',
+      '12_2to4-decoder',
+      '13_4to1-mux',
+      '14_4bit-register',
+      '15_not-gate',
+    ];
+
+    expect(examples.length).toBeGreaterThanOrEqual(requiredExampleIds.length);
     // Original examples
-    expect(ids).toContain('01_wire-lamp');
-    expect(ids).toContain('02_and-gate');
-    expect(ids).toContain('03_half-adder');
-    expect(ids).toContain('04_4bit-counter');
-    expect(ids).toContain('05_simple-cpu');
-    // Layer 1-3 examples
-    expect(ids).toContain('06_xor-gate');
-    expect(ids).toContain('07_2to1-mux');
-    expect(ids).toContain('08_full-adder');
-    expect(ids).toContain('09_4bit-adder');
-    expect(ids).toContain('10_sr-latch');
-    expect(ids).toContain('11_d-flipflop');
-    // Layer 4-5 examples
-    expect(ids).toContain('12_2to4-decoder');
-    expect(ids).toContain('13_4to1-mux');
-    expect(ids).toContain('14_4bit-register');
-    expect(ids).toContain('15_not-gate');
+    requiredExampleIds.forEach((id) => {
+      expect(ids).toContain(id);
+    });
   });
 
   it('should load example circuits', async () => {

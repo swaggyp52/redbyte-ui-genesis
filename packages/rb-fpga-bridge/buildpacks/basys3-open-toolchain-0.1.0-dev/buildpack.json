@@ -1,0 +1,47 @@
+{
+  "name": "basys3-open-toolchain",
+  "version": "0.1.0-dev",
+  "platformKey": "win32-x64",
+  "contractId": "basys3-f4pga-v0",
+  "files": [
+    {
+      "path": "bin/darwin-arm64/f4pga",
+      "sha256": "73eb2fb1f078e83624775ccc4dfe71321ab1e04cb32dba261bf14260373a72c8"
+    },
+    {
+      "path": "bin/darwin-x64/f4pga",
+      "sha256": "4012cb4e5c825bfc4ae349cdf2ad70ad1a4a5cf8d80b0986aeaf061616045881"
+    },
+    {
+      "path": "bin/linux-x64/f4pga",
+      "sha256": "76bb8aab746bdf622d32170e902483d385a2fc3d007cd7de9e55abbcc72a2b67"
+    },
+    {
+      "path": "bin/README.md",
+      "sha256": "951a56ab3c1da9d1f68b17f2dbe8d0f28f32a3f9c78c97d7a61d75e55883590f"
+    },
+    {
+      "path": "bin/win32-x64/f4pga.exe",
+      "sha256": "ae0f9eb559000cc36c9a6ada37ee6901ef4084aa46360e228e9a476b3f977e52"
+    },
+    {
+      "path": "licenses/README.md",
+      "sha256": "c357661c86a931d89e0f0700ffbc090838e2369540bc58f01896bcb6b68a2d33"
+    },
+    {
+      "path": "README.md",
+      "sha256": "e830548c3b69bbafc2d499b9b37eb107856fedfe92abed48d36c56dfabdcbe2c"
+    },
+    {
+      "path": "share/README.md",
+      "sha256": "2c03ad7dc1b113be643ff183f2642688a82c067b3e6bc079c601f36f799da992"
+    }
+  ],
+  "tools": [
+    {
+      "name": "f4pga",
+      "relPath": "bin/win32-x64/f4pga.exe",
+      "version": "0.1.0-dev"
+    }
+  ]
+}

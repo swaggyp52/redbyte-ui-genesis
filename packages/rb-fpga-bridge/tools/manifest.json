@@ -1,0 +1,46 @@
+{
+  "tools": {
+    "openFPGALoader": {
+      "version": "0.12.0",
+      "bins": {
+        "win32-x64": {
+          "path": "openFPGALoader/win32-x64/openFPGALoader.exe",
+          "sha256": "353e40e97e708ee3e7abbae31acb4e1580ad76e607169acb4f8f2d99d89dd274"
+        },
+        "linux-x64": {
+          "path": "openFPGALoader/linux-x64/openFPGALoader",
+          "sha256": "a384682b0ca2e24b62b09c8404848460ed984ee1c8a845a120dc66f019b139cd"
+        },
+        "darwin-arm64": {
+          "path": "openFPGALoader/darwin-arm64/openFPGALoader",
+          "sha256": "3f33fcffeb1e2880f643a652ff6113de5c0bbb4777ab9cf2c117f4b733f92bd6"
+        },
+        "darwin-x64": {
+          "path": "openFPGALoader/darwin-x64/openFPGALoader",
+          "sha256": "ba28fc737e5cd0b00efa3693c593389a7ca406207a5149a510a8cbac79a147cb"
+        }
+      }
+    },
+    "yosys": {
+      "version": "0.48.0",
+      "bins": {
+        "win32-x64": {
+          "path": "yosys/win32-x64/yosys.exe",
+          "sha256": "5e9360ad500fba6fd9215380435e4f20b62bc0dbbe9388da14a5f6d877d6f27a"
+        },
+        "linux-x64": {
+          "path": "yosys/linux-x64/yosys",
+          "sha256": "c8b4aa3ffd6787293a54f4f3230b80e57254bddb147e15191190bed91804fdb2"
+        },
+        "darwin-arm64": {
+          "path": "yosys/darwin-arm64/yosys",
+          "sha256": "8132d5e5abe8c1bc47d324a894a9d41ee6f1335f9141efb6e2b5ff898a70f94a"
+        },
+        "darwin-x64": {
+          "path": "yosys/darwin-x64/yosys",
+          "sha256": "8e5ffa06c18d28e79bdd14217eddb4f9765af1c9228d9dbe8a1da8abc98508b0"
+        }
+      }
+    }
+  }
+}

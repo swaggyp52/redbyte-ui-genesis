@@ -87,7 +87,12 @@ import { GuardrailConfirmModal } from '@redbyte/rb-primitives';
 import { RightDock, type RightDockTab } from '../components/RightDock';
 import { EnhancedPalette } from '../components/EnhancedPalette';
 import { HelpDock } from '../components/HelpDock';
-import { coerceToolchainProjectInput, type ToolchainProjectInput } from '../fpga/toolchainBackend';
+import {
+  coerceToolchainProjectInput,
+  getToolchainBackend,
+  type ToolchainProjectInput,
+  type ToolchainProjectSnapshotInput,
+} from '../fpga/toolchainBackend';
 import { useRenderStormDetector } from '../hooks/useRenderStormDetector';
 import { useAutosaveCircuit, useRestoreCircuit, loadSavedCircuit, clearSavedCircuit } from '../utils/ceAutosave';
 import {
@@ -107,6 +112,14 @@ import { useClassroomModeStore } from '../stores/classroomModeStore';
 import { validateCircuitData } from '../utils/circuitValidation';
 import { StartHerePanel } from '../components/StartHerePanel';
 import { useEvidenceViewerStore } from '../stores/evidenceViewerStore';
+import {
+  SUBMISSION_BUNDLE_STATUS_STORAGE_KEY,
+  createSubmissionReproducibilityReport,
+  decodeSubmissionBundleStatus,
+  generateSubmissionBundle,
+  type SubmissionBundleStatusSnapshot,
+} from '../export/submissionBundle';
+import { persistSubmissionBundleStatus } from '../export/submissionBundleWorkflow';
 
 
 // Placeholder for evidence viewer (feature in development)
@@ -125,6 +138,17 @@ const buildDefaultFpgaProject = (): RBFpgaConfig => ({
   board: 'basys3',
 });
 
+const buildToolchainSnapshotFromProject = (project: RBProject): ToolchainProjectSnapshotInput => ({
+  hdl: project.hdl ?? {
+    sources: [],
+    ...(typeof project.fpga?.top === 'string' && project.fpga.top.trim().length > 0 ? { top: project.fpga.top.trim() } : {}),
+  },
+  fpga: project.fpga ?? {
+    board: 'basys3',
+    ...(typeof project.hdl?.top === 'string' && project.hdl.top.trim().length > 0 ? { top: project.hdl.top.trim() } : {}),
+  },
+});
+
 const LOGIC_PLAYGROUND_INVARIANTS = {
   reads: ['circuit_store', 'probe_store', 'file_system', 'examples', 'settings'],
   writes: ['circuit_store', 'probe_store', 'file_system', 'settings.tick_rate', 'layout', 'oscilloscope', 'run_recorder'],
@@ -134,6 +158,7 @@ const LOGIC_PLAYGROUND_INVARIANTS = {
     'netlist.json',
     'circuit.v',
     'rb-debug-bundle.json',
+    'rb-submission.zip',
     'run-record.json',
     'proof-pack.json',
   ],
@@ -173,6 +198,16 @@ interface LogicPlaygroundProps {
   windowId?: string;
   initialFileId?: string;
   initialExampleId?: ExampleId;
+  starterInstructions?: {
+    labId: string;
+    title: string;
+    timeEstimate: string;
+    learningGoal: string;
+    steps: string[];
+    commonMistakes: string[];
+    submit: string[];
+    rubric: string[];
+  };
   resourceId?: string;
   resourceType?: 'file' | 'folder';
   recoveredData?: unknown;
@@ -187,6 +222,30 @@ interface LogicPlaygroundProps {
   registerStateAccessor?: (windowId: string, accessor: { getCircuit?: () => any }) => void;
   unregisterStateAccessor?: (windowId: string) => void;
   determinismRecorder?: any; // Type from useDeterminismRecorder hook
+}
+
+function normalizeStarterInstructions(
+  value: LogicPlaygroundProps['starterInstructions'] | null | undefined,
+): LogicPlaygroundProps['starterInstructions'] | null {
+  if (!value || typeof value !== 'object') return null;
+  if (!Array.isArray(value.steps) || value.steps.length === 0) return null;
+  if (!Array.isArray(value.submit) || value.submit.length === 0) return null;
+  const title = typeof value.title === 'string' ? value.title.trim() : '';
+  if (title.length === 0) return null;
+  return {
+    labId: typeof value.labId === 'string' ? value.labId : 'lab',
+    title,
+    timeEstimate: typeof value.timeEstimate === 'string' ? value.timeEstimate : 'n/a',
+    learningGoal: typeof value.learningGoal === 'string' ? value.learningGoal : '',
+    steps: value.steps.filter((step): step is string => typeof step === 'string' && step.trim().length > 0),
+    commonMistakes: Array.isArray(value.commonMistakes)
+      ? value.commonMistakes.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      : [],
+    submit: value.submit.filter((step): step is string => typeof step === 'string' && step.trim().length > 0),
+    rubric: Array.isArray(value.rubric)
+      ? value.rubric.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      : [],
+  };
 }
 
 // Outer gate component: handles feature gates with stable hook set
@@ -746,6 +805,10 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const [projectDescription, setProjectDescription] = useState('');
   const [projectCreatedAt, setProjectCreatedAt] = useState(() => new Date().toISOString());
   const [projectId, setProjectId] = useState(() => crypto.randomUUID?.() ?? `proj-${Date.now()}`);
+  const [submissionBundleStatus, setSubmissionBundleStatus] = useState<SubmissionBundleStatusSnapshot | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return decodeSubmissionBundleStatus(window.localStorage.getItem(SUBMISSION_BUNDLE_STATUS_STORAGE_KEY));
+  });
   const [hdlProject, setHdlProject] = useState<ToolchainProjectInput>(() => buildDefaultHdlProject());
   const [fpgaProject, setFpgaProject] = useState<RBFpgaConfig>(() => buildDefaultFpgaProject());
   const [currentFileId, setCurrentFileId] = useState<string | null>(initialFileId ?? null);
@@ -826,6 +889,9 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const ceMode = isCEMode();
   const ceConfig = getCEConfig();
   const [exampleNoteDismissed, setExampleNoteDismissed] = useState(false);
+  const [pinnedStarterInstructions, setPinnedStarterInstructions] = useState<
+    LogicPlaygroundProps['starterInstructions'] | null
+  >(() => normalizeStarterInstructions(props.starterInstructions));
   const [highlightedPort, setHighlightedPort] = useState<{ nodeId: string; portName: string } | null>(
     null
   );
@@ -875,6 +941,10 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const engineRef = useRef<CircuitEngine>(engine);
   const tickEngineRef = useRef<TickEngine>(tickEngine);
   const circuitRef = useRef<Circuit>(circuit);
+
+  useEffect(() => {
+    setPinnedStarterInstructions(normalizeStarterInstructions(props.starterInstructions));
+  }, [props.starterInstructions]);
   const setCircuitRef = useRef<typeof setCircuit | null>(null);
 
   // Keep refs in sync with state
@@ -3246,6 +3316,56 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     addToast('Project archive exported', 'success');
   }, [buildProject, downloadBlob, sanitizeFilename, addToast, circuit, getLayoutSnapshot, safeMode, getProjectSnapshot]);
 
+  const handleGenerateSubmissionBundle = useCallback(() => {
+    void (async () => {
+      saveSnapshot(circuit, getLayoutSnapshot(), { safeMode }, 'autosave', true, getProjectSnapshot() ?? undefined);
+      const project = buildProject();
+      const toolchainSnapshot = buildToolchainSnapshotFromProject(project);
+      const backend = getToolchainBackend();
+      const doctorReport = await backend.doctorReport(toolchainSnapshot, { refreshProbe: true, logs: [] });
+
+      const recorderStateBefore = useRunRecorderStore.getState();
+      if (recorderStateBefore.record && recorderStateBefore.replayTrace.length > 0) {
+        recorderStateBefore.verifyReplay();
+      }
+      const recorderStateAfter = useRunRecorderStore.getState();
+      const reproducibility = createSubmissionReproducibilityReport({
+        runRecord: recorderStateAfter.record,
+        verificationStatus: recorderStateAfter.verificationStatus,
+        replayTraceSampleCount: recorderStateAfter.replayTrace.length,
+      });
+
+      const bundle = await generateSubmissionBundle(project, {
+        doctorReport,
+        reproducibility,
+        includeRecordings: true,
+        logs: doctorReport.logs ?? [],
+      });
+      assertAppOutput('logic-playground', 'rb-submission.zip');
+      downloadBlob(bundle.filename, new Blob([bundle.bytes], { type: 'application/zip' }));
+
+      const statusSnapshot: SubmissionBundleStatusSnapshot = {
+        schema_version: 'rb_submission_bundle_status_v1',
+        bundleId: bundle.bundleId,
+        filename: bundle.filename,
+        reproducibilityStatus: reproducibility.status,
+      };
+      setSubmissionBundleStatus(statusSnapshot);
+      persistSubmissionBundleStatus(statusSnapshot, { project });
+
+      addToast(
+        reproducibility.ok
+          ? `Submission bundle ready (${bundle.filename})`
+          : `Submission bundle ready with reproducibility warnings (${bundle.filename})`,
+        reproducibility.ok ? 'success' : 'info'
+      );
+    })().catch((error) => {
+      const message = error instanceof Error ? error.message : 'submission_bundle_export_failed';
+      console.error('[LogicPlayground] Submission bundle export failed', error);
+      addToast(`Failed to generate submission bundle: ${message}`, 'error');
+    });
+  }, [buildProject, circuit, getLayoutSnapshot, safeMode, getProjectSnapshot, downloadBlob, addToast]);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handler = (event: Event) => {
@@ -3829,10 +3949,14 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
           onSaveProject={handleSaveProject}
           onOpenProject={handleOpenProject}
           onExportProject={ceMode ? () => setShowCEExportModal(true) : handleExportProject}
+          onGenerateSubmissionBundle={handleGenerateSubmissionBundle}
           onSave={handleSave}
           onSaveAs={handleSaveAs}
           onShare={handleShare}
           isDirty={isDirty}
+          autosaveState={isDirty ? 'unsaved' : 'saved'}
+          submissionBundleFilename={submissionBundleStatus?.filename ?? null}
+          submissionBundleStatus={submissionBundleStatus?.reproducibilityStatus ?? 'unknown'}
           onUndo={handleUndo}
           onRedo={handleRedo}
           canUndo={canUndo}
@@ -4025,8 +4149,53 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
               </div>
             )}
 
+            {pinnedStarterInstructions && (
+              <div className="absolute top-3 left-3 z-20 max-w-md pointer-events-auto" data-testid="starter-instructions-panel">
+                <div className="bg-slate-900/95 border border-slate-700 rounded-lg px-4 py-3 text-xs shadow-lg">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] uppercase tracking-wide text-cyan-300">
+                        Lab Starter
+                      </div>
+                      <div className="text-sm font-semibold text-white">
+                        {pinnedStarterInstructions.title}
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-1">
+                        {pinnedStarterInstructions.timeEstimate} · {pinnedStarterInstructions.labId}
+                      </div>
+                      <div className="text-gray-300 mt-2 leading-relaxed">
+                        {pinnedStarterInstructions.learningGoal}
+                      </div>
+                      <div className="mt-2 text-[11px] text-cyan-200 font-semibold">Do this</div>
+                      <ul className="mt-1 list-disc pl-4 text-gray-200 text-[11px] leading-relaxed">
+                        {pinnedStarterInstructions.steps.slice(0, 4).map((step) => (
+                          <li key={step}>{step}</li>
+                        ))}
+                      </ul>
+                      <div className="mt-2 text-[11px] text-cyan-200 font-semibold">Submit</div>
+                      <ul className="mt-1 list-disc pl-4 text-gray-200 text-[11px] leading-relaxed">
+                        {pinnedStarterInstructions.submit.map((step) => (
+                          <li key={step}>{step}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <button
+                      onClick={() => setPinnedStarterInstructions(null)}
+                      className="text-gray-500 hover:text-gray-300 transition-colors"
+                      aria-label="Dismiss starter instructions"
+                      type="button"
+                    >
+                      x
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {selectedExampleId && EXAMPLE_NOTES[selectedExampleId] && !exampleNoteDismissed && (
-              <div className="absolute top-3 left-3 z-20 max-w-sm pointer-events-auto">
+              <div
+                className={`absolute left-3 z-20 max-w-sm pointer-events-auto ${pinnedStarterInstructions ? 'top-[20rem]' : 'top-3'}`}
+              >
                 <div className="bg-slate-900/90 border border-slate-700 rounded-lg px-4 py-3 text-xs shadow-lg">
                   <div className="flex items-start gap-3">
                     <div className="flex-1 min-w-0">
