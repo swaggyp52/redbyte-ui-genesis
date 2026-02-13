@@ -1,0 +1,57 @@
+{
+    "labId": "lab-2",
+    "title": "Lab 2 – 4-bit Adder",
+    "difficulty": "intermediate",
+    "requirements": {
+        "nodes": {
+            "FullAdder": 4
+        }
+    },
+    "testVectors": [
+        {
+            "inputs": {
+                "A": 4,
+                "B": 9
+            },
+            "expected": {
+                "Sum": 13,
+                "Cout": 0
+            },
+            "label": "0100 + 1001"
+        },
+        {
+            "inputs": {
+                "A": 12,
+                "B": 3
+            },
+            "expected": {
+                "Sum": 15,
+                "Cout": 0
+            },
+            "label": "1100 + 0011"
+        },
+        {
+            "inputs": {
+                "A": 14,
+                "B": 8
+            },
+            "expected": {
+                "Sum": 6,
+                "Cout": 1
+            },
+            "label": "1110 + 1000"
+        },
+        {
+            "inputs": {
+                "A": 3,
+                "B": 13
+            },
+            "expected": {
+                "Sum": 0,
+                "Cout": 1
+            },
+            "label": "0011 + 1101"
+        }
+    ],
+    "notes": "Implement a 4-bit ripple carry adder using cascaded Full Adder macros."
+}

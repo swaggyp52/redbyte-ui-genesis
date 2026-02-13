@@ -1,0 +1,28 @@
+{
+  "lab_id": "traffic-light",
+  "title": "Traffic Light Controller",
+  "description": "Build a state machine that cycles through R→G→Y→R. This lab tests your ability to design sequential logic with state transitions.",
+  "constraints": {
+    "allowedGates": ["AND", "OR", "NOT", "DFF"],
+    "maxGates": 12,
+    "requiredInputs": ["CLK", "RESET"],
+    "requiredOutputs": ["RED", "YELLOW", "GREEN"]
+  },
+  "studentVectors": [
+    {
+      "id": "sv-1",
+      "name": "Reset state",
+      "inputs": { "RESET": 1, "CLK": 0 }
+    },
+    {
+      "id": "sv-2",
+      "name": "First cycle",
+      "inputs": { "RESET": 0, "CLK": 1 }
+    },
+    {
+      "id": "sv-3",
+      "name": "Second cycle",
+      "inputs": { "RESET": 0, "CLK": 1 }
+    }
+  ]
+}

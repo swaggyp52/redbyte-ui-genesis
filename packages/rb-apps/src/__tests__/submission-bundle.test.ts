@@ -82,14 +82,36 @@ describe('submission bundle export', () => {
 
     expect(first.bundleId).toBe(second.bundleId);
     expect(first.filename).toBe(second.filename);
-    expect(Array.from(first.bytes)).toEqual(Array.from(second.bytes));
+    expect(first.manifest).toEqual(second.manifest);
 
     const zip = await JSZip.loadAsync(first.bytes);
+    const zipSecond = await JSZip.loadAsync(second.bytes);
     expect(zip.file('manifest.json')).toBeTruthy();
     expect(zip.file('project.rbx.zip')).toBeTruthy();
     expect(zip.file('doctor-report.json')).toBeTruthy();
     expect(zip.file('reproducibility.json')).toBeTruthy();
+    expect(zip.file('submission-gates.json')).toBeTruthy();
     expect(zip.file('logs/submission-log.json')).toBeTruthy();
+
+    const submissionGatesEntry = zip.file('submission-gates.json');
+    expect(submissionGatesEntry).toBeTruthy();
+    const submissionGatesRaw = await submissionGatesEntry!.async('string');
+    const submissionGates = JSON.parse(submissionGatesRaw) as {
+      schema_version: string;
+      labId: string;
+      timestamp: string;
+      context: { projectId: string | null; projectName: string };
+      result: { verdict: string; issues: unknown[] };
+    };
+    expect(submissionGates.schema_version).toBe('rb_submission_gates_v1');
+    expect(submissionGates.labId).toBe('freeplay');
+    expect(submissionGates.timestamp).toBe(FIXED_PROJECT.updatedAt);
+    expect(submissionGates.context).toEqual({
+      projectId: FIXED_PROJECT.meta?.projectId ?? null,
+      projectName: FIXED_PROJECT.name,
+    });
+    expect(submissionGates.result.verdict).toBe('pass');
+    expect(Array.isArray(submissionGates.result.issues)).toBe(true);
 
     const manifestEntry = zip.file('manifest.json');
     expect(manifestEntry).toBeTruthy();
@@ -100,9 +122,20 @@ describe('submission bundle export', () => {
     };
     expect(manifest.bundleId).toBe(first.bundleId);
 
+    const secondManifestEntry = zipSecond.file('manifest.json');
+    expect(secondManifestEntry).toBeTruthy();
+    const secondManifestRaw = await secondManifestEntry!.async('string');
+    const secondManifest = JSON.parse(secondManifestRaw) as {
+      bundleId: string;
+      includedFiles: Array<{ path: string; sha256: string }>;
+    };
+    expect(secondManifest).toEqual(manifest);
+
     for (const entry of manifest.includedFiles) {
       const hash = await hashZipEntry(zip, entry.path);
+      const secondHash = await hashZipEntry(zipSecond, entry.path);
       expect(hash).toBe(entry.sha256);
+      expect(secondHash).toBe(entry.sha256);
     }
   });
 });

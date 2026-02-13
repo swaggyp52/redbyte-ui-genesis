@@ -1,0 +1,50 @@
+{
+  "lab_id": "traffic-light",
+  "presets": [
+    {
+      "id": "correct",
+      "name": "Correct Implementation",
+      "description": "All state transitions work correctly. Expected: PASS",
+      "vectors": [
+        { "id": "sv-1", "name": "Reset state", "pass": true },
+        { "id": "sv-2", "name": "First cycle", "pass": true },
+        { "id": "sv-3", "name": "Second cycle", "pass": true }
+      ]
+    },
+    {
+      "id": "almost",
+      "name": "Almost Correct",
+      "description": "Reset works, but second cycle fails. Expected: FAIL",
+      "vectors": [
+        { "id": "sv-1", "name": "Reset state", "pass": true },
+        { "id": "sv-2", "name": "First cycle", "pass": true },
+        {
+          "id": "sv-3",
+          "name": "Second cycle",
+          "pass": false,
+          "error": "First mismatch at tick 12, signal GREEN"
+        }
+      ]
+    },
+    {
+      "id": "wrong",
+      "name": "Incorrect Implementation",
+      "description": "Multiple failures. Expected: FAIL",
+      "vectors": [
+        { "id": "sv-1", "name": "Reset state", "pass": true },
+        {
+          "id": "sv-2",
+          "name": "First cycle",
+          "pass": false,
+          "error": "First mismatch at tick 4, signal RED"
+        },
+        {
+          "id": "sv-3",
+          "name": "Second cycle",
+          "pass": false,
+          "error": "First mismatch at tick 8, signal YELLOW"
+        }
+      ]
+    }
+  ]
+}

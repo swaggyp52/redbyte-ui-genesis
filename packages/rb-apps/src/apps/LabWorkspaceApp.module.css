@@ -1,0 +1,310 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: var(--rb-ui-lab-text);
+  font-family: var(--rb-font-sans, Inter, sans-serif);
+  background:
+    radial-gradient(1100px circle at 12% -18%, color-mix(in srgb, var(--rb-ui-lab-accent) 16%, transparent), transparent 44%),
+    radial-gradient(1200px circle at 92% -20%, color-mix(in srgb, var(--rb-ui-lab-info) 14%, transparent), transparent 48%),
+    var(--rb-ui-lab-bg);
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.4fr) minmax(260px, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--rb-ui-lab-border);
+  background: color-mix(in srgb, var(--rb-ui-lab-bg-surface) 92%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.headerLeft {
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--rb-ui-lab-text);
+}
+
+.subtitle {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--rb-ui-lab-accent);
+  letter-spacing: 0.06em;
+}
+
+.goal {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--rb-ui-lab-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.headerCenter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.headerRight {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.primaryAction {
+  border: 1px solid var(--rb-ui-lab-border-strong);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rb-ui-lab-accent) 24%, var(--rb-ui-lab-bg-elevated)) 0%, var(--rb-ui-lab-bg-elevated) 100%);
+  color: var(--rb-ui-lab-text);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.primaryAction:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--rb-ui-lab-shadow-soft);
+}
+
+.stepper {
+  width: min(700px, 100%);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.stepButton {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: var(--rb-ui-lab-bg-elevated);
+  cursor: pointer;
+  transition: border-color 180ms ease, transform 180ms ease, background 180ms ease;
+}
+
+.stepButton:hover {
+  transform: translateY(-1px);
+}
+
+.stepMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--rb-ui-lab-text);
+}
+
+.stepRail {
+  position: relative;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--rb-ui-lab-border) 75%, transparent);
+  overflow: hidden;
+}
+
+.stepRailFill {
+  position: absolute;
+  inset: 0;
+  width: 0;
+  border-radius: 999px;
+  transition: width 200ms ease;
+}
+
+.stepCurrent .stepRailFill,
+.stepComplete .stepRailFill {
+  width: 100%;
+}
+
+.stepCurrent {
+  border-color: var(--rb-ui-lab-border-strong);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rb-step-accent, var(--rb-ui-lab-accent)) 20%, var(--rb-ui-lab-bg-elevated)) 0%, var(--rb-ui-lab-bg-elevated) 100%);
+}
+
+.stepComplete {
+  border-color: var(--rb-ui-lab-success);
+}
+
+.stepBlocked {
+  border-color: var(--rb-ui-lab-danger);
+}
+
+.stepContent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stepIcon {
+  font-size: 13px;
+}
+
+.stepState {
+  margin-left: auto;
+}
+
+.stageLayout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.mainScroll {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  height: 100%;
+  padding: 12px;
+}
+
+.panelFade {
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.panelLifted {
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 12px;
+  background: var(--rb-ui-lab-bg-surface);
+  box-shadow: var(--rb-ui-lab-shadow);
+  overflow: hidden;
+}
+
+.emptyState {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  border-bottom: 1px solid var(--rb-ui-lab-border);
+  padding: 12px;
+  background: var(--rb-ui-lab-bg-elevated);
+}
+
+.emptyIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--rb-ui-lab-accent) 10%, var(--rb-ui-lab-bg-surface));
+  border: 1px solid var(--rb-ui-lab-border);
+}
+
+.emptyTitle {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--rb-ui-lab-text);
+}
+
+.emptyBody {
+  font-size: 12px;
+  color: var(--rb-ui-lab-text-muted);
+}
+
+.coachCta {
+  margin-top: 8px;
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 10px;
+  background: var(--rb-ui-lab-bg-surface);
+  color: var(--rb-ui-lab-text);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.coachCta:hover {
+  border-color: var(--rb-ui-lab-accent);
+  transform: translateY(-1px);
+}
+
+.submitAction {
+  border: 1px solid var(--rb-ui-lab-border-strong);
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rb-ui-lab-accent) 22%, var(--rb-ui-lab-bg-elevated)) 0%, var(--rb-ui-lab-bg-elevated) 100%);
+  color: var(--rb-ui-lab-text);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.submitAction:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.submitAction:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: var(--rb-ui-lab-shadow-soft);
+}
+
+.sidePanel {
+  width: 332px;
+  border-left: 1px solid var(--rb-ui-lab-border);
+  background: color-mix(in srgb, var(--rb-ui-lab-bg-surface) 96%, transparent);
+  padding: 10px;
+  overflow-y: auto;
+}
+
+@media (max-width: 1120px) {
+  .header {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .headerCenter {
+    justify-content: flex-start;
+  }
+
+  .headerRight {
+    justify-content: flex-start;
+  }
+
+  .stageLayout {
+    flex-direction: column;
+  }
+
+  .sidePanel {
+    width: auto;
+    border-left: none;
+    border-top: 1px solid var(--rb-ui-lab-border);
+  }
+}

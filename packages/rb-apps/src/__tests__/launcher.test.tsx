@@ -298,13 +298,31 @@ describe('Launcher component', () => {
 });
 
 describe('Launcher data', () => {
-  it('hides advanced apps from launcher data in student mode', async () => {
+  it('applies strict student launcher whitelist in student mode', async () => {
     vi.resetModules();
     window.localStorage.setItem('rb:mode:v1', 'student');
     const { registerApp } = await import('../AppRegistry');
     const { getAppsForLauncher } = await import('../launcherData');
 
     const StubComponent: React.FC = () => null;
+    registerApp({
+      manifest: {
+        id: 'home',
+        name: 'Home',
+        iconId: 'neon-wave',
+        category: 'system',
+      },
+      component: StubComponent,
+    });
+    registerApp({
+      manifest: {
+        id: 'lab-workspace',
+        name: 'Lab Workspace',
+        iconId: 'cpu',
+        category: 'logic',
+      },
+      component: StubComponent,
+    });
     registerApp({
       manifest: {
         id: 'terminal',
@@ -326,11 +344,13 @@ describe('Launcher data', () => {
 
     const apps = await getAppsForLauncher();
     const ids = apps.map((app) => app.id);
+    expect(ids).toContain('home');
+    expect(ids).toContain('lab-workspace');
     expect(ids).not.toContain('terminal');
-    expect(ids).toContain('files');
+    expect(ids).not.toContain('files');
   });
 
-  it('forces student launcher filtering when classroom lockdown is enabled', async () => {
+  it('forces the same whitelist filtering when classroom lockdown is enabled', async () => {
     vi.resetModules();
     window.localStorage.removeItem('rb:mode:v1');
     window.localStorage.setItem('rb:classroom-lockdown:v1', JSON.stringify({ enabled: true }));
@@ -340,6 +360,24 @@ describe('Launcher data', () => {
     const StubComponent: React.FC = () => null;
     registerApp({
       manifest: {
+        id: 'home',
+        name: 'Home',
+        iconId: 'neon-wave',
+        category: 'system',
+      },
+      component: StubComponent,
+    });
+    registerApp({
+      manifest: {
+        id: 'lab-workspace',
+        name: 'Lab Workspace',
+        iconId: 'cpu',
+        category: 'logic',
+      },
+      component: StubComponent,
+    });
+    registerApp({
+      manifest: {
         id: 'terminal',
         name: 'Terminal',
         iconId: 'terminal',
@@ -359,8 +397,10 @@ describe('Launcher data', () => {
 
     const apps = await getAppsForLauncher();
     const ids = apps.map((app) => app.id);
+    expect(ids).toContain('home');
+    expect(ids).toContain('lab-workspace');
     expect(ids).not.toContain('terminal');
-    expect(ids).toContain('files');
+    expect(ids).not.toContain('files');
   });
 
   it('allows TA override in launcher filtering during classroom lockdown', async () => {

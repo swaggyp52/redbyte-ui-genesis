@@ -25,7 +25,7 @@ const HomeAppComponent = HomeApp.component as React.ComponentType<{
   onOpenApp?: (appId: string, props?: Record<string, unknown>) => void;
   onOpenStarterProject?: (starter: {
     exampleId: string;
-    targetAppId: 'logic-playground' | 'ece-lab';
+    targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace';
     starterId?: string;
     instructions?: {
       labId: string;
@@ -40,7 +40,7 @@ const HomeAppComponent = HomeApp.component as React.ComponentType<{
   }) => void;
   onOpenInstructorPackProject?: (starter: {
     starterId: string;
-    targetAppId: 'logic-playground' | 'ece-lab';
+    targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace';
     packId: string;
     projectArchiveBase64: string;
     instructions: {
@@ -54,7 +54,7 @@ const HomeAppComponent = HomeApp.component as React.ComponentType<{
       rubric: string[];
     };
   }) => void;
-  onOpenRecentProject?: (request: { projectId: string; targetAppId: 'logic-playground' | 'ece-lab' }) => void;
+  onOpenRecentProject?: (request: { projectId: string; targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace' }) => void;
 }>;
 
 describe('HomeApp examples-first onboarding', () => {
@@ -91,7 +91,7 @@ describe('HomeApp examples-first onboarding', () => {
     expect(onOpenStarterProject).toHaveBeenCalledWith(
       expect.objectContaining({
         exampleId: '01_wire-lamp',
-        targetAppId: 'logic-playground',
+        targetAppId: 'lab-workspace',
         starterId: 'wire-lamp',
       })
     );
@@ -113,7 +113,7 @@ describe('HomeApp examples-first onboarding', () => {
     expect(onOpenStarterProject).toHaveBeenCalledWith(
       expect.objectContaining({
         exampleId: '01_wire-lamp',
-        targetAppId: 'logic-playground',
+        targetAppId: 'lab-workspace',
         starterId: 'wire-lamp',
         instructions: expect.objectContaining({
           labId: 'lab-1',
@@ -173,7 +173,7 @@ describe('HomeApp examples-first onboarding', () => {
     fireEvent.click(screen.getByTestId('home-recent-project-open-proj-home-recent'));
     expect(onOpenRecentProject).toHaveBeenCalledWith({
       projectId,
-      targetAppId: 'logic-playground',
+      targetAppId: 'lab-workspace',
     });
   });
 
@@ -281,7 +281,7 @@ describe('HomeApp examples-first onboarding', () => {
     expect(onOpenInstructorPackProject).toHaveBeenCalledWith(
       expect.objectContaining({
         starterId: 'wire-lamp',
-        targetAppId: 'logic-playground',
+        targetAppId: 'lab-workspace',
         packId: 'pack-123',
         projectArchiveBase64: 'UklGRg==',
       }),

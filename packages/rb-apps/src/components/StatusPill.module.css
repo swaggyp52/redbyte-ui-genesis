@@ -1,0 +1,70 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid var(--rb-border-subtle);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--rb-text-primary);
+  background: var(--rb-bg-elevated);
+  text-transform: uppercase;
+}
+
+.build {
+  color: var(--rb-accent-build);
+  border-color: color-mix(in srgb, var(--rb-accent-build) 55%, var(--rb-border-subtle));
+}
+
+.simulate {
+  color: var(--rb-accent-sim);
+  border-color: color-mix(in srgb, var(--rb-accent-sim) 55%, var(--rb-border-subtle));
+}
+
+.hardware {
+  color: var(--rb-accent-hardware);
+  border-color: color-mix(in srgb, var(--rb-accent-hardware) 55%, var(--rb-border-subtle));
+}
+
+.submit {
+  color: var(--rb-accent-submit);
+  border-color: color-mix(in srgb, var(--rb-accent-submit) 55%, var(--rb-border-subtle));
+}
+
+.ready,
+.done,
+.saved,
+.complete {
+  color: var(--rb-success);
+  border-color: color-mix(in srgb, var(--rb-success) 55%, var(--rb-border-subtle));
+}
+
+.warning,
+.unsaved {
+  color: var(--rb-warning);
+  border-color: color-mix(in srgb, var(--rb-warning) 55%, var(--rb-border-subtle));
+}
+
+.error,
+.notReady {
+  color: var(--rb-danger);
+  border-color: color-mix(in srgb, var(--rb-danger) 55%, var(--rb-border-subtle));
+}
+
+.running {
+  color: var(--rb-info);
+  border-color: color-mix(in srgb, var(--rb-info) 55%, var(--rb-border-subtle));
+  animation: rbRunningPulse 1.25s ease-in-out infinite;
+}
+
+@keyframes rbRunningPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.08);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(34, 211, 238, 0.14);
+  }
+}

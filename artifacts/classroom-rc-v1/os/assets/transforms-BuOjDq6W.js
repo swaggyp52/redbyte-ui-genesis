@@ -1,0 +1,2 @@
+function z(n,t,o){return{x:(n-o.x)/o.zoom,y:(t-o.y)/o.zoom}}function T(n,t,o,s=60,m=4){const a=n.maxX-n.minX,e=n.maxY-n.minY;if(a===0||e===0)return{x:t/2,y:o/2,zoom:1};const x=t-s*2,l=o-s*2,f=x/a,i=l/e,c=Math.min(f,i,m,4),r=(n.minX+n.maxX)/2,X=(n.minY+n.maxY)/2,Y=t/2-r*c,y=o/2-X*c;return{x:Y,y,zoom:c}}function h(n,t){return Math.round(n/t)*t}export{h as a,T as f,z as s};
+//# sourceMappingURL=transforms-BuOjDq6W.js.map

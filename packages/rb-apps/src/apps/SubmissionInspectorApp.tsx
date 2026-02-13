@@ -21,6 +21,7 @@ import type { RBProject } from '../export/projectFormat';
 import { decodeRBProject } from '../export/projectFormat';
 import type {
   SubmissionBundleManifest,
+  SubmissionGatesArtifact,
   SubmissionReproducibilityReport,
 } from '../export/submissionBundle';
 import {
@@ -29,6 +30,8 @@ import {
 } from '../export/classroomDiagnosticsBundle';
 import type { ToolchainDoctorReport } from '../fpga/toolchainTypes';
 import { getClassroomLockdownState, getRedByteUiMode } from '../utils/uiMode';
+import type { SubmissionGateResult } from '../labs/submissionGates';
+import { NEO_STATUS } from '../ui/neoGlossary';
 
 const INSPECTOR_INVARIANTS = {
   reads: ['bundle', 'lab_templates'],
@@ -69,6 +72,9 @@ interface BundleData {
     manifest: SubmissionBundleManifest;
     doctorReport: ToolchainDoctorReport | null;
     reproducibility: SubmissionReproducibilityReport | null;
+    submissionGates: SubmissionGateResult | null;
+    submissionLabId: string | null;
+    submissionTimestamp: string | null;
     embeddedProject: RBProject | null;
     targetAppId: 'logic-playground' | 'ece-lab';
     projectArchiveError: string | null;
@@ -100,6 +106,20 @@ function parseOptionalJson<T>(value: string | null): T | null {
   } catch {
     return null;
   }
+}
+
+function normalizeSubmissionGates(
+  payload: SubmissionGateResult | SubmissionGatesArtifact | null,
+): SubmissionGateResult | null {
+  if (!payload || typeof payload !== 'object') return null;
+  if (Array.isArray((payload as SubmissionGateResult).issues)) {
+    return payload as SubmissionGateResult;
+  }
+  const artifact = payload as SubmissionGatesArtifact;
+  if (artifact.schema_version === 'rb_submission_gates_v1' && artifact.result) {
+    return artifact.result;
+  }
+  return null;
 }
 
 type InspectorReadinessGateState = 'pass' | 'warn' | 'fail';
@@ -193,6 +213,20 @@ function collectReadinessGates(
     });
   }
 
+  const submissionGateIssues = Array.isArray(submission.submissionGates?.issues)
+    ? submission.submissionGates?.issues ?? []
+    : [];
+  for (const issue of submissionGateIssues) {
+    const gateId = `submission_gate:${issue.code}`;
+    gateMap.set(gateId, {
+      id: gateId,
+      label: issue.title || issue.code,
+      state: issue.severity === 'block' ? 'fail' : 'warn',
+      detail: issue.message,
+      nextAction: issue.fixHint ?? null,
+    });
+  }
+
   return sortReadinessGates(Array.from(gateMap.values()));
 }
 
@@ -231,17 +265,17 @@ function buildSubmissionGradeSummary(
   submission: BundleData['submission'] | null | undefined,
 ): SubmissionGradeSummary {
   const gates = collectReadinessGates(submission);
-  const topFailingGates = gates.filter((gate) => gate.state !== 'pass').slice(0, 3);
+  const topFailingGates = gates.filter((gate) => gate.state === 'fail').slice(0, 3);
   const reproducibility = summarizeReproducibility(submission?.reproducibility);
-  const allGatesPass = gates.length > 0 && gates.every((gate) => gate.state === 'pass');
+  const allGatesPass = gates.length > 0 && gates.every((gate) => gate.state !== 'fail');
   const reproducibilityAcceptable = reproducibility.status !== 'fail';
   const verdict = allGatesPass && reproducibilityAcceptable ? 'ready' : 'not_ready';
   const verdictLabel =
     verdict === 'ready'
       ? reproducibility.status === 'skipped'
-        ? 'READY (NO REPRO)'
-        : 'READY'
-      : 'NOT READY';
+        ? `${NEO_STATUS.READY} (NO REPRO)`
+        : NEO_STATUS.READY
+      : NEO_STATUS.NOT_READY;
   const verdictDetail =
     verdict === 'ready'
       ? reproducibility.status === 'skipped'
@@ -376,6 +410,20 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
             ? await loaded.file('reproducibility.json')!.async('string')
             : null
         );
+        const submissionGatesArtifact = parseOptionalJson<SubmissionGateResult | SubmissionGatesArtifact>(
+          loaded.file('submission-gates.json')
+            ? await loaded.file('submission-gates.json')!.async('string')
+            : null,
+        );
+        const submissionGates = normalizeSubmissionGates(submissionGatesArtifact);
+        const submissionLabId =
+          submissionGatesArtifact && typeof submissionGatesArtifact === 'object' && !Array.isArray((submissionGatesArtifact as SubmissionGateResult).issues)
+            ? (submissionGatesArtifact as SubmissionGatesArtifact).labId ?? null
+            : null;
+        const submissionTimestamp =
+          submissionGatesArtifact && typeof submissionGatesArtifact === 'object' && !Array.isArray((submissionGatesArtifact as SubmissionGateResult).issues)
+            ? (submissionGatesArtifact as SubmissionGatesArtifact).timestamp ?? null
+            : null;
 
         let embeddedProject: RBProject | null = null;
         let projectArchiveError: string | null = null;
@@ -422,6 +470,9 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
             manifest: manifest as SubmissionBundleManifest,
             doctorReport,
             reproducibility,
+            submissionGates,
+            submissionLabId,
+            submissionTimestamp,
             embeddedProject,
             targetAppId,
             projectArchiveError,
@@ -774,7 +825,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
               setDemoMode(false);
             }}
           >
-            ← Open Another
+            ← Open Bundle
           </button>
           {isTaMode ? (
             <button
@@ -938,7 +989,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
                   <h2 className={styles.sectionTitle}>{isSubmissionBundle ? 'Grader Summary' : 'Submission Summary'}</h2>
                   {!isSubmissionBundle ? (
                     <button className={styles.exportButton} onClick={handleExportGradingReport}>
-                      Export Grading Report
+                      Export Report
                     </button>
                   ) : null}
                   {isSubmissionBundle && bundle.submission?.embeddedProject && onOpenSubmissionProject ? (
@@ -962,7 +1013,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
                       data-testid="submission-inspector-grade-verdict"
                     >
                       <div className={styles.verdictLabel} data-testid="submission-inspector-grade-verdict-label">
-                        {submissionGradeSummary?.verdictLabel ?? 'NOT READY'}
+                        {submissionGradeSummary?.verdictLabel ?? NEO_STATUS.NOT_READY}
                       </div>
                       <div className={styles.verdictDetail}>
                         {submissionGradeSummary?.verdictDetail ?? 'Readiness details unavailable.'}
@@ -1020,6 +1071,18 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
                         <div className={styles.summaryValue}>{bundle.submission?.manifest.bundleId ?? 'unknown'}</div>
                       </div>
                       <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Lab ID</div>
+                        <div className={styles.summaryValue} data-testid="submission-inspector-summary-lab-id">
+                          {bundle.submission?.submissionLabId ?? 'unknown'}
+                        </div>
+                      </div>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Timestamp</div>
+                        <div className={styles.summaryValue} data-testid="submission-inspector-summary-timestamp">
+                          {bundle.submission?.submissionTimestamp ?? 'unknown'}
+                        </div>
+                      </div>
+                      <div className={styles.summaryCard}>
                         <div className={styles.summaryLabel}>Status</div>
                         <div className={styles.summaryValue}>{bundle.submission?.manifest.status ?? 'unknown'}</div>
                       </div>
@@ -1048,6 +1111,12 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
                       <div className={styles.summaryCard}>
                         <div className={styles.summaryLabel}>Open Target</div>
                         <div className={styles.summaryValue}>{bundle.submission?.targetAppId ?? 'logic-playground'}</div>
+                      </div>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Toolchain</div>
+                        <div className={styles.summaryValue} data-testid="submission-inspector-summary-toolchain">
+                          {bundle.submission?.doctorReport?.backend_id ?? 'unknown'}
+                        </div>
                       </div>
                     </div>
 

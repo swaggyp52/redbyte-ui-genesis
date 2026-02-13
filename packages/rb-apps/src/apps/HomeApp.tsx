@@ -25,6 +25,7 @@ import {
   upsertImportedStarterPack,
   type ImportedStarterPackRecord,
 } from '../starterKits/instructorPack';
+import { NEO_TYPO } from '../ui/neoTypography';
 import styles from './HomeApp.module.css';
 
 // ---------------------------------------------------------------------------
@@ -92,7 +93,7 @@ interface Mission {
 
 interface RecentProjectOpenRequest {
   projectId: string;
-  targetAppId: 'logic-playground' | 'ece-lab';
+  targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace';
 }
 
 const CE_MISSIONS: Mission[] = [
@@ -160,13 +161,13 @@ interface HomeAppProps {
   onOpenApp?: (appId: string, props?: Record<string, unknown>) => void;
   onOpenStarterProject?: (starter: {
     exampleId: ExampleId;
-    targetAppId: 'logic-playground' | 'ece-lab';
+    targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace';
     starterId?: string;
     instructions?: LabStarterInstructions;
   }) => void | Promise<void>;
   onOpenInstructorPackProject?: (starter: {
     starterId: string;
-    targetAppId: 'logic-playground' | 'ece-lab';
+    targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace';
     packId: string;
     projectArchiveBase64: string;
     instructions: LabStarterInstructions;
@@ -176,13 +177,13 @@ interface HomeAppProps {
 
 function buildStarterOpenRequest(starter: LabStarterKit): {
   exampleId: ExampleId;
-  targetAppId: 'logic-playground' | 'ece-lab';
+  targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace';
   starterId: string;
   instructions: LabStarterInstructions;
 } {
   return {
     exampleId: starter.exampleId as ExampleId,
-    targetAppId: starter.targetApp,
+    targetAppId: 'lab-workspace',
     starterId: starter.id,
     instructions: starter.instructions,
   };
@@ -190,14 +191,14 @@ function buildStarterOpenRequest(starter: LabStarterKit): {
 
 function buildImportedStarterOpenRequest(pack: ImportedStarterPackRecord): {
   starterId: string;
-  targetAppId: 'logic-playground' | 'ece-lab';
+  targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace';
   packId: string;
   projectArchiveBase64: string;
   instructions: LabStarterInstructions;
 } {
   return {
     starterId: pack.starter.id,
-    targetAppId: pack.starter.targetApp,
+    targetAppId: 'lab-workspace',
     packId: pack.packId,
     projectArchiveBase64: pack.projectArchiveBase64,
     instructions: pack.starter.instructions,
@@ -426,7 +427,7 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
 
   const handleOpenRecentProject = useCallback(
     (entry: RecentProjectEntryV1) => {
-      const targetAppId: 'logic-playground' | 'ece-lab' = entry.appHint === 'ece-lab' ? 'ece-lab' : 'logic-playground';
+      const targetAppId: 'lab-workspace' = 'lab-workspace';
       if (onOpenRecentProject) {
         void onOpenRecentProject({ projectId: entry.projectId, targetAppId });
       } else if (onOpenApp) {
@@ -492,7 +493,7 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
 
         {showExamplesFirst && !quickstartDismissed && (
           <div className={styles.quickstartBanner} data-testid="home-quickstart-banner">
-            <div className={styles.quickstartTitle}>Quickstart</div>
+            <div className={styles.quickstartTitle}>{NEO_TYPO.quickstart}</div>
             <ol className={styles.quickstartSteps}>
               <li>Open a lab starter</li>
               <li>Run simulation and inspect outputs</li>
@@ -521,7 +522,7 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
             <div className={styles.startersHeaderActions}>
               {showExamplesFirst && (
                 <span className={styles.startersHint} data-testid="home-no-recent-hint">
-                  No recent projects found - start here.
+                  No recent projects found. Start with a lab starter.
                 </span>
               )}
               <button
@@ -537,7 +538,7 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
             </div>
           </div>
           <div className={styles.starterDropHint} data-testid="home-instructor-pack-dropzone">
-            Drag and drop an Instructor Pack ZIP here, or use Import Instructor Pack.
+            Drag and drop an Instructor Pack ZIP here or use Import Instructor Pack.
           </div>
           {starterPackStatus ? (
             <div className={styles.starterStatus} data-testid="home-instructor-pack-status">
@@ -552,9 +553,7 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
               >
                 <div className={styles.starterHeader}>
                   <span className={styles.starterName}>{starter.title}</span>
-                  <span className={styles.starterTarget}>
-                    {starter.targetApp === 'ece-lab' ? 'ECE Lab' : 'Playground'}
-                  </span>
+                  <span className={styles.starterTarget}>Lab Workspace</span>
                 </div>
                 <p className={styles.starterGoal}>{starter.learningGoal}</p>
                 <p className={styles.starterTask}>{starter.whatToDo}</p>

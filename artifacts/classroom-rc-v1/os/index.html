@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RedByte Playground</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <script>
+      // SAFETY: Defer Three.js preload until after main.tsx controls the import order
+      // This prevents temporal dead zone (TDZ) errors in Three.js minified exports
+      const params = new URLSearchParams(window.location.search);
+      const isE2E = params.get('e2e') === '1' || navigator.webdriver;
+      if (!params.has('boot') && !isE2E) {
+        // Normal mode: Three.js will be loaded by full-bootstrap
+        // Preload is safe because full-bootstrap controls import order
+        document.write('');
+      }
+    </script>
+    <!-- Fonts: IBM Plex Sans (body) and IBM Plex Mono (code + data) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script type="module" crossorigin src="/os/assets/main-Cfb6lJSk.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

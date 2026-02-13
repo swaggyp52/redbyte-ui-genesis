@@ -1,0 +1,53 @@
+:root {
+  --rb-ui-lab-bg: #060912;
+  --rb-ui-lab-bg-surface: #0b1324;
+  --rb-ui-lab-bg-elevated: #111c31;
+  --rb-ui-lab-grid: rgba(57, 217, 255, 0.06);
+  --rb-ui-lab-border: #22324f;
+  --rb-ui-lab-border-strong: #35527f;
+  --rb-ui-lab-text: #ecf4ff;
+  --rb-ui-lab-text-muted: #9cb2d6;
+  --rb-ui-lab-accent: #39d9ff;
+  --rb-ui-lab-accent-soft: rgba(57, 217, 255, 0.16);
+  --rb-ui-lab-success: #36d98a;
+  --rb-ui-lab-warning: #ffb347;
+  --rb-ui-lab-danger: #ff5d7a;
+  --rb-ui-lab-info: #6ea8ff;
+  --rb-ui-lab-radius-sm: 8px;
+  --rb-ui-lab-radius-md: 12px;
+  --rb-ui-lab-radius-lg: 16px;
+  --rb-ui-lab-shadow: 0 10px 24px rgba(0, 7, 20, 0.45);
+  --rb-ui-lab-shadow-soft: 0 4px 12px rgba(0, 7, 20, 0.32);
+  --rb-ui-lab-fast: 150ms;
+  --rb-ui-lab-normal: 200ms;
+  --rb-ui-lab-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.rb-ui-lab-surface {
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: var(--rb-ui-lab-radius-md);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rb-ui-lab-accent) 8%, var(--rb-ui-lab-bg-surface)) 0%, var(--rb-ui-lab-bg-surface) 100%);
+  box-shadow: var(--rb-ui-lab-shadow-soft);
+}
+
+.rb-ui-lab-grid-bg {
+  background-color: var(--rb-ui-lab-bg);
+  background-image:
+    linear-gradient(to right, var(--rb-ui-lab-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--rb-ui-lab-grid) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.rb-ui-focus:focus-visible {
+  outline: 2px solid var(--rb-ui-lab-accent);
+  outline-offset: 2px;
+}
+
+@keyframes rbLabSkeleton {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}

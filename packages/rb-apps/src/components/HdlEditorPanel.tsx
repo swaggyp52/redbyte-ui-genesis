@@ -23,6 +23,9 @@ import {
   getBasys3VerilogExample,
   type Basys3ExampleId,
 } from '../fpga/boards/basys3/examples';
+import { EmptyStateCard } from './EmptyStateCard';
+import { NEO_STATUS } from '../ui/neoGlossary';
+import styles from './HdlEditorPanel.module.css';
 
 interface HdlEditorPanelProps {
   project: ToolchainProjectInput;
@@ -30,6 +33,7 @@ interface HdlEditorPanelProps {
   fpga?: RBFpgaConfig;
   onFpgaChange?: (next: RBFpgaConfig) => void;
   backendId?: ToolchainBackendId;
+  beginnerView?: boolean;
 }
 
 function upsertSource(
@@ -101,6 +105,7 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
   fpga,
   onFpgaChange,
   backendId,
+  beginnerView = false,
 }) => {
   const resolvedBackendId = backendId ?? getToolchainBackendId();
   const backend = useMemo(() => getToolchainBackend(resolvedBackendId), [resolvedBackendId]);
@@ -161,6 +166,9 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
 
   const fileText = activeSource?.text ?? '';
   const fileLanguage = activeSource?.language ?? 'verilog';
+  const hasTopModule = typeof project.top === 'string' && project.top.trim().length > 0;
+  const hasAnySource = Array.isArray(project.sources) && project.sources.length > 0;
+  const hasActiveSource = activeSource !== null;
 
   const resolvedFpga: RBFpgaConfig = fpga ?? { board: 'basys3' };
   const xdcText = resolvedFpga.constraints?.text ?? '';
@@ -1443,10 +1451,29 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
   }, [appendLog, appendLogs, backend, finalizeProgramRun, isProgramCanceling, programRunId]);
 
   const displayLogs = useMemo(() => logs.map((l) => l.msg).join('\n'), [logs]);
+  const showAdvancedControls = !beginnerView;
+
+  const toStandardStatus = useCallback((value: string): 'READY' | 'NOT READY' | 'RUNNING' | 'DONE' | 'ERROR' | 'WARNING' => {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'running') return NEO_STATUS.RUNNING;
+    if (normalized === 'success' || normalized === 'pass' || normalized === 'done') return NEO_STATUS.DONE;
+    if (normalized === 'failed' || normalized === 'error' || normalized === 'errors') return NEO_STATUS.ERROR;
+    if (normalized === 'warn' || normalized === 'warning' || normalized === 'canceled') return NEO_STATUS.WARNING;
+    if (normalized === 'ok' || normalized === 'ready') return NEO_STATUS.READY;
+    return NEO_STATUS.NOT_READY;
+  }, []);
+
+  const buildStatusIndicator = useMemo(() => {
+    if (isSynthesizing || isImplementing || isProgramRunning || isPreflighting || isProbing) return NEO_STATUS.RUNNING;
+    if (synthStatus === 'failed' || implementStatus === 'failed' || programStatus === 'failed') return NEO_STATUS.ERROR;
+    if (synthStatus === 'success' || implementStatus === 'success' || programStatus === 'success') return NEO_STATUS.DONE;
+    if (synthStatus === 'canceled' || implementStatus === 'canceled' || programStatus === 'canceled') return NEO_STATUS.WARNING;
+    return NEO_STATUS.NOT_READY;
+  }, [implementStatus, isImplementing, isPreflighting, isProbing, isProgramRunning, isSynthesizing, programStatus, synthStatus]);
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      <div className="px-4 py-3 border-b border-[#1B2028]/60 bg-[#0D1117]/80">
+    <div className={styles.panelRoot}>
+      <div className={styles.panelHeader}>
         <div className="flex items-start justify-between gap-2">
           <div>
             <div className="text-sm font-semibold text-[#E6EDF3]">HDL Editor</div>
@@ -1515,43 +1542,53 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleExportReport}
-              className="px-2 py-1 text-[10px] rounded border border-[#8B949E]/30 text-[#8B949E] hover:bg-[#161B22] disabled:opacity-50 disabled:cursor-not-allowed"
-              type="button"
-              disabled={!lastProbe || isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
-              data-testid="hdl-export-report-button"
-              title={!lastProbe ? 'Run Probe Toolchain first' : 'Download a JSON doctor report'}
+            <span
+              className="px-2 py-1 text-[10px] rounded border border-[#8B949E]/30 text-[#E6EDF3]"
+              data-testid="hdl-build-status-indicator"
             >
-              Export Report
-            </button>
-            <button
-              onClick={handleProbe}
-              className="px-2 py-1 text-[10px] rounded border border-[#8B949E]/30 text-[#8B949E] hover:bg-[#161B22] disabled:opacity-50 disabled:cursor-not-allowed"
-              type="button"
-              disabled={isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
-              data-testid="hdl-probe-button"
-            >
-              {isProbing ? 'Probing...' : 'Probe Toolchain'}
-            </button>
-            <button
-              onClick={handlePlanImplementation}
-              className="px-2 py-1 text-[10px] rounded border border-[#A78BFA]/40 text-[#A78BFA] hover:bg-[#A78BFA]/10 disabled:opacity-50 disabled:cursor-not-allowed"
-              type="button"
-              disabled={isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
-              data-testid="hdl-implement-plan-button"
-            >
-              {isPlanningImplement ? 'Planning...' : 'Plan Implementation'}
-            </button>
-            <button
-              onClick={handleGoldenDemo}
-              className="px-2 py-1 text-[10px] rounded border border-[#38BDF8]/40 text-[#38BDF8] hover:bg-[#38BDF8]/10 disabled:opacity-50 disabled:cursor-not-allowed"
-              type="button"
-              disabled={isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
-              data-testid="hdl-golden-demo-button"
-            >
-              Golden Demo: Switches → LEDs
-            </button>
+              {buildStatusIndicator}
+            </span>
+            {showAdvancedControls ? (
+              <>
+                <button
+                  onClick={handleExportReport}
+                  className="px-2 py-1 text-[10px] rounded border border-[#8B949E]/30 text-[#8B949E] hover:bg-[#161B22] disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="button"
+                  disabled={!lastProbe || isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
+                  data-testid="hdl-export-report-button"
+                  title={!lastProbe ? 'Run Probe Toolchain first' : 'Download a JSON doctor report'}
+                >
+                  Export Report
+                </button>
+                <button
+                  onClick={handleProbe}
+                  className="px-2 py-1 text-[10px] rounded border border-[#8B949E]/30 text-[#8B949E] hover:bg-[#161B22] disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="button"
+                  disabled={isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
+                  data-testid="hdl-probe-button"
+                >
+                  {isProbing ? 'Verifying...' : 'Verify Toolchain'}
+                </button>
+                <button
+                  onClick={handlePlanImplementation}
+                  className="px-2 py-1 text-[10px] rounded border border-[#A78BFA]/40 text-[#A78BFA] hover:bg-[#A78BFA]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="button"
+                  disabled={isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
+                  data-testid="hdl-implement-plan-button"
+                >
+                  {isPlanningImplement ? 'Planning...' : 'Plan Implementation'}
+                </button>
+                <button
+                  onClick={handleGoldenDemo}
+                  className="px-2 py-1 text-[10px] rounded border border-[#38BDF8]/40 text-[#38BDF8] hover:bg-[#38BDF8]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="button"
+                  disabled={isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
+                  data-testid="hdl-golden-demo-button"
+                >
+                  Golden Demo: Switches → LEDs
+                </button>
+              </>
+            ) : null}
             <button
               onClick={handleSynthesize}
               className="px-2 py-1 text-[10px] rounded border border-[#22C55E]/40 text-[#22C55E] hover:bg-[#22C55E]/10 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1592,23 +1629,27 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
                 {isImplementCanceling ? 'Canceling...' : 'Cancel Implement'}
               </button>
             ) : null}
-            <button
-              onClick={handleBuild}
-              className="px-2 py-1 text-[10px] rounded border border-[#22D3EE]/40 text-[#22D3EE] hover:bg-[#22D3EE]/10 disabled:opacity-50 disabled:cursor-not-allowed"
-              type="button"
-              disabled={isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
-              data-testid="hdl-build-button"
-            >
-              {isBuilding ? 'Building...' : 'Build (stub)'}
-            </button>
-            <button
-              onClick={() => setLogs([])}
-              className="px-2 py-1 text-[10px] rounded border border-[#8B949E]/30 text-[#8B949E] hover:bg-[#161B22]"
-              type="button"
-              disabled={logs.length === 0}
-            >
-              Clear
-            </button>
+            {showAdvancedControls ? (
+              <>
+                <button
+                  onClick={handleBuild}
+                  className="px-2 py-1 text-[10px] rounded border border-[#22D3EE]/40 text-[#22D3EE] hover:bg-[#22D3EE]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="button"
+                  disabled={isBuilding || isProbing || isSynthesizing || isImplementing || isPlanningImplement || isProgramRunning}
+                  data-testid="hdl-build-button"
+                >
+                  {isBuilding ? 'Building...' : 'Build (stub)'}
+                </button>
+                <button
+                  onClick={() => setLogs([])}
+                  className="px-2 py-1 text-[10px] rounded border border-[#8B949E]/30 text-[#8B949E] hover:bg-[#161B22]"
+                  type="button"
+                  disabled={logs.length === 0}
+                >
+                  Clear
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
 
@@ -1639,24 +1680,42 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
                 data-testid="hdl-top-input"
               />
             </label>
-            <label className="flex items-center gap-2 text-[10px] text-[#6E7681]">
-              <span>Language</span>
-              <select
-                className="bg-[#0B0F14] border border-[#1B2028] rounded px-2 py-1 text-[10px] text-[#E6EDF3] outline-none"
-                value={fileLanguage}
-                onChange={(e) => {
-                  const nextLanguage = e.target.value === 'vhdl' ? 'vhdl' : 'verilog';
-                  onProjectChange(upsertSource(project, fileName, { language: nextLanguage }));
-                }}
-                data-testid="hdl-language-select"
-              >
-                <option value="verilog">Verilog</option>
-                <option value="vhdl">VHDL</option>
-              </select>
-            </label>
+            {showAdvancedControls ? (
+              <label className="flex items-center gap-2 text-[10px] text-[#6E7681]">
+                <span>Language</span>
+                <select
+                  className="bg-[#0B0F14] border border-[#1B2028] rounded px-2 py-1 text-[10px] text-[#E6EDF3] outline-none"
+                  value={fileLanguage}
+                  onChange={(e) => {
+                    const nextLanguage = e.target.value === 'vhdl' ? 'vhdl' : 'verilog';
+                    onProjectChange(upsertSource(project, fileName, { language: nextLanguage }));
+                  }}
+                  data-testid="hdl-language-select"
+                >
+                  <option value="verilog">Verilog</option>
+                  <option value="vhdl">VHDL</option>
+                </select>
+              </label>
+            ) : null}
           </div>
         </div>
 
+        {!hasTopModule ? (
+          <div className="mt-2" data-testid="hdl-empty-no-top-module">
+            <EmptyStateCard
+              headline="Top module not selected"
+              description="Set your top module before preflight and simulation so toolchain checks can resolve the correct entry point."
+              primaryLabel="Set Top Module"
+              onPrimaryClick={() => {
+                const target = document.querySelector('[data-testid="hdl-top-input"]');
+                if (target instanceof HTMLInputElement) target.focus();
+              }}
+              secondaryLabel="Why this matters"
+            />
+          </div>
+        ) : null}
+
+        {showAdvancedControls ? (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <div className="text-[10px] text-[#6E7681]">Examples</div>
           {basys3VerilogExamples.map((example) => (
@@ -1673,6 +1732,7 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
             </button>
           ))}
         </div>
+        ) : null}
 
         <div className="mt-2 flex items-center justify-between gap-2">
           <div className="text-[10px] text-[#6E7681]">
@@ -1746,6 +1806,7 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
           ))}
         </div>
 
+        {showAdvancedControls ? (
         <div className="mt-2 rounded border border-[#38BDF8]/30 bg-[#38BDF8]/10 px-2 py-2 text-[10px] text-[#BAE6FD]" data-testid="hdl-toolchain-setup">
           <div className="flex items-center justify-between gap-2">
             <div>
@@ -1794,8 +1855,9 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
             {setupCommands.map((entry) => `${entry.tool}: ${entry.command}`).join('\n')}
           </pre>
         </div>
+        ) : null}
 
-        {lastBuildPath ? (
+        {showAdvancedControls && lastBuildPath ? (
           <div className="mt-2 rounded border border-[#A78BFA]/30 bg-[#A78BFA]/10 px-2 py-2 text-[10px] text-[#DDD6FE]" data-testid="hdl-implement-plan-summary">
             <div>
               backend: <span className="font-mono">{lastBuildPath.backend}</span>
@@ -1825,20 +1887,20 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
           </div>
         ) : null}
 
-        {synthArtifact ? (
+        {showAdvancedControls && synthArtifact ? (
           <div className="mt-2 rounded border border-[#22C55E]/30 bg-[#22C55E]/10 px-2 py-1 text-[10px] text-[#86EFAC]" data-testid="hdl-synth-artifact-summary">
             artifact: <span className="font-mono">{synthArtifact.artifactId}</span> - netlist{' '}
             <span className="font-mono">{synthArtifact.outputs.netlistVerilog}</span>
           </div>
         ) : null}
-        {implementArtifact ? (
+        {showAdvancedControls && implementArtifact ? (
           <div className="mt-2 rounded border border-[#F59E0B]/30 bg-[#F59E0B]/10 px-2 py-1 text-[10px] text-[#FCD34D]" data-testid="hdl-implement-artifact-summary">
             artifact: <span className="font-mono">{implementArtifact.artifactId}</span> - backend{' '}
             <span className="font-mono">{implementArtifact.backend}</span>
             {' · '}outputs: <span className="font-mono">{implementArtifact.outputs.length}</span>
           </div>
         ) : null}
-        {synthRunId && synthStatus !== 'idle' && synthStatus !== 'running' ? (
+        {showAdvancedControls && synthRunId && synthStatus !== 'idle' && synthStatus !== 'running' ? (
           <div className="mt-2 flex items-center gap-3">
             <label className="flex items-center gap-2 text-[10px] text-[#8B949E]" data-testid="hdl-synth-include-sources-label">
               <input
@@ -1860,7 +1922,7 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
             </button>
           </div>
         ) : null}
-        {implementRunId && implementStatus !== 'idle' && implementStatus !== 'running' ? (
+        {showAdvancedControls && implementRunId && implementStatus !== 'idle' && implementStatus !== 'running' ? (
           <div className="mt-2 flex items-center gap-3">
             <label className="flex items-center gap-2 text-[10px] text-[#8B949E]" data-testid="hdl-implement-include-sources-label">
               <input
@@ -1908,9 +1970,24 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
         ) : null}
       </div>
 
-      <div className="flex-1 overflow-hidden p-3 flex flex-col gap-3">
-        <div className="flex-1 overflow-hidden">
+      <div className={styles.contentArea}>
+        <div className={styles.editorPane}>
           <div className="mb-1 text-[10px] uppercase tracking-wide text-[#6E7681]">HDL</div>
+          {!hasAnySource || !hasActiveSource ? (
+            <div className="mb-2" data-testid="hdl-empty-no-file">
+              <EmptyStateCard
+                headline={hasAnySource ? 'No file selected' : 'No project file loaded'}
+                description={hasAnySource
+                  ? 'Choose a source file to continue editing, then run preflight and simulation from this panel.'
+                  : 'Create or open an HDL file to begin build/simulate flow in this workspace.'}
+                primaryLabel="Open Editor"
+                onPrimaryClick={() => {
+                  onProjectChange(upsertSource(project, fileName, { language: fileLanguage, text: fileText }));
+                }}
+                secondaryLabel="Why this matters"
+              />
+            </div>
+          ) : null}
           <textarea
             value={fileText}
             onChange={(e) => {
@@ -1923,7 +2000,7 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
           />
         </div>
 
-        <div className="h-40 overflow-hidden">
+        <div className={styles.constraintsPane}>
           <div className="mb-1 flex items-center justify-between">
             <div className="text-[10px] uppercase tracking-wide text-[#6E7681]">XDC Constraints</div>
             {xdcText.trim().length === 0 ? (
@@ -1950,13 +2027,22 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
         </div>
       </div>
 
-      <div className="border-t border-[#1B2028]/60 bg-[#0B0F14]">
-        <div className="px-4 py-2 text-[10px] uppercase tracking-wide text-[#6E7681]">
+      <div className={styles.consoleWrap}>
+        <div className={styles.consoleTitle}>
           Build Console
         </div>
-        <div className="px-4 pb-3 max-h-40 overflow-auto">
+        <div className={styles.consoleBody}>
           {logs.length === 0 ? (
-            <div className="text-xs text-[#6E7681]">No logs yet.</div>
+            <EmptyStateCard
+              testId="hdl-empty-no-sim"
+              headline="Simulation not run yet"
+              description="Run simulation once to populate waveform/probe evidence and build console output for this project."
+              primaryLabel="Run Simulation"
+              onPrimaryClick={() => {
+                void handleSynthesize();
+              }}
+              secondaryLabel="Why this matters"
+            />
           ) : (
             <pre className="text-xs text-[#E6EDF3] whitespace-pre-wrap" data-testid="hdl-build-logs">
               {displayLogs}

@@ -253,13 +253,21 @@ class AppErrorBoundary extends React.Component<
           padding: '2rem', textAlign: 'center',
         }}>
           <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--rb-danger, #ef4444)', marginBottom: '0.5rem' }}>
-            App Crashed
+            App encountered a problem
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--rb-text-2, #64748b)', marginBottom: '0.25rem' }}>
             <strong>{this.props.appId}</strong>
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--rb-text-3, #64748b)', marginBottom: '1rem', maxWidth: 300 }}>
             {studentError.message}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--rb-text-2, #94a3b8)', marginBottom: '1rem', maxWidth: 360, textAlign: 'left' }}>
+            <div>Try this in order:</div>
+            <ol style={{ margin: '0.35rem 0 0 1rem', padding: 0 }}>
+              <li>Reload App</li>
+              <li>Open Help for guided recovery</li>
+              <li>If needed, export a report for TA support</li>
+            </ol>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
@@ -1030,7 +1038,7 @@ export const Shell: React.FC<ShellProps> = () => {
     (
       project: LabProjectV1,
       circuit: Circuit,
-      targetAppId: 'logic-playground' | 'ece-lab' = 'logic-playground',
+      targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace' = 'logic-playground',
       starterInstructions?: StarterInstructionsPayload,
     ) => {
       const baseName = (project.name || 'imported-circuit').trim();
@@ -1057,7 +1065,7 @@ export const Shell: React.FC<ShellProps> = () => {
     (
       project: LabProjectV1,
       source: 'user-file' | 'starter' | 'recovery',
-      targetAppId: 'logic-playground' | 'ece-lab' = 'logic-playground',
+      targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace' = 'logic-playground',
       starterInstructions?: StarterInstructionsPayload,
     ) => {
       const compatibility = validateUnifiedProjectStoreCompatibility(project);
@@ -1085,7 +1093,7 @@ export const Shell: React.FC<ShellProps> = () => {
   const importStarterProject = useCallback(
     async (
       exampleId: ExampleId,
-      targetAppId: 'logic-playground' | 'ece-lab' = 'logic-playground',
+      targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace' = 'logic-playground',
       starterInstructions?: StarterInstructionsPayload,
     ) => {
       const starterProject = loadExampleAsProject(exampleId);
@@ -1113,7 +1121,7 @@ export const Shell: React.FC<ShellProps> = () => {
   const handleLoadExample = useCallback(
     (
       exampleId: ExampleId,
-      targetAppId: 'logic-playground' | 'ece-lab' = 'logic-playground',
+      targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace' = 'logic-playground',
       starterInstructions?: StarterInstructionsPayload,
     ) => {
       void importStarterProject(exampleId, targetAppId, starterInstructions).catch((error) => {
@@ -1127,7 +1135,7 @@ export const Shell: React.FC<ShellProps> = () => {
   const handleOpenStarterProject = useCallback(
     (starter: {
       exampleId: ExampleId;
-      targetAppId: 'logic-playground' | 'ece-lab';
+      targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace';
       starterId?: string;
       instructions?: StarterInstructionsPayload;
     }) => {
@@ -1148,7 +1156,7 @@ export const Shell: React.FC<ShellProps> = () => {
   const handleOpenInstructorPackProject = useCallback(
     async (starter: {
       starterId: string;
-      targetAppId: 'logic-playground' | 'ece-lab';
+      targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace';
       packId: string;
       projectArchiveBase64: string;
       instructions: StarterInstructionsPayload;
@@ -1192,7 +1200,7 @@ export const Shell: React.FC<ShellProps> = () => {
   );
 
   const handleOpenSubmissionProject = useCallback(
-    async (payload: { project: RBProject; targetAppId: 'logic-playground' | 'ece-lab' }) => {
+    async (payload: { project: RBProject; targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace' }) => {
       try {
         const importedProject = rbProjectToLabProject(payload.project);
         const { warnings, summary } = hydrateImportedProject(importedProject, 'user-file', payload.targetAppId);
@@ -1226,7 +1234,7 @@ export const Shell: React.FC<ShellProps> = () => {
   );
 
   const handleOpenRecentProject = useCallback(
-    async (payload: { projectId: string; targetAppId: 'logic-playground' | 'ece-lab' }) => {
+    async (payload: { projectId: string; targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace' }) => {
       try {
         const autosaveKey = getCanonicalProjectAutosaveKey(payload.projectId);
         const autosave = loadRbprojAutosave(autosaveKey);

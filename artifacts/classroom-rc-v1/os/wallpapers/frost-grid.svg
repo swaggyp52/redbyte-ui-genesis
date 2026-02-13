@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <!-- Grid pattern -->
+    <pattern id="frost-grid" width="80" height="80" patternUnits="userSpaceOnUse">
+      <path d="M 80 0 L 0 0 0 80" fill="none" stroke="#ced4da" stroke-width="1" opacity="0.4"/>
+    </pattern>
+
+    <!-- Larger grid pattern -->
+    <pattern id="frost-grid-major" width="320" height="320" patternUnits="userSpaceOnUse">
+      <path d="M 320 0 L 0 0 0 320" fill="none" stroke="#adb5bd" stroke-width="2" opacity="0.3"/>
+    </pattern>
+
+    <!-- Accent gradient -->
+    <linearGradient id="frost-accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0087ff;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#0087ff;stop-opacity:0.05" />
+    </linearGradient>
+
+    <!-- Radial highlight -->
+    <radialGradient id="frost-highlight" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#f8f9fa;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+
+  <!-- Base background -->
+  <rect width="1920" height="1080" fill="#f8f9fa"/>
+
+  <!-- Radial highlight -->
+  <rect width="1920" height="1080" fill="url(#frost-highlight)"/>
+
+  <!-- Major grid -->
+  <rect width="1920" height="1080" fill="url(#frost-grid-major)"/>
+
+  <!-- Minor grid -->
+  <rect width="1920" height="1080" fill="url(#frost-grid)"/>
+
+  <!-- Accent overlay -->
+  <rect width="1920" height="1080" fill="url(#frost-accent)"/>
+
+  <!-- Accent lines - subtle electric blue -->
+  <line x1="0" y1="540" x2="1920" y2="540" stroke="#0087ff" stroke-width="1" opacity="0.15"/>
+  <line x1="960" y1="0" x2="960" y2="1080" stroke="#0087ff" stroke-width="1" opacity="0.15"/>
+
+  <!-- Corner accents -->
+  <g opacity="0.2">
+    <line x1="0" y1="0" x2="80" y2="0" stroke="#0087ff" stroke-width="3"/>
+    <line x1="0" y1="0" x2="0" y2="80" stroke="#0087ff" stroke-width="3"/>
+
+    <line x1="1920" y1="0" x2="1840" y2="0" stroke="#0087ff" stroke-width="3"/>
+    <line x1="1920" y1="0" x2="1920" y2="80" stroke="#0087ff" stroke-width="3"/>
+
+    <line x1="0" y1="1080" x2="80" y2="1080" stroke="#0087ff" stroke-width="3"/>
+    <line x1="0" y1="1080" x2="0" y2="1000" stroke="#0087ff" stroke-width="3"/>
+
+    <line x1="1920" y1="1080" x2="1840" y2="1080" stroke="#0087ff" stroke-width="3"/>
+    <line x1="1920" y1="1080" x2="1920" y2="1000" stroke="#0087ff" stroke-width="3"/>
+  </g>
+
+  <!-- Floating logic gate symbols - very subtle -->
+  <g opacity="0.08">
+    <g transform="translate(480, 270)">
+      <path d="M 0 0 L 0 40 L 20 40 Q 40 40 40 20 Q 40 0 20 0 Z" fill="none" stroke="#0087ff" stroke-width="2"/>
+    </g>
+
+    <g transform="translate(1200, 600)">
+      <path d="M 0 0 Q 15 0 30 20 Q 15 40 0 40 Q 10 20 0 0" fill="none" stroke="#0087ff" stroke-width="2"/>
+    </g>
+
+    <g transform="translate(800, 800)">
+      <path d="M 0 0 L 0 30 L 25 15 Z" fill="none" stroke="#0087ff" stroke-width="2"/>
+      <circle cx="29" cy="15" r="4" fill="none" stroke="#0087ff" stroke-width="2"/>
+    </g>
+  </g>
+
+  <!-- Minimal node indicators -->
+  <g opacity="0.15">
+    <circle cx="480" cy="290" r="4" fill="#0087ff"/>
+    <circle cx="1220" cy="620" r="4" fill="#0087ff"/>
+    <circle cx="815" cy="815" r="4" fill="#0087ff"/>
+    <circle cx="640" cy="440" r="3" fill="#0087ff"/>
+    <circle cx="1400" cy="380" r="3" fill="#0087ff"/>
+  </g>
+</svg>

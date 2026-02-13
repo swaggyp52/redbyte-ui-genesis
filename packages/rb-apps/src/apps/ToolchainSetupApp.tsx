@@ -35,6 +35,8 @@ import {
   RB_CLASSROOM_LOCKDOWN_CHANGE_EVENT,
   setClassroomLockdownEnabled,
 } from '../utils/uiMode';
+import { NEO_TYPO } from '../ui/neoTypography';
+import styles from './ToolchainSetupApp.module.css';
 
 type SetupPlatformId = 'windows' | 'macos' | 'linux';
 type SetupStepId = 'probe' | 'detect' | 'plan';
@@ -230,32 +232,36 @@ function resolveOverallStatus(
   }
 
   if (hasFoundNotInPath) {
-    return { tone: 'warning', label: 'Found but not in PATH' };
+    return { tone: 'warning', label: 'Found, not in PATH' };
   }
 
   return { tone: 'error', label: 'Missing tools' };
 }
 
-function getToolSourceBadge(source: SetupToolStatus['source']): { label: string; className: string } {
+function cx(...values: Array<string | false | null | undefined>): string {
+  return values.filter(Boolean).join(' ');
+}
+
+function getToolSourceBadge(source: SetupToolStatus['source']): { label: string; tone: 'bundled' | 'buildpack' | 'system' | 'found' | 'missing' } {
   if (source === 'bundled') {
-    return { label: 'Bundled', className: 'bg-green-500/20 text-green-200 border border-green-500/40' };
+    return { label: 'Bundled', tone: 'bundled' };
   }
   if (source === 'buildpack') {
-    return { label: 'Buildpack', className: 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/40' };
+    return { label: 'Buildpack', tone: 'buildpack' };
   }
   if (source === 'system') {
-    return { label: 'System', className: 'bg-sky-500/20 text-sky-200 border border-sky-500/40' };
+    return { label: 'System', tone: 'system' };
   }
   if (source === 'found_not_in_path') {
-    return { label: 'Found, not in PATH', className: 'bg-yellow-500/20 text-yellow-100 border border-yellow-500/40' };
+    return { label: 'Found, not in PATH', tone: 'found' };
   }
-  return { label: 'Missing', className: 'bg-red-500/20 text-red-100 border border-red-500/40' };
+  return { label: 'Missing', tone: 'missing' };
 }
 
 function getReadinessGateTone(state: StudentReadinessGateView['state']): string {
-  if (state === 'pass') return 'text-green-300';
-  if (state === 'warn') return 'text-yellow-200';
-  return 'text-red-300';
+  if (state === 'pass') return styles.gatePass;
+  if (state === 'warn') return styles.gateWarn;
+  return styles.gateFail;
 }
 
 function buildSubmissionBundleGate(status: SubmissionBundleStatusSnapshot | null): StudentReadinessGateView {
@@ -899,27 +905,24 @@ export const ToolchainSetupComponent: React.FC<{
   }, [taInput]);
 
   return (
-    <div className="h-full overflow-y-auto bg-[#0B0F14] text-[#E6EDF3] p-4" data-testid="toolchain-setup-page">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1F2937] pb-3">
+    <div className={styles.page} data-testid="toolchain-setup-page">
+      <div className={styles.header}>
         <div>
-          <h2 className="text-base font-semibold text-[#E6EDF3]">Toolchain Setup</h2>
-          <p className="text-[11px] text-[#8B949E]">Basys3 path: Vivado (implement) + Yosys (synth) + openFPGALoader (program).</p>
-          <p className="text-[10px] text-[#64748B]" data-testid="toolchain-setup-mode-label">
-            mode: <span className="font-mono">{uiMode}</span>
+          <h2 className={styles.title}>Toolchain Setup</h2>
+          <p className={styles.subtitle}>Basys3 path: Vivado (implement) + Yosys (synth) + openFPGALoader (program).</p>
+          <p className={styles.meta} data-testid="toolchain-setup-mode-label">
+            mode: <span className={styles.mono}>{uiMode}</span>
           </p>
-          <p className="text-[10px] text-[#64748B]" data-testid="toolchain-setup-lockdown-label">
-            lockdown: <span className="font-mono">{classroomLockdownEnabled ? 'on' : 'off'}</span>
+          <p className={styles.meta} data-testid="toolchain-setup-lockdown-label">
+            lockdown: <span className={styles.mono}>{classroomLockdownEnabled ? 'on' : 'off'}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className={styles.headerActions}>
           <span
-            className={`rounded px-2 py-1 text-[10px] font-semibold ${
-              overall.tone === 'ready'
-                ? 'bg-green-500/20 text-green-200'
-                : overall.tone === 'warning'
-                  ? 'bg-yellow-500/20 text-yellow-100'
-                  : 'bg-red-500/20 text-red-100'
-            }`}
+            className={cx(
+              styles.statusPill,
+              overall.tone === 'ready' ? styles.statusReady : overall.tone === 'warning' ? styles.statusWarning : styles.statusError,
+            )}
             data-testid="toolchain-setup-status"
           >
             {overall.label}
@@ -927,7 +930,7 @@ export const ToolchainSetupComponent: React.FC<{
           {!isLockdownStudentView ? (
             <button
               onClick={handleExportSetupReport}
-              className="px-2 py-1 text-[10px] rounded border border-[#38BDF8]/40 text-[#38BDF8] hover:bg-[#38BDF8]/10"
+              className={cx(styles.button, styles.buttonInfo)}
               type="button"
               data-testid="toolchain-setup-export-button"
             >
@@ -937,7 +940,7 @@ export const ToolchainSetupComponent: React.FC<{
           {isTaMode ? (
             <button
               onClick={handleToggleClassroomLockdown}
-              className="px-2 py-1 text-[10px] rounded border border-[#F59E0B]/40 text-[#FCD34D] hover:bg-[#F59E0B]/10"
+              className={cx(styles.button, styles.buttonWarn)}
               type="button"
               data-testid="toolchain-setup-lockdown-toggle"
             >
@@ -947,7 +950,7 @@ export const ToolchainSetupComponent: React.FC<{
           {isTaMode ? (
             <button
               onClick={handleExportDiagnosticsBundle}
-              className="px-2 py-1 text-[10px] rounded border border-[#22D3EE]/40 text-[#22D3EE] hover:bg-[#22D3EE]/10"
+              className={cx(styles.button, styles.buttonInfo)}
               type="button"
               data-testid="toolchain-setup-export-diagnostics-button"
             >
@@ -959,16 +962,16 @@ export const ToolchainSetupComponent: React.FC<{
 
       {isLockdownStudentView ? (
       <div
-        className="mt-3 rounded border border-[#1F2937] bg-[#111827] p-3"
+        className={cx(styles.section, styles.sectionMuted)}
         data-testid="toolchain-setup-lockdown-minimal"
       >
-        <h3 className="text-xs font-semibold text-[#BAE6FD]">Classroom Lockdown</h3>
-        <p className="mt-1 text-[11px] text-[#8B949E]">
+        <h3 className={styles.sectionTitle}>Classroom Lockdown</h3>
+        <p className={styles.sectionHint}>
           Advanced toolchain diagnostics are hidden. Use Verify Setup for readiness status.
         </p>
         <button
           onClick={handleVerifySetup}
-          className="mt-2 px-2 py-1 text-[10px] rounded border border-[#22D3EE]/40 text-[#22D3EE] hover:bg-[#22D3EE]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+          className={cx(styles.button, styles.buttonInfo)}
           type="button"
           disabled={isVerifying}
           data-testid="toolchain-setup-verify-button"
@@ -977,32 +980,28 @@ export const ToolchainSetupComponent: React.FC<{
         </button>
       </div>
       ) : (
-      <div className="mt-3 rounded border border-[#1F2937] bg-[#111827] p-3" data-testid="toolchain-setup-required-tools">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h3 className="text-xs font-semibold text-[#BAE6FD]">Stable Path Checklist (Vivado-first)</h3>
-          <div className="flex items-center gap-2">
+      <div className={styles.section} data-testid="toolchain-setup-required-tools">
+        <div className={styles.sectionHeader}>
+          <h3 className={styles.sectionTitle}>Stable Path Checklist (Vivado-first)</h3>
+          <div>
             <button
               onClick={handleVerifySetup}
-              className="px-2 py-1 text-[10px] rounded border border-[#22D3EE]/40 text-[#22D3EE] hover:bg-[#22D3EE]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={cx(styles.button, styles.buttonInfo)}
               type="button"
               disabled={isVerifying}
               data-testid="toolchain-setup-verify-button"
             >
-              {isVerifying ? 'Verifying...' : 'Verify Setup'}
+              {isVerifying ? 'Verifying...' : NEO_TYPO.verifySetup}
             </button>
           </div>
         </div>
 
-        <div className="mb-2 flex flex-wrap items-center gap-2 text-[10px]" data-testid="toolchain-setup-tool-filter">
-          <span className="text-[#8B949E]">Filter:</span>
+        <div className={styles.filterRow} data-testid="toolchain-setup-tool-filter">
+          <span className={styles.filterLabel}>Filter:</span>
           <button
             type="button"
             onClick={() => setToolFilter('all')}
-            className={`rounded px-2 py-1 border ${
-              toolFilter === 'all'
-                ? 'border-[#38BDF8]/50 text-[#BAE6FD] bg-[#38BDF8]/10'
-                : 'border-[#334155] text-[#94A3B8]'
-            }`}
+            className={cx(styles.filterButton, toolFilter === 'all' && styles.filterButtonActive)}
             data-testid="toolchain-setup-filter-all"
           >
             All
@@ -1010,11 +1009,7 @@ export const ToolchainSetupComponent: React.FC<{
           <button
             type="button"
             onClick={() => setToolFilter('needs_action')}
-            className={`rounded px-2 py-1 border ${
-              toolFilter === 'needs_action'
-                ? 'border-[#F59E0B]/50 text-[#FCD34D] bg-[#F59E0B]/10'
-                : 'border-[#334155] text-[#94A3B8]'
-            }`}
+            className={cx(styles.filterButton, toolFilter === 'needs_action' && styles.filterButtonActive)}
             data-testid="toolchain-setup-filter-needs-action"
           >
             Missing / Needs action
@@ -1022,11 +1017,7 @@ export const ToolchainSetupComponent: React.FC<{
           <button
             type="button"
             onClick={() => setToolFilter('bundled')}
-            className={`rounded px-2 py-1 border ${
-              toolFilter === 'bundled'
-                ? 'border-[#22C55E]/50 text-[#86EFAC] bg-[#22C55E]/10'
-                : 'border-[#334155] text-[#94A3B8]'
-            }`}
+            className={cx(styles.filterButton, toolFilter === 'bundled' && styles.filterButtonActive)}
             data-testid="toolchain-setup-filter-bundled"
           >
             Bundled only
@@ -1035,54 +1026,64 @@ export const ToolchainSetupComponent: React.FC<{
 
         {allRequiredToolsReady ? (
           <div
-            className="mb-2 rounded border border-green-500/40 bg-green-500/10 px-2 py-1 text-[11px] text-green-200"
+            className={styles.successBanner}
             data-testid="toolchain-setup-no-installs-summary"
           >
             Setup complete â€” no additional downloads needed.
           </div>
         ) : null}
 
-        <div className="space-y-1 text-[11px]">
+        <div className={styles.toolList}>
           {filteredRequiredTools.length === 0 ? (
-            <div className="text-[11px] text-[#8B949E]" data-testid="toolchain-setup-tool-filter-empty">
+            <div className={styles.sectionHint} data-testid="toolchain-setup-tool-filter-empty">
               No tools match the current filter.
             </div>
           ) : null}
           {filteredRequiredTools.map((tool) => {
             const sourceBadge = getToolSourceBadge(tool.source);
+            const badgeClass =
+              sourceBadge.tone === 'bundled'
+                ? styles.toolBadgeBundled
+                : sourceBadge.tone === 'buildpack'
+                  ? styles.toolBadgeBuildpack
+                  : sourceBadge.tone === 'system'
+                    ? styles.toolBadgeSystem
+                    : sourceBadge.tone === 'found'
+                      ? styles.toolBadgeFound
+                      : styles.toolBadgeMissing;
             return (
-            <div key={tool.name} data-testid={`toolchain-setup-tool-${tool.name}`}>
-              <span className="font-semibold">{tool.label}:</span>{' '}
-              <span className="font-mono">{tool.ok ? 'ok' : tool.status}</span>
+            <div key={tool.name} className={styles.toolRow} data-testid={`toolchain-setup-tool-${tool.name}`}>
+              <span className={styles.toolName}>{tool.label}:</span>{' '}
+              <span className={styles.mono}>{tool.ok ? 'ok' : tool.status}</span>
               {' · '}
               <span
-                className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold ${sourceBadge.className}`}
+                className={cx(styles.toolBadge, badgeClass)}
                 data-testid={`toolchain-setup-tool-source-${tool.name}`}
               >
                 {sourceBadge.label}
               </span>
               {' · '}
-              <span className="font-mono">{tool.detail}</span>
+              <span className={styles.mono}>{tool.detail}</span>
               {' · '}
-              <span className={`font-mono ${tool.integrity === 'corrupt' ? 'text-red-300' : 'text-[#8B949E]'}`}>
+              <span className={cx(styles.mono, tool.integrity === 'corrupt' ? styles.toolTextDanger : styles.toolTextMuted)}>
                 integrity:{tool.integrity}
               </span>
               {tool.source === 'bundled' && tool.integrity === 'verified' ? (
                 <>
                   {' · '}
-                  <span className="font-mono text-green-300">Verified</span>
+                  <span className={cx(styles.mono, styles.toolTextSuccess)}>Verified</span>
                 </>
               ) : null}
               {tool.source === 'bundled' && tool.integrity === 'corrupt' ? (
                 <>
                   {' · '}
-                  <span className="font-mono text-red-300">Corrupt bundle detected</span>
+                  <span className={cx(styles.mono, styles.toolTextDanger)}>Corrupt bundle detected</span>
                 </>
               ) : null}
               {tool.suggestedFix ? (
                 <>
                   {' · '}
-                  <span className="font-mono text-[#93C5FD]">{tool.suggestedFix}</span>
+                  <span className={cx(styles.mono, styles.toolTextInfo)}>{tool.suggestedFix}</span>
                 </>
               ) : null}
             </div>
@@ -1090,10 +1091,10 @@ export const ToolchainSetupComponent: React.FC<{
           })}
         </div>
 
-        <div className="mt-3 rounded border border-[#1F2937] bg-[#0B1220] p-2" data-testid="toolchain-setup-board-detect">
-          <div className="text-[11px] text-[#93C5FD]">
+        <div className={styles.boardCard} data-testid="toolchain-setup-board-detect">
+          <div>
             Basys3 detect:{' '}
-            <span className="font-mono">
+            <span className={styles.mono}>
               {boardDetect
                 ? boardDetect.boards.some((board) => board.type === 'basys3')
                   ? 'detected'
@@ -1106,14 +1107,14 @@ export const ToolchainSetupComponent: React.FC<{
       )}
 
       {!isLockdownStudentView ? (
-      <div className="mt-3 rounded border border-[#1F2937] bg-[#111827] p-3" data-testid="toolchain-setup-install-instructions">
-        <h3 className="text-xs font-semibold text-[#BAE6FD]">Install Commands ({setupPlatform})</h3>
-        <pre className="mt-2 whitespace-pre-wrap text-[11px] text-[#93C5FD]">
+      <div className={styles.section} data-testid="toolchain-setup-install-instructions">
+        <h3 className={styles.sectionTitle}>Install Commands ({setupPlatform})</h3>
+        <pre className={styles.pre}>
           {setupCommands.map((entry) => `${entry.tool}: ${entry.command}`).join('\n')}
         </pre>
-        <details className="mt-2">
-          <summary className="cursor-pointer text-[11px] text-[#8B949E]">macOS / Linux alternatives</summary>
-          <pre className="mt-2 whitespace-pre-wrap text-[11px] text-[#8B949E]">
+        <details>
+          <summary className={styles.detailsSummary}>macOS / Linux alternatives</summary>
+          <pre className={styles.pre}>
             {getSetupCommands('macos')
               .concat(getSetupCommands('linux'))
               .map((entry) => `${entry.tool}: ${entry.command}`)
@@ -1124,14 +1125,14 @@ export const ToolchainSetupComponent: React.FC<{
       ) : null}
 
       {isTaMode && !isLockdownStudentView ? (
-      <div className="mt-3 rounded border border-[#1F2937] bg-[#111827] p-3" data-testid="toolchain-setup-buildpack">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-xs font-semibold text-[#BAE6FD]">Basys3 Open Buildpack</h3>
-          <div className="flex items-center gap-2">
+      <div className={cx(styles.section, styles.sectionTa)} data-testid="toolchain-setup-buildpack">
+        <div className={styles.sectionHeader}>
+          <h3 className={styles.sectionTitle}>Basys3 Open Buildpack</h3>
+          <div className={styles.headerActions}>
             <button
               type="button"
               onClick={() => void refreshBuildpackStatus()}
-              className="px-2 py-1 text-[10px] rounded border border-[#64748B]/40 text-[#CBD5E1] hover:bg-[#1E293B]"
+              className={styles.button}
               data-testid="toolchain-setup-buildpack-refresh"
             >
               Refresh
@@ -1140,7 +1141,7 @@ export const ToolchainSetupComponent: React.FC<{
               type="button"
               onClick={handleBuildpackInstall}
               disabled={isBuildpackInstalling}
-              className="px-2 py-1 text-[10px] rounded border border-[#22D3EE]/40 text-[#22D3EE] hover:bg-[#22D3EE]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={cx(styles.button, styles.buttonInfo)}
               data-testid="toolchain-setup-buildpack-install"
             >
               {isBuildpackInstalling ? 'Installing...' : 'Install Buildpack'}
@@ -1149,7 +1150,7 @@ export const ToolchainSetupComponent: React.FC<{
               type="button"
               onClick={handleBuildpackRemove}
               disabled={isBuildpackRemoving}
-              className="px-2 py-1 text-[10px] rounded border border-[#F59E0B]/40 text-[#FCD34D] hover:bg-[#F59E0B]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={cx(styles.button, styles.buttonWarn)}
               data-testid="toolchain-setup-buildpack-remove"
             >
               {isBuildpackRemoving ? 'Removing...' : 'Remove'}
@@ -1157,34 +1158,34 @@ export const ToolchainSetupComponent: React.FC<{
           </div>
         </div>
 
-        <div className="mt-2 text-[11px] text-[#E2E8F0]" data-testid="toolchain-setup-buildpack-status">
+        <div className={styles.gatesList} data-testid="toolchain-setup-buildpack-status">
           <div>
-            target: <span className="font-mono">{DEFAULT_BUILDPACK_INSTALL.name}@{DEFAULT_BUILDPACK_INSTALL.version}</span>
+            target: <span className={styles.mono}>{DEFAULT_BUILDPACK_INSTALL.name}@{DEFAULT_BUILDPACK_INSTALL.version}</span>
           </div>
           <div>
-            source: <span className="font-mono">{DEFAULT_BUILDPACK_INSTALL.url}</span>
+            source: <span className={styles.mono}>{DEFAULT_BUILDPACK_INSTALL.url}</span>
           </div>
           <div>
             status:{' '}
-            <span className="font-mono">
+            <span className={styles.mono}>
               {defaultBuildpack ? (defaultBuildpack.ok ? 'installed' : `installed_corrupt (${defaultBuildpack.error ?? 'unknown'})`) : 'not_installed'}
             </span>
           </div>
           {buildpackStatus ? (
             <div>
-              storeRoot: <span className="font-mono">{buildpackStatus.storeRoot}</span>
+              storeRoot: <span className={styles.mono}>{buildpackStatus.storeRoot}</span>
             </div>
           ) : null}
           {buildpackRun ? (
             <div>
-              run: <span className="font-mono">{buildpackRun.runId}</span> · state:{' '}
-              <span className="font-mono">{buildpackRun.state}</span>
+              run: <span className={styles.mono}>{buildpackRun.runId}</span> · state:{' '}
+              <span className={styles.mono}>{buildpackRun.state}</span>
             </div>
           ) : null}
         </div>
 
         <pre
-          className="mt-2 max-h-36 overflow-auto whitespace-pre-wrap rounded border border-[#1F2937] bg-[#0B1220] p-2 text-[10px] text-[#A5B4FC]"
+          className={styles.miniPre}
           data-testid="toolchain-setup-buildpack-logs"
         >
           {buildpackLogs.map((entry) => `[${entry.level}] ${entry.msg}`).join('\n')}
@@ -1193,18 +1194,18 @@ export const ToolchainSetupComponent: React.FC<{
       ) : null}
 
       {!isLockdownStudentView ? (
-      <div className="mt-3 rounded border border-[#1F2937] bg-[#111827] p-3" data-testid="toolchain-setup-verify-results">
-        <h3 className="text-xs font-semibold text-[#BAE6FD]">Verify Results</h3>
-        <div className="mt-2 space-y-1 text-[11px]">
+      <div className={styles.section} data-testid="toolchain-setup-verify-results">
+        <h3 className={styles.sectionTitle}>Verify Results</h3>
+        <div className={styles.gatesList}>
           {steps.map((step) => (
-            <div key={step.id}>
-              <span className="font-semibold">{step.label}:</span> <span className="font-mono">{step.state}</span>
+            <div key={step.id} className={styles.gateRow}>
+              <span className={styles.toolName}>{step.label}:</span> <span className={styles.mono}>{step.state}</span>
               {' · '}
               <span>{step.detail}</span>
               {step.nextAction ? (
                 <>
                   {' · '}
-                  <span className="text-[#93C5FD]">Next: {step.nextAction}</span>
+                  <span className={styles.toolTextInfo}>Next: {step.nextAction}</span>
                 </>
               ) : null}
             </div>
@@ -1213,60 +1214,60 @@ export const ToolchainSetupComponent: React.FC<{
       </div>
       ) : null}
 
-      <div className="mt-3 rounded border border-[#1F2937] bg-[#111827] p-3" data-testid="toolchain-setup-student-readiness">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className={styles.section} data-testid="toolchain-setup-student-readiness">
+        <div className={styles.sectionHeader}>
           <div>
-            <h3 className="text-xs font-semibold text-[#BAE6FD]">Student Readiness</h3>
+            <h3 className={styles.sectionTitle}>Student Readiness</h3>
             {isTaMode ? (
-              <p className="mt-1 text-[10px] text-[#8B949E]" data-testid="toolchain-setup-open-submission-help">
+              <p className={styles.sectionHint} data-testid="toolchain-setup-open-submission-help">
                 Grade or troubleshoot a student submission (.zip).
               </p>
             ) : (
-              <p className="mt-1 text-[10px] text-[#8B949E]">Student view keeps advanced grading tools hidden.</p>
+              <p className={styles.sectionHint}>Student view keeps advanced grading tools hidden.</p>
             )}
           </div>
           {isTaMode ? (
             <button
               type="button"
               onClick={() => onOpenApp?.('submission-inspector')}
-              className="px-2 py-1 text-[10px] rounded border border-[#38BDF8]/40 text-[#38BDF8] hover:bg-[#38BDF8]/10"
+              className={cx(styles.button, styles.buttonInfo)}
               data-testid="toolchain-setup-open-submission-cta"
             >
-              Open Submission Bundle
+              {NEO_TYPO.openSubmissionBundle}
             </button>
           ) : null}
         </div>
-        <div className="mt-2 text-[11px]">
-          <span className="text-[#8B949E]">overall:</span>{' '}
+        <div className={styles.readinessOverall}>
+          <span className={styles.toolTextMuted}>overall:</span>{' '}
           <span
-            className={`font-mono ${
-              studentReadinessWithSubmission.overall === 'ready' ? 'text-green-300' : 'text-yellow-200'
-            }`}
+            className={cx(
+              styles.mono,
+              studentReadinessWithSubmission.overall === 'ready' ? styles.readinessReady : styles.readinessWarn,
+            )}
             data-testid="toolchain-setup-student-readiness-overall"
           >
             {studentReadinessWithSubmission.overall}
           </span>
         </div>
-        <div className="mt-2 space-y-1 text-[11px]">
+        <div className={styles.gatesList}>
           {studentReadinessWithSubmission.gates.map((gate) => (
-            <div key={gate.id} data-testid={`toolchain-setup-readiness-${gate.id}`}>
-              <span className="font-semibold">{gate.label}:</span>{' '}
-              <span className={`font-mono ${getReadinessGateTone(gate.state)}`}>{gate.state}</span>
+            <div key={gate.id} className={styles.gateRow} data-testid={`toolchain-setup-readiness-${gate.id}`}>
+              <span className={styles.toolName}>{gate.label}:</span>{' '}
+              <span className={cx(styles.mono, getReadinessGateTone(gate.state))}>{gate.state}</span>
               {' · '}
               <span>{gate.detail}</span>
               {gate.nextAction ? (
                 <>
                   {' · '}
-                  <span className="text-[#93C5FD]">Next: {gate.nextAction}</span>
+                  <span className={styles.toolTextInfo}>Next: {gate.nextAction}</span>
                 </>
               ) : null}
               {gate.id === 'submission_bundle' && gate.state !== 'pass' ? (
                 <>
-                  {' · '}
                   <button
                     type="button"
                     onClick={() => onOpenApp?.('logic-playground')}
-                    className="text-[10px] rounded border border-[#38BDF8]/40 px-1.5 py-0.5 text-[#38BDF8] hover:bg-[#38BDF8]/10"
+                    className={styles.inlineCta}
                     data-testid="toolchain-setup-readiness-submission-cta"
                   >
                     Generate
@@ -1279,36 +1280,36 @@ export const ToolchainSetupComponent: React.FC<{
       </div>
 
       {isTaMode && !isLockdownStudentView ? (
-      <div className="mt-3 rounded border border-[#1F2937] bg-[#111827] p-3" data-testid="toolchain-setup-ta-mode">
-        <h3 className="text-xs font-semibold text-[#BAE6FD]">TA Mode (Doctor Report Triage)</h3>
+      <div className={cx(styles.section, styles.sectionTa)} data-testid="toolchain-setup-ta-mode">
+        <h3 className={styles.sectionTitle}>TA Mode (Doctor Report Triage)</h3>
         <textarea
-          className="mt-2 h-24 w-full resize-y rounded border border-[#1F2937] bg-[#0B1220] p-2 text-[11px] text-[#E6EDF3] outline-none"
+          className={styles.textarea}
           placeholder="Paste doctor report JSON"
           value={taInput}
           onChange={(event) => setTaInput(event.target.value)}
           data-testid="toolchain-setup-ta-input"
         />
-        <div className="mt-2 flex items-center gap-2">
+        <div className={styles.headerActions}>
           <button
             type="button"
             onClick={handleParseTaMode}
-            className="px-2 py-1 text-[10px] rounded border border-[#8B949E]/40 text-[#8B949E] hover:bg-[#161B22]"
+            className={styles.button}
             data-testid="toolchain-setup-ta-parse-button"
           >
             Parse Report
           </button>
-          {taError ? <span className="text-[10px] text-[#FCA5A5]">{taError}</span> : null}
+          {taError ? <span className={styles.inlineError}>{taError}</span> : null}
         </div>
         {taSummary ? (
-          <div className="mt-2 text-[11px]" data-testid="toolchain-setup-ta-summary">
+          <div className={styles.gatesList} data-testid="toolchain-setup-ta-summary">
             {taSummary.missingTools.length === 0 ? (
-              <span className="text-green-200">No missing tools reported.</span>
+              <span className={styles.toolTextSuccess}>No missing tools reported.</span>
             ) : (
-              <ul className="list-disc pl-4">
+              <ul>
                 {taSummary.missingTools.map((tool) => (
                   <li key={tool.name}>
-                    <span className="font-mono">{tool.name}</span>
-                    {tool.suggestedFix ? <span className="text-[#93C5FD]"> · {tool.suggestedFix}</span> : null}
+                    <span className={styles.mono}>{tool.name}</span>
+                    {tool.suggestedFix ? <span className={styles.toolTextInfo}> · {tool.suggestedFix}</span> : null}
                   </li>
                 ))}
               </ul>
@@ -1319,9 +1320,9 @@ export const ToolchainSetupComponent: React.FC<{
       ) : null}
 
       {isTaMode && !isLockdownStudentView ? (
-      <div className="mt-3 rounded border border-[#1F2937] bg-[#111827] p-3">
-        <h3 className="text-xs font-semibold text-[#BAE6FD]">Setup Logs</h3>
-        <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap text-[10px] text-[#9CA3AF]" data-testid="toolchain-setup-logs">
+      <div className={cx(styles.section, styles.sectionTa)}>
+        <h3 className={styles.sectionTitle}>Setup Logs</h3>
+        <pre className={styles.logsPre} data-testid="toolchain-setup-logs">
           {logs.map((entry) => `[${entry.level}] ${entry.msg}`).join('\n')}
         </pre>
       </div>

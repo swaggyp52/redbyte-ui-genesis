@@ -4,8 +4,8 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--rb-bg);
-  color: var(--rb-text);
+  background: var(--rb-ui-lab-bg);
+  color: var(--rb-ui-lab-text);
   font-family: var(--rb-font-sans);
 }
 
@@ -14,27 +14,27 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem 2rem;
-  border-bottom: 1px solid var(--rb-border);
-  background: var(--rb-panel);
+  border-bottom: 1px solid var(--rb-ui-lab-border);
+  background: var(--rb-ui-lab-bg-surface);
 }
 
 .title {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--rb-accent);
+  color: var(--rb-ui-lab-accent);
 }
 
 .subtitle {
   margin: 0;
   font-size: 0.875rem;
-  color: var(--rb-muted);
+  color: var(--rb-ui-lab-text-muted);
 }
 
 .closeButton {
-  background: var(--rb-panel-2);
-  border: 1px solid var(--rb-border);
-  color: var(--rb-muted);
+  background: var(--rb-ui-lab-bg-elevated);
+  border: 1px solid var(--rb-ui-lab-border);
+  color: var(--rb-ui-lab-text-muted);
   padding: 0.5rem 1rem;
   border-radius: 6px;
   font-size: 0.875rem;
@@ -43,8 +43,8 @@
 }
 
 .closeButton:hover {
-  background: var(--rb-panel);
-  color: var(--rb-text);
+  background: var(--rb-ui-lab-bg-surface);
+  color: var(--rb-ui-lab-text);
 }
 
 /* Drop Zone */
@@ -55,18 +55,18 @@
   align-items: center;
   justify-content: center;
   margin: 2rem;
-  border: 2px dashed var(--rb-border-strong);
+  border: 2px dashed var(--rb-ui-lab-border-strong);
   border-radius: var(--rb-radius-lg);
   padding: 3rem;
   text-align: center;
-  background: var(--rb-panel);
+  background: var(--rb-ui-lab-bg-surface);
   transition: all 0.15s ease;
   cursor: pointer;
 }
 
 .dropZone:hover {
-  border-color: var(--rb-accent-strong);
-  background: var(--rb-panel-2);
+  border-color: var(--rb-ui-lab-accent);
+  background: var(--rb-ui-lab-bg-elevated);
 }
 
 .dropZoneIcon {
@@ -77,20 +77,20 @@
 .dropZoneTitle {
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--rb-text);
+  color: var(--rb-ui-lab-text);
   margin-bottom: 0.75rem;
 }
 
 .dropZoneOr {
   font-size: 0.875rem;
-  color: var(--rb-faint);
+  color: var(--rb-ui-lab-text-muted);
   margin: 1.5rem 0;
 }
 
 .browseButton {
-  background: var(--rb-accent);
-  color: var(--rb-bg);
-  border: 1px solid var(--rb-accent);
+  background: color-mix(in srgb, var(--rb-ui-lab-accent) 16%, var(--rb-ui-lab-bg-elevated));
+  color: var(--rb-ui-lab-text);
+  border: 1px solid var(--rb-ui-lab-border-strong);
   padding: 0.875rem 2rem;
   border-radius: 6px;
   font-size: 0.9375rem;
@@ -107,10 +107,10 @@
 .error {
   margin: 1.5rem 2rem;
   padding: 1rem;
-  background: var(--rb-danger-bg);
-  border: 1px solid var(--rb-danger-border);
+  background: color-mix(in srgb, var(--rb-ui-lab-danger) 12%, var(--rb-ui-lab-bg-elevated));
+  border: 1px solid var(--rb-ui-lab-danger);
   border-radius: 6px;
-  color: var(--rb-text);
+  color: var(--rb-ui-lab-text);
   font-size: 0.875rem;
 }
 
@@ -119,7 +119,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--rb-muted);
+  color: var(--rb-ui-lab-text-muted);
   font-size: 0.9375rem;
 }
 
@@ -127,16 +127,16 @@
 .tabs {
   display: flex;
   gap: 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--rb-ui-lab-border);
   padding: 0 2rem;
-  background: #111;
+  background: var(--rb-ui-lab-bg-surface);
 }
 
 .tab,
 .tabActive {
   background: transparent;
   border: none;
-  color: #64748b;
+  color: var(--rb-ui-lab-text-muted);
   padding: 0.75rem 1rem;
   font-size: 0.875rem;
   font-weight: 500;
@@ -146,12 +146,12 @@
 }
 
 .tab:hover {
-  color: #94a3b8;
+  color: var(--rb-ui-lab-text);
 }
 
 .tabActive {
-  color: #3B82F6;
-  border-bottom-color: #3B82F6;
+  color: var(--rb-ui-lab-accent);
+  border-bottom-color: var(--rb-ui-lab-accent);
 }
 
 /* Content */
@@ -169,7 +169,7 @@
   margin: 0 0 1.5rem 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: #f8fafc;
+  color: var(--rb-ui-lab-text);
 }
 
 .sectionHeader {
@@ -185,9 +185,9 @@
 }
 
 .exportButton {
-  background: #0f172a;
-  border: 1px solid #1f2937;
-  color: #e2e8f0;
+  background: var(--rb-ui-lab-bg-elevated);
+  border: 1px solid var(--rb-ui-lab-border);
+  color: var(--rb-ui-lab-text);
   padding: 0.5rem 0.75rem;
   border-radius: 6px;
   font-size: 0.8125rem;
@@ -195,16 +195,16 @@
 }
 
 .exportButton:hover {
-  border-color: #3B82F6;
-  color: #f8fafc;
+  border-color: var(--rb-ui-lab-accent);
+  color: var(--rb-ui-lab-text);
 }
 
 .empty {
   padding: 2rem;
   text-align: center;
-  color: #64748b;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--rb-ui-lab-text-muted);
+  background: var(--rb-ui-lab-bg-elevated);
+  border: 1px solid var(--rb-ui-lab-border);
   border-radius: 8px;
 }
 
@@ -217,33 +217,33 @@
 }
 
 .verdictBanner {
-  border: 1px solid #222;
+  border: 1px solid var(--rb-ui-lab-border);
   border-radius: 8px;
   padding: 1rem 1.25rem;
   margin-bottom: 1rem;
 }
 
 .verdictReady {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.4);
+  background: color-mix(in srgb, var(--rb-ui-lab-success) 12%, var(--rb-ui-lab-bg-elevated));
+  border-color: var(--rb-ui-lab-success);
 }
 
 .verdictNotReady {
-  background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.45);
+  background: color-mix(in srgb, var(--rb-ui-lab-danger) 12%, var(--rb-ui-lab-bg-elevated));
+  border-color: var(--rb-ui-lab-danger);
 }
 
 .verdictLabel {
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.2px;
-  color: #f8fafc;
+  color: var(--rb-ui-lab-text);
 }
 
 .verdictDetail {
   margin-top: 0.375rem;
   font-size: 0.8125rem;
-  color: #cbd5e1;
+  color: var(--rb-ui-lab-text-muted);
 }
 
 .quickSummaryRow {
@@ -254,8 +254,8 @@
 }
 
 .quickSummaryCard {
-  background: #111;
-  border: 1px solid #222;
+  background: var(--rb-ui-lab-bg-surface);
+  border: 1px solid var(--rb-ui-lab-border);
   border-radius: 8px;
   padding: 0.875rem 1rem;
 }
@@ -264,7 +264,7 @@
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #64748b;
+  color: var(--rb-ui-lab-text-muted);
   margin-bottom: 0.5rem;
 }
 
@@ -299,7 +299,7 @@
 
 .quickSummaryDetail {
   font-size: 0.8125rem;
-  color: #cbd5e1;
+  color: var(--rb-ui-lab-text-muted);
 }
 
 .quickFailingList {
@@ -316,18 +316,18 @@
 
 .quickFailingLabel {
   font-size: 0.8125rem;
-  color: #f8fafc;
+  color: var(--rb-ui-lab-text);
   font-weight: 600;
 }
 
 .quickFailingDetail {
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: var(--rb-ui-lab-text-muted);
 }
 
 .summaryCard {
-  background: #111;
-  border: 1px solid #222;
+  background: var(--rb-ui-lab-bg-surface);
+  border: 1px solid var(--rb-ui-lab-border);
   border-radius: 8px;
   padding: 1rem;
 }
@@ -336,13 +336,13 @@
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #64748b;
+  color: var(--rb-ui-lab-text-muted);
   margin-bottom: 0.5rem;
 }
 
 .summaryValue {
   font-size: 0.9375rem;
-  color: #f8fafc;
+  color: var(--rb-ui-lab-text);
   font-weight: 500;
 }
 
@@ -354,7 +354,7 @@
   margin: 0 0 1rem 0;
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #f8fafc;
+  color: var(--rb-ui-lab-text);
 }
 
 .summaryStats {
@@ -373,13 +373,13 @@
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #64748b;
+  color: var(--rb-ui-lab-text-muted);
 }
 
 .statValue {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--rb-ui-lab-text);
 }
 
 .checkList {
@@ -393,8 +393,8 @@
   grid-template-columns: 64px 1fr;
   gap: 0.5rem 1rem;
   align-items: center;
-  background: #111;
-  border: 1px solid #222;
+  background: var(--rb-ui-lab-bg-surface);
+  border: 1px solid var(--rb-ui-lab-border);
   border-radius: 8px;
   padding: 0.75rem 1rem;
 }
@@ -408,13 +408,13 @@
 
 .checkLabel {
   font-size: 0.875rem;
-  color: #e2e8f0;
+  color: var(--rb-ui-lab-text);
 }
 
 .checkMessage {
   grid-column: 2 / span 1;
   font-size: 0.8125rem;
-  color: #94a3b8;
+  color: var(--rb-ui-lab-text-muted);
 }
 
 .checkPass {

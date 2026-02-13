@@ -53,6 +53,7 @@ All gates are deterministic and should be validated by automated tests where pos
 
 - One-click submission bundle includes project export, logs, and verification artifacts.
 - Bundle output naming and structure are deterministic.
+- Bundle includes `submission-gates.json` with schema `rb_submission_gates_v1` (`labId`, deterministic `timestamp`, `context`, and gate `result`).
 
 ## Gate 10 — Doctor Report Readiness Summary
 

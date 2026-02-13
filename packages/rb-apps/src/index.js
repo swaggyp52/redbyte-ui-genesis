@@ -14,6 +14,8 @@ export * from './apps/files/modals';
 export * from './examples';
 export * from './components/EmptyState';
 export * from './components/IntegrityBadge';
+export * from './ui/tokens';
+export * from './ui/components/index';
 export { stableSerialize, stableHash, hashBytes } from './utils/stableSerialize';
 export { loadSnapshot, wasLastShutdownClean, clearAllSnapshots } from './utils/snapshotSystem';
 export { useRenderStormDetector } from './hooks/useRenderStormDetector';
@@ -73,6 +75,10 @@ export async function registerAllApps(options) {
             const { LogicPlaygroundApp } = await import('./apps/LogicPlaygroundApp');
             registerApp(LogicPlaygroundApp);
         });
+        await safeRegister('lab-workspace', async () => {
+            const { LabWorkspaceApp } = await import('./apps/LabWorkspaceApp');
+            registerApp(LabWorkspaceApp);
+        });
         await safeRegister('launcher', async () => {
             const { LauncherApp } = await import('./apps/LauncherApp');
             registerApp(LauncherApp);
@@ -120,6 +126,10 @@ export async function registerAllApps(options) {
     await safeRegister('ece-lab', async () => {
         const { ECELabApp } = await import('./apps/ECELabManifest');
         registerApp(ECELabApp);
+    });
+    await safeRegister('lab-workspace', async () => {
+        const { LabWorkspaceApp } = await import('./apps/LabWorkspaceApp');
+        registerApp(LabWorkspaceApp);
     });
     // ── Instructor ──────────────────────────────────────────────────
     await safeRegister('instructor', async () => {

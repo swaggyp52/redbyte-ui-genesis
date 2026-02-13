@@ -7,6 +7,7 @@ import { buildTraceEvent, computeStreamSilenceMs } from "./hardwarePanelUtils";
 import { hardwareClient, type ConnectionState, type Device } from "../services/hardwareClient";
 import { BridgeDebugPanel } from "../panels/BridgeDebugPanel";
 import { SynthesisDialog, type SynthesisPhase } from "../components/SynthesisDialog";
+import { EmptyStateCard } from "../components/EmptyStateCard";
 import { stableStringify } from "../export/stableStringify";
 import {
   getToolchainBackend,
@@ -15,6 +16,9 @@ import {
   type BuildLogEntry,
   type ProgramRunDoneSummary,
 } from "../fpga/toolchainBackend";
+import { NEO_STATUS } from "../ui/neoGlossary";
+import { NEO_ACTION_ICONS } from "../ui/neoIcons";
+import styles from "./HardwarePanelApp.module.css";
 
 const BRIDGE_URL = "http://127.0.0.1:4242";
 const DEFAULT_LAB_ID = "basys3_mvp_lab";
@@ -61,6 +65,11 @@ interface StreamSample {
 }
 
 type ProgramRunUiStatus = "idle" | "running" | "success" | "failed" | "canceled";
+
+interface HardwarePanelComponentProps {
+  beginnerView?: boolean;
+  onBoardDetectedChange?: (detected: boolean) => void;
+}
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -134,7 +143,10 @@ const DEFAULT_BOARD_PROFILE: BoardProfile = {
   },
 };
 
-function HardwarePanelComponent() {
+export function HardwarePanelComponent({
+  beginnerView = false,
+  onBoardDetectedChange,
+}: HardwarePanelComponentProps) {
   const [panelState, setPanelState] = useState<PanelState>("DISCONNECTED");
   const [bridgeHealth, setBridgeHealth] = useState<BridgeHealth | null>(null);
   const [bridgeError, setBridgeError] = useState<string | null>(null);
@@ -272,6 +284,13 @@ function HardwarePanelComponent() {
       : traceEvents.length === 0
         ? "No trace events captured"
         : null;
+
+  const boardDetected = (boardDetectResult?.boards?.length ?? 0) > 0;
+  const showAdvancedControls = !beginnerView;
+
+  useEffect(() => {
+    onBoardDetectedChange?.(boardDetected);
+  }, [boardDetected, onBoardDetectedChange]);
 
   const setPanelError = useCallback((message: string) => {
     setError(message);
@@ -552,23 +571,23 @@ function HardwarePanelComponent() {
   const stateLabel = (() => {
     switch (panelState) {
       case "DISCONNECTED":
-        return "Bridge offline";
+        return NEO_STATUS.NOT_READY;
       case "IDLE":
-        return "Ready";
+        return NEO_STATUS.READY;
       case "PROGRAMMING":
-        return "Programming";
+        return NEO_STATUS.RUNNING;
       case "READY":
-        return "Programmed";
+        return NEO_STATUS.DONE;
       case "RUNNING":
-        return "Capturing";
+        return NEO_STATUS.RUNNING;
       case "STOPPING":
-        return "Stopping";
+        return NEO_STATUS.WARNING;
       case "DONE":
-        return "Capture complete";
+        return NEO_STATUS.DONE;
       case "ERROR":
-        return "Error";
+        return NEO_STATUS.ERROR;
       default:
-        return "Unknown";
+        return NEO_STATUS.NOT_READY;
     }
   })();
   useEffect(() => {
@@ -1098,19 +1117,8 @@ function HardwarePanelComponent() {
       setPanelError(err instanceof Error ? err.message : "export_failed");
     }
   }, [bitstreamFile, exportBlockedReason, selectedDevice, traceEvents, setPanelError]);
-
-
-
-  const sectionStyle = {
-    marginBottom: "20px",
-    padding: "10px",
-    background: "#1a1a2e",
-    borderRadius: "4px",
-    border: "1px solid #16213e",
-  } as const;
-
   return (
-    <div style={{ padding: "20px", fontFamily: "monospace", color: "#fff", height: "100%", overflow: "auto" }}>
+    <div className={styles.panelRoot}>
       {/* PHASE 1: Synthesis Dialog */}
       <SynthesisDialog
         isOpen={synthesisDialogOpen}
@@ -1121,15 +1129,15 @@ function HardwarePanelComponent() {
         onDismiss={handleSynthesisDismiss}
       />
 
-      <BridgeDebugPanel />
-      <h2>Hardware Panel</h2>
+      {showAdvancedControls && <BridgeDebugPanel />}
+      <h2 className={styles.panelTitle}>Hardware Panel</h2>
 
-      <div style={sectionStyle}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+      <div className={styles.section} data-testid="hardware-bridge-status">
+        <div className={styles.sectionHeader}>
           <strong>Bridge Status</strong>
           <button
             onClick={refreshBridge}
-            style={{ padding: "4px 8px", background: "#333", color: "#fff", border: "1px solid #555", borderRadius: "4px", cursor: "pointer", fontSize: "11px" }}
+            className={styles.smallButton}
           >
             Refresh
           </button>
@@ -1141,13 +1149,13 @@ function HardwarePanelComponent() {
             <span style={{ color: "#f66" }}>o {bridgeError || "Disconnected"}</span>
           )}
         </div>
-        <div style={{ fontSize: "11px", color: "#888", marginTop: "4px" }}>
+        <div className={styles.statusLine}>
           Panel state: {stateLabel}
           {runStatus ? ` | Run status: ${runStatus}` : ""}
         </div>
       </div>
 
-      <div style={sectionStyle}>
+      <div className={styles.section} data-testid="hardware-device-section">
         <strong>Device</strong>
         <div style={{ marginTop: "8px", display: "flex", gap: "10px", alignItems: "center" }}>
           <select
@@ -1166,13 +1174,14 @@ function HardwarePanelComponent() {
           </select>
           <button
             onClick={refreshBridge}
-            style={{ padding: "6px 10px", background: "#333", color: "#fff", border: "1px solid #555", borderRadius: "4px", cursor: "pointer", fontSize: "11px" }}
+            className={styles.smallButton}
           >
             Refresh Devices
           </button>
           <button
             onClick={handleDetectBoard}
             disabled={boardDetecting}
+            data-testid="hardware-detect-board-button"
             style={{
               padding: "6px 10px",
               background: boardDetecting ? "#555" : "#0b3b5a",
@@ -1187,19 +1196,44 @@ function HardwarePanelComponent() {
           </button>
         </div>
         {!bridgeReady && (
-          <div style={{ marginTop: "6px", fontSize: "11px", color: "#f66", display: "flex", flexDirection: "column", gap: "6px" }}>
-            <span>Bridge offline. Start the local daemon to enable devices.</span>
-            <button
-              onClick={handleCopyBridgeCommand}
-              style={{ padding: "6px 10px", background: "#222", color: "#fff", border: "1px solid #555", borderRadius: "4px", cursor: "pointer", fontSize: "11px", alignSelf: "flex-start" }}
-            >
-              Copy Bridge Command
-            </button>
+          <div
+            data-testid="hardware-connection-help"
+            className={styles.offlineCallout}
+          >
+            <EmptyStateCard
+              testId="hardware-empty-bridge"
+              headline="Bridge is not running"
+              description={beginnerView
+                ? "Start the local bridge to enable board detection, or continue in Build/Simulate if hardware is optional today."
+                : "Start the local bridge service to unlock board discovery and FPGA programming actions."}
+              primaryLabel="Copy Start Command"
+              onPrimaryClick={() => {
+                void handleCopyBridgeCommand();
+              }}
+              secondaryLabel="Why this matters"
+            />
+            <div style={{ marginTop: "8px" }}>
+              <button
+                onClick={handleCopyBridgeCommand}
+                data-testid="hardware-copy-bridge-command"
+                className={styles.smallButton}
+              >
+                Copy Bridge Command
+              </button>
+            </div>
           </div>
         )}
         {bridgeReady && !hasDevices && (
-          <div style={{ marginTop: "6px", fontSize: "11px", color: "#f66" }}>
-            No devices detected.
+          <div style={{ marginTop: "8px" }} data-testid="hardware-empty-no-board">
+            <EmptyStateCard
+              headline="No board detected"
+              description="Connect your Basys3, confirm permissions/drivers, then run board detection to continue programming."
+              primaryLabel={boardDetecting ? "Connecting..." : "Connect Board"}
+              onPrimaryClick={() => {
+                void handleDetectBoard();
+              }}
+              secondaryLabel="Why this matters"
+            />
           </div>
         )}
         {selectedDevice && (
@@ -1210,19 +1244,28 @@ function HardwarePanelComponent() {
         {boardDetectResult && (
           <div style={{ marginTop: "8px", fontSize: "11px", color: "#888" }}>
             {boardDetectResult.boards.length > 0 ? (
-              <div style={{ color: "#22c55e" }}>
-                Detected: Basys 3 ({boardDetectResult.boards.length}) via openFPGALoader
+              <div style={{ color: "#22c55e", display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: "9px", height: "9px", borderRadius: "999px", background: "#22c55e", boxShadow: "0 0 10px rgba(34,197,94,0.7)" }} />
+                {NEO_STATUS.DONE} · Basys 3 ({boardDetectResult.boards.length}) detected
               </div>
             ) : (
-              <div style={{ color: "#f59e0b" }}>
-                Not detected. Check USB cable, FTDI/Digilent drivers, close Vivado Hardware Manager, and retry.
+              <div data-testid="hardware-empty-detect-retry">
+                <EmptyStateCard
+                  headline="Board not detected"
+                  description="Not detected. Check cable, drivers, and permissions, then retry board detection."
+                  primaryLabel={boardDetecting ? "Retrying..." : "Retry Detection"}
+                  onPrimaryClick={() => {
+                    void handleDetectBoard();
+                  }}
+                  secondaryLabel="Why this matters"
+                />
               </div>
             )}
           </div>
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div className={styles.section} data-testid="hardware-bitstream-section">
         <strong>Bitstream</strong>
         <div style={{ marginTop: "8px", display: "flex", gap: "10px", alignItems: "center" }}>
           <input
@@ -1230,6 +1273,7 @@ function HardwarePanelComponent() {
             accept=".bit"
             onChange={handleBitstreamSelect}
             disabled={!bridgeReady}
+            data-testid="hardware-bitstream-input"
             title="Select Bitstream File"
             style={{ color: "#fff" }}
           />
@@ -1245,7 +1289,7 @@ function HardwarePanelComponent() {
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div className={styles.section} data-testid="hardware-program-section">
         <strong>Program</strong>
         <div style={{ marginTop: "6px", fontSize: "11px", color: "#888" }}>
           status:{" "}
@@ -1271,13 +1315,15 @@ function HardwarePanelComponent() {
           <button
             onClick={handleProgram}
             disabled={!!programBlockedReason || programCanceling}
+            data-testid="hardware-program-button"
             style={{
               padding: "10px 20px",
-              background: programBlockedReason || programCanceling ? "#555" : "#0a5a0a",
+              background: programBlockedReason || programCanceling ? "#555" : "linear-gradient(180deg, #0d7a54 0%, #0a5a0a 100%)",
               color: "#fff",
               border: "none",
               borderRadius: "4px",
               cursor: programBlockedReason || programCanceling ? "not-allowed" : "pointer",
+              boxShadow: programBlockedReason || programCanceling ? "none" : "0 6px 16px rgba(16,185,129,0.25)",
             }}
           >
             {panelState === "PROGRAMMING" ? "Programming..." : "Program FPGA"}
@@ -1388,8 +1434,9 @@ function HardwarePanelComponent() {
         </div>
       </div>
 
-      <div style={sectionStyle}>
-        <strong>Capture</strong>
+      {showAdvancedControls && (
+        <div className={styles.section}>
+          <strong>Capture</strong>
         <div style={{ marginTop: "8px", display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
           <label style={{ fontSize: "11px", color: "#aaa" }}>
             Hz
@@ -1449,15 +1496,17 @@ function HardwarePanelComponent() {
             {captureBlockedReason}
           </div>
         )}
-        <div style={{ marginTop: "8px", fontSize: "11px", color: "#888" }}>
-          run_id: {runId || "-"} | events: {traceEventCount}
-          {captureStartedAt ? ` | started: ${new Date(captureStartedAt).toLocaleTimeString()}` : ""}
-          {captureStoppedAt ? ` | stopped: ${new Date(captureStoppedAt).toLocaleTimeString()}` : ""}
+          <div style={{ marginTop: "8px", fontSize: "11px", color: "#888" }}>
+            run_id: {runId || "-"} | events: {traceEventCount}
+            {captureStartedAt ? ` | started: ${new Date(captureStartedAt).toLocaleTimeString()}` : ""}
+            {captureStoppedAt ? ` | stopped: ${new Date(captureStoppedAt).toLocaleTimeString()}` : ""}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div style={sectionStyle}>
-        <strong>Export</strong>
+      {showAdvancedControls && (
+        <div className={styles.section}>
+          <strong>Export</strong>
         <div style={{ marginTop: "8px", display: "flex", gap: "10px" }}>
           <button
             onClick={handleExportBundle}
@@ -1479,15 +1528,16 @@ function HardwarePanelComponent() {
             {exportBlockedReason}
           </div>
         )}
-        <div style={{ marginTop: "6px", fontSize: "11px", color: "#888" }}>
-          Writes: manifest.json, trace/hw_trace.ndjson, meta/board_profile.json, integrity/capsule.json
+          <div style={{ marginTop: "6px", fontSize: "11px", color: "#888" }}>
+            Writes: manifest.json, trace/hw_trace.ndjson, meta/board_profile.json, integrity/capsule.json
+          </div>
         </div>
-      </div>
+      )}
 
       {isRunningNoData && (
-        <div style={{ padding: "12px", background: "#3a2a0a", borderRadius: "4px", border: "1px solid #6a4a0a", marginBottom: "12px" }}>
+        <div className={styles.warningBox}>
           <div style={{ color: "#fa0", fontWeight: "bold", marginBottom: "6px" }}>
-            ⚠ No Wrapper Detected
+            {NEO_ACTION_ICONS.warning} No Wrapper Detected
           </div>
           <div style={{ color: "#db9", fontSize: "12px", lineHeight: "1.5" }}>
             The bitstream is running but not producing IO samples.
@@ -1504,34 +1554,36 @@ function HardwarePanelComponent() {
         </div>
       )}
 
-      <div style={sectionStyle}>
-        <strong>Lab Diagnostics</strong>
-        <div style={{ marginTop: "8px", fontSize: "11px", color: "#888" }}>
-          <div>Bridge URL: <span style={{ color: bridgeHealth?.ok ? "#0f0" : "#f66" }}>{BRIDGE_URL}</span></div>
-          <div style={{ marginTop: "4px" }}>
-            Status: {bridgeHealth?.ok ? (
-              <span style={{ color: "#0f0" }}>Online (v{bridgeHealth.version || "?"})</span>
-            ) : (
-              <span style={{ color: "#f66" }}>{bridgeError || "Offline"}</span>
+      {showAdvancedControls && (
+        <div className={styles.section}>
+          <strong>Lab Diagnostics</strong>
+          <div style={{ marginTop: "8px", fontSize: "11px", color: "#888" }}>
+            <div>Bridge URL: <span style={{ color: bridgeHealth?.ok ? "#0f0" : "#f66" }}>{BRIDGE_URL}</span></div>
+            <div style={{ marginTop: "4px" }}>
+              Status: {bridgeHealth?.ok ? (
+                <span style={{ color: "#0f0" }}>Online (v{bridgeHealth.version || "?"})</span>
+              ) : (
+                <span style={{ color: "#f66" }}>{bridgeError || "Offline"}</span>
+              )}
+            </div>
+            {bridgeHealth?.activeRunCount !== undefined && (
+              <div style={{ marginTop: "4px" }}>Active runs: {bridgeHealth.activeRunCount}</div>
+            )}
+            {programLogPath && (
+              <div style={{ marginTop: "4px" }}>Last program run_id: {programLogPath}</div>
+            )}
+            {programError && (
+              <div style={{ marginTop: "4px", color: "#f66" }}>Last program error: {programError}</div>
             )}
           </div>
-          {bridgeHealth?.activeRunCount !== undefined && (
-            <div style={{ marginTop: "4px" }}>Active runs: {bridgeHealth.activeRunCount}</div>
-          )}
-          {programLogPath && (
-            <div style={{ marginTop: "4px" }}>Last program run_id: {programLogPath}</div>
-          )}
-          {programError && (
-            <div style={{ marginTop: "4px", color: "#f66" }}>Last program error: {programError}</div>
-          )}
+          <div style={{ marginTop: "8px", fontSize: "11px", color: "#666" }}>
+            <div>Checklist: Digilent Adept installed? FTDI VCP drivers? Bridge daemon running?</div>
+          </div>
         </div>
-        <div style={{ marginTop: "8px", fontSize: "11px", color: "#666" }}>
-          <div>Checklist: Digilent Adept installed? FTDI VCP drivers? Bridge daemon running?</div>
-        </div>
-      </div>
+      )}
 
       {error && (
-        <div style={{ padding: "10px", background: "#2a0a0a", borderRadius: "4px", border: "1px solid #5a0a0a", color: "#f66" }}>
+        <div className={styles.errorBox}>
           {error}
         </div>
       )}

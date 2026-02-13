@@ -1,5 +1,6 @@
 @import "../../../packages/rb-apps/src/styles/os-tokens.css";
 @import "../../../packages/rb-apps/src/styles/os-controls.css";
+@import "../../../packages/rb-apps/src/ui/theme.css";
 
 @tailwind base;
 @tailwind components;

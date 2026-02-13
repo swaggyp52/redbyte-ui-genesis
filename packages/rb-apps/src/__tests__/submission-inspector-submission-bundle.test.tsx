@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import JSZip from 'jszip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodeRBProject, type RBProject } from '../export/projectFormat';
+import type { SubmissionGateResult } from '../labs/submissionGates';
 
 const { SubmissionInspectorApp } = await import('../apps/SubmissionInspectorApp');
 const SubmissionInspectorComponent = SubmissionInspectorApp.component as React.ComponentType<{
@@ -22,6 +23,10 @@ interface SubmissionFixtureOptions {
     detail: string;
     ok?: boolean;
   };
+  submissionGates?: SubmissionGateResult;
+  omitDoctorReport?: boolean;
+  omitReproducibility?: boolean;
+  omitSubmissionGates?: boolean;
 }
 
 async function createSubmissionBundleFile(
@@ -42,6 +47,18 @@ async function createSubmissionBundleFile(
   projectArchive.file('circuit.rblogic', JSON.stringify({ nodes: [], connections: [] }));
   const projectArchiveBytes = await projectArchive.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
 
+  const submissionGates = options.submissionGates ?? { verdict: 'pass', issues: [] };
+  const submissionGatesArtifact = {
+    schema_version: 'rb_submission_gates_v1',
+    labId: 'lab-3',
+    timestamp: '2026-01-01T00:00:00.000Z',
+    context: {
+      projectId: 'fixture-1',
+      projectName: 'Bundle Fixture',
+    },
+    result: submissionGates,
+  };
+
   const submission = new JSZip();
   submission.file(
     'manifest.json',
@@ -56,6 +73,10 @@ async function createSubmissionBundleFile(
           overall: 'ready',
           gates: [{ id: 'toolchain', state: 'pass', detail: 'All tools verified.' }],
         },
+        submissionGates: {
+          verdict: submissionGates.verdict,
+          issuesCount: submissionGates.issues.length,
+        },
         includedFiles: [],
       },
       null,
@@ -65,32 +86,40 @@ async function createSubmissionBundleFile(
   const doctorGates = options.doctorGates ?? [
     { id: 'toolchain_probe', label: 'Toolchain Probe', state: 'pass', detail: 'Toolchain probe passed.' },
   ];
-  submission.file(
-    'doctor-report.json',
-    JSON.stringify({
-      reportId: 'doctor-fixture-1',
-      studentReadiness: {
-        overall: 'ready',
-        gates: doctorGates,
-      },
-    }),
-  );
+  if (!options.omitDoctorReport) {
+    submission.file(
+      'doctor-report.json',
+      JSON.stringify({
+        reportId: 'doctor-fixture-1',
+        backend_id: 'vivado',
+        studentReadiness: {
+          overall: 'ready',
+          gates: doctorGates,
+        },
+      }),
+    );
+  }
   const repro = options.repro ?? {
     status: 'pass' as const,
     detail: 'Replay verification passed.',
     ok: true,
   };
-  submission.file(
-    'reproducibility.json',
-    JSON.stringify({
-      schema_version: 'rb_submission_reproducibility_v1',
-      ok: typeof repro.ok === 'boolean' ? repro.ok : repro.status === 'pass',
-      status: repro.status,
-      detail: repro.detail,
-      verificationStatus: repro.status === 'unknown' ? 'unknown' : repro.status,
-      runRecord: { present: true, traceSamples: 0, replaySamples: 0, stimulusEvents: 0, tickCount: 0 },
-    }),
-  );
+  if (!options.omitReproducibility) {
+    submission.file(
+      'reproducibility.json',
+      JSON.stringify({
+        schema_version: 'rb_submission_reproducibility_v1',
+        ok: typeof repro.ok === 'boolean' ? repro.ok : repro.status === 'pass',
+        status: repro.status,
+        detail: repro.detail,
+        verificationStatus: repro.status === 'unknown' ? 'unknown' : repro.status,
+        runRecord: { present: true, traceSamples: 0, replaySamples: 0, stimulusEvents: 0, tickCount: 0 },
+      }),
+    );
+  }
+  if (!options.omitSubmissionGates) {
+    submission.file('submission-gates.json', JSON.stringify(submissionGatesArtifact));
+  }
   submission.file('project.rbx.zip', projectArchiveBytes);
   const submissionBytes = await submission.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
   const file = new File([submissionBytes], 'rb-submission-fixture.zip', { type: 'application/zip' });
@@ -187,9 +216,45 @@ describe('SubmissionInspectorApp submission bundle import', () => {
     expect(screen.getByTestId('submission-inspector-repro-summary').textContent).toContain('FAIL');
     expect(screen.getByTestId('submission-inspector-repro-summary').textContent).toContain('Replay mismatch at tick 42.');
     expect(screen.getByTestId('submission-inspector-failing-gate-toolchain_probe')).toBeInTheDocument();
-    expect(screen.getByTestId('submission-inspector-failing-gate-preflight')).toBeInTheDocument();
     expect(screen.getByTestId('submission-inspector-failing-gate-toolchain_ui')).toBeInTheDocument();
-    expect(screen.queryByTestId('submission-inspector-failing-gate-doctor_export')).not.toBeInTheDocument();
+    expect(screen.getByTestId('submission-inspector-failing-gate-doctor_export')).toBeInTheDocument();
+    expect(screen.queryByTestId('submission-inspector-failing-gate-preflight')).not.toBeInTheDocument();
+  });
+
+  it('shows NOT READY when submission gates include a blocking issue', async () => {
+    render(<SubmissionInspectorComponent />);
+    const { file, bytes } = await createSubmissionBundleFile({
+      doctorGates: [
+        { id: 'toolchain_probe', label: 'Toolchain Probe', state: 'pass', detail: 'Probe complete.' },
+      ],
+      repro: {
+        status: 'pass',
+        detail: 'Replay verification passed.',
+        ok: true,
+      },
+      submissionGates: {
+        verdict: 'block',
+        issues: [
+          {
+            code: 'top_module_mismatch',
+            severity: 'block',
+            title: 'Top module is missing or incorrect',
+            message: 'Expected top module top.',
+          },
+        ],
+      },
+    });
+    vi.spyOn(file, 'arrayBuffer').mockResolvedValue(
+      bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    );
+    const input = screen.getByLabelText('Upload submission file') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+    fireEvent.change(input);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submission-inspector-grade-verdict-label').textContent).toContain('NOT READY');
+    });
+    expect(screen.getByTestId('submission-inspector-failing-gate-submission_gate:top_module_mismatch')).toBeInTheDocument();
   });
 
   it('renders READY verdict when gates pass and reproducibility is pass', async () => {
@@ -242,5 +307,27 @@ describe('SubmissionInspectorApp submission bundle import', () => {
       expect(screen.getByTestId('submission-inspector-grade-verdict-label').textContent).toContain('READY (NO REPRO)');
     });
     expect(screen.getByTestId('submission-inspector-repro-summary').textContent).toContain('SKIPPED');
+  });
+
+  it('handles missing optional submission artifacts gracefully', async () => {
+    render(<SubmissionInspectorComponent />);
+    const { file, bytes } = await createSubmissionBundleFile({
+      omitDoctorReport: true,
+      omitReproducibility: true,
+      omitSubmissionGates: true,
+    });
+    vi.spyOn(file, 'arrayBuffer').mockResolvedValue(
+      bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    );
+    const input = screen.getByLabelText('Upload submission file') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+    fireEvent.change(input);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submission-inspector-grade-verdict-label')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('submission-inspector-summary-lab-id').textContent).toContain('unknown');
+    expect(screen.getByTestId('submission-inspector-summary-timestamp').textContent).toContain('unknown');
+    expect(screen.getByTestId('submission-inspector-summary-toolchain').textContent).toContain('unknown');
   });
 });

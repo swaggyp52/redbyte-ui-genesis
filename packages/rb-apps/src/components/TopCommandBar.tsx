@@ -5,13 +5,9 @@
 import React from 'react';
 import type { PerspectiveId } from '../stores/layoutStore';
 import { useClassroomModeStore, isSafeMode } from '../stores/classroomModeStore';
-import { Button, Tooltip, Menu, GuardrailConfirmModal } from '@redbyte/rb-primitives';
-import { cn } from '../utils/cn'; // Assuming we have a cn utility, or I'll inline it if not exists. I'll assume cn is needed.
-// Wait, I saw earlier I failed to import cn from primitives.
-// Let's use a simple util or clsx if available.
-// I will assume I can just use template literals or inline logic to avoid dependency issues for now, or check for a util.
-// The previous file didn't import cn. It used template strings.
-// I'll stick to template strings or a local helper.
+import { Tooltip, Menu, GuardrailConfirmModal } from '@redbyte/rb-primitives';
+import { NEO_ACTION_ICONS } from '../ui/neoIcons';
+import styles from './TopCommandBar.module.css';
 
 /**
  * Logic Playground vNext Top Command Bar
@@ -165,14 +161,18 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
     }
   }
 
+  const cx = (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(' ');
+
+  const submissionStatusClass =
+    submissionBundleStatus === 'pass'
+      ? styles.pillPass
+      : submissionBundleStatus === 'fail'
+        ? styles.pillFail
+        : styles.pillNeutral;
+
   return (
-    <div
-      className="min-h-[48px] border-b border-slate-700 bg-slate-900 px-4 py-2 flex flex-wrap items-center justify-between gap-4 sticky top-0 left-0 right-0 z-[100]"
-      style={{ position: 'sticky', top: 0, left: 0, right: 0, zIndex: 100 }}
-      data-testid="top-command-bar"
-      role="toolbar"
-      aria-label="Main Toolbar"
-    >
+    <div className={styles.chromeRoot} data-testid="top-command-bar" role="toolbar" aria-label="Main Toolbar">
+      <div className={styles.chromeInner}>
       <GuardrailConfirmModal
         isOpen={resetConfirm === 'workspace'}
         title="Reset Workspace?"
@@ -196,20 +196,16 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         onCancel={() => setResetConfirm(null)}
       />
       {/* LEFT: Project */}
-      <div className="flex flex-wrap items-center gap-2 min-w-0">
-        <span className="text-xs text-gray-500 uppercase tracking-wide mr-2">Project</span>
+      <div className={styles.actionRow}>
+        <span className={styles.sectionLabel}>Project</span>
         {projectName && (
-          <div className="text-xs text-slate-300 font-medium px-2 py-1 bg-slate-800/60 border border-slate-700/60 rounded">
+          <div className={styles.projectName}>
             {projectName}
-            {isDirty ? <span className="ml-1 text-cyan-400">*</span> : null}
+            {isDirty ? <span className={styles.projectDirty}>*</span> : null}
           </div>
         )}
         <span
-          className={`text-[10px] font-semibold px-2 py-1 rounded border ${
-            autosaveState === 'unsaved'
-              ? 'border-amber-500/50 text-amber-100 bg-amber-500/10'
-              : 'border-emerald-500/40 text-emerald-200 bg-emerald-500/10'
-          }`}
+          className={cx(styles.pill, autosaveState === 'unsaved' ? styles.pillUnsaved : styles.pillSaved)}
           data-testid="logic-playground-autosave-state"
         >
           {autosaveState === 'unsaved' ? 'Unsaved changes' : 'Saved'}
@@ -217,7 +213,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onNewProject && (
           <button
             onClick={onNewProject}
-            className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 rounded transition-colors"
+            className={cx(styles.button, styles.buttonSecondary)}
             title="New Project"
           >
             New Project
@@ -226,7 +222,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onOpenProject && (
           <button
             onClick={onOpenProject}
-            className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 rounded transition-colors"
+            className={cx(styles.button, styles.buttonSecondary)}
             title="Open Project"
           >
             Open Project
@@ -235,7 +231,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onSaveProject && (
           <button
             onClick={onSaveProject}
-            className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 rounded transition-colors"
+            className={cx(styles.button, styles.buttonSecondary)}
             title="Save Project"
           >
             Save Project
@@ -244,7 +240,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onExportProject && (
           <button
             onClick={onExportProject}
-            className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 rounded transition-colors"
+            className={cx(styles.button, styles.buttonSecondary)}
             title="Export Project Artifacts"
           >
             Export...
@@ -253,7 +249,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onGenerateSubmissionBundle && (
           <button
             onClick={onGenerateSubmissionBundle}
-            className="px-3 py-1.5 text-sm bg-indigo-700 hover:bg-indigo-600 rounded transition-colors"
+            className={cx(styles.button, styles.buttonPrimary)}
             title="Generate deterministic submission bundle"
             data-testid="logic-playground-generate-submission-bundle"
           >
@@ -262,13 +258,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         )}
         {submissionBundleFilename ? (
           <span
-            className={`text-[10px] font-mono px-2 py-1 rounded border ${
-              submissionBundleStatus === 'pass'
-                ? 'border-green-500/40 text-green-200 bg-green-500/10'
-                : submissionBundleStatus === 'fail'
-                  ? 'border-yellow-500/40 text-yellow-100 bg-yellow-500/10'
-                  : 'border-slate-600 text-slate-300 bg-slate-800/60'
-            }`}
+            className={cx(styles.pill, styles.mono, submissionStatusClass)}
             data-testid="logic-playground-submission-bundle-filename"
             title={submissionBundleFilename}
           >
@@ -278,7 +268,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onNew && (
           <button
             onClick={onNew}
-            className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 rounded transition-colors"
+            className={cx(styles.button, styles.buttonSecondary)}
             title="New Circuit"
           >
             New Circuit
@@ -287,40 +277,37 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onExamples && (
           <button
             onClick={onExamples}
-            className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 rounded transition-colors"
+            className={cx(styles.button, styles.buttonSecondary)}
             title="Load Example"
             data-testid="logic-playground-examples"
           >
-            📚 Examples
+            {NEO_ACTION_ICONS.examples} Examples
           </button>
         )}
         {onExportEvidence && (
           <button
             onClick={onExportEvidence}
-            className="px-3 py-1.5 text-sm bg-purple-700 hover:bg-purple-600 rounded transition-colors"
+            className={cx(styles.button, styles.buttonWarn)}
             title="Export evidence for grading – includes circuit snapshot, probes, and integrity hash."
             data-testid="export-evidence-button"
           >
-            📋 Export Lab Evidence
+            {NEO_ACTION_ICONS.exportEvidence} Export Lab Evidence
           </button>
         )}
         {onOpenEvidence && (
           <button
             onClick={onOpenEvidence}
-            className="px-3 py-1.5 text-sm bg-emerald-700 hover:bg-emerald-600 rounded transition-colors"
+            className={cx(styles.button, styles.buttonSuccess)}
             title="Open Lab Evidence (checks integrity hash - look for PASS badge)"
             data-testid="open-evidence-button"
           >
-            🗂️ Open Lab Evidence…
+            {NEO_ACTION_ICONS.openEvidence} Open Lab Evidence…
           </button>
         )}
         {onSave && (
           <button
             onClick={onSave}
-            className={`px-3 py-1.5 text-sm rounded transition-all ${isDirty
-              ? 'bg-cyan-600 hover:bg-cyan-500 shadow-lg shadow-cyan-600/30'
-              : 'bg-slate-800 hover:bg-slate-700'
-              }`}
+            className={cx(styles.button, isDirty ? styles.buttonPrimary : styles.buttonSecondary, isDirty && styles.highlight)}
             title="Save (Ctrl+S)"
           >
             {isDirty ? '● Save' : 'Save'}
@@ -329,7 +316,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onSaveAs && (
           <button
             onClick={onSaveAs}
-            className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 rounded transition-colors"
+            className={cx(styles.button, styles.buttonSecondary)}
             title="Save As"
           >
             Save As
@@ -338,7 +325,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onShare && (
           <button
             onClick={onShare}
-            className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 rounded transition-colors"
+            className={cx(styles.button, styles.buttonSecondary)}
             title="Share via link"
           >
             Share
@@ -350,10 +337,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           <button
             onClick={onUndo}
             disabled={!canUndo}
-            className={`px-2 py-1.5 text-sm rounded transition-colors ${canUndo
-              ? 'bg-gray-800 hover:bg-gray-700 text-white'
-              : 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
-              }`}
+            className={cx(styles.button, styles.buttonGhost, styles.buttonIcon)}
             title="Undo (Ctrl+Z)"
           >
             ↶
@@ -363,10 +347,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           <button
             onClick={onRedo}
             disabled={!canRedo}
-            className={`px-2 py-1.5 text-sm rounded transition-colors ${canRedo
-              ? 'bg-gray-800 hover:bg-gray-700 text-white'
-              : 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
-              }`}
+            className={cx(styles.button, styles.buttonGhost, styles.buttonIcon)}
             title="Redo (Ctrl+Shift+Z)"
           >
             ↷
@@ -375,17 +356,17 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
       </div>
 
       {/* CENTER: Simulation (PRIMARY - Step-first design) */}
-      <div className="flex flex-wrap items-center gap-3 bg-gray-800/50 rounded-lg px-4 py-1.5 border border-gray-700/50 min-w-0">
-        <span className="text-xs text-gray-500 uppercase tracking-wide mr-1">Simulate</span>
+      <div className={styles.simBlock}>
+        <span className={styles.sectionLabel}>Simulate</span>
 
         {/* STEP - First-class, prominent */}
         <button
           onClick={() => onStep(1)}
           data-testid="logic-playground-step"
-          className="px-5 py-2 bg-blue-600 hover:bg-blue-500 rounded font-semibold text-sm transition-all shadow-lg flex items-center gap-2"
+          className={cx(styles.button, styles.buttonPrimary)}
           title="Step Once (Space)"
         >
-          <span className="text-lg">⏭</span>
+          <span>{NEO_ACTION_ICONS.step}</span>
           <span>Step</span>
         </button>
 
@@ -393,52 +374,48 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         <button
           onClick={isRunning ? onPause : onRun}
           data-testid="logic-playground-run"
-          className={`px-4 py-2 rounded font-medium text-sm transition-all flex items-center gap-2 ${isRunning
-            ? 'bg-yellow-600 hover:bg-yellow-500 shadow-lg'
-            : 'bg-green-600 hover:bg-green-500 shadow-lg'
-            }`}
+          className={cx(styles.button, isRunning ? styles.buttonWarn : styles.buttonSuccess)}
           title={isRunning ? 'Pause' : 'Run'}
         >
           {isRunning ? (
             <>
-              <span className="text-lg">⏸</span>
+              <span>{NEO_ACTION_ICONS.pause}</span>
               <span>Pause</span>
             </>
           ) : (
             <>
-              <span className="text-lg">▶</span>
+              <span>{NEO_ACTION_ICONS.run}</span>
               <span>Run</span>
             </>
           )}
         </button>
 
         {/* Tick Rate */}
-        <div className="flex items-center gap-2 ml-2 border-l border-gray-700 pl-3">
+        <div className={cx(styles.sliderWrap, styles.segmentSplit)}>
           <input
             type="range"
             min="1"
             max="60"
             value={tickRate}
             onChange={(e) => onTickRateChange(parseInt(e.target.value, 10))}
-            className="w-20 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+            className={styles.slider}
             aria-label="Tick rate"
             title="Tick rate"
           />
-          <span className="text-sm font-mono text-cyan-400 w-11 text-right">{tickRate}Hz</span>
+          <span className={cx(styles.tickRate, styles.mono)}>{tickRate}Hz</span>
         </div>
 
         {/* Clock Widget */}
-        <div className="flex items-center gap-3 border-l border-gray-700 pl-3 text-xs text-gray-300">
-          <div className="flex flex-col leading-tight">
-            <span className="text-[10px] uppercase tracking-wide text-gray-500">Clock</span>
-            <div className="flex items-center gap-2 font-mono">
-              <span className="text-cyan-300" title="A tick is one discrete simulation step.">
+        <div className={cx(styles.clockBlock, styles.segmentSplit)}>
+          <div>
+            <span className={styles.clockLabel}>Clock</span>
+            <div className={styles.mono}>
+              <span className={styles.tickCount} title="A tick is one discrete simulation step.">
                 T+{tickCount}
               </span>
-              <span className="flex items-center gap-1 text-[10px] text-gray-400">
+              <span className={styles.sectionLabel}>
                 <span
-                  className={`h-2 w-2 rounded-full ${isRunning ? 'bg-green-400' : 'bg-gray-500'
-                    }`}
+                  className={cx(styles.runDot, isRunning && styles.runDotActive)}
                 />
                 {isRunning ? `${tickRate}Hz` : 'Paused'}
               </span>
@@ -447,7 +424,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           {onResetTickCount && (
             <button
               onClick={onResetTickCount}
-              className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-[10px] uppercase tracking-wide text-gray-300"
+              className={cx(styles.button, styles.buttonGhost)}
               title="Reset tick counter"
             >
               Reset
@@ -459,28 +436,25 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {onReset && (
           <button
             onClick={onReset}
-            className="px-2 py-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+            className={cx(styles.button, styles.buttonDanger, styles.buttonIcon)}
             title="Reset Circuit"
           >
-            <span className="text-lg">↺</span>
+            <span>↺</span>
           </button>
         )}
       </div>
 
       {/* RIGHT: Layout + Help (with Overflow) */}
-      <div className="flex items-center gap-2 min-w-0">
+      <div className={styles.rightCluster}>
         {/* Desktop View */}
-        <div className="hidden xl:flex items-center gap-2">
-          <span className="text-xs text-gray-500 uppercase tracking-wide mr-1">Layout</span>
+        <div className={cx(styles.rightCluster, styles.desktopOnly)}>
+          <span className={styles.sectionLabel}>Layout</span>
 
-          <div className="flex bg-slate-800/50 rounded-lg p-0.5 border border-slate-700/50">
+          <div className={styles.layoutToggle}>
             <Tooltip content="Standard View">
               <button
                 onClick={() => onPerspectiveChange('standard')}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${perspective === 'standard'
-                    ? 'bg-slate-700 text-cyan-400 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
-                  }`}
+                className={cx(styles.layoutButton, perspective === 'standard' && styles.layoutButtonActive)}
               >
                 Editor
               </button>
@@ -488,10 +462,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             <Tooltip content="Split View (Circuit + Scope)">
               <button
                 onClick={() => onPerspectiveChange('split')}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${perspective === 'split'
-                    ? 'bg-slate-700 text-cyan-400 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
-                  }`}
+                className={cx(styles.layoutButton, perspective === 'split' && styles.layoutButtonActive)}
               >
                 Split
               </button>
@@ -501,35 +472,32 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           {/* Safe Mode Toggle */}
           <button
             onClick={handleSafeModeToggle}
-            className={`px-3 py-1.5 rounded text-xs font-semibold transition-all ${safeMode
-              ? 'bg-green-700 hover:bg-green-600 text-white'
-              : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-              }`}
+            className={cx(styles.button, safeMode ? styles.buttonSuccess : styles.buttonGhost)}
             title="Toggle Safe Mode (disables 3D, quad, animations)"
           >
-            🛡 {safeMode ? 'Safe' : 'Normal'}
+            {NEO_ACTION_ICONS.safeMode} {safeMode ? 'Safe' : 'Normal'}
           </button>
 
           {/* Reset Menu */}
-          <div className="relative">
+          <div className={styles.relativeWrap}>
             <button
               onClick={() => setShowResetMenu(!showResetMenu)}
-              className="px-3 py-1.5 rounded text-xs font-semibold bg-gray-700 hover:bg-gray-600 text-gray-300 transition-all"
+              className={cx(styles.button, styles.buttonGhost)}
               title="Reset workspace or layout"
             >
               ↻
             </button>
             {showResetMenu && (
-              <div className="absolute right-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded shadow-lg z-50">
+              <div className={styles.resetMenu}>
                 <button
                   onClick={handleResetWorkspace}
-                  className="block w-full text-left px-4 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition-all"
+                  className={styles.resetMenuItem}
                 >
                   Reset Workspace
                 </button>
                 <button
                   onClick={handleResetLayout}
-                  className="block w-full text-left px-4 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white border-t border-gray-700 transition-all"
+                  className={styles.resetMenuItem}
                 >
                   Reset Layout
                 </button>
@@ -540,7 +508,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           {onManual && (
             <button
               onClick={onManual}
-              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs font-semibold transition-all"
+              className={cx(styles.button, styles.buttonSecondary)}
               title="Open Guide"
             >
               Guide
@@ -548,7 +516,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           )}
           <button
             onClick={onHelp}
-            className="px-3 py-2 bg-purple-700 hover:bg-purple-600 rounded font-bold transition-all text-sm"
+            className={cx(styles.button, styles.buttonPrimary)}
             title="Help (?)"
           >
             ?
@@ -556,7 +524,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         </div>
 
         {/* Mobile/Tight View: Overflow Menu */}
-        <div className="xl:hidden">
+        <div className={styles.mobileOnly}>
           <Menu label="Layout & Help" align="right">
             <Menu.Item onClick={() => onPerspectiveChange('standard')}>Editor View</Menu.Item>
             <Menu.Item onClick={() => onPerspectiveChange('split')}>Split View</Menu.Item>
@@ -569,6 +537,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             {onExamples && <Menu.Item onClick={onExamples}>Examples</Menu.Item>}
           </Menu>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="og-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0c0e" />
+      <stop offset="100%" style="stop-color:#212529" />
+    </linearGradient>
+    <linearGradient id="og-accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#ff0000" />
+      <stop offset="50%" style="stop-color:#0087ff" />
+      <stop offset="100%" style="stop-color:#8000ff" />
+    </linearGradient>
+    <filter id="og-glow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#og-bg)"/>
+
+  <!-- Subtle grid -->
+  <defs>
+    <pattern id="og-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#343a40" stroke-width="0.5" opacity="0.3"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#og-grid)" opacity="0.3"/>
+
+  <!-- Circuit graphic -->
+  <g transform="translate(100, 200)">
+    <!-- Horizontal lines -->
+    <line x1="0" y1="50" x2="200" y2="50" stroke="#ff0000" stroke-width="3" opacity="0.8" filter="url(#og-glow)"/>
+    <line x1="0" y1="150" x2="200" y2="150" stroke="#0087ff" stroke-width="3" opacity="0.8" filter="url(#og-glow)"/>
+
+    <!-- Nodes -->
+    <circle cx="100" cy="50" r="10" fill="#ff0000" filter="url(#og-glow)"/>
+    <circle cx="100" cy="150" r="10" fill="#0087ff" filter="url(#og-glow)"/>
+
+    <!-- AND gate -->
+    <g transform="translate(150, 25)" opacity="0.9">
+      <path d="M 0 0 L 0 50 L 25 50 Q 50 50 50 25 Q 50 0 25 0 Z" fill="none" stroke="#8000ff" stroke-width="3" filter="url(#og-glow)"/>
+    </g>
+  </g>
+
+  <!-- Text content -->
+  <text x="400" y="200" font-family="Inter, system-ui, sans-serif" font-size="72" font-weight="700" fill="#ffffff">
+    RedByte
+  </text>
+
+  <text x="400" y="280" font-family="Inter, system-ui, sans-serif" font-size="36" font-weight="400" fill="#adb5bd">
+    Build • Simulate • Understand
+  </text>
+
+  <text x="400" y="360" font-family="Inter, system-ui, sans-serif" font-size="24" font-weight="400" fill="#6c757d">
+    Visual logic circuit simulator for the web
+  </text>
+
+  <!-- Accent line -->
+  <rect x="400" y="400" width="600" height="3" fill="url(#og-accent)"/>
+
+  <!-- Small logo in corner -->
+  <g transform="translate(1050, 500)">
+    <circle cx="50" cy="50" r="35" fill="none" stroke="url(#og-accent)" stroke-width="3"/>
+    <circle cx="50" cy="50" r="10" fill="url(#og-accent)"/>
+    <line x1="15" y1="50" x2="35" y2="50" stroke="url(#og-accent)" stroke-width="3"/>
+    <line x1="65" y1="50" x2="85" y2="50" stroke="url(#og-accent)" stroke-width="3"/>
+    <line x1="50" y1="15" x2="50" y2="35" stroke="url(#og-accent)" stroke-width="3"/>
+    <line x1="50" y1="65" x2="50" y2="85" stroke="url(#og-accent)" stroke-width="3"/>
+  </g>
+</svg>

@@ -11,6 +11,8 @@ import {
   type SubmissionBundleResult,
   type SubmissionBundleStatusSnapshot,
 } from './submissionBundle';
+import type { SubmissionGateResult } from '../labs/submissionGates';
+import type { ToolchainDoctorReport } from '../fpga/toolchainTypes';
 
 export interface GenerateProjectSubmissionBundleInput {
   project: RBProject;
@@ -18,6 +20,8 @@ export interface GenerateProjectSubmissionBundleInput {
   verificationStatus: VerificationStatus;
   replayTraceSampleCount: number;
   includeRecordings: boolean;
+  submissionGates?: SubmissionGateResult;
+  doctorReport?: ToolchainDoctorReport;
 }
 
 export interface GenerateProjectSubmissionBundleResult {
@@ -46,9 +50,11 @@ export function buildToolchainSnapshotFromProject(project: RBProject): Toolchain
 export async function generateProjectSubmissionBundle(
   input: GenerateProjectSubmissionBundleInput,
 ): Promise<GenerateProjectSubmissionBundleResult> {
-  const backend = getToolchainBackend();
-  const toolchainSnapshot = buildToolchainSnapshotFromProject(input.project);
-  const doctorReport = await backend.doctorReport(toolchainSnapshot, { refreshProbe: true, logs: [] });
+  const doctorReport = input.doctorReport ?? await (async () => {
+    const backend = getToolchainBackend();
+    const toolchainSnapshot = buildToolchainSnapshotFromProject(input.project);
+    return backend.doctorReport(toolchainSnapshot, { refreshProbe: true, logs: [] });
+  })();
   const reproducibility = createSubmissionReproducibilityReport({
     runRecord: input.runRecord,
     verificationStatus: input.verificationStatus,
@@ -60,6 +66,7 @@ export async function generateProjectSubmissionBundle(
     reproducibility,
     includeRecordings: input.includeRecordings,
     logs: doctorReport.logs ?? [],
+    submissionGates: input.submissionGates,
   });
 
   const status: SubmissionBundleStatusSnapshot = {

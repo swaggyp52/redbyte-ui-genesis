@@ -4,15 +4,26 @@
 
 import { isStudentModeEnabled } from './utils/uiMode';
 
+const STUDENT_LAUNCHER_WHITELIST = new Set(['home', 'lab-workspace', 'help']);
+
 // Convert registry entries into the minimal shape required by the Launcher UI.
 export async function getAppsForLauncher() {
   const { listApps } = await import('./AppRegistry');
   const apps = listApps();
   const studentMode = isStudentModeEnabled();
-  const hiddenInStudentMode = new Set(['toolchain-setup', 'terminal', 'system-log']);
+
+  if (studentMode) {
+    return apps
+      .filter((app) => app.manifest.id !== 'launcher' && !app.manifest.hidden)
+      .filter((app) => STUDENT_LAUNCHER_WHITELIST.has(app.manifest.id))
+      .map((app) => ({
+        id: app.manifest.id,
+        name: app.manifest.name,
+      }));
+  }
+
   return apps
     .filter((app) => app.manifest.id !== 'launcher' && !app.manifest.hidden)
-    .filter((app) => !(studentMode && hiddenInStudentMode.has(app.manifest.id)))
     .map((app) => ({
     id: app.manifest.id,
     name: app.manifest.name,

@@ -109,7 +109,11 @@
         "verify:install": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/verify-install.ps1",
         "bridge:smoke": "node tools/bridge-smoke.mjs",
         "bridge:smoke:mock": "node tools/bridge-smoke.mjs --mock",
-        "bridge:dev": "pnpm --filter @redbyte/rb-bridge-agent dev"
+        "bridge:dev": "pnpm --filter @redbyte/rb-bridge-agent dev",
+        "classroom:rc": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/classroom-rc.ps1",
+        "classroom:smoke": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/classroom-smoke.ps1",
+        "classroom:package": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/classroom-package.ps1",
+        "classroom:release": "pnpm classroom:smoke && pnpm classroom:package"
     },
     "devDependencies": {
         "@playwright/test": "^1.58.0",

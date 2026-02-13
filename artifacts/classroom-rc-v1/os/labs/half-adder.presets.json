@@ -1,0 +1,27 @@
+{
+  "lab_id": "half-adder",
+  "presets": [
+    {
+      "id": "correct",
+      "name": "Correct Implementation",
+      "description": "Full adder produces correct SUM and CARRY for all test cases. Expected: PASS",
+      "vectors": [
+        {"id": "sv-1", "name": "A=0, B=0", "pass": true},
+        {"id": "sv-2", "name": "A=0, B=1", "pass": true},
+        {"id": "sv-3", "name": "A=1, B=0", "pass": true},
+        {"id": "sv-4", "name": "A=1, B=1", "pass": true}
+      ]
+    },
+    {
+      "id": "carry_bug",
+      "name": "Carry Bug",
+      "description": "Carry output is always 0. Expected: FAIL",
+      "vectors": [
+        {"id": "sv-1", "name": "A=0, B=0", "pass": true},
+        {"id": "sv-2", "name": "A=0, B=1", "pass": true},
+        {"id": "sv-3", "name": "A=1, B=0", "pass": true},
+        {"id": "sv-4", "name": "A=1, B=1", "pass": false, "error": "CARRY mismatch: expected 1, got 0"}
+      ]
+    }
+  ]
+}

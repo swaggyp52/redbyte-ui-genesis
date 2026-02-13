@@ -1,0 +1,17 @@
+{
+  "lab_id": "half-adder",
+  "title": "Half Adder",
+  "description": "Implement a half adder circuit that adds two single-bit inputs and produces sum and carry outputs. This lab tests your understanding of basic combinational logic.",
+  "constraints": {
+    "allowedGates": ["AND", "OR", "NOT", "XOR"],
+    "maxGates": 6,
+    "requiredInputs": ["A", "B"],
+    "requiredOutputs": ["SUM", "CARRY"]
+  },
+  "studentVectors": [
+    {"id": "sv-1", "name": "A=0, B=0", "inputs": {"A": 0, "B": 0}},
+    {"id": "sv-2", "name": "A=0, B=1", "inputs": {"A": 0, "B": 1}},
+    {"id": "sv-3", "name": "A=1, B=0", "inputs": {"A": 1, "B": 0}},
+    {"id": "sv-4", "name": "A=1, B=1", "inputs": {"A": 1, "B": 1}}
+  ]
+}

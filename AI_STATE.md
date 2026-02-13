@@ -1,5 +1,689 @@
 # AI State
 
+## Change Log 2026-02-13 (PRV1.4: Iconography + Microcopy + Hierarchy Consistency)
+
+- Implemented PRV1.4 visual-only polish pass across scoped high-traffic surfaces with no backend/toolchain/schema/routing changes and no `data-testid` removals:
+  - `packages/rb-apps/src/ui/neoGlossary.ts`
+  - `packages/rb-apps/src/ui/neoIcons.tsx`
+  - `packages/rb-apps/src/ui/neoTypography.ts`
+  - `packages/rb-apps/src/ui/neoGlossary.js`
+  - `packages/rb-apps/src/ui/neoIcons.js`
+  - `packages/rb-apps/src/ui/neoTypography.js`
+    - added shared presentation constants for normalized status words, CTA terms, and icon glyph mapping used by PRV1.4 surfaces.
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - centralized stage/status labels and primary CTA wording through shared glossary/icons (build/sim/hardware/submit).
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.tsx`
+    - normalized section headings and issue labels; unified blocking/warning icon glyph usage.
+  - `packages/rb-apps/src/apps/HomeApp.tsx`
+    - tightened onboarding/starter microcopy for consistency with shared wording.
+  - `packages/rb-apps/src/apps/ToolchainSetupApp.tsx`
+    - normalized status wording and setup/submission CTA naming.
+  - `packages/rb-apps/src/apps/SubmissionInspectorApp.tsx`
+    - normalized verdict fallback/labels and streamlined top-level action copy.
+  - `packages/rb-apps/src/components/TopCommandBar.tsx`
+    - replaced mixed emoji actions with shared iconography mapping while preserving command behavior.
+  - `packages/rb-apps/src/components/HdlEditorPanel.tsx`
+    - normalized status-label mapping and probe-action wording.
+  - `packages/rb-apps/src/apps/HardwarePanelApp.tsx`
+    - normalized panel status labels and warning iconography text.
+
+- **Build Verification (requested PRV1.4 sequence)**:
+  - ✅ `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx packages/rb-apps/src/__tests__/top-command-bar-submission.test.tsx packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/hardware-panel.test.tsx` (`7 files, 63 tests passed`)
+  - ✅ `pnpm rc:check` (exit code `0`)
+  - Note: existing unrelated `ECELabApp.tsx` import-resolution warning for `@redbyte/rb-lab-engine/src/signals/signalSemantics` still appears in logs, while requested suites/checks pass.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-13 (PRV1.3.1: Empty-State Visual Normalization for HDL + Hardware + Simulate Surfaces)
+
+- Implemented PRV1.3.1 visual-only empty-state normalization with a shared presentational card pattern while preserving existing callbacks/data flow:
+  - `packages/rb-apps/src/components/EmptyStateCard.tsx`
+  - `packages/rb-apps/src/components/EmptyStateCard.module.css`
+  - `packages/rb-apps/src/components/EmptyStateCard.js`
+    - added reusable empty-state surface with required structure: headline, one-sentence guidance, single primary CTA, optional subtle secondary hint.
+  - `packages/rb-apps/src/components/HdlEditorPanel.tsx`
+    - normalized empty states for:
+      - no top module selected
+      - no project/no file loaded
+      - simulation not run yet (console empty surface)
+    - primary CTAs call existing handlers/callbacks only (`handleSynthesize`, `onProjectChange`, top-input focus).
+  - `packages/rb-apps/src/apps/HardwarePanelApp.tsx`
+    - normalized empty states for:
+      - bridge not running / connect-board moment
+      - no board detected
+      - detect-board retry guidance
+    - primary CTAs call existing handlers only (`handleCopyBridgeCommand`, `handleDetectBoard`).
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - normalized simulate/waveform empty state (“run sim” moment) with shared card while preserving existing stage CTA flow.
+
+- **Build Verification (requested PRV1.3.1 sequence)**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx` (`16 passed`)
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/hardware-panel.test.tsx` (`5 passed`)
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (`4 passed`)
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`)
+  - Note: existing unrelated startup warning still appears for `ECELabApp.tsx` import resolution (`@redbyte/rb-lab-engine/src/signals/signalSemantics`) while requested suites/checks pass.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-13 (PRV1.3: Embedded Panel Framing for HDL + Hardware Surfaces)
+
+- Implemented PRV1.3 visual-only panel framing on embedded toolchain/hardware surfaces with no behavior/schema/routing changes:
+  - `packages/rb-apps/src/components/HdlEditorPanel.module.css`
+    - added shared framed-shell styling for panel root, header, editor body, constraints pane, and build console regions using Neon Lab OS tokens.
+  - `packages/rb-apps/src/components/HdlEditorPanel.tsx`
+    - migrated top-level layout wrappers to module classes while preserving all existing actions, callbacks, and `data-testid` anchors.
+  - `packages/rb-apps/src/apps/HardwarePanelApp.module.css`
+    - added framed-shell section primitives (`panelRoot`, `section`, `sectionHeader`, callouts, error/warning surfaces, shared small-button style).
+  - `packages/rb-apps/src/apps/HardwarePanelApp.tsx`
+    - applied module-based framing classes to bridge/device/bitstream/program/capture/export/diagnostics sections and root shell while preserving existing flow logic and test IDs.
+
+- **Build Verification (requested PRV1.3 sequence)**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/hardware-panel.test.tsx packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (`25 passed`)
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`)
+  - Note: existing unrelated startup warning still appears for `ECELabApp.tsx` import resolution (`@redbyte/rb-lab-engine/src/signals/signalSemantics`) while requested suites/checks pass.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PRV1.2: TopCommandBar + Shared Chrome Visual Unification)
+
+- Implemented shared chrome visual unification across command-bar driven surfaces (visual-only scope, no logic/schema/routing changes):
+  - `packages/rb-apps/src/components/TopCommandBar.module.css`
+    - added Neon Lab OS shared chrome primitives for:
+      - chrome root container + max-width gutters
+      - action rows and section labels
+      - pill groups/status states (saved/unsaved/submission)
+      - primary/secondary/ghost/icon button styles
+      - separators/dividers and layout toggle styling
+      - reset menu styling and responsive desktop/mobile split helpers
+  - `packages/rb-apps/src/components/TopCommandBar.tsx`
+    - migrated command bar from mixed inline utility classes to shared CSS-module chrome primitives.
+    - standardized header height, spacing, icon/button alignment, and CTA hierarchy while preserving all existing callbacks and `data-testid` values.
+    - preserved simulation controls, safe-mode/reset workflows, submission bundle actions, and menu behavior without business-logic changes.
+
+- **Build Verification (requested PRV1.2 sequence)**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/top-command-bar-submission.test.tsx` (`2 passed`)
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx` (`11 passed`)
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (`4 passed`)
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`)
+  - Note: existing unrelated startup warning still appears for `ECELabApp.tsx` import resolution (`@redbyte/rb-lab-engine/src/signals/signalSemantics`) while requested suites/checks pass.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PRV1.1: Toolchain Setup High-Traffic Surface Rebrand)
+
+- Continued PRV1 visual rebrand on the highest-traffic remaining setup surface without changing toolchain/readiness behavior:
+  - `packages/rb-apps/src/apps/ToolchainSetupApp.module.css`
+    - added Neon Lab OS card/chrome/button/pill system for setup flow with consistent gutters, section framing, and status hierarchy.
+    - introduced explicit student-friendly readiness presentation and visually separated TA-only sections (boxed + warning stripe tone).
+  - `packages/rb-apps/src/apps/ToolchainSetupApp.tsx`
+    - replaced inline utility-class styling with CSS-module classes while preserving all existing `data-testid` surfaces and uiMode/lockdown gating logic.
+    - retained stable behavior for verify flow, buildpack actions, submission readiness gates, diagnostics export, and TA triage parsing.
+
+- **Build Verification (requested PRV1.1 sequence)**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx` (`40 passed`)
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`)
+  - Note: existing unrelated startup warning still appears for `ECELabApp.tsx` import resolution (`@redbyte/rb-lab-engine/src/signals/signalSemantics`) while requested suites/checks pass.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PRV1: Neon Lab OS Rebrand Foundation + Home/Workspace Visual Migration)
+
+- Implemented the PRV1 design-system foundation and migrated primary student flow surfaces to the new visual identity while preserving behavior contracts and selectors:
+  - `packages/rb-apps/src/ui/tokens.ts`
+    - added shared token exports for PRV1 spacing/radius/typography/motion/color primitives.
+  - `packages/rb-apps/src/ui/theme.css`
+    - added Neon Lab OS CSS variable layer (`--rb-ui-lab-*`) plus shared utility classes and skeleton animation keyframes.
+  - `packages/rb-apps/src/ui/components/index.tsx`
+    - added reusable UI primitives (`Button`, `Card`, `Badge`, `Pill`, `Divider`, `SectionHeader`, `ProgressRail`, `Callout`, `Skeleton`, `Toast`) for rollout across app surfaces.
+  - `packages/rb-apps/src/index.ts`
+  - `packages/rb-apps/src/index.js`
+    - exported new UI foundation modules from package entrypoints (TS source-of-truth, JS mirror kept aligned).
+  - `apps/playground/src/index.css`
+    - imported PRV1 global theme so app surfaces consume the new token layer.
+  - `packages/rb-apps/src/apps/HomeApp.module.css`
+    - replaced stylesheet with full dark-first Neon Lab OS treatment for brand header, quickstart, starters, recent projects, mission cards, and instruction modal overlays.
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.module.css`
+    - migrated workspace shell visuals (header, stepper, stage panel, submit actions, sidepanel framing) to Neon Lab OS tokens.
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.module.css`
+    - migrated coach/sidebar hierarchy visuals (next-step card, checklist blocks, issue cards, fix actions) to Neon Lab OS tokens.
+  - `packages/rb-apps/src/apps/SubmissionInspectorApp.module.css`
+    - migrated major inspector shell visuals (header, dropzone, tabs, verdict/summary cards, check surfaces) to Neon Lab OS token palette.
+
+- **Build Verification (targeted suites for changed surfaces)**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (`15 passed`)
+  - Note: test run logs still print an existing unrelated import-resolution warning for `ECELabApp.tsx` (`@redbyte/rb-lab-engine/src/signals/signalSemantics`) while suites pass.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PR13: Classroom Ship-It Hardening — One-Command RC, Smoke, Packaging, Day-1 Resilience)
+
+- Implemented classroom release hardening without introducing new product systems (student-first operational readiness):
+  - `package.json`
+    - added release-oriented scripts: `classroom:rc`, `classroom:smoke`, `classroom:package`, `classroom:release`.
+  - `scripts/classroom-rc.ps1`
+    - added one-command classroom install/build/run flow with explicit student URL and TA switch (`?ta=1`) guidance.
+    - fail-fast behavior added for install/build prerequisites.
+  - `scripts/classroom-smoke.ps1`
+    - added fail-fast golden-path smoke runner (build + Playwright classroom RC spec).
+  - `scripts/classroom-package.ps1`
+    - added classroom artifact build/copy/zip workflow.
+    - hardened zip creation flow to avoid lock-prone packaging behavior.
+  - `tests/e2e/classroom-rc-smoke.spec.ts`
+    - implemented three golden-path checks:
+      1) boot + Home render,
+      2) Home starter opens Lab 1 in Lab Workspace,
+      3) Submit tab generation action path.
+    - stabilized starter/open assertions for shell-overlay runtime behavior and deterministic selectors.
+  - `docs/CLASSROOM_RC_PLAYBOOK.md`
+    - added single TA/operator playbook for day-1/day-2/lab-day execution.
+  - `docs/classroom/TA_LOCKDOWN_INSTRUCTIONS.md`
+    - added lockdown + TA escape guidance.
+  - `docs/classroom/DIAGNOSTICS_EXPORT_INSTRUCTIONS.md`
+    - added diagnostics export instructions for break/fix escalation.
+  - `packages/rb-shell/src/Shell.tsx`
+    - improved app error fallback messaging to actionable, student-safe recovery steps.
+  - `packages/rb-apps/src/apps/HardwarePanelApp.tsx`
+    - updated beginner-mode offline wording to explicit hardware-optional guidance.
+  - `packages/rb-apps/src/apps/ECELabApp.tsx`
+  - `packages/rb-apps/src/components/DeployMode.tsx`
+  - `packages/rb-apps/src/components/DeployMode.js`
+    - corrected `signalSemantics` imports to resolvable package source path for release builds.
+
+- **Build Verification (PR13 acceptance commands)**:
+  - ✅ `pnpm classroom:smoke` (`3 passed`)
+  - ✅ `pnpm classroom:package` (artifacts created at `artifacts/classroom-rc-v1` and `artifacts/classroom-rc-v1.zip`)
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PR12: Visual Identity + Educational Clarity Overhaul)
+
+- Completed PR12 visual-only workspace overhaul while preserving architecture constraints (no engine/schema/toolchain/routing changes):
+  - `packages/rb-apps/src/styles/os-tokens.css`
+    - added semantic PR12 token layer and elevation helpers used by workspace/coach visuals.
+  - `packages/rb-apps/src/components/StatusPill.tsx`
+  - `packages/rb-apps/src/components/StatusPill.module.css`
+  - `packages/rb-apps/src/components/StatusPill.js`
+    - introduced shared semantic status pill primitive with reusable tones.
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.module.css`
+    - shipped command-bar/stepper/panel visual redesign, stage-aware empty states, and polished submit visual flow.
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.tsx`
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.module.css`
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.js`
+    - transformed sidebar into lab-coach hierarchy (next step, pass criteria, mistakes, prioritized issues).
+  - `packages/rb-apps/src/components/HdlEditorPanel.tsx`
+    - retained PR12 visual indicator additions while preserving compatibility-sensitive copy.
+  - `packages/rb-apps/src/apps/HardwarePanelApp.tsx`
+    - finalized compatibility-sensitive labels expected by tests (`Program FPGA`, `Running`, `Success`, `Canceled`, `Failed`, `Idle`).
+
+- **Build Verification (required PR12 sequence + double full check)**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/submission-bundle.test.ts`
+  - ✅ `pnpm rc:check` (run 1, log tail includes `[SUITE] total=6 pass=6 fail=0`)
+  - ✅ `pnpm rc:check` (run 2, log tail includes `[SUITE] total=6 pass=6 fail=0`)
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PR10: Submission Reliability Hardening — Atomic Preflight + Inspector Resilience)
+
+- Hardened submission reliability without architecture/schema/toolchain-engine changes (Basys3-first, UX+orchestration scope):
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - submit tab now exposes deterministic bundle contents preview (`lab-workspace-bundle-contents-preview`) before generation.
+    - blocker policy is now lab-aware: Labs 1–8 enforce blockers; `freeplay` remains warn-only.
+    - submit click path now performs atomic preflight against a single project snapshot:
+      - captures one snapshot
+      - runs doctor report against that snapshot
+      - computes gates against the same snapshot+doctor report
+      - aborts export when blockers exist (non-freeplay)
+      - persists status and only then downloads bundle
+    - failure path now reports explicit pre-export actionable message and avoids partial export behavior.
+  - `packages/rb-apps/src/export/submissionBundleWorkflow.ts`
+    - added optional `doctorReport` input for `generateProjectSubmissionBundle(...)` so callers can reuse precomputed preflight data and avoid mixed-state doctor/gates evaluation.
+  - `packages/rb-apps/src/apps/SubmissionInspectorApp.tsx`
+    - preserved `submission-gates.json` envelope metadata for display (`labId`, `timestamp`) in submission summary.
+    - added stable summary surfaces for TA clarity:
+      - `submission-inspector-summary-lab-id`
+      - `submission-inspector-summary-timestamp`
+      - `submission-inspector-summary-toolchain`
+    - continues to compute verdict even when optional artifacts are missing.
+  - `packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+    - added regression: preflight blocks generation for blocker labs but not for freeplay.
+    - asserted bundle contents preview surface exists in submit flow.
+  - `packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx`
+    - extended fixture helper with optional omission flags for doctor/repro/submission-gates files.
+    - added regression: inspector handles missing optional submission artifacts gracefully while still rendering verdict and summary metadata fallbacks.
+
+- **Build Verification (required sequence + determinism double-run)**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/submission-bundle.test.ts`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx`
+  - ✅ `pnpm rc:check` (run 1, log tail includes `[SUITE] total=6 pass=6 fail=0`)
+  - ✅ `pnpm rc:check` (run 2, log tail includes `[SUITE] total=6 pass=6 fail=0`)
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PR9: First-Day Classroom Experience — Onboarding + Pass Criteria + Beginner View)
+
+- Implemented PR9 UX-only first-day classroom improvements (no backend/schema/toolchain pipeline changes):
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - added beginner-view orchestration state in workspace flow and propagated it to panel components.
+    - added stage-facing onboarding copy and single-primary CTA behavior for Build/Simulate/Hardware with lab-aware guidance.
+    - added submit-stage “what will be included” evidence list and pass-oriented readiness messaging.
+    - wired hardware panel board-detect signal to workspace state for clearer next-step gating in Hardware stage.
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.tsx`
+    - added lab-specific coaching sections for:
+      - `What Pass Looks Like`
+      - `Common Mistakes`
+    - exposed new sidebar props for pass criteria and mistake hints.
+  - `packages/rb-apps/src/components/HdlEditorPanel.tsx`
+    - added `beginnerView` prop support and beginner-first UI shaping.
+    - reduced cognitive load by collapsing advanced controls/surfaces when beginner mode is active.
+  - `packages/rb-apps/src/apps/HardwarePanelApp.tsx`
+    - added `beginnerView` and `onBoardDetectedChange` props.
+    - emits deterministic board-detected state to parent from detect-board results.
+    - hides advanced hardware surfaces in beginner mode (`BridgeDebugPanel`, `Capture`, `Export`, `Lab Diagnostics`) while preserving core first-day actions.
+
+- **Build Verification (required sequence)**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/submission-bundle.test.ts`
+  - ✅ `pnpm rc:check` (log tail includes `[SUITE] total=6 pass=6 fail=0`)
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PR8: Workspace Precision + Confidence — In-Panel Anchors + Lab-Aware Copy)
+
+- Completed UX-only precision pass for fix-intent landing reliability (no backend/schema/toolchain pipeline changes):
+  - `packages/rb-apps/src/apps/labWorkspace/fixIntentMap.ts`
+    - mapped fix intents to real in-panel controls instead of placeholder banner anchors:
+      - Build: `hdl-top-input`, `hdl-xdc-preset-select`, `hdl-build-logs`
+      - Simulate: `hdl-synth-button`, `hdl-build-logs`
+      - Hardware: `hardware-detect-board-button`, `hardware-program-button`, `hardware-bridge-status`
+    - added fallback target lists per tab to preserve reliable scrolling when primary anchors are unavailable.
+    - tightened tab inference for non-CTA issue codes (build/sim/hardware keyword mapping) for better intent precision.
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - upgraded `applyFixIntent(...)` to attempt primary target first, then deterministic fallback targets.
+    - made Build/Simulate/Hardware empty-state coach copy lab-aware using `labDefinitions`-driven steps with safe defaults.
+  - `packages/rb-apps/src/apps/HardwarePanelApp.tsx`
+    - added stable in-panel anchor surfaces for fix-intent scrolling:
+      - `hardware-bridge-status`
+      - `hardware-device-section`
+      - `hardware-detect-board-button`
+      - `hardware-connection-help`
+      - `hardware-copy-bridge-command`
+      - `hardware-bitstream-section`
+      - `hardware-bitstream-input`
+      - `hardware-program-section`
+      - `hardware-program-button`
+
+- **Build Verification (required sequence)**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/submission-bundle.test.ts`
+  - ✅ `pnpm rc:check` (terminal log tail includes `[SUITE] total=6 pass=6 fail=0`)
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PR7: Workspace Polish — Progress Stepper + Stable Layout)
+
+- Completed UX/CSS-only workspace polish pass (no backend/schema/toolchain pipeline changes):
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - stabilized top surfaces with sticky header + sticky stepper behavior.
+    - added progress-style stepper semantics:
+      - completed stages show check mark
+      - current stage emphasized
+      - stages with blocking issues show warning dot (`lab-workspace-tab-warning-*`).
+    - tightened scroll behavior:
+      - explicit primary scroll container (`lab-workspace-main-scroll`)
+      - sidebar scroll made intentional (`overflowY: auto`) and visually separated.
+    - added subtle stage transition fade (`180ms`) on mode switch (no new deps).
+    - kept existing fix-intent/anchor behavior and student/TA visibility logic unchanged.
+    - passed unified badge labels to sidebar for coherence.
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.tsx`
+    - added coherent status badge row (`workspace-status-pills`) mirroring header readiness/save/status labels.
+  - `packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+    - added assertion for `workspace-status-pills` surface.
+
+- **Build Verification (required sequence)**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/submission-bundle.test.ts`
+  - ✅ `pnpm rc:check` (log includes `[SUITE] total=6 pass=6 fail=0`)
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PR6: Workspace Coach UX, Student-First)
+
+- Implemented UX-only Workspace Coach pass without backend/schema/pipeline changes:
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.tsx`
+    - coach section order now fixed:
+      1) Next Step (data-driven, 1–2 sentences)
+      2) Checklist grouped by stage labels (Build/Simulate/Hardware/Submit)
+      3) Issues prioritized (blocking first, then warnings)
+    - each issue now renders concise title + one-sentence explanation + Fix button + optional “Why this matters” collapsible.
+    - added stable test surfaces:
+      - `workspace-next-step`
+      - `workspace-issues-blocking`
+      - `workspace-issues-warnings`
+  - `packages/rb-apps/src/apps/labWorkspace/fixIntentMap.ts`
+    - expanded scroll target mapping from generic tab panels to stable per-tab anchors by issue code.
+    - preserved existing mounted-safe `applyFixIntent(...)` integration path.
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - added data-driven `nextStepText` from `labDefinitions` + current stage.
+    - added stable “Show me” anchors for Build/Simulate/Hardware/Submit tab surfaces.
+    - added clear per-tab empty-state coach cards + single primary CTA:
+      - Build: Open editor
+      - Simulate: Run simulation
+      - Hardware: Connect board
+      - Submit: existing Generate Submission Bundle CTA retained
+    - preserved student noise reduction (TA-only links remain TA-gated only).
+  - `packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+    - added assertions for new coach test IDs and stabilized fix-button assertion path.
+
+- **Build Verification (required sequence)**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/submission-bundle.test.ts`
+  - ✅ `pnpm rc:check` (log includes `[SUITE] total=6 pass=6 fail=0`)
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PR5.1: Submission Bundle Determinism Test Flake Hardening)
+
+- Eliminated intermittent full-suite flake in submission bundle determinism test without changing bundle schema/runtime behavior:
+  - `packages/rb-apps/src/__tests__/submission-bundle.test.ts`
+    - replaced strict raw zip-byte equality assertion with deterministic semantic assertions:
+      - `manifest` equality across two generated bundles
+      - parsed `manifest.json` equality across both bundles
+      - per-entry SHA-256 equality against `manifest.includedFiles` for both bundles
+    - preserves determinism guarantees while avoiding ZIP metadata-level nondeterminism sensitivity.
+
+- **Build Verification (PR5.1 acceptance)**:
+  - ✅ `pnpm rc:check` (run 1)
+  - ✅ `pnpm rc:check` (run 2)
+  - ✅ explicit consecutive exit codes: `RC1:0`, `RC2:0`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PR5 Continue: Workspace Coherence + Single-Scroll Tightening)
+
+- Completed strict-scope PR5 UX polish follow-through (no new engines/schemas/pipeline changes):
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - added deterministic header pills:
+      - `data-testid="lab-workspace-readiness-pill"`
+      - `data-testid="lab-workspace-save-pill"`
+      - `data-testid="lab-workspace-status-pill"`
+    - standardized workspace-visible status label to tool-style states (`Running` / `Done` / `Canceled` / `Error`) based on existing submission flow state.
+    - tightened single-scroll behavior:
+      - main content remains sole scroll container
+      - tab panel wrappers use `height: 100%` with nested overflow constrained
+      - sidebar overflow constrained to avoid independent scroll track.
+    - added TA-only workspace links strip gated by UI mode:
+      - `data-testid="lab-workspace-ta-only-links"` only in TA mode.
+
+- **Build Verification (required sequence)**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/submission-bundle.test.ts`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx`
+  - ✅ `pnpm rc:check` (final rerun log tail includes `[SUITE] total=6 pass=6 fail=0`)
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PR5: Lab Workspace UX Polish + Coherence)
+
+- Applied student-first workspace coherence polish without expanding app scope:
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - added stable UX test surfaces:
+      - `data-testid="lab-workspace-header"`
+      - `data-testid="lab-workspace-stepper"`
+      - `data-testid="lab-workspace-stage-pill"`
+    - standardized stage copy to `Stage X of 4` in header metadata.
+    - aligned tab label formatting (non-capitalized transform) for deterministic stepper rendering.
+    - wired submit-panel issue CTA buttons through `applyFixIntent(...)` so tab-switch + optional scroll use one consistent path.
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.tsx`
+    - added deterministic `Next Action` section:
+      - `data-testid="workspace-right-sidebar-next-action"`
+    - added explicit empty fix-state surface when there are no actionable issues:
+      - `data-testid="workspace-right-sidebar-fixes-empty"`.
+  - `packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+    - extended integration assertions for new header/stepper/sidebar coherence surfaces.
+
+- **Build Verification**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx packages/rb-apps/src/__tests__/submission-bundle.test.ts packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx`
+  - ✅ `pnpm rc:check`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PR4 Continue: Sidebar FixIntent Wiring + Mounted-Safe Apply)
+
+- Completed strict PR4 continuation under scope lock (no new features):
+  - `packages/rb-apps/src/apps/labWorkspace/fixIntentMap.ts`
+    - extended `SubmissionGateFixIntent` with `stage` and optional `scrollToTestId` while preserving `targetTab` for compatibility.
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.tsx`
+    - issue rows now emit `onFixIntent(fixIntent)` directly.
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - added `applyFixIntent(intent)` to switch tabs via `intent.stage`.
+    - added guarded `setTimeout(0)` scroll behavior using `querySelector([data-testid="..."])` + `scrollIntoView({ block: 'center' })` with mounted ref protection.
+    - kept right sidebar mounted in workspace layout.
+  - `packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+    - added fix-action click assertion to verify tab switching behavior via existing panel test IDs.
+
+- **Build Verification (exact required sequence)**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/workspace-ux-contract.test.ts`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/fix-intent-map.test.ts`
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+  - ✅ `pnpm rc:check` (log tail includes `[SUITE] total=6 pass=6 fail=0`, no failure markers)
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PR4 UX Orchestration Slice: Workspace Contract + Right Sidebar + Fix Intent Map)
+
+- Added a deterministic Lab Workspace UX contract module:
+  - `packages/rb-apps/src/apps/labWorkspace/workspaceUx.ts`
+  - mode order/labels/hints (`build`, `simulate`, `hardware`, `submit`), stable mode indexing, checklist builder.
+  - JS wrapper parity added: `packages/rb-apps/src/apps/labWorkspace/workspaceUx.js`.
+- Added deterministic fix-intent mapping for submit gate issues:
+  - `packages/rb-apps/src/apps/labWorkspace/fixIntentMap.ts`
+  - `resolveSubmissionGateFixIntent(issue)` resolves to canonical target tab/label with CTA-first behavior and code-based fallback.
+  - JS wrapper parity added: `packages/rb-apps/src/apps/labWorkspace/fixIntentMap.js`.
+- Added reusable right sidebar component for Lab Workspace orchestration:
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.tsx`
+  - renders checklist, current stage hint, lab goals, and top actionable fixes with tab-routing buttons.
+  - JS wrapper parity added: `packages/rb-apps/src/components/WorkspaceRightSidebar.js`.
+- Refactored `packages/rb-apps/src/apps/LabWorkspaceApp.tsx` to consume the new contract + sidebar + fix-intent mapping:
+  - removed inline UX constants/checklist logic in favor of shared module
+  - submit issue action buttons now route through deterministic fix-intent mapping
+  - side panel now uses `WorkspaceRightSidebar` while preserving existing `lab-workspace-sidepanel` surface.
+- Added/updated tests:
+  - `packages/rb-apps/src/__tests__/workspace-ux-contract.test.ts`
+  - `packages/rb-apps/src/__tests__/fix-intent-map.test.ts`
+  - `packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (sidebar/fixes assertions).
+
+- **Build Verification**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/workspace-ux-contract.test.ts packages/rb-apps/src/__tests__/fix-intent-map.test.ts packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+  - ✅ `pnpm rc:check` (log shows suite completion with no failure markers; terminal output includes `[SUITE] total=6 pass=6 fail=0` for final vector block)
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PR3 Closeout Docs: Submission Gates Envelope + Determinism Notes)
+
+- Documented submission gate envelope details for classroom/instructor workflows:
+  - `docs/instructor-pack.md`
+  - added `submission-gates.json` schema notes (`rb_submission_gates_v1`) and compatibility behavior.
+- Updated student readiness gate contract to include submission-gates artifact requirements:
+  - `docs/student-ready-gates.md`
+  - Gate 9 now explicitly references deterministic envelope fields (`labId`, `timestamp`, `context`, `result`).
+
+- **Verification**:
+  - No code-path changes in this docs-only closeout.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PR3 Continuation: Submission Gates Artifact Context + Inspector Backward Compatibility)
+
+- Tightened submission-gates artifact payload to include deterministic context fields while preserving existing contracts:
+  - `packages/rb-apps/src/export/submissionBundle.ts`
+  - `submission-gates.json` now uses schema `rb_submission_gates_v1` with:
+    - `labId`
+    - `timestamp` (deterministic from project snapshot timestamps)
+    - `context` (`projectId`, `projectName`)
+    - `result` (`SubmissionGateResult`)
+- Added backward-compatible inspector parsing for both legacy and new gate payload shapes:
+  - `packages/rb-apps/src/apps/SubmissionInspectorApp.tsx`
+- Updated tests to assert artifact schema and parser behavior:
+  - `packages/rb-apps/src/__tests__/submission-bundle.test.ts`
+  - `packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx`
+
+- **Build Verification**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/lab-submission-gates.test.ts packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx packages/rb-apps/src/__tests__/submission-bundle.test.ts packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx`
+  - ✅ `pnpm rc:check`
+  - ✅ terminal exit code: `0`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (PR3: Lab-Specific Submission Gates Engine + Submit/Bundle/Inspector Integration)
+
+- Added enforceable lab submission contract fields in `packages/rb-apps/src/labs/labDefinitions.ts`:
+  - `requiredTop`
+  - `requiredBoardPreset`
+  - `requireSimEvidence`
+  - `requireWaveform`
+  - `requireHardwareEvidence`
+  - `requiredPorts`
+- Added deterministic submission validator engine:
+  - `packages/rb-apps/src/labs/submissionGates.ts`
+  - `packages/rb-apps/src/labs/submissionGates.js` (TS source-of-truth wrapper parity)
+  - exports `validateSubmissionForLab(labId, { projectSnapshot, doctorReport, buildPath, recentRuns })`
+  - returns canonical `{ verdict, issues[] }` with severity, CTA routing, and evidence fields.
+- Wired Lab Workspace Submit tab to validator output in `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`:
+  - verdict banner (`Ready / Submit Allowed (Warnings) / Not Ready`)
+  - issue list rendering from validator output (no UI-owned validation logic)
+  - issue CTAs now switch to `Build/Simulate/Hardware` tabs
+  - submit action disabled when verdict is `block`.
+- Embedded submission gate results into bundle generation:
+  - `packages/rb-apps/src/export/submissionBundleWorkflow.ts`
+  - `packages/rb-apps/src/export/submissionBundle.ts`
+  - adds `submission-gates.json` artifact to submission zip
+  - adds `manifest.submissionGates` summary (`verdict`, `issuesCount`).
+- Integrated gate results into Submission Inspector grading summary:
+  - `packages/rb-apps/src/apps/SubmissionInspectorApp.tsx`
+  - parses `submission-gates.json`
+  - merges gate issues into grader readiness model
+  - READY/NOT READY now reflects fail-level submission gate issues while warn-level issues remain non-blocking.
+- Added/updated tests:
+  - `packages/rb-apps/src/__tests__/lab-submission-gates.test.ts` (new)
+  - `packages/rb-apps/src/__tests__/lab-definitions.test.ts` (updated contract assertions)
+  - `packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (updated submit flow assertions)
+  - `packages/rb-apps/src/__tests__/submission-bundle.test.ts` (asserts `submission-gates.json` artifact)
+  - `packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx` (gate verdict influence assertions).
+
+- **Build Verification**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/lab-submission-gates.test.ts packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx packages/rb-apps/src/__tests__/submission-bundle.test.ts packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx packages/rb-apps/src/__tests__/lab-definitions.test.ts`
+  - ✅ `pnpm rc:check`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Simplification PR2 Finish: Real Lab Workspace Surfaces + Submit Wiring)
+
+- Replaced Lab Workspace vertical-slice placeholder tab content with reusable production surfaces:
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+  - Build tab embeds `HdlEditorPanel`
+  - Simulate tab embeds `HdlEditorPanel` (synth/log/artifact workflow remains in-panel)
+  - Hardware tab embeds `HardwarePanelComponent`
+  - Submit tab now uses `submissionBundleWorkflow` (`generateProjectSubmissionBundle`, `downloadSubmissionBundle`, `persistSubmissionBundleStatus`)
+- Wired lab metadata into workspace context from canonical lab definitions:
+  - resolves active lab from starter `labId`
+  - header now shows lab title + learning goal
+  - checklist derives from `build/simulate/hardware/submit` guidance
+  - submit-gate metadata surfaced as non-blocking warnings in Submit tab
+- Exported hardware content component for safe reuse without duplicating flow logic:
+  - `packages/rb-apps/src/apps/HardwarePanelApp.tsx` (`HardwarePanelComponent` exported)
+- Added focused Lab Workspace integration tests:
+  - `packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+  - verifies tab surface embedding (`build/simulate/hardware/submit`)
+  - verifies lab header/context for lab starter flow
+  - verifies submit bundle invocation + status persistence path
+  - verifies freeplay path shows no submit gates
+
+- **Build Verification**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx packages/rb-apps/src/__tests__/lab-starter-kits.test.ts packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/hardware-panel.test.tsx packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx packages/rb-apps/src/__tests__/submission-bundle.test.ts`
+  - ✅ `pnpm rc:check`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Simplification PR2/PR3 Pass: Lab Definitions Spine + Workspace Context)
+
+- Added canonical lab curriculum definitions (Basys3-first) as data source for student flow:
+  - `packages/rb-apps/src/labs/labDefinitions.ts`
+  - includes `lab-1` through `lab-8` plus `freeplay`
+  - defines: learning goals, build/simulate/hardware/submit guidance, common mistakes, rubric hooks, and submit-gate descriptors.
+- Added JS thin wrapper for source-of-truth parity:
+  - `packages/rb-apps/src/labs/labDefinitions.js`
+- Refactored starter kit generation to consume canonical lab definitions:
+  - `packages/rb-apps/src/starterKits/labStarterKits.ts`
+  - `LAB_STARTER_KITS` now derives from `LAB_DEFINITIONS`.
+- Upgraded Lab Workspace UX context to align with single-product student journey:
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+  - persistent lab header (`labId`, stage, next action)
+  - tab vocabulary standardized to `Build / Simulate / Hardware / Submit`
+  - shared side panel with checklist, stage hints, and recent activity context.
+- Added/updated tests:
+  - `packages/rb-apps/src/__tests__/lab-definitions.test.ts` (new)
+  - `packages/rb-apps/src/__tests__/lab-starter-kits.test.ts` (updated)
+  - `packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx` (validated against workspace-first routing)
+- Added Basys3-first lab documentation stubs:
+  - `docs/labs/lab-01.md`
+  - `docs/labs/lab-02.md`
+  - `docs/labs/lab-03.md`
+  - `docs/labs/lab-04.md`
+  - `docs/labs/lab-05.md`
+  - `docs/labs/lab-06.md`
+  - `docs/labs/lab-07.md`
+  - `docs/labs/lab-08.md`
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab-definitions.test.ts packages/rb-apps/src/__tests__/lab-starter-kits.test.ts packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx`
+  - ✅ `pnpm rc:check`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Simplification PR2 Pass: Home -> Lab Workspace Routing + Workspace Tab Vocabulary)
+
+- Continued product-simplification implementation to push student flow toward a single workspace:
+  - `packages/rb-apps/src/apps/HomeApp.tsx`
+    - starter open callbacks now target `lab-workspace` (built-in + imported instructor starters)
+    - recent project open callback now targets `lab-workspace`
+    - starter card target label normalized to `Lab Workspace`
+    - widened local callback typing to allow `lab-workspace` target routing.
+- Updated shell import hydration path typing so canonical starter/recovery/submission callbacks can open `lab-workspace` without bypassing existing import pipeline:
+  - `packages/rb-shell/src/Shell.tsx`
+  - widened target unions in:
+    - `loadImportedProject(...)`
+    - `hydrateImportedProject(...)`
+    - `importStarterProject(...)`
+    - `handleLoadExample(...)`
+    - `handleOpenStarterProject(...)`
+    - `handleOpenInstructorPackProject(...)`
+    - `handleOpenSubmissionProject(...)`
+    - `handleOpenRecentProject(...)`
+- Updated Lab Workspace tab language to align with product UX model:
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+  - tab ids now read `build`, `simulate`, `hardware`, `submit`.
+- Updated onboarding tests for new routing target:
+  - `packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx`
+  - expected starter/imported/recent callback `targetAppId` now `lab-workspace`.
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx packages/rb-apps/src/__tests__/launcher.test.tsx packages/rb-shell/src/__tests__/intent-open-example.test.ts`
+  - ✅ `pnpm rc:check`
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-12 (Simplification PR1 Kickoff: Student Whitelist + Lab Workspace Exposure)
+
+- Started product-simplification implementation focused on reducing student app sprawl:
+  - added consolidation decisions doc:
+    - `docs/app-consolidation.md`
+  - defined strict student launcher whitelist in:
+    - `packages/rb-apps/src/launcherData.ts`
+    - student-visible launcher apps now restricted to `home`, `lab-workspace`, and optional `help` when registered.
+- Promoted Lab Workspace to an actual launchable app surface:
+  - updated `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - `hidden: false`
+    - icon normalized to `cpu`
+  - registered `lab-workspace` in app bootstrap paths:
+    - `packages/rb-apps/src/index.ts`
+    - `packages/rb-apps/src/index.js`
+- JS mirror policy alignment:
+  - converted JS sibling to thin wrapper:
+    - `packages/rb-apps/src/apps/LabWorkspaceApp.js`
+  - converted legacy compiled JS test sibling to TS wrapper:
+    - `packages/rb-apps/src/__tests__/launcher.test.js`
+  - updated launcher filtering tests in:
+    - `packages/rb-apps/src/__tests__/launcher.test.tsx`
+    - assertions now verify strict student whitelist behavior.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-12 (Classroom Deployment v1 Closeout: Instructor Pack + Lockdown Verification Sweep)
 
 - Completed Classroom Deployment v1 closeout verification for Instructor Pack and Classroom Lockdown paths:

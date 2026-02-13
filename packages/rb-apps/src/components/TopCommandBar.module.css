@@ -1,0 +1,318 @@
+.chromeRoot {
+  min-height: 60px;
+  border-bottom: 1px solid var(--rb-ui-lab-border);
+  background: color-mix(in srgb, var(--rb-ui-lab-bg-surface) 95%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+.chromeInner {
+  width: 100%;
+  max-width: 1720px;
+  margin: 0 auto;
+  padding: 8px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sectionLabel {
+  font-size: 10px;
+  color: var(--rb-ui-lab-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-right: 2px;
+}
+
+.separator {
+  width: 1px;
+  height: 24px;
+  background: var(--rb-ui-lab-border);
+  margin: 0 2px;
+}
+
+.segmentSplit {
+  border-left: 1px solid var(--rb-ui-lab-border);
+  padding-left: 8px;
+  margin-left: 2px;
+}
+
+.projectName {
+  font-size: 11px;
+  color: var(--rb-ui-lab-text);
+  font-weight: 600;
+  padding: 5px 8px;
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 8px;
+  background: var(--rb-ui-lab-bg-elevated);
+}
+
+.projectDirty {
+  margin-left: 4px;
+  color: var(--rb-ui-lab-accent);
+}
+
+.pillGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pill {
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.pillSaved {
+  color: var(--rb-ui-lab-success);
+  border-color: var(--rb-ui-lab-success);
+  background: color-mix(in srgb, var(--rb-ui-lab-success) 12%, var(--rb-ui-lab-bg-elevated));
+}
+
+.pillUnsaved {
+  color: var(--rb-ui-lab-warning);
+  border-color: var(--rb-ui-lab-warning);
+  background: color-mix(in srgb, var(--rb-ui-lab-warning) 14%, var(--rb-ui-lab-bg-elevated));
+}
+
+.pillPass {
+  color: var(--rb-ui-lab-success);
+  border-color: var(--rb-ui-lab-success);
+  background: color-mix(in srgb, var(--rb-ui-lab-success) 12%, var(--rb-ui-lab-bg-elevated));
+}
+
+.pillFail {
+  color: var(--rb-ui-lab-warning);
+  border-color: var(--rb-ui-lab-warning);
+  background: color-mix(in srgb, var(--rb-ui-lab-warning) 12%, var(--rb-ui-lab-bg-elevated));
+}
+
+.pillNeutral {
+  color: var(--rb-ui-lab-text-muted);
+  border-color: var(--rb-ui-lab-border);
+  background: var(--rb-ui-lab-bg-elevated);
+}
+
+.button {
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 9px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rb-ui-lab-text);
+  background: var(--rb-ui-lab-bg-elevated);
+  cursor: pointer;
+  transition: transform var(--rb-ui-lab-fast) var(--rb-ui-lab-ease), border-color var(--rb-ui-lab-fast) var(--rb-ui-lab-ease);
+}
+
+.button:hover {
+  transform: translateY(-1px);
+  border-color: var(--rb-ui-lab-accent);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.buttonPrimary {
+  border-color: var(--rb-ui-lab-border-strong);
+  background: color-mix(in srgb, var(--rb-ui-lab-accent) 16%, var(--rb-ui-lab-bg-elevated));
+}
+
+.buttonSecondary {
+  background: var(--rb-ui-lab-bg-surface);
+}
+
+.buttonGhost {
+  background: transparent;
+  color: var(--rb-ui-lab-text-muted);
+}
+
+.buttonWarn {
+  color: var(--rb-ui-lab-warning);
+}
+
+.buttonSuccess {
+  color: var(--rb-ui-lab-success);
+}
+
+.buttonDanger {
+  color: var(--rb-ui-lab-danger);
+}
+
+.buttonIcon {
+  min-width: 32px;
+  padding: 6px 8px;
+  text-align: center;
+}
+
+.highlight {
+  border-color: var(--rb-ui-lab-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--rb-ui-lab-accent) 35%, transparent);
+}
+
+.simBlock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 10px;
+  padding: 5px 7px;
+  background: var(--rb-ui-lab-bg-elevated);
+  min-width: 0;
+}
+
+.sliderWrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.slider {
+  width: 84px;
+}
+
+.mono {
+  font-family: var(--rb-font-mono);
+}
+
+.tickRate {
+  font-size: 11px;
+  color: var(--rb-ui-lab-accent);
+  width: 46px;
+  text-align: right;
+}
+
+.clockBlock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--rb-ui-lab-text-muted);
+}
+
+.clockLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--rb-ui-lab-text-muted);
+}
+
+.tickCount {
+  color: var(--rb-ui-lab-accent);
+}
+
+.runDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--rb-ui-lab-border-strong);
+}
+
+.runDotActive {
+  background: var(--rb-ui-lab-success);
+}
+
+.rightCluster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.relativeWrap {
+  position: relative;
+}
+
+.layoutToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 9px;
+  background: var(--rb-ui-lab-bg-elevated);
+  padding: 2px;
+}
+
+.layoutButton {
+  border: none;
+  background: transparent;
+  color: var(--rb-ui-lab-text-muted);
+  padding: 5px 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.layoutButtonActive {
+  background: color-mix(in srgb, var(--rb-ui-lab-accent) 16%, var(--rb-ui-lab-bg-surface));
+  color: var(--rb-ui-lab-text);
+}
+
+.resetMenu {
+  position: absolute;
+  right: 0;
+  margin-top: 4px;
+  width: 180px;
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 10px;
+  background: var(--rb-ui-lab-bg-surface);
+  box-shadow: var(--rb-ui-lab-shadow-soft);
+  z-index: 50;
+}
+
+.resetMenuItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-top: 1px solid var(--rb-ui-lab-border);
+  background: transparent;
+  color: var(--rb-ui-lab-text);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.resetMenuItem:first-child {
+  border-top: none;
+}
+
+.resetMenuItem:hover {
+  background: var(--rb-ui-lab-bg-elevated);
+}
+
+@media (max-width: 1280px) {
+  .desktopOnly {
+    display: none;
+  }
+}
+
+@media (min-width: 1281px) {
+  .mobileOnly {
+    display: none;
+  }
+}

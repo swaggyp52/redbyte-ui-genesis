@@ -3,6 +3,21 @@
    Single source of truth for all visual properties. */
 
 :root {
+  --rb-bg-primary: #070B14;
+  --rb-bg-secondary: #0D1117;
+  --rb-bg-elevated: #161B22;
+  --rb-accent-build: #3B82F6;
+  --rb-accent-sim: #8B5CF6;
+  --rb-accent-hardware: #F59E0B;
+  --rb-accent-submit: #10B981;
+  --rb-danger: #F87171;
+  --rb-warning: #F59E0B;
+  --rb-success: #10B981;
+  --rb-info: #22D3EE;
+  --rb-text-primary: #E6EDF3;
+  --rb-text-muted: #8B949E;
+  --rb-border-subtle: #1B2028;
+
   /* ── Surfaces (Dark Tech Lab — deep blue-black) ── */
   --rb-surface-0: #070B14;
   --rb-surface-1: #0D1117;
@@ -112,6 +127,9 @@
   /* ── Theme foreground/background (consumed by ThemeProvider) ── */
   --rb-theme-foreground: var(--rb-text);
   --rb-theme-background: var(--rb-surface-0);
+
+  --rb-elevation-bg: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0) 100%);
+  --rb-panel-shadow: 0 8px 20px rgba(0, 3, 12, 0.42);
 }
 
 /* ── Light theme ── */

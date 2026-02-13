@@ -6,6 +6,7 @@ import { stableStringify } from './stableStringify';
 import { stableHash } from '../utils/stableSerialize';
 import type { BuildLogEntry, ToolchainDoctorReport } from '../fpga/toolchainTypes';
 import type { RunRecord, VerificationStatus } from '../recording/runRecord';
+import type { SubmissionGateResult } from '../labs/submissionGates';
 
 const ZIP_ENTRY_DATE = new Date('2000-01-01T00:00:00.000Z');
 const SUBMISSION_BUNDLE_SCHEMA_VERSION = 'rb_submission_bundle_v1' as const;
@@ -64,6 +65,10 @@ export interface SubmissionBundleManifest {
       detail: string;
     }>;
   };
+  submissionGates?: {
+    verdict: SubmissionGateResult['verdict'];
+    issuesCount: number;
+  };
   includedFiles: SubmissionBundleManifestFileEntry[];
 }
 
@@ -74,11 +79,23 @@ export interface SubmissionBundleResult {
   manifest: SubmissionBundleManifest;
 }
 
+export interface SubmissionGatesArtifact {
+  schema_version: 'rb_submission_gates_v1';
+  labId: string;
+  timestamp: string;
+  context: {
+    projectId: string | null;
+    projectName: string;
+  };
+  result: SubmissionGateResult;
+}
+
 interface SubmissionBundleOptions {
   doctorReport: ToolchainDoctorReport;
   reproducibility: SubmissionReproducibilityReport;
   includeRecordings?: boolean;
   logs?: BuildLogEntry[];
+  submissionGates?: SubmissionGateResult;
 }
 
 interface BundleFile {
@@ -235,6 +252,32 @@ export async function generateSubmissionBundle(
     entries: sortBuildLogs(options.logs ?? []),
   };
   const logBytes = textBytes(stableStringify(logPayload));
+  const submissionGateResult: SubmissionGateResult = options.submissionGates ?? {
+    verdict: 'pass',
+    issues: [],
+  };
+  const submissionGatesPayload: SubmissionGatesArtifact = {
+    schema_version: 'rb_submission_gates_v1',
+    labId:
+      typeof normalizedProject.meta?.labId === 'string' && normalizedProject.meta.labId.trim().length > 0
+        ? normalizedProject.meta.labId.trim()
+        : 'freeplay',
+    timestamp:
+      (typeof normalizedProject.updatedAt === 'string' && normalizedProject.updatedAt.trim().length > 0
+        ? normalizedProject.updatedAt.trim()
+        : typeof normalizedProject.createdAt === 'string' && normalizedProject.createdAt.trim().length > 0
+          ? normalizedProject.createdAt.trim()
+          : '1970-01-01T00:00:00.000Z'),
+    context: {
+      projectId:
+        typeof normalizedProject.meta?.projectId === 'string' && normalizedProject.meta.projectId.trim().length > 0
+          ? normalizedProject.meta.projectId.trim()
+          : null,
+      projectName: normalizedProject.name,
+    },
+    result: submissionGateResult,
+  };
+  const submissionGatesBytes = textBytes(stableStringify(submissionGatesPayload));
   const projectArchiveSha = await sha256Bytes(projectArchiveBytes);
   const reproducibilityHash = await stableHash(options.reproducibility);
   const doctorReportId =
@@ -260,6 +303,11 @@ export async function generateSubmissionBundle(
       path: 'reproducibility.json',
       bytes: reproducibilityBytes,
       contentForZip: stableStringify(options.reproducibility),
+    },
+    {
+      path: 'submission-gates.json',
+      bytes: submissionGatesBytes,
+      contentForZip: stableStringify(submissionGatesPayload),
     },
   ];
 
@@ -304,6 +352,10 @@ export async function generateSubmissionBundle(
     readiness: {
       overall: readinessOverall,
       gates: readinessGates,
+    },
+    submissionGates: {
+      verdict: submissionGateResult.verdict,
+      issuesCount: submissionGateResult.issues.length,
     },
     includedFiles,
   };
