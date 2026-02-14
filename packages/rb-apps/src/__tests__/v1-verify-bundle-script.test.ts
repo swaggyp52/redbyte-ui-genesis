@@ -59,6 +59,34 @@ async function makeValidBundleBytes(): Promise<Uint8Array> {
 }
 
 describe('v1 bundle verifier', () => {
+  it('accepts legacy classroom student-export schema v1 bundles', async () => {
+    const zip = new JSZip();
+    zip.file(
+      'manifest.json',
+      JSON.stringify({
+        schema_version: 'v1',
+        lab_id: 'traffic-light',
+        student: {
+          id: 'student-test-001',
+          name: 'Test Student',
+        },
+        created_at: '2026-01-18T18:22:00.196Z',
+        proof: {
+          capsule_path: 'proofs/capsule.json',
+          events_path: 'proofs/events.ndjson',
+        },
+      })
+    );
+    zip.file('proofs/capsule.json', '{"ok":true}');
+    zip.file('proofs/events.ndjson', '{"tick":1}\n');
+
+    const bytes = await zip.generateAsync({ type: 'uint8array' });
+    const result = await verifyBundleBytes(bytes);
+
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual([]);
+  });
+
   it('accepts a valid submission bundle', async () => {
     const bytes = await makeValidBundleBytes();
     const result = await verifyBundleBytes(bytes);

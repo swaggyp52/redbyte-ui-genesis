@@ -1,5 +1,36 @@
 # AI State
 
+## Change Log 2026-02-14 (Release execution mode: two rehearsals + bug-fix from first failure)
+
+- Locked release execution on branch `release/v1.0.0-next-lab-ready` from `ui/visual-cohesion`.
+- Added single release entrypoint pointer:
+  - `README.md` now links to `docs/release/v1-release-checklist.md` for v1 run execution.
+- Updated release checklist with two clean rehearsals policy:
+  - `docs/release/v1-release-checklist.md`
+  - requires Rehearsal #1 and Rehearsal #2 from scratch, and restart-on-failure with ticket/log.
+
+- Rehearsal failure logged and fixed (bug-fix only):
+  - First failure observed:
+    - step: `verify_bundle`
+    - error: `manifest schema_version mismatch: expected rb_submission_manifest_v1, got v1`
+  - Logged in:
+    - `docs/rehearsal/failure-log.md`
+    - `docs/rehearsal/failure-ticket-2026-02-14-verify-schema-mismatch.md`
+  - Fix applied:
+    - `scripts/v1-verify-bundle.mjs` now supports legacy classroom `schema_version: v1` student-export manifests, validating proof file presence (`capsule_path`, `events_path`) while retaining strict checks for `rb_submission_manifest_v1`.
+  - Regression test added:
+    - `packages/rb-apps/src/__tests__/v1-verify-bundle-script.test.ts` includes legacy `v1` acceptance coverage.
+
+- Rehearsal verification evidence:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/v1-verify-bundle-script.test.ts`
+  - ✅ `pnpm v1:rehearse` (pass)
+  - ✅ `pnpm v1:verify -- packages/ops/labs/fixtures/student-export-pass.rb-lab.zip` (pass)
+  - ✅ second `pnpm v1:rehearse` (pass)
+  - ✅ second `pnpm v1:verify -- packages/ops/labs/fixtures/student-export-pass.rb-lab.zip` (pass)
+  - ✅ `pnpm rc:check` (tail: `[SUITE] total=6 pass=6 fail=0`)
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-14 (V1 hardening contract: rehearsal docs + verify/rehearse commands + startup/wizard clarity)
 
 - Added canonical rehearsal and release artifacts for classroom readiness:

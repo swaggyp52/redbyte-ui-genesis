@@ -14,6 +14,22 @@ const REQUIRED_FILES = [
   'submission-gates.json',
 ];
 
+function isLegacyStudentManifest(manifest) {
+  return (
+    manifest?.schema_version === 'v1' &&
+    typeof manifest?.lab_id === 'string' &&
+    manifest.lab_id.trim().length > 0 &&
+    typeof manifest?.student?.id === 'string' &&
+    manifest.student.id.trim().length > 0 &&
+    typeof manifest?.student?.name === 'string' &&
+    manifest.student.name.trim().length > 0 &&
+    typeof manifest?.proof?.capsule_path === 'string' &&
+    manifest.proof.capsule_path.trim().length > 0 &&
+    typeof manifest?.proof?.events_path === 'string' &&
+    manifest.proof.events_path.trim().length > 0
+  );
+}
+
 function sha256(bytes) {
   return crypto.createHash('sha256').update(Buffer.from(bytes)).digest('hex');
 }
@@ -50,6 +66,24 @@ export async function verifyBundleBytes(bytes) {
   const manifest = parseManifestText(manifestText);
   if (!manifest || typeof manifest !== 'object') {
     return { ok: false, issues: ['manifest.json is not valid JSON'] };
+  }
+
+  if (isLegacyStudentManifest(manifest)) {
+    const legacyIssues = [];
+    const capsulePath = manifest.proof.capsule_path;
+    const eventsPath = manifest.proof.events_path;
+
+    if (!zip.file(capsulePath)) {
+      legacyIssues.push(`bundle missing legacy proof file: ${capsulePath}`);
+    }
+    if (!zip.file(eventsPath)) {
+      legacyIssues.push(`bundle missing legacy proof file: ${eventsPath}`);
+    }
+
+    return {
+      ok: legacyIssues.length === 0,
+      issues: legacyIssues,
+    };
   }
 
   if (manifest.schema_version !== REQUIRED_SCHEMA_VERSION) {

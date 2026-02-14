@@ -20,6 +20,16 @@ All must exit with code `0`.
 - [ ] Any failures logged in [docs/rehearsal/failure-log.md](../rehearsal/failure-log.md)
 - [ ] Failure tickets opened from [docs/rehearsal/failure-ticket-template.md](../rehearsal/failure-ticket-template.md) where needed
 
+## Two Clean Rehearsals Rule
+
+- [ ] Rehearsal #1 completed on fresh clone + new browser profile
+- [ ] Rehearsal #2 repeated from scratch (fresh profile/storage reset)
+- [ ] If either rehearsal fails:
+	- log failure in [docs/rehearsal/failure-log.md](../rehearsal/failure-log.md)
+	- open a ticket using [docs/rehearsal/failure-ticket-template.md](../rehearsal/failure-ticket-template.md)
+	- apply bug-fix only changes
+	- restart rehearsal from step 1
+
 ## Product Gates
 
 - [ ] Student mode remains fail-closed for instructor-only surfaces

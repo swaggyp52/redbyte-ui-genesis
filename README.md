@@ -33,6 +33,8 @@ RedByte OS Genesis is an educational platform for learning digital logic and com
 
 **Canonical Install Guide:** [`docs/INSTALL_QUICK.md`](docs/INSTALL_QUICK.md)
 
+**For running v1 release execution:** start with [`docs/release/v1-release-checklist.md`](docs/release/v1-release-checklist.md).
+
 - **Web Demo:** [https://redbyteapps.dev](https://redbyteapps.dev) (Simulation Only)
 - **Student Portal:** [https://redbyte.os/students](https://redbyte.os/students)
 
