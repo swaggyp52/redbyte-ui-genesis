@@ -8,6 +8,7 @@ import { hardwareClient, type ConnectionState, type Device } from "../services/h
 import { BridgeDebugPanel } from "../panels/BridgeDebugPanel";
 import { SynthesisDialog, type SynthesisPhase } from "../components/SynthesisDialog";
 import { EmptyStateCard } from "../components/EmptyStateCard";
+import { SignalLegend } from "../components/SignalLegend";
 import { stableStringify } from "../export/stableStringify";
 import {
   getToolchainBackend,
@@ -1118,7 +1119,7 @@ export function HardwarePanelComponent({
     }
   }, [bitstreamFile, exportBlockedReason, selectedDevice, traceEvents, setPanelError]);
   return (
-    <div className={styles.panelRoot}>
+    <div className={`${styles.panelRoot} rb-ui-lab-panel-frame`}>
       {/* PHASE 1: Synthesis Dialog */}
       <SynthesisDialog
         isOpen={synthesisDialogOpen}
@@ -1431,6 +1432,19 @@ export function HardwarePanelComponent({
               {programLogs.map((entry) => entry.msg).join("\n")}
             </pre>
           )}
+        </div>
+      </div>
+
+      <div className={styles.section} data-testid="hardware-signal-legend">
+        <strong>Live I/O Signal Meaning</strong>
+        <div style={{ marginTop: "8px" }}>
+          <SignalLegend
+            title="Hardware Signal Legend"
+            hint="Use for board inputs, outputs, and compare checks"
+            showExpectedVsActual
+            showDebounce
+            compact
+          />
         </div>
       </div>
 

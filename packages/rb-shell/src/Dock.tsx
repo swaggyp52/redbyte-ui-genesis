@@ -17,10 +17,8 @@ const systemIcons: Array<{ id: string; label: string; iconId: IconName }> = [
 ];
 
 const appIcons: Array<{ id: string; label: string; iconId: IconName }> = [
-  { id: 'home', label: 'Home', iconId: 'neon-wave' },
-  { id: 'logic-playground', label: 'Playground', iconId: 'logic' },
-  { id: 'labs', label: 'Labs', iconId: 'book' },
-  { id: 'terminal', label: 'Terminal', iconId: 'terminal' },
+  { id: 'home', label: 'Studio Dashboard', iconId: 'neon-wave' },
+  { id: 'lab-workspace', label: 'Studio', iconId: 'cpu' },
 ];
 
 const allIcons = [...systemIcons, ...appIcons];

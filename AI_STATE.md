@@ -1,5 +1,395 @@
 # AI State
 
+## Change Log 2026-02-13 (PR-A: Flagship Visual Cohesion Sweep)
+
+- Executed a cohesive Studio-wide visual system pass with no architecture/schema/toolchain behavior changes:
+  - `packages/rb-apps/src/ui/theme.css`
+    - expanded shared primitives for flagship consistency: card, pill, button, callout, and stepper surface classes.
+  - `packages/rb-apps/src/components/TopCommandBar.tsx`
+    - aligned top chrome inner container with shared page-width primitive.
+  - `packages/rb-apps/src/components/HdlEditorPanel.tsx`
+  - `packages/rb-apps/src/apps/HardwarePanelApp.tsx`
+    - applied shared panel-frame primitive so embedded editor/hardware surfaces feel native and consistent.
+  - `packages/rb-apps/src/apps/HomeApp.tsx`
+    - applied shared panel/card primitives across dashboard hero/templates/recent/action blocks for authored product coherence.
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.module.css`
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - replaced submit/verify/package inline-style heavy blocks with cohesive module classes.
+    - introduced premium visual treatment for evidence/proof chips (gates, traces, manifest) and standardized verify cards/actions.
+    - aligned stepper and primary panel shells to shared primitives.
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.module.css`
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.tsx`
+    - reduced inline layout styling into shared sidebar classes for checklist/issues/intelligence sections.
+
+- **Build Verification (PR-A required sequence)**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx` (`1 file, 10 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (`1 file, 4 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/top-command-bar-submission.test.tsx` (`1 file, 2 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/submission-bundle.test.ts` (`1 file, 1 test passed`)
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`)
+  - Note: existing unrelated `ECELabApp.tsx` import-resolution warning for `@redbyte/rb-lab-engine/src/signals/signalSemantics` still appears in logs while requested suites/checks pass.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-13 (Phase 4 Kickoff: Dashboard + Studio Only Launcher Surface)
+
+- Tightened launcher-facing product surface to only Dashboard + Studio while keeping advanced tooling deep-linkable:
+  - `packages/rb-apps/src/launcherData.ts`
+    - curated launcher whitelist now includes only `home` and `lab-workspace`.
+  - `packages/rb-apps/src/__tests__/launcher.test.tsx`
+    - updated curation assertions to exclude `files` from launcher results and use Studio-first naming.
+
+- Continued Studio terminology normalization for user-facing actions/copy without changing route IDs or deep-link behavior:
+  - `packages/rb-apps/src/apps/files/fileActionTargets.ts`
+  - `packages/rb-apps/src/apps/files/fileActionTargets.js`
+    - replaced `Lab Workspace` target label with `Studio`.
+  - `packages/rb-apps/src/apps/TerminalApp.tsx`
+  - `packages/rb-apps/src/apps/TerminalApp.js`
+    - replaced “Lab workspace” export guidance with “Studio”.
+
+- **Build Verification (Phase 4 kickoff slice)**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/launcher.test.tsx` (`1 file, 19 tests passed`)
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`)
+  - Note: existing unrelated `ECELabApp.tsx` import-resolution warning for `@redbyte/rb-lab-engine/src/signals/signalSemantics` still appears in logs while checks pass.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-13 (Phase 3C: Surface Reduction, Deep-Link Only for Toolchain Setup + Submission Inspector)
+
+- Reduced product-facing navigation so Studio is the flagship surface while preserving deep-link functionality for advanced apps/routes:
+  - `packages/rb-apps/src/launcherData.ts`
+    - curated launcher set now includes only `home`, `lab-workspace`, `files` (plus `help` when registered).
+  - `packages/rb-shell/src/Dock.tsx`
+  - `packages/rb-shell/src/Dock.js`
+    - removed legacy promotion pins (`logic-playground`, `terminal`) from primary app icon set.
+  - `packages/rb-shell/src/Taskbar.tsx`
+  - `packages/rb-shell/src/Taskbar.js`
+    - replaced legacy `Playground` pin with `Files` to keep Studio workflow front-and-center.
+  - `packages/rb-apps/src/components/HdlEditorPanel.tsx`
+    - replaced explicit Toolchain Setup side-door hint with Studio-first guidance.
+  - `packages/rb-apps/src/labs/submissionGates.ts`
+    - updated fix-hint wording to Studio-first language (no Toolchain Setup app callout in normal flow).
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - TA-only footer wording reduced from `Advanced · Diagnostics` to `Advanced`.
+
+- Updated tests for launcher curation behavior:
+  - `packages/rb-apps/src/__tests__/launcher.test.tsx`
+    - asserts `files` is included in curated launcher set while non-curated entries remain excluded.
+
+- **Build Verification (requested Phase 3C sequence)**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/launcher.test.tsx` (`1 file, 19 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx` (`1 file, 10 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (`1 file, 4 tests passed`)
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`)
+  - Note: existing unrelated `ECELabApp.tsx` import-resolution warning for `@redbyte/rb-lab-engine/src/signals/signalSemantics` still appears in logs while requested suites/checks pass.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-13 (Phase 3B: Verify Consolidation inside Studio)
+
+- Consolidated quality-gate surfaces into a single in-Studio Verify checkpoint inside the Package/submit step (no external tool required for normal student flow):
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - added stable Verify panel sections and IDs:
+      - `studio-verify-panel`
+      - `studio-verify-verdict`
+      - `studio-verify-blockers`
+      - `studio-verify-warning`
+      - `studio-verify-compare`
+      - `studio-verify-evidence-summary`
+    - implemented Verify verdict logic (`READY` vs `NOT_READY`) using:
+      - zero blocking submission gates,
+      - required evidence presence (simulation + conditional hardware evidence requirement).
+    - added top-blocker rendering (max 3, stable order), one-line explanation, and one-click Fix/Show-me actions using existing fix-intent routing.
+    - mounted existing Sim-vs-Hardware compare logic under Verify (`studio-verify-compare`) without changing compare semantics.
+    - added read-only evidence summary list (present/missing) backed by existing evidence/status sources already used in Package summary.
+    - added optional in-panel Explain Issues collapsible action using existing PRX3 intelligence flow.
+  - `packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+    - added assertions for Verify panel section IDs.
+    - added interaction assertion that Verify Fix action routes to the correct workspace tab.
+
+- **Build Verification (requested Phase 3B sequence)**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (`1 file, 4 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx` (`1 file, 10 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/submission-bundle.test.ts` (`1 file, 1 test passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx` (`1 file, 8 tests passed`)
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`)
+  - Note: existing unrelated `ECELabApp.tsx` import-resolution warning for `@redbyte/rb-lab-engine/src/signals/signalSemantics` still appears in logs while requested suites/checks pass.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-13 (Phase 3A Kickoff: Studio Package Tab absorbs core Inspector signals)
+
+- Implemented the first Phase 3A unification step so students can stay in Studio for package/export confidence checks:
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - added in-Workspace **Package Summary** surface in the submit/package panel with:
+      - gate counts (blocking/warnings),
+      - last package proof (filename, reproducibility status, bundleId),
+      - included-file proof list (path, bytes, hash prefix) when available from current generated manifest.
+    - wired package summary to persisted submission bundle status (`rb:submission-bundle:last`) via:
+      - `decodeSubmissionBundleStatus(...)`
+      - `SUBMISSION_BUNDLE_EVENT` listener refresh.
+    - captured current-run manifest/status after generation for immediate in-tab “what got packaged” proof.
+    - removed explicit normal-flow mention of standalone inspector/setup from TA hint copy (`Advanced · Diagnostics`).
+  - `packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+    - added assertions for new package summary surface and last-package proof text in submit flow.
+    - updated module mocks to align with bundle/status helper imports.
+
+- **Build Verification (Phase 3A focused)**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (`1 file, 4 tests passed`)
+  - Note: existing unrelated `ECELabApp.tsx` import-resolution warning for `@redbyte/rb-lab-engine/src/signals/signalSemantics` still appears in logs while requested suites/checks pass.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-13 (Studio Flagship Refactor: Phase 1 + Phase 2 Kickoff)
+
+- Implemented a visible classroom-first Studio identity shift while preserving deterministic workflow behavior and route compatibility:
+  - `packages/rb-apps/src/apps/HomeApp.tsx`
+  - `packages/rb-apps/src/apps/HomeApp.module.css`
+    - Reframed Home as **Studio Dashboard** (manifest name updated; id unchanged), with templates/recent-projects + New Project / Import Pack / Import Project action cards.
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+  - `packages/rb-apps/src/apps/labWorkspace/workspaceUx.ts`
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.tsx`
+    - Shifted user-facing workflow language to Design → Simulate → Hardware → Package and Studio-oriented copy throughout primary workspace surfaces.
+  - `packages/rb-apps/src/launcherData.ts`
+  - `packages/rb-shell/src/Dock.tsx`
+  - `packages/rb-shell/src/Dock.js`
+  - `packages/rb-shell/src/Taskbar.tsx`
+  - `packages/rb-shell/src/Taskbar.js`
+    - Collapsed launcher/pinned identity to flagship Studio entrypoints (Studio Dashboard + Studio; optional Help in launcher curation).
+  - `packages/rb-apps/src/apps/FilesApp.tsx`
+  - `packages/rb-apps/src/apps/FilesApp.js`
+    - Updated root label from Home to Studio Dashboard.
+
+- Updated impacted tests for the new Studio naming/curation contract:
+  - `packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx`
+  - `packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+  - `packages/rb-apps/src/__tests__/launcher.test.tsx`
+  - `packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx`
+  - `packages/rb-apps/src/__tests__/workspace-ux-contract.test.ts`
+  - `packages/rb-apps/src/__tests__/files-operations.test.tsx`
+
+- **Build Verification (requested Phase 1 + Phase 2 sequence)**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/top-command-bar-submission.test.tsx`
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/submission-bundle.test.ts`
+  - ✅ `pnpm rc:check` (final summary: `[SUITE] total=6 pass=6 fail=0`)
+  - Note: existing unrelated `ECELabApp.tsx` import-resolution warning for `@redbyte/rb-lab-engine/src/signals/signalSemantics` still appears in logs while requested suites/checks pass.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-13 (PRX3: Evidence Agent Issue Explanations via Existing Sidebar Surface)
+
+- Implemented PRX3 through the existing `Ask RedByte` sidebar block (no new screens) with read-only issue explanation path and actionable fix intent mapping:
+  - `services/redbyte-intelligence/redbyte_intelligence/app.py`
+    - extended `POST /v1/analyze` to support PRX3 evidence mode based on `userIntent=explain-issues`, submit stage, or gate presence.
+    - added strict action fields for evidence rendering: `title`, `why`, `fixIntent`, `severity`.
+    - added grounded evidence behavior constrained to curriculum + gate payload + project summary metadata.
+    - added explicit missing-data response (`I can't see ... yet`) when gate payload is absent.
+    - added `debug.grounding` detail for traceability.
+  - `packages/rb-apps/src/intelligence/client.ts`
+  - `packages/rb-apps/src/intelligence/client.js`
+    - extended payload shape with `projectId?` and action parsing for PRX3 fields.
+    - added deterministic in-memory cache keyed by `(projectId + labId + stage + userIntent + projectSummary + gate-hash)` to prevent repeat calls/spam.
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - added explicit `handleExplainIssues` flow that sends submit-stage gate payload (`userIntent: explain-issues`).
+    - mapped service `fixIntent` values into existing `applyFixIntent`/anchor flow (build/sim/hardware/submit) without creating a new action system.
+    - preserved feature-flag/fallback behavior via existing client wrapper.
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.tsx`
+    - added **Explain my issues** button within the same intelligence block (shown on submit warning/blocking gate state).
+    - rendered grouped issue explanations: blocking first, warnings second.
+    - added per-action **Fix it** buttons routed through existing fix-intent callbacks.
+    - added graceful fallback rendering for raw gate messages when intelligence is unavailable.
+  - `packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+    - added/updated PRX3 assertions for explain-issues button, analyze payload intent, and fix routing via returned action.
+  - `docs/redbyte-intelligence-integration.md`
+    - documented PRX3 request/response extensions and evidence action shape.
+
+- **Build Verification (requested PRX3 cadence)**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (`1 file, 4 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/submission-bundle.test.ts` (`1 file, 1 test passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx` (`1 file, 8 tests passed`)
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`, exit code `0`)
+  - Note: existing unrelated `ECELabApp.tsx` import-resolution warning for `@redbyte/rb-lab-engine/src/signals/signalSemantics` still appears in logs while requested suites/checks pass.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-13 (PRX1+PRX2: v1 Intelligence Contract + Feature-Flagged Sidebar Integration)
+
+- Implemented a single stable intelligence integration contract and wired it into Lab Workspace as a safe, fallback-first vertical slice:
+  - `services/redbyte-intelligence/redbyte_intelligence/app.py`
+    - added stable endpoint `POST /v1/analyze` with strict contract:
+      - request: `{ labId, stage, projectSummary, traces?, gates?, userIntent }`
+      - response: `{ summary, actions[], confidence, citations?, debug }`
+    - switched initial behavior to deterministic curriculum-backed coaching response generation for PRX2 (no freeform model dependency required for this path).
+  - `services/redbyte-intelligence/data/curriculum.json`
+    - added distilled curriculum payload (checked-in) for stage-aware coaching output and action targets.
+  - `packages/rb-apps/src/intelligence/client.ts`
+  - `packages/rb-apps/src/intelligence/client.js`
+    - added single wrapper `analyze(payload)` with:
+      - feature flags `RB_INTEL_ENABLED` / `RB_INTEL_URL` (+ `VITE_` prefixed support),
+      - 2s timeout,
+      - 1 retry,
+      - graceful fallback response on disabled/unreachable/error (no broken UX).
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - added one UI entrypoint integration path that builds payload from current lab/stage/project/traces/gates and calls `analyze(...)`.
+    - added result state handling + actionable callback mapping back into existing stage navigation.
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.tsx`
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.module.css`
+    - added feature-flag-safe sidebar section **Ask RedByte** with:
+      - button: **Explain my next step**,
+      - response rendering,
+      - **Do this now** action button.
+  - `packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+    - added mock/wiring assertions for Ask RedByte flow (invoke analyze, render response, action button opens stage).
+  - `docs/redbyte-intelligence-integration.md`
+  - `services/redbyte-intelligence/README.md`
+    - updated docs to reference `POST /v1/analyze` and frontend feature-flag wiring.
+
+- **Build Verification**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (`1 file, 4 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx` (`1 file, 11 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/submission-bundle.test.ts` (`1 file, 1 test passed`)
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`, exit code `0`)
+  - Note: existing unrelated `ECELabApp.tsx` import-resolution warning for `@redbyte/rb-lab-engine/src/signals/signalSemantics` still appears in logs while requested suites/checks pass.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-13 (PRX: RedByte Intelligence Layer Scaffold v0)
+
+- Added initial PRX service scaffold for an agent-powered intelligence layer without changing existing React runtime behavior:
+  - `services/redbyte-intelligence/requirements.txt`
+    - pinned preview Microsoft Agent Framework packages and supporting runtime dependencies for API/server/debug workflows.
+  - `services/redbyte-intelligence/.env.example`
+    - added Foundry endpoint/model and runtime configuration contract for local setup.
+  - `services/redbyte-intelligence/README.md`
+    - documented architecture scope, quick-start, and API vs agent-server run modes.
+  - `services/redbyte-intelligence/redbyte_intelligence/config.py`
+    - added centralized environment-backed configuration loader.
+  - `services/redbyte-intelligence/redbyte_intelligence/models.py`
+    - defined request/response contracts (`IntelligenceRequest`, `IntelligenceResponse`) and context snapshots (compare/evidence/coach/repair).
+  - `services/redbyte-intelligence/redbyte_intelligence/agents.py`
+    - added agent factory for orchestrator + four specialist agents (diff/evidence/coach/repair) using Foundry-backed clients.
+  - `services/redbyte-intelligence/redbyte_intelligence/workflow.py`
+    - added orchestration runner that fans out to specialist agents and synthesizes a unified response envelope.
+  - `services/redbyte-intelligence/redbyte_intelligence/tracing.py`
+    - added trace scope helper and structured logging setup for runtime correlation IDs.
+  - `services/redbyte-intelligence/redbyte_intelligence/app.py`
+    - added HTTP API scaffold with `/health` and `/intelligence/analyze` endpoints.
+  - `services/redbyte-intelligence/redbyte_intelligence/server.py`
+    - added agent-server wrapper entrypoint for `from_agent_framework(...)` hosting path.
+  - `services/redbyte-intelligence/evaluation/run_eval.py`
+  - `services/redbyte-intelligence/dataset/intelligence_eval.jsonl`
+    - added evaluation harness skeleton and starter dataset row.
+  - `docs/redbyte-intelligence-integration.md`
+    - defined incremental frontend integration boundary (`POST /intelligence/analyze`) and rollout strategy.
+  - `.vscode/tasks.json`
+    - added PRX tasks for dependency install, API run, and eval scaffold execution.
+  - `.vscode/launch.json`
+    - added Python launch configurations for PRX API and agent-server wrapper while preserving existing web launch.
+
+- **Verification**:
+  - Not executed in this change block yet (scaffold + configuration only).
+  - Foundry project/models are not configured in local extension context; `.env` setup is required before runtime validation.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-13 (PRV3A: Sim vs Hardware Diff Panel MVP, UI-First)
+
+- Implemented PRV3A UI-first Sim ↔ Hardware compare surface (no backend/schema/export/toolchain flow changes):
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - added Simulate-stage **Compare panel** (`compare-panel`) with three user-facing states:
+      1) no hardware trace yet,
+      2) both traces available,
+      3) partial data.
+    - added required stable surfaces:
+      - `compare-verdict`
+      - `compare-top-mismatches`
+      - `compare-first-mismatch`
+      - `compare-cta-capture-hardware`
+      - `compare-cta-configure-probes`
+    - wired Fix/Show-me actions through existing stage navigation + anchors (`handleStagePrimaryCta`) to jump to Simulate probe and Hardware capture controls.
+    - added educational “Why this matters” explainer (simulate-stage concept) linked to existing lab teaching metadata.
+    - added placeholder compare adapter behavior:
+      - `MATCH` when no derived mismatches,
+      - `MISMATCH` when simulate/hardware-relevant issues exist,
+      - `PENDING` when trace evidence is missing/partial.
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.module.css`
+    - added compare-panel visual system (verdict badge hierarchy, mismatch list strip, CTA controls, and emphasis styling) aligned to hybrid style (neutral base, signal emphasis only).
+  - `packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+    - added PRV3A assertions for compare panel render, pending verdict empty-state behavior, required IDs, and hardware-capture CTA navigation.
+
+- **Build Verification (requested PRV3A sequence)**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (`1 file, 4 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx` (`1 file, 11 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/submission-bundle.test.ts` (`1 file, 1 test passed`)
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`, exit code `0`)
+  - Note: existing unrelated `ECELabApp.tsx` import-resolution warning for `@redbyte/rb-lab-engine/src/signals/signalSemantics` still appears in logs while requested suites/checks pass.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-13 (PRV2: Educational Visual Layer — Signal Legend + Concept Callouts + Expected Behavior Visuals)
+
+- Implemented PRV2 visual-only educational layer (no backend/schema/toolchain flow changes; no `data-testid` removals):
+  - `packages/rb-apps/src/components/SignalLegend.tsx`
+  - `packages/rb-apps/src/components/SignalLegend.module.css`
+  - `packages/rb-apps/src/components/SignalLegend.js`
+    - added reusable signal semantics legend surface covering HIGH/LOW, edges, X, Z, optional debounce, and expected-vs-actual comparison cues with hybrid neon emphasis only for meaning.
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.module.css`
+    - added always-visible Simulate-stage Signal Legend block and wired data-driven educational props into sidebar.
+  - `packages/rb-apps/src/components/HdlEditorPanel.tsx`
+    - added pinned/collapsible waveform-region Signal Legend (`hdl-waveform-signal-legend`) near build/sim logs.
+  - `packages/rb-apps/src/apps/HardwarePanelApp.tsx`
+    - added Hardware tab live I/O Signal Legend section (`hardware-signal-legend`) near programming/live status.
+  - `packages/rb-apps/src/labs/labDefinitions.ts`
+    - added data-driven educational metadata helpers:
+      - stage teaching contract (`concept`, `commonMistake`, `goodLooksLike`) by lab + stage
+      - expected behavior mini-visual contract (`truth-table|waveform|opcode`) by lab
+      - helper exports `getLabStageTeaching(...)` and `getLabExpectedBehaviorVisual(...)`.
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.tsx`
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.module.css`
+    - added PRV2 educational coach sections:
+      - Concept of this step
+      - Common mistake
+      - What good looks like
+      - Expected behavior mini-visual table (data-driven).
+  - `packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+    - added assertions for new educational surfaces and signal legend placement in Simulate tab.
+
+- **Build Verification (requested PRV2 sequence)**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (`1 file, 4 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx` (`1 file, 11 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/top-command-bar-submission.test.tsx` (`1 file, 2 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/submission-bundle.test.ts` (`1 file, 1 test passed`)
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`, exit code `0`)
+  - Note: existing unrelated `ECELabApp.tsx` import-resolution warning for `@redbyte/rb-lab-engine/src/signals/signalSemantics` still appears in logs while requested suites/checks pass.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-13 (PRV1.5: Global Chrome + Layout Unification)
+
+- Implemented PRV1.5 visual-only global chrome/layout unification with no backend/toolchain/schema/routing behavior changes and no `data-testid` removals:
+  - `packages/rb-apps/src/ui/theme.css`
+    - added shared layout primitives for page frame, primary scroll container, inner width contract, sticky chrome header, and reusable panel frame (`rb-ui-lab-page*` contract).
+  - `packages/rb-shell/src/Shell.tsx`
+    - applied global lab grid background class at shell root to reduce cross-page visual discontinuity.
+  - `packages/rb-apps/src/apps/HomeApp.tsx`
+  - `packages/rb-apps/src/apps/HomeApp.module.css`
+    - wired Home root/inner to shared page/frame primitives and normalized page spacing/max-width/background handling.
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.module.css`
+    - aligned workspace root/header/main scroll to the shared chrome contract; normalized sticky/header depth and gutter spacing.
+  - `packages/rb-apps/src/apps/ToolchainSetupApp.tsx`
+  - `packages/rb-apps/src/apps/ToolchainSetupApp.module.css`
+    - wired setup page root/header to shared page/chrome classes and normalized sticky header + gutter model.
+  - `packages/rb-apps/src/apps/SubmissionInspectorApp.tsx`
+  - `packages/rb-apps/src/apps/SubmissionInspectorApp.module.css`
+    - aligned inspector root/header/tabs/content/dropzone margins to shared chrome spacing; reduced layout jump risk from mixed paddings.
+  - `packages/rb-apps/src/components/TopCommandBar.tsx`
+    - unified command bar with shared sticky chrome-header class while preserving toolbar behavior.
+
+- **Build Verification (requested PRV1.5 sequence)**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx` (`1 file, 11 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (`1 file, 4 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-setup-app.test.tsx` (`1 file, 17 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx` (`1 file, 8 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/top-command-bar-submission.test.tsx` (`1 file, 2 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx` (`1 file, 16 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/hardware-panel.test.tsx` (`1 file, 5 tests passed`)
+  - ✅ `pnpm rc:check` (exit code `0`)
+  - Note: existing unrelated `ECELabApp.tsx` import-resolution warning for `@redbyte/rb-lab-engine/src/signals/signalSemantics` still appears in logs, while requested suites/checks pass.
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-13 (PRV1.4: Iconography + Microcopy + Hierarchy Consistency)
 
 - Implemented PRV1.4 visual-only polish pass across scoped high-traffic surfaces with no backend/toolchain/schema/routing changes and no `data-testid` removals:

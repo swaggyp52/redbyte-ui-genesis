@@ -171,8 +171,8 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         : styles.pillNeutral;
 
   return (
-    <div className={styles.chromeRoot} data-testid="top-command-bar" role="toolbar" aria-label="Main Toolbar">
-      <div className={styles.chromeInner}>
+    <div className={`${styles.chromeRoot} rb-ui-lab-chrome-header`} data-testid="top-command-bar" role="toolbar" aria-label="Main Toolbar">
+      <div className={`${styles.chromeInner} rb-ui-lab-page-inner`}>
       <GuardrailConfirmModal
         isOpen={resetConfirm === 'workspace'}
         title="Reset Workspace?"

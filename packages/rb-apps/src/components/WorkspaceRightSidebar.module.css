@@ -4,6 +4,12 @@
   color: var(--rb-ui-lab-text);
 }
 
+.statusPills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .title {
   font-size: 11px;
   text-transform: uppercase;
@@ -124,4 +130,69 @@
 .muted {
   font-size: 11px;
   color: var(--rb-ui-lab-text-muted);
+}
+
+.list {
+  margin: 4px 0 0 16px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.listWide {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.issueSectionTitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--rb-ui-lab-text);
+}
+
+.emptyHint {
+  font-size: 11px;
+  color: var(--rb-ui-lab-text-muted);
+}
+
+.intelResult {
+  margin-top: 8px;
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 10px;
+  background: var(--rb-ui-lab-bg-elevated);
+  padding: 8px;
+  font-size: 11px;
+  color: var(--rb-ui-lab-text);
+}
+
+.visualTableWrap {
+  margin-top: 6px;
+  overflow-x: auto;
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 8px;
+}
+
+.visualTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+.visualTable th,
+.visualTable td {
+  border-bottom: 1px solid var(--rb-ui-lab-border);
+  padding: 5px 6px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.visualTable th {
+  color: var(--rb-ui-lab-text);
+  background: color-mix(in srgb, var(--rb-stage-accent, var(--rb-ui-lab-accent)) 14%, var(--rb-ui-lab-bg-elevated));
+}
+
+.visualTable tr:last-child td {
+  border-bottom: none;
 }

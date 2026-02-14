@@ -62,21 +62,16 @@ describe('HomeApp examples-first onboarding', () => {
     localStorage.clear();
   });
 
-  it('uses student mode defaults to hide TA export mission', () => {
+  it('renders Studio Dashboard core actions', () => {
     render(<HomeAppComponent onOpenApp={vi.fn()} />);
-    expect(screen.queryByTestId('home-mission-studio-export')).not.toBeInTheDocument();
+    expect(screen.getByTestId('studio-dashboard-new-project')).toBeInTheDocument();
+    expect(screen.getByTestId('studio-dashboard-import-pack')).toBeInTheDocument();
+    expect(screen.getByTestId('studio-dashboard-import-project')).toBeInTheDocument();
   });
 
-  it('shows TA export mission when TA mode override is set', () => {
-    localStorage.setItem('rb:mode:v1', 'ta');
-    render(<HomeAppComponent onOpenApp={vi.fn()} />);
-    expect(screen.getByTestId('home-mission-studio-export')).toBeInTheDocument();
-  });
-
-  it('shows quickstart and lab starters when no recent activity exists', () => {
+  it('shows templates and starters when no recent activity exists', () => {
     render(<HomeAppComponent onOpenApp={vi.fn()} />);
 
-    expect(screen.getByTestId('home-quickstart-banner')).toBeInTheDocument();
     expect(screen.getByTestId('home-starters')).toBeInTheDocument();
     expect(screen.getByTestId('home-no-recent-hint')).toBeInTheDocument();
   });
@@ -124,17 +119,11 @@ describe('HomeApp examples-first onboarding', () => {
     );
   });
 
-  it('persists quickstart dismissal and keeps it hidden on next render', () => {
+  it('opens Studio from New Project action', () => {
     const onOpenApp = vi.fn();
-    const { unmount } = render(<HomeAppComponent onOpenApp={onOpenApp} />);
-
-    fireEvent.click(screen.getByTestId('home-quickstart-dismiss'));
-
-    expect(localStorage.getItem('rb:home:quickstart-dismissed:v1')).toBe('1');
-
-    unmount();
     render(<HomeAppComponent onOpenApp={onOpenApp} />);
-    expect(screen.queryByTestId('home-quickstart-banner')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('studio-dashboard-new-project'));
+    expect(onOpenApp).toHaveBeenCalledWith('lab-workspace');
   });
 
   it('opens recent project via canonical recent-project callback', () => {
@@ -194,7 +183,7 @@ describe('HomeApp examples-first onboarding', () => {
     expect(screen.queryByTestId('home-recent-project-proj-home-delete')).not.toBeInTheDocument();
   });
 
-  it('shows Open (not Restore) after submission checkpoint marks project clean', () => {
+  it('shows Resume after submission checkpoint marks project clean', () => {
     const projectId = 'proj-home-submitted';
     const project = createRBProject({
       createdAt: '2026-02-12T00:00:00.000Z',
@@ -228,7 +217,7 @@ describe('HomeApp examples-first onboarding', () => {
     });
 
     render(<HomeAppComponent />);
-    expect(screen.getByTestId('home-recent-project-open-proj-home-submitted').textContent).toBe('Open');
+    expect(screen.getByTestId('home-recent-project-open-proj-home-submitted').textContent).toBe('Resume');
     expect(screen.getByTestId('home-recent-project-submission-proj-home-submitted').textContent).toContain(
       'Last submitted',
     );

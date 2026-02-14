@@ -308,7 +308,7 @@ describe('Launcher data', () => {
     registerApp({
       manifest: {
         id: 'home',
-        name: 'Home',
+        name: 'Studio Dashboard',
         iconId: 'neon-wave',
         category: 'system',
       },
@@ -317,7 +317,7 @@ describe('Launcher data', () => {
     registerApp({
       manifest: {
         id: 'lab-workspace',
-        name: 'Lab Workspace',
+        name: 'Studio',
         iconId: 'cpu',
         category: 'logic',
       },
@@ -346,8 +346,8 @@ describe('Launcher data', () => {
     const ids = apps.map((app) => app.id);
     expect(ids).toContain('home');
     expect(ids).toContain('lab-workspace');
-    expect(ids).not.toContain('terminal');
     expect(ids).not.toContain('files');
+    expect(ids).not.toContain('terminal');
   });
 
   it('forces the same whitelist filtering when classroom lockdown is enabled', async () => {
@@ -361,7 +361,7 @@ describe('Launcher data', () => {
     registerApp({
       manifest: {
         id: 'home',
-        name: 'Home',
+        name: 'Studio Dashboard',
         iconId: 'neon-wave',
         category: 'system',
       },
@@ -370,7 +370,7 @@ describe('Launcher data', () => {
     registerApp({
       manifest: {
         id: 'lab-workspace',
-        name: 'Lab Workspace',
+        name: 'Studio',
         iconId: 'cpu',
         category: 'logic',
       },
@@ -399,11 +399,11 @@ describe('Launcher data', () => {
     const ids = apps.map((app) => app.id);
     expect(ids).toContain('home');
     expect(ids).toContain('lab-workspace');
-    expect(ids).not.toContain('terminal');
     expect(ids).not.toContain('files');
+    expect(ids).not.toContain('terminal');
   });
 
-  it('allows TA override in launcher filtering during classroom lockdown', async () => {
+  it('keeps launcher curated during classroom lockdown', async () => {
     vi.resetModules();
     window.localStorage.setItem('rb:mode:v1', 'ta');
     window.localStorage.setItem('rb:classroom-lockdown:v1', JSON.stringify({ enabled: true }));
@@ -423,10 +423,10 @@ describe('Launcher data', () => {
 
     const apps = await getAppsForLauncher();
     const ids = apps.map((app) => app.id);
-    expect(ids).toContain('terminal');
+    expect(ids).not.toContain('terminal');
   });
 
-  it('derives launcher list from registry and excludes launcher itself', async () => {
+  it('derives curated launcher list from registry and excludes launcher itself', async () => {
     vi.resetModules();
     window.localStorage.setItem('rb:mode:v1', 'ta');
     const { registerApp } = await import('../AppRegistry');
@@ -475,12 +475,32 @@ describe('Launcher data', () => {
     registerApp(launcherApp);
     registerApp(terminalApp);
     registerApp(filesApp);
+    registerApp({
+      manifest: {
+        id: 'home',
+        name: 'Studio Dashboard',
+        iconId: 'neon-wave',
+        category: 'system',
+      },
+      component: StubComponent,
+    });
+    registerApp({
+      manifest: {
+        id: 'lab-workspace',
+        name: 'Studio',
+        iconId: 'cpu',
+        category: 'logic',
+      },
+      component: StubComponent,
+    });
 
     const apps = await getAppsForLauncher();
     const ids = apps.map((app) => app.id);
 
-    expect(ids).toContain('terminal');
-    expect(ids).toContain('files');
+    expect(ids).toContain('home');
+    expect(ids).toContain('lab-workspace');
+    expect(ids).not.toContain('files');
+    expect(ids).not.toContain('terminal');
     expect(ids).not.toContain('launcher');
   });
 });

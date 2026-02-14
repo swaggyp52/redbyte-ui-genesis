@@ -29,7 +29,7 @@ export const FILE_ACTION_TARGETS = [
     },
     {
         id: 'ece-lab',
-        name: 'Lab Workspace',
+        name: 'Studio',
         appId: 'ece-lab',
         isEligible: (type, name) => type === 'file' && name.endsWith('.labcapsule.json'),
     },

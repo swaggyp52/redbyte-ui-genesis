@@ -24,6 +24,7 @@ import {
   type Basys3ExampleId,
 } from '../fpga/boards/basys3/examples';
 import { EmptyStateCard } from './EmptyStateCard';
+import { SignalLegend } from './SignalLegend';
 import { NEO_STATUS } from '../ui/neoGlossary';
 import styles from './HdlEditorPanel.module.css';
 
@@ -1472,7 +1473,7 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
   }, [implementStatus, isImplementing, isPreflighting, isProbing, isProgramRunning, isSynthesizing, programStatus, synthStatus]);
 
   return (
-    <div className={styles.panelRoot}>
+    <div className={`${styles.panelRoot} rb-ui-lab-panel-frame`}>
       <div className={styles.panelHeader}>
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -1849,7 +1850,7 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
             ))}
           </div>
           <div className="mt-1 text-[10px] text-[#93C5FD]" data-testid="hdl-setup-open-app-hint">
-            Open Launcher and run <span className="font-mono">Toolchain Setup</span> for the dedicated setup page.
+            Verify setup in Studio, then continue with build, compare, and package.
           </div>
           <pre className="mt-1 whitespace-pre-wrap text-[10px] text-[#93C5FD]" data-testid="hdl-setup-install-commands">
             {setupCommands.map((entry) => `${entry.tool}: ${entry.command}`).join('\n')}
@@ -2030,6 +2031,17 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
       <div className={styles.consoleWrap}>
         <div className={styles.consoleTitle}>
           Build Console
+        </div>
+        <div style={{ padding: '0 1rem 0.5rem' }} data-testid="hdl-waveform-signal-legend">
+          <SignalLegend
+            title="Waveform Signal Legend"
+            hint="Pinned and collapsible"
+            showExpectedVsActual
+            showDebounce
+            collapsible
+            defaultOpen={false}
+            compact
+          />
         </div>
         <div className={styles.consoleBody}>
           {logs.length === 0 ? (

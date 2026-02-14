@@ -182,7 +182,7 @@ export function validateSubmissionForLab(
         severity: 'block',
         title: 'Toolchain unavailable for required hardware evidence',
         message: 'This lab requires hardware evidence, but toolchain checks failed.',
-        fixHint: 'Resolve Toolchain Setup issues before submission.',
+        fixHint: 'Fix hardware readiness in Studio before packaging.',
         cta: { label: 'Open Hardware', action: 'openTab', tab: 'hardware' },
       });
     } else {
@@ -191,7 +191,7 @@ export function validateSubmissionForLab(
         severity: 'warn',
         title: 'Toolchain checks are not passing',
         message: 'Toolchain probe is failing. Submission is allowed, but hardware evidence may be incomplete.',
-        fixHint: 'Run Toolchain Setup to reduce grading friction.',
+        fixHint: 'Verify hardware readiness in Studio to reduce grading friction.',
         cta: { label: 'Open Hardware', action: 'openTab', tab: 'hardware' },
       });
     }

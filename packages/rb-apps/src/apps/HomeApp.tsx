@@ -478,51 +478,30 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
   );
 
   return (
-    <div className={styles.container} data-testid="home-screen">
-      <div className={styles.inner}>
-        <header className={styles.brand}>
+    <div className={`${styles.container} rb-ui-lab-page rb-ui-lab-page-scroll`} data-testid="home-screen">
+      <div className={`${styles.inner} rb-ui-lab-page-inner`}>
+        <header className={`${styles.brand} rb-ui-lab-surface`}>
           <h1 className={styles.title}>
-            {ceMode ? 'Welcome to Your Lab' : 'RedByte'}
+            RedByte Studio
           </h1>
           <p className={styles.tagline}>
-            {ceMode
-              ? 'Build, simulate, and submit digital logic circuits.'
-              : 'The operating system for computer engineering education.'}
+            Studio Dashboard · Design → Simulate → Hardware → Verify → Package
           </p>
         </header>
 
-        {showExamplesFirst && !quickstartDismissed && (
-          <div className={styles.quickstartBanner} data-testid="home-quickstart-banner">
-            <div className={styles.quickstartTitle}>{NEO_TYPO.quickstart}</div>
-            <ol className={styles.quickstartSteps}>
-              <li>Open a lab starter</li>
-              <li>Run simulation and inspect outputs</li>
-              <li>Generate a submission bundle</li>
-            </ol>
-            <button
-              type="button"
-              className={styles.quickstartDismiss}
-              onClick={handleDismissQuickstart}
-              data-testid="home-quickstart-dismiss"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
-
         <div
-          className={`${styles.startersSection} ${isInstructorPackDropActive ? styles.starterDropActive : ''}`}
+          className={`${styles.startersSection} ${isInstructorPackDropActive ? styles.starterDropActive : ''} rb-ui-lab-panel-frame`}
           data-testid="home-starters"
           onDragOver={handleInstructorPackDragOver}
           onDragLeave={handleInstructorPackDragLeave}
           onDrop={handleInstructorPackDrop}
         >
           <div className={styles.startersHeaderRow}>
-            <h2 className={styles.startersTitle}>Lab Starters</h2>
+            <h2 className={styles.startersTitle}>Templates</h2>
             <div className={styles.startersHeaderActions}>
               {showExamplesFirst && (
                 <span className={styles.startersHint} data-testid="home-no-recent-hint">
-                  No recent projects found. Start with a lab starter.
+                  No recent projects found. Start with a Studio template.
                 </span>
               )}
               <button
@@ -533,12 +512,12 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
                 }}
                 data-testid="home-import-instructor-pack"
               >
-                Import Instructor Pack
+                Import Pack
               </button>
             </div>
           </div>
           <div className={styles.starterDropHint} data-testid="home-instructor-pack-dropzone">
-            Drag and drop an Instructor Pack ZIP here or use Import Instructor Pack.
+            Drag and drop a pack ZIP here, or use Import Pack.
           </div>
           {starterPackStatus ? (
             <div className={styles.starterStatus} data-testid="home-instructor-pack-status">
@@ -549,11 +528,11 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
             {LAB_STARTER_KITS.map((starter) => (
               <div
                 key={starter.id}
-                className={styles.starterCard}
+                className={`${styles.starterCard} rb-ui-lab-card`}
               >
                 <div className={styles.starterHeader}>
                   <span className={styles.starterName}>{starter.title}</span>
-                  <span className={styles.starterTarget}>Lab Workspace</span>
+                  <span className={styles.starterTarget}>Studio</span>
                 </div>
                 <p className={styles.starterGoal}>{starter.learningGoal}</p>
                 <p className={styles.starterTask}>{starter.whatToDo}</p>
@@ -564,7 +543,7 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
                     onClick={() => handleBuiltInStarter(starter)}
                     data-testid={`home-starter-${starter.id}`}
                   >
-                    Open + Start Lab
+                    Start in Studio
                   </button>
                   <button
                     type="button"
@@ -596,7 +575,7 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
               <h3 className={styles.importedStarterTitle}>Imported by Instructor</h3>
               <div className={styles.startersGrid}>
                 {importedStarterPacks.map((pack) => (
-                  <div key={pack.packId} className={styles.starterCard} data-testid={`home-imported-starter-${pack.packId}`}>
+                  <div key={pack.packId} className={`${styles.starterCard} rb-ui-lab-card`} data-testid={`home-imported-starter-${pack.packId}`}>
                     <div className={styles.starterHeader}>
                       <span className={styles.starterName}>{pack.starter.title}</span>
                       <span className={styles.starterTarget}>Imported</span>
@@ -610,7 +589,7 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
                         onClick={() => handleImportedStarter(pack)}
                         data-testid={`home-imported-starter-open-${pack.packId}`}
                       >
-                        Open + Start Lab
+                        Start in Studio
                       </button>
                       <button
                         type="button"
@@ -638,10 +617,10 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
           ) : null}
         </div>
 
-        <div className={styles.recentProjectsSection} data-testid="home-recent-projects">
+        <div className={`${styles.recentProjectsSection} rb-ui-lab-panel-frame`} data-testid="home-recent-projects">
           <div className={styles.recentProjectsHeaderRow}>
             <h2 className={styles.recentProjectsTitle}>Recent Projects</h2>
-            <span className={styles.recentProjectsHint}>Restore autosaved work or clear stale entries.</span>
+            <span className={styles.recentProjectsHint}>Resume autosaved work or clear stale entries.</span>
           </div>
           {recentProjects.length === 0 ? (
             <div className={styles.recentProjectsEmpty} data-testid="home-recent-projects-empty">
@@ -655,13 +634,13 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
                 return (
                   <div
                     key={project.projectId}
-                    className={styles.recentProjectRow}
+                    className={`${styles.recentProjectRow} rb-ui-lab-card`}
                     data-testid={`home-recent-project-${projectTestId}`}
                   >
                     <div className={styles.recentProjectMeta}>
                       <span className={styles.recentProjectName}>{project.name}</span>
                       <span className={styles.recentProjectDetail}>
-                        {project.appHint === 'ece-lab' ? 'ECE Lab' : 'Logic Playground'}
+                        Studio
                         {project.hasUnsaved ? ' · Unsaved work available' : ' · Ready'}
                       </span>
                       {submissionSummary ? (
@@ -680,7 +659,7 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
                         onClick={() => handleOpenRecentProject(project)}
                         data-testid={`home-recent-project-open-${projectTestId}`}
                       >
-                        {project.hasUnsaved ? 'Restore' : 'Open'}
+                        Resume
                       </button>
                       <button
                         type="button"
@@ -698,45 +677,46 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
           )}
         </div>
 
-        {/* Mission cards */}
-        <div className={styles.grid}>
-          {visibleMissions.map((mission) => (
-            <button
-              key={mission.id}
-              type="button"
-              className={mission.primary ? styles.cardPrimary : styles.card}
-              onClick={() => handleMission(mission)}
-              data-testid={`home-mission-${mission.id}`}
-            >
-              <div className={styles.cardIcon}>
-                <Icon name={mission.iconName} size={18} />
-              </div>
-              <div className={styles.cardTitle}>{mission.title}</div>
-              <p className={styles.cardBody}>{mission.description}</p>
-            </button>
-          ))}
-        </div>
-
-        {/* Recent activity */}
-        {recent.length > 0 && (
-          <div className={styles.recentSection}>
-            <h2 className={styles.recentTitle}>Recent</h2>
-            <div className={styles.recentList}>
-              {recent.map((entry, i) => (
-                <button
-                  key={`${entry.appId}-${i}`}
-                  type="button"
-                  className={styles.recentItem}
-                  onClick={() => handleRecent(entry)}
-                >
-                  <Icon name={entry.iconId} size={14} />
-                  <span className={styles.recentItemName}>{entry.label}</span>
-                  <span className={styles.recentItemMeta}>{timeAgo(entry.ts)}</span>
-                </button>
-              ))}
+        <div className={styles.grid} data-testid="studio-dashboard-actions">
+          <button
+            type="button"
+            className={`${styles.cardPrimary} rb-ui-lab-card`}
+            onClick={() => onOpenApp?.('lab-workspace')}
+            data-testid="studio-dashboard-new-project"
+          >
+            <div className={styles.cardIcon}>
+              <Icon name="cpu" size={18} />
             </div>
-          </div>
-        )}
+            <div className={styles.cardTitle}>New Project</div>
+            <p className={styles.cardBody}>Open Studio and start in Design.</p>
+          </button>
+          <button
+            type="button"
+            className={`${styles.card} rb-ui-lab-card`}
+            onClick={() => {
+              void handleImportInstructorPack();
+            }}
+            data-testid="studio-dashboard-import-pack"
+          >
+            <div className={styles.cardIcon}>
+              <Icon name="archive" size={18} />
+            </div>
+            <div className={styles.cardTitle}>Import Pack</div>
+            <p className={styles.cardBody}>Import starter pack templates for this class.</p>
+          </button>
+          <button
+            type="button"
+            className={`${styles.card} rb-ui-lab-card`}
+            onClick={() => onOpenApp?.('files')}
+            data-testid="studio-dashboard-import-project"
+          >
+            <div className={styles.cardIcon}>
+              <Icon name="files" size={18} />
+            </div>
+            <div className={styles.cardTitle}>Import Project</div>
+            <p className={styles.cardBody}>Open Files to import an existing project into Studio.</p>
+          </button>
+        </div>
 
         <div className={styles.footer}>
           RedByte OS Genesis · {import.meta.env.MODE}
@@ -801,7 +781,7 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
                 onClick={handleOpenStarterFromInstructions}
                 data-testid="home-starter-instructions-open"
               >
-                Open + Start Lab
+                Start in Studio
               </button>
             </div>
           </div>
@@ -814,7 +794,7 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
 export const HomeApp: RedByteApp = {
   manifest: {
     id: 'home',
-    name: 'Home',
+    name: 'Studio Dashboard',
     iconId: 'neon-wave',
     category: 'system',
     singleton: true,

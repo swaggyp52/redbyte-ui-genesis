@@ -2,23 +2,21 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   color: var(--rb-ui-lab-text);
   font-family: var(--rb-font-sans, Inter, sans-serif);
-  background:
-    radial-gradient(1100px circle at 12% -18%, color-mix(in srgb, var(--rb-ui-lab-accent) 16%, transparent), transparent 44%),
-    radial-gradient(1200px circle at 92% -20%, color-mix(in srgb, var(--rb-ui-lab-info) 14%, transparent), transparent 48%),
-    var(--rb-ui-lab-bg);
+  background: transparent;
 }
 
 .header {
   position: sticky;
   top: 0;
-  z-index: 6;
+  z-index: 9;
   display: grid;
   grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.4fr) minmax(260px, 1fr);
   align-items: center;
   gap: 12px;
-  padding: 12px;
+  padding: var(--rb-ui-lab-gutter);
   border-bottom: 1px solid var(--rb-ui-lab-border);
   background: color-mix(in srgb, var(--rb-ui-lab-bg-surface) 92%, transparent);
   -webkit-backdrop-filter: blur(12px);
@@ -185,7 +183,7 @@
   min-width: 0;
   overflow: auto;
   height: 100%;
-  padding: 12px;
+  padding: var(--rb-ui-lab-gutter);
 }
 
 .panelFade {
@@ -198,6 +196,275 @@
   background: var(--rb-ui-lab-bg-surface);
   box-shadow: var(--rb-ui-lab-shadow);
   overflow: hidden;
+}
+
+.stageLegend {
+  border-bottom: 1px solid var(--rb-ui-lab-border);
+  background: color-mix(in srgb, var(--rb-ui-lab-bg-elevated) 92%, transparent);
+  padding: 8px;
+}
+
+.comparePanel {
+  margin-top: 8px;
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 10px;
+  background: var(--rb-ui-lab-bg-surface);
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.compareHeader {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--rb-ui-lab-text);
+}
+
+.compareVerdict {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid var(--rb-ui-lab-border);
+}
+
+.compareMatch {
+  color: var(--rb-ui-lab-success);
+  border-color: var(--rb-ui-lab-success);
+}
+
+.compareMismatch {
+  color: var(--rb-ui-lab-danger);
+  border-color: var(--rb-ui-lab-danger);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--rb-ui-lab-danger) 22%, transparent);
+}
+
+.comparePending {
+  color: var(--rb-ui-lab-warning);
+  border-color: var(--rb-ui-lab-warning);
+}
+
+.compareBody {
+  font-size: 11px;
+  color: var(--rb-ui-lab-text-muted);
+}
+
+.compareList {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 11px;
+  color: var(--rb-ui-lab-text);
+  display: grid;
+  gap: 4px;
+  border-left: 2px solid var(--rb-accent-sim);
+}
+
+.compareActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.compareActionButton {
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 8px;
+  background: var(--rb-ui-lab-bg-elevated);
+  color: var(--rb-ui-lab-text);
+  padding: 5px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.compareActionButton:hover {
+  border-color: var(--rb-accent-sim);
+}
+
+.compareWhy {
+  font-size: 11px;
+  color: var(--rb-ui-lab-text-muted);
+}
+
+.submitPanel {
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.verifyPanel {
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 10px;
+  background: var(--rb-ui-lab-bg-surface);
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+  box-shadow: var(--rb-ui-lab-shadow-soft);
+}
+
+.verifyVerdictCard {
+  border: 1px solid var(--rb-ui-lab-border);
+  border-left: 3px solid var(--rb-ui-lab-danger);
+  border-radius: 8px;
+  background: var(--rb-ui-lab-bg-elevated);
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.verifyVerdictReady {
+  border-left-color: var(--rb-ui-lab-success);
+}
+
+.verifyVerdictNotReady {
+  border-left-color: var(--rb-ui-lab-danger);
+}
+
+.verifyTitle {
+  font-weight: 700;
+  color: var(--rb-ui-lab-text);
+}
+
+.verifyMuted {
+  color: var(--rb-ui-lab-text-muted);
+  font-size: 12px;
+}
+
+.verifyActions {
+  margin-top: 6px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.verifyButton {
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 8px;
+  background: var(--rb-ui-lab-bg-surface);
+  color: var(--rb-ui-lab-text);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 4px 8px;
+  font-weight: 700;
+}
+
+.verifyButton:hover {
+  border-color: var(--rb-ui-lab-accent);
+}
+
+.verifyIssues {
+  display: grid;
+  gap: 8px;
+}
+
+.verifyIssueCard {
+  border: 1px solid var(--rb-ui-lab-border);
+  border-left: 3px solid var(--rb-ui-lab-warning);
+  border-radius: 8px;
+  background: var(--rb-ui-lab-bg-elevated);
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.verifyIssueBlock {
+  border-left-color: var(--rb-ui-lab-danger);
+}
+
+.verifyWarningSection {
+  font-size: 12px;
+}
+
+.verifyWarningSummary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--rb-ui-lab-text);
+}
+
+.verifyList {
+  margin: 8px 0 0 16px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.verifyEvidenceList {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 4px;
+}
+
+.submitMeta {
+  font-size: 12px;
+  color: var(--rb-ui-lab-text-muted);
+}
+
+.submitVerdict {
+  border: 1px solid var(--rb-ui-lab-border);
+  border-left: 3px solid var(--rb-ui-lab-warning);
+  border-radius: 8px;
+  background: var(--rb-ui-lab-bg-elevated);
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.submitVerdictReady {
+  border-left-color: var(--rb-ui-lab-success);
+}
+
+.submitVerdictWarning {
+  border-left-color: var(--rb-ui-lab-warning);
+}
+
+.submitVerdictBlocked {
+  border-left-color: var(--rb-ui-lab-danger);
+}
+
+.packageSummary {
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 8px;
+  background: var(--rb-ui-lab-bg-elevated);
+  padding: 8px 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.proofChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.proofChip {
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--rb-ui-lab-text);
+  background: var(--rb-ui-lab-bg-surface);
+}
+
+.proofChipPass {
+  border-color: var(--rb-ui-lab-success);
+  color: var(--rb-ui-lab-success);
+}
+
+.proofChipWarn {
+  border-color: var(--rb-ui-lab-warning);
+  color: var(--rb-ui-lab-warning);
+}
+
+.proofChipFail {
+  border-color: var(--rb-ui-lab-danger);
+  color: var(--rb-ui-lab-danger);
 }
 
 .emptyState {

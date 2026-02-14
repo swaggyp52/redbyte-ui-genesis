@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockGenerateProjectSubmissionBundle = vi.fn();
 const mockDownloadSubmissionBundle = vi.fn();
 const mockPersistSubmissionBundleStatus = vi.fn();
+const mockAnalyzeIntelligence = vi.fn();
 
 vi.mock('../components/HdlEditorPanel', () => ({
   HdlEditorPanel: () => <div data-testid="hdl-editor-panel-mock">HDL Editor</div>,
@@ -18,6 +19,27 @@ vi.mock('../export/submissionBundleWorkflow', () => ({
   generateProjectSubmissionBundle: (...args: unknown[]) => mockGenerateProjectSubmissionBundle(...args),
   downloadSubmissionBundle: (...args: unknown[]) => mockDownloadSubmissionBundle(...args),
   persistSubmissionBundleStatus: (...args: unknown[]) => mockPersistSubmissionBundleStatus(...args),
+}));
+
+vi.mock('../export/submissionBundle', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../export/submissionBundle')>();
+  return {
+    ...actual,
+    decodeSubmissionBundleStatus: (raw: string | null | undefined) => {
+      if (!raw || typeof raw !== 'string') return null;
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return null;
+      }
+    },
+    SUBMISSION_BUNDLE_EVENT: 'rb:submission-bundle-generated',
+    SUBMISSION_BUNDLE_STATUS_STORAGE_KEY: 'rb:submission-bundle:last',
+  };
+});
+
+vi.mock('../intelligence/client', () => ({
+  analyze: (...args: unknown[]) => mockAnalyzeIntelligence(...args),
 }));
 
 const { LabWorkspaceApp } = await import('../apps/LabWorkspaceApp');
@@ -57,6 +79,25 @@ describe('LabWorkspaceApp', () => {
         ok: true,
       },
     });
+
+    mockAnalyzeIntelligence.mockResolvedValue({
+      summary: 'Run simulation and capture one waveform first.\nWhy it matters: this validates deterministic behavior.',
+      actions: [
+        {
+          label: 'Configure probes',
+          title: 'Configure probes',
+          why: 'Signal capture is required for grounded evidence.',
+          fixIntent: 'simulate.configureProbes',
+          severity: 'warning',
+          intent: 'open-stage',
+          targetStage: 'simulate',
+          targetTestId: 'lab-workspace-anchor-simulate-probes',
+        },
+      ],
+      confidence: 0.88,
+      citations: ['curriculum:lab-1#simulate'],
+      debug: { source: 'lab-1' },
+    });
   });
 
   it('renders reusable build/sim/hardware/submit surfaces in workspace tabs', async () => {
@@ -79,13 +120,23 @@ describe('LabWorkspaceApp', () => {
     expect(screen.getByText(/Lab 1 - Basic Gate Operation/i)).toBeTruthy();
     expect(screen.getByTestId('lab-workspace-header')).toBeTruthy();
     expect(screen.getByTestId('lab-workspace-stepper')).toBeTruthy();
-    expect(screen.getByTestId('lab-workspace-stage-pill').textContent ?? '').toMatch(/Build/i);
+    expect(screen.getByTestId('lab-workspace-stage-pill').textContent ?? '').toMatch(/Design/i);
     expect(screen.getByTestId('lab-workspace-panel-build')).toBeTruthy();
     expect(screen.getByTestId('hdl-editor-panel-mock')).toBeTruthy();
     expect(screen.getByTestId('workspace-right-sidebar')).toBeTruthy();
     expect(screen.getByTestId('workspace-status-pills')).toBeTruthy();
     expect(screen.getByTestId('workspace-right-sidebar-checklist')).toBeTruthy();
     expect(screen.getByTestId('workspace-next-step')).toBeTruthy();
+    expect(screen.getByTestId('workspace-edu-callouts')).toBeTruthy();
+    expect(screen.getByTestId('workspace-expected-behavior')).toBeTruthy();
+    expect(screen.getByTestId('workspace-intelligence')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('workspace-intelligence-ask'));
+    await waitFor(() => {
+      expect(screen.getByTestId('workspace-intelligence-summary')).toBeTruthy();
+    });
+    expect(mockAnalyzeIntelligence).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByTestId('workspace-intelligence-warning-action-0'));
+    expect(screen.getByTestId('lab-workspace-panel-simulate')).toBeTruthy();
     expect(screen.getByTestId('workspace-right-sidebar-next-action')).toBeTruthy();
     expect(screen.getByTestId('workspace-issues-blocking')).toBeTruthy();
     expect(screen.getByTestId('workspace-issues-warnings')).toBeTruthy();
@@ -93,6 +144,15 @@ describe('LabWorkspaceApp', () => {
 
     fireEvent.click(screen.getByTestId('lab-workspace-tab-simulate'));
     expect(screen.getByTestId('lab-workspace-panel-simulate')).toBeTruthy();
+    expect(screen.getByTestId('lab-workspace-signal-legend')).toBeTruthy();
+    expect(screen.getByTestId('compare-panel')).toBeTruthy();
+    expect(screen.getByTestId('compare-verdict').textContent ?? '').toMatch(/pending/i);
+    expect(screen.getByTestId('compare-top-mismatches')).toBeTruthy();
+    expect(screen.getByTestId('compare-first-mismatch').textContent ?? '').toMatch(/n\/a|none/i);
+    fireEvent.click(screen.getByTestId('compare-cta-capture-hardware'));
+    expect(screen.getByTestId('lab-workspace-panel-hardware')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('lab-workspace-tab-simulate'));
+    expect(screen.getByTestId('compare-cta-configure-probes')).toBeTruthy();
 
     fireEvent.click(screen.getByTestId('lab-workspace-tab-hardware'));
     expect(screen.getByTestId('lab-workspace-panel-hardware')).toBeTruthy();
@@ -103,6 +163,13 @@ describe('LabWorkspaceApp', () => {
     await waitFor(() => {
       expect(screen.getByTestId('lab-workspace-submit-verdict')).toBeTruthy();
     });
+    expect(screen.getByTestId('studio-verify-panel')).toBeTruthy();
+    expect(screen.getByTestId('studio-verify-verdict')).toBeTruthy();
+    expect(screen.getByTestId('studio-verify-blockers')).toBeTruthy();
+    expect(screen.getByTestId('studio-verify-warning')).toBeTruthy();
+    expect(screen.getByTestId('studio-verify-compare')).toBeTruthy();
+    expect(screen.getByTestId('studio-verify-evidence-summary')).toBeTruthy();
+    expect(screen.getByTestId('lab-workspace-package-summary')).toBeTruthy();
     expect(screen.getByTestId('lab-workspace-bundle-contents-preview')).toBeTruthy();
 
     await waitFor(() => {
@@ -155,6 +222,8 @@ describe('LabWorkspaceApp', () => {
       expect(mockPersistSubmissionBundleStatus).toHaveBeenCalledTimes(1);
     });
 
+    expect(screen.getByTestId('lab-workspace-package-last-bundle').textContent ?? '').toContain('rb-submission-bundle-lab-1.zip');
+
     const firstCall = mockGenerateProjectSubmissionBundle.mock.calls[0]?.[0] as {
       project: { meta?: { labId?: string; appSurface?: string } };
     };
@@ -203,8 +272,52 @@ describe('LabWorkspaceApp', () => {
 
     fireEvent.click(screen.getByTestId('lab-workspace-tab-submit'));
     await waitFor(() => {
-      expect(screen.getByTestId('lab-workspace-generate-submission-bundle').getAttribute('disabled')).not.toBeNull();
+      const submitButton = screen.getByTestId('lab-workspace-generate-submission-bundle');
+      expect(submitButton.getAttribute('disabled')).not.toBeNull();
+      expect((submitButton.textContent ?? '').toLowerCase()).toContain('not ready');
     });
+
+    mockAnalyzeIntelligence.mockResolvedValueOnce({
+      summary: 'You are blocked because submit gates found required evidence gaps.',
+      actions: [
+        {
+          label: 'Capture hardware trace',
+          title: 'Capture hardware trace',
+          why: 'Board evidence is required to clear this blocker.',
+          fixIntent: 'hardware.captureTrace',
+          severity: 'blocking',
+        },
+      ],
+      confidence: 0.91,
+      citations: ['curriculum:lab-3#submit'],
+      debug: { grounding: ['curriculum:lab-3#submit', 'gate:hardware_required'] },
+    });
+
+    expect(screen.getByTestId('workspace-intelligence-explain-issues')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('workspace-intelligence-explain-issues'));
+    await waitFor(() => {
+      expect(screen.getByTestId('workspace-intelligence-summary')).toBeTruthy();
+    });
+    expect(mockAnalyzeIntelligence).toHaveBeenCalled();
+    const callArgs = mockAnalyzeIntelligence.mock.calls[mockAnalyzeIntelligence.mock.calls.length - 1]?.[0] as {
+      stage?: string;
+      userIntent?: string;
+      gates?: Array<{ code?: string }>;
+    };
+    expect(callArgs.stage).toBe('submit');
+    expect(callArgs.userIntent).toBe('explain-issues');
+    expect(Array.isArray(callArgs.gates) && callArgs.gates.length > 0).toBe(true);
+
+    const verifyFixButton = screen.queryByTestId('studio-verify-fix-0');
+    if (verifyFixButton) {
+      fireEvent.click(verifyFixButton);
+      expect(screen.getByTestId('lab-workspace-panel-hardware')).toBeTruthy();
+      fireEvent.click(screen.getByTestId('lab-workspace-tab-submit'));
+      expect(screen.getByTestId('studio-verify-panel')).toBeTruthy();
+    }
+
+    fireEvent.click(screen.getByTestId('workspace-intelligence-action-0'));
+    expect(screen.getByTestId('lab-workspace-panel-hardware')).toBeTruthy();
 
     rerender(
       <Component

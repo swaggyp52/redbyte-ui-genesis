@@ -9,7 +9,7 @@ import {
 describe('workspace UX contract', () => {
   it('defines deterministic mode order and labels', () => {
     expect(LAB_WORKSPACE_MODES).toEqual(['build', 'simulate', 'hardware', 'submit']);
-    expect(LAB_WORKSPACE_MODE_LABELS.submit).toBe('Submit');
+    expect(LAB_WORKSPACE_MODE_LABELS.submit).toBe('Package');
     expect(LAB_WORKSPACE_MODE_HINTS.build.length).toBeGreaterThan(0);
   });
 

@@ -11,10 +11,8 @@ const systemIcons = [
     { id: 'settings', label: 'Settings', iconId: 'settings' },
 ];
 const appIcons = [
-    { id: 'home', label: 'Home', iconId: 'neon-wave' },
-    { id: 'logic-playground', label: 'Playground', iconId: 'logic' },
-    { id: 'labs', label: 'Labs', iconId: 'book' },
-    { id: 'terminal', label: 'Terminal', iconId: 'terminal' },
+    { id: 'home', label: 'Studio Dashboard', iconId: 'neon-wave' },
+    { id: 'lab-workspace', label: 'Studio', iconId: 'cpu' },
 ];
 const allIcons = [...systemIcons, ...appIcons];
 const LAUNCHER_SHORTCUT_HINT = 'Ctrl+K / Cmd+K';

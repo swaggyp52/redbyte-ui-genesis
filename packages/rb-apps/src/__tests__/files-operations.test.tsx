@@ -22,7 +22,7 @@ describe('PHASE_W: Files operations', () => {
       folders: {
         home: {
           id: 'home',
-          name: 'Home',
+          name: 'Studio Dashboard',
           entries: [
             { id: 'desktop-link', name: 'Desktop', type: 'folder', modified: '2025-12-16 10:00' },
             { id: 'documents-link', name: 'Documents', type: 'folder', modified: '2025-12-16 10:00' },
@@ -649,7 +649,7 @@ describe('PHASE_W: Files operations', () => {
       const mainContainer = container.querySelector('[tabIndex="0"]');
 
       // Navigate to Home
-      const homeButton = screen.getAllByRole('button', { name: 'Home' }).find((el) =>
+      const homeButton = screen.getAllByRole('button', { name: 'Studio Dashboard' }).find((el) =>
         el.className.includes('w-full')
       );
       act(() => {
@@ -717,7 +717,7 @@ describe('PHASE_W: Files operations', () => {
       const mainContainer = container.querySelector('[tabIndex="0"]');
 
       // Navigate to Home
-      const homeButton = screen.getAllByRole('button', { name: 'Home' }).find((el) =>
+      const homeButton = screen.getAllByRole('button', { name: 'Studio Dashboard' }).find((el) =>
         el.className.includes('w-full')
       );
       act(() => {
@@ -783,7 +783,7 @@ describe('PHASE_W: Files operations', () => {
       const mainContainer = container.querySelector('[tabIndex="0"]');
 
       // Navigate to Home and select circuit.rblogic
-      const homeButton = screen.getAllByRole('button', { name: 'Home' }).find((el) =>
+      const homeButton = screen.getAllByRole('button', { name: 'Studio Dashboard' }).find((el) =>
         el.className.includes('w-full')
       );
       act(() => {
@@ -893,7 +893,7 @@ describe('PHASE_W: Files operations', () => {
       const mainContainer = container.querySelector('[tabIndex="0"]');
 
       // Navigate to Home and select circuit.rblogic
-      const homeButton = screen.getAllByRole('button', { name: 'Home' }).find((el) =>
+      const homeButton = screen.getAllByRole('button', { name: 'Studio Dashboard' }).find((el) =>
         el.className.includes('w-full')
       );
       act(() => {

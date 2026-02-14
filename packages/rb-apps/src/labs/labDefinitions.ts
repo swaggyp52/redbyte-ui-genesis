@@ -33,6 +33,22 @@ export interface LabDefinition {
   requiredPorts?: string[];
 }
 
+export interface LabStageTeaching {
+  concept: string;
+  commonMistake: string;
+  goodLooksLike: string;
+}
+
+export type LabStageTeachingMap = Record<LabStage, LabStageTeaching>;
+
+export interface LabExpectedBehaviorVisual {
+  kind: 'truth-table' | 'waveform' | 'opcode';
+  title: string;
+  columns: string[];
+  rows: string[][];
+  note?: string;
+}
+
 export const LAB_DEFINITIONS: LabDefinition[] = [
   {
     id: 'lab-1',
@@ -358,4 +374,156 @@ export const LAB_DEFINITIONS: LabDefinition[] = [
 
 export function getLabDefinitionById(labId: string): LabDefinition | null {
   return LAB_DEFINITIONS.find((lab) => lab.id === labId) ?? null;
+}
+
+const DEFAULT_STAGE_TEACHING: LabStageTeachingMap = {
+  build: {
+    concept: 'Translate requirements into clean HDL structure before running tools.',
+    commonMistake: 'Jumping to simulation before top module, ports, and constraints are aligned.',
+    goodLooksLike: 'Top module and ports are explicit, with constraints selected up front.',
+  },
+  simulate: {
+    concept: 'Use signal transitions to prove behavior, not just final values.',
+    commonMistake: 'Checking one happy-path vector and assuming full correctness.',
+    goodLooksLike: 'Multiple vectors are tested and expected/actual traces agree.',
+  },
+  hardware: {
+    concept: 'Confirm simulated intent survives real timing, pins, and board I/O.',
+    commonMistake: 'Treating board detection/program success as proof of functional correctness.',
+    goodLooksLike: 'Live inputs produce expected outputs and edge cases are rechecked on board.',
+  },
+  submit: {
+    concept: 'A strong submission is reproducible evidence, not just a passing run.',
+    commonMistake: 'Submitting before capturing required traces and context artifacts.',
+    goodLooksLike: 'Bundle includes required evidence and clearly explains expected behavior.',
+  },
+};
+
+const LAB_STAGE_TEACHING_BY_ID: Record<string, Partial<LabStageTeachingMap>> = {
+  'lab-1': {
+    build: {
+      concept: 'Combinational gates map input levels directly to output levels.',
+      commonMistake: 'Output net is attached to the wrong gate or wire branch.',
+      goodLooksLike: 'Each gate output path is explicit and easy to trace from input to LED.',
+    },
+  },
+  'lab-2': {
+    simulate: {
+      concept: 'Carry propagation determines whether multi-bit addition is truly correct.',
+      commonMistake: 'Only checking sum bits while ignoring carry chain behavior.',
+      goodLooksLike: 'Cin, intermediate carries, Sum[3:0], and Cout all transition as expected.',
+    },
+  },
+  'lab-3': {
+    hardware: {
+      concept: 'Seven-seg decoding must match active-low common-anode electrical behavior.',
+      commonMistake: 'Using active-high truth table values directly on active-low hardware outputs.',
+      goodLooksLike: 'Displayed digits match truth table and inversion is handled correctly.',
+    },
+  },
+  'lab-4': {
+    build: {
+      concept: 'Opcode decode is control logic that selects one of several datapaths.',
+      commonMistake: 'Overlapping opcode conditions route to unexpected operations.',
+      goodLooksLike: 'Opcode selection is deterministic and each operation path is isolated.',
+    },
+  },
+  'lab-5': {
+    simulate: {
+      concept: 'Subtraction in two\'s complement is add with inversion plus carry-in.',
+      commonMistake: 'Forgetting the +1 carry-in when mode is subtract.',
+      goodLooksLike: 'Add and subtract modes both match signed arithmetic expectations.',
+    },
+  },
+  'lab-6': {
+    simulate: {
+      concept: 'Sequential logic correctness is about behavior at edges and between edges.',
+      commonMistake: 'Reading output changes between edges as failures instead of hold behavior.',
+      goodLooksLike: 'State updates only at intended edges and holds stable otherwise.',
+    },
+  },
+  'lab-7': {
+    hardware: {
+      concept: 'Synchronous counters must honor enable/reset precedence under real clocks.',
+      commonMistake: 'Testing only free-run count and not validating control priority.',
+      goodLooksLike: 'Count sequence and control overrides are both demonstrated on board.',
+    },
+  },
+  'lab-8': {
+    submit: {
+      concept: 'FSM confidence comes from proving both valid and invalid transition paths.',
+      commonMistake: 'Showing only unlock path and omitting invalid sequence recovery.',
+      goodLooksLike: 'Evidence includes valid path, invalid path, and recovery behavior.',
+    },
+  },
+};
+
+const LAB_EXPECTED_BEHAVIOR_BY_ID: Record<string, LabExpectedBehaviorVisual> = {
+  'lab-1': {
+    kind: 'truth-table',
+    title: 'Gate preview',
+    columns: ['A', 'B', 'Y'],
+    rows: [['0', '0', '0'], ['0', '1', '0'], ['1', '0', '0'], ['1', '1', '1']],
+    note: 'Adjust Y logic to match your assigned gate behavior.',
+  },
+  'lab-2': {
+    kind: 'truth-table',
+    title: 'Adder carry check',
+    columns: ['A', 'B', 'Cin', 'Sum', 'Cout'],
+    rows: [['0011', '0001', '0', '0100', '0'], ['1111', '0001', '0', '0000', '1']],
+  },
+  'lab-3': {
+    kind: 'truth-table',
+    title: '7-seg snippet',
+    columns: ['Hex', 'seg[6:0]'],
+    rows: [['0', '1000000'], ['1', '1111001'], ['2', '0100100']],
+    note: 'Common-anode outputs are active-low.',
+  },
+  'lab-4': {
+    kind: 'opcode',
+    title: 'Opcode mini-table',
+    columns: ['OP', 'Fn', 'Example'],
+    rows: [['00', 'ADD', '0011 + 0001 = 0100'], ['01', 'SUB', '0011 - 0001 = 0010'], ['10', 'AND', '1010 & 1100 = 1000']],
+  },
+  'lab-5': {
+    kind: 'truth-table',
+    title: 'Add/Sub mode preview',
+    columns: ['M', 'A', 'B', 'Result'],
+    rows: [['0', '0101', '0011', '1000'], ['1', '0101', '0011', '0010']],
+  },
+  'lab-6': {
+    kind: 'waveform',
+    title: 'Edge behavior',
+    columns: ['clk', 'D', 'Q'],
+    rows: [['↑', '1', '1'], ['-', '0', '1'], ['↑', '0', '0']],
+    note: 'Q changes on active edge only.',
+  },
+  'lab-7': {
+    kind: 'waveform',
+    title: 'Counter sequence',
+    columns: ['tick', 'en', 'Q[2:0]'],
+    rows: [['0', '1', '000'], ['1', '1', '001'], ['2', '1', '010']],
+  },
+  'lab-8': {
+    kind: 'waveform',
+    title: 'FSM lock path',
+    columns: ['state', 'input', 'next'],
+    rows: [['LOCKED', 'code[0]', 'S1'], ['S1', 'code[1]', 'S2'], ['S2', 'wrong', 'LOCKED']],
+  },
+  freeplay: {
+    kind: 'truth-table',
+    title: 'Expected behavior template',
+    columns: ['Input', 'Expected', 'Observed'],
+    rows: [['case-1', '...', '...'], ['case-2', '...', '...']],
+    note: 'Define your own expected/actual checks before submission.',
+  },
+};
+
+export function getLabStageTeaching(labId: string, stage: LabStage): LabStageTeaching {
+  const overrides = LAB_STAGE_TEACHING_BY_ID[labId]?.[stage];
+  return overrides ?? DEFAULT_STAGE_TEACHING[stage];
+}
+
+export function getLabExpectedBehaviorVisual(labId: string): LabExpectedBehaviorVisual {
+  return LAB_EXPECTED_BEHAVIOR_BY_ID[labId] ?? LAB_EXPECTED_BEHAVIOR_BY_ID.freeplay;
 }

@@ -324,7 +324,7 @@ describe("ToolchainSetupApp", () => {
     expect(screen.getByTestId("toolchain-setup-export-diagnostics-button")).toBeInTheDocument();
   });
 
-  it("is discoverable in launcher navigation when registered", async () => {
+  it("is not promoted in curated launcher navigation", async () => {
     const { registerApp } = await import("../AppRegistry");
     const { getAppsForLauncher } = await import("../launcherData");
 
@@ -332,7 +332,7 @@ describe("ToolchainSetupApp", () => {
 
     const apps = await getAppsForLauncher();
     const ids = apps.map((entry) => entry.id);
-    expect(ids).toContain("toolchain-setup");
+    expect(ids).not.toContain("toolchain-setup");
   });
 
   it("filters tool rows by source and needs-action state", async () => {

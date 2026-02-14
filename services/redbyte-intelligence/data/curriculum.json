@@ -1,0 +1,92 @@
+{
+  "freeplay": {
+    "title": "Freeplay",
+    "stages": {
+      "build": {
+        "nextStep": "Confirm top module and board profile, then run one clean synth pass.",
+        "why": "A correct top module and profile prevent false downstream failures.",
+        "mistakes": [
+          "Top module name does not match expected entry module.",
+          "Board profile is left on the default from a different lab.",
+          "Build warnings are ignored before simulation."
+        ],
+        "action": { "label": "Open build setup", "targetStage": "build", "targetTestId": "lab-workspace-anchor-build-top-module" }
+      },
+      "simulate": {
+        "nextStep": "Run simulation and capture one waveform/probe artifact before moving on.",
+        "why": "Simulation gives deterministic evidence before hardware variability enters.",
+        "mistakes": [
+          "Skipping probes and only checking compile output.",
+          "Not capturing at least one expected signal transition.",
+          "Moving to hardware without sim evidence."
+        ],
+        "action": { "label": "Run simulation now", "targetStage": "simulate", "targetTestId": "lab-workspace-anchor-simulate-run" }
+      },
+      "hardware": {
+        "nextStep": "Detect board and capture one observable run if hardware is required.",
+        "why": "Hardware evidence validates the full deployment path.",
+        "mistakes": [
+          "Assuming board detection succeeded without checking status.",
+          "Programming without confirming probe/capture setup.",
+          "Skipping hardware notes for submission evidence."
+        ],
+        "action": { "label": "Open hardware capture", "targetStage": "hardware", "targetTestId": "lab-workspace-anchor-hardware-board-detect" }
+      },
+      "submit": {
+        "nextStep": "Review gate status and generate the bundle only when blockers are clear.",
+        "why": "Submission gates prevent avoidable grading and reproducibility failures.",
+        "mistakes": [
+          "Submitting while blockers are still present.",
+          "Missing required evidence files.",
+          "Ignoring warnings that affect reproducibility."
+        ],
+        "action": { "label": "Review submit gates", "targetStage": "submit", "targetTestId": "lab-workspace-anchor-submit-generate" }
+      }
+    }
+  },
+  "lab-1": {
+    "title": "Basic Gate Operation",
+    "stages": {
+      "build": {
+        "nextStep": "Confirm your gate module ports align with the lab starter and rebuild.",
+        "why": "Port alignment errors cause cascading simulation mismatches.",
+        "mistakes": [
+          "Input/output direction or widths are mismatched.",
+          "Top module is not set to the lab target.",
+          "Rebuild step skipped after HDL edits."
+        ],
+        "action": { "label": "Open top module setup", "targetStage": "build", "targetTestId": "hdl-top-input" }
+      },
+      "simulate": {
+        "nextStep": "Run the starter vectors and verify each expected output transition.",
+        "why": "Vector-level checks prove combinational correctness before hardware.",
+        "mistakes": [
+          "Only checking one input combination.",
+          "Misreading active-high vs active-low behavior.",
+          "Not comparing expected and observed outputs."
+        ],
+        "action": { "label": "Configure probes", "targetStage": "simulate", "targetTestId": "lab-workspace-anchor-simulate-probes" }
+      },
+      "hardware": {
+        "nextStep": "Program the board and confirm at least one matching I/O observation.",
+        "why": "Hardware confirmation validates wiring and timing assumptions.",
+        "mistakes": [
+          "Bitstream programmed for the wrong top module.",
+          "Switch/button polarity interpreted incorrectly.",
+          "No captured hardware observation in notes."
+        ],
+        "action": { "label": "Program board", "targetStage": "hardware", "targetTestId": "lab-workspace-anchor-hardware-program-bitstream" }
+      },
+      "submit": {
+        "nextStep": "Clear blockers and generate a submission bundle with evidence attached.",
+        "why": "Complete evidence accelerates TA verification and reduces rework.",
+        "mistakes": [
+          "Submitting with missing waveform or gate evidence.",
+          "Ignoring a block-level gate message.",
+          "Exporting before final preflight check."
+        ],
+        "action": { "label": "Generate bundle", "targetStage": "submit", "targetTestId": "lab-workspace-generate-submission-bundle" }
+      }
+    }
+  }
+}

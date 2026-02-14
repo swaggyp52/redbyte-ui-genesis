@@ -1,26 +1,22 @@
 .container {
   height: 100%;
-  padding: 18px;
+  padding: var(--rb-ui-lab-gutter);
   overflow: auto;
   color: var(--rb-ui-lab-text);
-  background:
-    radial-gradient(90rem circle at 8% -15%, color-mix(in srgb, var(--rb-ui-lab-accent) 18%, transparent), transparent 46%),
-    radial-gradient(80rem circle at 92% -10%, color-mix(in srgb, var(--rb-ui-lab-info) 18%, transparent), transparent 50%),
-    var(--rb-ui-lab-bg);
+  background: transparent;
   font-family: var(--rb-font-sans);
 }
 
 .inner {
-  max-width: 1320px;
+  max-width: var(--rb-ui-lab-page-max-width);
   margin: 0 auto;
   display: grid;
   gap: 14px;
   grid-template-columns: minmax(520px, 2fr) minmax(320px, 1fr);
   grid-template-areas:
     'brand brand'
-    'quick quick'
-    'starters missions'
-    'projects recent'
+    'starters projects'
+    'actions projects'
     'footer footer';
 }
 
@@ -320,7 +316,7 @@
 }
 
 .grid {
-  grid-area: missions;
+  grid-area: actions;
   display: grid;
   gap: 8px;
   align-content: start;

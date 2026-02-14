@@ -32,9 +32,9 @@ const TaskbarIcon: React.FC<TaskbarIconProps> = ({ id, iconId, label, onClick })
 );
 
 const PINNED_APPS: Array<{ id: string; label: string; iconId: IconName }> = [
-    { id: 'home', label: 'Home', iconId: 'neon-wave' },
-    { id: 'logic-playground', label: 'Playground', iconId: 'logic' },
-    { id: 'labs', label: 'Labs', iconId: 'book' },
+    { id: 'home', label: 'Studio Dashboard', iconId: 'neon-wave' },
+    { id: 'lab-workspace', label: 'Studio', iconId: 'cpu' },
+    { id: 'files', label: 'Files', iconId: 'files' },
     { id: 'settings', label: 'Settings', iconId: 'settings' },
 ];
 
@@ -45,6 +45,8 @@ export const Taskbar: React.FC<{ onOpenApp: (id: string) => void }> = ({ onOpenA
                 <button
                     onClick={() => onOpenApp('launcher')}
                     className="rb-taskbar-launcher w-10 h-10 flex items-center justify-center rounded-lg transition-colors"
+                    title="Launcher"
+                    aria-label="Launcher"
                 >
                     <Icon name="search" size={18} className="rb-taskbar-launcher__icon" />
                 </button>

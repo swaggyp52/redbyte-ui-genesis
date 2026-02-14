@@ -905,8 +905,8 @@ export const ToolchainSetupComponent: React.FC<{
   }, [taInput]);
 
   return (
-    <div className={styles.page} data-testid="toolchain-setup-page">
-      <div className={styles.header}>
+    <div className={`${styles.page} rb-ui-lab-page rb-ui-lab-page-scroll`} data-testid="toolchain-setup-page">
+      <div className={`${styles.header} rb-ui-lab-chrome-header`}>
         <div>
           <h2 className={styles.title}>Toolchain Setup</h2>
           <p className={styles.subtitle}>Basys3 path: Vivado (implement) + Yosys (synth) + openFPGALoader (program).</p>

@@ -11,7 +11,7 @@ import { getFileActionTargets, isFileActionEligible, } from './files/fileActionT
 import { resolveDefaultTarget } from '../stores/fileAssociationsStore';
 import { useFileSystemStore } from '../stores/fileSystemStore';
 const SIDEBAR_ROOTS = [
-    { id: 'home', name: 'Home' },
+    { id: 'home', name: 'Studio Dashboard' },
     { id: 'desktop', name: 'Desktop' },
     { id: 'documents', name: 'Documents' },
 ];

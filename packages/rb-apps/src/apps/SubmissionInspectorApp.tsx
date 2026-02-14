@@ -318,7 +318,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
 
   if (isLockdownRestricted) {
     return (
-      <div className={styles.container} data-testid="submission-inspector-lockdown">
+      <div className={`${styles.container} rb-ui-lab-page`} data-testid="submission-inspector-lockdown">
         <div className={styles.panel}>
           <h1 className={styles.title}>Submission Inspector Locked</h1>
           <p className={styles.description}>
@@ -760,7 +760,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
 
   if (!bundle) {
     return (
-      <div className={styles.container}>
+      <div className={`${styles.container} rb-ui-lab-page`}>
         <div className={styles.header}>
           <h1 className={styles.title}>Submission Inspector</h1>
           <p className={styles.subtitle}>Open a submission bundle (.rb-lab.zip or rb-submission-*.zip)</p>
@@ -813,7 +813,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
   }
 
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container} rb-ui-lab-page`}>
       <div className={styles.header}>
         <h1 className={styles.title}>Submission Inspector</h1>
         <div style={{ display: 'flex', gap: '0.5rem' }}>

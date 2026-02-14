@@ -4,17 +4,17 @@ export const LAB_WORKSPACE_MODES = ['build', 'simulate', 'hardware', 'submit'] a
 export type LabWorkspaceMode = (typeof LAB_WORKSPACE_MODES)[number];
 
 export const LAB_WORKSPACE_MODE_LABELS: Record<LabWorkspaceMode, string> = {
-  build: 'Build',
+  build: 'Design',
   simulate: 'Simulate',
   hardware: 'Hardware',
-  submit: 'Submit',
+  submit: 'Package',
 };
 
 export const LAB_WORKSPACE_MODE_HINTS: Record<LabWorkspaceMode, string> = {
-  build: 'Edit HDL and configure top module + constraints.',
-  simulate: 'Run Yosys synthesis and inspect logs/artifacts.',
-  hardware: 'Detect Basys3 and program bitstream when ready.',
-  submit: 'Generate deterministic submission bundle for grading.',
+  build: 'Design HDL and configure top module + constraints.',
+  simulate: 'Compare simulation outputs and inspect traces.',
+  hardware: 'Capture Basys3 behavior and program bitstream when ready.',
+  submit: 'Package deterministic submission evidence for grading.',
 };
 
 export function getWorkspaceModeIndex(mode: LabWorkspaceMode | string): number {

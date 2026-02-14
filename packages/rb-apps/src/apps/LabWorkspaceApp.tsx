@@ -6,13 +6,25 @@ import { getToolchainBackend, type ToolchainProjectInput } from '../fpga/toolcha
 import type { RBFpgaConfig } from '../export/projectFormat';
 import { createRBProject } from '../export/projectFormat';
 import {
+  decodeSubmissionBundleStatus,
+  SUBMISSION_BUNDLE_EVENT,
+  SUBMISSION_BUNDLE_STATUS_STORAGE_KEY,
+  type SubmissionBundleManifest,
+  type SubmissionBundleStatusSnapshot,
+} from '../export/submissionBundle';
+import {
   downloadSubmissionBundle,
   generateProjectSubmissionBundle,
   persistSubmissionBundleStatus,
 } from '../export/submissionBundleWorkflow';
 import type { VerificationStatus } from '../recording/runRecord';
 import type { LabStarterInstructions } from '../starterKits/labStarterKits';
-import { LAB_DEFINITIONS, type LabDefinition } from '../labs/labDefinitions';
+import {
+  LAB_DEFINITIONS,
+  getLabExpectedBehaviorVisual,
+  getLabStageTeaching,
+  type LabDefinition,
+} from '../labs/labDefinitions';
 import {
   type SubmissionGateResult,
   validateSubmissionForLab,
@@ -29,6 +41,8 @@ import { WorkspaceRightSidebar } from '../components/WorkspaceRightSidebar';
 import { getRedByteUiMode } from '../utils/uiMode';
 import { StatusPill, type StatusPillTone } from '../components/StatusPill';
 import { EmptyStateCard } from '../components/EmptyStateCard';
+import { SignalLegend } from '../components/SignalLegend';
+import { analyze as analyzeIntelligence, type IntelligenceAction, type IntelligenceAnalyzePayload, type IntelligenceAnalyzeResult } from '../intelligence/client';
 import { NEO_LABELS, NEO_STATUS } from '../ui/neoGlossary';
 import { NEO_MODE_ICONS } from '../ui/neoIcons';
 import styles from './LabWorkspaceApp.module.css';
@@ -50,14 +64,49 @@ interface LabWorkspaceProps {
   starterInstructions?: LabStarterInstructions;
 }
 
+const STUDIO_LAST_STAGE_KEY = 'rb:studio:last-stage:v1';
+
+type CompareMismatch = {
+  signal: string;
+  reason: string;
+  firstTick?: number;
+};
+
 function resolveLabDefinition(starterInstructions?: LabStarterInstructions): LabDefinition | null {
   const requestedLabId = starterInstructions?.labId?.trim();
   if (!requestedLabId) return null;
   return LAB_DEFINITIONS.find((lab) => lab.id === requestedLabId) ?? null;
 }
 
+function inferMismatchSignal(code: string): string {
+  const normalized = code.toLowerCase();
+  if (normalized.includes('clock')) return 'clk';
+  if (normalized.includes('wave') || normalized.includes('sim')) return 'sim_out';
+  if (normalized.includes('hardware') || normalized.includes('board')) return 'hw_io';
+  if (normalized.includes('opcode')) return 'opcode';
+  if (normalized.includes('port')) return 'port_map';
+  return normalized.replace(/[^a-z0-9]+/g, '_');
+}
+
+function toOneSentence(text: string): string {
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return 'Resolve this issue to continue.';
+  const firstSentence = trimmed.split(/[.!?]\s/, 1)[0] ?? trimmed;
+  return firstSentence.endsWith('.') ? firstSentence : `${firstSentence}.`;
+}
+
 const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, starterInstructions }) => {
-  const [mode, setMode] = useState<LabWorkspaceMode>('build');
+  const [mode, setMode] = useState<LabWorkspaceMode>(() => {
+    try {
+      const stored = localStorage.getItem(STUDIO_LAST_STAGE_KEY);
+      if (stored === 'build' || stored === 'simulate' || stored === 'hardware' || stored === 'submit') {
+        return stored;
+      }
+    } catch {
+      // ignore storage constraints and fall back
+    }
+    return 'build';
+  });
   const [project, setProject] = useState<ToolchainProjectInput>({
     sources: [{ path: 'top.v', language: 'verilog', text: '' }],
     top: 'top',
@@ -66,6 +115,14 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
   const [isGeneratingSubmissionBundle, setIsGeneratingSubmissionBundle] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<string | null>(null);
   const [submitGateResult, setSubmitGateResult] = useState<SubmissionGateResult>(EMPTY_SUBMISSION_GATES);
+  const [lastBundleStatus, setLastBundleStatus] = useState<SubmissionBundleStatusSnapshot | null>(() => {
+    try {
+      return decodeSubmissionBundleStatus(localStorage.getItem(SUBMISSION_BUNDLE_STATUS_STORAGE_KEY));
+    } catch {
+      return null;
+    }
+  });
+  const [lastBundleManifest, setLastBundleManifest] = useState<SubmissionBundleManifest | null>(null);
   const [isCheckingSubmitGates, setIsCheckingSubmitGates] = useState(false);
   const [panelVisible, setPanelVisible] = useState(true);
   const isMountedRef = useRef(true);
@@ -86,6 +143,34 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
 
   const modeIndex = useMemo(() => getWorkspaceModeIndex(mode), [mode]);
 
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(STUDIO_LAST_STAGE_KEY, mode);
+    } catch {
+      // ignore storage constraints and continue
+    }
+  }, [mode]);
+
+  React.useEffect(() => {
+    const refreshBundleStatus = () => {
+      try {
+        setLastBundleStatus(decodeSubmissionBundleStatus(localStorage.getItem(SUBMISSION_BUNDLE_STATUS_STORAGE_KEY)));
+      } catch {
+        setLastBundleStatus(null);
+      }
+    };
+
+    const onSubmissionBundleGenerated = () => {
+      refreshBundleStatus();
+    };
+
+    refreshBundleStatus();
+    window.addEventListener(SUBMISSION_BUNDLE_EVENT, onSubmissionBundleGenerated as EventListener);
+    return () => {
+      window.removeEventListener(SUBMISSION_BUNDLE_EVENT, onSubmissionBundleGenerated as EventListener);
+    };
+  }, []);
+
   const contextLabId = starterInstructions?.labId ?? 'freeplay';
   const contextTitle = labDefinition?.title ?? starterInstructions?.title ?? 'Freeplay';
   const contextGoal = labDefinition?.learningGoal ?? starterInstructions?.learningGoal ?? 'Practice the full RedByte loop.';
@@ -93,6 +178,8 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
   const isTaMode = uiMode === 'ta';
   const [beginnerView, setBeginnerView] = useState<boolean>(() => !isTaMode);
   const [hardwareBoardDetected, setHardwareBoardDetected] = useState(false);
+  const [intelligenceResult, setIntelligenceResult] = useState<IntelligenceAnalyzeResult | null>(null);
+  const [isIntelligenceLoading, setIsIntelligenceLoading] = useState(false);
 
   const readinessLabel = useMemo(() => {
     if (submitGateResult.verdict === 'pass') return NEO_STATUS.READY;
@@ -140,8 +227,8 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
   }, [submitGateResult.issues, submitGateResult.verdict]);
 
   const projectName = useMemo(() => {
-    const base = labDefinition?.title ?? starterInstructions?.title ?? 'Lab Workspace Project';
-    return base.trim().length > 0 ? base : 'Lab Workspace Project';
+    const base = labDefinition?.title ?? starterInstructions?.title ?? 'Studio Project';
+    return base.trim().length > 0 ? base : 'Studio Project';
   }, [labDefinition?.title, starterInstructions?.title]);
 
   const nextStepText = useMemo(() => {
@@ -254,6 +341,160 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
       .slice(0, 2);
   }, [labDefinition, mode]);
 
+  const stageTeaching = useMemo(() => getLabStageTeaching(contextLabId, mode), [contextLabId, mode]);
+
+  const expectedBehaviorVisual = useMemo(() => getLabExpectedBehaviorVisual(contextLabId), [contextLabId]);
+
+  const comparePanel = useMemo(() => {
+    const hasSimTrace = recentRuns.simulated || recentRuns.synthesized || recentRuns.waveformCaptured;
+    const hasHardwareTrace = recentRuns.hardwareObserved || hardwareBoardDetected;
+
+    if (hasSimTrace && !hasHardwareTrace) {
+      return {
+        state: 'no-hardware' as const,
+        verdict: 'PENDING',
+        missing: ['Hardware capture trace'],
+        mismatches: [] as CompareMismatch[],
+      };
+    }
+
+    if (hasSimTrace && hasHardwareTrace) {
+      const candidateIssues = submitGateResult.issues.filter((issue) => {
+        const intent = resolveSubmissionGateFixIntent(issue);
+        return intent.stage === 'simulate' || intent.stage === 'hardware';
+      });
+      const mismatches = candidateIssues.slice(0, 3).map((issue, index) => ({
+        signal: inferMismatchSignal(issue.code),
+        reason: issue.title,
+        firstTick: index,
+      }));
+      return {
+        state: 'complete' as const,
+        verdict: mismatches.length > 0 ? 'MISMATCH' : 'MATCH',
+        missing: [] as string[],
+        mismatches,
+      };
+    }
+
+    return {
+      state: 'partial' as const,
+      verdict: 'PENDING',
+      missing: [
+        ...(hasSimTrace ? [] : ['Simulation/probe trace']),
+        ...(hasHardwareTrace ? [] : ['Hardware capture trace']),
+      ],
+      mismatches: [] as CompareMismatch[],
+    };
+  }, [hardwareBoardDetected, recentRuns.hardwareObserved, recentRuns.simulated, recentRuns.synthesized, recentRuns.waveformCaptured, submitGateResult.issues]);
+
+  const hasSimulationEvidence = useMemo(
+    () => recentRuns.waveformCaptured || recentRuns.simulated || recentRuns.synthesized,
+    [recentRuns.simulated, recentRuns.synthesized, recentRuns.waveformCaptured],
+  );
+
+  const hasHardwareEvidence = useMemo(
+    () => recentRuns.hardwareObserved || hardwareBoardDetected,
+    [hardwareBoardDetected, recentRuns.hardwareObserved],
+  );
+
+  const verifyBlockingIssues = useMemo(
+    () => submitGateResult.issues
+      .filter((issue) => issue.severity === 'block')
+      .sort((left, right) => {
+        const leftKey = `${left.code}|${left.title}`;
+        const rightKey = `${right.code}|${right.title}`;
+        return leftKey.localeCompare(rightKey);
+      })
+      .slice(0, 3),
+    [submitGateResult.issues],
+  );
+
+  const verifyWarningIssues = useMemo(
+    () => submitGateResult.issues
+      .filter((issue) => issue.severity !== 'block')
+      .sort((left, right) => {
+        const leftKey = `${left.code}|${left.title}`;
+        const rightKey = `${right.code}|${right.title}`;
+        return leftKey.localeCompare(rightKey);
+      }),
+    [submitGateResult.issues],
+  );
+
+  const requiredEvidencePresent = useMemo(() => {
+    if (!hasSimulationEvidence) return false;
+    if (labDefinition?.requireHardwareEvidence) return hasHardwareEvidence;
+    return true;
+  }, [hasHardwareEvidence, hasSimulationEvidence, labDefinition?.requireHardwareEvidence]);
+
+  const verifyReady = useMemo(
+    () => verifyBlockingIssues.length === 0 && requiredEvidencePresent,
+    [requiredEvidencePresent, verifyBlockingIssues.length],
+  );
+
+  const verifyEvidenceSummary = useMemo(() => {
+    const includedFileCount = lastBundleManifest?.includedFiles?.length ?? 0;
+    return [
+      {
+        key: 'sim',
+        label: 'Simulation evidence',
+        present: hasSimulationEvidence,
+        detail: hasSimulationEvidence ? 'Captured simulation/probe signal evidence.' : 'Missing simulation/probe evidence.',
+      },
+      {
+        key: 'hw',
+        label: 'Hardware evidence',
+        present: labDefinition?.requireHardwareEvidence ? hasHardwareEvidence : true,
+        detail: labDefinition?.requireHardwareEvidence
+          ? (hasHardwareEvidence ? 'Required hardware evidence is present.' : 'Required hardware evidence is missing.')
+          : (hasHardwareEvidence ? 'Optional hardware evidence captured.' : 'Optional for this lab.'),
+      },
+      {
+        key: 'gates',
+        label: 'Submission gates',
+        present: verifyBlockingIssues.length === 0,
+        detail: verifyBlockingIssues.length === 0
+          ? 'No blocking submission gates.'
+          : `${verifyBlockingIssues.length} blocking gate(s) remain.`,
+      },
+      {
+        key: 'manifest',
+        label: 'Packaged proof manifest',
+        present: includedFileCount > 0,
+        detail: includedFileCount > 0
+          ? `${includedFileCount} included file entries from latest package.`
+          : 'Generate package to produce manifest proof entries.',
+      },
+    ];
+  }, [hasHardwareEvidence, hasSimulationEvidence, labDefinition?.requireHardwareEvidence, lastBundleManifest?.includedFiles, verifyBlockingIssues.length]);
+
+  const verifyPrimaryAction = useMemo(() => {
+    if (verifyBlockingIssues.length > 0) {
+      return resolveSubmissionGateFixIntent(verifyBlockingIssues[0]);
+    }
+
+    if (!hasSimulationEvidence) {
+      return {
+        stage: 'simulate' as const,
+        targetTab: 'simulate' as const,
+        label: 'Fix in Simulate',
+        scrollToTestId: 'hdl-synth-button',
+        fallbackScrollToTestIds: ['lab-workspace-anchor-simulate-run'],
+      };
+    }
+
+    if (labDefinition?.requireHardwareEvidence && !hasHardwareEvidence) {
+      return {
+        stage: 'hardware' as const,
+        targetTab: 'hardware' as const,
+        label: 'Fix in Hardware',
+        scrollToTestId: 'hardware-detect-board-button',
+        fallbackScrollToTestIds: ['lab-workspace-anchor-hardware-board-detect'],
+      };
+    }
+
+    return null;
+  }, [hasHardwareEvidence, hasSimulationEvidence, labDefinition?.requireHardwareEvidence, verifyBlockingIssues]);
+
   const submitEvidenceList = useMemo(() => {
     if (!labDefinition) {
       return [
@@ -283,6 +524,12 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
   }, [recentRuns.waveformCaptured]);
 
   const isSubmissionBlocked = contextLabId !== 'freeplay' && submitGateResult.verdict === 'block';
+
+  const submitGateSummary = useMemo(() => {
+    const blocked = submitGateResult.issues.filter((issue) => issue.severity === 'block').length;
+    const warnings = submitGateResult.issues.filter((issue) => issue.severity !== 'block').length;
+    return { blocked, warnings };
+  }, [submitGateResult.issues]);
 
   const buildWorkspaceProjectSnapshot = useCallback(() => {
     const now = new Date().toISOString();
@@ -400,6 +647,135 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
     });
   }, [applyFixIntent]);
 
+  const buildAnalyzePayload = useCallback((): IntelligenceAnalyzePayload => ({
+    projectId: windowId,
+    labId: contextLabId,
+    stage: mode,
+    projectSummary: `top=${project.top}; sources=${project.sources.length}; board=${fpga.board}; readiness=${submitGateResult.verdict}`,
+    traces: {
+      sim: (recentRuns.simulated || recentRuns.synthesized || recentRuns.waveformCaptured) ? 'present' : undefined,
+      hw: (recentRuns.hardwareObserved || hardwareBoardDetected) ? 'present' : undefined,
+    },
+    gates: submitGateResult.issues.slice(0, 5).map((issue) => ({
+      code: issue.code,
+      severity: issue.severity,
+      title: issue.title,
+      message: issue.message,
+    })),
+    userIntent: 'explain-next-step',
+  }), [contextLabId, fpga.board, hardwareBoardDetected, mode, project.sources.length, project.top, recentRuns.hardwareObserved, recentRuns.simulated, recentRuns.synthesized, recentRuns.waveformCaptured, submitGateResult.issues, submitGateResult.verdict, windowId]);
+
+  const handleAskRedByte = useCallback(async () => {
+    setIsIntelligenceLoading(true);
+    try {
+      const result = await analyzeIntelligence(buildAnalyzePayload());
+      if (!isMountedRef.current) return;
+      setIntelligenceResult(result);
+    } finally {
+      if (isMountedRef.current) {
+        setIsIntelligenceLoading(false);
+      }
+    }
+  }, [buildAnalyzePayload]);
+
+  const handleExplainIssues = useCallback(async () => {
+    setIsIntelligenceLoading(true);
+    try {
+      const payload: IntelligenceAnalyzePayload = {
+        projectId: windowId,
+        labId: contextLabId,
+        stage: 'submit',
+        projectSummary: `top=${project.top}; board=${fpga.board}; simCaptured=${recentRuns.waveformCaptured ? 'yes' : 'no'}; hwCaptured=${recentRuns.hardwareObserved ? 'yes' : 'no'}; readiness=${submitGateResult.verdict}`,
+        gates: submitGateResult.issues.map((issue) => ({
+          code: issue.code,
+          severity: issue.severity,
+          title: issue.title,
+          message: issue.message,
+        })),
+        userIntent: 'explain-issues',
+      };
+      const result = await analyzeIntelligence(payload);
+      if (!isMountedRef.current) return;
+      setIntelligenceResult(result);
+    } finally {
+      if (isMountedRef.current) {
+        setIsIntelligenceLoading(false);
+      }
+    }
+  }, [contextLabId, fpga.board, project.top, recentRuns.hardwareObserved, recentRuns.waveformCaptured, submitGateResult.issues, submitGateResult.verdict, windowId]);
+
+  const mapActionToFixIntent = useCallback((action: IntelligenceAction): SubmissionGateFixIntent | null => {
+    const key = action.fixIntent?.trim().toLowerCase();
+    if (!key) return null;
+
+    if (key === 'build.opentopmodule' || key === 'hardware.configureprofile') {
+      return {
+        stage: 'build',
+        targetTab: 'build',
+        label: action.title || action.label || 'Open Build',
+        scrollToTestId: 'hdl-top-input',
+        fallbackScrollToTestIds: ['lab-workspace-anchor-build-top-module'],
+      };
+    }
+
+    if (key === 'simulate.configureprobes') {
+      return {
+        stage: 'simulate',
+        targetTab: 'simulate',
+        label: action.title || action.label || 'Open Simulate',
+        scrollToTestId: 'hdl-synth-button',
+        fallbackScrollToTestIds: ['lab-workspace-anchor-simulate-probes'],
+      };
+    }
+
+    if (key === 'hardware.capturetrace') {
+      return {
+        stage: 'hardware',
+        targetTab: 'hardware',
+        label: action.title || action.label || 'Open Hardware',
+        scrollToTestId: 'hardware-detect-board-button',
+        fallbackScrollToTestIds: ['lab-workspace-anchor-hardware-board-detect'],
+      };
+    }
+
+    return null;
+  }, []);
+
+  const handleIntelligenceAction = useCallback((action: IntelligenceAction) => {
+    const mappedIntent = mapActionToFixIntent(action);
+    if (mappedIntent) {
+      applyFixIntent(mappedIntent);
+      return;
+    }
+
+    if (action.fixIntent?.trim().toLowerCase() === 'submit.reviewgates') {
+      handleOpenTab('submit');
+      setTimeout(() => {
+        const target = document.querySelector('[data-testid="lab-workspace-anchor-submit-generate"]');
+        if (target instanceof HTMLElement) {
+          target.scrollIntoView({ block: 'center' });
+        }
+      }, 0);
+      return;
+    }
+
+    const targetStage = action.targetStage;
+    if (!targetStage) return;
+
+    if (targetStage === 'submit') {
+      handleOpenTab('submit');
+      return;
+    }
+
+    applyFixIntent({
+      stage: targetStage,
+      targetTab: targetStage,
+      label: action.label || 'Open',
+      scrollToTestId: action.targetTestId,
+      fallbackScrollToTestIds: [],
+    });
+  }, [applyFixIntent, handleOpenTab, mapActionToFixIntent]);
+
   const handleGenerateSubmissionBundle = useCallback(async () => {
     if (isGeneratingSubmissionBundle) return;
     if (isSubmissionBlocked) {
@@ -439,6 +815,8 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
 
       persistSubmissionBundleStatus(status, { project: rbProject });
       downloadSubmissionBundle(bundle);
+      setLastBundleStatus(status);
+      setLastBundleManifest(bundle.manifest);
       setSubmitStatus(
         reproducibility.ok
           ? `Submission bundle generated: ${bundle.filename}`
@@ -452,7 +830,7 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
     }
   }, [buildWorkspaceProjectSnapshot, contextLabId, fpga, isGeneratingSubmissionBundle, isSubmissionBlocked, project, recentRuns]);
 
-  const stagePrimaryAction = useMemo(() => {
+  const stagePrimaryAction = useMemo<{ label: string; onClick: () => void }>(() => {
     if (mode === 'build') {
       return {
         label: NEO_LABELS.OPEN_EDITOR,
@@ -481,8 +859,8 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
   }, [handleGenerateSubmissionBundle, handleStagePrimaryCta, hardwareBoardDetected, isSubmissionBlocked, mode]);
 
   return (
-    <div className={styles.root} data-testid="lab-workspace-root">
-      <div className={styles.header} data-testid="lab-workspace-header">
+    <div className={`${styles.root} rb-ui-lab-page`} data-testid="lab-workspace-root">
+      <div className={`${styles.header} rb-ui-lab-chrome-header`} data-testid="lab-workspace-header">
         <div className={styles.headerLeft}>
           <div className={styles.titleRow}>
             <StatusPill
@@ -493,12 +871,12 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
             <StatusPill label={contextLabId.toUpperCase()} tone="warning" />
           </div>
           <div className={styles.title}>{contextTitle}</div>
-          <div className={styles.subtitle}>STAGE {modeIndex + 1} OF {LAB_WORKSPACE_MODES.length}</div>
+          <div className={styles.subtitle}>STUDIO STEP {modeIndex + 1} OF {LAB_WORKSPACE_MODES.length}</div>
           <div className={styles.goal}>{contextGoal}</div>
         </div>
 
         <div className={styles.headerCenter}>
-          <div data-testid="lab-workspace-stepper" className={styles.stepper}>
+          <div data-testid="lab-workspace-stepper" className={`${styles.stepper} rb-ui-lab-stepper`}>
             {LAB_WORKSPACE_MODES.map((tabMode) => {
               const tabIndex = getWorkspaceModeIndex(tabMode);
               const completed = tabIndex < modeIndex;
@@ -556,15 +934,107 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
       </div>
 
       <div className={styles.stageLayout}>
-        <div data-testid="lab-workspace-main-scroll" className={styles.mainScroll}>
+        <div data-testid="lab-workspace-main-scroll" className={`${styles.mainScroll} rb-ui-lab-page-scroll`}>
           <div className={styles.panelFade} style={{ opacity: panelVisible ? 1 : 0.9, transform: panelVisible ? 'translateY(0)' : 'translateY(6px)' }}>
             {(mode === 'build' || mode === 'simulate') && (
-              <div data-testid={`lab-workspace-panel-${mode}`} className={styles.panelLifted} style={{ height: '100%', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
+              <div data-testid={`lab-workspace-panel-${mode}`} className={`${styles.panelLifted} rb-ui-lab-panel-frame`} style={{ height: '100%', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
+                {mode === 'simulate' ? (
+                  <div className={styles.stageLegend} data-testid="lab-workspace-signal-legend">
+                    <SignalLegend
+                      title="Signal Legend"
+                      hint="Use neon cues only for signal meaning"
+                      showExpectedVsActual
+                      showDebounce
+                      compact
+                    />
+                    <div data-testid="compare-panel" className={styles.comparePanel}>
+                      <div className={styles.compareHeader}>Sim vs Hardware</div>
+                      <div
+                        data-testid="compare-verdict"
+                        className={`${styles.compareVerdict} ${
+                          comparePanel.verdict === 'MATCH'
+                            ? styles.compareMatch
+                            : comparePanel.verdict === 'MISMATCH'
+                              ? styles.compareMismatch
+                              : styles.comparePending
+                        }`}
+                      >
+                        {comparePanel.verdict}
+                      </div>
+
+                      {comparePanel.state === 'no-hardware' ? (
+                        <div className={styles.compareBody}>
+                          No hardware trace yet. Capture once on Hardware tab to compare against simulation.
+                        </div>
+                      ) : null}
+
+                      {comparePanel.state === 'partial' ? (
+                        <div className={styles.compareBody}>
+                          Partial data. Missing: {comparePanel.missing.join(', ')}.
+                        </div>
+                      ) : null}
+
+                      {comparePanel.state === 'complete' ? (
+                        <>
+                          <div className={styles.compareBody}>
+                            {comparePanel.verdict === 'MATCH'
+                              ? 'Simulation and hardware traces are aligned for current checks.'
+                              : 'Mismatch detected between simulation and hardware evidence.'}
+                          </div>
+                          <ul data-testid="compare-top-mismatches" className={styles.compareList}>
+                            {(comparePanel.mismatches.length > 0
+                              ? comparePanel.mismatches
+                              : [{ signal: 'none', reason: 'No mismatches found.' }]
+                            ).map((item) => (
+                              <li key={`${item.signal}-${item.reason}`}>
+                                <strong>{item.signal}</strong> — {item.reason}
+                              </li>
+                            ))}
+                          </ul>
+                          <div data-testid="compare-first-mismatch" className={styles.compareBody}>
+                            First mismatch: {comparePanel.mismatches[0]?.firstTick !== undefined ? `tick ${comparePanel.mismatches[0]?.firstTick}` : 'none'}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <ul data-testid="compare-top-mismatches" className={styles.compareList}>
+                            <li>Awaiting trace data to compute mismatches.</li>
+                          </ul>
+                          <div data-testid="compare-first-mismatch" className={styles.compareBody}>First mismatch: n/a</div>
+                        </>
+                      )}
+
+                      <div className={styles.compareActions}>
+                        <button
+                          type="button"
+                          data-testid="compare-cta-configure-probes"
+                          className={styles.compareActionButton}
+                          onClick={() => handleStagePrimaryCta('simulate', 'hdl-synth-button', ['lab-workspace-anchor-simulate-probes'])}
+                        >
+                          Show me probes
+                        </button>
+                        <button
+                          type="button"
+                          data-testid="compare-cta-capture-hardware"
+                          className={styles.compareActionButton}
+                          onClick={() => handleStagePrimaryCta('hardware', 'hardware-detect-board-button', ['lab-workspace-anchor-hardware-board-detect'])}
+                        >
+                          Capture hardware trace
+                        </button>
+                      </div>
+
+                      <details className={styles.compareWhy}>
+                        <summary>Why this matters</summary>
+                        <div>{getLabStageTeaching(contextLabId, 'simulate').concept}</div>
+                      </details>
+                    </div>
+                  </div>
+                ) : null}
                 {mode === 'build' ? (
                   <div data-testid="lab-workspace-empty-build" className={styles.emptyState}>
                     <div className={styles.emptyIcon}>⚙️</div>
                     <div>
-                      <div className={styles.emptyTitle}>Start by creating your top module.</div>
+                      <div className={styles.emptyTitle}>Design your top module first.</div>
                       <div className={styles.emptyBody}>{buildEmptyCopy}</div>
                       <button
                         type="button"
@@ -623,7 +1093,7 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
             )}
 
             {mode === 'hardware' && (
-              <div data-testid="lab-workspace-panel-hardware" className={styles.panelLifted} style={{ height: '100%', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
+              <div data-testid="lab-workspace-panel-hardware" className={`${styles.panelLifted} rb-ui-lab-panel-frame`} style={{ height: '100%', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
                 <div data-testid="lab-workspace-empty-hardware" className={styles.emptyState}>
                   <div className={styles.emptyIcon}>🔌</div>
                   <div>
@@ -641,7 +1111,7 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
                         </button>
                       ) : (
                         <span data-testid="lab-workspace-hardware-optional-note" className={styles.emptyBody}>
-                          Connect board appears after detection.
+                          Capture from hardware appears after board detection.
                         </span>
                       )}
                     </div>
@@ -658,11 +1128,205 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
             )}
 
             {mode === 'submit' && (
-              <div data-testid="lab-workspace-panel-submit" className={styles.panelLifted} style={{ padding: 16, display: 'grid', gap: 12 }}>
+              <div data-testid="lab-workspace-panel-submit" className={`${styles.panelLifted} ${styles.submitPanel} rb-ui-lab-panel-frame`}>
+                <div data-testid="studio-verify-panel" className={styles.verifyPanel}>
+                  <div
+                    data-testid="studio-verify-verdict"
+                    className={`${styles.verifyVerdictCard} ${verifyReady ? styles.verifyVerdictReady : styles.verifyVerdictNotReady}`}
+                  >
+                    <div className={styles.verifyTitle}>{verifyReady ? NEO_STATUS.READY : NEO_STATUS.NOT_READY}</div>
+                    <div className={styles.verifyMuted} style={{ marginTop: 2 }}>
+                      {verifyReady
+                        ? 'Verify checks are clear. Continue to package export.'
+                        : 'Project is not ready. Resolve blockers or missing evidence below.'}
+                    </div>
+                    {!verifyReady && verifyPrimaryAction ? (
+                      <button
+                        type="button"
+                        data-testid="studio-verify-primary-fix"
+                        onClick={() => applyFixIntent(verifyPrimaryAction)}
+                        className={styles.verifyButton}
+                        style={{ marginTop: 6 }}
+                      >
+                        {verifyPrimaryAction.label}
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <div data-testid="studio-verify-blockers" className={styles.verifyIssues}>
+                    {verifyBlockingIssues.length > 0 ? (
+                      verifyBlockingIssues.map((issue, index) => {
+                        const fixIntent = resolveSubmissionGateFixIntent(issue);
+                        return (
+                          <div
+                            key={`verify-block-${issue.code}-${index}`}
+                            className={`${styles.verifyIssueCard} ${styles.verifyIssueBlock}`}
+                          >
+                            <div className={styles.verifyTitle}>{issue.title}</div>
+                            <div className={styles.verifyMuted} style={{ marginTop: 2 }}>{toOneSentence(issue.message)}</div>
+                            <div className={styles.verifyActions}>
+                              <button
+                                type="button"
+                                data-testid={`studio-verify-fix-${index}`}
+                                onClick={() => applyFixIntent(fixIntent)}
+                                className={styles.verifyButton}
+                              >
+                                {fixIntent.label}
+                              </button>
+                              {fixIntent.scrollToTestId || (fixIntent.fallbackScrollToTestIds?.length ?? 0) > 0 ? (
+                                <button
+                                  type="button"
+                                  data-testid={`studio-verify-show-${index}`}
+                                  onClick={() => applyFixIntent(fixIntent)}
+                                  className={styles.verifyButton}
+                                >
+                                  Show me
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className={styles.verifyMuted}>No blocking issues detected.</div>
+                    )}
+                  </div>
+
+                  <details data-testid="studio-verify-warning" className={styles.verifyWarningSection}>
+                    <summary className={styles.verifyWarningSummary}>Warnings ({verifyWarningIssues.length})</summary>
+                    {verifyWarningIssues.length > 0 ? (
+                      <ul className={styles.verifyList}>
+                        {verifyWarningIssues.map((issue, index) => (
+                          <li key={`verify-warn-${issue.code}-${index}`} className={styles.verifyMuted}>
+                            <strong>{issue.title}</strong> — {toOneSentence(issue.message)}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className={styles.verifyMuted} style={{ marginTop: 6 }}>No warnings.</div>
+                    )}
+                  </details>
+
+                  <div data-testid="studio-verify-compare">
+                    <div data-testid="compare-panel" className={styles.comparePanel}>
+                      <div className={styles.compareHeader}>Sim vs Hardware</div>
+                      <div
+                        data-testid="compare-verdict"
+                        className={`${styles.compareVerdict} ${
+                          comparePanel.verdict === 'MATCH'
+                            ? styles.compareMatch
+                            : comparePanel.verdict === 'MISMATCH'
+                              ? styles.compareMismatch
+                              : styles.comparePending
+                        }`}
+                      >
+                        {comparePanel.verdict}
+                      </div>
+
+                      {comparePanel.state === 'no-hardware' ? (
+                        <div className={styles.compareBody}>
+                          No hardware trace yet. Capture once on Hardware tab to compare against simulation.
+                        </div>
+                      ) : null}
+
+                      {comparePanel.state === 'partial' ? (
+                        <div className={styles.compareBody}>
+                          Partial data. Missing: {comparePanel.missing.join(', ')}.
+                        </div>
+                      ) : null}
+
+                      {comparePanel.state === 'complete' ? (
+                        <>
+                          <div className={styles.compareBody}>
+                            {comparePanel.verdict === 'MATCH'
+                              ? 'Simulation and hardware traces are aligned for current checks.'
+                              : 'Mismatch detected between simulation and hardware evidence.'}
+                          </div>
+                          <ul data-testid="compare-top-mismatches" className={styles.compareList}>
+                            {(comparePanel.mismatches.length > 0
+                              ? comparePanel.mismatches
+                              : [{ signal: 'none', reason: 'No mismatches found.' }]
+                            ).map((item) => (
+                              <li key={`${item.signal}-${item.reason}`}>
+                                <strong>{item.signal}</strong> — {item.reason}
+                              </li>
+                            ))}
+                          </ul>
+                          <div data-testid="compare-first-mismatch" className={styles.compareBody}>
+                            First mismatch: {comparePanel.mismatches[0]?.firstTick !== undefined ? `tick ${comparePanel.mismatches[0]?.firstTick}` : 'none'}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <ul data-testid="compare-top-mismatches" className={styles.compareList}>
+                            <li>Awaiting trace data to compute mismatches.</li>
+                          </ul>
+                          <div data-testid="compare-first-mismatch" className={styles.compareBody}>First mismatch: n/a</div>
+                        </>
+                      )}
+
+                      <div className={styles.compareActions}>
+                        <button
+                          type="button"
+                          data-testid="compare-cta-configure-probes"
+                          className={styles.compareActionButton}
+                          onClick={() => handleStagePrimaryCta('simulate', 'hdl-synth-button', ['lab-workspace-anchor-simulate-probes'])}
+                        >
+                          Show me probes
+                        </button>
+                        <button
+                          type="button"
+                          data-testid="compare-cta-capture-hardware"
+                          className={styles.compareActionButton}
+                          onClick={() => handleStagePrimaryCta('hardware', 'hardware-detect-board-button', ['lab-workspace-anchor-hardware-board-detect'])}
+                        >
+                          Capture hardware trace
+                        </button>
+                      </div>
+
+                      <details className={styles.compareWhy}>
+                        <summary>Why this matters</summary>
+                        <div>{getLabStageTeaching(contextLabId, 'simulate').concept}</div>
+                      </details>
+                    </div>
+                  </div>
+
+                  <div data-testid="studio-verify-evidence-summary" className={styles.verifyWarningSection}>
+                    <div className={styles.verifyTitle} style={{ marginBottom: 4 }}>Evidence summary</div>
+                    <ul className={styles.verifyEvidenceList}>
+                      {verifyEvidenceSummary.map((entry) => (
+                        <li key={entry.key} className={styles.verifyMuted}>
+                          <strong>{entry.label}:</strong> {entry.present ? 'Present' : 'Missing'} · {entry.detail}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {mode === 'submit' && (submitGateResult.issues.length > 0 || submitGateResult.verdict !== 'pass') ? (
+                    <details className={styles.verifyWarningSection}>
+                      <summary className={styles.verifyWarningSummary}>Explain issues</summary>
+                      <div className={styles.verifyIssues} style={{ marginTop: 8 }}>
+                        <button
+                          type="button"
+                          data-testid="studio-verify-explain-issues"
+                          className={styles.verifyButton}
+                          onClick={() => void handleExplainIssues()}
+                          disabled={isIntelligenceLoading}
+                        >
+                          {isIntelligenceLoading ? 'Analyzing…' : 'Explain issues'}
+                        </button>
+                        {intelligenceResult ? (
+                          <div className={styles.verifyMuted} style={{ whiteSpace: 'pre-line' }}>{intelligenceResult.summary}</div>
+                        ) : null}
+                      </div>
+                    </details>
+                  ) : null}
+                </div>
+
                 <div data-testid="lab-workspace-empty-submit" className={styles.emptyState} style={{ borderBottom: 'none' }}>
                   <div className={styles.emptyIcon}>📦</div>
                   <div>
-                    <div className={styles.emptyTitle}>Fix blockers or generate submission bundle.</div>
+                    <div className={styles.emptyTitle}>Fix blockers or package your submission bundle.</div>
                     <div className={styles.emptyBody}>What will be included:</div>
                     <ul data-testid="lab-workspace-bundle-contents-preview" style={{ margin: '6px 0 0 16px', padding: 0, display: 'grid', gap: 4 }}>
                       {bundleContentsPreview.map((item, index) => (
@@ -679,31 +1343,64 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
                   </div>
                 </div>
 
-                <div style={{ fontSize: 12, color: 'var(--rb-text-2, #94a3b8)' }}>
-                  Generate your deterministic submission bundle from the current workspace HDL/fpga snapshot.
+                <div className={styles.submitMeta}>
+                  Export your deterministic submission bundle from the current Studio HDL/fpga snapshot.
                 </div>
 
                 <div
                   data-testid="lab-workspace-submit-verdict"
-                  style={{
-                    border: '1px solid var(--rb-border, #333)',
-                    borderLeft: `3px solid ${submitGateResult.verdict === 'pass' ? '#22c55e' : submitGateResult.verdict === 'warn' ? '#f59e0b' : '#ef4444'}`,
-                    borderRadius: 6,
-                    background: 'var(--rb-surface-1, #1e1e2e)',
-                    padding: '8px 10px',
-                    fontSize: 12,
-                  }}
+                  className={`${styles.submitVerdict} ${submitGateResult.verdict === 'pass' ? styles.submitVerdictReady : submitGateResult.verdict === 'warn' ? styles.submitVerdictWarning : styles.submitVerdictBlocked}`}
                 >
-                  <div style={{ fontWeight: 700 }}>
+                  <div className={styles.verifyTitle}>
                     {submitGateResult.verdict === 'pass' ? NEO_STATUS.READY : submitGateResult.verdict === 'warn' ? NEO_STATUS.WARNING : NEO_STATUS.NOT_READY}
                   </div>
-                  <div style={{ marginTop: 2, color: 'var(--rb-text-2, #94a3b8)' }}>
+                  <div className={styles.verifyMuted} style={{ marginTop: 2 }}>
                     {isCheckingSubmitGates
                       ? 'Validating lab-specific submission gates...'
                       : submitGateResult.issues.length > 0
                         ? `${submitGateResult.issues.length} issue(s) detected.`
                         : 'All lab-specific checks passed.'}
                   </div>
+                </div>
+
+                <div
+                  data-testid="lab-workspace-package-summary"
+                  className={styles.packageSummary}
+                >
+                  <div className={styles.verifyTitle}>Package Summary</div>
+                  <div className={styles.submitMeta}>
+                    Gates: {submitGateSummary.blocked} blocking · {submitGateSummary.warnings} warning
+                    {submitGateSummary.warnings === 1 ? '' : 's'}
+                  </div>
+                  <div className={styles.proofChipRow}>
+                    <span className={`${styles.proofChip} ${submitGateSummary.blocked === 0 ? styles.proofChipPass : styles.proofChipFail}`}>Gates</span>
+                    <span className={`${styles.proofChip} ${hasSimulationEvidence ? styles.proofChipPass : styles.proofChipWarn}`}>Sim trace</span>
+                    <span className={`${styles.proofChip} ${hasHardwareEvidence ? styles.proofChipPass : styles.proofChipWarn}`}>Hardware trace</span>
+                    <span className={`${styles.proofChip} ${(lastBundleManifest?.includedFiles?.length ?? 0) > 0 ? styles.proofChipPass : styles.proofChipWarn}`}>Manifest</span>
+                  </div>
+
+                  {lastBundleStatus ? (
+                    <div data-testid="lab-workspace-package-last-bundle" className={styles.submitMeta}>
+                      Last package: {lastBundleStatus.filename} · {lastBundleStatus.reproducibilityStatus.toUpperCase()} · {lastBundleStatus.bundleId}
+                    </div>
+                  ) : (
+                    <div className={styles.submitMeta}>
+                      No package generated yet in this session.
+                    </div>
+                  )}
+
+                  {lastBundleManifest?.includedFiles?.length ? (
+                    <div data-testid="lab-workspace-package-included-files" className={styles.verifyWarningSection}>
+                      <div className={styles.verifyTitle} style={{ marginBottom: 4 }}>Included files (proof)</div>
+                      <ul className={styles.verifyEvidenceList}>
+                        {lastBundleManifest.includedFiles.slice(0, 8).map((entry, index) => (
+                          <li key={`${entry.path}-${index}`} data-testid={`lab-workspace-package-included-file-${index}`} className={styles.verifyMuted}>
+                            {entry.path} · {entry.sizeBytes} bytes · {entry.sha256.slice(0, 12)}…
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div data-testid="lab-workspace-anchor-submit-readiness" style={{ display: 'none' }} />
@@ -715,31 +1412,16 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
                       return (
                         <div
                           key={issue.code}
-                          style={{
-                            border: '1px solid var(--rb-border, #333)',
-                            borderLeft: `3px solid ${issue.severity === 'block' ? '#f97316' : '#f59e0b'}`,
-                            borderRadius: 6,
-                            padding: '8px 10px',
-                            background: 'var(--rb-surface-1, #1e1e2e)',
-                            fontSize: 12,
-                          }}
+                          className={`${styles.verifyIssueCard} ${issue.severity === 'block' ? styles.verifyIssueBlock : ''}`}
                         >
-                          <div style={{ fontWeight: 700, marginBottom: 2 }}>{issue.severity.toUpperCase()} · {issue.title}</div>
-                          <div>{issue.message}</div>
-                          {issue.fixHint ? <div style={{ marginTop: 4, color: 'var(--rb-text-2, #94a3b8)' }}>Fix: {issue.fixHint}</div> : null}
+                          <div className={styles.verifyTitle} style={{ marginBottom: 2 }}>{issue.severity.toUpperCase()} · {issue.title}</div>
+                          <div className={styles.verifyMuted}>{issue.message}</div>
+                          {issue.fixHint ? <div className={styles.verifyMuted} style={{ marginTop: 4 }}>Fix: {issue.fixHint}</div> : null}
                           <button
                             type="button"
                             onClick={() => applyFixIntent(fixIntent)}
-                            style={{
-                              marginTop: 6,
-                              padding: '4px 8px',
-                              borderRadius: 4,
-                              border: '1px solid var(--rb-border, #333)',
-                              background: 'var(--rb-surface-2, #252538)',
-                              color: 'var(--rb-text, #e4e4e7)',
-                              cursor: 'pointer',
-                              fontSize: 11,
-                            }}
+                            className={styles.verifyButton}
+                            style={{ marginTop: 6 }}
                           >
                             {fixIntent.label}
                           </button>
@@ -748,7 +1430,7 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
                     })}
                   </div>
                 ) : (
-                  <div data-testid="lab-workspace-submit-gates-none" style={{ fontSize: 12, color: 'var(--rb-text-2, #94a3b8)' }}>
+                  <div data-testid="lab-workspace-submit-gates-none" className={styles.verifyMuted}>
                     {contextLabId === 'freeplay' ? 'Freeplay mode: no lab-specific submit gates.' : 'No submission issues detected.'}
                   </div>
                 )}
@@ -765,15 +1447,15 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
                 </div>
 
                 {submitStatus ? (
-                  <div style={{ fontSize: 12, color: 'var(--rb-text-2, #94a3b8)' }}>
+                  <div className={styles.submitMeta}>
                     <div data-testid="lab-workspace-submit-status">{submitStatus}</div>
                     <div data-testid="lab-workspace-anchor-submit-bundle-preview" style={{ display: 'none' }} />
                   </div>
                 ) : null}
 
                 {isTaMode ? (
-                  <div data-testid="lab-workspace-ta-only-links" style={{ fontSize: 11, color: 'var(--rb-text-3, #71717a)', borderTop: '1px solid var(--rb-border-subtle)', paddingTop: 8 }}>
-                    TA TOOLS · Toolchain Setup · Submission Inspector · Diagnostics
+                  <div data-testid="lab-workspace-ta-only-links" className={styles.verifyMuted} style={{ borderTop: '1px solid var(--rb-ui-lab-border)', paddingTop: 8 }}>
+                    Advanced
                   </div>
                 ) : null}
               </div>
@@ -791,11 +1473,21 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
             nextStepText={nextStepText}
             passCriteria={stagePassLooksLike}
             commonMistakes={stageCommonMistakes}
+            conceptCallout={stageTeaching.concept}
+            stageCommonMistake={stageTeaching.commonMistake}
+            whatGoodLooksLike={stageTeaching.goodLooksLike}
+            expectedBehaviorVisual={expectedBehaviorVisual}
             readinessLabel={readinessLabel}
             saveLabel="UNSAVED"
             statusLabel={workspaceStatusLabel}
             stageAccent={MODE_ACCENTS[mode]}
             onFixIntent={applyFixIntent}
+            onAskRedByte={handleAskRedByte}
+            onExplainIssues={handleExplainIssues}
+            showExplainIssues={mode === 'submit' && (submitGateResult.issues.length > 0 || submitGateResult.verdict !== 'pass')}
+            askRedByteResult={intelligenceResult}
+            askRedByteLoading={isIntelligenceLoading}
+            onAskRedByteAction={handleIntelligenceAction}
           />
         </aside>
       </div>
@@ -806,7 +1498,7 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
 export const LabWorkspaceApp: RedByteApp = {
   manifest: {
     id: 'lab-workspace',
-    name: 'Lab Workspace',
+    name: 'Studio',
     iconId: 'cpu',
     category: 'logic',
     defaultSize: { width: 900, height: 650 },

@@ -24,7 +24,7 @@ interface FilesProps {
 }
 
 const SIDEBAR_ROOTS = [
-  { id: 'home', name: 'Home' },
+  { id: 'home', name: 'Studio Dashboard' },
   { id: 'desktop', name: 'Desktop' },
   { id: 'documents', name: 'Documents' },
 ];

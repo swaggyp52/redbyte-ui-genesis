@@ -1183,7 +1183,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
 
         if (sub === 'export') {
           addLine('Exporting current lab session...');
-          addLine('Use the Export button in the Lab workspace for full capsule export.', 'output');
+          addLine('Use the Export button in Studio for full capsule export.', 'output');
           break;
         }
 
