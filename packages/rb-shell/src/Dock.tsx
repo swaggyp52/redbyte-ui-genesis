@@ -10,22 +10,20 @@ interface DockProps {
   onOpenApp: (id: string) => void;
 }
 
-const systemIcons: Array<{ id: string; label: string; iconId: IconName }> = [
-  { id: 'launcher', label: 'Launcher', iconId: 'browser' },
-  { id: 'files', label: 'Files', iconId: 'files' },
+const primaryIcons: Array<{ id: string; label: string; iconId: IconName }> = [
+  { id: 'home', label: 'Dashboard', iconId: 'neon-wave' },
+  { id: 'lab-workspace', label: 'Studio', iconId: 'cpu' },
+  { id: 'logic-playground', label: 'Playground', iconId: 'logic' },
   { id: 'settings', label: 'Settings', iconId: 'settings' },
 ];
 
-const appIcons: Array<{ id: string; label: string; iconId: IconName }> = [
-  { id: 'home', label: 'Studio Dashboard', iconId: 'neon-wave' },
-  { id: 'lab-workspace', label: 'Studio', iconId: 'cpu' },
+const secondaryIcons: Array<{ id: string; label: string; iconId: IconName }> = [
+  { id: 'files', label: 'Files', iconId: 'files' },
 ];
 
-const allIcons = [...systemIcons, ...appIcons];
+const allIcons = [...primaryIcons, ...secondaryIcons];
 
-const LAUNCHER_SHORTCUT_HINT = 'Ctrl+K / Cmd+K';
 const SETTINGS_SHORTCUT_HINT = 'Ctrl+, / Cmd+,';
-const LAUNCHER_ARIA_KEYSHORTCUTS = 'Control+K Meta+K';
 const SETTINGS_ARIA_KEYSHORTCUTS = 'Control+, Meta+,';
 const DOCK_ORDER_STORAGE_KEY = 'rb.shell.dockOrder';
 
@@ -86,8 +84,6 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
     return normalizeDockOrder(dockOrder).map((id) => byId.get(id)!).filter(Boolean);
   }, [dockOrder]);
 
-  const systemIds = new Set(systemIcons.map((s) => s.id));
-
   const moveDockItem = (id: string, delta: number) => {
     setDockOrder((prev) => {
       const base = normalizeDockOrder(prev);
@@ -119,24 +115,20 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
     }
   };
 
-  // Split items into system and app sections
-  const systemItems = dockItems.filter((d) => systemIds.has(d.id));
-  const appItems = dockItems.filter((d) => !systemIds.has(d.id));
+  const primaryIds = new Set(primaryIcons.map((item) => item.id));
+  const primaryItems = dockItems.filter((item) => primaryIds.has(item.id));
+  const secondaryItems = dockItems.filter((item) => !primaryIds.has(item.id));
 
-  const renderIcon = (dock: typeof allIcons[number]) => {
+  const renderIcon = (dock: typeof allIcons[number], compact = false) => {
     const isRunning = runningIds.includes(dock.id);
     const isHovered = hoveredId === dock.id;
     const tooltipText =
-      dock.id === 'launcher'
-        ? `${dock.label} (${LAUNCHER_SHORTCUT_HINT})`
-        : dock.id === 'settings'
+      dock.id === 'settings'
           ? `${dock.label} (${SETTINGS_SHORTCUT_HINT})`
           : dock.label;
-    const ariaLabel = dock.id === 'launcher' ? `Launcher (${LAUNCHER_SHORTCUT_HINT})` : dock.label;
+    const ariaLabel = dock.label;
     const ariaKeyShortcuts =
-      dock.id === 'launcher'
-        ? LAUNCHER_ARIA_KEYSHORTCUTS
-        : dock.id === 'settings'
+      dock.id === 'settings'
           ? SETTINGS_ARIA_KEYSHORTCUTS
           : undefined;
 
@@ -151,7 +143,7 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
         ref={(el) => { buttonRefs.current[dock.id] = el; }}
         aria-label={ariaLabel}
         aria-keyshortcuts={ariaKeyShortcuts}
-        className="relative h-10 w-10 rounded-lg flex items-center justify-center transition-all group"
+        className={`relative rounded-lg flex items-center justify-center transition-all group ${compact ? 'h-8 w-8' : 'h-10 w-10'}`}
         style={{
           transform: isHovered ? 'translateX(2px)' : 'translateX(0)',
           transition: `all ${isHovered ? '120ms' : '80ms'} var(--rb-ui-ease-out)`,
@@ -202,20 +194,17 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
         borderColor: 'var(--rb-ui-border)',
       }}
     >
-      {/* System icons */}
       <div className="flex flex-col items-center gap-0.5">
-        {systemItems.map(renderIcon)}
+        {primaryItems.map((item) => renderIcon(item))}
       </div>
 
-      {/* Separator */}
       <div
         className="w-6 my-2"
         style={{ height: '1px', background: 'var(--rb-ui-border-strong)' }}
       />
 
-      {/* App icons */}
-      <div className="flex flex-col items-center gap-0.5 flex-1">
-        {appItems.map(renderIcon)}
+      <div className="flex flex-col items-center gap-1 flex-1">
+        {secondaryItems.map((item) => renderIcon(item, true))}
       </div>
     </nav>
   );
