@@ -1,5 +1,33 @@
 # AI State
 
+## Change Log 2026-02-14 (Boot crash fix: stable window snapshot selector in Shell)
+
+- Fixed deterministic first-load crash in `<Shell>` caused by unstable external-store snapshot selection.
+
+- Root cause:
+  - `packages/rb-shell/src/Shell.tsx` selected mapped window summary objects directly inside `useWindowStore(...)`.
+  - This allocated a new array/object graph per snapshot read, which can trigger React external-store cache warnings and re-render loops.
+
+- Fix:
+  - `Shell.tsx`
+    - changed store selector to return stable `state.windows` reference.
+    - moved window summary mapping into `useMemo` derived from `windowStates`.
+  - prevents per-read allocation inside external-store snapshot path.
+
+- Regression test hardening:
+  - `tests/e2e/p1c-boot-gate.spec.ts`
+    - now captures console logs on boot and asserts absence of:
+      - `The result of getSnapshot should be cached to avoid an infinite loop`
+      - `Maximum update depth exceeded`
+    - asserts no crash beacon (`[data-testid="rb-crash-beacon"]`) during boot.
+
+- Verification:
+  - ✅ `pnpm p1c:build`
+  - ✅ `pnpm p1c:boot-gate` (`1 passed`)
+  - ✅ `pnpm rc:check` (tail: `[SUITE] total=6 pass=6 fail=0`)
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-14 (Repo prep: ensure `pnpm dev` boots correct app)
 
 - Verified root `pnpm dev` now targets `@redbyte/playground` and boots the OS app (`/os/`) as intended.

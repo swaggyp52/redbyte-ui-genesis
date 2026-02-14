@@ -98,13 +98,6 @@ interface WindowAppBinding {
   props?: any;
 }
 
-interface WindowSummary {
-  id: string;
-  contentId: string;
-  mode: WindowState['mode'];
-  zIndex: number;
-}
-
 interface WindowHandlersEntry {
   onClose: () => void;
   onFocus: () => void;
@@ -112,23 +105,6 @@ interface WindowHandlersEntry {
   onResize: (w: number, h: number) => void;
   onMoveEnd: (bounds: any) => void;
   onResizeEnd: (bounds: any) => void;
-}
-
-function areWindowSummariesEqual(prev: WindowSummary[], next: WindowSummary[]) {
-  if (prev.length !== next.length) return false;
-  for (let index = 0; index < prev.length; index += 1) {
-    const previous = prev[index];
-    const current = next[index];
-    if (
-      previous.id !== current.id ||
-      previous.contentId !== current.contentId ||
-      previous.mode !== current.mode ||
-      previous.zIndex !== current.zIndex
-    ) {
-      return false;
-    }
-  }
-  return true;
 }
 
 interface ShellWindowEntryProps {
@@ -641,18 +617,15 @@ export const Shell: React.FC<ShellProps> = () => {
   const hasShownWelcomeRef = useRef(false);
   const hasInitializedRef = useRef(false);
 
-  const windows = useWindowStore(
-    useCallback(
-      (state) => state.windows.map((window) => ({
-        id: window.id,
-        contentId: window.contentId,
-        mode: window.mode,
-        zIndex: window.zIndex,
-      })),
-      []
-    ),
-    areWindowSummariesEqual
-  );
+  const windowStates = useWindowStore(useCallback((state) => state.windows, []));
+  const windows = useMemo(() => {
+    return windowStates.map((window) => ({
+      id: window.id,
+      contentId: window.contentId,
+      mode: window.mode,
+      zIndex: window.zIndex,
+    }));
+  }, [windowStates]);
   const windowIds = useMemo(() => {
     return [...windows].sort((a, b) => a.zIndex - b.zIndex).map((window) => window.id);
   }, [windows]);

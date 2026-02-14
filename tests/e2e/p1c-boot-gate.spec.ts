@@ -8,6 +8,11 @@ test.describe('P1C Boot Gate', () => {
   test.describe.configure({ timeout: 30_000 });
 
   test('boots to Shell mount sentinel', async ({ page }) => {
+    const consoleMessages: string[] = [];
+    page.on('console', (msg) => {
+      consoleMessages.push(msg.text());
+    });
+
     const { failPromise, dispose } = createFailureWatcher(page, 'http://127.0.0.1:4173');
     try {
       // Attach boot sentinel listener BEFORE navigation to avoid missing the signal on fast boots.
@@ -32,6 +37,12 @@ test.describe('P1C Boot Gate', () => {
         failPromise,
         expect(page.locator('#root')).toBeVisible({ timeout: 5_000 }),
       ]);
+
+      await expect(page.locator('[data-testid="rb-crash-beacon"]')).toHaveCount(0);
+      expect(
+        consoleMessages.some((line) => line.includes('The result of getSnapshot should be cached to avoid an infinite loop'))
+      ).toBe(false);
+      expect(consoleMessages.some((line) => line.includes('Maximum update depth exceeded'))).toBe(false);
     } finally {
       dispose();
     }
