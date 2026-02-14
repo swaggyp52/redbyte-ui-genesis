@@ -1,5 +1,30 @@
 # AI State
 
+## Change Log 2026-02-14 (Repo prep: ensure `pnpm dev` boots correct app)
+
+- Verified root `pnpm dev` now targets `@redbyte/playground` and boots the OS app (`/os/`) as intended.
+- Encountered and fixed runtime blocker during boot:
+  - `packages/rb-shell/src/Shell.tsx` imports were unresolved because `packages/rb-apps/src/index.js` JS mirror was missing exports present in TS source.
+  - Updated `packages/rb-apps/src/index.js` to mirror TS source for:
+    - first-run exports (`loadFirstRunState`, `resolveFirstRunTargetApp` via `firstRunState` export)
+    - student-gate exports (`canOpenAppForCurrentMode`, `isStudentModeActive` via `studentAppGate` export)
+    - first-run wizard registration parity in e2e-lite and full registration modes.
+
+- Verification evidence:
+  - ✅ `pnpm run dev` boots `@redbyte/playground` and serves local OS route (`/os/`), with dependency optimization completing and no export-resolution errors.
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-14 (Repo prep: align `pnpm dev` to correct default app)
+
+- Updated root dev entrypoint so `pnpm dev` boots the canonical Playground/Shell app instead of Lab3-only app:
+  - `package.json`
+    - `dev` -> `pnpm --filter @redbyte/playground dev`
+    - added explicit legacy alias `dev:lab3` -> `pnpm --filter @redbyte/lab3-webapp dev`
+- This aligns runtime behavior with README development workflow and avoids booting the wrong app from root.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-14 (Release freeze handoff + hardware protocol + evidence backlog)
 
 - Freeze guidance documented for `v1.0.0-next-lab-ready` with no further changes unless backed by real rehearsal evidence.

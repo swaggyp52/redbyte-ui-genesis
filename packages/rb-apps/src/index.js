@@ -26,6 +26,10 @@ export { decodeInstructorProjectArchive } from './starterKits/instructorPack';
 export { hashBytesOffThread, stableHashOffThread, stableSerializeOffThread, terminateComputeWorker, } from './utils/computeWorker';
 export { installErrorHandlers, reportError, reportPerfViolation, addBreadcrumb, getBreadcrumbs, setReportSink, setPerfSampleRate, } from './utils/errorReporting';
 export { buildEvidenceManifest, verifyEvidenceManifest, serializeManifest, } from './utils/evidenceManifest';
+export * from './apps/firstRun/firstRunState';
+export * from './fpga/doctorReportV2';
+export * from './fpga/hardwareErrorTaxonomy';
+export * from './studentAppGate';
 // Helper: safe per-app import/registration - log and continue if one fails
 async function safeRegister(name, fn) {
     try {
@@ -79,6 +83,10 @@ export async function registerAllApps(options) {
             const { LabWorkspaceApp } = await import('./apps/LabWorkspaceApp');
             registerApp(LabWorkspaceApp);
         });
+        await safeRegister('first-run-wizard', async () => {
+            const { FirstRunWizardApp } = await import('./apps/FirstRunWizardApp');
+            registerApp(FirstRunWizardApp);
+        });
         await safeRegister('launcher', async () => {
             const { LauncherApp } = await import('./apps/LauncherApp');
             registerApp(LauncherApp);
@@ -89,6 +97,10 @@ export async function registerAllApps(options) {
     await safeRegister('home', async () => {
         const { HomeApp } = await import('./apps/HomeApp');
         registerApp(HomeApp);
+    });
+    await safeRegister('first-run-wizard', async () => {
+        const { FirstRunWizardApp } = await import('./apps/FirstRunWizardApp');
+        registerApp(FirstRunWizardApp);
     });
     await safeRegister('launcher', async () => {
         const { LauncherApp } = await import('./apps/LauncherApp');

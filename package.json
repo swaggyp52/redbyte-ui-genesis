@@ -8,7 +8,8 @@
         "tools/*"
     ],
     "scripts": {
-        "dev": "pnpm --filter @redbyte/lab3-webapp dev",
+        "dev": "pnpm --filter @redbyte/playground dev",
+        "dev:lab3": "pnpm --filter @redbyte/lab3-webapp dev",
         "dev:manual": "pnpm --filter @redbyte/manual-site dev",
         "dev:playground": "pnpm --filter @redbyte/playground dev",
         "build": "pnpm --filter @redbyte/lab3-webapp run build",
