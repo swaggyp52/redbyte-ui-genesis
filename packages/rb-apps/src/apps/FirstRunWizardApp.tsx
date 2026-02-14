@@ -227,6 +227,7 @@ const FirstRunWizardComponent: React.FC<FirstRunWizardComponentProps> = ({ onOpe
   const activeRemediation = activeErrorCode
     ? getHardwareRemediation(activeErrorCode as HardwareErrorCode)
     : null;
+  const hasActiveFailure = activeStepState.status === 'fail' && Boolean(activeErrorCode);
 
   const handleExportDoctor = useCallback(() => {
     if (!context.doctorReport) return;
@@ -262,8 +263,9 @@ const FirstRunWizardComponent: React.FC<FirstRunWizardComponentProps> = ({ onOpe
 
           {activeErrorCode && (
             <div className={styles.failure}>
-              <div><strong>errorCode:</strong> {activeErrorCode}</div>
-              <div>{activeRemediation?.action ?? currentStepMeta.fixAction}</div>
+              <div><strong>Step failed.</strong></div>
+              <div><strong>Cause:</strong> {activeRemediation?.title ?? activeErrorCode}</div>
+              <div><strong>Next action:</strong> {activeRemediation?.action ?? currentStepMeta.fixAction}</div>
             </div>
           )}
 
@@ -279,7 +281,7 @@ const FirstRunWizardComponent: React.FC<FirstRunWizardComponentProps> = ({ onOpe
               onClick={() => void runStep(currentStepId)}
               disabled={isRunning || currentStepId === 'done'}
             >
-              {isRunning ? 'Running...' : 'Run step'}
+              {isRunning ? 'Running...' : hasActiveFailure ? 'Retry step' : 'Run step'}
             </button>
             <button
               type="button"

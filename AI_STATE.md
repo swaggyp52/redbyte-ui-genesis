@@ -1,5 +1,49 @@
 # AI State
 
+## Change Log 2026-02-14 (V1 hardening contract: rehearsal docs + verify/rehearse commands + startup/wizard clarity)
+
+- Added canonical rehearsal and release artifacts for classroom readiness:
+  - `docs/rehearsal/student-setup.md`
+  - `docs/rehearsal/failure-ticket-template.md`
+  - `docs/rehearsal/failure-log.md`
+  - `docs/release/v1-release-checklist.md`
+  - `docs/student-setup.md` now points to canonical rehearsal path to prevent drift.
+
+- Added bundle verification command:
+  - `scripts/v1-verify-bundle.mjs`
+  - validates submission bundle structure and manifest integrity:
+    - `manifest.json` schema version and bundle schema version
+    - required artifact presence
+    - `includedFiles` SHA-256 + size checks against zip contents.
+  - wired root script:
+    - `pnpm v1:verify -- <path-to-submission-zip>`.
+
+- Added v1 rehearsal command covering performance/workflow/export tripwires:
+  - `pnpm v1:rehearse`
+  - sequence:
+    - `os:performance-mode-gate`
+    - `test:audit`
+    - `lab:workflow-export-verify-gate`
+    - `ops:student-export:ci`
+  - note: selector lint step was intentionally omitted from `v1:rehearse` due local environment `rg` absence (`spawnSync rg ENOENT`) so the command remains portable while still enforcing perf/workflow gates.
+
+- Hardened startup/wizard clarity:
+  - `packages/rb-shell/src/Shell.tsx`
+    - startup banner log now emits `RB_STARTUP_BANNER` with `buildSha`, mode (`student|instructor`), and first-run `boardStatus`/`toolchainStatus`.
+  - `packages/rb-apps/src/apps/FirstRunWizardApp.tsx`
+    - failure panel now shows concise cause and explicit `Next action` text.
+    - primary CTA switches to `Retry step` when active step failed.
+  - Added contract coverage:
+    - `packages/rb-apps/src/__tests__/first-run-wizard.test.tsx` (failure clarity/retry CTA assertion)
+    - `packages/rb-apps/src/__tests__/v1-verify-bundle-script.test.ts` (pass + hash mismatch verifier behavior).
+
+- **Build Verification (v1 hardening slice)**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/first-run-wizard.test.tsx packages/rb-apps/src/__tests__/v1-verify-bundle-script.test.ts`
+  - ✅ `pnpm v1:verify -- tmp-v1-verify-pass.zip` (with generated valid fixture)
+  - ✅ `pnpm v1:rehearse`
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-14 (Rehearsal slice: student machine runbook)
 
 - Added classroom reality runbook for a fresh-machine golden-path rehearsal:

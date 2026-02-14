@@ -113,7 +113,9 @@
         "classroom:rc": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/classroom-rc.ps1",
         "classroom:smoke": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/classroom-smoke.ps1",
         "classroom:package": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/classroom-package.ps1",
-        "classroom:release": "pnpm classroom:smoke && pnpm classroom:package"
+        "classroom:release": "pnpm classroom:smoke && pnpm classroom:package",
+        "v1:verify": "node ./scripts/v1-verify-bundle.mjs",
+        "v1:rehearse": "pnpm -s os:performance-mode-gate && pnpm -s test:audit && pnpm -s lab:workflow-export-verify-gate && pnpm -s ops:student-export:ci"
     },
     "devDependencies": {
         "@playwright/test": "^1.58.0",

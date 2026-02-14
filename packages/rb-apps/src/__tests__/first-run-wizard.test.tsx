@@ -1,7 +1,11 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createInitialFirstRunState, resolveFirstRunTargetApp } from '../apps/firstRun/firstRunState';
+import {
+  createInitialFirstRunState,
+  FIRST_RUN_STATE_KEY,
+  resolveFirstRunTargetApp,
+} from '../apps/firstRun/firstRunState';
 
 vi.mock('../fpga/toolchainBackend', () => ({
   getToolchainBackendId: () => 'vivado',
@@ -53,5 +57,18 @@ describe('FirstRunWizardApp', () => {
     const state = createInitialFirstRunState();
     expect(resolveFirstRunTargetApp('home', state)).toBe('first-run-wizard');
     expect(resolveFirstRunTargetApp('lab-workspace', state)).toBe('first-run-wizard');
+  });
+
+  it('shows clear failure cause and retry call-to-action', () => {
+    const failed = createInitialFirstRunState();
+    failed.steps.bridge_check.status = 'fail';
+    failed.steps.bridge_check.errorCode = 'bridge_offline';
+    failed.lastStep = 'bridge_check';
+    localStorage.setItem(FIRST_RUN_STATE_KEY, JSON.stringify(failed));
+
+    render(<FirstRunWizardComponent />);
+
+    expect(screen.getByText(/next action:/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /retry step/i })).toBeInTheDocument();
   });
 });

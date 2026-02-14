@@ -584,6 +584,24 @@ export const Shell: React.FC<ShellProps> = () => {
       // Never break boot for instrumentation
     }
   }, []);
+
+  useEffect(() => {
+    try {
+      const firstRunState = loadFirstRunState();
+      const boardStatus = firstRunState.steps.board_detect?.status ?? 'pending';
+      const toolchainStatus = firstRunState.steps.programmer_check?.status ?? 'pending';
+      const mode = isStudentModeActive() ? 'student' : 'instructor';
+      const buildSha = (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_BUILD_SHA ?? 'dev';
+      console.info('RB_STARTUP_BANNER', {
+        buildSha,
+        mode,
+        boardStatus,
+        toolchainStatus,
+      });
+    } catch {
+      // Startup banner must never break shell boot
+    }
+  }, []);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [systemSearchOpen, setSystemSearchOpen] = useState(false);
   const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false);
