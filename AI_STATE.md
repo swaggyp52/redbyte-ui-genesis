@@ -1,5 +1,49 @@
 # AI State
 
+## Change Log 2026-02-14 (PR4: Student-mode Golden Path Gate — allowlist + fail-closed launch routing)
+
+- Implemented a hard student-mode app allowlist and centralized gate to enforce a narrow product surface.
+
+- Added shared student-mode gate utilities:
+  - `packages/rb-apps/src/studentAppGate.ts`
+  - `packages/rb-apps/src/studentAppGate.js`
+  - exports include:
+    - `STUDENT_VISIBLE_APP_ALLOWLIST = ['home', 'lab-workspace', 'logic-playground', 'settings', 'files']`
+    - system-only pass-through list for shell infrastructure (`launcher`, `first-run-wizard`, `text-viewer`)
+    - `canOpenAppForCurrentMode()` / `canOpenAppInStudentMode()`
+
+- Enforced launcher visibility by mode:
+  - `packages/rb-apps/src/launcherData.ts`
+    - student mode now returns only visible allowlist apps.
+    - non-student mode keeps curated launcher behavior.
+
+- Enforced open-window routing fail-closed in shell:
+  - `packages/rb-shell/src/Shell.tsx`
+    - `openWindow()` now blocks non-allowed app IDs in student mode and emits clean message (`This tool is instructor-only.`).
+    - restore/session/workspace hydration now filters restored windows through the same gate.
+
+- Reduced discoverability of blocked surfaces in student mode:
+  - `packages/rb-shell/src/searchRegistry.ts`
+    - searchable app results are filtered by student-visible allowlist.
+  - `packages/rb-shell/src/TopBar.tsx`
+    - system log action is now optional.
+  - `packages/rb-shell/src/Shell.tsx`
+    - hides top-bar log button in student mode.
+
+- Added/updated contract tests:
+  - `packages/rb-apps/src/__tests__/launcher.test.tsx`
+    - asserts launcher list equals student allowlist in student mode.
+  - `packages/rb-apps/src/__tests__/student-app-gate.test.ts`
+    - asserts fail-closed behavior for inspector/instructor/terminal app IDs.
+  - Existing one-click dashboard-to-studio contract remains covered in:
+    - `packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx` (`opens Studio from New Project action`).
+
+- **Build Verification (PR4 gate slice)**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/launcher.test.tsx packages/rb-apps/src/__tests__/student-app-gate.test.ts packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx` (`3 files, 31 tests passed`)
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`)
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-14 (PR3: Visual Cohesion Pass — Home hero + dock curation + chrome cleanup)
 
 - Executed PR3 as a presentation/interaction-only pass to make the shell feel like a focused product surface without adding new capability.

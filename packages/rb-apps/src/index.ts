@@ -62,6 +62,7 @@ export {
 export * from './apps/firstRun/firstRunState';
 export * from './fpga/doctorReportV2';
 export * from './fpga/hardwareErrorTaxonomy';
+export * from './studentAppGate';
 
 // DEFERRED EXPORTS: Do NOT import app modules at the module level.
 // This prevents circular dependencies and temporal dead zone errors

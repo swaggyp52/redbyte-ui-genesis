@@ -2,16 +2,22 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
+import { isStudentModeActive, isStudentVisibleApp } from './studentAppGate';
+
 const STUDIO_LAUNCHER_WHITELIST = new Set(['home', 'lab-workspace']);
 
 // Convert registry entries into the minimal shape required by the Launcher UI.
 export async function getAppsForLauncher() {
   const { listApps } = await import('./AppRegistry');
   const apps = listApps();
+  const studentMode = isStudentModeActive();
 
   return apps
     .filter((app) => app.manifest.id !== 'launcher' && !app.manifest.hidden)
-    .filter((app) => STUDIO_LAUNCHER_WHITELIST.has(app.manifest.id))
+    .filter((app) => {
+      if (studentMode) return isStudentVisibleApp(app.manifest.id);
+      return STUDIO_LAUNCHER_WHITELIST.has(app.manifest.id);
+    })
     .map((app) => ({
     id: app.manifest.id,
     name: app.manifest.name,

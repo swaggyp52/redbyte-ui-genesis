@@ -300,7 +300,77 @@ describe('Launcher component', () => {
 describe('Launcher data', () => {
   it('applies strict student launcher whitelist in student mode', async () => {
     vi.resetModules();
-    window.localStorage.setItem('rb:mode:v1', 'student');
+    const { useCapabilitiesStore } = await import('../stores/capabilitiesStore');
+    useCapabilitiesStore.getState().setStudentMode(true);
+    const { registerApp } = await import('../AppRegistry');
+    const { getAppsForLauncher } = await import('../launcherData');
+
+    const StubComponent: React.FC = () => null;
+    registerApp({
+      manifest: {
+        id: 'home',
+        name: 'Studio Dashboard',
+        iconId: 'neon-wave',
+        category: 'system',
+      },
+      component: StubComponent,
+    });
+    registerApp({
+      manifest: {
+        id: 'lab-workspace',
+        name: 'Studio',
+        iconId: 'cpu',
+        category: 'logic',
+      },
+      component: StubComponent,
+    });
+    registerApp({
+      manifest: {
+        id: 'terminal',
+        name: 'Terminal',
+        iconId: 'terminal',
+        category: 'system',
+      },
+      component: StubComponent,
+    });
+    registerApp({
+      manifest: {
+        id: 'files',
+        name: 'Files',
+        iconId: 'files',
+        category: 'system',
+      },
+      component: StubComponent,
+    });
+    registerApp({
+      manifest: {
+        id: 'logic-playground',
+        name: 'Playground',
+        iconId: 'cpu',
+        category: 'logic',
+      },
+      component: StubComponent,
+    });
+    registerApp({
+      manifest: {
+        id: 'settings',
+        name: 'Settings',
+        iconId: 'settings',
+        category: 'system',
+      },
+      component: StubComponent,
+    });
+
+    const apps = await getAppsForLauncher();
+    const ids = apps.map((app) => app.id).sort();
+    expect(ids).toEqual(['files', 'home', 'lab-workspace', 'logic-playground', 'settings']);
+    expect(ids).not.toContain('terminal');
+  });
+
+  it('keeps launcher curated in non-student mode', async () => {
+    vi.resetModules();
+    const { useCapabilitiesStore } = await import('../stores/capabilitiesStore');
+    useCapabilitiesStore.getState().setStudentMode(false);
     const { registerApp } = await import('../AppRegistry');
     const { getAppsForLauncher } = await import('../launcherData');
 
@@ -350,63 +420,11 @@ describe('Launcher data', () => {
     expect(ids).not.toContain('terminal');
   });
 
-  it('forces the same whitelist filtering when classroom lockdown is enabled', async () => {
+  it('keeps launcher curated for ta mode in non-student mode', async () => {
     vi.resetModules();
-    window.localStorage.removeItem('rb:mode:v1');
-    window.localStorage.setItem('rb:classroom-lockdown:v1', JSON.stringify({ enabled: true }));
-    const { registerApp } = await import('../AppRegistry');
-    const { getAppsForLauncher } = await import('../launcherData');
-
-    const StubComponent: React.FC = () => null;
-    registerApp({
-      manifest: {
-        id: 'home',
-        name: 'Studio Dashboard',
-        iconId: 'neon-wave',
-        category: 'system',
-      },
-      component: StubComponent,
-    });
-    registerApp({
-      manifest: {
-        id: 'lab-workspace',
-        name: 'Studio',
-        iconId: 'cpu',
-        category: 'logic',
-      },
-      component: StubComponent,
-    });
-    registerApp({
-      manifest: {
-        id: 'terminal',
-        name: 'Terminal',
-        iconId: 'terminal',
-        category: 'system',
-      },
-      component: StubComponent,
-    });
-    registerApp({
-      manifest: {
-        id: 'files',
-        name: 'Files',
-        iconId: 'files',
-        category: 'system',
-      },
-      component: StubComponent,
-    });
-
-    const apps = await getAppsForLauncher();
-    const ids = apps.map((app) => app.id);
-    expect(ids).toContain('home');
-    expect(ids).toContain('lab-workspace');
-    expect(ids).not.toContain('files');
-    expect(ids).not.toContain('terminal');
-  });
-
-  it('keeps launcher curated during classroom lockdown', async () => {
-    vi.resetModules();
+    const { useCapabilitiesStore } = await import('../stores/capabilitiesStore');
+    useCapabilitiesStore.getState().setStudentMode(false);
     window.localStorage.setItem('rb:mode:v1', 'ta');
-    window.localStorage.setItem('rb:classroom-lockdown:v1', JSON.stringify({ enabled: true }));
     const { registerApp } = await import('../AppRegistry');
     const { getAppsForLauncher } = await import('../launcherData');
 
@@ -428,6 +446,8 @@ describe('Launcher data', () => {
 
   it('derives curated launcher list from registry and excludes launcher itself', async () => {
     vi.resetModules();
+    const { useCapabilitiesStore } = await import('../stores/capabilitiesStore');
+    useCapabilitiesStore.getState().setStudentMode(false);
     window.localStorage.setItem('rb:mode:v1', 'ta');
     const { registerApp } = await import('../AppRegistry');
     const { getAppsForLauncher } = await import('../launcherData');

@@ -26,6 +26,9 @@ import {
   useRenderStormDetector,
   loadFirstRunState,
   resolveFirstRunTargetApp,
+  canOpenAppForCurrentMode,
+  isStudentModeActive,
+  useCapabilitiesStore,
 } from '@redbyte/rb-apps';
 import { useWindowStore, loadSession, resolveTargetWindowId, type WindowState } from '@redbyte/rb-windowing';
 import { useWorkspaceStore, loadWorkspaces } from './workspaceStore';
@@ -740,6 +743,7 @@ export const Shell: React.FC<ShellProps> = () => {
   const snapAssist = useSettingsStore((s) => s.snapAssist);
   const wallpaperId = useSettingsStore((s) => s.wallpaperId);
   const hasSettings = useMemo(() => Boolean(getApp('settings')), []);
+  const studentModeEnabled = useCapabilitiesStore((s) => s.studentMode);
 
   const recordRecentApp = useCallback((appId: string) => {
     if (appId === 'launcher') return;
@@ -1138,7 +1142,8 @@ export const Shell: React.FC<ShellProps> = () => {
     const validWindows = snapshot.windows.filter((w) => {
       if (w.contentId === 'launcher') return false;
       const app = getApp(w.contentId);
-      return Boolean(app);
+      if (!app) return false;
+      return canOpenAppForCurrentMode(w.contentId);
     });
 
     if (validWindows.length === 0) return;
@@ -1181,6 +1186,18 @@ export const Shell: React.FC<ShellProps> = () => {
   const openWindow = useCallback(
     (appId: string, props?: any) => {
       const resolvedAppId = resolveFirstRunTargetApp(appId, loadFirstRunState());
+
+      if (!canOpenAppForCurrentMode(resolvedAppId)) {
+        logSystemEvent({
+          level: 'warn',
+          source: 'shell',
+          message: 'Blocked instructor-only app open in student mode',
+          data: { appId: resolvedAppId, studentMode: isStudentModeActive() },
+        });
+        toast.info({ message: 'This tool is instructor-only.' });
+        return null;
+      }
+
       const app = getApp(resolvedAppId);
       if (!app) {
         logSystemEvent({
@@ -1605,7 +1622,8 @@ export const Shell: React.FC<ShellProps> = () => {
       const validWindows = snapshot.windows.filter((w) => {
         if (w.contentId === 'launcher') return false;
         const app = getApp(w.contentId);
-        return Boolean(app);
+        if (!app) return false;
+        return canOpenAppForCurrentMode(w.contentId);
       });
 
       restoreSession(validWindows, snapshot.nextZIndex);
@@ -3028,7 +3046,7 @@ export const Shell: React.FC<ShellProps> = () => {
         tickCount={determinismRecorder.tickCount}
         versionLabel={getVersionString()}
         unreadCount={unreadLogCount}
-        onOpenLog={openLog}
+        onOpenLog={studentModeEnabled ? undefined : openLog}
         onOpenLauncher={openLauncher}
         onOpenSettings={openSettings}
         onOpenDeterminism={openDeterminismPanel}

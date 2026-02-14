@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import { listApps, useFileSystemStore, searchKnowledge } from '@redbyte/rb-apps';
+import { listApps, useFileSystemStore, searchKnowledge, isStudentModeActive, isStudentVisibleApp } from '@redbyte/rb-apps';
 import { useMacroStore } from './macros/macroStore';
 import type { AppSearchResult, CommandSearchResult, IntentSearchResult, MacroSearchResult, FileSearchResult, KnowledgeSearchResult, SearchResults } from './search-types';
 
@@ -282,8 +282,10 @@ const INTENT_TARGETS: IntentSearchResult[] = [
 ];
 
 export function getAllSearchableApps(): AppSearchResult[] {
+  const studentMode = isStudentModeActive();
   return listApps()
     .filter((app) => app.manifest.id !== 'launcher' && !app.manifest.hidden)
+    .filter((app) => !studentMode || isStudentVisibleApp(app.manifest.id))
     .map((app) => ({
       type: 'app' as const,
       id: app.manifest.id,

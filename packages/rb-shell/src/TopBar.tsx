@@ -11,7 +11,7 @@ export interface TopBarProps {
   tickCount: number;
   versionLabel?: string;
   unreadCount?: number;
-  onOpenLog: () => void;
+  onOpenLog?: () => void;
   onOpenLauncher: () => void;
   onOpenSettings?: () => void;
   onOpenDeterminism?: () => void;
@@ -90,24 +90,26 @@ export const TopBar: React.FC<TopBarProps> = React.memo(({
 
         {/* Right: Log + Settings */}
         <div className="flex items-center gap-1 pointer-events-auto">
-          <button
-            onClick={onOpenLog}
-            className="relative h-6 px-2 rounded flex items-center gap-1.5 text-[11px] font-medium transition-colors"
-            aria-label="Open System Log"
-            title="Open System Log"
-            style={{ color: 'var(--rb-ui-text-2)' }}
-          >
-            <Icon name="log" size={14} />
-            <span>Log</span>
-            {unreadCount > 0 && (
-              <span
-                className="h-4 min-w-[16px] px-1 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
-                style={{ background: 'var(--rb-ui-danger)' }}
-              >
-                {Math.min(unreadCount, 99)}
-              </span>
-            )}
-          </button>
+          {onOpenLog && (
+            <button
+              onClick={onOpenLog}
+              className="relative h-6 px-2 rounded flex items-center gap-1.5 text-[11px] font-medium transition-colors"
+              aria-label="Open System Log"
+              title="Open System Log"
+              style={{ color: 'var(--rb-ui-text-2)' }}
+            >
+              <Icon name="log" size={14} />
+              <span>Log</span>
+              {unreadCount > 0 && (
+                <span
+                  className="h-4 min-w-[16px] px-1 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
+                  style={{ background: 'var(--rb-ui-danger)' }}
+                >
+                  {Math.min(unreadCount, 99)}
+                </span>
+              )}
+            </button>
+          )}
           {onOpenSettings && (
             <button
               onClick={onOpenSettings}
