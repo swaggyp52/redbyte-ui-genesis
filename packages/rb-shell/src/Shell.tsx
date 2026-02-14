@@ -27,7 +27,7 @@ import {
   loadFirstRunState,
   resolveFirstRunTargetApp,
 } from '@redbyte/rb-apps';
-import { useWindowStore, loadSession, resolveTargetWindowId } from '@redbyte/rb-windowing';
+import { useWindowStore, loadSession, resolveTargetWindowId, type WindowState } from '@redbyte/rb-windowing';
 import { useWorkspaceStore, loadWorkspaces } from './workspaceStore';
 import { executeMacro, type MacroExecutionContext } from './macros/executeMacro';
 import { useMacroStore } from './macros/macroStore';
@@ -94,6 +94,202 @@ interface WindowAppBinding {
   appId: string;
   props?: any;
 }
+
+interface WindowSummary {
+  id: string;
+  contentId: string;
+  mode: WindowState['mode'];
+  zIndex: number;
+}
+
+interface WindowHandlersEntry {
+  onClose: () => void;
+  onFocus: () => void;
+  onMove: (x: number, y: number) => void;
+  onResize: (w: number, h: number) => void;
+  onMoveEnd: (bounds: any) => void;
+  onResizeEnd: (bounds: any) => void;
+}
+
+function areWindowSummariesEqual(prev: WindowSummary[], next: WindowSummary[]) {
+  if (prev.length !== next.length) return false;
+  for (let index = 0; index < prev.length; index += 1) {
+    const previous = prev[index];
+    const current = next[index];
+    if (
+      previous.id !== current.id ||
+      previous.contentId !== current.contentId ||
+      previous.mode !== current.mode ||
+      previous.zIndex !== current.zIndex
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+interface ShellWindowEntryProps {
+  windowId: string;
+  binding?: WindowAppBinding;
+  handlers?: WindowHandlersEntry;
+  snapAssist: string;
+  determinismTick: number;
+  openWindow: (appId: string, props?: any) => string | null;
+  handleClose: (id: string) => void;
+  handleSnapPreviewChange: (windowId: string, target: SnapPreviewTarget | null) => void;
+  handleSnapCommit: (windowId: string, target: SnapPreviewTarget) => void;
+  toggleMinimize: (id: string) => void;
+  toggleMaximize: (id: string) => void;
+  restoreWindow: (id: string) => void;
+  dispatchIntent: (intent: Intent) => string | null;
+  registerWindowStateAccessor: (windowId: string, accessors: { getCircuit?: () => any }) => void;
+  unregisterWindowStateAccessor: (windowId: string) => void;
+  determinismRecorder: ReturnType<typeof useDeterminismRecorder>;
+  getCurrentCircuit: () => Circuit | null;
+  handleOpenStarterProject: (payload: StarterInstructionsPayload) => Promise<void>;
+  handleOpenInstructorPackProject: (projectFile: File) => Promise<void>;
+  handleOpenRecentProject: (payload: { projectId: string; targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace' }) => Promise<void>;
+  handleOpenSubmissionProject: (evidenceFile: File) => Promise<void>;
+  recentAppIds: string[];
+  pinnedAppIds: string[];
+  runningAppIds: string[];
+  togglePinnedAppId: (appId: string) => void;
+}
+
+const ShellWindowEntry = React.memo(({
+  windowId,
+  binding,
+  handlers,
+  snapAssist,
+  determinismTick,
+  openWindow,
+  handleClose,
+  handleSnapPreviewChange,
+  handleSnapCommit,
+  toggleMinimize,
+  toggleMaximize,
+  restoreWindow,
+  dispatchIntent,
+  registerWindowStateAccessor,
+  unregisterWindowStateAccessor,
+  determinismRecorder,
+  getCurrentCircuit,
+  handleOpenStarterProject,
+  handleOpenInstructorPackProject,
+  handleOpenRecentProject,
+  handleOpenSubmissionProject,
+  recentAppIds,
+  pinnedAppIds,
+  runningAppIds,
+  togglePinnedAppId,
+}: ShellWindowEntryProps) => {
+  const state = useWindowStore(
+    useCallback((storeState) => storeState.windows.find((window) => window.id === windowId) ?? null, [windowId])
+  );
+
+  if (!state || !handlers) return null;
+
+  const app: RedByteApp | null = binding ? getApp(binding.appId) : getApp(state.contentId);
+  if (!app) {
+    const orphanId = binding?.appId ?? state.contentId;
+    console.warn(`[Shell] Closing orphan window for unregistered app "${orphanId}"`);
+    handleClose(state.id);
+    return null;
+  }
+
+  const Component = app.component;
+  const resourceId =
+    binding?.props?.resourceId ??
+    binding?.props?.initialFileId ??
+    binding?.props?.initialExampleId ??
+    undefined;
+
+  return (
+    <ShellWindow
+      key={state.id}
+      state={state}
+      minSize={app.manifest.minSize}
+      iconName={app.manifest.iconId}
+      snapAssistMode={snapAssist}
+      provenance={{
+        appId: app.manifest.id,
+        resourceId,
+        tick: determinismTick,
+      }}
+      onClose={handlers.onClose}
+      onFocus={handlers.onFocus}
+      onMove={handlers.onMove}
+      onResize={handlers.onResize}
+      onMoveEnd={handlers.onMoveEnd}
+      onResizeEnd={handlers.onResizeEnd}
+      onSnapPreviewChange={handleSnapPreviewChange}
+      onSnap={handleSnapCommit}
+      onMinimize={() => {
+        toggleMinimize(state.id);
+        logSystemEvent({
+          level: 'action',
+          source: 'shell',
+          message: 'Window minimized',
+          data: { windowId: state.id, appId: state.contentId },
+        });
+      }}
+      onMaximize={() => {
+        toggleMaximize(state.id);
+        logSystemEvent({
+          level: 'action',
+          source: 'shell',
+          message: 'Window maximized',
+          data: { windowId: state.id, appId: state.contentId },
+        });
+      }}
+      onRestore={() => {
+        restoreWindow(state.id);
+        logSystemEvent({
+          level: 'action',
+          source: 'shell',
+          message: 'Window restored',
+          data: { windowId: state.id, appId: state.contentId },
+        });
+      }}
+    >
+      <AppErrorBoundary
+        appId={app.manifest.id}
+        windowId={state.id}
+        onClose={() => handleClose(state.id)}
+        onOpenHelp={(errorCode) => {
+          const playgroundWindow = useWindowStore.getState().windows.find((window) => window.contentId === 'logic-playground');
+          if (!playgroundWindow) openWindow('logic-playground');
+          setTimeout(() => {
+            globalThis.dispatchEvent(new CustomEvent('rb:open-dock', { detail: { tab: 'learn', subview: 'help', errorCode } }));
+          }, playgroundWindow ? 0 : 500);
+        }}
+      >
+        <Suspense fallback={<WindowLoadingFallback />}>
+          <Component
+            windowId={state.id}
+            onOpenApp={openWindow}
+            onOpenStarterProject={handleOpenStarterProject}
+            onOpenInstructorPackProject={handleOpenInstructorPackProject}
+            onOpenRecentProject={handleOpenRecentProject}
+            onOpenSubmissionProject={handleOpenSubmissionProject}
+            onClose={() => handleClose(state.id)}
+            onDispatchIntent={dispatchIntent}
+            registerStateAccessor={registerWindowStateAccessor}
+            unregisterStateAccessor={unregisterWindowStateAccessor}
+            determinismRecorder={determinismRecorder}
+            getCurrentCircuit={getCurrentCircuit}
+            versionLabel={getVersionString()}
+            recentAppIds={app.manifest.id === 'launcher' ? recentAppIds : undefined}
+            pinnedAppIds={app.manifest.id === 'launcher' ? pinnedAppIds : undefined}
+            runningAppIds={app.manifest.id === 'launcher' ? runningAppIds : undefined}
+            onTogglePin={app.manifest.id === 'launcher' ? togglePinnedAppId : undefined}
+            {...binding?.props}
+          />
+        </Suspense>
+      </AppErrorBoundary>
+    </ShellWindow>
+  );
+});
 
 interface OpenWithModalState {
   resourceId: string;
@@ -424,10 +620,21 @@ export const Shell: React.FC<ShellProps> = () => {
   const hasShownWelcomeRef = useRef(false);
   const hasInitializedRef = useRef(false);
 
-  const windowsRaw = useWindowStore((s) => s.windows);
-  const windows = useMemo(() => {
-    return [...windowsRaw].sort((a, b) => a.zIndex - b.zIndex);
-  }, [windowsRaw]);
+  const windows = useWindowStore(
+    useCallback(
+      (state) => state.windows.map((window) => ({
+        id: window.id,
+        contentId: window.contentId,
+        mode: window.mode,
+        zIndex: window.zIndex,
+      })),
+      []
+    ),
+    areWindowSummariesEqual
+  );
+  const windowIds = useMemo(() => {
+    return [...windows].sort((a, b) => a.zIndex - b.zIndex).map((window) => window.id);
+  }, [windows]);
   const runningAppIds = useMemo(() => {
     const ids = windows.filter((w) => w.mode !== 'minimized').map((w) => w.contentId);
     return Array.from(new Set(ids));
@@ -1318,7 +1525,7 @@ export const Shell: React.FC<ShellProps> = () => {
           const preferNewWindow = intent.routingHint?.preferNewWindow ?? false;
 
           // PHASE_AC: Use routing resolver to determine reuse vs create
-          const targetWindowId = resolveTargetWindowId(targetAppId, preferNewWindow, windows);
+          const targetWindowId = resolveTargetWindowId(targetAppId, preferNewWindow, useWindowStore.getState().windows);
 
           if (targetWindowId) {
             // Reuse existing window
@@ -1346,7 +1553,7 @@ export const Shell: React.FC<ShellProps> = () => {
           const preferNewWindow = intent.routingHint?.preferNewWindow ?? false;
 
           // PHASE_AC: Use routing resolver to determine reuse vs create
-          const targetWindowId = resolveTargetWindowId(targetAppId, preferNewWindow, windows);
+          const targetWindowId = resolveTargetWindowId(targetAppId, preferNewWindow, useWindowStore.getState().windows);
 
           if (targetWindowId) {
             // Reuse existing window
@@ -1374,7 +1581,7 @@ export const Shell: React.FC<ShellProps> = () => {
           return null;
       }
     },
-    [openWindow, windows, bindings, focusWindow]
+    [openWindow, bindings, focusWindow]
 
   );
 
@@ -2326,7 +2533,7 @@ export const Shell: React.FC<ShellProps> = () => {
 
   const handleWindowSwitcherSelect = useCallback(
     (windowId: string) => {
-      const window = windows.find((w) => w.id === windowId);
+      const window = useWindowStore.getState().windows.find((w) => w.id === windowId);
       if (!window) return;
 
       // If minimized, restore first
@@ -2341,13 +2548,13 @@ export const Shell: React.FC<ShellProps> = () => {
       setWindowSwitcherOpen(false);
       setWindowSwitcherPreviousFocus(null);
     },
-    [windows, restoreWindow, focusWindow]
+    [restoreWindow, focusWindow]
   );
 
   const handleWindowSwitcherCancel = useCallback(() => {
     // Restore focus to previous window if valid
     if (windowSwitcherPreviousFocus) {
-      const previousWindow = windows.find((w) => w.id === windowSwitcherPreviousFocus);
+      const previousWindow = useWindowStore.getState().windows.find((w) => w.id === windowSwitcherPreviousFocus);
       if (previousWindow) {
         focusWindow(windowSwitcherPreviousFocus);
       }
@@ -2356,7 +2563,7 @@ export const Shell: React.FC<ShellProps> = () => {
     // Close switcher
     setWindowSwitcherOpen(false);
     setWindowSwitcherPreviousFocus(null);
-  }, [windowSwitcherPreviousFocus, windows, focusWindow]);
+  }, [windowSwitcherPreviousFocus, focusWindow]);
 
   const handleSearchExecuteIntent = useCallback(
     (intentId: string) => {
@@ -2671,7 +2878,7 @@ export const Shell: React.FC<ShellProps> = () => {
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       // Only warn if there are open application windows (excluding launcher)
-      const hasOpenWork = windows.some(
+      const hasOpenWork = useWindowStore.getState().windows.some(
         (w) => w.contentId !== 'launcher' && w.mode !== 'minimized'
       );
 
@@ -2686,7 +2893,7 @@ export const Shell: React.FC<ShellProps> = () => {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [windows]);
+  }, []);
 
   // SAFETY: Listen for storage errors and show toast notifications
   useEffect(() => {
@@ -2900,112 +3107,38 @@ export const Shell: React.FC<ShellProps> = () => {
         </div>
       )}
 
-      {windows.map((window) => {
-        const binding = bindings[window.id];
-        const app: RedByteApp | null = binding ? getApp(binding.appId) : getApp(window.contentId);
-        if (!app) {
-          // Auto-close orphan windows whose app was removed (e.g. after version migration)
-          const orphanId = binding?.appId ?? window.contentId;
-          console.warn(`[Shell] Closing orphan window for unregistered app "${orphanId}"`);
-          closeWindow(window.id);
-          return null;
-        }
-        const Component = app.component;
-        const resourceId =
-          binding?.props?.resourceId ??
-          binding?.props?.initialFileId ??
-          binding?.props?.initialExampleId ??
-          undefined;
-
-        const handlers = windowHandlers.current[window.id];
-        if (!handlers) return null; // Handlers not yet initialized
-
+      {windowIds.map((windowId) => {
+        const handlers = windowHandlers.current[windowId];
+        if (!handlers) return null;
         return (
-          <ShellWindow
-            key={window.id}
-            state={window}
-            minSize={app.manifest.minSize}
-            iconName={app.manifest.iconId}
-            snapAssistMode={snapAssist}
-            provenance={{
-              appId: app.manifest.id,
-              resourceId,
-              tick: determinismRecorder.tickCount,
-            }}
-            onClose={handlers.onClose}
-            onFocus={handlers.onFocus}
-            onMove={handlers.onMove}
-            onResize={handlers.onResize}
-            onMoveEnd={handlers.onMoveEnd}
-            onResizeEnd={handlers.onResizeEnd}
-            onSnapPreviewChange={handleSnapPreviewChange}
-            onSnap={handleSnapCommit}
-            onMinimize={() => {
-              toggleMinimize(window.id);
-              logSystemEvent({
-                level: 'action',
-                source: 'shell',
-                message: 'Window minimized',
-                data: { windowId: window.id, appId: window.contentId },
-              });
-            }}
-            onMaximize={() => {
-              toggleMaximize(window.id);
-              logSystemEvent({
-                level: 'action',
-                source: 'shell',
-                message: 'Window maximized',
-                data: { windowId: window.id, appId: window.contentId },
-              });
-            }}
-            onRestore={() => {
-              restoreWindow(window.id);
-              logSystemEvent({
-                level: 'action',
-                source: 'shell',
-                message: 'Window restored',
-                data: { windowId: window.id, appId: window.contentId },
-              });
-            }}
-          >
-            <AppErrorBoundary 
-              appId={app.manifest.id} 
-              windowId={window.id} 
-              onClose={() => handleClose(window.id)}
-              onOpenHelp={(errorCode) => {
-                // Ensure a Playground is open to receive the dock event
-                const pg = windows.find((w) => w.contentId === 'logic-playground');
-                if (!pg) openWindow('logic-playground');
-                // Dispatch after a tick so the Playground has time to mount if just opened
-                setTimeout(() => {
-                  globalThis.dispatchEvent(new CustomEvent('rb:open-dock', { detail: { tab: 'learn', subview: 'help', errorCode } }));
-                }, pg ? 0 : 500);
-              }}
-            >
-              <Suspense fallback={<WindowLoadingFallback />}>
-                <Component
-                  windowId={window.id}
-                  onOpenApp={openWindow}
-                  onOpenStarterProject={handleOpenStarterProject}
-                  onOpenInstructorPackProject={handleOpenInstructorPackProject}
-                  onOpenRecentProject={handleOpenRecentProject}
-                  onOpenSubmissionProject={handleOpenSubmissionProject}
-                  onClose={() => handleClose(window.id)}
-                  onDispatchIntent={dispatchIntent}
-                  registerStateAccessor={registerWindowStateAccessor}
-                  unregisterStateAccessor={unregisterWindowStateAccessor}
-                  determinismRecorder={determinismRecorder}
-                  getCurrentCircuit={getCurrentCircuit}
-                  versionLabel={getVersionString()}
-                  recentAppIds={app.manifest.id === 'launcher' ? recentAppIds : undefined}
-                  pinnedAppIds={app.manifest.id === 'launcher' ? pinnedAppIds : undefined}
-                  runningAppIds={app.manifest.id === 'launcher' ? runningAppIds : undefined}
-                  onTogglePin={app.manifest.id === 'launcher' ? togglePinnedAppId : undefined}
-                  {...binding?.props}
-                />
-              </Suspense>
-            </AppErrorBoundary>
-          </ShellWindow>
+          <ShellWindowEntry
+            key={windowId}
+            windowId={windowId}
+            binding={bindings[windowId]}
+            handlers={handlers}
+            snapAssist={snapAssist}
+            determinismTick={determinismRecorder.tickCount}
+            openWindow={openWindow}
+            handleClose={handleClose}
+            handleSnapPreviewChange={handleSnapPreviewChange}
+            handleSnapCommit={handleSnapCommit}
+            toggleMinimize={toggleMinimize}
+            toggleMaximize={toggleMaximize}
+            restoreWindow={restoreWindow}
+            dispatchIntent={dispatchIntent}
+            registerWindowStateAccessor={registerWindowStateAccessor}
+            unregisterWindowStateAccessor={unregisterWindowStateAccessor}
+            determinismRecorder={determinismRecorder}
+            getCurrentCircuit={getCurrentCircuit}
+            handleOpenStarterProject={handleOpenStarterProject}
+            handleOpenInstructorPackProject={handleOpenInstructorPackProject}
+            handleOpenRecentProject={handleOpenRecentProject}
+            handleOpenSubmissionProject={handleOpenSubmissionProject}
+            recentAppIds={recentAppIds}
+            pinnedAppIds={pinnedAppIds}
+            runningAppIds={runningAppIds}
+            togglePinnedAppId={togglePinnedAppId}
+          />
         );
       })}
 
@@ -3190,7 +3323,7 @@ export const Shell: React.FC<ShellProps> = () => {
 
       {windowSwitcherOpen && (
         <WindowSwitcher
-          windows={windows}
+          windows={[...useWindowStore.getState().windows].sort((a, b) => a.zIndex - b.zIndex)}
           onSelect={handleWindowSwitcherSelect}
           onCancel={handleWindowSwitcherCancel}
         />
