@@ -1,0 +1,142 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--rb-surface-1);
+  color: var(--rb-text);
+}
+
+.header {
+  padding: 20px 24px 12px;
+  border-bottom: 1px solid var(--rb-border);
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--rb-text-2);
+}
+
+.content {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 16px;
+  flex: 1;
+  padding: 16px 24px 20px;
+  min-height: 0;
+}
+
+.stepper {
+  border: 1px solid var(--rb-border);
+  border-radius: 14px;
+  background: var(--rb-surface-2);
+  padding: 12px;
+  overflow: auto;
+}
+
+.stepRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.stepActive {
+  border-color: var(--rb-accent-strong);
+  background: var(--rb-accent-weak);
+}
+
+.stepTitle {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.stepStatus {
+  font-size: 12px;
+  color: var(--rb-text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.panel {
+  border: 1px solid var(--rb-border);
+  border-radius: 14px;
+  background: var(--rb-surface-2);
+  padding: 16px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panelTitle {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.panelDesc {
+  font-size: 13px;
+  color: var(--rb-text-2);
+}
+
+.failure {
+  border: 1px solid var(--rb-danger, #ef4444);
+  color: var(--rb-danger, #ef4444);
+  background: color-mix(in srgb, var(--rb-danger, #ef4444) 12%, transparent);
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 12px;
+}
+
+.logs {
+  border: 1px solid var(--rb-border);
+  border-radius: 10px;
+  background: var(--rb-surface-1);
+  padding: 10px;
+  font-size: 12px;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.actions {
+  margin-top: auto;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.primaryCta {
+  border: 1px solid var(--rb-accent-strong);
+  background: var(--rb-accent-strong);
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.secondaryCta {
+  border: 1px solid var(--rb-border-strong, var(--rb-border));
+  background: var(--rb-surface-1);
+  color: var(--rb-text);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+}
+
+.done {
+  border: 1px solid var(--rb-success, #22c55e);
+  border-radius: 10px;
+  padding: 10px;
+  color: var(--rb-success, #22c55e);
+  font-size: 13px;
+}

@@ -27,6 +27,9 @@ interface WorkspaceRightSidebarProps {
   saveLabel: string;
   statusLabel: string;
   stageAccent?: string;
+  primaryActionLabel: string;
+  onPrimaryAction: () => void;
+  onExportAction: () => void;
   onFixIntent: (intent: SubmissionGateFixIntent) => void;
   onAskRedByte: () => void;
   onExplainIssues: () => void;
@@ -62,6 +65,9 @@ export const WorkspaceRightSidebar: React.FC<WorkspaceRightSidebarProps> = ({
   saveLabel,
   statusLabel,
   stageAccent,
+  primaryActionLabel,
+  onPrimaryAction,
+  onExportAction,
   onFixIntent,
   onAskRedByte,
   onExplainIssues,
@@ -70,17 +76,52 @@ export const WorkspaceRightSidebar: React.FC<WorkspaceRightSidebarProps> = ({
   askRedByteResult,
   onAskRedByteAction,
 }) => {
-  const prioritizedIssues = [...issues].sort((left, right) => {
-    if (left.severity === right.severity) return 0;
-    return left.severity === 'block' ? -1 : 1;
-  });
-  const actionableIssues = prioritizedIssues.slice(0, 4);
-  const blockingIssues = actionableIssues.filter((issue) => issue.severity === 'block');
-  const warningIssues = actionableIssues.filter((issue) => issue.severity === 'warn');
-  const hasGateIssues = actionableIssues.length > 0;
-  const intelBlockingActions = askRedByteResult?.actions.filter((action) => action.severity === 'blocking') ?? [];
-  const intelWarningActions = askRedByteResult?.actions.filter((action) => action.severity !== 'blocking') ?? [];
+  const actionableIssues = React.useMemo(() => [...issues]
+    .sort((left, right) => {
+      if (left.severity === right.severity) return 0;
+      return left.severity === 'block' ? -1 : 1;
+    })
+    .slice(0, 4), [issues]);
+  const indexedActionableIssues = React.useMemo(
+    () => actionableIssues.map((issue, index) => ({ issue, index })),
+    [actionableIssues],
+  );
+  const blockingIssues = React.useMemo(
+    () => indexedActionableIssues.filter(({ issue }) => issue.severity === 'block'),
+    [indexedActionableIssues],
+  );
+  const warningIssues = React.useMemo(
+    () => indexedActionableIssues.filter(({ issue }) => issue.severity === 'warn'),
+    [indexedActionableIssues],
+  );
+  const hasGateIssues = indexedActionableIssues.length > 0;
+  const hasBlockingIssues = blockingIssues.length > 0;
+  const topIssue = indexedActionableIssues[0]?.issue ?? null;
+  const intelBlockingActions = React.useMemo(
+    () => askRedByteResult?.actions.filter((action) => action.severity === 'blocking') ?? [],
+    [askRedByteResult],
+  );
+  const intelWarningActions = React.useMemo(
+    () => askRedByteResult?.actions.filter((action) => action.severity !== 'blocking') ?? [],
+    [askRedByteResult],
+  );
   const intelFallback = Boolean(askRedByteResult?.debug?.fallback);
+  const topIssueFixIntent = topIssue ? resolveSubmissionGateFixIntent(topIssue) : null;
+
+  const commandActions = React.useMemo(() => {
+    const actions: Array<{ id: string; label: string; onClick: () => void }> = [
+      { id: 'primary', label: primaryActionLabel, onClick: onPrimaryAction },
+    ];
+
+    if (topIssueFixIntent) {
+      actions.push({ id: 'fix', label: 'Fix', onClick: () => onFixIntent(topIssueFixIntent) });
+      actions.push({ id: 'show', label: 'Show me', onClick: () => onFixIntent(topIssueFixIntent) });
+    } else if (mode === 'submit') {
+      actions.push({ id: 'export', label: 'Export', onClick: onExportAction });
+    }
+
+    return actions.slice(0, 3);
+  }, [mode, onExportAction, onFixIntent, onPrimaryAction, primaryActionLabel, topIssueFixIntent]);
 
   return (
     <div data-testid="workspace-right-sidebar" className={styles.root} style={{ ['--rb-stage-accent' as string]: stageAccent ?? 'var(--rb-accent-build)' }}>
@@ -93,30 +134,18 @@ export const WorkspaceRightSidebar: React.FC<WorkspaceRightSidebarProps> = ({
       <div data-testid="workspace-next-step" className={styles.heroCard}>
         <div className={styles.title}>{NEO_LABELS.NEXT_ACTION}</div>
         <div className={styles.heroBody}>{nextStepText}</div>
-        <button type="button" className={styles.heroButton}>{NEO_LABELS.OPEN_STAGE}</button>
-        <div data-testid="workspace-pass-criteria" style={{ marginTop: 8 }}>
-          <div className={styles.title}>{NEO_LABELS.PASS_LOOKS_LIKE}</div>
-          <ul className={styles.list}>
-            {(passCriteria.length > 0 ? passCriteria : ['Complete the stage checklist and verify expected behavior.'])
-              .slice(0, 2)
-              .map((item, index) => (
-                <li key={`pass-${index}-${item}`} className={styles.muted}>
-                  {item}
-                </li>
-              ))}
-          </ul>
-        </div>
-        <div data-testid="workspace-common-mistakes" style={{ marginTop: 8 }}>
-          <div className={styles.title}>{NEO_LABELS.COMMON_MISTAKES}</div>
-          <ul className={styles.list}>
-            {(commonMistakes.length > 0 ? commonMistakes : ['Skipping checks before moving to the next stage.'])
-              .slice(0, 2)
-              .map((item, index) => (
-                <li key={`mistake-${index}-${item}`} className={styles.muted}>
-                  {item}
-                </li>
-              ))}
-          </ul>
+        <div className={styles.commandActions}>
+          {commandActions.map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              data-testid={`workspace-next-action-${action.id}`}
+              className={action.id === 'primary' ? `${styles.heroButton} ${styles.heroButtonPrimary}` : styles.heroButton}
+              onClick={action.onClick}
+            >
+              {action.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -130,6 +159,14 @@ export const WorkspaceRightSidebar: React.FC<WorkspaceRightSidebarProps> = ({
         <div style={{ marginTop: 8 }}>
           <div className={styles.title}>Capture</div>
           <div className={styles.muted}>{whatGoodLooksLike}</div>
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <div className={styles.title}>{NEO_LABELS.PASS_LOOKS_LIKE}</div>
+          <div className={styles.muted}>{passCriteria[0] ?? 'Complete current stage checks.'}</div>
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <div className={styles.title}>{NEO_LABELS.COMMON_MISTAKES}</div>
+          <div className={styles.muted}>{commonMistakes[0] ?? 'Skipping evidence capture before moving stages.'}</div>
         </div>
       </div>
 
@@ -258,15 +295,10 @@ export const WorkspaceRightSidebar: React.FC<WorkspaceRightSidebarProps> = ({
         </ul>
       </div>
 
-      <div className={styles.block}>
-        <div className={styles.title}>Current Studio Step</div>
-        <div style={{ marginTop: 4, fontSize: 12, color: 'var(--rb-text, #e4e4e7)' }}>{LAB_WORKSPACE_MODE_HINTS[mode]}</div>
-      </div>
-
       <div data-testid="workspace-right-sidebar-next-action" className={styles.block}>
-        <div className={styles.title}>{NEO_LABELS.NEXT_ACTION}</div>
+        <div className={styles.title}>Status</div>
         <div className={styles.muted} style={{ marginTop: 4, fontSize: 12 }}>
-          {checklist[modeIndex] ?? checklist[0] ?? 'Continue through the current stage guidance.'}
+          {LAB_WORKSPACE_MODE_HINTS[mode]}
         </div>
       </div>
 
@@ -278,55 +310,91 @@ export const WorkspaceRightSidebar: React.FC<WorkspaceRightSidebarProps> = ({
       )}
 
       <div data-testid="workspace-right-sidebar-fixes" style={{ display: 'grid', gap: 8 }}>
-        <div className={styles.title}>{NEO_LABELS.ISSUES}</div>
+        <div className={styles.title}>Issues</div>
 
         <div data-testid="workspace-issues-blocking" style={{ display: 'grid', gap: 6 }}>
-          <div className={styles.issueSectionTitle}>{NEO_LABELS.BLOCKING}</div>
+          <div className={styles.issueSectionTitle}>
+            <span>{NEO_LABELS.BLOCKING}</span>
+            <span data-testid="workspace-issues-blocking-chip" className={styles.issueCountChip}>({blockingIssues.length})</span>
+          </div>
           {blockingIssues.length === 0 ? (
             <div className={styles.emptyHint}>{NEO_LABELS.NO_BLOCKING}</div>
-          ) : null}
+          ) : (
+            blockingIssues.map(({ issue, index }) => {
+              const fixIntent = resolveSubmissionGateFixIntent(issue);
+              return (
+                <div
+                  key={`block-${issue.code}-${index}`}
+                  className={`${styles.issueCard} ${styles.issueCardBlocking}`}
+                >
+                  <div className={styles.issueTitle}>
+                    <span>{NEO_ACTION_ICONS.blocking}</span>
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {issue.title}
+                    </span>
+                  </div>
+                  <div className={styles.issueBody}>{toOneSentence(issue.message)}</div>
+                  <button
+                    data-testid={`workspace-right-sidebar-fix-${index}`}
+                    type="button"
+                    onClick={() => onFixIntent(fixIntent)}
+                    className={styles.issueFixButton}
+                  >
+                    {fixIntent.label}
+                  </button>
+                  {issue.fixHint ? (
+                    <details style={{ marginTop: 6 }}>
+                      <summary className={styles.muted} style={{ cursor: 'pointer' }}>Why this matters</summary>
+                      <div className={styles.muted} style={{ marginTop: 4 }}>{issue.fixHint}</div>
+                    </details>
+                  ) : null}
+                </div>
+              );
+            })
+          )}
         </div>
 
         <div data-testid="workspace-issues-warnings" style={{ display: 'grid', gap: 6 }}>
-          <div className={styles.issueSectionTitle}>{NEO_LABELS.WARNINGS}</div>
-          {warningIssues.length === 0 ? (
-            <div className={styles.emptyHint}>{NEO_LABELS.NO_WARNINGS}</div>
-          ) : null}
+          <details data-testid="workspace-issues-warnings-collapse" open={!hasBlockingIssues}>
+            <summary className={styles.issueSectionTitle}>
+              <span>{NEO_LABELS.WARNINGS}</span>
+              <span data-testid="workspace-issues-warnings-chip" className={styles.issueCountChip}>({warningIssues.length})</span>
+            </summary>
+            <div className={styles.warningSectionBody}>
+              {warningIssues.length === 0 ? (
+                <div className={styles.emptyHint}>{NEO_LABELS.NO_WARNINGS}</div>
+              ) : (
+                warningIssues.map(({ issue, index }) => {
+                  const fixIntent = resolveSubmissionGateFixIntent(issue);
+                  return (
+                    <div
+                      key={`warn-${issue.code}-${index}`}
+                      className={`${styles.issueCard} ${styles.issueCardWarning}`}
+                    >
+                      <div className={styles.issueTitle}>
+                        <span>{NEO_ACTION_ICONS.warning}</span>
+                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {issue.title}
+                        </span>
+                      </div>
+                      <div className={styles.issueBody}>{toOneSentence(issue.message)}</div>
+                      <button
+                        data-testid={`workspace-right-sidebar-fix-${index}`}
+                        type="button"
+                        onClick={() => onFixIntent(fixIntent)}
+                        className={styles.issueFixButton}
+                      >
+                        {fixIntent.label}
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </details>
         </div>
 
-        {actionableIssues.map((issue, index) => {
-          const fixIntent = resolveSubmissionGateFixIntent(issue);
-          return (
-            <div
-              key={`${issue.code}-${index}`}
-              className={[styles.issueCard, issue.severity === 'block' ? styles.issueCardBlocking : styles.issueCardWarning].join(' ')}
-            >
-              <div className={styles.issueTitle}>
-                <span>{issue.severity === 'block' ? NEO_ACTION_ICONS.blocking : NEO_ACTION_ICONS.warning}</span>
-                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {issue.title}
-                </span>
-              </div>
-              <div className={styles.issueBody}>{toOneSentence(issue.message)}</div>
-              <button
-                data-testid={`workspace-right-sidebar-fix-${index}`}
-                type="button"
-                onClick={() => onFixIntent(fixIntent)}
-                className={styles.issueFixButton}
-              >
-                {fixIntent.label}
-              </button>
-              {issue.fixHint ? (
-                <details style={{ marginTop: 6 }}>
-                  <summary className={styles.muted} style={{ cursor: 'pointer' }}>Why this matters</summary>
-                  <div className={styles.muted} style={{ marginTop: 4 }}>{issue.fixHint}</div>
-                </details>
-              ) : null}
-            </div>
-          );
-        })}
-
-        {actionableIssues.length === 0 ? (
+        {!hasGateIssues ? (
           <div data-testid="workspace-right-sidebar-fixes-empty" className={styles.emptyHint}>
             No blocking fixes for this stage.
           </div>

@@ -24,6 +24,8 @@ import {
   EmptyState,
   installErrorHandlers,
   useRenderStormDetector,
+  loadFirstRunState,
+  resolveFirstRunTargetApp,
 } from '@redbyte/rb-apps';
 import { useWindowStore, loadSession, resolveTargetWindowId } from '@redbyte/rb-windowing';
 import { useWorkspaceStore, loadWorkspaces } from './workspaceStore';
@@ -971,38 +973,39 @@ export const Shell: React.FC<ShellProps> = () => {
 
   const openWindow = useCallback(
     (appId: string, props?: any) => {
-      const app = getApp(appId);
+      const resolvedAppId = resolveFirstRunTargetApp(appId, loadFirstRunState());
+      const app = getApp(resolvedAppId);
       if (!app) {
         logSystemEvent({
           level: 'error',
           source: 'shell',
           message: 'App not found',
-          data: { appId },
+          data: { appId: resolvedAppId },
         });
-        console.warn(`[Shell] openWindow: app "${appId}" not found in registry`);
-        toast.error({ title: 'App unavailable', message: `"${appId}" is not registered.` });
+        console.warn(`[Shell] openWindow: app "${resolvedAppId}" not found in registry`);
+        toast.error({ title: 'App unavailable', message: `"${resolvedAppId}" is not registered.` });
         return null;
       }
 
-      recordRecentApp(appId);
+      recordRecentApp(resolvedAppId);
 
       if (app.manifest.singleton) {
         // Read current windows from the store directly to avoid stale closure
         const currentWindows = useWindowStore.getState().windows;
-        const existing = currentWindows.find((w) => w.contentId === appId);
+        const existing = currentWindows.find((w) => w.contentId === resolvedAppId);
         if (existing) {
           if (existing.mode === 'minimized') {
             restoreWindow(existing.id);
           }
           focusWindow(existing.id);
-          setBindings((prev) => ({ ...prev, [existing.id]: { appId, props } }));
+          setBindings((prev) => ({ ...prev, [existing.id]: { appId: resolvedAppId, props } }));
           logSystemEvent({
             level: 'action',
             source: 'shell',
             message: 'Window focused',
-            data: { appId, windowId: existing.id, mode: existing.mode },
+            data: { appId: resolvedAppId, windowId: existing.id, mode: existing.mode },
           });
-          recordDiagnosticAction(`Focus window: ${appId}`);
+          recordDiagnosticAction(`Focus window: ${resolvedAppId}`);
           return existing.id;
         }
       }
@@ -1016,14 +1019,14 @@ export const Shell: React.FC<ShellProps> = () => {
 
       trackWindowOpen(state.id);
       focusWindow(state.id);
-      setBindings((prev) => ({ ...prev, [state.id]: { appId, props } }));
+      setBindings((prev) => ({ ...prev, [state.id]: { appId: resolvedAppId, props } }));
       logSystemEvent({
         level: 'action',
         source: 'shell',
         message: 'Window opened',
-        data: { appId, windowId: state.id },
+        data: { appId: resolvedAppId, windowId: state.id },
       });
-      recordDiagnosticAction(`Open window: ${appId}`);
+      recordDiagnosticAction(`Open window: ${resolvedAppId}`);
       return state.id;
     },
     [createWindow, focusWindow, recordRecentApp, restoreWindow, recordDiagnosticAction]

@@ -121,6 +121,8 @@ describe('LabWorkspaceApp', () => {
     expect(screen.getByTestId('lab-workspace-header')).toBeTruthy();
     expect(screen.getByTestId('lab-workspace-stepper')).toBeTruthy();
     expect(screen.getByTestId('lab-workspace-stage-pill').textContent ?? '').toMatch(/Design/i);
+    expect(screen.getByTestId('lab-workspace-primary-cta').textContent ?? '').toMatch(/run sim/i);
+    expect(screen.getByTestId('lab-workspace-build-primary-cta').textContent ?? '').toMatch(/do it now/i);
     expect(screen.getByTestId('lab-workspace-panel-build')).toBeTruthy();
     expect(screen.getByTestId('hdl-editor-panel-mock')).toBeTruthy();
     expect(screen.getByTestId('workspace-right-sidebar')).toBeTruthy();
@@ -144,6 +146,8 @@ describe('LabWorkspaceApp', () => {
 
     fireEvent.click(screen.getByTestId('lab-workspace-tab-simulate'));
     expect(screen.getByTestId('lab-workspace-panel-simulate')).toBeTruthy();
+    expect(screen.getByTestId('lab-workspace-simulate-primary-cta').textContent ?? '').toMatch(/do it now/i);
+    expect(screen.getByTestId('lab-workspace-primary-cta').textContent ?? '').toMatch(/compare\s*\/\s*verify/i);
     expect(screen.getByTestId('lab-workspace-signal-legend')).toBeTruthy();
     expect(screen.getByTestId('compare-panel')).toBeTruthy();
     expect(screen.getByTestId('compare-verdict').textContent ?? '').toMatch(/pending/i);
@@ -156,6 +160,8 @@ describe('LabWorkspaceApp', () => {
 
     fireEvent.click(screen.getByTestId('lab-workspace-tab-hardware'));
     expect(screen.getByTestId('lab-workspace-panel-hardware')).toBeTruthy();
+    expect(screen.getByTestId('lab-workspace-hardware-primary-cta').textContent ?? '').toMatch(/do it now/i);
+    expect(screen.getByTestId('lab-workspace-primary-cta').textContent ?? '').toMatch(/compare\s*\/\s*verify/i);
     expect(screen.getByTestId('hardware-panel-component-mock')).toBeTruthy();
 
     fireEvent.click(screen.getByTestId('lab-workspace-tab-submit'));
@@ -170,11 +176,20 @@ describe('LabWorkspaceApp', () => {
     expect(screen.getByTestId('studio-verify-compare')).toBeTruthy();
     expect(screen.getByTestId('studio-verify-evidence-summary')).toBeTruthy();
     expect(screen.getByTestId('lab-workspace-package-summary')).toBeTruthy();
+    expect(screen.getByTestId('lab-workspace-submit-primary-cta').textContent ?? '').toMatch(/do it now/i);
+    expect(screen.getByTestId('lab-workspace-primary-cta').textContent ?? '').toMatch(/package evidence|export bundle/i);
     expect(screen.getByTestId('lab-workspace-bundle-contents-preview')).toBeTruthy();
 
     await waitFor(() => {
       expect(screen.getByTestId('workspace-right-sidebar-fixes')).toBeTruthy();
     });
+
+    expect(screen.getByTestId('workspace-issues-blocking-chip')).toBeTruthy();
+    expect(screen.getByTestId('workspace-issues-warnings-chip')).toBeTruthy();
+    const blockingChipText = screen.getByTestId('workspace-issues-blocking-chip').textContent ?? '(0)';
+    const blockingCount = Number.parseInt(blockingChipText.replace(/[^0-9]/g, ''), 10) || 0;
+    const warningsCollapse = screen.getByTestId('workspace-issues-warnings-collapse') as HTMLDetailsElement;
+    expect(warningsCollapse.open).toBe(blockingCount === 0);
 
     const firstFix = screen.queryByTestId('workspace-right-sidebar-fix-0');
     if (firstFix) {
@@ -294,6 +309,7 @@ describe('LabWorkspaceApp', () => {
     });
 
     expect(screen.getByTestId('workspace-intelligence-explain-issues')).toBeTruthy();
+
     fireEvent.click(screen.getByTestId('workspace-intelligence-explain-issues'));
     await waitFor(() => {
       expect(screen.getByTestId('workspace-intelligence-summary')).toBeTruthy();

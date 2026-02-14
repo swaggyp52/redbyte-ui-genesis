@@ -1,5 +1,140 @@
 # AI State
 
+## Change Log 2026-02-14 (PR-Ship-1: First-Run Wizard + Doctor Report V2 + Diagnostics Endpoint)
+
+- Implemented PR-Ship-1 execution slice for student-machine readiness with strict scope: wizard orchestration, diagnostics normalization, and doctor export supportability (no toolchain program/capture behavior rewrites).
+
+- Added first-run wizard application and persistence/state machine contract:
+  - `packages/rb-apps/src/apps/FirstRunWizardApp.tsx`
+  - `packages/rb-apps/src/apps/FirstRunWizardApp.module.css`
+  - `packages/rb-apps/src/apps/firstRun/firstRunState.ts`
+  - `packages/rb-apps/src/apps/firstRun/firstRunChecklist.ts`
+  - state flow implemented as requested:
+    - `idle -> bridge_check -> board_detect -> programmer_check -> known_good_program -> sample_capture -> doctor_export -> done`
+  - each step tracks bounded logs + `status: pending|running|pass|fail` + `errorCode` on failure.
+  - added required wizard test IDs:
+    - `first-run-wizard-root`
+    - `first-run-stepper`
+    - `first-run-primary-cta`
+    - `first-run-export-doctor`
+    - `first-run-step-status-{stepId}`
+
+- Added central wizard gating and registration:
+  - `packages/rb-apps/src/index.ts`
+    - registers hidden singleton app `first-run-wizard` in full + e2e-lite modes.
+    - exports first-run + doctor/taxonomy helpers.
+  - `packages/rb-shell/src/Shell.tsx`
+    - `openWindow` now resolves `home` / `lab-workspace` through first-run gate helper so incomplete first-run routes to wizard.
+    - dev bypass respected through shared state helper (`?allow=1` / `RB_DEV_BYPASS_WIZARD=1`).
+
+- Added doctor report v2 schema + taxonomy normalization:
+  - `packages/rb-apps/src/fpga/doctorReportV2.ts`
+    - introduced `rb_doctor_report_v2` schema builder with sanitized hashed path fields and remediation list.
+  - `packages/rb-apps/src/fpga/hardwareErrorTaxonomy.ts`
+    - single-source error code set:
+      - `bridge_offline`, `board_missing`, `board_busy`, `program_failed`, `permission_denied`, `bitstream_missing`.
+  - `packages/rb-apps/src/fpga/toolchainBackend.ts`
+    - added backend method `doctorReportV2()` that consumes bridge diagnostics + board detect to emit v2 report.
+  - `packages/rb-apps/src/apps/HardwarePanelApp.tsx`
+    - integrated shared taxonomy mapping for displayed program error code output.
+
+- Added bridge diagnostics endpoint for structured runtime snapshot:
+  - `packages/rb-fpga-bridge/src/index.js`
+    - `GET /diagnostics` returns sanitized snapshot with:
+      - bridge reachability/version/uptime/active runs,
+      - last program error code,
+      - openFPGALoader availability/version/path hash/capabilities.
+    - no raw filesystem paths returned.
+
+- Added tests:
+  - `packages/rb-apps/src/__tests__/first-run-wizard.test.tsx`
+    - verifies wizard surface contracts and route-target gating behavior for incomplete first-run state.
+
+- **Build Verification (PR-Ship-1 gate run)**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx` (`1 file, 10 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/hardware-panel.test.tsx` (`1 file, 5 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (`1 file, 4 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/first-run-wizard.test.tsx` (`1 file, 2 tests passed`)
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`)
+  - Note: existing unrelated import-resolution warning from `ECELabApp.tsx` for `@redbyte/rb-lab-engine/src/signals/signalSemantics` still appears and remains non-blocking in these requested runs.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-13 (PR-C: Flagship Cohesion + Clarity + Speed Pass)
+
+- Executed PR-C within the requested allowlist, UX-only (no schema/engine/toolchain/persistence/routing changes):
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - upgraded stage empty states into mini-tutorial pattern for `build/simulate/hardware/submit`:
+      - one-sentence why
+      - one bullet for what gets produced
+      - one `Do it now` CTA
+    - preserved existing test-id contracts and added submit mini-tutorial CTA (`lab-workspace-submit-primary-cta`).
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.module.css`
+    - normalized layout spacing rhythm via shared workspace spacing tokens.
+    - tightened header/stepper/CTA alignment and panel rhythm.
+    - enforced one active page scroll surface by moving stage scrolling to shared stage container and removing side-panel independent scrolling.
+    - normalized interaction timing to 180ms micro-motion and aligned CTA treatment.
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.tsx`
+    - refined right rail as status + next-action command center with memoized issue/action derivations.
+    - introduced premium issues grouping:
+      - blocking and warning sections with count chips
+      - warnings collapse defaults to closed when blockers exist
+      - issue cards split by severity with preserved fix actions and contracts.
+    - reduced visual noise by removing redundant step block while keeping required next-action/status surfaces.
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.module.css`
+    - added spacing/typography hierarchy and count-chip styling.
+    - strengthened blocking cards and muted warning cards with consistent emphasis semantics.
+    - standardized command button styling and transition timing.
+  - `packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+    - added minimal assertions for new mini-tutorial CTAs, issue count chips, and conditional warning-collapse behavior.
+
+- **Build Verification (required sequence)**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (`1 file, 4 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx` (`1 file, 10 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/top-command-bar-submission.test.tsx` (`1 file, 2 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/submission-bundle.test.ts` (`1 file, 1 test passed`)
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`)
+  - Note: existing unrelated `ECELabApp.tsx` import-resolution warning for `@redbyte/rb-lab-engine/src/signals/signalSemantics` remains present and non-blocking in this run.
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-13 (PR-B: Flagship Interaction Pass)
+
+- Executed PR-B within the requested allowlist, focused on interaction/workflow authority (no schema/engine/persistence/routing changes):
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+    - stage primary CTA now follows flagship mapping:
+      - Design → `Run Sim`
+      - Simulate → `Compare / Verify`
+      - Hardware → `Compare / Verify`
+      - Verify/Package readiness path → `Package Evidence`
+      - export-ready path → `Export Bundle`
+    - stepper now renders blocked-stage one-line reason (`lab-workspace-tab-reason-*`) in addition to warning marker.
+    - fix-intent routing upgraded from scroll-only to scroll+focus attempt with fallback targets, preserving existing fix intent contracts.
+    - added safe keyboard handling at workspace root:
+      - `Enter` triggers primary CTA when target is non-editable and not already an actionable control.
+      - `Escape` collapses open disclosure panels (`details`) in current workspace context.
+    - exposed stable primary CTA test id: `lab-workspace-primary-cta`.
+    - wired command-center callbacks into right rail.
+  - `packages/rb-apps/src/apps/LabWorkspaceApp.module.css`
+    - added blocked-step reason visual style (`.stepReason`).
+    - normalized primary CTA active micro-interaction (`.primaryAction:active`).
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.tsx`
+    - converted top rail to command-center behavior:
+      - single-sentence next action,
+      - max 1–3 action buttons (`primary`, optional `Fix`, optional `Show me`, or `Export` in submit when no blocking issue intent).
+    - retained strict issue rendering order and structure (blocking first, warnings second; title + one sentence + fix button; `Why this matters` collapsible).
+  - `packages/rb-apps/src/components/WorkspaceRightSidebar.module.css`
+    - added command action row style (`.commandActions`).
+  - `packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx`
+    - added assertions for new stage primary CTA labels across stages.
+
+- **Build Verification (required sequence)**:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` (`1 file, 4 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx` (`1 file, 10 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/top-command-bar-submission.test.tsx` (`1 file, 2 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/submission-bundle.test.ts` (`1 file, 1 test passed`)
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`)
+  - Note: existing unrelated `ECELabApp.tsx` import-resolution warning for `@redbyte/rb-lab-engine/src/signals/signalSemantics` remains present and non-blocking in this run.
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-13 (PR-A: Flagship Visual Cohesion Sweep)
 
 - Executed a cohesive Studio-wide visual system pass with no architecture/schema/toolchain behavior changes:

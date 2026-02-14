@@ -1,6 +1,9 @@
 .root {
+  --rb-sidebar-space-1: 6px;
+  --rb-sidebar-space-2: 10px;
+  --rb-sidebar-space-3: 12px;
   display: grid;
-  gap: 12px;
+  gap: var(--rb-sidebar-space-3);
   color: var(--rb-ui-lab-text);
 }
 
@@ -11,7 +14,7 @@
 }
 
 .title {
-  font-size: 11px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-weight: 700;
@@ -23,7 +26,7 @@
   border: 1px solid var(--rb-ui-lab-border-strong);
   background: linear-gradient(180deg, color-mix(in srgb, var(--rb-stage-accent, var(--rb-ui-lab-accent)) 16%, var(--rb-ui-lab-bg-surface)) 0%, var(--rb-ui-lab-bg-surface) 100%);
   box-shadow: var(--rb-ui-lab-shadow-soft);
-  padding: 10px;
+  padding: var(--rb-sidebar-space-2);
 }
 
 .heroBody {
@@ -34,11 +37,11 @@
 }
 
 .heroButton {
-  margin-top: 8px;
+  margin-top: var(--rb-sidebar-space-2);
   width: fit-content;
   border-radius: 10px;
-  border: 1px solid var(--rb-ui-lab-border-strong);
-  background: var(--rb-ui-lab-bg-elevated);
+  border: 1px solid var(--rb-ui-lab-border);
+  background: var(--rb-ui-lab-bg-surface);
   color: var(--rb-ui-lab-text);
   padding: 6px 10px;
   font-size: 11px;
@@ -46,17 +49,30 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.heroButtonPrimary {
+  border-color: var(--rb-ui-lab-border-strong);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rb-ui-lab-accent) 22%, var(--rb-ui-lab-bg-elevated)) 0%, var(--rb-ui-lab-bg-elevated) 100%);
 }
 
 .heroButton:hover {
   transform: translateY(-1px);
 }
 
+.commandActions {
+  margin-top: var(--rb-sidebar-space-2);
+  display: flex;
+  gap: var(--rb-sidebar-space-1);
+  flex-wrap: wrap;
+}
+
 .block {
   border: 1px solid var(--rb-ui-lab-border);
   border-radius: 12px;
   background: var(--rb-ui-lab-bg-surface);
-  padding: 10px;
+  padding: var(--rb-sidebar-space-2);
   box-shadow: var(--rb-ui-lab-shadow-soft);
 }
 
@@ -81,15 +97,19 @@
   border-radius: 10px;
   border: 1px solid var(--rb-ui-lab-border);
   background: var(--rb-ui-lab-bg-elevated);
-  padding: 8px;
+  padding: var(--rb-sidebar-space-2);
+  display: grid;
+  gap: var(--rb-sidebar-space-1);
 }
 
 .issueCardBlocking {
   border-left: 3px solid var(--rb-ui-lab-danger);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--rb-ui-lab-danger) 20%, transparent);
 }
 
 .issueCardWarning {
   border-left: 3px solid var(--rb-ui-lab-warning);
+  background: color-mix(in srgb, var(--rb-ui-lab-warning) 7%, var(--rb-ui-lab-bg-elevated));
 }
 
 .issueTitle {
@@ -102,13 +122,12 @@
 }
 
 .issueBody {
-  margin-top: 3px;
   font-size: 11px;
   color: var(--rb-ui-lab-text-muted);
 }
 
 .issueFixButton {
-  margin-top: 7px;
+  margin-top: 2px;
   border: 1px solid var(--rb-ui-lab-border);
   border-radius: 10px;
   background: var(--rb-ui-lab-bg-surface);
@@ -119,6 +138,7 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
 }
 
 .issueFixButton:hover {
@@ -147,9 +167,27 @@
 }
 
 .issueSectionTitle {
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rb-sidebar-space-1);
+  font-size: 12px;
   font-weight: 700;
   color: var(--rb-ui-lab-text);
+}
+
+.issueCountChip {
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 10px;
+  color: var(--rb-ui-lab-text-muted);
+  background: var(--rb-ui-lab-bg-surface);
+}
+
+.warningSectionBody {
+  margin-top: var(--rb-sidebar-space-1);
+  display: grid;
+  gap: var(--rb-sidebar-space-1);
 }
 
 .emptyHint {

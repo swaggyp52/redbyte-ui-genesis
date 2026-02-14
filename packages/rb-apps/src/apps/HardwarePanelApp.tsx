@@ -17,6 +17,7 @@ import {
   type BuildLogEntry,
   type ProgramRunDoneSummary,
 } from "../fpga/toolchainBackend";
+import { mapHardwareErrorCode } from "../fpga/hardwareErrorTaxonomy";
 import { NEO_STATUS } from "../ui/neoGlossary";
 import { NEO_ACTION_ICONS } from "../ui/neoIcons";
 import styles from "./HardwarePanelApp.module.css";
@@ -242,6 +243,7 @@ export function HardwarePanelComponent({
         : programRunStatus === "failed"
           ? "Failed"
           : "Idle";
+  const programErrorCode = mapHardwareErrorCode(programError ?? error ?? bridgeError ?? '');
 
   const programBlockedReason =
     !bridgeReady
@@ -1286,7 +1288,10 @@ export function HardwarePanelComponent({
           <div style={{ marginTop: "6px", fontSize: "11px", color: "#888" }}>run_id: {programLogPath}</div>
         )}
         {programError && (
-          <div style={{ marginTop: "6px", fontSize: "11px", color: "#f66" }}>{programError}</div>
+          <div style={{ marginTop: "6px", fontSize: "11px", color: "#f66" }}>
+            {programError}
+            {programErrorCode ? ` (errorCode: ${programErrorCode})` : ''}
+          </div>
         )}
       </div>
 
@@ -1587,7 +1592,10 @@ export function HardwarePanelComponent({
               <div style={{ marginTop: "4px" }}>Last program run_id: {programLogPath}</div>
             )}
             {programError && (
-              <div style={{ marginTop: "4px", color: "#f66" }}>Last program error: {programError}</div>
+              <div style={{ marginTop: "4px", color: "#f66" }}>
+                Last program error: {programError}
+                {programErrorCode ? ` (errorCode: ${programErrorCode})` : ''}
+              </div>
             )}
           </div>
           <div style={{ marginTop: "8px", fontSize: "11px", color: "#666" }}>

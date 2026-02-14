@@ -2286,6 +2286,49 @@ app.get("/api/health", async (_req, res) => res.json(await buildHealthPayload())
 // Backward compat
 app.get("/health", async (_req, res) => res.json(await buildHealthPayload()));
 
+app.get("/diagnostics", async (_req, res) => {
+  try {
+    const capabilities = await getCachedToolchain();
+    const programmer = capabilities?.openFPGALoader || null;
+    const pathHash =
+      typeof programmer?.path === "string" && programmer.path.trim().length > 0
+        ? createHash("sha256").update(programmer.path).digest("hex")
+        : undefined;
+
+    return res.json({
+      reachable: true,
+      version: "0.1.0",
+      uptimeMs: Math.round(process.uptime() * 1000),
+      activeRunCount: activeRuns.size,
+      lastErrorCode: typeof state.program_last_error === "string" ? state.program_last_error : null,
+      programmer: {
+        found: Boolean(programmer && programmer.status !== "missing"),
+        ...(typeof programmer?.version === "string" ? { version: programmer.version } : {}),
+        ...(pathHash ? { pathHash } : {}),
+        capabilities: {
+          program: Boolean(programmer && programmer.status !== "missing"),
+          detect: Boolean(programmer && programmer.status !== "missing"),
+        },
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      reachable: false,
+      version: "0.1.0",
+      uptimeMs: Math.round(process.uptime() * 1000),
+      activeRunCount: activeRuns.size,
+      lastErrorCode: typeof state.program_last_error === "string" ? state.program_last_error : "bridge_offline",
+      programmer: {
+        found: false,
+        capabilities: {
+          program: false,
+          detect: false,
+        },
+      },
+    });
+  }
+});
+
 app.get("/ports", async (_req, res) => {
   const ports = await listPortsForApi();
   res.json({ ports });

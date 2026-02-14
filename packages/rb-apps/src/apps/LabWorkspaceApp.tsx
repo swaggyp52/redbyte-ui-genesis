@@ -40,7 +40,6 @@ import { resolveSubmissionGateFixIntent, type SubmissionGateFixIntent } from './
 import { WorkspaceRightSidebar } from '../components/WorkspaceRightSidebar';
 import { getRedByteUiMode } from '../utils/uiMode';
 import { StatusPill, type StatusPillTone } from '../components/StatusPill';
-import { EmptyStateCard } from '../components/EmptyStateCard';
 import { SignalLegend } from '../components/SignalLegend';
 import { analyze as analyzeIntelligence, type IntelligenceAction, type IntelligenceAnalyzePayload, type IntelligenceAnalyzeResult } from '../intelligence/client';
 import { NEO_LABELS, NEO_STATUS } from '../ui/neoGlossary';
@@ -95,6 +94,50 @@ function toOneSentence(text: string): string {
   return firstSentence.endsWith('.') ? firstSentence : `${firstSentence}.`;
 }
 
+function isElementFocusable(element: HTMLElement): boolean {
+  const focusableSelectors = [
+    'button',
+    'a[href]',
+    'input',
+    'select',
+    'textarea',
+    '[tabindex]:not([tabindex="-1"])',
+  ].join(',');
+  return element.matches(focusableSelectors);
+}
+
+function focusElement(target: HTMLElement): boolean {
+  if (isElementFocusable(target)) {
+    target.focus({ preventScroll: true });
+    return document.activeElement === target;
+  }
+
+  const focusableChild = target.querySelector<HTMLElement>(
+    'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+  );
+  if (focusableChild) {
+    focusableChild.focus({ preventScroll: true });
+    return document.activeElement === focusableChild;
+  }
+
+  target.setAttribute('tabindex', '-1');
+  target.focus({ preventScroll: true });
+  return document.activeElement === target;
+}
+
+function getStageFocusFallbackIds(stage: LabWorkspaceMode): string[] {
+  if (stage === 'build') {
+    return ['hdl-top-input', 'lab-workspace-anchor-build-top-module'];
+  }
+  if (stage === 'simulate') {
+    return ['hdl-synth-button', 'lab-workspace-anchor-simulate-run'];
+  }
+  if (stage === 'hardware') {
+    return ['hardware-detect-board-button', 'lab-workspace-anchor-hardware-board-detect'];
+  }
+  return ['studio-verify-panel', 'lab-workspace-anchor-submit-generate'];
+}
+
 const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, starterInstructions }) => {
   const [mode, setMode] = useState<LabWorkspaceMode>(() => {
     try {
@@ -126,6 +169,7 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
   const [isCheckingSubmitGates, setIsCheckingSubmitGates] = useState(false);
   const [panelVisible, setPanelVisible] = useState(true);
   const isMountedRef = useRef(true);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const [recentRuns, setRecentRuns] = useState<{
     simulated: boolean;
     synthesized: boolean;
@@ -226,6 +270,24 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
     return mapping;
   }, [submitGateResult.issues, submitGateResult.verdict]);
 
+  const stepBlockingReason = useMemo(() => {
+    const reasonMap: Partial<Record<LabWorkspaceMode, string>> = {};
+
+    for (const issue of submitGateResult.issues) {
+      if (issue.severity !== 'block') continue;
+      const intent = resolveSubmissionGateFixIntent(issue);
+      if (!reasonMap[intent.stage]) {
+        reasonMap[intent.stage] = toOneSentence(issue.title || issue.message || 'Resolve blocker in this stage.');
+      }
+    }
+
+    if (submitGateResult.verdict === 'block' && !reasonMap.submit) {
+      reasonMap.submit = 'Resolve blocking submission checks before export.';
+    }
+
+    return reasonMap;
+  }, [submitGateResult.issues, submitGateResult.verdict]);
+
   const projectName = useMemo(() => {
     const base = labDefinition?.title ?? starterInstructions?.title ?? 'Studio Project';
     return base.trim().length > 0 ? base : 'Studio Project';
@@ -263,26 +325,47 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
   }, [labDefinition, mode]);
 
   const buildEmptyCopy = useMemo(() => {
+    const defaultWhy = 'Design stage defines the circuit contract before any verification can be trusted.';
+    const defaultProduce = 'a top module name and board/profile baseline';
     if (!labDefinition) {
-      return 'Start from template or open the editor to define your top module and profile.';
+      return {
+        why: defaultWhy,
+        produce: defaultProduce,
+      };
     }
     const first = labDefinition.buildSteps[0] ?? 'Open the editor and set your top module.';
-    const second = labDefinition.buildSteps[1] ?? 'Apply the expected board preset/profile before simulation.';
-    return `${first} ${second}`;
+    const second = labDefinition.buildSteps[1] ?? defaultProduce;
+    return {
+      why: toOneSentence(first),
+      produce: toOneSentence(second).replace(/\.$/, ''),
+    };
   }, [labDefinition]);
 
   const simulateEmptyCopy = useMemo(() => {
+    const defaultWhy = 'Simulation gives fast proof that logic behavior is correct before hardware capture.';
+    const defaultProduce = 'at least one waveform or probe-backed run result';
     if (!labDefinition) {
-      return 'Run simulation to capture waveform/probe evidence before submitting.';
+      return {
+        why: defaultWhy,
+        produce: defaultProduce,
+      };
     }
     const first = labDefinition.simulateChecks[0] ?? 'Run simulation once in this workspace.';
-    const second = labDefinition.simulateChecks[1] ?? 'Capture at least one waveform/probe artifact.';
-    return `${first} ${second}`;
+    const second = labDefinition.simulateChecks[1] ?? defaultProduce;
+    return {
+      why: toOneSentence(first),
+      produce: toOneSentence(second).replace(/\.$/, ''),
+    };
   }, [labDefinition]);
 
   const hardwareEmptyCopy = useMemo(() => {
+    const defaultWhy = 'Hardware checks validate real-board behavior and close the sim-to-device gap.';
+    const defaultProduce = 'a board detection and one captured hardware observation';
     if (!labDefinition) {
-      return 'Hardware is optional for many labs. Connect a board if available, or continue to Submit.';
+      return {
+        why: defaultWhy,
+        produce: defaultProduce,
+      };
     }
     const first = labDefinition.hardwareSteps[0]
       ?? (labDefinition.requireHardwareEvidence
@@ -292,7 +375,10 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
       ?? (labDefinition.requireHardwareEvidence
         ? 'Detect your board and program at least one run before submitting.'
         : 'If no board is available, continue to Submit.');
-    return `${first} ${second}`;
+    return {
+      why: toOneSentence(first),
+      produce: toOneSentence(second).replace(/\.$/, ''),
+    };
   }, [labDefinition]);
 
   const stagePassLooksLike = useMemo(() => {
@@ -430,6 +516,16 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
     () => verifyBlockingIssues.length === 0 && requiredEvidencePresent,
     [requiredEvidencePresent, verifyBlockingIssues.length],
   );
+
+  const submitEmptyCopy = useMemo(() => {
+    const why = verifyReady
+      ? 'Submit stage packages your verified evidence into a deterministic bundle.'
+      : 'Submit stage turns readiness gaps into a clear, actionable package checklist.';
+    const produce = verifyReady
+      ? 'an exportable bundle with reproducibility and gate artifacts'
+      : 'a prioritized list of blockers to clear before export';
+    return { why, produce };
+  }, [verifyReady]);
 
   const verifyEvidenceSummary = useMemo(() => {
     const includedFileCount = lastBundleManifest?.includedFiles?.length ?? 0;
@@ -622,6 +718,7 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
     const candidateTargets = [
       intent.scrollToTestId,
       ...(intent.fallbackScrollToTestIds ?? []),
+      ...getStageFocusFallbackIds(intent.stage),
     ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
     if (candidateTargets.length === 0) return;
 
@@ -632,12 +729,32 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
         const target = document.querySelector(selector);
         if (!target || !(target instanceof HTMLElement)) continue;
         target.scrollIntoView({ block: 'center' });
-        break;
+        if (focusElement(target)) {
+          break;
+        }
       }
     }, 0);
   }, [handleOpenTab]);
 
-  const handleStagePrimaryCta = useCallback((targetMode: 'build' | 'simulate' | 'hardware', targetId: string, fallbackIds: string[] = []) => {
+  const handleStagePrimaryCta = useCallback((targetMode: LabWorkspaceMode, targetId: string, fallbackIds: string[] = []) => {
+    if (targetMode === 'submit') {
+      handleOpenTab('submit');
+      const candidateTargets = [targetId, ...fallbackIds].filter((value) => value.trim().length > 0);
+      if (candidateTargets.length === 0) return;
+      setTimeout(() => {
+        if (!isMountedRef.current) return;
+        for (const candidate of candidateTargets) {
+          const target = document.querySelector(`[data-testid="${candidate}"]`);
+          if (!target || !(target instanceof HTMLElement)) continue;
+          target.scrollIntoView({ block: 'center' });
+          if (focusElement(target)) {
+            break;
+          }
+        }
+      }, 0);
+      return;
+    }
+
     applyFixIntent({
       stage: targetMode,
       targetTab: targetMode,
@@ -645,7 +762,7 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
       scrollToTestId: targetId,
       fallbackScrollToTestIds: fallbackIds,
     });
-  }, [applyFixIntent]);
+  }, [applyFixIntent, handleOpenTab]);
 
   const buildAnalyzePayload = useCallback((): IntelligenceAnalyzePayload => ({
     projectId: windowId,
@@ -833,33 +950,76 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
   const stagePrimaryAction = useMemo<{ label: string; onClick: () => void }>(() => {
     if (mode === 'build') {
       return {
-        label: NEO_LABELS.OPEN_EDITOR,
-        onClick: () => handleStagePrimaryCta('build', 'hdl-top-input', ['lab-workspace-anchor-build-top-module']),
-      };
-    }
-    if (mode === 'simulate') {
-      return {
-        label: NEO_LABELS.RUN_SIMULATION,
+        label: 'Run Sim',
         onClick: () => {
           setRecentRuns((previous) => ({ ...previous, simulated: true, synthesized: true }));
           handleStagePrimaryCta('simulate', 'hdl-synth-button', ['lab-workspace-anchor-simulate-run']);
         },
       };
     }
-    if (mode === 'hardware') {
+    if (mode === 'simulate') {
       return {
-        label: hardwareBoardDetected ? NEO_LABELS.PROGRAM_BOARD : NEO_LABELS.DETECT_BOARD,
-        onClick: () => handleStagePrimaryCta('hardware', 'hardware-detect-board-button', ['lab-workspace-anchor-hardware-board-detect']),
+        label: 'Compare / Verify',
+        onClick: () => handleStagePrimaryCta('submit', 'studio-verify-panel', ['lab-workspace-anchor-submit-readiness']),
       };
     }
+    if (mode === 'hardware') {
+      return {
+        label: 'Compare / Verify',
+        onClick: () => handleStagePrimaryCta('submit', 'studio-verify-panel', ['lab-workspace-anchor-submit-readiness']),
+      };
+    }
+
+    if (!verifyReady) {
+      return {
+        label: 'Package Evidence',
+        onClick: () => {
+          if (verifyPrimaryAction) {
+            applyFixIntent(verifyPrimaryAction);
+            return;
+          }
+          void handleExplainIssues();
+        },
+      };
+    }
+
     return {
-      label: isSubmissionBlocked ? NEO_LABELS.FIX_BLOCKERS : NEO_LABELS.GENERATE_BUNDLE,
+      label: 'Export Bundle',
       onClick: () => void handleGenerateSubmissionBundle(),
     };
-  }, [handleGenerateSubmissionBundle, handleStagePrimaryCta, hardwareBoardDetected, isSubmissionBlocked, mode]);
+  }, [applyFixIntent, handleExplainIssues, handleGenerateSubmissionBundle, handleStagePrimaryCta, mode, verifyPrimaryAction, verifyReady]);
+
+  const handleWorkspaceKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement | null;
+    const isEditableTarget = Boolean(
+      target?.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]'),
+    );
+
+    if (event.key === 'Escape') {
+      const openDetails = rootRef.current?.querySelectorAll('details[open]') ?? [];
+      const lastOpen = openDetails.length > 0 ? openDetails[openDetails.length - 1] : null;
+      if (lastOpen instanceof HTMLDetailsElement) {
+        lastOpen.open = false;
+      }
+      return;
+    }
+
+    if (event.key !== 'Enter') return;
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (isEditableTarget) return;
+    if (target?.closest('button, a[href], [role="button"]')) return;
+
+    event.preventDefault();
+    stagePrimaryAction.onClick();
+  }, [stagePrimaryAction]);
 
   return (
-    <div className={`${styles.root} rb-ui-lab-page`} data-testid="lab-workspace-root">
+    <div
+      ref={rootRef}
+      className={`${styles.root} rb-ui-lab-page`}
+      data-testid="lab-workspace-root"
+      onKeyDown={handleWorkspaceKeyDown}
+    >
       <div className={`${styles.header} rb-ui-lab-chrome-header`} data-testid="lab-workspace-header">
         <div className={styles.headerLeft}>
           <div className={styles.titleRow}>
@@ -908,7 +1068,14 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
                   <div className={styles.stepRail}>
                     <div className={styles.stepRailFill} style={{ background: stepTone }} />
                   </div>
-                  {blocked ? <span data-testid={`lab-workspace-tab-warning-${tabMode}`} style={{ display: 'none' }} /> : null}
+                  {blocked ? (
+                    <>
+                      <span data-testid={`lab-workspace-tab-warning-${tabMode}`} style={{ display: 'none' }} />
+                      <span data-testid={`lab-workspace-tab-reason-${tabMode}`} className={styles.stepReason}>
+                        {stepBlockingReason[tabMode] ?? 'Resolve blocker in this stage.'}
+                      </span>
+                    </>
+                  ) : null}
                 </button>
               );
             })}
@@ -919,7 +1086,12 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
           <StatusPill data-testid="lab-workspace-save-pill" label="UNSAVED" tone="unsaved" />
           <StatusPill data-testid="lab-workspace-readiness-pill" label={readinessLabel} tone={readinessTone} />
           <StatusPill data-testid="lab-workspace-status-pill" label={workspaceStatusLabel} tone={workspaceStatusTone} />
-          <button type="button" className={styles.primaryAction} onClick={stagePrimaryAction.onClick}>
+          <button
+            type="button"
+            data-testid="lab-workspace-primary-cta"
+            className={styles.primaryAction}
+            onClick={stagePrimaryAction.onClick}
+          >
             {stagePrimaryAction.label}
           </button>
           <button
@@ -1034,15 +1206,18 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
                   <div data-testid="lab-workspace-empty-build" className={styles.emptyState}>
                     <div className={styles.emptyIcon}>⚙️</div>
                     <div>
-                      <div className={styles.emptyTitle}>Design your top module first.</div>
-                      <div className={styles.emptyBody}>{buildEmptyCopy}</div>
+                      <div className={styles.emptyTitle}>Design</div>
+                      <div className={styles.emptyBody}>{buildEmptyCopy.why}</div>
+                      <ul className={styles.emptyList}>
+                        <li>Produce: {buildEmptyCopy.produce}</li>
+                      </ul>
                       <button
                         type="button"
                         data-testid="lab-workspace-build-primary-cta"
                         onClick={() => handleStagePrimaryCta('build', 'hdl-top-input', ['lab-workspace-anchor-build-top-module'])}
                         className={styles.coachCta}
                       >
-                        {NEO_LABELS.OPEN_EDITOR}
+                        Do it now
                       </button>
                       <span data-testid="lab-workspace-anchor-build-top-module" style={{ display: 'none' }}>Top module selector</span>
                       <span data-testid="lab-workspace-anchor-build-preset" style={{ display: 'none' }}>Preset/profile selector</span>
@@ -1053,17 +1228,11 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
                   <div data-testid="lab-workspace-empty-simulate" className={styles.emptyState}>
                     <div className={styles.emptyIcon}>📊</div>
                     <div>
-                      <EmptyStateCard
-                        testId="lab-workspace-simulate-empty-card"
-                        headline="No waveform session yet"
-                        description={simulateEmptyCopy}
-                        primaryLabel="Run Simulation"
-                        onPrimaryClick={() => {
-                          setRecentRuns((previous) => ({ ...previous, simulated: true, synthesized: true }));
-                          handleStagePrimaryCta('simulate', 'hdl-synth-button', ['lab-workspace-anchor-simulate-run']);
-                        }}
-                        secondaryLabel="Why this matters"
-                      />
+                      <div className={styles.emptyTitle}>Simulate</div>
+                      <div className={styles.emptyBody}>{simulateEmptyCopy.why}</div>
+                      <ul className={styles.emptyList}>
+                        <li>Produce: {simulateEmptyCopy.produce}</li>
+                      </ul>
                       <button
                         type="button"
                         data-testid="lab-workspace-simulate-primary-cta"
@@ -1072,9 +1241,8 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
                           handleStagePrimaryCta('simulate', 'hdl-synth-button', ['lab-workspace-anchor-simulate-run']);
                         }}
                         className={styles.coachCta}
-                        style={{ marginTop: 8 }}
                       >
-                        {NEO_LABELS.RUN_SIMULATION}
+                        Do it now
                       </button>
                       <span data-testid="lab-workspace-anchor-simulate-run" style={{ display: 'none' }}>Run sim CTA</span>
                       <span data-testid="lab-workspace-anchor-simulate-waveform" style={{ display: 'none' }}>Waveform capture section</span>
@@ -1097,23 +1265,25 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
                 <div data-testid="lab-workspace-empty-hardware" className={styles.emptyState}>
                   <div className={styles.emptyIcon}>🔌</div>
                   <div>
-                    <div className={styles.emptyTitle}>Connect Basys3 board to enable programming.</div>
-                    <div className={styles.emptyBody}>{hardwareEmptyCopy}</div>
+                    <div className={styles.emptyTitle}>Hardware</div>
+                    <div className={styles.emptyBody}>{hardwareEmptyCopy.why}</div>
+                    <ul className={styles.emptyList}>
+                      <li>Produce: {hardwareEmptyCopy.produce}</li>
+                    </ul>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                      {hardwareBoardDetected ? (
-                        <button
-                          type="button"
-                          data-testid="lab-workspace-hardware-primary-cta"
-                          onClick={() => handleStagePrimaryCta('hardware', 'hardware-program-button', ['lab-workspace-anchor-hardware-program-bitstream'])}
-                          className={styles.coachCta}
-                        >
-                          {NEO_LABELS.PROGRAM_BOARD}
-                        </button>
-                      ) : (
+                      <button
+                        type="button"
+                        data-testid="lab-workspace-hardware-primary-cta"
+                        onClick={() => handleStagePrimaryCta('hardware', 'hardware-detect-board-button', ['lab-workspace-anchor-hardware-board-detect'])}
+                        className={styles.coachCta}
+                      >
+                        Do it now
+                      </button>
+                      {!hardwareBoardDetected ? (
                         <span data-testid="lab-workspace-hardware-optional-note" className={styles.emptyBody}>
-                          Capture from hardware appears after board detection.
+                          Capture appears after detection.
                         </span>
-                      )}
+                      ) : null}
                     </div>
                     <span data-testid="lab-workspace-anchor-hardware-board-detect" style={{ display: 'none' }}>Board detect</span>
                     <span data-testid="lab-workspace-anchor-hardware-program-bitstream" style={{ display: 'none' }}>Program generated bitstream</span>
@@ -1326,8 +1496,20 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
                 <div data-testid="lab-workspace-empty-submit" className={styles.emptyState} style={{ borderBottom: 'none' }}>
                   <div className={styles.emptyIcon}>📦</div>
                   <div>
-                    <div className={styles.emptyTitle}>Fix blockers or package your submission bundle.</div>
-                    <div className={styles.emptyBody}>What will be included:</div>
+                    <div className={styles.emptyTitle}>Submit</div>
+                    <div className={styles.emptyBody}>{submitEmptyCopy.why}</div>
+                    <ul className={styles.emptyList}>
+                      <li>Produce: {submitEmptyCopy.produce}</li>
+                    </ul>
+                    <button
+                      type="button"
+                      data-testid="lab-workspace-submit-primary-cta"
+                      onClick={stagePrimaryAction.onClick}
+                      className={styles.coachCta}
+                    >
+                      Do it now
+                    </button>
+                    <div className={styles.emptyBody} style={{ marginTop: 8 }}>Bundle preview:</div>
                     <ul data-testid="lab-workspace-bundle-contents-preview" style={{ margin: '6px 0 0 16px', padding: 0, display: 'grid', gap: 4 }}>
                       {bundleContentsPreview.map((item, index) => (
                         <li key={`bundle-preview-${index}-${item}`} style={{ fontSize: 11, color: 'var(--rb-text-2, #94a3b8)' }}>
@@ -1481,6 +1663,9 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
             saveLabel="UNSAVED"
             statusLabel={workspaceStatusLabel}
             stageAccent={MODE_ACCENTS[mode]}
+            primaryActionLabel={stagePrimaryAction.label}
+            onPrimaryAction={stagePrimaryAction.onClick}
+            onExportAction={() => void handleGenerateSubmissionBundle()}
             onFixIntent={applyFixIntent}
             onAskRedByte={handleAskRedByte}
             onExplainIssues={handleExplainIssues}

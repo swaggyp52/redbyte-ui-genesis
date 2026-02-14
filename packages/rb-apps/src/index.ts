@@ -59,6 +59,9 @@ export {
   type IntegrityStatus,
   type IntegrityResult,
 } from './utils/evidenceManifest';
+export * from './apps/firstRun/firstRunState';
+export * from './fpga/doctorReportV2';
+export * from './fpga/hardwareErrorTaxonomy';
 
 // DEFERRED EXPORTS: Do NOT import app modules at the module level.
 // This prevents circular dependencies and temporal dead zone errors
@@ -130,6 +133,10 @@ export async function registerAllApps(options?: { mode?: RegisterAllAppsMode }) 
       const { LabWorkspaceApp } = await import('./apps/LabWorkspaceApp');
       registerApp(LabWorkspaceApp);
     });
+    await safeRegister('first-run-wizard', async () => {
+      const { FirstRunWizardApp } = await import('./apps/FirstRunWizardApp');
+      registerApp(FirstRunWizardApp);
+    });
     await safeRegister('launcher', async () => {
       const { LauncherApp } = await import('./apps/LauncherApp');
       registerApp(LauncherApp);
@@ -141,6 +148,10 @@ export async function registerAllApps(options?: { mode?: RegisterAllAppsMode }) 
   await safeRegister('home', async () => {
     const { HomeApp } = await import('./apps/HomeApp');
     registerApp(HomeApp);
+  });
+  await safeRegister('first-run-wizard', async () => {
+    const { FirstRunWizardApp } = await import('./apps/FirstRunWizardApp');
+    registerApp(FirstRunWizardApp);
   });
   await safeRegister('launcher', async () => {
     const { LauncherApp } = await import('./apps/LauncherApp');

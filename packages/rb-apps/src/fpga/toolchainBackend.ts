@@ -1,4 +1,6 @@
 import { stableStringify } from '../export/stableStringify';
+import { buildDoctorReportV2, type DoctorReportV2 } from './doctorReportV2';
+import { mapHardwareErrorCode } from './hardwareErrorTaxonomy';
 import { lintBasys3ProjectPorts } from './boards/basys3/portLint';
 import { basys3TopModuleContract } from './boards/basys3/basys3Contract';
 import type {
@@ -322,6 +324,7 @@ export interface ToolchainBackend {
     snapshot: ToolchainProjectSnapshotInput,
     options?: ToolchainDoctorReportOptions
   ) => Promise<ToolchainDoctorReport>;
+  doctorReportV2: () => Promise<DoctorReportV2>;
 }
 
 export function isToolchainProjectInput(value: unknown): value is ToolchainProjectInput {
@@ -4665,6 +4668,76 @@ function makeStubBackend(id: ToolchainBackendId): ToolchainBackend {
         buildPath,
         project: normalizedSnapshot,
         logs: options?.logs ?? [],
+      });
+    },
+    async doctorReportV2() {
+      const diagnosticsUrl = `${BRIDGE_URL}/diagnostics`;
+      let diagnostics: {
+        reachable?: boolean;
+        version?: string;
+        uptimeMs?: number;
+        activeRunCount?: number;
+        lastErrorCode?: string;
+        programmer?: {
+          found?: boolean;
+          version?: string;
+          pathHash?: string;
+          capabilities?: { program?: boolean; detect?: boolean };
+        };
+      } | null = null;
+
+      if (typeof fetch !== 'undefined') {
+        try {
+          const response = await fetchJsonWithTimeout(diagnosticsUrl, 2500);
+          diagnostics = (response.data ?? null) as typeof diagnostics;
+        } catch {
+          diagnostics = null;
+        }
+      }
+
+      let detectBoardsResult: BoardDetectResult | null = null;
+      try {
+        detectBoardsResult = await backend.detectBoards();
+      } catch {
+        detectBoardsResult = null;
+      }
+
+      const board = detectBoardsResult?.boards[0];
+      const boardError = detectBoardsResult?.ok ? null : detectBoardsResult?.tools?.openFPGALoader?.error ?? 'board_missing';
+      const lastErrorCode = mapHardwareErrorCode(diagnostics?.lastErrorCode ?? boardError ?? '') ?? diagnostics?.lastErrorCode;
+
+      return buildDoctorReportV2({
+        backendId: id,
+        bridgeDiagnostics: {
+          reachable: diagnostics?.reachable === true,
+          version: diagnostics?.version,
+          uptimeMs: diagnostics?.uptimeMs,
+          activeRunCount: diagnostics?.activeRunCount,
+          lastErrorCode,
+          programmer: {
+            found: diagnostics?.programmer?.found === true,
+            version: diagnostics?.programmer?.version,
+            path: diagnostics?.programmer?.pathHash,
+            capabilities: {
+              program: diagnostics?.programmer?.capabilities?.program === true,
+              detect: diagnostics?.programmer?.capabilities?.detect === true,
+            },
+          },
+        },
+        boardDetect: {
+          detected: Boolean(board),
+          boardModel: board?.type === 'basys3' ? 'basys3' : undefined,
+          deviceId: board?.details?.raw,
+          transport: board?.transport,
+          usbSummary: board?.details?.command,
+        },
+        buildPathKind: 'local_bridge',
+        buildHashSource: {
+          diagnostics,
+          detectBoards: detectBoardsResult,
+        },
+        farmStatus: 'local-only',
+        uiSurface: 'first-run-wizard',
       });
     },
   };
