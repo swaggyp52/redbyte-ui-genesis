@@ -1,5 +1,20 @@
 # AI State
 
+## Change Log 2026-02-14 (Rehearsal slice: student machine runbook)
+
+- Added classroom reality runbook for a fresh-machine golden-path rehearsal:
+  - `docs/student-setup.md`
+  - includes:
+    - exact student setup steps (`pnpm install` -> `pnpm dev` -> first-run -> studio path)
+    - embedded pass/fail rehearsal checklist table for each required step
+    - top 5 troubleshooting modes aligned with first-run/hardware failure classes
+    - required rehearsal artifacts to collect (doctor report, export bundle, summary)
+
+- The documented First Run Wizard happy path reflects implemented wizard step IDs:
+  - `bridge_check` -> `board_detect` -> `programmer_check` -> `known_good_program` -> `sample_capture` -> `doctor_export` -> `done`
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-14 (PR4: Student-mode Golden Path Gate — allowlist + fail-closed launch routing)
 
 - Implemented a hard student-mode app allowlist and centralized gate to enforce a narrow product surface.
