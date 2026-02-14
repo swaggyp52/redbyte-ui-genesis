@@ -182,15 +182,7 @@ export async function registerAllApps(options?: { mode?: RegisterAllAppsMode }) 
     registerApp(SystemLogApp);
   });
 
-  // ── Labs ────────────────────────────────────────────────────────
-  await safeRegister('labs', async () => {
-    const { LabsApp } = await import('./apps/LabsApp');
-    registerApp(LabsApp);
-  });
-  await safeRegister('ece-lab', async () => {
-    const { ECELabApp } = await import('./apps/ECELabManifest');
-    registerApp(ECELabApp);
-  });
+  // ── Studio ──────────────────────────────────────────────────────
   await safeRegister('lab-workspace', async () => {
     const { LabWorkspaceApp } = await import('./apps/LabWorkspaceApp');
     registerApp(LabWorkspaceApp);
@@ -212,21 +204,6 @@ export async function registerAllApps(options?: { mode?: RegisterAllAppsMode }) 
     registerApp(LogicPlaygroundApp);
   });
 
-  // ── REMOVED (consolidated into the apps above) ────────────────────
-  // WelcomeApp → replaced by HomeApp
-  // StartHereApp → replaced by HomeApp
-  // AppStoreApp → removed (no marketplace for v1)
-  // StatusPanelApp → will move into Settings > Advanced
-  // VirtualLabApp → absorbed into ECELabApp
-  // LabWorkspaceApp → absorbed into ECELabApp
-  // HelpAppManifest → redundant with LogicHelpApp
-  // StudentLabApp → deprecated, replaced by ECELabApp
-  // InstructorRunDetailApp → inline view inside InstructorApp
-  // LabExaminerAppRegistry → niche tool, accessible via terminal
-  // FpgaProofViewerApp → niche tool, accessible via terminal
-  // HardwarePanelApp → deregistered; IO tab in Playground covers basics
-  // LogicHelpApp → demoted to Learn > Help subview inside Playground RightDock
-  // UserManualApp → demoted to Learn > Manual subview inside Playground RightDock
 }
 
 export { PlaygroundGoldenPath } from './dev/PlaygroundGoldenPath';

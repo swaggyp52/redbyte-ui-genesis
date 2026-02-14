@@ -1,6 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { CheckCircle2, Circle, AlertCircle } from 'lucide-react';
-export const ProgressTracker = ({ steps, activeStepId, nextStepId, onStepClick, className = '' }) => {
+export const ProgressTracker = ({ steps, activeStepId, nextStepId, onStepClick, className = '', }) => {
     const totalRequired = steps.filter((step) => !step.optional).length || 1;
     const completedRequired = steps.filter((step) => !step.optional && step.status === 'complete').length;
     return (_jsxs("div", { className: `bg-slate-900/50 border border-slate-700 rounded-xl p-6 ${className}`, children: [_jsxs("h3", { className: "font-tech-display text-lg font-bold text-cyan-400 mb-4 flex items-center gap-2", children: [_jsx("span", { className: "w-2 h-2 rounded-full bg-cyan-400 animate-pulse" }), "Lab Progress"] }), _jsx("div", { className: "space-y-3", children: steps.map((step, idx) => {
@@ -89,4 +89,5 @@ export function useLabProgress() {
     const lastExportAt = useLabStore((s) => s.lastExportAt);
     return buildProgressSteps({ truthTable, kMaps, validationResults, verilogCode, lastExportAt });
 }
+// Import useLabStore at top of file
 import { useLabStore } from './store/labStore';

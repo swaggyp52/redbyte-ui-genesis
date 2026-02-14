@@ -171,6 +171,30 @@ function setWithInvariants(
   assertWindowInvariants(state.windows);
 }
 
+// ── Drag-aware persistence ────────────────────────────────────────
+let _saveTimer: ReturnType<typeof setTimeout> | null = null;
+let _isDragging = false;
+
+/** Suppress localStorage writes during active drag/resize for performance. */
+export function setDragActive(active: boolean) {
+  _isDragging = active;
+  if (!active) {
+    // Flush immediately when drag ends
+    const store = initStoreIfNeeded();
+    const state = (store as any).getState();
+    saveSession(state.windows, state.nextZIndex);
+  }
+}
+
+function debouncedSaveSession(windows: WindowState[], nextZIndex: number) {
+  if (_isDragging) return;
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    saveSession(windows, nextZIndex);
+    _saveTimer = null;
+  }, 300);
+}
+
 // Lazy-init singleton to prevent TDZ crash from circular imports
 let _store: ReturnType<typeof createWindowStore> | null = null;
 
@@ -231,7 +255,7 @@ function initStoreIfNeeded() {
   _store = createWindowStore();
   // Auto-persist session on window state changes
   _store.subscribe((state) => {
-    saveSession(state.windows, state.nextZIndex);
+    debouncedSaveSession(state.windows, state.nextZIndex);
   });
   maybeExposeWindowDebugApi(_store);
   return _store;

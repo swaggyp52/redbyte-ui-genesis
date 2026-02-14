@@ -1,5 +1,80 @@
 # AI State
 
+## Change Log 2026-02-14 (PR3: Visual Cohesion Pass — Home hero + dock curation + chrome cleanup)
+
+- Executed PR3 as a presentation/interaction-only pass to make the shell feel like a focused product surface without adding new capability.
+
+- HomeScreen redesigned into single-job golden-path entry:
+  - `packages/rb-shell/src/HomeScreen.tsx`
+  - `packages/rb-shell/src/HomeScreen.module.css`
+  - replaced multi-section launcher grid with centered hero:
+    - title `RedByte Studio`
+    - subtitle `Digital Logic Lab Environment`
+    - primary CTA `Open Dashboard`
+    - secondary CTA `Open Studio`
+  - added subtle bottom pipeline strip: `Build -> Simulate -> Hardware -> Export`.
+
+- Dock simplified to reduce side-quest affordances:
+  - `packages/rb-shell/src/Dock.tsx`
+  - `packages/rb-shell/src/Dock.js`
+  - primary dock set is now:
+    - `home` (Dashboard)
+    - `lab-workspace` (Studio)
+    - `logic-playground` (Playground)
+    - `settings`
+  - divider + compact secondary `files` item.
+
+- Window chrome consistency and visual noise cleanup:
+  - `packages/rb-shell/src/ShellWindow.tsx`
+    - kept 36px title bar, tightened titlebar spacing, and standardized subtle focused/unfocused shadow tiering.
+  - `packages/rb-shell/src/styles.css`
+    - removed `.rb-noise::after` texture overlay and `.rb-vignette` gradient overlay styles.
+
+- Added PR3 contract tests (test-first) for visible behavior:
+  - `packages/rb-shell/src/__tests__/home-screen-pr3.test.tsx`
+  - `packages/rb-shell/src/__tests__/dock-pr3.test.tsx`
+
+- JS sibling parity update:
+  - `packages/rb-shell/src/HomeScreen.js` now re-exports `HomeScreen` from TS source.
+
+- **Build Verification (PR3 pass)**:
+  - ✅ `pnpm -w exec vitest run packages/rb-shell/src/__tests__/home-screen-pr3.test.tsx packages/rb-shell/src/__tests__/dock-pr3.test.tsx` (`2 files, 2 tests passed`)
+  - ✅ `pnpm -w exec vitest run packages/rb-shell/src/__tests__/window-snap-preview.test.tsx` (`1 file, 4 tests passed`)
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`)
+  - ✅ `pnpm dev` startup check (Vite served at `http://localhost:5174/`)
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-14 (PR2: Surface Reduction Cleanup — dead app removal + registry tightening)
+
+- Continued the flagship surface-reduction pass by removing dead legacy app surfaces and stale duplicate tests, while keeping active Studio flow and first-run behavior intact.
+
+- Removed dead app implementations and related stale siblings:
+  - `packages/rb-apps/src/apps/WelcomeApp.tsx`
+  - `packages/rb-apps/src/apps/StartHereApp.tsx`
+  - `packages/rb-apps/src/apps/AppStoreApp.tsx`
+  - `packages/rb-apps/src/apps/StatusPanelApp.tsx`
+  - `packages/rb-apps/src/apps/StudentLabApp.tsx`
+  - `packages/rb-apps/src/apps/VirtualLabApp.tsx`
+  - `packages/rb-apps/src/apps/VirtualLabAppImpl.tsx`
+  - `packages/rb-apps/src/apps/LabExaminerApp.tsx`
+  - `packages/rb-apps/src/apps/LabExaminerAppRegistry.tsx`
+  - plus associated stale `.js` mirrors / css and obsolete test artifacts removed in the same directories.
+
+- Tightened app registration to the golden path in app registry:
+  - `packages/rb-apps/src/index.ts`
+  - `packages/rb-apps/src/index.js`
+  - removed `LabsApp` + `ECELabApp` registration from `registerAllApps()` full mode.
+  - removed obsolete "REMOVED" comment block so registry text matches active product surface.
+
+- Removed stale JS test duplicates in shell tests:
+  - deleted `packages/rb-shell/src/__tests__/*.test.js` (TS/TSX tests remain source-of-truth).
+
+- **Build Verification (PR2 cleanup slice)**:
+  - ✅ `pnpm rc:check` (tail includes `[SUITE] total=6 pass=6 fail=0`)
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-14 (PR-Ship-1: First-Run Wizard + Doctor Report V2 + Diagnostics Endpoint)
 
 - Implemented PR-Ship-1 execution slice for student-machine readiness with strict scope: wizard orchestration, diagnostics normalization, and doctor export supportability (no toolchain program/capture behavior rewrites).
