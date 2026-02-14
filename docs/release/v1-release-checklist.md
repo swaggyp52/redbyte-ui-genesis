@@ -2,6 +2,12 @@
 
 This checklist is the classroom-ready release gate for v1.
 
+Related docs:
+
+- [v1.0.0-next-lab-ready Release Handoff](./v1.0.0-next-lab-ready-handoff.md)
+- [Hardware Rehearsal Protocol (Basys3)](./hardware-rehearsal-protocol.md)
+- [Post-v1 Evidence Backlog](./post-v1-evidence-backlog.md)
+
 ## Required Commands
 
 Run from repo root:

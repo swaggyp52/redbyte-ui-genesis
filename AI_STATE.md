@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-02-14 (Release freeze handoff + hardware protocol + evidence backlog)
+
+- Freeze guidance documented for `v1.0.0-next-lab-ready` with no further changes unless backed by real rehearsal evidence.
+
+- Added release execution handoff:
+  - `docs/release/v1.0.0-next-lab-ready-handoff.md`
+  - includes tag/branch location, exact run commands, required artifacts, and done criteria.
+
+- Added physical hardware protocol for Basys3 run:
+  - `docs/release/hardware-rehearsal-protocol.md`
+  - includes mandatory stop-and-ticket rule.
+
+- Added post-v1 evidence-only backlog:
+  - `docs/release/post-v1-evidence-backlog.md`
+  - explicit tickets with repro steps, expected/actual, severity, and owner split (Connor vs Copilot).
+
+- Linked release docs from canonical checklist:
+  - `docs/release/v1-release-checklist.md`
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-14 (Release execution mode: two rehearsals + bug-fix from first failure)
 
 - Locked release execution on branch `release/v1.0.0-next-lab-ready` from `ui/visual-cohesion`.
