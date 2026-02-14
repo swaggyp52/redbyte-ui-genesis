@@ -3,7 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { WindowState, type WindowBounds } from '@redbyte/rb-windowing';
+import { WindowState, type WindowBounds, setDragActive } from '@redbyte/rb-windowing';
 import type { SnapAssistMode } from '@redbyte/rb-utils';
 import { Icon, type IconName } from '@redbyte/rb-icons';
 import { PortalProvider, GuardrailConfirmModal } from '@redbyte/rb-primitives';
@@ -15,7 +15,6 @@ type SnapTarget = 'left' | 'right' | 'maximize';
 const SNAP_ENTER_PX = 24;
 const SNAP_EXIT_PX = 48;
 const SNAP_HOVER_MS = 250;
-const THROTTLE_MS = 16; // ~60 FPS, throttle drag/resize calls
 
 interface ShellWindowProps {
   state: WindowState;
@@ -65,11 +64,13 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
   const [dragging, setDragging] = useState(false);
   const [resizing, setResizing] = useState<ResizeDirection | null>(null);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
-  const [start, setStart] = useState<{ x: number; y: number } | null>(null);
   const [mounted, setMounted] = useState(false);
+  // Visual-only drag offset — applied via transform, avoids store writes during drag
+  const [dragOffset, setDragOffset] = useState<{ dx: number; dy: number } | null>(null);
   const boundsRef = useRef<HTMLDivElement>(null);
   const overlayRootRef = useRef<HTMLDivElement>(null);
   const dragBoundsRef = useRef<WindowBounds | null>(null);
+  const originalBoundsRef = useRef<WindowBounds | null>(null);
   const lastBoundsRef = useRef<WindowBounds>(state.bounds);
   const snapPreviewRef = useRef<SnapTarget | null>(null);
   const snapTimerRef = useRef<number | null>(null);
@@ -77,14 +78,14 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
   const lastPointerRef = useRef<{ x: number; y: number; shiftKey: boolean } | null>(null);
   const draggingRef = useRef(false);
   const resizingRef = useRef(false);
+  const resizingDirRef = useRef<ResizeDirection | null>(null);
   const hasMovedRef = useRef(false);
   const hasResizedRef = useRef(false);
+  const startRef = useRef<{ x: number; y: number } | null>(null);
 
-  // Throttling refs for drag/resize to prevent spamming onMove/onResize
-  const lastMoveTimeRef = useRef<number>(0);
-  const lastResizeTimeRef = useRef<number>(0);
-  const pendingMoveRef = useRef<{ x: number; y: number } | null>(null);
-  const pendingResizeRef = useRef<{ w: number; h: number } | null>(null);
+  // rAF-based throttle refs
+  const rafPendingRef = useRef(false);
+  const rafIdRef = useRef<number>(0);
 
   const isMax = state.mode === 'maximized';
   const isMin = state.mode === 'minimized';
@@ -115,8 +116,6 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
   }, []);
 
   useEffect(() => { lastBoundsRef.current = state.bounds; }, [state.bounds]);
-  useEffect(() => { draggingRef.current = dragging; }, [dragging]);
-  useEffect(() => { resizingRef.current = Boolean(resizing); }, [resizing]);
 
   const clearSnapTimer = () => {
     if (snapTimerRef.current !== null) {
@@ -180,191 +179,265 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
     }
   };
 
+  // ── Drag: document-level listeners ──────────────────────────────
   const startDrag = (e: React.MouseEvent) => {
     if (isMax || isMin) return;
+    e.preventDefault();
     draggingRef.current = true;
     setDragging(true);
-    setStart({ x: e.clientX, y: e.clientY });
+    startRef.current = { x: e.clientX, y: e.clientY };
     dragBoundsRef.current = { ...state.bounds };
+    originalBoundsRef.current = { ...state.bounds };
     hasMovedRef.current = false;
     clearSnapPreview();
+    setDragActive(true);
     onFocus();
   };
 
-  const finishDrag = (shouldSnap: boolean) => {
+  const finishDrag = useCallback((shouldSnap: boolean) => {
     if (!draggingRef.current) return;
     const activeSnap = snapPreviewRef.current;
+    const finalBounds = dragBoundsRef.current;
     draggingRef.current = false;
     setDragging(false);
-    setStart(null);
+    setDragOffset(null);
+    startRef.current = null;
     dragBoundsRef.current = null;
+    originalBoundsRef.current = null;
+    setDragActive(false);
 
-    // Flush any pending move calls
-    if (pendingMoveRef.current) {
-      onMove(pendingMoveRef.current.x, pendingMoveRef.current.y);
-      pendingMoveRef.current = null;
+    // Cancel any pending rAF
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafPendingRef.current = false;
+      rafIdRef.current = 0;
     }
-    lastMoveTimeRef.current = 0;
+
+    // Commit final position to store in a single write
+    if (hasMovedRef.current && finalBounds) {
+      onMove(finalBounds.x, finalBounds.y);
+    }
 
     if (shouldSnap && activeSnap && onSnap) {
       onSnap(state.id, activeSnap);
-    } else if (hasMovedRef.current) {
-      onMoveEnd?.(lastBoundsRef.current);
+    } else if (hasMovedRef.current && finalBounds) {
+      lastBoundsRef.current = finalBounds;
+      onMoveEnd?.(finalBounds);
     }
     clearSnapPreview();
-  };
+  }, [onMove, onMoveEnd, onSnap, state.id]);
 
-  const finishResize = () => {
-    if (!resizingRef.current) return;
-    resizingRef.current = false;
-    setResizing(null);
-    setStart(null);
-    dragBoundsRef.current = null;
+  // Document-level drag listeners — attached only while dragging
+  useEffect(() => {
+    if (!dragging) return;
 
-    // Flush any pending resize/move calls
-    if (pendingResizeRef.current) {
-      onResize(pendingResizeRef.current.w, pendingResizeRef.current.h);
-      pendingResizeRef.current = null;
-    }
-    if (pendingMoveRef.current) {
-      onMove(pendingMoveRef.current.x, pendingMoveRef.current.y);
-      pendingMoveRef.current = null;
-    }
-    lastResizeTimeRef.current = 0;
-    lastMoveTimeRef.current = 0;
+    const onDocMouseMove = (e: MouseEvent) => {
+      if (!draggingRef.current) return;
+      const startPos = startRef.current;
+      if (!startPos) return;
 
-    if (hasResizedRef.current) onResizeEnd?.(lastBoundsRef.current);
-    clearSnapPreview();
-  };
+      const dx = e.clientX - startPos.x;
+      const dy = e.clientY - startPos.y;
+      const currentBounds = dragBoundsRef.current ?? state.bounds;
+      let newX = currentBounds.x + dx;
+      let newY = currentBounds.y + dy;
 
-  const onMoveDrag = (e: React.MouseEvent) => {
-    if (!draggingRef.current || !start) return;
-    const dx = e.clientX - start.x;
-    const dy = e.clientY - start.y;
-    const currentBounds = dragBoundsRef.current ?? state.bounds;
-    let newX = currentBounds.x + dx;
-    let newY = currentBounds.y + dy;
+      if (newY < TOPBAR_HEIGHT) newY = TOPBAR_HEIGHT;
+      const vw = window.innerWidth;
+      const minX = DOCK_WIDTH - currentBounds.width + MIN_VISIBLE_SIDE;
+      const maxX = vw - MIN_VISIBLE_SIDE;
+      if (newX < minX) newX = minX;
+      if (newX > maxX) newX = maxX;
 
-    // Clamp: never above TopBar
-    if (newY < TOPBAR_HEIGHT) newY = TOPBAR_HEIGHT;
+      const nextBounds: WindowBounds = { ...currentBounds, x: newX, y: newY };
+      hasMovedRef.current = true;
+      dragBoundsRef.current = nextBounds;
+      lastBoundsRef.current = nextBounds;
 
-    // Clamp: keep at least MIN_VISIBLE_SIDE px visible horizontally
-    const vw = typeof window !== 'undefined' ? window.innerWidth : 1920;
-    const minX = DOCK_WIDTH - currentBounds.width + MIN_VISIBLE_SIDE;
-    const maxX = vw - MIN_VISIBLE_SIDE;
-    if (newX < minX) newX = minX;
-    if (newX > maxX) newX = maxX;
+      // rAF-based visual update — compositor-only via transform
+      if (!rafPendingRef.current) {
+        rafPendingRef.current = true;
+        rafIdRef.current = requestAnimationFrame(() => {
+          rafPendingRef.current = false;
+          const pending = dragBoundsRef.current;
+          const original = originalBoundsRef.current;
+          if (pending && original) {
+            setDragOffset({
+              dx: pending.x - original.x,
+              dy: pending.y - original.y,
+            });
+          }
+        });
+      }
 
-    const nextBounds: WindowBounds = { ...currentBounds, x: newX, y: newY };
-    hasMovedRef.current = true;
-    dragBoundsRef.current = nextBounds;
-    lastBoundsRef.current = nextBounds;
+      lastPointerRef.current = { x: e.clientX, y: e.clientY, shiftKey: e.shiftKey };
+      handleSnapPreview(e.clientX, e.clientY, e.shiftKey);
+      startRef.current = { x: e.clientX, y: e.clientY };
+    };
 
-    // Throttle onMove to reduce system log spam and re-renders
-    const now = Date.now();
-    if (now - lastMoveTimeRef.current >= THROTTLE_MS) {
-      onMove(nextBounds.x, nextBounds.y);
-      lastMoveTimeRef.current = now;
-    } else {
-      pendingMoveRef.current = { x: nextBounds.x, y: nextBounds.y };
-    }
+    const onDocMouseUp = () => {
+      finishDrag(true);
+    };
 
-    lastPointerRef.current = { x: e.clientX, y: e.clientY, shiftKey: e.shiftKey };
-    handleSnapPreview(e.clientX, e.clientY, e.shiftKey);
-    setStart({ x: e.clientX, y: e.clientY });
-  };
+    document.addEventListener('mousemove', onDocMouseMove);
+    document.addEventListener('mouseup', onDocMouseUp);
 
+    return () => {
+      document.removeEventListener('mousemove', onDocMouseMove);
+      document.removeEventListener('mouseup', onDocMouseUp);
+    };
+  }, [dragging, finishDrag]);
+
+  // ── Resize: document-level listeners ────────────────────────────
   const startResize = (dir: ResizeDirection) => (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     resizingRef.current = true;
+    resizingDirRef.current = dir;
     setResizing(dir);
-    setStart({ x: e.clientX, y: e.clientY });
+    startRef.current = { x: e.clientX, y: e.clientY };
     dragBoundsRef.current = { ...state.bounds };
     hasResizedRef.current = false;
     clearSnapPreview();
+    setDragActive(true);
     onFocus();
   };
 
-  const onResizeDrag = (e: React.MouseEvent) => {
-    if (!resizingRef.current || !start || isMax || isMin || !resizing) return;
-    const dx = e.clientX - start.x;
-    const dy = e.clientY - start.y;
+  const finishResize = useCallback(() => {
+    if (!resizingRef.current) return;
+    const finalBounds = dragBoundsRef.current;
+    resizingRef.current = false;
+    resizingDirRef.current = null;
+    setResizing(null);
+    startRef.current = null;
+    dragBoundsRef.current = null;
+    setDragActive(false);
 
-    const currentBounds = dragBoundsRef.current ?? state.bounds;
-    let { width, height, x, y } = currentBounds;
-    const minW = minSize?.width ?? 320;
-    const minH = minSize?.height ?? 240;
-
-    if (resizing.includes('e')) width = Math.max(minW, width + dx);
-    if (resizing.includes('s')) height = Math.max(minH, height + dy);
-    if (resizing.includes('w')) { width = Math.max(minW, width - dx); x = x + dx; }
-    if (resizing.includes('n')) { height = Math.max(minH, height - dy); y = y + dy; }
-
-    const nextBounds: WindowBounds = { x, y, width, height };
-    hasResizedRef.current = true;
-    dragBoundsRef.current = nextBounds;
-    lastBoundsRef.current = nextBounds;
-
-    // Throttle onResize and onMove to reduce system log spam and re-renders
-    const now = Date.now();
-    if (now - lastResizeTimeRef.current >= THROTTLE_MS) {
-      onResize(width, height);
-      onMove(x, y);
-      lastResizeTimeRef.current = now;
-    } else {
-      pendingResizeRef.current = { w: width, h: height };
-      pendingMoveRef.current = { x, y };
+    // Cancel any pending rAF
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafPendingRef.current = false;
+      rafIdRef.current = 0;
     }
 
-    setStart({ x: e.clientX, y: e.clientY });
-  };
+    // Commit final size+position to store
+    if (hasResizedRef.current && finalBounds) {
+      onResize(finalBounds.width, finalBounds.height);
+      onMove(finalBounds.x, finalBounds.y);
+      lastBoundsRef.current = finalBounds;
+      onResizeEnd?.(finalBounds);
+    }
+    clearSnapPreview();
+  }, [onResize, onMove, onResizeEnd]);
+
+  // Document-level resize listeners — attached only while resizing
+  useEffect(() => {
+    if (!resizing) return;
+
+    const onDocMouseMove = (e: MouseEvent) => {
+      if (!resizingRef.current) return;
+      const startPos = startRef.current;
+      const dir = resizingDirRef.current;
+      if (!startPos || !dir) return;
+
+      const dx = e.clientX - startPos.x;
+      const dy = e.clientY - startPos.y;
+
+      const currentBounds = dragBoundsRef.current ?? state.bounds;
+      let { width, height, x, y } = currentBounds;
+      const minW = minSize?.width ?? 320;
+      const minH = minSize?.height ?? 240;
+
+      if (dir.includes('e')) width = Math.max(minW, width + dx);
+      if (dir.includes('s')) height = Math.max(minH, height + dy);
+      if (dir.includes('w')) { width = Math.max(minW, width - dx); x = x + dx; }
+      if (dir.includes('n')) { height = Math.max(minH, height - dy); y = y + dy; }
+
+      const nextBounds: WindowBounds = { x, y, width, height };
+      hasResizedRef.current = true;
+      dragBoundsRef.current = nextBounds;
+      lastBoundsRef.current = nextBounds;
+
+      // rAF-based update — commit to store for resize (content needs reflow)
+      if (!rafPendingRef.current) {
+        rafPendingRef.current = true;
+        rafIdRef.current = requestAnimationFrame(() => {
+          rafPendingRef.current = false;
+          const pending = dragBoundsRef.current;
+          if (pending) {
+            onResize(pending.width, pending.height);
+            onMove(pending.x, pending.y);
+          }
+        });
+      }
+
+      startRef.current = { x: e.clientX, y: e.clientY };
+    };
+
+    const onDocMouseUp = () => {
+      finishResize();
+    };
+
+    document.addEventListener('mousemove', onDocMouseMove);
+    document.addEventListener('mouseup', onDocMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', onDocMouseMove);
+      document.removeEventListener('mouseup', onDocMouseUp);
+    };
+  }, [resizing, finishResize, onResize, onMove]);
 
   const containerStyle = useMemo(() => {
     const { bounds, zIndex, focused } = state;
     const opacity = mounted ? 1 : 0;
-    const transform = mounted ? 'scale(1) translateY(0)' : 'scale(0.98) translateY(4px)';
+    const mountTransform = mounted ? '' : 'scale(0.98) translateY(4px)';
     const maxBounds = isMax ? getMaximizedBounds() : null;
+
+    const baseX = maxBounds ? maxBounds.x : bounds.x;
+    const baseY = maxBounds ? maxBounds.y : bounds.y;
+
+    // During drag: offset via transform (compositor-only, no layout recalc)
+    let transform = mountTransform;
+    if (dragOffset) {
+      transform = `translate3d(${dragOffset.dx}px, ${dragOffset.dy}px, 0)`;
+    }
+
     return {
       position: 'absolute' as const,
-      left: maxBounds ? maxBounds.x : bounds.x,
-      top: maxBounds ? maxBounds.y : bounds.y,
+      left: baseX,
+      top: baseY,
       width: maxBounds ? maxBounds.width : bounds.width,
       height: maxBounds ? maxBounds.height : bounds.height,
       zIndex,
       opacity,
-      transform,
-      transition: `opacity var(--rb-motion-normal) var(--rb-easing-out), transform var(--rb-motion-normal) var(--rb-easing-out)`,
+      transform: transform || undefined,
+      willChange: dragOffset ? 'transform' : undefined,
+      // Disable transitions during drag to prevent CSS animation fighting the transform
+      transition: dragOffset
+        ? 'none'
+        : `opacity var(--rb-motion-normal) var(--rb-easing-out), transform var(--rb-motion-normal) var(--rb-easing-out)`,
       background: 'var(--rb-surface-1)',
       border: focused ? '1px solid var(--rb-border-strong)' : '1px solid var(--rb-border)',
       borderRadius: isMax ? 0 : 'var(--rb-radius-lg)',
       overflow: 'hidden',
-      boxShadow: focused ? 'var(--rb-shadow-3)' : 'var(--rb-shadow-1)',
-      filter: focused ? 'saturate(1)' : 'saturate(0.92)',
+      boxShadow: focused ? 'var(--rb-shadow-3)' : 'var(--rb-shadow-2)',
+      // Removed: filter: saturate(0.92) — expensive GPU compositing per window
       display: isMin ? 'none' : 'block',
     } as React.CSSProperties;
-  }, [state, isMax, isMin, mounted]);
+  }, [state, isMax, isMin, mounted, dragOffset]);
 
   return (
     <div
       ref={boundsRef}
       style={containerStyle}
-      onMouseMove={dragging ? onMoveDrag : resizing ? onResizeDrag : undefined}
-      onMouseUp={() => {
-        if (draggingRef.current) finishDrag(true);
-        if (resizingRef.current) finishResize();
-      }}
-      onMouseLeave={() => {
-        if (draggingRef.current) finishDrag(false);
-        if (resizingRef.current) finishResize();
-      }}
       onMouseDown={onFocus}
       onPointerDown={onFocus}
     >
       {/* Title bar - 36px */}
       <div
-        className="flex h-9 items-center gap-2.5 px-3 text-sm select-none border-b"
+        className="flex h-9 items-center gap-2 px-3 text-[13px] select-none border-b"
         style={{
-          cursor: isMax ? 'default' : 'grab',
+          cursor: isMax ? 'default' : dragging ? 'grabbing' : 'grab',
           background: state.focused ? 'var(--rb-surface-2)' : 'var(--rb-surface-1)',
           borderColor: 'var(--rb-border)',
         }}
@@ -372,20 +445,20 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
         onDoubleClick={isMax ? onRestore : onMaximize}
         data-testid="window-title-bar"
       >
-        <div className="flex min-w-0 flex-1 items-center gap-2.5 pointer-events-none">
+        <div className="flex min-w-0 flex-1 items-center gap-2 pointer-events-none">
           {iconName && (
             <div
-              className="h-6 w-6 rounded flex items-center justify-center"
+              className="h-5 w-5 rounded flex items-center justify-center"
               style={{
                 background: 'var(--rb-surface-3)',
                 color: state.focused ? 'var(--rb-text)' : 'var(--rb-text-2)',
               }}
             >
-              <Icon name={iconName} size={14} />
+              <Icon name={iconName} size={12} />
             </div>
           )}
           <div
-            className="truncate text-[13px] font-medium tracking-wide"
+            className="truncate text-[13px] font-medium"
             style={{ color: state.focused ? 'var(--rb-text)' : 'var(--rb-text-2)' }}
             data-testid="window-title-text"
           >
