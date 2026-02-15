@@ -32,7 +32,7 @@
         "typecheck": "pnpm -r --if-present run typecheck",
         "test:ci": "pnpm run test:audit",
         "test:audit": "pnpm -w exec vitest run packages/rb-logic-3d/src/lab-model/__tests__/fuzz.test.ts packages/rb-logic-3d/src/lab-model/__tests__/netlist.test.ts packages/rb-logic-3d/src/lab-model/__tests__/probe-samples.test.ts packages/rb-shell/src/__tests__/window-snap-preview.test.tsx packages/rb-primitives/src/__tests__/toast-dismiss.test.tsx packages/rb-apps/src/__tests__/instrument-dock.test.tsx",
-        "rc:check": "pnpm --filter @redbyte/rb-apps test && pnpm --filter @redbyte/rb-shell test && pnpm --filter @redbyte/fpga-bridge test && pnpm stability:triage",
+        "rc:check": "pnpm --filter @redbyte/rb-apps test && pnpm --filter @redbyte/rb-shell test && pnpm --filter @redbyte/fpga-bridge test && pnpm verify:gates && pnpm stability:triage",
         "ci:gate": "pnpm -w install --frozen-lockfile && pnpm -w build && pnpm test:audit",
         "test": "vitest run",
         "quality": "node -e \"console.log('E2E: SKIPPED (run pnpm quality:full to include Playwright)')\" && pnpm run build && pnpm run test:ci && pnpm run lint",

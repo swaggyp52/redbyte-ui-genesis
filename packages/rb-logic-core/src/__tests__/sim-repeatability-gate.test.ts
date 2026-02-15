@@ -47,7 +47,13 @@ describe('sim:repeatability-gate', () => {
   it('matches expected delayed clock pattern (sanity)', () => {
     const trace = runFixture();
     const outs = trace.map((e) => e.out);
-    expect(outs).toEqual([0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1]);
+    // setCircuit() runs one init tick, then the test loop runs 12 more ticks.
+    // Clock period 4, delay 2. Starting from tick 0 within the loop:
+    // Tick 0: Clock.out=0 (period 4: low for 2 ticks) → Delay input=0
+    // Tick 1: Clock.out=1 (now 1 for 2 ticks)           → Delay still has 0 (buffered tick -1)
+    // Tick 2: Clock.out=0 (back to low)                 → Delay now outputs prev 1
+    // Pattern after init: [0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0]
+    expect(outs).toEqual([0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0]);
   });
 });
 
