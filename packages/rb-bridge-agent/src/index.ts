@@ -89,7 +89,7 @@ const server = app.listen(PORT, '127.0.0.1', () => {
     console.log('[Bridge Agent] Token-based auth enabled. Set RB_BRIDGE_TOKEN env var to override.');
 });
 
-const wss = new WebSocketServer({ server, path: '/ws', verifyClient: (info) => {
+const wss = new WebSocketServer({ server, path: '/ws', verifyClient: (info: { origin: string; secure: boolean; req: any }) => {
     // Verify WebSocket origin
     const origin = info.req.headers.origin || info.req.headers.referer;
     const allowedOrigins = ['http://127.0.0.1:4173', 'http://127.0.0.1:5173', 'http://localhost:4173', 'http://localhost:5173'];
