@@ -7,8 +7,10 @@
 - Ensured TA Submission Inspector is reachable from the OS shell.
   - `packages/rb-apps/src/launcherData.ts` includes `submission-inspector` in launcher list.
   - `packages/rb-apps/src/apps/SubmissionInspectorApp.tsx` drop zone copy now says `.rb-lab.zip`.
+  - `packages/rb-apps/src/index.ts` + `.js` register `submission-inspector` in `e2e-boot` mode (E2E test requirement).
+  - `packages/rb-apps/src/studentAppGate.ts` adds TA mode override to allow TA-only apps when `rb:mode=ta`.
 - Added E2E assertion for Submission Inspector reachability.
-  - `tests/e2e/stability-triage.spec.ts` opens Launcher and verifies drop zone copy.
+  - `tests/e2e/stability-triage.spec.ts` opens Launcher with `rb:mode=ta` and verifies drop zone copy.
 - Added Phase 4 report in docs with required six-section format.
   - `docs/PHASE_4_EXPORT_WORKFLOW_LOCK.md`
 

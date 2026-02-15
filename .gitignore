@@ -52,11 +52,15 @@ _ci_artifacts*/
 # Temporary test files (local-only)
 test-health*.js
 PHASE_*.md
+DEMO_*.md
 BRIDGE_CONTRACT.md
 pr-description.txt
 
 # Unignore official Phase completion reports in docs/
 !docs/PHASE_*.md
+
+# Unignore official Demo reports in docs/
+!docs/DEMO_*.md
 
 # Unignore fpga bridge contract (part of official spec)
 !packages/rb-fpga-bridge/BRIDGE_CONTRACT.md

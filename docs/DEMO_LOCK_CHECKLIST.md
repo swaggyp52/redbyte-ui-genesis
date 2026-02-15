@@ -1,42 +1,154 @@
-# Demo Lock Checklist
+# DEMO LOCK CHECKLIST
 
-**Goal:** Ensure RedByte OS is ready for public demo and classroom use.
+**Purpose**: Pre-demo verification that all systems are ready for live demonstration to stakeholders.
 
-## 1. Deployment Truth
+---
 
-- [x] **Build JSON:** `https://redbyteapps.dev/build.json` returns valid JSON with SHA.
-  - ✅ **PASS:** Verified via `verify-deploy.mjs` (SHA: `96fbdbf`).
-- [x] **Badge:** Website Home shows "Build: [SHA]".
-- [x] **Badge:** OS Start Here shows "Build: [SHA]".
-- [x] **Deep Link:** `https://redbyteapps.dev/?lab=lab-0` loads Lab 0 directly (no redirect).
+## Environment Setup
 
-## 2. Friend Laptop Validation (No Repo)
+### Hardware/Network
+- [ ] Laptop on power (not battery)
+- [ ] 5GHz WiFi connected (not shared mobile hotspot)
+- [ ] No VPN active
+- [ ] Browser dev tools **closed** (F12 off)
 
-- [ ] **Clean Browser Check:**
-  - Open `https://redbyteapps.dev` -> **RedByte OS** (Launch Screen) appears.
-  - Open `https://redbyteapps.dev/docs/students` -> Verify "Install Guide" text present.
-  - Open `https://redbyteapps.dev/build.json` -> Verify JSON content.
-  - Check Footer/Home for "Build: [SHA]" tag.
+### Ports & Services
+- [ ] No other process using port **4173** (demo app port)
+- [ ] No other process using **5173** (lab3 preview, if needed)
+- [ ] Node.js v20+ installed (`node --version`)
+- [ ] pnpm installed (`pnpm --version`)
 
-## 2. Environment Gates
+---
 
-- [ ] **Web Demo:** Hardware Panel shows "Simulation Only" overlay.
-- [ ] **Local Install:** Hardware Panel allows "Verify Device" (with Bridge running).
+## Pre-Demo Validation (Morning of Demo)
 
-## 3. Interaction Contract (Student)
+### 1. Build & Gate Chain Status
+Run demo readiness command:
+```bash
+pnpm demo:ready
+```
 
-- [ ] **Playground:** Drag/Drop gates works (2D).
-- [ ] **Playground:** Wire connections snap and stick.
-- [ ] **3D View:** Read-only toast appears on drag. badge visible.
-- [ ] **Sync:** Toggling Input in 2D updates 3D view immediately.
+Expected output:
+```
+✅ DEMO READY - All gates passing
+```
 
-## 4. Classroom Flow
+If fail, do not proceed to live demo. Debug and re-run.
 
-- [ ] **Export:** Clicking "Snapshot Evidence" creates `.rb-lab.zip`.
-- [ ] **Inspector:** Dragging `.rb-lab.zip` into Submission Inspector shows all metadata.
-- [ ] **Lab 0:** "Load Starter Circuit" works (ECELab).
+### 2. Visual Verification
+```bash
+pnpm preview
+```
 
-## 5. Local Packaging
+Then navigate browser to: `http://127.0.0.1:4173/os`
 
-- [ ] **Launcher:** `.\Start-RedByte.ps1` runs successfully on fresh clone.
-- [ ] **Preview:** `pnpm preview` runs without "dist missing" error.
+Verify:
+- [ ] Desktop shell appears without errors
+- [ ] No console.error messages (F12 → Console tab)
+- [ ] Home app opens when launcher icon clicked
+- [ ] Settings app opens
+- [ ] Export dialog works (Lab Workspace → Export)
+- [ ] Submission Inspector accessible (Launcher → try opening a .rb-lab.zip)
+
+### 3. E2E Test Report
+Open Playwright HTML report:
+```
+file://<repo>/playwright-report/index.html
+```
+
+Verify:
+- [ ] All 4 E2E smoke tests show ✅ PASSED
+  - Shell boots to desktop without fatal errors
+  - Dashboard and studio apps are registered
+  - Export functionality is accessible
+  - Submission inspector app is accessible
+
+---
+
+## Known Demos & Their Workflows
+
+### Demo 1: Create & Export Submission (Student Path)
+1. Open Launcher
+2. Click "Lab Workspace"
+3. Load a circuit (or create simple 2-input AND gate)
+4. Click Export → .rb-lab.zip
+5. Verify naming follows `RB-<lab>-<student>-<date>.rb-lab.zip`
+
+**Files Involved**:
+- `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+- `packages/rb-apps/src/utils/bundleExport.ts`
+
+### Demo 2: Inspect Submission (TA Path)
+1. Open Launcher
+2. Click "Submission Inspector"
+3. Drag/drop a `.rb-lab.zip` file into drop zone
+4. Verify:
+   - Lab ID extracted
+   - Student name displayed
+   - Submission date shown
+   - Hardware mode indicated
+   - Integrity hash verified
+
+**Files Involved**:
+- `packages/rb-apps/src/apps/SubmissionInspectorApp.tsx`
+- `packages/rb-apps/src/utils/classroomDiagnosticsBundle.ts`
+
+### Demo 3: Platform Stability
+1. Open DevTools → Performance tab
+2. Record a session:
+   - Open Launcher
+   - Open multiple apps (Home, Settings, Lab Workspace)
+   - Click through tabs
+   - Export a file
+3. Verify:
+   - No uncaught exceptions
+   - No runaway listeners
+   - Memory usage stable (not climbing)
+
+**Performance Budget**:
+- First interaction: < 500ms
+- Launcher response: < 100ms
+- App window open: < 1s
+
+---
+
+## Troubleshooting
+
+### Port 4173 Already in Use
+```bash
+# Find and kill process on port 4173
+lsof -i :4173
+kill -9 <PID>
+```
+
+### `pnpm demo:ready` Fails
+1. Check `pnpm rc:check` output directly
+2. Look for:
+   - Windows ENOTEMPTY errors → rebuild with `pnpm build --force`
+   - Unit test failures → run `pnpm test`
+   - E2E timeouts → ensure `pnpm preview` is not already running
+
+### Console Errors in Browser
+- Take screenshot with `F12 → Console`
+- Check [AI_STATE.md](../AI_STATE.md) for known issues
+- Verify git HEAD is on latest commit
+
+### Submission Inspector Won't Open
+- Ensure app is built with `pnpm build`
+- Check that launcher includes it: Open DevTools → `localStorage.rb:mode:v1` should be `student` (or not present)
+- For TA mode test: Add `?rb:mode=ta` to URL
+
+---
+
+## Post-Demo Checklist
+
+- [ ] Close browser gracefully
+- [ ] Stop `pnpm preview` (Ctrl+C)
+- [ ] Document any issues to [AI_STATE.md](../AI_STATE.md)
+- [ ] Commit any demo-related notes
+
+---
+
+**Last Updated**: 2026-02-15  
+**Contact**: Connor Angiel  
+**Release Branch**: `release/v1.0.0-next-lab-ready`
