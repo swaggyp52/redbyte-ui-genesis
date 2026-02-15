@@ -9,6 +9,24 @@ This phase locked down the hardware bridge agent to prevent LAN exposure, silent
 
 ---
 
+## Security Contract
+
+| Aspect | Policy | Rationale |
+|--------|--------|-----------|
+| **Binding** | `127.0.0.1` only (line 85) | Prevents LAN/network access to hardware control |
+| **HTTP Auth** | **Unauthenticated** (`/health`, `/devices` only) | Read-only status/discovery endpoints; no device control over HTTP |
+| **WebSocket Auth** | **Required** (AUTH message with token before any command) | All device writes (CONNECT, SET_PINS, UPLOAD_SKETCH) gated by token |
+| **Token Source** | `RB_BRIDGE_TOKEN` env var (default: `default-dev-token`) | Configurable for production; default safe for localhost-only dev |
+| **ACK Protocol** | All commands → explicit response (`SET_PINS_OK`, `CONNECT_OK`, `ERROR`) | Prevents silent failures; client can timeout without blocking |
+| **Port Selection** | Explicit `port` required in CONNECT payload (no COM defaults) | Forces user to select device from `/devices` discovery |
+| **Timeout Behavior** | Client waits 5s for ACK, then resolves to `null` (non-blocking) | Bridge offline → graceful degradation, no app hang |
+
+**Device Control Surface:**
+- **HTTP:** None (read-only status + discovery)
+- **WebSocket:** All hardware operations (requires AUTH token)
+
+---
+
 ## 1. Security Hardening
 
 ### Network Binding (Localhost-Only)
