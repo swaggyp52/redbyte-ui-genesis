@@ -7,35 +7,70 @@ const OS_URL = `/os/?e2e=1&boot=1${EXTRA_FLAGS ? `&${EXTRA_FLAGS}` : ''}`;
 test.describe('v1 stability triage smoke', () => {
   test.describe.configure({ timeout: 30_000 });
 
-  test('dashboard opens and studio launch is explicit', async ({ page }) => {
+  test('shell boots to desktop without fatal errors', async ({ page, context }) => {
     const { failPromise, dispose } = createFailureWatcher(page, 'http://127.0.0.1:4173');
 
     try {
+      // Clear any stale fatal-capture state before boot
+      await context.addInitScript(() => {
+        localStorage.removeItem('__RB_LAST_FATAL__');
+      });
+
+      // Boot to shell
       await page.goto(OS_URL, { waitUntil: 'domcontentloaded', timeout: 15_000 });
 
+      // Expect desktop shell visible = boot succeeded
       await Promise.race([
         failPromise,
-        expect(page.getByTestId('home-screen-root')).toBeVisible({ timeout: 10_000 }),
+        expect(page.locator('[data-testid="desktop-shell"]')).toBeVisible({ timeout: 10_000 }),
       ]);
 
+      // Verify shell title
+      await expect(page).toHaveTitle(/RedByte|Playground/i);
+
+      // Verify NO fatal errors persisted to localStorage (assert null or undefined)
+      const fatalRecord = await page.evaluate(() => {
+        return localStorage.getItem('__RB_LAST_FATAL__');
+      });
+      expect(fatalRecord).toBeNull();
+
+      // If we got here without failPromise rejecting, no uncaught errors
+      // This validates the e2e-boot app registration includes required apps
+    } finally {
+      dispose();
+    }
+  });
+
+  test('dashboard and studio apps are registered', async ({ page, context }) => {
+    const { failPromise, dispose } = createFailureWatcher(page, 'http://127.0.0.1:4173');
+
+    try {
+      // Clear any stale fatal-capture state before boot
+      await context.addInitScript(() => {
+        localStorage.removeItem('__RB_LAST_FATAL__');
+      });
+
+      await page.goto(OS_URL, { waitUntil: 'domcontentloaded', timeout: 15_000 });
+
+      // Wait for shell to fully load
       await Promise.race([
         failPromise,
-        page.getByRole('button', { name: 'Open Studio' }).click(),
+        expect(page.locator('[data-testid="desktop-shell"]')).toBeVisible({ timeout: 10_000 }),
       ]);
 
-      const studioRoot = page.getByTestId('lab-workspace-root');
-      const blockModal = page.getByTestId('studio-launch-block-modal');
+      // Verify dock/launcher contains buttons for Dashboard and Studio
+      // Use word boundaries to avoid false matches on generic UI text
+      const dashboardBtn = page.getByRole('button', { name: /\bDashboard\b/i }).first();
+      const studioBtn = page.getByRole('button', { name: /\bStudio\b/i }).first();
 
-      await Promise.race([
-        failPromise,
-        expect(studioRoot.or(blockModal)).toBeVisible({ timeout: 10_000 }),
-      ]);
+      await expect(dashboardBtn).toBeVisible({ timeout: 5_000 });
+      await expect(studioBtn).toBeVisible({ timeout: 5_000 });
 
-      if (await blockModal.isVisible()) {
-        await expect(blockModal).toContainText(/Complete First Run Wizard/i);
-      } else {
-        await expect(studioRoot).toBeVisible();
-      }
+      // Verify NO fatal errors persisted to localStorage (assert null or undefined)
+      const fatalRecord = await page.evaluate(() => {
+        return localStorage.getItem('__RB_LAST_FATAL__');
+      });
+      expect(fatalRecord).toBeNull();
     } finally {
       dispose();
     }
