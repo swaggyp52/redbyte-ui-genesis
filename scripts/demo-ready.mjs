@@ -40,6 +40,7 @@ function runRcCheck() {
     });
     return true;
   } catch (error) {
+    console.error('\n❌ rc:check failed with exit code:', error.status);
     return false;
   }
 }
@@ -54,7 +55,7 @@ Generated: ${timestamp}
 
 ## Verdict
 
-${passed ? '✅ **DEMO READY** - All gates passing' : '❌ **NOT READY** - Gates failed'}
+${passed ? '✅ **DEMO READY** - All gates passing' : '❌ **NOT READY** - One or more gates failed'}
 
 ## Build Information
 
@@ -75,7 +76,16 @@ ${passed ? `
   - Submission inspector app is accessible
 ` : `
 ### rc:check (Build + Unit Tests + E2E Smoke)
-- ❌ One or more gate(s) failed - see terminal output for details
+- ❌ One or more gate(s) failed
+
+**Troubleshooting Steps:**
+1. Check terminal output above for detailed error messages
+2. Verify all dependencies are installed: \`pnpm install\`
+3. Clear build cache: \`pnpm build --force\`
+4. Ensure no processes are using port 4173: \`lsof -i :4173\`
+5. Re-run: \`pnpm demo:ready\`
+
+**Do NOT proceed to demo if rc:check fails.**
 `}
 
 ## Reports & Evidence
@@ -83,12 +93,23 @@ ${passed ? `
 - **Playwright HTML Report**: \`playwright-report/index.html\`
 - **Report Refresh Time**: ${new Date().toLocaleTimeString()}
 
-## Next Steps (Demo Day)
+## Next Steps
+
+${passed ? `
+(Demo Day - All Systems Ready)
 
 1. Run: \`pnpm demo:ready\`
-2. Verify: \`✅ DEMO READY\` verdict in this report
+2. Verify: \`✅ DEMO READY\` verdict
 3. Open browser: \`http://127.0.0.1:4173/os\`
-4. Screenshot of desktop shell for visual verification
+4. Begin demonstration
+` : `
+(Fix Issues Before Demo)
+
+1. Review error details in terminal output
+2. Address failures (see Troubleshooting section)
+3. Re-run: \`pnpm demo:ready\`
+4. Verify all gates pass before proceeding to live demo
+`}
 
 ---
 
@@ -110,13 +131,21 @@ async function main() {
   console.log('\n' + '='.repeat(60));
   console.log('DEMO READY REPORT');
   console.log('='.repeat(60));
-  console.log(`\n${passed ? '✅ DEMO READY' : '❌ NOT READY'}`);
-  console.log(`\n📖 Full report: file://${DEMO_REPORT_PATH}`);
-  console.log(`🎭 Demo URL: http://127.0.0.1:4173/os`);
-  console.log(`📊 E2E Report: file://${PW_REPORT_DIR}/index.html`);
-  console.log('\n' + '='.repeat(60) + '\n');
-
-  process.exit(passed ? 0 : 1);
+  
+  if (passed) {
+    console.log(`\n✅ DEMO READY - All gates passing`);
+    console.log(`\n📖 Full report: file://${DEMO_REPORT_PATH}`);
+    console.log(`🎭 Demo URL: http://127.0.0.1:4173/os`);
+    console.log(`📊 E2E Report: file://${PW_REPORT_DIR}/index.html`);
+    console.log('\n' + '='.repeat(60) + '\n');
+    process.exit(0);
+  } else {
+    console.log(`\n❌ DEMO NOT READY - Gates failed`);
+    console.log(`\n📖 Full report (with failure details): file://${DEMO_REPORT_PATH}`);
+    console.log(`📊 E2E Report: file://${PW_REPORT_DIR}/index.html`);
+    console.log('\n' + '='.repeat(60) + '\n');
+    process.exit(1);
+  }
 }
 
 main().catch(err => {

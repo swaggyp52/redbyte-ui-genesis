@@ -25,7 +25,8 @@ export const PERSISTENT_STORAGE_KEYS = [
     'rb:onboarding:dismissed', // onboarding dismissed
     'rb:classroom:v1', // classroom mode state
     'rb:file-associations', // file type associations
-    'rb:filesystem', // filesystem state cache
+    'rb:file-system', // filesystem state cache
+    'rb:filesystem', // filesystem state cache (legacy alias)
     'rb:window-layout', // window layout persistence
 ];
 /**
