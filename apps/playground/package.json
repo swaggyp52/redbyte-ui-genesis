@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build --emptyOutDir false",
     "postbuild": "node ../../scripts/copy-build-json.mjs ./dist"
   },
   "dependencies": {

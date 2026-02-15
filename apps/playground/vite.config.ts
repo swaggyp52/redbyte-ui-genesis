@@ -38,6 +38,8 @@ export default defineConfig({
     __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
   },
   build: {
+    // Avoid Windows ENOTEMPTY failures when the dist/assets folder is in use.
+    emptyOutDir: process.platform !== 'win32',
     // Sourcemaps disabled for production optimization
     sourcemap: true,
     // Increase chunk size warning threshold to 750kB to accommodate vendor-3d (Three.js)
@@ -51,7 +53,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
-        lab: path.resolve(__dirname, 'lab.html'),
       },
     },
   },
@@ -63,8 +64,7 @@ export default defineConfig({
       '@redbyte/rb-theme': path.resolve(__dirname, '../../packages/rb-theme/src'),
       '@redbyte/rb-icons': path.resolve(__dirname, '../../packages/rb-icons/src'),
       '@redbyte/rb-utils': path.resolve(__dirname, '../../packages/rb-utils/src'),
-      react: path.resolve(__dirname, './node_modules/react'),
-      'react/jsx-runtime': path.resolve(__dirname, './node_modules/react/jsx-runtime.js'),
+      // React dedup is handled by pnpm overrides in root package.json
     },
   },
   server: {

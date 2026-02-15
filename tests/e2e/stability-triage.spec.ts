@@ -153,4 +153,48 @@ test.describe('v1 stability triage smoke', () => {
       dispose();
     }
   });
+
+  test('submission inspector app is accessible', async ({ page, context }) => {
+    const { failPromise, dispose } = createFailureWatcher(page, 'http://127.0.0.1:4173');
+    const taUrl = `${OS_URL}&rb:mode=ta`;
+
+    try {
+      // Clear stale state
+      await context.addInitScript(() => {
+        localStorage.removeItem('__RB_LAST_FATAL__');
+      });
+
+      await page.goto(taUrl, { waitUntil: 'domcontentloaded', timeout: 15_000 });
+
+      // Wait for shell to load
+      await Promise.race([
+        failPromise,
+        expect(page.locator('[data-testid="desktop-shell"]')).toBeVisible({ timeout: 10_000 }),
+      ]);
+
+      // Open Launcher then Submission Inspector app (TA inspection flow entrypoint)
+      const launcherBtn = page.getByRole('button', { name: /open launcher/i }).first();
+      await launcherBtn.click();
+      await expect(page.getByRole('dialog', { name: /app launcher/i })).toBeVisible({ timeout: 5_000 });
+
+      const inspectorBtn = page.getByRole('option', { name: /submission inspector/i }).first();
+      await inspectorBtn.click();
+
+      // Wait for app window to open
+      await page.waitForTimeout(2000); // Allow time for app to mount
+
+      // Verify drop zone exists (core TA workflow: drag/drop .rb-lab.zip)
+      const dropZone = page.getByText(/drop.*\.rb-lab\.zip/i).first();
+      await expect(dropZone).toBeVisible({ timeout: 5_000 });
+
+      // Minimal check: assert no fatal crashes occurred
+      const fatalRecord = await page.evaluate(() => {
+        return localStorage.getItem('__RB_LAST_FATAL__');
+      });
+      expect(fatalRecord).toBeNull();
+
+    } finally {
+      dispose();
+    }
+  });
 });

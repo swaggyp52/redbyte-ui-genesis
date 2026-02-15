@@ -2816,8 +2816,8 @@ export const Shell: React.FC<ShellProps> = () => {
         return;
       }
 
-      // Cmd/Ctrl+/: Open About (demo mode only)
-      if (isDemoMode && event.key === '/') {
+      // Cmd/Ctrl+/: Open About
+      if (event.key === '/') {
         event.preventDefault();
         setAboutModalOpen(true);
         return;
@@ -3447,8 +3447,8 @@ export const Shell: React.FC<ShellProps> = () => {
         />
       )}
 
-      {/* About Modal (Demo mode only) */}
-      {isDemoMode && aboutModalOpen && (
+      {/* About Modal */}
+      {aboutModalOpen && (
         <AboutModal
           isOpen={aboutModalOpen}
           onClose={() => setAboutModalOpen(false)}

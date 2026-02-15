@@ -21,6 +21,7 @@ export const TopBar: React.FC<TopBarProps> = React.memo(({
   isRecording,
   modeLabel,
   tickCount,
+  versionLabel,
   unreadCount = 0,
   onOpenLog,
   onOpenLauncher,
@@ -109,6 +110,15 @@ export const TopBar: React.FC<TopBarProps> = React.memo(({
                 </span>
               )}
             </button>
+          )}
+          {versionLabel && (
+            <span
+              className="text-[9px] font-mono tracking-wide select-none"
+              style={{ color: 'var(--rb-ui-text-3)', opacity: 0.6 }}
+              title="Build version (Ctrl+/ for details)"
+            >
+              {versionLabel}
+            </span>
           )}
           {onOpenSettings && (
             <button

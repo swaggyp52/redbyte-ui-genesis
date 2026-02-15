@@ -7,12 +7,10 @@ import '../index.css';
 
 // Full bootstrap: all startup code (previously in main.tsx)
 export async function bootstrap() {
-  // Install instrumentation
-  if (import.meta.env.DEV || navigator.webdriver) {
-    installFatalCapture();
-    pushMount('BOOT: fatal-capture-installed');
-    console.log('RB_FATAL_CAPTURE_INSTALLED');
-  }
+  // Install fatal capture always (production preview needs diagnostics for demo)
+  installFatalCapture({ force: true });
+  pushMount('BOOT: fatal-capture-installed');
+  console.log('RB_FATAL_CAPTURE_INSTALLED');
 
   // Register all apps (non-blocking - Shell must boot even if apps fail)
   const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');

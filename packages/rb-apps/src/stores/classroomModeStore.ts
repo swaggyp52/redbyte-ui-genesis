@@ -56,7 +56,12 @@ function createClassroomModeStore() {
       const param = new URLSearchParams(window.location.search).get('safe');
       if (param === '1') return true;
       if (param === '0') return false;
-      return localStorage.getItem('rb_safe_mode') === '1';
+      if (localStorage.getItem('rb_safe_mode') === '1') return true;
+      // Auto-enable safe mode in demo/preview builds via env var
+      try {
+        if (import.meta.env.VITE_RB_DEMO_SAFE === '1') return true;
+      } catch {}
+      return false;
     })(),
 
     setSafeMode: (enabled: boolean) => {

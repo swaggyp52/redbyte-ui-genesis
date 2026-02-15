@@ -773,7 +773,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
           onDrop={handleDrop}
         >
           <div className={styles.dropZoneIcon}>📦</div>
-          <div className={styles.dropZoneTitle}>Drop submission bundle file here</div>
+          <div className={styles.dropZoneTitle}>Drop .rb-lab.zip file here</div>
           <div className={styles.dropZoneOr}>or</div>
           <button
             className={`${styles.browseButton} rbButtonPrimary`}
@@ -1582,7 +1582,7 @@ export const SubmissionInspectorApp: RedByteApp = {
     name: 'Submission Inspector',
     iconId: 'search',
     category: 'tools',
-    hidden: true,
+    hidden: false,
     defaultSize: {
       width: 1000,
       height: 750,

@@ -1,4 +1,5 @@
 import { useCapabilitiesStore } from './stores/capabilitiesStore';
+import { getRedByteUiMode } from './utils/uiMode';
 
 export const STUDENT_VISIBLE_APP_ALLOWLIST = Object.freeze([
   'home',
@@ -18,6 +19,7 @@ const studentVisibleApps = new Set(STUDENT_VISIBLE_APP_ALLOWLIST);
 const studentSystemApps = new Set(STUDENT_SYSTEM_APP_ALLOWLIST);
 
 export function isStudentModeActive(): boolean {
+  if (getRedByteUiMode() === 'ta') return false;
   return useCapabilitiesStore.getState().studentMode;
 }
 

@@ -66,6 +66,10 @@ export async function registerAllApps(options) {
             const { SettingsApp } = await import('./apps/SettingsApp');
             registerApp(SettingsApp);
         });
+        await safeRegister('submission-inspector', async () => {
+            const { SubmissionInspectorApp } = await import('./apps/SubmissionInspectorApp');
+            registerApp(SubmissionInspectorApp);
+        });
         return;
     }
     // E2E-lite: keep startup lean and avoid importing 3D-heavy modules that can

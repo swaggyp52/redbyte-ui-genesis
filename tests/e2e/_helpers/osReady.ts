@@ -2,8 +2,8 @@
 import { Page, expect } from '@playwright/test';
 
 export async function osReady(page: Page) {
-    // 1. Wait for dev URL to load
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    // 1. Navigate to the OS surface (base path is /os/)
+    await page.goto('/os/', { waitUntil: 'domcontentloaded' });
 
     // 2. Wait for boot screen to be hidden (if it appears)
     const bootScreen = page.locator('[data-testid="shell-boot-screen"]');

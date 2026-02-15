@@ -41,7 +41,8 @@ declare global {
  */
 export function pushMount(label: string) {
   if (typeof window === 'undefined') return;
-  if (!('__DEV__' in globalThis) && !('__TEST__' in globalThis) && !navigator.webdriver) {
+  // Allow pushMount when fatal capture is installed (covers force mode)
+  if (!window.__RB_FATAL_CAPTURE_INSTALLED__ && !('__DEV__' in globalThis) && !('__TEST__' in globalThis) && !navigator.webdriver) {
     return;
   }
 
@@ -86,12 +87,12 @@ function persistFatal(kind: string, payload: Partial<FatalRecord>) {
  * Install global error handlers that persist fatal errors (DEV-only).
  * Call once on app startup.
  */
-export function installFatalCapture() {
+export function installFatalCapture(opts?: { force?: boolean }) {
   if (typeof window === 'undefined') return;
   if (window.__RB_FATAL_CAPTURE_INSTALLED__) return;
 
-  // Only install in DEV or test environments
-  if (!('__DEV__' in globalThis) && !('__TEST__' in globalThis) && !navigator.webdriver) {
+  // Only install in DEV or test environments — unless force is set (preview/demo builds)
+  if (!opts?.force && !('__DEV__' in globalThis) && !('__TEST__' in globalThis) && !navigator.webdriver) {
     return;
   }
 

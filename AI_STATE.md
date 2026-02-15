@@ -1,5 +1,19 @@
 # AI State
 
+## Change Log 2026-02-15 (rc:check unblock + submission inspector access + Phase 4 report)
+
+- Unblocked `rc:check` on Windows by avoiding outDir cleanup failures during Playground builds.
+  - `apps/playground/vite.config.ts` disables `emptyOutDir` on win32 to prevent ENOTEMPTY.
+- Ensured TA Submission Inspector is reachable from the OS shell.
+  - `packages/rb-apps/src/launcherData.ts` includes `submission-inspector` in launcher list.
+  - `packages/rb-apps/src/apps/SubmissionInspectorApp.tsx` drop zone copy now says `.rb-lab.zip`.
+- Added E2E assertion for Submission Inspector reachability.
+  - `tests/e2e/stability-triage.spec.ts` opens Launcher and verifies drop zone copy.
+- Added Phase 4 report in docs with required six-section format.
+  - `docs/PHASE_4_EXPORT_WORKFLOW_LOCK.md`
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-14 (v1 stability triage: LogicPlayground crash, Studio launch contract, pointer drag integrity, UI scale defaults)
 
 - Fixed deterministic Logic Playground runtime crash caused by out-of-scope `props` usage inside `LogicPlaygroundInner`.

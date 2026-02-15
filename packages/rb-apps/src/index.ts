@@ -116,6 +116,10 @@ export async function registerAllApps(options?: { mode?: RegisterAllAppsMode }) 
       const { SettingsApp } = await import('./apps/SettingsApp');
       registerApp(SettingsApp);
     });
+    await safeRegister('submission-inspector', async () => {
+      const { SubmissionInspectorApp } = await import('./apps/SubmissionInspectorApp');
+      registerApp(SubmissionInspectorApp);
+    });
     return;
   }
 

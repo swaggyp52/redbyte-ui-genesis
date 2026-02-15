@@ -33,13 +33,13 @@ if (-not (Test-Path "node_modules")) {
     Write-Host "✅ Dependencies already installed." -ForegroundColor Gray
 }
 
-# 4. Build Core
-Write-Host "🔨 Building RedByte Core..." -ForegroundColor Cyan
-pnpm build:os
+# 4. Build packages then playground
+Write-Host "🔨 Building RedByte OS..." -ForegroundColor Cyan
+pnpm build
 
 # 5. Launch
 Write-Host "🌐 Launching RedByte OS..." -ForegroundColor Green
-Write-Host "   Open http://localhost:4173 if browser doesn't start." -ForegroundColor Gray
+Write-Host "   Open http://127.0.0.1:4173/os/ if browser doesn't start." -ForegroundColor Gray
 
 # Option to start Bridge
 $runBridge = Read-Host "🔌 Start Hardware Bridge Agent? (y/N)"
