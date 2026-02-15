@@ -3,6 +3,7 @@ import express, { Request, Response } from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import cors from 'cors';
 import { SerialPort } from 'serialport';
+import url from 'url';
 import {
     BRIDGE_PROTOCOL_VERSION,
     BridgeMessage,
@@ -21,9 +22,31 @@ import { Basys3Backend } from './backends/basys3.js';
 import { ArduinoCliUploader } from './uploader/arduino-cli.js';
 
 const PORT = 4242;
+const BRIDGE_TOKEN = process.env.RB_BRIDGE_TOKEN || 'default-dev-token';
 const uploader = new ArduinoCliUploader();
 const app = express();
-app.use(cors());
+
+// Restrictive CORS: allow only localhost origins
+app.use(cors({
+    origin: ['http://127.0.0.1:4173', 'http://127.0.0.1:5173', 'http://localhost:4173', 'http://localhost:5173'],
+    credentials: true
+}));
+
+// Token auth middleware for non-health, non-device-discovery endpoints
+const requireToken = (req: Request, res: Response, next: Function) => {
+    // Health and device discovery are allowed without token
+    if (req.path === '/health' || req.path === '/devices') {
+        return next();
+    }
+    
+    const token = req.headers.authorization?.replace('Bearer ', '') || req.headers['x-rb-token'];
+    if (token !== BRIDGE_TOKEN) {
+        res.status(403).json({ error: 'Unauthorized: invalid or missing token' });
+        return;
+    }
+    next();
+};
+app.use(requireToken);
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
@@ -61,24 +84,57 @@ app.get('/devices', async (req: Request, res: Response) => {
     }
 });
 
-const server = app.listen(PORT, () => {
-    console.log(`[Bridge Agent] Listening on http://localhost:${PORT}`);
+const server = app.listen(PORT, '127.0.0.1', () => {
+    console.log(`[Bridge Agent] Listening on http://127.0.0.1:${PORT}`);
+    console.log('[Bridge Agent] Token-based auth enabled. Set RB_BRIDGE_TOKEN env var to override.');
 });
 
-const wss = new WebSocketServer({ server, path: '/ws' });
+const wss = new WebSocketServer({ server, path: '/ws', verifyClient: (info) => {
+    // Verify WebSocket origin
+    const origin = info.req.headers.origin || info.req.headers.referer;
+    const allowedOrigins = ['http://127.0.0.1:4173', 'http://127.0.0.1:5173', 'http://localhost:4173', 'http://localhost:5173'];
+    
+    if (origin && !allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+        console.warn(`[Bridge Agent] WS connection rejected: disallowed origin ${origin}`);
+        return false;
+    }
+    return true;
+} });
 
 const backends = new Map<string, any>();
 const connecting = new Set<string>();
 /** Tracks which COM port paths are currently open or being opened. Prevents double-open. */
 const lockedPorts = new Map<string, string>(); // portPath → deviceId
 
-wss.on('connection', (ws: WebSocket) => {
+wss.on('connection', (ws: WebSocket, req) => {
     console.log('[Bridge Agent] Client connected via WebSocket');
+    let wsAuthorized = false;
 
     ws.on('message', async (data: string) => {
         console.log('[Bridge DEBUG] Raw message received:', data.toString());
         try {
             const msg: BridgeMessage = JSON.parse(data.toString());
+
+            // Handle auth for WS
+            if (msg.type === 'AUTH') {
+                const tokenPayload = msg.payload as { token: string };
+                if (tokenPayload?.token === BRIDGE_TOKEN) {
+                    wsAuthorized = true;
+                    sendResponse(ws, msg.id, 'AUTH_OK');
+                    console.log('[Bridge Agent] WebSocket authorized via AUTH message');
+                } else {
+                    sendResponse(ws, msg.id, 'AUTH_ERR', { message: 'Invalid token' });
+                    console.warn('[Bridge Agent] WebSocket AUTH failed: invalid token');
+                }
+                return;
+            }
+
+            // For non-auth messages, check if authorized (except PING which is allowed always)
+            if (msg.type !== 'PING' && !wsAuthorized) {
+                console.warn('[Bridge Agent] Rejecting message: WebSocket not authorized');
+                sendResponse(ws, msg.id, 'ERROR', { message: 'Not authorized. Send AUTH message first.' });
+                return;
+            }
 
             if (msg.v !== BRIDGE_PROTOCOL_VERSION) {
                 console.warn(`[Bridge Agent] Protocol version mismatch: expected ${BRIDGE_PROTOCOL_VERSION}, got ${msg.v}`);
@@ -115,8 +171,15 @@ wss.on('connection', (ws: WebSocket) => {
                             break;
                         }
 
-                        // COM port mutex: prevent double-open of the same physical port
-                        const portPath = payload.port || (payload.target === 'basys3' ? 'COM7' : 'COM6');
+                        // Require explicit port selection - no hard-coded COM defaults
+                        const portPath = payload.port;
+                        if (!portPath) {
+                            console.warn(`[Bridge Agent] CONNECT requires explicit port selection`);
+                            sendResponse(ws, msg.id, 'CONNECT_ERR', {
+                                message: 'Port must be explicitly specified. Use /devices endpoint to discover available ports.'
+                            });
+                            break;
+                        }
                         const portOwner = lockedPorts.get(portPath);
                         if (portOwner && portOwner !== deviceId) {
                             console.warn(`[Bridge Agent] Port ${portPath} already locked by ${portOwner}, rejecting ${deviceId}`);
@@ -150,8 +213,9 @@ wss.on('connection', (ws: WebSocket) => {
                         sendResponse(ws, msg.id, 'CONNECT_OK', { target: payload.target });
                     } catch (err: any) {
                         // Release port lock on connection failure
-                        const portPath = payload.port || (payload.target === 'basys3' ? 'COM7' : 'COM6');
-                        lockedPorts.delete(portPath);
+                        if (payload.port) {
+                            lockedPorts.delete(payload.port);
+                        }
                         sendResponse(ws, msg.id, 'CONNECT_ERR', { message: err.message });
                     } finally {
                         connecting.delete(deviceId);
@@ -162,6 +226,9 @@ wss.on('connection', (ws: WebSocket) => {
                 case 'SET_PINS':
                     if (activeBackend) {
                         activeBackend.setPins(msg.payload as SetPinsPayload);
+                        sendResponse(ws, msg.id, 'SET_PINS_OK', { message: 'Pins set' });
+                    } else {
+                        sendResponse(ws, msg.id, 'ERROR', { message: 'No active backend' });
                     }
                     break;
 
@@ -176,7 +243,9 @@ wss.on('connection', (ws: WebSocket) => {
                     if (activeBackend) {
                         const loadPayload = msg.payload as LoadPresetPayload;
                         activeBackend.loadPreset(loadPayload.nodeId, loadPayload.presetId);
-                        sendResponse(ws, msg.id, 'LOAD_PRESET_OK');
+                        sendResponse(ws, msg.id, 'LOAD_PRESET_OK', { message: 'Preset loaded' });
+                    } else {
+                        sendResponse(ws, msg.id, 'ERROR', { message: 'No active backend' });
                     }
                     break;
 

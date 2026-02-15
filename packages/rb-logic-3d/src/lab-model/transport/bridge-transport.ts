@@ -23,11 +23,14 @@ export class BridgeTransport implements LabTransport {
     private reconnectAttempts: number = 0;
     private deviceId: string;
 
-    constructor(baseUrl: string = 'http://localhost:4242', deviceId: string = 'default') {
+    constructor(baseUrl: string = 'http://localhost:4242', deviceId: string = 'default', token?: string) {
         const wsBase = baseUrl.replace(/^http/, 'ws');
         this.url = `${wsBase}/ws`;
         this.deviceId = deviceId;
+        this.token = token || (typeof process !== 'undefined' ? process.env.RB_BRIDGE_TOKEN : undefined) || 'default-dev-token';
     }
+
+    private token: string;
 
     async connect(options?: { target: 'basys3' | 'arduino-uno', port?: string, baud?: number }): Promise<void> {
         const isTestEnv = (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
@@ -48,8 +51,15 @@ export class BridgeTransport implements LabTransport {
                 this.connected = true;
                 this.error = undefined;
 
-                // Send initial CONNECT with target/options
-                this.sendRequest('CONNECT', this.options).then((payload) => {
+                // Send AUTH first, then CONNECT
+                this.sendRequest('AUTH', { token: this.token }).then((payload) => {
+                    if (shouldLog) {
+                        console.log('[Bridge] Authentication OK');
+                    }
+                    
+                    // Send initial CONNECT with target/options
+                    return this.sendRequest('CONNECT', this.options);
+                }).then((payload) => {
                     if (shouldLog) {
                         console.log('[Bridge] Handshake OK:', payload);
                     }
@@ -57,6 +67,13 @@ export class BridgeTransport implements LabTransport {
                     // Start polling
                     this.startPolling();
                     resolve();
+                }).catch((err) => {
+                    if (shouldLog) {
+                        console.error('[Bridge] Handshake failed:', err);
+                    }
+                    this.error = 'Failed to authenticate with Bridge Agent';
+                    this.handleDisconnect();
+                    resolve(); // Resolve anyway to avoid hanging store
                 });
             };
 
@@ -224,8 +241,24 @@ export class BridgeTransport implements LabTransport {
     private sendRequest(type: BridgeMessageType, payload?: any): Promise<any> {
         return new Promise((resolve) => {
             const id = ++this.msgId;
-            this.pendingResponses.set(id, resolve);
+            let timeout: any = null;
+            
+            const handler = (result: any) => {
+                clearTimeout(timeout);
+                this.pendingResponses.delete(id);
+                resolve(result);
+            };
+            
+            // 5-second timeout for ACK responses - prevents hanging if bridge is offline
+            timeout = setTimeout(() => {
+                this.pendingResponses.delete(id);
+                console.warn(`[Bridge] Request ${type} (id ${id}) timed out - bridge may be offline`);
+                resolve(null);
+            }, 5000);
+            
+            this.pendingResponses.set(id, handler);
             if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                clearTimeout(timeout);
                 this.pendingResponses.delete(id);
                 resolve(null);
                 return;

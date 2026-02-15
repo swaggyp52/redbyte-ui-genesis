@@ -6,10 +6,11 @@ export const BRIDGE_PROTOCOL_VERSION = 'rb-bridge.v1';
 export type BridgeMessageType =
     | 'PING' | 'PONG'
     | 'ERROR'
+    | 'AUTH' | 'AUTH_OK' | 'AUTH_ERR'
     | 'CONNECT' | 'CONNECT_OK' | 'CONNECT_ERR'
     | 'DISCONNECT'
     | 'LIST_DEVICES' | 'LIST_DEVICES_OK'
-    | 'SET_PINS' | 'GET_PINS' | 'GET_PINS_OK'
+    | 'SET_PINS' | 'SET_PINS_OK' | 'GET_PINS' | 'GET_PINS_OK'
     | 'LOAD_PRESET' | 'LOAD_PRESET_OK'
     | 'UPLOAD_SKETCH' | 'UPLOAD_SKETCH_OK'
     | 'VERIFY_DEVICE' | 'VERIFY_DEVICE_OK'
