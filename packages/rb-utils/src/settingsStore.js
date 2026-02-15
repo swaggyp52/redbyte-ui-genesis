@@ -13,6 +13,7 @@ const DEFAULT_SETTINGS = {
     performanceMode: false,
     density: 'comfortable',
     snapAssist: 'manual',
+    uiScale: 100,
 };
 /** Migrate legacy theme variant names */
 function migrateThemeVariant(raw) {
@@ -50,6 +51,7 @@ function loadSettings() {
         const accentColor = migrateAccentColor(parsed.accentColor);
         const density = rawDensity(parsed.density);
         const snapAssist = rawSnapAssist(parsed.snapAssist);
+        const uiScale = rawUiScale(parsed.uiScale);
         return {
             themeVariant,
             wallpaperId: VALID_WALLPAPERS.includes(parsed.wallpaperId)
@@ -67,6 +69,7 @@ function loadSettings() {
                 : DEFAULT_SETTINGS.performanceMode,
             density,
             snapAssist,
+            uiScale,
         };
     }
     catch (err) {
@@ -93,6 +96,11 @@ function rawSnapAssist(value) {
     if (value === 'off' || value === 'manual' || value === 'auto')
         return value;
     return DEFAULT_SETTINGS.snapAssist;
+}
+function rawUiScale(value) {
+    if (value === 100 || value === 110 || value === 125)
+        return value;
+    return DEFAULT_SETTINGS.uiScale;
 }
 // Lazy-init singleton to prevent TDZ crash from circular imports
 let _store = null;
@@ -135,6 +143,11 @@ function createSettingsStore() {
         setSnapAssist: (mode) => {
             const next = rawSnapAssist(mode);
             set({ snapAssist: next });
+            persistSettings(get());
+        },
+        setUiScale: (preset) => {
+            const next = rawUiScale(preset);
+            set({ uiScale: next });
             persistSettings(get());
         },
     }));

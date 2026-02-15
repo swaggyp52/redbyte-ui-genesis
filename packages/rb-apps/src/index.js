@@ -46,6 +46,18 @@ export async function registerAllApps(options) {
     const { registerApp } = await import('./AppRegistry');
     // E2E-boot: minimal boot smoke (Shell mounts; no heavy apps).
     if (mode === 'e2e-boot') {
+        await safeRegister('home', async () => {
+            const { HomeApp } = await import('./apps/HomeApp');
+            registerApp(HomeApp);
+        });
+        await safeRegister('first-run-wizard', async () => {
+            const { FirstRunWizardApp } = await import('./apps/FirstRunWizardApp');
+            registerApp(FirstRunWizardApp);
+        });
+        await safeRegister('lab-workspace', async () => {
+            const { LabWorkspaceApp } = await import('./apps/LabWorkspaceApp');
+            registerApp(LabWorkspaceApp);
+        });
         await safeRegister('launcher', async () => {
             const { LauncherApp } = await import('./apps/LauncherApp');
             registerApp(LauncherApp);

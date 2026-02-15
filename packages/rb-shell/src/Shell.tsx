@@ -26,6 +26,7 @@ import {
   useRenderStormDetector,
   loadFirstRunState,
   resolveFirstRunTargetApp,
+  getFirstRunBlockingReason,
   canOpenAppForCurrentMode,
   isStudentModeActive,
   useCapabilitiesStore,
@@ -276,6 +277,13 @@ interface OpenWithModalState {
   resourceName: string;
   extension: string;
   eligibleTargets: FileActionTarget[];
+}
+
+interface StudioLaunchBlockState {
+  stepId: string;
+  stepLabel: string;
+  machineReason: string;
+  humanReason: string;
 }
 
 type SnapPreviewTarget = 'left' | 'right' | 'maximize';
@@ -606,9 +614,11 @@ export const Shell: React.FC<ShellProps> = () => {
   const [showDeadZoneScanner, setShowDeadZoneScanner] = useState(false);
   const [showOverlayDebug, setShowOverlayDebug] = useState(false);
   const [snapPreview, setSnapPreview] = useState<SnapPreviewState | null>(null);
+  const [studioLaunchBlock, setStudioLaunchBlock] = useState<StudioLaunchBlockState | null>(null);
   const lastSettingsRef = useRef<{
     themeVariant: string;
     density: string;
+    uiScale: number;
     reduceMotion: boolean;
     performanceMode: boolean;
     snapAssist: string;
@@ -729,6 +739,7 @@ export const Shell: React.FC<ShellProps> = () => {
   });
   const themeVariant = useSettingsStore((s) => s.themeVariant);
   const density = useSettingsStore((s) => s.density);
+  const uiScale = useSettingsStore((s) => s.uiScale);
   const reduceMotion = useSettingsStore((s) => s.reduceMotion);
   const performanceMode = useSettingsStore((s) => s.performanceMode);
   const snapAssist = useSettingsStore((s) => s.snapAssist);
@@ -1069,16 +1080,18 @@ export const Shell: React.FC<ShellProps> = () => {
     if (typeof document !== 'undefined') {
       applyTheme(document.documentElement, themeVariant);
       document.documentElement.setAttribute('data-rb-density', density);
+      document.documentElement.setAttribute('data-rb-scale', String(uiScale));
       const effectiveReduceMotion = reduceMotion || performanceMode;
       document.documentElement.setAttribute('data-rb-motion', effectiveReduceMotion ? 'reduced' : 'full');
       document.documentElement.setAttribute('data-rb-perf', performanceMode ? 'on' : 'off');
     }
-  }, [themeVariant, density, reduceMotion, performanceMode, snapAssist]);
+  }, [themeVariant, density, uiScale, reduceMotion, performanceMode, snapAssist]);
 
   useEffect(() => {
     const current = {
       themeVariant: themeVariant,
       density: density,
+      uiScale: uiScale,
       reduceMotion: reduceMotion || performanceMode,
       performanceMode: performanceMode,
       snapAssist: snapAssist,
@@ -1090,6 +1103,7 @@ export const Shell: React.FC<ShellProps> = () => {
     if (
       lastSettingsRef.current.themeVariant !== current.themeVariant ||
       lastSettingsRef.current.density !== current.density ||
+      lastSettingsRef.current.uiScale !== current.uiScale ||
       lastSettingsRef.current.reduceMotion !== current.reduceMotion ||
       lastSettingsRef.current.performanceMode !== current.performanceMode ||
       lastSettingsRef.current.snapAssist !== current.snapAssist
@@ -1102,7 +1116,7 @@ export const Shell: React.FC<ShellProps> = () => {
       });
       lastSettingsRef.current = current;
     }
-  }, [themeVariant, density, reduceMotion, performanceMode]);
+  }, [themeVariant, density, uiScale, reduceMotion, performanceMode, snapAssist]);
 
   // Workspace/Session restore on mount
   useEffect(() => {
@@ -1176,9 +1190,26 @@ export const Shell: React.FC<ShellProps> = () => {
 
   const openWindow = useCallback(
     (appId: string, props?: any) => {
-      const resolvedAppId = resolveFirstRunTargetApp(appId, loadFirstRunState());
+      const firstRunState = loadFirstRunState();
+      const resolvedAppId = resolveFirstRunTargetApp(appId, firstRunState);
+      const isStudioLaunchRequest = appId === 'lab-workspace';
+
+      if (isStudioLaunchRequest) {
+        console.info('STUDIO_LAUNCH_REQUESTED');
+      }
+
+      if (isStudioLaunchRequest && resolvedAppId !== 'lab-workspace') {
+        const block = getFirstRunBlockingReason(firstRunState);
+        setStudioLaunchBlock(block);
+        console.warn(`STUDIO_LAUNCH_BLOCKED reason=${block.machineReason}`);
+      } else if (isStudioLaunchRequest) {
+        setStudioLaunchBlock(null);
+      }
 
       if (!canOpenAppForCurrentMode(resolvedAppId)) {
+        if (isStudioLaunchRequest) {
+          console.warn(`STUDIO_LAUNCH_BLOCKED reason=ModeGate(${resolvedAppId})`);
+        }
         logSystemEvent({
           level: 'warn',
           source: 'shell',
@@ -1191,6 +1222,9 @@ export const Shell: React.FC<ShellProps> = () => {
 
       const app = getApp(resolvedAppId);
       if (!app) {
+        if (isStudioLaunchRequest) {
+          console.warn('STUDIO_LAUNCH_BLOCKED reason=AppNotFound(lab-workspace)');
+        }
         logSystemEvent({
           level: 'error',
           source: 'shell',
@@ -1220,6 +1254,9 @@ export const Shell: React.FC<ShellProps> = () => {
             message: 'Window focused',
             data: { appId: resolvedAppId, windowId: existing.id, mode: existing.mode },
           });
+          if (isStudioLaunchRequest && resolvedAppId === 'lab-workspace') {
+            console.info(`STUDIO_LAUNCH_OPENED windowId=${existing.id}`);
+          }
           recordDiagnosticAction(`Focus window: ${resolvedAppId}`);
           return existing.id;
         }
@@ -1241,6 +1278,9 @@ export const Shell: React.FC<ShellProps> = () => {
         message: 'Window opened',
         data: { appId: resolvedAppId, windowId: state.id },
       });
+      if (isStudioLaunchRequest && resolvedAppId === 'lab-workspace') {
+        console.info(`STUDIO_LAUNCH_OPENED windowId=${state.id}`);
+      }
       recordDiagnosticAction(`Open window: ${resolvedAppId}`);
       return state.id;
     },
@@ -3359,6 +3399,42 @@ export const Shell: React.FC<ShellProps> = () => {
           }}
           onCancel={() => setOpenWithModalState(null)}
         />
+      )}
+
+      {studioLaunchBlock && (
+        <Modal
+          isOpen={Boolean(studioLaunchBlock)}
+          onClose={() => setStudioLaunchBlock(null)}
+          title="Studio launch blocked"
+          width={520}
+          height={260}
+        >
+          <div className="p-6 space-y-4" data-testid="studio-launch-block-modal">
+            <div className="text-sm text-slate-200">{studioLaunchBlock.humanReason}</div>
+            <div className="text-xs text-slate-400">
+              Open First Run Wizard and complete <strong>{studioLaunchBlock.stepLabel}</strong> to continue.
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setStudioLaunchBlock(null)}
+                className="px-3 py-1.5 rounded text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-100"
+              >
+                Dismiss
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStudioLaunchBlock(null);
+                  openWindow('first-run-wizard');
+                }}
+                className="px-3 py-1.5 rounded text-xs font-semibold bg-cyan-700 hover:bg-cyan-600 text-white"
+              >
+                Open First Run Wizard
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* Onboarding Modal (Demo mode only) */}

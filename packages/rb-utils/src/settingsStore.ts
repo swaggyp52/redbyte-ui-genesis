@@ -8,6 +8,7 @@ export type ThemeVariant = 'dark' | 'light' | 'midnight' | 'system';
 export type WallpaperId = 'default' | 'neon-circuit' | 'frost-grid' | 'solid' | 'redbyte-field';
 export type DensityMode = 'compact' | 'comfortable';
 export type SnapAssistMode = 'off' | 'manual' | 'auto';
+export type UiScalePreset = 100 | 110 | 125;
 
 const ACCENT_COLORS = ['blue', 'purple', 'green', 'orange', 'pink'] as const;
 export type AccentColor = (typeof ACCENT_COLORS)[number];
@@ -21,6 +22,7 @@ interface SettingsState {
   performanceMode: boolean;
   density: DensityMode;
   snapAssist: SnapAssistMode;
+  uiScale: UiScalePreset;
 }
 
 interface SettingsActions {
@@ -32,6 +34,7 @@ interface SettingsActions {
   setPerformanceMode: (enabled: boolean) => void;
   setDensity: (mode: DensityMode) => void;
   setSnapAssist: (mode: SnapAssistMode) => void;
+  setUiScale: (preset: UiScalePreset) => void;
 }
 
 type SettingsStore = SettingsState & SettingsActions;
@@ -47,6 +50,7 @@ const DEFAULT_SETTINGS: SettingsState = {
   performanceMode: false,
   density: 'comfortable',
   snapAssist: 'manual',
+  uiScale: 100,
 };
 
 /** Migrate legacy theme variant names */
@@ -86,6 +90,7 @@ function loadSettings(): SettingsState {
     const accentColor = migrateAccentColor(parsed.accentColor);
     const density: DensityMode = rawDensity(parsed.density);
     const snapAssist: SnapAssistMode = rawSnapAssist(parsed.snapAssist);
+    const uiScale: UiScalePreset = rawUiScale(parsed.uiScale);
 
     return {
       themeVariant,
@@ -104,6 +109,7 @@ function loadSettings(): SettingsState {
         : DEFAULT_SETTINGS.performanceMode,
       density,
       snapAssist,
+      uiScale,
     };
   } catch (err) {
     console.warn('Failed to load settings from localStorage, using defaults', err);
@@ -129,6 +135,11 @@ function rawDensity(value: unknown): DensityMode {
 function rawSnapAssist(value: unknown): SnapAssistMode {
   if (value === 'off' || value === 'manual' || value === 'auto') return value;
   return DEFAULT_SETTINGS.snapAssist;
+}
+
+function rawUiScale(value: unknown): UiScalePreset {
+  if (value === 100 || value === 110 || value === 125) return value;
+  return DEFAULT_SETTINGS.uiScale;
 }
 
 // Lazy-init singleton to prevent TDZ crash from circular imports
@@ -180,6 +191,12 @@ function createSettingsStore() {
     setSnapAssist: (mode) => {
       const next = rawSnapAssist(mode);
       set({ snapAssist: next });
+      persistSettings(get());
+    },
+
+    setUiScale: (preset) => {
+      const next = rawUiScale(preset);
+      set({ uiScale: next });
       persistSettings(get());
     },
   }));

@@ -324,6 +324,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   windowId,
   initialFileId,
   initialExampleId,
+  starterInstructions,
   resourceId,
   resourceType,
   recoveredData,
@@ -891,7 +892,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const [exampleNoteDismissed, setExampleNoteDismissed] = useState(false);
   const [pinnedStarterInstructions, setPinnedStarterInstructions] = useState<
     LogicPlaygroundProps['starterInstructions'] | null
-  >(() => normalizeStarterInstructions(props.starterInstructions));
+  >(() => normalizeStarterInstructions(starterInstructions));
   const [highlightedPort, setHighlightedPort] = useState<{ nodeId: string; portName: string } | null>(
     null
   );
@@ -943,8 +944,8 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const circuitRef = useRef<Circuit>(circuit);
 
   useEffect(() => {
-    setPinnedStarterInstructions(normalizeStarterInstructions(props.starterInstructions));
-  }, [props.starterInstructions]);
+    setPinnedStarterInstructions(normalizeStarterInstructions(starterInstructions));
+  }, [starterInstructions]);
   const setCircuitRef = useRef<typeof setCircuit | null>(null);
 
   // Keep refs in sync with state

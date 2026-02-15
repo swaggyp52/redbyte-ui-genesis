@@ -39,6 +39,16 @@ const STEP_IDS: FirstRunStepId[] = [
   'done',
 ];
 
+const STEP_LABELS: Record<FirstRunStepId, string> = {
+  bridge_check: 'Bridge Check',
+  board_detect: 'Board Detect',
+  programmer_check: 'Programmer Check',
+  known_good_program: 'Known Good Program',
+  sample_capture: 'Sample Capture',
+  doctor_export: 'Doctor Export',
+  done: 'Done',
+};
+
 function createStepState(): FirstRunStepState {
   return {
     status: 'pending',
@@ -221,4 +231,29 @@ export function shouldGateStudioEntry(state: FirstRunState): boolean {
 export function resolveFirstRunTargetApp(appId: string, state: FirstRunState): string {
   if (appId !== 'home' && appId !== 'lab-workspace') return appId;
   return shouldGateStudioEntry(state) ? 'first-run-wizard' : appId;
+}
+
+export function getFirstRunBlockingStep(state: FirstRunState): FirstRunStepId {
+  for (const stepId of STEP_IDS) {
+    if (state.steps[stepId].status !== 'pass') {
+      return stepId;
+    }
+  }
+  return state.lastStep;
+}
+
+export function getFirstRunBlockingReason(state: FirstRunState): {
+  stepId: FirstRunStepId;
+  stepLabel: string;
+  machineReason: string;
+  humanReason: string;
+} {
+  const stepId = getFirstRunBlockingStep(state);
+  const stepLabel = STEP_LABELS[stepId] ?? stepId;
+  return {
+    stepId,
+    stepLabel,
+    machineReason: `FirstRunWizardStep(${stepId})`,
+    humanReason: `Complete First Run Wizard: step ${stepLabel}`,
+  };
 }

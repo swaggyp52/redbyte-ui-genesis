@@ -82,6 +82,8 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
   const hasMovedRef = useRef(false);
   const hasResizedRef = useRef(false);
   const startRef = useRef<{ x: number; y: number } | null>(null);
+  const activePointerIdRef = useRef<number | null>(null);
+  const pointerCaptureTargetRef = useRef<HTMLElement | null>(null);
 
   // rAF-based throttle refs
   const rafPendingRef = useRef(false);
@@ -179,21 +181,6 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
     }
   };
 
-  // ── Drag: document-level listeners ──────────────────────────────
-  const startDrag = (e: React.MouseEvent) => {
-    if (isMax || isMin) return;
-    e.preventDefault();
-    draggingRef.current = true;
-    setDragging(true);
-    startRef.current = { x: e.clientX, y: e.clientY };
-    dragBoundsRef.current = { ...state.bounds };
-    originalBoundsRef.current = { ...state.bounds };
-    hasMovedRef.current = false;
-    clearSnapPreview();
-    setDragActive(true);
-    onFocus();
-  };
-
   const finishDrag = useCallback((shouldSnap: boolean) => {
     if (!draggingRef.current) return;
     const activeSnap = snapPreviewRef.current;
@@ -204,6 +191,15 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
     startRef.current = null;
     dragBoundsRef.current = null;
     originalBoundsRef.current = null;
+    if (activePointerIdRef.current !== null && pointerCaptureTargetRef.current) {
+      try {
+        pointerCaptureTargetRef.current.releasePointerCapture(activePointerIdRef.current);
+      } catch {
+        // ignore
+      }
+    }
+    activePointerIdRef.current = null;
+    pointerCaptureTargetRef.current = null;
     setDragActive(false);
 
     // Cancel any pending rAF
@@ -227,66 +223,139 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
     clearSnapPreview();
   }, [onMove, onMoveEnd, onSnap, state.id]);
 
+  const handleDragPointerMove = useCallback((clientX: number, clientY: number, shiftKey: boolean) => {
+    const startPos = startRef.current;
+    if (!startPos) return;
+
+    const dx = clientX - startPos.x;
+    const dy = clientY - startPos.y;
+    const currentBounds = dragBoundsRef.current ?? state.bounds;
+    let newX = currentBounds.x + dx;
+    let newY = currentBounds.y + dy;
+
+    if (newY < TOPBAR_HEIGHT) newY = TOPBAR_HEIGHT;
+    const vw = window.innerWidth;
+    const minX = DOCK_WIDTH - currentBounds.width + MIN_VISIBLE_SIDE;
+    const maxX = vw - MIN_VISIBLE_SIDE;
+    if (newX < minX) newX = minX;
+    if (newX > maxX) newX = maxX;
+
+    const nextBounds: WindowBounds = { ...currentBounds, x: newX, y: newY };
+    hasMovedRef.current = true;
+    dragBoundsRef.current = nextBounds;
+    lastBoundsRef.current = nextBounds;
+
+    if (!rafPendingRef.current) {
+      rafPendingRef.current = true;
+      rafIdRef.current = requestAnimationFrame(() => {
+        rafPendingRef.current = false;
+        const pending = dragBoundsRef.current;
+        const original = originalBoundsRef.current;
+        if (pending && original) {
+          setDragOffset({
+            dx: pending.x - original.x,
+            dy: pending.y - original.y,
+          });
+        }
+      });
+    }
+
+    lastPointerRef.current = { x: clientX, y: clientY, shiftKey };
+    handleSnapPreview(clientX, clientY, shiftKey);
+    startRef.current = { x: clientX, y: clientY };
+  }, [state.bounds]);
+
   // Document-level drag listeners — attached only while dragging
   useEffect(() => {
     if (!dragging) return;
 
-    const onDocMouseMove = (e: MouseEvent) => {
-      if (!draggingRef.current) return;
-      const startPos = startRef.current;
-      if (!startPos) return;
-
-      const dx = e.clientX - startPos.x;
-      const dy = e.clientY - startPos.y;
-      const currentBounds = dragBoundsRef.current ?? state.bounds;
-      let newX = currentBounds.x + dx;
-      let newY = currentBounds.y + dy;
-
-      if (newY < TOPBAR_HEIGHT) newY = TOPBAR_HEIGHT;
-      const vw = window.innerWidth;
-      const minX = DOCK_WIDTH - currentBounds.width + MIN_VISIBLE_SIDE;
-      const maxX = vw - MIN_VISIBLE_SIDE;
-      if (newX < minX) newX = minX;
-      if (newX > maxX) newX = maxX;
-
-      const nextBounds: WindowBounds = { ...currentBounds, x: newX, y: newY };
-      hasMovedRef.current = true;
-      dragBoundsRef.current = nextBounds;
-      lastBoundsRef.current = nextBounds;
-
-      // rAF-based visual update — compositor-only via transform
-      if (!rafPendingRef.current) {
-        rafPendingRef.current = true;
-        rafIdRef.current = requestAnimationFrame(() => {
-          rafPendingRef.current = false;
-          const pending = dragBoundsRef.current;
-          const original = originalBoundsRef.current;
-          if (pending && original) {
-            setDragOffset({
-              dx: pending.x - original.x,
-              dy: pending.y - original.y,
-            });
-          }
-        });
+    const onDocPointerMove = (e: PointerEvent) => {
+      if (!draggingRef.current || resizingRef.current) return;
+      if (
+        activePointerIdRef.current !== null &&
+        typeof e.pointerId === 'number' &&
+        e.pointerId !== activePointerIdRef.current
+      ) {
+        return;
       }
+      handleDragPointerMove(e.clientX, e.clientY, e.shiftKey);
+    };
 
-      lastPointerRef.current = { x: e.clientX, y: e.clientY, shiftKey: e.shiftKey };
-      handleSnapPreview(e.clientX, e.clientY, e.shiftKey);
-      startRef.current = { x: e.clientX, y: e.clientY };
+    const onDocPointerUp = (e: PointerEvent) => {
+      if (
+        activePointerIdRef.current !== null &&
+        typeof e.pointerId === 'number' &&
+        e.pointerId !== activePointerIdRef.current
+      ) {
+        return;
+      }
+      finishDrag(true);
+    };
+
+    const onDocPointerCancel = (e: PointerEvent) => {
+      if (
+        activePointerIdRef.current !== null &&
+        typeof e.pointerId === 'number' &&
+        e.pointerId !== activePointerIdRef.current
+      ) {
+        return;
+      }
+      finishDrag(false);
+    };
+
+    const onDocMouseMove = (e: MouseEvent) => {
+      if (activePointerIdRef.current !== null) return;
+      if (!draggingRef.current || resizingRef.current) return;
+      handleDragPointerMove(e.clientX, e.clientY, e.shiftKey);
     };
 
     const onDocMouseUp = () => {
       finishDrag(true);
     };
 
+    document.addEventListener('pointermove', onDocPointerMove);
+    document.addEventListener('pointerup', onDocPointerUp);
+    document.addEventListener('pointercancel', onDocPointerCancel);
     document.addEventListener('mousemove', onDocMouseMove);
     document.addEventListener('mouseup', onDocMouseUp);
 
     return () => {
+      document.removeEventListener('pointermove', onDocPointerMove);
+      document.removeEventListener('pointerup', onDocPointerUp);
+      document.removeEventListener('pointercancel', onDocPointerCancel);
       document.removeEventListener('mousemove', onDocMouseMove);
       document.removeEventListener('mouseup', onDocMouseUp);
     };
-  }, [dragging, finishDrag]);
+  }, [dragging, finishDrag, handleDragPointerMove]);
+  const beginDrag = useCallback((clientX: number, clientY: number) => {
+    if (isMax || isMin) return;
+    draggingRef.current = true;
+    setDragging(true);
+    startRef.current = { x: clientX, y: clientY };
+    dragBoundsRef.current = { ...state.bounds };
+    originalBoundsRef.current = { ...state.bounds };
+    hasMovedRef.current = false;
+    clearSnapPreview();
+    setDragActive(true);
+    onFocus();
+  }, [isMax, isMin, onFocus, state.bounds]);
+
+  const startDragPointer = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    activePointerIdRef.current = e.pointerId;
+    pointerCaptureTargetRef.current = e.currentTarget;
+    if (pointerCaptureTargetRef.current.setPointerCapture) {
+      pointerCaptureTargetRef.current.setPointerCapture(e.pointerId);
+    }
+    beginDrag(e.clientX, e.clientY);
+  }, [beginDrag]);
+
+  const startDragMouseFallback = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (activePointerIdRef.current !== null) return;
+    e.preventDefault();
+    beginDrag(e.clientX, e.clientY);
+  }, [beginDrag]);
+
 
   // ── Resize: document-level listeners ────────────────────────────
   const startResize = (dir: ResizeDirection) => (e: React.MouseEvent) => {
@@ -441,7 +510,8 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
           background: state.focused ? 'var(--rb-surface-2)' : 'var(--rb-surface-1)',
           borderColor: 'var(--rb-border)',
         }}
-        onMouseDown={isMax ? undefined : startDrag}
+        onPointerDown={isMax ? undefined : startDragPointer}
+        onMouseDown={isMax ? undefined : startDragMouseFallback}
         onDoubleClick={isMax ? onRestore : onMaximize}
         data-testid="window-title-bar"
       >

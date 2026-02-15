@@ -1,4 +1,4 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
+// Copyright ï¿½ 2025 Connor Angiel ï¿½ RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
@@ -59,13 +59,13 @@ describe('ShellWindow snap preview', () => {
     const titleBar = utils.getByTestId('window-title-bar');
     const root = utils.container.firstChild as HTMLElement;
 
-    return { ...utils, titleBar, root, onSnap, onSnapPreviewChange };
+    return { ...utils, titleBar, root, onSnap, onSnapPreviewChange, onMove };
   };
 
   it('does not snap without modifier in manual mode', () => {
     const { titleBar, root, onSnap, onSnapPreviewChange } = setup('manual');
 
-    fireEvent.mouseDown(titleBar, { clientX: 200, clientY: 200 });
+    fireEvent.pointerDown(titleBar, { clientX: 200, clientY: 200, pointerType: 'mouse' });
     fireEvent.mouseMove(root, { clientX: 5, clientY: 200 });
     fireEvent.mouseUp(root, { clientX: 5, clientY: 200 });
 
@@ -126,4 +126,5 @@ describe('ShellWindow snap preview', () => {
 
     expect(onSnapPreviewChange).toHaveBeenCalledWith('win-1', 'left');
   });
+
 });

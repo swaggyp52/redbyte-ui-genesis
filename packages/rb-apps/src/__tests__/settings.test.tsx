@@ -21,6 +21,7 @@ describe('Settings app lifecycle', () => {
       performanceMode: false,
       density: 'comfortable',
       snapAssist: 'manual',
+      uiScale: 100,
     });
   });
 
@@ -90,6 +91,16 @@ describe('Settings app lifecycle', () => {
     expect(state.snapAssist).toBe('auto');
   });
 
+  it('updates scale preset in Appearance section', () => {
+    render(<SettingsComponent />);
+
+    const scale110Button = screen.getByRole('button', { name: '110%' });
+    fireEvent.click(scale110Button);
+
+    const state = useSettingsStore.getState();
+    expect(state.uiScale).toBe(110);
+  });
+
 
   it('closes window with Escape key', () => {
     const onClose = vi.fn();
@@ -147,6 +158,20 @@ describe('Settings persistence', () => {
     if (stored) {
       const parsed = JSON.parse(stored);
       expect(parsed.wallpaperId).toBe('frost-grid');
+    }
+  });
+
+  it('persists scale changes to localStorage', () => {
+    render(<SettingsComponent />);
+
+    fireEvent.click(screen.getByRole('button', { name: '125%' }));
+
+    const stored = localStorage.getItem('rb.shell.settings');
+    expect(stored).toBeTruthy();
+
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      expect(parsed.uiScale).toBe(125);
     }
   });
 });

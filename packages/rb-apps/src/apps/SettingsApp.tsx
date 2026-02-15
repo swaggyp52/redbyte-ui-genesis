@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import type { RedByteApp } from '../types';
-import { useSettingsStore, type ThemeVariant, type WallpaperId, type DensityMode, type SnapAssistMode } from '@redbyte/rb-utils';
+import { useSettingsStore, type ThemeVariant, type WallpaperId, type DensityMode, type SnapAssistMode, type UiScalePreset } from '@redbyte/rb-utils';
 import { Icon, type IconName } from '@redbyte/rb-icons';
 import { FileAssociationsPanel } from './settings/FileAssociationsPanel';
 import { FilesystemDataPanel } from './settings/FilesystemDataPanel';
@@ -42,6 +42,8 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
 	    setPerformanceMode,
 	    density,
 	    setDensity,
+      uiScale,
+      setUiScale,
 	    snapAssist,
 	    setSnapAssist,
 	  } = useSettingsStore();
@@ -184,6 +186,36 @@ const SettingsComponent: React.FC<SettingsProps> = ({ onClose }) => {
                 </div>
                 <div className="text-xs mt-2" style={{ color: 'var(--rb-text-3)' }}>
                   Adjusts spacing and panel density across the OS.
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-4" style={{ color: 'var(--rb-text)' }}>Scale</label>
+                <div className="flex gap-3">
+                  {([
+                    { value: 100 as UiScalePreset, label: '100%' },
+                    { value: 110 as UiScalePreset, label: '110%' },
+                    { value: 125 as UiScalePreset, label: '125%' },
+                  ]).map((option) => (
+                    <button
+                      type="button"
+                      key={option.value}
+                      onClick={() => setUiScale(option.value)}
+                      className="px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                      style={{
+                        border: uiScale === option.value
+                          ? '1px solid var(--rb-accent)'
+                          : '1px solid var(--rb-border)',
+                        color: uiScale === option.value ? 'var(--rb-accent)' : 'var(--rb-text-2)',
+                        background: uiScale === option.value ? 'var(--rb-accent-muted)' : 'transparent',
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-xs mt-2" style={{ color: 'var(--rb-text-3)' }}>
+                  Controls global UI text and control scaling.
                 </div>
               </div>
 

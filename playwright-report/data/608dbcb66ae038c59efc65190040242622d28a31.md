@@ -1,0 +1,154 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - link "Skip to desktop" [ref=e4] [cursor=pointer]:
+    - /url: "#rb-desktop-region"
+  - banner "System Bar":
+    - generic:
+      - button "Open Launcher" [ref=e6] [cursor=pointer]:
+        - generic [ref=e8]: R
+        - generic [ref=e9]: RedByte
+      - button "Determinism Status" [ref=e11] [cursor=pointer]:
+        - generic [ref=e12]: live
+        - generic [ref=e13]: T0000
+      - generic [ref=e14]:
+        - button "Open System Log" [ref=e15] [cursor=pointer]:
+          - img [ref=e16]
+          - generic [ref=e20]: Log
+          - generic [ref=e21]: "2"
+        - button "Open Settings" [ref=e22] [cursor=pointer]:
+          - img [ref=e23]
+  - region "Desktop":
+    - generic:
+      - generic: R
+    - generic [ref=e27]: v0.9.0
+    - generic:
+      - generic: RedByte OS Genesis
+  - navigation "Application Dock" [ref=e28]:
+    - generic [ref=e29]:
+      - button "Launcher (Ctrl+K / Cmd+K)" [ref=e30] [cursor=pointer]:
+        - img "Launcher icon" [ref=e31]
+      - button "Files" [ref=e36] [cursor=pointer]:
+        - img "Files icon" [ref=e37]
+      - button "Settings" [ref=e41] [cursor=pointer]:
+        - img "Settings icon" [ref=e42]
+    - generic [ref=e46]:
+      - button "Home" [ref=e47] [cursor=pointer]:
+        - img "Home icon" [ref=e48]
+      - button "Playground" [ref=e53] [cursor=pointer]:
+        - img "Playground icon" [ref=e54]
+      - button "Labs" [ref=e60] [cursor=pointer]:
+        - img "Labs icon" [ref=e61]
+      - button "Terminal" [ref=e64] [cursor=pointer]:
+        - img "Terminal icon" [ref=e65]
+  - generic [ref=e68]:
+    - button [ref=e70] [cursor=pointer]:
+      - img [ref=e71]
+    - generic [ref=e74]:
+      - button "Home" [ref=e75] [cursor=pointer]:
+        - img [ref=e76]
+        - generic: Home
+      - button "Playground" [ref=e81] [cursor=pointer]:
+        - img [ref=e82]
+        - generic: Playground
+      - button "Labs" [ref=e88] [cursor=pointer]:
+        - img [ref=e89]
+        - generic: Labs
+      - button "Settings" [ref=e92] [cursor=pointer]:
+        - img [ref=e93]
+        - generic: Settings
+    - generic [ref=e98]:
+      - generic [ref=e99]: RedByte
+      - generic [ref=e100]: GENESIS
+  - generic [ref=e101]:
+    - generic [ref=e102]:
+      - generic [ref=e103]: RedByte OS
+      - paragraph [ref=e104]: Deterministic Engineering Environment
+    - generic [ref=e105]:
+      - generic [ref=e106]:
+        - heading "Build & Learn" [level=3] [ref=e107]
+        - generic [ref=e108]:
+          - button "Playground Freestyle circuit design" [ref=e109] [cursor=pointer]:
+            - img [ref=e111]
+            - generic [ref=e117]:
+              - generic [ref=e118]: Playground
+              - generic [ref=e119]: Freestyle circuit design
+          - button "Labs Guided assignments with verification" [ref=e120] [cursor=pointer]:
+            - img [ref=e122]
+            - generic [ref=e125]:
+              - generic [ref=e126]: Labs
+              - generic [ref=e127]: Guided assignments with verification
+      - generic [ref=e128]:
+        - heading "System" [level=3] [ref=e129]
+        - generic [ref=e130]:
+          - button "Files Project management" [ref=e131] [cursor=pointer]:
+            - img [ref=e133]
+            - generic [ref=e137]:
+              - generic [ref=e138]: Files
+              - generic [ref=e139]: Project management
+          - button "Terminal Command line" [ref=e140] [cursor=pointer]:
+            - img [ref=e142]
+            - generic [ref=e145]:
+              - generic [ref=e146]: Terminal
+              - generic [ref=e147]: Command line
+          - button "Settings Configuration" [ref=e148] [cursor=pointer]:
+            - img [ref=e150]
+            - generic [ref=e153]:
+              - generic [ref=e154]: Settings
+              - generic [ref=e155]: Configuration
+      - generic [ref=e156]:
+        - heading "Instructor" [level=3] [ref=e157]
+        - button "Dashboard Review submissions" [ref=e159] [cursor=pointer]:
+          - img [ref=e161]
+          - generic [ref=e164]:
+            - generic [ref=e165]: Dashboard
+            - generic [ref=e166]: Review submissions
+    - generic [ref=e167]:
+      - generic [ref=e168]:
+        - generic [ref=e171]: Build
+        - generic [ref=e172]: Ready
+      - generic [ref=e173]: →
+      - generic [ref=e174]:
+        - generic [ref=e177]: Record
+        - generic [ref=e178]: Waiting
+      - generic [ref=e179]: →
+      - generic [ref=e180]:
+        - generic [ref=e183]: Verify
+        - generic [ref=e184]: Untested
+      - generic [ref=e185]: →
+      - generic [ref=e186]:
+        - generic [ref=e189]: Export
+        - generic [ref=e190]: No Data
+    - generic [ref=e191]:
+      - generic [ref=e192]:
+        - generic [ref=e193]: Mode
+        - generic [ref=e194]: LIVE
+      - generic [ref=e195]:
+        - generic [ref=e196]: Ticks
+        - generic [ref=e197]: "0"
+      - generic [ref=e198]:
+        - generic [ref=e199]: Log
+        - generic [ref=e200]: 2 entries
+    - generic [ref=e201]:
+      - generic [ref=e202]: Which app should I use?
+      - generic [ref=e203]:
+        - generic [ref=e204]: Playground — Build circuits freely — drag, wire, simulate
+        - generic [ref=e205]: Labs — Complete guided assignments with test vectors
+    - generic [ref=e206]: Ctrl/Cmd+K to search · ? for shortcuts
+  - generic:
+    - generic:
+      - generic:
+        - 'generic "[error] shell: App not found"': ✗ App not found
+        - 'generic "[error] shell: App not found"': ✗ App not found
+      - button "View Full Log"
+  - generic [ref=e208]:
+    - generic [ref=e214]: LIVE
+    - generic [ref=e215]:
+      - generic [ref=e216]: "T:"
+      - generic [ref=e217]: "00000"
+    - generic [ref=e219]:
+      - button "Open a circuit first" [disabled] [ref=e220]
+      - button "Open Determinism Panel" [ref=e222] [cursor=pointer]:
+        - img [ref=e223]
+```

@@ -1,5 +1,53 @@
 # AI State
 
+## Change Log 2026-02-14 (v1 stability triage: LogicPlayground crash, Studio launch contract, pointer drag integrity, UI scale defaults)
+
+- Fixed deterministic Logic Playground runtime crash caused by out-of-scope `props` usage inside `LogicPlaygroundInner`.
+  - `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+  - replaced `props.starterInstructions` references with destructured `starterInstructions` prop in state init/sync path.
+
+- Implemented Studio launch contract instrumentation and explicit block messaging in Shell:
+  - `packages/rb-shell/src/Shell.tsx`
+    - logs launch lifecycle:
+      - `STUDIO_LAUNCH_REQUESTED`
+      - `STUDIO_LAUNCH_OPENED windowId=...`
+      - `STUDIO_LAUNCH_BLOCKED reason=...`
+    - when first-run gate blocks Studio, shows explicit modal with required next step and CTA to open First Run Wizard.
+  - `packages/rb-apps/src/apps/firstRun/firstRunState.ts`
+    - added `getFirstRunBlockingReason()` and `getFirstRunBlockingStep()` helpers for deterministic block reason mapping.
+
+- Hardened window drag input path:
+  - `packages/rb-shell/src/ShellWindow.tsx`
+    - titlebar drag now uses Pointer Events (`onPointerDown`) with `setPointerCapture(pointerId)` as primary.
+    - keeps document-level mouse listeners as fallback.
+    - normalizes pointer-id filtering for environments where `pointerId` may be absent.
+
+- Added v1-readable UI scale defaults and controls:
+  - `packages/rb-utils/src/settingsStore.ts`
+  - `packages/rb-utils/src/settingsStore.js`
+    - new persisted `uiScale` preset: `100 | 110 | 125` with safe migration/defaulting.
+  - `packages/rb-apps/src/apps/SettingsApp.tsx`
+  - `packages/rb-apps/src/apps/SettingsApp.js` (converted to TSX thin wrapper parity)
+    - Appearance now includes one-click Scale controls (`100%`, `110%`, `125%`).
+  - `packages/rb-shell/src/Shell.tsx`
+    - applies `data-rb-scale` to document root.
+  - `packages/rb-shell/src/styles.css`
+    - shell base font scales via `--rb-ui-scale` and keeps default readable baseline.
+    - window control hit target sizing aligned with density.
+
+- Regression tests added/updated:
+  - `packages/rb-apps/src/__tests__/first-run-wizard.test.tsx`
+    - verifies explicit first-run blocking reason mapping for Studio gate.
+  - `packages/rb-apps/src/__tests__/settings.test.tsx`
+    - verifies scale preset update and persistence to localStorage.
+
+- Verification:
+  - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/first-run-wizard.test.tsx packages/rb-apps/src/__tests__/settings.test.tsx packages/rb-shell/src/__tests__/window-snap-preview.test.tsx`
+  - ✅ `pnpm -w exec vitest run packages/rb-shell/src/__tests__/ui-style-token-contract-gate.test.ts`
+  - ✅ `pnpm rc:check` (tail: `[SUITE] total=6 pass=6 fail=0`)
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-14 (Boot crash fix: stable window snapshot selector in Shell)
 
 - Fixed deterministic first-load crash in `<Shell>` caused by unstable external-store snapshot selection.

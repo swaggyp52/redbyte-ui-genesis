@@ -26,9 +26,14 @@
 }
 /* RB_CORE_TOKENS_END */
 
+:root {
+  --rb-ui-scale: 1;
+}
+
 .shell-container {
   font-family: var(--rb-ui-font-sans);
   background: var(--rb-ui-bg);
+  font-size: calc(15px * var(--rb-ui-scale));
 }
 
 .rb-shell {
@@ -45,6 +50,8 @@
   background: transparent;
   border: none;
   color: var(--rb-ui-text-2);
+  min-width: var(--rb-hit-target-size, 28px);
+  min-height: var(--rb-hit-target-size, 28px);
   border-radius: var(--rb-ui-radius-sm);
   transition: background var(--rb-ui-motion-fast) var(--rb-ui-ease-out),
               color var(--rb-ui-motion-fast) var(--rb-ui-ease-out);
@@ -55,17 +62,31 @@
   color: var(--rb-ui-text);
 }
 
+:root[data-rb-scale='100'] {
+  --rb-ui-scale: 1;
+}
+
+:root[data-rb-scale='110'] {
+  --rb-ui-scale: 1.1;
+}
+
+:root[data-rb-scale='125'] {
+  --rb-ui-scale: 1.25;
+}
+
 /* ── Density ── */
 :root[data-rb-density='compact'] {
   --rb-pad-sm: 6px;
   --rb-pad-md: 10px;
   --rb-pad-lg: 12px;
+  --rb-hit-target-size: 24px;
 }
 
 :root[data-rb-density='comfortable'] {
   --rb-pad-sm: 10px;
   --rb-pad-md: 14px;
   --rb-pad-lg: 18px;
+  --rb-hit-target-size: 28px;
 }
 
 /* ── Reduced Motion ── */

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createInitialFirstRunState,
   FIRST_RUN_STATE_KEY,
+  getFirstRunBlockingReason,
   resolveFirstRunTargetApp,
 } from '../apps/firstRun/firstRunState';
 
@@ -70,5 +71,18 @@ describe('FirstRunWizardApp', () => {
 
     expect(screen.getByText(/next action:/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /retry step/i })).toBeInTheDocument();
+  });
+
+  it('returns explicit blocking reason for next required wizard step', () => {
+    const state = createInitialFirstRunState();
+    state.steps.bridge_check.status = 'pass';
+    state.steps.board_detect.status = 'fail';
+    state.lastStep = 'board_detect';
+
+    const reason = getFirstRunBlockingReason(state);
+
+    expect(reason.stepId).toBe('board_detect');
+    expect(reason.machineReason).toBe('FirstRunWizardStep(board_detect)');
+    expect(reason.humanReason).toMatch(/Complete First Run Wizard: step Board Detect/i);
   });
 });
