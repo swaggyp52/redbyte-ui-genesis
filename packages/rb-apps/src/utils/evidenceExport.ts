@@ -238,9 +238,12 @@ ${lab.completedSteps.map(s => `- Step ${s + 1}`).join('\n')}
 
         const blob = await zip.generateAsync({ type: 'blob' });
 
-        let safeName = filename.replace(/\.json$/, '').replace(/\.zip$/, '');
-        const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        safeName += `-${ts}.rb-lab.zip`;
+        // Generate standardized filename: RB-<labId>-<studentName>-<YYYY-MM-DD>.rb-lab.zip
+        const dateOnly = capsule.timestamp.split('T')[0]; // YYYY-MM-DD
+        const safeStudentName = (capsule.student.name || capsule.student.id || 'anonymous')
+            .replace(/[^a-zA-Z0-9_-]/g, '_')
+            .substring(0, 32);
+        const safeName = `RB-${capsule.labId}-${safeStudentName}-${dateOnly}.rb-lab.zip`;
 
         if (typeof document !== 'undefined') {
             const url = URL.createObjectURL(blob);
@@ -272,8 +275,8 @@ ${lab.completedSteps.map(s => `- Step ${s + 1}`).join('\n')}
             zip.file('README.md', '# RedByte Export\n\nExport failed and produced a recovery bundle. See warnings.json for details.');
 
             const blob = await zip.generateAsync({ type: 'blob' });
-            const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-            const safeName = `evidence-recovery-${ts}.rb-lab.zip`;
+            const dateOnly = new Date().toISOString().split('T')[0];
+            const safeName = `RB-recovery-${dateOnly}.rb-lab.zip`;
 
             if (typeof document !== 'undefined') {
                 const url = URL.createObjectURL(blob);

@@ -242,10 +242,11 @@ export async function exportV2Bundle(options: ExportV2Options): Promise<ExportRe
       );
     }
 
-    const safeTimestamp = timestamp.replace(/[:.]/g, '-');
-    const filename = options.studentId
-      ? `${options.labId}-${options.studentId}-${safeTimestamp}.rb-lab.zip`
-      : `${options.labId}-${safeTimestamp}.rb-lab.zip`;
+    // Generate human-friendly filename: RB-<LabID>-<Name>-<YYYY-MM-DD>.rb-lab.zip
+    const dateOnly = timestamp.split('T')[0]; // YYYY-MM-DD
+    const studentIdentifier = options.studentName || options.studentId || 'anonymous';
+    const safeStudentName = studentIdentifier.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 32);
+    const filename = `RB-${options.labId}-${safeStudentName}-${dateOnly}.rb-lab.zip`;
 
     const blob = await zip.generateAsync({ type: 'blob' });
     const hash = await computeHash(blob);
@@ -261,6 +262,7 @@ export async function exportV2Bundle(options: ExportV2Options): Promise<ExportRe
     };
   } catch (error) {
     const timestamp = new Date().toISOString();
+    const dateOnly = timestamp.split('T')[0];
     const zip = new JSZip();
     const warningsPayload = {
       schemaVersion: 1,
@@ -276,9 +278,8 @@ export async function exportV2Bundle(options: ExportV2Options): Promise<ExportRe
     zip.file('warnings.json', JSON.stringify(warningsPayload, null, 2));
     zip.file('README.txt', 'RedByte export failed. See warnings.json for details.');
     const blob = await zip.generateAsync({ type: 'blob' });
-    const safeTimestamp = timestamp.replace(/[:.]/g, '-');
     return {
-      filename: `recovery-${safeTimestamp}.rb-lab.zip`,
+      filename: `RB-recovery-${dateOnly}.rb-lab.zip`,
       blob,
       hash: 'unknown',
       timestamp,
