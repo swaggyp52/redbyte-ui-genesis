@@ -22,9 +22,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [variant, setVariantState] = useState<ThemeVariant>(() => {
-    if (typeof window === 'undefined') return 'dark';
+    if (typeof window === 'undefined') return 'light';
     const saved = getActiveTheme();
-    return saved ?? 'dark';
+    return saved ?? 'light';
   });
 
   useEffect(() => {

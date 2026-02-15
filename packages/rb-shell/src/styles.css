@@ -276,3 +276,55 @@
 .rb-taskbar-brand-accent {
   color: var(--rb-ui-accent);
 }
+/* ── Window Animations (light theme polish) ── */
+@keyframes rb-window-open {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes rb-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.rb-shell-window {
+  animation: rb-window-open 150ms var(--rb-easing-out);
+}
+
+/* ── Dock hover polish (subtle lift) ── */
+.rb-dock {
+  background: var(--rb-glass);
+  backdrop-filter: blur(12px) saturate(120%);
+  transition: background var(--rb-ui-motion-fast) var(--rb-ui-ease-out),
+              box-shadow var(--rb-ui-motion-fast) var(--rb-ui-ease-out);
+}
+
+.rb-dock:hover {
+  background: var(--rb-glass);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* ── Soft borders over harsh lines (light mode) ── */
+[data-theme="light"] .rb-window-frame {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--rb-border);
+}
+
+[data-theme="light"] .rb-shell-window {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+}
+
+/* ── Modal animations ── */
+.rb-modal {
+  animation: rb-fade-in 120ms var(--rb-easing-out);
+}

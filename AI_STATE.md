@@ -1,5 +1,30 @@
 # AI State
 
+## Change Log 2026-02-15 (Final demo-day tweaks: Exit codes + localStorage auth)
+
+- **Final Pre-Demo Verification**: All systems green with ✅ DEMO READY verdict
+  - Ran full verification suite: `pnpm demo:ready` completed with exit code 0
+  - All 4 E2E smoke tests passed (16.3s runtime)
+  - All 23+ unit test gates passing in rc:check
+  - Full build + test cycle successful
+
+- **Authorized Persistent Storage Keys**: Fixed localStorage key allowlist warnings
+  - Added `rb:file-system` to `PERSISTENT_STORAGE_KEYS` in `packages/rb-utils/src/debugFlags.ts`
+  - Synced `.js` mirror file to maintain import resolution correctness
+  - Resolved gate warning: "Found localStorage keys not in debugFlags.ts allowlist: rb:file-system"
+  - This key stores filesystem state cache and must be prod-safe for shell reliability
+
+- **Tightened demo:ready Exit Codes**: Explicit failure handling for shell integration
+  - Enhanced `scripts/demo-ready.mjs` `runRcCheck()` to log exit code on failure
+  - Refactored `main()` to separate success/fail paths with explicit console messaging
+    - Success path: `process.exit(0)` with ✅ DEMO READY message
+    - Failure path: `process.exit(1)` with ❌ DEMO NOT READY message  
+  - Enhanced failure report with detailed troubleshooting steps (port checks, cache clearing, process management)
+  - Exit codes now suitable for CI/CD and shell scripting integration
+
+- **Attribution**: Connor Angiel
+- **Commit**: 157e0f95 "chore(demo): tighten demo:ready exit codes + authorize persistent keys"
+
 ## Change Log 2026-02-15 (Phase 5: Demo automation + Phase 4 cleanup)
 
 - Completed Phase 4 → Phase 5 transition with two cleanup commits:

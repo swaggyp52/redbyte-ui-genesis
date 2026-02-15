@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { Icon } from '@redbyte/rb-icons';
+import { useTheme } from '@redbyte/rb-theme';
 
 export interface TopBarProps {
   isRecording: boolean;
@@ -28,6 +29,13 @@ export const TopBar: React.FC<TopBarProps> = React.memo(({
   onOpenSettings,
   onOpenDeterminism,
 }) => {
+  const { variant, setVariant } = useTheme();
+
+  const toggleTheme = () => {
+    const next = variant === 'light' ? 'dark' : 'light';
+    setVariant(next);
+  };
+
   return (
     <header role="banner" aria-label="System Bar" className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
       <div
@@ -89,8 +97,17 @@ export const TopBar: React.FC<TopBarProps> = React.memo(({
           </button>
         </div>
 
-        {/* Right: Log + Settings */}
+        {/* Right: Theme + Log + Settings */}
         <div className="flex items-center gap-1 pointer-events-auto">
+          <button
+            onClick={toggleTheme}
+            className="h-6 w-6 rounded flex items-center justify-center transition-colors hover:opacity-75"
+            aria-label={`Switch to ${variant === 'light' ? 'dark' : 'light'} mode`}
+            title={`${variant === 'light' ? 'Dark' : 'Light'} mode`}
+            style={{ color: 'var(--rb-ui-text-3)' }}
+          >
+            <Icon name={variant === 'light' ? 'moon' : 'sun'} size={14} />
+          </button>
           {onOpenLog && (
             <button
               onClick={onOpenLog}

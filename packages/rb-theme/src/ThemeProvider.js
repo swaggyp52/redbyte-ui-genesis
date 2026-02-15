@@ -8,9 +8,9 @@ const ThemeContext = createContext(undefined);
 export const ThemeProvider = ({ children, }) => {
     const [variant, setVariantState] = useState(() => {
         if (typeof window === 'undefined')
-            return 'dark';
+            return 'light';
         const saved = getActiveTheme();
-        return saved ?? 'dark';
+        return saved ?? 'light';
     });
     useEffect(() => {
         if (typeof window === 'undefined' || typeof document === 'undefined')
