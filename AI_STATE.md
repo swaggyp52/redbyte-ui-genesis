@@ -1,6 +1,37 @@
 # AI State
 
-## Change Log 2026-02-15 (rc:check unblock + submission inspector access + Phase 4 report)
+## Change Log 2026-02-15 (Phase 5: Demo automation + Phase 4 cleanup)
+
+- Completed Phase 4 → Phase 5 transition with two cleanup commits:
+  - Fixed `.gitignore` to allow `docs/PHASE_*.md` and `docs/DEMO_*.md` files (no more force-add needed)
+  - Verified Phase 4 report matches required 6-section format
+
+- **PHASE 5 COMPLETE**: Demo readiness automation
+  - Added `pnpm demo:ready` script that orchestrates full rc:check + report generation
+  - Creates `docs/DEMO_READY_REPORT.md` with:
+    - Build SHA and timestamp
+    - Pass/fail verdict (✅ DEMO READY or ❌ NOT READY)
+    - Pointers to Playwright HTML report at `playwright-report/index.html`
+    - Next steps for demo day
+  - Added `docs/DEMO_LOCK_CHECKLIST.md` with:
+    - Pre-demo environment validation (ports, tools)
+    - Visual verification checklist
+    - E2E test report validation guide
+    - Two known demo workflows documented
+    - Troubleshooting guide for common issues
+  - Updated `.gitignore` to track Phase and Demo reports in docs/
+
+- **Final Proof**: `pnpm demo:ready` output shows:
+  ```
+  ✅ DEMO READY - All gates passing
+  
+  Gate Chain Results:
+  - ✅ Playground build succeeded
+  - ✅ Unit test gates passed (23+ determinism gates)
+  - ✅ E2E smoke tests passed (4/4 tests)
+  ```
+
+- **Attribution**: Connor Angiel
 
 - Unblocked `rc:check` on Windows by avoiding outDir cleanup failures during Playground builds.
   - `apps/playground/vite.config.ts` disables `emptyOutDir` on win32 to prevent ENOTEMPTY.
