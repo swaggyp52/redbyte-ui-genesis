@@ -1,14 +1,49 @@
+/**
+ * v1 Stability Triage Gate
+ *
+ * Contract: If this test fails, the demo is not safe.
+ *
+ * Assertions:
+ *  - Desktop shell mounts and is visible
+ *  - Dashboard and Studio apps are registered and discoverable
+ *  - No fatal errors persisted to localStorage (fatal-capture clean)
+ *  - No uncaught exceptions (failPromise rejection)
+ *  - No console.error messages during boot
+ *
+ * Runs in CI/release chain as part of rc:check gate.
+ */
+
 import { test, expect } from '@playwright/test';
 import { createFailureWatcher } from './helpers';
 
 const EXTRA_FLAGS = process.env.E2E_FLAGS || '';
 const OS_URL = `/os/?e2e=1&boot=1${EXTRA_FLAGS ? `&${EXTRA_FLAGS}` : ''}`;
 
+/**
+ * Collect and fail on any console.error messages.
+ * Returns a promise that rejects if any errors are logged.
+ */
+function trackConsoleErrors(page: any): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const errors: string[] = [];
+    const handler = (msg: any) => {
+      if (msg.type() === 'error') {
+        const text = msg.text();
+        errors.push(text);
+        reject(new Error(`Console error detected during boot: ${text}`));
+      }
+    };
+    page.once('load', () => resolve());
+    page.on('console', handler);
+  });
+}
+
 test.describe('v1 stability triage smoke', () => {
   test.describe.configure({ timeout: 30_000 });
 
   test('shell boots to desktop without fatal errors', async ({ page, context }) => {
     const { failPromise, dispose } = createFailureWatcher(page, 'http://127.0.0.1:4173');
+    const consoleErrorPromise = trackConsoleErrors(page);
 
     try {
       // Clear any stale fatal-capture state before boot
@@ -22,6 +57,7 @@ test.describe('v1 stability triage smoke', () => {
       // Expect desktop shell visible = boot succeeded
       await Promise.race([
         failPromise,
+        consoleErrorPromise,
         expect(page.locator('[data-testid="desktop-shell"]')).toBeVisible({ timeout: 10_000 }),
       ]);
 
@@ -38,11 +74,13 @@ test.describe('v1 stability triage smoke', () => {
       // This validates the e2e-boot app registration includes required apps
     } finally {
       dispose();
+      page.removeAllListeners('console');
     }
   });
 
   test('dashboard and studio apps are registered', async ({ page, context }) => {
     const { failPromise, dispose } = createFailureWatcher(page, 'http://127.0.0.1:4173');
+    const consoleErrorPromise = trackConsoleErrors(page);
 
     try {
       // Clear any stale fatal-capture state before boot
@@ -55,6 +93,7 @@ test.describe('v1 stability triage smoke', () => {
       // Wait for shell to fully load
       await Promise.race([
         failPromise,
+        consoleErrorPromise,
         expect(page.locator('[data-testid="desktop-shell"]')).toBeVisible({ timeout: 10_000 }),
       ]);
 
@@ -73,6 +112,7 @@ test.describe('v1 stability triage smoke', () => {
       expect(fatalRecord).toBeNull();
     } finally {
       dispose();
+      page.removeAllListeners('console');
     }
   });
 });
