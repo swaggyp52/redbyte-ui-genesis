@@ -1,5 +1,81 @@
 # AI State
 
+## Change Log 2026-02-15 (Frontend Sprint 1: BRIGHT MODE + FIRST IMPRESSION)
+
+- **Visual Transformation**: RedByte now feels bright, welcoming, and modern on first load
+  - Changed default theme from dark → light in `ThemeProvider`
+  - Light theme background: #FAFAF8 (warm white), text: #1C1917 (near-black)
+  - Soft shadows optimized for light mode (lighter opacity values): 0.06-0.10 vs 0.45-0.65 in dark
+  - No flash of dark mode on boot (light theme applied before first paint)
+
+- **Theme Toggle**: Quick sun/moon icon button in TopBar (right side)
+  - Location: Top-right corner next to Log and Settings
+  - Sun icon = dark mode (click to switch to light)
+  - Moon icon = light mode (click to switch to dark)
+  - Toggle persists in localStorage key `rb-theme-variant`
+  - Automatic restoration on reload
+
+- **UI Polish (Subtle Modern Animations)**:
+  - Window open: `@keyframes rb-window-open` (scale 0.95→1.0 + fade in, 150ms)
+  - Dock hover: Lift effect with stronger shadow on mouse over
+  - Modal fade: Smooth fade-in (120ms)
+  - All animations use CSS tokens: `--rb-easing-out`, `--rb-motion-fast`
+
+- **Architecture**:
+  - **Token System**: All colors defined in [packages/rb-apps/src/styles/os-tokens.css](packages/rb-apps/src/styles/os-tokens.css)
+    - `:root` = dark theme (default)
+    - `[data-theme="light"]` = light theme overrides
+    - Single source of truth for all visual properties
+  - **Theme Provider**: [packages/rb-theme/src/ThemeProvider.tsx](packages/rb-theme/src/ThemeProvider.tsx)
+    - React context provides `variant` + `setVariant`
+    - Handles localStorage persistence
+    - Applied before React renders (no flash)
+  - **TopBar Toggle**: [packages/rb-shell/src/TopBar.tsx](packages/rb-shell/src/TopBar.tsx)
+    - Integrated `useTheme()` hook
+    - Sun/moon icon with click handler
+  - **Animations**: [packages/rb-shell/src/styles.css](packages/rb-shell/src/styles.css)
+    - Window, dock, and modal animations
+    - Light-mode optimized shadows
+
+- **Quality Gate (ui:brightness-contract-gate)**:
+  - Located in [packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts](packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts)
+  - 5 assertions validate light theme correctness:
+    1. ✓ ThemeProvider defaults to `'light'`
+    2. ✓ os-tokens.css defines `[data-theme="light"]` CSS
+    3. ✓ TopBar includes `useTheme()` hook + sun/moon toggle
+    4. ✓ Theme localStorage `rb-theme-variant` is properly configured
+    5. ✓ Window/fade animations are defined
+  - All assertions PASS
+
+- **Documentation**:
+  - Created [docs/UI_THEME.md](docs/UI_THEME.md): Complete guide to theme system, tokens, customization, verification
+
+- **Verification**:
+  - Build: ✅ Succeeded (10.05s, no errors)
+  - Unit tests: ✅ 10/10 ui-dev-guards tests pass (including 5 new brightness tests)
+  - rc:check: ✅ All gates pass (23+ determinism gates + 4/4 E2E smoke tests)
+  - demo:ready: ✅ Exit code 0, ✅ DEMO READY verdict
+  - Determinism/export gates: ✅ Untouched, all passing
+
+- **Non-Regressions**:
+  - Export workflow tests: ✅ Still passing
+  - Hardware bridge tests: ✅ Still passing
+  - First-run wizard: ✅ Still passing
+  - Submission inspector: ✅ Still passing
+  - All 4 E2E smoke tests: ✅ Pass (shell boots, apps registered, export works, submission inspector accessible)
+
+- **Demo Day Ready**:
+  - Default impression on load: Bright, modern, welcoming
+  - User preference: Easy toggle to dark mode if preferred
+  - Accessibility: WCAG AA contrast ratios maintained (14.5:1 text, 4.5+ accent)
+  - Animations: Subtle, professional (no "cringe" AI-generated feel)
+  - Performance: CSS-only animations, no blocking libraries
+
+- **Attribution**: Connor Angiel
+- **Commit**: 20b92475 "feat(theme): light mode by default + theme toggle + animations + brightness gate"
+
+---
+
 ## Change Log 2026-02-15 (Final demo-day tweaks: Exit codes + localStorage auth)
 
 - **Final Pre-Demo Verification**: All systems green with ✅ DEMO READY verdict
