@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-02-16 (Truth Gate Reliability: Remove tsx Runtime Dependency)
+
+**Status**: ✅ COMPLETE - `verify:gates:classroom` now runs via Node `.mjs` entrypoint instead of `tsx`, eliminating CI failures when `esbuild` install scripts are ignored.
+
+- **Root cause mitigated**:
+  - CI `Classroom Truth Gates` failed early with exit code `254` while invoking `pnpm -s verify:gates:classroom`
+  - Existing command depended on `pnpm exec tsx ...`, which is sensitive to runtime toolchain conditions on clean runners.
+
+- **Implementation changes**:
+  - Added: `scripts/verify-gates-classroom.mjs`
+  - Updated: `package.json`
+    - `verify:gates:classroom` now runs: `node ./scripts/verify-gates-classroom.mjs`
+  - New runner preserves existing gate checks and now prints failure details inline for faster diagnosis.
+
+- **Verification executed**:
+  - `pnpm -s verify:gates:classroom` → **PASS**
+  - `pnpm -s build:unified` → **PASS**
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-16 (CI Clean Runner Fix: Unified Build Explicitly Builds Manual + OS)
 
 **Status**: ✅ COMPLETE - `build:unified` now builds both required app outputs before merge, removing clean-runner dependency on pre-existing `apps/manual-site/dist`.
