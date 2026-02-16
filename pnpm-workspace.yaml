@@ -5,3 +5,5 @@ packages:
 
 onlyBuiltDependencies:
   - '@serialport/bindings-cpp'
+  - esbuild
+  - core-js

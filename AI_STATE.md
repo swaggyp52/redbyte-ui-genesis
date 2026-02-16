@@ -1,5 +1,38 @@
 # AI State
 
+## Change Log 2026-02-16 (CI Determinism: pnpm Build-Script Policy + Clear Install Failure + Secret-Gated Deploy Path)
+
+**Status**: ✅ COMPLETE - CI now explicitly configures pnpm script behavior, allows required build-script dependencies, fails with a clear message if scripts are still ignored, and skips Cloudflare deploy paths cleanly when secrets are missing.
+
+- **Root cause addressed for intermittent CI gate failure**:
+  - `pnpm-workspace.yaml` previously restricted build scripts via `onlyBuiltDependencies` to `@serialport/bindings-cpp` only.
+  - This caused CI install warnings like `Ignored build scripts: core-js, esbuild`, which could break toolchain behavior on clean runners.
+
+- **Deterministic policy updates**:
+  - Updated: `pnpm-workspace.yaml`
+  - Added to `onlyBuiltDependencies`:
+    - `esbuild`
+    - `core-js`
+
+- **Truth-gates workflow hardened**:
+  - Updated: `.github/workflows/pr-truth-gates.yml`
+  - Added explicit pnpm config step before install:
+    - `enable-pre-post-scripts=true`
+    - `ignore-scripts=false`
+  - Install step now captures output and fails with explicit error if `Ignored build scripts` is detected.
+
+- **Deploy workflow noise-reduction hardened**:
+  - Updated: `.github/workflows/deploy-cloudflare.yml`
+  - Secret check moved to the top of job.
+  - Checkout/setup/install/build/deploy/verify are all guarded by `has_secrets == 'true'`.
+  - When secrets are missing, workflow exits cleanly with skip summary instead of red deploy-path failures.
+
+- **Verification executed**:
+  - `pnpm -s verify:gates:classroom` → **PASS**
+  - `pnpm -s build:unified` → **PASS**
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-16 (Truth Gate Reliability: Remove tsx Runtime Dependency)
 
 **Status**: ✅ COMPLETE - `verify:gates:classroom` now runs via Node `.mjs` entrypoint instead of `tsx`, eliminating CI failures when `esbuild` install scripts are ignored.

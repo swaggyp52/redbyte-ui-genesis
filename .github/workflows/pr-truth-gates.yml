@@ -34,8 +34,21 @@ jobs:
           node-version: 20.19.0
           cache: pnpm
 
+      - name: Configure pnpm script policy
+        run: |
+          pnpm config set enable-pre-post-scripts true
+          pnpm config set ignore-scripts false
+          echo "ignore-scripts=$(pnpm config get ignore-scripts)"
+          echo "enable-pre-post-scripts=$(pnpm config get enable-pre-post-scripts)"
+
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile 2>&1 | tee pnpm-install.log
+          if grep -qi "Ignored build scripts" pnpm-install.log; then
+            echo "::error::pnpm ignored build scripts in CI. Check pnpm policy (onlyBuiltDependencies/approval) for esbuild/core-js."
+            exit 1
+          fi
 
       - name: Verify classroom truth gate
         run: pnpm -s verify:gates:classroom

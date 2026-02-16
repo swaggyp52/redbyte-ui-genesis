@@ -20,29 +20,6 @@ jobs:
       contents: read
       deployments: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.24.0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24.13.0'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build unified deploy bundle
-        run: pnpm -s build:unified
-        env:
-          VITE_APP_ENV: production
-          GIT_SHA: ${{ github.sha }}
-
       - name: Check Cloudflare secrets
         id: cf_secrets
         env:
@@ -55,6 +32,34 @@ jobs:
             echo "has_secrets=false" >> "$GITHUB_OUTPUT"
             echo "Cloudflare secrets missing; deployment steps will be skipped."
           fi
+
+      - name: Checkout code
+        if: steps.cf_secrets.outputs.has_secrets == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        if: steps.cf_secrets.outputs.has_secrets == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+
+      - name: Setup Node.js
+        if: steps.cf_secrets.outputs.has_secrets == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.13.0'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        if: steps.cf_secrets.outputs.has_secrets == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build unified deploy bundle
+        if: steps.cf_secrets.outputs.has_secrets == 'true'
+        run: pnpm -s build:unified
+        env:
+          VITE_APP_ENV: production
+          GIT_SHA: ${{ github.sha }}
 
       - name: Deploy to Cloudflare Pages (Production)
         if: steps.cf_secrets.outputs.has_secrets == 'true'
