@@ -40,16 +40,20 @@ export const CanvasHost = ({ id, children, onActive, onInactive, onWheelActive, 
             onInactive?.();
         }
     }, [id, onInactive]);
-    // Pointer enter activates (hover-based)
-    const handlePointerEnter = useCallback(() => {
+    // Click-to-focus: activate on pointer down (replaces hover-based activation)
+    const handlePointerDown = useCallback(() => {
         activate();
     }, [activate]);
-    // Pointer leave must not deactivate when moving to an overlay inside the container
-    const handlePointerLeave = useCallback((e) => {
+    // Focus/blur for keyboard tab navigation
+    const handleFocus = useCallback(() => {
+        activate();
+    }, [activate]);
+    const handleBlurContainer = useCallback((e) => {
         const next = e.relatedTarget;
         const container = containerRef.current;
+        // Only deactivate if focus moved completely outside the container
         if (container && next && container.contains(next)) {
-            return; // still "inside" the canvas host (entered a child overlay)
+            return;
         }
         deactivate();
     }, [deactivate]);
@@ -59,8 +63,10 @@ export const CanvasHost = ({ id, children, onActive, onInactive, onWheelActive, 
         if (!container)
             return;
         const handleWheel = (e) => {
-            if (!isCanvasActive(id))
-                return;
+            // Wheel also activates the canvas (trackpad zoom before clicking)
+            if (!isCanvasActive(id)) {
+                activate();
+            }
             if (preventPageScroll) {
                 e.preventDefault();
             }
@@ -112,5 +118,5 @@ export const CanvasHost = ({ id, children, onActive, onInactive, onWheelActive, 
             clearIfActive(id);
         };
     }, [id, deactivate]);
-    return (_jsx("div", { ref: containerRef, onPointerEnter: handlePointerEnter, onPointerLeave: handlePointerLeave, className: className, style: { position: 'relative', width: '100%', height: '100%' }, children: children }));
+    return (_jsx("div", { ref: containerRef, tabIndex: 0, onPointerDown: handlePointerDown, onFocus: handleFocus, onBlur: handleBlurContainer, className: className, style: { position: 'relative', width: '100%', height: '100%', outline: 'none' }, children: children }));
 };
