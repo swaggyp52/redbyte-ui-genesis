@@ -1587,6 +1587,13 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
 
                 <div data-testid="lab-workspace-anchor-submit-readiness" style={{ display: 'none' }} />
 
+                {isSubmissionBlocked && (
+                  <div className={styles.blockedBanner} data-testid="lab-workspace-blocked-banner">
+                    <div className={styles.blockedBannerTitle}>🔒 Submission Blocked</div>
+                    <div className={styles.blockedBannerText}>Resolve the blocking issues below to enable export.</div>
+                  </div>
+                )}
+
                 {submitGateResult.issues.length > 0 ? (
                   <div data-testid="lab-workspace-submit-gates" style={{ display: 'grid', gap: 8 }}>
                     {submitGateResult.issues.map((issue) => {
@@ -1596,7 +1603,12 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
                           key={issue.code}
                           className={`${styles.verifyIssueCard} ${issue.severity === 'block' ? styles.verifyIssueBlock : ''}`}
                         >
-                          <div className={styles.verifyTitle} style={{ marginBottom: 2 }}>{issue.severity.toUpperCase()} · {issue.title}</div>
+                          <div className={styles.verifyTitle} style={{ marginBottom: 2 }}>
+                            <span className={`${styles.issueIcon} ${issue.severity === 'block' ? styles.issueIconBlock : styles.issueIconWarn}`}>
+                              {issue.severity === 'block' ? '✕' : '!'}
+                            </span>
+                            {issue.severity.toUpperCase()} · {issue.title}
+                          </div>
                           <div className={styles.verifyMuted}>{issue.message}</div>
                           {issue.fixHint ? <div className={styles.verifyMuted} style={{ marginTop: 4 }}>Fix: {issue.fixHint}</div> : null}
                           <button
@@ -1628,7 +1640,19 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
                   </button>
                 </div>
 
-                {submitStatus ? (
+                {lastBundleStatus && submitGateResult.verdict !== 'block' ? (
+                  <div className={styles.successBanner} data-testid="lab-workspace-success-banner">
+                    <div>
+                      <div className={styles.successBannerTitle}>✓ Export Successful</div>
+                      <div className={styles.successBannerText}>Your submission bundle has been generated and saved.</div>
+                      <div className={styles.successBannerFilename} data-testid="lab-workspace-submit-status">Generated: {lastBundleStatus.filename}</div>
+                    </div>
+                    <div className={styles.nextStepSection}>
+                      <div className={styles.nextStepLabel}>Next Step</div>
+                      <div className={styles.nextStepText}>Upload this bundle to Blackboard for instructor review.</div>
+                    </div>
+                  </div>
+                ) : submitStatus ? (
                   <div className={styles.submitMeta}>
                     <div data-testid="lab-workspace-submit-status">{submitStatus}</div>
                     <div data-testid="lab-workspace-anchor-submit-bundle-preview" style={{ display: 'none' }} />

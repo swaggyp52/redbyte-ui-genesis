@@ -551,7 +551,11 @@
 .submitAction {
   border: 1px solid var(--rb-ui-lab-border-strong);
   border-radius: 10px;
-  padding: 10px 14px;
+  padding: 12px 16px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: linear-gradient(180deg, color-mix(in srgb, var(--rb-ui-lab-accent) 22%, var(--rb-ui-lab-bg-elevated)) 0%, var(--rb-ui-lab-bg-elevated) 100%);
   color: var(--rb-ui-lab-text);
   font-size: 12px;
@@ -570,6 +574,104 @@
 .submitAction:not(:disabled):hover {
   transform: translateY(-1px);
   box-shadow: var(--rb-ui-lab-shadow-soft);
+}
+
+.blockedBanner {
+  border: 1px solid var(--rb-ui-lab-danger);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--rb-ui-lab-danger) 12%, var(--rb-ui-lab-bg-elevated));
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.blockedBannerTitle {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--rb-ui-lab-danger);
+  letter-spacing: 0.02em;
+}
+
+.blockedBannerText {
+  font-size: 12px;
+  color: var(--rb-ui-lab-text);
+  line-height: 1.4;
+}
+
+.successBanner {
+  border: 1px solid var(--rb-ui-lab-success);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--rb-ui-lab-success) 12%, var(--rb-ui-lab-bg-elevated));
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.successBannerTitle {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--rb-ui-lab-success);
+  letter-spacing: 0.02em;
+}
+
+.successBannerText {
+  font-size: 12px;
+  color: var(--rb-ui-lab-text);
+  line-height: 1.4;
+}
+
+.successBannerFilename {
+  font-family: ui-monospace, 'Cascadia Code', monospace;
+  font-size: 11px;
+  color: var(--rb-ui-lab-text-muted);
+  word-break: break-all;
+  margin-top: 4px;
+}
+
+.nextStepSection {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--rb-ui-lab-success) 30%, transparent);
+  display: grid;
+  gap: 4px;
+}
+
+.nextStepLabel {
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--rb-ui-lab-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.nextStepText {
+  font-size: 12px;
+  color: var(--rb-ui-lab-text);
+  line-height: 1.4;
+}
+
+.issueIcon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  margin-right: 6px;
+  font-weight: 700;
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rb-ui-lab-bg-elevated);
+}
+
+.issueIconBlock {
+  background: var(--rb-ui-lab-danger);
+}
+
+.issueIconWarn {
+  background: var(--rb-ui-lab-warning);
 }
 
 .sidePanel {
