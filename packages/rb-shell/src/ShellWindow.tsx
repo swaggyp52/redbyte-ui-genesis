@@ -487,9 +487,9 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
         : `opacity var(--rb-motion-normal) var(--rb-easing-out), transform var(--rb-motion-normal) var(--rb-easing-out)`,
       background: 'var(--rb-surface-1)',
       border: focused ? '1px solid var(--rb-border-strong)' : '1px solid var(--rb-border)',
-      borderRadius: isMax ? 0 : 'var(--rb-radius-lg)',
+      borderRadius: isMax ? 0 : 'var(--rb-radius-xl)',
       overflow: 'hidden',
-      boxShadow: focused ? 'var(--rb-shadow-3)' : 'var(--rb-shadow-2)',
+      boxShadow: focused ? 'var(--rb-window-shadow-focus)' : 'var(--rb-window-shadow)',
       // Removed: filter: saturate(0.92) — expensive GPU compositing per window
       display: isMin ? 'none' : 'block',
     } as React.CSSProperties;
@@ -509,6 +509,7 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
           cursor: isMax ? 'default' : dragging ? 'grabbing' : 'grab',
           background: state.focused ? 'var(--rb-surface-2)' : 'var(--rb-surface-1)',
           borderColor: 'var(--rb-border)',
+          borderRadius: isMax ? 0 : 'var(--rb-radius-xl) var(--rb-radius-xl) 0 0',
         }}
         onPointerDown={isMax ? undefined : startDragPointer}
         onMouseDown={isMax ? undefined : startDragMouseFallback}
@@ -524,11 +525,11 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
                 color: state.focused ? 'var(--rb-text)' : 'var(--rb-text-2)',
               }}
             >
-              <Icon name={iconName} size={12} />
+              <Icon name={iconName} size={16} />
             </div>
           )}
           <div
-            className="truncate text-[13px] font-medium"
+            className="truncate text-[13px] font-semibold"
             style={{ color: state.focused ? 'var(--rb-text)' : 'var(--rb-text-2)' }}
             data-testid="window-title-text"
           >
@@ -551,7 +552,7 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
           {state.minimizable && (
             <button
               type="button"
-              className="rb-window-control h-6 w-6 rounded flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+              className="rb-window-control h-7 w-7 flex items-center justify-center"
               onClick={onMinimize}
               title="Minimize"
               data-testid="window-minimize-button"
@@ -562,7 +563,7 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
           {state.maximizable && (
             <button
               type="button"
-              className="rb-window-control h-6 w-6 rounded flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+              className="rb-window-control h-7 w-7 flex items-center justify-center"
               onClick={isMax ? onRestore : onMaximize}
               title={isMax ? "Restore" : "Maximize"}
               data-testid="window-maximize-button"
@@ -572,7 +573,7 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
           )}
           <button
             type="button"
-            className="rb-window-control h-6 w-6 rounded flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 hover:!bg-red-500/20 hover:!text-red-400"
+            className="rb-window-control rb-window-control--close h-7 w-7 flex items-center justify-center"
             onClick={handleCloseRequest}
             title="Close"
             data-testid="window-close-button"
