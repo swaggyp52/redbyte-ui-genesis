@@ -130,6 +130,14 @@
 
   --rb-elevation-bg: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0) 100%);
   --rb-panel-shadow: 0 8px 20px rgba(0, 3, 12, 0.42);
+
+  /* ── Wallpaper gradient ── */
+  --rb-wallpaper-from: #0A0F1C;
+  --rb-wallpaper-to: #0D1420;
+
+  /* Performance toggle: set to 'none' to disable blur globally */
+  --rb-blur-strength: 16px;
+  --rb-blur-fallback-bg: var(--rb-surface-1);
 }
 
 /* ── Light theme ── */
@@ -171,6 +179,9 @@
   --rb-metal: rgba(243, 242, 238, 0.95);
   --rb-noise-opacity: 0.02;
 
+  --rb-wallpaper-from: #F0EDE6;
+  --rb-wallpaper-to: #E8E4DB;
+
   --rb-theme-foreground: var(--rb-text);
   --rb-theme-background: var(--rb-surface-0);
 }
@@ -209,6 +220,9 @@
   --rb-glass: rgba(2, 6, 23, 0.82);
   --rb-metal: rgba(15, 23, 42, 0.92);
   --rb-noise-opacity: 0.04;
+
+  --rb-wallpaper-from: #020617;
+  --rb-wallpaper-to: #0B1020;
 
   --rb-theme-foreground: var(--rb-text);
   --rb-theme-background: var(--rb-surface-0);

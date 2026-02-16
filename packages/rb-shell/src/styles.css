@@ -172,6 +172,39 @@
   100% { transform: translateY(100vh); }
 }
 
+/* ── Desktop Surface (gradient + noise overlay) ── */
+.rb-desktop-surface {
+  background:
+    linear-gradient(160deg, var(--rb-wallpaper-from) 0%, var(--rb-wallpaper-to) 100%);
+}
+
+/* Noise overlay: tiny inline SVG with feTurbulence, opacity 0.03. */
+.rb-desktop-surface::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E") repeat;
+  background-size: 200px 200px;
+  opacity: 0.03;
+  pointer-events: none;
+}
+
+/* Blur support: graceful degradation for low-end devices */
+@supports not (backdrop-filter: blur(1px)) {
+  .rb-blur-surface {
+    background: var(--rb-blur-fallback-bg) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
+/* Performance mode: disable blur via attribute */
+:root[data-rb-perf="low"] .rb-blur-surface {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  background: var(--rb-blur-fallback-bg);
+}
+
 /* ── Accessibility: Reduced Motion ── */
 @media (prefers-reduced-motion: reduce) {
   .resize-handle,

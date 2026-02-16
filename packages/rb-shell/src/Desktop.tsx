@@ -32,7 +32,7 @@ export const Desktop: React.FC<DesktopProps> = React.memo(({ onOpenApp, wallpape
       data-testid="shell-desktop"
       role="region"
       aria-label="Desktop"
-      className="rb-desktop rb-noise absolute inset-0 overflow-hidden pointer-events-none"
+      className="rb-desktop rb-desktop-surface rb-noise absolute inset-0 overflow-hidden pointer-events-none"
       style={{ ...wallpaperStyle }}
     >
       {/* Subtle vignette for depth */}
@@ -80,8 +80,8 @@ export const Desktop: React.FC<DesktopProps> = React.memo(({ onOpenApp, wallpape
 
       {/* Version Badge */}
       <div
-        className="absolute bottom-3 left-4 z-10 text-[10px] font-mono pointer-events-auto"
-        style={{ color: 'var(--rb-ui-text-2)', opacity: 0.8 }}
+        className="absolute z-10 text-[10px] font-mono pointer-events-auto"
+        style={{ bottom: 'var(--rb-space-4)', left: 'var(--rb-space-4)', color: 'var(--rb-ui-text-2)', opacity: 0.8 }}
       >
         <span
           className="px-1.5 py-0.5 rounded font-bold"
@@ -97,8 +97,8 @@ export const Desktop: React.FC<DesktopProps> = React.memo(({ onOpenApp, wallpape
 
       {/* Copyright */}
       <div
-        className="absolute bottom-3 right-4 z-10 text-right text-[10px] font-mono pointer-events-none"
-        style={{ color: 'var(--rb-ui-text-3)', opacity: 0.5 }}
+        className="absolute z-10 text-right text-[10px] font-mono pointer-events-none"
+        style={{ bottom: 'var(--rb-space-4)', right: 'var(--rb-space-4)', color: 'var(--rb-ui-text-3)', opacity: 0.5 }}
       >
         <div>RedByte OS Genesis</div>
       </div>
