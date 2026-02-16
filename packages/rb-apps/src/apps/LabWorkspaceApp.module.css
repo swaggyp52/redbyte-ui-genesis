@@ -36,6 +36,22 @@
   gap: 8px;
 }
 
+.labBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--rb-accent-build, #38bdf8);
+  border: 1.5px solid var(--rb-accent-build, #38bdf8);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--rb-accent-build, #38bdf8) 8%, transparent);
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .title {
   font-size: 16px;
   font-weight: 700;
@@ -317,6 +333,37 @@
   padding: var(--rb-workspace-space-3);
   display: grid;
   gap: var(--rb-workspace-space-2);
+}
+
+.preflightBanner {
+  padding: 10px 12px;
+  border: 1.5px solid var(--rb-accent-submit, #a78bfa);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--rb-accent-submit, #a78bfa) 6%, var(--rb-ui-lab-bg-surface));
+}
+
+.preflightTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--rb-accent-submit, #a78bfa);
+  letter-spacing: 0.02em;
+}
+
+.preflightMeta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--rb-ui-lab-text-muted);
+}
+
+.preflightWarning {
+  margin-top: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rb-error, #f87171);
+  border: 1px solid var(--rb-error, #f87171);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--rb-error, #f87171) 8%, transparent);
 }
 
 .verifyPanel {

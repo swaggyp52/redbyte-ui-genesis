@@ -1069,7 +1069,10 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
               label={`${MODE_ICONS[mode]} ${LAB_WORKSPACE_MODE_LABELS[mode]}`}
               tone={mode === 'build' ? 'build' : mode === 'simulate' ? 'simulate' : mode === 'hardware' ? 'hardware' : 'submit'}
             />
-            <StatusPill label={contextLabId.toUpperCase()} tone="warning" />
+            <span data-testid="lab-workspace-lab-badge" className={styles.labBadge} title={`labId: ${contextLabId}`}>
+              {contextLabId.toUpperCase()}
+              {labDefinition?.basys3Required ? ' · Basys3' : ''}
+            </span>
           </div>
           <div className={styles.title}>{contextTitle}</div>
           <div className={styles.subtitle}>STUDIO STEP {modeIndex + 1} OF {LAB_WORKSPACE_MODES.length}</div>
@@ -1340,6 +1343,25 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
 
             {mode === 'submit' && (
               <div data-testid="lab-workspace-panel-submit" className={`${styles.panelLifted} ${styles.submitPanel} rb-ui-lab-panel-frame`}>
+                <div data-testid="lab-workspace-submit-preflight" className={styles.preflightBanner}>
+                  <div className={styles.preflightTitle}>
+                    Submitting: {contextTitle}
+                  </div>
+                  <div className={styles.preflightMeta}>
+                    Board: {labDefinition?.basys3Required ? 'Basys3 (required)' : 'None required'}
+                    {labDefinition?.id === 'lab-4' ? ' · Mapping: EN↔SW8 · A↔SW5 · B↔SW4 · S2/S1/S0↔SW3/2/1 · F↔LED1' : ''}
+                  </div>
+                  <div className={styles.preflightMeta}>
+                    Export filename: rb-lab.zip · Simulation-only is acceptable if hardware unavailable.
+                  </div>
+                  {!labDefinition && contextLabId !== 'freeplay' && (
+                    <div data-testid="lab-workspace-lab-mismatch-warning" className={styles.preflightWarning}>
+                      Lab ID "{contextLabId}" does not match any known lab definition. You may be in the wrong template.
+                      To recover: Go Home and start the correct lab starter.
+                    </div>
+                  )}
+                </div>
+
                 <div data-testid="studio-verify-panel" className={styles.verifyPanel}>
                   <div
                     data-testid="studio-verify-verdict"
