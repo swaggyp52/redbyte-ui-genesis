@@ -4,8 +4,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import React from 'react';
-import { CanvasHost } from '../CanvasHost';
-import { isCanvasActive, clearIfActive } from '../activeCanvas';
+import { CanvasHost } from '../CanvasHost.js';
+import { isCanvasActive, clearIfActive } from '../activeCanvas.js';
 
 describe('CanvasHost — click-to-focus model (RC-P5)', () => {
   beforeEach(() => {

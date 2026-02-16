@@ -4,7 +4,7 @@ import { setActiveCanvas, isCanvasActive, clearIfActive } from './activeCanvas.j
 
 export interface CanvasHostProps {
   id: string; // REQUIRED: ensures global singleton activation
-  children: React.ReactNode;
+  children?: React.ReactNode;
   onActive?: () => void;
   onInactive?: () => void;
   onWheelActive?: (e: WheelEvent, rect: DOMRect) => void;
