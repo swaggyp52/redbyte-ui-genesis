@@ -21,6 +21,11 @@
     - `ignore-scripts=false`
   - Install step now captures output and fails with explicit error if `Ignored build scripts` is detected.
 
+- **Classroom gate runner CI-hardening**:
+  - Updated: `scripts/verify-gates-classroom.mjs`
+  - Increased per-gate timeout from `60_000` to `300_000` ms to reduce clean-runner false negatives.
+  - Failure details now include exit code/signal to make CI diagnosis explicit.
+
 - **Deploy workflow noise-reduction hardened**:
   - Updated: `.github/workflows/deploy-cloudflare.yml`
   - Secret check moved to the top of job.

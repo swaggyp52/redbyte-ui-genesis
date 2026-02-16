@@ -1,14 +1,18 @@
 import { execSync } from 'node:child_process';
 
+const GATE_TIMEOUT_MS = 300_000;
+
 function runGate(name, command, blocking) {
   const label = name.toUpperCase();
   try {
-    execSync(command, { stdio: 'pipe', timeout: 60_000, encoding: 'utf8' });
+    execSync(command, { stdio: 'pipe', timeout: GATE_TIMEOUT_MS, encoding: 'utf8' });
     return { name, label, pass: true, blocking, details: '' };
   } catch (error) {
+    const exitCode = typeof error?.status === 'number' ? `exit=${error.status}` : '';
+    const signal = typeof error?.signal === 'string' ? `signal=${error.signal}` : '';
     const stdout = typeof error?.stdout === 'string' ? error.stdout.trim() : '';
     const stderr = typeof error?.stderr === 'string' ? error.stderr.trim() : '';
-    const details = [stdout, stderr].filter(Boolean).join('\n');
+    const details = [exitCode, signal, stdout, stderr].filter(Boolean).join('\n');
     return { name, label, pass: false, blocking, details };
   }
 }
