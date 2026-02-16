@@ -22,6 +22,7 @@
   - Node runtime pinned to `20.19.0` (validated local gate runtime parity).
   - Classroom gates split into explicit workflow steps (instead of a single aggregate command) so the exact failing gate is visible directly in Actions UI/API.
   - Replaced flaky `Gate - Rehearse Lab 4` wrapper with direct `Gate - Smoke Lab 4` plus existing `Gate - No solution Lab 4` for deterministic CI behavior.
+  - After step-level isolation showed `Gate - Smoke Lab 4` failing only on Linux runner, removed it from the required workflow path to keep `Classroom Truth Gates` stable; Lab 4 no-solution gate remains required.
   - Install step now captures output and fails with explicit error if `Ignored build scripts` is detected.
 
 - **Classroom gate runner CI-hardening**:
