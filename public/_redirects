@@ -1,3 +1,4 @@
+/os/version.json /os/version.json 200
 /os/* /os/index.html 200
 /docs/* /docs/index.html 200
 /* /index.html 200
