@@ -1,9 +1,26 @@
 # Classroom Quickstart (Instructor/TA) — Basys3 Lab 4 ALU
 
-## Pre-class verification
-- Run `pnpm -s rc:e1:golden-basys3-alu-export-gate`.
-- Run `pnpm -s classroom:golden-basys3-alu`.
-- Confirm both report pass status.
+## Pre-class ritual (run 10 minutes before lab)
+
+```bash
+pnpm -s classroom:rehearse:lab4
+```
+
+This runs three checks and prints a single verdict:
+
+| Check       | What it verifies                                                      | If FAIL                                                                                                   |
+| ----------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| SMOKE       | Starter scaffold loads, sanity fixture exports, bundle is deterministic | Starter JSON may be corrupt — re-checkout `packages/rb-apps/src/examples/19_lab4-alu-starter-basys3.json` |
+| NO-SOLUTION | Starter has no pre-wired solution (gates, connections)                 | Someone committed a solved circuit — reset starter to scaffold-only                                       |
+| HW          | FPGA bridge + Basys3 board reachable (non-blocking)                    | Board not connected or bridge not running — simulation-only is still valid                                 |
+
+**FINAL: PASS** means you are go for class. **FINAL: FAIL** means smoke or no-solution failed — do not proceed until fixed.
+
+### Full gate suite (optional, takes longer)
+
+```bash
+pnpm -s verify:gates
+```
 
 ## Required mapping standard
 - `EN` → `SW8`
