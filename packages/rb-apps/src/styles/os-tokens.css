@@ -76,6 +76,27 @@
   --rb-text-xl:   1.25rem;    /* 20px */
   --rb-text-2xl:  1.5rem;     /* 24px */
 
+  /* Type scale — semantic aliases
+     CONSTRAINT: body >= 13px, nothing below 11px for readability.
+     Projector test: section headers must be readable from back row (~15px+). */
+  --rb-text-os-title: 24px;
+  --rb-text-window-title: 13px;
+  --rb-text-section: 15px;
+  --rb-text-body: 13px;
+  --rb-text-label: 11px;
+  --rb-text-caption: 11px;
+
+  /* Line heights */
+  --rb-leading-tight: 1.2;
+  --rb-leading-normal: 1.5;
+  --rb-leading-relaxed: 1.65;
+
+  /* Font weights */
+  --rb-weight-normal: 400;
+  --rb-weight-medium: 500;
+  --rb-weight-semibold: 600;
+  --rb-weight-bold: 700;
+
   /* ── Spacing (4px base) ── */
   --rb-space-1:  4px;
   --rb-space-2:  8px;

@@ -286,21 +286,21 @@
 }
 
 .quickPillPass {
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  background: rgba(16, 185, 129, 0.14);
+  color: var(--rb-ui-lab-success);
+  border: 1px solid color-mix(in srgb, var(--rb-ui-lab-success) 35%, transparent);
+  background: color-mix(in srgb, var(--rb-ui-lab-success) 14%, transparent);
 }
 
 .quickPillFail {
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  background: rgba(239, 68, 68, 0.14);
+  color: var(--rb-ui-lab-danger);
+  border: 1px solid color-mix(in srgb, var(--rb-ui-lab-danger) 40%, transparent);
+  background: color-mix(in srgb, var(--rb-ui-lab-danger) 14%, transparent);
 }
 
 .quickPillSkipped {
-  color: #f59e0b;
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  background: rgba(245, 158, 11, 0.14);
+  color: var(--rb-ui-lab-warning);
+  border: 1px solid color-mix(in srgb, var(--rb-ui-lab-warning) 40%, transparent);
+  background: color-mix(in srgb, var(--rb-ui-lab-warning) 14%, transparent);
 }
 
 .quickSummaryDetail {
@@ -424,11 +424,11 @@
 }
 
 .checkPass {
-  color: #10b981;
+  color: var(--rb-ui-lab-success);
 }
 
 .checkFail {
-  color: #ef4444;
+  color: var(--rb-ui-lab-danger);
 }
 
 /* Vectors */
@@ -439,8 +439,8 @@
 }
 
 .vectorCard {
-  background: #111;
-  border: 1px solid #222;
+  background: var(--rb-ui-lab-bg-elevated);
+  border: 1px solid var(--rb-ui-lab-border);
   border-radius: 8px;
   padding: 1rem;
 }
@@ -454,7 +454,7 @@
 
 .vectorName {
   font-weight: 600;
-  color: #f8fafc;
+  color: var(--rb-ui-lab-text);
 }
 
 .vectorBadge {
@@ -467,20 +467,20 @@
 }
 
 .badgePass {
-  background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: color-mix(in srgb, var(--rb-ui-lab-success) 15%, transparent);
+  color: var(--rb-ui-lab-success);
+  border: 1px solid color-mix(in srgb, var(--rb-ui-lab-success) 30%, transparent);
 }
 
 .badgeFail {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: color-mix(in srgb, var(--rb-ui-lab-danger) 15%, transparent);
+  color: var(--rb-ui-lab-danger);
+  border: 1px solid color-mix(in srgb, var(--rb-ui-lab-danger) 30%, transparent);
 }
 
 .vectorError {
   font-size: 0.8125rem;
-  color: #f87171;
+  color: var(--rb-ui-lab-danger);
   margin-top: 0.5rem;
 }
 
@@ -492,22 +492,22 @@
 }
 
 .eventCard {
-  background: #111;
-  border: 1px solid #222;
+  background: var(--rb-ui-lab-bg-elevated);
+  border: 1px solid var(--rb-ui-lab-border);
   border-radius: 8px;
   padding: 1rem;
 }
 
 .eventTime {
   font-size: 0.8125rem;
-  color: #94a3b8;
-  font-family: 'Courier New', monospace;
+  color: var(--rb-ui-lab-text-muted);
+  font-family: var(--rb-font-mono);
   margin-bottom: 0.5rem;
 }
 
 .eventType {
   font-weight: 600;
-  color: #3B82F6;
+  color: var(--rb-ui-lab-info);
   font-size: 0.9375rem;
   margin-bottom: 0.5rem;
 }
@@ -515,17 +515,17 @@
 .eventData {
   margin: 0.75rem 0 0 0;
   padding: 0.75rem;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--rb-ui-lab-bg-elevated);
   border-radius: 4px;
   font-size: 0.75rem;
-  color: #cbd5e1;
+  color: var(--rb-ui-lab-text-muted);
   overflow-x: auto;
 }
 
 /* Hardware */
 .hardwareInfo {
-  background: #111;
-  border: 1px solid #222;
+  background: var(--rb-ui-lab-bg-elevated);
+  border: 1px solid var(--rb-ui-lab-border);
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 2rem;
@@ -539,21 +539,21 @@
 }
 
 .infoLabel {
-  color: #64748b;
+  color: var(--rb-ui-lab-text-muted);
   font-weight: 500;
   min-width: 120px;
 }
 
 .infoValue {
-  color: #f8fafc;
-  font-family: 'Courier New', monospace;
+  color: var(--rb-ui-lab-text);
+  font-family: var(--rb-font-mono);
 }
 
 .snapshotsList h3 {
   margin: 0 0 1rem 0;
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #f8fafc;
+  color: var(--rb-ui-lab-text);
 }
 
 .snapshotsList {
@@ -563,8 +563,8 @@
 }
 
 .snapshotCard {
-  background: #111;
-  border: 1px solid #222;
+  background: var(--rb-ui-lab-bg-elevated);
+  border: 1px solid var(--rb-ui-lab-border);
   border-radius: 8px;
   padding: 1rem;
 }
@@ -574,8 +574,8 @@
   justify-content: space-between;
   align-items: center;
   font-size: 0.8125rem;
-  color: #94a3b8;
-  font-family: 'Courier New', monospace;
+  color: var(--rb-ui-lab-text-muted);
+  font-family: var(--rb-font-mono);
   margin-bottom: 0.5rem;
 }
 
@@ -589,15 +589,15 @@
 }
 
 .sourceBridge {
-  background: rgba(34, 211, 238, 0.15);
-  color: #3B82F6;
-  border: 1px solid rgba(34, 211, 238, 0.3);
+  background: color-mix(in srgb, var(--rb-ui-lab-accent) 15%, transparent);
+  color: var(--rb-ui-lab-info);
+  border: 1px solid color-mix(in srgb, var(--rb-ui-lab-accent) 30%, transparent);
 }
 
 .sourceManual {
-  background: rgba(168, 85, 247, 0.15);
-  color: #a855f7;
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  background: color-mix(in srgb, var(--rb-ui-lab-info) 15%, transparent);
+  color: var(--rb-ui-lab-info);
+  border: 1px solid color-mix(in srgb, var(--rb-ui-lab-info) 30%, transparent);
 }
 
 .snapshotData {
