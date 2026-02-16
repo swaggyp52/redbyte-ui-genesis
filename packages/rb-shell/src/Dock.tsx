@@ -143,11 +143,13 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
         ref={(el) => { buttonRefs.current[dock.id] = el; }}
         aria-label={ariaLabel}
         aria-keyshortcuts={ariaKeyShortcuts}
-        className={`relative rounded-lg flex items-center justify-center transition-all group ${compact ? 'h-8 w-8' : 'h-10 w-10'}`}
+        className={`relative flex items-center justify-center group ${compact ? 'h-8 w-8' : 'h-10 w-10'}`}
         style={{
           transform: isHovered ? 'translateX(2px)' : 'translateX(0)',
-          transition: `all ${isHovered ? '120ms' : '80ms'} var(--rb-ui-ease-out)`,
+          transition: 'all var(--rb-ui-motion-fast, 120ms) var(--rb-ui-ease-out)',
           background: isHovered ? 'var(--rb-ui-surface-3)' : 'transparent',
+          borderRadius: 'var(--rb-ui-radius-md, 8px)',
+          opacity: isRunning || isHovered ? 1 : 0.7,
         }}
         data-testid={`dock-icon-${dock.id}`}
       >
@@ -165,11 +167,19 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
             {tooltipText}
           </span>
         )}
-        {/* Running indicator — left edge bar */}
+        {/* Running indicator — left edge dot */}
         {isRunning && (
           <span
-            className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full"
-            style={{ background: 'var(--rb-ui-accent)' }}
+            className="absolute top-1/2 -translate-y-1/2"
+            style={{
+              left: '-2px',
+              width: '4px',
+              height: '4px',
+              borderRadius: '50%',
+              background: 'var(--rb-ui-accent)',
+              transform: 'translateY(-50%) scale(1)',
+              transition: 'transform var(--rb-ui-motion-fast, 120ms) var(--rb-ui-ease-out)',
+            }}
           />
         )}
         <Icon
@@ -186,11 +196,13 @@ export const Dock: React.FC<DockProps> = React.memo(({ onOpenApp }) => {
   return (
     <nav
       aria-label="Application Dock"
-      className="fixed left-0 top-8 bottom-0 z-40 flex flex-col items-center py-2 border-r"
+      className="fixed left-0 top-8 bottom-0 z-40 flex flex-col items-center py-2 border-r rb-blur-surface"
       title="Alt+Arrow keys to reorder (when focused)"
       style={{
         width: '52px',
-        background: 'var(--rb-ui-surface-1)',
+        background: 'color-mix(in srgb, var(--rb-ui-surface-1) 85%, transparent)',
+        backdropFilter: 'blur(var(--rb-blur-strength, 16px)) saturate(1.4)',
+        WebkitBackdropFilter: 'blur(var(--rb-blur-strength, 16px)) saturate(1.4)',
         borderColor: 'var(--rb-ui-border)',
       }}
     >
