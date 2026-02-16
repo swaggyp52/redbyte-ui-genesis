@@ -53,3 +53,27 @@ export function fitToBounds(bounds, viewportWidth, viewportHeight, marginPx = 60
 export function snapToGrid(value, gridSize) {
     return Math.round(value / gridSize) * gridSize;
 }
+/**
+ * Convert browser client coordinates to element-local coordinates.
+ */
+export function clientToLocal(clientX, clientY, rect) {
+    return {
+        x: clientX - rect.left,
+        y: clientY - rect.top,
+    };
+}
+/**
+ * Snap world coordinates to the nearest grid intersection.
+ */
+export function worldToGrid(worldX, worldY, gridSize) {
+    return {
+        x: Math.round(worldX / gridSize) * gridSize,
+        y: Math.round(worldY / gridSize) * gridSize,
+    };
+}
+/**
+ * Grid coordinates are in world space — identity transform.
+ */
+export function gridToWorld(gridX, gridY) {
+    return { x: gridX, y: gridY };
+}

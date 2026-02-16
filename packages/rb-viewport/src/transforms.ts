@@ -79,3 +79,43 @@ export function fitToBounds(
 export function snapToGrid(value: number, gridSize: number): number {
   return Math.round(value / gridSize) * gridSize;
 }
+
+/**
+ * Convert browser client coordinates to element-local coordinates.
+ * Use this before screenToWorld when working with pointer events.
+ */
+export function clientToLocal(
+  clientX: number,
+  clientY: number,
+  rect: DOMRect
+): { x: number; y: number } {
+  return {
+    x: clientX - rect.left,
+    y: clientY - rect.top,
+  };
+}
+
+/**
+ * Snap world coordinates to the nearest grid intersection.
+ */
+export function worldToGrid(
+  worldX: number,
+  worldY: number,
+  gridSize: number
+): { x: number; y: number } {
+  return {
+    x: Math.round(worldX / gridSize) * gridSize,
+    y: Math.round(worldY / gridSize) * gridSize,
+  };
+}
+
+/**
+ * Grid coordinates are in world space — identity transform.
+ * Exists for API completeness in the conversion chain.
+ */
+export function gridToWorld(
+  gridX: number,
+  gridY: number
+): { x: number; y: number } {
+  return { x: gridX, y: gridY };
+}

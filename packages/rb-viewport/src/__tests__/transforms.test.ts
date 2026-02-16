@@ -2,7 +2,7 @@
 // Coordinate transform tests
 
 import { describe, it, expect } from 'vitest';
-import { screenToWorld, worldToScreen, fitToBounds } from '../transforms.js';
+import { screenToWorld, worldToScreen, fitToBounds, snapToGrid, clientToLocal, worldToGrid, gridToWorld } from '../transforms.js';
 import type { Camera, ContentBounds } from '../types.js';
 
 describe('Coordinate Transforms', () => {
@@ -228,6 +228,91 @@ describe('Coordinate Transforms', () => {
       const camera: Camera = { x: 50, y: 75, zoom: 2 };
       const result = screenToWorld(0, 0, camera);
       expect(result).toEqual({ x: -25, y: -37.5 });
+    });
+  });
+
+  describe('clientToLocal', () => {
+    const rect = { left: 100, top: 50 } as DOMRect;
+
+    it('subtracts element offset from client coords', () => {
+      expect(clientToLocal(300, 200, rect)).toEqual({ x: 200, y: 150 });
+    });
+
+    it('returns zero when client matches element origin', () => {
+      expect(clientToLocal(100, 50, rect)).toEqual({ x: 0, y: 0 });
+    });
+
+    it('handles client coords less than element origin', () => {
+      expect(clientToLocal(50, 20, rect)).toEqual({ x: -50, y: -30 });
+    });
+  });
+
+  describe('worldToGrid', () => {
+    it('snaps to nearest grid intersection (size 16)', () => {
+      expect(worldToGrid(17, 31, 16)).toEqual({ x: 16, y: 32 });
+    });
+
+    it('snaps exactly on grid boundary', () => {
+      expect(worldToGrid(32, 48, 16)).toEqual({ x: 32, y: 48 });
+    });
+
+    it('handles negative coordinates', () => {
+      expect(worldToGrid(-17, -31, 16)).toEqual({ x: -16, y: -32 });
+    });
+
+    it('rounds to nearest (not floor)', () => {
+      // 24 / 16 = 1.5 → rounds to 2 → 32
+      expect(worldToGrid(24, 24, 16)).toEqual({ x: 32, y: 32 });
+    });
+
+    it('works with non-power-of-2 grid sizes', () => {
+      expect(worldToGrid(7, 13, 10)).toEqual({ x: 10, y: 10 });
+    });
+
+    it('snaps zero to zero', () => {
+      expect(worldToGrid(0, 0, 16)).toEqual({ x: 0, y: 0 });
+    });
+  });
+
+  describe('gridToWorld', () => {
+    it('identity transform (grid IS world space)', () => {
+      expect(gridToWorld(160, 320)).toEqual({ x: 160, y: 320 });
+    });
+
+    it('preserves negative coordinates', () => {
+      expect(gridToWorld(-48, -96)).toEqual({ x: -48, y: -96 });
+    });
+  });
+
+  describe('Full conversion chain', () => {
+    it('client → local → world → grid produces deterministic result', () => {
+      const rect = { left: 80, top: 40 } as DOMRect;
+      const camera: Camera = { x: 100, y: 50, zoom: 2 };
+
+      const local = clientToLocal(380, 240, rect);
+      expect(local).toEqual({ x: 300, y: 200 });
+
+      const world = screenToWorld(local.x, local.y, camera);
+      expect(world).toEqual({ x: 100, y: 75 });
+
+      const grid = worldToGrid(world.x, world.y, 16);
+      expect(grid).toEqual({ x: 96, y: 80 });
+    });
+
+    it('chain is zoom-independent for grid-aligned positions', () => {
+      const rect = { left: 0, top: 0 } as DOMRect;
+
+      // Place a node at grid position (64, 64) and verify it round-trips
+      // through different zoom levels
+      for (const zoom of [0.5, 1, 2, 4]) {
+        const camera: Camera = { x: 0, y: 0, zoom };
+        const screenPos = worldToScreen(64, 64, camera);
+        const local = clientToLocal(screenPos.x, screenPos.y, rect);
+        const worldBack = screenToWorld(local.x, local.y, camera);
+        const gridBack = worldToGrid(worldBack.x, worldBack.y, 16);
+
+        expect(gridBack).toEqual({ x: 64, y: 64 });
+      }
     });
   });
 });
