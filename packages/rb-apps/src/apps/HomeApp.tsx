@@ -480,14 +480,54 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
   return (
     <div className={`${styles.container} rb-ui-lab-page rb-ui-lab-page-scroll`} data-testid="home-screen">
       <div className={`${styles.inner} rb-ui-lab-page-inner`}>
-        <header className={`${styles.brand} rb-ui-lab-surface`}>
-          <h1 className={styles.title}>
-            RedByte Studio
-          </h1>
-          <p className={styles.tagline}>
-            Studio Dashboard · Design → Simulate → Hardware → Verify → Package
-          </p>
-        </header>
+        {showExamplesFirst ? (
+          <div className={`${styles.startHere} rb-ui-lab-surface`} data-testid="home-start-here">
+            <h1 className={styles.startHereTitle}>
+              Welcome to RedByte
+            </h1>
+            <p className={styles.startHereSubtitle}>
+              Build, simulate, and verify digital circuits
+            </p>
+            <div className={styles.startHereActions}>
+              <button
+                type="button"
+                className={styles.startHereAction}
+                onClick={() => onOpenApp?.('logic-playground')}
+                data-testid="home-start-logic-playground"
+              >
+                <Icon name="circuit-board" />
+                Open Logic Playground
+              </button>
+              <button
+                type="button"
+                className={styles.startHereAction}
+                onClick={() => onOpenApp?.('lab-workspace')}
+                data-testid="home-start-lab-workspace"
+              >
+                <Icon name="folder-plus" />
+                Create a Submission
+              </button>
+              <button
+                type="button"
+                className={styles.startHereAction}
+                onClick={() => onOpenApp?.('submission-inspector')}
+                data-testid="home-start-submission-inspector"
+              >
+                <Icon name="check-circle" />
+                Inspect a Submission
+              </button>
+            </div>
+          </div>
+        ) : (
+          <header className={`${styles.brand} rb-ui-lab-surface`}>
+            <h1 className={styles.title}>
+              RedByte Studio
+            </h1>
+            <p className={styles.tagline}>
+              Studio Dashboard · Design → Simulate → Hardware → Verify → Package
+            </p>
+          </header>
+        )}
 
         <div
           className={`${styles.startersSection} ${isInstructorPackDropActive ? styles.starterDropActive : ''} rb-ui-lab-panel-frame`}
