@@ -1,4 +1,5 @@
 import { stableStringify } from '../export/stableStringify';
+import { compareCodepoint } from '../export/codepointSort';
 import { buildDoctorReportV2, type DoctorReportV2 } from './doctorReportV2';
 import { mapHardwareErrorCode } from './hardwareErrorTaxonomy';
 import { lintBasys3ProjectPorts } from './boards/basys3/portLint';
@@ -387,7 +388,7 @@ function normalizeSources(input: ToolchainProjectInput | undefined): HdlSource[]
       language: source.language === 'vhdl' ? 'vhdl' : 'verilog',
       text: source.text ?? '',
     }))
-    .sort((a, b) => a.path.localeCompare(b.path));
+    .sort((a, b) => compareCodepoint(a.path, b.path));
 }
 
 function normalizeTop(inputTop: string | undefined, fpgaTop: string | undefined): string | null {
@@ -491,7 +492,7 @@ function normalizeSynthRequest(input: SynthRequest): SynthRequest {
         }))
         .filter((source) => source.path.length > 0)
     : [];
-  sources.sort((left, right) => left.path.localeCompare(right.path));
+  sources.sort((left, right) => compareCodepoint(left.path, right.path));
   return {
     board: input.board === 'basys3' ? 'basys3' : 'basys3',
     top,
@@ -628,7 +629,7 @@ function isToolchainPreflightStatus(value: unknown): value is ToolchainPreflight
 }
 
 function sortToolsByName(tools: ToolProbeTool[]): ToolProbeTool[] {
-  return [...tools].sort((a, b) => a.name.localeCompare(b.name));
+  return [...tools].sort((a, b) => compareCodepoint(a.name, b.name));
 }
 
 function normalizeToolAlternate(
@@ -697,7 +698,7 @@ function normalizeProbeTool(tool: ToolProbeTool): ToolProbeTool {
   const alternates = Array.isArray(tool.alternates)
     ? tool.alternates
         .map((alternate) => normalizeToolAlternate(alternate))
-        .sort((left, right) => stableStringify(left).localeCompare(stableStringify(right)))
+        .sort((left, right) => compareCodepoint(stableStringify(left), stableStringify(right)))
     : undefined;
 
   return {
@@ -722,44 +723,44 @@ function normalizeProbeTools(tools: ToolProbeTool[]): ToolProbeTool[] {
 
 function sortLogsByRunTs(entries: BuildLogEntry[]): BuildLogEntry[] {
   return [...entries].sort((a, b) => {
-    const runCmp = a.run_id.localeCompare(b.run_id);
+    const runCmp = compareCodepoint(a.run_id, b.run_id);
     if (runCmp !== 0) return runCmp;
     if (a.ts !== b.ts) return a.ts - b.ts;
-    return a.msg.localeCompare(b.msg);
+    return compareCodepoint(a.msg, b.msg);
   });
 }
 
 function sortPreflightLogs(entries: BuildLogEntry[]): BuildLogEntry[] {
   return [...entries].sort((a, b) => {
-    const stepCmp = a.step.localeCompare(b.step);
+    const stepCmp = compareCodepoint(a.step, b.step);
     if (stepCmp !== 0) return stepCmp;
-    const msgCmp = a.msg.localeCompare(b.msg);
+    const msgCmp = compareCodepoint(a.msg, b.msg);
     if (msgCmp !== 0) return msgCmp;
-    if (a.level !== b.level) return a.level.localeCompare(b.level);
-    if (a.run_id !== b.run_id) return a.run_id.localeCompare(b.run_id);
+    if (a.level !== b.level) return compareCodepoint(a.level, b.level);
+    if (a.run_id !== b.run_id) return compareCodepoint(a.run_id, b.run_id);
     return a.ts - b.ts;
   });
 }
 
 function sortPlanCommands(commands: ImplementPlanCommand[]): ImplementPlanCommand[] {
   return [...commands].sort((left, right) => {
-    if (left.step !== right.step) return left.step.localeCompare(right.step);
+    if (left.step !== right.step) return compareCodepoint(left.step, right.step);
     const leftCmd = left.argv.join('\u0000');
     const rightCmd = right.argv.join('\u0000');
-    return leftCmd.localeCompare(rightCmd);
+    return compareCodepoint(leftCmd, rightCmd);
   });
 }
 
 function sortPlanOutputs(outputs: ImplementPlanOutput[]): ImplementPlanOutput[] {
   return [...outputs].sort((left, right) => {
-    const nameCmp = left.name.localeCompare(right.name);
+    const nameCmp = compareCodepoint(left.name, right.name);
     if (nameCmp !== 0) return nameCmp;
-    return left.pathHint.localeCompare(right.pathHint);
+    return compareCodepoint(left.pathHint, right.pathHint);
   });
 }
 
 function sortPlanRequiredTools(tools: ImplementPlanRequiredTool[]): ImplementPlanRequiredTool[] {
-  return [...tools].sort((left, right) => left.name.localeCompare(right.name));
+  return [...tools].sort((left, right) => compareCodepoint(left.name, right.name));
 }
 
 function normalizePlanLogs(entries: BuildLogEntry[], run_id: string, step: ToolchainStep): BuildLogEntry[] {
@@ -772,15 +773,15 @@ function normalizePlanLogs(entries: BuildLogEntry[], run_id: string, step: Toolc
     }))
     .sort((left, right) => {
       if (left.ts !== right.ts) return left.ts - right.ts;
-      const msgCmp = left.msg.localeCompare(right.msg);
+      const msgCmp = compareCodepoint(left.msg, right.msg);
       if (msgCmp !== 0) return msgCmp;
-      return left.level.localeCompare(right.level);
+      return compareCodepoint(left.level, right.level);
     })
     .map((entry, index) => ({ ...entry, ts: index }));
 }
 
 function summarizePorts(portNames: string[]): string {
-  const sorted = [...portNames].sort((a, b) => a.localeCompare(b));
+  const sorted = [...portNames].sort((a, b) => compareCodepoint(a, b));
   if (sorted.length <= 6) return sorted.join(', ');
   return `${sorted.slice(0, 6).join(', ')}, +${sorted.length - 6} more`;
 }
@@ -1277,8 +1278,8 @@ function resolveImplementPlanBuildpack(
     })
     .filter((candidate) => candidate.name.length > 0 && candidate.version.length > 0)
     .sort((left, right) => {
-      if (left.name !== right.name) return left.name.localeCompare(right.name);
-      return left.version.localeCompare(right.version);
+      if (left.name !== right.name) return compareCodepoint(left.name, right.name);
+      return compareCodepoint(left.version, right.version);
     });
   if (candidates.length === 0) return undefined;
   return candidates[0];
@@ -1295,7 +1296,7 @@ function findUnsupportedImplementationMarkers(snapshot: Required<ToolchainProjec
     { token: 'SERDES', regex: /\b(I|O)SERDESE2\b/i },
     { token: 'ILA/VIO', regex: /\b(ILA|VIO)\b/i },
   ];
-  return markers.filter((marker) => marker.regex.test(joined)).map((marker) => marker.token).sort((a, b) => a.localeCompare(b));
+  return markers.filter((marker) => marker.regex.test(joined)).map((marker) => marker.token).sort((a, b) => compareCodepoint(a, b));
 }
 
 export function createToolchainImplementPlan(input: {
@@ -1311,7 +1312,7 @@ export function createToolchainImplementPlan(input: {
   const top = normalizeTop(normalizedSnapshot.hdl.top, normalizedSnapshot.fpga.top) ?? basys3TopModuleContract.topModule;
   const sourceArgs = normalizedSnapshot.hdl.sources
     .map((source) => source.path)
-    .sort((left, right) => left.localeCompare(right))
+    .sort((left, right) => compareCodepoint(left, right))
     .map((entry) => (entry.includes(' ') ? `"${entry}"` : entry))
     .join(' ');
   const constraintsPath = normalizedSnapshot.fpga.constraints?.text?.trim() ? 'constraints.xdc' : 'constraints.xdc';
@@ -1327,7 +1328,7 @@ export function createToolchainImplementPlan(input: {
         if (index !== 0) return resolvedArg;
         return resolveImplementPlanExecutableFromProbe(resolvedArg, input.probe);
       }),
-      envKeysUsed: [...command.envKeysUsed].sort((a, b) => a.localeCompare(b)),
+      envKeysUsed: [...command.envKeysUsed].sort((a, b) => compareCodepoint(a, b)),
     }))
   );
   const outputs = sortPlanOutputs(IMPLEMENT_PLAN_OUTPUTS[backend]);
@@ -1367,7 +1368,7 @@ export function createToolchainImplementPlan(input: {
   }
 
   const warnings = warningMessages
-    .sort((a, b) => a.localeCompare(b))
+    .sort((a, b) => compareCodepoint(a, b))
     .map((msg, index) => ({
       run_id,
       ts: index,
@@ -1509,7 +1510,7 @@ function normalizeImplementPlanResult(result: ImplementPlanResult): ImplementPla
       (result.commands ?? []).map((command) => ({
         step: command.step,
         argv: [...(command.argv ?? [])].map((value) => String(value)),
-        envKeysUsed: [...(command.envKeysUsed ?? [])].map((value) => String(value)).sort((a, b) => a.localeCompare(b)),
+        envKeysUsed: [...(command.envKeysUsed ?? [])].map((value) => String(value)).sort((a, b) => compareCodepoint(a, b)),
       }))
     ),
     outputs: sortPlanOutputs(
@@ -1672,7 +1673,7 @@ function normalizeToolchainBuildPath(path: ToolchainBuildPath): ToolchainBuildPa
       (path.commands ?? []).map((command) => ({
         step: command.step,
         argv: [...(command.argv ?? [])].map((value) => String(value)),
-        envKeysUsed: [...(command.envKeysUsed ?? [])].map((value) => String(value)).sort((a, b) => a.localeCompare(b)),
+        envKeysUsed: [...(command.envKeysUsed ?? [])].map((value) => String(value)).sort((a, b) => compareCodepoint(a, b)),
       }))
     ),
     outputs: sortPlanOutputs(
@@ -1807,10 +1808,10 @@ function normalizeBoardDetectResult(result: BoardDetectResult): BoardDetectResul
     .sort((a, b) => {
       const leftRaw = a.details?.raw ?? '';
       const rightRaw = b.details?.raw ?? '';
-      if (leftRaw !== rightRaw) return leftRaw.localeCompare(rightRaw);
+      if (leftRaw !== rightRaw) return compareCodepoint(leftRaw, rightRaw);
       const leftCommand = a.details?.command ?? '';
       const rightCommand = b.details?.command ?? '';
-      return leftCommand.localeCompare(rightCommand);
+      return compareCodepoint(leftCommand, rightCommand);
     });
 
   return {
@@ -2128,16 +2129,16 @@ function normalizeBuildpackStatusResult(input: BuildpackStatusResult): Buildpack
                   version: typeof tool?.version === 'string' ? tool.version : null,
                 }))
                 .sort((left, right) => {
-                  if (left.name !== right.name) return left.name.localeCompare(right.name);
-                  return left.relPath.localeCompare(right.relPath);
+                  if (left.name !== right.name) return compareCodepoint(left.name, right.name);
+                  return compareCodepoint(left.relPath, right.relPath);
                 })
             : [],
           ...(typeof pack.error === 'string' ? { error: pack.error } : {}),
           ...(typeof pack.details === 'string' ? { details: pack.details } : {}),
         }))
         .sort((left, right) => {
-          if (left.name !== right.name) return left.name.localeCompare(right.name);
-          return left.version.localeCompare(right.version);
+          if (left.name !== right.name) return compareCodepoint(left.name, right.name);
+          return compareCodepoint(left.version, right.version);
         })
     : [];
   const toolsRaw = input.tools && typeof input.tools === 'object' ? input.tools : {};

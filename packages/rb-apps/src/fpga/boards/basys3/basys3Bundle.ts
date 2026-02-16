@@ -3,6 +3,7 @@ import { toCircuitV1 } from '@redbyte/rb-logic-core';
 import { circuitToVerilog } from '@redbyte/rb-fpga-toolchain';
 import type { IoMapping, IoMappingEntry } from '@redbyte/rb-utils';
 import { lintBasys3ProjectPorts } from './portLint';
+import { compareCodepoint } from '../../../export/codepointSort';
 
 const BASYS3_SWITCH_PINS = [
   'V17', 'V16', 'W16', 'W17', 'W15', 'V15', 'W14', 'W13',
@@ -33,7 +34,7 @@ function mappingKey(entry: IoMappingEntry): string {
 }
 
 function stableSortMapping(entries: IoMappingEntry[]): IoMappingEntry[] {
-  return [...entries].sort((a, b) => mappingKey(a).localeCompare(mappingKey(b)));
+  return [...entries].sort((a, b) => compareCodepoint(mappingKey(a), mappingKey(b)));
 }
 
 function parsePackagePin(line: string): string | null {
@@ -194,7 +195,7 @@ export function exportBasys3Bundle(circuit: Circuit, ioMapping: IoMapping): Basy
   warnings.push(...xdcPinWarnings);
 
   const readme = buildReadme(ioMapping, warnings);
-  const uniqueWarnings = Array.from(new Set(warnings)).sort((a, b) => a.localeCompare(b));
+  const uniqueWarnings = Array.from(new Set(warnings)).sort((a, b) => compareCodepoint(a, b));
 
   const valid =
     lint.verilogModuleFound &&

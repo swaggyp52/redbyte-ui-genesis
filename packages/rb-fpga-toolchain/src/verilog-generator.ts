@@ -33,14 +33,20 @@ interface WireInfo {
   loads: string[];
 }
 
+function cmpCodepoint(a: string, b: string): -1 | 0 | 1 {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+}
+
 function compareConnections(a: CircuitConnection, b: CircuitConnection): number {
   const left = `${a.fromNodeId}.${a.fromPin}->${a.toNodeId}.${a.toPin}`;
   const right = `${b.fromNodeId}.${b.fromPin}->${b.toNodeId}.${b.toPin}`;
-  return left.localeCompare(right);
+  return cmpCodepoint(left, right);
 }
 
 function uniqueSorted(values: string[]): string[] {
-  return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
+  return Array.from(new Set(values)).sort(cmpCodepoint);
 }
 
 /**
@@ -54,7 +60,7 @@ export function circuitToVerilog(
   const moduleName = options.moduleName || 'redbyte_circuit';
   const warnings: string[] = [];
   const unsupportedNodes: string[] = [];
-  const sortedNodes = [...circuit.nodes].sort((a, b) => a.id.localeCompare(b.id));
+  const sortedNodes = [...circuit.nodes].sort((a, b) => cmpCodepoint(a.id, b.id));
   const sortedConnections = [...circuit.connections].sort(compareConnections);
 
   // Filter out unsupported node types
@@ -106,12 +112,12 @@ export function circuitToVerilog(
     const sortedInputMapping = [...ioMapping.inputs].sort((a, b) => {
       const left = `${a.nodeId}.${a.port}.${a.id}`;
       const right = `${b.nodeId}.${b.port}.${b.id}`;
-      return left.localeCompare(right);
+      return cmpCodepoint(left, right);
     });
     const sortedOutputMapping = [...ioMapping.outputs].sort((a, b) => {
       const left = `${a.nodeId}.${a.port}.${a.id}`;
       const right = `${b.nodeId}.${b.port}.${b.id}`;
-      return left.localeCompare(right);
+      return cmpCodepoint(left, right);
     });
 
     for (const entry of sortedInputMapping) {
@@ -124,7 +130,7 @@ export function circuitToVerilog(
     }
   } else {
     // Auto-detect: inputs have no driver, outputs have no loads
-    const sortedWireNames = Array.from(wires.keys()).sort((a, b) => a.localeCompare(b));
+    const sortedWireNames = Array.from(wires.keys()).sort((a, b) => cmpCodepoint(a, b));
     for (const wireName of sortedWireNames) {
       const wire = wires.get(wireName);
       if (!wire) continue;
@@ -156,7 +162,7 @@ export function circuitToVerilog(
   const uniqueOutputs = uniqueSorted(outputs);
   const internalWires = Array.from(wires.keys())
     .filter((name) => !uniqueInputs.includes(name) && !uniqueOutputs.includes(name))
-    .sort((a, b) => a.localeCompare(b));
+    .sort((a, b) => cmpCodepoint(a, b));
   if (internalWires.length > 0) {
     verilog += `  // Internal wires\n`;
     for (const wireName of internalWires) {
@@ -212,7 +218,7 @@ function findDriverForPin(
 ): string | null {
   const targetLoad = `${nodeId}_${pinName}`;
 
-  const sortedWireNames = Array.from(wires.keys()).sort((a, b) => a.localeCompare(b));
+  const sortedWireNames = Array.from(wires.keys()).sort((a, b) => cmpCodepoint(a, b));
   for (const wireName of sortedWireNames) {
     const wire = wires.get(wireName);
     if (!wire) continue;

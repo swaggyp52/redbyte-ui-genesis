@@ -1,3 +1,5 @@
+import { compareCodepoint } from '../../../export/codepointSort';
+
 export type Basys3BoardId = 'basys3';
 
 export type Basys3OptionalResetPolarity = 'active_high';
@@ -52,7 +54,7 @@ function expandBundle(base: string, width: number): string[] {
 export const basys3CanonicalPortNames = [
   ...basys3TopModuleContract.scalarPorts.map((port) => port.name),
   ...basys3TopModuleContract.bundles.flatMap((bundle) => expandBundle(bundle.base, bundle.width)),
-].sort((a, b) => a.localeCompare(b));
+].sort((a, b) => compareCodepoint(a, b));
 
 const basys3CanonicalPortNameSet = new Set(basys3CanonicalPortNames);
 

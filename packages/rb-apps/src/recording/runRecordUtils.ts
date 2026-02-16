@@ -13,6 +13,7 @@ import type {
   RunTraceSample,
 } from './runRecord';
 import { digestValue } from '../utils/digest';
+import { compareCodepoint } from '../export/codepointSort';
 
 export type CompatibilityStatus = 'exact' | 'close' | 'mismatch';
 
@@ -77,7 +78,7 @@ export const normalizeCircuit = (circuit: Circuit) => {
       config: node.config ?? {},
       state: node.state ?? {},
     }))
-    .sort((a, b) => a.id.localeCompare(b.id));
+    .sort((a, b) => compareCodepoint(a.id, b.id));
 
   const connections = [...circuit.connections]
     .map((connection) => ({
@@ -87,7 +88,7 @@ export const normalizeCircuit = (circuit: Circuit) => {
     .sort((a, b) => {
       const left = `${a.from.nodeId}.${a.from.portName}->${a.to.nodeId}.${a.to.portName}`;
       const right = `${b.from.nodeId}.${b.from.portName}->${b.to.nodeId}.${b.to.portName}`;
-      return left.localeCompare(right);
+      return compareCodepoint(left, right);
     });
 
   return { nodes, connections };

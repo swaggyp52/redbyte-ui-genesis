@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import { createHash } from 'node:crypto';
+import { compareCodepoint } from './codepointSort';
 
 export interface DeterministicZipEntry {
   name: string;
@@ -21,7 +22,7 @@ export async function buildDeterministicZip(entries: DeterministicZipEntry[]): P
   const fixedDate = new Date(FIXED_ZIP_DATE_ISO);
 
   const sortedEntries = [...entries].sort((left, right) =>
-    normalizeEntryPath(left.name).localeCompare(normalizeEntryPath(right.name))
+    compareCodepoint(normalizeEntryPath(left.name), normalizeEntryPath(right.name))
   );
 
   for (const entry of sortedEntries) {

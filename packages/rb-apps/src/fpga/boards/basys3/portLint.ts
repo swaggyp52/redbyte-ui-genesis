@@ -1,4 +1,5 @@
 import type { ToolchainProjectInput } from '../../toolchainBackend';
+import { compareCodepoint } from '../../../export/codepointSort';
 import { basys3TopModuleContract } from './basys3Contract';
 
 export interface Basys3PortLintResult {
@@ -12,7 +13,7 @@ export interface Basys3PortLintResult {
 }
 
 function uniqueSorted(values: Iterable<string>): string[] {
-  return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
+  return Array.from(new Set(values)).sort((a, b) => compareCodepoint(a, b));
 }
 
 function expandPortRange(name: string, range: string | null): string[] {
@@ -43,7 +44,7 @@ function extractVerilogTopPorts(project: ToolchainProjectInput, topModule: strin
   const verilogSources = (project.sources ?? [])
     .filter((source) => source.language === 'verilog')
     .slice()
-    .sort((a, b) => a.path.localeCompare(b.path));
+    .sort((a, b) => compareCodepoint(a.path, b.path));
 
   const modulePattern = new RegExp(`module\\s+${escapeRegExp(topModule)}\\s*\\(([^;]*?)\\)\\s*;`, 'ms');
   const ports: string[] = [];

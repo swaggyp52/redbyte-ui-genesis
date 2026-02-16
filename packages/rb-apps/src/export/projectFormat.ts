@@ -7,6 +7,7 @@ import type { RunRecord } from '../recording/runRecord';
 import type { Probe } from '../stores/probeStore';
 import type { ToolchainProjectInput } from '../fpga/toolchainBackend';
 import { stableStringify } from './stableStringify';
+import { compareCodepoint } from './codepointSort';
 
 export interface RBFpgaConstraints {
   type: 'xdc';
@@ -70,7 +71,7 @@ const normalizeProjectCircuit = (circuit: Circuit): Circuit => {
       config: node.config ?? {},
       state: node.state ?? {},
     }))
-    .sort((a, b) => a.id.localeCompare(b.id));
+    .sort((a, b) => compareCodepoint(a.id, b.id));
 
   const connections = [...circuit.connections]
     .map((connection) => ({
@@ -80,7 +81,7 @@ const normalizeProjectCircuit = (circuit: Circuit): Circuit => {
     .sort((a, b) => {
       const left = `${a.from.nodeId}.${a.from.portName}->${a.to.nodeId}.${a.to.portName}`;
       const right = `${b.from.nodeId}.${b.from.portName}->${b.to.nodeId}.${b.to.portName}`;
-      return left.localeCompare(right);
+      return compareCodepoint(left, right);
     });
 
   return { nodes, connections };
@@ -93,7 +94,7 @@ const normalizeProbes = (probes?: Probe[]): Probe[] | undefined => {
     .sort((a, b) => {
       const left = `${a.nodeId}.${a.portName}.${a.id}`;
       const right = `${b.nodeId}.${b.portName}.${b.id}`;
-      return left.localeCompare(right);
+      return compareCodepoint(left, right);
     });
 };
 
@@ -104,7 +105,7 @@ const normalizeHdl = (hdl?: ToolchainProjectInput): ToolchainProjectInput | unde
     .sort((a, b) => {
       const left = `${a.path}.${a.language}`;
       const right = `${b.path}.${b.language}`;
-      return left.localeCompare(right);
+      return compareCodepoint(left, right);
     });
 
   return {
@@ -114,7 +115,7 @@ const normalizeHdl = (hdl?: ToolchainProjectInput): ToolchainProjectInput | unde
 };
 
 export const encodeRBProject = (project: RBProject) => {
-  const sortedTags = project.meta?.tags ? [...project.meta.tags].sort((a, b) => a.localeCompare(b)) : undefined;
+  const sortedTags = project.meta?.tags ? [...project.meta.tags].sort((a, b) => compareCodepoint(a, b)) : undefined;
   const normalized = {
     ...project,
     circuit: normalizeProjectCircuit(project.circuit),

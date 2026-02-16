@@ -1,5 +1,35 @@
 # AI State
 
+## Change Log 2026-02-16 (Phase 3: Determinism Hardening - Codepoint Ordering)
+
+**Status**: ✅ COMPLETE - determinism-critical sort paths migrated from locale-sensitive ordering to codepoint ordering, with full gate proof green
+
+- **Codepoint comparator introduced**:
+  - Added: `packages/rb-apps/src/export/codepointSort.ts`
+  - Added tests: `packages/rb-apps/src/export/__tests__/codepointSort.test.ts`
+
+- **Determinism-critical `localeCompare` replacements completed (TS sources)**:
+  - `packages/rb-apps/src/export/deterministicZip.ts`
+  - `packages/rb-apps/src/export/projectFormat.ts`
+  - `packages/rb-apps/src/export/submissionBundle.ts`
+  - `packages/rb-apps/src/export/classroomDiagnosticsBundle.ts`
+  - `packages/rb-apps/src/export/verilogExport.ts`
+  - `packages/rb-apps/src/export/netlistExport.ts`
+  - `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts`
+  - `packages/rb-apps/src/fpga/boards/basys3/basys3Contract.ts`
+  - `packages/rb-apps/src/fpga/boards/basys3/portLint.ts`
+  - `packages/rb-apps/src/fpga/toolchainBackend.ts`
+  - `packages/rb-apps/src/recording/runRecordUtils.ts`
+  - `packages/rb-apps/src/starterKits/instructorPack.ts`
+  - `packages/rb-logic-core/src/determinism/stateHash.ts`
+  - `packages/rb-lab-engine/src/services/exportService.ts`
+  - `packages/rb-fpga-signing/src/capsule.ts`
+  - `packages/rb-fpga-toolchain/src/verilog-generator.ts`
+
+- **Verification executed**:
+  - `pnpm -s verify:gates:classroom` → **PASS**
+  - `pnpm -s verify:gates` → **PASS** (`__EXIT_CODE__=0`)
+
 ## Change Log 2026-02-16 (Lock + Rehearse + Ship: Lab 4 Classroom Hardening)
 
 **Status**: ✅ COMPLETE - Fast classroom smoke GO/NO-GO, no-solution compliance gate, Lab 4 friction-killer UX guards, optional hardware readiness check

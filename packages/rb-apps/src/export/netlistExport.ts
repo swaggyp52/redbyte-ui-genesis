@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import type { Circuit, Connection, Node } from '@redbyte/rb-logic-core';
+import { compareCodepoint } from './codepointSort';
 import { digestCircuit } from '../recording/runRecordUtils';
 
 export type PortDirection = 'in' | 'out';
@@ -120,11 +121,11 @@ const inferPortsFromConnections = (node: Node, connections: Connection[]): Netli
   });
   return Array.from(portMap.entries())
     .map(([name, direction]) => ({ name, direction }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => compareCodepoint(a.name, b.name));
 };
 
 export const netlistFromCircuit = (circuit: Circuit): Netlist => {
-  const nodes = [...circuit.nodes].sort((a, b) => a.id.localeCompare(b.id)).map((node) => {
+  const nodes = [...circuit.nodes].sort((a, b) => compareCodepoint(a.id, b.id)).map((node) => {
     const builtinPorts = BUILTIN_PORTS[node.type];
     const inferredPorts = inferPortsFromConnections(node, circuit.connections);
     const ports = builtinPorts
@@ -149,7 +150,7 @@ export const netlistFromCircuit = (circuit: Circuit): Netlist => {
         to: normalized.to,
       };
     })
-    .sort((a, b) => a.id.localeCompare(b.id));
+    .sort((a, b) => compareCodepoint(a.id, b.id));
 
   return {
     kind: 'rb-netlist',

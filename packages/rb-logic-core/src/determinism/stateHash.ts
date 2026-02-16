@@ -4,6 +4,13 @@
 
 import type { Circuit, Node, Connection } from '../types';
 
+/** Codepoint comparator — locale-independent, deterministic. */
+function cmpCodepoint(a: string, b: string): -1 | 0 | 1 {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+}
+
 /**
  * Browser-compatible SHA-256 hash using Web Crypto API
  */
@@ -65,7 +72,7 @@ function normalizeRecord(obj: Record<string, any> | undefined): Array<[string, a
  */
 export function normalizeCircuitState(circuit: Circuit): NormalizedCircuitState {
   // Sort nodes by ID
-  const sortedNodes = [...circuit.nodes].sort((a, b) => a.id.localeCompare(b.id));
+  const sortedNodes = [...circuit.nodes].sort((a, b) => cmpCodepoint(a.id, b.id));
 
   const nodes: NormalizedNode[] = sortedNodes.map((node) => ({
     id: node.id,
@@ -80,7 +87,7 @@ export function normalizeCircuitState(circuit: Circuit): NormalizedCircuitState 
   const sortedConnections = [...circuit.connections].sort((a, b) => {
     const aKey = `${a.from.nodeId}:${a.from.portName}:${a.to.nodeId}:${a.to.portName}`;
     const bKey = `${b.from.nodeId}:${b.from.portName}:${b.to.nodeId}:${b.to.portName}`;
-    return aKey.localeCompare(bKey);
+    return cmpCodepoint(aKey, bKey);
   });
 
   const connections: NormalizedConnection[] = sortedConnections.map((conn) => ({

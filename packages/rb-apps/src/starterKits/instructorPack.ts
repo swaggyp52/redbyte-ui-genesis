@@ -2,6 +2,7 @@ import JSZip from 'jszip';
 import { serialize } from '@redbyte/rb-logic-core';
 import { stableHash } from '../utils/stableSerialize';
 import { stableStringify } from '../export/stableStringify';
+import { compareCodepoint } from '../export/codepointSort';
 import { decodeRBProject, encodeRBProject, type RBProject } from '../export/projectFormat';
 import type { LabStarterKit, LabStarterInstructions } from './labStarterKits';
 
@@ -140,7 +141,7 @@ function buildContentHashSeed(entries: InstructorPackFileManifestEntry[]): Array
       sha256: entry.sha256,
       sizeBytes: entry.sizeBytes,
     }))
-    .sort((left, right) => left.path.localeCompare(right.path));
+    .sort((left, right) => compareCodepoint(left.path, right.path));
 }
 
 async function computeContentHash(entries: InstructorPackFileManifestEntry[]): Promise<string> {
@@ -354,7 +355,7 @@ export async function createInstructorPack(input: InstructorPackExportInput): Pr
       sizeBytes: rubricBytes.byteLength,
     });
   }
-  includedFiles.sort((left, right) => left.path.localeCompare(right.path));
+  includedFiles.sort((left, right) => compareCodepoint(left.path, right.path));
   const contentHash = await computeContentHash(includedFiles);
   const packId = await stableHash({
     schema: INSTRUCTOR_PACK_SCHEMA_VERSION,

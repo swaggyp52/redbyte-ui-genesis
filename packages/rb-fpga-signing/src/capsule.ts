@@ -1,5 +1,12 @@
 import { bytesToHex } from "./hex.js";
 
+/** Codepoint comparator — locale-independent, deterministic. */
+function cmpCodepoint(a: string, b: string): -1 | 0 | 1 {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+}
+
 export interface CapsuleFileInput {
   path: string;
   bytes: Uint8Array;
@@ -51,7 +58,7 @@ export async function buildCapsule(inputs: CapsuleFileInput[]): Promise<CapsuleB
     files.push({ path: entry.path, hash });
   }
 
-  files.sort((a, b) => a.path.localeCompare(b.path));
+  files.sort((a, b) => cmpCodepoint(a.path, b.path));
 
   const capsule: CapsuleObject = {
     algo: "sha256",

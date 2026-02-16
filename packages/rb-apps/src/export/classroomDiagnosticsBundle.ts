@@ -8,6 +8,7 @@ import type {
   ToolchainPreflightStatus,
 } from '../fpga/toolchainTypes';
 import { stableStringify } from './stableStringify';
+import { compareCodepoint } from './codepointSort';
 import { hashBytes, stableHash } from '../utils/stableSerialize';
 import type { RedByteUiMode } from '../utils/uiMode';
 
@@ -71,16 +72,16 @@ interface BundleTextFile {
 }
 
 function sortBundleFiles(files: BundleTextFile[]): BundleTextFile[] {
-  return [...files].sort((left, right) => left.path.localeCompare(right.path));
+  return [...files].sort((left, right) => compareCodepoint(left.path, right.path));
 }
 
 function sortLogs(logs: BuildLogEntry[]): BuildLogEntry[] {
   return [...logs].sort((left, right) => {
-    if (left.run_id !== right.run_id) return left.run_id.localeCompare(right.run_id);
+    if (left.run_id !== right.run_id) return compareCodepoint(left.run_id, right.run_id);
     if (left.ts !== right.ts) return left.ts - right.ts;
-    if (left.step !== right.step) return left.step.localeCompare(right.step);
-    if (left.level !== right.level) return left.level.localeCompare(right.level);
-    return left.msg.localeCompare(right.msg);
+    if (left.step !== right.step) return compareCodepoint(left.step, right.step);
+    if (left.level !== right.level) return compareCodepoint(left.level, right.level);
+    return compareCodepoint(left.msg, right.msg);
   });
 }
 

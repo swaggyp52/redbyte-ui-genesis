@@ -7,6 +7,7 @@ import { stableHash } from '../utils/stableSerialize';
 import type { BuildLogEntry, ToolchainDoctorReport } from '../fpga/toolchainTypes';
 import type { RunRecord, VerificationStatus } from '../recording/runRecord';
 import type { SubmissionGateResult } from '../labs/submissionGates';
+import { compareCodepoint } from './codepointSort';
 
 const ZIP_ENTRY_DATE = new Date('2000-01-01T00:00:00.000Z');
 const SUBMISSION_BUNDLE_SCHEMA_VERSION = 'rb_submission_bundle_v1' as const;
@@ -125,16 +126,16 @@ async function sha256Bytes(bytes: Uint8Array): Promise<string> {
 }
 
 function sortBundleFiles(files: BundleFile[]): BundleFile[] {
-  return [...files].sort((left, right) => left.path.localeCompare(right.path));
+  return [...files].sort((left, right) => compareCodepoint(left.path, right.path));
 }
 
 function sortBuildLogs(logs: BuildLogEntry[]): BuildLogEntry[] {
   return [...logs].sort((left, right) => {
-    if (left.run_id !== right.run_id) return left.run_id.localeCompare(right.run_id);
+    if (left.run_id !== right.run_id) return compareCodepoint(left.run_id, right.run_id);
     if (left.ts !== right.ts) return left.ts - right.ts;
-    if (left.step !== right.step) return left.step.localeCompare(right.step);
-    if (left.level !== right.level) return left.level.localeCompare(right.level);
-    return left.msg.localeCompare(right.msg);
+    if (left.step !== right.step) return compareCodepoint(left.step, right.step);
+    if (left.level !== right.level) return compareCodepoint(left.level, right.level);
+    return compareCodepoint(left.msg, right.msg);
   });
 }
 

@@ -2,6 +2,13 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
+/** Codepoint comparator — locale-independent, deterministic. */
+function cmpCodepoint(a: string, b: string): -1 | 0 | 1 {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+}
+
 /**
  * Export Service - Evidence Capsule Generation
  *
@@ -212,7 +219,7 @@ export async function exportEvidenceCapsule(project: LabProjectV1): Promise<Blob
   // -------------------------------------------------------------------------
 
   const fileEntries: EvidenceFileEntry[] = [];
-  const sortedFiles = Array.from(files.entries()).sort(([a], [b]) => a.localeCompare(b));
+  const sortedFiles = Array.from(files.entries()).sort(([a], [b]) => cmpCodepoint(a, b));
   for (const [path, content] of sortedFiles) {
     fileEntries.push({
       path,

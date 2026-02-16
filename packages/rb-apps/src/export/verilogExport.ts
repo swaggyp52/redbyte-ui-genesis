@@ -3,6 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import type { Netlist, NetlistNode } from './netlistExport';
+import { compareCodepoint } from './codepointSort';
 
 const sanitize = (value: string) => value.replace(/[^a-zA-Z0-9_]/g, '_');
 
@@ -70,8 +71,8 @@ export interface SynthesizableVerilog {
  * Legacy function for basic structural export (non-synthesizable)
  */
 export const verilogFromNetlist = (netlist: Netlist) => {
-  const sortedNodes = [...netlist.nodes].sort((a, b) => a.id.localeCompare(b.id));
-  const sortedNets = [...netlist.nets].sort((a, b) => a.id.localeCompare(b.id));
+  const sortedNodes = [...netlist.nodes].sort((a, b) => compareCodepoint(a.id, b.id));
+  const sortedNets = [...netlist.nets].sort((a, b) => compareCodepoint(a.id, b.id));
   const uniqueTypes = Array.from(new Set(sortedNodes.map((node) => node.type))).sort();
 
   const lines: string[] = [];
@@ -129,8 +130,8 @@ export const synthesizableVerilogFromNetlist = (
 ): SynthesizableVerilog => {
   const { board = 'basys3', includeClock = false, clockFrequencyHz = 100_000_000 } = options;
 
-  const sortedNodes = [...netlist.nodes].sort((a, b) => a.id.localeCompare(b.id));
-  const sortedNets = [...netlist.nets].sort((a, b) => a.id.localeCompare(b.id));
+  const sortedNodes = [...netlist.nodes].sort((a, b) => compareCodepoint(a.id, b.id));
+  const sortedNets = [...netlist.nets].sort((a, b) => compareCodepoint(a.id, b.id));
 
   // Identify input and output nodes
   const inputNodes = sortedNodes.filter((n) => INPUT_NODE_TYPES.includes(n.type));
