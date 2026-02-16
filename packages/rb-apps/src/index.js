@@ -58,6 +58,10 @@ export async function registerAllApps(options) {
             const { LabWorkspaceApp } = await import('./apps/LabWorkspaceApp');
             registerApp(LabWorkspaceApp);
         });
+        await safeRegister('labs', async () => {
+            const { LabsApp } = await import('./apps/LabsApp');
+            registerApp(LabsApp);
+        });
         await safeRegister('launcher', async () => {
             const { LauncherApp } = await import('./apps/LauncherApp');
             registerApp(LauncherApp);
@@ -150,6 +154,10 @@ export async function registerAllApps(options) {
     await safeRegister('lab-workspace', async () => {
         const { LabWorkspaceApp } = await import('./apps/LabWorkspaceApp');
         registerApp(LabWorkspaceApp);
+    });
+    await safeRegister('labs', async () => {
+        const { LabsApp } = await import('./apps/LabsApp');
+        registerApp(LabsApp);
     });
     // ── Instructor ──────────────────────────────────────────────────
     await safeRegister('instructor', async () => {

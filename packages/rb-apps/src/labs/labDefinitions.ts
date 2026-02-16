@@ -210,7 +210,7 @@ export const LAB_DEFINITIONS: LabDefinition[] = [
     learningGoal: 'Apply two\'s complement arithmetic in a reusable arithmetic block.',
     whatToDo: 'Implement add/sub mode control and validate signed arithmetic behavior.',
     starterId: 'twos-complement-addsub',
-    starterExampleId: '18_4bit-alu-basys3',
+    starterExampleId: '20_lab5-addsub-starter-basys3',
     basys3Required: true,
     buildSteps: [
       'Implement mode-controlled inversion + carry-in path for subtraction.',
@@ -221,7 +221,8 @@ export const LAB_DEFINITIONS: LabDefinition[] = [
       'Capture carry/overflow behavior where applicable.',
     ],
     hardwareSteps: [
-      'Validate add and subtract modes using Basys3 input controls.',
+      'Use Basys3 mapping: M<-SW8, A<-SW7, B<-SW6, F->LED1.',
+      'Validate add and subtract modes using switch toggles and LED1 output.',
     ],
     submitEvidence: [
       'Bundle includes both add and subtract evidence vectors.',
@@ -247,7 +248,7 @@ export const LAB_DEFINITIONS: LabDefinition[] = [
     learningGoal: 'Understand state retention and clocked storage behavior.',
     whatToDo: 'Implement storage elements and verify edge/level behavior.',
     starterId: 'flipflop-seq',
-    starterExampleId: '11_d-flipflop',
+    starterExampleId: '21_lab6-flipflop-starter',
     basys3Required: false,
     buildSteps: [
       'Construct D latch / DFF path with correct control behavior.',
@@ -285,7 +286,7 @@ export const LAB_DEFINITIONS: LabDefinition[] = [
     learningGoal: 'Design synchronous state progression with control inputs.',
     whatToDo: 'Implement synchronous counter with control paths and verify sequence.',
     starterId: 'sync-counter-basys3',
-    starterExampleId: '16_8bit-counter-basys3',
+    starterExampleId: '22_lab7-sync-counter-starter-basys3',
     basys3Required: true,
     buildSteps: [
       'Implement synchronous count path and control signals (enable/load/reset as required).',
@@ -296,8 +297,8 @@ export const LAB_DEFINITIONS: LabDefinition[] = [
       'Verify control behavior (enable/load/reset) with vectors.',
     ],
     hardwareSteps: [
-      'Observe sequence behavior on Basys3 output path.',
-      'Demonstrate at least one reset/load event on hardware.',
+      'Use Basys3 mapping: EN<-SW8, CLK<-SW7, RST<-SW6, Q2/Q1/Q0->LED2/LED1/LED0.',
+      'Observe sequence behavior and demonstrate at least one reset/load event on hardware.',
     ],
     submitEvidence: [
       'Bundle includes sequence proof and control-event traces.',
@@ -323,7 +324,7 @@ export const LAB_DEFINITIONS: LabDefinition[] = [
     learningGoal: 'Apply FSM design to a multi-step sequential interaction problem.',
     whatToDo: 'Implement the lock FSM sequence and validate lock/unlock behavior.',
     starterId: 'security-lock-fsm-basys3',
-    starterExampleId: '17_traffic-light-fsm-basys3',
+    starterExampleId: '23_lab8-fsm-lock-starter-basys3',
     basys3Required: true,
     buildSteps: [
       'Define FSM states and transitions for lock sequence behavior.',
@@ -334,7 +335,8 @@ export const LAB_DEFINITIONS: LabDefinition[] = [
       'Capture state transitions and final lock state behavior.',
     ],
     hardwareSteps: [
-      'Exercise input sequence controls on Basys3 and observe lock output.',
+      'Use Basys3 mapping: IN2/IN1/IN0<-SW8/SW7/SW6, ENTER<-SW5, RESET<-SW4, LOCK->LED1.',
+      'Exercise valid and invalid input sequences and observe lock output on LED1.',
     ],
     submitEvidence: [
       'Bundle includes valid/invalid sequence evidence and final state traces.',

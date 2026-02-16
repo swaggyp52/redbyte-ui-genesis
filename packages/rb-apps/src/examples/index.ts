@@ -23,6 +23,10 @@ import example16 from './16_8bit-counter-basys3.json';
 import example17 from './17_traffic-light-fsm-basys3.json';
 import example18 from './18_4bit-alu-basys3.json';
 import example19 from './19_lab4-alu-starter-basys3.json';
+import example20 from './20_lab5-addsub-starter-basys3.json';
+import example21 from './21_lab6-flipflop-starter.json';
+import example22 from './22_lab7-sync-counter-starter-basys3.json';
+import example23 from './23_lab8-fsm-lock-starter-basys3.json';
 import { generateExampleProject, type ExampleSource } from './exampleGenerator';
 
 export type ExampleId =
@@ -44,7 +48,11 @@ export type ExampleId =
   | '16_8bit-counter-basys3'
   | '17_traffic-light-fsm-basys3'
   | '18_4bit-alu-basys3'
-  | '19_lab4-alu-starter-basys3';
+  | '19_lab4-alu-starter-basys3'
+  | '20_lab5-addsub-starter-basys3'
+  | '21_lab6-flipflop-starter'
+  | '22_lab7-sync-counter-starter-basys3'
+  | '23_lab8-fsm-lock-starter-basys3';
 
 export type CircuitLayer = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -248,6 +256,46 @@ const examples: Record<ExampleId, { data: SerializedCircuitV1; metadata: Example
       description: 'Unsolved starter scaffold with required Lab 4 SW/LED labels',
       layer: 6,
       difficulty: 'intermediate',
+    },
+  },
+  '20_lab5-addsub-starter-basys3': {
+    data: example20 as SerializedCircuitV1,
+    metadata: {
+      id: '20_lab5-addsub-starter-basys3',
+      name: 'Lab 5 Add/Sub Starter (Basys3)',
+      description: 'Unsolved starter scaffold for two\'s-complement add/sub workflow',
+      layer: 6,
+      difficulty: 'intermediate',
+    },
+  },
+  '21_lab6-flipflop-starter': {
+    data: example21 as SerializedCircuitV1,
+    metadata: {
+      id: '21_lab6-flipflop-starter',
+      name: 'Lab 6 Flip-Flop Starter',
+      description: 'Unsolved starter scaffold for latch/flip-flop sequential behavior',
+      layer: 3,
+      difficulty: 'intermediate',
+    },
+  },
+  '22_lab7-sync-counter-starter-basys3': {
+    data: example22 as SerializedCircuitV1,
+    metadata: {
+      id: '22_lab7-sync-counter-starter-basys3',
+      name: 'Lab 7 Counter Starter (Basys3)',
+      description: 'Unsolved starter scaffold for synchronous counter control + outputs',
+      layer: 6,
+      difficulty: 'advanced',
+    },
+  },
+  '23_lab8-fsm-lock-starter-basys3': {
+    data: example23 as SerializedCircuitV1,
+    metadata: {
+      id: '23_lab8-fsm-lock-starter-basys3',
+      name: 'Lab 8 FSM Lock Starter (Basys3)',
+      description: 'Unsolved starter scaffold for lock FSM input sequencing',
+      layer: 6,
+      difficulty: 'advanced',
     },
   },
 

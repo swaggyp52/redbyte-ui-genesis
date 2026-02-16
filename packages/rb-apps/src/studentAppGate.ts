@@ -3,6 +3,7 @@ import { getRedByteUiMode } from './utils/uiMode';
 
 export const STUDENT_VISIBLE_APP_ALLOWLIST = Object.freeze([
   'home',
+  'labs',
   'lab-workspace',
   'logic-playground',
   'settings',

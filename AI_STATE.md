@@ -1,5 +1,103 @@
 # AI State
 
+## Change Log 2026-02-16 (Flagship Lab Mode Hardening: Labs 1-8 Surface + Labs 5-8 Scaffold Contracts)
+
+**Status**: ✅ COMPLETE - RedByte Lab Mode reinforced as a flagship workflow surface, with Labs 5-8 now using explicit unsolved starter scaffolds and classroom gate coverage.
+
+- **Labs app made first-class and canonical**:
+  - Updated: `packages/rb-apps/src/apps/LabsApp.tsx`
+  - New: `packages/rb-apps/src/apps/LabsApp.module.css`
+  - Updated JS mirror: `packages/rb-apps/src/apps/LabsApp.js` (thin TS wrapper)
+  - Labs list now renders from `LAB_DEFINITIONS` and starts each lab into `lab-workspace` via starter flow.
+
+- **Labs app registration and mode gating fixed**:
+  - Updated: `packages/rb-apps/src/index.ts`
+  - Updated JS mirror: `packages/rb-apps/src/index.js`
+  - Updated: `packages/rb-apps/src/studentAppGate.ts`
+  - `labs` is now allowed in student mode and registered in runtime app registry.
+
+- **Labs 5-8 moved to unsolved starter scaffolds (no pre-solved circuits)**:
+  - New starters:
+    - `packages/rb-apps/src/examples/20_lab5-addsub-starter-basys3.json`
+    - `packages/rb-apps/src/examples/21_lab6-flipflop-starter.json`
+    - `packages/rb-apps/src/examples/22_lab7-sync-counter-starter-basys3.json`
+    - `packages/rb-apps/src/examples/23_lab8-fsm-lock-starter-basys3.json`
+  - Updated lab routing + mapping guidance:
+    - `packages/rb-apps/src/labs/labDefinitions.ts`
+  - Updated example registries:
+    - `packages/rb-apps/src/examples/index.ts`
+    - `packages/rb-apps/src/examples/index.js`
+
+- **No-solution CI gates added for Labs 5-8**:
+  - New tests:
+    - `packages/rb-apps/src/__tests__/ci-no-solution-lab5-gate.test.ts`
+    - `packages/rb-apps/src/__tests__/ci-no-solution-lab6-gate.test.ts`
+    - `packages/rb-apps/src/__tests__/ci-no-solution-lab7-gate.test.ts`
+    - `packages/rb-apps/src/__tests__/ci-no-solution-lab8-gate.test.ts`
+  - New scripts added in `package.json`:
+    - `ci:no-solution:lab5`
+    - `ci:no-solution:lab6`
+    - `ci:no-solution:lab7`
+    - `ci:no-solution:lab8`
+
+- **Classroom smoke + classroom gate coverage extended**:
+  - New smoke command/script:
+    - `scripts/classroom-smoke-labs-5-8.ts`
+    - `classroom:smoke:labs-5-8` in `package.json`
+  - Updated classroom verifier:
+    - `scripts/verify-gates-classroom.ts`
+    - now includes Labs 5-8 smoke + no-solution gates.
+
+- **Lab 4 process-teaching aids strengthened in-app (no solution logic added)**:
+  - Updated: `packages/rb-apps/src/components/WorkspaceRightSidebar.tsx`
+  - Updated styles: `packages/rb-apps/src/components/WorkspaceRightSidebar.module.css`
+  - Added Lab 4 learning aids panel:
+    - opcode spec
+    - suggested test vectors
+    - probing tips
+
+- **Verification executed**:
+  - `pnpm -s ci:no-solution:lab5` → **PASS**
+  - `pnpm -s ci:no-solution:lab6` → **PASS**
+  - `pnpm -s ci:no-solution:lab7` → **PASS**
+  - `pnpm -s ci:no-solution:lab8` → **PASS**
+  - `pnpm -s classroom:smoke:labs-5-8` → **PASS**
+  - `pnpm -s verify:gates:classroom` → **PASS**
+  - `pnpm -s build:unified` → **PASS**
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-16 (Classroom Deploy Hardening: Unified Artifact + Cloudflare Target Fix)
+
+**Status**: ✅ COMPLETE - redbyteapps.dev deploy path retargeted from lab3-only artifact to unified site artifact (`dist/`) to restore root + `/os/` classroom flow safety.
+
+- **Cloudflare workflow retargeted to unified deploy artifact**:
+  - Updated: `.github/workflows/deploy-cloudflare.yml`
+  - Build step now uses: `pnpm -s build:unified`
+  - Deploy directory now uses: `dist`
+
+- **Cloudflare Pages metadata aligned with unified output**:
+  - Updated: `wrangler.toml`
+  - `pages_build_output_dir` changed from `apps/lab3-webapp/dist` to `dist`
+
+- **Cache-control hardening for stale-deploy prevention**:
+  - Updated: `public/_headers`
+  - Added explicit no-cache headers for SPA entrypoints:
+    - `/index.html`
+    - `/os/index.html`
+  - Added immutable cache headers for hashed assets:
+    - `/assets/*`
+    - `/os/assets/*`
+
+- **Verification executed**:
+  - `pnpm -s build:unified` → **PASS**
+  - Unified dist verification embedded in build pipeline reports valid artifact layout:
+    - `dist/index.html` present
+    - `dist/os/index.html` present
+    - `dist/_redirects` includes both `/os/*` and root fallback
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-16 (Phase 3: Determinism Hardening - Codepoint Ordering)
 
 **Status**: ✅ COMPLETE - determinism-critical sort paths migrated from locale-sensitive ordering to codepoint ordering, with full gate proof green

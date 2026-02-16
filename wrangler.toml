@@ -1,16 +1,16 @@
 #:schema node_modules/wrangler/config-schema.json
-# Cloudflare Pages configuration for Lab 3 Web App
+# Cloudflare Pages configuration for unified RedByte deploy
 # 
 # IMPORTANT: The build command must be configured in Cloudflare Pages dashboard settings
 # OR via the root package.json "build" script (which Cloudflare auto-detects)
 # 
 # Current setup:
-# - Root package.json "build" script: pnpm --filter @redbyte/lab3-webapp run build
-# - GitHub Actions workflow also builds and deploys via cloudflare/pages-action
+# - GitHub Actions workflow builds and deploys unified dist via cloudflare/pages-action
+# - Dist content is assembled by scripts/unified-build.mjs (root + /os)
 # 
 # If Cloudflare auto-builds from git, it will use the root "build" script.
 # If GitHub Actions deploys, it pre-builds and uploads the dist folder.
 
 name = "redbyte-ui-genesis"
-pages_build_output_dir = "apps/lab3-webapp/dist"
+pages_build_output_dir = "dist"
 compatibility_date = "2024-01-01"

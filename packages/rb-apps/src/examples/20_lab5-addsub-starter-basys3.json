@@ -1,0 +1,38 @@
+{
+  "version": "v1",
+  "nodes": [
+    {
+      "id": "sw_m",
+      "type": "Switch",
+      "label": "M (SW8)",
+      "position": { "x": 80, "y": 90 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_a",
+      "type": "Switch",
+      "label": "A (SW7)",
+      "position": { "x": 80, "y": 170 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_b",
+      "type": "Switch",
+      "label": "B (SW6)",
+      "position": { "x": 80, "y": 250 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "led_f",
+      "type": "Lamp",
+      "label": "F (LED1)",
+      "position": { "x": 860, "y": 180 },
+      "rotation": 0,
+      "config": {}
+    }
+  ],
+  "connections": []
+}

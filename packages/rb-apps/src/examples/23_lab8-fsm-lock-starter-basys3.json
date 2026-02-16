@@ -1,0 +1,54 @@
+{
+  "version": "v1",
+  "nodes": [
+    {
+      "id": "sw_in2",
+      "type": "Switch",
+      "label": "IN2 (SW8)",
+      "position": { "x": 80, "y": 70 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_in1",
+      "type": "Switch",
+      "label": "IN1 (SW7)",
+      "position": { "x": 80, "y": 140 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_in0",
+      "type": "Switch",
+      "label": "IN0 (SW6)",
+      "position": { "x": 80, "y": 210 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_enter",
+      "type": "Switch",
+      "label": "ENTER (SW5)",
+      "position": { "x": 80, "y": 280 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_reset",
+      "type": "Switch",
+      "label": "RESET (SW4)",
+      "position": { "x": 80, "y": 350 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "led_lock",
+      "type": "Lamp",
+      "label": "LOCK (LED1)",
+      "position": { "x": 920, "y": 220 },
+      "rotation": 0,
+      "config": {}
+    }
+  ],
+  "connections": []
+}

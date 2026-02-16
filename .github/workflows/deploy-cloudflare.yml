@@ -1,6 +1,6 @@
-# Cloudflare Pages Deployment - Lab 3 Web App
+# Cloudflare Pages Deployment - Unified RedByte site
 #
-# Deploys apps/lab3-webapp to redbyteapps.dev when:
+# Deploys unified dist/ output (root site + /os app) to redbyteapps.dev when:
 # - Pushed to main branch
 # Uses Cloudflare Pages Direct Upload API for full control over build process.
 
@@ -14,7 +14,7 @@ on:
 
 jobs:
   deploy:
-    name: Build Lab 3 App and Deploy to CF Pages
+    name: Build unified site and deploy to CF Pages
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -37,8 +37,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build Lab 3 Web App ONLY
-        run: pnpm --filter @redbyte/lab3-webapp build
+      - name: Build unified deploy bundle
+        run: pnpm -s build:unified
         env:
           VITE_APP_ENV: production
           GIT_SHA: ${{ github.sha }}
@@ -49,7 +49,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: redbyte-ui-genesis
-          directory: apps/lab3-webapp/dist
+          directory: dist
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: main
           productionBranch: main

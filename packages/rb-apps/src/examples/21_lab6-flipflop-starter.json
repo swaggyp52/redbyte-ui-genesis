@@ -1,0 +1,30 @@
+{
+  "version": "v1",
+  "nodes": [
+    {
+      "id": "sw_clk",
+      "type": "Switch",
+      "label": "CLK",
+      "position": { "x": 80, "y": 90 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_d",
+      "type": "Switch",
+      "label": "D",
+      "position": { "x": 80, "y": 170 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "led_q",
+      "type": "Lamp",
+      "label": "Q",
+      "position": { "x": 860, "y": 140 },
+      "rotation": 0,
+      "config": {}
+    }
+  ],
+  "connections": []
+}

@@ -1,0 +1,54 @@
+{
+  "version": "v1",
+  "nodes": [
+    {
+      "id": "sw_en",
+      "type": "Switch",
+      "label": "EN (SW8)",
+      "position": { "x": 80, "y": 80 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_clk",
+      "type": "Switch",
+      "label": "CLK (SW7)",
+      "position": { "x": 80, "y": 150 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_rst",
+      "type": "Switch",
+      "label": "RST (SW6)",
+      "position": { "x": 80, "y": 220 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "led_q2",
+      "type": "Lamp",
+      "label": "Q2 (LED2)",
+      "position": { "x": 900, "y": 110 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "led_q1",
+      "type": "Lamp",
+      "label": "Q1 (LED1)",
+      "position": { "x": 900, "y": 180 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "led_q0",
+      "type": "Lamp",
+      "label": "Q0 (LED0)",
+      "position": { "x": 900, "y": 250 },
+      "rotation": 0,
+      "config": {}
+    }
+  ],
+  "connections": []
+}

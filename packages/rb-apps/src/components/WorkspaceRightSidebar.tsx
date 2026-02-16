@@ -227,6 +227,49 @@ export const WorkspaceRightSidebar: React.FC<WorkspaceRightSidebarProps> = ({
         </div>
       ) : null}
 
+      {isLab4 ? (
+        <div data-testid="lab4-learning-aids" className={styles.block}>
+          <div className={styles.title}>Lab 4 Learning Aids</div>
+          <div className={styles.muted} style={{ marginTop: 6 }}>
+            Use this as a spec + debug checklist. It does not provide circuit wiring.
+          </div>
+
+          <div className={styles.aidSection}>
+            <div className={styles.title}>Opcode spec</div>
+            <ul className={styles.listWide}>
+              <li className={styles.muted}>000 = AND</li>
+              <li className={styles.muted}>001 = NAND</li>
+              <li className={styles.muted}>010 = OR</li>
+              <li className={styles.muted}>011 = NOR</li>
+              <li className={styles.muted}>100 = XOR</li>
+              <li className={styles.muted}>101 = XNOR</li>
+              <li className={styles.muted}>110 = SUM</li>
+              <li className={styles.muted}>111 = CARRY</li>
+            </ul>
+          </div>
+
+          <div className={styles.aidSection}>
+            <div className={styles.title}>Suggested test vectors</div>
+            <ul className={styles.listWide}>
+              <li className={styles.muted}>en=1, A=0, B=0 → verify all opcode outputs</li>
+              <li className={styles.muted}>en=1, A=0, B=1 → verify all opcode outputs</li>
+              <li className={styles.muted}>en=1, A=1, B=0 → verify all opcode outputs</li>
+              <li className={styles.muted}>en=1, A=1, B=1 → verify all opcode outputs</li>
+              <li className={styles.muted}>en=0 with multiple opcode settings → F blocked</li>
+            </ul>
+          </div>
+
+          <div className={styles.aidSection}>
+            <div className={styles.title}>Probe tips</div>
+            <ul className={styles.listWide}>
+              <li className={styles.muted}>Probe select lines S2/S1/S0 and output F together.</li>
+              <li className={styles.muted}>Probe operation subpaths to ensure only selected op reaches F.</li>
+              <li className={styles.muted}>Probe EN gating path to confirm en=0 blocks output.</li>
+            </ul>
+          </div>
+        </div>
+      ) : null}
+
       <div data-testid="workspace-next-step" className={styles.heroCard}>
         <div className={styles.title}>{NEO_LABELS.NEXT_ACTION}</div>
         <div className={styles.heroBody}>{nextStepText}</div>

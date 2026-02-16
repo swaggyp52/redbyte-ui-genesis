@@ -3,86 +3,114 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React from 'react';
-import { RedByteApp } from '@redbyte/rb-apps';
-import { LABS } from '../labs/labContent';
+import type { RedByteApp } from '../types';
 import { Icon } from '@redbyte/rb-icons';
+import { LAB_DEFINITIONS, type LabDefinition } from '../labs/labDefinitions';
+import { LAB_STARTER_KITS } from '../starterKits/labStarterKits';
+import type { ExampleId } from '../examples';
+import styles from './LabsApp.module.css';
 
 interface LabsAppProps {
-    onOpenApp?: (id: string, props?: any) => void;
+        onOpenApp?: (id: string, props?: Record<string, unknown>) => void;
+        onOpenStarterProject?: (starter: {
+            exampleId: ExampleId;
+            targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace';
+            starterId?: string;
+            instructions?: {
+                labId: string;
+                title: string;
+                timeEstimate: string;
+                learningGoal: string;
+                steps: string[];
+                commonMistakes: string[];
+                submit: string[];
+                rubric: string[];
+            };
+        }) => void | Promise<void>;
 }
 
-const LabsAppComponent: React.FC<LabsAppProps> = ({ onOpenApp }) => {
-    const [labProgress, setLabProgress] = React.useState<Record<string, { status: string; grade?: number }>>({});
+function deriveDifficulty(lab: LabDefinition): 'Beginner' | 'Intermediate' | 'Advanced' {
+    const estimate = lab.timeEstimate.toLowerCase();
+    if (estimate.includes('30-45') || estimate.includes('45-65')) return 'Beginner';
+    if (estimate.includes('50-70') || estimate.includes('55-75') || estimate.includes('60-80')) return 'Intermediate';
+    return 'Advanced';
+}
 
-    // In a real implementation, we would pull status from useLabStore or persistence
-    // For now, we'll mock it or just show "Start" vs "Continue" based on checking if autosave exists
-    // const { activeLabId } = useLabStore(); 
+function getBoardLabel(lab: LabDefinition): string {
+    return lab.basys3Required ? 'Basys3' : 'Simulation-first';
+}
 
-    const handleOpenLab = (labId: string) => {
-        onOpenApp?.('ece-lab', { labId });
-    };
+const LabsAppComponent: React.FC<LabsAppProps> = ({ onOpenApp, onOpenStarterProject }) => {
+    const labs = React.useMemo(
+        () => LAB_DEFINITIONS.filter((lab) => lab.id !== 'freeplay'),
+        [],
+    );
 
-    const labIds = Object.keys(LABS);
+    const handleOpenLab = React.useCallback((lab: LabDefinition) => {
+        const starter = LAB_STARTER_KITS.find((kit) => kit.labId === lab.id);
+        if (starter?.exampleId && onOpenStarterProject) {
+            void onOpenStarterProject({
+                exampleId: starter.exampleId,
+                targetAppId: 'lab-workspace',
+                starterId: starter.id,
+                instructions: starter.instructions,
+            });
+            return;
+        }
+
+        onOpenApp?.('lab-workspace', {
+            starterInstructions: {
+                labId: lab.id,
+                title: lab.title,
+                timeEstimate: lab.timeEstimate,
+                learningGoal: lab.learningGoal,
+                steps: lab.buildSteps,
+                commonMistakes: lab.commonMistakes,
+                submit: lab.submitEvidence,
+                rubric: lab.rubric,
+            },
+        });
+    }, [onOpenApp, onOpenStarterProject]);
 
     return (
-        <div className="flex flex-col h-full bg-[var(--rb-surface-0)] text-[var(--rb-text)] p-6 overflow-y-auto">
-            <div className="max-w-4xl mx-auto w-full">
-                <header className="mb-8">
-                    <h1 className="text-3xl font-bold mb-2">Guided Labs</h1>
-                    <p className="text-[var(--rb-text-2)] text-lg">
-                        Interactive hardware and logic design assignments with automated verification.
-                    </p>
+        <div className={styles.container} data-testid="labs-surface">
+            <div className={styles.inner}>
+                <header className={styles.header}>
+                    <h1 className={styles.title}>Labs</h1>
+                    <p className={styles.subtitle}>One flagship workflow for Labs 1–8: Design → Simulate → Hardware (optional) → Submit.</p>
                 </header>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {labIds.map((labId, index) => {
-                        const content = LABS[labId];
-                        // Extract title from the first step if available, or use ID
-                        const firstStep = Array.isArray(content) ? content[0] : null;
-                        const title = firstStep ? firstStep.title : `Lab ${index + 1}`;
-                        // Simple description extraction (naïve) from markdown
-                        const description = firstStep
-                            ? firstStep.markdown.split('\n').find(l => l.trim().length > 0 && !l.startsWith('#'))?.trim()
-                            : 'Start your journey into digital logic.';
-
+                <div className={styles.grid}>
+                    {labs.map((lab) => {
+                        const difficulty = deriveDifficulty(lab);
+                        const board = getBoardLabel(lab);
                         return (
-                            <div
-                                key={labId}
-                                className="flex flex-col p-5 rounded-xl border border-[var(--rb-border)] bg-[var(--rb-surface-1)] hover:border-[var(--rb-accent)] transition-colors group"
-                            >
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="h-10 w-10 rounded-lg bg-[var(--rb-surface-2)] flex items-center justify-center text-[var(--rb-accent)] group-hover:scale-110 transition-transform">
-                                        <Icon name="book" size={20} />
+                            <article key={lab.id} className={styles.card} data-testid={`labs-card-${lab.id}`}>
+                                <div className={styles.cardHeader}>
+                                    <div className={styles.cardBadge}>
+                                        <Icon name="book" size={16} />
+                                        <span>{lab.id.toUpperCase()}</span>
                                     </div>
-                                    <span className="text-xs font-mono px-2 py-1 rounded bg-[var(--rb-surface-2)] text-[var(--rb-text-2)] uppercase tracking-wider">
-                                        {labId}
-                                    </span>
+                                    <div className={styles.cardMeta}>
+                                        <span className={styles.pill}>{board}</span>
+                                        <span className={styles.pill}>{difficulty}</span>
+                                    </div>
                                 </div>
-
-                                <h3 className="text-lg font-bold mb-2 group-hover:text-[var(--rb-accent)] transition-colors">
-                                    {title}
-                                </h3>
-                                <p className="text-sm text-[var(--rb-text-2)] mb-6 flex-1 line-clamp-3">
-                                    {description || 'No description available.'}
-                                </p>
-
+                                <h2 className={styles.cardTitle}>{lab.title}</h2>
+                                <p className={styles.cardObjective}><strong>Objective:</strong> {lab.learningGoal}</p>
+                                <p className={styles.cardTask}><strong>Start with:</strong> {lab.whatToDo}</p>
                                 <button
-                                    onClick={() => handleOpenLab(labId)}
-                                    className="mt-auto py-2 px-4 rounded-lg bg-[var(--rb-surface-3)] hover:bg-[var(--rb-accent)] hover:text-white transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                                    type="button"
+                                    className={styles.startButton}
+                                    onClick={() => handleOpenLab(lab)}
+                                    data-testid={`labs-start-${lab.id}`}
                                 >
-                                    <Icon name="code" size={16} />
-                                    <span>Open Lab</span>
+                                    Start
                                 </button>
-                            </div>
+                            </article>
                         );
                     })}
                 </div>
-
-                {labIds.length === 0 && (
-                    <div className="text-center py-12 text-[var(--rb-text-3)]">
-                        No labs available currently. Check back later!
-                    </div>
-                )}
             </div>
         </div>
     );
@@ -93,9 +121,9 @@ export const LabsApp: RedByteApp = {
         id: 'labs',
         name: 'Labs',
         iconId: 'book',
-        category: 'tools',
-        description: 'Central hub for all guided lab assignments.',
-        defaultSize: { width: 900, height: 600 },
+        category: 'logic',
+        description: 'Central hub for lab workflows in flagship RedByte.',
+        defaultSize: { width: 980, height: 700 },
         singleton: true,
     },
     component: LabsAppComponent,

@@ -150,6 +150,10 @@ export async function registerAllApps(options?: { mode?: RegisterAllAppsMode }) 
       const { LabWorkspaceApp } = await import('./apps/LabWorkspaceApp');
       registerApp(LabWorkspaceApp);
     });
+    await safeRegister('labs', async () => {
+      const { LabsApp } = await import('./apps/LabsApp');
+      registerApp(LabsApp);
+    });
     await safeRegister('first-run-wizard', async () => {
       const { FirstRunWizardApp } = await import('./apps/FirstRunWizardApp');
       registerApp(FirstRunWizardApp);
@@ -203,6 +207,10 @@ export async function registerAllApps(options?: { mode?: RegisterAllAppsMode }) 
   await safeRegister('lab-workspace', async () => {
     const { LabWorkspaceApp } = await import('./apps/LabWorkspaceApp');
     registerApp(LabWorkspaceApp);
+  });
+  await safeRegister('labs', async () => {
+    const { LabsApp } = await import('./apps/LabsApp');
+    registerApp(LabsApp);
   });
 
   // ── Instructor ──────────────────────────────────────────────────
