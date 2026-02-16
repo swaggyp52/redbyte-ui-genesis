@@ -16,13 +16,16 @@ console.log('🏗️ Starting Unified Build Pipeline...');
 try {
     const env = { ...process.env, UNIFIED_BUILD_INTERNAL: '1' };
 
-    console.log('1. Building all packages...');
-    execSync('pnpm build', { stdio: 'inherit', env });
+    console.log('1. Building manual site...');
+    execSync('pnpm --filter @redbyte/manual-site build', { stdio: 'inherit', env });
 
-    console.log('2. Merging artifacts...');
+    console.log('2. Building playground OS...');
+    execSync('pnpm --filter @redbyte/playground build', { stdio: 'inherit', env });
+
+    console.log('3. Merging artifacts...');
     execSync('node scripts/merge-dist.mjs', { stdio: 'inherit', env });
 
-    console.log('3. Verifying distribution...');
+    console.log('4. Verifying distribution...');
     execSync('node scripts/verify-dist.mjs', { stdio: 'inherit', env });
 
     console.log('✨ Unified Build Succeeded!');

@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-02-16 (CI Clean Runner Fix: Unified Build Explicitly Builds Manual + OS)
+
+**Status**: ✅ COMPLETE - `build:unified` now builds both required app outputs before merge, removing clean-runner dependency on pre-existing `apps/manual-site/dist`.
+
+- **Root cause fixed**:
+  - CI deploy logs showed `❌ Marketing build not found at .../apps/manual-site/dist` during `build:unified`
+  - Local machines masked this because manual-site dist already existed.
+
+- **Build orchestrator corrected**:
+  - Updated: `scripts/unified-build.mjs`
+  - New explicit sequence:
+    - `pnpm --filter @redbyte/manual-site build`
+    - `pnpm --filter @redbyte/playground build`
+    - `node scripts/merge-dist.mjs`
+    - `node scripts/verify-dist.mjs`
+
+- **Verification executed**:
+  - `pnpm -s build:unified` → **PASS** on clean orchestration path
+  - Dist verification confirms root + `/os` + `/os/version.json` + `_redirects` + `_headers`.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-16 (Stale Deploy Guardrails: Dynamic Import Cleanup + Version Route Exception + Main Truth Trigger)
 
 **Status**: ✅ COMPLETE - Build warning removed, `/os/version.json` fallback override added, and truth gate workflow now runs on `main` pushes as well as PRs.
