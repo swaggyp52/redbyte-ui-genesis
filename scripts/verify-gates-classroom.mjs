@@ -21,6 +21,9 @@ function main() {
   console.log('[verify:gates:classroom] Starting classroom gate suite...\n');
 
   const results = [
+    runGate('no-solution:lab1', 'pnpm -s ci:no-solution:lab1', true),
+    runGate('no-solution:lab2', 'pnpm -s ci:no-solution:lab2', true),
+    runGate('no-solution:lab3', 'pnpm -s ci:no-solution:lab3', true),
     runGate('rehearse:lab4', 'pnpm -s classroom:rehearse:lab4', true),
     runGate('no-solution:lab4', 'pnpm -s ci:no-solution:lab4', true),
     runGate('smoke:labs-5-8', 'pnpm -s classroom:smoke:labs-5-8', true),

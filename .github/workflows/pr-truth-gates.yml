@@ -53,6 +53,15 @@ jobs:
       - name: Gate - No solution Lab 4
         run: pnpm -s ci:no-solution:lab4
 
+      - name: Gate - No solution Lab 1
+        run: pnpm -s ci:no-solution:lab1
+
+      - name: Gate - No solution Lab 2
+        run: pnpm -s ci:no-solution:lab2
+
+      - name: Gate - No solution Lab 3
+        run: pnpm -s ci:no-solution:lab3
+
       - name: Gate - No solution Lab 5
         run: pnpm -s ci:no-solution:lab5
 

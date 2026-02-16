@@ -24,6 +24,29 @@
 
 - **Attribution**: Connor Angiel
 
+## Change Log 2026-02-16 (Required Classroom Coverage Extended to Labs 1-8)
+
+**Status**: ✅ COMPLETE - Required classroom verification now explicitly enforces no-solution integrity for Labs 1, 2, and 3 in addition to Labs 4-8.
+
+- **Verifier coverage expanded**:
+  - Updated: `scripts/verify-gates-classroom.mjs`
+  - Added blocking gates:
+    - `ci:no-solution:lab1`
+    - `ci:no-solution:lab2`
+    - `ci:no-solution:lab3`
+
+- **Required CI workflow expanded**:
+  - Updated: `.github/workflows/pr-truth-gates.yml`
+  - Added required steps:
+    - `Gate - No solution Lab 1`
+    - `Gate - No solution Lab 2`
+    - `Gate - No solution Lab 3`
+
+- **Outcome**:
+  - Classroom truth path now enforces Labs 1-8 starter integrity as part of the required check contract.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-16 (CI Determinism: pnpm Build-Script Policy + Clear Install Failure + Secret-Gated Deploy Path)
 
 **Status**: ✅ COMPLETE - CI now explicitly configures pnpm script behavior, allows required build-script dependencies, fails with a clear message if scripts are still ignored, and skips Cloudflare deploy paths cleanly when secrets are missing.
