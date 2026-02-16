@@ -1,5 +1,41 @@
 # AI State
 
+## Change Log 2026-02-16 (Stale Deploy Guardrails: Dynamic Import Cleanup + Version Route Exception + Main Truth Trigger)
+
+**Status**: ✅ COMPLETE - Build warning removed, `/os/version.json` fallback override added, and truth gate workflow now runs on `main` pushes as well as PRs.
+
+- **Mixed static/dynamic import warning removed**:
+  - Updated: `packages/rb-apps/src/dev/PlaygroundGoldenPath.tsx`
+  - Updated JS mirror: `packages/rb-apps/src/dev/PlaygroundGoldenPath.js`
+  - `LogicPlaygroundComponent` now loaded via `React.lazy(() => import(...))` in golden path harness.
+
+- **Version endpoint rewrite protection added**:
+  - Updated: `public/_redirects`
+  - Added explicit top rule: `/os/version.json /os/version.json 200`
+  - Rule is ordered before `/os/*` fallback to prevent SPA rewrite swallowing version metadata.
+
+- **Required truth check now present on main pushes**:
+  - Updated workflow: `.github/workflows/pr-truth-gates.yml`
+  - Workflow renamed to `Classroom Truth Gates`
+  - Trigger set includes both:
+    - `pull_request` on `main`
+    - `push` on `main`
+
+- **Deploy workflow secret-safe gating refined**:
+  - Updated: `.github/workflows/deploy-cloudflare.yml`
+  - Added secret detection step (`cf_secrets`) and conditional deploy/verify steps to avoid secret-related workflow failures.
+
+- **Verification executed**:
+  - `pnpm -s build:unified` → **PASS** (no mixed static/dynamic import warning)
+  - `pnpm -s verify:gates:classroom` → **PASS**
+  - Production probe still returns Lab 3 HTML at `/os/version.json`, confirming Cloudflare project/output state remains stale outside repo code.
+
+- **Commits**:
+  - `fix(build): remove mixed static/dynamic import for LogicPlaygroundApp`
+  - `fix(ci): ensure main truth-check and version.json passthrough`
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-16 (CI/CD Finalization: Branch Protection + Nightly Consolidation + Preclass Command)
 
 **Status**: ✅ COMPLETE - PR signal path reduced to one required truth check, heavy suites consolidated into one nightly workflow, and preclass ritual reduced to one command.
