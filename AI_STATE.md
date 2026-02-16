@@ -19,12 +19,19 @@
   - Added explicit pnpm config step before install:
     - `enable-pre-post-scripts=true`
     - `ignore-scripts=false`
+  - Node runtime aligned to `24.13.0` (matching deploy workflow) to remove CI runtime skew.
   - Install step now captures output and fails with explicit error if `Ignored build scripts` is detected.
 
 - **Classroom gate runner CI-hardening**:
   - Updated: `scripts/verify-gates-classroom.mjs`
   - Increased per-gate timeout from `60_000` to `300_000` ms to reduce clean-runner false negatives.
   - Failure details now include exit code/signal to make CI diagnosis explicit.
+
+- **Lab 4 rehearsal false-failure root cause fixed**:
+  - Updated: `scripts/classroom-rehearse-lab4.ts`
+  - Increased per-step timeout from `30_000` to `300_000` ms.
+  - Added explicit failure diagnostics (exit code/signal/stdout/stderr) for each step.
+  - Verified root issue where rehearsal `NO-SOLUTION` failed while standalone `ci:no-solution:lab4` passed; now both pass consistently.
 
 - **Deploy workflow noise-reduction hardened**:
   - Updated: `.github/workflows/deploy-cloudflare.yml`
