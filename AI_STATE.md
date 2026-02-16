@@ -19,7 +19,8 @@
   - Added explicit pnpm config step before install:
     - `enable-pre-post-scripts=true`
     - `ignore-scripts=false`
-  - Node runtime aligned to `24.13.0` (matching deploy workflow) to remove CI runtime skew.
+  - Node runtime pinned to `20.19.0` (validated local gate runtime parity).
+  - Classroom gates split into explicit workflow steps (instead of a single aggregate command) so the exact failing gate is visible directly in Actions UI/API.
   - Install step now captures output and fails with explicit error if `Ignored build scripts` is detected.
 
 - **Classroom gate runner CI-hardening**:

@@ -31,7 +31,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24.13.0
+          node-version: 20.19.0
           cache: pnpm
 
       - name: Configure pnpm script policy
@@ -50,8 +50,35 @@ jobs:
             exit 1
           fi
 
-      - name: Verify classroom truth gate
-        run: pnpm -s verify:gates:classroom
+      - name: Gate - Rehearse Lab 4
+        run: pnpm -s classroom:rehearse:lab4
+
+      - name: Gate - No solution Lab 4
+        run: pnpm -s ci:no-solution:lab4
+
+      - name: Gate - Smoke Labs 5-8
+        run: pnpm -s classroom:smoke:labs-5-8
+
+      - name: Gate - No solution Lab 5
+        run: pnpm -s ci:no-solution:lab5
+
+      - name: Gate - No solution Lab 6
+        run: pnpm -s ci:no-solution:lab6
+
+      - name: Gate - No solution Lab 7
+        run: pnpm -s ci:no-solution:lab7
+
+      - name: Gate - No solution Lab 8
+        run: pnpm -s ci:no-solution:lab8
+
+      - name: Gate - Golden Basys3 export
+        run: pnpm -s rc:e1:golden-basys3-export-gate
+
+      - name: Gate - Golden Basys3 ALU export
+        run: pnpm -s rc:e1:golden-basys3-alu-export-gate
+
+      - name: Gate - UI dev guards contract
+        run: pnpm -s ui:dev-guards-contract-gate
 
       - name: Build unified artifact
         run: pnpm -s build:unified
