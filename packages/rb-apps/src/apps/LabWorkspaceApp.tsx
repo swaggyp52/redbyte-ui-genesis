@@ -977,8 +977,8 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
       setLastBundleManifest(bundle.manifest);
       setSubmitStatus(
         reproducibility.ok
-          ? `Submission bundle generated: ${bundle.filename}`
-          : `Submission bundle generated with reproducibility warnings: ${bundle.filename}`,
+          ? `Submission bundle generated: ${bundle.downloadFilename}`
+          : `Submission bundle generated with reproducibility warnings: ${bundle.downloadFilename}`,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'submission_bundle_export_failed';

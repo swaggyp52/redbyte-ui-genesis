@@ -74,6 +74,8 @@ export interface SubmissionBundleManifest {
 
 export interface SubmissionBundleResult {
   filename: string;
+  /** User-facing download name (e.g. "rb-lab.zip") for clear student handoff */
+  downloadFilename: string;
   bundleId: string;
   bytes: Uint8Array;
   manifest: SubmissionBundleManifest;
@@ -375,6 +377,7 @@ export async function generateSubmissionBundle(
   });
   return {
     filename: `rb-submission-${bundleId}.zip`,
+    downloadFilename: 'rb-lab.zip',
     bundleId,
     bytes,
     manifest,

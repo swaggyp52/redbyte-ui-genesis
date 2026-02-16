@@ -3343,7 +3343,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
         logs: doctorReport.logs ?? [],
       });
       assertAppOutput('logic-playground', 'rb-submission.zip');
-      downloadBlob(bundle.filename, new Blob([bundle.bytes], { type: 'application/zip' }));
+      downloadBlob(bundle.downloadFilename, new Blob([bundle.bytes], { type: 'application/zip' }));
 
       const statusSnapshot: SubmissionBundleStatusSnapshot = {
         schema_version: 'rb_submission_bundle_status_v1',
