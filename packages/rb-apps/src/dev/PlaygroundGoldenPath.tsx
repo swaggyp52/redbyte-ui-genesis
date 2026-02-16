@@ -1,5 +1,9 @@
 import React, { Suspense, useState, useEffect } from 'react';
-import { LogicPlaygroundComponent } from '../apps/LogicPlaygroundApp';
+
+const LogicPlaygroundComponent = React.lazy(async () => {
+  const mod = await import('../apps/LogicPlaygroundApp');
+  return { default: mod.LogicPlaygroundComponent };
+});
 
 // Simple error boundary
 class ErrorBoundaryComponent extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {

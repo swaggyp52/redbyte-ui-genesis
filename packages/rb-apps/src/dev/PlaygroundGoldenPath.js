@@ -1,6 +1,9 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import React, { Suspense, useState, useEffect } from 'react';
-import { LogicPlaygroundComponent } from '../apps/LogicPlaygroundApp';
+const LogicPlaygroundComponent = React.lazy(async () => {
+  const mod = await import('../apps/LogicPlaygroundApp');
+  return { default: mod.LogicPlaygroundComponent };
+});
 
 // Error boundary class component
 class ErrorBoundaryComponent extends React.Component {
