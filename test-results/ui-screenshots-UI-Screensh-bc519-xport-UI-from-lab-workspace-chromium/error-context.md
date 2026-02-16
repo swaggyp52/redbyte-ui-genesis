@@ -1,0 +1,118 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - link "Skip to desktop" [ref=e4] [cursor=pointer]:
+    - /url: "#rb-desktop-region"
+  - banner "System Bar":
+    - generic:
+      - button "Open Launcher" [ref=e6] [cursor=pointer]:
+        - generic [ref=e8]: R
+        - generic [ref=e9]: RedByte
+      - button "Determinism Status" [ref=e11] [cursor=pointer]:
+        - generic [ref=e12]: live
+        - generic [ref=e13]: T0000
+      - generic [ref=e14]:
+        - button "Open System Log" [ref=e15] [cursor=pointer]:
+          - img [ref=e16]
+          - generic [ref=e20]: Log
+          - generic [ref=e21]: "1"
+        - button "Open Settings" [ref=e22] [cursor=pointer]:
+          - img [ref=e23]
+  - region "Desktop":
+    - generic:
+      - generic: R
+    - generic [ref=e27]: v0.9.0
+    - generic:
+      - generic: RedByte OS Genesis
+  - navigation "Application Dock" [ref=e28]:
+    - generic [ref=e29]:
+      - button "Dashboard" [ref=e30] [cursor=pointer]:
+        - img "Dashboard icon" [ref=e31]
+      - button "Studio" [ref=e36] [cursor=pointer]:
+        - img "Studio icon" [ref=e37]
+      - button "Playground" [ref=e40] [cursor=pointer]:
+        - img "Playground icon" [ref=e41]
+      - button "Settings" [ref=e47] [cursor=pointer]:
+        - img "Settings icon" [ref=e48]
+    - button "Files" [ref=e53] [cursor=pointer]:
+      - img "Files icon" [ref=e54]
+  - generic [ref=e58]:
+    - button "Launcher" [ref=e60] [cursor=pointer]:
+      - img [ref=e61]
+    - generic [ref=e64]:
+      - button "Studio Dashboard" [ref=e65] [cursor=pointer]:
+        - img [ref=e66]
+        - generic: Studio Dashboard
+      - button "Studio" [ref=e71] [cursor=pointer]:
+        - img [ref=e72]
+        - generic: Studio
+      - button "Files" [ref=e75] [cursor=pointer]:
+        - img [ref=e76]
+        - generic: Files
+      - button "Settings" [ref=e80] [cursor=pointer]:
+        - img [ref=e81]
+        - generic: Settings
+    - generic [ref=e86]:
+      - generic [ref=e87]: RedByte
+      - generic [ref=e88]: GENESIS
+  - generic [ref=e89]:
+    - generic [ref=e90]:
+      - generic:
+        - generic: First Run Wizard
+      - generic [ref=e91]:
+        - button "Minimize" [ref=e92] [cursor=pointer]:
+          - img [ref=e93]
+        - button "Maximize" [ref=e95] [cursor=pointer]:
+          - img [ref=e96]
+        - button "Close" [ref=e98] [cursor=pointer]:
+          - img [ref=e99]
+    - generic [ref=e103]:
+      - generic [ref=e104]:
+        - generic [ref=e105]: First Run Wizard
+        - generic [ref=e106]: Bridge → Detect → Program Known-Good → Capture → Export Doctor → Done
+      - generic [ref=e107]:
+        - generic [ref=e108]:
+          - generic [ref=e109]:
+            - generic [ref=e110]: Bridge check
+            - generic [ref=e111]: pending
+          - generic [ref=e112]:
+            - generic [ref=e113]: Board detect
+            - generic [ref=e114]: pending
+          - generic [ref=e115]:
+            - generic [ref=e116]: Programmer check
+            - generic [ref=e117]: pending
+          - generic [ref=e118]:
+            - generic [ref=e119]: Program known-good bitstream
+            - generic [ref=e120]: pending
+          - generic [ref=e121]:
+            - generic [ref=e122]: Capture sample trace
+            - generic [ref=e123]: pending
+          - generic [ref=e124]:
+            - generic [ref=e125]: Export doctor report
+            - generic [ref=e126]: pending
+          - generic [ref=e127]:
+            - generic [ref=e128]: Done
+            - generic [ref=e129]: pending
+        - generic [ref=e130]:
+          - generic [ref=e131]: Bridge check
+          - generic [ref=e132]: Confirm local FPGA bridge is reachable and responsive.
+          - generic [ref=e133]: No logs yet.
+          - generic [ref=e134]:
+            - button "Run step" [ref=e135] [cursor=pointer]
+            - button "Export Doctor Report" [disabled] [ref=e136]
+  - generic:
+    - generic:
+      - generic:
+        - 'generic "[action] shell: Window opened"': ✓ Window opened
+      - button "View Full Log"
+  - generic [ref=e146]:
+    - generic [ref=e152]: LIVE
+    - generic [ref=e153]:
+      - generic [ref=e154]: "T:"
+      - generic [ref=e155]: "00000"
+    - generic [ref=e157]:
+      - button "Open a circuit first" [disabled] [ref=e158]
+      - button "Open Determinism Panel" [ref=e160] [cursor=pointer]:
+        - img [ref=e161]
+```

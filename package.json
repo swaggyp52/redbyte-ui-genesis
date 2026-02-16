@@ -103,6 +103,7 @@
         "ui:style-token-contract-gate": "pnpm exec vitest run packages/rb-shell/src/__tests__/ui-style-token-contract-gate.test.ts",
         "ui:a11y-gate": "pnpm exec vitest run packages/rb-shell/src/__tests__/ui-a11y-contrast-gate.test.ts",
         "ui:quality-gate": "pnpm exec vitest run packages/rb-shell/src/__tests__/ui-quality-gate.test.ts",
+        "ui:screenshots": "pnpm e2e:build && pnpm exec playwright test tests/e2e/ui-screenshots.spec.ts --project chromium",
         "ui:dev-guards-contract-gate": "pnpm exec vitest run packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts",
         "ui:license-audit-gate": "pnpm exec vitest run packages/rb-shell/src/__tests__/ui-license-audit-gate.test.ts",
         "gen-license-snapshot": "node scripts/gen-license-snapshot.mjs",

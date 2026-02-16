@@ -1,6 +1,6 @@
 # DEMO READY REPORT
 
-Generated: 2026-02-15T23:11:56.003Z
+Generated: 2026-02-16T01:31:48.198Z
 
 ## Verdict
 
@@ -9,8 +9,8 @@ Generated: 2026-02-15T23:11:56.003Z
 ## Build Information
 
 - **Build SHA**: dev
-- **Build Date**: 2026-02-15T23:11:56.002Z
-- **Report Generated**: 2026-02-15T23:11:56.003Z
+- **Build Date**: 2026-02-16T01:31:48.197Z
+- **Report Generated**: 2026-02-16T01:31:48.198Z
 
 ## Gate Chain Results
 
@@ -28,7 +28,7 @@ Generated: 2026-02-15T23:11:56.003Z
 ## Reports & Evidence
 
 - **Playwright HTML Report**: `playwright-report/index.html`
-- **Report Refresh Time**: 6:11:56 PM
+- **Report Refresh Time**: 8:31:48 PM
 
 ## Next Steps
 
