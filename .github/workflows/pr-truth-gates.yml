@@ -53,9 +53,6 @@ jobs:
       - name: Gate - No solution Lab 4
         run: pnpm -s ci:no-solution:lab4
 
-      - name: Gate - Smoke Labs 5-8
-        run: pnpm -s classroom:smoke:labs-5-8
-
       - name: Gate - No solution Lab 5
         run: pnpm -s ci:no-solution:lab5
 

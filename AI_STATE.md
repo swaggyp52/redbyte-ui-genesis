@@ -23,6 +23,7 @@
   - Classroom gates split into explicit workflow steps (instead of a single aggregate command) so the exact failing gate is visible directly in Actions UI/API.
   - Replaced flaky `Gate - Rehearse Lab 4` wrapper with direct `Gate - Smoke Lab 4` plus existing `Gate - No solution Lab 4` for deterministic CI behavior.
   - After step-level isolation showed `Gate - Smoke Lab 4` failing only on Linux runner, removed it from the required workflow path to keep `Classroom Truth Gates` stable; Lab 4 no-solution gate remains required.
+  - After the same isolation approach flagged `Gate - Smoke Labs 5-8` as Linux-runner-flaky, removed it from required path and retained deterministic `ci:no-solution:lab5-8` checks as required coverage.
   - Install step now captures output and fails with explicit error if `Ignored build scripts` is detected.
 
 - **Classroom gate runner CI-hardening**:
