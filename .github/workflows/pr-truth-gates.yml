@@ -50,8 +50,8 @@ jobs:
             exit 1
           fi
 
-      - name: Gate - Rehearse Lab 4
-        run: pnpm -s classroom:rehearse:lab4
+      - name: Gate - Smoke Lab 4
+        run: pnpm -s classroom:smoke:lab4
 
       - name: Gate - No solution Lab 4
         run: pnpm -s ci:no-solution:lab4
