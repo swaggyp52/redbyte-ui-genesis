@@ -35,14 +35,23 @@ async function merge() {
         process.exit(1);
     }
 
-    // 4. Force copy unified _redirects from root public
+    // 4. Force copy unified _redirects and _headers from root public
     const rootPublicRedirects = path.join(ROOT, 'public/_redirects');
+    const rootPublicHeaders = path.join(ROOT, 'public/_headers');
     const finalRedirects = path.join(FINAL_DIST, '_redirects');
+    const finalHeaders = path.join(FINAL_DIST, '_headers');
     if (fs.existsSync(rootPublicRedirects)) {
         console.log('📦 Explicitly copying unified _redirects to root dist...');
         fs.copyFileSync(rootPublicRedirects, finalRedirects);
     } else {
         console.warn('⚠️ Warning: public/_redirects not found at', rootPublicRedirects);
+    }
+
+    if (fs.existsSync(rootPublicHeaders)) {
+        console.log('📦 Explicitly copying unified _headers to root dist...');
+        fs.copyFileSync(rootPublicHeaders, finalHeaders);
+    } else {
+        console.warn('⚠️ Warning: public/_headers not found at', rootPublicHeaders);
     }
 
     // 5. Verify index.html at root looks like marketing

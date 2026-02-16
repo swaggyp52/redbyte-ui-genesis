@@ -41,6 +41,12 @@ const redirects = fs.readFileSync(path.join(DIST, '_redirects'), 'utf8');
 check(redirects.includes('/os/*'), 'dist/_redirects contains /os/* fallback');
 check(redirects.includes('/* /index.html 200'), 'dist/_redirects contains root fallback');
 
+// 5b. Headers check
+check(fs.existsSync(path.join(DIST, '_headers')), 'dist/_headers exists');
+const headers = fs.readFileSync(path.join(DIST, '_headers'), 'utf8');
+check(headers.includes('/index.html'), 'dist/_headers contains root index cache rule');
+check(headers.includes('/os/index.html'), 'dist/_headers contains /os index cache rule');
+
 // 6. Environment Check (if build.json exists)
 const buildJson = JSON.parse(fs.readFileSync(path.join(DIST, 'build.json'), 'utf8'));
 if (process.env.GITHUB_ACTIONS || process.env.CF_PAGES) {
