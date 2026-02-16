@@ -1,6 +1,7 @@
 // Copyright Ac 2025 Connor Angiel
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+import { compareCodepoint } from './codepointSort';
 const sanitize = (value) => value.replace(/[^a-zA-Z0-9_]/g, '_');
 /**
  * Map RedByte node types to synthesizable Verilog module names
@@ -53,8 +54,8 @@ const PORT_NAME_REMAP = {
  * Legacy function for basic structural export (non-synthesizable)
  */
 export const verilogFromNetlist = (netlist) => {
-    const sortedNodes = [...netlist.nodes].sort((a, b) => a.id.localeCompare(b.id));
-    const sortedNets = [...netlist.nets].sort((a, b) => a.id.localeCompare(b.id));
+    const sortedNodes = [...netlist.nodes].sort((a, b) => compareCodepoint(a.id, b.id));
+    const sortedNets = [...netlist.nets].sort((a, b) => compareCodepoint(a.id, b.id));
     const uniqueTypes = Array.from(new Set(sortedNodes.map((node) => node.type))).sort();
     const lines = [];
     lines.push('// RedByte structural export (best-effort)');
@@ -95,8 +96,8 @@ export const verilogFromNetlist = (netlist) => {
  */
 export const synthesizableVerilogFromNetlist = (netlist, options = {}) => {
     const { board = 'basys3', includeClock = false, clockFrequencyHz = 100_000_000 } = options;
-    const sortedNodes = [...netlist.nodes].sort((a, b) => a.id.localeCompare(b.id));
-    const sortedNets = [...netlist.nets].sort((a, b) => a.id.localeCompare(b.id));
+    const sortedNodes = [...netlist.nodes].sort((a, b) => compareCodepoint(a.id, b.id));
+    const sortedNets = [...netlist.nets].sort((a, b) => compareCodepoint(a.id, b.id));
     // Identify input and output nodes
     const inputNodes = sortedNodes.filter((n) => INPUT_NODE_TYPES.includes(n.type));
     const outputNodes = sortedNodes.filter((n) => OUTPUT_NODE_TYPES.includes(n.type));

@@ -1,6 +1,7 @@
 // Copyright Ac 2025 Connor Angiel
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+import { compareCodepoint } from './codepointSort';
 import { stableStringify } from './stableStringify';
 export const createRBProject = (input) => ({
     ...input,
@@ -15,7 +16,7 @@ const normalizeProjectCircuit = (circuit) => {
         config: node.config ?? {},
         state: node.state ?? {},
     }))
-        .sort((a, b) => a.id.localeCompare(b.id));
+        .sort((a, b) => compareCodepoint(a.id, b.id));
     const connections = [...circuit.connections]
         .map((connection) => ({
         from: { nodeId: connection.from.nodeId, portName: connection.from.portName },
@@ -24,7 +25,7 @@ const normalizeProjectCircuit = (circuit) => {
         .sort((a, b) => {
         const left = `${a.from.nodeId}.${a.from.portName}->${a.to.nodeId}.${a.to.portName}`;
         const right = `${b.from.nodeId}.${b.from.portName}->${b.to.nodeId}.${b.to.portName}`;
-        return left.localeCompare(right);
+        return compareCodepoint(left, right);
     });
     return { nodes, connections };
 };
@@ -36,7 +37,7 @@ const normalizeProbes = (probes) => {
         .sort((a, b) => {
         const left = `${a.nodeId}.${a.portName}.${a.id}`;
         const right = `${b.nodeId}.${b.portName}.${b.id}`;
-        return left.localeCompare(right);
+        return compareCodepoint(left, right);
     });
 };
 const normalizeHdl = (hdl) => {
@@ -47,7 +48,7 @@ const normalizeHdl = (hdl) => {
         .sort((a, b) => {
         const left = `${a.path}.${a.language}`;
         const right = `${b.path}.${b.language}`;
-        return left.localeCompare(right);
+        return compareCodepoint(left, right);
     });
     return {
         ...hdl,
@@ -55,7 +56,7 @@ const normalizeHdl = (hdl) => {
     };
 };
 export const encodeRBProject = (project) => {
-    const sortedTags = project.meta?.tags ? [...project.meta.tags].sort((a, b) => a.localeCompare(b)) : undefined;
+    const sortedTags = project.meta?.tags ? [...project.meta.tags].sort((a, b) => compareCodepoint(a, b)) : undefined;
     const normalized = {
         ...project,
         circuit: normalizeProjectCircuit(project.circuit),

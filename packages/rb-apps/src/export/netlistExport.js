@@ -1,6 +1,7 @@
 // Copyright Ac 2025 Connor Angiel
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+import { compareCodepoint } from './codepointSort';
 import { digestCircuit } from '../recording/runRecordUtils';
 const BUILTIN_PORTS = {
     PowerSource: [{ name: 'out', direction: 'out' }],
@@ -81,10 +82,10 @@ const inferPortsFromConnections = (node, connections) => {
     });
     return Array.from(portMap.entries())
         .map(([name, direction]) => ({ name, direction }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => compareCodepoint(a.name, b.name));
 };
 export const netlistFromCircuit = (circuit) => {
-    const nodes = [...circuit.nodes].sort((a, b) => a.id.localeCompare(b.id)).map((node) => {
+    const nodes = [...circuit.nodes].sort((a, b) => compareCodepoint(a.id, b.id)).map((node) => {
         const builtinPorts = BUILTIN_PORTS[node.type];
         const inferredPorts = inferPortsFromConnections(node, circuit.connections);
         const ports = builtinPorts
@@ -107,7 +108,7 @@ export const netlistFromCircuit = (circuit) => {
             to: normalized.to,
         };
     })
-        .sort((a, b) => a.id.localeCompare(b.id));
+        .sort((a, b) => compareCodepoint(a.id, b.id));
     return {
         kind: 'rb-netlist',
         version: 1,

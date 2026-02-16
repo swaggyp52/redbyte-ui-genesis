@@ -1,6 +1,7 @@
 // Copyright Ac 2025 Connor Angiel
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+import { compareCodepoint } from '../export/codepointSort';
 import { digestValue } from '../utils/digest';
 export const clamp = (value, min, max) => {
     if (Number.isNaN(value))
@@ -54,7 +55,7 @@ export const normalizeCircuit = (circuit) => {
         config: node.config ?? {},
         state: node.state ?? {},
     }))
-        .sort((a, b) => a.id.localeCompare(b.id));
+        .sort((a, b) => compareCodepoint(a.id, b.id));
     const connections = [...circuit.connections]
         .map((connection) => ({
         from: { nodeId: connection.from.nodeId, portName: connection.from.portName },
@@ -63,7 +64,7 @@ export const normalizeCircuit = (circuit) => {
         .sort((a, b) => {
         const left = `${a.from.nodeId}.${a.from.portName}->${a.to.nodeId}.${a.to.portName}`;
         const right = `${b.from.nodeId}.${b.from.portName}->${b.to.nodeId}.${b.to.portName}`;
-        return left.localeCompare(right);
+        return compareCodepoint(left, right);
     });
     return { nodes, connections };
 };
