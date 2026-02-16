@@ -1,5 +1,74 @@
 # AI State
 
+## Change Log 2026-02-15 (Frontend Sprint 2: UI POLISH + QUALITY GATES)
+
+**Status**: ✅ COMPLETE - All tasks implemented, DEMO READY verdict achieved
+
+- **Typography + Spacing System (Task 5)**:
+  - Added semantic type scale tokens: `--rb-text-os-title` (24px), `--rb-text-section` (15px), `--rb-text-body` (13px), `--rb-text-label` (11px)
+  - Added line height tokens (`--rb-leading-tight`, `--rb-leading-normal`, `--rb-leading-relaxed`)
+  - Added font weight tokens (`--rb-weight-normal`, `--rb-weight-medium`, `--rb-weight-semibold`, `--rb-weight-bold`)
+  - Migrated all hardcoded padding to use `var(--rb-space-*)` tokens in controls and panels
+  - Minimum readable body text size: 13px (projector-safe for classroom)
+  - No font sizes below 11px for accessibility
+
+- **Accessibility + Contrast Gate (Task 6)**:
+  - Created `ui:a11y-contrast-gate` test validating WCAG AA contrast ratios
+    - Light theme: primary text >= 4.5:1, accents >= 3:1
+    - Dark theme: primary text >= 4.5:1
+    - Lab theme: >= 4.5:1 contrast maintained
+  - Enforced `:focus-visible` rules across shell and app components
+  - Gate wired into `verify:gates` for continuous validation
+
+- **First-Run "Start Here Card" (Task 7)**:
+  - Added prominent hero card for fresh/first-run state (when no projects exist)
+  - 3 action buttons (44px hit targets, touch-friendly):
+    1. Open Logic Playground
+    2. Create a Submission
+    3. Inspect a Submission
+  - Gradient accent border (3px top), centered heading (28-40px clamp), projector-safe typography
+  - CSS Module styling with fallback values, token-only colors
+
+- **Token Migration Complete (Task 5 + 8)**:
+  - SubmissionInspectorApp.module.css: ALL raw hex colors → theme tokens
+  - os-controls.css: ALL hardcoded rem padding → spacing tokens (8px, 12px, 16px, 20px)
+  - RB_CORE Style Token Contract Gate: PASSING (20/20 tokens, 0 raw colors in touched components)
+
+- **UI Quality Gate (Task 11)**:
+  - 12-test quality checkpoint: validates light theme default, Start Here card, token usage, focus-visible enforcement
+  - Checks: theme setting, typography tokens, control token usage, a11y rules, inspector color tokens
+  - All 12 tests pass, gate wired into `verify:gates`
+
+- **Final Verification (Task 14)**:
+  - `pnpm demo:ready` executed successfully
+  - **Verdict: ✅ DEMO READY**
+  - Playground build: successful
+  - All 23+ determinism gates: passing
+  - All 4 E2E smoke tests: passing (boot, registration, export, submission-inspector)
+
+- **Commits**:
+  1. `12e2b317` - feat(ui): typography + spacing tokens + inspector token migration
+  2. `e713e2c1` - feat(ui): accessibility gate with contrast validation + focus ring checks
+  3. `106dddc9` - feat(ui): kid-proof 'Start Here' card with 3 clear actions for first-run
+  4. `318b180a` - feat(ui): quality gate + fix remaining token migrations (controls, inspector)
+
+- **Files Modified**: 7 core files, 4 test/gate files
+  - `packages/rb-apps/src/styles/os-tokens.css` (typography tokens)
+  - `packages/rb-apps/src/styles/os-controls.css` (spacing migration)
+  - `packages/rb-apps/src/apps/HomeApp.tsx` + `.module.css` (Start Here card)
+  - `packages/rb-apps/src/apps/SubmissionInspectorApp.module.css` (color tokens)
+  - `packages/rb-shell/src/__tests__/ui-a11y-contrast-gate.test.ts` (NEW gate)
+  - `packages/rb-shell/src/__tests__/ui-quality-gate.test.ts` (NEW gate)
+  - `package.json` (3 new scripts: `ui:a11y-gate`, `ui:quality-gate`, wired into `verify:gates`)
+
+- **Documentation**:
+  - Plan: `docs/plans/2026-02-15-ui-sprint-2-os-glow-up.md`
+  - Demo Report: `docs/DEMO_READY_REPORT.md` ✅
+
+- **Attribution**: Connor Angiel
+
+---
+
 ## Change Log 2026-02-15 (Frontend Sprint 1: BRIGHT MODE + FIRST IMPRESSION)
 
 - **Visual Transformation**: RedByte now feels bright, welcoming, and modern on first load
