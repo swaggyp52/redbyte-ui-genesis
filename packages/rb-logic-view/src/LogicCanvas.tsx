@@ -14,7 +14,8 @@ import { isValidConnection, normalizeConnection, isInputPort } from './tools/wir
 import { computeWireNetIds } from './tools/netHighlight';
 import { findSmartSpawnPosition } from './tools/placement';
 import { trackRender, useUiTickStore } from '@redbyte/rb-utils';
-import { CanvasHost, snapToGrid as snapPointToGrid, fitToBounds } from '@redbyte/rb-viewport';
+import { CanvasHost, snapToGrid as snapPointToGrid, fitToBounds, clientToLocal } from '@redbyte/rb-viewport';
+import { useCanvasInput } from './useCanvasInput';
 
 export interface LogicCanvasProps {
   engine: TickEngine;
@@ -366,54 +367,41 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   }, []); // Empty deps - subscription is stable, uses refs for callbacks
 
 
-  // Mouse handlers for pan/zoom
-  const [isPanning, setIsPanning] = React.useState(false);
-  const [lastMouse, setLastMouse] = React.useState({ x: 0, y: 0 });
+  // Input state
   const [isSpacePressed, setIsSpacePressed] = React.useState(false);
   const [isAltPressed, setIsAltPressed] = React.useState(false);
   const [hoveredPort, setHoveredPort] = React.useState<{ nodeId: string; portName: string } | null>(null);
   const [showFirstWireToast, setShowFirstWireToast] = React.useState(false);
-
-  const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
-    // Gate interactions - don't allow new interactions while dragging nodes
-    if (interactionMode === 'dragging') return;
-
-    if (e.button === 1 || isSpacePressed) {
-      // Middle mouse or space+drag for panning - only if not already in another mode
-      if (interactionMode === 'idle' || interactionMode === 'wiring') {
-        setIsPanning(true);
-        setInteractionMode('panning');
-        setLastMouse({ x: e.clientX, y: e.clientY });
-        e.preventDefault(); // Prevent text selection during space-pan
-      }
-    } else if (e.button === 2) {
-      // Right-click cancels wire
-      if (interactionMode === 'wiring' && editingState.wireStartPort) {
-        e.preventDefault();
-        endWire();
-      }
-    } else if (e.button === 0 && !isSpacePressed) {
-      // Left click on background
-      if (interactionMode === 'wiring') {
-        // Cancel wire if clicking on empty space
-        endWire();
-      } else if (interactionMode === 'idle') {
-        // Clear selection when clicking background
-        clearSelection();
-      }
-    }
-  };
-
   const [mousePosition, setMousePosition] = React.useState({ x: 0, y: 0 });
 
-  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    // Only pan if in panning mode
-    if (interactionMode === 'panning' && isPanning) {
-      const dx = e.clientX - lastMouse.x;
-      const dy = e.clientY - lastMouse.y;
-      pan(dx, dy);
-      setLastMouse({ x: e.clientX, y: e.clientY });
-    }
+  // Stable ref for handleNodeMove (defined below) so canvasInput doesn't re-create on every render
+  const handleNodeMoveRef = React.useRef<(nodeId: string, x: number, y: number) => void>(() => {});
+
+  // Unified canvas input controller (RC-P4)
+  const canvasInput = useCanvasInput({
+    svgRef,
+    camera,
+    circuitNodes: circuit.nodes,
+    selectedNodeIds: selection.nodes,
+    onNodeMoveEnd: React.useCallback((nodeId: string, x: number, y: number) => {
+      handleNodeMoveRef.current(nodeId, x, y);
+    }, []),
+    onNodeSelect: selectNode,
+    onPan: pan,
+    onClearSelection: clearSelection,
+    onWireCancel: endWire,
+    isSpacePressed,
+    isReplayMode,
+    interactionMode,
+    setInteractionMode,
+    snapEnabled: shouldSnap && !isAltPressed,
+    gridSize,
+  });
+
+  // Track mouse position for wire preview (separate from drag handling)
+  const handlePointerMoveForWirePreview = React.useCallback((e: React.PointerEvent<SVGSVGElement>) => {
+    // Delegate to unified input controller first
+    canvasInput.onPointerMove(e);
 
     // Track mouse position for wire preview (throttled to RAF)
     if (svgRef.current && !mouseRafPending.current) {
@@ -424,21 +412,12 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         mouseRafPending.current = false;
         if (svgRef.current) {
           const rect = svgRef.current.getBoundingClientRect();
-          setMousePosition({
-            x: clientX - rect.left,
-            y: clientY - rect.top,
-          });
+          const local = clientToLocal(clientX, clientY, rect);
+          setMousePosition(local);
         }
       });
     }
-  };
-
-  const handleMouseUp = () => {
-    if (isPanning) {
-      setIsPanning(false);
-      setInteractionMode('idle');
-    }
-  };
+  }, [canvasInput.onPointerMove]);
 
 
   // Drag responsiveness optimization: batch node move updates with requestAnimationFrame
@@ -489,6 +468,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       commitCircuit(updatedCircuit);
     });
   }, [circuit, shouldSnap, isAltPressed, gridSize, selection.nodes, commitCircuit, isReplayMode]);
+  handleNodeMoveRef.current = handleNodeMove;
 
   // Clean up RAF on unmount
   React.useEffect(() => {
@@ -788,7 +768,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     if (e.key === ' ') {
       // Space released: Disable pan mode
       setIsSpacePressed(false);
-      setIsPanning(false); // Stop panning if in progress
     } else if (e.key === 'Alt') {
       // Alt released: Re-enable snap
       setIsAltPressed(false);
@@ -913,9 +892,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         height={height}
         style={{
           background: '#0a0a0a',
-          cursor: isPanning ? 'grabbing' : isSpacePressed ? 'grab' : (() => {
+          touchAction: 'none',
+          cursor: interactionMode === 'panning' ? 'grabbing' : isSpacePressed ? 'grab' : (() => {
+            if (canvasInput.dragState.isDragging) return 'grabbing';
             if (editingState.wireStartPort) {
-              // During wire creation, check if hovering over invalid port
               if (hoveredPort) {
                 const validation = isValidConnection(
                   editingState.wireStartPort,
@@ -930,9 +910,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             return 'default';
           })(),
         }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
+        onPointerDown={canvasInput.onPointerDown}
+        onPointerMove={handlePointerMoveForWirePreview}
+        onPointerUp={canvasInput.onPointerUp}
         onContextMenu={(e) => e.preventDefault()}
       >
         {/* Grid — stable container prevents SVG reconciliation mismatch */}
@@ -1045,6 +1025,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               highlightedPort={highlightedPort}
               debugTick={debugTick}
               mismatchPortKeys={mismatchPortKeys}
+              dragPosition={canvasInput.dragState.dragNodeId === node.id ? canvasInput.dragState.dragPosition : undefined}
             />
           ))}
         </g>

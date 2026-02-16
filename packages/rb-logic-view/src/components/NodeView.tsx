@@ -24,17 +24,19 @@ export interface NodeViewProps {
   onSelect: (nodeId: string, addToSelection: boolean) => void;
   onMove: (nodeId: string, x: number, y: number) => void;
   onPortClick?: (nodeId: string, portName: string) => void;
-  onToggleSwitch?: (nodeId: string) => void; // Toggle switch state
-  onNodeDoubleClick?: (nodeId: string) => void; // Double-click to drill into chip
-  onProbeToggle?: (nodeId: string, portName: string, label: string) => void; // Toggle probe on port
+  onToggleSwitch?: (nodeId: string) => void;
+  onNodeDoubleClick?: (nodeId: string) => void;
+  onProbeToggle?: (nodeId: string, portName: string, label: string) => void;
   signals?: Map<string, 0 | 1>;
-  chipMetadata?: ChipMetadata; // Metadata for custom chips
-  wireStartPort?: PortRef; // Port where wire drawing started
-  onPortHover?: (portName: string) => void; // Port hover for wire validation
-  onPortLeave?: () => void; // Port leave for wire validation
-  probedPorts?: Set<string>; // Set of probed port keys (e.g., "nodeId.portName")
+  chipMetadata?: ChipMetadata;
+  wireStartPort?: PortRef;
+  onPortHover?: (portName: string) => void;
+  onPortLeave?: () => void;
+  probedPorts?: Set<string>;
   highlightedPort?: { nodeId: string; portName: string } | null;
   debugTick?: number | null;
+  /** When provided by CanvasInputController, overrides node.position for rendering during drag. */
+  dragPosition?: { x: number; y: number } | null;
 }
 
 const NODE_COLORS: Record<string, string> = {
@@ -77,13 +79,12 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   probedPorts,
   highlightedPort,
   debugTick,
+  dragPosition: externalDragPosition,
 }) => {
   // Safe rotation: default to 0 if undefined to prevent rotate(undefined) SVG errors
   const safeRotation = Number.isFinite(node.rotation) ? node.rotation : 0;
 
-  const [isDragging, setIsDragging] = React.useState(false);
-  const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 });
-  const [dragPosition, setDragPosition] = React.useState({ x: node.position.x, y: node.position.y });
+  const isDragging = externalDragPosition != null;
   const [hoveredPort, setHoveredPort] = React.useState<string | null>(null);
   const [isHovered, setIsHovered] = React.useState(false);
   const [isToggleHovered, setIsToggleHovered] = React.useState(false);
@@ -155,8 +156,9 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     );
   };
 
-  const screenX = (isDragging ? dragPosition.x : node.position.x) * camera.zoom + camera.x;
-  const screenY = (isDragging ? dragPosition.y : node.position.y) * camera.zoom + camera.y;
+  const pos = externalDragPosition ?? node.position ?? { x: 0, y: 0 };
+  const screenX = pos.x * camera.zoom + camera.x;
+  const screenY = pos.y * camera.zoom + camera.y;
   const size = 48 * camera.zoom;
 
   const isSwitch = node.type === 'Switch' || node.type === 'INPUT';
@@ -174,20 +176,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const isIssueHighlighted = (portName: string) =>
     highlightedPort?.nodeId === node.id && highlightedPort.portName === portName;
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
-    e.stopPropagation();
-
-    // Capture pointer to ensure we get events even if cursor leaves the element
-    e.currentTarget.setPointerCapture(e.pointerId);
-
-    // Don't start drag yet - wait for movement
-    // Store initial client position to calculate delta
-    setDragStart({ x: e.clientX, y: e.clientY });
-    setDragPosition({ x: node.position.x, y: node.position.y });
-
-    onSelect(node.id, e.shiftKey);
-  };
+  // Drag handling is now centralized in useCanvasInput (CanvasInputController).
+  // NodeView only handles port clicks, toggle, and double-click.
 
   const handleToggleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -210,43 +200,6 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     }
   };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
-    // Only start drag if mouse moved more than 3px (prevents accidental drag on click)
-    if (!isDragging && dragStart.x !== 0) {
-      const dx = Math.abs(e.clientX - dragStart.x);
-      const dy = Math.abs(e.clientY - dragStart.y);
-      if (dx > 3 || dy > 3) {
-        setIsDragging(true);
-      }
-    }
-
-    if (!isDragging) return;
-
-    // Use camera zoom to convert screen delta to world delta
-    const dx = (e.clientX - dragStart.x) / camera.zoom;
-    const dy = (e.clientY - dragStart.y) / camera.zoom;
-
-    // Update local position immediately for smooth dragging
-    setDragPosition({
-      x: node.position.x + dx,
-      y: node.position.y + dy,
-    });
-  };
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    e.currentTarget.releasePointerCapture(e.pointerId);
-
-    if (isDragging) {
-      // Commit the final position when drag ends
-      onMove(node.id, dragPosition.x, dragPosition.y);
-      setIsDragging(false);
-      setDragStart({ x: 0, y: 0 });
-    } else if (dragStart.x !== 0) {
-      // Click without drag
-      setDragStart({ x: 0, y: 0 });
-    }
-  };
-
   // No longer need global window listener because we have pointer capture!
   const color = NODE_COLORS[node.type] || '#94a3b8';
   const isActive = signals?.get(`${node.id}.out`) === 1;
@@ -261,9 +214,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     return (
       <g
         transform={`translate(${screenX}, ${screenY}) rotate(${safeRotation})`}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
+        data-node-id={node.id}
         onDoubleClick={handleDoubleClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -402,6 +353,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 width={20}
                 height={20}
                 fill="transparent"
+                data-port-id={input.id}
                 style={{ cursor: 'crosshair' }}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -547,6 +499,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 cy={yPos}
                 r={10}
                 fill="transparent"
+                data-port-id={output.id}
                 style={{ cursor: 'crosshair' }}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -655,9 +608,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   return (
     <g
       transform={`translate(${screenX}, ${screenY}) rotate(${safeRotation})`}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
+      data-node-id={node.id}
       onDoubleClick={handleDoubleClick}
       style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
       data-testid={`node-${node.type}-${node.id}`}
@@ -759,6 +710,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               fill={isWireStart ? "#00ffff" : probedPorts?.has(`${node.id}.in`) ? "#00ffff" : "#3b82f6"}
               stroke={probedPorts?.has(`${node.id}.in`) ? "#00ffff" : "#fff"}
               strokeWidth={probedPorts?.has(`${node.id}.in`) ? 2.5 : isHovered ? 2.5 : 1.5}
+              data-port-id="in"
               style={{ cursor: 'crosshair' }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -867,6 +819,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               fill={isWireStart ? "#00ffff" : probedPorts?.has(`${node.id}.out`) ? "#00ffff" : isActive ? '#22c55e' : '#9ca3af'}
               stroke={probedPorts?.has(`${node.id}.out`) ? "#00ffff" : "#fff"}
               strokeWidth={probedPorts?.has(`${node.id}.out`) ? 2.5 : isHovered ? 2.5 : 1.5}
+              data-port-id="out"
               style={{ cursor: 'crosshair' }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -945,14 +898,16 @@ export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => 
   return (
     prevProps.node.id === nextProps.node.id &&
     prevProps.node.type === nextProps.node.type &&
-    prevProps.node.position.x === nextProps.node.position.x &&
-    prevProps.node.position.y === nextProps.node.position.y &&
+    prevProps.node.position?.x === nextProps.node.position?.x &&
+    prevProps.node.position?.y === nextProps.node.position?.y &&
     prevProps.node.rotation === nextProps.node.rotation &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.isHighlighted === nextProps.isHighlighted &&
     prevProps.camera.x === nextProps.camera.x &&
     prevProps.camera.y === nextProps.camera.y &&
     prevProps.camera.zoom === nextProps.camera.zoom &&
+    prevProps.dragPosition?.x === nextProps.dragPosition?.x &&
+    prevProps.dragPosition?.y === nextProps.dragPosition?.y &&
     JSON.stringify(prevProps.node.state) === JSON.stringify(nextProps.node.state) &&
     JSON.stringify(prevProps.chipMetadata) === JSON.stringify(nextProps.chipMetadata) &&
     prevProps.wireStartPort?.nodeId === nextProps.wireStartPort?.nodeId &&
