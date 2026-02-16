@@ -7,7 +7,7 @@
     "dev": "vite",
     "prebuild": "node write-build-sha.cjs",
     "build": "node build-hijack.mjs",
-    "postbuild": "node ../../scripts/copy-build-json.mjs ./dist && pnpm --filter @redbyte/lab3-webapp build",
+    "postbuild": "node ../../scripts/copy-build-json.mjs ./dist",
     "preview": "vite preview",
     "sanity": "node ./site-sanity-check.cjs",
     "typecheck": "tsc --noEmit"

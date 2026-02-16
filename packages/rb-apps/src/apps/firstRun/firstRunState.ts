@@ -224,13 +224,13 @@ export function shouldBypassWizardGate(): boolean {
 }
 
 export function shouldGateStudioEntry(state: FirstRunState): boolean {
-  if (shouldBypassWizardGate()) return false;
-  return !isWizardComplete(state);
+  void state;
+  return false;
 }
 
 export function resolveFirstRunTargetApp(appId: string, state: FirstRunState): string {
-  if (appId !== 'home' && appId !== 'lab-workspace') return appId;
-  return shouldGateStudioEntry(state) ? 'first-run-wizard' : appId;
+  void state;
+  return appId;
 }
 
 export function getFirstRunBlockingStep(state: FirstRunState): FirstRunStepId {

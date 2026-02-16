@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-02-16 (Unified Build Entrypoint + Studio Unblock)
+
+**Status**: ✅ COMPLETE - Cloudflare-compatible build path now targets unified root `dist/`, and Studio is no longer blocked by First Run Wizard / bridge checks.
+
+- **Cloudflare/root build path fixed**:
+  - Updated: `package.json`
+  - Root `build` script now runs `pnpm -s build:unified` (instead of playground-only build), ensuring environments that invoke `pnpm build` produce root `dist/` with `/os`.
+
+- **Manual site pipeline de-legacy’d**:
+  - Updated: `apps/manual-site/package.json`
+  - Removed chained `@redbyte/lab3-webapp` build from manual-site `postbuild`.
+  - Manual-site postbuild now only copies `build.json` into manual-site dist.
+
+- **Studio lockout removed**:
+  - Updated: `packages/rb-apps/src/apps/firstRun/firstRunState.ts`
+  - `shouldGateStudioEntry(...)` now always returns `false`.
+  - `resolveFirstRunTargetApp(...)` now returns requested app directly, eliminating automatic redirect to `first-run-wizard`.
+
+- **Behavioral outcome**:
+  - Studio/Lab Workspace launch is no longer blocked by wizard completion or bridge availability.
+  - Hardware-dependent actions remain app-level concerns; entry is not hard-locked.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-16 (CI Determinism: pnpm Build-Script Policy + Clear Install Failure + Secret-Gated Deploy Path)
 
 **Status**: ✅ COMPLETE - CI now explicitly configures pnpm script behavior, allows required build-script dependencies, fails with a clear message if scripts are still ignored, and skips Cloudflare deploy paths cleanly when secrets are missing.

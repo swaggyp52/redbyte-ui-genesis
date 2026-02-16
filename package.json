@@ -12,7 +12,7 @@
         "dev:lab3": "pnpm --filter @redbyte/lab3-webapp dev",
         "dev:manual": "pnpm --filter @redbyte/manual-site dev",
         "dev:playground": "pnpm --filter @redbyte/playground dev",
-        "build": "pnpm --filter @redbyte/playground run build",
+        "build": "pnpm -s build:unified",
         "build:all": "pnpm -r run build",
         "build:lab3": "pnpm --filter @redbyte/lab3-webapp run build",
         "build:os": "pnpm -r run build",
