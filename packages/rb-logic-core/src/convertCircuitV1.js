@@ -28,9 +28,19 @@ export function toCircuitV1(src) {
         connections: src.connections.map((conn) => ({
             id: conn.id,
             fromNodeId: typeof conn.from === 'string' ? conn.from : conn.from.nodeId,
-            fromPin: conn.fromPin || 'out',
+            fromPin: conn.fromPin ||
+                conn.fromPort ||
+                (typeof conn.from === 'string'
+                    ? undefined
+                    : conn.from.portName || conn.from.port) ||
+                'out',
             toNodeId: typeof conn.to === 'string' ? conn.to : conn.to.nodeId,
-            toPin: conn.toPin || 'in',
+            toPin: conn.toPin ||
+                conn.toPort ||
+                (typeof conn.to === 'string'
+                    ? undefined
+                    : conn.to.portName || conn.to.port) ||
+                'in',
         })),
         customChips: [],
     };
@@ -58,9 +68,9 @@ export function fromCircuitV1(src) {
         })),
         connections: src.connections.map((conn) => ({
             id: conn.id,
-            from: conn.fromNodeId,
+            from: { nodeId: conn.fromNodeId, portName: conn.fromPin },
             fromPin: conn.fromPin,
-            to: conn.toNodeId,
+            to: { nodeId: conn.toNodeId, portName: conn.toPin },
             toPin: conn.toPin,
         })),
     };

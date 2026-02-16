@@ -1,0 +1,1471 @@
+{
+  "kind": "rb-project",
+  "version": 1,
+  "createdAt": "2026-02-16T00:00:00.000Z",
+  "updatedAt": "2026-02-16T00:00:00.000Z",
+  "name": "golden-basys3-alu",
+  "description": "Lab 4 1-bit ALU: EN, A, B, S2/S1/S0 -> F (Basys3 classroom fixture)",
+  "circuit": {
+    "nodes": [
+      {
+        "id": "inA",
+        "type": "Wire",
+        "position": {
+          "x": 80,
+          "y": 60
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "inB",
+        "type": "Wire",
+        "position": {
+          "x": 80,
+          "y": 120
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "inS2",
+        "type": "Wire",
+        "position": {
+          "x": 80,
+          "y": 180
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "inS1",
+        "type": "Wire",
+        "position": {
+          "x": 80,
+          "y": 240
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "inS0",
+        "type": "Wire",
+        "position": {
+          "x": 80,
+          "y": 300
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "inEN",
+        "type": "Wire",
+        "position": {
+          "x": 80,
+          "y": 360
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "op_and",
+        "type": "AND",
+        "position": {
+          "x": 260,
+          "y": 60
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "op_nand",
+        "type": "NAND",
+        "position": {
+          "x": 260,
+          "y": 110
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "op_or",
+        "type": "OR",
+        "position": {
+          "x": 260,
+          "y": 160
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "op_nor_not",
+        "type": "NOT",
+        "position": {
+          "x": 420,
+          "y": 160
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "op_xor",
+        "type": "XOR",
+        "position": {
+          "x": 260,
+          "y": 210
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "op_xnor_not",
+        "type": "NOT",
+        "position": {
+          "x": 420,
+          "y": 210
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "op_sum",
+        "type": "XOR",
+        "position": {
+          "x": 260,
+          "y": 260
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "op_carry",
+        "type": "AND",
+        "position": {
+          "x": 260,
+          "y": 310
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "nS2",
+        "type": "NOT",
+        "position": {
+          "x": 220,
+          "y": 410
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "nS1",
+        "type": "NOT",
+        "position": {
+          "x": 220,
+          "y": 460
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "nS0",
+        "type": "NOT",
+        "position": {
+          "x": 220,
+          "y": 510
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "d0a",
+        "type": "AND",
+        "position": {
+          "x": 420,
+          "y": 410
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "d0",
+        "type": "AND",
+        "position": {
+          "x": 560,
+          "y": 410
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "d1a",
+        "type": "AND",
+        "position": {
+          "x": 420,
+          "y": 450
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "d1",
+        "type": "AND",
+        "position": {
+          "x": 560,
+          "y": 450
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "d2a",
+        "type": "AND",
+        "position": {
+          "x": 420,
+          "y": 490
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "d2",
+        "type": "AND",
+        "position": {
+          "x": 560,
+          "y": 490
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "d3a",
+        "type": "AND",
+        "position": {
+          "x": 420,
+          "y": 530
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "d3",
+        "type": "AND",
+        "position": {
+          "x": 560,
+          "y": 530
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "d4a",
+        "type": "AND",
+        "position": {
+          "x": 420,
+          "y": 570
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "d4",
+        "type": "AND",
+        "position": {
+          "x": 560,
+          "y": 570
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "d5a",
+        "type": "AND",
+        "position": {
+          "x": 420,
+          "y": 610
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "d5",
+        "type": "AND",
+        "position": {
+          "x": 560,
+          "y": 610
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "d6a",
+        "type": "AND",
+        "position": {
+          "x": 420,
+          "y": 650
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "d6",
+        "type": "AND",
+        "position": {
+          "x": 560,
+          "y": 650
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "d7a",
+        "type": "AND",
+        "position": {
+          "x": 420,
+          "y": 690
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "d7",
+        "type": "AND",
+        "position": {
+          "x": 560,
+          "y": 690
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "sel0",
+        "type": "AND",
+        "position": {
+          "x": 740,
+          "y": 60
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "sel1",
+        "type": "AND",
+        "position": {
+          "x": 740,
+          "y": 110
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "sel2",
+        "type": "AND",
+        "position": {
+          "x": 740,
+          "y": 160
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "sel3",
+        "type": "AND",
+        "position": {
+          "x": 740,
+          "y": 210
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "sel4",
+        "type": "AND",
+        "position": {
+          "x": 740,
+          "y": 260
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "sel5",
+        "type": "AND",
+        "position": {
+          "x": 740,
+          "y": 310
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "sel6",
+        "type": "AND",
+        "position": {
+          "x": 740,
+          "y": 360
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "sel7",
+        "type": "AND",
+        "position": {
+          "x": 740,
+          "y": 410
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "or01",
+        "type": "OR",
+        "position": {
+          "x": 920,
+          "y": 90
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "or23",
+        "type": "OR",
+        "position": {
+          "x": 920,
+          "y": 190
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "or45",
+        "type": "OR",
+        "position": {
+          "x": 920,
+          "y": 290
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "or67",
+        "type": "OR",
+        "position": {
+          "x": 920,
+          "y": 390
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "or0123",
+        "type": "OR",
+        "position": {
+          "x": 1080,
+          "y": 140
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "or4567",
+        "type": "OR",
+        "position": {
+          "x": 1080,
+          "y": 340
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "or_all",
+        "type": "OR",
+        "position": {
+          "x": 1240,
+          "y": 240
+        },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "en_gate",
+        "type": "AND",
+        "position": {
+          "x": 1400,
+          "y": 240
+        },
+        "config": {},
+        "state": {}
+      }
+    ],
+    "connections": [
+      {
+        "id": "c1",
+        "from": {
+          "nodeId": "inA",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "op_and",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c2",
+        "from": {
+          "nodeId": "inB",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "op_and",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c3",
+        "from": {
+          "nodeId": "inA",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "op_nand",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c4",
+        "from": {
+          "nodeId": "inB",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "op_nand",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c5",
+        "from": {
+          "nodeId": "inA",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "op_or",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c6",
+        "from": {
+          "nodeId": "inB",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "op_or",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c7",
+        "from": {
+          "nodeId": "inA",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "op_xor",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c8",
+        "from": {
+          "nodeId": "inB",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "op_xor",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c9",
+        "from": {
+          "nodeId": "inA",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "op_sum",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c10",
+        "from": {
+          "nodeId": "inB",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "op_sum",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c11",
+        "from": {
+          "nodeId": "inA",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "op_carry",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c12",
+        "from": {
+          "nodeId": "inB",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "op_carry",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c13",
+        "from": {
+          "nodeId": "op_or",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "op_nor_not",
+          "portName": "in"
+        }
+      },
+      {
+        "id": "c14",
+        "from": {
+          "nodeId": "op_xor",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "op_xnor_not",
+          "portName": "in"
+        }
+      },
+      {
+        "id": "c15",
+        "from": {
+          "nodeId": "inS2",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "nS2",
+          "portName": "in"
+        }
+      },
+      {
+        "id": "c16",
+        "from": {
+          "nodeId": "inS1",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "nS1",
+          "portName": "in"
+        }
+      },
+      {
+        "id": "c17",
+        "from": {
+          "nodeId": "inS0",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "nS0",
+          "portName": "in"
+        }
+      },
+      {
+        "id": "c18",
+        "from": {
+          "nodeId": "nS2",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d0a",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c19",
+        "from": {
+          "nodeId": "nS1",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d0a",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c20",
+        "from": {
+          "nodeId": "d0a",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d0",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c21",
+        "from": {
+          "nodeId": "nS0",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d0",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c22",
+        "from": {
+          "nodeId": "nS2",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d1a",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c23",
+        "from": {
+          "nodeId": "nS1",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d1a",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c24",
+        "from": {
+          "nodeId": "d1a",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d1",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c25",
+        "from": {
+          "nodeId": "inS0",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d1",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c26",
+        "from": {
+          "nodeId": "nS2",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d2a",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c27",
+        "from": {
+          "nodeId": "inS1",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d2a",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c28",
+        "from": {
+          "nodeId": "d2a",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d2",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c29",
+        "from": {
+          "nodeId": "nS0",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d2",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c30",
+        "from": {
+          "nodeId": "nS2",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d3a",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c31",
+        "from": {
+          "nodeId": "inS1",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d3a",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c32",
+        "from": {
+          "nodeId": "d3a",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d3",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c33",
+        "from": {
+          "nodeId": "inS0",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d3",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c34",
+        "from": {
+          "nodeId": "inS2",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d4a",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c35",
+        "from": {
+          "nodeId": "nS1",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d4a",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c36",
+        "from": {
+          "nodeId": "d4a",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d4",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c37",
+        "from": {
+          "nodeId": "nS0",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d4",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c38",
+        "from": {
+          "nodeId": "inS2",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d5a",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c39",
+        "from": {
+          "nodeId": "nS1",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d5a",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c40",
+        "from": {
+          "nodeId": "d5a",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d5",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c41",
+        "from": {
+          "nodeId": "inS0",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d5",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c42",
+        "from": {
+          "nodeId": "inS2",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d6a",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c43",
+        "from": {
+          "nodeId": "inS1",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d6a",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c44",
+        "from": {
+          "nodeId": "d6a",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d6",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c45",
+        "from": {
+          "nodeId": "nS0",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d6",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c46",
+        "from": {
+          "nodeId": "inS2",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d7a",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c47",
+        "from": {
+          "nodeId": "inS1",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d7a",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c48",
+        "from": {
+          "nodeId": "d7a",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d7",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c49",
+        "from": {
+          "nodeId": "inS0",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "d7",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c50",
+        "from": {
+          "nodeId": "op_and",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "sel0",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c51",
+        "from": {
+          "nodeId": "d0",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "sel0",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c52",
+        "from": {
+          "nodeId": "op_nand",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "sel1",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c53",
+        "from": {
+          "nodeId": "d1",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "sel1",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c54",
+        "from": {
+          "nodeId": "op_or",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "sel2",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c55",
+        "from": {
+          "nodeId": "d2",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "sel2",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c56",
+        "from": {
+          "nodeId": "op_nor_not",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "sel3",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c57",
+        "from": {
+          "nodeId": "d3",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "sel3",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c58",
+        "from": {
+          "nodeId": "op_xor",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "sel4",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c59",
+        "from": {
+          "nodeId": "d4",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "sel4",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c60",
+        "from": {
+          "nodeId": "op_xnor_not",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "sel5",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c61",
+        "from": {
+          "nodeId": "d5",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "sel5",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c62",
+        "from": {
+          "nodeId": "op_sum",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "sel6",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c63",
+        "from": {
+          "nodeId": "d6",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "sel6",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c64",
+        "from": {
+          "nodeId": "op_carry",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "sel7",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c65",
+        "from": {
+          "nodeId": "d7",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "sel7",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c66",
+        "from": {
+          "nodeId": "sel0",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "or01",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c67",
+        "from": {
+          "nodeId": "sel1",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "or01",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c68",
+        "from": {
+          "nodeId": "sel2",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "or23",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c69",
+        "from": {
+          "nodeId": "sel3",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "or23",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c70",
+        "from": {
+          "nodeId": "sel4",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "or45",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c71",
+        "from": {
+          "nodeId": "sel5",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "or45",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c72",
+        "from": {
+          "nodeId": "sel6",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "or67",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c73",
+        "from": {
+          "nodeId": "sel7",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "or67",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c74",
+        "from": {
+          "nodeId": "or01",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "or0123",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c75",
+        "from": {
+          "nodeId": "or23",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "or0123",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c76",
+        "from": {
+          "nodeId": "or45",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "or4567",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c77",
+        "from": {
+          "nodeId": "or67",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "or4567",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c78",
+        "from": {
+          "nodeId": "or0123",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "or_all",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c79",
+        "from": {
+          "nodeId": "or4567",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "or_all",
+          "portName": "in2"
+        }
+      },
+      {
+        "id": "c80",
+        "from": {
+          "nodeId": "or_all",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "en_gate",
+          "portName": "in1"
+        }
+      },
+      {
+        "id": "c81",
+        "from": {
+          "nodeId": "inEN",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "en_gate",
+          "portName": "in2"
+        }
+      }
+    ]
+  },
+  "layout": {
+    "perspectiveId": "analyze",
+    "splitRatio": 0.5,
+    "dock": {
+      "open": true,
+      "tab": "info"
+    }
+  },
+  "meta": {
+    "tags": [
+      "classroom",
+      "golden",
+      "basys3",
+      "lab4",
+      "alu"
+    ],
+    "appSurface": "logic-playground"
+  },
+  "classroom": {
+    "board": "basys3",
+    "ioMapping": {
+      "inputs": [
+        {
+          "id": "in-en",
+          "nodeId": "inEN",
+          "port": "in",
+          "pin": "SW8",
+          "label": "EN"
+        },
+        {
+          "id": "in-a",
+          "nodeId": "inA",
+          "port": "in",
+          "pin": "SW5",
+          "label": "A"
+        },
+        {
+          "id": "in-b",
+          "nodeId": "inB",
+          "port": "in",
+          "pin": "SW4",
+          "label": "B"
+        },
+        {
+          "id": "in-s2",
+          "nodeId": "inS2",
+          "port": "in",
+          "pin": "SW3",
+          "label": "S2"
+        },
+        {
+          "id": "in-s1",
+          "nodeId": "inS1",
+          "port": "in",
+          "pin": "SW2",
+          "label": "S1"
+        },
+        {
+          "id": "in-s0",
+          "nodeId": "inS0",
+          "port": "in",
+          "pin": "SW1",
+          "label": "S0"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out-f",
+          "nodeId": "en_gate",
+          "port": "out",
+          "pin": "LD1",
+          "label": "F"
+        }
+      ]
+    }
+  }
+}

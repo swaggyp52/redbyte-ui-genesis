@@ -1,39 +1,64 @@
 /**
  * Canonical converter between internal Circuit format and CircuitV1 (project format).
  * 
- * This is the ONLY place these conversions should happen.
- * All apps and export paths must import from here.
+ * ✅ RC-P1: This is the ONLY place these conversions should happen.
+ * ✅ RC-P2: Explicitly handles position field migration (position > x/y > safe default).
  * 
- * RC-P8 fix: Eliminates duplicate ad-hoc converters across the codebase.
+ * All apps and export paths MUST import from here, never create parallel converters.
+ * 
+ * CRITICAL INVARIANT: position field is never lost during serialization.
+ * If you find code that reads only x/y or ignores position, it's a bug.
  */
 
-import type { Circuit, CircuitV1, Node, Connection, PortRef } from './types';
+import type { Circuit, Node, Connection, PortRef } from './types';
+import type { CircuitV1 } from '@redbyte/rb-utils';
 
 /**
  * Convert internal Circuit to CircuitV1 (project/serialization format).
  * 
- * CRITICAL: Reads from node.position first (current format), falls back to legacy node.x/y.
- * This ensures positions are never lost (RC-P2).
+ * RC-P2 IMPLEMENTATION:
+ * - Reads from node.position first (modern format, preferred)
+ * - Falls back to legacy node.x/y if position missing
+ * - Normalizes to position.x ?? node.x ?? 0 for safe defaults
+ * - This ensures positions are never lost during round-trip (RC-P2)
  */
 export function toCircuitV1(src: Circuit): CircuitV1 {
   return {
     schemaVersion: '1.0',
-    nodes: src.nodes.map((node) => ({
-      id: node.id,
-      type: node.type,
-      x: node.position?.x ?? node.x ?? 0,
-      y: node.position?.y ?? node.y ?? 0,
-      rotation: node.rotation || 0,
-      params: node.config || {},
-      label: node.label,
-      state: node.state || {},
-    })),
+    nodes: src.nodes.map((node) => {
+      // RC-P2: Prefer position field, fall back to legacy x/y
+      const x = node.position?.x ?? node.x ?? 0;
+      const y = node.position?.y ?? node.y ?? 0;
+      
+      return {
+        id: node.id,
+        type: node.type,
+        x,  // Always output x/y for persistence (CircuitV1 schema is x/y)
+        y,
+        rotation: node.rotation || 0,
+        params: node.config || {},
+        label: node.label,
+        state: node.state || {},
+      };
+    }),
     connections: src.connections.map((conn) => ({
       id: conn.id,
       fromNodeId: typeof conn.from === 'string' ? conn.from : (conn.from as PortRef).nodeId,
-      fromPin: conn.fromPin || 'out',
+      fromPin:
+        conn.fromPin ||
+        conn.fromPort ||
+        (typeof conn.from === 'string'
+          ? undefined
+          : (conn.from as PortRef).portName || (conn.from as PortRef).port) ||
+        'out',
       toNodeId: typeof conn.to === 'string' ? conn.to : (conn.to as PortRef).nodeId,
-      toPin: conn.toPin || 'in',
+      toPin:
+        conn.toPin ||
+        conn.toPort ||
+        (typeof conn.to === 'string'
+          ? undefined
+          : (conn.to as PortRef).portName || (conn.to as PortRef).port) ||
+        'in',
     })),
     customChips: [],
   };
@@ -42,17 +67,19 @@ export function toCircuitV1(src: Circuit): CircuitV1 {
 /**
  * Convert CircuitV1 (project format) to internal Circuit.
  * 
- * CRITICAL: Creates position object from V1 x/y fields (RC-P2).
- * Also maintains legacy x/y fields for backward compatibility.
+ * RC-P2 IMPLEMENTATION:
+ * - Creates position object from CircuitV1 x/y fields (modern format)
+ * - Also maintains legacy x/y fields for backward compatibility with old code
+ * - Ensures that reading via position OR x/y works (but preference is position)
  */
 export function fromCircuitV1(src: CircuitV1): Circuit {
   return {
     nodes: src.nodes.map((node) => ({
       id: node.id,
       type: node.type,
-      position: { x: node.x ?? 0, y: node.y ?? 0 },  // NEW format
-      x: node.x,                                      // Legacy field
-      y: node.y,                                      // Legacy field
+      position: { x: node.x ?? 0, y: node.y ?? 0 },  // NEW format (preferred)
+      x: node.x,                                      // Legacy field (fallback only)
+      y: node.y,                                      // Legacy field (fallback only)
       rotation: node.rotation,
       config: node.params || {},
       label: node.label,
@@ -62,9 +89,9 @@ export function fromCircuitV1(src: CircuitV1): Circuit {
     })),
     connections: src.connections.map((conn) => ({
       id: conn.id,
-      from: conn.fromNodeId,
+      from: { nodeId: conn.fromNodeId, portName: conn.fromPin },
       fromPin: conn.fromPin,
-      to: conn.toNodeId,
+      to: { nodeId: conn.toNodeId, portName: conn.toPin },
       toPin: conn.toPin,
     })),
   };

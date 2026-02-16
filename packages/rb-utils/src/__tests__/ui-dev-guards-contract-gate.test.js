@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 /**
  * ui:dev-guards-contract-gate
@@ -39,6 +39,66 @@ function walkDir(dir, ext = ['.ts', '.tsx', '.js', '.jsx']) {
     }
     return files;
 }
+function collectActiveProductionJsAssets(distAssetsDir) {
+    const distDir = join(distAssetsDir, '..');
+    const active = new Set();
+    const manifestCandidates = [
+        join(distDir, '.vite', 'manifest.json'),
+        join(distDir, 'manifest.json'),
+    ];
+    for (const manifestPath of manifestCandidates) {
+        try {
+            const raw = readFileSync(manifestPath, 'utf-8');
+            const manifest = JSON.parse(raw);
+            const queue = Object.keys(manifest);
+            const visited = new Set();
+            while (queue.length > 0) {
+                const key = queue.shift();
+                if (visited.has(key))
+                    continue;
+                visited.add(key);
+                const entry = manifest[key];
+                if (!entry)
+                    continue;
+                const file = entry.file ?? '';
+                if (file.startsWith('assets/') && /\.(mjs|cjs|js)$/i.test(file)) {
+                    active.add(join(distDir, file));
+                }
+                for (const imported of [...(entry.imports ?? []), ...(entry.dynamicImports ?? [])]) {
+                    if (!visited.has(imported))
+                        queue.push(imported);
+                }
+            }
+        }
+        catch {
+            // Optional manifest path; ignore if absent/invalid.
+        }
+    }
+    if (active.size === 0) {
+        try {
+            const indexHtml = readFileSync(join(distDir, 'index.html'), 'utf-8');
+            const assetMatches = indexHtml.match(/(?:src|href)=['"]\/?assets\/[^'"?#]+\.(?:mjs|cjs|js)['"]/gi) ?? [];
+            for (const match of assetMatches) {
+                const pathMatch = match.match(/assets\/[^'"?#]+\.(?:mjs|cjs|js)/i);
+                if (pathMatch)
+                    active.add(join(distDir, pathMatch[0]));
+            }
+        }
+        catch {
+            // No index fallback available.
+        }
+    }
+    return Array.from(active)
+        .filter((filePath) => {
+        try {
+            return statSync(filePath).isFile();
+        }
+        catch {
+            return false;
+        }
+    })
+        .sort((a, b) => a.localeCompare(b));
+}
 describe('ui:dev-guards-contract-gate', () => {
     describe('authorized debug keys', () => {
         it('reads DEV_DEBUG_FLAGS.md and verifies documentation', () => {
@@ -49,7 +109,7 @@ describe('ui:dev-guards-contract-gate', () => {
             expect(doc).toContain('rb:renderStormReport');
             expect(doc).toContain('window.__RB_WINDOWING__');
             // Extract all rb:* keys mentioned in document (for audit)
-            const allKeyMatches = doc.match(/`rb:[a-z0-9:_\-\$\{name\}]+`/g) ?? [];
+            const allKeyMatches = doc.match(/`rb:[A-Za-z0-9:_\-\$\{name\}]+`/g) ?? [];
             const uniqueKeys = Array.from(new Set(allKeyMatches.map(m => m.slice(1, -1)))).sort();
             console.log(`Found ${uniqueKeys.length} rb:* keys documented in DEV_DEBUG_FLAGS.md:`, uniqueKeys);
             expect(uniqueKeys.length).toBeGreaterThan(5);
@@ -91,7 +151,7 @@ describe('ui:dev-guards-contract-gate', () => {
             const debugFlagsPath = join(PACKAGES_SRC, 'rb-utils/src/debugFlags.ts');
             const debugFlagsContent = readFileSync(debugFlagsPath, 'utf-8');
             // Extract all string literals from exported const arrays
-            const allKeys = debugFlagsContent.match(/['"`]rb:[a-z0-9:_\-\$\{name\}]+['"`]/g) ?? [];
+            const allKeys = debugFlagsContent.match(/['"`]rb:[A-Za-z0-9:_\-\$\{name\}]+['"`]/g) ?? [];
             const authorizedSet = new Set(allKeys.map(k => k.replace(/['"`]/g, '')));
             // Also accept dynamic pattern rb:flags:*
             const unauthorizedReads = [];
@@ -127,9 +187,9 @@ describe('ui:dev-guards-contract-gate', () => {
                 }
             }
             if (unauthorizedReads.length > 0) {
-                console.warn('Found localStorage keys not in debugFlags.ts allowlist:');
-                unauthorizedReads.forEach(r => console.warn(`  ${r.file}:${r.line} - ${r.key}`));
-                console.warn('Add these keys to DEBUG_FLAGS or PERSISTENT_STORAGE_KEYS in debugFlags.ts');
+                console.log('Found localStorage keys not in debugFlags.ts allowlist:');
+                unauthorizedReads.forEach(r => console.log(`  ${r.file}:${r.line} - ${r.key}`));
+                console.log('Add these keys to DEBUG_FLAGS or PERSISTENT_STORAGE_KEYS in debugFlags.ts');
             }
             // For now, this is a soft check - log warnings but don't fail
             // In a stricter gate, you'd expect this to be 0
@@ -138,26 +198,70 @@ describe('ui:dev-guards-contract-gate', () => {
         });
     });
     describe('no unguarded console spam in production', () => {
-        it('basic check: avoid excessive unguarded console.* in source', () => {
-            const sourceFiles = walkDir(PACKAGES_SRC);
-            let totalConsoleLines = 0;
-            for (const filePath of sourceFiles) {
+        it('fails on console.log/debug/info leakage in production bundles', () => {
+            const distAssetsDir = join(REPO_ROOT, 'apps/playground/dist/assets');
+            let hasDistAssets = false;
+            try {
+                hasDistAssets = statSync(distAssetsDir).isDirectory();
+            }
+            catch {
+                hasDistAssets = false;
+            }
+            if (!hasDistAssets) {
+                console.log('Production assets not found at apps/playground/dist/assets; skipping bundle console leakage check.');
+                expect(true).toBe(true);
+                return;
+            }
+            const assetFiles = collectActiveProductionJsAssets(distAssetsDir);
+            const consolePattern = /\bconsole\.(log|debug|info)\b/g;
+            const perFileCounts = new Map();
+            const kindTotals = { log: 0, debug: 0, info: 0 };
+            let totalLeakage = 0;
+            for (const filePath of assetFiles) {
                 try {
                     const content = readFileSync(filePath, 'utf-8');
-                    const consoleMatches = content.match(/console\.(log|warn|error|debug|info)\(/g) ?? [];
-                    totalConsoleLines += consoleMatches.length;
+                    const matches = content.matchAll(consolePattern);
+                    let fileTotal = 0;
+                    const fileByKind = { log: 0, debug: 0, info: 0 };
+                    for (const match of matches) {
+                        const kind = match[1];
+                        fileByKind[kind] += 1;
+                        kindTotals[kind] += 1;
+                        fileTotal += 1;
+                        totalLeakage += 1;
+                    }
+                    if (fileTotal > 0) {
+                        perFileCounts.set(filePath.replace(REPO_ROOT, ''), {
+                            total: fileTotal,
+                            byKind: fileByKind,
+                        });
+                    }
                 }
-                catch (e) {
-                    // Skip
+                catch {
+                    // Skip unreadable assets
                 }
             }
-            // This is a soft check; too much console spam is a warning
-            // In a real gate, you might fail if > 50 unguarded console calls
-            // For now, just log it
-            if (totalConsoleLines > 100) {
-                console.warn(`High console usage detected: ${totalConsoleLines} calls`);
+            if (totalLeakage > 0) {
+                const rankedFiles = Array.from(perFileCounts.entries())
+                    .sort((a, b) => b[1].total - a[1].total)
+                    .slice(0, 5);
+                const sampleFiles = Array.from(perFileCounts.keys())
+                    .sort()
+                    .slice(0, 10);
+                console.log(`Production console leakage detected: total=${totalLeakage}`);
+                console.log(`By kind: log=${kindTotals.log}, debug=${kindTotals.debug}, info=${kindTotals.info}`);
+                console.log('Top files by leakage count:');
+                rankedFiles.forEach(([file, counts]) => {
+                    console.log(`  ${file} => total=${counts.total} (log=${counts.byKind.log}, debug=${counts.byKind.debug}, info=${counts.byKind.info})`);
+                });
+                console.log('Sample impacted files:');
+                sampleFiles.forEach((file) => {
+                    console.log(`  ${file}`);
+                });
             }
-            expect(true).toBe(true); // Always pass; this is informational
+            console.log(`Active production bundle files scanned: ${assetFiles.length}`);
+            const CONSOLE_LEAK_BUDGET = 140;
+            expect(totalLeakage).toBeLessThanOrEqual(CONSOLE_LEAK_BUDGET);
         });
     });
     describe('dev flags sync check', () => {

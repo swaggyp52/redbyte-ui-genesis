@@ -19,6 +19,7 @@ import example15 from './15_not-gate.json';
 import example16 from './16_8bit-counter-basys3.json';
 import example17 from './17_traffic-light-fsm-basys3.json';
 import example18 from './18_4bit-alu-basys3.json';
+import example19 from './19_lab4-alu-starter-basys3.json';
 import { generateExampleProject } from './exampleGenerator';
 const examples = {
     // Layer 0: Foundation - Basic gates and wires
@@ -196,6 +197,16 @@ const examples = {
             description: 'Arithmetic Logic Unit with ADD/SUB/AND/OR operations - hardware ready',
             layer: 6,
             difficulty: 'advanced',
+        },
+    },
+    '19_lab4-alu-starter-basys3': {
+        data: example19,
+        metadata: {
+            id: '19_lab4-alu-starter-basys3',
+            name: 'Lab 4 ALU Starter (Basys3)',
+            description: 'Unsolved starter scaffold with required Lab 4 SW/LED labels',
+            layer: 6,
+            difficulty: 'intermediate',
         },
     },
     // Layer 6: Simple Processors - 8-bit computers

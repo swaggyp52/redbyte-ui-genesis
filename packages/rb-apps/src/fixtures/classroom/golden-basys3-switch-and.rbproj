@@ -1,0 +1,41 @@
+{
+  "kind": "rb-project",
+  "version": 1,
+  "createdAt": "2026-02-16T00:00:00.000Z",
+  "updatedAt": "2026-02-16T00:00:00.000Z",
+  "name": "golden-basys3-switch-and",
+  "description": "Classroom golden fixture: SW0 + SW1 -> AND -> LED0",
+  "circuit": {
+    "nodes": [
+      {
+        "id": "and1",
+        "type": "AND",
+        "position": { "x": 120, "y": 80 },
+        "config": {},
+        "state": {}
+      }
+    ],
+    "connections": []
+  },
+  "layout": {
+    "perspectiveId": "analyze",
+    "splitRatio": 0.5,
+    "dock": { "open": true, "tab": "info" }
+  },
+  "meta": {
+    "tags": ["classroom", "golden", "basys3"],
+    "appSurface": "logic-playground"
+  },
+  "classroom": {
+    "board": "basys3",
+    "ioMapping": {
+      "inputs": [
+        { "id": "in-a", "nodeId": "and1", "port": "in1", "pin": "SW0", "label": "SW0" },
+        { "id": "in-b", "nodeId": "and1", "port": "in2", "pin": "SW1", "label": "SW1" }
+      ],
+      "outputs": [
+        { "id": "out-y", "nodeId": "and1", "port": "out", "pin": "LD0", "label": "LED0" }
+      ]
+    }
+  }
+}

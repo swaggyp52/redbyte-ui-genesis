@@ -9,6 +9,8 @@
  */
 
 import type { LabProjectV1, CircuitV1, Circuit } from '../schema/index.js';
+// RC-P2: Use canonical converters from rb-logic-core (only source of conversion logic)
+import { toCircuitV1, fromCircuitV1 } from '@redbyte/rb-logic-core';
 
 // ============================================================================
 // Type Definitions
@@ -27,65 +29,39 @@ export interface ImportMetadata {
 }
 
 // ============================================================================
-// Circuit Conversion
+// Circuit Conversion (RC-P2: Canonical Converters Only)
 // ============================================================================
 
 /**
  * Convert CircuitV1 (schema format) to Circuit (runtime format) for Logic Playground.
  * This is the standard conversion used when importing or loading projects.
  *
+ * RC-P2 FIX: Delegates to canonical converter from rb-logic-core.
+ * The canonical converter ensures position field is never lost (reading position > x/y > safe default).
+ * 
  * The Circuit format is used internally by Logic Playground for editing,
  * while CircuitV1 is the persisted schema format.
  */
 export function convertCircuitV1ToCircuit(circuitV1: CircuitV1): Circuit {
-  return {
-    nodes: circuitV1.nodes.map((node) => ({
-      id: node.id,
-      type: node.type,
-      x: node.x,
-      y: node.y,
-      rotation: node.rotation,
-      config: node.params || {},
-      label: node.label,
-      state: node.state || {},
-      inputs: {},
-      outputs: {},
-    })),
-    connections: circuitV1.connections.map((conn) => ({
-      id: conn.id,
-      from: conn.fromNodeId,
-      fromPin: conn.fromPin,
-      to: conn.toNodeId,
-      toPin: conn.toPin,
-    })),
-  };
+  // RC-P2: Use canonical converter that creates position object + maintains x/y fallback
+  return fromCircuitV1(circuitV1);
 }
 
 /**
  * Convert Circuit (runtime format) back to CircuitV1 (schema format) for export.
  * This is the inverse of convertCircuitV1ToCircuit.
+ *
+ * RC-P2 FIX: Delegates to canonical converter from rb-logic-core.
+ * The canonical converter ensures position field is preserved (reading position > x/y).
  */
 export function convertCircuitToCircuitV1(circuit: Circuit, existing?: CircuitV1): CircuitV1 {
+  // RC-P2: Use canonical converter that reads position first, never loses it
+  const v1 = toCircuitV1(circuit);
+  // Preserve schema version and custom chips from existing if present
   return {
-    schemaVersion: existing?.schemaVersion || '1.0',
-    nodes: circuit.nodes.map((node) => ({
-      id: node.id,
-      type: node.type,
-      x: node.x,
-      y: node.y,
-      rotation: node.rotation,
-      label: node.label,
-      params: node.config || {},
-      state: node.state || {},
-    })),
-    connections: circuit.connections.map((conn) => ({
-      id: conn.id,
-      fromNodeId: conn.from,
-      fromPin: conn.fromPin,
-      toNodeId: conn.to,
-      toPin: conn.toPin,
-    })),
-    customChips: existing?.customChips || [],
+    ...v1,
+    schemaVersion: existing?.schemaVersion || v1.schemaVersion,
+    customChips: existing?.customChips || v1.customChips,
   };
 }
 

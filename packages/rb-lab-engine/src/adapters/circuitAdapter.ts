@@ -3,101 +3,52 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 /**
- * Circuit Adapter — Boundary Module
+ * Circuit Adapter Deprecation Notice
  *
- * CRITICAL: ONLY this file is allowed to translate between legacy circuit types
- * and CircuitV1. This prevents "conversion code everywhere" and ensures a clean
- * migration path.
- *
- * Rule: No other file may perform circuit type conversions.
+ * RC-P2: This file is DEPRECATED.
+ * 
+ * All circuit conversions MUST now go through @redbyte/rb-logic-core convertCircuitV1.ts
+ * These functions are kept for backward compatibility only but should NOT be used for new code.
+ * 
+ * Legacy functions below are convenience wrappers to the canonical converters.
+ * They exist only to support existing imports in verification code.
+ * 
+ * RULE: No new code may create circuit converters. Use @redbyte/rb-logic-core only.
  */
 
 import type { Circuit, Node, Connection as LegacyConnection } from '@redbyte/rb-logic-core';
 import type { CircuitV1, CircuitNode, CircuitConnection } from '@redbyte/rb-utils';
+// RC-P2: Import canonical converters from rb-logic-core
+import { toCircuitV1 as canonicalToCircuitV1, fromCircuitV1 as canonicalFromCircuitV1 } from '@redbyte/rb-logic-core';
 
 // ============================================================================
-// Legacy → CircuitV1 Conversion
+// DEPRECATED: Legacy functions kept for backward compatibility only
 // ============================================================================
 
 /**
+ * @deprecated RC-P2: Use canonicalToCircuitV1 from @redbyte/rb-logic-core instead.
+ * This function is kept for backward compatibility in verification code.
+ * 
  * Convert legacy Circuit to canonical CircuitV1.
  * Used when migrating old projects to lab engine.
  */
 export function fromLegacyCircuit(legacy: Circuit): CircuitV1 {
-  return {
-    schemaVersion: '1.0',
-    nodes: legacy.nodes.map(fromLegacyNode),
-    connections: legacy.connections.map(fromLegacyConnection),
-    customChips: [], // Legacy doesn't have custom chips
-  };
+  // Wrap with toCircuitV1 since legacy circuits have both position and x/y fields
+  return canonicalToCircuitV1(legacy);
 }
-
-function fromLegacyNode(node: Node): CircuitNode {
-  return {
-    id: node.id,
-    type: node.type,
-    x: node.position.x,
-    y: node.position.y,
-    rotation: node.rotation ?? 0,
-    params: node.config ?? {},
-    label: undefined, // Legacy doesn't have labels
-    state: node.state ?? {},
-  };
-}
-
-function fromLegacyConnection(conn: LegacyConnection): CircuitConnection {
-  return {
-    id: `${conn.from.nodeId}:${conn.from.portName}->${conn.to.nodeId}:${conn.to.portName}`,
-    fromNodeId: conn.from.nodeId,
-    fromPin: conn.from.portName,
-    toNodeId: conn.to.nodeId,
-    toPin: conn.to.portName,
-  };
-}
-
-// ============================================================================
-// CircuitV1 → Legacy Conversion (Temporary — Remove after full migration)
-// ============================================================================
 
 /**
+ * @deprecated RC-P2: Use canonicalFromCircuitV1 from @redbyte/rb-logic-core instead.
+ * This function is kept for backward compatibility in verification code.
+ * 
  * Convert CircuitV1 back to legacy Circuit.
- * ONLY use this during migration period when legacy code still exists.
- * Remove this function once all apps use CircuitV1 directly.
+ * ONLY use during migration period when legacy code still exists.
+ * This is now a thin wrapper around the canonical converter.
  */
 export function toLegacyCircuit(circuit: CircuitV1): Circuit {
-  return {
-    nodes: circuit.nodes.map(toLegacyNode),
-    connections: circuit.connections.map(toLegacyConnection),
-  };
+  // Wrap with fromCircuitV1 to get modern position handling
+  return canonicalFromCircuitV1(circuit);
 }
-
-function toLegacyNode(node: CircuitNode): Node {
-  return {
-    id: node.id,
-    type: node.type,
-    position: { x: node.x, y: node.y },
-    rotation: node.rotation ?? 0,
-    config: (node.params ?? {}) as Record<string, any>,
-    state: (node.state ?? {}) as Record<string, any>,
-  };
-}
-
-function toLegacyConnection(conn: CircuitConnection): LegacyConnection {
-  return {
-    from: {
-      nodeId: conn.fromNodeId,
-      portName: conn.fromPin,
-    },
-    to: {
-      nodeId: conn.toNodeId,
-      portName: conn.toPin,
-    },
-  };
-}
-
-// ============================================================================
-// Validation
-// ============================================================================
 
 /**
  * Validate CircuitV1 structure.

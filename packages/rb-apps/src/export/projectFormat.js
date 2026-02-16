@@ -28,10 +28,45 @@ const normalizeProjectCircuit = (circuit) => {
     });
     return { nodes, connections };
 };
+const normalizeProbes = (probes) => {
+    if (!probes)
+        return probes;
+    return [...probes]
+        .map((probe) => ({ ...probe }))
+        .sort((a, b) => {
+        const left = `${a.nodeId}.${a.portName}.${a.id}`;
+        const right = `${b.nodeId}.${b.portName}.${b.id}`;
+        return left.localeCompare(right);
+    });
+};
+const normalizeHdl = (hdl) => {
+    if (!hdl)
+        return hdl;
+    const sources = [...(hdl.sources ?? [])]
+        .map((source) => ({ ...source }))
+        .sort((a, b) => {
+        const left = `${a.path}.${a.language}`;
+        const right = `${b.path}.${b.language}`;
+        return left.localeCompare(right);
+    });
+    return {
+        ...hdl,
+        sources,
+    };
+};
 export const encodeRBProject = (project) => {
+    const sortedTags = project.meta?.tags ? [...project.meta.tags].sort((a, b) => a.localeCompare(b)) : undefined;
     const normalized = {
         ...project,
         circuit: normalizeProjectCircuit(project.circuit),
+        probes: normalizeProbes(project.probes),
+        hdl: normalizeHdl(project.hdl),
+        meta: project.meta
+            ? {
+                ...project.meta,
+                tags: sortedTags,
+            }
+            : undefined,
     };
     return stableStringify(normalized);
 };

@@ -63,6 +63,31 @@ interface LabWorkspaceProps {
   starterInstructions?: LabStarterInstructions;
 }
 
+interface Lab4LiveIoState {
+  en: boolean;
+  a: boolean;
+  b: boolean;
+  s2: boolean;
+  s1: boolean;
+  s0: boolean;
+}
+
+function createDefaultWorkspaceProject(): ToolchainProjectInput {
+  return {
+    sources: [{ path: 'top.v', language: 'verilog', text: '' }],
+    top: 'top',
+  };
+}
+
+const DEFAULT_LAB4_LIVE_IO: Lab4LiveIoState = {
+  en: false,
+  a: false,
+  b: false,
+  s2: false,
+  s1: false,
+  s0: false,
+};
+
 const STUDIO_LAST_STAGE_KEY = 'rb:studio:last-stage:v1';
 
 type CompareMismatch = {
@@ -150,10 +175,7 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
     }
     return 'build';
   });
-  const [project, setProject] = useState<ToolchainProjectInput>({
-    sources: [{ path: 'top.v', language: 'verilog', text: '' }],
-    top: 'top',
-  });
+  const [project, setProject] = useState<ToolchainProjectInput>(createDefaultWorkspaceProject);
   const [fpga, setFpga] = useState<RBFpgaConfig>({ board: 'basys3', top: 'top' });
   const [isGeneratingSubmissionBundle, setIsGeneratingSubmissionBundle] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<string | null>(null);
@@ -168,6 +190,7 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
   const [lastBundleManifest, setLastBundleManifest] = useState<SubmissionBundleManifest | null>(null);
   const [isCheckingSubmitGates, setIsCheckingSubmitGates] = useState(false);
   const [panelVisible, setPanelVisible] = useState(true);
+  const [lab4LiveIo, setLab4LiveIo] = useState<Lab4LiveIoState>(DEFAULT_LAB4_LIVE_IO);
   const isMountedRef = useRef(true);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [recentRuns, setRecentRuns] = useState<{
@@ -412,6 +435,24 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
       labDefinition.submitEvidence[1] ?? 'Included evidence matches lab expectations.',
     ].filter((item) => item.trim().length > 0).slice(0, 2);
   }, [labDefinition, mode]);
+
+  const handleResetLab4Workspace = useCallback(() => {
+    setProject(createDefaultWorkspaceProject());
+    setFpga({ board: 'basys3', top: 'top' });
+    setRecentRuns({
+      simulated: false,
+      synthesized: false,
+      waveformCaptured: false,
+      hardwareObserved: false,
+    });
+    setSubmitStatus(null);
+    setSubmitGateResult(EMPTY_SUBMISSION_GATES);
+    setLastBundleManifest(null);
+    setHardwareBoardDetected(false);
+    setIntelligenceResult(null);
+    setLab4LiveIo(DEFAULT_LAB4_LIVE_IO);
+    setMode('build');
+  }, []);
 
   const stageCommonMistakes = useMemo(() => {
     if (!labDefinition) {
@@ -1671,6 +1712,7 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
 
         <aside className={styles.sidePanel} data-testid="lab-workspace-sidepanel">
           <WorkspaceRightSidebar
+            labId={contextLabId}
             mode={mode}
             modeIndex={modeIndex}
             checklist={checklist}
@@ -1697,6 +1739,9 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
             askRedByteResult={intelligenceResult}
             askRedByteLoading={isIntelligenceLoading}
             onAskRedByteAction={handleIntelligenceAction}
+            lab4IoState={lab4LiveIo}
+            onLab4IoChange={setLab4LiveIo}
+            onResetLab4Workspace={handleResetLab4Workspace}
           />
         </aside>
       </div>

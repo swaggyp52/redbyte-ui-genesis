@@ -1,0 +1,62 @@
+{
+  "version": "v1",
+  "nodes": [
+    {
+      "id": "sw_en",
+      "type": "Switch",
+      "label": "en (SW8)",
+      "position": { "x": 80, "y": 80 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_a",
+      "type": "Switch",
+      "label": "A (SW5)",
+      "position": { "x": 80, "y": 150 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_b",
+      "type": "Switch",
+      "label": "B (SW4)",
+      "position": { "x": 80, "y": 220 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_s2",
+      "type": "Switch",
+      "label": "S2 (SW3)",
+      "position": { "x": 80, "y": 290 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_s1",
+      "type": "Switch",
+      "label": "S1 (SW2)",
+      "position": { "x": 80, "y": 360 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_s0",
+      "type": "Switch",
+      "label": "S0 (SW1)",
+      "position": { "x": 80, "y": 430 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "led_f",
+      "type": "Lamp",
+      "label": "F (LED1)",
+      "position": { "x": 940, "y": 255 },
+      "rotation": 0,
+      "config": {}
+    }
+  ],
+  "connections": []
+}

@@ -69,3 +69,18 @@ pr-description.txt
 packages/ops/labs/runs/
 apps/playground_bak2/
 nul
+
+# Generated test/report outputs (local-only)
+verify-gates*.txt
+ui-dev-guards.txt
+test-results.txt
+test-results/
+playwright-report/
+
+# Instructor-side curriculum files (local-only, not source code)
+/labs/
+/*.docx
+/basys3_rm.pdf
+/fac_jung002_*.pdf
+/Labs.zip
+/FullAdderHDL.txt

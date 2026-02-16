@@ -356,4 +356,56 @@ describe('LabWorkspaceApp', () => {
       expect(screen.getByTestId('lab-workspace-generate-submission-bundle').getAttribute('disabled')).toBeNull();
     });
   });
+
+  it('shows Lab 4 wiring checklist and live I/O widget', () => {
+    render(
+      <Component
+        windowId="w6"
+        starterInstructions={{
+          labId: 'lab-4',
+          title: 'Lab 4',
+          timeEstimate: '60-80 min',
+          learningGoal: 'Build simplified ALU',
+          steps: [],
+          commonMistakes: [],
+          submit: [],
+          rubric: [],
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId('lab4-wiring-checklist')).toBeTruthy();
+    expect(screen.getByTestId('lab4-live-io')).toBeTruthy();
+    expect(screen.getByTestId('lab4-live-io-opcode').textContent ?? '').toContain('Opcode 000');
+
+    fireEvent.click(screen.getByTestId('lab4-live-io-toggle-s2'));
+    fireEvent.click(screen.getByTestId('lab4-live-io-toggle-s1'));
+    expect(screen.getByTestId('lab4-live-io-opcode').textContent ?? '').toContain('Opcode 110');
+  });
+
+  it('resets Lab 4 live I/O toggles via reset workspace button', () => {
+    render(
+      <Component
+        windowId="w7"
+        starterInstructions={{
+          labId: 'lab-4',
+          title: 'Lab 4',
+          timeEstimate: '60-80 min',
+          learningGoal: 'Build simplified ALU',
+          steps: [],
+          commonMistakes: [],
+          submit: [],
+          rubric: [],
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('lab4-live-io-toggle-en'));
+    fireEvent.click(screen.getByTestId('lab4-live-io-toggle-s0'));
+    expect(screen.getByTestId('lab4-live-io-opcode').textContent ?? '').toContain('Opcode 001');
+
+    fireEvent.click(screen.getByTestId('lab4-reset-workspace'));
+    expect(screen.getByTestId('lab-workspace-tab-build')).toBeTruthy();
+    expect(screen.getByTestId('lab4-live-io-opcode').textContent ?? '').toContain('Opcode 000');
+  });
 });

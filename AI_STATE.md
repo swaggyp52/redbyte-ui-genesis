@@ -1,5 +1,346 @@
 # AI State
 
+## Change Log 2026-02-16 (Lock + Rehearse + Ship: Lab 4 Classroom Hardening)
+
+**Status**: ✅ COMPLETE - Fast classroom smoke GO/NO-GO, no-solution compliance gate, Lab 4 friction-killer UX guards, optional hardware readiness check
+
+- **Fast pre-class GO/NO-GO command added**:
+  - New script: `scripts/classroom-smoke-lab4.ts`
+  - New command: `pnpm -s classroom:smoke:lab4`
+  - Smoke flow (non-UI):
+    - asserts Lab 4 starter scaffold intentionally fails harness with expected incomplete reasons
+    - runs tiny known-good internal sanity fixture (not full ALU)
+    - exports deterministic `out/classroom/lab4-smoke.rb-lab.zip`
+    - verifies SHA stability across two consecutive runs
+
+- **Tiny known-good internal fixture added (not assignment solution)**:
+  - New fixture: `packages/rb-apps/src/fixtures/classroom/lab4-sanity-and.rbproj`
+  - Implements only `EN & (A AND B)` path with full Lab 4 Basys3 IO mapping labels
+
+- **No-solution compliance CI gate added**:
+  - New test: `packages/rb-apps/src/__tests__/ci-no-solution-lab4-gate.test.ts`
+  - New command: `pnpm -s ci:no-solution:lab4`
+  - Gate enforces:
+    - no obvious pre-solved ALU structures in Lab 4 starter
+    - required Lab 4 scaffold IO labels present (`en A B S2 S1 S0 F`)
+    - explicit SW/LED mapping guidance retained in lab definition text
+  - Integrated into `verify:gates` chain
+
+- **Lab 4 friction-killer UX guards added**:
+  - Updated: `packages/rb-apps/src/apps/LabWorkspaceApp.tsx`
+  - Updated: `packages/rb-apps/src/components/WorkspaceRightSidebar.tsx`
+  - Updated styles: `packages/rb-apps/src/components/WorkspaceRightSidebar.module.css`
+  - Added for `lab-4` workspace:
+    - pinned wiring checklist panel
+    - live I/O widget for `en,A,B,S2,S1,S0` with opcode readout
+    - reset lab workspace button (returns to build baseline + clears workspace run state)
+
+- **Optional Basys3 readiness command added (non-blocking for sim mode)**:
+  - New script: `scripts/classroom-hw-check.ts`
+  - New command: `pnpm -s classroom:hw:check`
+  - Reports bridge/device status and required Lab 4 lines without blocking simulation workflow
+
+- **Verification executed**:
+  - `pnpm exec vitest run packages/rb-apps/src/__tests__/ci-no-solution-lab4-gate.test.ts packages/rb-apps/src/__tests__/lab-workspace-app.test.tsx` → **PASS** (2 files, 8 tests)
+  - `pnpm -s classroom:smoke:lab4` → **PASS** (deterministic hash stable across 2 runs)
+  - `pnpm -s classroom:hw:check` → **PASS** (non-blocking status output)
+  - `pnpm -s verify:gates` → **PASS** (`VERIFY_EXIT:0`)
+
+## Change Log 2026-02-16 (Lab 4 No-Solution Starter Loader + Mapping Lock)
+
+**Status**: ✅ COMPLETE - Lab 4 one-click starter now opens an unsolved scaffold with exact Basys3 mapping labels
+
+- **New unsolved Lab 4 starter example added**:
+  - New file: `packages/rb-apps/src/examples/19_lab4-alu-starter-basys3.json`
+  - Contains only required I/O scaffold nodes (no prewired ALU logic):
+    - `en (SW8)`, `A (SW5)`, `B (SW4)`, `S2 (SW3)`, `S1 (SW2)`, `S0 (SW1)`, `F (LED1)`
+
+- **Example registry updated**:
+  - Updated: `packages/rb-apps/src/examples/index.ts`
+  - Updated JS sibling: `packages/rb-apps/src/examples/index.js`
+  - New example id: `19_lab4-alu-starter-basys3`
+
+- **Lab 4 starter routing switched to unsolved scaffold**:
+  - Updated: `packages/rb-apps/src/labs/labDefinitions.ts`
+  - `lab-4` now points `starterExampleId` to `19_lab4-alu-starter-basys3`
+  - Strengthened `lab-4` guidance with explicit constraints:
+    - required opcodes (AND/NAND/OR/NOR/XOR/XNOR/SUM/CARRY)
+    - allowed implementation styles (8:1 MUX or 3x8 decoder + tri-state)
+    - exact hardware mapping text (`en<-SW8`, `A<-SW5`, `B<-SW4`, `S2<-SW3`, `S1<-SW2`, `S0<-SW1`, `F->LED1`)
+
+- **Verification executed**:
+  - `pnpm exec vitest run packages/rb-apps/src/__tests__/apps.test.tsx packages/rb-apps/src/__tests__/lab-starter-kits.test.ts packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx` → **PASS** (3 files, 17 tests)
+  - `pnpm -s verify:gates` → **PASS** (`VERIFY_EXIT:0`)
+
+## Change Log 2026-02-16 (Lab 4 Basys3 ALU Buildout + E0 Active-Bundle Scan)
+
+**Status**: ✅ COMPLETE - Lab 4 ALU classroom fixture and deterministic gate integrated; full gate chain green
+
+- **Lab 4 ALU classroom implementation added**:
+  - New fixture: `packages/rb-apps/src/fixtures/classroom/golden-basys3-alu.rbproj`
+  - Basys3 mapping locked:
+    - `EN -> SW8`
+    - `A -> SW5`
+    - `B -> SW4`
+    - `S2/S1/S0 -> SW3/SW2/SW1`
+    - `F -> LD1`
+  - Implements 8-op ALU selection (AND/NAND/OR/NOR/XOR/XNOR/SUM/CARRY) with enable-gated output.
+
+- **Deterministic ALU export gate added**:
+  - New gate: `packages/rb-apps/src/__tests__/classroom-golden-basys3-alu-export-gate.test.ts`
+  - New golden hash file: `packages/rb-apps/src/__tests__/__goldens__/golden-basys3-alu.zip.sha256`
+  - New classroom command: `scripts/classroom-golden-basys3-alu.ts`
+  - New scripts in `package.json`:
+    - `rc:e1:golden-basys3-alu-export-gate`
+    - `classroom:golden-basys3-alu`
+  - Wired into `verify:gates` chain after existing Basys3 golden export gate.
+
+- **E0 leakage guard hardening (active bundle scan)**:
+  - Updated TS test: `packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts`
+  - Updated JS sibling: `packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.js`
+  - Console leakage scanner now resolves active production JS files from Vite manifest (with index.html fallback), then reports concise counts and file summaries only.
+
+- **Lab 4 classroom docs expanded**:
+  - Updated: `docs/labs/lab-04.md` (exact switch/LED map, opcode table, enable rule, checklists)
+  - Added: `CLASSROOM_QUICKSTART_STUDENT.md`
+  - Added: `CLASSROOM_QUICKSTART_INSTRUCTOR.md`
+  - Updated tracker: `docs/DEPLOYMENT_READINESS_TRACKER.md`
+
+- **Verification executed**:
+  - `pnpm exec vitest run packages/rb-apps/src/__tests__/classroom-golden-basys3-alu-export-gate.test.ts` with `UPDATE_GOLDEN_BASYS3_ALU_ZIP_SHA=1` → **PASS**
+  - `pnpm -s rc:e1:golden-basys3-alu-export-gate` → **PASS**
+  - `pnpm -s classroom:golden-basys3-alu` → **PASS**
+  - `pnpm -s ui:dev-guards-contract-gate` → **PASS**
+  - `pnpm -s verify:gates` → **PASS** (`VERIFY_EXIT:0`)
+
+---
+
+## Change Log 2026-02-16 (E0 UX Unblock: Non-interactive Gate Logging + Concise Leakage Reporting)
+
+**Status**: ✅ COMPLETE - gate logging separated from default verify path, dev-guards no longer dumps minified bundle lines
+
+- **verify:gates execution behavior clarified**:
+  - Confirmed `verify:gates` remains stdout-only (no internal file writes)
+  - Added opt-in logging script: `verify:gates:log` in `package.json`
+  - New script writes to `verify-gates-latest.txt` only when explicitly requested
+
+- **E0 console leakage output hardened for operator usability**:
+  - Updated `packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts`
+  - Updated JS sibling: `packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.js`
+  - Replaced line-dump reporting with concise deterministic summary:
+    - total leakage count
+    - counts by kind (`log`, `debug`, `info`)
+    - top 5 files by count
+    - sample impacted file names (first 10)
+  - Removed emission of matched minified JS lines from production assets
+
+- **Verification executed**:
+  - `pnpm -s rc:e1:golden-basys3-export-gate` → **PASS** (`E1_EXIT:0`)
+  - `pnpm -s ui:dev-guards-contract-gate` → **FAIL** (`E0_EXIT:1`) with concise summary only
+  - `pnpm -s verify:gates` → **FAIL** (`VERIFY_EXIT:1`) due real E0 budget breach (`total=770` > `budget=140`)
+
+---
+
+## Change Log 2026-02-16 (E1.1 + E1.2: Golden Basys3 Fixture + Deterministic ZIP Hash Gate)
+
+**Status**: ✅ COMPLETE - Golden classroom fixture added and deterministic export ZIP hash locked
+
+- **E1.1 Golden classroom fixture added**:
+  - New fixture: `packages/rb-apps/src/fixtures/classroom/golden-basys3-switch-and.rbproj`
+  - Scenario: `SW0 + SW1 -> AND -> LED0`
+  - Contains explicit classroom IO mapping under `classroom.ioMapping` for deterministic Basys3 export
+  - Uses canonical project envelope (`kind=rb-project`, `version=1`) and deterministic timestamps
+
+- **E1.2 deterministic export->zip->hash gate added**:
+  - New gate: `packages/rb-apps/src/__tests__/classroom-golden-basys3-export-gate.test.ts`
+  - Gate flow:
+    1. loads fixture via RB project codec (`decodeRBProject` + normalization via `encodeRBProject`)
+    2. exports Basys3 artifacts via `exportBasys3Bundle(...)`
+    3. assembles in-memory ZIP with stable entry ordering and fixed timestamps
+    4. hashes ZIP with SHA-256 and compares to committed golden
+  - ZIP contents validated: `top.v`, `top.xdc`, `README.txt`
+  - Verilog sanity checks included in gate:
+    - contains `module top`
+    - contains `endmodule`
+    - excludes `Timestamp:`
+    - excludes `Math.random`
+
+- **Golden hash file added**:
+  - `packages/rb-apps/src/__tests__/__goldens__/golden-basys3-switch-and.zip.sha256`
+  - Locked SHA256: `09408d052a8cd0afe5a8fd5715276c214abe78e3582a35938aa1d7dc346ae18f`
+  - Update switch supported in gate: `UPDATE_GOLDEN_BASYS3_ZIP_SHA=1`
+
+- **Verification executed**:
+  - `UPDATE_GOLDEN_BASYS3_ZIP_SHA=1 pnpm exec vitest run packages/rb-apps/src/__tests__/classroom-golden-basys3-export-gate.test.ts` (golden generation)
+  - `pnpm exec vitest run packages/rb-apps/src/__tests__/classroom-golden-basys3-export-gate.test.ts` (normal mode)
+  - Result: **PASS (1/1 test)**
+
+---
+
+## Change Log 2026-02-16 (E0 Hardening: Dev Guards Warning Cleanup)
+
+**Status**: ✅ COMPLETE - D0-D4 verified in chain, ui dev-guards warning noise removed, console leakage budget gate added
+
+- **Proof wiring check executed**:
+  - Ran `pnpm verify:gates` with explicit grep for D0-D4 identifiers
+  - Confirmed chain includes and executes:
+    - `rc:d0:project-determinism-gate`
+    - `rc:d1:verilog-determinism-gate`
+    - `rc:d2:basys3-bundle-gate`
+    - `rc:d3:projection-consistency-gate`
+    - `rc:d4:workflow-stress-gate`
+
+- **ui:dev-guards-contract-gate allowlist false positives fixed**:
+  - Root cause: regex only matched lowercase `rb:*` keys, missing camelCase keys
+  - Updated regex to include uppercase letters in:
+    - `packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts`
+    - `packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.js`
+
+- **Console gate refined for deployment relevance**:
+  - Replaced prior source-level console volume warning with production bundle leakage scan
+  - Scope: `apps/playground/dist/assets` for `console.log/debug/info` leakage
+  - Added explicit budget guard: `<= 140` occurrences (current observed: 138)
+  - Removed stderr warning spam from dev-guard checks by using stdout logging for informational diagnostics
+
+- **Verification executed**:
+  - `pnpm ui:dev-guards-contract-gate` → **PASS (10/10 tests)**
+  - `pnpm verify:gates` → completed with downstream gate pass output (including `ui:license-audit-gate` pass)
+
+---
+
+## Change Log 2026-02-16 (Classroom Deployment Readiness Sprint: D0-D4 Gates)
+
+**Status**: ✅ COMPLETE - Determinism, Basys3 bundle, projection consistency, and workflow stress gates integrated
+
+- **D0 Project Determinism Gate**:
+  - Added: `packages/rb-apps/src/__tests__/project-determinism-gate.test.ts`
+  - Added script: `rc:d0:project-determinism-gate`
+  - Coverage: 10x encode/decode stability loop + circuit fingerprint invariance + deterministic ordering checks
+  - Encoding normalization hardened in `packages/rb-apps/src/export/projectFormat.ts`:
+    - deterministic sort for circuit nodes/connections
+    - deterministic sort for probes, HDL sources, and `meta.tags`
+  - JS mirror updated: `packages/rb-apps/src/export/projectFormat.js`
+
+- **D1 Verilog Determinism Gate**:
+  - Added: `packages/rb-fpga-toolchain/src/__tests__/verilog-determinism-gate.test.ts`
+  - Added script: `rc:d1:verilog-determinism-gate`
+  - Determinism hardening in `packages/rb-fpga-toolchain/src/verilog-generator.ts`:
+    - removed timestamp emission
+    - sorted nodes/connections/io-mapping/wire iteration for stable ordering
+    - stabilized port/wire/instance order
+    - fixed default constant emission for unconnected inputs (`1'b0`)
+  - JS mirror updated: `packages/rb-fpga-toolchain/src/verilog-generator.js`
+
+- **D2 Basys3 Bundle Gate**:
+  - Added bundle export utility: `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts`
+  - Added gate: `packages/rb-apps/src/__tests__/basys3-bundle-gate.test.ts`
+  - Added script: `rc:d2:basys3-bundle-gate`
+  - Delivers deterministic `{ topV, topXdc, readme, warnings, valid }`
+  - Enforces top module name `top`, used-pin-only XDC, lint-based validity, and unsupported-node warnings
+
+- **D3 Projection Consistency Gate**:
+  - Added: `packages/rb-apps/src/__tests__/projection-consistency-gate.test.ts`
+  - Added script: `rc:d3:projection-consistency-gate`
+  - Verifies graph→netlist/verilog topology consistency, graph→simulation truth-table behavior, and roundtrip no-drift
+  - Canonical converter strengthened in `packages/rb-logic-core/src/convertCircuitV1.ts`:
+    - preserve port names when converting to V1
+    - restore structured `from/to` port refs when converting from V1
+  - JS mirror updated: `packages/rb-logic-core/src/convertCircuitV1.js`
+
+- **D4 Workflow Stress Gate**:
+  - Added: `packages/rb-apps/src/__tests__/workflow-stress-gate.test.ts`
+  - Added script: `rc:d4:workflow-stress-gate`
+  - Validates 100-node/99-connection roundtrip, 100 move undo/redo operations, 10x persistence loop stability, tick sanity, and zoom/pan placement stability after save/load
+
+- **Gate Wiring + Tracking**:
+  - `package.json` updated to include D0-D4 scripts and integrate them into `verify:gates`
+  - Added deployment inventory tracker: `docs/DEPLOYMENT_READINESS_TRACKER.md`
+
+- **Verification executed**:
+  - `pnpm exec vitest run packages/rb-apps/src/__tests__/project-determinism-gate.test.ts packages/rb-fpga-toolchain/src/__tests__/verilog-determinism-gate.test.ts packages/rb-apps/src/__tests__/basys3-bundle-gate.test.ts packages/rb-apps/src/__tests__/projection-consistency-gate.test.ts packages/rb-apps/src/__tests__/workflow-stress-gate.test.ts`
+  - Result: **5/5 test files passing, 12/12 tests passing**
+
+---
+
+## Change Log 2026-02-15 (Evening Session: RC-P2 POSITION SERIALIZATION)
+
+**Status**: ✅ COMPLETE - Position serialization fix + regression locks deployed
+
+### RC-P2: Position Serialization Fix (All Deliverables Complete)
+
+- **Deliverable A**: ✅ Single Canonical Converter Consolidation
+  - Source: `packages/rb-logic-core/src/convertCircuitV1.ts` (ONLY converter)
+  - Legacy converters deprecated: `circuitAdapter.ts` wraps canonical, `importWorkflowUtils.ts` delegates
+  - All circuit conversions now route through single validation point
+  
+- **Deliverable B**: ✅ Position Field Fix (Prevents Loss on Round-Trip)
+  - Problem: Old converters lost `position` field → nodes defaulted to (0,0) on reload
+  - Solution: 
+    - `toCircuitV1`: Reads `position?.x ?? x ?? 0` (modern format wins)
+    - `fromCircuitV1`: Creates `position: { x, y }` (modern format) + legacy x/y fallback
+  - Verified: Positions never lost in serialize → deserialize cycle
+  
+- **Deliverable C**: ✅ Unit Tests + Deterministic Gate Integration
+  - Test File: `packages/rb-logic-core/src/convertCircuitV1.test.ts` (313 lines, 10 tests)
+  - Test Suite: "RC-P2: Position Serialization + Migration"
+    - Round-trip preservation (3 tests): non-zero/zero/negative positions preserved
+    - Legacy migration (2 tests): x/y → position, missing → safe defaults
+    - Mixed-format precedence (1 test): position field wins over x/y
+    - Safe defaults (2 tests): explicit (0,0) vs undefined distinction
+    - Multi-node circuits (1 test): all nodes maintain distinct positions
+  - Gate Integration: `rc:p2:position-gate` wired into `verify:gates` chain
+    - `pnpm demo:ready` → `rc:check` → `verify:gates` → `rc:p2:position-gate` ✓
+    - Ensures position serialization is protected in classroom deployments
+  - Vitest Discovery: Updated vitest.config.ts to include colocated tests
+    - Pattern: `packages/**/*.test.ts` (not just `__tests__` subdirectories)
+    - Removed duplicate test files from old locations
+  
+- **Deliverable D**: ✅ E2E Deployment Smoke Test
+  - Test File: `tests/e2e/rc-p2-deployment-smoke.spec.ts`
+  - Verifies playground boots with position serialization feature loaded
+  - Complements unit tests with deployment environment validation
+  
+### Architecture Decision: Canonical Converter Pattern
+- **Why This Approach**: 
+  - Single source of truth prevents conversion bugs
+  - Tests verify logic once, applies everywhere
+  - Migration path clear: v1 → v2 format guaranteed
+- **Teacher Impact**:
+  - Exported projects have consistent position format
+  - Reimporting projects doesn't lose node positions
+  - Students' work survives save/reload cycles reliably
+
+### Commits
+1. `fix(rc-p2): integrate position serialization tests into deployment gates`
+   - Updated vitest config, deleted duplicates, added gate scripts
+2. `feat(rc-p2-d): add e2e deployment smoke test`
+   - Deployment validation test
+
+---
+
+## Change Log 2026-02-15 (Afternoon Session: RC-P1 CIRCUIT STORE CANONICALIZATION)
+
+**Status**: ✅ COMPLETE - Single Canonical Circuit Store enforced
+
+- **RC-P1: Circuit Store Canonicalization**:
+  - Audit completed: LogicPlaygroundApp.tsx correctly uses circuitStore as sole state source
+  - All circuit mutations route through store.updateCircuit() ✓
+  - useCircuitEngine/useTickEngine created as local refs (not circuit state) ✓
+  - No useState<Circuit> exists in LogicPlaygroundApp ✓
+  
+- **Contract Test Created** (`circuitStore.canonical.test.ts`):
+  - 6 test cases enforce RC-P1 invariants with beforeEach reset pattern
+  - Tests verify store as sole canonical source, mutation atomicity, immutability
+  - Test results: 6/6 passing (verified before commit)
+  - Tests ensure future refactoring can't reintroduce useState<Circuit>
+  
+- **Why This Matters**:
+  - Position serialization bug (RC-P2) depends on single source of truth
+  - If circuit exists in multiple places, desync causes stale data (nodes at 0,0)
+  - RC-P2 can now safely target circuitAdapter.ts knowing all mutations come through store
+  
+- **Commit**: `refactor(circuit): rc-p1-single-canonical-store-enforcement`
+
 ## Change Log 2026-02-15 (Frontend Sprint 2: UI POLISH + QUALITY GATES)
 
 **Status**: ✅ COMPLETE - All tasks implemented, DEMO READY verdict achieved

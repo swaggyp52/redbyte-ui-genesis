@@ -1,0 +1,111 @@
+{
+  "kind": "rb-project",
+  "version": 1,
+  "createdAt": "2026-02-16T00:00:00.000Z",
+  "updatedAt": "2026-02-16T00:00:00.000Z",
+  "name": "lab4-sanity-and",
+  "description": "Lab 4 sanity fixture: EN & (A AND B) with full Basys3 Lab 4 IO map",
+  "circuit": {
+    "nodes": [
+      {
+        "id": "inA",
+        "type": "Wire",
+        "position": { "x": 80, "y": 90 },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "inB",
+        "type": "Wire",
+        "position": { "x": 80, "y": 150 },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "inEN",
+        "type": "Wire",
+        "position": { "x": 80, "y": 210 },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "inS2",
+        "type": "Wire",
+        "position": { "x": 80, "y": 270 },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "inS1",
+        "type": "Wire",
+        "position": { "x": 80, "y": 330 },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "inS0",
+        "type": "Wire",
+        "position": { "x": 80, "y": 390 },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "and_ab",
+        "type": "AND",
+        "position": { "x": 290, "y": 120 },
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "and_en",
+        "type": "AND",
+        "position": { "x": 470, "y": 160 },
+        "config": {},
+        "state": {}
+      }
+    ],
+    "connections": [
+      {
+        "from": { "nodeId": "inA", "portName": "out" },
+        "to": { "nodeId": "and_ab", "portName": "in1" }
+      },
+      {
+        "from": { "nodeId": "inB", "portName": "out" },
+        "to": { "nodeId": "and_ab", "portName": "in2" }
+      },
+      {
+        "from": { "nodeId": "and_ab", "portName": "out" },
+        "to": { "nodeId": "and_en", "portName": "in1" }
+      },
+      {
+        "from": { "nodeId": "inEN", "portName": "out" },
+        "to": { "nodeId": "and_en", "portName": "in2" }
+      }
+    ]
+  },
+  "meta": {
+    "appSurface": "logic-playground",
+    "labId": "lab-4",
+    "tags": [
+      "classroom",
+      "lab4",
+      "sanity"
+    ]
+  },
+  "classroom": {
+    "board": "basys3",
+    "ioMapping": {
+      "inputs": [
+        { "id": "in-en", "nodeId": "inEN", "port": "in", "pin": "SW8", "label": "EN" },
+        { "id": "in-a", "nodeId": "inA", "port": "in", "pin": "SW5", "label": "A" },
+        { "id": "in-b", "nodeId": "inB", "port": "in", "pin": "SW4", "label": "B" },
+        { "id": "in-s2", "nodeId": "inS2", "port": "in", "pin": "SW3", "label": "S2" },
+        { "id": "in-s1", "nodeId": "inS1", "port": "in", "pin": "SW2", "label": "S1" },
+        { "id": "in-s0", "nodeId": "inS0", "port": "in", "pin": "SW1", "label": "S0" }
+      ],
+      "outputs": [
+        { "id": "out-f", "nodeId": "and_en", "port": "out", "pin": "LD1", "label": "F" }
+      ]
+    }
+  }
+}

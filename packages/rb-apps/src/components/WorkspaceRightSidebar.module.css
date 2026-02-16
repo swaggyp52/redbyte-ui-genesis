@@ -166,6 +166,41 @@
   gap: 8px;
 }
 
+.mappingRow {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--rb-ui-lab-text-muted);
+}
+
+.liveIoGrid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.liveIoToggle {
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 8px;
+  background: var(--rb-ui-lab-bg-elevated);
+  color: var(--rb-ui-lab-text);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 6px;
+  cursor: pointer;
+}
+
+.liveIoToggleOn {
+  border-color: var(--rb-ui-lab-border-strong);
+  background: color-mix(in srgb, var(--rb-ui-lab-accent) 14%, var(--rb-ui-lab-bg-elevated));
+}
+
+.liveIoReadout {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--rb-ui-lab-text-muted);
+}
+
 .issueSectionTitle {
   display: inline-flex;
   align-items: center;

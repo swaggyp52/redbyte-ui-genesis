@@ -15,7 +15,7 @@
  * All apps must round-trip through normalize/serialize/deserialize.
  */
 
-import type { CircuitV1 } from './types';
+import type { CircuitV1 } from '@redbyte/rb-utils';
 
 /**
  * Camera/viewport state (minimal, extensible)
