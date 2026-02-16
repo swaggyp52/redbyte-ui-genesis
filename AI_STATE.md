@@ -1,5 +1,85 @@
 # AI State
 
+## Change Log 2026-02-16 (CI/CD Finalization: Branch Protection + Nightly Consolidation + Preclass Command)
+
+**Status**: ✅ COMPLETE - PR signal path reduced to one required truth check, heavy suites consolidated into one nightly workflow, and preclass ritual reduced to one command.
+
+- **Branch protection configured from terminal (GH CLI)**:
+  - Main branch protection now requires only status check context: `Classroom Truth Gates`
+  - Applied via `gh api` PUT on `repos/swaggyp52/redbyte-ui-genesis/branches/main/protection`
+
+- **Workflow surface consolidated to 3 primary files**:
+  - Kept: `.github/workflows/pr-truth-gates.yml` (PR only)
+  - Kept: `.github/workflows/deploy-cloudflare.yml` (main deploy)
+  - Added: `.github/workflows/nightly.yml` (schedule + manual heavy suites)
+  - Removed redundant workflow files:
+    - `quality.yml`
+    - `cloudflare-smoke.yml`
+    - `smoke-zip-install.yml`
+    - `fpga-proof.yml`
+    - `p4-workflow-gates.yml`
+    - `p1d-smoke-nonblocking.yml`
+    - `perf-soak.yml`
+    - `fpga-ui-smoke.yml`
+    - `deploy.yml`
+    - `deploy-docs.yml`
+    - `release.yml`
+
+- **Single preclass command added**:
+  - New script: `scripts/preclass-check.mjs`
+  - New package command: `pnpm -s redbyte:preclass`
+  - Behavior:
+    - runs `verify:gates:classroom`
+    - optionally runs `cloudflare:purge` when env vars exist
+    - fetches and prints deployed metadata from `/os/version.json`
+
+- **Contract documentation updated**:
+  - Updated `CI_CONTRACT.md` with nightly consolidation and branch protection policy
+
+- **Verification executed**:
+  - Trigger scan confirms only these active trigger classes in workflows:
+    - `pull_request` in `pr-truth-gates.yml`
+    - `push` in `deploy-cloudflare.yml`
+    - `schedule` in `nightly.yml`
+  - `pnpm -s redbyte:preclass` → classroom gates PASS; deploy metadata fetch currently returns HTML (production still serving old app)
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-16 (CI/CD Noise Reduction + PR Truth Gate + Deploy SHA Verification)
+
+**Status**: ✅ COMPLETE - PR checks narrowed to deterministic truth gates, heavy suites moved off PR, and production deploys now expose/verifies deployed SHA.
+
+- **PR truth gate workflow added**:
+  - New: `.github/workflows/pr-truth-gates.yml`
+  - PR-required commands:
+    - `pnpm -s verify:gates:classroom`
+    - `pnpm -s build:unified`
+
+- **Noisy/heavy workflows moved off PR path**:
+  - Updated `.github/workflows/quality.yml` to `workflow_dispatch` + `schedule`
+  - Updated `.github/workflows/cloudflare-smoke.yml` to `workflow_dispatch` + `schedule`
+  - Updated `.github/workflows/smoke-zip-install.yml` to `workflow_dispatch` + `schedule`
+  - Updated `.github/workflows/fpga-proof.yml` to `workflow_dispatch` + `schedule`
+
+- **Deploy verifiability hardened**:
+  - Updated `scripts/merge-dist.mjs` to emit `dist/os/version.json` with `sha` and `builtAt`
+  - Updated `scripts/verify-dist.mjs` to require `dist/os/version.json`
+  - Updated `.github/workflows/deploy-cloudflare.yml` with post-deploy SHA verification against `https://redbyteapps.dev/os/version.json`
+
+- **Terminal-only Cloudflare purge path added**:
+  - New script: `scripts/cloudflare-purge-cache.ps1`
+  - New command in `package.json`: `pnpm -s cloudflare:purge`
+  - Requires env: `CF_API_TOKEN`, `CF_ZONE_ID`
+
+- **CI contract documentation added**:
+  - New: `CI_CONTRACT.md` (PR vs nightly/manual vs deploy policy)
+
+- **Verification executed**:
+  - Trigger scan confirms only `pr-truth-gates.yml` contains active `pull_request` trigger
+  - `pnpm -s build:unified` → **PASS** (including `version.json`, `_redirects`, `_headers` checks)
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-16 (Flagship Lab Mode Hardening: Labs 1-8 Surface + Labs 5-8 Scaffold Contracts)
 
 **Status**: ✅ COMPLETE - RedByte Lab Mode reinforced as a flagship workflow surface, with Labs 5-8 now using explicit unsolved starter scaffolds and classroom gate coverage.

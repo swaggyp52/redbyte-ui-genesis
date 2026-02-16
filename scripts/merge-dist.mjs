@@ -1,10 +1,21 @@
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 
 const ROOT = process.cwd();
 const FINAL_DIST = path.join(ROOT, 'dist');
 const PLAYGROUND_DIST = path.join(ROOT, 'apps/playground/dist');
 const MANUAL_DIST = path.join(ROOT, 'apps/manual-site/dist');
+
+function resolveGitSha() {
+    if (process.env.GIT_SHA) return process.env.GIT_SHA;
+    if (process.env.CF_PAGES_COMMIT_SHA) return process.env.CF_PAGES_COMMIT_SHA;
+    try {
+        return execSync('git rev-parse HEAD').toString().trim();
+    } catch {
+        return 'dev';
+    }
+}
 
 async function merge() {
     console.log('🚀 Merging deployments into unified dist/');
@@ -30,6 +41,17 @@ async function merge() {
         console.log(`📦 Copying OS from ${PLAYGROUND_DIST} to /os...`);
         fs.mkdirSync(osTarget, { recursive: true });
         fs.cpSync(PLAYGROUND_DIST, osTarget, { recursive: true });
+
+        const versionPayload = {
+            sha: resolveGitSha(),
+            builtAt: new Date().toISOString(),
+        };
+        fs.writeFileSync(
+            path.join(osTarget, 'version.json'),
+            `${JSON.stringify(versionPayload, null, 2)}\n`,
+            'utf8',
+        );
+        console.log('✅ Wrote /os/version.json for deploy verification.');
     } else {
         console.error('❌ OS build not found at', PLAYGROUND_DIST);
         process.exit(1);

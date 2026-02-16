@@ -1,0 +1,42 @@
+name: PR Truth Gates
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: pr-truth-gates-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  truth-gates:
+    name: Classroom Truth Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify classroom truth gate
+        run: pnpm -s verify:gates:classroom
+
+      - name: Build unified artifact
+        run: pnpm -s build:unified

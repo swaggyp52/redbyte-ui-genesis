@@ -34,6 +34,10 @@ check(fs.existsSync(path.join(OS, 'assets')), 'dist/os/assets/ exists');
 const osIndex = fs.readFileSync(path.join(OS, 'index.html'), 'utf8');
 check(osIndex.includes('RedByte Playground'), 'dist/os/index.html is the OS');
 check(osIndex.includes('src="/os/assets/'), 'dist/os/index.html uses /os assets');
+check(fs.existsSync(path.join(OS, 'version.json')), 'dist/os/version.json exists');
+const versionJson = JSON.parse(fs.readFileSync(path.join(OS, 'version.json'), 'utf8'));
+check(Boolean(versionJson.sha), 'dist/os/version.json includes sha');
+check(Boolean(versionJson.builtAt), 'dist/os/version.json includes builtAt');
 
 // 5. Redirects check
 check(fs.existsSync(path.join(DIST, '_redirects')), 'dist/_redirects exists');
