@@ -31,8 +31,8 @@ describe('ci:no-solution:lab4 gate', () => {
     const connections = Array.isArray(starter.connections) ? starter.connections : [];
 
     // Must have at minimum: 11 inputs (SW[3:0] A, SW[7:4] B, SW[10:8] opcode) +
-    // 4 AND + 4 OR + 4 XOR + 4 FA + 5 Lamps (LED[3:0] + LED[4]) = 32 nodes
-    expect(nodes.length).toBeGreaterThanOrEqual(20);
+    // 4 AND + 4 OR + 4 XOR + 4 FA + 4 MUX4 + 5 Lamps (LED[3:0] + LED[4]) = 36 nodes
+    expect(nodes.length).toBeGreaterThanOrEqual(32);
 
     // Zero connections — starter is intentionally unsolved
     expect(connections.length).toBe(0);
