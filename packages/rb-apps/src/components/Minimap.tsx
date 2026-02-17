@@ -40,10 +40,14 @@ export const Minimap: React.FC<MinimapProps> = ({ nodes, viewport, containerWidt
     const vpWorldH = containerHeight / viewport.state.zoom;
 
     // 3. Mapping Function (World -> Minimap %)
-    // We want to fit the "world" into the minimap (100x100px usually)
-    // Actually typically we want fixed size minimap like 150x100
-    const mapWidth = 200;
-    const mapHeight = 150;
+    // Minimap dimensions scale with --rb-ui-scale for browser zoom compatibility
+    const baseMapWidth = 200;
+    const baseMapHeight = 150;
+    const uiScale = typeof window !== 'undefined'
+      ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rb-ui-scale') || '1')
+      : 1;
+    const mapWidth = baseMapWidth * uiScale;
+    const mapHeight = baseMapHeight * uiScale;
 
     // Scale factor to fit world into map
     const scaleX = mapWidth / worldWidth;
@@ -94,7 +98,8 @@ export const Minimap: React.FC<MinimapProps> = ({ nodes, viewport, containerWidt
 
     return (
         <div
-            className="w-[200px] h-[150px] bg-gray-900 border border-gray-700 rounded overflow-hidden relative cursor-pointer shadow-lg"
+            className="bg-gray-900 border border-gray-700 rounded overflow-hidden relative cursor-pointer shadow-lg"
+            style={{ width: `${mapWidth}px`, height: `${mapHeight}px` }}
             onClick={handleMapClick}
         >
             {/* World Bounds (Grid hint) */}
