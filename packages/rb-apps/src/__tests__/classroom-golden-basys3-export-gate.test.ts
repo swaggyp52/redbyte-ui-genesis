@@ -45,10 +45,9 @@ describe('RC E1 classroom golden Basys3 export gate', () => {
     const bundle = exportBasys3Bundle(normalized.circuit, ioMapping as IoMapping);
     expect(bundle.valid).toBe(true);
     expect(bundle.warnings).toEqual([]);
-    expect(bundle.topV).toContain('module top');
-    expect(bundle.topV).toContain('endmodule');
-    expect(bundle.topV).not.toContain('Timestamp:');
-    expect(bundle.topV).not.toContain('Math.random');
+    expect(bundle.topVhd).toContain('library IEEE;');
+    expect(bundle.topVhd).toContain('entity top is');
+    expect(bundle.topVhd).toContain('architecture rtl');
 
     expect(bundle.topXdc).toContain('PACKAGE_PIN V17');
     expect(bundle.topXdc).toContain('PACKAGE_PIN V16');
@@ -57,13 +56,13 @@ describe('RC E1 classroom golden Basys3 export gate', () => {
 
     const zipBytes1 = await buildDeterministicZip([
       { name: 'README.txt', text: bundle.readme },
-      { name: 'top.v', text: bundle.topV },
+      { name: 'top.vhd', text: bundle.topVhd },
       { name: 'top.xdc', text: bundle.topXdc },
     ]);
 
     const zipBytes2 = await buildDeterministicZip([
       { name: 'top.xdc', text: bundle.topXdc },
-      { name: 'top.v', text: bundle.topV },
+      { name: 'top.vhd', text: bundle.topVhd },
       { name: 'README.txt', text: bundle.readme },
     ]);
 
@@ -74,7 +73,7 @@ describe('RC E1 classroom golden Basys3 export gate', () => {
     if (UPDATE_GOLDEN) {
       const nextGolden = [
         'fixture=packages/rb-apps/src/fixtures/classroom/golden-basys3-switch-and.rbproj',
-        'zip.entries=README.txt,top.v,top.xdc',
+        'zip.entries=README.txt,top.vhd,top.xdc',
         'zip.order=lexicographic',
         'zip.timestamp=2026-01-01T00:00:00.000Z',
         `sha256=${hash1}`,

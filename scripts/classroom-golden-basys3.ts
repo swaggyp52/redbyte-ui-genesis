@@ -50,7 +50,7 @@ async function main() {
 
   const zipBytes = await buildDeterministicZip([
     { name: 'README.txt', text: bundle.readme },
-    { name: 'top.v', text: bundle.topV },
+    { name: 'top.vhd', text: bundle.topVhd },
     { name: 'top.xdc', text: bundle.topXdc },
   ]);
 

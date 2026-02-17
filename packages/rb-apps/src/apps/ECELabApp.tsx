@@ -37,6 +37,7 @@ import { createCapsule, validateCapsule, type RedByteCapsule } from '../hardware
 // Consolidate imports
 import { vectorRunner, type VectorRunResult, type TestVector, type PresetSuite } from '../labs/vectorRunner';
 import { synthesizableVerilogFromNetlist } from '../export/verilogExport';
+import { vhdlFromNetlist } from '../export/vhdlExport';
 import { useHardwareStore } from '../stores/hardwareStore';
 import { decideExecutionSourceOnHardwareState } from '../hardware/hardwareModeFallback';
 import { netlistFromCircuit } from '../export/netlistExport';
@@ -401,22 +402,21 @@ export const ECELabAppComponent: React.FC<ECELabAppProps> = ({ windowId, labId }
 
     try {
       const netlist = netlistFromCircuit(circuit);
+      const vhdl = vhdlFromNetlist(netlist, { entityName: 'top', includeFileHeader: true });
       const verilog = synthesizableVerilogFromNetlist(netlist, { board: 'basys3', includeClock: true });
 
       const zip = new JSZip();
-      zip.file("top.v", verilog.topModule);
-      zip.file("rb_primitives.v", verilog.primitivesLibrary);
-      zip.file("basys3.xdc", verilog.constraintsXdc);
-      zip.file("instructions.txt",
+      zip.file("top.vhd", vhdl.vhd);
+      zip.file("top.xdc", verilog.constraintsXdc);
+      zip.file("README.txt",
         `RedByte Manual Synthesis Instructions:
 
 1. Create a new Vivado Project (RTL Project).
 2. Select target part: xc7a35tcpg236-1 (Basys 3).
 3. Add the following source files:
-   - top.v
-   - rb_primitives.v
+    - top.vhd
 4. Add constraints file:
-   - basys3.xdc
+    - top.xdc
 5. Run Synthesis, Implementation, and Generate Bitstream.
 6. Open Hardware Manager and program the device.
 `);

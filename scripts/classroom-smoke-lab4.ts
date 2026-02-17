@@ -242,7 +242,7 @@ async function main() {
     export: {
       valid: bundle.valid,
       warnings: bundle.warnings,
-      topVContainsTopModule: bundle.topV.includes('module top'),
+      topVhdContainsTopEntity: bundle.topVhd.includes('entity top is'),
       topXdcHasRequiredPins: true,
     },
   };
@@ -250,7 +250,7 @@ async function main() {
   const zipEntries = [
     { name: 'README.txt', text: bundle.readme },
     { name: 'smoke-report.json', text: JSON.stringify(smokeReport, null, 2) },
-    { name: 'top.v', text: bundle.topV },
+    { name: 'top.vhd', text: bundle.topVhd },
     { name: 'top.xdc', text: bundle.topXdc },
   ];
 

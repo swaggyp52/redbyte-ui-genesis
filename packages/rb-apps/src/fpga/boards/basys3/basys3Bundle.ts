@@ -4,6 +4,8 @@ import { circuitToVerilog } from '@redbyte/rb-fpga-toolchain';
 import type { IoMapping, IoMappingEntry } from '@redbyte/rb-utils';
 import { lintBasys3ProjectPorts } from './portLint';
 import { compareCodepoint } from '../../../export/codepointSort';
+import { netlistFromCircuit } from '../../../export/netlistExport';
+import { vhdlFromNetlist } from '../../../export/vhdlExport';
 
 const BASYS3_SWITCH_PINS = [
   'V17', 'V16', 'W16', 'W17', 'W15', 'V15', 'W14', 'W13',
@@ -19,6 +21,7 @@ const BASYS3_ALLOWED_PACKAGE_PINS = new Set([...BASYS3_SWITCH_PINS, ...BASYS3_LE
 
 export interface Basys3BundleResult {
   topV: string;
+  topVhd: string;
   topXdc: string;
   readme: string;
   warnings: string[];
@@ -120,12 +123,12 @@ function buildReadme(ioMapping: IoMapping, warnings: string[]): string {
   lines.push('# RedByte Basys3 Export Bundle');
   lines.push('');
   lines.push('## Files');
-  lines.push('- `top.v`: deterministic synthesizable Verilog top module');
+  lines.push('- `top.vhd`: deterministic synthesizable VHDL top module');
   lines.push('- `top.xdc`: Basys3 constraints for used mapped pins only');
   lines.push('');
   lines.push('## Vivado quick steps');
   lines.push('1. Create a new RTL project for Basys3 (xc7a35tcpg236-1).');
-  lines.push('2. Add `top.v` as design source and set top module to `top`.');
+  lines.push('2. Add `top.vhd` as design source and set top module to `top`.');
   lines.push('3. Add `top.xdc` as constraints file.');
   lines.push('4. Run Synthesis, Implementation, and Generate Bitstream.');
   lines.push('');
@@ -157,6 +160,11 @@ function buildReadme(ioMapping: IoMapping, warnings: string[]): string {
 
 export function exportBasys3Bundle(circuit: Circuit, ioMapping: IoMapping): Basys3BundleResult {
   const warnings: string[] = [];
+  const netlist = netlistFromCircuit(circuit);
+  const vhdl = vhdlFromNetlist(netlist, { entityName: 'top' });
+
+  warnings.push(...vhdl.warnings);
+
   const verilog = circuitToVerilog(toCircuitV1(circuit), ioMapping, {
     moduleName: 'top',
     targetBoard: 'basys3',
@@ -206,6 +214,7 @@ export function exportBasys3Bundle(circuit: Circuit, ioMapping: IoMapping): Basy
 
   return {
     topV: verilog.verilog,
+    topVhd: vhdl.vhd,
     topXdc,
     readme,
     warnings: uniqueWarnings,

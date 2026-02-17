@@ -1,6 +1,9 @@
 import { toCircuitV1 } from '@redbyte/rb-logic-core';
 import { circuitToVerilog } from '@redbyte/rb-fpga-toolchain';
 import { lintBasys3ProjectPorts } from './portLint';
+import { netlistFromCircuit } from '../../../export/netlistExport';
+import { vhdlFromNetlist } from '../../../export/vhdlExport';
+import { compareCodepoint } from '../../../export/codepointSort';
 
 const BASYS3_SWITCH_PINS = [
   'V17', 'V16', 'W16', 'W17', 'W15', 'V15', 'W14', 'W13',
@@ -23,7 +26,7 @@ function mappingKey(entry) {
 }
 
 function stableSortMapping(entries) {
-  return [...entries].sort((a, b) => mappingKey(a).localeCompare(mappingKey(b)));
+  return [...entries].sort((a, b) => compareCodepoint(mappingKey(a), mappingKey(b)));
 }
 
 function parsePackagePin(line) {
@@ -109,12 +112,12 @@ function buildReadme(ioMapping, warnings) {
   lines.push('# RedByte Basys3 Export Bundle');
   lines.push('');
   lines.push('## Files');
-  lines.push('- `top.v`: deterministic synthesizable Verilog top module');
+  lines.push('- `top.vhd`: deterministic synthesizable VHDL top module');
   lines.push('- `top.xdc`: Basys3 constraints for used mapped pins only');
   lines.push('');
   lines.push('## Vivado quick steps');
   lines.push('1. Create a new RTL project for Basys3 (xc7a35tcpg236-1).');
-  lines.push('2. Add `top.v` as design source and set top module to `top`.');
+  lines.push('2. Add `top.vhd` as design source and set top module to `top`.');
   lines.push('3. Add `top.xdc` as constraints file.');
   lines.push('4. Run Synthesis, Implementation, and Generate Bitstream.');
   lines.push('');
@@ -146,6 +149,11 @@ function buildReadme(ioMapping, warnings) {
 
 export function exportBasys3Bundle(circuit, ioMapping) {
   const warnings = [];
+  const netlist = netlistFromCircuit(circuit);
+  const vhdl = vhdlFromNetlist(netlist, { entityName: 'top' });
+
+  warnings.push(...vhdl.warnings);
+
   const verilog = circuitToVerilog(toCircuitV1(circuit), ioMapping, {
     moduleName: 'top',
     targetBoard: 'basys3',
@@ -184,7 +192,7 @@ export function exportBasys3Bundle(circuit, ioMapping) {
   warnings.push(...xdcPinWarnings);
 
   const readme = buildReadme(ioMapping, warnings);
-  const uniqueWarnings = Array.from(new Set(warnings)).sort((a, b) => a.localeCompare(b));
+  const uniqueWarnings = Array.from(new Set(warnings)).sort((a, b) => compareCodepoint(a, b));
 
   const valid =
     lint.verilogModuleFound &&
@@ -195,6 +203,7 @@ export function exportBasys3Bundle(circuit, ioMapping) {
 
   return {
     topV: verilog.verilog,
+    topVhd: vhdl.vhd,
     topXdc,
     readme,
     warnings: uniqueWarnings,

@@ -22,25 +22,28 @@ const validMapping: IoMapping = {
 };
 
 describe('RC D2 basys3 bundle gate', () => {
-  it('produces valid deterministic top.v/top.xdc/readme with top module', () => {
+  it('produces valid deterministic top.vhd/top.xdc/readme with top entity', () => {
     const run1 = exportBasys3Bundle(validCircuit, validMapping);
     const run2 = exportBasys3Bundle(validCircuit, validMapping);
 
     expect(run1.valid).toBe(true);
-    expect(run1.topV).toContain('module top (');
+    expect(run1.topVhd).toContain('library IEEE;');
+    expect(run1.topVhd).toContain('entity top is');
+    expect(run1.topVhd).toContain('architecture rtl');
     expect(run1.topXdc).toContain('PACKAGE_PIN V17');
     expect(run1.topXdc).toContain('PACKAGE_PIN V16');
     expect(run1.topXdc).toContain('PACKAGE_PIN U16');
     expect(run1.topXdc).not.toContain('PACKAGE_PIN W16');
     expect(run1.readme).toContain('| g1_in1 | SW0 | V17 | input |');
     expect(run1.readme).toContain('| g1_out | LD0 | U16 | output |');
+    expect(run1.readme).toContain('`top.vhd`');
 
-    expect(run2.topV).toBe(run1.topV);
+    expect(run2.topVhd).toBe(run1.topVhd);
     expect(run2.topXdc).toBe(run1.topXdc);
     expect(run2.readme).toBe(run1.readme);
 
-    const bundleHash1 = sha256(`${run1.topV}\n---\n${run1.topXdc}\n---\n${run1.readme}`);
-    const bundleHash2 = sha256(`${run2.topV}\n---\n${run2.topXdc}\n---\n${run2.readme}`);
+    const bundleHash1 = sha256(`${run1.topVhd}\n---\n${run1.topXdc}\n---\n${run1.readme}`);
+    const bundleHash2 = sha256(`${run2.topVhd}\n---\n${run2.topXdc}\n---\n${run2.readme}`);
     expect(bundleHash2).toBe(bundleHash1);
   });
 

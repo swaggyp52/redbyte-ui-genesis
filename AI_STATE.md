@@ -1,5 +1,64 @@
 # AI State
 
+## Change Log 2026-02-16 (Task 4: Basys3 Export Bundle Switched to VHDL-First Artifacts)
+
+**Status**: ✅ COMPLETE - Basys3 export artifacts now emit VHDL-first bundles (`top.vhd` + `top.xdc` + `README.txt`) while preserving existing internal Verilog generation for lint/compatibility.
+
+- **Basys3 bundle upgraded with VHDL output**:
+  - Updated: `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts`
+  - Updated JS mirror: `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.js`
+  - Added `topVhd` to `Basys3BundleResult`.
+  - VHDL now generated via existing netlist path (`netlistFromCircuit` + `vhdlFromNetlist`).
+  - Bundle warnings now include VHDL warnings in addition to existing Verilog/lint warnings.
+  - README content updated to Vivado flow with `top.vhd` + `top.xdc`.
+
+- **Deterministic zip expectations moved from `top.v` to `top.vhd`**:
+  - Updated tests:
+    - `packages/rb-apps/src/__tests__/basys3-bundle-gate.test.ts`
+    - `packages/rb-apps/src/__tests__/classroom-golden-basys3-export-gate.test.ts`
+    - `packages/rb-apps/src/__tests__/classroom-golden-basys3-alu-export-gate.test.ts`
+  - Updated goldens:
+    - `packages/rb-apps/src/__tests__/__goldens__/golden-basys3-switch-and.zip.sha256`
+    - `packages/rb-apps/src/__tests__/__goldens__/golden-basys3-alu.zip.sha256`
+  - Updated scripts:
+    - `scripts/classroom-golden-basys3.ts`
+    - `scripts/classroom-golden-basys3-alu.ts`
+    - `scripts/classroom-smoke-lab4.ts`
+
+- **Student export pack switched to VHDL-first file outputs**:
+  - Updated: `packages/rb-apps/src/apps/ECELabApp.tsx`
+  - `SYNTH PACK` zip now writes `top.vhd`, `top.xdc`, `README.txt`.
+  - `top.xdc` continues to come from existing Basys3 constraints output path.
+
+- **Verification executed**:
+  - `pnpm --filter @redbyte/rb-apps test:vhdl` → **PASS** (`vhdlExport.test.ts (5)`)
+  - Targeted Basys3 gates updated and passing after golden refresh:
+    - `basys3-bundle-gate.test.ts`
+    - `classroom-golden-basys3-export-gate.test.ts`
+    - `classroom-golden-basys3-alu-export-gate.test.ts`
+  - `pnpm --filter rb-apps test export` still triggers unrelated pre-existing failures (first-run-wizard, lab-starter-kits, lab3-webapp export tests), outside Task 4 scope.
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-02-16 (Task 3 Ergonomics: Strict VHDL Test-Only Commands)
+
+**Status**: ✅ COMPLETE - Added deterministic one-command VHDL test entrypoints to avoid accidentally running unrelated suite failures during exporter iteration.
+
+- **Scoped package script added**:
+  - Updated: `packages/rb-apps/package.json`
+  - Added `test:vhdl`:
+    - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/export/__tests__/vhdlExport.test.ts`
+
+- **Workspace alias added**:
+  - Updated: `package.json`
+  - Added `rb:test:vhdl` delegating to `@redbyte/rb-apps test:vhdl`
+
+- **Verification executed**:
+  - `pnpm --filter @redbyte/rb-apps test:vhdl` → **PASS** (`vhdlExport.test.ts (5)`)
+  - `pnpm rb:test:vhdl` → **PASS** (`vhdlExport.test.ts (5)`)
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-16 (Unified Build Entrypoint + Studio Unblock)
 
 **Status**: ✅ COMPLETE - Cloudflare-compatible build path now targets unified root `dist/`, and Studio is no longer blocked by First Run Wizard / bridge checks.
