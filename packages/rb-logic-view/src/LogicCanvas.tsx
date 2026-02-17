@@ -107,6 +107,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const selectMultipleNodes = useLogicViewStore((state) => state.selectMultipleNodes);
   const setToolMode = useLogicViewStore((state) => state.setToolMode);
   const setInteractionMode = useLogicViewStore((state) => state.setInteractionMode);
+  const setEditingState = useLogicViewStore((state) => state.setEditingState);
 
   const zoomFn = zoom;
   const shouldSnap = snapToGridEnabled;
@@ -389,6 +390,17 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     onNodeSelect: selectNode,
     onPan: pan,
     onClearSelection: clearSelection,
+    onMarqueeChange: (marquee) => setEditingState({ marquee }),
+    onMarqueeCommit: (nodeIds, addToSelection) => {
+      if (addToSelection) {
+        const existing = Array.from(selection.nodes);
+        const merged = Array.from(new Set([...existing, ...nodeIds]));
+        selectMultipleNodes(merged);
+      } else {
+        selectMultipleNodes(nodeIds);
+      }
+      setEditingState({ marquee: undefined });
+    },
     onWireCancel: endWire,
     isSpacePressed,
     isReplayMode,
@@ -516,10 +528,56 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     }
   }, [circuit, onInputToggled, commitCircuit, isReplayMode, engine, onSignalsUpdated]);
 
+  const getNodePortNames = React.useCallback(
+    (node: Node): string[] => {
+      const metadata = getChipMetadata?.(node.type);
+      if (metadata) {
+        return [
+          ...metadata.inputs.map((input) => input.id),
+          ...metadata.outputs.map((output) => output.id),
+        ];
+      }
+
+      const ports: string[] = [];
+      if (!['PowerSource', 'Clock'].includes(node.type)) ports.push('in');
+      if (!['Lamp'].includes(node.type)) ports.push('out');
+      return ports;
+    },
+    [getChipMetadata]
+  );
+
+  const validWireTargetKeys = React.useMemo(() => {
+    const startPort = editingState.wireStartPort;
+    if (!startPort) return null;
+
+    const targets = new Set<string>();
+    for (const node of circuit.nodes) {
+      const ports = getNodePortNames(node);
+      for (const portName of ports) {
+        if (node.id === startPort.nodeId && portName === startPort.portName) continue;
+        const candidate = { nodeId: node.id, portName };
+        const validation = isValidConnection(startPort, candidate, circuit, getChipMetadata);
+        if (validation.valid) {
+          targets.add(`${node.id}:${portName}`);
+        }
+      }
+    }
+
+    return targets;
+  }, [editingState.wireStartPort, circuit, getNodePortNames, getChipMetadata]);
+
+  const hoveredWireTargetState = React.useMemo(() => {
+    if (!editingState.wireStartPort || !hoveredPort) return null;
+    if (!validWireTargetKeys) return null;
+    return validWireTargetKeys.has(`${hoveredPort.nodeId}:${hoveredPort.portName}`)
+      ? 'valid'
+      : 'invalid';
+  }, [editingState.wireStartPort, hoveredPort, validWireTargetKeys]);
+
   const handlePortClick = React.useCallback((nodeId: string, portName: string) => {
     if (isReplayMode) return;
     // Don't allow port interactions while panning or dragging
-    if (interactionMode === 'panning' || interactionMode === 'dragging') return;
+    if (interactionMode === 'panning' || interactionMode === 'draggingNode') return;
 
     if (interactionMode === 'wiring' && editingState.wireStartPort) {
       // End wire - validate connection first
@@ -665,6 +723,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   endWireRef.current = endWire;
   const setToolModeRef = React.useRef(setToolMode);
   setToolModeRef.current = setToolMode;
+  const setInteractionModeRef = React.useRef(setInteractionMode);
+  setInteractionModeRef.current = setInteractionMode;
+  const setEditingStateRef = React.useRef(setEditingState);
+  setEditingStateRef.current = setEditingState;
   const toggleSnapToGridRef = React.useRef(toggleSnapToGrid);
   toggleSnapToGridRef.current = toggleSnapToGrid;
   const fitToViewRef = React.useRef(fitToView);
@@ -707,9 +769,12 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
   // CanvasHost wheel handler
   const handleWheelActive = React.useCallback((e: WheelEvent) => {
+    if (interactionMode === 'draggingNode' || interactionMode === 'boxSelecting') {
+      return;
+    }
     const delta = e.ctrlKey ? -e.deltaY * 0.5 : -e.deltaY;
     zoomFn(delta, e.clientX, e.clientY);
-  }, [zoomFn]);
+  }, [zoomFn, interactionMode]);
 
   // CanvasHost keyboard handlers
   const handleKeyDownActive = React.useCallback((e: KeyboardEvent) => {
@@ -724,6 +789,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       handleDeleteRef.current();
     } else if (e.key === 'Escape') {
       clearSelectionRef.current();
+      setEditingStateRef.current({ marquee: undefined });
+      if (interactionMode === 'boxSelecting') {
+        setInteractionModeRef.current('idle');
+      }
       if (editingStateRef.current.wireStartPort) {
         endWireRef.current();
       }
@@ -811,6 +880,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           <div className="flex items-center justify-between gap-2">
             <span className="text-gray-500 uppercase tracking-wide">Mode</span>
             <span className="font-mono">{toolMode === 'wire' ? 'Wire' : 'Select'}</span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-gray-500 uppercase tracking-wide">State</span>
+            <span className="font-mono">{interactionMode}</span>
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="text-gray-500 uppercase tracking-wide">Snap</span>
@@ -1026,9 +1099,43 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               debugTick={debugTick}
               mismatchPortKeys={mismatchPortKeys}
               dragPosition={canvasInput.dragState.dragNodeId === node.id ? canvasInput.dragState.dragPosition : undefined}
+              validWireTargets={validWireTargetKeys}
+              hoveredWireTargetState={hoveredWireTargetState}
             />
           ))}
         </g>
+
+        {/* Box selection marquee */}
+        {editingState.marquee && (() => {
+          const rect = svgRef.current?.getBoundingClientRect();
+          if (!rect) return null;
+
+          const x1 = editingState.marquee.x1 - rect.left;
+          const y1 = editingState.marquee.y1 - rect.top;
+          const x2 = editingState.marquee.x2 - rect.left;
+          const y2 = editingState.marquee.y2 - rect.top;
+
+          const x = Math.min(x1, x2);
+          const y = Math.min(y1, y2);
+          const width = Math.abs(x2 - x1);
+          const height = Math.abs(y2 - y1);
+
+          if (width < 1 || height < 1) return null;
+
+          return (
+            <rect
+              x={x}
+              y={y}
+              width={width}
+              height={height}
+              fill="rgba(34, 197, 94, 0.12)"
+              stroke="#22c55e"
+              strokeWidth={1.5}
+              strokeDasharray="6 4"
+              pointerEvents="none"
+            />
+          );
+        })()}
 
         {/* Switch Toggle Overlay Layer */}
         <g id="rb-switch-overlay" style={{ pointerEvents: 'none' }}>

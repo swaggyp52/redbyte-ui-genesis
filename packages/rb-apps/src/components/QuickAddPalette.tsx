@@ -39,6 +39,7 @@ interface QuickAddPaletteProps {
   onSelectComponent: (type: string) => void;
   position?: { x: number; y: number };
   isReplayMode?: boolean;
+  allowedTypes?: string[];
 }
 
 const COMPONENTS: Component[] = [
@@ -69,13 +70,19 @@ export const QuickAddPalette: React.FC<QuickAddPaletteProps> = ({
   onSelectComponent,
   position,
   isReplayMode = false,
+  allowedTypes,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const lockMessage = REPLAY_LOCK_MESSAGE;
 
-  const filteredComponents = COMPONENTS.filter(comp => {
+  const visibleComponents =
+    Array.isArray(allowedTypes) && allowedTypes.length > 0
+      ? COMPONENTS.filter((comp) => allowedTypes.includes(comp.type))
+      : COMPONENTS;
+
+  const filteredComponents = visibleComponents.filter(comp => {
     const query = searchQuery.toLowerCase();
     return (
       comp.name.toLowerCase().includes(query) ||

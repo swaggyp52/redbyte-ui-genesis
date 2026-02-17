@@ -78,6 +78,9 @@ import {
 import { stableStringify } from '../export/stableStringify';
 import { verilogFromNetlist } from '../export/verilogExport';
 import { HierarchyBreadcrumbs } from '../components/HierarchyBreadcrumbs';
+import { IDEModeNav, type IDEMode } from '../components/IDEModeNav';
+import { LabSelectorModal } from '../components/LabSelectorModal';
+import type { LabDefinition } from '../labs/labCatalog';
 import { KeyboardShortcutsHelp } from '../components/KeyboardShortcutsHelp';
 import { ComponentPalette } from '../components/ComponentPalette';
 import { QuickAddPalette } from '../components/QuickAddPalette';
@@ -182,6 +185,23 @@ const COMPOSITE_NODES = [
   'FullAdder',
   'Counter4Bit',
 ] as const;
+
+const VHDL_SAFE_NODE_TYPES = new Set([
+  'INPUT',
+  'OUTPUT',
+  'Switch',
+  'Lamp',
+  'AND',
+  'OR',
+  'NOT',
+  'NAND',
+  'NOR',
+  'XOR',
+  'XNOR',
+  'FullAdder',
+  'MUX4',
+  'Wire',
+]);
 
 const EXAMPLE_NOTES: Partial<Record<ExampleId, { title: string; description: string }>> = {
   '11_d-flipflop': {
@@ -599,6 +619,10 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const activeViews = useLayoutStore((state) => state.activeViews);
   const perspective = useLayoutStore((state) => state.perspective);
   const storeSetPerspective = useLayoutStore((state) => state.setPerspective);
+
+  // IDE mode: maps the 4-stage student journey to the right dock
+  const [ideMode, setIdeMode] = useState<IDEMode>('design');
+  const [showLabModal, setShowLabModal] = useState(false);
   const { safeMode, isComplexityWarning } = useClassroomModeStore();
 
   const handleSetPerspective = useCallback((p: PerspectiveId) => {
@@ -611,6 +635,28 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   }, [safeMode, isComplexityWarning, storeSetPerspective, addToast]);
 
   const setPerspective = handleSetPerspective; // Alias for minimal refactor
+
+  // Handle IDE mode changes — right dock only; canvas is ALWAYS visible.
+  // Only switch dock content if the dock is already open (don't force it open).
+  const handleIdeModeChange = useCallback((mode: IDEMode) => {
+    setIdeMode(mode);
+    const layout = useLayoutStore.getState();
+    const isDockOpen = layout.rightDockState !== 'collapsed';
+    switch (mode) {
+      case 'project':
+        if (isDockOpen) layout.openDock('learn', 'lessons');
+        break;
+      case 'design':
+        // No dock change — let the student stay where they are
+        break;
+      case 'verify':
+        if (isDockOpen) layout.openDock('probes', undefined);
+        break;
+      case 'export':
+        if (isDockOpen) layout.openDock('hdl', undefined);
+        break;
+    }
+  }, []);
 
   const splitRatio = useLayoutStore((state) => state.splitRatio);
   const setSplitRatio = useLayoutStore((state) => state.setSplitRatio);
@@ -857,6 +903,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
   const [draggingNodeType, setDraggingNodeType] = useState<string | null>(null);
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
+  const setCanvasInteractionMode = useLogicViewStore((state) => state.setInteractionMode);
   const [shareFallbackURL, setShareFallbackURL] = useState<string | null>(null);
   const [showDecodeErrorModal, setShowDecodeErrorModal] = useState(false);
   const [isLoadingSharedCircuit, setIsLoadingSharedCircuit] = useState(false);
@@ -911,6 +958,23 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const isDemoMode =
     (import.meta as ImportMeta & { env?: { VITE_PUBLIC_DEMO?: string } }).env?.VITE_PUBLIC_DEMO ===
     'true';
+  const shouldRestrictToVhdlSafeNodes = ceMode && Boolean(pinnedStarterInstructions);
+  const filteredPrimitiveNodes = shouldRestrictToVhdlSafeNodes
+    ? (Object.fromEntries(
+      Object.entries(PRIMITIVE_NODES)
+        .map(([category, nodes]) => [
+          category,
+          nodes.filter((type) => VHDL_SAFE_NODE_TYPES.has(type)),
+        ])
+        .filter(([, nodes]) => nodes.length > 0),
+    ) as Record<string, readonly string[]>)
+    : PRIMITIVE_NODES;
+  const filteredCompositeNodes = shouldRestrictToVhdlSafeNodes
+    ? COMPOSITE_NODES.filter((type) => VHDL_SAFE_NODE_TYPES.has(type))
+    : COMPOSITE_NODES;
+  const quickAddAllowedTypes = shouldRestrictToVhdlSafeNodes
+    ? Array.from(VHDL_SAFE_NODE_TYPES)
+    : undefined;
 
   const lastRecognizedPatternRef = useRef<string | null>(null);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
@@ -1421,6 +1485,9 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
           e.preventDefault();
           if (showKeyboardHelp) setShowKeyboardHelp(false);
           if (showQuickAdd) setShowQuickAdd(false);
+          setDraggingNodeType(null);
+          setDragPosition(null);
+          setCanvasInteractionMode('idle');
         }
         return;
       }
@@ -1494,6 +1561,9 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
         e.preventDefault();
         if (showKeyboardHelp) setShowKeyboardHelp(false);
         if (showQuickAdd) setShowQuickAdd(false);
+        setDraggingNodeType(null);
+        setDragPosition(null);
+        setCanvasInteractionMode('idle');
         if (!showKeyboardHelp && !showQuickAdd && hierarchyStack.length === 0) {
           canvasAreaRef.current?.focus();
         }
@@ -1598,7 +1668,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showKeyboardHelp, showQuickAdd, setPerspective, isReplayMode]);
+  }, [showKeyboardHelp, showQuickAdd, setPerspective, isReplayMode, setCanvasInteractionMode]);
 
   // Sync hierarchy circuit with main circuit
   // Use refs to track last synced values and prevent infinite loops
@@ -2030,6 +2100,35 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     addToast('Exited learn mode', 'info');
   }, [addToast]);
 
+  const applySelectedLab = useCallback((lab: LabDefinition) => {
+    setPinnedStarterInstructions(normalizeStarterInstructions(lab.starterInstructions ?? null));
+    setIdeMode('design');
+    setShowLabModal(false);
+  }, []);
+
+  const handleSelectLab = useCallback(
+    (lab: LabDefinition) => {
+      if (!isDirty) {
+        applySelectedLab(lab);
+        return;
+      }
+
+      openGuardrail({
+        title: 'Replace current circuit?',
+        message: 'Loading a lab template will replace the current workspace.',
+        lossItems: ['Current circuit', 'Undo/redo history', 'Unsaved changes'],
+        confirmLabel: 'Load Template',
+        confirmTone: 'danger',
+        onConfirm: () => {
+          saveSnapshot(circuit, getLayoutSnapshot(), { safeMode }, 'autosave', true, getProjectSnapshot() ?? undefined);
+          applySelectedLab(lab);
+        },
+        onExport: () => setShowCEExportModal(true),
+      });
+    },
+    [isDirty, applySelectedLab, openGuardrail, circuit, getLayoutSnapshot, safeMode, getProjectSnapshot, setShowCEExportModal]
+  );
+
   const handleCircuitChange = useCallback((updatedCircuit: Circuit) => {
     // Compute fingerprint for incoming circuit
     const incomingFp = computeCircuitFingerprint(updatedCircuit);
@@ -2357,6 +2456,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       }
     }
     setDraggingNodeType(nodeType);
+    setCanvasInteractionMode('placing');
   };
 
   const handleNodeDragOver = (e: React.DragEvent) => {
@@ -2393,6 +2493,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     if (!draggingNodeType || !canvasAreaRef.current) {
       setDraggingNodeType(null);
       setDragPosition(null);
+      setCanvasInteractionMode('idle');
       return;
     }
 
@@ -2400,12 +2501,14 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     if (typeof e.clientX !== 'number' || typeof e.clientY !== 'number') {
       setDraggingNodeType(null);
       setDragPosition(null);
+      setCanvasInteractionMode('idle');
       return;
     }
 
     if (isNaN(e.clientX) || isNaN(e.clientY)) {
       setDraggingNodeType(null);
       setDragPosition(null);
+      setCanvasInteractionMode('idle');
       return;
     }
 
@@ -2415,12 +2518,14 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     if (typeof rect.left !== 'number' || typeof rect.top !== 'number') {
       setDraggingNodeType(null);
       setDragPosition(null);
+      setCanvasInteractionMode('idle');
       return;
     }
 
     if (isNaN(rect.left) || isNaN(rect.top)) {
       setDraggingNodeType(null);
       setDragPosition(null);
+      setCanvasInteractionMode('idle');
       return;
     }
 
@@ -2432,6 +2537,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     if (isNaN(screenX) || isNaN(screenY)) {
       setDraggingNodeType(null);
       setDragPosition(null);
+      setCanvasInteractionMode('idle');
       return;
     }
 
@@ -2477,6 +2583,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
     setDraggingNodeType(null);
     setDragPosition(null);
+    setCanvasInteractionMode('idle');
   };
 
   const handleSave = () => {
@@ -3935,14 +4042,36 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
           </div>
         )}
 
+        <LabSelectorModal
+          isOpen={showLabModal}
+          onClose={() => setShowLabModal(false)}
+          onSelectLab={handleSelectLab}
+        />
+
+        {/* IDE Mode Navigation — Project / Design / Verify / Export */}
+        <IDEModeNav
+          activeMode={ideMode}
+          onModeChange={handleIdeModeChange}
+          labNumber={pinnedStarterInstructions?.labId?.replace(/\D/g, '') || undefined}
+          labTitle={pinnedStarterInstructions?.title || undefined}
+          onOpenLabs={() => setShowLabModal(true)}
+          modeStatus={{
+            verify: {
+              passed: 0,
+              total: pinnedStarterInstructions?.steps?.length ?? 0,
+            },
+          }}
+        />
+
         {/* Hierarchy Breadcrumbs */}
         <HierarchyBreadcrumbs />
 
         {/* Classroom guardrail banners */}
         <ClassroomModeBanner />
 
-        {/* Top Command Bar - vNext Design */}
+        {/* Top Command Bar — collapsed to sim-strip in lab mode */}
         <TopCommandBar
+          labMode={Boolean(pinnedStarterInstructions)}
           onExamples={ceMode ? () => setShowCEExamplesModal(true) : () => setShowExamplesModal(true)}
           projectName={projectName}
           onNew={handleNew}
@@ -3996,8 +4125,8 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
         <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden">
           {/* Left Sidebar - Enhanced Palette (PR3) */}
           <EnhancedPalette
-            primitiveNodes={PRIMITIVE_NODES}
-            compositeNodes={COMPOSITE_NODES}
+            primitiveNodes={filteredPrimitiveNodes}
+            compositeNodes={filteredCompositeNodes}
             chips={allChips}
             onNodeDragStart={handleNodeDragStart}
             onAddNode={handleAddNode}
@@ -4019,6 +4148,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
               // Clean up drag state when drag ends
               setDraggingNodeType(null);
               setDragPosition(null);
+              setCanvasInteractionMode('idle');
             }}
           >
             {/* Drag preview indicator */}
@@ -4627,6 +4757,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
         <QuickAddPalette
           isOpen={showQuickAdd}
           onClose={() => setShowQuickAdd(false)}
+          allowedTypes={quickAddAllowedTypes}
           onSelectComponent={(type) => {
             console.log(`[LogicPlaygroundApp] onSelectComponent called with: ${type}`);
             if (isReplayMode) return;
@@ -4635,6 +4766,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
             storeAddNode(type, pos);
             console.log(`[LogicPlaygroundApp] storeAddNode completed`);
             setShowQuickAdd(false);
+            setCanvasInteractionMode('idle');
           }}
           isReplayMode={isReplayMode}
         />

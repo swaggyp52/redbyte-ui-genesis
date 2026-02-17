@@ -1,0 +1,221 @@
+/* ─────────────────────────────────────────────────────────────────
+   LabSelectorModal.module.css
+   Template browser overlay. Tool language, no course aesthetics.
+   ───────────────────────────────────────────────────────────────── */
+
+/* ── Backdrop ─────────────────────────────────────────────────── */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 24px;
+}
+
+/* ── Panel ────────────────────────────────────────────────────── */
+.panel {
+  width: 100%;
+  max-width: 900px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background: #070b14;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 3px solid #EF233C;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 40px rgba(239, 35, 60, 0.06);
+  overflow: hidden;
+}
+
+/* ── Header ───────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.headerChip {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  border-radius: 4px;
+  background: rgba(239, 35, 60, 0.12);
+  border: 1px solid rgba(239, 35, 60, 0.3);
+  color: #EF233C;
+}
+
+.headerSub {
+  font-family: "IBM Plex Sans", -apple-system, sans-serif;
+  font-size: 12px;
+  color: rgba(236, 244, 255, 0.3);
+}
+
+.closeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(236, 244, 255, 0.4);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  flex-shrink: 0;
+}
+
+.closeBtn:hover {
+  background: rgba(239, 35, 60, 0.1);
+  border-color: rgba(239, 35, 60, 0.3);
+  color: #EF233C;
+}
+
+/* ── Lab grid ─────────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 20px 24px 24px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(239, 35, 60, 0.2) transparent;
+}
+
+@media (max-width: 700px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Lab card ─────────────────────────────────────────────────── */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.025);
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.card:hover {
+  border-color: rgba(239, 35, 60, 0.25);
+  background: rgba(239, 35, 60, 0.04);
+}
+
+/* ── Card header ──────────────────────────────────────────────── */
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.labNum {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(239, 35, 60, 0.6);
+  letter-spacing: 0.05em;
+}
+
+.timeChip {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(236, 244, 255, 0.25);
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── Card content ─────────────────────────────────────────────── */
+.cardTitle {
+  font-family: "IBM Plex Sans", -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(236, 244, 255, 0.85);
+  letter-spacing: -0.01em;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.cardDesc {
+  font-family: "IBM Plex Sans", -apple-system, sans-serif;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: rgba(236, 244, 255, 0.4);
+  margin: 0;
+  flex: 1;
+}
+
+/* ── Tags ─────────────────────────────────────────────────────── */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.tag {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(236, 244, 255, 0.35);
+}
+
+/* ── Load button ──────────────────────────────────────────────── */
+.loadBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 12px;
+  margin-top: 4px;
+  border-radius: 5px;
+  border: 1px solid rgba(239, 35, 60, 0.25);
+  background: rgba(239, 35, 60, 0.07);
+  color: rgba(239, 35, 60, 0.75);
+  font-family: "IBM Plex Sans", -apple-system, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.loadBtn:hover {
+  background: rgba(239, 35, 60, 0.15);
+  border-color: rgba(239, 35, 60, 0.45);
+  color: #EF233C;
+}

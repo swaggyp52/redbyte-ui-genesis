@@ -102,6 +102,7 @@ describe('useCanvasInput — state machine', () => {
 
     act(() => {
       result.current.onPointerDown(makePointerEvent('pointerdown', { button: 0 }));
+      result.current.onPointerUp(makePointerEvent('pointerup', { button: 0 }));
     });
 
     expect(onClearSelection).toHaveBeenCalled();
@@ -110,9 +111,9 @@ describe('useCanvasInput — state machine', () => {
   it('left click on node selects it', () => {
     const onNodeSelect = vi.fn();
     // Create a mock element with closest() that finds a node
-    const nodeEl = document.createElement('g');
+    const nodeEl = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     nodeEl.setAttribute('data-node-id', 'node-1');
-    const target = document.createElement('rect');
+    const target = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     nodeEl.appendChild(target);
 
     const { result } = renderHook(() =>
@@ -132,9 +133,9 @@ describe('useCanvasInput — state machine', () => {
     const setInteractionMode = vi.fn();
     const onNodeSelect = vi.fn();
 
-    const nodeEl = document.createElement('g');
+    const nodeEl = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     nodeEl.setAttribute('data-node-id', 'node-1');
-    const target = document.createElement('rect');
+    const target = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     nodeEl.appendChild(target);
 
     const { result } = renderHook(() =>
@@ -154,7 +155,7 @@ describe('useCanvasInput — state machine', () => {
         makePointerEvent('pointermove', { clientX: 102, clientY: 200, target }),
       );
     });
-    expect(setInteractionMode).not.toHaveBeenCalledWith('dragging');
+    expect(setInteractionMode).not.toHaveBeenCalledWith('draggingNode');
 
     // Move 4px — should start drag
     act(() => {
@@ -162,7 +163,61 @@ describe('useCanvasInput — state machine', () => {
         makePointerEvent('pointermove', { clientX: 104, clientY: 200, target }),
       );
     });
-    expect(setInteractionMode).toHaveBeenCalledWith('dragging');
+    expect(setInteractionMode).toHaveBeenCalledWith('draggingNode');
+  });
+
+  it('background drag enters boxSelecting and commits node selection', () => {
+    const setInteractionMode = vi.fn();
+    const onMarqueeChange = vi.fn();
+    const onMarqueeCommit = vi.fn();
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as unknown as SVGSVGElement;
+    vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      width: 800,
+      height: 600,
+      top: 0,
+      left: 0,
+      right: 800,
+      bottom: 600,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    const { result } = renderHook(() =>
+      useCanvasInput(
+        makeOptions({
+          svgRef: { current: svg } as React.RefObject<SVGSVGElement | null>,
+          setInteractionMode,
+          onMarqueeChange,
+          onMarqueeCommit,
+        }),
+      ),
+    );
+
+    act(() => {
+      result.current.onPointerDown(
+        makePointerEvent('pointerdown', { button: 0, clientX: 80, clientY: 180 }),
+      );
+    });
+
+    act(() => {
+      result.current.onPointerMove(
+        makePointerEvent('pointermove', { clientX: 120, clientY: 240 }),
+      );
+    });
+
+    expect(setInteractionMode).toHaveBeenCalledWith('boxSelecting');
+    expect(onMarqueeChange).toHaveBeenCalled();
+
+    act(() => {
+      result.current.onPointerUp(
+        makePointerEvent('pointerup', { clientX: 120, clientY: 240 }),
+      );
+    });
+
+    expect(onMarqueeCommit).toHaveBeenCalledWith(expect.arrayContaining(['node-1']), false);
+    expect(setInteractionMode).toHaveBeenLastCalledWith('idle');
   });
 
   it('pointer up resets to idle', () => {
@@ -215,7 +270,7 @@ describe('useCanvasInput — state machine', () => {
   it('cannot start new interactions while dragging', () => {
     const onClearSelection = vi.fn();
     const { result } = renderHook(() =>
-      useCanvasInput(makeOptions({ interactionMode: 'dragging', onClearSelection })),
+      useCanvasInput(makeOptions({ interactionMode: 'draggingNode', onClearSelection })),
     );
 
     act(() => {

@@ -59,7 +59,13 @@ export type ToolMode = 'select' | 'wire' | 'pan';
  * Interaction mode is the single source of truth for what the user is currently doing.
  * Only ONE mode can be active at a time. This prevents conflicting handlers.
  */
-export type InteractionMode = 'idle' | 'placing' | 'dragging' | 'wiring' | 'panning';
+export type InteractionMode =
+  | 'idle'
+  | 'placing'
+  | 'draggingNode'
+  | 'boxSelecting'
+  | 'wiring'
+  | 'panning';
 
 export interface EditingState {
   wireStartPort?: PortRef;

@@ -42,6 +42,23 @@
   --rb-accent-weak: rgba(212, 147, 13, 0.10);
   --rb-accent-strong: rgba(212, 147, 13, 0.30);
 
+  /* ── IDE Red — primary product identity color (RedByte = Red) ── */
+  --rb-red: #EF233C;
+  --rb-red-bright: #FF3A52;
+  --rb-red-dim: #C41E31;
+  --rb-red-soft: rgba(239, 35, 60, 0.14);
+  --rb-red-glow: rgba(239, 35, 60, 0.28);
+  --rb-red-pulse: rgba(239, 35, 60, 0.08);
+  /* Stage-specific colors (for mode tabs) */
+  --rb-stage-project: #6EA8FF;
+  --rb-stage-design: #EF233C;
+  --rb-stage-verify: #2DD4BF;
+  --rb-stage-export: #F59E0B;
+  --rb-stage-project-soft: rgba(110, 168, 255, 0.14);
+  --rb-stage-design-soft: rgba(239, 35, 60, 0.14);
+  --rb-stage-verify-soft: rgba(45, 212, 191, 0.14);
+  --rb-stage-export-soft: rgba(245, 158, 11, 0.14);
+
   /* ── Signal Accent (Teal/Cyan — electrical, alive) ── */
   --rb-signal: #22D3EE;
   --rb-signal-soft: rgba(34, 211, 238, 0.15);

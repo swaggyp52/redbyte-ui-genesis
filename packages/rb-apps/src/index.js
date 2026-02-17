@@ -14,6 +14,7 @@ export * from './apps/files/modals';
 export * from './examples';
 export * from './components/EmptyState';
 export * from './components/IntegrityBadge';
+export * from './labs/labCatalog';
 export * from './ui/tokens';
 export * from './ui/components/index';
 export { stableSerialize, stableHash, hashBytes } from './utils/stableSerialize';

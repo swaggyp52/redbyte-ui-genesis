@@ -21,6 +21,12 @@ import styles from './TopCommandBar.module.css';
  */
 
 interface TopCommandBarProps {
+  /**
+   * Lab mode: hides project/layout controls, shows only simulation strip.
+   * Reduces chrome from 60px to ~38px — critical on laptops.
+   */
+  labMode?: boolean;
+
   // Project controls
   projectName?: string;
   onNew?: () => void;
@@ -111,6 +117,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   onOpenEvidence,
   onResetWorkspace,
   onResetLayout,
+  labMode = false,
 }) => {
   const { safeMode, setSafeMode, isComplexityWarning } = useClassroomModeStore();
   const [showResetMenu, setShowResetMenu] = React.useState(false);
@@ -171,7 +178,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         : styles.pillNeutral;
 
   return (
-    <div className={`${styles.chromeRoot} rb-ui-lab-chrome-header`} data-testid="top-command-bar" role="toolbar" aria-label="Main Toolbar">
+    <div className={`${styles.chromeRoot} rb-ui-lab-chrome-header`} data-testid="top-command-bar" data-lab-mode={labMode ? 'true' : undefined} role="toolbar" aria-label="Main Toolbar">
       <div className={`${styles.chromeInner} rb-ui-lab-page-inner`}>
       <GuardrailConfirmModal
         isOpen={resetConfirm === 'workspace'}
@@ -195,8 +202,8 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         onConfirm={executeResetLayout}
         onCancel={() => setResetConfirm(null)}
       />
-      {/* LEFT: Project */}
-      <div className={styles.actionRow}>
+      {/* LEFT: Project — hidden in lab mode (replaced by IDEModeNav identity) */}
+      {!labMode && <div className={styles.actionRow}>
         <span className={styles.sectionLabel}>Project</span>
         {projectName && (
           <div className={styles.projectName}>
@@ -353,7 +360,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             ↷
           </button>
         )}
-      </div>
+      </div>}
 
       {/* CENTER: Simulation (PRIMARY - Step-first design) */}
       <div className={styles.simBlock}>
@@ -444,8 +451,8 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         )}
       </div>
 
-      {/* RIGHT: Layout + Help (with Overflow) */}
-      <div className={styles.rightCluster}>
+      {/* RIGHT: Layout + Help — hidden in lab mode (IDEModeNav owns navigation) */}
+      {!labMode && <div className={styles.rightCluster}>
         {/* Desktop View */}
         <div className={cx(styles.rightCluster, styles.desktopOnly)}>
           <span className={styles.sectionLabel}>Layout</span>
@@ -537,7 +544,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             {onExamples && <Menu.Item onClick={onExamples}>Examples</Menu.Item>}
           </Menu>
         </div>
-      </div>
+      </div>}
       </div>
     </div>
   );

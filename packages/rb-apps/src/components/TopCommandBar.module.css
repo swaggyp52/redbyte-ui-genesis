@@ -9,6 +9,19 @@
   left: 0;
   right: 0;
   z-index: 100;
+  transition: min-height 200ms ease;
+}
+
+/* Lab mode: simulation strip only — project and layout controls are hidden */
+.chromeRoot[data-lab-mode="true"] {
+  min-height: 40px;
+  border-bottom-color: rgba(239, 35, 60, 0.1);
+  background: color-mix(in srgb, #060912 97%, transparent);
+}
+
+.chromeRoot[data-lab-mode="true"] .chromeInner {
+  padding: 4px 14px;
+  justify-content: center;
 }
 
 .chromeInner {

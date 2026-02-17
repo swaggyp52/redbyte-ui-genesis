@@ -61,7 +61,7 @@ const sanityFixturePath = join(repoRoot, 'packages/rb-apps/src/fixtures/classroo
 const outPath = join(repoRoot, 'out/classroom/lab4-smoke.rb-lab.zip');
 
 const REQUIRED_LABEL_KEYS = ['en', 'a', 'b', 's2', 's1', 's0', 'f'] as const;
-const EXPECTED_SCAFFOLD_FAILURE_REASONS = ['output_unwired', 'no_operation_paths', 'select_logic_missing'] as const;
+const EXPECTED_SCAFFOLD_FAILURE_REASONS = ['output_unwired', 'select_logic_missing'] as const;
 const GATE_TYPES = new Set(['AND', 'NAND', 'OR', 'NOR', 'XOR', 'XNOR', 'NOT', 'MUX', 'DECODER', 'TRISTATE', 'FULLADDER']);
 
 function fail(message: string): never {

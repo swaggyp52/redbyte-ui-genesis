@@ -113,6 +113,21 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
     return () => cancelAnimationFrame(timer);
   }, []);
 
+  // Re-apply maximized layout on window resize (includes browser zoom)
+  useEffect(() => {
+    if (!isMax) return;
+
+    // Maximized windows using inset: 0 automatically reflow on resize
+    // This is purely defensive to ensure consistency if bounds change unexpectedly
+    const handleResize = () => {
+      // The CSS inset: 0 + width/height: 100% will handle the layout automatically
+      // No explicit state update needed—the component will remain at inset: 0
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isMax]);
+
   useEffect(() => {
     return () => { clearSnapTimer(); };
   }, []);
@@ -462,24 +477,11 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
     const mountTransform = mounted ? '' : 'scale(0.98) translateY(4px)';
     const maxBounds = isMax ? getMaximizedBounds() : null;
 
-    const baseX = maxBounds ? maxBounds.x : bounds.x;
-    const baseY = maxBounds ? maxBounds.y : bounds.y;
-
-    // During drag: offset via transform (compositor-only, no layout recalc)
-    let transform = mountTransform;
-    if (dragOffset) {
-      transform = `translate3d(${dragOffset.dx}px, ${dragOffset.dy}px, 0)`;
-    }
-
-    return {
+    // Maximized windows use CSS inset (0) to reflow with browser zoom instead of fixed px-based positioning
+    const style: React.CSSProperties = {
       position: 'absolute' as const,
-      left: baseX,
-      top: baseY,
-      width: maxBounds ? maxBounds.width : bounds.width,
-      height: maxBounds ? maxBounds.height : bounds.height,
       zIndex,
       opacity,
-      transform: transform || undefined,
       willChange: dragOffset ? 'transform' : undefined,
       // Disable transitions during drag to prevent CSS animation fighting the transform
       transition: dragOffset
@@ -492,8 +494,36 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
       boxShadow: focused ? 'var(--rb-window-shadow-focus)' : 'var(--rb-window-shadow)',
       // Removed: filter: saturate(0.92) — expensive GPU compositing per window
       display: isMin ? 'none' : 'block',
-    } as React.CSSProperties;
+    };
+
+    // During drag: offset via transform (compositor-only, no layout recalc)
+    let transform = mountTransform;
+    if (dragOffset) {
+      transform = `translate3d(${dragOffset.dx}px, ${dragOffset.dy}px, 0)`;
+    }
+
+    if (transform) {
+      style.transform = transform;
+    }
+
+    if (isMax) {
+      // Maximized: use CSS inset for zoom-safe layout
+      // Note: maxBounds still provides the coordinates in case we need them for other purposes
+      style.inset = 0;
+      style.width = '100%';
+      style.height = '100%';
+    } else {
+      // Normal window: use px-based positioning (draggable, resizable)
+      style.left = bounds.x;
+      style.top = bounds.y;
+      style.width = bounds.width;
+      style.height = bounds.height;
+    }
+
+    return style;
   }, [state, isMax, isMin, mounted, dragOffset]);
+
+  const isLabApp = provenance?.appId === 'logic-playground' || provenance?.appId === 'lab-workspace';
 
   return (
     <div
@@ -501,11 +531,14 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
       style={containerStyle}
       onMouseDown={onFocus}
       onPointerDown={onFocus}
+      data-app-id={provenance?.appId}
+      data-window-mode={state.mode}
     >
-      {/* Title bar - 36px */}
+      {/* Title bar — hidden for lab apps in maximized mode (IDEModeNav owns identity) */}
       <div
         className="flex h-9 items-center gap-2 px-3 text-[13px] select-none border-b"
         style={{
+          display: isMax && isLabApp ? 'none' : undefined,
           cursor: isMax ? 'default' : dragging ? 'grabbing' : 'grab',
           background: state.focused ? 'var(--rb-surface-2)' : 'var(--rb-surface-1)',
           borderColor: 'var(--rb-border)',

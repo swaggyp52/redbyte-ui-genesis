@@ -624,8 +624,8 @@ export const Shell: React.FC<ShellProps> = () => {
     snapAssist: string;
   } | null>(null);
 
-  const hasShownWelcomeRef = useRef(false);
   const hasInitializedRef = useRef(false);
+  const hasAutoBootedLogicPlaygroundRef = useRef(false);
 
   const windowStates = useWindowStore(useCallback((state) => state.windows, []));
   const windows = useMemo(() => {
@@ -1271,6 +1271,12 @@ export const Shell: React.FC<ShellProps> = () => {
 
       trackWindowOpen(state.id);
       focusWindow(state.id);
+
+      // Lab apps (logic-playground, lab-workspace) open maximized — no floating window OS metaphor
+      const isLabApp = resolvedAppId === 'logic-playground' || resolvedAppId === 'lab-workspace';
+      if (isLabApp) {
+        toggleMaximize(state.id);
+      }
       setBindings((prev) => ({ ...prev, [state.id]: { appId: resolvedAppId, props } }));
       logSystemEvent({
         level: 'action',
@@ -1284,7 +1290,7 @@ export const Shell: React.FC<ShellProps> = () => {
       recordDiagnosticAction(`Open window: ${resolvedAppId}`);
       return state.id;
     },
-    [createWindow, focusWindow, recordRecentApp, restoreWindow, recordDiagnosticAction]
+    [createWindow, focusWindow, toggleMaximize, recordRecentApp, restoreWindow, recordDiagnosticAction]
   );
 
   // Helper callbacks that depend on openWindow
@@ -3002,16 +3008,58 @@ export const Shell: React.FC<ShellProps> = () => {
         const timer = setTimeout(() => setOnboardingModalOpen(true), 500);
         return () => clearTimeout(timer);
       }
-    } else if (isStudentModeActive()) {
-      // Open Lab Launcher as the default student entry point (once per session)
-      if (!hasShownWelcomeRef.current) {
-        hasShownWelcomeRef.current = true;
-        const timer = setTimeout(() => openWindow('lab-launcher'), 500);
-        return () => clearTimeout(timer);
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booted, isDemoMode]);
+
+  useEffect(() => {
+    if (!booted) return;
+    if (typeof window === 'undefined') return;
+    if (hasAutoBootedLogicPlaygroundRef.current) return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('openApp')) return;
+    if (windows.length > 0) return;
+
+    let attempt = 0;
+    const maxAttempts = 40; // 40 × 50ms = 2s bounded wait
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    const tryBoot = () => {
+      const latestParams = new URLSearchParams(window.location.search);
+      if (latestParams.has('openApp')) return;
+
+      const latestWindows = useWindowStore.getState().windows;
+      if (latestWindows.length > 0) return;
+
+      // Check if logic-playground app is registered
+      const app = getApp('logic-playground');
+      if (!app) {
+        attempt += 1;
+        if (attempt < maxAttempts) {
+          // Retry in 50ms
+          timeoutId = setTimeout(tryBoot, 50);
+          return;
+        }
+        // Max retries reached, log and give up
+        console.warn('[Shell] Auto-boot: logic-playground app not found after 2s');
+        return;
+      }
+
+      // App is ready, open it once
+      hasAutoBootedLogicPlaygroundRef.current = true;
+      openWindow('logic-playground');
+    };
+
+    const raf = requestAnimationFrame(tryBoot);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [booted, windows.length, openWindow]);
 
   const snapPreviewBounds = useMemo(() => {
     if (!snapPreview || typeof window === 'undefined') return null;
@@ -3066,25 +3114,30 @@ export const Shell: React.FC<ShellProps> = () => {
       {showRecoveryPrompt && (
         <RecoveryPrompt onRecover={handleRecovery} onDiscard={handleDiscardRecovery} />
       )}
-      <TopBar
-        isRecording={determinismRecorder.isRecording}
-        modeLabel={determinismMode}
-        tickCount={determinismRecorder.tickCount}
-        versionLabel={getVersionString()}
-        unreadCount={unreadLogCount}
-        onOpenLog={studentModeEnabled ? undefined : openLog}
-        onOpenLauncher={openLauncher}
-        onOpenSettings={openSettings}
-        onOpenDeterminism={openDeterminismPanel}
-      />
+      {/* TopBar hides when a lab is open — IDEModeNav provides all navigation inside the IDE */}
+      {!hasVisibleWindows && (
+        <TopBar
+          isRecording={determinismRecorder.isRecording}
+          modeLabel={determinismMode}
+          tickCount={determinismRecorder.tickCount}
+          versionLabel={getVersionString()}
+          unreadCount={unreadLogCount}
+          onOpenLog={studentModeEnabled ? undefined : openLog}
+          onOpenLauncher={openLauncher}
+          onOpenSettings={openSettings}
+          onOpenDeterminism={openDeterminismPanel}
+        />
+      )}
       <Desktop
         onOpenApp={openWindow}
         wallpaperId={wallpaperId}
         themeVariant={themeVariant}
       />
 
-      <Dock onOpenApp={openWindow} />
-      <Taskbar onOpenApp={openWindow} />
+      {/* Dock and Taskbar only on the home screen — both hide when a lab is open.
+          Navigation inside the IDE is handled by IDEModeNav. */}
+      {!hasVisibleWindows && <Dock onOpenApp={openWindow} />}
+      {!hasVisibleWindows && <Taskbar onOpenApp={openWindow} />}
 
       {!hasVisibleWindows && (
         <HomeScreen

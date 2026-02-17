@@ -33,6 +33,8 @@ export interface NodeViewProps {
   onPortHover?: (portName: string) => void;
   onPortLeave?: () => void;
   probedPorts?: Set<string>;
+  validWireTargets?: Set<string> | null;
+  hoveredWireTargetState?: 'valid' | 'invalid' | null;
   highlightedPort?: { nodeId: string; portName: string } | null;
   debugTick?: number | null;
   /** When provided by CanvasInputController, overrides node.position for rendering during drag. */
@@ -77,6 +79,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   onPortHover,
   onPortLeave,
   probedPorts,
+  validWireTargets,
+  hoveredWireTargetState,
   highlightedPort,
   debugTick,
   dragPosition: externalDragPosition,
@@ -175,6 +179,28 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
 
   const isIssueHighlighted = (portName: string) =>
     highlightedPort?.nodeId === node.id && highlightedPort.portName === portName;
+
+  const isValidWireTarget = React.useCallback(
+    (portName: string) => {
+      if (!wireStartPort || !validWireTargets) return false;
+      if (wireStartPort.nodeId === node.id && wireStartPort.portName === portName) return false;
+      return validWireTargets.has(`${node.id}:${portName}`);
+    },
+    [wireStartPort, validWireTargets, node.id]
+  );
+
+  const getWireHighlightColor = React.useCallback(
+    (portName: string, isHovered: boolean) => {
+      const isStart = wireStartPort?.nodeId === node.id && wireStartPort?.portName === portName;
+      if (isStart) return '#00ffff';
+      if (!wireStartPort) return '#00ffff';
+
+      if (isValidWireTarget(portName)) return '#22c55e';
+      if (isHovered && hoveredWireTargetState === 'invalid') return '#ef4444';
+      return '#00ffff';
+    },
+    [wireStartPort, node.id, hoveredWireTargetState, isValidWireTarget]
+  );
 
   // Drag handling is now centralized in useCanvasInput (CanvasInputController).
   // NodeView only handles port clicks, toggle, and double-click.
@@ -315,8 +341,10 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         {chipMetadata.inputs.map((input, i) => {
           const yPos = -chipHeight / 2 + portSpacing * (i + 1);
           const isWireStart = wireStartPort?.nodeId === node.id && wireStartPort?.portName === input.id;
+          const isValidTarget = isValidWireTarget(input.id);
           const isHovered = hoveredPort === input.id;
-          const shouldGlow = isWireStart || (isHovered && wireStartPort);
+          const shouldGlow = isWireStart || isValidTarget || (isHovered && wireStartPort);
+          const wireHighlightColor = getWireHighlightColor(input.id, isHovered);
           const isIssueHighlight = isIssueHighlighted(input.id);
 
           return (
@@ -326,7 +354,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                   cx={-size / 2}
                   cy={yPos}
                   r={8}
-                  fill="#00ffff"
+                  fill={wireHighlightColor}
                   opacity={0.4}
                   style={{ pointerEvents: 'none' }}
                 />
@@ -391,8 +419,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 y={yPos - 4}
                 width={8}
                 height={8}
-                fill={isWireStart ? "#00ffff" : probedPorts?.has(`${node.id}.${input.id}`) ? "#00ffff" : "#3b82f6"}
-                stroke={probedPorts?.has(`${node.id}.${input.id}`) ? "#00ffff" : "#fff"}
+                fill={isWireStart ? "#00ffff" : isValidTarget ? "#22c55e" : probedPorts?.has(`${node.id}.${input.id}`) ? "#00ffff" : "#3b82f6"}
+                stroke={isValidTarget ? "#22c55e" : probedPorts?.has(`${node.id}.${input.id}`) ? "#00ffff" : "#fff"}
                 strokeWidth={probedPorts?.has(`${node.id}.${input.id}`) ? 2 : isHovered ? 2 : 1}
                 rx={1}
                 style={{ pointerEvents: 'none' }}
@@ -464,8 +492,10 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           const yPos = -chipHeight / 2 + portSpacing * (i + 1);
           const outputSignal = signals?.get(`${node.id}.${output.id}`) === 1;
           const isWireStart = wireStartPort?.nodeId === node.id && wireStartPort?.portName === output.id;
+          const isValidTarget = isValidWireTarget(output.id);
           const isHovered = hoveredPort === output.id;
-          const shouldGlow = isWireStart || (isHovered && wireStartPort);
+          const shouldGlow = isWireStart || isValidTarget || (isHovered && wireStartPort);
+          const wireHighlightColor = getWireHighlightColor(output.id, isHovered);
           const isIssueHighlight = isIssueHighlighted(output.id);
 
           return (
@@ -475,7 +505,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                   cx={size / 2}
                   cy={yPos}
                   r={8}
-                  fill="#00ffff"
+                  fill={wireHighlightColor}
                   opacity={0.4}
                   style={{ pointerEvents: 'none' }}
                 />
@@ -536,8 +566,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 cx={size / 2}
                 cy={yPos}
                 r={4}
-                fill={isWireStart ? "#00ffff" : probedPorts?.has(`${node.id}.${output.id}`) ? "#00ffff" : outputSignal ? '#22c55e' : '#6b7280'}
-                stroke={probedPorts?.has(`${node.id}.${output.id}`) ? "#00ffff" : "#fff"}
+                fill={isWireStart ? "#00ffff" : isValidTarget ? "#22c55e" : probedPorts?.has(`${node.id}.${output.id}`) ? "#00ffff" : outputSignal ? '#22c55e' : '#6b7280'}
+                stroke={isValidTarget ? "#22c55e" : probedPorts?.has(`${node.id}.${output.id}`) ? "#00ffff" : "#fff"}
                 strokeWidth={probedPorts?.has(`${node.id}.${output.id}`) ? 2 : isHovered ? 2 : 1}
                 style={{ pointerEvents: 'none' }}
               />
@@ -674,8 +704,10 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
       {/* Input port */}
       {!['PowerSource', 'Clock'].includes(node.type) && (() => {
         const isWireStart = wireStartPort?.nodeId === node.id && wireStartPort?.portName === 'in';
+        const isValidTarget = isValidWireTarget('in');
         const isHovered = hoveredPort === 'in';
-        const shouldGlow = isWireStart || (isHovered && wireStartPort);
+        const shouldGlow = isWireStart || isValidTarget || (isHovered && wireStartPort);
+        const wireHighlightColor = getWireHighlightColor('in', isHovered);
         const isIssueHighlight = isIssueHighlighted('in');
 
         return (
@@ -685,7 +717,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 cx={-size / 2}
                 cy={0}
                 r={8}
-                fill="#00ffff"
+                fill={wireHighlightColor}
                 opacity={0.4}
                 style={{ pointerEvents: 'none' }}
               />
@@ -707,8 +739,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               cx={-size / 2}
               cy={0}
               r={5}
-              fill={isWireStart ? "#00ffff" : probedPorts?.has(`${node.id}.in`) ? "#00ffff" : "#3b82f6"}
-              stroke={probedPorts?.has(`${node.id}.in`) ? "#00ffff" : "#fff"}
+              fill={isWireStart ? "#00ffff" : isValidTarget ? "#22c55e" : probedPorts?.has(`${node.id}.in`) ? "#00ffff" : "#3b82f6"}
+              stroke={isValidTarget ? "#22c55e" : probedPorts?.has(`${node.id}.in`) ? "#00ffff" : "#fff"}
               strokeWidth={probedPorts?.has(`${node.id}.in`) ? 2.5 : isHovered ? 2.5 : 1.5}
               data-port-id="in"
               style={{ cursor: 'crosshair' }}
@@ -783,8 +815,10 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
       {/* Output port */}
       {!['Lamp'].includes(node.type) && (() => {
         const isWireStart = wireStartPort?.nodeId === node.id && wireStartPort?.portName === 'out';
+        const isValidTarget = isValidWireTarget('out');
         const isHovered = hoveredPort === 'out';
-        const shouldGlow = isWireStart || (isHovered && wireStartPort);
+        const shouldGlow = isWireStart || isValidTarget || (isHovered && wireStartPort);
+        const wireHighlightColor = getWireHighlightColor('out', isHovered);
         const isIssueHighlight = isIssueHighlighted('out');
 
         return (
@@ -794,7 +828,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 cx={size / 2}
                 cy={0}
                 r={8}
-                fill="#00ffff"
+                fill={wireHighlightColor}
                 opacity={0.4}
                 style={{ pointerEvents: 'none' }}
               />
@@ -816,8 +850,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               cx={size / 2}
               cy={0}
               r={5}
-              fill={isWireStart ? "#00ffff" : probedPorts?.has(`${node.id}.out`) ? "#00ffff" : isActive ? '#22c55e' : '#9ca3af'}
-              stroke={probedPorts?.has(`${node.id}.out`) ? "#00ffff" : "#fff"}
+              fill={isWireStart ? "#00ffff" : isValidTarget ? "#22c55e" : probedPorts?.has(`${node.id}.out`) ? "#00ffff" : isActive ? '#22c55e' : '#9ca3af'}
+              stroke={isValidTarget ? "#22c55e" : probedPorts?.has(`${node.id}.out`) ? "#00ffff" : "#fff"}
               strokeWidth={probedPorts?.has(`${node.id}.out`) ? 2.5 : isHovered ? 2.5 : 1.5}
               data-port-id="out"
               style={{ cursor: 'crosshair' }}
@@ -912,6 +946,8 @@ export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => 
     JSON.stringify(prevProps.chipMetadata) === JSON.stringify(nextProps.chipMetadata) &&
     prevProps.wireStartPort?.nodeId === nextProps.wireStartPort?.nodeId &&
     prevProps.wireStartPort?.portName === nextProps.wireStartPort?.portName &&
+    prevProps.validWireTargets === nextProps.validWireTargets &&
+    prevProps.hoveredWireTargetState === nextProps.hoveredWireTargetState &&
     // Check if relevant signals changed
     (() => {
       // Get all ports for this node

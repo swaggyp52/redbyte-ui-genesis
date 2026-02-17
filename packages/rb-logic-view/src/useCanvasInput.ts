@@ -16,10 +16,12 @@ interface UseCanvasInputOptions {
   onNodeSelect: (nodeId: string, addToSelection: boolean) => void;
   onPan: (dx: number, dy: number) => void;
   onClearSelection: () => void;
+  onMarqueeChange?: (marquee?: { x1: number; y1: number; x2: number; y2: number }) => void;
+  onMarqueeCommit?: (nodeIds: string[], addToSelection: boolean) => void;
   onWireCancel?: () => void;
   isSpacePressed: boolean;
   isReplayMode: boolean;
-  interactionMode: string; // 'idle' | 'placing' | 'dragging' | 'wiring' | 'panning'
+  interactionMode: string; // 'idle' | 'placing' | 'draggingNode' | 'boxSelecting' | 'wiring' | 'panning'
   setInteractionMode: (mode: string) => void;
   snapEnabled: boolean;
   gridSize: number;
@@ -37,7 +39,13 @@ export interface CanvasInputHandlers {
 }
 
 // Internal state machine modes (not exposed to the store).
-type InternalMode = 'idle' | 'pending-drag' | 'dragging-node' | 'panning';
+type InternalMode =
+  | 'idle'
+  | 'pending-drag'
+  | 'dragging-node'
+  | 'pending-box-select'
+  | 'box-selecting'
+  | 'panning';
 
 interface MutableState {
   mode: InternalMode;
@@ -45,6 +53,7 @@ interface MutableState {
   nodeStartWorld: { x: number; y: number };
   panLastScreen: { x: number; y: number };
   dragNodeId: string | null;
+  boxStartScreen: { x: number; y: number };
 }
 
 const DRAG_THRESHOLD_PX = 3;
@@ -63,6 +72,8 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
     onNodeSelect,
     onPan,
     onClearSelection,
+    onMarqueeChange,
+    onMarqueeCommit,
     onWireCancel,
     isSpacePressed,
     isReplayMode,
@@ -79,6 +90,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
     nodeStartWorld: { x: 0, y: 0 },
     panLastScreen: { x: 0, y: 0 },
     dragNodeId: null,
+    boxStartScreen: { x: 0, y: 0 },
   });
 
   // Only dragPosition triggers re-renders (visual feedback).
@@ -140,7 +152,9 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
         if (interactionMode === 'wiring') {
           onWireCancel?.();
         } else {
-          onClearSelection();
+          s.mode = 'pending-box-select';
+          s.boxStartScreen = { x: e.clientX, y: e.clientY };
+          e.currentTarget.setPointerCapture(e.pointerId);
         }
       }
     },
@@ -178,11 +192,32 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
         const dy = e.clientY - s.dragStartScreen.y;
         if (Math.abs(dx) > DRAG_THRESHOLD_PX || Math.abs(dy) > DRAG_THRESHOLD_PX) {
           s.mode = 'dragging-node';
-          setInteractionMode('dragging');
+          setInteractionMode('draggingNode');
         } else {
           return;
         }
         // Fall through to dragging-node to compute first position.
+      }
+
+      if (s.mode === 'pending-box-select') {
+        const dx = e.clientX - s.boxStartScreen.x;
+        const dy = e.clientY - s.boxStartScreen.y;
+        if (Math.abs(dx) > DRAG_THRESHOLD_PX || Math.abs(dy) > DRAG_THRESHOLD_PX) {
+          s.mode = 'box-selecting';
+          setInteractionMode('boxSelecting');
+        } else {
+          return;
+        }
+      }
+
+      if (s.mode === 'box-selecting') {
+        onMarqueeChange?.({
+          x1: s.boxStartScreen.x,
+          y1: s.boxStartScreen.y,
+          x2: e.clientX,
+          y2: e.clientY,
+        });
+        return;
       }
 
       // ---- Dragging node ----
@@ -237,6 +272,46 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
         setDragPosition(null);
       }
 
+      if (s.mode === 'box-selecting' || s.mode === 'pending-box-select') {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+
+        if (s.mode === 'pending-box-select') {
+          onClearSelection();
+        } else if (s.mode === 'box-selecting') {
+          const svg = svgRef.current;
+          if (svg) {
+            const rect = svg.getBoundingClientRect();
+            const startLocal = clientToLocal(s.boxStartScreen.x, s.boxStartScreen.y, rect);
+            const endLocal = clientToLocal(e.clientX, e.clientY, rect);
+            const startWorld = screenToWorld(startLocal.x, startLocal.y, camera);
+            const endWorld = screenToWorld(endLocal.x, endLocal.y, camera);
+
+            const minX = Math.min(startWorld.x, endWorld.x);
+            const maxX = Math.max(startWorld.x, endWorld.x);
+            const minY = Math.min(startWorld.y, endWorld.y);
+            const maxY = Math.max(startWorld.y, endWorld.y);
+
+            const selectedIds = circuitNodes
+              .filter((node) => {
+                const position = node.position;
+                if (!position) return false;
+                return (
+                  position.x >= minX &&
+                  position.x <= maxX &&
+                  position.y >= minY &&
+                  position.y <= maxY
+                );
+              })
+              .map((node) => node.id);
+
+            onMarqueeCommit?.(selectedIds, e.shiftKey);
+          }
+        }
+
+        onMarqueeChange?.(undefined);
+        setInteractionMode('idle');
+      }
+
       if (s.mode === 'panning') {
         setInteractionMode('idle');
       }
@@ -245,7 +320,16 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
       s.mode = 'idle';
       s.dragNodeId = null;
     },
-    [onNodeMoveEnd, setInteractionMode],
+    [
+      onNodeMoveEnd,
+      setInteractionMode,
+      onClearSelection,
+      onMarqueeChange,
+      onMarqueeCommit,
+      svgRef,
+      camera,
+      circuitNodes,
+    ],
   );
 
   // -------------------------------------------------------------------

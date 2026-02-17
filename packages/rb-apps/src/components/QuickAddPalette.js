@@ -26,12 +26,15 @@ const COMPONENTS = [
     { type: 'FullAdder', name: 'Full Adder', keywords: ['adder', 'add', 'sum', 'arithmetic'], Icon: AdderIcon, color: '#818cf8' },
     { type: 'Counter4Bit', name: '4-Bit Counter', keywords: ['counter', 'count', '4bit', 'register'], Icon: CounterIcon, color: '#e879f9' },
 ];
-export const QuickAddPalette = ({ isOpen, onClose, onSelectComponent, position, isReplayMode = false, }) => {
+export const QuickAddPalette = ({ isOpen, onClose, onSelectComponent, position, isReplayMode = false, allowedTypes, }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef(null);
     const lockMessage = REPLAY_LOCK_MESSAGE;
-    const filteredComponents = COMPONENTS.filter(comp => {
+    const visibleComponents = Array.isArray(allowedTypes) && allowedTypes.length > 0
+        ? COMPONENTS.filter((comp) => allowedTypes.includes(comp.type))
+        : COMPONENTS;
+    const filteredComponents = visibleComponents.filter(comp => {
         const query = searchQuery.toLowerCase();
         return (comp.name.toLowerCase().includes(query) ||
             comp.keywords.some(k => k.includes(query)));
