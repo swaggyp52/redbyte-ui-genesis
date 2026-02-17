@@ -30,38 +30,66 @@ describe('ci:no-solution:lab4 gate', () => {
     const nodes = Array.isArray(starter.nodes) ? starter.nodes : [];
     const connections = Array.isArray(starter.connections) ? starter.connections : [];
 
-    expect(nodes.length).toBeGreaterThanOrEqual(7);
+    // Must have at minimum: 11 inputs (SW[3:0] A, SW[7:4] B, SW[10:8] opcode) +
+    // 4 AND + 4 OR + 4 XOR + 4 FA + 5 Lamps (LED[3:0] + LED[4]) = 32 nodes
+    expect(nodes.length).toBeGreaterThanOrEqual(20);
+
+    // Zero connections — starter is intentionally unsolved
     expect(connections.length).toBe(0);
 
+    // Required IO label markers (case-insensitive substring match)
     const labels = nodes.map((node) => String(node.label ?? '').toLowerCase());
-    const requiredMarkers = ['en (sw8)', 'a (sw5)', 'b (sw4)', 's2 (sw3)', 's1 (sw2)', 's0 (sw1)', 'f (led1)'];
-    for (const marker of requiredMarkers) {
+
+    // A operand switches: SW[0..3]
+    const aMarkers = ['sw[0]', 'sw[1]', 'sw[2]', 'sw[3]'];
+    for (const marker of aMarkers) {
       expect(labels.some((label) => label.includes(marker))).toBe(true);
     }
 
-    const suspiciousNodeTypes = new Set(['AND', 'NAND', 'OR', 'NOR', 'XOR', 'XNOR', 'MUX', 'DECODER', 'TRISTATE', 'FULLADDER']);
-    const suspiciousNodes = nodes.filter((node) => suspiciousNodeTypes.has(String(node.type ?? '').toUpperCase()));
-    expect(suspiciousNodes.length).toBeLessThanOrEqual(1);
+    // B operand switches: SW[4..7]
+    const bMarkers = ['sw[4]', 'sw[5]', 'sw[6]', 'sw[7]'];
+    for (const marker of bMarkers) {
+      expect(labels.some((label) => label.includes(marker))).toBe(true);
+    }
 
-    const suspiciousTextPatterns = [/\balu\b/i, /\bopcode\b/i, /mux\s*8\s*[:_\-]?\s*1/i, /full\s*adder/i, /carry\s*out/i];
-    const suspiciousNames = nodes
-      .map((node) => `${String(node.id ?? '')} ${String(node.label ?? '')}`.trim())
-      .filter((text) => suspiciousTextPatterns.some((pattern) => pattern.test(text)));
-    expect(suspiciousNames).toEqual([]);
+    // Opcode switches: SW[8], SW[9], SW[10]
+    const opcodeMarkers = ['sw[8]', 'sw[9]', 'sw[10]'];
+    for (const marker of opcodeMarkers) {
+      expect(labels.some((label) => label.includes(marker))).toBe(true);
+    }
+
+    // Output lamps: LED[0..4]
+    const ledMarkers = ['led[0]', 'led[1]', 'led[2]', 'led[3]', 'led[4]'];
+    for (const marker of ledMarkers) {
+      expect(labels.some((label) => label.includes(marker))).toBe(true);
+    }
+
+    // Pre-placed logic blocks present (integration scaffold)
+    const types = nodes.map((node) => String(node.type ?? '').toUpperCase());
+    expect(types.filter((t) => t === 'AND').length).toBeGreaterThanOrEqual(4);
+    expect(types.filter((t) => t === 'OR').length).toBeGreaterThanOrEqual(4);
+    expect(types.filter((t) => t === 'XOR').length).toBeGreaterThanOrEqual(4);
+    expect(types.filter((t) => t === 'FULLADDER').length).toBeGreaterThanOrEqual(4);
+
+    // No solved wiring present — all ALU datapath connections must be left to student
+    // (connections array is already checked to be empty above)
   });
 
   it('keeps explicit Lab 4 mapping guidance in lab definition text', () => {
     const lab4 = getLabDefinitionById('lab-4');
     expect(lab4).toBeTruthy();
 
+    // Hardware steps must document the new SW/LED mapping
     const hardwareText = (lab4?.hardwareSteps ?? []).join(' ').toLowerCase();
-    const mappingTerms = ['sw8', 'sw5', 'sw4', 'sw3', 'sw2', 'sw1', 'led1'];
+    const mappingTerms = ['sw[3:0]', 'sw[7:4]', 'sw[10:8]', 'led[3:0]', 'led[4]'];
     for (const term of mappingTerms) {
       expect(hardwareText.includes(term)).toBe(true);
     }
 
+    // Build steps must guide students through wiring the datapath
     const buildText = (lab4?.buildSteps ?? []).join(' ').toLowerCase();
-    expect(buildText.includes('8:1 mux') || buildText.includes('8-to-1 mux')).toBe(true);
-    expect(buildText.includes('decoder')).toBe(true);
+    expect(buildText.includes('fa') || buildText.includes('fulladder') || buildText.includes('adder')).toBe(true);
+    expect(buildText.includes('mux') || buildText.includes('select')).toBe(true);
+    expect(buildText.includes('led')).toBe(true);
   });
 });

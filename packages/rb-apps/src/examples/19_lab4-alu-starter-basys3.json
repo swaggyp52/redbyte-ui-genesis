@@ -2,58 +2,258 @@
   "version": "v1",
   "nodes": [
     {
-      "id": "sw_en",
+      "id": "sw_a0",
       "type": "Switch",
-      "label": "en (SW8)",
+      "label": "SW[0] (A[0])",
       "position": { "x": 80, "y": 80 },
       "rotation": 0,
       "config": {}
     },
     {
-      "id": "sw_a",
+      "id": "sw_a1",
       "type": "Switch",
-      "label": "A (SW5)",
+      "label": "SW[1] (A[1])",
       "position": { "x": 80, "y": 150 },
       "rotation": 0,
       "config": {}
     },
     {
-      "id": "sw_b",
+      "id": "sw_a2",
       "type": "Switch",
-      "label": "B (SW4)",
+      "label": "SW[2] (A[2])",
       "position": { "x": 80, "y": 220 },
       "rotation": 0,
       "config": {}
     },
     {
-      "id": "sw_s2",
+      "id": "sw_a3",
       "type": "Switch",
-      "label": "S2 (SW3)",
+      "label": "SW[3] (A[3])",
       "position": { "x": 80, "y": 290 },
       "rotation": 0,
       "config": {}
     },
     {
-      "id": "sw_s1",
+      "id": "sw_b0",
       "type": "Switch",
-      "label": "S1 (SW2)",
-      "position": { "x": 80, "y": 360 },
+      "label": "SW[4] (B[0])",
+      "position": { "x": 80, "y": 380 },
       "rotation": 0,
       "config": {}
     },
     {
-      "id": "sw_s0",
+      "id": "sw_b1",
       "type": "Switch",
-      "label": "S0 (SW1)",
-      "position": { "x": 80, "y": 430 },
+      "label": "SW[5] (B[1])",
+      "position": { "x": 80, "y": 450 },
       "rotation": 0,
       "config": {}
     },
     {
-      "id": "led_f",
+      "id": "sw_b2",
+      "type": "Switch",
+      "label": "SW[6] (B[2])",
+      "position": { "x": 80, "y": 520 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_b3",
+      "type": "Switch",
+      "label": "SW[7] (B[3])",
+      "position": { "x": 80, "y": 590 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_op0",
+      "type": "Switch",
+      "label": "SW[8] (S0)",
+      "position": { "x": 80, "y": 680 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_op1",
+      "type": "Switch",
+      "label": "SW[9] (S1)",
+      "position": { "x": 80, "y": 750 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_op2",
+      "type": "Switch",
+      "label": "SW[10] (S2)",
+      "position": { "x": 80, "y": 820 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "and0",
+      "type": "AND",
+      "label": "AND[0]",
+      "position": { "x": 340, "y": 80 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "and1",
+      "type": "AND",
+      "label": "AND[1]",
+      "position": { "x": 340, "y": 150 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "and2",
+      "type": "AND",
+      "label": "AND[2]",
+      "position": { "x": 340, "y": 220 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "and3",
+      "type": "AND",
+      "label": "AND[3]",
+      "position": { "x": 340, "y": 290 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "or0",
+      "type": "OR",
+      "label": "OR[0]",
+      "position": { "x": 490, "y": 80 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "or1",
+      "type": "OR",
+      "label": "OR[1]",
+      "position": { "x": 490, "y": 150 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "or2",
+      "type": "OR",
+      "label": "OR[2]",
+      "position": { "x": 490, "y": 220 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "or3",
+      "type": "OR",
+      "label": "OR[3]",
+      "position": { "x": 490, "y": 290 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "xor0",
+      "type": "XOR",
+      "label": "XOR[0]",
+      "position": { "x": 640, "y": 80 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "xor1",
+      "type": "XOR",
+      "label": "XOR[1]",
+      "position": { "x": 640, "y": 150 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "xor2",
+      "type": "XOR",
+      "label": "XOR[2]",
+      "position": { "x": 640, "y": 220 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "xor3",
+      "type": "XOR",
+      "label": "XOR[3]",
+      "position": { "x": 640, "y": 290 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "fa0",
+      "type": "FullAdder",
+      "label": "FA[0]",
+      "position": { "x": 490, "y": 400 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "fa1",
+      "type": "FullAdder",
+      "label": "FA[1]",
+      "position": { "x": 490, "y": 490 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "fa2",
+      "type": "FullAdder",
+      "label": "FA[2]",
+      "position": { "x": 490, "y": 580 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "fa3",
+      "type": "FullAdder",
+      "label": "FA[3]",
+      "position": { "x": 490, "y": 670 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "led0",
       "type": "Lamp",
-      "label": "F (LED1)",
-      "position": { "x": 940, "y": 255 },
+      "label": "LED[0]",
+      "position": { "x": 940, "y": 130 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "led1",
+      "type": "Lamp",
+      "label": "LED[1]",
+      "position": { "x": 940, "y": 220 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "led2",
+      "type": "Lamp",
+      "label": "LED[2]",
+      "position": { "x": 940, "y": 310 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "led3",
+      "type": "Lamp",
+      "label": "LED[3]",
+      "position": { "x": 940, "y": 400 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "led4",
+      "type": "Lamp",
+      "label": "LED[4] (Cout)",
+      "position": { "x": 940, "y": 520 },
       "rotation": 0,
       "config": {}
     }

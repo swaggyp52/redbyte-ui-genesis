@@ -169,35 +169,53 @@ export const LAB_DEFINITIONS: LabDefinition[] = [
     title: 'Lab 4 - ALU with Opcode Control',
     timeEstimate: '60-80 min',
     learningGoal: 'Implement opcode-driven combinational datapath behavior.',
-    whatToDo: 'Build the simplified ALU yourself (MUX or decoder+tri-state style) and validate all opcode outputs.',
+    whatToDo: `You are given a partially built ALU. The AND, OR, XOR gate columns and FullAdder (FA) blocks are already placed on the canvas. Your job: wire the datapath and opcode control to make a working 4-function ALU.
+
+Inputs:  SW[3:0] = A operand,  SW[7:4] = B operand,  SW[10:8] = opcode (S2/S1/S0)
+Outputs: LED[3:0] = result,  LED[4] = carry flag (Cout of FA[3])
+
+Opcode table:
+  000 = AND   (A AND B, bit-slice through AND[3:0])
+  001 = OR    (A OR B, bit-slice through OR[3:0])
+  010 = XOR   (A XOR B, bit-slice through XOR[3:0])
+  011 = ADD   (A + B, ripple through FA[3:0], carry on LED[4])`,
     starterId: 'alu-opcode',
     starterExampleId: '19_lab4-alu-starter-basys3',
     basys3Required: true,
     buildSteps: [
-      'Implement 8 functions under S2/S1/S0: AND, NAND, OR, NOR, XOR, XNOR, SUM, CARRY.',
-      'Use either an 8:1 MUX path or a 3x8 decoder + tri-state buffer path.',
-      'Ensure enable behavior is correct: when en=0, output is blocked (0 or Z per lab policy).',
+      'Connect SW[3:0] to the A inputs of AND[3:0], OR[3:0], XOR[3:0], and FA[3:0] blocks.',
+      'Connect SW[7:4] to the B inputs of AND[3:0], OR[3:0], XOR[3:0], and FA[3:0] blocks.',
+      'Chain FA[0] to FA[1] to FA[2] to FA[3]: tie Cin of FA[0] to ground, connect each Cout to the next Cin.',
+      'Connect the outputs of AND[3:0], OR[3:0], XOR[3:0], and FA[3:0] Sum outputs to a 4:1 mux per bit.',
+      'Connect SW[10:8] (opcode S2/S1/S0) to the select lines of each mux.',
+      'Connect the mux outputs to LED[3:0].',
+      'Connect FA[3] Cout to LED[4].',
+      'Open Verify tab — run the test vectors — all rows must pass.',
+      'Export for Basys3 and follow the Vivado handoff guide.',
     ],
     simulateChecks: [
-      'Test all 8 opcode selections with representative A/B vectors and compare expected F output.',
-      'Verify both en=1 behavior and blocked-output behavior when en=0.',
+      'Test all 4 opcode selections with at least two A/B vectors each.',
+      'Verify LED[4] lights for an ADD that produces a carry (e.g. A=1111, B=0001).',
     ],
     hardwareSteps: [
-      'Use required mapping: en<-SW8, A<-SW5, B<-SW4, S2<-SW3, S1<-SW2, S0<-SW1, F->LED1.',
-      'Verify multiple opcode cases directly on Basys3 using switch toggles and LED1 output.',
+      'Use required mapping: SW[3:0]->A, SW[7:4]->B, SW[10:8]->opcode (S2/S1/S0), LED[3:0]->result, LED[4]->Cout.',
+      'Verify each opcode (000=AND, 001=OR, 010=XOR, 011=ADD) using Basys3 switch toggles and LED output.',
     ],
     submitEvidence: [
-      'Bundle must include opcode verification vectors and the Basys3 mapping used during validation.',
+      'Bundle must include opcode verification vectors for all four operations and the Basys3 mapping used during validation.',
     ],
     commonMistakes: [
-      'Opcode decode selects wrong datapath branch.',
-      'Tri-state assumptions used where combinational mux is required.',
+      'Opcode select lines routed to wrong mux inputs — check S2/S1/S0 order matches the truth table.',
+      'FA carry chain broken — each FA Cout must connect to the next FA Cin.',
+      'LED[4] left unwired — the carry flag only appears if FA[3] Cout reaches LED[4].',
     ],
     rubric: [
-      'All required opcodes behave per table.',
-      'Simulation evidence includes opcode transitions.',
+      'All four opcodes (AND, OR, XOR, ADD) produce correct 4-bit results.',
+      'Carry flag (LED[4]) is correct for add operations that overflow.',
+      'Simulation evidence includes opcode transitions and a carry-producing add case.',
     ],
     requiredTop: 'top',
+    requiredBoardPreset: 'basys3',
     requireSimEvidence: true,
     submitGates: [
       { id: 'opcode-coverage', severity: 'block', message: 'Run vectors that cover required opcodes before submitting.', stage: 'simulate' },
@@ -485,8 +503,14 @@ const LAB_EXPECTED_BEHAVIOR_BY_ID: Record<string, LabExpectedBehaviorVisual> = {
   'lab-4': {
     kind: 'opcode',
     title: 'Opcode mini-table',
-    columns: ['OP', 'Fn', 'Example'],
-    rows: [['00', 'ADD', '0011 + 0001 = 0100'], ['01', 'SUB', '0011 - 0001 = 0010'], ['10', 'AND', '1010 & 1100 = 1000']],
+    columns: ['S2/S1/S0', 'Fn', 'Example (A=0011, B=0001)'],
+    rows: [
+      ['000', 'AND', '0011 & 0001 = 0001'],
+      ['001', 'OR',  '0011 | 0001 = 0011'],
+      ['010', 'XOR', '0011 ^ 0001 = 0010'],
+      ['011', 'ADD', '0011 + 0001 = 0100 (Cout=0)'],
+    ],
+    note: 'Opcode = SW[10:8]. Result on LED[3:0]. Carry on LED[4].',
   },
   'lab-5': {
     kind: 'truth-table',
