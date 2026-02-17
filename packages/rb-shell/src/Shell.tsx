@@ -3003,16 +3003,12 @@ export const Shell: React.FC<ShellProps> = () => {
         return () => clearTimeout(timer);
       }
     } else {
-      // Open Home screen on first visit
+      // Open Lab Launcher as the default student entry point
       if (!hasShownWelcomeRef.current) {
         hasShownWelcomeRef.current = true;
-
-        const welcomeSeen = localStorage.getItem('rb-os:v1:welcomeSeen');
-
-        if (welcomeSeen !== 'true') {
-          const timer = setTimeout(() => openWindow('home'), 500);
-          return () => clearTimeout(timer);
-        }
+        const defaultBootApp = 'lab-launcher';
+        const timer = setTimeout(() => openWindow(defaultBootApp), 500);
+        return () => clearTimeout(timer);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
