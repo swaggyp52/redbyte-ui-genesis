@@ -2318,7 +2318,21 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
 
       <div className={styles.contentArea}>
         <div className={styles.editorPane}>
-          <div className="mb-1 text-[10px] uppercase tracking-wide text-[#6E7681]">HDL</div>
+          <div className="mb-1 flex items-center justify-between">
+            <div className="text-[10px] uppercase tracking-wide text-[#6E7681]">HDL</div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(fileText).catch((err) => console.error('Copy failed:', err));
+              }}
+              className="px-2 py-1 text-[10px] rounded border border-[#22D3EE]/40 text-[#22D3EE] hover:bg-[#22D3EE]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!fileText.trim()}
+              title="Copy VHDL to clipboard"
+              type="button"
+              data-testid="hdl-copy-vhdl-button"
+            >
+              Copy VHDL
+            </button>
+          </div>
           {!hasAnySource || !hasActiveSource ? (
             <div className="mb-2" data-testid="hdl-empty-no-file">
               <EmptyStateCard
@@ -2349,10 +2363,22 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
         <div className={styles.constraintsPane}>
           <div className="mb-1 flex items-center justify-between">
             <div className="text-[10px] uppercase tracking-wide text-[#6E7681]">XDC Constraints</div>
-            {xdcText.trim().length === 0 ? (
-              <div className="text-[10px] text-[#6E7681]">No constraints loaded</div>
-            ) : null}
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(xdcText).catch((err) => console.error('Copy failed:', err));
+              }}
+              className="px-2 py-1 text-[10px] rounded border border-[#22D3EE]/40 text-[#22D3EE] hover:bg-[#22D3EE]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!xdcText.trim()}
+              title="Copy XDC to clipboard"
+              type="button"
+              data-testid="hdl-copy-xdc-button"
+            >
+              Copy XDC
+            </button>
           </div>
+          {xdcText.trim().length === 0 ? (
+            <div className="text-[10px] text-[#6E7681] mb-1">No constraints loaded</div>
+          ) : null}
           <textarea
             value={xdcText}
             onChange={(e) => {
