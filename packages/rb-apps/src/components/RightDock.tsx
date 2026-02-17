@@ -20,6 +20,7 @@ import { UserManualAppComponent } from '../apps/UserManualApp';
 import type { ToolchainProjectInput } from '../fpga/toolchainBackend';
 import { HdlEditorPanel } from './HdlEditorPanel';
 import type { RBFpgaConfig } from '../export/projectFormat';
+import { ImportPanel } from './ImportPanel';
 
 /**
  * Logic Playground vNext Right Dock
@@ -33,7 +34,7 @@ import type { RBFpgaConfig } from '../export/projectFormat';
  * Never overlaps the main stage
  */
 
-export type RightDockTab = 'inspector' | 'health' | 'learn' | 'probes' | 'record' | 'chips' | 'io' | 'hdl';
+export type RightDockTab = 'inspector' | 'health' | 'learn' | 'probes' | 'record' | 'chips' | 'io' | 'hdl' | 'import';
 export type RightDockState = 'collapsed' | 'peek' | 'expanded';
 
 interface RightDockProps {
@@ -88,6 +89,9 @@ interface RightDockProps {
   onChipEdit?: (chipId: string) => void;
 
   // IO Tab - REMOVED: Hardware bridge deleted, students use Vivado for board programming
+
+  // Import Tab — paste/upload VHDL or Verilog from Vivado
+  onImportCircuit?: (circuit: Circuit) => void;
 
   // HDL Tab (experimental)
   enableHdlTab?: boolean;
@@ -145,6 +149,7 @@ export const RightDock: React.FC<RightDockProps> = ({
   onChipInsert,
   onChipDelete,
   onChipEdit,
+  onImportCircuit,
   enableHdlTab = false,
   hdlProject,
   onHdlProjectChange,
@@ -391,6 +396,9 @@ export const RightDock: React.FC<RightDockProps> = ({
           { tab: 'inspector' as RightDockTab, label: 'Info', icon: (
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2"/><path d="M7 6v4M7 4.5v.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
           )},
+          { tab: 'import' as RightDockTab, label: 'Import', icon: (
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 10h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+          )},
         ] as Array<{ tab: RightDockTab; label: string; icon: React.ReactNode }>).map(({ tab, label, icon }) => (
           <button
             key={tab}
@@ -418,6 +426,7 @@ export const RightDock: React.FC<RightDockProps> = ({
             { tab: 'learn' as RightDockTab, label: 'Guide', testId: 'rightdock-tab-learn' },
             { tab: 'probes' as RightDockTab, label: 'Test', testId: 'rightdock-tab-probes' },
             { tab: 'hdl' as RightDockTab, label: 'Export', testId: 'rightdock-tab-hdl' },
+            { tab: 'import' as RightDockTab, label: 'Import', testId: 'rightdock-tab-import' },
             { tab: 'inspector' as RightDockTab, label: 'Info', testId: 'rightdock-tab-inspector' },
           ] as Array<{ tab: RightDockTab; label: string; testId: string }>).map(({ tab, label, testId }) => {
             const isActive = activeTab === tab;
@@ -861,6 +870,11 @@ export const RightDock: React.FC<RightDockProps> = ({
             ) : (
               <div className="p-4 text-center text-[#8B949E] text-sm">HDL project data not available</div>
             )}
+          </div>
+        )}
+        {activeTab === 'import' && (
+          <div className="h-full overflow-hidden">
+            <ImportPanel onImportCircuit={onImportCircuit ?? (() => {})} />
           </div>
         )}
         {activeTab === 'io' && (

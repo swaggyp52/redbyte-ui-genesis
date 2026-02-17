@@ -1,0 +1,187 @@
+// Copyright (c) 2025 Connor Angiel — RedByte OS Genesis
+// VHDL structural parser → ParsedHDL
+//
+// Supports the subset of VHDL used in intro FPGA labs:
+//   - entity … port (…); end entity;
+//   - architecture … is
+//       component declarations (optional)
+//       signal declarations
+//     begin
+//       component instantiations with port map
+//     end architecture;
+//
+// Behavioural 'process' blocks are ignored with a warning.
+
+import type { ParsedHDL, ParsedPort, ParsedInstance } from './hdlToCircuit';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function stripComments(src: string): string {
+  // VHDL line comments: -- to end of line
+  return src.replace(/--[^\n]*/g, '');
+}
+
+function normaliseWs(src: string): string {
+  return src.replace(/\r\n/g, '\n').replace(/\t/g, ' ').replace(/ {2,}/g, ' ');
+}
+
+// ─── Entity parser ────────────────────────────────────────────────────────────
+
+function parseEntity(src: string): { name: string; ports: ParsedPort[] } | null {
+  // Match: entity <name> is port ( ... ); end [entity] [<name>];
+  const entityRx = /entity\s+(\w+)\s+is\s+port\s*\(([\s\S]*?)\)\s*;/i;
+  const m = src.match(entityRx);
+  if (!m) return null;
+
+  const entityName = m[1];
+  const portBlock = m[2];
+  const ports: ParsedPort[] = [];
+
+  // Each port line: <name> [, <name>] : [in|out|inout] <type>
+  const portLineRx = /([\w\s,]+?)\s*:\s*(in|out|inout)\s+([\w_]+(?:\s*\([\w\s\d]+\))?)\s*(?:;|$)/gi;
+  let pm: RegExpExecArray | null;
+  while ((pm = portLineRx.exec(portBlock)) !== null) {
+    const names = pm[1].split(',').map((s) => s.trim()).filter(Boolean);
+    const dir = pm[2].toLowerCase() === 'out' ? 'out' : 'in';
+    const typeName = pm[3].trim();
+    for (const name of names) {
+      if (name) ports.push({ name, direction: dir, typeName });
+    }
+  }
+
+  return { name: entityName, ports };
+}
+
+// ─── Architecture parser ──────────────────────────────────────────────────────
+
+function parseArchitecture(
+  src: string,
+  warnings: string[],
+): { instances: ParsedInstance[]; signals: string[] } {
+  const instances: ParsedInstance[] = [];
+  const signals: string[] = [];
+
+  // Find architecture body
+  const archRx = /architecture\s+\w+\s+of\s+\w+\s+is([\s\S]*?)begin([\s\S]*?)end\s+(?:architecture\s*)?\w*\s*;/i;
+  const archM = src.match(archRx);
+  if (!archM) {
+    // Try simplified: just look for begin...end
+    const simpleRx = /begin([\s\S]*?)end\s+(?:architecture\s*)?\w*\s*;/i;
+    const sm = src.match(simpleRx);
+    if (!sm) return { instances, signals };
+    parseBeginBlock(sm[1], instances, signals, warnings);
+    return { instances, signals };
+  }
+
+  // Signal declarations (between 'is' and 'begin')
+  const declBlock = archM[1];
+  const sigRx = /signal\s+([\w,\s]+?)\s*:\s*[\w_]+(?:\s*\([\w\s\d]+\))?\s*(?::=\s*['"\w]+)?\s*;/gi;
+  let sigM: RegExpExecArray | null;
+  while ((sigM = sigRx.exec(declBlock)) !== null) {
+    const names = sigM[1].split(',').map((s) => s.trim()).filter(Boolean);
+    signals.push(...names);
+  }
+
+  parseBeginBlock(archM[2], instances, signals, warnings);
+  return { instances, signals };
+}
+
+function parseBeginBlock(
+  body: string,
+  instances: ParsedInstance[],
+  _signals: string[],
+  warnings: string[],
+): void {
+  // Warn about process blocks
+  if (/\bprocess\b/i.test(body)) {
+    warnings.push(
+      'Behavioural PROCESS blocks detected — only structural port-map connections are imported.',
+    );
+  }
+
+  // Concurrent signal assignments (a <= b) — ignored with warning
+  if (/\w+\s*<=\s*\w+/.test(body)) {
+    // Handle simple pass-through assignments by treating them as wire instances
+    // e.g. F <= A; → create a Wire instance
+    const assignRx = /(\w+)\s*<=\s*([\w\s()']+?)\s*;/g;
+    let am: RegExpExecArray | null;
+    while ((am = assignRx.exec(body)) !== null) {
+      const lhs = am[1].trim();
+      const rhs = am[2].trim();
+      if (/^[\w]+$/.test(rhs)) {
+        // Simple assignment: signal <= signal — create a Wire node
+        instances.push({
+          id: `wire_${lhs}`,
+          componentType: 'Wire',
+          portMap: { in: rhs, out: lhs },
+        });
+      } else {
+        warnings.push(`Signal assignment '${lhs} <= ${rhs}' not fully supported — skipped`);
+      }
+    }
+  }
+
+  // Component instantiations:
+  // <label> : <component_name> port map ( ... );
+  // <label> : entity <lib>.<component_name> port map ( ... );
+  const instRx = /(\w+)\s*:\s*(?:entity\s+\w+\.)?\s*(\w+)\s+(?:generic\s+map\s*\([\s\S]*?\)\s*)?port\s+map\s*\(([\s\S]*?)\)\s*;/gi;
+  let im: RegExpExecArray | null;
+  while ((im = instRx.exec(body)) !== null) {
+    const label = im[1].trim();
+    const compName = im[2].trim();
+
+    // Skip non-gate keywords that might match
+    if (/^(signal|variable|constant|function|procedure|type|when|else|generate|if|for)$/i.test(compName)) {
+      continue;
+    }
+
+    const portMapStr = im[3];
+    const portMap: Record<string, string> = {};
+
+    // Named port map: portName => signal
+    const namedRx = /(\w+)\s*=>\s*([\w']+)/g;
+    let nmm: RegExpExecArray | null;
+    while ((nmm = namedRx.exec(portMapStr)) !== null) {
+      const hdlPort = nmm[1].trim();
+      const signal = nmm[2].trim().replace(/^'(.)'$/, '$1'); // strip '1' → 1
+      portMap[hdlPort] = signal;
+    }
+
+    if (Object.keys(portMap).length === 0) {
+      // Positional port map: fallback, just record positions as port0, port1, …
+      const positional = portMapStr.split(',').map((s) => s.trim()).filter(Boolean);
+      positional.forEach((sig, idx) => {
+        portMap[`port${idx}`] = sig.replace(/^'(.)'$/, '$1');
+      });
+    }
+
+    instances.push({ id: label, componentType: compName, portMap });
+  }
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+/**
+ * Parse VHDL source text and return a ParsedHDL intermediate representation.
+ * Handles structural VHDL only; behavioural process blocks are noted as warnings.
+ */
+export function parseVhdl(source: string): ParsedHDL {
+  const warnings: string[] = [];
+  const clean = normaliseWs(stripComments(source));
+
+  const entity = parseEntity(clean);
+  if (!entity) {
+    warnings.push('No entity declaration found. Make sure you paste a complete VHDL file.');
+  }
+
+  const { instances, signals } = parseArchitecture(clean, warnings);
+
+  return {
+    entityName: entity?.name ?? 'unknown',
+    ports: entity?.ports ?? [],
+    instances,
+    signals,
+    warnings,
+    lang: 'vhdl',
+  };
+}

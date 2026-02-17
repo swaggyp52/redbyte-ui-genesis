@@ -1992,6 +1992,19 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     confirmReplacement('Create a new project', executeNew);
   };
 
+  const handleImportCircuit = useCallback((importedCircuit: Circuit) => {
+    setCircuit(importedCircuit);
+    const newEngine = new CircuitEngine(importedCircuit);
+    setEngine(newEngine);
+    setTickEngine(new TickEngine(importedCircuit, { tickRate: currentHz }));
+    setCurrentFileId(null);
+    setIsDirty(true);
+    // Switch to Design mode so the canvas is full-width to review the import
+    setIdeMode('design');
+    const layout = useLayoutStore.getState();
+    layout.setRightDockState('collapsed');
+  }, [setCircuit, currentHz]);
+
   const handleUndo = () => {
     const circuitStore = useCircuitStore.getState();
     if (!circuitStore.canUndo()) {
@@ -4312,6 +4325,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
               onStep={handleStep}
               onResetTickCount={handleResetTickCount}
+              onImportCircuit={handleImportCircuit}
               enableHdlTab={enableHdlTab}
               hdlProject={hdlProject}
               onHdlProjectChange={handleHdlProjectChange}
