@@ -250,6 +250,120 @@ describe('HdlEditorPanel', () => {
     });
   });
 
+  it('blocks Run Vivado Batch when XDC ports and VHDL entity ports mismatch', async () => {
+    render(
+      <div style={{ height: 700 }}>
+        <HdlEditorPanel
+          project={{
+            sources: [
+              {
+                path: 'top.vhd',
+                language: 'vhdl',
+                text: [
+                  'library IEEE;',
+                  'use IEEE.STD_LOGIC_1164.ALL;',
+                  'entity top is',
+                  '  Port ( only_led : out STD_LOGIC );',
+                  'end entity top;',
+                  'architecture rtl of top is begin only_led <= \"1\"; end architecture rtl;',
+                ].join('\n'),
+              },
+            ],
+            top: 'top',
+          }}
+          onProjectChange={vi.fn()}
+          fpga={{
+            board: 'basys3',
+            constraints: { type: 'xdc', text: getBasys3XdcPresetText('basys3-minimal-leds') },
+          }}
+          backendId="vivado"
+        />
+      </div>
+    );
+
+    await userEvent.click(screen.getByTestId('hdl-vivado-run-batch-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('hdl-build-logs')).toHaveTextContent('vivado guard: XDC/VHDL port mismatch blocked');
+    });
+  });
+
+  it('injects and restores demo mismatch in XDC textarea', async () => {
+    render(
+      <div style={{ height: 700 }}>
+        <StatefulHdlPanel
+          initialProject={{
+            sources: [
+              {
+                path: 'top.vhd',
+                language: 'vhdl',
+                text: [
+                  'library IEEE;',
+                  'use IEEE.STD_LOGIC_1164.ALL;',
+                  'entity top is',
+                  '  Port ( led : out STD_LOGIC );',
+                  'end entity top;',
+                  'architecture rtl of top is begin led <= \"1\"; end architecture rtl;',
+                ].join('\n'),
+              },
+            ],
+            top: 'top',
+          }}
+          initialFpga={{
+            board: 'basys3',
+            constraints: { type: 'xdc', text: getBasys3XdcPresetText('basys3-minimal-leds') },
+          }}
+        />
+      </div>
+    );
+
+    await userEvent.click(screen.getByTestId('hdl-vivado-inject-mismatch-button'));
+    expect((screen.getByTestId('hdl-xdc-textarea') as HTMLTextAreaElement).value).toContain('demo_bad_port');
+
+    await userEvent.click(screen.getByTestId('hdl-vivado-restore-mismatch-button'));
+    expect((screen.getByTestId('hdl-xdc-textarea') as HTMLTextAreaElement).value).not.toContain('demo_bad_port');
+  });
+
+  it('demo reset clears Vivado handoff logs/state for rerun', async () => {
+    render(
+      <div style={{ height: 700 }}>
+        <HdlEditorPanel
+          project={{
+            sources: [
+              {
+                path: 'top.vhd',
+                language: 'vhdl',
+                text: [
+                  'library IEEE;',
+                  'use IEEE.STD_LOGIC_1164.ALL;',
+                  'entity top is',
+                  '  Port ( only_led : out STD_LOGIC );',
+                  'end entity top;',
+                  'architecture rtl of top is begin only_led <= \"1\"; end architecture rtl;',
+                ].join('\n'),
+              },
+            ],
+            top: 'top',
+          }}
+          onProjectChange={vi.fn()}
+          fpga={{
+            board: 'basys3',
+            constraints: { type: 'xdc', text: getBasys3XdcPresetText('basys3-minimal-leds') },
+          }}
+          backendId="vivado"
+        />
+      </div>
+    );
+
+    await userEvent.click(screen.getByTestId('hdl-vivado-run-batch-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('hdl-build-logs')).toHaveTextContent('vivado guard: XDC/VHDL port mismatch blocked');
+    });
+
+    await userEvent.click(screen.getByTestId('hdl-vivado-demo-reset-button'));
+    expect(screen.getByTestId('hdl-empty-no-sim')).toBeInTheDocument();
+  });
+
   it('renders probe errors when the bridge is unreachable', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error('bridge_unreachable'));
     vi.stubGlobal('fetch', fetchMock as any);

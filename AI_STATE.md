@@ -1,5 +1,36 @@
 # AI State
 
+## Change Log 2026-02-16 (Classroom Hardening Polish: Demo Reset + Intentional Failure Guardrails)
+
+**Status**: ✅ COMPLETE - Vivado handoff panel now supports deterministic failure-path demos and quick operator reset, with pre-run XDC↔VHDL port parity guardrails to prevent cryptic Vivado failures.
+
+- **Demo reliability controls added in HDL panel**:
+  - Updated: `packages/rb-apps/src/components/HdlEditorPanel.tsx`
+  - Added `Demo Reset` action to clear panel log/state badges and run tracking for repeatable TA demos.
+  - Added explicit reset hint command for stale output cleanup:
+    - `Remove-Item -Recurse -Force .\vivado_out -ErrorAction SilentlyContinue`
+
+- **Intentional failure demo controls added**:
+  - Added `Inject XDC Mismatch` action that appends a deterministic fake constrained port (`demo_bad_port`).
+  - Added `Restore XDC` action to revert mismatch injection for immediate recovery demo.
+
+- **Pre-run guardrail added for actionable errors**:
+  - `Run Vivado Batch` now performs in-panel XDC `get_ports { ... }` vs VHDL entity port extraction.
+  - On mismatch, run is blocked with explicit missing/extra lists in Build Console.
+
+- **Test coverage expanded (scoped)**:
+  - Updated: `packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`
+  - Added tests for:
+    - batch-block on XDC/VHDL port mismatch,
+    - mismatch inject/restore flow,
+    - demo reset state clearing.
+
+- **Verification executed (scoped only)**:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`
+  - Result: **PASS** (1 file, 21 tests)
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-16 (Task 5: Vivado Handoff Panel - Deterministic Batch Workflow)
 
 **Status**: ✅ COMPLETE - Added a scoped Vivado handoff panel flow in HDL Editor with deterministic TCL generation, Vivado path detection/input, command preview, one-click batch trigger, and report surfacing.

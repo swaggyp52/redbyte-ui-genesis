@@ -172,6 +172,31 @@ function buildVivadoSynthCheckTcl(input: {
   ].join('\n');
 }
 
+function extractXdcPorts(xdcText: string): string[] {
+  return Array.from(
+    new Set(
+      [...xdcText.matchAll(/\[get_ports\s*\{([^}]+)\}\]/g)].map((match) => String(match[1] ?? '').trim()).filter(Boolean),
+    ),
+  );
+}
+
+function extractVhdlEntityPorts(vhdlText: string, entityName: string): string[] {
+  const escapedEntity = entityName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const entityPattern = new RegExp(`entity\\s+${escapedEntity}\\s+is[\\s\\S]*?Port\\s*\\(([^]*?)\\);\\s*end\\s+entity`, 'i');
+  const entityBlockMatch = vhdlText.match(entityPattern);
+  if (!entityBlockMatch) return [];
+  return Array.from(
+    new Set(
+      entityBlockMatch[1]
+        .split(';')
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+        .map((entry) => entry.split(':')[0]?.trim() ?? '')
+        .filter(Boolean),
+    ),
+  );
+}
+
 export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
   project,
   onProjectChange,
@@ -210,6 +235,7 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
   const [includeSourcesInZip, setIncludeSourcesInZip] = useState(false);
   const [vivadoCommand, setVivadoCommand] = useState('vivado');
   const [vivadoCommandDirty, setVivadoCommandDirty] = useState(false);
+  const [xdcBeforeDemoMismatch, setXdcBeforeDemoMismatch] = useState<string | null>(null);
   const buildRunSeqRef = useRef(0);
   const isMountedRef = useRef(true);
   const synthOffsetRef = useRef(0);
@@ -1421,9 +1447,93 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
     URL.revokeObjectURL(url);
   }, [synthCheckTclText]);
 
+  const handleDemoReset = useCallback(() => {
+    clearSynthMonitoring();
+    clearImplementMonitoring();
+    clearProgramMonitoring();
+    setLogs([]);
+    setIsBuilding(false);
+    setIsSynthesizing(false);
+    setIsImplementing(false);
+    setIsPlanningImplement(false);
+    setIsProbing(false);
+    setIsPreflighting(false);
+    setSynthRunId(null);
+    setSynthStatus('idle');
+    setSynthArtifact(null);
+    setSynthArtifactId(null);
+    setIsSynthCanceling(false);
+    setImplementRunId(null);
+    setImplementStatus('idle');
+    setImplementArtifact(null);
+    setImplementArtifactId(null);
+    setIsImplementCanceling(false);
+    setProgramRunId(null);
+    setProgramArtifactId(null);
+    setProgramStatus('idle');
+    setIsProgramCanceling(false);
+    setLastBuildPath(null);
+    setXdcBeforeDemoMismatch(null);
+  }, [clearImplementMonitoring, clearProgramMonitoring, clearSynthMonitoring]);
+
+  const handleInjectDemoMismatch = useCallback(() => {
+    if (!onFpgaChange) return;
+    const current = resolvedFpga.constraints?.text ?? '';
+    if (current.includes('demo_bad_port')) return;
+    setXdcBeforeDemoMismatch(current);
+    const next = `${current.trimEnd()}\nset_property -dict { PACKAGE_PIN U16 IOSTANDARD LVCMOS33 } [get_ports {demo_bad_port}]\n`;
+    onFpgaChange({
+      ...resolvedFpga,
+      constraints: { type: 'xdc', text: next },
+    });
+  }, [onFpgaChange, resolvedFpga]);
+
+  const handleRestoreDemoMismatch = useCallback(() => {
+    if (!onFpgaChange) return;
+    const fallback = resolvedFpga.constraints?.text ?? '';
+    const restored = xdcBeforeDemoMismatch ?? fallback.replace(/^.*\[get_ports\s*\{demo_bad_port\}\].*\n?/gm, '').trimEnd();
+    onFpgaChange({
+      ...resolvedFpga,
+      constraints: { type: 'xdc', text: restored.length > 0 ? `${restored}\n` : '' },
+    });
+    setXdcBeforeDemoMismatch(null);
+  }, [onFpgaChange, resolvedFpga, xdcBeforeDemoMismatch]);
+
   const handleRunVivadoBatch = useCallback(() => {
+    const xdcPorts = extractXdcPorts(xdcText);
+    const vhdlPorts = extractVhdlEntityPorts(fileText, project.top ?? resolvedFpga.top ?? 'top');
+    const xdcSet = new Set(xdcPorts);
+    const vhdlSet = new Set(vhdlPorts);
+    const missingInVhdl = [...xdcSet].filter((port) => !vhdlSet.has(port));
+    const extraInVhdl = [...vhdlSet].filter((port) => !xdcSet.has(port));
+
+    if (missingInVhdl.length > 0 || extraInVhdl.length > 0) {
+      setLogs((prev) => [
+        ...prev,
+        {
+          run_id: 'ui-vivado-guard',
+          ts: prev.length,
+          step: 'preflight',
+          level: 'error',
+          msg: `[${backend.id}] vivado guard: XDC/VHDL port mismatch blocked`,
+          data: {
+            missingInVhdl,
+            extraInVhdl,
+          },
+        },
+        {
+          run_id: 'ui-vivado-guard',
+          ts: prev.length + 1,
+          step: 'preflight',
+          level: 'error',
+          msg: `[${backend.id}] vivado guard: missing_in_vhdl=${missingInVhdl.join(',') || '<none>'}; extra_in_vhdl=${extraInVhdl.join(',') || '<none>'}`,
+        },
+      ]);
+      return;
+    }
+
     void handleImplementRun();
-  }, [handleImplementRun]);
+  }, [backend.id, fileText, handleImplementRun, project.top, resolvedFpga.top, xdcText]);
 
   const handleDownloadSynthArtifacts = useCallback(() => {
     if (!synthRunId) return;
@@ -2040,9 +2150,40 @@ export const HdlEditorPanel: React.FC<HdlEditorPanelProps> = ({
             <div className="mt-1 text-[#93C5FD]" data-testid="hdl-vivado-command-preview">
               command: <span className="font-mono">{vivadoBatchCommand}</span>
             </div>
+            <div className="mt-1 text-[#93C5FD]" data-testid="hdl-vivado-demo-reset-hint">
+              demo reset command: <span className="font-mono">Remove-Item -Recurse -Force .\vivado_out -ErrorAction SilentlyContinue</span>
+            </div>
             <pre className="mt-1 whitespace-pre-wrap text-[10px] text-[#93C5FD]" data-testid="hdl-vivado-tcl-preview">
               {synthCheckTclText}
             </pre>
+            <div className="mt-1 flex items-center gap-2">
+              <button
+                onClick={handleDemoReset}
+                type="button"
+                className="px-2 py-1 text-[10px] rounded border border-[#8B949E]/40 text-[#CBD5E1] hover:bg-[#161B22]"
+                data-testid="hdl-vivado-demo-reset-button"
+              >
+                Demo Reset
+              </button>
+              <button
+                onClick={handleInjectDemoMismatch}
+                type="button"
+                className="px-2 py-1 text-[10px] rounded border border-[#F59E0B]/40 text-[#FDE68A] hover:bg-[#F59E0B]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!onFpgaChange}
+                data-testid="hdl-vivado-inject-mismatch-button"
+              >
+                Inject XDC Mismatch
+              </button>
+              <button
+                onClick={handleRestoreDemoMismatch}
+                type="button"
+                className="px-2 py-1 text-[10px] rounded border border-[#22C55E]/40 text-[#86EFAC] hover:bg-[#22C55E]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!onFpgaChange}
+                data-testid="hdl-vivado-restore-mismatch-button"
+              >
+                Restore XDC
+              </button>
+            </div>
             {vivadoReportOutputs.length > 0 ? (
               <div className="mt-1" data-testid="hdl-vivado-report-links">
                 reports:{' '}
