@@ -3,10 +3,25 @@ import ReactDOM from 'react-dom/client';
 import { Shell, ErrorBoundary } from '@redbyte/rb-shell';
 import { registerAllApps } from '@redbyte/rb-apps';
 import { initializeStoreInstrumentation, installFatalCapture, pushMount } from '@redbyte/rb-utils';
+import { bootstrapIDE } from './ide-bootstrap';
 import '../index.css';
 
 // Full bootstrap: all startup code (previously in main.tsx)
 export async function bootstrap() {
+  // PHASE A: Check if this is IDE mode or launcher mode
+  const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const isLauncherMode = params.get('launcher') === '1';
+  
+  // If ?launcher=1, use Shell (OS mode). Otherwise, use IDE (direct render).
+  if (isLauncherMode) {
+    return bootstrapShell();
+  } else {
+    return bootstrapIDE();
+  }
+}
+
+// Old logic moved to bootstrapShell
+async function bootstrapShell() {
   // Install fatal capture always (production preview needs diagnostics for demo)
   installFatalCapture({ force: true });
   pushMount('BOOT: fatal-capture-installed');
