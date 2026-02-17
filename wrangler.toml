@@ -1,17 +1,10 @@
 #:schema node_modules/wrangler/config-schema.json
 # Cloudflare Pages configuration for unified RedByte deploy
 # 
-# IMPORTANT: The build command must be configured in Cloudflare Pages dashboard settings
-# OR via the root package.json "build" script (which Cloudflare auto-detects)
-# 
-# Current setup:
-# - GitHub Actions workflow builds and deploys unified dist via cloudflare/pages-action
-# - Dist content is assembled by scripts/unified-build.mjs (root + /os)
-# 
-# If Cloudflare auto-builds from git, it will use the root "build" script.
-# If GitHub Actions deploys, it pre-builds and uploads the dist folder.
+# NOTE: Build command is controlled via GitHub Actions workflow.
+# Pages will auto-detect the build from the workflow deployment,
+# or you can set it in the Cloudflare Pages dashboard.
 
 name = "redbyte-ui-genesis"
-build.command = "pnpm -s build:unified"
 pages_build_output_dir = "dist"
 compatibility_date = "2024-01-01"
