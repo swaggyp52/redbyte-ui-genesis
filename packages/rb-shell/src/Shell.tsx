@@ -3012,13 +3012,17 @@ export const Shell: React.FC<ShellProps> = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booted, isDemoMode]);
 
+  // Auto-boot Logic Playground on fresh load, and auto-reopen if closed (IDE sovereignty)
   useEffect(() => {
     if (!booted) return;
     if (typeof window === 'undefined') return;
-    if (hasAutoBootedLogicPlaygroundRef.current) return;
 
     const params = new URLSearchParams(window.location.search);
     if (params.has('openApp')) return;
+    // Allow launcher mode via ?launcher=1
+    if (params.get('launcher') === '1') return;
+
+    // Auto-reopen Logic Playground whenever windows.length === 0 (no template grid fallback)
     if (windows.length > 0) return;
 
     let attempt = 0;
@@ -3028,6 +3032,7 @@ export const Shell: React.FC<ShellProps> = () => {
     const tryBoot = () => {
       const latestParams = new URLSearchParams(window.location.search);
       if (latestParams.has('openApp')) return;
+      if (latestParams.get('launcher') === '1') return;
 
       const latestWindows = useWindowStore.getState().windows;
       if (latestWindows.length > 0) return;
@@ -3042,12 +3047,11 @@ export const Shell: React.FC<ShellProps> = () => {
           return;
         }
         // Max retries reached, log and give up
-        console.warn('[Shell] Auto-boot: logic-playground app not found after 2s');
+        console.warn('[Shell] Auto-reopen: logic-playground app not found after 2s');
         return;
       }
 
-      // App is ready, open it once
-      hasAutoBootedLogicPlaygroundRef.current = true;
+      // App is ready, open it (auto-reopen every time windows.length drops to 0)
       openWindow('logic-playground');
     };
 

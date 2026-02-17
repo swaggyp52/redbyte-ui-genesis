@@ -3987,7 +3987,8 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
   return (
     <ErrorBoundary>
-      <div className="h-full flex flex-col min-h-0 min-w-0 bg-gray-900 text-white" data-testid="logic-playground-root">
+      {/* Zoom-safe layout: flex + min-width/height prevents canvas clipping at browser zoom 125-150% */}
+      <div className="h-full flex flex-col min-h-0 min-w-0 bg-gray-900 text-white overflow-hidden" data-testid="logic-playground-root" style={{ display: 'flex', minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
         {guardrail && (
           <GuardrailConfirmModal
             isOpen={Boolean(guardrail)}

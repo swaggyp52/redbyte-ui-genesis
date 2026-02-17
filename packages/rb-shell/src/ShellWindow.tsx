@@ -604,15 +604,18 @@ const ShellWindowComponent: React.FC<ShellWindowProps> = ({
               <Icon name="window-maximize" size={14} />
             </button>
           )}
-          <button
-            type="button"
-            className="rb-window-control rb-window-control--close h-7 w-7 flex items-center justify-center"
-            onClick={handleCloseRequest}
-            title="Close"
-            data-testid="window-close-button"
-          >
-            <Icon name="window-close" size={14} />
-          </button>
+          {/* Hide close button for IDE — prevent accidental exit */}
+          {provenance?.appId !== 'logic-playground' && (
+            <button
+              type="button"
+              className="rb-window-control rb-window-control--close h-7 w-7 flex items-center justify-center"
+              onClick={handleCloseRequest}
+              title="Close"
+              data-testid="window-close-button"
+            >
+              <Icon name="window-close" size={14} />
+            </button>
+          )}
         </div>
       </div>
 

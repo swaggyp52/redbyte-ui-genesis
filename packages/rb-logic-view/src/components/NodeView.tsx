@@ -374,12 +374,12 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 />
               )}
               {renderMismatchRing(-size / 2, yPos, input.id)}
-              {/* Larger invisible hit area for easier clicking */}
+              {/* Invisible hit area (32×32px for student-friendly wiring) */}
               <rect
-                x={-size / 2 - 10}
-                y={yPos - 10}
-                width={20}
-                height={20}
+                x={-size / 2 - 16}
+                y={yPos - 16}
+                width={32}
+                height={32}
                 fill="transparent"
                 data-port-id={input.id}
                 style={{ cursor: 'crosshair' }}
@@ -523,11 +523,11 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 />
               )}
               {renderMismatchRing(size / 2, yPos, output.id)}
-              {/* Larger invisible hit area for easier clicking */}
+              {/* Invisible hit area (16px radius circle = ~32px diameter for student-friendly wiring) */}
               <circle
                 cx={size / 2}
                 cy={yPos}
-                r={10}
+                r={16}
                 fill="transparent"
                 data-port-id={output.id}
                 style={{ cursor: 'crosshair' }}
