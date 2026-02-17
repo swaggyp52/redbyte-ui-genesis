@@ -36,6 +36,7 @@
         "demo:ready": "node ./scripts/demo-ready.mjs",
         "ci:gate": "pnpm -w install --frozen-lockfile && pnpm -w build && pnpm test:audit",
         "test": "vitest run",
+        "rb:test:vhdl": "pnpm --filter @redbyte/rb-apps test:vhdl",
         "quality": "node -e \"console.log('E2E: SKIPPED (run pnpm quality:full to include Playwright)')\" && pnpm run build && pnpm run test:ci && pnpm run lint",
         "quality:full": "node -e \"console.log('E2E: ENABLED (Playwright smoke tests blocking)')\" && pnpm run build && pnpm run test:ci && pnpm run test:smoke:ci && pnpm run lint",
         "quality:smoke": "pnpm -r run build && pnpm --dir apps/manual-site run sanity && node ./scripts/test-mvp.js",
