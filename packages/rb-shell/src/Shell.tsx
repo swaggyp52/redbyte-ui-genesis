@@ -626,6 +626,7 @@ export const Shell: React.FC<ShellProps> = () => {
 
   const hasInitializedRef = useRef(false);
   const hasAutoBootedLogicPlaygroundRef = useRef(false);
+  const hasRestoredSessionRef = useRef(false);
 
   const windowStates = useWindowStore(useCallback((state) => state.windows, []));
   const windows = useMemo(() => {
@@ -1126,73 +1127,67 @@ export const Shell: React.FC<ShellProps> = () => {
     }
   }, [themeVariant, density, uiScale, reduceMotion, performanceMode, snapAssist]);
 
-  // Workspace/Session restore on mount
+  // Workspace/Session restore on mount (idempotent - runs only once when booted becomes true)
   useEffect(() => {
     if (!booted) return;
+    // Guard: only restore once per session lifecycle
+    if (hasRestoredSessionRef.current) return;
+    hasRestoredSessionRef.current = true;
 
-    // Check for active workspace first
-    const workspaceData = loadWorkspaces();
-    let snapshot = null;
+    try {
+      // Check for active workspace first
+      const workspaceData = loadWorkspaces();
+      let snapshot = null;
 
-    if (workspaceData?.activeWorkspaceId) {
-      const workspace = workspaceData.workspaces.find((w) => w.id === workspaceData.activeWorkspaceId);
-      if (workspace) {
-        snapshot = workspace.snapshot;
+      if (workspaceData?.activeWorkspaceId) {
+        const workspace = workspaceData.workspaces.find((w) => w.id === workspaceData.activeWorkspaceId);
+        if (workspace) {
+          snapshot = workspace.snapshot;
+        }
       }
-    }
 
-    // Fall back to session restore if no active workspace
-    if (!snapshot) {
-      const session = loadSession();
-      if (session) {
-        snapshot = session;
+      // Fall back to session restore if no active workspace
+      if (!snapshot) {
+        const session = loadSession();
+        if (session) {
+          snapshot = session;
+        }
       }
-    }
 
-    if (!snapshot) return;
+      if (!snapshot) return;
 
-    // Filter out unknown apps and Launcher
-    const validWindows = snapshot.windows.filter((w) => {
-      if (w.contentId === 'launcher') return false;
-      const app = getApp(w.contentId);
-      if (!app) return false;
-      return canOpenAppForCurrentMode(w.contentId);
-    });
-
-    if (validWindows.length === 0) return;
-
-    // Restore session to store
-    restoreSession(validWindows, snapshot.nextZIndex);
-
-    // Bind all restored windows
-    const newBindings: Record<string, WindowAppBinding> = {};
-    validWindows.forEach((w) => {
-      newBindings[w.id] = { appId: w.contentId };
-    });
-    setBindings(newBindings);
-
-    // Show autosave recovery toast (demo mode only)
-    if (isDemoMode) {
-      toast.success({
-        title: 'Session Restored',
-        message: 'Recovered your last session',
-        duration: 8000,
-        actions: [
-          {
-            label: 'Clear',
-            onClick: () => {
-              // Close all restored windows
-              validWindows.forEach((w) => {
-                closeWindow(w.id);
-              });
-              // Clear bindings
-              setBindings({});
-            },
-          },
-        ],
+      // Filter out unknown apps and Launcher
+      const validWindows = snapshot.windows.filter((w) => {
+        if (w.contentId === 'launcher') return false;
+        const app = getApp(w.contentId);
+        if (!app) return false;
+        return canOpenAppForCurrentMode(w.contentId);
       });
+
+      if (validWindows.length === 0) return;
+
+      // Restore session to store
+      const restoreSessionFn = useWindowStore.getState().restoreSession;
+      restoreSessionFn(validWindows, snapshot.nextZIndex);
+
+      // Bind all restored windows
+      const newBindings: Record<string, WindowAppBinding> = {};
+      validWindows.forEach((w) => {
+        newBindings[w.id] = { appId: w.contentId };
+      });
+      setBindings(newBindings);
+
+      // NOTE: No silent auto-restore toast. Restored windows are shown directly.
+      // If restore corrupts state, the app will show error boundary, not crash silently.
+    } catch (error) {
+      // Restore failed - clear corrupted state and show clean shell
+      console.error('[Shell] Session restore failed, starting fresh:', error);
+      hasRestoredSessionRef.current = false; // Allow retry if needed
+      setBindings({});
+      clearJournal('session');
+      unregisterAutosave('session');
     }
-  }, [booted, restoreSession, isDemoMode, closeWindow]);
+  }, [booted]);
 
 
 
