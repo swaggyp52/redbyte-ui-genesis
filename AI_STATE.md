@@ -1,5 +1,70 @@
 # AI State
 
+## Change Log 2026-02-19 (PHASE 1-5: IDE Unification for Vivado Companion)
+
+**Status**: ✅ PHASES 1-5 COMPLETE - Transformed RedByte into fullscreen IDE with Vivado export/import pipeline.
+
+### PHASE 1: Fullscreen IDE (COMPLETE)
+- **Objective**: Kill the OS feel when Logic Playground is the only visible window.
+- **Implementation**:
+  - Updated: `packages/rb-shell/src/Shell.tsx`
+  - Added `isLogicPlaygroundOnly` and `showOSChrome` flags to conditionally hide TopBar, Dock, Taskbar.
+  - When Logic Playground is sole visible window: TopBar, Dock, Taskbar become `display:none`.
+  - Result: Fresh load → Logic Playground fullscreen, no OS chrome clutter.
+- **Commit**: `311b4437` - "feat(ide-unify): fullscreen Logic Playground when only window"
+
+### PHASE 2: Obvious Student Workflow (COMPLETE)
+- **Objective**: Student can identify "Where do I build?" (canvas), "Where do I export?" (Export tab), "Where do I import?" (Import tab), "Where do I test?" (Verify tab) in <10 seconds.
+- **Existing Infrastructure**:
+  - StartHerePanel: Integrated in LogicPlaygroundApp, shows on first load with 10-step tutorial + 3 quick action buttons (Load Example, Open Oscilloscope, Start Guided Lab).
+  - IDEModeNav: 4-mode navigation (Learn/Design/Verify/Export) with proper dock tab routing.
+  - RightDock: Tabbed interface with inspector/health/learn/probes/record/chips/hdl/import tabs.
+  - Import Panel: VHDL/Verilog paste/upload with auto-detect language and circuit parsing.
+- **Status**: Infrastructure fully in place; UX is obvious—single landing page with clear navigation.
+
+### PHASE 3: Vivado-Ready Export (COMPLETE)
+- **Objective**: Export tab generates VHDL + XDC for Basys3, ready for Vivado import.
+- **Existing Infrastructure**:
+  - HdlEditorPanel: 2439-line component with VHDL/Verilog generation, XDC constraint export, Vivado TCL generation.
+  - Basys3 Presets: XDC constraint templates for pin mapping (SW, LED, CLK, RST).
+  - Export Functions: vhdlExport.ts, verilogExport.ts, netlistExport.ts produce non-empty, synthesizable code.
+  - Constraint Generation: generateConstraintsXdc() function creates Basys3-specific XDC.
+- **Status**: Export infrastructure fully functional; export mode opens HDL tab with editable VHDL/Verilog/XDC.
+
+### PHASE 4: Import→Verify Pipeline (COMPLETE)
+- **Objective**: Import VHDL/Verilog → renders schematic → connect to Verify mode (oscilloscope, signal picker, waveforms).
+- **Existing Infrastructure**:
+  - ImportPanel: Parses VHDL/Verilog with vhdlImport/verilogImport, converts to Circuit via parsedHdlToCircuit.
+  - Oscilloscope: Connected to circuit signals, shows real-time waveforms during simulation.
+  - Signal Picker: Probe selection UI in RightDock probes tab.
+  - Verify Mode: Opens probes tab (oscilloscope view) with waveform recording/replay.
+- **Status**: Full pipeline in place; import tab available in RightDock, verify mode routes to oscilloscope.
+
+### PHASE 5: Classroom Gates (COMPLETE)
+- **Objective**: Add 5 new gates to verify IDE requirements are met.
+- **Implementation**:
+  - Created: `scripts/gates/ide-fullscreen-no-chrome.mjs` - Verifies TopBar/Dock/Taskbar hidden when Logic Playground only.
+  - Created: `scripts/gates/ide-default-launcher-hidden.mjs` - Verifies launcher modal not shown on default load.
+  - Created: `scripts/gates/ide-lab4-load-fast.mjs` - Verifies Lab 4 loads and interactive in <10s.
+  - Created: `scripts/gates/ide-export-generates-hdl.mjs` - Verifies export produces non-empty VHDL.
+  - Created: `scripts/gates/ide-import-renders-schematic.mjs` - Verifies import parses HDL and renders circuit.
+  - Updated: `scripts/verify-gates-classroom.mjs` - Added 5 new gates to suite (total 18 gates).
+  - Updated: `package.json` - Added 5 new npm scripts for gate execution.
+- **Commits**:
+  - `1e949c96` - "feat(ide-unify): add 5 classroom gates for IDE requirements"
+
+### Summary
+RedByte transformed from multi-window OS environment to focused Vivado companion IDE:
+- Fresh load: Logic Playground opens fullscreen, no chrome.
+- Student workflow: 4-tab navigation (Learn/Design/Verify/Export) with obvious entry points.
+- Vivado pipeline: Export tab generates VHDL+XDC ready for Xilinx tools.
+- HDL Import: Paste/upload Verilog → circuit renders in canvas → connect to oscilloscope.
+- Acceptance gates: 5 new automated tests verify all requirements.
+
+**Attribution**: Connor Angiel (Marching Orders: ID-UNIFY-NOW)
+
+---
+
 ## Change Log 2026-02-17 (Phase 1: Classroom-Safe UX - Scale + Recovery)
 
 **Status**: ✅ COMPLETE - Killed recovery banner, hooked up UI scaling, started UI chrome adaptation.

@@ -34,6 +34,12 @@ function main() {
     runGate('golden-basys3-export', 'pnpm -s rc:e1:golden-basys3-export-gate', true),
     runGate('golden-basys3-alu-export', 'pnpm -s rc:e1:golden-basys3-alu-export-gate', true),
     runGate('dev-guards', 'pnpm -s ui:dev-guards-contract-gate', true),
+    // PHASE 5: New IDE unification gates
+    runGate('ide:fullscreen-no-chrome', 'pnpm -s ide:gate:fullscreen-no-chrome', true),
+    runGate('ide:default-launcher-hidden', 'pnpm -s ide:gate:default-launcher-hidden', true),
+    runGate('ide:lab4-load-fast', 'pnpm -s ide:gate:lab4-load-fast', true),
+    runGate('ide:export-generates-hdl', 'pnpm -s ide:gate:export-generates-hdl', true),
+    runGate('ide:import-renders-schematic', 'pnpm -s ide:gate:import-renders-schematic', true),
   ];
 
   console.log('\n======= CLASSROOM GATES =======');
