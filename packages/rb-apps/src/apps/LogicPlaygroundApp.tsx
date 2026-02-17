@@ -337,6 +337,13 @@ function computeCircuitFingerprint(circuit: Circuit): string {
 }
 
 // Inner component: all hooks live here, only mounted when gates pass
+// Tiny helper: runs restoreWorkspace() once via a proper hook.
+// Must be a real FC — NOT an IIFE — to satisfy React rules-of-hooks.
+function WorkspaceAutoRestore({ restore }: { restore: () => void }) {
+  React.useEffect(() => { restore(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
+
 interface LogicPlaygroundInnerProps extends LogicPlaygroundProps {
   debugFlags: Set<string>;
 }
@@ -3899,14 +3906,11 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
             onCancel={unifiedRecovery.discardAutosave}
           />
         )}
-        {/* Classroom-safe recovery: auto-recover silently (no scary banner) */}
-        {unifiedRecovery.mode === 'workspace' && (() => {
-          // Auto-recover silently in classroom mode (no banner)
-          React.useEffect(() => {
-            unifiedRecovery.restoreWorkspace();
-          }, []);
-          return null;
-        })()}
+        {/* Classroom-safe recovery: auto-recover silently (no scary banner).
+            WorkspaceAutoRestore is a proper FC so useEffect is valid. */}
+        {unifiedRecovery.mode === 'workspace' && (
+          <WorkspaceAutoRestore restore={unifiedRecovery.restoreWorkspace} />
+        )}
         {syncWarning && (
           <div className="bg-amber-900/80 border-b border-amber-600 px-4 py-2 text-xs text-amber-100 flex items-center justify-between">
             <span>{syncWarning}</span>

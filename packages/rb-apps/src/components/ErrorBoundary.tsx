@@ -75,6 +75,21 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     }));
   };
 
+  handleResetWorkspace = () => {
+    // Clear all RedByte persisted state so the next boot starts fresh
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('rb') || k.startsWith('redbyte') || k.startsWith('zustand'))) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    } catch { /* ignore */ }
+    window.location.reload();
+  };
+
   handleReload = () => {
     window.location.reload();
   };
@@ -123,14 +138,14 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             </p>
             
             <div className={styles.errorActions}>
-              <button onClick={this.handleReset} className={styles.primaryButton}>
-                Reload App
+              <button onClick={this.handleResetWorkspace} className={styles.primaryButton}>
+                Reset Workspace
+              </button>
+              <button onClick={this.handleReset} className={styles.secondaryButton}>
+                Try Again
               </button>
               <button onClick={this.handleCopyDetails} className={styles.secondaryButton}>
                 Copy Error Details
-              </button>
-              <button onClick={this.handleReload} className={styles.secondaryButton}>
-                Reload Page
               </button>
             </div>
 
