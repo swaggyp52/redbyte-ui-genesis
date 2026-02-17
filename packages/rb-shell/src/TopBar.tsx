@@ -39,8 +39,11 @@ export const TopBar: React.FC<TopBarProps> = React.memo(({
   return (
     <header role="banner" aria-label="System Bar" className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
       <div
-        className="h-8 px-3 flex items-center justify-between border-b"
+        className="flex items-center justify-between border-b"
         style={{
+          height: 'var(--rb-topbar-height, 32px)',
+          paddingLeft: 'var(--rb-space-3, 0.75rem)',
+          paddingRight: 'var(--rb-space-3, 0.75rem)',
           background: 'var(--rb-ui-surface-1)',
           borderColor: 'var(--rb-ui-border)',
         }}
@@ -48,17 +51,21 @@ export const TopBar: React.FC<TopBarProps> = React.memo(({
         {/* Left: Logo + workspace */}
         <div className="flex items-center gap-2.5 pointer-events-auto">
           <button
-            className="flex items-center gap-2 text-xs font-semibold tracking-wide transition-colors"
+            className="flex items-center gap-2 font-semibold tracking-wide transition-colors"
             onClick={onOpenLauncher}
             title="Open Launcher (Ctrl/Cmd+K)"
             aria-label="Open Launcher"
-            style={{ color: 'var(--rb-ui-text)' }}
+            style={{ color: 'var(--rb-ui-text)', fontSize: 'var(--rb-text-xs, 0.75rem)' }}
           >
             <div
-              className="h-5 w-5 rounded flex items-center justify-center"
-              style={{ background: 'var(--rb-ui-accent)' }}
+              className="rounded flex items-center justify-center"
+              style={{
+                width: 'calc(20px * var(--rb-ui-scale, 1))',
+                height: 'calc(20px * var(--rb-ui-scale, 1))',
+                background: 'var(--rb-ui-accent)'
+              }}
             >
-              <span className="text-[10px] font-bold text-white leading-none">R</span>
+              <span className="font-bold text-white leading-none" style={{ fontSize: 'calc(10px * var(--rb-ui-scale, 1))' }}>R</span>
             </div>
             <span>RedByte</span>
           </button>

@@ -1042,6 +1042,14 @@ export const Shell: React.FC<ShellProps> = () => {
     };
   }, []);
 
+  // ── UI Scale Sync ───────────────────────────────────────────────────────────
+  // Sync settingsStore.uiScale (100/110/125) to CSS variable --rb-ui-scale
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const scale = uiScale / 100; // Convert 100 → 1.0, 125 → 1.25
+    document.documentElement.style.setProperty('--rb-ui-scale', String(scale));
+  }, [uiScale]);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
 

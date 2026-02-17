@@ -1,5 +1,36 @@
 # AI State
 
+## Change Log 2026-02-17 (Phase 1: Classroom-Safe UX - Scale + Recovery)
+
+**Status**: ✅ COMPLETE - Killed recovery banner, hooked up UI scaling, started UI chrome adaptation.
+
+- **Recovery Banner → Silent Auto-Recover**:
+  - Updated: `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+  - Replaced yellow "didn't close cleanly" banner with silent auto-recover eff act.
+  - No more classroom-poison scary warnings—IDE just restores quietly.
+  
+- **UI Scale Hookup** (settingsStore → CSS):
+  - Updated: `packages/rb-shell/src/Shell.tsx`
+  - Added `useEffect` to sync `settingsStore.uiScale` (100/110/125) to `--rb-ui-scale` CSS variable.
+  - Converts 100 →  1.0, 125 → 1.25 and applies to `:root`.
+  
+  - Updated: `packages/rb-shell/src/styles.css`
+  - Defined CSS custom properties: `--rb-topbar-height`, `--rb-text-xs/sm/base`, `--rb-space-1/2/3/4`, `--rb-icon-sm/md`.
+  - All scale with `calc(baseSize * var(--rb-ui-scale))`.
+  
+  - Updated: `packages/rb-shell/src/TopBar.tsx`
+  - Replaced hardcoded `h-8`, `px-3`, `text-xs` with CSS variables.
+  - TopBar height, padding, font sizes now responsive to `--rb-ui-scale`.
+
+- **Remaining Work** (Phase 1 continuation):
+  - Finish TopBar scaling (buttons, icons, determinism badge)
+  - Add wiring hover feedback (valid target highlights, port glow)
+  - Run gates to verify no regressions
+
+- **Attribution**: Connor Angiel
+
+---
+
 ## Change Log 2026-02-17 (IDE Sovereignty + Zoom-Safe Overhaul + Wiring UX)
 
 **Status**: ✅ COMPLETE - Comprehensive frontend overhaul establishing IDE as sovereign surface.

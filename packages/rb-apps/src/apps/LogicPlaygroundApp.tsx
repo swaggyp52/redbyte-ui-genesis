@@ -4021,9 +4021,14 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
             onCancel={unifiedRecovery.discardAutosave}
           />
         )}
-        {unifiedRecovery.mode === 'workspace' && (
-          <RecoveryBanner onRecover={unifiedRecovery.restoreWorkspace} onStartFresh={unifiedRecovery.dismissWorkspace} />
-        )}
+        {/* Classroom-safe recovery: auto-recover silently (no scary banner) */}
+        {unifiedRecovery.mode === 'workspace' && (() => {
+          // Auto-recover silently in classroom mode (no banner)
+          React.useEffect(() => {
+            unifiedRecovery.restoreWorkspace();
+          }, []);
+          return null;
+        })()}
         {syncWarning && (
           <div className="bg-amber-900/80 border-b border-amber-600 px-4 py-2 text-xs text-amber-100 flex items-center justify-between">
             <span>{syncWarning}</span>
