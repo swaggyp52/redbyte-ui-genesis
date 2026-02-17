@@ -3599,11 +3599,11 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     downloadText('rb-debug-bundle.json', stableStringify(bundle));
   }, [buildProject, circuit, record, appVersion, currentHz, downloadText]);
 
-  // Board IO Handling
-  const ioMapping = unifiedProject?.ioMapping;
+  // Board IO Handling - REMOVED (hardware bridge deleted)
+  // const ioMapping = unifiedProject?.ioMapping;
 
-  // Sync VirtualIOState -> Circuit Nodes (from 3D Lab or other apps)
-  useEffect(() => {
+  // Sync VirtualIOState -> Circuit Nodes (from 3D Lab or other apps) - DISABLED
+  /* useEffect(() => {
     if (!unifiedProject?.boardMap?.virtualIOState || !ioMapping) return;
 
     const { switches = [], buttons = [] } = unifiedProject.boardMap.virtualIOState;
@@ -3636,9 +3636,9 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       engine.setCircuit(nextCircuit);
       tickEngine.setCircuit(nextCircuit);
     }
-  }, [unifiedProject?.boardMap?.virtualIOState, ioMapping, circuit, engine, tickEngine]);
+  }, [unifiedProject?.boardMap?.virtualIOState, ioMapping, circuit, engine, tickEngine]); */
 
-  const ioInputStates = useMemo(() => {
+  /* const ioInputStates = useMemo(() => {
     if (!ioMapping) return {};
     const states: Record<string, boolean> = {};
     ioMapping.inputs.forEach((entry) => {
@@ -3648,9 +3648,9 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       }
     });
     return states;
-  }, [ioMapping, circuit]);
+  }, [ioMapping, circuit]); */
 
-  const ioOutputStates = useMemo(() => {
+  /* const ioOutputStates = useMemo(() => {
     if (!ioMapping) return {};
     const states: Record<string, boolean> = {};
     const signals = engine.getAllSignals();
@@ -3661,9 +3661,9 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       }
     });
     return states;
-  }, [ioMapping, tickCount, engine]);
+  }, [ioMapping, tickCount, engine]); */
 
-  const handleIoToggleInput = useCallback((entry: any) => {
+  /* const handleIoToggleInput = useCallback((entry: any) => {
     if (!entry.nodeId) return;
     const node = circuit.nodes.find((n) => n.id === entry.nodeId);
     if (!node) return;
@@ -3716,16 +3716,16 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
         }));
       }
     }
-  }, [circuit, engine, tickEngine, unifiedProject, updateProject]);
+  }, [circuit, engine, tickEngine, unifiedProject, updateProject]); */
 
-  const handleIoInitialize = useCallback(() => {
+  /* const handleIoInitialize = useCallback(() => {
     // TODO: Auto-map?
-  }, []);
+  }, []); */
 
-  const handleIoAssignPin = useCallback((entry: any, pin: string) => {
+  /* const handleIoAssignPin = useCallback((entry: any, pin: string) => {
     // Logic to update mapping in project
     console.log('Assign pin:', entry, pin);
-  }, []);
+  }, []); */
 
   useEffect(() => {
     const handlePlaygroundCommand = (event: Event) => {
@@ -4391,12 +4391,6 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
               onStep={handleStep}
               onResetTickCount={handleResetTickCount}
-              ioMapping={ioMapping}
-              ioInputStates={ioInputStates}
-              ioOutputStates={ioOutputStates}
-              onIoToggleInput={handleIoToggleInput}
-              onIoInitialize={handleIoInitialize}
-              onIoAssignPin={handleIoAssignPin}
               enableHdlTab={enableHdlTab}
               hdlProject={hdlProject}
               onHdlProjectChange={handleHdlProjectChange}
