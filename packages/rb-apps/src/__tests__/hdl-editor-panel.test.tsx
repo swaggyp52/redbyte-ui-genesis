@@ -158,6 +158,98 @@ describe('HdlEditorPanel', () => {
     expect(screen.getByTestId('hdl-export-report-button')).toBeEnabled();
   });
 
+  it('renders deterministic Vivado handoff command and TCL preview', async () => {
+    render(
+      <div style={{ height: 700 }}>
+        <HdlEditorPanel
+          project={{
+            sources: [
+              {
+                path: 'top.vhd',
+                language: 'vhdl',
+                text: [
+                  'library IEEE;',
+                  'use IEEE.STD_LOGIC_1164.ALL;',
+                  'entity top is',
+                  '  Port ( led : out STD_LOGIC );',
+                  'end entity top;',
+                  'architecture rtl of top is begin led <= \"1\"; end architecture rtl;',
+                ].join('\n'),
+              },
+            ],
+            top: 'top',
+          }}
+          onProjectChange={vi.fn()}
+          fpga={{
+            board: 'basys3',
+            constraints: { type: 'xdc', text: getBasys3XdcPresetText('basys3-minimal-leds') },
+          }}
+          backendId="vivado"
+        />
+      </div>
+    );
+
+    expect(screen.getByTestId('hdl-vivado-command-input')).toHaveValue('vivado');
+    expect(screen.getByTestId('hdl-vivado-command-preview')).toHaveTextContent(
+      'vivado -mode batch -source synth_check.tcl -notrace -nojournal -log vivado_out/vivado.log'
+    );
+    expect(screen.getByTestId('hdl-vivado-tcl-preview')).toHaveTextContent('create_project -force $project_name $project_dir -part $part');
+    expect(screen.getByTestId('hdl-vivado-tcl-preview')).toHaveTextContent('set_property file_type {VHDL 2008}');
+    expect(screen.getByTestId('hdl-vivado-tcl-preview')).toHaveTextContent('report_utilization -file "$report_dir/utilization.rpt"');
+  });
+
+  it('prefills Vivado command from detected probe path', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        schema_version: 'toolchain_probe_v1',
+        ok: true,
+        run_id: 'bridge-probe-vivado-path',
+        env: { platform: 'win32', arch: 'x64', node: 'v20.0.0' },
+        tools: [
+          {
+            name: 'vivado',
+            ok: true,
+            status: 'ok',
+            source: 'system',
+            path: 'C:/Xilinx/Vivado/2024.2/bin/vivado.bat',
+            version: '2024.2',
+          },
+        ],
+        logs: [
+          {
+            run_id: 'bridge-probe-vivado-path',
+            ts: 0,
+            step: 'probe',
+            level: 'info',
+            msg: '[bridge] probe: vivado: ok (2024.2)',
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock as any);
+
+    render(
+      <div style={{ height: 700 }}>
+        <HdlEditorPanel
+          project={{ sources: [{ path: 'top.vhd', language: 'vhdl', text: 'entity top is end entity;' }], top: 'top' }}
+          onProjectChange={vi.fn()}
+          backendId="vivado"
+        />
+      </div>
+    );
+
+    await userEvent.click(screen.getByTestId('hdl-probe-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('hdl-vivado-command-input')).toHaveValue('C:/Xilinx/Vivado/2024.2/bin/vivado.bat');
+      expect(screen.getByTestId('hdl-vivado-command-preview')).toHaveTextContent(
+        'C:/Xilinx/Vivado/2024.2/bin/vivado.bat -mode batch -source synth_check.tcl'
+      );
+    });
+  });
+
   it('renders probe errors when the bridge is unreachable', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error('bridge_unreachable'));
     vi.stubGlobal('fetch', fetchMock as any);

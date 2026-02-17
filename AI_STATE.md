@@ -1,5 +1,35 @@
 # AI State
 
+## Change Log 2026-02-16 (Task 5: Vivado Handoff Panel - Deterministic Batch Workflow)
+
+**Status**: ✅ COMPLETE - Added a scoped Vivado handoff panel flow in HDL Editor with deterministic TCL generation, Vivado path detection/input, command preview, one-click batch trigger, and report surfacing.
+
+- **Vivado handoff UX added (non-UI-rabbit-hole scope)**:
+  - Updated: `packages/rb-apps/src/components/HdlEditorPanel.tsx`
+  - Added Vivado executable input (`vivado` or full path, e.g. `vivado.bat`) with auto-prefill from probe results.
+  - Added deterministic auto-candidate list for common install locations per platform.
+  - Added exact batch command preview string:
+    - `vivado -mode batch -source synth_check.tcl -notrace -nojournal -log vivado_out/vivado.log`
+  - Added `Download TCL` action producing deterministic `synth_check.tcl`.
+  - Added `Run Vivado Batch` action that reuses existing implement run orchestration.
+  - Added report surfacing block that lists report outputs when implementation artifacts include them.
+
+- **Deterministic TCL generation introduced in-panel**:
+  - Basys3 part fixed to `xc7a35tcpg236-1`.
+  - Script emits stable project/report directories under `./vivado_out/` and writes:
+    - `utilization.rpt`, `timing.rpt`, `messages.rpt`, `drc.rpt`
+
+- **Task 5 tests added (scoped)**:
+  - Updated: `packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`
+  - Added assertions for deterministic command/TCL preview.
+  - Added assertions for Vivado path prefill from probe output.
+
+- **Verification executed (scoped only)**:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx`
+  - Result: **PASS** (1 file, 18 tests)
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-16 (Hotfix: Basys3 VHDL Entity Port Alignment with XDC)
 
 **Status**: ✅ COMPLETE - Basys3 `top.vhd` now emits explicit top-level ports derived from the same deterministic `ioMapping` used by `top.xdc`, eliminating synthesis-blocking HDL/XDC port mismatches.
