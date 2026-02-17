@@ -374,6 +374,27 @@ export const DesignMode: React.FC<{ windowId: string }> = () => {
           />
         </div>
 
+        {/* Wiring Status Pill - "Signature Interaction" */}
+        {wireStartPort && (
+          <div 
+            className="absolute z-50 rounded-full font-mono font-bold uppercase tracking-wide pointer-events-none"
+            style={{
+              top: 'calc(80px * var(--rb-ui-scale, 1))',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              padding: 'calc(8px * var(--rb-ui-scale, 1)) calc(16px * var(--rb-ui-scale, 1))',
+              fontSize: 'calc(11px * var(--rb-ui-scale, 1))',
+              background: 'rgba(6, 182, 212, 0.15)',
+              border: '1.5px solid rgba(6, 182, 212, 0.5)',
+              color: '#06B6D4',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4), 0 0 20px rgba(6, 182, 212, 0.2)',
+              letterSpacing: '0.05em'
+            }}
+          >
+            WIRING — click target • Esc cancel
+          </div>
+        )}
+
         {/* Empty State Overlay */}
         {logicalNodes.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

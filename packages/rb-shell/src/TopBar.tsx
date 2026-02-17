@@ -75,8 +75,14 @@ export const TopBar: React.FC<TopBarProps> = React.memo(({
         <div className="flex items-center gap-2 pointer-events-auto">
           <button
             onClick={onOpenDeterminism}
-            className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium uppercase tracking-wider"
+            className="flex items-center rounded-full font-mono font-medium uppercase tracking-wider"
             style={{
+              paddingLeft: 'var(--rb-space-2, 0.5rem)',
+              paddingRight: 'var(--rb-space-2, 0.5rem)',
+              paddingTop: 'calc(0.125rem * var(--rb-ui-scale, 1))',
+              paddingBottom: 'calc(0.125rem * var(--rb-ui-scale, 1))',
+              gap: 'var(--rb-space-1, 0.25rem)',
+              fontSize: 'var(--rb-text-xs, 0.625rem)',
               background: isRecording
                 ? 'var(--rb-ui-accent-soft)'
                 : modeLabel === 'replay'
@@ -93,8 +99,12 @@ export const TopBar: React.FC<TopBarProps> = React.memo(({
           >
             {isRecording && (
               <span
-                className="h-1.5 w-1.5 rounded-full animate-pulse"
-                style={{ background: 'var(--rb-ui-danger)' }}
+                className="rounded-full animate-pulse"
+                style={{ 
+                  height: 'calc(0.375rem * var(--rb-ui-scale, 1))',
+                  width: 'calc(0.375rem * var(--rb-ui-scale, 1))',
+                  background: 'var(--rb-ui-danger)'
+                }}
               />
             )}
             <span>{isRecording ? 'REC' : modeLabel}</span>
@@ -108,27 +118,45 @@ export const TopBar: React.FC<TopBarProps> = React.memo(({
         <div className="flex items-center gap-1 pointer-events-auto">
           <button
             onClick={toggleTheme}
-            className="h-6 w-6 rounded flex items-center justify-center transition-colors hover:opacity-75"
+            className="rounded flex items-center justify-center transition-colors hover:opacity-75"
             aria-label={`Switch to ${variant === 'light' ? 'dark' : 'light'} mode`}
             title={`${variant === 'light' ? 'Dark' : 'Light'} mode`}
-            style={{ color: 'var(--rb-ui-text-3)' }}
+            style={{ 
+              height: 'var(--rb-icon-md, 24px)',
+              width: 'var(--rb-icon-md, 24px)',
+              color: 'var(--rb-ui-text-3)'
+            }}
           >
             <Icon name={variant === 'light' ? 'moon' : 'sun'} size={14} />
           </button>
           {onOpenLog && (
             <button
               onClick={onOpenLog}
-              className="relative h-6 px-2 rounded flex items-center gap-1.5 text-[11px] font-medium transition-colors"
+              className="relative rounded flex items-center font-medium transition-colors"
               aria-label="Open System Log"
               title="Open System Log"
-              style={{ color: 'var(--rb-ui-text-2)' }}
+              style={{ 
+                height: 'var(--rb-icon-md, 24px)',
+                paddingLeft: 'var(--rb-space-2, 0.5rem)',
+                paddingRight: 'var(--rb-space-2, 0.5rem)',
+                gap: 'var(--rb-space-1, 0.375rem)',
+                fontSize: 'var(--rb-text-xs, 0.6875rem)',
+                color: 'var(--rb-ui-text-2)'
+              }}
             >
               <Icon name="log" size={14} />
               <span>Log</span>
               {unreadCount > 0 && (
                 <span
-                  className="h-4 min-w-[16px] px-1 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
-                  style={{ background: 'var(--rb-ui-danger)' }}
+                  className="rounded-full font-bold text-white flex items-center justify-center"
+                  style={{ 
+                    height: 'calc(16px * var(--rb-ui-scale, 1))',
+                    minWidth: 'calc(16px * var(--rb-ui-scale, 1))',
+                    paddingLeft: 'calc(0.25rem * var(--rb-ui-scale, 1))',
+                    paddingRight: 'calc(0.25rem * var(--rb-ui-scale, 1))',
+                    fontSize: 'calc(9px * var(--rb-ui-scale, 1))',
+                    background: 'var(--rb-ui-danger)'
+                  }}
                 >
                   {Math.min(unreadCount, 99)}
                 </span>
@@ -137,8 +165,12 @@ export const TopBar: React.FC<TopBarProps> = React.memo(({
           )}
           {versionLabel && (
             <span
-              className="text-[9px] font-mono tracking-wide select-none"
-              style={{ color: 'var(--rb-ui-text-3)', opacity: 0.6 }}
+              className="font-mono tracking-wide select-none"
+              style={{ 
+                fontSize: 'calc(9px * var(--rb-ui-scale, 1))',
+                color: 'var(--rb-ui-text-3)', 
+                opacity: 0.6 
+              }}
               title="Build version (Ctrl+/ for details)"
             >
               {versionLabel}
@@ -147,10 +179,14 @@ export const TopBar: React.FC<TopBarProps> = React.memo(({
           {onOpenSettings && (
             <button
               onClick={onOpenSettings}
-              className="h-6 w-6 rounded flex items-center justify-center transition-colors"
+              className="rounded flex items-center justify-center transition-colors"
               aria-label="Open Settings"
               title="Open Settings (Ctrl/Cmd+,)"
-              style={{ color: 'var(--rb-ui-text-3)' }}
+              style={{ 
+                height: 'var(--rb-icon-md, 24px)',
+                width: 'var(--rb-icon-md, 24px)',
+                color: 'var(--rb-ui-text-3)'
+              }}
             >
               <Icon name="settings" size={14} />
             </button>

@@ -349,13 +349,56 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
 
           return (
             <g key={`input-${input.id}`}>
-              {shouldGlow && (
-                <circle
-                  cx={-size / 2}
-                  cy={yPos}
-                  r={8}
-                  fill={wireHighlightColor}
-                  opacity={0.4}
+              {/* Enhanced hover glow - prominent for student-friendly wiring */}
+              {isHovered && !wireStartPort && (
+                <rect
+                  x={-size / 2 - 14}
+                  y={yPos - 14}
+                  width={28}
+                  height={28}
+                  fill="#06B6D4"
+                  opacity={0.25}
+                  rx={4}
+                  style={{ pointerEvents: 'none' }}
+                />
+              )}
+              {/* Valid target indicator - green highlight when wiring */}
+              {wireStartPort && isValidTarget && (
+                <>
+                  <rect
+                    x={-size / 2 - 14}
+                    y={yPos - 14}
+                    width={28}
+                    height={28}
+                    fill="none"
+                    stroke="#22c55e"
+                    strokeWidth={3}
+                    opacity={0.9}
+                    rx={4}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  <rect
+                    x={-size / 2 - 14}
+                    y={yPos - 14}
+                    width={28}
+                    height={28}
+                    fill="#22c55e"
+                    opacity={0.15}
+                    rx={4}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                </>
+              )}
+              {/* Wire start indicator */}
+              {isWireStart && (
+                <rect
+                  x={-size / 2 - 14}
+                  y={yPos - 14}
+                  width={28}
+                  height={28}
+                  fill="#00ffff"
+                  opacity={0.3}
+                  rx={4}
                   style={{ pointerEvents: 'none' }}
                 />
               )}
@@ -500,13 +543,48 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
 
           return (
             <g key={`output-${output.id}`}>
-              {shouldGlow && (
+              {/* Enhanced hover glow - prominent for student-friendly wiring */}
+              {isHovered && !wireStartPort && (
                 <circle
                   cx={size / 2}
                   cy={yPos}
-                  r={8}
-                  fill={wireHighlightColor}
-                  opacity={0.4}
+                  r={14}
+                  fill="#06B6D4"
+                  opacity={0.25}
+                  style={{ pointerEvents: 'none' }}
+                />
+              )}
+              {/* Valid target indicator - green highlight when wiring */}
+              {wireStartPort && isValidTarget && (
+                <>
+                  <circle
+                    cx={size / 2}
+                    cy={yPos}
+                    r={14}
+                    fill="none"
+                    stroke="#22c55e"
+                    strokeWidth={3}
+                    opacity={0.9}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  <circle
+                    cx={size / 2}
+                    cy={yPos}
+                    r={14}
+                    fill="#22c55e"
+                    opacity={0.15}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                </>
+              )}
+              {/* Wire start indicator */}
+              {isWireStart && (
+                <circle
+                  cx={size / 2}
+                  cy={yPos}
+                  r={14}
+                  fill="#00ffff"
+                  opacity={0.3}
                   style={{ pointerEvents: 'none' }}
                 />
               )}

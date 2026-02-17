@@ -472,11 +472,23 @@ export const RightDock: React.FC<RightDockProps> = ({
   return (
     <div className={`${width} border-l border-[#1B2028] bg-[#0D1117] flex flex-col transition-all duration-200 shrink-0`} data-testid="right-dock">
       {/* Tab Bar */}
-      <div className="flex items-center h-12 bg-[#0D1117] border-b border-[#1B2028]">
-        <div className="flex-1 flex items-stretch h-full px-2 gap-1" role="tablist">
+      <div 
+        className="flex items-center bg-[#0D1117] border-b border-[#1B2028]"
+        style={{
+          height: 'calc(48px * var(--rb-ui-scale, 1))'
+        }}
+      >
+        <div 
+          className="flex-1 flex items-stretch h-full gap-1" 
+          role="tablist"
+          style={{
+            paddingLeft: 'var(--rb-space-2, 0.5rem)',
+            paddingRight: 'var(--rb-space-2, 0.5rem)'
+          }}
+        >
           <button
             onClick={() => handleTabChange('inspector')}
-            className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'inspector'
+            className={`flex-1 h-full w-full rounded font-medium transition-all flex items-center justify-center cursor-pointer ${activeTab === 'inspector'
               ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
               : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
               }`}
@@ -486,13 +498,19 @@ export const RightDock: React.FC<RightDockProps> = ({
             tabIndex={activeTab === 'inspector' ? 0 : -1}
             data-testid="rightdock-tab-inspector"
             type="button"
+            style={{
+              paddingLeft: 'var(--rb-space-3, 0.75rem)',
+              paddingRight: 'var(--rb-space-3, 0.75rem)',
+              gap: 'var(--r b-space-1, 0.375rem)',
+              fontSize: 'var(--rb-text-xs, 0.75rem)'
+            }}
           >
             <span className="mr-1 pointer-events-none select-none">🔍</span>
             <span className="pointer-events-none select-none">Info</span>
           </button>
           <button
             onClick={() => handleTabChange('health')}
-            className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'health'
+            className={`flex-1 h-full w-full rounded font-medium transition-all flex items-center justify-center cursor-pointer ${activeTab === 'health'
               ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
               : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
               }`}
@@ -502,13 +520,19 @@ export const RightDock: React.FC<RightDockProps> = ({
             tabIndex={activeTab === 'health' ? 0 : -1}
             data-testid="rightdock-tab-health"
             type="button"
+            style={{
+              paddingLeft: 'var(--rb-space-3, 0.75rem)',
+              paddingRight: 'var(--rb-space-3, 0.75rem)',
+              gap: 'var(--rb-space-1, 0.375rem)',
+              fontSize: 'var(--rb-text-xs, 0.75rem)'
+            }}
           >
             <span className="mr-1 pointer-events-none select-none">💊</span>
             <span className="pointer-events-none select-none">Health</span>
           </button>
           <button
             onClick={() => handleTabChange('learn')}
-            className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'learn'
+            className={`flex-1 h-full w-full rounded font-medium transition-all flex items-center justify-center cursor-pointer ${activeTab === 'learn'
               ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
               : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
               }`}
@@ -518,13 +542,19 @@ export const RightDock: React.FC<RightDockProps> = ({
             tabIndex={activeTab === 'learn' ? 0 : -1}
             data-testid="rightdock-tab-learn"
             type="button"
+            style={{
+              paddingLeft: 'var(--rb-space-3, 0.75rem)',
+              paddingRight: 'var(--rb-space-3, 0.75rem)',
+              gap: 'var(--rb-space-1, 0.375rem)',
+              fontSize: 'var(--rb-text-xs, 0.75rem)'
+            }}
           >
             <span className="mr-1 pointer-events-none select-none">🎓</span>
             <span className="pointer-events-none select-none">Learn</span>
           </button>
           <button
             onClick={() => handleTabChange('probes')}
-            className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'probes'
+            className={`flex-1 h-full w-full rounded font-medium transition-all flex items-center justify-center cursor-pointer ${activeTab === 'probes'
               ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
               : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
               }`}
@@ -534,13 +564,19 @@ export const RightDock: React.FC<RightDockProps> = ({
             tabIndex={activeTab === 'probes' ? 0 : -1}
             data-testid="rightdock-tab-probes"
             type="button"
+            style={{
+              paddingLeft: 'var(--rb-space-3, 0.75rem)',
+              paddingRight: 'var(--rb-space-3, 0.75rem)',
+              gap: 'var(--rb-space-1, 0.375rem)',
+              fontSize: 'var(--rb-text-xs, 0.75rem)'
+            }}
           >
             <span className="mr-1 pointer-events-none select-none">📊</span>
             <span className="pointer-events-none select-none">Probes</span>
           </button>
           <button
             onClick={() => handleTabChange('record')}
-            className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'record'
+            className={`flex-1 h-full w-full rounded font-medium transition-all flex items-center justify-center cursor-pointer ${activeTab === 'record'
               ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
               : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
               }`}
@@ -550,6 +586,12 @@ export const RightDock: React.FC<RightDockProps> = ({
             tabIndex={activeTab === 'record' ? 0 : -1}
             data-testid="rightdock-tab-record"
             type="button"
+            style={{
+              paddingLeft: 'var(--rb-space-3, 0.75rem)',
+              paddingRight: 'var(--rb-space-3, 0.75rem)',
+              gap: 'var(--rb-space-1, 0.375rem)',
+              fontSize: 'var(--rb-text-xs, 0.75rem)'
+            }}
           >
             <span className="mr-1 pointer-events-none select-none">⏺️</span>
             <span className="pointer-events-none select-none">Record</span>
@@ -557,7 +599,7 @@ export const RightDock: React.FC<RightDockProps> = ({
 
           <button
             onClick={() => handleTabChange('chips')}
-            className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'chips'
+            className={`flex-1 h-full w-full rounded font-medium transition-all flex items-center justify-center cursor-pointer ${activeTab === 'chips'
               ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
               : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
               }`}
@@ -567,6 +609,12 @@ export const RightDock: React.FC<RightDockProps> = ({
             tabIndex={activeTab === 'chips' ? 0 : -1}
             data-testid="rightdock-tab-chips"
             type="button"
+            style={{
+              paddingLeft: 'var(--rb-space-3, 0.75rem)',
+              paddingRight: 'var(--rb-space-3, 0.75rem)',
+              gap: 'var(--rb-space-1, 0.375rem)',
+              fontSize: 'var(--rb-text-xs, 0.75rem)'
+            }}
           >
             <span className="mr-1 pointer-events-none select-none">🧩</span>
             <span className="pointer-events-none select-none">Chips</span>
@@ -574,7 +622,7 @@ export const RightDock: React.FC<RightDockProps> = ({
           {enableHdlTab && (
             <button
               onClick={() => handleTabChange('hdl')}
-              className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'hdl'
+              className={`flex-1 h-full w-full rounded font-medium transition-all flex items-center justify-center cursor-pointer ${activeTab === 'hdl'
                 ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
                 : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
                 }`}
@@ -584,6 +632,12 @@ export const RightDock: React.FC<RightDockProps> = ({
               tabIndex={activeTab === 'hdl' ? 0 : -1}
               data-testid="rightdock-tab-hdl"
               type="button"
+              style={{
+                paddingLeft: 'var(--rb-space-3, 0.75rem)',
+                paddingRight: 'var(--rb-space-3, 0.75rem)',
+                gap: 'var(--rb-space-1, 0.375rem)',
+                fontSize: 'var(--rb-text-xs, 0.75rem)'
+              }}
             >
               <span className="mr-1 pointer-events-none select-none">{'</>'}</span>
               <span className="pointer-events-none select-none">HDL</span>
@@ -591,7 +645,7 @@ export const RightDock: React.FC<RightDockProps> = ({
           )}
           <button
             onClick={() => handleTabChange('io')}
-            className={`flex-1 h-full w-full px-3 rounded text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'io'
+            className={`flex-1 h-full w-full rounded font-medium transition-all flex items-center justify-center cursor-pointer ${activeTab === 'io'
               ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
               : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
               }`}
@@ -601,6 +655,12 @@ export const RightDock: React.FC<RightDockProps> = ({
             tabIndex={activeTab === 'io' ? 0 : -1}
             data-testid="rightdock-tab-io"
             type="button"
+            style={{
+              paddingLeft: 'var(--rb-space-3, 0.75rem)',
+              paddingRight: 'var(--rb-space-3, 0.75rem)',
+              gap: 'var(--rb-space-1, 0.375rem)',
+              fontSize: 'var(--rb-text-xs, 0.75rem)'
+            }}
           >
             <span className="mr-1 pointer-events-none select-none">🔌</span>
             <span className="pointer-events-none select-none">IO</span>
