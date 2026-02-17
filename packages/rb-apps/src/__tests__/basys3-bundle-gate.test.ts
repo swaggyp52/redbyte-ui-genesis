@@ -8,6 +8,29 @@ function sha256(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
+function extractXdcPorts(topXdc: string): string[] {
+  return Array.from(
+    new Set(
+      [...topXdc.matchAll(/\[get_ports\s*\{([^}]+)\}\]/g)].map((match) => String(match[1]).trim()),
+    ),
+  );
+}
+
+function extractVhdlPorts(topVhd: string): string[] {
+  const entityBlockMatch = topVhd.match(/entity\s+top\s+is[\s\S]*?Port\s*\(([^]*?)\);\s*end\s+entity/i);
+  if (!entityBlockMatch) return [];
+  return Array.from(
+    new Set(
+      entityBlockMatch[1]
+        .split(';')
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+        .map((entry) => entry.split(':')[0]?.trim() ?? '')
+        .filter(Boolean),
+    ),
+  );
+}
+
 const validCircuit: Circuit = {
   nodes: [{ id: 'g1', type: 'AND', position: { x: 80, y: 40 }, config: {}, state: {} }],
   connections: [],
@@ -30,6 +53,9 @@ describe('RC D2 basys3 bundle gate', () => {
     expect(run1.topVhd).toContain('library IEEE;');
     expect(run1.topVhd).toContain('entity top is');
     expect(run1.topVhd).toContain('architecture rtl');
+    expect(run1.topVhd).toContain('g1_in1 : in  STD_LOGIC');
+    expect(run1.topVhd).toContain('g1_in2 : in  STD_LOGIC');
+    expect(run1.topVhd).toContain('g1_out : out STD_LOGIC');
     expect(run1.topXdc).toContain('PACKAGE_PIN V17');
     expect(run1.topXdc).toContain('PACKAGE_PIN V16');
     expect(run1.topXdc).toContain('PACKAGE_PIN U16');
@@ -45,6 +71,12 @@ describe('RC D2 basys3 bundle gate', () => {
     const bundleHash1 = sha256(`${run1.topVhd}\n---\n${run1.topXdc}\n---\n${run1.readme}`);
     const bundleHash2 = sha256(`${run2.topVhd}\n---\n${run2.topXdc}\n---\n${run2.readme}`);
     expect(bundleHash2).toBe(bundleHash1);
+
+    const xdcPorts = extractXdcPorts(run1.topXdc);
+    const vhdlPorts = extractVhdlPorts(run1.topVhd);
+    xdcPorts.forEach((portName) => {
+      expect(vhdlPorts).toContain(portName);
+    });
   });
 
   it('returns invalid bundle with crisp warnings for unsupported nodes', () => {

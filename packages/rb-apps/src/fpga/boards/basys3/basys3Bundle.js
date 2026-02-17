@@ -147,10 +147,40 @@ function buildReadme(ioMapping, warnings) {
   return lines.join('\n');
 }
 
+function buildVhdlTopLevelBindings(ioMapping) {
+  const sortedInputs = stableSortMapping(ioMapping.inputs);
+  const sortedOutputs = stableSortMapping(ioMapping.outputs);
+
+  const topPorts = [
+    ...sortedInputs.map((entry) => ({ name: toSignalName(entry), dir: 'in', vhdlType: 'STD_LOGIC' })),
+    ...sortedOutputs.map((entry) => ({ name: toSignalName(entry), dir: 'out', vhdlType: 'STD_LOGIC' })),
+  ];
+
+  const topInputBindings = sortedInputs.map((entry) => ({
+    portName: toSignalName(entry),
+    toNodeId: entry.nodeId,
+    toPort: entry.port,
+  }));
+
+  const topOutputBindings = sortedOutputs.map((entry) => ({
+    portName: toSignalName(entry),
+    fromNodeId: entry.nodeId,
+    fromPort: entry.port,
+  }));
+
+  return { topPorts, topInputBindings, topOutputBindings };
+}
+
 export function exportBasys3Bundle(circuit, ioMapping) {
   const warnings = [];
   const netlist = netlistFromCircuit(circuit);
-  const vhdl = vhdlFromNetlist(netlist, { entityName: 'top' });
+  const { topPorts, topInputBindings, topOutputBindings } = buildVhdlTopLevelBindings(ioMapping);
+  const vhdl = vhdlFromNetlist(netlist, {
+    entityName: 'top',
+    topPorts,
+    topInputBindings,
+    topOutputBindings,
+  });
 
   warnings.push(...vhdl.warnings);
 

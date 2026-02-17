@@ -15,6 +15,30 @@ export interface VhdlExportOptions {
   includeFileHeader?: boolean;
   /** Lab title string used in the file header */
   labTitle?: string;
+  /** Explicit top-level ports (used by board-aware bundle exporters) */
+  topPorts?: VhdlTopPort[];
+  /** Explicit input bindings (top-level input port -> node input target) */
+  topInputBindings?: VhdlTopInputBinding[];
+  /** Explicit output bindings (top-level output port <- node output source) */
+  topOutputBindings?: VhdlTopOutputBinding[];
+}
+
+export interface VhdlTopPort {
+  name: string;
+  dir: 'in' | 'out';
+  vhdlType?: 'STD_LOGIC' | string;
+}
+
+export interface VhdlTopInputBinding {
+  portName: string;
+  toNodeId: string;
+  toPort: string;
+}
+
+export interface VhdlTopOutputBinding {
+  portName: string;
+  fromNodeId: string;
+  fromPort: string;
 }
 
 export interface VhdlExportResult {
@@ -192,11 +216,14 @@ function resolveInputSignal(
   portName: string,
   nets: NetlistNet[],
   nodeIdToSignal: Map<string, string>,
+  topInputBindingByTarget: Map<string, string>,
 ): string | null {
   const net = nets.find(
     (n) => n.to.nodeId === nodeId && n.to.port === portName,
   );
-  if (!net) return null;
+  if (!net) {
+    return topInputBindingByTarget.get(`${nodeId}:${portName}`) ?? null;
+  }
   return (
     nodeIdToSignal.get(`${net.from.nodeId}:${net.from.port}`) ??
     nodeIdToSignal.get(net.from.nodeId) ??
@@ -231,6 +258,9 @@ export function vhdlFromNetlist(
     entityName = 'top',
     includeFileHeader = false,
     labTitle,
+    topPorts,
+    topInputBindings,
+    topOutputBindings,
   } = options;
 
   const warnings: string[] = [];
@@ -257,6 +287,14 @@ export function vhdlFromNetlist(
   // ---- Build port groups (SW vector, LED vector, etc.) ----------------------
   const { inputs: inputGroups, outputs: outputGroups } =
     buildPortGroups(inputNodes, outputNodes);
+
+  const topInputBindingByTarget = new Map<string, string>();
+  (topInputBindings ?? []).forEach((binding) => {
+    const key = `${binding.toNodeId}:${binding.toPort}`;
+    if (!topInputBindingByTarget.has(key)) {
+      topInputBindingByTarget.set(key, binding.portName);
+    }
+  });
 
   // ---- Map each input/output node ID → VHDL port expression ----------------
   // e.g. switch_0 → "SW(3)" or "SW" (single-bit)
@@ -330,25 +368,44 @@ export function vhdlFromNetlist(
 
   // Collect input port strings
   const inputPortNames: string[] = [];
-  inputGroups.forEach((group) => {
-    const isVector = group.width > 0 || group.nodes.length > 1;
-    const typeStr = isVector
-      ? `STD_LOGIC_VECTOR(${group.width} downto 0)`
-      : 'STD_LOGIC';
-    portDecls.push(`    ${group.baseName} : in  ${typeStr}`);
-    inputPortNames.push(group.baseName);
-  });
-
-  // Collect output port strings
   const outputPortNames: string[] = [];
-  outputGroups.forEach((group) => {
-    const isVector = group.width > 0 || group.nodes.length > 1;
-    const typeStr = isVector
-      ? `STD_LOGIC_VECTOR(${group.width} downto 0)`
-      : 'STD_LOGIC';
-    portDecls.push(`    ${group.baseName} : out ${typeStr}`);
-    outputPortNames.push(group.baseName);
-  });
+
+  if ((topPorts?.length ?? 0) > 0) {
+    const seenNames = new Set<string>();
+    topPorts?.forEach((port) => {
+      if (seenNames.has(port.name)) {
+        warnings.push(`Duplicate top port name "${port.name}" ignored`);
+        return;
+      }
+      seenNames.add(port.name);
+      const typeStr = port.vhdlType ?? 'STD_LOGIC';
+      if (port.dir === 'in') {
+        portDecls.push(`    ${port.name} : in  ${typeStr}`);
+        inputPortNames.push(port.name);
+      } else {
+        portDecls.push(`    ${port.name} : out ${typeStr}`);
+        outputPortNames.push(port.name);
+      }
+    });
+  } else {
+    inputGroups.forEach((group) => {
+      const isVector = group.width > 0 || group.nodes.length > 1;
+      const typeStr = isVector
+        ? `STD_LOGIC_VECTOR(${group.width} downto 0)`
+        : 'STD_LOGIC';
+      portDecls.push(`    ${group.baseName} : in  ${typeStr}`);
+      inputPortNames.push(group.baseName);
+    });
+
+    outputGroups.forEach((group) => {
+      const isVector = group.width > 0 || group.nodes.length > 1;
+      const typeStr = isVector
+        ? `STD_LOGIC_VECTOR(${group.width} downto 0)`
+        : 'STD_LOGIC';
+      portDecls.push(`    ${group.baseName} : out ${typeStr}`);
+      outputPortNames.push(group.baseName);
+    });
+  }
 
   lines.push(portDecls.join(';\n'));
   lines.push('  );');
@@ -380,8 +437,8 @@ export function vhdlFromNetlist(
     if (node.type === 'NOT') {
       // NOT has a single input port 'in' (inferred from connections)
       const inSig =
-        resolveInputSignal(node.id, 'in', nets, nodeIdToSignal) ??
-        resolveInputSignal(node.id, 'a', nets, nodeIdToSignal);
+        resolveInputSignal(node.id, 'in', nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'a', nets, nodeIdToSignal, topInputBindingByTarget);
       if (!inSig) {
         warnings.push(`NOT gate "${node.id}" has no input — signal ${sigName} will be undriven`);
         lines.push(`  ${sigName} <= '0'; -- undriven NOT gate`);
@@ -392,9 +449,9 @@ export function vhdlFromNetlist(
     }
 
     if (node.type === 'FullAdder') {
-      const a   = resolveInputSignal(node.id, 'a',  nets, nodeIdToSignal);
-      const b   = resolveInputSignal(node.id, 'b',  nets, nodeIdToSignal);
-      const cin = resolveInputSignal(node.id, 'cin', nets, nodeIdToSignal);
+      const a   = resolveInputSignal(node.id, 'a',  nets, nodeIdToSignal, topInputBindingByTarget);
+      const b   = resolveInputSignal(node.id, 'b',  nets, nodeIdToSignal, topInputBindingByTarget);
+      const cin = resolveInputSignal(node.id, 'cin', nets, nodeIdToSignal, topInputBindingByTarget);
       const aStr   = a   ?? "'0'";
       const bStr   = b   ?? "'0'";
       const cinStr = cin ?? "'0'";
@@ -409,13 +466,13 @@ export function vhdlFromNetlist(
 
     if (node.type === 'MUX4') {
       // MUX4: inputs i0..i3, select s0/s1 (or sel), output out
-      const i0 = resolveInputSignal(node.id, 'i0', nets, nodeIdToSignal) ?? "'0'";
-      const i1 = resolveInputSignal(node.id, 'i1', nets, nodeIdToSignal) ?? "'0'";
-      const i2 = resolveInputSignal(node.id, 'i2', nets, nodeIdToSignal) ?? "'0'";
-      const i3 = resolveInputSignal(node.id, 'i3', nets, nodeIdToSignal) ?? "'0'";
-      const s0 = resolveInputSignal(node.id, 's0', nets, nodeIdToSignal) ??
-                 resolveInputSignal(node.id, 'sel', nets, nodeIdToSignal) ?? "'0'";
-      const s1 = resolveInputSignal(node.id, 's1', nets, nodeIdToSignal) ?? "'0'";
+      const i0 = resolveInputSignal(node.id, 'i0', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
+      const i1 = resolveInputSignal(node.id, 'i1', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
+      const i2 = resolveInputSignal(node.id, 'i2', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
+      const i3 = resolveInputSignal(node.id, 'i3', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
+      const s0 = resolveInputSignal(node.id, 's0', nets, nodeIdToSignal, topInputBindingByTarget) ??
+             resolveInputSignal(node.id, 'sel', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
+      const s1 = resolveInputSignal(node.id, 's1', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
       lines.push(`  with ${s1} & ${s0} select`);
       lines.push(`    ${sigName} <= ${i0} when "00",`);
       lines.push(`              ${i1} when "01",`);
@@ -428,36 +485,53 @@ export function vhdlFromNetlist(
     const op = gateOperator(node.type);
     if (!op) return; // unreachable given SUPPORTED_LOGIC_TYPES guard above
 
-    const aSig = resolveInputSignal(node.id, 'a', nets, nodeIdToSignal);
-    const bSig = resolveInputSignal(node.id, 'b', nets, nodeIdToSignal);
+    const aSig = resolveInputSignal(node.id, 'a', nets, nodeIdToSignal, topInputBindingByTarget);
+    const bSig = resolveInputSignal(node.id, 'b', nets, nodeIdToSignal, topInputBindingByTarget);
     const aStr = aSig ?? "'0'";
     const bStr = bSig ?? "'0'";
     lines.push(`  ${sigName} <= ${aStr} ${op} ${bStr};`);
   });
 
   // ---- Drive output ports from internal signals or direct input connections --
-  outputNodes.forEach((outNode) => {
-    const portExpr = nodeIdToSignal.get(outNode.id)!;
-    // Find the net driving this output node's 'in' port
-    const driverNet = netlist.nets.find(
-      (n) => n.to.nodeId === outNode.id && n.to.port === 'in',
-    );
-    if (!driverNet) {
-      lines.push(`  ${portExpr} <= '0'; -- undriven output`);
-      return;
-    }
+  if ((topOutputBindings?.length ?? 0) > 0) {
+    topOutputBindings?.forEach((binding) => {
+      const resolvedDriverSig =
+        nodeIdToSignal.get(`${binding.fromNodeId}:${binding.fromPort}`) ??
+        nodeIdToSignal.get(binding.fromNodeId) ??
+        null;
+      if (!resolvedDriverSig) {
+        warnings.push(
+          `Top output port "${binding.portName}" has unresolved driver ${binding.fromNodeId}.${binding.fromPort}`,
+        );
+        lines.push(`  ${binding.portName} <= '0'; -- unresolved driver`);
+        return;
+      }
+      lines.push(`  ${binding.portName} <= ${resolvedDriverSig};`);
+    });
+  } else {
+    outputNodes.forEach((outNode) => {
+      const portExpr = nodeIdToSignal.get(outNode.id)!;
+      // Find the net driving this output node's 'in' port
+      const driverNet = netlist.nets.find(
+        (n) => n.to.nodeId === outNode.id && n.to.port === 'in',
+      );
+      if (!driverNet) {
+        lines.push(`  ${portExpr} <= '0'; -- undriven output`);
+        return;
+      }
 
-    const driverSig = nodeIdToSignal.get(driverNet.from.nodeId);
-    const driverFromPortSig = nodeIdToSignal.get(
-      `${driverNet.from.nodeId}:${driverNet.from.port}`,
-    );
-    const resolvedDriverSig = driverFromPortSig ?? driverSig;
-    if (!resolvedDriverSig) {
-      lines.push(`  ${portExpr} <= '0'; -- unresolved driver`);
-      return;
-    }
-    lines.push(`  ${portExpr} <= ${resolvedDriverSig};`);
-  });
+      const driverSig = nodeIdToSignal.get(driverNet.from.nodeId);
+      const driverFromPortSig = nodeIdToSignal.get(
+        `${driverNet.from.nodeId}:${driverNet.from.port}`,
+      );
+      const resolvedDriverSig = driverFromPortSig ?? driverSig;
+      if (!resolvedDriverSig) {
+        lines.push(`  ${portExpr} <= '0'; -- unresolved driver`);
+        return;
+      }
+      lines.push(`  ${portExpr} <= ${resolvedDriverSig};`);
+    });
+  }
 
   lines.push(`end architecture rtl;`);
 

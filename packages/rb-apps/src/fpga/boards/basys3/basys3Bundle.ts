@@ -5,7 +5,12 @@ import type { IoMapping, IoMappingEntry } from '@redbyte/rb-utils';
 import { lintBasys3ProjectPorts } from './portLint';
 import { compareCodepoint } from '../../../export/codepointSort';
 import { netlistFromCircuit } from '../../../export/netlistExport';
-import { vhdlFromNetlist } from '../../../export/vhdlExport';
+import {
+  vhdlFromNetlist,
+  type VhdlTopInputBinding,
+  type VhdlTopOutputBinding,
+  type VhdlTopPort,
+} from '../../../export/vhdlExport';
 
 const BASYS3_SWITCH_PINS = [
   'V17', 'V16', 'W16', 'W17', 'W15', 'V15', 'W14', 'W13',
@@ -158,10 +163,44 @@ function buildReadme(ioMapping: IoMapping, warnings: string[]): string {
   return lines.join('\n');
 }
 
+function buildVhdlTopLevelBindings(ioMapping: IoMapping): {
+  topPorts: VhdlTopPort[];
+  topInputBindings: VhdlTopInputBinding[];
+  topOutputBindings: VhdlTopOutputBinding[];
+} {
+  const sortedInputs = stableSortMapping(ioMapping.inputs);
+  const sortedOutputs = stableSortMapping(ioMapping.outputs);
+
+  const topPorts: VhdlTopPort[] = [
+    ...sortedInputs.map((entry) => ({ name: toSignalName(entry), dir: 'in' as const, vhdlType: 'STD_LOGIC' })),
+    ...sortedOutputs.map((entry) => ({ name: toSignalName(entry), dir: 'out' as const, vhdlType: 'STD_LOGIC' })),
+  ];
+
+  const topInputBindings: VhdlTopInputBinding[] = sortedInputs.map((entry) => ({
+    portName: toSignalName(entry),
+    toNodeId: entry.nodeId,
+    toPort: entry.port,
+  }));
+
+  const topOutputBindings: VhdlTopOutputBinding[] = sortedOutputs.map((entry) => ({
+    portName: toSignalName(entry),
+    fromNodeId: entry.nodeId,
+    fromPort: entry.port,
+  }));
+
+  return { topPorts, topInputBindings, topOutputBindings };
+}
+
 export function exportBasys3Bundle(circuit: Circuit, ioMapping: IoMapping): Basys3BundleResult {
   const warnings: string[] = [];
   const netlist = netlistFromCircuit(circuit);
-  const vhdl = vhdlFromNetlist(netlist, { entityName: 'top' });
+  const { topPorts, topInputBindings, topOutputBindings } = buildVhdlTopLevelBindings(ioMapping);
+  const vhdl = vhdlFromNetlist(netlist, {
+    entityName: 'top',
+    topPorts,
+    topInputBindings,
+    topOutputBindings,
+  });
 
   warnings.push(...vhdl.warnings);
 

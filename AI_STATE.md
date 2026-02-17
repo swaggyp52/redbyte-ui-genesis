@@ -1,5 +1,35 @@
 # AI State
 
+## Change Log 2026-02-16 (Hotfix: Basys3 VHDL Entity Port Alignment with XDC)
+
+**Status**: ✅ COMPLETE - Basys3 `top.vhd` now emits explicit top-level ports derived from the same deterministic `ioMapping` used by `top.xdc`, eliminating synthesis-blocking HDL/XDC port mismatches.
+
+- **VHDL exporter extended with explicit top-level binding support**:
+  - Updated: `packages/rb-apps/src/export/vhdlExport.ts`
+  - Added optional `topPorts`, `topInputBindings`, and `topOutputBindings` options.
+  - When provided, entity ports and top-level output assignments are generated from these explicit bindings.
+  - Input resolution now falls back to explicit top-input bindings when no netlist edge exists.
+
+- **Basys3 bundle now drives VHDL top ports from `ioMapping`**:
+  - Updated: `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts`
+  - Updated JS mirror: `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.js`
+  - Added deterministic helper to build VHDL top ports/bindings from sorted input/output mapping entries.
+
+- **Regression test coverage tightened**:
+  - Updated: `packages/rb-apps/src/__tests__/basys3-bundle-gate.test.ts`
+  - Added parity assertion that every `get_ports { ... }` name from `top.xdc` exists in the `entity top` port list.
+
+- **Golden hashes refreshed (expected deterministic change)**:
+  - Updated:
+    - `packages/rb-apps/src/__tests__/__goldens__/golden-basys3-switch-and.zip.sha256`
+    - `packages/rb-apps/src/__tests__/__goldens__/golden-basys3-alu.zip.sha256`
+
+- **Verification executed (scoped only)**:
+  - `pnpm rb:test:vhdl` → **PASS** (`vhdlExport.test.ts` 5/5)
+  - `vitest` scoped Basys3 tests → **PASS** (`basys3-bundle-gate`, `classroom-golden-basys3-export-gate`, `classroom-golden-basys3-alu-export-gate`)
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-02-16 (Task 4: Basys3 Export Bundle Switched to VHDL-First Artifacts)
 
 **Status**: ✅ COMPLETE - Basys3 export artifacts now emit VHDL-first bundles (`top.vhd` + `top.xdc` + `README.txt`) while preserving existing internal Verilog generation for lint/compatibility.
