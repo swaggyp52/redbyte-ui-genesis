@@ -12,5 +12,6 @@
 # If GitHub Actions deploys, it pre-builds and uploads the dist folder.
 
 name = "redbyte-ui-genesis"
+build.command = "pnpm -s build:unified"
 pages_build_output_dir = "dist"
 compatibility_date = "2024-01-01"
