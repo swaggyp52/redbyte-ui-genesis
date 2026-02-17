@@ -1,10 +1,14 @@
 #:schema node_modules/wrangler/config-schema.json
 # Cloudflare Pages configuration for unified RedByte deploy
-# 
-# NOTE: Build command is controlled via GitHub Actions workflow.
-# Pages will auto-detect the build from the workflow deployment,
-# or you can set it in the Cloudflare Pages dashboard.
+#
+# Primary deployment path: GitHub Actions Direct Upload
+# (.github/workflows/deploy-cloudflare.yml builds locally + uploads dist/)
+#
+# Fallback: if CF Pages Git integration is enabled, it uses [build] below.
 
 name = "redbyte-ui-genesis"
 pages_build_output_dir = "dist"
 compatibility_date = "2024-01-01"
+
+[build]
+command = "npm install -g pnpm@10.24.0 && pnpm install --frozen-lockfile && pnpm build:unified"

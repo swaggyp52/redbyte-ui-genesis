@@ -68,6 +68,7 @@ import { assertAppOutput, registerAppInvariants } from '../utils/appInvariants';
 import { analyzeCircuitHealth } from '../logic/circuitHealth';
 import { buildDebugBundle } from '../export/debugBundle';
 import { netlistFromCircuit } from '../export/netlistExport';
+import { vhdlFromNetlist } from '../export/vhdlExport';
 import {
   createRBProject,
   decodeRBProject,
@@ -362,39 +363,8 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const disableToolStrip = debugFlags.has('disable-toolstrip');
   const disableRightDock = debugFlags.has('disable-rightdock');
 
-  // HDL editor enablement: env flag (build-time) OR URL param (runtime) OR localStorage debug flag (fallback)
-  const enableHdlTab = useMemo(() => {
-    const viteEnv = (import.meta as any)?.env ?? {};
-    const envFlag =
-      viteEnv.VITE_RB_TOOLCHAIN_UI === '1' ||
-      viteEnv.RB_TOOLCHAIN_UI === '1' ||
-      (typeof process !== 'undefined' ? (process as any)?.env?.RB_TOOLCHAIN_UI === '1' : false);
-
-    const urlFlag = (() => {
-      if (typeof window === 'undefined') return false;
-      try {
-        return new URLSearchParams(window.location.search).get('rb_hdl') === '1';
-      } catch {
-        return false;
-      }
-    })();
-
-    const localStorageFlag = (() => {
-      if (typeof window === 'undefined') return false;
-      try {
-        const raw = localStorage.getItem('rb-debug-playground') || '';
-        return raw
-          .split(',')
-          .map((f) => f.trim())
-          .filter(Boolean)
-          .includes('hdl-editor');
-      } catch {
-        return false;
-      }
-    })();
-
-    return envFlag || urlFlag || localStorageFlag;
-  }, []);
+  // HDL export tab: always enabled — students need Vivado workflow access.
+  const enableHdlTab = true;
 
   // E2E flags via querystring (test-only)
   const e2eParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
@@ -653,7 +623,11 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
         if (isDockOpen) layout.openDock('probes', undefined);
         break;
       case 'export':
-        if (isDockOpen) layout.openDock('hdl', undefined);
+        // Always open HDL dock on Export mode — the Vivado workflow is the whole point
+        if (layout.rightDockState === 'collapsed') {
+          layout.setRightDockState('expanded');
+        }
+        layout.openDock('hdl', undefined);
         break;
     }
   }, []);
@@ -1085,6 +1059,36 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   }, [replayPaused]);
 
   // Crash recovery handled by snapshot system.
+
+  // Auto-generate VHDL from circuit when Export mode is active.
+  // Keeps the HDL editor pre-populated so students see their schematic as code.
+  useEffect(() => {
+    if (ideMode !== 'export') return;
+    if (circuit.nodes.length === 0) return;
+    try {
+      const netlist = netlistFromCircuit(circuit);
+      const result = vhdlFromNetlist(netlist, {
+        entityName: 'top',
+        includeFileHeader: true,
+        labTitle: pinnedStarterInstructions?.title,
+      });
+      if (!result.vhd.trim()) return;
+      setHdlProject((prev) => {
+        const existingSrc = (prev.sources ?? []).find((s) => s.path === 'top.vhd');
+        if (existingSrc?.text === result.vhd) return prev; // no-op if unchanged
+        return {
+          ...prev,
+          top: 'top',
+          sources: [
+            { path: 'top.vhd', language: 'vhdl' as const, text: result.vhd },
+            ...(prev.sources ?? []).filter((s) => s.path !== 'top.vhd'),
+          ],
+        };
+      });
+    } catch {
+      // Never fail the mode for VHDL generation errors
+    }
+  }, [ideMode, circuit, pinnedStarterInstructions, setHdlProject]);
 
   // Track circuit complexity for classroom guardrails
   useEffect(() => {
@@ -4047,21 +4051,50 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
               </div>
             )}
 
-            {/* Empty State Message (shown when canvas is empty in demo mode) */}
-            {circuit.nodes.length === 0 && isDemoMode && (
+            {/* Empty State — shown whenever canvas has no components */}
+            {circuit.nodes.length === 0 && !isReplayMode && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                <div className="bg-slate-800/90 backdrop-blur-sm border border-slate-600 rounded-lg px-8 py-6 max-w-md text-center shadow-2xl">
-                  <div className="text-2xl text-cyan-400 mb-3">Get Started</div>
-                  <p className="text-gray-300 text-sm leading-relaxed">
-                    Drag components from the left palette to begin building your circuit, or{' '}
-                    <button
-                      onClick={() => setShowOpenModal(true)}
-                      className="text-cyan-400 hover:text-cyan-300 underline pointer-events-auto"
-                    >
-                      load an example
-                    </button>
-                    .
+                <div
+                  style={{
+                    background: 'rgba(7,11,20,0.88)',
+                    backdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    borderRadius: '12px',
+                    padding: '32px 40px',
+                    maxWidth: '440px',
+                    textAlign: 'center',
+                    boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+                  }}
+                >
+                  <div style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(239,35,60,0.8)', fontFamily: '"IBM Plex Mono", monospace', marginBottom: '12px', textTransform: 'uppercase' }}>
+                    Empty Canvas
+                  </div>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#ecf4ff', fontFamily: '"IBM Plex Sans", sans-serif', marginBottom: '10px', letterSpacing: '-0.02em' }}>
+                    Start designing
+                  </div>
+                  <p style={{ fontSize: '13px', color: 'rgba(236,244,255,0.5)', lineHeight: 1.6, fontFamily: '"IBM Plex Sans", sans-serif', marginBottom: '20px' }}>
+                    Drag components from the left panel, or press{' '}
+                    <kbd style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '4px', padding: '1px 6px', fontSize: '11px', fontFamily: '"IBM Plex Mono", monospace', color: 'rgba(236,244,255,0.7)' }}>
+                      Space
+                    </kbd>{' '}
+                    to open the quick-add menu.
                   </p>
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowLabModal(true)}
+                      style={{ pointerEvents: 'auto', padding: '7px 16px', borderRadius: '7px', background: 'rgba(239,35,60,0.12)', border: '1px solid rgba(239,35,60,0.3)', color: '#EF233C', fontSize: '12px', fontWeight: 600, fontFamily: '"IBM Plex Sans", sans-serif', cursor: 'pointer', letterSpacing: '0.01em' }}
+                    >
+                      Load a Lab Template
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowOpenModal(true)}
+                      style={{ pointerEvents: 'auto', padding: '7px 16px', borderRadius: '7px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(236,244,255,0.6)', fontSize: '12px', fontWeight: 600, fontFamily: '"IBM Plex Sans", sans-serif', cursor: 'pointer', letterSpacing: '0.01em' }}
+                    >
+                      Open Example
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

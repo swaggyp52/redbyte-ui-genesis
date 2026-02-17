@@ -15,6 +15,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { REPLAY_LOCK_MESSAGE } from '../utils/replayLock';
+import styles from './EnhancedPalette.module.css';
 
 interface ComponentInfo {
   type: string;
@@ -149,19 +150,28 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
     onAddNode(type);
   };
 
-  const renderComponentButton = (type: string, extraClass: string = '') => {
+  const renderComponentButton = (type: string) => {
     const metadata = getChipMetadata(type);
     const description = getNodeDescription(type);
     const isFavorite = favorites.has(type);
 
-    const layerColors: Record<number, string> = {
-      0: 'bg-blue-900/20 border-blue-700/30',
-      1: 'bg-green-900/20 border-green-700/30',
-      2: 'bg-teal-900/20 border-teal-700/30',
-      3: 'bg-pink-900/20 border-pink-700/30',
-      4: 'bg-orange-900/20 border-orange-700/30',
+    const layerClassMap: Record<number, string> = {
+      0: styles.layer0,
+      1: styles.layer1,
+      2: styles.layer2,
+      3: styles.layer3,
+      4: styles.layer4,
     };
-    const layerColor = metadata?.layer !== undefined ? layerColors[metadata.layer] || 'bg-gray-800' : 'bg-gray-800';
+    const layerClass =
+      metadata?.layer !== undefined ? layerClassMap[metadata.layer] ?? '' : '';
+
+    const btnClasses = [
+      styles.componentBtn,
+      layerClass,
+      isReplayMode ? styles.disabled : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
 
     return (
       <div
@@ -170,60 +180,57 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
         onDragStart={(e) => handleDragStart(type, e)}
         onClick={() => handleComponentClick(type)}
         data-component-type={type}
-        className={`w-full text-left px-2 py-1 text-xs bg-gray-800 rounded transition-colors border ${layerColor} group relative ${extraClass} ${isReplayMode ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-700 cursor-move'
-          }`}
+        className={btnClasses}
         title={isReplayMode ? REPLAY_LOCK_MESSAGE : description}
       >
-        <div className="flex items-center justify-between">
-          <span className="flex-1">{type}</span>
-          <div className="flex items-center gap-1">
+        <div className={styles.componentInner}>
+          <span className={styles.componentLabel}>{type}</span>
+          <div className={styles.componentMeta}>
             {metadata && metadata.layer !== undefined && (
-              <span className="text-[10px] text-gray-500">L{metadata.layer}</span>
+              <span className={styles.layerBadge}>L{metadata.layer}</span>
             )}
             <button
+              className={[styles.favBtn, isFavorite ? styles.active : ''].filter(Boolean).join(' ')}
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
                 toggleFavorite(type);
               }}
-              className="text-xs hover:scale-125 transition-transform"
               title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
             >
-              {isFavorite ? '⭐' : '☆'}
+              {isFavorite ? '★' : '☆'}
             </button>
           </div>
         </div>
         {/* Tooltip */}
-        <div className="hidden group-hover:block absolute left-full ml-2 top-0 bg-gray-900 border border-gray-600 rounded p-2 text-xs whitespace-nowrap z-50 shadow-xl max-w-xs">
-          {description}
-        </div>
+        <div className={styles.tooltip}>{description}</div>
       </div>
     );
   };
 
   return (
-    <div className="w-48 min-h-0 min-w-0 border-r border-gray-700 overflow-y-auto p-2 bg-gray-850 flex flex-col gap-3">
+    <div className={styles.root}>
       {/* Search Input */}
-      <div>
+      <div className={styles.searchWrap}>
         <input
           ref={searchInputRef}
           type="text"
           placeholder="Search components... (/)"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-2 py-1.5 text-xs bg-gray-800 border border-gray-700 rounded focus:border-cyan-500 focus:outline-none text-white placeholder-gray-500"
+          className={styles.searchInput}
         />
       </div>
 
       {/* Search Results (if searching) */}
       {searchQuery && (
-        <div>
-          <h3 className="text-xs font-semibold mb-2 text-gray-400">
-            SEARCH RESULTS ({filteredComponents.length})
-          </h3>
-          <div className="space-y-1">
+        <div className={styles.section}>
+          <span className={styles.searchResultsHeader}>
+            Search Results ({filteredComponents.length})
+          </span>
+          <div className={styles.componentList}>
             {filteredComponents.length === 0 ? (
-              <p className="text-xs text-gray-500 italic px-2 py-1">No matches found</p>
+              <p className={styles.emptyMsg}>No matches found</p>
             ) : (
               filteredComponents.map((comp) => renderComponentButton(comp.type))
             )}
@@ -236,9 +243,9 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
         <>
           {/* Favorites */}
           {favorites.size > 0 && (
-            <div>
-              <h3 className="text-xs font-semibold mb-2 text-yellow-400">⭐ FAVORITES</h3>
-              <div className="space-y-1">
+            <div className={styles.section}>
+              <span className={styles.sectionHeader}>Favorites</span>
+              <div className={styles.componentList}>
                 {[...favorites].map((type) => renderComponentButton(type))}
               </div>
             </div>
@@ -246,9 +253,9 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
 
           {/* Recent */}
           {recentComponents.length > 0 && (
-            <div>
-              <h3 className="text-xs font-semibold mb-2 text-gray-400">🕒 RECENT</h3>
-              <div className="space-y-1">
+            <div className={styles.section}>
+              <span className={styles.sectionHeader}>Recent</span>
+              <div className={styles.componentList}>
                 {recentComponents.map((type) => renderComponentButton(type))}
               </div>
             </div>
@@ -260,16 +267,18 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
       {!searchQuery && (
         <>
           {Object.entries(primitiveNodes).map(([category, nodes]) => (
-            <div key={category}>
+            <div key={category} className={styles.section}>
               <button
                 onClick={() => toggleCategory(category)}
-                className="w-full flex items-center justify-between text-xs font-semibold mb-2 text-gray-400 hover:text-white transition-colors"
+                className={styles.sectionHeaderBtn}
               >
                 <span>{category.toUpperCase()}</span>
-                <span className="text-xs">{collapsedCategories.has(category) ? '▶' : '▼'}</span>
+                <span className={styles.sectionHeaderChevron}>
+                  {collapsedCategories.has(category) ? '▶' : '▼'}
+                </span>
               </button>
               {!collapsedCategories.has(category) && (
-                <div className="space-y-1 mb-2">
+                <div className={styles.componentList}>
                   {nodes.map((type) => renderComponentButton(type))}
                 </div>
               )}
@@ -277,48 +286,50 @@ export const EnhancedPalette: React.FC<EnhancedPaletteProps> = ({
           ))}
 
           {/* Composite */}
-          <div>
+          <div className={styles.section}>
             <button
               onClick={() => toggleCategory('Composite')}
-              className="w-full flex items-center justify-between text-xs font-semibold mb-2 text-gray-400 hover:text-white transition-colors"
+              className={styles.sectionHeaderBtn}
             >
               <span>COMPOSITE</span>
-              <span className="text-xs">{collapsedCategories.has('Composite') ? '▶' : '▼'}</span>
+              <span className={styles.sectionHeaderChevron}>
+                {collapsedCategories.has('Composite') ? '▶' : '▼'}
+              </span>
             </button>
             {!collapsedCategories.has('Composite') && (
-              <div className="space-y-1 mb-2">
+              <div className={styles.componentList}>
                 {compositeNodes.map((type) => renderComponentButton(type))}
               </div>
             )}
           </div>
 
           {/* My Chips */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold text-gray-400">MY CHIPS</h3>
+          <div className={styles.section}>
+            <div className={styles.sectionHeaderRow}>
+              <span className={styles.sectionHeader} style={{ margin: 0 }}>My Chips</span>
               <button
                 onClick={onChipLibraryOpen}
-                className="text-xs text-cyan-400 hover:text-cyan-300"
+                className={styles.browseLink}
                 title="Browse chip library"
               >
                 Browse
               </button>
             </div>
-            <div className="space-y-1">
+            <div className={styles.componentList}>
               {chips.length === 0 ? (
-                <p className="text-xs text-gray-500 italic px-2 py-1">No saved chips yet</p>
+                <p className={styles.emptyMsg}>No saved chips yet</p>
               ) : (
                 chips.map((chip) => (
                   <button
                     key={chip.id}
                     draggable
                     onDragStart={(e) => onNodeDragStart(chip.name, e)}
-                    className="w-full text-left px-2 py-1 text-xs bg-purple-900/30 hover:bg-purple-800/40 rounded cursor-move transition-colors border border-purple-700/30"
+                    className={styles.chipBtn}
                     title={`${chip.description} • Layer ${chip.layer} • Drag to canvas`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="truncate">{chip.name}</span>
-                      <span className="text-[10px] text-purple-400 ml-1">L{chip.layer}</span>
+                    <div className={styles.componentInner}>
+                      <span className={styles.componentLabel}>{chip.name}</span>
+                      <span className={styles.chipLayerBadge}>L{chip.layer}</span>
                     </div>
                   </button>
                 ))

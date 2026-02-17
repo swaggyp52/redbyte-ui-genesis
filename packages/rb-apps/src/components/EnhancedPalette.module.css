@@ -1,0 +1,360 @@
+/* Copyright © 2025 Connor Angiel — RedByte OS Genesis */
+/* EnhancedPalette.module.css — Dark IDE sidebar styling */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap');
+
+/* ─── Root container ─── */
+.root {
+  width: 192px;
+  min-width: 192px;
+  min-height: 0;
+  background: #080b10;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 8px 6px 16px;
+  box-sizing: border-box;
+  font-family: 'IBM Plex Mono', 'Consolas', 'Menlo', monospace;
+
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 300ms ease;
+}
+
+.root:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+
+.root::-webkit-scrollbar {
+  width: 4px;
+}
+
+.root::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.root::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 2px;
+  transition: background 300ms ease;
+}
+
+.root:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ─── Search ─── */
+.searchWrap {
+  margin-bottom: 10px;
+}
+
+.searchInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-size: 11px;
+  color: rgba(236, 244, 255, 0.8);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.searchInput::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.searchInput:focus {
+  border-color: rgba(110, 168, 255, 0.4);
+  box-shadow: 0 0 0 2px rgba(110, 168, 255, 0.08);
+}
+
+/* ─── Section blocks ─── */
+.section {
+  margin-top: 12px;
+}
+
+.section:first-child,
+.section + .section {
+  margin-top: 12px;
+}
+
+/* ─── Section headers ─── */
+.sectionHeader {
+  display: block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(236, 244, 255, 0.25);
+  margin-bottom: 5px;
+  padding: 0 2px;
+  user-select: none;
+}
+
+/* Clickable (collapsible) section header button variant */
+.sectionHeaderBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(236, 244, 255, 0.25);
+  margin-bottom: 5px;
+  padding: 0 2px;
+  user-select: none;
+  transition: color 120ms ease;
+}
+
+.sectionHeaderBtn:hover {
+  color: rgba(236, 244, 255, 0.55);
+}
+
+.sectionHeaderChevron {
+  font-size: 8px;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+/* My Chips header row (label + Browse link side-by-side) */
+.sectionHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  padding: 0 2px;
+}
+
+.browseLink {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: rgba(110, 168, 255, 0.7);
+  padding: 0;
+  transition: color 120ms ease;
+}
+
+.browseLink:hover {
+  color: rgba(110, 168, 255, 1);
+}
+
+/* Search results count header */
+.searchResultsHeader {
+  display: block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(236, 244, 255, 0.25);
+  margin-bottom: 5px;
+  padding: 0 2px;
+}
+
+/* ─── Component list ─── */
+.componentList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ─── Component tile ─── */
+.componentBtn {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: rgba(236, 244, 255, 0.75);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 5px;
+  cursor: grab;
+  text-align: left;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+  user-select: none;
+}
+
+.componentBtn:hover {
+  background: rgba(110, 168, 255, 0.08);
+  border-color: rgba(110, 168, 255, 0.2);
+  color: rgba(236, 244, 255, 0.95);
+}
+
+.componentBtn:active {
+  cursor: grabbing;
+}
+
+.componentBtn.disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* Layer-tinted variants — subtle left accent instead of full background tint */
+.componentBtn.layer0 {
+  border-left: 2px solid rgba(96, 165, 250, 0.35);
+}
+
+.componentBtn.layer1 {
+  border-left: 2px solid rgba(74, 222, 128, 0.35);
+}
+
+.componentBtn.layer2 {
+  border-left: 2px solid rgba(45, 212, 191, 0.35);
+}
+
+.componentBtn.layer3 {
+  border-left: 2px solid rgba(244, 114, 182, 0.35);
+}
+
+.componentBtn.layer4 {
+  border-left: 2px solid rgba(251, 146, 60, 0.35);
+}
+
+/* Chip tiles (purple accent) */
+.chipBtn {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: rgba(236, 244, 255, 0.75);
+  background: rgba(147, 51, 234, 0.06);
+  border: 1px solid rgba(147, 51, 234, 0.18);
+  border-radius: 5px;
+  cursor: grab;
+  text-align: left;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+  user-select: none;
+}
+
+.chipBtn:hover {
+  background: rgba(147, 51, 234, 0.14);
+  border-color: rgba(167, 100, 255, 0.35);
+  color: rgba(236, 244, 255, 0.95);
+}
+
+.chipBtn:active {
+  cursor: grabbing;
+}
+
+/* ─── Inner row (label + layer badge + fav star) ─── */
+.componentInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+  gap: 4px;
+}
+
+.componentLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.componentMeta {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.layerBadge {
+  font-size: 9px;
+  color: rgba(236, 244, 255, 0.28);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.chipLayerBadge {
+  font-size: 9px;
+  color: rgba(192, 132, 252, 0.6);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* ─── Favorite star button ─── */
+.favBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  color: rgba(236, 244, 255, 0.2);
+  transition: color 120ms ease, transform 120ms ease;
+  flex-shrink: 0;
+}
+
+.favBtn:hover {
+  color: rgba(253, 224, 71, 0.85);
+  transform: scale(1.2);
+}
+
+.favBtn.active {
+  color: rgba(253, 186, 0, 0.9);
+}
+
+.favBtn.active:hover {
+  color: rgba(253, 224, 71, 1);
+  transform: scale(1.15);
+}
+
+/* ─── Tooltip ─── */
+.tooltip {
+  display: none;
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 0;
+  background: #0e1420;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-family: 'IBM Plex Sans', 'Inter', sans-serif;
+  color: rgba(236, 244, 255, 0.75);
+  white-space: nowrap;
+  max-width: 280px;
+  z-index: 50;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.componentBtn:hover .tooltip,
+.chipBtn:hover .tooltip {
+  display: block;
+}
+
+/* ─── Empty / no-results message ─── */
+.emptyMsg {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: rgba(236, 244, 255, 0.2);
+  font-style: italic;
+  padding: 2px 2px;
+}

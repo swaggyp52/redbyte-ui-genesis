@@ -1296,6 +1296,21 @@ export const Shell: React.FC<ShellProps> = () => {
     [createWindow, focusWindow, toggleMaximize, recordRecentApp, restoreWindow, recordDiagnosticAction]
   );
 
+  // Auto-boot: open Logic Playground on first visit when no session was restored
+  // Uses RAF so the session restore effect has settled before we check window count.
+  // Guards: existing windows (session restore ran), explicit ?openApp= param.
+  useEffect(() => {
+    if (!booted) return;
+    const hasExplicitApp = new URLSearchParams(window.location.search).has('openApp');
+    if (hasExplicitApp) return;
+    const raf = requestAnimationFrame(() => {
+      if (useWindowStore.getState().windows.length === 0) {
+        openWindow('logic-playground');
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [booted, openWindow]);
+
   // Helper callbacks that depend on openWindow
   const openLog = useCallback(() => openWindow('system-log'), [openWindow]);
   const openLauncher = useCallback(() => openWindow('launcher'), [openWindow]);
