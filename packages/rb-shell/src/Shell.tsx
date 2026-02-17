@@ -3121,6 +3121,13 @@ export const Shell: React.FC<ShellProps> = () => {
         ? 'replay'
         : 'live';
   const hasVisibleWindows = windows.some((w) => w.mode !== 'minimized');
+  
+  // IDE Sovereignty: Detect if Logic Playground is the only visible app (fullscreen IDE mode)
+  const visibleWindows = windows.filter((w) => w.mode !== 'minimized');
+  const isLogicPlaygroundOnly = visibleWindows.length === 1 && visibleWindows[0]?.contentId === 'logic-playground';
+  
+  // Show OS chrome (TopBar/Dock/Taskbar) only when no windows exist OR when more than just Logic Playground is visible
+  const showOSChrome = !hasVisibleWindows || !isLogicPlaygroundOnly;
 
   const snapPreviewLabel = snapPreview
     ? snapPreview.target === 'maximize'
@@ -3136,8 +3143,8 @@ export const Shell: React.FC<ShellProps> = () => {
       {showRecoveryPrompt && (
         <RecoveryPrompt onRecover={handleRecovery} onDiscard={handleDiscardRecovery} />
       )}
-      {/* TopBar hides when a lab is open — IDEModeNav provides all navigation inside the IDE */}
-      {!hasVisibleWindows && (
+      {/* TopBar hides when Logic Playground is the only visible window — IDEModeNav provides all navigation inside the IDE */}
+      {showOSChrome && (
         <TopBar
           isRecording={determinismRecorder.isRecording}
           modeLabel={determinismMode}
@@ -3156,10 +3163,10 @@ export const Shell: React.FC<ShellProps> = () => {
         themeVariant={themeVariant}
       />
 
-      {/* Dock and Taskbar only on the home screen — both hide when a lab is open.
+      {/* Dock and Taskbar only on the home screen — both hide when Logic Playground is the only visible window.
           Navigation inside the IDE is handled by IDEModeNav. */}
-      {!hasVisibleWindows && <Dock onOpenApp={openWindow} />}
-      {!hasVisibleWindows && <Taskbar onOpenApp={openWindow} />}
+      {showOSChrome && <Dock onOpenApp={openWindow} />}
+      {showOSChrome && <Taskbar onOpenApp={openWindow} />}
 
       {!hasVisibleWindows && (
         <HomeScreen
