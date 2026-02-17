@@ -3002,12 +3002,11 @@ export const Shell: React.FC<ShellProps> = () => {
         const timer = setTimeout(() => setOnboardingModalOpen(true), 500);
         return () => clearTimeout(timer);
       }
-    } else {
-      // Open Lab Launcher as the default student entry point
+    } else if (isStudentModeActive()) {
+      // Open Lab Launcher as the default student entry point (once per session)
       if (!hasShownWelcomeRef.current) {
         hasShownWelcomeRef.current = true;
-        const defaultBootApp = 'lab-launcher';
-        const timer = setTimeout(() => openWindow(defaultBootApp), 500);
+        const timer = setTimeout(() => openWindow('lab-launcher'), 500);
         return () => clearTimeout(timer);
       }
     }

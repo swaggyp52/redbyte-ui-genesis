@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { LabLauncher } from '../components/LabLauncher';
 import type { RedByteApp } from '../types';
 
@@ -16,14 +16,13 @@ const CURRENT_LAB_STATUSES: Record<string, 'completed' | 'active' | 'upcoming'> 
 };
 
 interface LabLauncherComponentProps {
-  windowId: string;
   onOpenApp?: (appId: string, props?: Record<string, unknown>) => void;
 }
 
 const LabLauncherComponent: React.FC<LabLauncherComponentProps> = ({ onOpenApp }) => {
-  const handleOpenLab = (labId: string) => {
+  const handleOpenLab = useCallback((labId: string) => {
     onOpenApp?.('lab-workspace', { labId });
-  };
+  }, [onOpenApp]);
 
   return (
     <LabLauncher

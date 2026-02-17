@@ -37,7 +37,7 @@ const LabCard: React.FC<LabCardProps> = ({ lab, status, onOpen }) => {
           ? 'border-zinc-800 bg-zinc-900/60 opacity-70 hover:opacity-90'
           : 'border-zinc-700 bg-zinc-900 hover:border-red-500/50 hover:shadow-[0_0_24px_rgba(255,45,45,0.12)]',
       ].join(' ')}
-      onClick={() => onOpen(lab.id)}
+      onClick={() => { if (status !== 'upcoming') onOpen(lab.id); }}
     >
       {/* Lab number */}
       <span className="text-xs font-mono text-zinc-600 tracking-widest uppercase">
@@ -63,16 +63,17 @@ const LabCard: React.FC<LabCardProps> = ({ lab, status, onOpen }) => {
 
       {/* Hover CTA */}
       <button
+        disabled={status === 'upcoming'}
         className={[
           'absolute inset-x-5 bottom-5 py-2 rounded-lg text-sm font-semibold transition-all duration-150',
           'opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0',
           status === 'upcoming'
-            ? 'bg-zinc-800 text-zinc-400'
+            ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed'
             : 'bg-red-600 hover:bg-red-500 text-white shadow-[0_0_12px_rgba(255,45,45,0.4)]',
         ].join(' ')}
         onClick={(e) => {
           e.stopPropagation();
-          onOpen(lab.id);
+          if (status !== 'upcoming') onOpen(lab.id);
         }}
       >
         Open Lab &rarr;
@@ -87,16 +88,18 @@ export interface LabLauncherProps {
   onOpenLab: (labId: string) => void;
 }
 
+const LAUNCHER_BACKGROUND_STYLE: React.CSSProperties = {
+  backgroundImage: `radial-gradient(circle at 50% 0%, rgba(255,45,45,0.06) 0%, transparent 60%),
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)`,
+  backgroundSize: '100% 100%, 40px 40px, 40px 40px',
+};
+
 export const LabLauncher: React.FC<LabLauncherProps> = ({ labStatuses = {}, onOpenLab }) => {
   return (
     <div
       className="min-h-screen w-full bg-zinc-950 text-zinc-100 flex flex-col"
-      style={{
-        backgroundImage: `radial-gradient(circle at 50% 0%, rgba(255,45,45,0.06) 0%, transparent 60%),
-          linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)`,
-        backgroundSize: '100% 100%, 40px 40px, 40px 40px',
-      }}
+      style={LAUNCHER_BACKGROUND_STYLE}
     >
       {/* Header */}
       <header className="flex flex-col items-center pt-16 pb-10 px-8 gap-3">
