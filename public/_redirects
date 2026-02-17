@@ -1,4 +1,13 @@
+# Redirect root to IDE (non-negotiable deployment requirement)
+# Students google redbyteapps.dev → immediately land in IDE, not a cover page
+/ /os/ 302
+
+# SPA rewrites for IDE
 /os/version.json /os/version.json 200
 /os/* /os/index.html 200
+
+# Docs/marketing (if implemented later)
 /docs/* /docs/index.html 200
+
+# Fallback (should never hit this due to / redirect above)
 /* /index.html 200
