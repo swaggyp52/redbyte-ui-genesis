@@ -167,8 +167,8 @@ export const IDEModeNav: React.FC<IDEModeNavProps> = ({
             type="button"
             className={styles.labsBtn}
             onClick={labsHandler}
-            aria-label="Load a lab template"
-            title="Load a lab template"
+            aria-label="Load a template"
+            title="Load a template"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
               <rect x="1" y="1" width="4" height="4" rx="0.8" stroke="currentColor" strokeWidth="1.2" />
@@ -176,14 +176,14 @@ export const IDEModeNav: React.FC<IDEModeNavProps> = ({
               <rect x="1" y="7" width="4" height="4" rx="0.8" stroke="currentColor" strokeWidth="1.2" />
               <rect x="7" y="7" width="4" height="4" rx="0.8" stroke="currentColor" strokeWidth="1.2" />
             </svg>
-            Labs
+            Templates
           </button>
         )}
 
         <div className={styles.labMeta}>
           {labNumber && (
             <span className={styles.labChip}>
-              LAB&nbsp;{labNumber}
+              {labNumber}
             </span>
           )}
           {labTitle && (

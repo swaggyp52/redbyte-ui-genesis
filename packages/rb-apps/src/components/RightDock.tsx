@@ -15,7 +15,6 @@ import type { GuidedExample } from '../logic/learnMode';
 import { useProbeStore } from '../stores/probeStore';
 import { useLayoutStore, type LearnSubview } from '../stores/layoutStore';
 import { trackRender, useUiTickStore } from '@redbyte/rb-utils';
-import { BoardIOPanel } from './BoardIOPanel';
 import { HelpApp } from '../apps/HelpApp';
 import { UserManualAppComponent } from '../apps/UserManualApp';
 import type { ToolchainProjectInput } from '../fpga/toolchainBackend';
@@ -88,16 +87,7 @@ interface RightDockProps {
   onChipDelete?: (chipId: string) => void;
   onChipEdit?: (chipId: string) => void;
 
-  // IO Tab
-  ioMapping?: any; // IoMapping
-  ioInputStates?: Record<string, boolean>;
-  ioOutputStates?: Record<string, boolean>;
-  onIoToggleInput?: (entry: any) => void;
-  onIoInitialize?: () => void;
-  onIoAssignPin?: (entry: any, pin: string) => void;
-  hardwareMode?: 'simulated' | 'board';
-  onHardwareModeChange?: (mode: 'simulated' | 'board') => void;
-  boardConnected?: boolean;
+  // IO Tab - REMOVED: Hardware bridge deleted, students use Vivado for board programming
 
   // HDL Tab (experimental)
   enableHdlTab?: boolean;
@@ -155,15 +145,6 @@ export const RightDock: React.FC<RightDockProps> = ({
   onChipInsert,
   onChipDelete,
   onChipEdit,
-  ioMapping,
-  ioInputStates = {},
-  ioOutputStates = {},
-  onIoToggleInput,
-  onIoInitialize,
-  onIoAssignPin,
-  hardwareMode,
-  onHardwareModeChange,
-  boardConnected,
   enableHdlTab = false,
   hdlProject,
   onHdlProjectChange,
@@ -1084,31 +1065,26 @@ export const RightDock: React.FC<RightDockProps> = ({
           </div>
         )}
         {activeTab === 'io' && (
-          <div className="h-full overflow-y-auto">
-            {ioMapping ? (
-              <BoardIOPanel
-                ioMapping={ioMapping}
-                inputStates={ioInputStates}
-                outputStates={ioOutputStates}
-                onToggleInput={onIoToggleInput || (() => { })}
-                onInitializeMapping={onIoInitialize}
-                onAssignPin={onIoAssignPin}
-                availableSignals={
-                  // We can pass available signals from parent if needed for mapping
-                  // For now, we assume parent passes them implicitly or handled by specialized props if we extend BoardIOPanel
-                  // Actually BoardIOPanel needs availableSignals explicitly to show mapping UI
-                  // Let's rely on parent passing valid ioMapping
-                  undefined
-                }
-                hardwareMode={hardwareMode}
-                onHardwareModeChange={onHardwareModeChange}
-                boardConnected={boardConnected}
-              />
-            ) : (
-              <div className="p-4 text-center text-[#8B949E] text-sm">
-                IO Mapping not available
+          <div className="h-full overflow-y-auto p-6">
+            <div className="text-center space-y-4">
+              <div className="text-2xl">🔌</div>
+              <h3 className="text-lg font-semibold text-[#E6EDF3]">Board Programming Removed</h3>
+              <p className="text-sm text-[#8B949E] max-w-md mx-auto">
+                RedByte focuses on circuit design and VHDL export.
+                To program your Basys-3 board, use the <strong>Export</strong> tab
+                to copy your VHDL and XDC files, then paste them into AMD Vivado.
+              </p>
+              <div className="mt-6 p-4 bg-[#161B22] border border-[#30363D] rounded text-left text-xs text-[#8B949E]">
+                <div className="font-semibold text-[#E6EDF3] mb-2">Workflow:</div>
+                <ol className="space-y-1 list-decimal list-inside">
+                  <li>Design your circuit in RedByte</li>
+                  <li>Click <strong>Export</strong> tab → Copy VHDL + XDC</li>
+                  <li>Open AMD Vivado → Create Project</li>
+                  <li>Add files → Paste VHDL + XDC</li>
+                  <li>Synthesize → Generate Bitstream → Program Board</li>
+                </ol>
               </div>
-            )}
+            </div>
           </div>
         )}
       </div>
