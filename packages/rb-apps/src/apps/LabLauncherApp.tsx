@@ -15,14 +15,14 @@ const CURRENT_LAB_STATUSES: Record<string, 'completed' | 'active' | 'upcoming'> 
   'lab-8': 'upcoming',
 };
 
-const LabLauncherComponent: React.FC<{ windowId: string }> = () => {
+interface LabLauncherComponentProps {
+  windowId: string;
+  onOpenApp?: (appId: string, props?: Record<string, unknown>) => void;
+}
+
+const LabLauncherComponent: React.FC<LabLauncherComponentProps> = ({ onOpenApp }) => {
   const handleOpenLab = (labId: string) => {
-    // Dispatch an event to open the lab workspace app
-    window.dispatchEvent(
-      new CustomEvent('rb:open-app', {
-        detail: { appId: 'lab-workspace', props: { labId } },
-      })
-    );
+    onOpenApp?.('lab-workspace', { labId });
   };
 
   return (
