@@ -376,74 +376,33 @@ export const RightDock: React.FC<RightDockProps> = ({
 
   if (dockState === 'collapsed') {
     return (
-      <div className="w-14 border-l border-[#1B2028] bg-[#0D1117] flex flex-col items-center py-4 gap-4">
-        {/* Collapsed tabs - vertical icons */}
-        <button
-          onClick={() => {
-            handleTabChange('inspector');
-            setDockState('peek');
-          }}
-          className="w-10 h-10 rounded hover:bg-[#161B22] transition-colors flex items-center justify-center"
-          title="Inspector"
-          type="button"
-        >
-          <span className="text-xl">🔍</span>
-        </button>
-        <button
-          onClick={() => {
-            handleTabChange('health');
-            setDockState('peek');
-          }}
-          className="w-10 h-10 rounded hover:bg-[#161B22] transition-colors flex items-center justify-center"
-          title="Health"
-          type="button"
-        >
-          <span className="text-xl">💊</span>
-        </button>
-        <button
-          onClick={() => {
-            handleTabChange('learn');
-            setDockState('peek');
-          }}
-          className="w-10 h-10 rounded hover:bg-[#161B22] transition-colors flex items-center justify-center"
-          title="Learn"
-          type="button"
-        >
-          <span className="text-xl">🎓</span>
-        </button>
-        <button
-          onClick={() => {
-            handleTabChange('probes');
-            setDockState('peek');
-          }}
-          className="w-10 h-10 rounded hover:bg-[#161B22] transition-colors flex items-center justify-center"
-          title="Probes"
-          type="button"
-        >
-          <span className="text-xl">📊</span>
-        </button>
-        <button
-          onClick={() => {
-            handleTabChange('record');
-            setDockState('peek');
-          }}
-          className="w-10 h-10 rounded hover:bg-[#161B22] transition-colors flex items-center justify-center"
-          title="Record"
-          type="button"
-        >
-          <span className="text-xl">⏺️</span>
-        </button>
-        <button
-          onClick={() => {
-            handleTabChange('chips');
-            setDockState('peek');
-          }}
-          className="w-10 h-10 rounded hover:bg-[#161B22] transition-colors flex items-center justify-center"
-          title="Chips"
-          type="button"
-        >
-          <span className="text-xl">🧩</span>
-        </button>
+      <div className="w-12 border-l border-[#1B2028] bg-[#0D1117] flex flex-col items-center py-3 gap-2">
+        {/* Collapsed: 4 core tabs only — Guide / Test / Export / Info */}
+        {([
+          { tab: 'learn' as RightDockTab, label: 'Guide', icon: (
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L1 4v6l6 3 6-3V4L7 1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/><path d="M7 1v12M1 4l6 3 6-3" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>
+          )},
+          { tab: 'probes' as RightDockTab, label: 'Test', icon: (
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10L5 5l3 3 2-4 2 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          )},
+          { tab: 'hdl' as RightDockTab, label: 'Export', icon: (
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M4 4l-2 3 2 3M10 4l2 3-2 3M8 2l-2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+          )},
+          { tab: 'inspector' as RightDockTab, label: 'Info', icon: (
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2"/><path d="M7 6v4M7 4.5v.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+          )},
+        ] as Array<{ tab: RightDockTab; label: string; icon: React.ReactNode }>).map(({ tab, label, icon }) => (
+          <button
+            key={tab}
+            onClick={() => { handleTabChange(tab); setDockState('peek'); }}
+            className={`w-9 h-9 rounded transition-colors flex flex-col items-center justify-center gap-0.5 ${activeTab === tab ? 'bg-[#EF233C]/15 text-[#EF233C]' : 'text-[#4E5764] hover:text-[#8B949E] hover:bg-[#161B22]'}`}
+            title={label}
+            type="button"
+          >
+            {icon}
+            <span style={{ fontSize: '8px', letterSpacing: '0.03em' }}>{label}</span>
+          </button>
+        ))}
       </div>
     );
   }
@@ -452,211 +411,51 @@ export const RightDock: React.FC<RightDockProps> = ({
 
   return (
     <div className={`${width} border-l border-[#1B2028] bg-[#0D1117] flex flex-col transition-all duration-200 shrink-0`} data-testid="right-dock">
-      {/* Tab Bar */}
-      <div 
-        className="flex items-center bg-[#0D1117] border-b border-[#1B2028]"
-        style={{
-          height: 'calc(48px * var(--rb-ui-scale, 1))'
-        }}
-      >
-        <div 
-          className="flex-1 flex items-stretch h-full gap-1" 
-          role="tablist"
-          style={{
-            paddingLeft: 'var(--rb-space-2, 0.5rem)',
-            paddingRight: 'var(--rb-space-2, 0.5rem)'
-          }}
-        >
-          <button
-            onClick={() => handleTabChange('inspector')}
-            className={`flex-1 h-full w-full rounded font-medium transition-all flex items-center justify-center cursor-pointer ${activeTab === 'inspector'
-              ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
-              : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
-              }`}
-            aria-label="Inspector"
-            aria-selected={activeTab === 'inspector' ? 'true' : 'false'}
-            role="tab"
-            tabIndex={activeTab === 'inspector' ? 0 : -1}
-            data-testid="rightdock-tab-inspector"
-            type="button"
-            style={{
-              paddingLeft: 'var(--rb-space-3, 0.75rem)',
-              paddingRight: 'var(--rb-space-3, 0.75rem)',
-              gap: 'var(--r b-space-1, 0.375rem)',
-              fontSize: 'var(--rb-text-xs, 0.75rem)'
-            }}
-          >
-            <span className="mr-1 pointer-events-none select-none">🔍</span>
-            <span className="pointer-events-none select-none">Info</span>
-          </button>
-          <button
-            onClick={() => handleTabChange('health')}
-            className={`flex-1 h-full w-full rounded font-medium transition-all flex items-center justify-center cursor-pointer ${activeTab === 'health'
-              ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
-              : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
-              }`}
-            aria-label="Health"
-            aria-selected={activeTab === 'health' ? 'true' : 'false'}
-            role="tab"
-            tabIndex={activeTab === 'health' ? 0 : -1}
-            data-testid="rightdock-tab-health"
-            type="button"
-            style={{
-              paddingLeft: 'var(--rb-space-3, 0.75rem)',
-              paddingRight: 'var(--rb-space-3, 0.75rem)',
-              gap: 'var(--rb-space-1, 0.375rem)',
-              fontSize: 'var(--rb-text-xs, 0.75rem)'
-            }}
-          >
-            <span className="mr-1 pointer-events-none select-none">💊</span>
-            <span className="pointer-events-none select-none">Health</span>
-          </button>
-          <button
-            onClick={() => handleTabChange('learn')}
-            className={`flex-1 h-full w-full rounded font-medium transition-all flex items-center justify-center cursor-pointer ${activeTab === 'learn'
-              ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
-              : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
-              }`}
-            aria-label="Learn"
-            aria-selected={activeTab === 'learn' ? 'true' : 'false'}
-            role="tab"
-            tabIndex={activeTab === 'learn' ? 0 : -1}
-            data-testid="rightdock-tab-learn"
-            type="button"
-            style={{
-              paddingLeft: 'var(--rb-space-3, 0.75rem)',
-              paddingRight: 'var(--rb-space-3, 0.75rem)',
-              gap: 'var(--rb-space-1, 0.375rem)',
-              fontSize: 'var(--rb-text-xs, 0.75rem)'
-            }}
-          >
-            <span className="mr-1 pointer-events-none select-none">🎓</span>
-            <span className="pointer-events-none select-none">Learn</span>
-          </button>
-          <button
-            onClick={() => handleTabChange('probes')}
-            className={`flex-1 h-full w-full rounded font-medium transition-all flex items-center justify-center cursor-pointer ${activeTab === 'probes'
-              ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
-              : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
-              }`}
-            aria-label="Probes"
-            aria-selected={activeTab === 'probes' ? 'true' : 'false'}
-            role="tab"
-            tabIndex={activeTab === 'probes' ? 0 : -1}
-            data-testid="rightdock-tab-probes"
-            type="button"
-            style={{
-              paddingLeft: 'var(--rb-space-3, 0.75rem)',
-              paddingRight: 'var(--rb-space-3, 0.75rem)',
-              gap: 'var(--rb-space-1, 0.375rem)',
-              fontSize: 'var(--rb-text-xs, 0.75rem)'
-            }}
-          >
-            <span className="mr-1 pointer-events-none select-none">📊</span>
-            <span className="pointer-events-none select-none">Probes</span>
-          </button>
-          <button
-            onClick={() => handleTabChange('record')}
-            className={`flex-1 h-full w-full rounded font-medium transition-all flex items-center justify-center cursor-pointer ${activeTab === 'record'
-              ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
-              : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
-              }`}
-            aria-label="Record"
-            aria-selected={activeTab === 'record' ? 'true' : 'false'}
-            role="tab"
-            tabIndex={activeTab === 'record' ? 0 : -1}
-            data-testid="rightdock-tab-record"
-            type="button"
-            style={{
-              paddingLeft: 'var(--rb-space-3, 0.75rem)',
-              paddingRight: 'var(--rb-space-3, 0.75rem)',
-              gap: 'var(--rb-space-1, 0.375rem)',
-              fontSize: 'var(--rb-text-xs, 0.75rem)'
-            }}
-          >
-            <span className="mr-1 pointer-events-none select-none">⏺️</span>
-            <span className="pointer-events-none select-none">Record</span>
-          </button>
-
-          <button
-            onClick={() => handleTabChange('chips')}
-            className={`flex-1 h-full w-full rounded font-medium transition-all flex items-center justify-center cursor-pointer ${activeTab === 'chips'
-              ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
-              : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
-              }`}
-            aria-label="Chips"
-            aria-selected={activeTab === 'chips' ? 'true' : 'false'}
-            role="tab"
-            tabIndex={activeTab === 'chips' ? 0 : -1}
-            data-testid="rightdock-tab-chips"
-            type="button"
-            style={{
-              paddingLeft: 'var(--rb-space-3, 0.75rem)',
-              paddingRight: 'var(--rb-space-3, 0.75rem)',
-              gap: 'var(--rb-space-1, 0.375rem)',
-              fontSize: 'var(--rb-text-xs, 0.75rem)'
-            }}
-          >
-            <span className="mr-1 pointer-events-none select-none">🧩</span>
-            <span className="pointer-events-none select-none">Chips</span>
-          </button>
-          {enableHdlTab && (
-            <button
-              onClick={() => handleTabChange('hdl')}
-              className={`flex-1 h-full w-full rounded font-medium transition-all flex items-center justify-center cursor-pointer ${activeTab === 'hdl'
-                ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
-                : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
-                }`}
-              aria-label="HDL"
-              aria-selected={activeTab === 'hdl' ? 'true' : 'false'}
-              role="tab"
-              tabIndex={activeTab === 'hdl' ? 0 : -1}
-              data-testid="rightdock-tab-hdl"
-              type="button"
-              style={{
-                paddingLeft: 'var(--rb-space-3, 0.75rem)',
-                paddingRight: 'var(--rb-space-3, 0.75rem)',
-                gap: 'var(--rb-space-1, 0.375rem)',
-                fontSize: 'var(--rb-text-xs, 0.75rem)'
-              }}
-            >
-              <span className="mr-1 pointer-events-none select-none">{'</>'}</span>
-              <span className="pointer-events-none select-none">HDL</span>
-            </button>
-          )}
-          <button
-            onClick={() => handleTabChange('io')}
-            className={`flex-1 h-full w-full rounded font-medium transition-all flex items-center justify-center cursor-pointer ${activeTab === 'io'
-              ? 'text-[#E6EDF3] border-b-2 border-[#D4930D] shadow-[0_2px_8px_rgba(212,147,13,0.2)]'
-              : 'text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22]'
-              }`}
-            aria-label="IO"
-            aria-selected={activeTab === 'io' ? 'true' : 'false'}
-            role="tab"
-            tabIndex={activeTab === 'io' ? 0 : -1}
-            data-testid="rightdock-tab-io"
-            type="button"
-            style={{
-              paddingLeft: 'var(--rb-space-3, 0.75rem)',
-              paddingRight: 'var(--rb-space-3, 0.75rem)',
-              gap: 'var(--rb-space-1, 0.375rem)',
-              fontSize: 'var(--rb-text-xs, 0.75rem)'
-            }}
-          >
-            <span className="mr-1 pointer-events-none select-none">🔌</span>
-            <span className="pointer-events-none select-none">IO</span>
-          </button>
+      {/* Tab Bar — 4 tabs: Guide / Test / Export / Info */}
+      <div className="flex items-center bg-[#080b10] border-b border-white/[0.06]" style={{ height: '40px' }}>
+        <div className="flex-1 flex items-stretch h-full" role="tablist" style={{ paddingLeft: '4px', paddingRight: '4px' }}>
+          {([
+            { tab: 'learn' as RightDockTab, label: 'Guide', testId: 'rightdock-tab-learn' },
+            { tab: 'probes' as RightDockTab, label: 'Test', testId: 'rightdock-tab-probes' },
+            { tab: 'hdl' as RightDockTab, label: 'Export', testId: 'rightdock-tab-hdl' },
+            { tab: 'inspector' as RightDockTab, label: 'Info', testId: 'rightdock-tab-inspector' },
+          ] as Array<{ tab: RightDockTab; label: string; testId: string }>).map(({ tab, label, testId }) => {
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => handleTabChange(tab)}
+                className="flex-1 h-full font-medium transition-all flex items-center justify-center cursor-pointer relative"
+                style={{
+                  fontSize: '11px',
+                  letterSpacing: '0.04em',
+                  color: isActive ? '#ECF4FF' : 'rgba(236,244,255,0.35)',
+                  background: isActive ? 'rgba(239,35,60,0.08)' : 'transparent',
+                  borderBottom: isActive ? '2px solid #EF233C' : '2px solid transparent',
+                }}
+                aria-label={label}
+                aria-selected={isActive ? 'true' : 'false'}
+                role="tab"
+                tabIndex={isActive ? 0 : -1}
+                data-testid={testId}
+                type="button"
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Dock state toggle - OUTSIDE tablist */}
+        {/* Dock state toggle */}
         <button
           onClick={handleStateToggle}
-          className="h-full px-2 text-[#6E7681] hover:text-[#E6EDF3] hover:bg-[#161B22] rounded transition-colors"
+          className="h-full px-2 transition-colors"
+          style={{ color: 'rgba(236,244,255,0.3)', fontSize: '11px' }}
           title={dockState === 'peek' ? 'Expand' : 'Collapse'}
           type="button"
           aria-label={dockState === 'peek' ? 'Expand Dock' : 'Collapse Dock'}
         >
-          {dockState === 'peek' ? '→' : '←'}
+          {dockState === 'peek' ? '›' : '‹'}
         </button>
       </div>
 

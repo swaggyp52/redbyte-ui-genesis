@@ -302,17 +302,17 @@ export const LogicPlaygroundComponent: React.FC<LogicPlaygroundProps> = (props) 
 
   // Early returns - SAFE because hook set above is stable
   if (disablePlaygroundView) {
-    console.log('[LP_TRACE] Early return: playground view disabled');
+
     return <div data-testid="playground-debug-disabled">Playground view disabled by debug flag.</div>;
   }
 
   if (evidenceBundle) {
-    console.log('[LP_TRACE] Early return: evidence viewer');
+
     return <EvidenceViewerPanel />;
   }
 
   // Render inner component with all the real hooks
-  console.log('[LP_TRACE] About to render LogicPlaygroundInner');
+
   return <LogicPlaygroundInner {...props} debugFlags={debugFlags} />;
 };
 
@@ -365,7 +365,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   determinismRecorder,
   debugFlags,
 }) => {
-  console.log('[LP_TRACE] LogicPlaygroundInner render start', { windowId, initialFileId, initialExampleId, resourceId, resourceType });
+
   useRenderStormDetector('LogicPlaygroundInner');
   const disableToolStrip = debugFlags.has('disable-toolstrip');
   const disableRightDock = debugFlags.has('disable-rightdock');
@@ -487,7 +487,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
   // Single hydration effect: when project loads/opens, hydrate circuitStore from unifiedProject (RC-P1)
   useEffect(() => {
-    console.log('[LP_TRACE] Hydration effect fired', { hasProject: Boolean(unifiedProject), hasSynced: hasSyncedFromProjectRef.current });
+
     if (!unifiedProject) return;
     if (hasSyncedFromProjectRef.current) return;
 
@@ -516,7 +516,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
   // Sync circuitStore changes to unifiedProject (one-way from store → project)
   useEffect(() => {
-    console.log('[LP_TRACE] updateProject effect fired', { hasProject: Boolean(unifiedProject), hasSynced: hasSyncedFromProjectRef.current });
+
     if (!unifiedProject) return;
     if (!hasSyncedFromProjectRef.current) return;
 
@@ -533,9 +533,9 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
   // Create new project at startup
   useEffect(() => {
-    console.log('[LP_TRACE] Create project effect fired', { hasProject: Boolean(unifiedProject), hasCreated: createdProjectRef.current });
+
     if (!unifiedProject && !createdProjectRef.current) {
-      console.log('[LP_TRACE] Creating new project');
+
       createNewProject('Untitled Project');
       createdProjectRef.current = true;
     }
@@ -614,26 +614,32 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const setPerspective = handleSetPerspective; // Alias for minimal refactor
 
   // Handle IDE mode changes — right dock only; canvas is ALWAYS visible.
-  // Only switch dock content if the dock is already open (don't force it open).
+  // Each mode click ALWAYS opens the dock to the correct tab (no ambiguity).
   const handleIdeModeChange = useCallback((mode: IDEMode) => {
     setIdeMode(mode);
     const layout = useLayoutStore.getState();
-    const isDockOpen = layout.rightDockState !== 'collapsed';
+    // Ensure dock is visible (at least peek) for any mode with a target tab
+    const ensureDockOpen = () => {
+      if (layout.rightDockState === 'collapsed') {
+        layout.setRightDockState('peek');
+      }
+    };
     switch (mode) {
       case 'project':
-        if (isDockOpen) layout.openDock('learn', 'lessons');
+        ensureDockOpen();
+        layout.openDock('learn', 'lessons');
         break;
       case 'design':
-        // No dock change — let the student stay where they are
+        // Design = canvas focus; collapse dock so canvas gets full width
+        layout.setRightDockState('collapsed');
         break;
       case 'verify':
-        if (isDockOpen) layout.openDock('probes', undefined);
+        ensureDockOpen();
+        layout.openDock('probes', undefined);
         break;
       case 'export':
-        // Always open HDL dock on Export mode — the Vivado workflow is the whole point
-        if (layout.rightDockState === 'collapsed') {
-          layout.setRightDockState('expanded');
-        }
+        // Export always opens dock fully — the Vivado workflow is the whole point
+        layout.setRightDockState('expanded');
         layout.openDock('hdl', undefined);
         break;
     }
@@ -2113,8 +2119,12 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
   const applySelectedLab = useCallback((lab: LabDefinition) => {
     setPinnedStarterInstructions(normalizeStarterInstructions(lab.starterInstructions ?? null));
-    setIdeMode('design');
     setShowLabModal(false);
+    // Switch to Learn mode and open Guide dock so instructions are immediately visible
+    setIdeMode('project');
+    const layout = useLayoutStore.getState();
+    layout.setRightDockState('expanded');
+    layout.openDock('learn', 'lessons');
   }, []);
 
   const handleSelectLab = useCallback(
@@ -3868,7 +3878,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     pushMount('LogicPlaygroundApp:return');
   }
 
-  console.log('[LP_TRACE] About to return JSX', { hasUnifiedProject: Boolean(unifiedProject), hasCircuit: Boolean(circuit), nodeCount: circuit?.nodes?.length });
+
 
   return (
     <ErrorBoundary>
