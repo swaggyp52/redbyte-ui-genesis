@@ -218,6 +218,38 @@
       "config": {}
     },
     {
+      "id": "mux0",
+      "type": "MUX4",
+      "label": "MUX[0]",
+      "position": { "x": 780, "y": 130 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "mux1",
+      "type": "MUX4",
+      "label": "MUX[1]",
+      "position": { "x": 780, "y": 250 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "mux2",
+      "type": "MUX4",
+      "label": "MUX[2]",
+      "position": { "x": 780, "y": 370 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "mux3",
+      "type": "MUX4",
+      "label": "MUX[3]",
+      "position": { "x": 780, "y": 490 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
       "id": "led0",
       "type": "Lamp",
       "label": "LED[0]",

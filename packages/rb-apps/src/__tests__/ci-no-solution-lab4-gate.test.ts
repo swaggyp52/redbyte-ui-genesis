@@ -70,6 +70,7 @@ describe('ci:no-solution:lab4 gate', () => {
     expect(types.filter((t) => t === 'OR').length).toBeGreaterThanOrEqual(4);
     expect(types.filter((t) => t === 'XOR').length).toBeGreaterThanOrEqual(4);
     expect(types.filter((t) => t === 'FULLADDER').length).toBeGreaterThanOrEqual(4);
+    expect(types.filter((t) => t === 'MUX4').length).toBeGreaterThanOrEqual(4);
 
     // No solved wiring present — all ALU datapath connections must be left to student
     // (connections array is already checked to be empty above)
