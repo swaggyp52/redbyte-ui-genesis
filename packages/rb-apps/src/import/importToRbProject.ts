@@ -25,11 +25,10 @@ export function importToRbProject(
   const circuit = importResult.circuit;
 
   // Step 2: Build IO mapping from XDC (if provided)
+  // Use parsed port names (not circuit.ports, which doesn't expose the port names)
   const ioMapping: Record<string, string> = {};
   if (xdcResult) {
-    // Map circuit port names to physical pins from XDC
-    // XDC pinMap has port names as seen in the file; match to circuit.ports
-    for (const port of circuit.ports || []) {
+    for (const port of parsedHdl.ports) {
       const pinFromXdc = xdcResult.pinMap[port.name];
       if (pinFromXdc) {
         ioMapping[port.name] = pinFromXdc;
