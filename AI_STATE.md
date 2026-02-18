@@ -1,5 +1,56 @@
 # AI State
 
+## Change Log 2026-02-18 (ECE141 Queue Lock + Lane A1 Sequential Verify/Export Parity)
+
+**Status**: COMPLETE - Added executable ECE141 gap queue and implemented Lane A #1 (clocked verify/export parity) with fixture-gated proof.
+
+### What Changed
+
+1. Queue lock doc (single ordered queue with lanes and fields)
+- Added `docs/roadmap/ece141-gap-queue.md`.
+- Encodes strict A/B/C lane ordering and six required fields per item:
+  - labs affected
+  - student-visible symptom
+  - root cause
+  - exit criteria
+  - gate/test to add
+  - commit sequence
+
+2. Shared sequential schedule contract (Verify + testbench parity)
+- Added `packages/rb-apps/src/fpga/boards/basys3/verifySchedule.ts`.
+- Updated `packages/rb-apps/src/fpga/boards/basys3/vectorRunner.ts`:
+  - runner now derives schedule from one shared contract (`combinational` vs `clocked_macro`)
+  - supports HDL sequential hints for imported clocked designs
+  - uses deterministic `0->1->0` clock sequence from shared constant
+- Replaced `packages/rb-apps/src/fpga/boards/basys3/testbenchGenerator.ts`:
+  - generated `testbench.vhd` now declares schedule and sequence contract
+  - stimulus/assertions mirror runner schedule deterministically
+
+3. Export path parity
+- Updated `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`:
+  - removed placeholder testbench text
+  - export now emits generated `testbench.vhd` from vectors
+- Updated `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts`:
+  - added `CLK100MHZ` alias mapping to `W5` for deterministic clock pin support in bundle generation
+
+4. Fixture gate: import -> verify -> export consistency (Fixture 03)
+- Added `packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts`.
+- Updated `scripts/gates/import-roundtrip.mjs` to run:
+  - `importExportRoundtrip.test.ts`
+  - `fixture03-sequential-parity.test.ts`
+
+### Validation Executed
+
+- `pnpm -w exec vitest run packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts --reporter=verbose` -> PASS
+- `pnpm gates:import-roundtrip` -> PASS
+- `pnpm -s rc:d2:basys3-bundle-gate` -> PASS
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm repo:status` -> PASS (4/4 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-18 (ECE141 Lab Compatibility Matrix from Provided Course PDFs)
 
 **Status**: COMPLETE - Added a canonical lab-to-product compatibility matrix using the newly provided 8 lab handouts and 3 manuals as source input.
