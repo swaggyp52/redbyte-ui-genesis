@@ -8,6 +8,7 @@ import { IdeLeftRail, type IdeMode } from './ide/components/IdeLeftRail';
 import { IdeTopBar } from './ide/components/IdeTopBar';
 import { IdeStatusBar } from './ide/components/IdeStatusBar';
 import { ProjectSurface } from './ide/surfaces/ProjectSurface';
+import { DesignSurface } from './ide/surfaces/DesignSurface';
 import {
   IdeButton,
   IdeCallout,
@@ -148,6 +149,8 @@ export const IdeApp: React.FC = () => {
             onOpenDesign={() => setCurrentMode('design')}
             onOpenImport={() => setCurrentMode('import')}
           />
+        ) : currentMode === 'design' ? (
+          <DesignSurface onOpenPalette={() => null} />
         ) : (
           <ModePlaceholder mode={currentMode} />
         )}
