@@ -1,273 +1,217 @@
-// Copyright © 2025 Connor Angiel
-// Use without permission prohibited.
-// Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
-
+import type { TestVector } from '@redbyte/rb-utils';
 import type { RBProject } from '../../../export/projectFormat';
-import type { TestVector, IoMapping } from '@redbyte/rb-utils';
-import { analyzeSequentialLogic } from './sequentialAnalysis';
+import { compareCodepoint } from '../../../export/codepointSort';
+import { CLOCKED_MACRO_SEQUENCE, deriveVerifySchedule } from './verifySchedule';
 
-/**
- * Generate deterministic testbench.vhd from RBProject vectors
- *
- * The generated testbench mirrors the vectorRunner schedule exactly:
- *   - Combinational: drive → wait 0ns → assert
- *   - Clocked macro: drive → (clk=0,wait) → (clk=1,wait) → (clk=0,wait) → assert
- *
- * No edge-triggered semantics. Pure latch-gated behavior.
- */
+interface SignalCatalog {
+  inputs: string[];
+  outputs: string[];
+  clock?: string;
+}
+
 export function generateTestbenchVhdl(project: RBProject, vectors: TestVector[]): string {
-  const analysis = analyzeSequentialLogic(project.circuit, project.ioMapping);
+  const scheduleContract = deriveVerifySchedule(project.circuit, project.ioMapping, project.hdl);
+  const signalCatalog = collectSignals(project, vectors, scheduleContract.schedule, scheduleContract.clockSignalName);
+  const topModule = (project.fpga?.top || project.hdl?.top || 'top').trim() || 'top';
 
-  const schedule = analysis.hasClockedMacros ? 'clocked_macro' : 'combinational';
-  const hasSimClock = !analysis.hasClockNet && analysis.hasClockedMacros;
+  const vhdlNameByLogical = buildNameMap([
+    ...signalCatalog.inputs,
+    ...signalCatalog.outputs,
+    ...(signalCatalog.clock ? [signalCatalog.clock] : []),
+  ]);
 
-  // Extract input and output port names from circuit
-  const inputPorts = extractInputPorts(project);
-  const outputPorts = extractOutputPorts(project);
+  const declaredInputs = signalCatalog.clock
+    ? uniqueSorted([signalCatalog.clock, ...signalCatalog.inputs])
+    : signalCatalog.inputs;
+  const declaredOutputs = signalCatalog.outputs;
 
-  // Generate signal declarations
-  const signals = generateSignalDeclarations(inputPorts, outputPorts, hasSimClock);
+  const componentPorts = [
+    ...declaredInputs.map((name) => `      ${vhdlNameByLogical.get(name)} : in  std_logic`),
+    ...declaredOutputs.map((name) => `      ${vhdlNameByLogical.get(name)} : out std_logic`),
+  ].join(';\n');
 
-  // Generate clock process (only if needed)
-  const clockProcess = schedule === 'clocked_macro' ? generateClockProcess(hasSimClock) : '';
+  const signalDecls = [
+    ...declaredInputs.map((name) => `  signal ${vhdlNameByLogical.get(name)} : std_logic := '0';`),
+    ...declaredOutputs.map((name) => `  signal ${vhdlNameByLogical.get(name)} : std_logic;`),
+    ...(scheduleContract.schedule === 'clocked_macro' ? ["  constant CLK_HALF_PERIOD : time := 5 ns;"] : []),
+  ].join('\n');
 
-  // Generate stimulus and assertion process
-  const stimProcess = generateStimulusProcess(
-    project,
-    vectors,
-    inputPorts,
-    outputPorts,
-    schedule,
-    hasSimClock
-  );
+  const portMapEntries = [
+    ...declaredInputs.map((name) => `      ${vhdlNameByLogical.get(name)} => ${vhdlNameByLogical.get(name)}`),
+    ...declaredOutputs.map((name) => `      ${vhdlNameByLogical.get(name)} => ${vhdlNameByLogical.get(name)}`),
+  ].join(',\n');
 
-  // Assemble testbench
-  return generateTestbenchTemplate(project, signals, clockProcess, stimProcess, hasSimClock);
-}
+  const stimulus = generateStimulus(vectors, scheduleContract.schedule, signalCatalog.clock, vhdlNameByLogical);
 
-/**
- * Extract input port names from circuit
- */
-function extractInputPorts(project: RBProject): string[] {
-  const ports: Set<string> = new Set();
-
-  // Look for all input sources in the circuit (InputPin nodes, Switch nodes)
-  for (const node of project.circuit.nodes) {
-    if (node.type === 'Switch' || node.type === 'InputPin' || node.label?.match(/^(in|input)/i)) {
-      const label = node.label || node.id;
-      if (label && !label.startsWith('__')) {
-        ports.add(label);
-      }
-    }
-  }
-
-  // Also check ioMapping for Basys3 inputs
-  if (project.ioMapping) {
-    for (const key of Object.keys(project.ioMapping)) {
-      if (key.match(/^(SW|BTN)/i)) {
-        ports.add(key);
-      }
-    }
-  }
-
-  return Array.from(ports).sort();
-}
-
-/**
- * Extract output port names from circuit
- */
-function extractOutputPorts(project: RBProject): string[] {
-  const ports: Set<string> = new Set();
-
-  // Look for all output sinks (Lamp nodes, etc)
-  for (const node of project.circuit.nodes) {
-    if (node.type === 'Lamp' || node.label?.match(/^(out|output|led)/i)) {
-      const label = node.label || node.id;
-      if (label && !label.startsWith('__')) {
-        ports.add(label);
-      }
-    }
-  }
-
-  // Also check ioMapping for Basys3 outputs
-  if (project.ioMapping) {
-    for (const key of Object.keys(project.ioMapping)) {
-      if (key.match(/^LD/i)) {
-        ports.add(key);
-      }
-    }
-  }
-
-  return Array.from(ports).sort();
-}
-
-/**
- * Generate signal declarations for testbench
- */
-function generateSignalDeclarations(
-  inputs: string[],
-  outputs: string[],
-  hasSimClock: boolean
-): string {
-  let signals = '  -- Input signals\n';
-  for (const input of inputs) {
-    signals += `  signal ${input} : std_logic := '0';\n`;
-  }
-
-  signals += '\n  -- Output signals\n';
-  for (const output of outputs) {
-    signals += `  signal ${output} : std_logic;\n`;
-  }
-
-  if (hasSimClock) {
-    signals += '\n  -- Simulation clock\n';
-    signals += "  signal clk : std_logic := '0';\n";
-    signals += '  constant CLK_PERIOD : time := 10 ns;\n';
-  }
-
-  return signals;
-}
-
-/**
- * Generate clock process (for clocked_macro designs)
- */
-function generateClockProcess(hasSimClock: boolean): string {
-  if (!hasSimClock) return '';
-
-  return `
-  -- Clock generation process
-  clk_gen: process
-  begin
-    loop
-      clk <= '0';
-      wait for CLK_PERIOD / 2;
-      clk <= '1';
-      wait for CLK_PERIOD / 2;
-    end loop;
-  end process clk_gen;
-`;
-}
-
-/**
- * Generate stimulus process with vectors
- */
-function generateStimulusProcess(
-  project: RBProject,
-  vectors: TestVector[],
-  inputPorts: string[],
-  outputPorts: string[],
-  schedule: 'combinational' | 'clocked_macro',
-  hasSimClock: boolean
-): string {
-  let process = '  -- Test stimulus and assertion\n  stim: process\n  begin\n';
-
-  for (let i = 0; i < vectors.length; i++) {
-    const vector = vectors[i];
-
-    // Generate stimulus comments
-    process += `    -- Vector ${i}\n`;
-
-    // Drive inputs
-    for (const input of inputPorts) {
-      const val = vector.inputs[input];
-      if (val !== undefined) {
-        const bit = typeof val === 'boolean' ? (val ? '1' : '0') : val > 0 ? '1' : '0';
-        process += `    ${input} <= '${bit}';\n`;
-      }
-    }
-
-    // Wait and settle
-    if (schedule === 'combinational') {
-      process += `    wait for 0 ns;  -- combinational settle\n`;
-    } else {
-      // 3-tick clocked_macro schedule
-      process += `    -- clk=0, settle/hold phase\n`;
-      process += `    clk <= '0';\n`;
-      process += `    wait for CLK_PERIOD / 2;\n`;
-      process += `    -- clk=1, transparent/update phase\n`;
-      process += `    clk <= '1';\n`;
-      process += `    wait for CLK_PERIOD / 2;\n`;
-      process += `    -- clk=0, hold phase\n`;
-      process += `    clk <= '0';\n`;
-      process += `    wait for CLK_PERIOD / 2;\n`;
-      process += `    wait for 0 ns;  -- delta settle\n`;
-    }
-
-    // Assert expected outputs
-    if (vector.expected) {
-      for (const output of outputPorts) {
-        const expected = vector.expected[output];
-        if (expected !== undefined) {
-          const bit = typeof expected === 'boolean' ? (expected ? '1' : '0') : expected > 0 ? '1' : '0';
-          process += `    assert ${output} = '${bit}'\n`;
-          process += `      report "Vector ${i} failed on ${output}: expected ${bit}, got " & std_logic'image(${output})\n`;
-          process += `      severity error;\n`;
-        }
-      }
-    }
-
-    if (i < vectors.length - 1) {
-      process += `\n`;
-    }
-  }
-
-  process += `    wait;\n  end process stim;\n`;
-
-  return process;
-}
-
-/**
- * Generate complete testbench template
- */
-function generateTestbenchTemplate(
-  project: RBProject,
-  signals: string,
-  clockProcess: string,
-  stimProcess: string,
-  hasSimClock: boolean
-): string {
-  const topModule = project.fpga?.top || 'top';
-
-  let tb = `library ieee;
+  return `library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-entity tb_top is
-end entity tb_top;
+entity tb_${toVhdlIdentifier(topModule)} is
+end entity tb_${toVhdlIdentifier(topModule)};
 
-architecture sim of tb_top is
-  -- DUT component
-  component ${topModule} is
+architecture sim of tb_${toVhdlIdentifier(topModule)} is
+  component ${toVhdlIdentifier(topModule)} is
     port (
-      -- TODO: Add actual port declarations from project.circuit
-      clk : in std_logic;
-      rst : in std_logic
+${componentPorts}
     );
-  end component ${topModule};
+  end component;
 
-${signals}
+${signalDecls}
 begin
-  -- Document: This testbench was auto-generated from RedByte project vectors
-  -- Schedule: ${hasSimClock ? 'clocked_macro (v1 - 3-tick latch gating)' : 'combinational'}
-  -- Generated deterministically from: ${project.name || 'unnamed'}
-  --
-  -- IMPORTANT: This testbench mirrors the RedByte Verify runner schedule exactly:
-  -- - Combinational designs: drive → wait 0ns → assert
-  -- - Clocked designs: drive → (clk=0,wait) → (clk=1,wait) → (clk=0,wait) → assert
-  --
-  -- Do NOT modify the timing without updating the corresponding vectorRunner.ts
-
-  -- DUT instantiation
-  dut: ${topModule}
+  -- Deterministic schedule contract with Verify runner:
+  -- schedule=${scheduleContract.schedule}
+  -- reason=${scheduleContract.reason}
+  -- sequence=${scheduleContract.schedule === 'clocked_macro' ? CLOCKED_MACRO_SEQUENCE.join('->') : 'single-tick'}
+  dut: ${toVhdlIdentifier(topModule)}
     port map (
-      -- TODO: Connect actual ports
-      clk => ${hasSimClock ? 'clk' : 'open'},
-      rst => '0'
+${portMapEntries}
     );
-${clockProcess}
-${stimProcess}
+
+  stim: process
+  begin
+${stimulus}
+    wait;
+  end process;
 end architecture sim;
 `;
+}
 
-  return tb;
+function generateStimulus(
+  vectors: TestVector[],
+  schedule: 'combinational' | 'clocked_macro',
+  clockSignal: string | undefined,
+  nameMap: Map<string, string>
+): string {
+  const lines: string[] = [];
+  const safeClock = clockSignal ? nameMap.get(clockSignal) : undefined;
+
+  vectors.forEach((vector, index) => {
+    lines.push(`    -- Vector ${index} (tick=${vector.tick})`);
+
+    for (const inputName of uniqueSorted(Object.keys(vector.inputs))) {
+      if (safeClock && nameMap.get(inputName) === safeClock) continue;
+      const signalName = nameMap.get(inputName);
+      if (!signalName) continue;
+      lines.push(`    ${signalName} <= ${toBitLiteral(vector.inputs[inputName])};`);
+    }
+
+    if (schedule === 'clocked_macro' && safeClock) {
+      for (const clockValue of CLOCKED_MACRO_SEQUENCE) {
+        lines.push(`    ${safeClock} <= '${clockValue}';`);
+        lines.push('    wait for CLK_HALF_PERIOD;');
+      }
+      lines.push('    wait for 0 ns;');
+    } else {
+      lines.push('    wait for 0 ns;');
+    }
+
+    for (const expectedName of uniqueSorted(Object.keys(vector.expected ?? {}))) {
+      const signalName = nameMap.get(expectedName);
+      if (!signalName) continue;
+      const expectedLiteral = toBitLiteral(vector.expected[expectedName]);
+      lines.push(`    assert ${signalName} = ${expectedLiteral}`);
+      lines.push(
+        `      report "Vector ${index} failed on ${signalName}: expected ${expectedLiteral}, got " & std_logic'image(${signalName})`
+      );
+      lines.push('      severity error;');
+    }
+
+    lines.push('');
+  });
+
+  return lines.join('\n');
+}
+
+function collectSignals(
+  project: RBProject,
+  vectors: TestVector[],
+  schedule: 'combinational' | 'clocked_macro',
+  scheduleClockHint?: string
+): SignalCatalog {
+  const inputNames = new Set<string>();
+  const outputNames = new Set<string>();
+
+  for (const vector of vectors) {
+    for (const key of Object.keys(vector.inputs ?? {})) {
+      inputNames.add(key);
+    }
+    for (const key of Object.keys(vector.expected ?? {})) {
+      outputNames.add(key);
+    }
+  }
+
+  for (const node of project.circuit.nodes) {
+    const label = (node.label || node.id || '').trim();
+    if (!label) continue;
+    if (node.type === 'Switch' || node.type === 'InputPin' || node.type === 'INPUT' || node.type === 'Clock') {
+      inputNames.add(label);
+    } else if (node.type === 'Lamp' || node.type === 'OUTPUT') {
+      outputNames.add(label);
+    }
+  }
+
+  for (const entry of project.ioMapping?.inputs ?? []) {
+    inputNames.add(entry.label || `${entry.nodeId}_${entry.port}`);
+  }
+  for (const entry of project.ioMapping?.outputs ?? []) {
+    outputNames.add(entry.label || `${entry.nodeId}_${entry.port}`);
+  }
+
+  let clock: string | undefined;
+  if (schedule === 'clocked_macro') {
+    if (scheduleClockHint && scheduleClockHint.trim().length > 0) {
+      clock = scheduleClockHint;
+      inputNames.add(clock);
+    } else if (inputNames.has('clk')) {
+      clock = 'clk';
+    } else if (inputNames.has('CLK100MHZ')) {
+      clock = 'CLK100MHZ';
+    } else {
+      clock = '__sim_clk__';
+      inputNames.add(clock);
+    }
+  }
+
+  const inputs = uniqueSorted(Array.from(inputNames).filter((name) => !outputNames.has(name)));
+  const outputs = uniqueSorted(Array.from(outputNames));
+
+  return { inputs, outputs, clock };
+}
+
+function buildNameMap(logicalNames: string[]): Map<string, string> {
+  const nameMap = new Map<string, string>();
+  const used = new Set<string>();
+
+  for (const logicalName of uniqueSorted(logicalNames)) {
+    const base = toVhdlIdentifier(logicalName);
+    let candidate = base;
+    let suffix = 1;
+    while (used.has(candidate)) {
+      candidate = `${base}_${suffix}`;
+      suffix += 1;
+    }
+    used.add(candidate);
+    nameMap.set(logicalName, candidate);
+  }
+
+  return nameMap;
+}
+
+function toVhdlIdentifier(raw: string): string {
+  const cleaned = raw.replace(/[^a-zA-Z0-9_]/g, '_');
+  if (!cleaned) return 'sig';
+  if (/^[0-9]/.test(cleaned)) return `_${cleaned}`;
+  return cleaned;
+}
+
+function toBitLiteral(value: unknown): "'0'" | "'1'" {
+  if (value === true) return "'1'";
+  if (value === false) return "'0'";
+  if (typeof value === 'number') return value === 0 ? "'0'" : "'1'";
+  return "'0'";
+}
+
+function uniqueSorted(values: string[]): string[] {
+  return Array.from(new Set(values)).sort((left, right) => compareCodepoint(left, right));
 }

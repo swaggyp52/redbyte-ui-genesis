@@ -4,10 +4,10 @@
 
 import type { Circuit, TickEngineConfig } from '@redbyte/rb-logic-core';
 import type { TestVector, IoMapping } from '@redbyte/rb-utils';
+import type { ToolchainProjectInput } from '../../toolchainBackend';
 import { TickEngine } from '@redbyte/rb-logic-core';
-import type { SequentialAnalysis } from './sequentialAnalysis';
-import { analyzeSequentialLogic } from './sequentialAnalysis';
 import { injectSimClock } from './simClockInjection';
+import { CLOCKED_MACRO_SEQUENCE, deriveVerifySchedule } from './verifySchedule';
 
 /**
  * Sample of signals at a specific tick and phase
@@ -47,22 +47,24 @@ export interface VectorRunResult {
 export async function runTestVectors(
   circuit: Circuit,
   vectors: TestVector[],
-  ioMapping?: IoMapping
+  ioMapping?: IoMapping,
+  hdl?: ToolchainProjectInput
 ): Promise<VectorRunResult> {
-  // Analyze sequential logic
-  const analysis = analyzeSequentialLogic(circuit, ioMapping);
+  const scheduleContract = deriveVerifySchedule(circuit, ioMapping, hdl);
+  const analysis = scheduleContract.analysis;
 
-  // Determine schedule
-  const schedule = analysis.hasClockedMacros ? 'clocked_macro' : 'combinational';
+  const schedule = scheduleContract.schedule;
 
   // Prepare circuit (clone for safety)
   let simCircuit = JSON.parse(JSON.stringify(circuit));
 
   let warningBanner: string | undefined;
-  if (analysis.hasClockedMacros && !analysis.hasClockNet) {
+  if (scheduleContract.needsSimClockInjection) {
     // Inject internal sim clock
     injectSimClock(simCircuit, analysis.sequentialNodes.map((n) => n.id));
     warningBanner = 'No clock mapped; Verify used internal sim clock. Export will require CLK100MHZ mapping.';
+  } else if (schedule === 'clocked_macro' && scheduleContract.reason === 'hdl-sequential') {
+    warningBanner = 'Sequential HDL pattern detected; Verify forced clocked schedule for export parity.';
   }
 
   // Create tick engine
@@ -84,7 +86,16 @@ export async function runTestVectors(
     if (schedule === 'combinational') {
       executeCombinatorialStep(engine, vector, tickIdx, trace, failures);
     } else {
-      executeClockedMacroStep(engine, vector, tickIdx, trace, failures);
+      executeClockedMacroStep(
+        engine,
+        vector,
+        tickIdx,
+        trace,
+        failures,
+        scheduleContract.needsSimClockInjection
+          ? '__sim_clk__'
+          : (scheduleContract.clockSignalName ?? '__sim_clk__')
+      );
     }
   }
 
@@ -168,25 +179,19 @@ function executeClockedMacroStep(
   vector: TestVector,
   tickIdx: number,
   trace: TraceSample[],
-  failures: Array<{ tick: number; signal: string; expected: number; actual: number }>
+  failures: Array<{ tick: number; signal: string; expected: number; actual: number }>,
+  clockSignalName: string
 ): void {
   // Drive inputs (hold them for 3 ticks)
   for (const [portName, value] of Object.entries(vector.inputs)) {
+    if (portName === clockSignalName) continue;
     driveInput(engine, portName, value);
   }
 
-  // Three-tick clock sequence
-  // Tick 0: clk=0, settle/hold phase
-  driveInput(engine, '__sim_clk__', 0);
-  engine.tick();
-
-  // Tick 1: clk=1, transparent/update phase
-  driveInput(engine, '__sim_clk__', 1);
-  engine.tick();
-
-  // Tick 2: clk=0, latch holds
-  driveInput(engine, '__sim_clk__', 0);
-  engine.tick();
+  for (const clockValue of CLOCKED_MACRO_SEQUENCE) {
+    driveInput(engine, clockSignalName, clockValue);
+    engine.tick();
+  }
 
   // Sample outputs (post-clock)
   const signals = engine.getAllSignals();
@@ -234,8 +239,10 @@ function driveInput(engine: any, portName: string, value: any): void {
 
   if (inputNode && inputNode.type === 'Switch') {
     engine.setNodeState(inputNode.id, { isOn: inputVal });
-  } else if (inputNode && inputNode.type === '__sim_clk__') {
-    engine.setNodeState(inputNode.id, { isOn: inputVal });
+  } else if (inputNode && (inputNode.type === 'InputPin' || inputNode.type === 'INPUT')) {
+    engine.setNodeState(inputNode.id, { value: inputVal, isOn: inputVal });
+  } else if (inputNode && inputNode.type === 'Clock') {
+    engine.setNodeState(inputNode.id, { isOn: inputVal, frequency: 1 });
   } else if (portName === '__sim_clk__') {
     // Direct clock drive
     const simClk = circuit.nodes.find((n: any) => n.id === '__sim_clk__');
