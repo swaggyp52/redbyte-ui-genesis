@@ -1,147 +1,108 @@
-// Copyright (c) 2025 Connor Angiel — RedByte OS Genesis
-// IdeApp — Primary IDE surface with mode routing, top bar, and left rail.
-// Minimal bootstrap that renders the IDE UI.
+﻿// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
+// IdeApp - IDE-first shell surface with deterministic mode markers.
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { installFatalCapture, pushMount } from '@redbyte/rb-utils';
 import './ide/ide-root.css';
+import { IdeLeftRail, type IdeMode } from './ide/components/IdeLeftRail';
+import { IdeTopBar } from './ide/components/IdeTopBar';
+import { IdeStatusBar } from './ide/components/IdeStatusBar';
+import {
+  IdeButton,
+  IdeCallout,
+  IdeCard,
+  IdeEmptyState,
+  IdeInspectorSection,
+  IdePanel,
+  IdeStatusPill,
+} from './ide/components/IdePrimitives';
 
-type IDEMode = 'project' | 'design' | 'verify' | 'export' | 'import';
+const MODE_TEXT: Record<IdeMode, { title: string; description: string; marker: string }> = {
+  project: {
+    title: 'Project Mode',
+    description: 'Project truth, readiness checks, and Basys3 constraints.',
+    marker: 'PROJECT',
+  },
+  design: {
+    title: 'Design Mode',
+    description: 'Circuit-first workspace with deterministic graph updates.',
+    marker: 'DESIGN',
+  },
+  verify: {
+    title: 'Verify Mode',
+    description: 'Deterministic vector execution with explicit pass/fail evidence.',
+    marker: 'VERIFY',
+  },
+  export: {
+    title: 'Export Mode',
+    description: 'Compiler-style artifact validation and Basys3 export preview.',
+    marker: 'EXPORT',
+  },
+  import: {
+    title: 'Import Mode',
+    description: 'HDL/XDC intake with diagnostics and pin mapping guidance.',
+    marker: 'IMPORT',
+  },
+};
 
-/**
- * Top bar — project name, save state, board selector
- */
-const IdeTopBar: React.FC<{ projectName: string; isDirty: boolean }> = ({ projectName, isDirty }) => {
+const ModePlaceholder: React.FC<{ mode: IdeMode }> = ({ mode }) => {
+  const modeText = MODE_TEXT[mode];
+
   return (
-    <div
-      style={{
-        height: '56px',
-        background: 'var(--rb-surface-secondary, #1a1a1a)',
-        borderBottom: '1px solid var(--rb-border-subtle, #333)',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 16px',
-        gap: '16px',
-        color: 'var(--rb-text-primary, #e5e5e5)',
-        fontSize: '14px',
-      }}
-      data-testid="ide-top-bar"
-    >
-      <div style={{ fontWeight: 600 }}>{projectName || 'Untitled Project'}</div>
-      <div style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--rb-text-secondary, #999)' }}>
-        {isDirty ? '● Unsaved' : '✓ Saved'} · Basys3
-      </div>
+    <div className="ide-content-grid" data-testid={`ide-mode-${mode}`} data-ide-mode-marker={mode}>
+      <main className="ide-main-area" data-testid="ide-mode-body">
+        <IdePanel title={modeText.title} description={modeText.description} testId="ide-main-panel">
+          <div className="ide-card-grid">
+            <IdeCard title="Current Focus" subtitle="Intentional surface planning">
+              <p className="ide-copy">
+                This mode now has a locked layout contract. Next commits replace placeholders with
+                fully functional mode-specific panels.
+              </p>
+              <div className="ide-inline-actions">
+                <IdeStatusPill tone="warn">In Progress</IdeStatusPill>
+                <IdeStatusPill tone="idle">{modeText.marker}</IdeStatusPill>
+              </div>
+            </IdeCard>
+            <IdeCard title="Primary Actions" subtitle="Mode-scoped only">
+              <ul className="ide-list">
+                <li>Read and write only allowed RBProject fields.</li>
+                <li>Render deterministic empty, error, and success states.</li>
+                <li>Preserve Basys3-only product constraints.</li>
+              </ul>
+            </IdeCard>
+          </div>
+          <IdeEmptyState
+            title={`${modeText.title} content is being implemented`}
+            body="The shell, typography, spacing, and mode structure are now stable. Next mode commits populate this area with real workflows."
+            primaryAction={<IdeButton tone="primary">Continue Build</IdeButton>}
+            secondaryAction={<IdeButton tone="ghost">View Contract</IdeButton>}
+            testId="ide-mode-empty-state"
+          />
+        </IdePanel>
+      </main>
+
+      <aside className="ide-inspector" data-testid="ide-inspector">
+        <IdeInspectorSection title="Inspector">
+          <p className="ide-copy">
+            Right-side inspection stays consistent across modes. Sections vary by mode depth.
+          </p>
+        </IdeInspectorSection>
+        <IdeInspectorSection title="Determinism">
+          <IdeCallout tone="info" title="Contract">
+            No silent fallback. No hidden mode mutations. No launcher surface at default route.
+          </IdeCallout>
+        </IdeInspectorSection>
+      </aside>
     </div>
   );
 };
 
-/**
- * Left rail — mode selector (tab-like navigation)
- */
-const IdeLeftRail: React.FC<{ currentMode: IDEMode; onModeChange: (mode: IDEMode) => void }> = ({
-  currentMode,
-  onModeChange,
-}) => {
-  const modes: Array<{ id: IDEMode; label: string; icon: string }> = [
-    { id: 'project', label: 'Project', icon: '📋' },
-    { id: 'design', label: 'Design', icon: '✎' },
-    { id: 'verify', label: 'Verify', icon: '✓' },
-    { id: 'export', label: 'Export', icon: '↗' },
-    { id: 'import', label: 'Import', icon: '↙' },
-  ];
-
-  return (
-    <div
-      style={{
-        width: '120px',
-        background: 'var(--rb-surface-primary, #0f0f0f)',
-        borderRight: '1px solid var(--rb-border-subtle, #333)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '4px',
-        padding: '8px',
-        overflowY: 'auto',
-      }}
-      data-testid="ide-left-rail"
-    >
-      {modes.map((mode) => (
-        <button
-          key={mode.id}
-          onClick={() => onModeChange(mode.id)}
-          style={{
-            background: currentMode === mode.id ? 'var(--rb-surface-secondary, #1a1a1a)' : 'transparent',
-            border: currentMode === mode.id ? '1px solid var(--rb-accent, #4299e1)' : '1px solid transparent',
-            color: currentMode === mode.id ? 'var(--rb-accent, #4299e1)' : 'var(--rb-text-secondary, #999)',
-            padding: '8px',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '12px',
-            fontWeight: currentMode === mode.id ? 600 : 400,
-            transition: 'all 0.2s',
-          }}
-          data-testid={`mode-button-${mode.id}`}
-        >
-          <div style={{ fontSize: '16px', marginBottom: '4px' }}>{mode.icon}</div>
-          {mode.label}
-        </button>
-      ))}
-    </div>
-  );
-};
-
-/**
- * Mode body — renders placeholder for each mode
- * (Will integrate real mode components later)
- */
-const ModeBody: React.FC<{ mode: IDEMode }> = ({ mode }) => {
-  const modeLabel: Record<IDEMode, string> = {
-    project: 'Project Management',
-    design: 'Logic Design Canvas',
-    verify: 'Verification & Simulation',
-    export: 'Export to FPGA',
-    import: 'Import from Vivado',
-  };
-
-  return (
-    <div
-      style={{
-        flex: 1,
-        minWidth: 0,
-        minHeight: 0,
-        overflow: 'auto',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--rb-bg-dark, #0f0f0f)',
-        color: 'var(--rb-text-secondary, #999)',
-        fontSize: '18px',
-      }}
-      data-testid="ide-mode-body"
-    >
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚀</div>
-        <div>{modeLabel[mode]}</div>
-        <div style={{ fontSize: '12px', marginTop: '8px', color: 'var(--rb-text-tertiary, #666)' }}>
-          Coming soon
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/**
- * Main IdeApp export — this is what gets rendered by ide-bootstrap.ts
- *
- * This component:
- * 1. Renders top bar + left rail + mode body
- * 2. Manages IDE mode state locally
- * 3. No Shell, no launcher, no OS chrome
- * 4. Minimal surface — just IDE layout
- */
 export const IdeApp: React.FC = () => {
-  const [currentMode, setCurrentMode] = useState<IDEMode>('design');
+  const [currentMode, setCurrentMode] = useState<IdeMode>('project');
   const [projectName] = useState('Basys3 Design');
-  const [isDirty] = useState(false);
+  const [saveState] = useState<'saved' | 'unsaved' | 'autosaving'>('saved');
+
+  const determinismHash = useMemo(() => '2f4e0bb0f17ac4d2', []);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -158,30 +119,23 @@ export const IdeApp: React.FC = () => {
   }, []);
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        width: '100vw',
-        height: '100vh',
-        background: 'var(--rb-bg-dark, #0f0f0f)',
-        color: 'var(--rb-text-primary, #e5e5e5)',
-      }}
-      data-testid="ide-root"
-      data-redbyte-mode="ide"
-    >
-      <IdeTopBar projectName={projectName} isDirty={isDirty} />
-      <div
-        style={{
-          display: 'flex',
-          flex: 1,
-          minHeight: 0,
-          overflow: 'hidden',
-        }}
-      >
+    <div className="ide-root" data-testid="ide-root" data-redbyte-mode="ide">
+      <div className="ide-backdrop-gradient" aria-hidden="true" />
+
+      <IdeTopBar
+        projectName={projectName}
+        saveState={saveState}
+        onRunVerify={() => setCurrentMode('verify')}
+        onExport={() => setCurrentMode('export')}
+        onHelp={() => setCurrentMode('project')}
+      />
+
+      <div className="ide-layout-shell">
         <IdeLeftRail currentMode={currentMode} onModeChange={setCurrentMode} />
-        <ModeBody mode={currentMode} />
+        <ModePlaceholder mode={currentMode} />
       </div>
+
+      <IdeStatusBar mode={currentMode} determinismHash={determinismHash} gateStatus="warn" />
     </div>
   );
 };
