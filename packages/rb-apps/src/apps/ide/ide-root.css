@@ -537,6 +537,12 @@
   color: #a9e8ff;
 }
 
+.ide-verify-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--ide-space-2);
+}
+
 .ide-signal-list {
   display: grid;
   gap: var(--ide-space-2);
