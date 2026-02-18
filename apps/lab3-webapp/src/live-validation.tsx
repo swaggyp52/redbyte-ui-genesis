@@ -27,7 +27,7 @@ export const LiveValidation: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-7 gap-2">
-        {SEGMENT_NAMES.map((segName) => {
+        {SEGMENT_NAMES.map((segName: string) => {
           const errors = validationErrors[segName] || [];
           const expr = booleanExpressions[segName as keyof typeof booleanExpressions];
           const hasError = errors.length > 0;
@@ -35,11 +35,10 @@ export const LiveValidation: React.FC = () => {
           return (
             <div
               key={segName}
-              className={`rounded border-2 p-3 transition-all ${
-                hasError
-                  ? 'bg-pink-900/20 border-pink-600 shadow-lg shadow-pink-600/50'
-                  : 'bg-slate-700 border-emerald-600'
-              }`}
+              className={`rounded border-2 p-3 transition-all ${hasError
+                ? 'bg-pink-900/20 border-pink-600 shadow-lg shadow-pink-600/50'
+                : 'bg-slate-700 border-emerald-600'
+                }`}
             >
               <div className="text-center mb-2">
                 <div className="text-2xl font-bold">{segName.toUpperCase()}</div>
@@ -49,7 +48,7 @@ export const LiveValidation: React.FC = () => {
               </div>
               {hasError && (
                 <div className="text-xs text-pink-200 space-y-1 mt-2 border-t border-pink-700 pt-2 max-h-24 overflow-y-auto">
-                  {errors.slice(0, 3).map((err, idx) => (
+                  {errors.slice(0, 3).map((err: string, idx: number) => (
                     <div key={idx} className="font-mono text-pink-100">
                       {err}
                     </div>

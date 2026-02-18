@@ -8,6 +8,7 @@ export interface LabDocMeta {
   name: string;
   createdAt: string;
   updatedAt: string;
+  studentName?: string;
 }
 
 export interface LabDocMetaV2 extends LabDocMeta {

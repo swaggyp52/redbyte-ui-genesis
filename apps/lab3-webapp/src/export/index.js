@@ -92,14 +92,14 @@ export async function generatePDFReport(doc, options) {
     };
     const addHeading = (text) => {
         pdf.setFontSize(16);
-        pdf.setFont(undefined, 'bold');
+        pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(0, 100, 150);
         pdf.text(text, margin, yPos);
         yPos += 15;
     };
     const addSubheading = (text) => {
         pdf.setFontSize(13);
-        pdf.setFont(undefined, 'bold');
+        pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(50, 50, 50);
         pdf.text(text, margin, yPos);
         yPos += 10;
@@ -117,7 +117,7 @@ export async function generatePDFReport(doc, options) {
     // Truth Table Section
     addSubheading('Truth Table');
     pdf.setFontSize(9);
-    pdf.setFont(undefined, 'normal');
+    pdf.setFont('helvetica', 'normal');
     const truthTableHeaders = ['Input', 'B3', 'B2', 'B1', 'B0', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'DC'];
     const truthTableData = doc.truthTable.map((row, i) => [
         String(i),
@@ -136,7 +136,7 @@ export async function generatePDFReport(doc, options) {
         const expr = doc.expressions[seg] || '(not defined)';
         pdf.setFontSize(10);
         pdf.text(`${seg}: `, margin + 2, yPos);
-        pdf.setFont(undefined, 'italic');
+        pdf.setFont('helvetica', 'italic');
         addText(expr, 10, 5);
     });
     // Validation Summary

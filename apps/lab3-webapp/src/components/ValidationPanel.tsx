@@ -3,9 +3,15 @@ import { AlertCircle, CheckCircle2, AlertTriangle, Info, X } from 'lucide-react'
 import { useLabStore } from '../store/labStore';
 import type { ValidationError } from '../validation';
 
+interface ValidationResult {
+  allErrors: ValidationError[];
+  canAdvance: boolean;
+  message: string;
+}
+
 export const ValidationPanel: React.FC = () => {
   const doc = useLabStore((s) => s.doc);
-  const validation = (doc.results as any)?.validation;
+  const validation = (doc.results as any)?.validation as ValidationResult | undefined;
 
   if (!validation) {
     return null;
@@ -20,13 +26,12 @@ export const ValidationPanel: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* Summary Banner */}
-      <div className={`border-l-4 rounded-lg p-4 flex items-start gap-3 ${
-        hasErrors
+      <div className={`border-l-4 rounded-lg p-4 flex items-start gap-3 ${hasErrors
           ? 'bg-red-950/50 border-red-500/50'
           : !canAdvance
-          ? 'bg-amber-950/50 border-amber-500/50'
-          : 'bg-emerald-950/50 border-emerald-500/50'
-      }`}>
+            ? 'bg-amber-950/50 border-amber-500/50'
+            : 'bg-emerald-950/50 border-emerald-500/50'
+        }`}>
         <div className="flex-shrink-0 mt-0.5">
           {hasErrors ? (
             <AlertCircle className="w-5 h-5 text-red-400" />
@@ -36,9 +41,8 @@ export const ValidationPanel: React.FC = () => {
             <AlertTriangle className="w-5 h-5 text-amber-400" />
           )}
         </div>
-        <p className={`font-digital font-medium ${
-          hasErrors ? 'text-red-300' : canAdvance ? 'text-emerald-300' : 'text-amber-300'
-        }`}>
+        <p className={`font-digital font-medium ${hasErrors ? 'text-red-300' : canAdvance ? 'text-emerald-300' : 'text-amber-300'
+          }`}>
           {message}
         </p>
       </div>
@@ -109,9 +113,8 @@ export const ValidationPanel: React.FC = () => {
       {/* Advancement Status */}
       <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
         <div className="flex items-start gap-2">
-          <div className={`w-3 h-3 rounded-full mt-1 flex-shrink-0 ${
-            canAdvance ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'
-          }`} />
+          <div className={`w-3 h-3 rounded-full mt-1 flex-shrink-0 ${canAdvance ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'
+            }`} />
           <p className="font-digital text-sm">
             {canAdvance
               ? '✅ You can advance to the next step!'

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLabStore } from './store/labStore';
 import { ChevronDown, Plus, Trash2, Lightbulb, Copy, Check } from 'lucide-react';
+import type { KMapState } from './types';
 
 const SEGMENT_NAMES = ['a', 'b', 'c', 'd', 'e', 'f', 'g'] as const;
 
@@ -62,7 +63,7 @@ export const KMapViewerInteractive: React.FC = () => {
         <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 flex items-start gap-3">
           <Lightbulb size={20} className="text-cyan-400 flex-shrink-0 mt-0.5" />
           <div className="font-digital text-sm text-cyan-300">
-            <strong>How to use:</strong> Click and drag to create rectangular groups of 1s. Groups must be power-of-2 sized (1, 2, 4, 8, or 16 cells). 
+            <strong>How to use:</strong> Click and drag to create rectangular groups of 1s. Groups must be power-of-2 sized (1, 2, 4, 8, or 16 cells).
             Larger groups = simpler expressions! Groups can wrap around edges.
           </div>
         </div>
@@ -86,11 +87,13 @@ export const KMapViewerInteractive: React.FC = () => {
   );
 };
 
+
+
 interface KMapSegmentInteractiveProps {
   segmentName: string;
   isExpanded: boolean;
   onToggle: () => void;
-  kmap: any;
+  kmap: KMapState[string] | undefined;
   expr: string;
   onExprChange: (expr: string) => void;
 }
@@ -167,7 +170,7 @@ const KMapSegmentInteractive: React.FC<KMapSegmentInteractiveProps> = ({
     // Convert cell indices to boolean term
     // This is a simplified version - full version would need Gray code analysis
     const terms: string[] = [];
-    
+
     // Find which bits are constant across all cells
     const firstCell = cells[0];
     const firstRow = Math.floor(firstCell / 4);
@@ -176,9 +179,9 @@ const KMapSegmentInteractive: React.FC<KMapSegmentInteractiveProps> = ({
 
     // Simplified: just return variables that change
     // Real implementation would analyze Gray code patterns
-    return cells.length === 16 ? '1' : 
-           cells.length === 1 ? `term_${cells[0]}` :
-           `group(${cells.length})`;
+    return cells.length === 16 ? '1' :
+      cells.length === 1 ? `term_${cells[0]}` :
+        `group(${cells.length})`;
   };
 
   const updateExpressionFromGroups = (currentGroups: KMapGroup[]) => {
@@ -230,7 +233,7 @@ const KMapSegmentInteractive: React.FC<KMapSegmentInteractiveProps> = ({
     // Auto-generate optimal groups using Quine-McCluskey
     // This is a placeholder - full implementation would use proper algorithm
     const ones = grid.map((v, i) => ({ v, i })).filter(x => x.v !== 0).map(x => x.i);
-    
+
     // Simple heuristic: group by size 8, 4, 2, 1
     const newGroups: KMapGroup[] = [];
     let covered = new Set<number>();
@@ -304,9 +307,8 @@ const KMapSegmentInteractive: React.FC<KMapSegmentInteractiveProps> = ({
                         return (
                           <div
                             key={`${rowIdx}-${colIdx}`}
-                            className={`w-12 h-12 flex items-center justify-center cursor-pointer select-none transition-all duration-200 rounded font-tech-display font-bold ${
-                              isLinkedHover ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-slate-950 shadow-lg' : ''
-                            }`}
+                            className={`w-12 h-12 flex items-center justify-center cursor-pointer select-none transition-all duration-200 rounded font-tech-display font-bold ${isLinkedHover ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-slate-950 shadow-lg' : ''
+                              }`}
                             style={getCellStyle(rowIdx, colIdx)}
                             onMouseDown={() => handleCellMouseDown(rowIdx, colIdx)}
                             onMouseMove={() => handleCellMouseMove(rowIdx, colIdx)}
