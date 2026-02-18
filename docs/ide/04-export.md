@@ -1,0 +1,68 @@
+# Export Mode Spec
+
+Status: Phase 1 v1
+Mode ID: `export`
+
+## Purpose
+
+Act as compiler-like export authority for Basys3 Vivado artifacts.
+
+## Primary Actions (max 3)
+
+1. Validate export readiness.
+2. Preview generated artifacts.
+3. Export deterministic artifacts.
+
+## Layout
+
+1. Top readiness strip
+- `READY`, `WARNING`, or `BLOCKED` state.
+- Blocking issue count.
+
+2. Main center
+- Artifact tree with preview panes (`top.vhd`, `top.xdc`, README).
+
+3. Right inspector
+- Pin table.
+- Validation and warning list.
+
+## Empty State
+
+Headline: `Project is not export-ready`
+Primary CTA: `Fix IO mapping in Project Mode`
+Secondary action: `Open validation details`
+
+## Error State
+
+Hard block export when:
+
+1. Missing IO mapping.
+2. Unsupported nodes for synthesis.
+3. Missing top-level constraints.
+
+Each error must include a direct fix path.
+
+## Success State
+
+`Export Ready` with:
+
+1. Artifact count.
+2. Deterministic export hash.
+3. Download actions enabled.
+
+## Data Contract (RBProject)
+
+Reads:
+
+1. `hdl`
+2. `fpga`
+3. `ioMapping`
+4. `meta`
+5. `circuit`
+
+Writes (guarded):
+
+1. `hdl`
+2. `fpga`
+3. `ioMapping`
+4. `meta`
