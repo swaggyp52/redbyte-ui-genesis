@@ -9,6 +9,7 @@ import { IdeTopBar } from './ide/components/IdeTopBar';
 import { IdeStatusBar } from './ide/components/IdeStatusBar';
 import { ProjectSurface } from './ide/surfaces/ProjectSurface';
 import { DesignSurface } from './ide/surfaces/DesignSurface';
+import { VerifySurface } from './ide/surfaces/VerifySurface';
 import {
   IdeButton,
   IdeCallout,
@@ -151,6 +152,12 @@ export const IdeApp: React.FC = () => {
           />
         ) : currentMode === 'design' ? (
           <DesignSurface onOpenPalette={() => null} />
+        ) : currentMode === 'verify' ? (
+          <VerifySurface
+            deterministicHash={determinismHash}
+            hasVectors={vectorCount > 0}
+            onOpenProjectVectors={() => setCurrentMode('project')}
+          />
         ) : (
           <ModePlaceholder mode={currentMode} />
         )}

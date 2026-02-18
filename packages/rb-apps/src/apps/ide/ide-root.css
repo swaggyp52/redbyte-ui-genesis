@@ -462,6 +462,103 @@
   border-color: rgba(46, 196, 182, 0.5);
 }
 
+.ide-verify-banner {
+  border: 1px solid rgba(58, 87, 116, 0.72);
+  border-radius: var(--ide-radius-s);
+  padding: var(--ide-space-3);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--ide-space-3);
+}
+
+.ide-verify-banner.is-pass {
+  border-color: rgba(82, 210, 115, 0.5);
+  background: rgba(82, 210, 115, 0.14);
+}
+
+.ide-verify-banner.is-fail {
+  border-color: rgba(255, 107, 107, 0.54);
+  background: rgba(255, 107, 107, 0.13);
+}
+
+.ide-verify-label {
+  margin: 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ide-text-soft);
+}
+
+.ide-verify-banner h3 {
+  margin: 6px 0 0;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.ide-verify-hash-block {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  min-width: 220px;
+}
+
+.ide-verify-hash-block span {
+  font-size: 11px;
+  color: var(--ide-text-soft);
+}
+
+.ide-verify-hash-block code {
+  font-family: var(--ide-font-mono);
+  font-size: 11px;
+  color: #a9e8ff;
+}
+
+.ide-signal-list {
+  display: grid;
+  gap: var(--ide-space-2);
+}
+
+.ide-signal-row {
+  text-align: left;
+  border: 1px solid rgba(130, 160, 188, 0.4);
+  border-radius: var(--ide-radius-s);
+  background: rgba(23, 38, 53, 0.76);
+  color: var(--ide-text-muted);
+  font-size: 12px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.ide-signal-row:hover {
+  border-color: rgba(46, 196, 182, 0.5);
+  color: #d5fffa;
+}
+
+.ide-waveform-stub {
+  height: 120px;
+  border-radius: var(--ide-radius-s);
+  border: 1px solid rgba(130, 160, 188, 0.4);
+  background: linear-gradient(180deg, rgba(8, 18, 29, 0.78), rgba(14, 27, 40, 0.88));
+  display: grid;
+  grid-template-rows: repeat(4, 1fr);
+  gap: 8px;
+  padding: 10px;
+}
+
+.ide-waveform-stub span {
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(46, 196, 182, 0.12) 0%,
+    rgba(46, 196, 182, 0.12) 25%,
+    rgba(249, 199, 79, 0.42) 25%,
+    rgba(249, 199, 79, 0.42) 55%,
+    rgba(46, 196, 182, 0.12) 55%,
+    rgba(46, 196, 182, 0.12) 100%
+  );
+}
+
 .ide-button {
   border: 1px solid transparent;
   border-radius: var(--ide-radius-s);
