@@ -80,12 +80,14 @@ describe('fixture03 sequential verify/export parity', () => {
     const verifyResult = await runTestVectors(project.circuit, vectors, project.ioMapping, project.hdl);
     expect(verifyResult.schedule).toBe('clocked_macro');
     expect(verifyResult.trace.length).toBe(vectors.length);
+    expect(verifyResult.deterministicHash).toBe('sha:3b867e39');
 
     const generatedTestbench = generateTestbenchVhdl(project, vectors);
     expect(generatedTestbench).toContain('-- schedule=clocked_macro');
     expect(generatedTestbench).toContain('-- sequence=0->1->0');
-    expect(generatedTestbench).toContain("clk <= '0';");
-    expect(generatedTestbench).toContain("clk <= '1';");
+    const macroSchedulePattern = /clk <= '0';\s+wait for CLK_HALF_PERIOD;\s+clk <= '1';\s+wait for CLK_HALF_PERIOD;\s+clk <= '0';\s+wait for CLK_HALF_PERIOD;\s+wait for 0 ns;/g;
+    const macroScheduleMatches = generatedTestbench.match(macroSchedulePattern) ?? [];
+    expect(macroScheduleMatches.length).toBe(vectors.length);
 
     const exportResult = exportProjectAsBasys3(project);
     expect(exportResult.bundle?.testbench).toBe(generatedTestbench);
