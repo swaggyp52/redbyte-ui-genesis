@@ -10,14 +10,17 @@ import { join } from 'path';
 import { cwd } from 'process';
 
 const repoRoot = cwd();
-const testFile = 'packages/rb-apps/src/import/__tests__/importExportRoundtrip.test.ts';
+const testFiles = [
+  'packages/rb-apps/src/import/__tests__/importExportRoundtrip.test.ts',
+  'packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts',
+];
 
 console.log('🔍 Import Roundtrip Validation (PR5)');
-console.log(`📍 Test: ${testFile}`);
+console.log(`📍 Tests: ${testFiles.join(', ')}`);
 console.log('—'.repeat(60));
 
 try {
-  execSync(`npx vitest run ${testFile} --reporter=verbose`, {
+  execSync(`npx vitest run ${testFiles.join(' ')} --reporter=verbose`, {
     cwd: repoRoot,
     stdio: 'inherit',
     timeout: 120000,
