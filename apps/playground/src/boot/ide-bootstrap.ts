@@ -1,5 +1,5 @@
 /**
- * IDE Bootstrap: Render Logic Playground as a standalone IDE (no Shell, no window manager)
+ * IDE Bootstrap: Render RedByte IDE as a standalone IDE (no Shell, no window manager)
  * 
  * This bypasses the entire window system and renders the IDE as a fullscreen app.
  * No dragging. No minimize. No window chrome. Just the IDE.
@@ -7,9 +7,7 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ErrorBoundary } from '@redbyte/rb-shell';
-import { LogicPlaygroundComponent } from '@redbyte/rb-apps';
-import { registerAllApps } from '@redbyte/rb-apps';
+import { ErrorBoundary, registerAllApps } from '@redbyte/rb-apps';
 import { initializeStoreInstrumentation, installFatalCapture, pushMount } from '@redbyte/rb-utils';
 import '../index.css';
 import '../ide/ide-root.css';
@@ -52,6 +50,9 @@ export async function bootstrapIDE() {
     // Mark root as IDE mode for CSS 
     root.setAttribute('data-ide-mode', 'true');
     
+    // Dynamically import IdeApp to avoid circular dependency with Three.js
+    const { IdeApp } = await import('@redbyte/rb-apps/src/apps/IdeApp');
+
     ReactDOM.createRoot(root).render(
       React.createElement(
         React.StrictMode,
@@ -59,19 +60,7 @@ export async function bootstrapIDE() {
         React.createElement(
           ErrorBoundary,
           null,
-          React.createElement(
-            'div',
-            { className: 'ide-root-container', 'data-testid': 'ide-root-container' },
-            React.createElement(LogicPlaygroundComponent, {
-              // Minimal IDE-mode props (all optional, so safe defaults apply)
-              windowId: 'ide-logic-playground',
-              // No Shell context means no app-opening callbacks
-              onOpenApp: undefined,
-              registerStateAccessor: undefined,
-              unregisterStateAccessor: undefined,
-              determinismRecorder: undefined,
-            })
-          )
+          React.createElement(IdeApp)
         )
       )
     );
