@@ -1,6 +1,7 @@
 # RedByte IDE Style Guide (Phase 1)
 
 Status: v1 design token contract for `IdeApp`
+Canonical companion: `docs/ide/ui-contract.md`
 
 ## Visual Direction
 
@@ -10,16 +11,18 @@ Avoid: flat gray-on-gray and decorative chrome.
 ## Foundations
 
 1. Grid and spacing
-- 8px base rhythm.
-- Core spacing scale: 4, 8, 12, 16, 24, 32.
+- 12-column main content grid within bounded container.
+- 8px base rhythm only.
+- Core spacing scale: 8, 16, 24, 32, 40, 48.
 
 2. Typography
 - UI font: `IBM Plex Sans`, fallback `Segoe UI`, sans-serif.
 - Mono font: `IBM Plex Mono`, fallback `Consolas`, monospace.
 - Size tiers:
-1. Body: 14px
-2. Label/meta: 12px
-3. Heading: 18px/24px
+1. Page title: 20-22px
+2. Section headers: 14-16px
+3. Body: 13-14px
+4. Secondary/meta: 12px
 
 3. Radius and depth
 - Radius: 8px default, 12px large containers.
@@ -80,3 +83,4 @@ Use CSS custom properties and never hardcode in components.
 2. Every CTA maps to one deterministic action.
 3. Avoid one-off style blocks inside mode components.
 4. Mode markers (`data-testid`) are required for gates.
+5. Every mode renders title row + action row + workspace + right inspector.
