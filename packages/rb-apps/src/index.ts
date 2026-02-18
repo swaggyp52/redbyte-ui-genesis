@@ -15,6 +15,7 @@ export * from './apps/files/modals';
 export * from './examples';
 export * from './components/EmptyState';
 export * from './components/IntegrityBadge';
+export { ErrorBoundary } from './components/ErrorBoundary';
 export * from './labs/labCatalog';
 export * from './ui/tokens';
 export * from './ui/components/index';
@@ -64,6 +65,9 @@ export * from './apps/firstRun/firstRunState';
 export * from './fpga/doctorReportV2';
 export * from './fpga/hardwareErrorTaxonomy';
 export * from './studentAppGate';
+export { default as LogicLabApp } from './apps/LogicLabApp';
+export { default as WalkthroughPage } from './apps/WalkthroughPage';
+export { IdeApp } from './apps/IdeApp';
 
 // DEFERRED EXPORTS: Do NOT import app modules at the module level.
 // This prevents circular dependencies and temporal dead zone errors

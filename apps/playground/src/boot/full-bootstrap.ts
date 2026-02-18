@@ -1,6 +1,5 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { Shell, ErrorBoundary } from '@redbyte/rb-shell';
 import { registerAllApps } from '@redbyte/rb-apps';
 import { initializeStoreInstrumentation, installFatalCapture, pushMount } from '@redbyte/rb-utils';
 import { bootstrapIDE } from './ide-bootstrap';
@@ -11,7 +10,11 @@ export async function bootstrap() {
   // PHASE A: Check if this is IDE mode or launcher mode
   const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const isLauncherMode = params.get('launcher') === '1';
-  
+
+  // ── Boot log: this is the critical router ──
+  console.log('[RB_BOOT] Router: launcher?', isLauncherMode, 'search=', window.location.search);
+  console.log('[RB_BOOT] Router: taking', isLauncherMode ? 'SHELL' : 'IDE');
+
   // If ?launcher=1, use Shell (OS mode). Otherwise, use IDE (direct render).
   if (isLauncherMode) {
     return bootstrapShell();
@@ -21,6 +24,7 @@ export async function bootstrap() {
 }
 
 // Old logic moved to bootstrapShell
+// rb-shell is lazy-loaded here so the default IDE path never pays for it.
 async function bootstrapShell() {
   // Install fatal capture always (production preview needs diagnostics for demo)
   installFatalCapture({ force: true });
@@ -32,7 +36,7 @@ async function bootstrapShell() {
   const isE2ELite = params.get('e2e') === '1';
   const isBootOnly = params.get('boot') === '1';
   const opts = isBootOnly ? { mode: 'e2e-boot' } : isE2ELite ? { mode: 'e2e-lite' } : undefined;
-  
+
   console.log('RB_APPS_REGISTER_START', opts ?? { mode: 'full' });
   const startedAt = performance.now();
 
@@ -112,6 +116,9 @@ async function bootstrapShell() {
     initializeStoreInstrumentation();
     pushMount('BOOT: store-instrumentation-initialized');
   }
+
+  // Lazy-load rb-shell only when actually needed (launcher mode)
+  const { Shell, ErrorBoundary } = await import('@redbyte/rb-shell');
 
   // Render Shell
   const root = document.getElementById('root');
