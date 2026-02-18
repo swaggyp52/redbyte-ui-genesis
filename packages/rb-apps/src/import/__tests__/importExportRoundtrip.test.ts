@@ -115,7 +115,7 @@ describe('importExportRoundtrip', () => {
   });
   
   it('Fixture port names match XDC constraint names', () => {
-    const fixtures = ['01-and-gate', '02-full-adder'];
+    const fixtures = ['01-and-gate', '02-full-adder', '03-vivado-ish-clocked'];
     
     for (const fixture of fixtures) {
       const { vhdl, xdc } = loadFixture(fixture);
@@ -129,5 +129,29 @@ describe('importExportRoundtrip', () => {
         expect(xdcResult.pinMap).toHaveProperty(port.name);
       }
     }
+  });
+
+  it('03-vivado-ish-clocked: handles varied XDC formatting without crashing', () => {
+    const { vhdl, xdc } = loadFixture('03-vivado-ish-clocked');
+    
+    // Parse (must not throw despite create_clock, varied spacing, IOSTANDARD)
+    expect(() => {
+      const parsed = parseVhdl(vhdl);
+      const xdcResult = parseXdcPins(xdc);
+      const project = importToRbProject(parsed, xdcResult);
+      
+      // Should extract all pins: clk, rst, count_en, q0, q1, q2, q3 = 7 ports
+      expect(Object.keys(project.ioMapping || {})).toHaveLength(7);
+    }).not.toThrow();
+  });
+
+  it('fixture XDC parsing warns on unsupported directives (not errors)', () => {
+    const { xdc } = loadFixture('03-vivado-ish-clocked');
+    const result = parseXdcPins(xdc);
+    
+    // Should warn about create_clock, IOSTANDARD, but NOT fail parsing
+    expect(result.warnings.length).toBeGreaterThan(0);
+    expect(result.pinMap).toBeDefined();
+    expect(Object.keys(result.pinMap).length).toBeGreaterThan(0);
   });
 });
