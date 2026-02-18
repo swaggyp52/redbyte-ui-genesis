@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
+import { fileURLToPath } from 'url';
 
 const ROOT = process.cwd();
 const FINAL_DIST = path.join(ROOT, 'dist');
@@ -76,29 +77,52 @@ async function merge() {
         console.warn('⚠️ Warning: public/_headers not found at', rootPublicHeaders);
     }
 
-    // 5. Verify index.html at root looks like marketing
+    // 5. Verify index.html at root is marketing (check for explicit marker)
     const rootIndex = path.join(FINAL_DIST, 'index.html');
     if (fs.existsSync(rootIndex)) {
         const content = fs.readFileSync(rootIndex, 'utf8');
-        if (content.includes('RedByte OS Genesis')) {
+        if (content.includes('REDBYTE_MARKETING_ROOT')) {
             console.log('✅ Verified: Marketing index is at root.');
         } else {
-            console.warn('⚠️ Warning: root index.html does not look like the RedByte Marketing Site.');
+            console.warn('⚠️ Warning: root index.html missing REDBYTE_MARKETING_ROOT marker. Contract violated.');
         }
+    } else {
+        console.warn('⚠️ Warning: ' + rootIndex + ' does not exist.');
     }
 
-    // 6. Verify /os/index.html
+    // 6. Verify /os/index.html is the IDE (check for explicit marker)
     const osIndex = path.join(FINAL_DIST, 'os/index.html');
     if (fs.existsSync(osIndex)) {
         const content = fs.readFileSync(osIndex, 'utf8');
-        if (content.includes('RedByte Playground')) {
-            console.log('✅ Verified: OS index is at /os/.');
+        if (content.includes('REDBYTE_OS_IDE')) {
+            console.log('✅ Verified: OS IDE index is at /os/.');
         } else {
-            console.warn('⚠️ Warning: /os/index.html does not look like the RedByte OS.');
+            console.warn('⚠️ Warning: /os/index.html missing REDBYTE_OS_IDE marker. Contract violated.');
         }
+    } else {
+        console.warn('⚠️ Warning: ' + osIndex + ' does not exist.');
     }
 
     console.log('✨ Merge complete! Deploy the root /dist directory.');
+
+    // 7. Verify dist manifest before declaring success
+    console.log('\n4. Verifying distribution...');
+    return new Promise((resolve, reject) => {
+        const verifyProcess = spawn('node', [path.join(ROOT, 'scripts/verify-dist-manifest.mjs')], {
+            stdio: 'inherit',
+        });
+
+        verifyProcess.on('exit', (code) => {
+            if (code !== 0) {
+                reject(new Error(`Manifest verification failed with code ${code}`));
+            } else {
+                console.log('✨ Unified Build Succeeded!');
+                resolve();
+            }
+        });
+
+        verifyProcess.on('error', reject);
+    });
 }
 
 merge().catch(err => {
