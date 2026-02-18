@@ -19,18 +19,24 @@
 
   --ide-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
 
-  --ide-space-1: 4px;
-  --ide-space-2: 8px;
-  --ide-space-3: 12px;
-  --ide-space-4: 16px;
-  --ide-space-5: 24px;
-  --ide-space-6: 32px;
+  --ide-space-1: 8px;
+  --ide-space-2: 16px;
+  --ide-space-3: 24px;
+  --ide-space-4: 32px;
+  --ide-space-5: 40px;
+  --ide-space-6: 48px;
 
   --ide-radius-s: 8px;
   --ide-radius-m: 12px;
 
   --ide-font-ui: 'IBM Plex Sans', 'Segoe UI', sans-serif;
   --ide-font-mono: 'IBM Plex Mono', Consolas, monospace;
+
+  --ide-content-max: 1280px;
+  --ide-rail-width: 124px;
+  --ide-inspector-width: 320px;
+  --ide-title-row-height: 56px;
+  --ide-action-row-height: 48px;
 }
 
 :root[data-redbyte-mode='ide'] body {
@@ -149,7 +155,7 @@
 
 .ide-layout-shell {
   display: grid;
-  grid-template-columns: 126px minmax(0, 1fr);
+  grid-template-columns: var(--ide-rail-width) minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
 }
@@ -237,9 +243,11 @@
 
 .ide-content-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) var(--ide-inspector-width);
   gap: var(--ide-space-4);
-  padding: var(--ide-space-4);
+  width: min(100%, var(--ide-content-max));
+  margin: 0 auto;
+  padding: var(--ide-space-3) var(--ide-space-4);
   min-height: 0;
   overflow: hidden;
 }
@@ -272,10 +280,21 @@
 
 .ide-panel-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--ide-space-3);
-  margin-bottom: var(--ide-space-4);
+  min-height: var(--ide-title-row-height);
+}
+
+.ide-panel-actions {
+  min-height: var(--ide-action-row-height);
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--ide-space-3);
+  padding-bottom: var(--ide-space-2);
+  border-bottom: 1px solid rgba(58, 87, 116, 0.5);
 }
 
 .ide-panel-title {
@@ -326,6 +345,10 @@
 .ide-copy-strong {
   color: var(--ide-text-strong);
   font-weight: 600;
+}
+
+.ide-copy-top-gap {
+  margin-top: var(--ide-space-1);
 }
 
 .ide-hash {
@@ -814,7 +837,7 @@
   }
 
   .ide-layout-shell {
-    grid-template-columns: 98px minmax(0, 1fr);
+    grid-template-columns: 108px minmax(0, 1fr);
   }
 
   .ide-mode-label {

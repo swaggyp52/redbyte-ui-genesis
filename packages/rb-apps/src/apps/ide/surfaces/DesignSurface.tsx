@@ -25,17 +25,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
         <IdePanel
           title="Design Workspace"
           description="Build deterministic circuit graphs for Basys3."
+          actions={
+            <div className="ide-design-toolbar">
+              <IdeButton tone="primary">Select</IdeButton>
+              <IdeButton tone="secondary">Wire</IdeButton>
+              <IdeButton tone="ghost">Delete</IdeButton>
+              <IdeButton tone="ghost">Zoom In</IdeButton>
+              <IdeButton tone="ghost">Zoom Out</IdeButton>
+            </div>
+          }
           right={<IdeStatusPill tone="idle">Canvas Ready</IdeStatusPill>}
           testId="ide-design-panel"
         >
-          <div className="ide-design-toolbar">
-            <IdeButton tone="primary">Select</IdeButton>
-            <IdeButton tone="secondary">Wire</IdeButton>
-            <IdeButton tone="ghost">Delete</IdeButton>
-            <IdeButton tone="ghost">Zoom In</IdeButton>
-            <IdeButton tone="ghost">Zoom Out</IdeButton>
-          </div>
-
           <div className="ide-design-layout">
             <section className="ide-design-palette" data-testid="ide-design-palette">
               <header className="ide-design-subheader">

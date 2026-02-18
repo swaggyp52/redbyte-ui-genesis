@@ -48,6 +48,16 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         <IdePanel
           title="Project Overview"
           description="Manage project identity, readiness, and handoff artifacts."
+          actions={
+            <>
+              <IdeButton tone="primary" onClick={onOpenDesign}>
+                Open Design Mode
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={onOpenImport}>
+                Import HDL
+              </IdeButton>
+            </>
+          }
           right={
             projectReady ? (
               <IdeStatusPill tone="ok">Project Ready</IdeStatusPill>
@@ -101,14 +111,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 <span>Vectors</span>
                 <span>{vectorCount}</span>
               </div>
-              <div className="ide-project-actions">
-                <IdeButton tone="primary" onClick={onOpenDesign}>
-                  Open Design Mode
-                </IdeButton>
-                <IdeButton tone="ghost" onClick={onOpenImport}>
-                  Import HDL
-                </IdeButton>
-              </div>
+              <p className="ide-copy ide-copy-top-gap">
+                {hasVectors ? 'Vector set detected and ready for Verify.' : 'No vectors defined yet.'}
+              </p>
             </div>
           </section>
 

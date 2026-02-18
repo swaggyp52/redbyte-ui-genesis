@@ -26,17 +26,21 @@ export const IdePanel: React.FC<{
   description?: string;
   children: React.ReactNode;
   right?: React.ReactNode;
+  actions?: React.ReactNode;
   testId?: string;
-}> = ({ title, description, children, right, testId }) => {
+}> = ({ title, description, children, right, actions, testId }) => {
   return (
     <section className="ide-panel" data-testid={testId}>
-      <header className="ide-panel-header">
+      <header className="ide-panel-header" data-testid="ide-panel-title-row">
         <div>
           <h2 className="ide-panel-title">{title}</h2>
           {description && <p className="ide-panel-description">{description}</p>}
         </div>
         {right}
       </header>
+      <div className="ide-panel-actions" data-testid="ide-panel-action-row">
+        {actions}
+      </div>
       <div className="ide-panel-body">{children}</div>
     </section>
   );

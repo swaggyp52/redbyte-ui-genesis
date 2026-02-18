@@ -35,6 +35,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         <IdePanel
           title="Verification"
           description="Deterministic vector execution and failure diagnostics."
+          actions={
+            <>
+              <IdeButton tone="primary">Run Verification</IdeButton>
+              <IdeButton tone="ghost" onClick={onOpenProjectVectors}>
+                Open Vectors
+              </IdeButton>
+            </>
+          }
           right={
             runPassed ? (
               <IdeStatusPill tone="ok">PASS</IdeStatusPill>

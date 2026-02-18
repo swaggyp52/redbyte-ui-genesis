@@ -54,7 +54,17 @@ const ModePlaceholder: React.FC<{ mode: IdeMode }> = ({ mode }) => {
   return (
     <div className="ide-content-grid" data-testid={`ide-mode-${mode}`} data-ide-mode-marker={mode}>
       <main className="ide-main-area" data-testid="ide-mode-body">
-        <IdePanel title={modeText.title} description={modeText.description} testId="ide-main-panel">
+        <IdePanel
+          title={modeText.title}
+          description={modeText.description}
+          actions={
+            <>
+              <IdeButton tone="primary">Continue Build</IdeButton>
+              <IdeButton tone="ghost">View Contract</IdeButton>
+            </>
+          }
+          testId="ide-main-panel"
+        >
           <div className="ide-card-grid">
             <IdeCard title="Current Focus" subtitle="Intentional surface planning">
               <p className="ide-copy">
