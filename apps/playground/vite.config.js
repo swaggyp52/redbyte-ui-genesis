@@ -26,7 +26,7 @@ function removeAllModulePreload() {
     };
 }
 export default defineConfig({
-    base: "/os/",
+    base: process.env.NODE_ENV === 'production' ? "/os/" : "/",
     plugins: [react(), tsconfigPaths({ loose: true }), removeAllModulePreload()],
     envPrefix: ['VITE_', 'RB_'],
     publicDir: path.resolve(__dirname, '../../public'),
