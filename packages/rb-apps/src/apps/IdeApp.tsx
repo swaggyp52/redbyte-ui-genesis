@@ -114,9 +114,20 @@ export const IdeApp: React.FC = () => {
   const [currentMode, setCurrentMode] = useState<IdeMode>('project');
   const [projectName] = useState('Basys3 Design');
   const [projectDescription] = useState('Deterministic student FPGA workspace');
-  const [ioMapped] = useState(6);
-  const [ioTotal] = useState(8);
-  const [vectorCount] = useState(0);
+  const [projectReadiness] = useState({
+    ioSignals: [
+      { id: 'sw0', direction: 'in' as const, mapped: true },
+      { id: 'sw1', direction: 'in' as const, mapped: true },
+      { id: 'sw2', direction: 'in' as const, mapped: true },
+      { id: 'sw3', direction: 'in' as const, mapped: true },
+      { id: 'led0', direction: 'out' as const, mapped: true },
+      { id: 'led1', direction: 'out' as const, mapped: true },
+      { id: 'led2', direction: 'out' as const, mapped: false },
+      { id: 'led3', direction: 'out' as const, mapped: false },
+    ],
+    vectors: [] as Array<{ id: string; tick: number }>,
+    lastVerify: null as { pass: boolean; failedCount: number } | null,
+  });
   const [saveState] = useState<'saved' | 'unsaved' | 'autosaving'>('saved');
 
   const determinismHash = useMemo(() => '2f4e0bb0f17ac4d2', []);
@@ -154,9 +165,7 @@ export const IdeApp: React.FC = () => {
             projectName={projectName}
             description={projectDescription}
             determinismHash={determinismHash}
-            ioMapped={ioMapped}
-            ioTotal={ioTotal}
-            vectorCount={vectorCount}
+            readiness={projectReadiness}
             onOpenDesign={() => setCurrentMode('design')}
             onOpenImport={() => setCurrentMode('import')}
           />
@@ -165,7 +174,7 @@ export const IdeApp: React.FC = () => {
         ) : currentMode === 'verify' ? (
           <VerifySurface
             deterministicHash={determinismHash}
-            hasVectors={vectorCount > 0}
+            hasVectors={projectReadiness.vectors.length > 0}
             onOpenProjectVectors={() => setCurrentMode('project')}
           />
         ) : (

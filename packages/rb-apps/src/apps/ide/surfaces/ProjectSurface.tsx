@@ -14,9 +14,11 @@ export interface ProjectSurfaceProps {
   projectName: string;
   description: string;
   determinismHash: string;
-  ioMapped: number;
-  ioTotal: number;
-  vectorCount: number;
+  readiness: {
+    ioSignals: Array<{ id: string; direction: 'in' | 'out'; mapped: boolean }>;
+    vectors: Array<{ id: string; tick: number }>;
+    lastVerify: { pass: boolean; failedCount: number } | null;
+  };
   onOpenDesign: () => void;
   onOpenImport: () => void;
 }
@@ -25,21 +27,40 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   projectName,
   description,
   determinismHash,
-  ioMapped,
-  ioTotal,
-  vectorCount,
+  readiness,
   onOpenDesign,
   onOpenImport,
 }) => {
+  const ioTotal = readiness.ioSignals.length;
+  const ioMapped = readiness.ioSignals.filter((signal) => signal.mapped).length;
+  const vectorCount = readiness.vectors.length;
+
   const ioCoverage = ioTotal > 0 ? Math.round((ioMapped / ioTotal) * 100) : 0;
   const hasVectors = vectorCount > 0;
-  const projectReady = ioCoverage === 100 && hasVectors;
+  const verifyFailed = readiness.lastVerify ? !readiness.lastVerify.pass : false;
+
+  const blockers: string[] = [];
+  if (ioCoverage < 100) {
+    blockers.push(`Map remaining IO signals (${ioMapped}/${ioTotal} mapped).`);
+  }
+  if (!hasVectors) {
+    blockers.push('Add at least one test vector for deterministic verification.');
+  }
+  if (verifyFailed) {
+    blockers.push(`Resolve ${readiness.lastVerify?.failedCount ?? 0} verification failures.`);
+  }
+
+  const projectReady = blockers.length === 0;
 
   const artifactRows = [
     ['rb-project.json', 'Project schema snapshot', 'Ready'],
     ['top.vhd', 'Generated from current graph', projectReady ? 'Ready' : 'Pending'],
     ['top.xdc', 'Basys3 constraints', ioCoverage === 100 ? 'Ready' : 'Blocked'],
-    ['verify-report.json', 'Deterministic verification report', hasVectors ? 'Ready' : 'Pending'],
+    [
+      'verify-report.json',
+      'Deterministic verification report',
+      hasVectors && !verifyFailed ? 'Ready' : 'Pending',
+    ],
   ];
 
   return (
@@ -87,9 +108,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
 
           {!projectReady && (
             <IdeCallout tone="warn" title="Readiness blockers">
-              {ioCoverage < 100
-                ? `IO mapping is ${ioCoverage}% complete.`
-                : 'Add at least one test vector before verification and export.'}
+              <ul className="ide-list">
+                {blockers.map((blocker) => (
+                  <li key={blocker}>{blocker}</li>
+                ))}
+              </ul>
             </IdeCallout>
           )}
 
@@ -113,6 +136,26 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               </div>
               <p className="ide-copy ide-copy-top-gap">
                 {hasVectors ? 'Vector set detected and ready for Verify.' : 'No vectors defined yet.'}
+              </p>
+            </div>
+
+            <div className="ide-metric">
+              <div className="ide-metric-header">
+                <span>Last Verify</span>
+                <span>
+                  {readiness.lastVerify
+                    ? readiness.lastVerify.pass
+                      ? 'PASS'
+                      : 'FAIL'
+                    : 'Not Run'}
+                </span>
+              </div>
+              <p className="ide-copy ide-copy-top-gap">
+                {readiness.lastVerify
+                  ? readiness.lastVerify.pass
+                    ? 'Latest verification run passed deterministically.'
+                    : `${readiness.lastVerify.failedCount} failures require fixes before export.`
+                  : 'Run Verify to establish deterministic readiness.'}
               </p>
             </div>
           </section>
