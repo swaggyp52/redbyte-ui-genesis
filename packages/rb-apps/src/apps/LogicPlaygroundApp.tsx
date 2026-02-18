@@ -81,6 +81,12 @@ import { verilogFromNetlist } from '../export/verilogExport';
 import { HierarchyBreadcrumbs } from '../components/HierarchyBreadcrumbs';
 import { IDEModeNav } from '../components/IDEModeNav';
 import { IdeProvider, type IDEMode, type IdeContextValue } from './ide/IdeContext';
+import {
+  evaluateModeMutationBoundary,
+  formatModeGuardMessage,
+  logModeGuardViolation,
+  type ModeGuardViolationLog,
+} from './ide/modeGuards';
 import { ProjectMode } from './ide/modes/ProjectMode';
 import { DesignMode } from './ide/modes/DesignMode';
 import { VerifyMode } from './ide/modes/VerifyMode';
@@ -598,6 +604,8 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
   // IDE mode: maps the 5-stage student journey to the right dock
   const [ideMode, setIdeMode] = useState<IDEMode>('design');
+  const [modeGuardError, setModeGuardError] = useState<string | null>(null);
+  const modeEntryProjectRef = useRef<RBProject | null>(null);
   const [showLabModal, setShowLabModal] = useState(false);
   const { safeMode, isComplexityWarning } = useClassroomModeStore();
 
@@ -612,10 +620,51 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
   const setPerspective = handleSetPerspective; // Alias for minimal refactor
 
+  const clearModeGuardError = useCallback(() => {
+    setModeGuardError(null);
+  }, []);
+
+  const modeGuardLogger = useCallback((entry: ModeGuardViolationLog) => {
+    console.error('[RB_MODE_GUARD]', entry);
+  }, []);
+
+  const snapshotProjectForModeGuard = useCallback((): RBProject | null => {
+    const snapshot = getProjectSnapshot();
+    if (!snapshot) return null;
+    return decodeRBProject(encodeRBProject(snapshot));
+  }, [getProjectSnapshot]);
+
+  useEffect(() => {
+    if (modeEntryProjectRef.current) return;
+    const initial = snapshotProjectForModeGuard();
+    if (initial) {
+      modeEntryProjectRef.current = initial;
+    }
+  }, [snapshotProjectForModeGuard]);
+
   // Handle IDE mode changes — right dock only; canvas is ALWAYS visible.
   // Each mode click ALWAYS opens the dock to the correct tab (no ambiguity).
   const handleIdeModeChange = useCallback((mode: IDEMode) => {
+    const currentSnapshot = snapshotProjectForModeGuard();
+    const modeEntrySnapshot = modeEntryProjectRef.current;
+
+    if (modeEntrySnapshot && currentSnapshot) {
+      const boundary = evaluateModeMutationBoundary(ideMode, modeEntrySnapshot, currentSnapshot);
+      if (!boundary.ok) {
+        const message = formatModeGuardMessage(boundary);
+        logModeGuardViolation(modeGuardLogger, boundary);
+        setModeGuardError(message);
+        addToast('Mode guard blocked illegal project mutation', 'error', 4500);
+        return;
+      }
+    }
+
+    setModeGuardError(null);
     setIdeMode(mode);
+    if (currentSnapshot) {
+      modeEntryProjectRef.current = currentSnapshot;
+    }
+
     const layout = useLayoutStore.getState();
     // Ensure dock is visible (at least peek) for any mode with a target tab
     const ensureDockOpen = () => {
@@ -646,7 +695,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
         layout.openDock('import' as any, undefined);
         break;
     }
-  }, []);
+  }, [addToast, ideMode, modeGuardLogger, snapshotProjectForModeGuard]);
 
   const splitRatio = useLayoutStore((state) => state.splitRatio);
   const setSplitRatio = useLayoutStore((state) => state.setSplitRatio);
@@ -3372,6 +3421,8 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       }
 
       useRunRecorderStore.getState().setRecord(project.recorder?.lastRunRecord ?? null);
+      modeEntryProjectRef.current = decodeRBProject(encodeRBProject(project));
+      setModeGuardError(null);
       isHydratingRef.current = false;
     },
     [
@@ -3898,6 +3949,8 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const ideContextValue: IdeContextValue = {
     ideMode,
     setIdeMode,
+    modeGuardError,
+    clearModeGuardError,
     engine,
     tickEngine,
     circuit,
@@ -4006,6 +4059,21 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
             },
           }}
         />
+        {modeGuardError && (
+          <div
+            data-testid="ide-mode-guard-error"
+            className="mx-3 mt-2 rounded border border-red-700/70 bg-red-900/30 px-3 py-2 text-[11px] text-red-200 flex items-center justify-between gap-3"
+          >
+            <span>{modeGuardError}</span>
+            <button
+              type="button"
+              onClick={clearModeGuardError}
+              className="rounded bg-red-800/60 px-2 py-1 text-[10px] font-semibold text-red-100 hover:bg-red-700/60"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Hierarchy Breadcrumbs */}
         <HierarchyBreadcrumbs />

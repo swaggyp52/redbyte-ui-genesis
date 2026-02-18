@@ -22,6 +22,8 @@ export interface IdeContextValue {
   // ── Mode ──
   ideMode: IDEMode;
   setIdeMode: (mode: IDEMode) => void;
+  modeGuardError: string | null;
+  clearModeGuardError: () => void;
 
   // ── Engines ──
   engine: CircuitEngine | undefined;
