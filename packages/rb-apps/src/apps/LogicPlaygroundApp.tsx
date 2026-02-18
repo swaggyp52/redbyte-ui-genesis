@@ -4051,7 +4051,6 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
           onModeChange={handleIdeModeChange}
           labNumber={pinnedStarterInstructions?.labId?.replace(/\D/g, '') || undefined}
           labTitle={pinnedStarterInstructions?.title || undefined}
-          onOpenLabs={() => setShowLabModal(true)}
           modeStatus={{
             verify: {
               passed: 0,
@@ -4210,10 +4209,10 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
                   <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
                     <button
                       type="button"
-                      onClick={() => setShowLabModal(true)}
-                      style={{ pointerEvents: 'auto', padding: '7px 16px', borderRadius: '7px', background: 'rgba(239,35,60,0.12)', border: '1px solid rgba(239,35,60,0.3)', color: '#EF233C', fontSize: '12px', fontWeight: 600, fontFamily: '"IBM Plex Sans", sans-serif', cursor: 'pointer', letterSpacing: '0.01em' }}
+                      onClick={() => handleIdeModeChange('project')}
+                      style={{ pointerEvents: 'auto', padding: '7px 16px', borderRadius: '7px', background: 'rgba(80,94,255,0.12)', border: '1px solid rgba(80,94,255,0.35)', color: '#aeb8ff', fontSize: '12px', fontWeight: 600, fontFamily: '"IBM Plex Sans", sans-serif', cursor: 'pointer', letterSpacing: '0.01em' }}
                     >
-                      Load a Lab Template
+                      Open Project Overview
                     </button>
                     <button
                       type="button"

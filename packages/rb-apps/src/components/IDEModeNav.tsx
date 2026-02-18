@@ -10,7 +10,6 @@
  * Rules:
  * - One mode is always active. The canvas is ALWAYS visible; modes only change
  *   what's in the right dock, not what's on screen.
- * - The "Labs" button opens the template browser modal (not a back button).
  * - No other navigation competes with this bar inside the IDE.
  */
 
@@ -81,10 +80,6 @@ export interface IDEModeNavProps {
   onModeChange: (mode: IDEMode) => void;
   labNumber?: string;
   labTitle?: string;
-  /** Opens the lab template browser modal */
-  onOpenLabs?: () => void;
-  /** @deprecated use onOpenLabs instead */
-  onBackToLauncher?: () => void;
   modeStatus?: ModeStatus;
   /** If true, Export tab shows a soft warning (not a hard gate) */
   exportGate?: boolean;
@@ -148,14 +143,9 @@ export const IDEModeNav: React.FC<IDEModeNavProps> = ({
   onModeChange,
   labNumber,
   labTitle,
-  onOpenLabs,
-  onBackToLauncher,
   modeStatus,
   exportGate,
 }) => {
-  // Support deprecated onBackToLauncher as fallback
-  const labsHandler = onOpenLabs ?? onBackToLauncher;
-
   const handleModeClick = useCallback(
     (mode: IDEMode) => {
       if (mode !== activeMode) {
@@ -167,26 +157,8 @@ export const IDEModeNav: React.FC<IDEModeNavProps> = ({
 
   return (
     <nav className={styles.root} aria-label="IDE modes">
-      {/* Labs button + lab identity */}
+      {/* Lab identity */}
       <div className={styles.labIdentity}>
-        {labsHandler && (
-          <button
-            type="button"
-            className={styles.labsBtn}
-            onClick={labsHandler}
-            aria-label="Load a template"
-            title="Load a template"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-              <rect x="1" y="1" width="4" height="4" rx="0.8" stroke="currentColor" strokeWidth="1.2" />
-              <rect x="7" y="1" width="4" height="4" rx="0.8" stroke="currentColor" strokeWidth="1.2" />
-              <rect x="1" y="7" width="4" height="4" rx="0.8" stroke="currentColor" strokeWidth="1.2" />
-              <rect x="7" y="7" width="4" height="4" rx="0.8" stroke="currentColor" strokeWidth="1.2" />
-            </svg>
-            Templates
-          </button>
-        )}
-
         <div className={styles.labMeta}>
           {labNumber && (
             <span className={styles.labChip}>
