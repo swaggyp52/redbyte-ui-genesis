@@ -1,5 +1,83 @@
 # AI State
 
+## Change Log 2026-02-18 (ECE141 Lab Compatibility Matrix from Provided Course PDFs)
+
+**Status**: COMPLETE - Added a canonical lab-to-product compatibility matrix using the newly provided 8 lab handouts and 3 manuals as source input.
+
+### What Changed
+
+1. Added `docs/labs/ece141-basys3-compatibility-matrix.md`:
+- Maps Lab 1-8 expectations to RedByte Design -> Verify -> Export requirements.
+- Defines what RedByte replaces/simplifies vs what must remain Vivado/Basys3 compatible.
+- Lists canonical export artifact contract (`top.vhd`, `top.xdc`, `README.txt`, optional `testbench.vhd`, determinism hash).
+- Records high-risk parity gaps to close for full semester coverage (display/button mapping coverage, sequential testbench generation, blocked-state clarity, lab fixtures).
+
+2. Grounded matrix against provided references:
+- ECE141 Lab 1-8 PDFs (objectives/deliverables/design tasks/hardware expectations).
+- VHDL quick start reference (simulation/synthesis and structural HDL framing).
+- Vivado UG910 getting-started flow expectations.
+- Basys3 reference manual hardware capabilities (switches, LEDs, pushbuttons, seven-segment, 100 MHz clock).
+
+### Attribution
+
+- Connor Angiel
+
+## Change Log 2026-02-18 (IDE Design Contract Execution: pixel layout + workflow surfaces + layout gate)
+
+**Status**: COMPLETE - Implemented the requested five-commit sequence to move IDE from coherent shell to intentional instrument-panel layout.
+
+### Delivered Sequence
+
+1. `docs(ide): add pixel grid and spacing contract`
+- Added `docs/ide/ui-contract.md` as canonical pixel-spec contract:
+  - 12-column bounded layout
+  - 8px-only spacing scale
+  - panel rhythm (title row, action row, workspace, inspector)
+  - mode wireframes and acceptance checklist
+- Updated `docs/ide/style-guide.md` to align with contract.
+
+2. `feat(ui): enforce max-width and panel rhythm across modes`
+- Updated shared panel primitive (`packages/rb-apps/src/apps/ide/components/IdePrimitives.tsx`) with deterministic title/action row markers.
+- Updated mode surfaces and placeholder composition:
+  - `packages/rb-apps/src/apps/IdeApp.tsx`
+  - `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+  - `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - bounded content width (1280px within 1200-1320 target)
+  - fixed rail and inspector widths
+  - explicit panel rhythm styling
+  - tokenized spacing tightened to 8px rhythm scale.
+
+3. `feat(project): compute readiness blockers from project data`
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` to compute blockers from structured readiness inputs (IO mapping completeness, vectors, last verify).
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx` to pass readiness model instead of static placeholder counts.
+
+4. `feat(verify): finalize failure table and hash placement`
+- Updated `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` with fixed-top verification summary, deterministic hash anchor, failure-derived status, blocked state, and stable failure diff rendering.
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css` with verify summary grid styling.
+
+5. `test(gates): add ide:gate:layout-contract`
+- Added Playwright gate `scripts/gates/ide-layout-contract.mjs`:
+  - validates left rail width contract and consistency
+  - validates right inspector in all modes
+  - validates title row + action row contract
+  - validates primary CTA or blocked message
+  - validates non-empty mode surfaces across Project/Design/Verify/Export/Import
+- Added script entry in `package.json`: `ide:gate:layout-contract`
+- Added gate to classroom suite in `scripts/verify-gates-classroom.mjs`.
+
+### Verification Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:route-contract` -> PASS
+- `pnpm -s ide:gate:shell-structure` -> PASS
+- `pnpm -s ide:gate:layout-contract` -> PASS
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-18 (Intentional IDE Design Baseline: docs + shell + Project/Design/Verify v1 + structure gate)
 
 **Status**: COMPLETE - Replaced placeholder IDE styling with an intentional shell system and mode-first UI baselines, while preserving IDE-first boot contract.
