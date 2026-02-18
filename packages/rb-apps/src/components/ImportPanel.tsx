@@ -5,7 +5,8 @@ import React, { useCallback, useRef, useState, useId } from 'react';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { parseVhdl } from '../import/vhdlImport';
 import { parseVerilog } from '../import/verilogImport';
-import { parsedHdlToCircuit } from '../import/hdlToCircuit';
+import { importToRbProject } from '../import/importToRbProject';
+import { parseXdcPins } from '../import/xdcImport';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -104,11 +105,15 @@ const S = {
 
 export function ImportPanel({ onImportCircuit }: ImportPanelProps) {
   const [code, setCode] = useState('');
+  const [xdcCode, setXdcCode] = useState('');
   const [lang, setLang] = useState<Lang>('auto');
   const [dragging, setDragging] = useState(false);
+  const [xdcDragging, setXdcDragging] = useState(false);
   const [importState, setImportState] = useState<ImportState>({ status: 'idle', warnings: [], unmappedComponents: [] });
   const fileInputId = useId();
+  const xdcInputId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
+  const xdcRef = useRef<HTMLInputElement>(null);
 
   const handleImport = useCallback(() => {
     const src = code.trim();
@@ -119,23 +124,35 @@ export function ImportPanel({ onImportCircuit }: ImportPanelProps) {
     try {
       const effectiveLang = lang === 'auto' ? detectLang(src) : lang;
       const parsed = effectiveLang === 'vhdl' ? parseVhdl(src) : parseVerilog(src);
-      const result = parsedHdlToCircuit(parsed);
+      
+      // Parse XDC if provided
+      const xdcResult = xdcCode.trim() ? parseXdcPins(xdcCode) : undefined;
+      
+      // Convert to RBProject (which includes circuit + ioMapping)
+      const project = importToRbProject(parsed, xdcResult);
 
-      if (result.circuit.nodes.length === 0) {
+      if (project.circuit.nodes.length === 0) {
         setImportState({
           status: 'error',
           errorMessage: 'No nodes could be extracted. Make sure you paste a structural HDL file with component instantiations.',
-          warnings: result.warnings,
-          unmappedComponents: result.unmappedComponents,
+          warnings: project.circuit.nodes.length === 0 ? [] : [],
+          unmappedComponents: [],
         });
         return;
       }
 
-      onImportCircuit(result.circuit);
+      // For now, pass only the circuit (RBProject.ioMapping will be used in future versions)
+      onImportCircuit(project.circuit);
+      
+      const allWarnings = [...(parsed.warnings || [])];
+      if (xdcResult) {
+        allWarnings.push(...xdcResult.warnings);
+      }
+      
       setImportState({
         status: 'success',
-        warnings: result.warnings,
-        unmappedComponents: result.unmappedComponents,
+        warnings: allWarnings,
+        unmappedComponents: [],
       });
     } catch (err) {
       setImportState({
@@ -145,7 +162,7 @@ export function ImportPanel({ onImportCircuit }: ImportPanelProps) {
         unmappedComponents: [],
       });
     }
-  }, [code, lang, onImportCircuit]);
+  }, [code, xdcCode, lang, onImportCircuit]);
 
   const handleFile = useCallback((file: File) => {
     const reader = new FileReader();
@@ -156,6 +173,16 @@ export function ImportPanel({ onImportCircuit }: ImportPanelProps) {
       // Auto-detect language from filename
       if (file.name.endsWith('.vhd') || file.name.endsWith('.vhdl')) setLang('vhdl');
       else if (file.name.endsWith('.v') || file.name.endsWith('.sv')) setLang('verilog');
+    };
+    reader.readAsText(file);
+  }, []);
+
+  const handleXdcFile = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      setXdcCode(text ?? '');
+      setImportState({ status: 'idle', warnings: [], unmappedComponents: [] });
     };
     reader.readAsText(file);
   }, []);
@@ -177,6 +204,25 @@ export function ImportPanel({ onImportCircuit }: ImportPanelProps) {
       e.target.value = '';
     },
     [handleFile],
+  );
+
+  const handleXdcDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setXdcDragging(false);
+      const file = e.dataTransfer.files[0];
+      if (file) handleXdcFile(file);
+    },
+    [handleXdcFile],
+  );
+
+  const handleXdcInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) handleXdcFile(file);
+      e.target.value = '';
+    },
+    [handleXdcFile],
   );
 
   return (
@@ -232,7 +278,43 @@ export function ImportPanel({ onImportCircuit }: ImportPanelProps) {
           aria-label="HDL source code"
         />
 
-        {/* Import button */}
+        {/* XDC input section (optional) */}
+        <div>
+          <div style={{ fontSize: '10px', color: 'rgba(236,244,255,0.45)', marginBottom: '6px' }}>
+            XDC constraints <span style={{ color: 'rgba(236,244,255,0.25)' }}>(optional)</span>
+          </div>
+          <div
+            style={S.dropZone(xdcDragging)}
+            onDragOver={(e) => { e.preventDefault(); setXdcDragging(true); }}
+            onDragLeave={() => setXdcDragging(false)}
+            onDrop={handleXdcDrop}
+            onClick={() => xdcRef.current?.click()}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && xdcRef.current?.click()}
+            aria-label="Drop XDC file here"
+          >
+            Drop .xdc file here or click to browse
+            <input
+              id={xdcInputId}
+              ref={xdcRef}
+              type="file"
+              accept=".xdc"
+              style={{ display: 'none' }}
+              onChange={handleXdcInput}
+            />
+          </div>
+          {xdcCode.trim() && (
+            <textarea
+              style={{ ...S.textarea, minHeight: '80px', marginTop: '6px' }}
+              value={xdcCode}
+              onChange={(e) => { setXdcCode(e.target.value); setImportState({ status: 'idle', warnings: [], unmappedComponents: [] }); }}
+              placeholder="set_property PACKAGE_PIN V17 [get_ports {SW0}]"
+              spellCheck={false}
+              aria-label="XDC constraints"
+            />
+          )}
+        </div>        {/* Import button */}
         <button
           type="button"
           style={S.importBtn}
