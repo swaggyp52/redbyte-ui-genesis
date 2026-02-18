@@ -1,58 +1,17 @@
 // Copyright (c) 2025 Connor Angiel — RedByte OS Genesis
-// IdeApp — Primary IDE surface with mode routing, top bar, left rail, center content, right dock.
-// This is what boots instead of "Logic Playground" when in IDE mode.
+// IdeApp — Primary IDE surface with mode routing, top bar, and left rail.
+// Minimal bootstrap that renders the IDE UI.
 
 import React, { useState, useEffect } from 'react';
-import { IdeProvider, type IdeContextValue, type IDEMode } from './ide/IdeContext';
-import { DesignMode } from './ide/modes/DesignMode';
-import { ProjectMode } from './ide/modes/ProjectMode';
-import { VerifyMode } from './ide/modes/VerifyMode';
-import { ExportMode } from './ide/modes/ExportMode';
-import { ImportMode } from './ide/modes/ImportMode';
 import { installFatalCapture, pushMount } from '@redbyte/rb-utils';
-import { toast } from '@redbyte/rb-primitives';
-import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
-import {
-  CircuitEngine,
-  TickEngine,
-  type Circuit,
-  NodeRegistry,
-} from '@redbyte/rb-logic-core';
-import { useCircuitStore } from '../stores/circuitStore';
-import type { ToolchainProjectInput } from '../fpga/toolchainBackend';
-import type { RBFpgaConfig } from '../export/projectFormat';
 import '../ide/ide-root.css';
 
-/**
- * Minimal mode router component — renders the appropriate mode body
- */
-const ModeBody: React.FC = () => {
-  const ctx = React.useContext(IdeContext);
-  if (!ctx) return null;
-
-  switch (ctx.ideMode) {
-    case 'project':
-      return <ProjectMode />;
-    case 'design':
-      return <DesignMode />;
-    case 'verify':
-      return <VerifyMode />;
-    case 'export':
-      return <ExportMode />;
-    case 'import':
-      return <ImportMode />;
-    default:
-      return <div>Unknown mode</div>;
-  }
-};
+type IDEMode = 'project' | 'design' | 'verify' | 'export' | 'import';
 
 /**
  * Top bar — project name, save state, board selector
  */
-const IdeTopBar: React.FC = () => {
-  const ctx = React.useContext(IdeContext);
-  if (!ctx) return null;
-
+const IdeTopBar: React.FC<{ projectName: string; isDirty: boolean }> = ({ projectName, isDirty }) => {
   return (
     <div
       style={{
@@ -68,9 +27,9 @@ const IdeTopBar: React.FC = () => {
       }}
       data-testid="ide-top-bar"
     >
-      <div style={{ fontWeight: 600 }}>{ctx.projectName || 'Untitled Project'}</div>
+      <div style={{ fontWeight: 600 }}>{projectName || 'Untitled Project'}</div>
       <div style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--rb-text-secondary, #999)' }}>
-        {ctx.isDirty ? '● Unsaved' : '✓ Saved'} · Basys3
+        {isDirty ? '● Unsaved' : '✓ Saved'} · Basys3
       </div>
     </div>
   );
@@ -79,10 +38,10 @@ const IdeTopBar: React.FC = () => {
 /**
  * Left rail — mode selector (tab-like navigation)
  */
-const IdeLeftRail: React.FC = () => {
-  const ctx = React.useContext(IdeContext);
-  if (!ctx) return null;
-
+const IdeLeftRail: React.FC<{ currentMode: IDEMode; onModeChange: (mode: IDEMode) => void }> = ({
+  currentMode,
+  onModeChange,
+}) => {
   const modes: Array<{ id: IDEMode; label: string; icon: string }> = [
     { id: 'project', label: 'Project', icon: '📋' },
     { id: 'design', label: 'Design', icon: '✎' },
@@ -108,17 +67,16 @@ const IdeLeftRail: React.FC = () => {
       {modes.map((mode) => (
         <button
           key={mode.id}
-          onClick={() => ctx.setIdeMode(mode.id)}
+          onClick={() => onModeChange(mode.id)}
           style={{
-            background: ctx.ideMode === mode.id ? 'var(--rb-surface-secondary, #1a1a1a)' : 'transparent',
-            border: ctx.ideMode === mode.id ? '1px solid var(--rb-accent, #4299e1)' : '1px solid transparent',
-            color:
-              ctx.ideMode === mode.id ? 'var(--rb-accent, #4299e1)' : 'var(--rb-text-secondary, #999)',
+            background: currentMode === mode.id ? 'var(--rb-surface-secondary, #1a1a1a)' : 'transparent',
+            border: currentMode === mode.id ? '1px solid var(--rb-accent, #4299e1)' : '1px solid transparent',
+            color: currentMode === mode.id ? 'var(--rb-accent, #4299e1)' : 'var(--rb-text-secondary, #999)',
             padding: '8px',
             borderRadius: '4px',
             cursor: 'pointer',
             fontSize: '12px',
-            fontWeight: ctx.ideMode === mode.id ? 600 : 400,
+            fontWeight: currentMode === mode.id ? 600 : 400,
             transition: 'all 0.2s',
           }}
           data-testid={`mode-button-${mode.id}`}
@@ -132,9 +90,65 @@ const IdeLeftRail: React.FC = () => {
 };
 
 /**
- * Main IDE container — stitches together top bar, left rail, mode body
+ * Mode body — renders placeholder for each mode
+ * (Will integrate real mode components later)
  */
-const IdeContainer: React.FC = () => {
+const ModeBody: React.FC<{ mode: IDEMode }> = ({ mode }) => {
+  const modeLabel: Record<IDEMode, string> = {
+    project: 'Project Management',
+    design: 'Logic Design Canvas',
+    verify: 'Verification & Simulation',
+    export: 'Export to FPGA',
+    import: 'Import from Vivado',
+  };
+
+  return (
+    <div
+      style={{
+        flex: 1,
+        minWidth: 0,
+        minHeight: 0,
+        overflow: 'auto',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--rb-bg-dark, #0f0f0f)',
+        color: 'var(--rb-text-secondary, #999)',
+        fontSize: '18px',
+      }}
+      data-testid="ide-mode-body"
+    >
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚀</div>
+        <div>{modeLabel[mode]}</div>
+        <div style={{ fontSize: '12px', marginTop: '8px', color: 'var(--rb-text-tertiary, #666)' }}>
+          Coming soon
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Main IdeApp export — this is what gets rendered by ide-bootstrap.ts
+ *
+ * This component:
+ * 1. Renders top bar + left rail + mode body
+ * 2. Manages IDE mode state locally
+ * 3. No Shell, no launcher, no OS chrome
+ * 4. Minimal surface — just IDE layout
+ */
+export const IdeApp: React.FC = () => {
+  const [currentMode, setCurrentMode] = useState<IDEMode>('design');
+  const [projectName] = useState('Basys3 Design');
+  const [isDirty] = useState(false);
+
+  useEffect(() => {
+    installFatalCapture({ force: true });
+    pushMount('IdeApp: mounted');
+    console.log('RB_IDE_APP_BOOT');
+  }, []);
+
   return (
     <div
       style={{
@@ -145,9 +159,9 @@ const IdeContainer: React.FC = () => {
         background: 'var(--rb-bg-dark, #0f0f0f)',
         color: 'var(--rb-text-primary, #e5e5e5)',
       }}
-      data-testid="ide-container"
+      data-testid="ide-app-root"
     >
-      <IdeTopBar />
+      <IdeTopBar projectName={projectName} isDirty={isDirty} />
       <div
         style={{
           display: 'flex',
@@ -156,92 +170,10 @@ const IdeContainer: React.FC = () => {
           overflow: 'hidden',
         }}
       >
-        <IdeLeftRail />
-        <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
-          <ModeBody />
-        </div>
+        <IdeLeftRail currentMode={currentMode} onModeChange={setCurrentMode} />
+        <ModeBody mode={currentMode} />
       </div>
     </div>
-  );
-};
-
-/**
- * Stub IdeProvider wrapper — manages IDE state and context
- * For now, just passes through; full provider logic would be in a separate file.
- */
-const IdeContext = React.createContext<IdeContextValue | null>(null);
-
-/**
- * Stub provider — in production, this would use a proper Zustand store or similar
- */
-const StubIdeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [ideMode, setIdeMode] = useState<IDEMode>('design');
-  const [projectName, setProjectName] = useState('Basys3 Design');
-  const [isDirty, setIsDirty] = useState(false);
-
-  // Stub engine refs (would be hooked up to actual CircuitEngine)
-  const engine = undefined;
-  const tickEngine = undefined;
-
-  // Stub circuit state
-  const [circuit, setCircuit] = useState<Circuit>({ nodes: [], connections: [] });
-
-  // Stub context value
-  const value: IdeContextValue = {
-    ideMode,
-    setIdeMode,
-    engine,
-    tickEngine,
-    circuit,
-    handleCircuitChange: setCircuit,
-    projectName,
-    setProjectName,
-    projectId: 'default-project',
-    isDirty,
-    setIsDirty,
-    isRunning: false,
-    tickCount: 0,
-    currentHz: 1,
-    handleRun: () => {},
-    handlePause: () => {},
-    handleStep: () => {},
-    handleHzChange: () => {},
-    handleResetTickCount: () => {},
-    hdlProject: undefined,
-    setHdlProject: () => {},
-    fpgaProject: undefined,
-    setFpgaProject: () => {},
-    enableHdlTab: false,
-    buildProject: () => ({ circuit: { nodes: [], connections: [] }, ioMapping: {} }),
-    applyProject: () => {},
-    addToast: (message, kind, duration) => toast.show({ message, kind, durationMs: duration || 3000 }),
-  };
-
-  return <IdeContext.Provider value={value}>{children}</IdeContext.Provider>;
-};
-
-/**
- * Main IdeApp export — this is what gets rendered by ide-bootstrap.ts
- *
- * Usage: <IdeApp />
- *
- * This component:
- * 1. Provides IDE context to all child modes
- * 2. Renders top bar + left rail + mode body
- * 3. No Shell, no launcher, no OS chrome
- * 4. Minimal surface — just IDE, just logic design
- */
-export const IdeApp: React.FC = () => {
-  useEffect(() => {
-    installFatalCapture({ force: true });
-    pushMount('IdeApp: mounted');
-    console.log('RB_IDE_APP_BOOT');
-  }, []);
-
-  return (
-    <StubIdeProvider>
-      <IdeContainer />
-    </StubIdeProvider>
   );
 };
 
