@@ -1,0 +1,13 @@
+:root[data-redbyte-mode="ide"] {
+  color-scheme: dark;
+}
+
+:root[data-redbyte-mode="ide"] body {
+  margin: 0;
+  overflow: hidden;
+  background: #0f0f0f;
+}
+
+[data-testid="ide-root"] {
+  isolation: isolate;
+}

@@ -145,6 +145,8 @@
         "ide:gate:lab4-load-fast": "node ./scripts/gates/ide-lab4-load-fast.mjs",
         "ide:gate:export-generates-hdl": "node ./scripts/gates/ide-export-generates-hdl.mjs",
         "ide:gate:import-renders-schematic": "node ./scripts/gates/ide-import-renders-schematic.mjs",
+        "ide:gate:route-contract": "node ./scripts/gates/ide-route-contract.mjs",
+        "gates:ide-boot-shadow-contract": "node ./scripts/gates/ide-boot-shadow-contract.mjs",
         "verify:gates:log": "pnpm -s verify:gates > verify-gates-latest.txt",
         "verify:gates:full": "pnpm -s verify:gates && pnpm -s ops:diff-gate && pnpm -s ops:student-export-fixture-test",
         "ci:parity": "pnpm install --frozen-lockfile && pnpm verify:all",

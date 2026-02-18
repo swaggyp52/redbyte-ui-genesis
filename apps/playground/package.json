@@ -3,12 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "vite",
-    "build": "vite build --emptyOutDir false",
+    "dev": "vite --config vite.config.ts",
+    "build": "vite --config vite.config.ts build --emptyOutDir false",
     "postbuild": "node ../../scripts/copy-build-json.mjs ./dist"
   },
   "dependencies": {
-    "@redbyte/rb-shell": "workspace:*",
     "@redbyte/rb-apps": "workspace:*",
     "@redbyte/rb-windowing": "workspace:*",
     "react": "^19.2.1",

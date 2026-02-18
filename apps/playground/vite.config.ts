@@ -36,6 +36,7 @@ export default defineConfig({
   define: {
     __GIT_SHA__: JSON.stringify(process.env.GIT_SHA ?? process.env.CF_PAGES_COMMIT_SHA ?? 'dev'),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
+    __RB_VITE_CONFIG__: JSON.stringify('vite.config.ts'),
   },
   build: {
     // Avoid Windows ENOTEMPTY failures when the dist/assets folder is in use.
@@ -57,6 +58,10 @@ export default defineConfig({
     },
   },
   resolve: {
+    alias: {
+      react: path.resolve(__dirname, './node_modules/react'),
+      'react/jsx-runtime': path.resolve(__dirname, './node_modules/react/jsx-runtime.js'),
+    },
     // tsconfigPaths plugin resolves @redbyte/* via root tsconfig.json entrypoint-only paths.
     // Discipline is enforced by:
     // 1. Entrypoint-only paths in tsconfig (no wildcard subpaths)

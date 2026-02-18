@@ -5,22 +5,84 @@ import { initializeStoreInstrumentation, installFatalCapture, pushMount } from '
 import { bootstrapIDE } from './ide-bootstrap';
 import '../index.css';
 
+const FULL_BOOT_ENTRY = 'full-bootstrap.ts';
+
 // Full bootstrap: all startup code (previously in main.tsx)
 export async function bootstrap() {
-  // PHASE A: Check if this is IDE mode or launcher mode
   const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const isLauncherMode = params.get('launcher') === '1';
+  const mode = isLauncherMode ? 'SHELL' : 'IDE';
+  const url = typeof window !== 'undefined' ? window.location.href : 'unknown';
 
-  // ── Boot log: this is the critical router ──
-  console.log('[RB_BOOT] Router: launcher?', isLauncherMode, 'search=', window.location.search);
-  console.log('[RB_BOOT] Router: taking', isLauncherMode ? 'SHELL' : 'IDE');
+  console.log(`[RB_BOOT] mode=${mode} url=${url} entry=${FULL_BOOT_ENTRY}`);
 
-  // If ?launcher=1, use Shell (OS mode). Otherwise, use IDE (direct render).
   if (isLauncherMode) {
     return bootstrapShell();
-  } else {
-    return bootstrapIDE();
   }
+
+  try {
+    await bootstrapIDE();
+  } catch (error) {
+    renderIdeBootCrash(error);
+  }
+}
+
+function renderIdeBootCrash(error: unknown) {
+  const root = document.getElementById('root');
+  const message = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error ? error.stack : undefined;
+
+  document.documentElement.dataset.redbyteMode = 'ide-crash';
+  console.error(`[RB_BOOT] mode=IDE status=CRASH entry=${FULL_BOOT_ENTRY} message=${message}`);
+
+  if (!root) {
+    console.error('[RB_BOOT] mode=IDE status=CRASH reason=missing-root');
+    return;
+  }
+
+  ReactDOM.createRoot(root).render(
+    React.createElement(
+      'div',
+      {
+        'data-testid': 'rb-ide-boot-crash',
+        'data-redbyte-crash': 'ide',
+        style: {
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          width: '100vw',
+          height: '100vh',
+          background: '#0f0f0f',
+          color: '#f8fafc',
+          fontFamily: 'monospace',
+          padding: '24px',
+          boxSizing: 'border-box',
+          textAlign: 'left',
+        },
+      },
+      React.createElement('h1', { style: { margin: 0, fontSize: '20px', color: '#ef4444' } }, 'RedByte IDE failed to boot'),
+      React.createElement('p', { style: { marginTop: '12px', marginBottom: '8px', maxWidth: '900px' } }, message),
+      React.createElement(
+        'pre',
+        {
+          style: {
+            margin: 0,
+            padding: '12px',
+            width: '100%',
+            maxWidth: '900px',
+            maxHeight: '50vh',
+            overflow: 'auto',
+            border: '1px solid #334155',
+            borderRadius: '6px',
+            background: '#020617',
+            color: '#cbd5e1',
+          },
+        },
+        stack ?? 'No stack trace available.'
+      )
+    )
+  );
 }
 
 // Old logic moved to bootstrapShell
@@ -136,3 +198,4 @@ async function bootstrapShell() {
     );
   }
 }
+

@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { installFatalCapture, pushMount } from '@redbyte/rb-utils';
-import '../ide/ide-root.css';
+import './ide/ide-root.css';
 
 type IDEMode = 'project' | 'design' | 'verify' | 'export' | 'import';
 
@@ -144,9 +144,17 @@ export const IdeApp: React.FC = () => {
   const [isDirty] = useState(false);
 
   useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.dataset.redbyteMode = 'ide';
+    }
     installFatalCapture({ force: true });
     pushMount('IdeApp: mounted');
     console.log('RB_IDE_APP_BOOT');
+    return () => {
+      if (typeof document !== 'undefined' && document.documentElement.dataset.redbyteMode === 'ide') {
+        delete document.documentElement.dataset.redbyteMode;
+      }
+    };
   }, []);
 
   return (
@@ -159,7 +167,8 @@ export const IdeApp: React.FC = () => {
         background: 'var(--rb-bg-dark, #0f0f0f)',
         color: 'var(--rb-text-primary, #e5e5e5)',
       }}
-      data-testid="ide-app-root"
+      data-testid="ide-root"
+      data-redbyte-mode="ide"
     >
       <IdeTopBar projectName={projectName} isDirty={isDirty} />
       <div

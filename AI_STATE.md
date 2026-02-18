@@ -1,5 +1,68 @@
 # AI State
 
+## Change Log 2026-02-18 (IDE-first boot emergency hardening: JS shadow quarantine + route contract)
+
+**Status**: COMPLETE - Default `/` now resolves to IDE path with deterministic markers and explicit boot proofs. Shell path remains opt-in behind `?launcher=1`.
+
+### Root Cause
+
+- Boot modules were being resolved from `.js` shadow siblings in `apps/playground/src/boot/`, allowing stale shell-mount behavior to execute at `/`.
+- Vite config selection was ambiguous (`vite.config.ts` and `vite.config.js` had drift), so runtime config source was not provable.
+- IDE boot path had no hard failure contract, so regressions could silently look like launcher/shell behavior.
+
+### What Changed
+
+1. IDE boot markers and mountability hardening
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`
+- Added deterministic markers: `data-testid="ide-root"`, `data-testid="ide-left-rail"`, `data-redbyte-mode="ide"`
+- On mount, sets `document.documentElement.dataset.redbyteMode = "ide"`
+- Added package-local CSS source: `packages/rb-apps/src/apps/ide/ide-root.css`
+- Updated JS export surface: `packages/rb-apps/src/index.js` now exports `IdeApp` and `ErrorBoundary`
+
+2. Boot contract enforcement (no silent shell fallback)
+- Updated `apps/playground/src/boot/full-bootstrap.ts`
+- Route contract is explicit: `?launcher=1` -> Shell, otherwise IDE
+- IDE boot failures now render deterministic crash screen (`data-testid="rb-ide-boot-crash"`) and set `data-redbyte-mode="ide-crash"`
+- Updated `apps/playground/src/boot/ide-bootstrap.ts`
+- Added proof log: `[RB_BOOT] mode=IDE url=<...> entry=ide-bootstrap.ts config=vite.config.ts`
+
+3. JS shadow quarantine (single truth in TS/TSX)
+- Converted these files to strict wrapper-only exports:
+  - `apps/playground/src/boot/full-bootstrap.js`
+  - `apps/playground/src/boot/audit-guards.js`
+  - `apps/playground/src/boot/bisect-steps.js`
+  - `apps/playground/src/boot/boot-bisect-entry.js`
+
+4. Vite config proofing
+- Updated `apps/playground/package.json` scripts to pin TS config:
+  - `vite --config vite.config.ts`
+- Updated `apps/playground/vite.config.ts` with runtime define:
+  - `__RB_VITE_CONFIG__ = "vite.config.ts"`
+- Converted `apps/playground/vite.config.js` to thin wrapper-only re-export of TS config
+
+5. Regression gates and repo-status integration
+- Added static allowlist gate: `scripts/gates/ide-boot-shadow-contract.mjs`
+- Added route/config proof gate: `scripts/gates/ide-route-contract.mjs`
+- Fixed Playwright API usage in existing IDE gates (`browser.newContext()`)
+- Updated `scripts/verify-gates-classroom.mjs` to include new IDE gates
+- Updated `scripts/repo-status.mjs` to run fast static anti-shadow check first
+- Updated `package.json` scripts with:
+  - `gates:ide-boot-shadow-contract`
+  - `ide:gate:route-contract`
+
+6. Verification hygiene documentation
+- Updated `docs/ai-usage-rules.md` with PR/session evidence requirements (`pnpm repo:status`, `/` and `/?launcher=1` screenshots, boot logs) and emergency commit-prefix policy.
+
+### Verification executed
+
+- `pnpm -s gates:ide-boot-shadow-contract` -> PASS
+- `pnpm -s ide:gate:route-contract` -> PASS
+- `pnpm -s repo:status` -> PASS (4/4 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Build System Hard Correction: Entrypoint-Only Discipline)
 
 **Status**: ✅ COMPLETE - Locked down tsconfig paths to entrypoint-only, enforced no-deep-imports discipline on packages/.

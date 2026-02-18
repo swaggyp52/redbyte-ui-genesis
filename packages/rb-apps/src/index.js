@@ -14,6 +14,7 @@ export * from './apps/files/modals';
 export * from './examples';
 export * from './components/EmptyState';
 export * from './components/IntegrityBadge';
+export { ErrorBoundary } from './components/ErrorBoundary';
 export * from './labs/labCatalog';
 export * from './ui/tokens';
 export * from './ui/components/index';
@@ -31,6 +32,7 @@ export * from './apps/firstRun/firstRunState';
 export * from './fpga/doctorReportV2';
 export * from './fpga/hardwareErrorTaxonomy';
 export * from './studentAppGate';
+export { IdeApp } from './apps/IdeApp';
 // Helper: safe per-app import/registration - log and continue if one fails
 async function safeRegister(name, fn) {
     try {
