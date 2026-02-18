@@ -1,5 +1,58 @@
 # AI State
 
+## Change Log 2026-02-18 (Intentional IDE Design Baseline: docs + shell + Project/Design/Verify v1 + structure gate)
+
+**Status**: COMPLETE - Replaced placeholder IDE styling with an intentional shell system and mode-first UI baselines, while preserving IDE-first boot contract.
+
+### What Changed
+
+1. Design contracts and one-pagers (docs-first lock)
+- Added `docs/ide/00-ide-layout.md`
+- Added `docs/ide/01-project.md`
+- Added `docs/ide/02-design.md`
+- Added `docs/ide/03-verify.md`
+- Added `docs/ide/04-export.md`
+- Added `docs/ide/05-import.md`
+- Added `docs/ide/style-guide.md`
+
+2. Shared IDE shell foundation
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`
+  - unified shell composition: top bar, left rail, status bar, mode markers
+  - deterministic mode test markers retained (`ide-root`, `ide-left-rail`, mode buttons)
+- Added `packages/rb-apps/src/apps/ide/components/IdeTopBar.tsx`
+- Added `packages/rb-apps/src/apps/ide/components/IdeLeftRail.tsx`
+- Added `packages/rb-apps/src/apps/ide/components/IdeStatusBar.tsx`
+- Added `packages/rb-apps/src/apps/ide/components/IdePrimitives.tsx`
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`
+  - tokenized color, spacing, typography, panel/button/status primitives
+  - responsive layout for desktop/mobile
+
+3. Mode surfaces (Phase 1 visual/product baseline)
+- Added `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+  - project summary cards, IO coverage progress, vector readiness empty state, artifact table
+- Added `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - canvas-first layout, palette pane, deterministic empty-state CTAs, inspector sections
+- Added `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - pass/fail banner, deterministic hash surface, failure diff block, results table, signal picker/waveform stub
+
+4. UI drift guardrail (Playwright structure contract)
+- Added `scripts/gates/ide-shell-structure-contract.mjs`
+  - asserts `/` has `ide-top-bar` + `ide-left-rail`
+  - asserts mode marker changes when clicking Design and Verify tabs
+  - asserts shell container is absent on IDE route
+- Updated `package.json` with `ide:gate:shell-structure`
+- Updated `scripts/verify-gates-classroom.mjs` to include `ide:shell-structure`
+
+### Verification Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:route-contract` -> PASS
+- `pnpm -s ide:gate:shell-structure` -> PASS
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-18 (Phase 1 kickoff: mode mutation boundaries + default-route template removal)
 
 **Status**: COMPLETE - Repo-clean workflow enforced, Phase 1 Commit 1-3 delivered as atomic commits.
