@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useLabEngineStore } from '@redbyte/rb-lab-engine';
 import { Basys3BoardView } from './boards/Basys3BoardView';
 import { ArduinoInstrument } from './boards/ArduinoInstrument';
-import { getSignalValue, getAvailableSignals } from '@redbyte/rb-lab-engine/src/signals/signalSemantics';
+import { getSignalValue, getAvailableSignals } from '@redbyte/rb-lab-engine';
 export const DeployMode = () => {
     const { project, dispatch } = useLabEngineStore();
     // Local UI state

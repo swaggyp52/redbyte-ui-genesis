@@ -2,8 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import type { Circuit } from '@redbyte/rb-logic-core';
-import type { EventLogV1 } from '@redbyte/rb-logic-core/src/determinism';
+import type { Circuit, EventLogV1 } from '@redbyte/rb-logic-core';
 
 export type RunRecorderMode = 'idle' | 'armed' | 'recording' | 'replaying';
 

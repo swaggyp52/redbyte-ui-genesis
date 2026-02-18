@@ -38,7 +38,10 @@ const LauncherComponent: React.FC<LauncherComponentProps> = ({
     if (!recentAppIds?.length) return [];
 
     const lookup = new Map(apps.map((app) => [app.id, app]));
-    return recentAppIds.map((id) => lookup.get(id)).filter(Boolean);
+    return recentAppIds
+      .map((id) => lookup.get(id))
+      .filter((app): app is { id: string; name: string } => !!app);
+
   }, [apps, recentAppIds]);
 
   const pinnedApps = useMemo(() => {
@@ -47,7 +50,7 @@ const LauncherComponent: React.FC<LauncherComponentProps> = ({
     const lookup = new Map(apps.map((app) => [app.id, app]));
     return pinnedAppIds
       .map((id) => lookup.get(id))
-      .filter(Boolean)
+      .filter((app): app is { id: string; name: string } => !!app)
       .filter((app) => app.id !== 'launcher');
   }, [apps, pinnedAppIds]);
 

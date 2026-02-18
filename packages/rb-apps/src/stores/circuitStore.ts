@@ -190,137 +190,137 @@ function createCircuitStore() {
         const { skipHistory = false, enforceLimits = true } = opts;
         const { engine, tickEngine, circuit: currentCircuit } = get();
 
-      // Fingerprint no-op: if circuit is functionally identical, skip all work
-      const incomingFp = computeCircuitFingerprint(incoming);
-      const currentFp = computeCircuitFingerprint(currentCircuit);
-      if (incomingFp === currentFp && !enforceLimits) {
-        // Circuit is identical; no update needed
-        if (DEBUG_PLAYGROUND) {
-          console.log('[CircuitStore] Skipped no-op update (fingerprints match)');
+        // Fingerprint no-op: if circuit is functionally identical, skip all work
+        const incomingFp = computeCircuitFingerprint(incoming);
+        const currentFp = computeCircuitFingerprint(currentCircuit);
+        if (incomingFp === currentFp && !enforceLimits) {
+          // Circuit is identical; no update needed
+          if (DEBUG_PLAYGROUND) {
+            console.log('[CircuitStore] Skipped no-op update (fingerprints match)');
+          }
+          return;
         }
-        return;
-      }
 
-      // CHOKE POINT: normalize and clamp incoming circuit BEFORE anything else
-      let circuit = {
-        ...incoming,
-        nodes: incoming.nodes.map((node) => ({
-          ...node,
-          rotation: Number.isFinite(node.rotation) ? node.rotation : 0,
-        })),
-      };
-      let clampEvent: CircuitState['lastClampEvent'] = null;
+        // CHOKE POINT: normalize and clamp incoming circuit BEFORE anything else
+        let circuit: Circuit = {
+          ...incoming,
+          nodes: incoming.nodes.map((node) => ({
+            ...node,
+            rotation: Number.isFinite(node.rotation) ? (node.rotation as number) : 0,
+          })),
+        };
+        let clampEvent: CircuitState['lastClampEvent'] = null;
 
-      if (enforceLimits) {
-        const res = clampCircuit(incoming, HARD_LIMIT);
-        circuit = res.circuit;
+        if (enforceLimits) {
+          const res = clampCircuit(incoming, HARD_LIMIT);
+          circuit = res.circuit;
 
-        if (res.clamped) {
-          const source = skipHistory ? 'load/restore' : 'edit/paste';
-          console.warn(`[CircuitStore] Circuit clamped: ${incoming.nodes.length} → ${circuit.nodes.length} nodes (dropped ${res.dropped}, source: ${source})`);
+          if (res.clamped) {
+            const source = skipHistory ? 'load/restore' : 'edit/paste';
+            console.warn(`[CircuitStore] Circuit clamped: ${incoming.nodes.length} → ${circuit.nodes.length} nodes (dropped ${res.dropped}, source: ${source})`);
 
-          clampEvent = {
-            originalNodes: incoming.nodes.length,
-            keptNodes: circuit.nodes.length,
-            source,
-            timestamp: Date.now(),
-          };
-        }
-      }
-
-      // Debug instrumentation
-      if (DEBUG_PLAYGROUND) {
-        console.log('[CircuitStore] updateCircuit called', {
-          skipHistory,
-          enforceLimits,
-          before: hashCircuit(currentCircuit),
-          after: hashCircuit(circuit),
-          historyAdded: !skipHistory,
-        });
-      }
-
-      // Dev-mode invariant: warn if engines not connected when mutating circuit
-      if (import.meta.env.DEV) {
-        const isTestEnv = (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
-          // Vite/Vitest expose this during unit tests
-          !!import.meta.env.VITEST ||
-          import.meta.env.MODE === 'test';
-        if (!engine || !tickEngine) {
-          if (!isTestEnv) {
-            console.warn(
-              '[CircuitStore] Circuit mutation called but engines not connected!\n' +
-              `  - engine: ${engine ? '✓' : '✗ MISSING'}\n` +
-              `  - tickEngine: ${tickEngine ? '✓' : '✗ MISSING'}\n` +
-              'Circuit mutations will not propagate to simulation. ' +
-              'Call setEngine() and setTickEngine() during app initialization.'
-            );
+            clampEvent = {
+              originalNodes: incoming.nodes.length,
+              keptNodes: circuit.nodes.length,
+              source,
+              timestamp: Date.now(),
+            };
           }
         }
-      }
 
-      // Add current circuit to history BEFORE updating (if not skipped)
-      if (!skipHistory) {
-        const { past, maxHistory } = get();
-        const newPast = [...past, cloneCircuit(currentCircuit)].slice(-maxHistory);
-        set({ past: newPast, future: [] }); // Clear future on new commit
+        // Debug instrumentation
+        if (DEBUG_PLAYGROUND) {
+          console.log('[CircuitStore] updateCircuit called', {
+            skipHistory,
+            enforceLimits,
+            before: hashCircuit(currentCircuit),
+            after: hashCircuit(circuit),
+            historyAdded: !skipHistory,
+          });
+        }
+
+        // Dev-mode invariant: warn if engines not connected when mutating circuit
+        if (import.meta.env.DEV) {
+          const isTestEnv = (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
+            // Vite/Vitest expose this during unit tests
+            !!import.meta.env.VITEST ||
+            import.meta.env.MODE === 'test';
+          if (!engine || !tickEngine) {
+            if (!isTestEnv) {
+              console.warn(
+                '[CircuitStore] Circuit mutation called but engines not connected!\n' +
+                `  - engine: ${engine ? '✓' : '✗ MISSING'}\n` +
+                `  - tickEngine: ${tickEngine ? '✓' : '✗ MISSING'}\n` +
+                'Circuit mutations will not propagate to simulation. ' +
+                'Call setEngine() and setTickEngine() during app initialization.'
+              );
+            }
+          }
+        }
+
+        // Add current circuit to history BEFORE updating (if not skipped)
+        if (!skipHistory) {
+          const { past, maxHistory } = get();
+          const newPast = [...past, cloneCircuit(currentCircuit)].slice(-maxHistory);
+          set({ past: newPast, future: [] }); // Clear future on new commit
+
+          if (DEBUG_PLAYGROUND) {
+            console.log('[CircuitStore] History entry added', { pastLength: newPast.length });
+          }
+        }
+
+        // Update state
+        set({
+          circuit,
+          isDirty: true,
+          lastClampEvent: clampEvent, // Set clamp event if clamping occurred
+        });
+
+        recordAuditTransition({
+          scope: 'circuit_store',
+          action: skipHistory ? 'restore' : 'update',
+          before: currentCircuit,
+          after: circuit,
+        });
+
+        // Sync engines — setCircuit now propagates initial signals via tick()
+        if (engine) {
+          engine.setCircuit(circuit);
+        }
+        if (tickEngine) {
+          tickEngine.setCircuit(circuit);
+        }
+
+        // Update complexity tracking for classroom guardrails ONLY if circuit fingerprint changed
+        // (must happen after state update so new circuit is in place)
+        const finalFp = computeCircuitFingerprint(circuit);
+        if (finalFp !== currentFp) {
+          try {
+            const nodeCount = circuit.nodes.length;
+            const edgeCount = circuit.connections.length;
+
+            // Calculate max fan-out
+            const fanOutCounts = new Map<string, number>();
+            circuit.connections.forEach((conn) => {
+              const key = `${getConnectionNodeId(conn.from)}:${getConnectionPort(conn, 'from', 'out')}`;
+              fanOutCounts.set(key, (fanOutCounts.get(key) || 0) + 1);
+            });
+            const maxFanOut = fanOutCounts.size > 0 ? Math.max(...fanOutCounts.values()) : 0;
+
+            // Notify classroom mode store (dynamic import to avoid circular dependency)
+            if (typeof window !== 'undefined' && (window as any).__RB_CLASSROOM_MODE_STORE__) {
+              const classroomStore = (window as any).__RB_CLASSROOM_MODE_STORE__;
+              classroomStore.getState().setComplexity(nodeCount, edgeCount, maxFanOut);
+            }
+          } catch (err) {
+            // Fail silently - complexity tracking is non-critical
+            if (DEBUG_PLAYGROUND) console.warn('[CircuitStore] Complexity tracking failed:', err);
+          }
+        }
 
         if (DEBUG_PLAYGROUND) {
-          console.log('[CircuitStore] History entry added', { pastLength: newPast.length });
+          console.log('[CircuitStore] Engines synced with new circuit');
         }
-      }
-
-      // Update state
-      set({
-        circuit,
-        isDirty: true,
-        lastClampEvent: clampEvent, // Set clamp event if clamping occurred
-      });
-
-      recordAuditTransition({
-        scope: 'circuit_store',
-        action: skipHistory ? 'restore' : 'update',
-        before: currentCircuit,
-        after: circuit,
-      });
-
-      // Sync engines — setCircuit now propagates initial signals via tick()
-      if (engine) {
-        engine.setCircuit(circuit);
-      }
-      if (tickEngine) {
-        tickEngine.setCircuit(circuit);
-      }
-
-      // Update complexity tracking for classroom guardrails ONLY if circuit fingerprint changed
-      // (must happen after state update so new circuit is in place)
-      const finalFp = computeCircuitFingerprint(circuit);
-      if (finalFp !== currentFp) {
-        try {
-          const nodeCount = circuit.nodes.length;
-          const edgeCount = circuit.connections.length;
-
-        // Calculate max fan-out
-        const fanOutCounts = new Map<string, number>();
-        circuit.connections.forEach((conn) => {
-          const key = `${getConnectionNodeId(conn.from)}:${getConnectionPort(conn, 'from', 'out')}`;
-          fanOutCounts.set(key, (fanOutCounts.get(key) || 0) + 1);
-        });
-        const maxFanOut = fanOutCounts.size > 0 ? Math.max(...fanOutCounts.values()) : 0;
-
-        // Notify classroom mode store (dynamic import to avoid circular dependency)
-        if (typeof window !== 'undefined' && (window as any).__RB_CLASSROOM_MODE_STORE__) {
-          const classroomStore = (window as any).__RB_CLASSROOM_MODE_STORE__;
-          classroomStore.getState().setComplexity(nodeCount, edgeCount, maxFanOut);
-        }
-        } catch (err) {
-          // Fail silently - complexity tracking is non-critical
-          if (DEBUG_PLAYGROUND) console.warn('[CircuitStore] Complexity tracking failed:', err);
-        }
-      }
-
-      if (DEBUG_PLAYGROUND) {
-        console.log('[CircuitStore] Engines synced with new circuit');
-      }
       } finally {
         const storeRef = _store as any;
         if (storeRef) storeRef._updateInProgress = false;
@@ -417,7 +417,7 @@ function createCircuitStore() {
         ...circuit,
         nodes: circuit.nodes.filter((n) => n.id !== nodeId),
         connections: circuit.connections.filter(
-          (c) => c.from.nodeId !== nodeId && c.to.nodeId !== nodeId
+          (c) => getConnectionNodeId(c.from) !== nodeId && getConnectionNodeId(c.to) !== nodeId
         ),
       });
     },
@@ -438,10 +438,10 @@ function createCircuitStore() {
         connections: circuit.connections.filter(
           (c) =>
             !(
-              c.from.nodeId === fromNodeId &&
-              c.from.portName === fromPort &&
-              c.to.nodeId === toNodeId &&
-              c.to.portName === toPort
+              getConnectionNodeId(c.from) === fromNodeId &&
+              getConnectionPort(c, 'from', '') === fromPort &&
+              getConnectionNodeId(c.to) === toNodeId &&
+              getConnectionPort(c, 'to', '') === toPort
             )
         ),
       });

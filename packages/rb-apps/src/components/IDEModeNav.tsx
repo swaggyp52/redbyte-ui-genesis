@@ -3,9 +3,9 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 /**
- * IDEModeNav — The persistent 4-mode top navigation for the RedByte IDE.
+ * IDEModeNav — The persistent 5-mode top navigation for the RedByte IDE.
  *
- *   Learn → Design → Verify → Export
+ *   Learn → Design → Verify → Export → Import
  *
  * Rules:
  * - One mode is always active. The canvas is ALWAYS visible; modes only change
@@ -16,8 +16,8 @@
 
 import React, { useCallback } from 'react';
 import styles from './IDEModeNav.module.css';
-
-export type IDEMode = 'project' | 'design' | 'verify' | 'export';
+import type { IDEMode } from '../apps/ide/IdeContext';
+export type { IDEMode };
 
 interface ModeDefinition {
   id: IDEMode;
@@ -55,6 +55,13 @@ const MODES: ModeDefinition[] = [
     label: 'Export',
     shortLabel: 'Export',
     description: 'Generate VHDL + XDC for Vivado',
+  },
+  {
+    id: 'import',
+    number: '05',
+    label: 'Import',
+    shortLabel: 'Import',
+    description: 'Import HDL + XDC from Vivado',
   },
 ];
 
@@ -209,7 +216,7 @@ export const IDEModeNav: React.FC<IDEModeNavProps> = ({
 
         {/* Flow arrow connectors */}
         <div className={styles.modeFlowArrows} aria-hidden="true">
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <span key={i} className={styles.modeFlowArrow}>
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                 <path d="M1 5h8M6.5 2L9 5l-2.5 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />

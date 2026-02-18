@@ -1,6 +1,19 @@
 // Lab Spec validation
 export { validateEvidenceAgainstLabSpec } from './validateEvidenceAgainstLabSpec';
 export type { LabSpecV1 } from './labSpecSchema';
+
+// Sequential logic analysis (for Verify pipeline)
+export type { SequentialAnalysis } from './analysis/analyzeSequentialLogic';
+export { analyzeSequentialLogic } from './analysis/analyzeSequentialLogic';
+export type { NodeMeta } from './analysis/nodeMetaRegistry';
+export { getNodeMeta, isSequentialNodeType, getClockPortName, getResetPortName } from './analysis/nodeMetaRegistry';
+export { injectSimClock } from './analysis/injectSimClock';
+
+// Determinism / Event logging (for replay, recording, verification)
+export type { EventLogV1, SimulationEventV1 } from './determinism/eventLog';
+export { encodeEventLog, decodeEventLog } from './determinism/eventLog';
+export { runReplay, validateEventLog } from './determinism/replay';
+
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.

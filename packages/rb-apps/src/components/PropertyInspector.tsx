@@ -10,6 +10,8 @@ import { CircuitEngine } from '@redbyte/rb-logic-core';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import { useProbeStore } from '../stores/probeStore';
 import { useInstrumentScheduler } from '../hooks/useInstrumentScheduler';
+import { getConnectionNodeId, getConnectionPort } from '../utils/connectionUtils';
+
 
 interface PropertyInspectorProps {
   circuit: Circuit;
@@ -44,7 +46,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
   const selectedConnections = useMemo(() => {
     if (!selection?.wires) return [];
     return circuit.connections.filter((c) => {
-      const id = `${c.from.nodeId}.${c.from.portName}->${c.to.nodeId}.${c.to.portName}`;
+      const id = `${getConnectionNodeId(c.from)}.${getConnectionPort(c, 'from', '')}->${getConnectionNodeId(c.to)}.${getConnectionPort(c, 'to', '')}`;
       return selection.wires.has(id);
     });
   }, [circuit.connections, selection]);
@@ -70,10 +72,10 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
       signals.set(node.id, engine.getNodeOutputs(node.id));
       const inputValues: Record<string, { value: Signal; source?: string }> = {};
       for (const connection of circuit.connections) {
-        if (connection.to.nodeId !== node.id) continue;
-        const sourceKey = `${connection.from.nodeId}.${connection.from.portName}`;
+        if (getConnectionNodeId(connection.to) !== node.id) continue;
+        const sourceKey = `${getConnectionNodeId(connection.from)}.${getConnectionPort(connection, 'from', '')}`;
         const value = allSignals.get(sourceKey) ?? 0;
-        inputValues[connection.to.portName] = { value, source: sourceKey };
+        inputValues[getConnectionPort(connection, 'to', '')] = { value, source: sourceKey };
       }
       inputs.set(node.id, inputValues);
     }
@@ -530,8 +532,8 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
               {/* Source */}
               <div className="bg-cyan-900/30 rounded p-2 border-l-2 border-cyan-400">
                 <div className="text-[10px] text-cyan-300 font-semibold mb-1">FROM</div>
-                <div className="text-white text-sm font-medium mb-0.5">{conn.from.portName}</div>
-                <div className="text-[10px] text-gray-400 font-mono truncate">{conn.from.nodeId}</div>
+                <div className="text-white text-sm font-medium mb-0.5">{getConnectionPort(conn, 'from', '')}</div>
+                <div className="text-[10px] text-gray-400 font-mono truncate">{getConnectionNodeId(conn.from)}</div>
               </div>
 
               {/* Arrow */}
@@ -542,8 +544,8 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
               {/* Target */}
               <div className="bg-pink-900/30 rounded p-2 border-l-2 border-pink-400">
                 <div className="text-[10px] text-pink-300 font-semibold mb-1">TO</div>
-                <div className="text-white text-sm font-medium mb-0.5">{conn.to.portName}</div>
-                <div className="text-[10px] text-gray-400 font-mono truncate">{conn.to.nodeId}</div>
+                <div className="text-white text-sm font-medium mb-0.5">{getConnectionPort(conn, 'to', '')}</div>
+                <div className="text-[10px] text-gray-400 font-mono truncate">{getConnectionNodeId(conn.to)}</div>
               </div>
             </div>
           </div>
@@ -552,7 +554,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
           {onConnectionDelete && (
             <button
               onClick={() => {
-                const id = `${conn.from.nodeId}.${conn.from.portName}->${conn.to.nodeId}.${conn.to.portName}`;
+                const id = `${getConnectionNodeId(conn.from)}.${getConnectionPort(conn, 'from', '')}->${getConnectionNodeId(conn.to)}.${getConnectionPort(conn, 'to', '')}`;
                 onConnectionDelete(id);
               }}
               className={`w-full px-4 py-3 border border-red-500/30 rounded-lg text-red-400 transition-all font-medium flex items-center justify-center gap-2 group ${isReplayMode

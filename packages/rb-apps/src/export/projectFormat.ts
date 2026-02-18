@@ -6,6 +6,7 @@ import type { Circuit } from '@redbyte/rb-logic-core';
 import type { RunRecord } from '../recording/runRecord';
 import type { Probe } from '../stores/probeStore';
 import type { ToolchainProjectInput } from '../fpga/toolchainBackend';
+import type { IoMapping, TestVector } from '@redbyte/rb-utils';
 import { stableStringify } from './stableStringify';
 import { compareCodepoint } from './codepointSort';
 
@@ -19,6 +20,21 @@ export interface RBFpgaConfig {
   constraints?: RBFpgaConstraints;
   preset?: string;
   top?: string;
+}
+
+export interface SubmoduleEntry {
+  id: string;
+  name: string;
+  type: 'custom-chip' | 'hdl-module';
+  inputPins: string[];
+  outputPins: string[];
+}
+
+export interface TraceMetadata {
+  tickCount: number;
+  startTick?: number;
+  sampleRate?: number;
+  probeIds?: string[];
 }
 
 export interface RBProject {
@@ -45,6 +61,10 @@ export interface RBProject {
   recorder?: {
     lastRunRecord?: RunRecord;
   };
+  ioMapping?: IoMapping;
+  vectors?: TestVector[];
+  traceMetadata?: TraceMetadata;
+  submodules?: SubmoduleEntry[];
   meta?: {
     appVersion?: string;
     gitCommit?: string;
@@ -114,6 +134,40 @@ const normalizeHdl = (hdl?: ToolchainProjectInput): ToolchainProjectInput | unde
   };
 };
 
+const normalizeIoMapping = (ioMapping?: IoMapping): IoMapping | undefined => {
+  if (!ioMapping) return ioMapping;
+  const normalizeEntry = (entry: any) => ({ ...entry });
+  const inputs = [...(ioMapping.inputs ?? [])]
+    .map(normalizeEntry)
+    .sort((a, b) => {
+      const left = `${a.nodeId}.${a.port}.${a.id}`;
+      const right = `${b.nodeId}.${b.port}.${b.id}`;
+      return compareCodepoint(left, right);
+    });
+  const outputs = [...(ioMapping.outputs ?? [])]
+    .map(normalizeEntry)
+    .sort((a, b) => {
+      const left = `${a.nodeId}.${a.port}.${a.id}`;
+      const right = `${b.nodeId}.${b.port}.${b.id}`;
+      return compareCodepoint(left, right);
+    });
+  return { inputs, outputs };
+};
+
+const normalizeVectors = (vectors?: TestVector[]): TestVector[] | undefined => {
+  if (!vectors) return vectors;
+  return [...vectors]
+    .map((vector) => ({ ...vector }))
+    .sort((a, b) => a.tick - b.tick);
+};
+
+const normalizeSubmodules = (submodules?: SubmoduleEntry[]): SubmoduleEntry[] | undefined => {
+  if (!submodules) return submodules;
+  return [...submodules]
+    .map((sub) => ({ ...sub }))
+    .sort((a, b) => compareCodepoint(a.id, b.id));
+};
+
 export const encodeRBProject = (project: RBProject) => {
   const sortedTags = project.meta?.tags ? [...project.meta.tags].sort((a, b) => compareCodepoint(a, b)) : undefined;
   const normalized = {
@@ -121,6 +175,9 @@ export const encodeRBProject = (project: RBProject) => {
     circuit: normalizeProjectCircuit(project.circuit),
     probes: normalizeProbes(project.probes),
     hdl: normalizeHdl(project.hdl),
+    ioMapping: normalizeIoMapping(project.ioMapping),
+    vectors: normalizeVectors(project.vectors),
+    submodules: normalizeSubmodules(project.submodules),
     meta: project.meta
       ? {
           ...project.meta,

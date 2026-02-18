@@ -194,9 +194,6 @@ importers:
       '@redbyte/rb-apps':
         specifier: workspace:*
         version: link:../../packages/rb-apps
-      '@redbyte/rb-shell':
-        specifier: workspace:*
-        version: link:../../packages/rb-shell
       '@redbyte/rb-windowing':
         specifier: workspace:*
         version: link:../../packages/rb-windowing

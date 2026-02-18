@@ -79,7 +79,13 @@ import {
 import { stableStringify } from '../export/stableStringify';
 import { verilogFromNetlist } from '../export/verilogExport';
 import { HierarchyBreadcrumbs } from '../components/HierarchyBreadcrumbs';
-import { IDEModeNav, type IDEMode } from '../components/IDEModeNav';
+import { IDEModeNav } from '../components/IDEModeNav';
+import { IdeProvider, type IDEMode, type IdeContextValue } from './ide/IdeContext';
+import { ProjectMode } from './ide/modes/ProjectMode';
+import { DesignMode } from './ide/modes/DesignMode';
+import { VerifyMode } from './ide/modes/VerifyMode';
+import { ExportMode } from './ide/modes/ExportMode';
+import { ImportMode } from './ide/modes/ImportMode';
 import { LabSelectorModal } from '../components/LabSelectorModal';
 import type { LabDefinition } from '../labs/labCatalog';
 import { KeyboardShortcutsHelp } from '../components/KeyboardShortcutsHelp';
@@ -124,6 +130,8 @@ import {
   type SubmissionBundleStatusSnapshot,
 } from '../export/submissionBundle';
 import { persistSubmissionBundleStatus } from '../export/submissionBundleWorkflow';
+import { getConnectionNodeId, getConnectionPort } from '../utils/connectionUtils';
+
 
 
 // Placeholder for evidence viewer (feature in development)
@@ -325,10 +333,10 @@ function computeCircuitFingerprint(circuit: Circuit): string {
     .join('|');
   const edgeData = circuit.connections
     .map(c => {
-      const fromId = typeof c.from === 'string' ? c.from : c.from?.nodeId ?? '';
-      const toId = typeof c.to === 'string' ? c.to : c.to?.nodeId ?? '';
-      const fromPort = typeof c.from === 'string' ? (c as any).fromPin ?? (c as any).fromPort : (c.from as any)?.portName ?? (c.from as any)?.port ?? '';
-      const toPort = typeof c.to === 'string' ? (c as any).toPin ?? (c as any).toPort : (c.to as any)?.portName ?? (c.to as any)?.port ?? '';
+      const fromId = getConnectionNodeId(c.from);
+      const toId = getConnectionNodeId(c.to);
+      const fromPort = getConnectionPort(c, 'from', '');
+      const toPort = getConnectionPort(c, 'to', '');
       return `${fromId}:${fromPort}->${toId}:${toPort}`;
     })
     .sort()
@@ -432,19 +440,10 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
   // Helper for connection normalization (used by app-specific logic)
   const normalizeConnection = useCallback((conn: Connection) => {
-    const fromIsString = typeof conn.from === 'string';
-    const toIsString = typeof conn.to === 'string';
-
-    const fromNodeId = fromIsString ? conn.from : conn.from.nodeId;
-    const toNodeId = toIsString ? conn.to : conn.to.nodeId;
-
-    const fromPin = fromIsString
-      ? conn.fromPin ?? conn.fromPort ?? 'out'
-      : conn.from.portName ?? conn.from.port ?? conn.fromPin ?? conn.fromPort ?? 'out';
-
-    const toPin = toIsString
-      ? conn.toPin ?? conn.toPort ?? 'in'
-      : conn.to.portName ?? conn.to.port ?? conn.toPin ?? conn.toPort ?? 'in';
+    const fromNodeId = getConnectionNodeId(conn.from);
+    const toNodeId = getConnectionNodeId(conn.to);
+    const fromPin = getConnectionPort(conn, 'from', 'out');
+    const toPin = getConnectionPort(conn, 'to', 'in');
 
     return { fromNodeId, toNodeId, fromPin, toPin };
   }, []);
@@ -544,7 +543,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   // Debug instrumentation for Playwright gates (RC-P1)
   useEffect(() => {
     if (typeof window !== 'undefined' && import.meta.env.DEV) {
-      window.__RB_DEBUG__ = {
+      (window as any).__RB_DEBUG__ = {
         ...((window as any).__RB_DEBUG__ || {}),
         getCircuit: () => useCircuitStore.getState().circuit,
       };
@@ -597,7 +596,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
   const perspective = useLayoutStore((state) => state.perspective);
   const storeSetPerspective = useLayoutStore((state) => state.setPerspective);
 
-  // IDE mode: maps the 4-stage student journey to the right dock
+  // IDE mode: maps the 5-stage student journey to the right dock
   const [ideMode, setIdeMode] = useState<IDEMode>('design');
   const [showLabModal, setShowLabModal] = useState(false);
   const { safeMode, isComplexityWarning } = useClassroomModeStore();
@@ -641,6 +640,10 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
         // Export always opens dock fully — the Vivado workflow is the whole point
         layout.setRightDockState('expanded');
         layout.openDock('hdl', undefined);
+        break;
+      case 'import':
+        ensureDockOpen();
+        layout.openDock('import' as any, undefined);
         break;
     }
   }, []);
@@ -1111,7 +1114,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     // Calculate max fan-out
     const fanOutCounts = new Map<string, number>();
     circuit.connections.forEach((conn) => {
-      const key = `${conn.from.nodeId}:${conn.from.portName}`;
+      const key = `${getConnectionNodeId(conn.from)}:${getConnectionPort(conn, 'from', '')}`;
       fanOutCounts.set(key, (fanOutCounts.get(key) || 0) + 1);
     });
     const maxFanOut = fanOutCounts.size > 0 ? Math.max(...fanOutCounts.values()) : 0;
@@ -2067,10 +2070,10 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
       connections: circuit.connections.filter(
         (c) =>
           !(
-            c.from.nodeId === fromNodeId &&
-            c.from.portName === fromPort &&
-            c.to.nodeId === toNodeId &&
-            c.to.portName === toPort
+            getConnectionNodeId(c.from) === fromNodeId &&
+            getConnectionPort(c, 'from', '') === fromPort &&
+            getConnectionNodeId(c.to) === toNodeId &&
+            getConnectionPort(c, 'to', '') === toPort
           )
       ),
     };
@@ -3221,29 +3224,29 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     const fpga =
       enableHdlTab && (hasFpgaConstraints || hasFpgaPreset)
         ? {
-            ...fpgaProject,
-            top: typeof fpgaProject.top === 'string' && fpgaProject.top.trim().length > 0 ? fpgaProject.top : hdlProject.top,
-            constraints: hasFpgaConstraints ? { type: 'xdc' as const, text: normalizedConstraintsText } : undefined,
-            preset: hasFpgaPreset ? fpgaProject.preset : undefined,
-          }
+          ...fpgaProject,
+          top: typeof fpgaProject.top === 'string' && fpgaProject.top.trim().length > 0 ? fpgaProject.top : hdlProject.top,
+          constraints: hasFpgaConstraints ? { type: 'xdc' as const, text: normalizedConstraintsText } : undefined,
+          preset: hasFpgaPreset ? fpgaProject.preset : undefined,
+        }
         : undefined;
     return createRBProject({
       createdAt: projectCreatedAt,
       name,
-       description: projectDescription.trim() || undefined,
-       circuit,
-       hdl:
-         enableHdlTab &&
-         ((typeof hdlProject.top === 'string' && hdlProject.top.trim().length > 0) ||
-           (Array.isArray(hdlProject.sources) && hdlProject.sources.some((s) => s.text.trim().length > 0)))
-            ? hdlProject
-            : undefined,
-        fpga,
-        layout: {
-          perspectiveId: perspective,
-          splitRatio,
-          dock: {
-           open: rightDockState !== 'collapsed',
+      description: projectDescription.trim() || undefined,
+      circuit,
+      hdl:
+        enableHdlTab &&
+          ((typeof hdlProject.top === 'string' && hdlProject.top.trim().length > 0) ||
+            (Array.isArray(hdlProject.sources) && hdlProject.sources.some((s) => s.text.trim().length > 0)))
+          ? hdlProject
+          : undefined,
+      fpga,
+      layout: {
+        perspectiveId: perspective,
+        splitRatio,
+        dock: {
+          open: rightDockState !== 'collapsed',
           tab: rightDockTab,
         },
       },
@@ -3891,9 +3894,39 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
     pushMount('LogicPlaygroundApp:return');
   }
 
-
+  // ── IDE Context value (shared across all mode components) ──
+  const ideContextValue: IdeContextValue = {
+    ideMode,
+    setIdeMode,
+    engine,
+    tickEngine,
+    circuit,
+    handleCircuitChange,
+    projectName,
+    setProjectName,
+    projectId,
+    isDirty,
+    setIsDirty,
+    isRunning,
+    tickCount,
+    currentHz,
+    handleRun,
+    handlePause,
+    handleStep,
+    handleHzChange,
+    handleResetTickCount,
+    hdlProject,
+    setHdlProject: handleHdlProjectChange,
+    fpgaProject,
+    setFpgaProject: handleFpgaProjectChange,
+    enableHdlTab,
+    buildProject,
+    applyProject,
+    addToast,
+  };
 
   return (
+    <IdeProvider value={ideContextValue}>
     <ErrorBoundary>
       {/* Zoom-safe layout: flex + min-width/height prevents canvas clipping at browser zoom 125-150% */}
       <div className="h-full flex flex-col min-h-0 min-w-0 bg-gray-900 text-white overflow-hidden" data-testid="logic-playground-root" style={{ display: 'flex', minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
@@ -4175,49 +4208,27 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
                 disableToolStrip={disableToolStrip}
               />
             )}
-            {isReplayMode && (
-              <div className="absolute inset-0 z-30 pointer-events-none">
-                <div className="absolute top-3 right-3 bg-gray-900/80 border border-gray-700 rounded px-2 py-2 text-[10px] text-cyan-300 font-mono pointer-events-auto">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="uppercase tracking-wide">Replay</span>
-                    <span>t{playheadTick}</span>
-                  </div>
-                  <div className="mt-2 flex items-center gap-1">
-                    <button
-                      onClick={replayPaused ? handleRunReplayResume : handleRunReplayPause}
-                      className="px-1.5 py-0.5 border border-gray-600 rounded text-[10px] text-gray-200 hover:bg-gray-800"
-                      type="button"
-                    >
-                      {replayPaused ? 'Play' : 'Pause'}
-                    </button>
-                    <button
-                      onClick={() => handleRunReplayStep(1)}
-                      className="px-1.5 py-0.5 border border-gray-600 rounded text-[10px] text-gray-200 hover:bg-gray-800"
-                      type="button"
-                      disabled={!replayPaused}
-                      title={!replayPaused ? 'Pause replay to step' : undefined}
-                    >
-                      Step
-                    </button>
-                    <button
-                      onClick={() => handleRunReplayStep(10)}
-                      className="px-1.5 py-0.5 border border-gray-600 rounded text-[10px] text-gray-200 hover:bg-gray-800"
-                      type="button"
-                      disabled={!replayPaused}
-                      title={!replayPaused ? 'Pause replay to step' : undefined}
-                    >
-                      +10
-                    </button>
-                    <button
-                      onClick={handleRunReplayStop}
-                      className="px-1.5 py-0.5 border border-red-700 rounded text-[10px] text-red-300 hover:bg-red-900/30"
-                      type="button"
-                    >
-                      Exit
-                    </button>
-                  </div>
-                </div>
-              </div>
+            {/* VerifyMode: replay overlay + trace viewer (rendered inside canvas area for absolute positioning) */}
+            <VerifyMode
+              isReplayMode={isReplayMode}
+              playheadTick={playheadTick}
+              replayPaused={replayPaused}
+              onReplayPause={handleRunReplayPause}
+              onReplayResume={handleRunReplayResume}
+              onReplayStep={handleRunReplayStep}
+              onReplayStop={handleRunReplayStop}
+              showTraceViewer={showTraceViewer}
+              onCloseTraceViewer={() => setShowTraceViewer(false)}
+              traceSnapshots={traceSnapshots}
+              currentTick={tickEngine?.getTickCount() ?? 0}
+            />
+
+            {/* ProjectMode: project info overlay (visible in project mode) */}
+            {ideMode === 'project' && (
+              <ProjectMode
+                pinnedStarterInstructions={pinnedStarterInstructions}
+                onOpenLabSelector={() => setShowLabModal(true)}
+              />
             )}
 
             {pinnedStarterInstructions && (
@@ -4386,142 +4397,24 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
           </OverlayRoot>
         )}
 
-        {/* Clipboard Fallback Modal */}
-        {shareFallbackURL && (
-          <OverlayRoot className="bg-black bg-opacity-50 flex items-center justify-center">
-            <OverlayPanel className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4">
-              <h3 className="text-lg font-semibold mb-3 text-white">Share Link Ready</h3>
-              <p className="text-sm text-gray-300 mb-4">
-                Automatic clipboard copy failed. Please copy the link manually:
-              </p>
-              <input
-                type="text"
-                readOnly
-                value={shareFallbackURL}
-                onClick={(e) => e.currentTarget.select()}
-                aria-label="Share link"
-                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white font-mono text-sm mb-4"
-                autoFocus
-              />
-              <div className="flex gap-2 justify-end">
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(shareFallbackURL).catch(() => { });
-                    addToast('Link copied!', 'success');
-                    setShareFallbackURL(null);
-                  }}
-                  className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded text-white text-sm"
-                >
-                  Copy
-                </button>
-                <button
-                  onClick={() => setShareFallbackURL(null)}
-                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
-                >
-                  Close
-                </button>
-              </div>
-            </OverlayPanel>
-          </OverlayRoot>
-        )}
+        {/* ImportMode: share link fallback + decode error modals */}
+        <ImportMode
+          shareFallbackURL={shareFallbackURL}
+          onCopyShareLink={() => {
+            if (shareFallbackURL) {
+              navigator.clipboard.writeText(shareFallbackURL).catch(() => { });
+              addToast('Link copied!', 'success');
+              setShareFallbackURL(null);
+            }
+          }}
+          onCloseShareFallback={() => setShareFallbackURL(null)}
+          showDecodeErrorModal={showDecodeErrorModal}
+          onCloseDecodeError={() => setShowDecodeErrorModal(false)}
+          onClearURLAndReset={handleClearURLAndReset}
+        />
 
-        {/* Decode Error Modal */}
-        {showDecodeErrorModal && (
-          <OverlayRoot className="bg-black bg-opacity-50 flex items-center justify-center">
-            <OverlayPanel className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold mb-3 text-red-400">Invalid Share Link</h3>
-              <p className="text-sm text-gray-300 mb-4">
-                This share link is invalid or corrupted. The circuit could not be loaded.
-              </p>
-              <div className="flex gap-2 justify-end">
-                <button
-                  onClick={handleClearURLAndReset}
-                  className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded text-white text-sm"
-                >
-                  Clear URL & Start Fresh
-                </button>
-                <button
-                  onClick={() => setShowDecodeErrorModal(false)}
-                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
-                >
-                  Close
-                </button>
-              </div>
-              <a
-                href="https://github.com/swaggyp52/redbyte-ui-genesis/issues"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block mt-4 text-xs text-cyan-400 hover:text-cyan-300"
-              >
-                Report Issue -&gt;
-              </a>
-            </OverlayPanel>
-          </OverlayRoot>
-        )}
-
-        {/* Export Modal */}
-        {showExportModal && (
-          <OverlayRoot className="bg-black bg-opacity-50 flex items-center justify-center">
-            <OverlayPanel className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold mb-3 text-white">Export</h3>
-              <div className="space-y-2 mb-4">
-                <button
-                  onClick={() => {
-                    handleSaveProject();
-                    setShowExportModal(false);
-                  }}
-                  className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
-                >
-                  Project (rb-project.json)
-                </button>
-                <button
-                  onClick={() => {
-                    void handleSaveProjectArchive();
-                    setShowExportModal(false);
-                  }}
-                  className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
-                >
-                  Project Archive (.rbproj.zip)
-                </button>
-                <button
-                  onClick={() => {
-                    handleExportNetlist();
-                    setShowExportModal(false);
-                  }}
-                  className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
-                >
-                  Netlist (netlist.json)
-                </button>
-                <button
-                  onClick={() => {
-                    handleExportVerilog();
-                    setShowExportModal(false);
-                  }}
-                  className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
-                >
-                  Verilog (circuit.v)
-                </button>
-                <button
-                  onClick={() => {
-                    handleExportDebugBundle();
-                    setShowExportModal(false);
-                  }}
-                  className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm text-left"
-                >
-                  Debug Bundle (rb-debug-bundle.json)
-                </button>
-              </div>
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowExportModal(false)}
-                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
-                >
-                  Close
-                </button>
-              </div>
-            </OverlayPanel>
-          </OverlayRoot>
-        )}
+        {/* ExportMode: canonical Basys3 export authority */}
+        <ExportMode />
 
         {/* Save As Modal */}
         {showSaveAsModal && (
@@ -4658,19 +4551,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
           />
         )}
 
-        {/* Trace Viewer Modal */}
-        {showTraceViewer && (
-          <OverlayRoot className="bg-black bg-opacity-50 flex items-center justify-center">
-            <OverlayPanel className="bg-gray-900 rounded-lg shadow-2xl w-[90%] h-[90%] max-w-5xl overflow-hidden border border-gray-700">
-              <TraceViewer
-                traces={traceSnapshots}
-                circuit={circuit}
-                currentTick={tickEngine.getTickCount()}
-                onClose={() => setShowTraceViewer(false)}
-              />
-            </OverlayPanel>
-          </OverlayRoot>
-        )}
+        {/* TraceViewer is now rendered by VerifyMode */}
 
         {/* Chip Library Modal */}
         <ChipLibraryModal
@@ -4788,6 +4669,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
 
       </div>
     </ErrorBoundary>
+    </IdeProvider>
   );
 };
 

@@ -4,7 +4,7 @@ import { useLabEngineStore } from '@redbyte/rb-lab-engine';
 import { Basys3BoardView } from './boards/Basys3BoardView';
 import { ArduinoInstrument } from './boards/ArduinoInstrument';
 import { loadBoardProfile } from '@redbyte/rb-board-profiles';
-import { getSignalValue, getAvailableSignals } from '@redbyte/rb-lab-engine/src/signals/signalSemantics';
+import { getSignalValue, getAvailableSignals } from '@redbyte/rb-lab-engine';
 
 export const DeployMode: React.FC = () => {
   const { project, dispatch } = useLabEngineStore();

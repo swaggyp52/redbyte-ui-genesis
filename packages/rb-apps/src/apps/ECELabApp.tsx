@@ -21,7 +21,7 @@ import { SplitViewLayout } from '../components/SplitViewLayout';
 import { Circuit, CircuitEngine, TickEngine, Node, toCircuitV1, fromCircuitV1 } from '@redbyte/rb-logic-core';
 import type { CircuitV1, IoMappingEntry } from '@redbyte/rb-utils';
 import { useUnifiedProjectStore } from '@redbyte/rb-lab-engine';
-import { getAvailableSignals } from '@redbyte/rb-lab-engine/src/signals/signalSemantics';
+import { getAvailableSignals } from '@redbyte/rb-lab-engine';
 import { useViewStateStore } from '../stores/viewStateStore';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 
