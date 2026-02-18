@@ -1,5 +1,48 @@
 # AI State
 
+## Change Log 2026-02-18 (Phase 1 kickoff: mode mutation boundaries + default-route template removal)
+
+**Status**: COMPLETE - Repo-clean workflow enforced, Phase 1 Commit 1-3 delivered as atomic commits.
+
+### What Changed
+
+1. `feat(ide): add mode mutation boundary enforcement`
+- Added: `packages/rb-apps/src/apps/ide/modeGuards.ts`
+  - per-mode field allowlists (`project`, `design`, `verify`, `export`, `import`)
+  - immutable-field protection (`kind`, `version`, `createdAt`)
+  - deterministic boundary evaluation + violation formatter/logger helpers
+- Updated: `packages/rb-apps/src/apps/ide/IdeContext.tsx`
+  - added `modeGuardError` and `clearModeGuardError` to IDE context contract
+- Updated: `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+  - snapshots mode-entry project state
+  - blocks mode switch on illegal cross-mode mutations (fail-closed)
+  - logs violations via `[RB_MODE_GUARD]`
+  - surfaces deterministic UI error banner (`data-testid="ide-mode-guard-error"`)
+
+2. `test(ide): add mode guard unit tests`
+- Added: `packages/rb-apps/src/__tests__/ide-mode-guards.test.ts`
+  - proves allowed mode mutations pass
+  - proves illegal mode mutations are blocked and logged with deterministic payload
+
+3. `refactor(design): remove template library from default IDE route`
+- Updated: `packages/rb-apps/src/components/IDEModeNav.tsx`
+  - removed top-nav template launcher trigger from default IDE surface
+- Updated: `packages/rb-apps/src/apps/LogicPlaygroundApp.tsx`
+  - removed empty-canvas "Load a Lab Template" action from default design landing
+  - replaced with "Open Project Overview" (routes to Project mode through guarded mode handler)
+- Result: Template entrypoints are no longer on default `/` design landing; template loading remains explicit via Project mode flow.
+
+### Verification Executed
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/ide-mode-guards.test.ts packages/rb-apps/src/__tests__/export/file-tree-manifest.test.ts` -> PASS
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/ide-mode-guards.test.ts` -> PASS
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:route-contract` -> PASS
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-18 (IDE-first boot emergency hardening: JS shadow quarantine + route contract)
 
 **Status**: COMPLETE - Default `/` now resolves to IDE path with deterministic markers and explicit boot proofs. Shell path remains opt-in behind `?launcher=1`.
