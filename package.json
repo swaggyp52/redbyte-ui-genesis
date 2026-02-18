@@ -146,6 +146,7 @@
         "ide:gate:export-generates-hdl": "node ./scripts/gates/ide-export-generates-hdl.mjs",
         "ide:gate:import-renders-schematic": "node ./scripts/gates/ide-import-renders-schematic.mjs",
         "ide:gate:shell-structure": "node ./scripts/gates/ide-shell-structure-contract.mjs",
+        "ide:gate:layout-contract": "node ./scripts/gates/ide-layout-contract.mjs",
         "ide:gate:route-contract": "node ./scripts/gates/ide-route-contract.mjs",
         "gates:ide-boot-shadow-contract": "node ./scripts/gates/ide-boot-shadow-contract.mjs",
         "verify:gates:log": "pnpm -s verify:gates > verify-gates-latest.txt",

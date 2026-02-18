@@ -1,0 +1,93 @@
+#!/usr/bin/env node
+
+import { chromium } from 'playwright';
+
+const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
+
+const SELECTOR_IDE_ROOT = '[data-testid="ide-root"]';
+const SELECTOR_TOP_BAR = '[data-testid="ide-top-bar"]';
+const SELECTOR_LEFT_RAIL = '[data-testid="ide-left-rail"]';
+
+const MODES = ['project', 'design', 'verify', 'export', 'import'];
+
+function assert(condition, message) {
+  if (!condition) {
+    throw new Error(message);
+  }
+}
+
+async function visible(locator) {
+  return locator.first().isVisible().catch(() => false);
+}
+
+async function verifyLayoutContract(page) {
+  await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
+
+  await page.waitForSelector(SELECTOR_IDE_ROOT, { state: 'visible', timeout: 15000 });
+  await page.waitForSelector(SELECTOR_TOP_BAR, { state: 'visible', timeout: 15000 });
+  await page.waitForSelector(SELECTOR_LEFT_RAIL, { state: 'visible', timeout: 15000 });
+
+  const leftRail = page.locator(SELECTOR_LEFT_RAIL).first();
+  const initialBox = await leftRail.boundingBox();
+  assert(initialBox?.width, 'unable to read left rail width');
+  const initialWidth = Math.round(initialBox.width);
+
+  assert(initialWidth >= 120 && initialWidth <= 128, `left rail width out of contract range: ${initialWidth}px`);
+
+  for (const mode of MODES) {
+    await page.locator(`[data-testid="mode-button-${mode}"]`).click();
+    await page.waitForSelector(`[data-testid="ide-mode-${mode}"]`, { state: 'visible', timeout: 10000 });
+
+    const modeRoot = page.locator(`[data-testid="ide-mode-${mode}"]`).first();
+    const modeMarker = await modeRoot.getAttribute('data-ide-mode-marker');
+    assert(modeMarker === mode, `mode marker mismatch for ${mode}: ${modeMarker}`);
+
+    const inspectorVisible = await visible(modeRoot.locator('[data-testid="ide-inspector"]'));
+    assert(inspectorVisible, `right inspector missing in mode=${mode}`);
+
+    const titleRowVisible = await visible(modeRoot.locator('[data-testid="ide-panel-title-row"]'));
+    assert(titleRowVisible, `title row missing in mode=${mode}`);
+
+    const actionRowVisible = await visible(modeRoot.locator('[data-testid="ide-panel-action-row"]'));
+    assert(actionRowVisible, `action row missing in mode=${mode}`);
+
+    const primaryCount = await modeRoot.locator('.ide-button-primary').count();
+    const blockedCount = await modeRoot.getByText(/blocked/i).count();
+    assert(primaryCount > 0 || blockedCount > 0, `mode=${mode} missing primary CTA or blocked message`);
+
+    const panelCount = await modeRoot.locator('.ide-panel').count();
+    assert(panelCount > 0, `mode=${mode} rendered an empty workspace`);
+
+    const textContent = (await modeRoot.innerText()).trim();
+    assert(textContent.length > 30, `mode=${mode} appears empty`);
+
+    const box = await leftRail.boundingBox();
+    assert(box?.width, `unable to read left rail width in mode=${mode}`);
+    const width = Math.round(box.width);
+    assert(Math.abs(width - initialWidth) <= 2, `left rail width drifted in mode=${mode}: ${width}px`);
+  }
+}
+
+async function main() {
+  const browser = await chromium.launch();
+  const context = await browser.newContext({ serviceWorkers: 'block' });
+  const page = await context.newPage();
+  let exitCode = 0;
+
+  try {
+    await verifyLayoutContract(page);
+    console.log('PASS: IDE layout contract satisfied.');
+  } catch (error) {
+    exitCode = 1;
+    console.error('FAIL: IDE layout contract violated.');
+    console.error(error instanceof Error ? error.message : String(error));
+  } finally {
+    await context.close();
+    await browser.close();
+  }
+
+  process.exit(exitCode);
+}
+
+main();
