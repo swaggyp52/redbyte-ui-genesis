@@ -57,15 +57,11 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: {
-      '@redbyte/rb-shell': path.resolve(__dirname, '../../packages/rb-shell/src'),
-      '@redbyte/rb-apps': path.resolve(__dirname, '../../packages/rb-apps/src'),
-      '@redbyte/rb-windowing': path.resolve(__dirname, '../../packages/rb-windowing/src'),
-      '@redbyte/rb-theme': path.resolve(__dirname, '../../packages/rb-theme/src'),
-      '@redbyte/rb-icons': path.resolve(__dirname, '../../packages/rb-icons/src'),
-      '@redbyte/rb-utils': path.resolve(__dirname, '../../packages/rb-utils/src'),
-      // React dedup is handled by pnpm overrides in root package.json
-    },
+    // tsconfigPaths plugin resolves @redbyte/* via root tsconfig.json entrypoint-only paths.
+    // Discipline is enforced by:
+    // 1. Entrypoint-only paths in tsconfig (no wildcard subpaths)
+    // 2. gates:no-deep-imports gate blocks @redbyte/*/src/* specifiers
+    // This gives fast source-coupled dev + real package boundaries.
   },
   server: {
     port: 5173,

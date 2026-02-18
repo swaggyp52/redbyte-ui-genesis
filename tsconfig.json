@@ -14,8 +14,29 @@
     "allowSyntheticDefaultImports": true,
     "types": ["vite/client"],
     "paths": {
-      "@redbyte/rb-apps/*": ["packages/rb-apps/src/*"],
-      "@redbyte/*": ["packages/*/src"]
+      "@redbyte/rb-shell": ["packages/rb-shell/src/index.ts"],
+      "@redbyte/rb-apps": ["packages/rb-apps/src/index.ts"],
+      "@redbyte/rb-windowing": ["packages/rb-windowing/src/index.ts"],
+      "@redbyte/rb-theme": ["packages/rb-theme/src/index.ts"],
+      "@redbyte/rb-icons": ["packages/rb-icons/src/index.ts"],
+      "@redbyte/rb-utils": ["packages/rb-utils/src/index.ts"],
+      "@redbyte/rb-primitives": ["packages/rb-primitives/src/index.ts"],
+      "@redbyte/rb-logic-core": ["packages/rb-logic-core/src/index.ts"],
+      "@redbyte/rb-instruments": ["packages/rb-instruments/src/index.ts"],
+      "@redbyte/rb-lab-engine": ["packages/rb-lab-engine/src/index.ts"],
+      "@redbyte/rb-fpga-toolchain": ["packages/rb-fpga-toolchain/src/index.ts"],
+      "@redbyte/rb-logic-3d": ["packages/rb-logic-3d/src/index.ts"],
+      "@redbyte/rb-fpga-bridge": ["packages/rb-fpga-bridge/src/index.ts"],
+      "@redbyte/rb-logic-adapter": ["packages/rb-logic-adapter/src/index.ts"],
+      "@redbyte/rb-logic-view": ["packages/rb-logic-view/src/index.ts"],
+      "@redbyte/rb-viewport": ["packages/rb-viewport/src/index.ts"],
+      "@redbyte/rb-protocol": ["packages/rb-protocol/src/index.ts"],
+      "@redbyte/rb-fpga-proof-core": ["packages/rb-fpga-proof-core/src/index.ts"],
+      "@redbyte/rb-fpga-signing": ["packages/rb-fpga-signing/src/index.ts"],
+      "@redbyte/rb-tokens": ["packages/rb-tokens/src/index.ts"],
+      "@redbyte/rb-board-profiles": ["packages/rb-board-profiles/src/index.ts"],
+      "@redbyte/rb-lab-content": ["packages/rb-lab-content/src/index.ts"],
+      "@redbyte/rb-analog-sim": ["packages/rb-analog-sim/src/index.ts"]
     }
   },
   "include": ["packages", "apps"]

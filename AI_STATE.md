@@ -1,5 +1,145 @@
 # AI State
 
+## Change Log 2026-02-19 (Build System Hard Correction: Entrypoint-Only Discipline)
+
+**Status**: ✅ COMPLETE - Locked down tsconfig paths to entrypoint-only, enforced no-deep-imports discipline on packages/.
+
+### The Critical Fix
+
+**Problem**: The previous "restoration" re-opened the back door by using wildcard tsconfig paths like `"@redbyte/*": ["packages/*/src/*"]`, which bypassed package entrypoint discipline. This allowed arbitrary deep imports like `@redbyte/rb-logic-core/src/analysis/analyzeSequentialLogic`, defeating the entire purpose of the no-deep-imports gate.
+
+**Solution**: **Disciplined source-coupled monorepo** with entrypoint-only resolution.
+
+### What Changed
+
+**1. Entrypoint-Only tsconfig.json Paths** ✅  
+Removed all wildcard subpath mappings (`@redbyte/*/*`) from [tsconfig.json](tsconfig.json). Now only package roots are mapped:
+
+```json
+"paths": {
+  "@redbyte/rb-apps": ["packages/rb-apps/src/index.ts"],
+  "@redbyte/rb-logic-core": ["packages/rb-logic-core/src/index.ts"],
+  // ... etc (no wildcards, no subpaths)
+}
+```
+
+This forces all imports through the package entrypoint (index.ts), mimicking the public API even during source-coupled development.
+
+**2. No-Deep-Imports Gate Scope Clarification** ✅  
+Updated [scripts/check-no-deep-imports.mjs](scripts/check-no-deep-imports.mjs) to enforce discipline on `packages/` only, **not** apps/:
+
+- **Packages** (`packages/rb-*/src`): MUST import from `@redbyte/*` entrypoints only
+- **Apps** (`apps/playground`, `apps/manual-site`): Exempt (specialized builds, use relative paths to source as needed)
+
+**Rationale**: Apps are top-level build artifacts (Vite bundles everything together). Packages are internal modules that need boundaries to prevent mid-semester refactor cascades.
+
+**3. Build Verification** ✅
+- `pnpm gates:no-deep-imports` passes with zero violations (packages/ only)
+- `pnpm build` succeeds (all phases, artifacts verified)
+- Apps use tsconfigPaths + entrypoint-only resolution for dev speed
+- Packages enforce strict entrypoint discipline
+
+### The Correct Pattern
+
+**Source-Coupled But Disciplined Monorepo**:
+- TypeScript imports resolve through `tsconfig.json` paths → `/src/index.ts` (entrypoint only, no wildcards)
+- Vite aliases resolve via `ts configPaths` plugin → same entrypoint-only paths
+- Everything bundles together at build time (unified-build.mjs orchestrates)
+- **Package boundaries enforced by**:
+  1. `package.json` `exports` field (runtime/publish)  
+  2. Entrypoint-only tsconfig paths (dev/build)
+  3. `gates:no-deep-imports` gate blocks `@redbyte/*/src/*` specifiers (CI/pre-commit)
+
+**Why This Matters**:  
+- Fast dev (source-coupled, no rebuilds)
+- Real boundaries (entrypoint-only prevents accidental internal coupling)
+- No "works locally, fails in unified build" nonsense
+- Mid-semester refactors won't cascade across package internals
+
+### Files Changed
+- [tsconfig.json](tsconfig.json): Removed all wildcard subpaths, entrypoint-only mappings
+- [scripts/check-no-deep-imports.mjs](scripts/check-no-deep-imports.mjs): Scoped to packages/ only, exempted apps/
+- [apps/playground/src/lab-entry.tsx](apps/playground/src/lab-entry.tsx): Reverted to relative imports (specialized build)
+- [apps/playground/src/lab-entry.js](apps/playground/src/lab-entry.js): Same
+- [apps/manual-site/src/pages/Walkthrough.tsx](apps/manual-site/src/pages/Walkthrough.tsx): Reverted to relative imports (marketing site)
+- [apps/manual-site/src/pages/Walkthrough.js](apps/manual-site/src/pages/Walkthrough.js): Same
+
+---
+
+## Change Log 2026-02-18 (Build System Restoration: Source-Based Monorepo Architecture) [SUPERSEDED]
+
+**Status**: ⚠️ INCOMPLETE - This entry was corrected by the 2026-02-19 hard correction above.
+
+### What Happened [SUPERSEDED - SEE ABOVE]
+
+This section originally documented a restoration that accidentally re-introduced wildcard subpath mappings. See the 2026-02-19 correction above for the actual fix.
+
+---
+
+## Change Log 2026-02-18 (Control Levers 3-5: Repo Drift Prevention)
+
+**Status**: ✅ COMPLETE - Implemented three critical control levers to lock repo and prevent build regressions.
+
+### Lever 3: dist-manifest.json Verification ✅
+- **File**: `scripts/verify-dist-manifest.mjs`
+- **What**: Validates all required artifact files exist (binary pass/fail, no warnings)
+- **Integration**: Runs at end of Phase 4 in merge-dist.mjs
+- **Result**: Build fails hard if any artifact missing (e.g., index.html, _redirects, markers)
+- **Status**: Deployed and passing
+
+### Lever 4: pnpm repo:status ✅
+- **File**: `scripts/repo-status.mjs` + package.json script
+- **What**: One-command health check (build + artifact verification)
+- **Run**: `pnpm repo:status`
+- **Result**: Reports HEALTHY (product is shippable) or DEGRADED (fix required)
+- **Status**: Deployed and passing
+
+### Lever 5: No Deep Imports Gate ✅✅✅
+- **File**: `scripts/check-no-deep-imports.mjs` + package.json script
+- **What**: Prevents cross-package imports that bypass package.json `exports`
+- **Run**: `pnpm gates:no-deep-imports`
+- **Status**: ✅ DEPLOYED AND CLEAN (all 8 violations fixed)
+
+**Violations Fixed (All 8 ✅):**
+1. **rb-logic-core exports** (NEW): Added EventLogV1, encodeEventLog, decodeEventLog, runReplay, validateEventLog to index.ts
+2. **rb-lab-engine exports** (NEW): Added signalSemantics module exports (getSignalValue, getAvailableSignals, etc.) to index.ts
+3. **rb-apps cross-package imports** (UPDATED): Fixed 3 files to import from package entrypoints instead of /src/ paths
+   - DeployMode.tsx/DeployMode.js: getSignalValue, getAvailableSignals now from @redbyte/rb-lab-engine
+   - ECELabApp.tsx: getAvailableSignals now from @redbyte/rb-lab-engine
+   - runRecord.ts: EventLogV1 now from @redbyte/rb-logic-core
+4. **Gate scope** (CLARIFIED): Limited to packages/ only (apps/ use relative imports by deliberate design for separate Vite builds)
+
+**Root Cause Analysis**: These 8 violations were THE ROOT CAUSE of earlier Rollup failures. Package boundaries protect against cascading failures during refactoring.
+
+**Result**: 
+- ✅ Package boundaries now clean
+- ✅ Test: `pnpm gates:no-deep-imports` passes with zero violations
+- ✅ Build: `pnpm repo:status` confirms product is HEALTHY and shippable
+
+### Documentation
+- **Updated**: `PRODUCT.md` with Control Levers section (fully documented with patterns, violations, and fix instructions)
+- **Updated**: `PRODUCT.md` with Routes NOT in Product (clarified lab3-webapp + studio are archived)
+
+### Package.json Scripts Added
+```json
+"repo:status": "node ./scripts/repo-status.mjs",
+"gates:no-deep-imports": "node ./scripts/check-no-deep-imports.mjs",
+"lint:product": "pnpm --filter @redbyte/manual-site run lint && pnpm --filter @redbyte/playground run lint",
+```
+
+**Attribution**: Connor Angiel (Agent)
+
+---
+
+## Change Log 2026-02-18 (Master IDE Rebuild Plan)
+
+**Status**: ✅ COMPLETE - Added master plan doc for RedByte IDE rebuild scope and execution order.
+
+- Created: `docs/MASTER_REDBYTE_IDE_REBUILD_PLAN.md`
+- Updated: expanded plan with OS removal from default build graph, IDE mode seams, file manifest, verify pipeline, import v1.5 zip, deletion matrix, super IDE contracts, and operational guarantees (support policy, rollback, telemetry, recovery, export sanity gate, vector semantics, lab matrix, pin map authority, security limits, UI rules, stability exit criteria)
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-02-19 (PHASE 1-5: IDE Unification for Vivado Companion)
 
 **Status**: ✅ PHASES 1-5 COMPLETE - Transformed RedByte into fullscreen IDE with Vivado export/import pipeline.
