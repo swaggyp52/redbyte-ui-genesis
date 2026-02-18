@@ -7,6 +7,7 @@ import './ide/ide-root.css';
 import { IdeLeftRail, type IdeMode } from './ide/components/IdeLeftRail';
 import { IdeTopBar } from './ide/components/IdeTopBar';
 import { IdeStatusBar } from './ide/components/IdeStatusBar';
+import { ProjectSurface } from './ide/surfaces/ProjectSurface';
 import {
   IdeButton,
   IdeCallout,
@@ -100,6 +101,10 @@ const ModePlaceholder: React.FC<{ mode: IdeMode }> = ({ mode }) => {
 export const IdeApp: React.FC = () => {
   const [currentMode, setCurrentMode] = useState<IdeMode>('project');
   const [projectName] = useState('Basys3 Design');
+  const [projectDescription] = useState('Deterministic student FPGA workspace');
+  const [ioMapped] = useState(6);
+  const [ioTotal] = useState(8);
+  const [vectorCount] = useState(0);
   const [saveState] = useState<'saved' | 'unsaved' | 'autosaving'>('saved');
 
   const determinismHash = useMemo(() => '2f4e0bb0f17ac4d2', []);
@@ -132,7 +137,20 @@ export const IdeApp: React.FC = () => {
 
       <div className="ide-layout-shell">
         <IdeLeftRail currentMode={currentMode} onModeChange={setCurrentMode} />
-        <ModePlaceholder mode={currentMode} />
+        {currentMode === 'project' ? (
+          <ProjectSurface
+            projectName={projectName}
+            description={projectDescription}
+            determinismHash={determinismHash}
+            ioMapped={ioMapped}
+            ioTotal={ioTotal}
+            vectorCount={vectorCount}
+            onOpenDesign={() => setCurrentMode('design')}
+            onOpenImport={() => setCurrentMode('import')}
+          />
+        ) : (
+          <ModePlaceholder mode={currentMode} />
+        )}
       </div>
 
       <IdeStatusBar mode={currentMode} determinismHash={determinismHash} gateStatus="warn" />
