@@ -12,6 +12,7 @@
 
 import { exportBasys3Bundle } from './basys3Bundle';
 import type { RBProject } from '../../export/projectFormat';
+import { generateTestbenchVhdl } from './testbenchGenerator';
 
 export interface Basys3ExportError {
   type: 'validation' | 'constraint' | 'logic' | 'unknown';
@@ -77,6 +78,7 @@ function validateProjectForBasys3(project: RBProject): Basys3ExportError[] {
     ...Array.from({ length: 16 }, (_, i) => `SW${i}`),
     ...Array.from({ length: 16 }, (_, i) => `LD${i}`),
     'BTNC', 'BTNU', 'BTNL', 'BTNR', 'BTND',
+    'CLK100MHZ',
   ]);
 
   for (const entry of project.ioMapping.inputs) {
@@ -84,7 +86,7 @@ function validateProjectForBasys3(project: RBProject): Basys3ExportError[] {
       errors.push({
         type: 'constraint',
         severity: 'error',
-        message: `Unsupported input pin "${entry.pin}" for ${entry.nodeId}.${entry.port}. Valid: SW0-15, BTND/U/L/R/C`,
+        message: `Unsupported input pin "${entry.pin}" for ${entry.nodeId}.${entry.port}. Valid: SW0-15, BTND/U/L/R/C, CLK100MHZ`,
       });
     }
   }
@@ -186,9 +188,7 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
 
   // TODO: Generate testbench.vhd if vectors present
   if (project.vectors && project.vectors.length > 0) {
-    // Testbench generation will be added in Milestone 5 (Verify)
-    // For now, mark that it would be generated
-    result.bundle.testbench = '-- Testbench would be generated here\n';
+    result.bundle.testbench = generateTestbenchVhdl(project, project.vectors);
   }
 
   // Step 4: Compute determinism hash

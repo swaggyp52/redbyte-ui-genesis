@@ -22,7 +22,9 @@ const BASYS3_LED_PINS = [
   'V13', 'V3', 'W3', 'U3', 'P3', 'N3', 'P1', 'L1',
 ];
 
-const BASYS3_ALLOWED_PACKAGE_PINS = new Set([...BASYS3_SWITCH_PINS, ...BASYS3_LED_PINS]);
+const BASYS3_CLOCK_PIN = 'W5';
+
+const BASYS3_ALLOWED_PACKAGE_PINS = new Set([...BASYS3_SWITCH_PINS, ...BASYS3_LED_PINS, BASYS3_CLOCK_PIN]);
 
 export interface Basys3BundleResult {
   topV: string;
@@ -66,6 +68,9 @@ function pinToPackagePin(pin: string): string | null {
     return Number.isFinite(index) && index >= 0 && index < BASYS3_LED_PINS.length
       ? BASYS3_LED_PINS[index]
       : null;
+  }
+  if (pin === 'CLK100MHZ') {
+    return BASYS3_CLOCK_PIN;
   }
   return null;
 }
