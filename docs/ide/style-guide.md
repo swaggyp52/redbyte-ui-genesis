@@ -85,6 +85,12 @@ Use CSS custom properties and never hardcode in components.
 8. `DataTable`
 - Deterministic row styling with sticky header support.
 
+9. `Chip`
+- Compact semantic tags for example metadata and status context.
+
+10. `Modal`
+- Blocking confirmation for destructive actions (for example, replacing active workspace with a starter example).
+
 ## UX Rules
 
 1. Every mode has explicit empty/error/success states.

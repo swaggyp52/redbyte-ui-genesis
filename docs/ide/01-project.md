@@ -11,7 +11,7 @@ Provide project truth and readiness overview before design, verify, and export.
 
 1. Edit project metadata (name, description).
 2. Review readiness (IO mapping, vectors, export status).
-3. Navigate to next step (`Go to Design`).
+3. Open a starter example profile with explicit overwrite confirmation.
 
 ## Layout
 
@@ -25,6 +25,7 @@ Provide project truth and readiness overview before design, verify, and export.
 - File manifest panel.
 - IO mapping completeness panel.
 - Vector summary panel.
+- Starter examples panel (tags, expected behavior, open action).
 
 3. Right inspector
 - Project settings and warnings list.
@@ -41,6 +42,10 @@ Show blocking issues as callouts with direct destination action:
 
 1. Missing IO mapping -> `Open IO Mapping`
 2. Missing vectors -> `Add Vectors`
+
+Destructive action guard:
+
+1. Opening a starter example while unsaved work exists must require explicit confirmation.
 
 ## Success State
 

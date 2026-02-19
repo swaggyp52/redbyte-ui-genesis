@@ -1,5 +1,65 @@
 # AI State
 
+## Change Log 2026-02-19 (Examples Catalog Capability + Guarded Replace Contract)
+
+**Status**: COMPLETE - Added a classroom-realistic starter examples catalog to Project mode, introduced explicit replace confirmation for unsaved work, and locked behavior with a self-contained Playwright contract gate.
+
+### What Changed
+
+1. Starter examples capability in IDE state and Project mode
+- Added `packages/rb-apps/src/apps/ide/examplesCatalog.ts`:
+  - canonical examples source with realistic Basys3-oriented project profiles
+  - includes IO mapping seeds, vector seeds, summary/tags, and expected behavior text
+  - default example id contract (`IDE_DEFAULT_EXAMPLE_ID`)
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - project state can now load example profiles (name/description/io/vectors)
+  - deterministic VHDL and XDC text derived from current project IO mapping for Export surface continuity
+  - explicit guarded flow for example loading:
+    - request open -> check unsaved state -> confirm modal when required
+    - no silent workspace replacement
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`:
+  - added `Starter Examples` panel with deterministic cards and tags
+  - active example marker and open action per example
+
+2. Visual component/system extension for intentional UI
+- Updated `packages/rb-apps/src/apps/ide/components/IdePrimitives.tsx`:
+  - added `IdeChip` primitive for semantic tags
+  - added `IdeModal` primitive for destructive-action confirmation UX
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - added styles for example cards, chip rows, and modal surface/backdrop/actions
+  - kept styling aligned with existing token-based dark instrument panel system
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - added defensive circuit normalization before canvas/tick-engine use to preserve design-mode stability when legacy node shapes appear
+
+3. Regression gate for examples behavior
+- Added `scripts/gates/ide-examples-contract.mjs`:
+  - verifies examples panel renders
+  - verifies unsaved design work triggers confirmation modal before opening another example
+  - verifies cancel path preserves current state
+  - verifies confirm path updates loaded example identity
+- Script wiring updates:
+  - `package.json` -> `ide:gate:examples-contract`
+  - `scripts/verify-gates-classroom.mjs` includes new examples contract
+  - `scripts/repo-status.mjs` includes deterministic examples contract check
+
+4. IDE docs updated for the new capability contract
+- Updated `docs/ide/style-guide.md`:
+  - added `Chip` and `Modal` component contract entries
+- Updated `docs/ide/01-project.md`:
+  - documented examples panel and overwrite-confirmation behavior as part of Project mode contract
+
+### Validation Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:examples-contract` -> PASS
+- `pnpm -s ide:gate:project-health-live-contract` -> PASS
+- `pnpm -s ide:gate:primary-cta-contract` -> PASS
+- `pnpm -s ide:gate:visual-contract` -> PASS
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Tranche D: Visual System Freeze + Import Truth Screen + Self-Contained Gates)
 
 **Status**: COMPLETE - Locked the IDE visual token/grid contract, rebuilt Import mode into a deterministic 3-stage truth screen, and removed manual localhost dependency from key Playwright gates.
