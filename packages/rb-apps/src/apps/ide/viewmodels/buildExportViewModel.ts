@@ -445,6 +445,18 @@ function resolveDiagnosticOwner(
   port: string | undefined,
   message: string
 ): IdeDiagnosticOwner {
+  const directNodeId = extractNodeIdFromMessage(message);
+  if (directNodeId) {
+    const node = project.circuit.nodes.find((entry) => entry.id === directNodeId);
+    if (node) {
+      return {
+        kind: 'node',
+        nodeId: node.id,
+        portName: node.label ?? node.id,
+      };
+    }
+  }
+
   const normalizedPort = normalizePort(port ?? '');
   if (normalizedPort.length > 0) {
     const mapped = mappingIndex.get(normalizedPort);
@@ -627,6 +639,14 @@ function extractNodeTypeFromMessage(message: string): string | undefined {
   return undefined;
 }
 
+function extractNodeIdFromMessage(message: string): string | undefined {
+  const direct = message.match(/node "([^"]+)"/i);
+  if (direct?.[1]) return direct[1];
+  const dotted = message.match(/for "([^"]+)\.[^"]+"/i);
+  if (dotted?.[1]) return dotted[1];
+  return undefined;
+}
+
 function diagnosticCodeFor(
   message: string,
   severity: ExportDiagnosticSeverity
@@ -634,6 +654,16 @@ function diagnosticCodeFor(
   const lowered = message.toLowerCase();
   if (lowered.includes('unmapped required')) return 'RBEX1001';
   if (lowered.includes('declared but has no basys3 pin assignment')) return 'RBEX1002';
+  if (lowered.includes('unsupported synth subset node type')) return 'RBEX4100';
+  if (lowered.includes('multiple drivers detected')) return 'RBEX4101';
+  if (lowered.includes('combinational loop detected')) return 'RBEX4102';
+  if (lowered.includes('floating output detected')) return 'RBEX4103';
+  if (lowered.includes('missing a clock input')) return 'RBEX4200';
+  if (lowered.includes('multiple clock domains detected')) return 'RBEX4201';
+  if (lowered.includes('multiple clock drivers')) return 'RBEX4202';
+  if (lowered.includes('multiple reset drivers')) return 'RBEX4203';
+  if (lowered.includes('unsupported reset polarity')) return 'RBEX4204';
+  if (lowered.includes('unsupported bus port')) return 'RBEX4300';
   if (lowered.includes('unsupported') && lowered.includes('pin')) return 'RBEX2001';
   if (lowered.includes('questionable') && lowered.includes('mapping')) return 'RBEX2002';
   if (lowered.includes('unused mapped')) return 'RBEX2003';
@@ -670,6 +700,16 @@ function diagnosticTitleFor(
 ): string {
   if (code === 'RBEX1001') return 'Unmapped required port';
   if (code === 'RBEX1002') return 'Declared port missing Basys3 assignment';
+  if (code === 'RBEX4100') return 'Unsupported synth subset node';
+  if (code === 'RBEX4101') return 'Multiple drivers on input port';
+  if (code === 'RBEX4102') return 'Combinational loop detected';
+  if (code === 'RBEX4103') return 'Floating output';
+  if (code === 'RBEX4200') return 'Sequential node missing clock';
+  if (code === 'RBEX4201') return 'Multiple clock domains';
+  if (code === 'RBEX4202') return 'Sequential node has multiple clocks';
+  if (code === 'RBEX4203') return 'Sequential node has multiple resets';
+  if (code === 'RBEX4204') return 'Unsupported reset polarity';
+  if (code === 'RBEX4300') return 'Unsupported top-level bus port';
   if (code === 'RBEX2001') return 'Unsupported Basys3 pin alias';
   if (code === 'RBEX2002') return 'Questionable direction mapping';
   if (code === 'RBEX2003') return 'Unused mapped signal';

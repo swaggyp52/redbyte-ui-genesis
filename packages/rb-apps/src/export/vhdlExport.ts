@@ -56,7 +56,7 @@ export interface VhdlExportResult {
 /**
  * Node types that are top-level inputs (physical switches/buttons on Basys3)
  */
-const INPUT_NODE_TYPES = new Set(['INPUT', 'Switch', 'Button']);
+const INPUT_NODE_TYPES = new Set(['INPUT', 'Switch', 'Button', 'Clock', 'CLOCK']);
 
 /**
  * Node types that are top-level outputs (physical LEDs on Basys3)
@@ -71,6 +71,7 @@ const SUPPORTED_LOGIC_TYPES = new Set([
   'AND', 'OR', 'XOR', 'NOT', 'NAND', 'NOR', 'XNOR',
   'FullAdder',
   'MUX4',
+  'DFlipFlop',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -320,6 +321,16 @@ export function vhdlFromNetlist(
     });
   });
 
+  // Top-level input bindings can target non-INPUT helper nodes (for example Clock),
+  // so map explicit binding targets directly to VHDL port expressions.
+  for (const binding of topInputBindings ?? []) {
+    const direct = binding.portName;
+    if (!nodeIdToSignal.has(binding.toNodeId)) {
+      nodeIdToSignal.set(binding.toNodeId, direct);
+    }
+    nodeIdToSignal.set(`${binding.toNodeId}:${binding.toPort}`, direct);
+  }
+
   // ---- Assign internal signal names to logic nodes --------------------------
   // Use type-counters so we get and_0, and_1, or_0, fa_0, etc.
   const typeCounters = new Map<string, number>();
@@ -445,6 +456,57 @@ export function vhdlFromNetlist(
       } else {
         lines.push(`  ${sigName} <= not ${inSig};`);
       }
+      return;
+    }
+
+    if (node.type === 'DFlipFlop') {
+      const d =
+        resolveInputSignal(node.id, 'd', nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'in', nets, nodeIdToSignal, topInputBindingByTarget) ??
+        "'0'";
+      const clk =
+        resolveInputSignal(node.id, 'clk', nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'clock', nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'c', nets, nodeIdToSignal, topInputBindingByTarget);
+      const rst =
+        resolveInputSignal(node.id, 'rst', nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'reset', nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'clr', nets, nodeIdToSignal, topInputBindingByTarget);
+      const en =
+        resolveInputSignal(node.id, 'en', nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'enable', nets, nodeIdToSignal, topInputBindingByTarget);
+
+      nodeIdToSignal.set(`${node.id}:q`, sigName);
+      nodeIdToSignal.set(`${node.id}:out`, sigName);
+
+      if (!clk) {
+        warnings.push(`DFlipFlop "${node.id}" has no clock input - signal ${sigName} will be tied low`);
+        lines.push(`  ${sigName} <= '0'; -- missing DFlipFlop clock`);
+        return;
+      }
+
+      if (rst) {
+        lines.push(`  process (${clk}, ${rst})`);
+        lines.push('  begin');
+        lines.push(`    if ${rst} = '1' then`);
+        lines.push(`      ${sigName} <= '0';`);
+        lines.push(`    elsif rising_edge(${clk}) then`);
+      } else {
+        lines.push(`  process (${clk})`);
+        lines.push('  begin');
+        lines.push(`    if rising_edge(${clk}) then`);
+      }
+
+      if (en) {
+        lines.push(`      if ${en} = '1' then`);
+        lines.push(`        ${sigName} <= ${d};`);
+        lines.push('      end if;');
+      } else {
+        lines.push(`      ${sigName} <= ${d};`);
+      }
+
+      lines.push('    end if;');
+      lines.push('  end process;');
       return;
     }
 

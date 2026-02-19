@@ -1,5 +1,72 @@
 # AI State
 
+## Change Log 2026-02-19 (Vivado Parity Loop v1: Synth Subset Contract + Compiler Legality Diagnostics)
+
+**Status**: COMPLETE - Basys3 export now enforces synthesis-subset legality checks with deterministic diagnostic codes, and `repo:status` now blocks on a dedicated synth-subset contract gate.
+
+### What Changed
+
+1. Basys3 compiler legality checks (Tranche 1)
+- Updated `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`:
+  - added synth subset allowlist (`INPUT`, `Switch`, `Clock`, `OUTPUT`, `Lamp`, core gates, `FullAdder`, `MUX4`, `DFlipFlop`).
+  - added deterministic legality checks:
+    - unsupported node type blocking
+    - multiple drivers on a sink input
+    - floating output blocking (non-HDL-projection paths)
+    - sequential clock/reset contract checks
+    - combinational loop detection
+    - top-level VHDL bus-port rejection for subset v1 (`std_logic_vector` blocked).
+  - added projection-aware warning handling for HDL-import port-projection circuits so scaffold-only synthesis warnings do not falsely block export.
+
+2. VHDL export subset support for sequential primitive
+- Updated `packages/rb-apps/src/export/vhdlExport.ts`:
+  - added `Clock` to top-level input node support.
+  - added `DFlipFlop` emission path with deterministic clock/reset/enable handling.
+  - added explicit signal mapping for `q/out` outputs.
+  - normalized warning text to ASCII for deterministic gate output.
+
+3. Export diagnostics mapping expanded for compiler identity
+- Updated `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`:
+  - added node-id extraction from compiler messages.
+  - added diagnostic code/title coverage for new synth-subset failures:
+    - `RBEX4100` unsupported subset node
+    - `RBEX4101` multiple drivers
+    - `RBEX4102` combinational loop
+    - `RBEX4103` floating output
+    - `RBEX4200` missing sequential clock
+    - `RBEX4201` multiple clock domains
+    - `RBEX4202` multiple clock drivers
+    - `RBEX4203` multiple reset drivers
+    - `RBEX4204` unsupported reset polarity
+    - `RBEX4300` unsupported top-level bus port.
+
+4. New synth-subset gate and repo wiring
+- Added `packages/rb-apps/src/__tests__/ide-synth-subset-contract.test.ts`:
+  - deterministic contract project (clock/reset/enable naming) with stable artifact checks.
+  - asserts no blockers and stable `top.vhd`/`top.xdc` across repeated export.
+  - asserts IDE export viewmodel remains diagnostic-clean for the known-good fixture.
+- Added `scripts/gates/ide-synth-subset-contract.mjs`.
+- Updated `package.json` script map:
+  - added `ide:gate:synth-subset-contract`.
+- Updated `scripts/repo-status.mjs`:
+  - added blocking check: `IDE Synth Subset Contract`.
+- Updated `scripts/verify-gates-classroom.mjs`:
+  - added classroom suite gate entry for synth subset contract.
+
+### Validation Executed
+
+- `pnpm -s ide:gate:synth-subset-contract` -> PASS
+- `pnpm -s vitest run packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts` -> PASS
+- `pnpm -s vitest run packages/rb-apps/src/export/__tests__/vhdlExport.test.ts` -> PASS
+- `pnpm -s vitest run packages/rb-apps/src/export/__tests__/exportValidation.test.ts` -> PASS
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:diagnostics-jump-contract` -> PASS
+- `pnpm repo:status` -> PASS (22/22 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Workbench UX v2: Chrome Tightening + Design Live Sim + Explorer Composition)
 
 **Status**: COMPLETE - IDE workbench usability was upgraded across shell, design, verify, project, export, and import surfaces with deterministic gates and refreshed visual baselines.

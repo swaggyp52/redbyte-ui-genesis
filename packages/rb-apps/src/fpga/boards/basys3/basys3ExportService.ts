@@ -56,6 +56,13 @@ interface MappingRecord {
   key: string;
 }
 
+interface NormalizedConnection {
+  fromNodeId: string;
+  fromPort: string;
+  toNodeId: string;
+  toPort: string;
+}
+
 const BASYS3_INPUT_ALIASES = new Set([
   ...Array.from({ length: 16 }, (_, i) => `SW${i}`),
   'BTNC',
@@ -73,6 +80,27 @@ const BASYS3_ALIAS_TO_PACKAGE_PIN: Record<string, string> = {
   SW0: 'V17',
   LD0: 'U16',
 };
+
+const SYNTH_SUPPORTED_NODE_TYPES = new Set([
+  'INPUT',
+  'Switch',
+  'Clock',
+  'OUTPUT',
+  'Lamp',
+  'Wire',
+  'AND',
+  'OR',
+  'XOR',
+  'NOT',
+  'NAND',
+  'NOR',
+  'XNOR',
+  'FullAdder',
+  'MUX4',
+  'DFlipFlop',
+]);
+
+const SEQUENTIAL_NODE_TYPES = new Set(['DFlipFlop']);
 
 /**
  * Validate RBProject for Basys3 export.
@@ -117,6 +145,9 @@ function validateProjectForBasys3(project: RBProject): Basys3ExportError[] {
       message: 'No output mappings found. At minimum, map LEDs (LD0-15).',
     });
   }
+
+  errors.push(...validateSynthSubset(project));
+  errors.push(...validateTopPortWidths(project));
 
   for (const requiredPort of requiredPorts) {
     const mappedInput = findMappingRecord(inputMappings, requiredPort.normalized);
@@ -302,10 +333,18 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
   }
 
   const bundleResult = exportBasys3Bundle(project.circuit, project.ioMapping);
+  const hdlPortProjection = isTopLevelHdlPortProjection(project);
+  const filteredBundleWarnings = hdlPortProjection
+    ? bundleResult.warnings.filter((warning) => !isHdlProjectionScaffoldWarning(warning))
+    : bundleResult.warnings;
 
-  result.warnings.push(...bundleResult.warnings);
+  result.warnings.push(...filteredBundleWarnings);
 
-  if (!bundleResult.valid) {
+  const allowProjectionWarnings =
+    hdlPortProjection &&
+    bundleResult.warnings.length > 0 &&
+    bundleResult.warnings.every((warning) => isHdlProjectionScaffoldWarning(warning));
+  if (!bundleResult.valid && !allowProjectionWarnings) {
     result.errors.push({
       type: 'validation',
       severity: 'error',
@@ -373,6 +412,303 @@ function normalizeMappings(project: RBProject, direction: MappingDirection): Map
       };
     })
     .sort((left, right) => compareCodepoint(left.key, right.key));
+}
+
+function validateSynthSubset(project: RBProject): Basys3ExportError[] {
+  const diagnostics: Basys3ExportError[] = [];
+  const circuit = project.circuit;
+  const normalizedConnections = normalizeCircuitConnections(circuit);
+  const nodesById = new Map(circuit.nodes.map((node) => [node.id, node]));
+
+  for (const node of circuit.nodes) {
+    if (SYNTH_SUPPORTED_NODE_TYPES.has(node.type)) continue;
+    diagnostics.push({
+      type: 'logic',
+      severity: 'error',
+      message: `Unsupported synth subset node type "${node.type}" on node "${node.id}". Fix: replace it with supported v1 primitives (IO, combinational gates, DFlipFlop).`,
+    });
+  }
+
+  const inboundByEndpoint = new Map<string, NormalizedConnection[]>();
+  for (const connection of normalizedConnections) {
+    const endpointKey = `${connection.toNodeId}.${connection.toPort}`;
+    const existing = inboundByEndpoint.get(endpointKey);
+    if (existing) {
+      existing.push(connection);
+    } else {
+      inboundByEndpoint.set(endpointKey, [connection]);
+    }
+  }
+
+  for (const [endpointKey, inbound] of inboundByEndpoint.entries()) {
+    if (inbound.length < 2) continue;
+    const [nodeId, portName] = endpointKey.split('.');
+    const sourceList = inbound
+      .map((entry) => `${entry.fromNodeId}.${entry.fromPort}`)
+      .sort((left, right) => compareCodepoint(left, right))
+      .join(', ');
+    diagnostics.push({
+      type: 'logic',
+      severity: 'error',
+      message: `Multiple drivers detected for "${nodeId}.${portName}" from: ${sourceList}. Fix: keep exactly one upstream source per input port.`,
+    });
+  }
+
+  const hasTopLevelHdl = isTopLevelHdlPortProjection(project);
+  if (!hasTopLevelHdl) {
+    const outputNodes = circuit.nodes.filter((node) => node.type === 'OUTPUT' || node.type === 'Lamp');
+    for (const outputNode of outputNodes) {
+      const hasDriver = normalizedConnections.some((entry) => entry.toNodeId === outputNode.id);
+      if (hasDriver) continue;
+      diagnostics.push({
+        type: 'logic',
+        severity: 'error',
+        message: `Floating output detected on node "${outputNode.id}" (${outputNode.label ?? outputNode.id}). Fix: connect a single upstream driver before export.`,
+      });
+    }
+  }
+
+  diagnostics.push(...validateClockResetContract(circuit, normalizedConnections, nodesById));
+  diagnostics.push(...detectCombinationalLoopViolations(circuit, normalizedConnections, nodesById));
+
+  return diagnostics;
+}
+
+function isTopLevelHdlPortProjection(project: RBProject): boolean {
+  if (!project.hdl?.sources?.length) return false;
+  if (!project.circuit?.nodes?.length) return false;
+  return project.circuit.nodes.every(
+    (node) => node.type === 'INPUT' || node.type === 'OUTPUT'
+  );
+}
+
+function isHdlProjectionScaffoldWarning(message: string): boolean {
+  const trimmed = message.trim();
+  return (
+    /^Node .+ type "INPUT" not supported for synthesis$/i.test(trimmed) ||
+    /^Node .+ type "OUTPUT" not supported for synthesis$/i.test(trimmed) ||
+    /^Unsupported node: .+ \(INPUT\)$/i.test(trimmed) ||
+    /^Unsupported node: .+ \(OUTPUT\)$/i.test(trimmed) ||
+    /^Output ".+" \(id: .+\) has no driver .*$/i.test(trimmed)
+  );
+}
+
+function validateTopPortWidths(project: RBProject): Basys3ExportError[] {
+  const diagnostics: Basys3ExportError[] = [];
+  const sources = project.hdl?.sources ?? [];
+  if (sources.length === 0) return diagnostics;
+
+  const topModuleName = ((project.fpga?.top ?? project.hdl?.top ?? '').trim() || 'top').toLowerCase();
+
+  for (const source of sources) {
+    if (source.language !== 'vhdl') continue;
+    const parsed = parseVhdl(source.text ?? '');
+    if (parsed.entityName.toLowerCase() !== topModuleName) continue;
+    for (const port of parsed.ports) {
+      if (!/vector/i.test(port.typeName)) continue;
+      diagnostics.push({
+        type: 'validation',
+        severity: 'error',
+        message: `Unsupported bus port "${port.name}" (${port.typeName}) in top entity "${parsed.entityName}". Fix: synth subset v1 supports single-bit std_logic ports only.`,
+      });
+    }
+  }
+
+  return diagnostics;
+}
+
+function validateClockResetContract(
+  circuit: RBProject['circuit'],
+  normalizedConnections: NormalizedConnection[],
+  nodesById: Map<string, RBProject['circuit']['nodes'][number]>
+): Basys3ExportError[] {
+  const diagnostics: Basys3ExportError[] = [];
+  const sequentialNodes = circuit.nodes.filter((node) => SEQUENTIAL_NODE_TYPES.has(node.type));
+  if (sequentialNodes.length === 0) return diagnostics;
+
+  const clockDrivers = new Set<string>();
+  const resetDrivers = new Set<string>();
+  const enableDrivers = new Set<string>();
+
+  for (const node of sequentialNodes) {
+    const inbound = normalizedConnections.filter((entry) => entry.toNodeId === node.id);
+    const clockInputs = inbound.filter((entry) => /^(clk|clock|c|ck)$/i.test(entry.toPort));
+    if (clockInputs.length === 0) {
+      diagnostics.push({
+        type: 'logic',
+        severity: 'error',
+        message: `Sequential node "${node.id}" is missing a clock input. Fix: connect "${node.id}.clk" to a mapped clock source (for example clk -> CLK100MHZ / W5).`,
+      });
+      continue;
+    }
+    if (clockInputs.length > 1) {
+      diagnostics.push({
+        type: 'logic',
+        severity: 'error',
+        message: `Sequential node "${node.id}" has multiple clock drivers. Fix: keep one deterministic clock source for "${node.id}.clk".`,
+      });
+    }
+    for (const entry of clockInputs) {
+      clockDrivers.add(`${entry.fromNodeId}.${entry.fromPort}`);
+    }
+
+    const resetInputs = inbound.filter((entry) => /^(rst|reset|clr|clear)$/i.test(entry.toPort));
+    if (resetInputs.length > 1) {
+      diagnostics.push({
+        type: 'logic',
+        severity: 'error',
+        message: `Sequential node "${node.id}" has multiple reset drivers. Fix: keep one active-high reset source for "${node.id}.rst".`,
+      });
+    }
+    for (const entry of resetInputs) {
+      resetDrivers.add(`${entry.fromNodeId}.${entry.fromPort}`);
+      const driverNode = nodesById.get(entry.fromNodeId);
+      if (driverNode?.type === 'NOT') {
+        diagnostics.push({
+          type: 'logic',
+          severity: 'error',
+          message: `Unsupported reset polarity on "${node.id}.rst": source "${entry.fromNodeId}" inverts reset. Fix: synth subset v1 requires direct active-high reset wiring.`,
+        });
+      }
+    }
+
+    const enableInputs = inbound.filter((entry) => /^(en|enable)$/i.test(entry.toPort));
+    for (const entry of enableInputs) {
+      enableDrivers.add(`${entry.fromNodeId}.${entry.fromPort}`);
+    }
+  }
+
+  if (clockDrivers.size > 1) {
+    const sortedDrivers = Array.from(clockDrivers).sort((left, right) => compareCodepoint(left, right));
+    diagnostics.push({
+      type: 'logic',
+      severity: 'error',
+      message: `Multiple clock domains detected (${sortedDrivers.join(', ')}). Fix: synth subset v1 supports exactly one clock domain.`,
+    });
+  }
+
+  if (resetDrivers.size > 1) {
+    const sortedResets = Array.from(resetDrivers).sort((left, right) => compareCodepoint(left, right));
+    diagnostics.push({
+      type: 'logic',
+      severity: 'warning',
+      message: `Multiple reset sources detected (${sortedResets.join(', ')}). Verify all sequential nodes use one consistent reset source.`,
+    });
+  }
+
+  if (enableDrivers.size > 1) {
+    const sortedEnable = Array.from(enableDrivers).sort((left, right) => compareCodepoint(left, right));
+    diagnostics.push({
+      type: 'logic',
+      severity: 'warning',
+      message: `Multiple enable sources detected (${sortedEnable.join(', ')}). Verify deterministic enable semantics before export.`,
+    });
+  }
+
+  return diagnostics;
+}
+
+function detectCombinationalLoopViolations(
+  circuit: RBProject['circuit'],
+  normalizedConnections: NormalizedConnection[],
+  nodesById: Map<string, RBProject['circuit']['nodes'][number]>
+): Basys3ExportError[] {
+  const diagnostics: Basys3ExportError[] = [];
+  const adjacency = new Map<string, Set<string>>();
+  const nonSequentialNodes = new Set(
+    circuit.nodes
+      .filter((node) => !SEQUENTIAL_NODE_TYPES.has(node.type))
+      .map((node) => node.id)
+  );
+
+  for (const nodeId of nonSequentialNodes) {
+    adjacency.set(nodeId, new Set());
+  }
+
+  for (const connection of normalizedConnections) {
+    if (!nonSequentialNodes.has(connection.fromNodeId)) continue;
+    if (!nonSequentialNodes.has(connection.toNodeId)) continue;
+    adjacency.get(connection.fromNodeId)?.add(connection.toNodeId);
+  }
+
+  const visited = new Set<string>();
+  const inStack = new Set<string>();
+  const parent = new Map<string, string>();
+  let cycle: string[] | null = null;
+
+  const buildCycle = (fromId: string, toId: string): string[] => {
+    const nodes = [toId];
+    let cursor = fromId;
+    while (cursor !== toId && parent.has(cursor)) {
+      nodes.push(cursor);
+      cursor = parent.get(cursor) ?? toId;
+    }
+    nodes.push(toId);
+    return nodes.reverse();
+  };
+
+  const dfs = (nodeId: string): boolean => {
+    visited.add(nodeId);
+    inStack.add(nodeId);
+
+    for (const next of adjacency.get(nodeId) ?? []) {
+      if (!visited.has(next)) {
+        parent.set(next, nodeId);
+        if (dfs(next)) return true;
+        continue;
+      }
+      if (!inStack.has(next)) continue;
+      cycle = buildCycle(nodeId, next);
+      return true;
+    }
+
+    inStack.delete(nodeId);
+    return false;
+  };
+
+  for (const nodeId of nonSequentialNodes) {
+    if (visited.has(nodeId)) continue;
+    if (dfs(nodeId)) break;
+  }
+
+  if (cycle && cycle.length > 0) {
+    const cycleLabel = cycle
+      .map((nodeId) => {
+        const node = nodesById.get(nodeId);
+        return node ? `${node.id}(${node.type})` : nodeId;
+      })
+      .join(' -> ');
+    diagnostics.push({
+      type: 'logic',
+      severity: 'error',
+      message: `Combinational loop detected: ${cycleLabel}. Fix: break the loop with a sequential element (DFlipFlop) or remove feedback.`,
+    });
+  }
+
+  return diagnostics;
+}
+
+function normalizeCircuitConnections(circuit: RBProject['circuit']): NormalizedConnection[] {
+  return circuit.connections
+    .map((connection) => ({
+      fromNodeId:
+        typeof connection.from === 'string' ? connection.from : connection.from.nodeId,
+      fromPort:
+        typeof connection.from === 'string'
+          ? connection.fromPin ?? connection.fromPort ?? 'out'
+          : connection.from.portName ?? connection.from.port ?? 'out',
+      toNodeId:
+        typeof connection.to === 'string' ? connection.to : connection.to.nodeId,
+      toPort:
+        typeof connection.to === 'string'
+          ? connection.toPin ?? connection.toPort ?? 'in'
+          : connection.to.portName ?? connection.to.port ?? 'in',
+    }))
+    .sort((left, right) => {
+      const leftKey = `${left.fromNodeId}.${left.fromPort}->${left.toNodeId}.${left.toPort}`;
+      const rightKey = `${right.fromNodeId}.${right.fromPort}->${right.toNodeId}.${right.toPort}`;
+      return compareCodepoint(leftKey, rightKey);
+    });
 }
 
 function findMappingRecord(entries: MappingRecord[], normalizedPortName: string): MappingRecord | undefined {

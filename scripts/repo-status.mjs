@@ -85,6 +85,11 @@ if (
   process.exit(1);
 }
 
+// 2a. Synth subset compiler legality/export stability contract
+if (!runCheck('IDE Synth Subset Contract', 'pnpm -s ide:gate:synth-subset-contract 2>&1')) {
+  process.exit(1);
+}
+
 // 3. Build (includes typecheck in vite build for product apps)
 if (!runCheck('Building', 'pnpm build 2>&1')) {
   process.exit(1);
