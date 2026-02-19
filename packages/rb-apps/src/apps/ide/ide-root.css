@@ -995,6 +995,28 @@
   background: rgba(249, 199, 79, 0.12);
 }
 
+.ide-export-direction-inout {
+  color: #ffd6ff;
+  border-color: rgba(237, 161, 255, 0.5);
+  background: rgba(237, 161, 255, 0.12);
+}
+
+.ide-export-port-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ide-space-1);
+}
+
+.ide-export-required-tag {
+  border: 1px solid rgba(255, 107, 107, 0.5);
+  border-radius: 999px;
+  background: rgba(255, 107, 107, 0.16);
+  color: #ffb6b6;
+  font-size: 10px;
+  padding: 2px 6px;
+  letter-spacing: 0.03em;
+}
+
 .ide-export-notes-cell {
   font-size: var(--rb-font-size-1);
   color: var(--ide-text-muted);
@@ -1029,6 +1051,64 @@
 
 .ide-export-artifact-note {
   margin-top: 2px;
+  font-size: var(--rb-font-size-1);
+  color: var(--ide-text-soft);
+}
+
+.ide-export-artifact-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ide-space-1);
+}
+
+.ide-export-artifact-tab {
+  border: 1px solid rgba(58, 87, 116, 0.75);
+  border-radius: 7px;
+  background: rgba(10, 20, 31, 0.55);
+  color: var(--ide-text-soft);
+  font-size: var(--rb-font-size-1);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.ide-export-artifact-tab.is-active {
+  border-color: rgba(46, 196, 182, 0.62);
+  color: var(--ide-text-strong);
+  background: rgba(46, 196, 182, 0.18);
+}
+
+.ide-export-artifact-preview {
+  border: 1px solid rgba(58, 87, 116, 0.62);
+  border-radius: var(--ide-radius-s);
+  background: rgba(8, 18, 28, 0.7);
+}
+
+.ide-export-artifact-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ide-space-2);
+  border-bottom: 1px solid rgba(58, 87, 116, 0.55);
+  padding: var(--ide-space-2) var(--ide-space-3);
+  font-size: var(--rb-font-size-2);
+  color: var(--ide-text-strong);
+}
+
+.ide-export-artifact-code {
+  margin: 0;
+  max-height: 220px;
+  overflow: auto;
+  font-family: var(--ide-font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: #d9e7f6;
+  padding: var(--ide-space-3);
+  white-space: pre;
+}
+
+.ide-export-artifact-empty {
+  margin: 0;
+  padding: var(--ide-space-3);
   font-size: var(--rb-font-size-1);
   color: var(--ide-text-soft);
 }

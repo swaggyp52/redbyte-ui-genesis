@@ -3,6 +3,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { installFatalCapture, pushMount } from '@redbyte/rb-utils';
+import type { RBProject } from '../export/projectFormat';
 import './ide/ide-root.css';
 import { IdeLeftRail, type IdeMode } from './ide/components/IdeLeftRail';
 import { IdeTopBar } from './ide/components/IdeTopBar';
@@ -132,113 +133,83 @@ export const IdeApp: React.FC = () => {
   const [saveState] = useState<'saved' | 'unsaved' | 'autosaving'>('saved');
 
   const determinismHash = useMemo(() => '2f4e0bb0f17ac4d2', []);
-  const exportPreview = useMemo(
+  const exportProject = useMemo<RBProject>(
     () => ({
-      diagnostics: {
-        success: false,
-        errors: [
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '2026-02-19T00:00:00.000Z',
+      updatedAt: '2026-02-19T00:00:00.000Z',
+      name: projectName,
+      description: projectDescription,
+      circuit: {
+        nodes: [
+          { id: 'clk_node', type: 'Clock', x: 96, y: 80, label: 'clk', config: {}, state: {} },
+          { id: 'rst_node', type: 'Switch', x: 96, y: 148, label: 'rst', config: {}, state: {} },
+          { id: 'count_en_node', type: 'Switch', x: 96, y: 216, label: 'count_en', config: {}, state: {} },
+          { id: 'q0_node', type: 'Lamp', x: 520, y: 132, label: 'q0', config: {}, state: {} },
+          { id: 'q1_node', type: 'Lamp', x: 520, y: 200, label: 'q1', config: {}, state: {} },
+          { id: 'q2_node', type: 'Lamp', x: 520, y: 268, label: 'q2', config: {}, state: {} },
+        ],
+        connections: [],
+      },
+      hdl: {
+        top: 'counter_top',
+        sources: [
           {
-            type: 'validation' as const,
-            severity: 'error' as const,
-            message: 'Unmapped required input port "count_en". Fix: map "count_en" to "SW0 / V17".',
-          },
-          {
-            type: 'validation' as const,
-            severity: 'error' as const,
-            message: 'Unmapped required output port "q2". Fix: map "q2" to "LD0 / U16".',
-          },
-          {
-            type: 'constraint' as const,
-            severity: 'warning' as const,
-            message:
-              'Ignoring source XDC directive "create_clock" during deterministic Basys3 export; constraints are regenerated from IO mapping.',
-          },
-          {
-            type: 'validation' as const,
-            severity: 'warning' as const,
-            message: 'Unused mapped input "unused_btn" will be ignored by top-entity export.',
+            path: 'top.vhd',
+            language: 'vhdl',
+            text: [
+              'library IEEE;',
+              'use IEEE.STD_LOGIC_1164.ALL;',
+              '',
+              'entity counter_top is',
+              '  port (',
+              '    clk      : in  std_logic;',
+              '    rst      : in  std_logic;',
+              '    count_en : in  std_logic;',
+              '    q0       : out std_logic;',
+              '    q1       : out std_logic;',
+              '    q2       : out std_logic',
+              '  );',
+              'end counter_top;',
+              '',
+              'architecture rtl of counter_top is',
+              'begin',
+              "  q0 <= count_en;",
+              "  q1 <= rst;",
+              "  q2 <= clk;",
+              'end rtl;',
+            ].join('\n'),
           },
         ],
-        warnings: [],
-        determinismHash,
       },
-      artifacts: [
-        {
-          name: 'top.vhd',
-          status: 'ready' as const,
-          note: 'Generated from deterministic netlist.',
+      fpga: {
+        board: 'basys3',
+        top: 'counter_top',
+        constraints: {
+          type: 'xdc',
+          text: 'create_clock -name sys_clk -period 10.000 [get_ports clk]',
         },
-        {
-          name: 'top.xdc',
-          status: 'blocked' as const,
-          note: 'Blocked until all required ports are mapped.',
-        },
-        {
-          name: 'testbench.vhd',
-          status: 'pending' as const,
-          note: 'Available when vectors and export checks are valid.',
-        },
-      ],
-      mappings: [
-        {
-          port: 'clk',
-          direction: 'in' as const,
-          pin: 'CLK100MHZ',
-          status: 'mapped' as const,
-          notes: 'Required board clock input.',
-          suggestedPin: 'CLK100MHZ',
-        },
-        {
-          port: 'rst',
-          direction: 'in' as const,
-          pin: 'SW0',
-          status: 'mapped' as const,
-          notes: 'Reset control from switch.',
-          suggestedPin: 'SW0',
-        },
-        {
-          port: 'count_en',
-          direction: 'in' as const,
-          pin: '',
-          status: 'missing' as const,
-          notes: 'Top-entity required input.',
-          suggestedPin: 'SW1',
-        },
-        {
-          port: 'q0',
-          direction: 'out' as const,
-          pin: 'LD0',
-          status: 'mapped' as const,
-          notes: 'Output indicator.',
-          suggestedPin: 'LD0',
-        },
-        {
-          port: 'q1',
-          direction: 'out' as const,
-          pin: 'LD1',
-          status: 'mapped' as const,
-          notes: 'Output indicator.',
-          suggestedPin: 'LD1',
-        },
-        {
-          port: 'q2',
-          direction: 'out' as const,
-          pin: '',
-          status: 'missing' as const,
-          notes: 'Top-entity required output.',
-          suggestedPin: 'LD2',
-        },
-        {
-          port: 'unused_btn',
-          direction: 'in' as const,
-          pin: 'SW2',
-          status: 'unused' as const,
-          notes: 'Mapped but not used by top entity.',
-          suggestedPin: 'SW2',
-        },
-      ],
+      },
+      ioMapping: {
+        inputs: [
+          { id: 'clk', nodeId: 'clk_node', port: 'out', label: 'clk', pin: 'CLK100MHZ' },
+          { id: 'rst', nodeId: 'rst_node', port: 'out', label: 'rst', pin: 'SW0' },
+          { id: 'count_en', nodeId: 'count_en_node', port: 'out', label: 'count_en', pin: '' },
+          { id: 'unused_btn', nodeId: 'unused_btn_node', port: 'out', label: 'unused_btn', pin: 'SW2' },
+        ],
+        outputs: [
+          { id: 'q0', nodeId: 'q0_node', port: 'in', label: 'q0', pin: 'LD0' },
+          { id: 'q1', nodeId: 'q1_node', port: 'in', label: 'q1', pin: 'LD1' },
+          { id: 'q2', nodeId: 'q2_node', port: 'in', label: 'q2', pin: '' },
+        ],
+      },
+      vectors: projectReadiness.vectors,
+      meta: {
+        appSurface: 'ide-export',
+      },
     }),
-    [determinismHash]
+    [projectDescription, projectName, projectReadiness.vectors]
   );
 
   useEffect(() => {
@@ -287,11 +258,7 @@ export const IdeApp: React.FC = () => {
             onOpenProjectVectors={() => setCurrentMode('project')}
           />
         ) : currentMode === 'export' ? (
-          <ExportSurface
-            diagnostics={exportPreview.diagnostics}
-            artifacts={exportPreview.artifacts}
-            mappings={exportPreview.mappings}
-          />
+          <ExportSurface project={exportProject} />
         ) : (
           <ModePlaceholder mode={currentMode} />
         )}

@@ -1,5 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { Basys3ExportError } from '../../../fpga/boards/basys3/basys3ExportService';
+import type { RBProject } from '../../../export/projectFormat';
+import {
+  buildExportViewModel,
+  type ExportArtifactView,
+  type ExportPinStatus,
+} from '../viewmodels/buildExportViewModel';
 import {
   IdeButton,
   IdeCallout,
@@ -8,76 +13,45 @@ import {
   IdeStatusPill,
 } from '../components/IdePrimitives';
 
-export interface ExportDiagnosticsInput {
-  success: boolean;
-  errors: Basys3ExportError[];
-  warnings: string[];
-  determinismHash?: string;
-}
-
-export interface ExportArtifactRow {
-  name: string;
-  status: 'ready' | 'pending' | 'blocked';
-  note: string;
-}
-
-export interface ExportMappingRow {
-  port: string;
-  direction: 'in' | 'out';
-  pin: string;
-  status: 'mapped' | 'missing' | 'unused';
-  notes?: string;
-  suggestedPin?: string;
-}
-
 export interface ExportSurfaceProps {
-  diagnostics: ExportDiagnosticsInput;
-  mappings: ExportMappingRow[];
-  artifacts: ExportArtifactRow[];
-  onExportBundle?: () => void;
+  project: RBProject;
+  onExportBundle?: (artifacts: ExportArtifactView[]) => void;
 }
-
-type DiagnosticSeverity = 'error' | 'warning';
-
-interface DiagnosticViewModel {
-  id: string;
-  severity: DiagnosticSeverity;
-  code: string;
-  message: string;
-  fixHint: string;
-  portKey?: string;
-}
-
-const DIAGNOSTIC_ORDER: Record<DiagnosticSeverity, number> = {
-  error: 0,
-  warning: 1,
-};
 
 export const ExportSurface: React.FC<ExportSurfaceProps> = ({
-  diagnostics,
-  mappings,
-  artifacts,
+  project,
   onExportBundle,
 }) => {
-  const [pinOverrides, setPinOverrides] = useState<Record<string, string>>(() => {
-    const initial: Record<string, string> = {};
-    for (const row of mappings) {
-      initial[toPortKey(row.port)] = row.pin;
-    }
-    return initial;
-  });
+  const viewModel = useMemo(() => buildExportViewModel(project), [project]);
+  const diagnosticsList = useMemo(
+    () => [...viewModel.errors, ...viewModel.warnings],
+    [viewModel.errors, viewModel.warnings]
+  );
+  const [pinOverrides, setPinOverrides] = useState<Record<string, string>>(() =>
+    createPinOverrideMap(viewModel.pinTable)
+  );
   const [highlightedPort, setHighlightedPort] = useState<string | null>(null);
+  const [selectedArtifactPath, setSelectedArtifactPath] = useState<string>(() =>
+    viewModel.artifacts[0]?.path ?? ''
+  );
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
   const pinInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const highlightResetTimer = useRef<number | null>(null);
 
   useEffect(() => {
-    const refreshed: Record<string, string> = {};
-    for (const row of mappings) {
-      refreshed[toPortKey(row.port)] = row.pin;
+    setPinOverrides(createPinOverrideMap(viewModel.pinTable));
+  }, [viewModel.pinTable]);
+
+  useEffect(() => {
+    if (viewModel.artifacts.length === 0) {
+      setSelectedArtifactPath('');
+      return;
     }
-    setPinOverrides(refreshed);
-  }, [mappings]);
+    const exists = viewModel.artifacts.some((artifact) => artifact.path === selectedArtifactPath);
+    if (!exists) {
+      setSelectedArtifactPath(viewModel.artifacts[0].path);
+    }
+  }, [viewModel.artifacts, selectedArtifactPath]);
 
   useEffect(() => {
     return () => {
@@ -88,55 +62,22 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   }, []);
 
   const mappingIndex = useMemo(() => {
-    const index = new Map<string, ExportMappingRow>();
-    for (const row of mappings) {
+    const index = new Map<string, (typeof viewModel.pinTable)[number]>();
+    for (const row of viewModel.pinTable) {
       index.set(toPortKey(row.port), row);
     }
     return index;
-  }, [mappings]);
+  }, [viewModel.pinTable]);
 
-  const diagnosticsList = useMemo(() => {
-    const list: DiagnosticViewModel[] = [];
-    const seenKeys = new Set<string>();
-
-    const pushDiagnostic = (severity: DiagnosticSeverity, message: string, source: string) => {
-      const key = `${severity}:${message}`;
-      if (seenKeys.has(key)) return;
-      seenKeys.add(key);
-
-      const portName = extractPortFromMessage(message);
-      const portKey = portName ? toPortKey(portName) : undefined;
-      list.push({
-        id: `${source}-${list.length}`,
-        severity,
-        code: diagnosticCodeFor(message, severity),
-        message,
-        fixHint: fixHintFor(message, severity),
-        portKey,
-      });
-    };
-
-    for (const error of diagnostics.errors) {
-      pushDiagnostic(error.severity, error.message, 'error');
-    }
-    for (const warning of diagnostics.warnings) {
-      pushDiagnostic('warning', warning, 'warning');
-    }
-
-    return list.sort((left, right) => {
-      const severityDelta = DIAGNOSTIC_ORDER[left.severity] - DIAGNOSTIC_ORDER[right.severity];
-      if (severityDelta !== 0) return severityDelta;
-      if (left.code !== right.code) return left.code.localeCompare(right.code);
-      return left.message.localeCompare(right.message);
-    });
-  }, [diagnostics.errors, diagnostics.warnings]);
-
-  const hasBlockingErrors = diagnosticsList.some((entry) => entry.severity === 'error');
-  const mappedCount = mappings.filter((row) => {
+  const hasBlockingErrors = viewModel.status === 'blocked';
+  const mappedCount = viewModel.pinTable.filter((row) => {
     const key = toPortKey(row.port);
     const pinValue = (pinOverrides[key] ?? '').trim();
     return row.status !== 'unused' && pinValue.length > 0;
   }).length;
+  const selectedArtifact =
+    viewModel.artifacts.find((artifact) => artifact.path === selectedArtifactPath) ??
+    viewModel.artifacts[0];
 
   const jumpToMapping = (portKey: string) => {
     const row = rowRefs.current[portKey];
@@ -163,6 +104,28 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     jumpToMapping(portKey);
   };
 
+  const handleDownloadArtifact = (artifact: ExportArtifactView) => {
+    if (typeof window === 'undefined' || artifact.preview.trim().length === 0) return;
+    const blob = new Blob([artifact.preview], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = artifact.path;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportBundle = () => {
+    if (hasBlockingErrors) return;
+    if (onExportBundle) {
+      onExportBundle(viewModel.artifacts);
+      return;
+    }
+    for (const artifact of viewModel.artifacts) {
+      handleDownloadArtifact(artifact);
+    }
+  };
+
   return (
     <div className="ide-content-grid" data-testid="ide-mode-export" data-ide-mode-marker="export">
       <main className="ide-main-area" data-testid="ide-mode-body">
@@ -173,7 +136,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             <>
               <IdeButton
                 tone="primary"
-                onClick={onExportBundle}
+                onClick={handleExportBundle}
                 disabled={hasBlockingErrors}
                 testId="ide-export-primary-cta"
               >
@@ -213,15 +176,16 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               )}
 
               <div className="ide-export-diagnostic-list">
-                {diagnosticsList.map((entry) => {
-                  const mappingRow = entry.portKey ? mappingIndex.get(entry.portKey) : undefined;
+                {diagnosticsList.map((entry, index) => {
+                  const portKey = entry.port ? toPortKey(entry.port) : undefined;
+                  const mappingRow = portKey ? mappingIndex.get(portKey) : undefined;
                   const hasSuggestion =
                     Boolean(mappingRow?.suggestedPin) &&
-                    (pinOverrides[entry.portKey ?? ''] ?? '').trim().length === 0;
+                    (pinOverrides[portKey ?? ''] ?? '').trim().length === 0;
 
                   return (
                     <article
-                      key={entry.id}
+                      key={`${entry.code}-${index}`}
                       className={`ide-export-diagnostic-row ${
                         entry.severity === 'error' ? 'is-error' : 'is-warning'
                       }`}
@@ -233,15 +197,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                         <code className="ide-export-diagnostic-code">{entry.code}</code>
                       </div>
                       <p className="ide-export-diagnostic-message">{entry.message}</p>
-                      <p className="ide-export-diagnostic-fix">{entry.fixHint}</p>
+                      {entry.fix && <p className="ide-export-diagnostic-fix">{entry.fix}</p>}
                       <div className="ide-export-diagnostic-actions">
-                        {mappingRow && entry.portKey && (
-                          <IdeButton tone="secondary" onClick={() => jumpToMapping(entry.portKey as string)}>
+                        {mappingRow && portKey && (
+                          <IdeButton tone="secondary" onClick={() => jumpToMapping(portKey)}>
                             Jump to mapping
                           </IdeButton>
                         )}
-                        {mappingRow && entry.portKey && hasSuggestion && (
-                          <IdeButton tone="ghost" onClick={() => applySuggestion(entry.portKey as string)}>
+                        {mappingRow && portKey && hasSuggestion && (
+                          <IdeButton tone="ghost" onClick={() => applySuggestion(portKey)}>
                             Auto-suggest pins
                           </IdeButton>
                         )}
@@ -256,7 +220,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <header className="ide-export-section-header">
                 <h3>I/O Mapping Table</h3>
                 <span className="ide-export-section-meta">
-                  {mappedCount}/{mappings.length} mapped
+                  {mappedCount}/{viewModel.pinTable.length} mapped
                 </span>
               </header>
               <div className="ide-table-wrap ide-export-table-wrap">
@@ -271,7 +235,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {mappings.map((row) => {
+                    {viewModel.pinTable.map((row) => {
                       const portKey = toPortKey(row.port);
                       const pinValue = pinOverrides[portKey] ?? '';
                       const status = resolveRowStatus(row.status, pinValue);
@@ -285,11 +249,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                           data-testid={`ide-export-map-row-${portKey}`}
                         >
                           <td>
-                            <code>{row.port}</code>
+                            <div className="ide-export-port-cell">
+                              <code>{row.port}</code>
+                              {row.required && <span className="ide-export-required-tag">Required</span>}
+                            </div>
                           </td>
                           <td>
                             <span className={`ide-export-direction ide-export-direction-${row.direction}`}>
-                              {row.direction === 'in' ? 'IN' : 'OUT'}
+                              {row.direction === 'in' ? 'IN' : row.direction === 'out' ? 'OUT' : 'INOUT'}
                             </span>
                           </td>
                           <td>
@@ -330,6 +297,61 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 </table>
               </div>
             </section>
+
+            <section className="ide-export-section" data-testid="ide-export-artifact-preview">
+              <header className="ide-export-section-header">
+                <h3>Artifact Preview</h3>
+                <span className="ide-export-section-meta">
+                  {viewModel.artifacts.length} files
+                </span>
+              </header>
+
+              {viewModel.artifacts.length === 0 && (
+                <IdeCallout tone="warn" title="No artifact data">
+                  Artifact previews appear after a successful export build.
+                </IdeCallout>
+              )}
+
+              {viewModel.artifacts.length > 0 && (
+                <>
+                  <div className="ide-export-artifact-tabs">
+                    {viewModel.artifacts.map((artifact) => (
+                      <button
+                        key={artifact.path}
+                        type="button"
+                        className={`ide-export-artifact-tab ${
+                          selectedArtifact?.path === artifact.path ? 'is-active' : ''
+                        }`}
+                        onClick={() => setSelectedArtifactPath(artifact.path)}
+                      >
+                        {artifact.path}
+                      </button>
+                    ))}
+                  </div>
+                  {selectedArtifact && (
+                    <div className="ide-export-artifact-preview">
+                      <div className="ide-export-artifact-preview-header">
+                        <span>{selectedArtifact.path}</span>
+                        <IdeButton
+                          tone="secondary"
+                          onClick={() => handleDownloadArtifact(selectedArtifact)}
+                          disabled={selectedArtifact.preview.trim().length === 0}
+                        >
+                          Download
+                        </IdeButton>
+                      </div>
+                      {selectedArtifact.preview.trim().length > 0 ? (
+                        <pre className="ide-export-artifact-code">{selectedArtifact.preview}</pre>
+                      ) : (
+                        <p className="ide-export-artifact-empty">
+                          Artifact content unavailable until export validation passes.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </section>
           </div>
         </IdePanel>
       </main>
@@ -342,28 +364,40 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <span>Basys3</span>
             </div>
             <div className="ide-kv-row">
-              <span>Determinism Hash</span>
+              <span>Export Hash</span>
               <span className="ide-status-mono">
-                {diagnostics.determinismHash ? diagnostics.determinismHash.slice(0, 16) : 'pending'}
+                {viewModel.exportHash ? viewModel.exportHash.slice(0, 16) : 'pending'}
               </span>
             </div>
             <div className="ide-kv-row">
               <span>Blocking Errors</span>
-              <span>{diagnosticsList.filter((entry) => entry.severity === 'error').length}</span>
+              <span>{viewModel.errors.length}</span>
             </div>
           </div>
         </IdeInspectorSection>
 
         <IdeInspectorSection title="Artifact Checklist">
           <div className="ide-export-artifact-list">
-            {artifacts.map((artifact) => (
-              <div key={artifact.name} className="ide-export-artifact-row">
+            {viewModel.artifacts.map((artifact) => (
+              <div key={artifact.path} className="ide-export-artifact-row">
                 <div>
-                  <div className="ide-export-artifact-name">{artifact.name}</div>
+                  <div className="ide-export-artifact-name">{artifact.path}</div>
                   <div className="ide-export-artifact-note">{artifact.note}</div>
                 </div>
-                <IdeStatusPill tone={artifact.status === 'ready' ? 'ok' : artifact.status === 'blocked' ? 'error' : 'warn'}>
-                  {artifact.status === 'ready' ? 'Ready' : artifact.status === 'blocked' ? 'Blocked' : 'Pending'}
+                <IdeStatusPill
+                  tone={
+                    artifact.status === 'ready'
+                      ? 'ok'
+                      : artifact.status === 'blocked'
+                        ? 'error'
+                        : 'warn'
+                  }
+                >
+                  {artifact.status === 'ready'
+                    ? 'Ready'
+                    : artifact.status === 'blocked'
+                      ? 'Blocked'
+                      : 'Pending'}
                 </IdeStatusPill>
               </div>
             ))}
@@ -374,59 +408,27 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   );
 };
 
+function createPinOverrideMap(
+  rows: ReturnType<typeof buildExportViewModel>['pinTable']
+): Record<string, string> {
+  const overrides: Record<string, string> = {};
+  for (const row of rows) {
+    overrides[toPortKey(row.port)] = row.pin ?? '';
+  }
+  return overrides;
+}
+
 function toPortKey(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function extractPortFromMessage(message: string): string | undefined {
-  const quotedPort = message.match(/port "([^"]+)"/i);
-  if (quotedPort?.[1]) return quotedPort[1];
-  const quotedMapping = message.match(/mapping "([^"]+)"/i);
-  if (quotedMapping?.[1]) return quotedMapping[1];
-  return undefined;
-}
-
-function diagnosticCodeFor(message: string, severity: DiagnosticSeverity): string {
-  const lowered = message.toLowerCase();
-  if (lowered.includes('unmapped required')) return 'RBEX1001';
-  if (lowered.includes('declared but has no basys3 pin assignment')) return 'RBEX1002';
-  if (lowered.includes('unsupported') && lowered.includes('pin')) return 'RBEX2001';
-  if (lowered.includes('questionable') && lowered.includes('mapping')) return 'RBEX2002';
-  if (lowered.includes('unused mapped')) return 'RBEX2003';
-  if (lowered.includes('ignoring source xdc directive')) return 'RBEX3001';
-  return severity === 'error' ? 'RBEX9000' : 'RBEX9001';
-}
-
-function fixHintFor(message: string, severity: DiagnosticSeverity): string {
-  const explicitFix = message.match(/Fix:\s*(.+)$/i);
-  if (explicitFix?.[1]) return explicitFix[1];
-  const lowered = message.toLowerCase();
-  if (lowered.includes('ignoring source xdc directive')) {
-    return 'No action required unless you need that constraint represented via IO mapping.';
-  }
-  if (lowered.includes('unused mapped')) {
-    return 'Remove the unused mapping or connect the port in the top entity.';
-  }
-  if (lowered.includes('questionable') && lowered.includes('mapping')) {
-    return 'Move this port to a direction-compatible Basys3 alias.';
-  }
-  if (severity === 'error') {
-    return 'Resolve this blocker before exporting.';
-  }
-  return 'Review and confirm this warning before exporting.';
-}
-
-function statusTone(status: 'mapped' | 'missing' | 'unused'): 'ok' | 'error' | 'warn' {
+function statusTone(status: ExportPinStatus): 'ok' | 'error' | 'warn' {
   if (status === 'mapped') return 'ok';
   if (status === 'missing') return 'error';
   return 'warn';
 }
 
-function resolveRowStatus(
-  baseStatus: 'mapped' | 'missing' | 'unused',
-  pinValue: string
-): 'mapped' | 'missing' | 'unused' {
+function resolveRowStatus(baseStatus: ExportPinStatus, pinValue: string): ExportPinStatus {
   if (baseStatus === 'unused') return 'unused';
   return pinValue.trim().length > 0 ? 'mapped' : 'missing';
 }
-
