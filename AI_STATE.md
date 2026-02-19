@@ -1,5 +1,50 @@
 # AI State
 
+## Change Log 2026-02-19 (RBProjectRuntime Source-of-Truth Wiring)
+
+**Status**: COMPLETE - IDE runtime state now has a single persisted authority for project data, circuit graph, mapping, vectors, and health flags.
+
+### What Changed
+
+1. Added persisted runtime authority
+- Added `packages/rb-apps/src/apps/ide/projectRuntime.ts`:
+  - zustand persisted store (`rb.ide.project-runtime.v1`) for:
+    - project identity
+    - circuit graph
+    - IO mapping rows
+    - vectors
+    - project health core (`lastVerify`, `lastExport`, dirty flags)
+  - deterministic runtime actions:
+    - `loadExample`, `loadFromProject`
+    - `setMappingPin`, `autoSuggestMapping`
+    - `setVectors`, `markDesignMutated`
+    - `recordVerification`, `recordExport`
+
+2. Rewired IDE app orchestration to runtime
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - removed mode-local shadow state for project identity/mapping/vectors/circuit.
+  - surfaces now read/write through `useProjectRuntime`.
+  - export project generation now uses runtime circuit instead of empty projection fallback.
+  - circuit store sync now uses runtime fingerprinting to avoid redundant reset loops.
+
+3. Import path now updates runtime directly
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`:
+  - added `onImportProject` callback prop.
+  - successful import now hands `RBProject` back to IDE runtime flow for immediate project replacement.
+
+4. Visual proof refresh
+- Updated screenshot baseline:
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-design-chromium-win32.png`
+
+### Validation Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:project-health-live-contract` -> PASS
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Evidence Capsule v1 + Verify Truth Screen v2)
 
 **Status**: COMPLETE - RedByte IDE now emits deterministic verification reports, builds a real Evidence Capsule zip from the export pipeline, and enforces the workflow with dedicated gates.

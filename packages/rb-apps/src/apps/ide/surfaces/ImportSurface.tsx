@@ -4,6 +4,7 @@ import { parseVerilog } from '../../../import/verilogImport';
 import { parseXdcPins, type XdcParseResult } from '../../../import/xdcImport';
 import { importToRbProject } from '../../../import/importToRbProject';
 import type { ParsedHDL } from '../../../import/hdlToCircuit';
+import type { RBProject } from '../../../export/projectFormat';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
@@ -19,7 +20,11 @@ import {
 type ImportTab = 'hdl' | 'xdc' | 'upload';
 type HdlLanguage = 'auto' | 'vhdl' | 'verilog';
 
-export const ImportSurface: React.FC = () => {
+export interface ImportSurfaceProps {
+  onImportProject?: (project: RBProject) => void;
+}
+
+export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject }) => {
   const [tab, setTab] = useState<ImportTab>('hdl');
   const [language, setLanguage] = useState<HdlLanguage>('auto');
   const [hdlText, setHdlText] = useState('');
@@ -177,6 +182,7 @@ export const ImportSurface: React.FC = () => {
   const importToProject = () => {
     if (!parsedHdl || !canImport) return;
     const project = importToRbProject(parsedHdl, xdcResult ?? undefined);
+    onImportProject?.(project);
     setStatusMessage(
       `RBProject ready: ${project.circuit.nodes.length} nodes, ${project.circuit.connections.length} connections.`
     );

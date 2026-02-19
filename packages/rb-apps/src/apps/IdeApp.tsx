@@ -3,9 +3,10 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
-import type { TestVector } from '@redbyte/rb-utils';
 import { installFatalCapture, pushMount } from '@redbyte/rb-utils';
 import type { RBProject } from '../export/projectFormat';
+import { useCircuitStore } from '../stores/circuitStore';
+import { digestValue } from '../utils/digest';
 import './ide/ide-root.css';
 import { IdeLeftRail, type IdeMode } from './ide/components/IdeLeftRail';
 import { IdeTopBar } from './ide/components/IdeTopBar';
@@ -23,46 +24,49 @@ import {
   type IdeDiagnosticRouteRequest,
 } from './ide/diagnostics';
 import {
-  IDE_DEFAULT_EXAMPLE_ID,
   IDE_EXAMPLES,
   getIdeExampleById,
-  type IdeExampleIoRow,
 } from './ide/examplesCatalog';
 import {
   choosePrimaryProjectCta,
   deriveProjectHealth,
-  type ProjectHealthCore,
   type ProjectHealthExportResult,
   type ProjectHealthVerifyResult,
 } from './ide/projectHealth';
-
-type ProjectIoRow = IdeExampleIoRow;
-
-const INITIAL_EXAMPLE = getIdeExampleById(IDE_DEFAULT_EXAMPLE_ID) ?? IDE_EXAMPLES[0];
+import { useProjectRuntime } from './ide/projectRuntime';
 
 export const IdeApp: React.FC = () => {
   const [currentMode, setCurrentMode] = useState<IdeMode>(() => resolveInitialIdeMode());
-  const [projectName, setProjectName] = useState(INITIAL_EXAMPLE.name);
-  const [projectDescription, setProjectDescription] = useState(INITIAL_EXAMPLE.summary);
-  const [lastSavedAt, setLastSavedAt] = useState('Seeded example');
-  const [projectIoRows, setProjectIoRows] = useState<ProjectIoRow[]>(() => cloneIoRows(INITIAL_EXAMPLE.ioRows));
-  const [projectVectors, setProjectVectors] = useState<TestVector[]>(() => cloneVectors(INITIAL_EXAMPLE.vectors));
-  const [activeExampleId, setActiveExampleId] = useState<string | null>(INITIAL_EXAMPLE.id);
   const [pendingExampleId, setPendingExampleId] = useState<string | null>(null);
   const [diagnosticRouteRequest, setDiagnosticRouteRequest] = useState<IdeDiagnosticRouteRequest | null>(null);
-  const [projectHealthCore, setProjectHealthCore] = useState<ProjectHealthCore>({
-    dirtySinceVerify: false,
-    dirtySinceExport: false,
-  });
+
+  const projectName = useProjectRuntime((state) => state.projectName);
+  const projectDescription = useProjectRuntime((state) => state.projectDescription);
+  const lastSavedAt = useProjectRuntime((state) => state.lastSavedAt);
+  const activeExampleId = useProjectRuntime((state) => state.activeExampleId);
+  const projectIoRows = useProjectRuntime((state) => state.projectIoRows);
+  const projectVectors = useProjectRuntime((state) => state.projectVectors);
+  const circuit = useProjectRuntime((state) => state.circuit);
+  const projectHealthCore = useProjectRuntime((state) => state.projectHealthCore);
+  const loadExample = useProjectRuntime((state) => state.loadExample);
+  const loadFromProject = useProjectRuntime((state) => state.loadFromProject);
+  const setMappingPin = useProjectRuntime((state) => state.setMappingPin);
+  const autoSuggestMapping = useProjectRuntime((state) => state.autoSuggestMapping);
+  const setVectors = useProjectRuntime((state) => state.setVectors);
+  const markDesignMutated = useProjectRuntime((state) => state.markDesignMutated);
+  const recordVerification = useProjectRuntime((state) => state.recordVerification);
+  const recordExport = useProjectRuntime((state) => state.recordExport);
 
   const determinismHash = useMemo(() => '2f4e0bb0f17ac4d2', []);
-  const hasCircuit = true;
+  const hasCircuit = circuit.nodes.length > 0;
   const missingRequiredCount = useMemo(
     () => projectIoRows.filter((entry) => entry.required && entry.pin.trim().length === 0).length,
     [projectIoRows]
   );
   const hasIoMapping = useMemo(
-    () => projectIoRows.filter((entry) => entry.required).length > 0 && missingRequiredCount === 0,
+    () =>
+      projectIoRows.filter((entry) => entry.required).length > 0 &&
+      missingRequiredCount === 0,
     [missingRequiredCount, projectIoRows]
   );
   const hasVectors = projectVectors.length > 0;
@@ -102,34 +106,30 @@ export const IdeApp: React.FC = () => {
   );
 
   const hasUnsavedWork =
-    projectHealthCore.dirtySinceVerify ||
-    projectHealthCore.dirtySinceExport ||
-    Boolean(projectHealthCore.lastVerify) ||
-    Boolean(projectHealthCore.lastExport) ||
-    projectVectors.length > 0;
+    projectHealthCore.dirtySinceVerify || projectHealthCore.dirtySinceExport;
 
   const pendingExample = useMemo(
     () => (pendingExampleId ? getIdeExampleById(pendingExampleId) : undefined),
     [pendingExampleId]
   );
 
-  const applyExample = useCallback((exampleId: string) => {
-    const example = getIdeExampleById(exampleId);
-    if (!example) return;
+  const runtimeCircuitFingerprint = useMemo(() => digestValue(circuit), [circuit]);
+  useEffect(() => {
+    const store = useCircuitStore.getState();
+    const storeFingerprint = digestValue(store.circuit);
+    if (storeFingerprint === runtimeCircuitFingerprint) return;
+    store.reset();
+    store.updateCircuit(circuit, { skipHistory: true, enforceLimits: true });
+  }, [circuit, runtimeCircuitFingerprint]);
 
-    setActiveExampleId(example.id);
-    setProjectName(example.name);
-    setProjectDescription(example.summary);
-    setProjectIoRows(cloneIoRows(example.ioRows));
-    setProjectVectors(cloneVectors(example.vectors));
-    setProjectHealthCore({
-      dirtySinceVerify: false,
-      dirtySinceExport: false,
-    });
-    setLastSavedAt(`Example loaded: ${example.name}`);
-    setPendingExampleId(null);
-    setCurrentMode('project');
-  }, []);
+  const applyExample = useCallback(
+    (exampleId: string) => {
+      loadExample(exampleId);
+      setPendingExampleId(null);
+      setCurrentMode('project');
+    },
+    [loadExample]
+  );
 
   const handleOpenExample = useCallback(
     (exampleId: string) => {
@@ -152,27 +152,16 @@ export const IdeApp: React.FC = () => {
     setPendingExampleId(null);
   }, []);
 
-  const handleMappingPinChange = useCallback((rowId: string, pin: string) => {
-    setProjectIoRows((previous) =>
-      previous.map((entry) => (entry.id === rowId ? { ...entry, pin } : entry))
-    );
-    setProjectHealthCore((previous) => ({
-      ...previous,
-      dirtySinceExport: true,
-    }));
-  }, []);
+  const handleMappingPinChange = useCallback(
+    (rowId: string, pin: string) => {
+      setMappingPin(rowId, pin);
+    },
+    [setMappingPin]
+  );
 
   const handleAutoSuggestMapping = useCallback(() => {
-    setProjectIoRows((previous) =>
-      previous.map((entry, index) =>
-        entry.pin.trim().length > 0 ? entry : { ...entry, pin: suggestBasys3Pin(entry, index) }
-      )
-    );
-    setProjectHealthCore((previous) => ({
-      ...previous,
-      dirtySinceExport: true,
-    }));
-  }, []);
+    autoSuggestMapping();
+  }, [autoSuggestMapping]);
 
   const handleProjectPrimaryAction = useCallback(() => {
     if (primaryProjectCta.code === 'RBP1001') {
@@ -183,41 +172,44 @@ export const IdeApp: React.FC = () => {
     setCurrentMode(primaryProjectCta.mode);
   }, [handleAutoSuggestMapping, primaryProjectCta.code, primaryProjectCta.mode]);
 
-  const handleVectorsChange = useCallback((vectors: TestVector[]) => {
-    setProjectVectors(vectors);
-    setProjectHealthCore((previous) => ({
-      ...previous,
-      dirtySinceVerify: true,
-      dirtySinceExport: true,
-    }));
-  }, []);
+  const handleVectorsChange = useCallback(
+    (vectors: typeof projectVectors) => {
+      setVectors(vectors);
+    },
+    [setVectors]
+  );
 
-  const handleVerificationComplete = useCallback((result: ProjectHealthVerifyResult) => {
-    setProjectHealthCore((previous) => ({
-      ...previous,
-      lastVerify: result,
-      dirtySinceVerify: false,
-    }));
-  }, []);
+  const handleVerificationComplete = useCallback(
+    (result: ProjectHealthVerifyResult) => {
+      recordVerification(result);
+    },
+    [recordVerification]
+  );
 
-  const handleExportResult = useCallback((result: ProjectHealthExportResult) => {
-    setProjectHealthCore((previous) => ({
-      ...previous,
-      lastExport: result,
-      dirtySinceExport: result.status === 'ok' ? false : previous.dirtySinceExport,
-    }));
-  }, []);
+  const handleExportResult = useCallback(
+    (result: ProjectHealthExportResult) => {
+      recordExport(result);
+    },
+    [recordExport]
+  );
 
   const handleDesignMutation = useCallback(() => {
-    setProjectHealthCore((previous) => ({
-      ...previous,
-      dirtySinceVerify: true,
-      dirtySinceExport: true,
-    }));
-  }, []);
+    markDesignMutated(useCircuitStore.getState().circuit);
+  }, [markDesignMutated]);
+
+  const handleImportProject = useCallback(
+    (project: RBProject) => {
+      loadFromProject(project);
+      setCurrentMode('project');
+    },
+    [loadFromProject]
+  );
 
   const topEntityName = useMemo(() => buildTopEntityName(projectName), [projectName]);
-  const hdlText = useMemo(() => buildVhdlFromMapping(topEntityName, projectIoRows), [projectIoRows, topEntityName]);
+  const hdlText = useMemo(
+    () => buildVhdlFromMapping(topEntityName, projectIoRows),
+    [projectIoRows, topEntityName]
+  );
   const xdcText = useMemo(() => buildConstraintText(projectIoRows), [projectIoRows]);
 
   const exportProject = useMemo<RBProject>(
@@ -228,7 +220,7 @@ export const IdeApp: React.FC = () => {
       updatedAt: '2026-02-19T00:00:00.000Z',
       name: projectName,
       description: projectDescription,
-      circuit: buildProjectCircuit(projectIoRows),
+      circuit: normalizeProjectCircuit(circuit),
       hdl: {
         top: topEntityName,
         sources: [
@@ -272,7 +264,7 @@ export const IdeApp: React.FC = () => {
         appSurface: 'ide-export',
       },
     }),
-    [hdlText, projectDescription, projectIoRows, projectName, projectVectors, topEntityName, xdcText]
+    [circuit, hdlText, projectDescription, projectIoRows, projectName, projectVectors, topEntityName, xdcText]
   );
 
   const exportViewModel = useMemo(() => buildExportViewModel(exportProject), [exportProject]);
@@ -316,8 +308,7 @@ export const IdeApp: React.FC = () => {
       const targetNode =
         exportProject.circuit.nodes.find(
           (node) => normalizeSignalKey(node.label ?? node.id) === desiredSignal
-        ) ??
-        exportProject.circuit.nodes.find((node) => node.type === 'OUTPUT' || node.type === 'Lamp');
+        ) ?? exportProject.circuit.nodes.find((node) => node.type === 'OUTPUT' || node.type === 'Lamp');
 
       setCurrentMode('design');
 
@@ -431,7 +422,7 @@ export const IdeApp: React.FC = () => {
             onDiagnosticAction={handleDiagnosticAction}
           />
         ) : (
-          <ImportSurface />
+          <ImportSurface onImportProject={handleImportProject} />
         )}
       </div>
 
@@ -483,29 +474,21 @@ function normalizeSignalKey(value: string): string {
   return value.trim().toLowerCase().replace(/\[[^\]]+\]/g, '');
 }
 
-function suggestBasys3Pin(signal: { id: string; direction: 'in' | 'out' }, index: number): string {
-  if (signal.direction === 'in') {
-    if (signal.id.toLowerCase() === 'clk') return 'CLK100MHZ';
-    return `SW${Math.min(index, 15)}`;
-  }
-  return `LD${Math.min(index, 15)}`;
-}
-
-function cloneIoRows(rows: IdeExampleIoRow[]): IdeExampleIoRow[] {
-  return rows.map((row) => ({ ...row }));
-}
-
-function cloneVectors(vectors: TestVector[]): TestVector[] {
-  return vectors.map((vector) => ({ ...vector }));
-}
-
-function buildProjectCircuit(projectIoRows: ProjectIoRow[]): RBProject['circuit'] {
-  void projectIoRows;
-  // Export projection keeps circuit IR empty and derives top-level ports from IO mapping + HDL.
-  // This avoids injecting non-synthesizable placeholder nodes into the compiler path.
+function normalizeProjectCircuit(circuit: RBProject['circuit']): RBProject['circuit'] {
   return {
-    nodes: [],
-    connections: [],
+    nodes: circuit.nodes.map((node) => {
+      const x = node.position?.x ?? node.x ?? 0;
+      const y = node.position?.y ?? node.y ?? 0;
+      return {
+        ...node,
+        position: node.position ?? { x, y },
+        x,
+        y,
+        config: node.config ?? {},
+        state: node.state ?? {},
+      };
+    }),
+    connections: circuit.connections.map((connection) => ({ ...connection })),
   };
 }
 
@@ -519,7 +502,7 @@ function buildTopEntityName(projectName: string): string {
   return /^[a-z]/.test(base) ? base : `rb_${base}`;
 }
 
-function buildVhdlFromMapping(topName: string, ioRows: ProjectIoRow[]): string {
+function buildVhdlFromMapping(topName: string, ioRows: Array<{ label: string; id: string; direction: 'in' | 'out' }>): string {
   const inputRows = ioRows.filter((row) => row.direction === 'in');
   const outputRows = ioRows.filter((row) => row.direction === 'out');
 
@@ -560,7 +543,7 @@ function buildVhdlFromMapping(topName: string, ioRows: ProjectIoRow[]): string {
   ].join('\n');
 }
 
-function buildConstraintText(ioRows: ProjectIoRow[]): string {
+function buildConstraintText(ioRows: Array<{ label: string; direction: 'in' | 'out'; pin: string; id: string }>): string {
   const clockRow = ioRows.find(
     (row) =>
       row.direction === 'in' &&
