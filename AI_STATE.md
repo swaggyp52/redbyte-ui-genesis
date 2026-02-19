@@ -1,5 +1,98 @@
 # AI State
 
+## Change Log 2026-02-19 (Tranche D: Visual System Freeze + Import Truth Screen + Self-Contained Gates)
+
+**Status**: COMPLETE - Locked the IDE visual token/grid contract, rebuilt Import mode into a deterministic 3-stage truth screen, and removed manual localhost dependency from key Playwright gates.
+
+### What Changed
+
+1. Visual system freeze + responsive grid contract
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - canonical token system added:
+    - spacing (4/8/12/16/24/32/48/64)
+    - radii (8/12/16)
+    - typography scale + line-height + weight tokens
+    - elevation levels + semantic surface/status colors
+  - layout contract hardened:
+    - 12-column desktop content grid
+    - fixed rail/topbar/status/mode-header shell metrics
+    - inspector width bounds (320-420)
+    - responsive collapse to single-column at smaller breakpoints
+  - added reusable visual primitives/styles:
+    - `ide-section-header`, `ide-grid-*`
+    - deterministic empty-state illustration blocks for Verify/Export/Import
+- Updated `packages/rb-apps/src/apps/ide/components/IdePrimitives.tsx`:
+  - added `IdeGrid`
+  - added `IdeSectionHeader`
+- Updated `packages/rb-apps/src/apps/ide/components/IdeSurfaceLayout.tsx`:
+  - added deterministic layout markers:
+    - `data-grid-columns="12"`
+    - `data-inspector-width="320-420"`
+
+2. Import mode rebuilt as a truth screen (student-proof 3-stage flow)
+- Replaced `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx` with a staged pipeline:
+  - Stage tabs:
+    - `HDL` input
+    - `XDC` input
+    - `Upload ZIP (Soon)` disabled with explicit callout
+  - parser integration:
+    - `parseVhdl` / `parseVerilog`
+    - `parseXdcPins`
+    - `importToRbProject` for deterministic import conversion
+  - diagnostics surface:
+    - parsed entity name
+    - ports table with direction/width/mapped-pin/status
+    - unmapped ports list
+    - warning panel (ignored directives etc.)
+    - blocking errors panel (illegal names, unmapped required ports)
+  - mapping suggestions (explicit apply, no silent auto-apply):
+    - clk/clock/clk100mhz -> `CLK100MHZ`
+    - rst/reset -> `BTNC` suggestion
+    - sw0..sw15 -> `SW0..SW15`
+    - led0..led15 -> `LD0..LD15`
+    - btnc/d/u/l/r -> `BTNC/BTND/BTNU/BTNL/BTNR`
+  - copy diagnostics report action:
+    - includes entity, ports + mapping status, blocking errors, warnings
+  - primary import CTA remains deterministic and contract-marked:
+    - `data-testid="ide-primary-cta"`
+
+3. Gate reliability: self-contained harness (no manual localhost prerequisite)
+- Added `scripts/gates/_gateHarness.mjs`:
+  - starts preview server on ephemeral port
+  - waits for readiness
+  - runs Playwright scenario against computed base URL
+  - always tears down preview process/browser
+  - handles Windows launch via `cmd /c pnpm ...` for reliable spawn behavior
+- Converted gates to harness-backed execution:
+  - `scripts/gates/ide-project-health-live-contract.mjs`
+  - `scripts/gates/ide-primary-cta-contract.mjs`
+  - `scripts/gates/ide-verify-contract.mjs`
+  - `scripts/gates/ide-export-download-contract.mjs`
+- Updated `scripts/repo-status.mjs`:
+  - project-health + primary-cta checks now deterministic `runCheck` checks (not localhost-dependent signals)
+
+4. Visual contract gate extension
+- Updated `scripts/gates/ide-visual-contract.mjs`:
+  - now validates marker presence and measured layout metrics:
+    - 12-column desktop grid
+    - panel padding token contract (16px)
+    - inspector width within 320-420
+    - mobile collapse to 1-column grid
+
+### Validation Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:project-health-live-contract` -> PASS
+- `pnpm -s ide:gate:primary-cta-contract` -> PASS
+- `pnpm -s ide:gate:verify-contract` -> PASS
+- `pnpm -s ide:gate:export-download-contract` -> PASS
+- `pnpm -s ide:gate:visual-contract` -> PASS
+- `pnpm repo:status` -> PASS (7/7 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (ProjectHealth Live Truth Engine + CTA Contract Gates)
 
 **Status**: COMPLETE - Added a live ProjectHealth authority wired across Design/Verify/Export, redesigned Project mode around readiness truth, and introduced new Playwright contracts for project-health flow and single-primary-CTA consistency.
