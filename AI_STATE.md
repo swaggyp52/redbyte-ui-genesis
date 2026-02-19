@@ -1,5 +1,91 @@
 # AI State
 
+## Change Log 2026-02-19 (Workbench UX v2: Chrome Tightening + Design Live Sim + Explorer Composition)
+
+**Status**: COMPLETE - IDE workbench usability was upgraded across shell, design, verify, project, export, and import surfaces with deterministic gates and refreshed visual baselines.
+
+### What Changed
+
+1. Shell chrome tightening and authoritative rail markers
+- Updated `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`:
+  - reduced default console height to collapsed-first behavior (`72`, min `64`)
+  - added `consoleHasBlocking` auto-expand logic for blocking diagnostic states.
+- Updated `packages/rb-apps/src/apps/ide/components/IdeSurfaceLayout.tsx`:
+  - propagated `consoleHasBlocking` into shared workbench shell.
+- Updated `packages/rb-apps/src/apps/ide/components/IdeLeftRail.tsx`:
+  - added deterministic `data-active` mode markers
+  - added explicit active accent rail element per mode.
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - compacted topbar/rail proportions
+  - refined workbench spacing, dock dividers, and console sizing.
+
+2. Design mode usability realization (canvas-first + fit + live sim controls)
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - added zoom controls (`+`, `-`, `100%`, `Fit`) and auto-fit on first load
+  - added live simulation strip (run/pause/step/reset + speed)
+  - added live IO signal panel markers used by gates
+  - added runtime wiring hook (`onRuntimeConnect`) and deterministic AND-starter wiring by predicted node IDs
+  - enabled `consoleHasBlocking` from design compiler error count.
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - wired runtime `connectDesignNodes` into `DesignSurface`.
+- Updated `packages/rb-logic-view/src/components/NodeView.tsx`:
+  - fixed OUTPUT/Lamp live-activity styling to reflect `node.in` state.
+- Updated `packages/rb-logic-view/src/LogicCanvas.tsx`:
+  - simplified switch toggle event path to click-driven behavior compatible with deterministic gate interaction.
+
+3. Project/Verify/Export/Import operability pass
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`:
+  - renamed to **Project Setup**
+  - replaced varying header CTA labels with a single deterministic `Continue` CTA (`ide-project-continue-cta`) and explicit next-target marker.
+- Updated `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`:
+  - added run-state marker + explicit failures list for click-to-jump behavior
+  - enabled `consoleHasBlocking` on FAIL states.
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`:
+  - added left-dock artifact explorer tree + preview path markers
+  - enabled `consoleHasBlocking` for blocking export diagnostics.
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`:
+  - added left-dock source file tree with parse stage markers
+  - enabled `consoleHasBlocking` for blocking import diagnostics.
+
+4. New and updated contracts (harness-based, no manual localhost dependency)
+- Added:
+  - `scripts/gates/ide-shell-chrome-contract.mjs`
+  - `scripts/gates/ide-design-fit-contract.mjs`
+  - `scripts/gates/ide-design-live-sim-contract.mjs`
+  - `scripts/gates/ide-export-artifact-explorer-contract.mjs`
+  - `scripts/gates/ide-project-continue-cta-contract.mjs`
+- Replaced legacy localhost-dependent shell gate with harness-based:
+  - `scripts/gates/ide-shell-structure-contract.mjs`
+- Updated:
+  - `scripts/gates/ide-project-health-live-contract.mjs`
+  - `scripts/repo-status.mjs`
+  - `scripts/verify-gates-classroom.mjs`
+  - `package.json` gate script wiring for new contracts.
+
+5. Visual baseline refresh
+- Updated screenshot baselines:
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-project-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-design-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-verify-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-export-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-import-chromium-win32.png`
+
+### Validation Executed
+
+- `pnpm -s ide:gate:shell-chrome-contract` -> PASS
+- `pnpm -s ide:gate:design-fit-contract` -> PASS
+- `pnpm -s ide:gate:design-live-sim-contract` -> PASS
+- `pnpm -s ide:gate:export-artifact-explorer-contract` -> PASS
+- `pnpm -s ide:gate:project-health-live-contract` -> PASS
+- `pnpm -s ide:gate:project-continue-cta-contract` -> PASS
+- `pnpm -s ide:gate:verify-workbench-contract` -> PASS
+- `pnpm -s ide:gate:screenshots:update` -> PASS
+- `pnpm repo:status` -> PASS (21/21 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Verify Workbench Realization: Runtime Truth + Waveform-First Debugger)
 
 **Status**: COMPLETE - Verify mode now runs through runtime-owned state with persistent run evidence, waveform-first workbench composition, deterministic mismatch navigation, and enforced verify-workbench gate coverage.
