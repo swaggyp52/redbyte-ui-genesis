@@ -27,7 +27,7 @@ await runIdeGate('IDE diagnostics jump contract satisfied', async ({ page, baseU
 
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-design-diagnostics-drawer"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-design-console-diagnostics"]', { timeout: 10000 });
 
   const designDiagnosticRow = page
     .locator('[data-testid^="ide-design-diagnostic-"]')

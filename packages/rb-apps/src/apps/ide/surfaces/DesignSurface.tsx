@@ -17,6 +17,8 @@ import {
 export interface DesignSurfaceProps {
   onOpenPalette?: () => void;
   onCircuitMutated?: () => void;
+  onRuntimeAddNode?: (nodeType: string, position: { x: number; y: number }) => void;
+  onRuntimeAddIo?: (direction: 'input' | 'output', position: { x: number; y: number }) => void;
   compilerStatus?: DesignCompilerStatus;
   onDiagnosticAction?: (diagnostic: IdeDiagnostic) => void;
   diagnosticRouteRequest?: IdeDiagnosticRouteRequest | null;
@@ -50,6 +52,8 @@ const PALETTE_ITEMS: PaletteItem[] = [
 export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   onOpenPalette,
   onCircuitMutated,
+  onRuntimeAddNode,
+  onRuntimeAddIo,
   compilerStatus,
   onDiagnosticAction,
   diagnosticRouteRequest,
@@ -176,11 +180,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         y: (canvasSize.height / 2 - camera.y) / camera.zoom,
       };
       const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
-      addNode(nodeType, {
+      const position = {
         x: basePosition.x + extraOffset.x,
         y: basePosition.y + extraOffset.y,
-      });
-      onCircuitMutated?.();
+      };
+      if (onRuntimeAddNode) {
+        onRuntimeAddNode(nodeType, position);
+      } else {
+        addNode(nodeType, position);
+        onCircuitMutated?.();
+      }
     },
     [
       addNode,
@@ -191,14 +200,25 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       canvasSize.width,
       editorCircuit.nodes,
       onCircuitMutated,
+      onRuntimeAddNode,
     ]
   );
 
   const addIoPins = useCallback(() => {
-    spawnAtCanvasCenter('INPUT', { x: -120, y: -24 });
-    spawnAtCanvasCenter('OUTPUT', { x: 120, y: -24 });
+    if (onRuntimeAddIo) {
+      const center = {
+        x: (canvasSize.width / 2 - camera.x) / camera.zoom,
+        y: (canvasSize.height / 2 - camera.y) / camera.zoom,
+      };
+      const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
+      onRuntimeAddIo('input', { x: basePosition.x - 120, y: basePosition.y - 24 });
+      onRuntimeAddIo('output', { x: basePosition.x + 120, y: basePosition.y - 24 });
+    } else {
+      spawnAtCanvasCenter('INPUT', { x: -120, y: -24 });
+      spawnAtCanvasCenter('OUTPUT', { x: 120, y: -24 });
+    }
     setActionToast('Added starter IO pins.');
-  }, [spawnAtCanvasCenter]);
+  }, [camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, editorCircuit.nodes, onCircuitMutated, onRuntimeAddIo, spawnAtCanvasCenter]);
 
   const addAndGateStarter = useCallback(() => {
     spawnAtCanvasCenter('INPUT', { x: -170, y: -72 });
@@ -351,6 +371,48 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   return (
     <IdeSurfaceLayout
       mode="design"
+      dock={
+        <section className="ide-design-palette" data-testid="ide-design-dock-palette">
+          <header className="ide-design-subheader">
+            <h3>Palette</h3>
+            <IdeButton tone="ghost" onClick={onOpenPalette}>
+              Focus
+            </IdeButton>
+          </header>
+          <input
+            type="text"
+            className="ide-design-search"
+            value={paletteQuery}
+            onChange={(event) => setPaletteQuery(event.target.value)}
+            placeholder="Search gates, IO, DFF, clock..."
+            data-testid="ide-design-search"
+          />
+          <div className="ide-palette-groups">
+            {(['IO', 'Logic', 'Sequential'] as const).map((category) => {
+              const items = filteredPalette.filter((item) => item.category === category);
+              if (items.length === 0) return null;
+              return (
+                <div key={category} className="ide-palette-group">
+                  <h4>{category}</h4>
+                  <div className="ide-palette-chips">
+                    {items.map((item) => (
+                      <button
+                        key={item.type}
+                        className="ide-palette-chip"
+                        type="button"
+                        onClick={() => spawnAtCanvasCenter(item.type)}
+                        data-testid={`ide-design-palette-${item.type.toLowerCase()}`}
+                      >
+                        {item.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      }
       inspector={
         <>
           <IdeInspectorSection title="Workspace Metrics">
@@ -478,7 +540,103 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               Place IO pins, wire through logic gates, then switch to Verify for deterministic test vectors.
             </IdeCallout>
           </IdeInspectorSection>
+
+          <IdeInspectorSection title="Net / Pins" testId="ide-design-net-pins">
+            {selectedNode ? (
+              <div className="ide-kv-list">
+                <div className="ide-kv-row">
+                  <span>Selected</span>
+                  <code>{selectedNode.id}</code>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Pin Count</span>
+                  <span>{selectedNodePins.length}</span>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Connected Wires</span>
+                  <span>
+                    {editorCircuit.connections.filter((entry) => {
+                      const fromNodeId =
+                        typeof entry.from === 'string' ? entry.from : entry.from.nodeId;
+                      const toNodeId =
+                        typeof entry.to === 'string' ? entry.to : entry.to.nodeId;
+                      return fromNodeId === selectedNode.id || toNodeId === selectedNode.id;
+                    }).length}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className="ide-copy">Select a node to inspect nets and pin connectivity.</p>
+            )}
+          </IdeInspectorSection>
         </>
+      }
+      console={
+        <section
+          className="ide-design-console"
+          data-testid="ide-design-console-diagnostics"
+          data-filtered-node={diagnosticFilterNodeId ?? 'all'}
+        >
+          <header className="ide-design-diagnostics-drawer-header">
+            <h3>Diagnostics</h3>
+            <div className="ide-inline-actions">
+              {diagnosticFilterNodeId ? (
+                <span className="ide-copy" data-testid="ide-design-diagnostics-filtered-node">
+                  filtered: <code>{diagnosticFilterNodeId}</code>
+                </span>
+              ) : (
+                <span className="ide-copy">all nodes</span>
+              )}
+              {diagnosticFilterNodeId ? (
+                <IdeButton
+                  tone="ghost"
+                  onClick={clearDiagnosticFilter}
+                  testId="ide-design-diagnostics-clear-filter"
+                >
+                  Clear filter
+                </IdeButton>
+              ) : null}
+            </div>
+          </header>
+          <div className="ide-design-diagnostics-list" data-testid="ide-design-console-list">
+            {diagnosticsDrawerRows.length > 0 ? (
+              diagnosticsDrawerRows.slice(0, 16).map((diagnostic) => (
+                <article
+                  key={diagnostic.id}
+                  className={`ide-design-diagnostic-row ${
+                    diagnostic.severity === 'error' ? 'is-error' : 'is-warning'
+                  }`}
+                  data-testid={`ide-design-diagnostic-${diagnostic.id}`}
+                >
+                  <div className="ide-design-diagnostic-row-header">
+                    <IdeStatusPill tone={diagnostic.severity === 'error' ? 'error' : 'warn'}>
+                      {diagnostic.severity === 'error' ? 'ERROR' : 'WARN'}
+                    </IdeStatusPill>
+                    <code>{diagnostic.code}</code>
+                    <span>{diagnostic.title}</span>
+                  </div>
+                  <p className="ide-copy">{diagnostic.message}</p>
+                  {diagnostic.hint.length > 0 ? (
+                    <p className="ide-copy ide-design-diagnostic-hint">{diagnostic.hint[0]}</p>
+                  ) : null}
+                  <div className="ide-inline-actions">
+                    {onDiagnosticAction ? (
+                      <IdeButton
+                        tone="secondary"
+                        onClick={() => onDiagnosticAction(diagnostic)}
+                        testId={`ide-design-diagnostic-action-${diagnostic.id}`}
+                      >
+                        Show fix path
+                      </IdeButton>
+                    ) : null}
+                  </div>
+                </article>
+              ))
+            ) : (
+              <p className="ide-copy">No diagnostics currently linked to this view.</p>
+            )}
+          </div>
+        </section>
       }
     >
         <IdePanel
@@ -626,114 +784,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
           </section>
 
-          <section
-            className="ide-design-diagnostics-drawer"
-            data-testid="ide-design-diagnostics-drawer"
-            data-filtered-node={diagnosticFilterNodeId ?? 'all'}
-          >
-            <header className="ide-design-diagnostics-drawer-header">
-              <h3>Compiler Diagnostics</h3>
-              <div className="ide-inline-actions">
-                {diagnosticFilterNodeId ? (
-                  <span className="ide-copy" data-testid="ide-design-diagnostics-filtered-node">
-                    filtered: <code>{diagnosticFilterNodeId}</code>
-                  </span>
-                ) : (
-                  <span className="ide-copy">all nodes</span>
-                )}
-                {diagnosticFilterNodeId ? (
-                  <IdeButton
-                    tone="ghost"
-                    onClick={clearDiagnosticFilter}
-                    testId="ide-design-diagnostics-clear-filter"
-                  >
-                    Clear filter
-                  </IdeButton>
-                ) : null}
-              </div>
-            </header>
-            <div className="ide-design-diagnostics-list">
-              {diagnosticsDrawerRows.length > 0 ? (
-                diagnosticsDrawerRows.slice(0, 12).map((diagnostic) => (
-                  <article
-                    key={diagnostic.id}
-                    className={`ide-design-diagnostic-row ${
-                      diagnostic.severity === 'error' ? 'is-error' : 'is-warning'
-                    }`}
-                    data-testid={`ide-design-diagnostic-${diagnostic.id}`}
-                  >
-                    <div className="ide-design-diagnostic-row-header">
-                      <IdeStatusPill tone={diagnostic.severity === 'error' ? 'error' : 'warn'}>
-                        {diagnostic.severity === 'error' ? 'ERROR' : 'WARN'}
-                      </IdeStatusPill>
-                      <code>{diagnostic.code}</code>
-                      <span>{diagnostic.title}</span>
-                    </div>
-                    <p className="ide-copy">{diagnostic.message}</p>
-                    {diagnostic.hint.length > 0 ? (
-                      <p className="ide-copy ide-design-diagnostic-hint">{diagnostic.hint[0]}</p>
-                    ) : null}
-                    <div className="ide-inline-actions">
-                      {onDiagnosticAction ? (
-                        <IdeButton
-                          tone="secondary"
-                          onClick={() => onDiagnosticAction(diagnostic)}
-                          testId={`ide-design-diagnostic-action-${diagnostic.id}`}
-                        >
-                          Show fix path
-                        </IdeButton>
-                      ) : null}
-                    </div>
-                  </article>
-                ))
-              ) : (
-                <p className="ide-copy">No diagnostics currently linked to this view.</p>
-              )}
-            </div>
-          </section>
-
-          <div className="ide-design-layout">
-            <section className="ide-design-palette" data-testid="ide-design-palette">
-              <header className="ide-design-subheader">
-                <h3>Palette</h3>
-                <IdeButton tone="ghost" onClick={onOpenPalette}>
-                  Focus
-                </IdeButton>
-              </header>
-              <input
-                type="text"
-                className="ide-design-search"
-                value={paletteQuery}
-                onChange={(event) => setPaletteQuery(event.target.value)}
-                placeholder="Search gates, IO, DFF, clock..."
-                data-testid="ide-design-search"
-              />
-              <div className="ide-palette-groups">
-                {(['IO', 'Logic', 'Sequential'] as const).map((category) => {
-                  const items = filteredPalette.filter((item) => item.category === category);
-                  if (items.length === 0) return null;
-                  return (
-                    <div key={category} className="ide-palette-group">
-                      <h4>{category}</h4>
-                      <div className="ide-palette-chips">
-                        {items.map((item) => (
-                          <button
-                            key={item.type}
-                            className="ide-palette-chip"
-                            type="button"
-                            onClick={() => spawnAtCanvasCenter(item.type)}
-                            data-testid={`ide-design-palette-${item.type.toLowerCase()}`}
-                          >
-                            {item.title}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
+          <div className="ide-design-layout ide-design-layout-canvas-only">
             <section className="ide-design-canvas" data-testid="ide-design-canvas">
               <div className="ide-design-tool-hud" data-testid="ide-design-tool-hud">
                 <span className="ide-design-tool-hud-label">{activeModeLabel}</span>

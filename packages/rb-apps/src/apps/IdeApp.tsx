@@ -54,6 +54,8 @@ export const IdeApp: React.FC = () => {
   const autoSuggestMapping = useProjectRuntime((state) => state.autoSuggestMapping);
   const setVectors = useProjectRuntime((state) => state.setVectors);
   const markDesignMutated = useProjectRuntime((state) => state.markDesignMutated);
+  const addDesignNode = useProjectRuntime((state) => state.addDesignNode);
+  const addDesignIo = useProjectRuntime((state) => state.addDesignIo);
   const recordVerification = useProjectRuntime((state) => state.recordVerification);
   const recordExport = useProjectRuntime((state) => state.recordExport);
 
@@ -397,6 +399,8 @@ export const IdeApp: React.FC = () => {
           <DesignSurface
             onOpenPalette={() => null}
             onCircuitMutated={handleDesignMutation}
+            onRuntimeAddNode={addDesignNode}
+            onRuntimeAddIo={addDesignIo}
             compilerStatus={designCompilerStatus}
             onDiagnosticAction={handleDiagnosticAction}
             diagnosticRouteRequest={diagnosticRouteRequest}

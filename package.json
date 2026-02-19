@@ -151,6 +151,7 @@
         "ide:gate:layout-contract": "node ./scripts/gates/ide-layout-contract.mjs",
         "ide:gate:workbench-layout-contract": "node ./scripts/gates/ide-workbench-layout-contract.mjs",
         "ide:gate:design-build-contract": "node ./scripts/gates/ide-design-build-contract.mjs",
+        "ide:gate:design-workbench-contract": "node ./scripts/gates/ide-design-workbench-contract.mjs",
         "ide:gate:diagnostics-jump-contract": "node ./scripts/gates/ide-diagnostics-jump-contract.mjs",
         "ide:gate:design-multiselect-contract": "node ./scripts/gates/ide-design-multiselect-contract.mjs",
         "ide:gate:design-inspector-contract": "node ./scripts/gates/ide-design-inspector-contract.mjs",

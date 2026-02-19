@@ -37,6 +37,14 @@ export interface ProjectRuntimeState {
   autoSuggestMapping: () => void;
   setVectors: (vectors: TestVector[]) => void;
   markDesignMutated: (circuit: Circuit) => void;
+  addDesignNode: (nodeType: string, position: { x: number; y: number }) => void;
+  addDesignIo: (direction: 'input' | 'output', position: { x: number; y: number }) => void;
+  connectDesignNodes: (connection: {
+    fromNodeId: string;
+    fromPort: string;
+    toNodeId: string;
+    toPort: string;
+  }) => void;
   recordVerification: (result: ProjectHealthVerifyResult) => void;
   recordExport: (result: ProjectHealthExportResult) => void;
   clearUnsavedState: (label?: string) => void;
@@ -123,6 +131,80 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             dirtySinceExport: true,
           },
         }));
+      },
+      addDesignNode: (nodeType, position) => {
+        set((state) => {
+          const nextCircuit = cloneCircuit(state.circuit);
+          const normalizedPosition = {
+            x: roundToMill(position.x),
+            y: roundToMill(position.y),
+          };
+          nextCircuit.nodes.push({
+            id: getNextDesignNodeId(nextCircuit),
+            type: nodeType,
+            position: normalizedPosition,
+            x: normalizedPosition.x,
+            y: normalizedPosition.y,
+            rotation: 0,
+            config: nodeType === 'Clock' ? { period: 10 } : {},
+            state: {},
+          });
+          return {
+            circuit: nextCircuit,
+            projectHealthCore: {
+              ...state.projectHealthCore,
+              dirtySinceVerify: true,
+              dirtySinceExport: true,
+            },
+          };
+        });
+      },
+      addDesignIo: (direction, position) => {
+        const type = direction === 'input' ? 'INPUT' : 'OUTPUT';
+        get().addDesignNode(type, position);
+      },
+      connectDesignNodes: (connection) => {
+        set((state) => {
+          if (!connection.fromNodeId || !connection.toNodeId) return state;
+          const fromPort = connection.fromPort.trim() || 'out';
+          const toPort = connection.toPort.trim() || 'in';
+          const duplicate = state.circuit.connections.some((entry) => {
+            const fromNodeId =
+              typeof entry.from === 'string' ? entry.from : entry.from.nodeId;
+            const toNodeId =
+              typeof entry.to === 'string' ? entry.to : entry.to.nodeId;
+            const fromPortName =
+              typeof entry.from === 'string'
+                ? entry.fromPort ?? entry.fromPin ?? 'out'
+                : entry.from.portName ?? entry.from.port ?? 'out';
+            const toPortName =
+              typeof entry.to === 'string'
+                ? entry.toPort ?? entry.toPin ?? 'in'
+                : entry.to.portName ?? entry.to.port ?? 'in';
+            return (
+              fromNodeId === connection.fromNodeId &&
+              toNodeId === connection.toNodeId &&
+              fromPortName === fromPort &&
+              toPortName === toPort
+            );
+          });
+          if (duplicate) return state;
+
+          const nextCircuit = cloneCircuit(state.circuit);
+          nextCircuit.connections.push({
+            from: { nodeId: connection.fromNodeId, portName: fromPort },
+            to: { nodeId: connection.toNodeId, portName: toPort },
+          });
+
+          return {
+            circuit: nextCircuit,
+            projectHealthCore: {
+              ...state.projectHealthCore,
+              dirtySinceVerify: true,
+              dirtySinceExport: true,
+            },
+          };
+        });
       },
       recordVerification: (result) => {
         set((state) => ({
@@ -242,3 +324,26 @@ function suggestBasys3Pin(signal: { id: string; direction: 'in' | 'out' }, index
   return `LD${Math.min(index, 15)}`;
 }
 
+function getNextDesignNodeId(circuit: Circuit): string {
+  const prefix = 'node-v2-';
+  const used = new Set(circuit.nodes.map((node) => node.id));
+  let maxNumeric = 0;
+  for (const node of circuit.nodes) {
+    const match = /^node-v2-(\d+)$/.exec(node.id);
+    if (!match) continue;
+    const value = Number.parseInt(match[1] ?? '0', 10);
+    if (Number.isFinite(value)) {
+      maxNumeric = Math.max(maxNumeric, value);
+    }
+  }
+  let next = maxNumeric + 1;
+  while (used.has(`${prefix}${next}`)) {
+    next += 1;
+  }
+  return `${prefix}${next}`;
+}
+
+function roundToMill(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round(value * 1000) / 1000;
+}

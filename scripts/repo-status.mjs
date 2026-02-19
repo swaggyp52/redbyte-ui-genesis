@@ -103,6 +103,9 @@ if (!runCheck('IDE Project Health Live Contract', 'pnpm -s ide:gate:project-heal
 if (!runCheck('IDE Workbench Layout Contract', 'pnpm -s ide:gate:workbench-layout-contract 2>&1')) {
   process.exit(1);
 }
+if (!runCheck('IDE Design Workbench Contract', 'pnpm -s ide:gate:design-workbench-contract 2>&1')) {
+  process.exit(1);
+}
 if (!runCheck('IDE Primary CTA Contract', 'pnpm -s ide:gate:primary-cta-contract 2>&1')) {
   process.exit(1);
 }

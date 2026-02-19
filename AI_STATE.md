@@ -1,5 +1,76 @@
 # AI State
 
+## Change Log 2026-02-19 (Design Workbench Realization: Canvas-Dominant Docked Authoring)
+
+**Status**: COMPLETE - Design mode now behaves as a true docked workbench with runtime-backed authoring, authoritative inspector/console composition, and screenshot/gate proof for layout stability.
+
+### What Changed
+
+1. Design surface composition moved into workbench docks
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - moved palette into left dock (`data-testid="ide-design-dock-palette"`)
+  - moved diagnostics authority into bottom console (`data-testid="ide-design-console-diagnostics"`, `ide-design-console-list`)
+  - strengthened right inspector content with explicit net/pins marker (`data-testid="ide-design-net-pins"`)
+  - kept center workspace focused on `LogicCanvas` + command/IR strip.
+
+2. Runtime-backed design mutations (no local-only add actions)
+- Updated `packages/rb-apps/src/apps/ide/projectRuntime.ts`:
+  - added deterministic runtime actions:
+    - `addDesignNode(nodeType, position)`
+    - `addDesignIo(direction, position)`
+    - `connectDesignNodes({ fromNodeId, fromPort, toNodeId, toPort })`
+  - added stable node id allocator (`node-v2-*`) and rounded placement handling.
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - wired runtime add actions into `DesignSurface` (`onRuntimeAddNode`, `onRuntimeAddIo`).
+
+3. Fixed runtime/state overwrite regression for starter actions
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - stopped calling `onCircuitMutated` immediately after runtime add actions (which previously overwrote runtime state with stale circuit-store snapshots).
+  - preserved mutation callback behavior for non-runtime add paths.
+
+4. Workbench geometry tuning for canvas dominance and command usability
+- Updated `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`:
+  - reduced default dock widths to favor center canvas (`leftWidth: 240`, `rightWidth: 296`).
+  - widened right dock clamp range lower bound for adaptive layouts.
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - design panel body row contract now reserves a flexible canvas row
+  - design command center now avoids overflow-driven layout collapse
+  - ensured command actions remain clickable above strip content
+  - set minimum live canvas height for stable dominant workspace geometry.
+
+5. New/updated gate contracts for Design workbench composition
+- Added `scripts/gates/ide-design-workbench-contract.mjs`:
+  - asserts left palette dock, right inspector, bottom console presence
+  - enforces canvas dominance ratio contract.
+- Updated `scripts/gates/ide-diagnostics-jump-contract.mjs`:
+  - switched design diagnostic wait marker from legacy drawer to bottom console marker.
+- Wired new design workbench gate into:
+  - `package.json`
+  - `scripts/repo-status.mjs`
+  - `scripts/verify-gates-classroom.mjs`.
+
+6. Screenshot baseline refresh after composition pivot
+- Updated IDE screenshot baselines:
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-project-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-design-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-verify-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-export-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-import-chromium-win32.png`
+
+### Validation Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:design-workbench-contract` -> PASS
+- `pnpm -s ide:gate:design-inspector-contract` -> PASS
+- `pnpm -s ide:gate:diagnostics-jump-contract` -> PASS
+- `pnpm -s ide:gate:design-multiselect-contract` -> PASS
+- `pnpm -s ide:gate:screenshots:update` -> PASS
+- `pnpm repo:status` -> PASS (15/15 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Project Mode Composition Pass: Sources-First Workbench + Activity Console)
 
 **Status**: COMPLETE - Project mode now prioritizes sources/readiness/mapping flow in workbench composition, with examples demoted to secondary content.

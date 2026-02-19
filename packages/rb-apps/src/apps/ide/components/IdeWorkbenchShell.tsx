@@ -5,13 +5,13 @@ type ResizeEdge = 'left' | 'right' | 'bottom';
 
 const LAYOUT_STORAGE_KEY = 'rb.ide.workbench.layout.v1';
 const DEFAULT_LAYOUT = {
-  leftWidth: 272,
-  rightWidth: 344,
+  leftWidth: 240,
+  rightWidth: 296,
   consoleHeight: 176,
 };
 
-const LEFT_WIDTH_RANGE = { min: 220, max: 420 };
-const RIGHT_WIDTH_RANGE = { min: 280, max: 420 };
+const LEFT_WIDTH_RANGE = { min: 200, max: 420 };
+const RIGHT_WIDTH_RANGE = { min: 240, max: 420 };
 const CONSOLE_HEIGHT_RANGE = { min: 128, max: 320 };
 
 interface WorkbenchLayoutState {
