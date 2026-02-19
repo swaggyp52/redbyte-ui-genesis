@@ -3,6 +3,7 @@ import type { Circuit, Node } from '@redbyte/rb-logic-core';
 import { TickEngine } from '@redbyte/rb-logic-core';
 import { LogicCanvas, findSmartSpawnPosition, useLogicViewStore } from '@redbyte/rb-logic-view';
 import { useCircuitStore } from '../../../stores/circuitStore';
+import { digestValue } from '../../../utils/digest';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
@@ -15,6 +16,22 @@ import {
 export interface DesignSurfaceProps {
   onOpenPalette?: () => void;
   onCircuitMutated?: () => void;
+  compilerStatus?: DesignCompilerStatus;
+}
+
+export interface DesignCompilerDiagnostic {
+  code: string;
+  message: string;
+  severity: 'error' | 'warning';
+  port?: string;
+}
+
+export interface DesignCompilerStatus {
+  dirtySinceVerify: boolean;
+  dirtySinceExport: boolean;
+  errorCount: number;
+  warningCount: number;
+  diagnostics: DesignCompilerDiagnostic[];
 }
 
 interface PaletteItem {
@@ -34,7 +51,11 @@ const PALETTE_ITEMS: PaletteItem[] = [
   { type: 'Clock', title: 'Clock', category: 'Sequential' },
 ];
 
-export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onCircuitMutated }) => {
+export const DesignSurface: React.FC<DesignSurfaceProps> = ({
+  onOpenPalette,
+  onCircuitMutated,
+  compilerStatus,
+}) => {
   const circuit = useCircuitStore((state) => state.circuit);
   const addNode = useCircuitStore((state) => state.addNode);
   const updateCircuit = useCircuitStore((state) => state.updateCircuit);
@@ -240,6 +261,26 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
     () => deriveNodePins(selectedNode, editorCircuit),
     [editorCircuit, selectedNode]
   );
+  const selectedNodeProperties = useMemo(
+    () => (selectedNode ? describeNodeProperties(selectedNode) : []),
+    [selectedNode]
+  );
+  const selectedNodeDiagnostics = useMemo(
+    () =>
+      selectedNode
+        ? (compilerStatus?.diagnostics ?? []).filter((diagnostic) =>
+            diagnosticMatchesNode(diagnostic, selectedNode, selectedNodePins)
+          )
+        : [],
+    [compilerStatus?.diagnostics, selectedNode, selectedNodePins]
+  );
+  const selectedTypeSummary = useMemo(() => summarizeSelectionTypes(selection.nodes, editorCircuit), [editorCircuit, selection.nodes]);
+  const compilerDiagnostics = compilerStatus?.diagnostics ?? [];
+  const compilerErrorCount = compilerStatus?.errorCount ?? 0;
+  const compilerWarningCount = compilerStatus?.warningCount ?? 0;
+  const dirtySinceVerify = compilerStatus?.dirtySinceVerify ?? true;
+  const dirtySinceExport = compilerStatus?.dirtySinceExport ?? true;
+  const irHash = useMemo(() => digestValue(buildCircuitIrHashPayload(editorCircuit)), [editorCircuit]);
   const hasSelection = selection.nodes.size > 0 || selection.wires.size > 0;
   const activeModeLabel = toolMode === 'wire' ? 'Wire Mode' : 'Select Mode';
   const zoomPercent = Math.round(camera.zoom * 100);
@@ -295,7 +336,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
           </IdeInspectorSection>
 
           <IdeInspectorSection title="Selection">
-            {selectedNode ? (
+            {selectedNode && selection.nodes.size === 1 ? (
               <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
                 <div className="ide-kv-list">
                   <div className="ide-kv-row">
@@ -316,8 +357,61 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
                     </span>
                   ))}
                 </div>
+                <div className="ide-design-selection-properties" data-testid="ide-design-selection-properties">
+                  <p className="ide-copy">IR Properties</p>
+                  <div className="ide-kv-list">
+                    {selectedNodeProperties.length > 0 ? (
+                      selectedNodeProperties.map((entry) => (
+                        <div key={`${selectedNode.id}-${entry.key}`} className="ide-kv-row">
+                          <span>{entry.key}</span>
+                          <code>{entry.value}</code>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="ide-copy">No typed properties on this node.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="ide-design-selection-warnings" data-testid="ide-design-selection-warnings">
+                  <p className="ide-copy">Node Diagnostics</p>
+                  {selectedNodeDiagnostics.length > 0 ? (
+                    <ul className="ide-design-selection-warning-list">
+                      {selectedNodeDiagnostics.map((diagnostic) => (
+                        <li
+                          key={`${selectedNode.id}-${diagnostic.code}-${diagnostic.message}`}
+                          className={`ide-design-selection-warning-item is-${diagnostic.severity}`}
+                        >
+                          <span>{diagnostic.code}</span>
+                          <span>{diagnostic.message}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="ide-copy">No diagnostics attached to this node.</p>
+                  )}
+                </div>
                 <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
                   Delete selected node
+                </IdeButton>
+              </div>
+            ) : selection.nodes.size > 1 ? (
+              <div className="ide-design-selection-inspector" data-testid="ide-design-multiselect-summary">
+                <div className="ide-kv-row">
+                  <span>Selected</span>
+                  <span data-testid="ide-design-multiselect-count">{selection.nodes.size} nodes</span>
+                </div>
+                <div className="ide-design-selection-pins" data-testid="ide-design-multiselect-types">
+                  {selectedTypeSummary.map((entry) => (
+                    <span key={entry.type} className="ide-design-pin-pill">
+                      {entry.type}: {entry.count}
+                    </span>
+                  ))}
+                </div>
+                <p className="ide-copy">
+                  Bulk actions: drag to move as a unit, press Delete to remove selection, Ctrl+Z to restore.
+                </p>
+                <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
+                  Delete selected nodes
                 </IdeButton>
               </div>
             ) : (
@@ -439,6 +533,47 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
               <span className="ide-wire-mode-pill" data-testid="ide-design-interaction-pill">
                 {interactionLabel}
               </span>
+            </div>
+          </section>
+
+          <section className="ide-design-compiler-strip" data-testid="ide-design-compiler-strip">
+            <div className="ide-design-compiler-item">
+              <span>IR Hash</span>
+              <code data-testid="ide-design-ir-hash">{irHash}</code>
+            </div>
+            <div className="ide-design-compiler-item">
+              <span>Dirty since verify</span>
+              <strong
+                data-testid="ide-design-dirty-since-verify"
+                className={dirtySinceVerify ? 'is-warn' : 'is-ok'}
+              >
+                {dirtySinceVerify ? 'Yes' : 'No'}
+              </strong>
+            </div>
+            <div className="ide-design-compiler-item">
+              <span>Dirty since export</span>
+              <strong
+                data-testid="ide-design-dirty-since-export"
+                className={dirtySinceExport ? 'is-warn' : 'is-ok'}
+              >
+                {dirtySinceExport ? 'Yes' : 'No'}
+              </strong>
+            </div>
+            <div className="ide-design-compiler-item">
+              <span>Errors</span>
+              <strong data-testid="ide-design-diagnostics-errors" className={compilerErrorCount > 0 ? 'is-error' : 'is-ok'}>
+                {compilerErrorCount}
+              </strong>
+            </div>
+            <div className="ide-design-compiler-item">
+              <span>Warnings</span>
+              <strong data-testid="ide-design-diagnostics-warnings" className={compilerWarningCount > 0 ? 'is-warn' : 'is-ok'}>
+                {compilerWarningCount}
+              </strong>
+            </div>
+            <div className="ide-design-compiler-item">
+              <span>Diagnostics linked</span>
+              <strong data-testid="ide-design-diagnostics-total">{compilerDiagnostics.length}</strong>
             </div>
           </section>
 
@@ -634,4 +769,132 @@ function deriveNodePins(node: Node | undefined, circuit: Circuit): string[] {
   }
 
   return Array.from(inferred).sort();
+}
+
+function buildCircuitIrHashPayload(circuit: Circuit): unknown {
+  const nodes = circuit.nodes
+    .map((node) => ({
+      id: node.id,
+      type: node.type,
+      position: {
+        x: Math.round((node.position?.x ?? 0) * 1000) / 1000,
+        y: Math.round((node.position?.y ?? 0) * 1000) / 1000,
+      },
+      config: node.config ?? {},
+      state: node.state ?? {},
+    }))
+    .sort((left, right) => compareText(left.id, right.id));
+
+  const connections = circuit.connections
+    .map((connection) => {
+      const fromNodeId = typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
+      const fromPort = typeof connection.from === 'string'
+        ? connection.fromPort ?? connection.fromPin ?? 'out'
+        : connection.from.portName ?? connection.from.port ?? 'out';
+      const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+      const toPort = typeof connection.to === 'string'
+        ? connection.toPort ?? connection.toPin ?? 'in'
+        : connection.to.portName ?? connection.to.port ?? 'in';
+
+      return {
+        id: `${fromNodeId}.${fromPort}-${toNodeId}.${toPort}`,
+        fromNodeId,
+        fromPort,
+        toNodeId,
+        toPort,
+      };
+    })
+    .sort((left, right) => compareText(left.id, right.id));
+
+  return { nodes, connections };
+}
+
+function describeNodeProperties(node: Node): Array<{ key: string; value: string }> {
+  const values = new Map<string, unknown>();
+  values.set('type', node.type);
+  values.set('x', Math.round((node.position?.x ?? 0) * 1000) / 1000);
+  values.set('y', Math.round((node.position?.y ?? 0) * 1000) / 1000);
+
+  const config = node.config ?? {};
+  const state = node.state ?? {};
+  for (const key of Object.keys(config).sort(compareText)) {
+    values.set(`config.${key}`, (config as Record<string, unknown>)[key]);
+  }
+  for (const key of Object.keys(state).sort(compareText)) {
+    values.set(`state.${key}`, (state as Record<string, unknown>)[key]);
+  }
+
+  return Array.from(values.entries()).map(([key, value]) => ({
+    key,
+    value: stringifyPropertyValue(value),
+  }));
+}
+
+function summarizeSelectionTypes(
+  selectedNodeIds: Set<string>,
+  circuit: Circuit
+): Array<{ type: string; count: number }> {
+  const typeCounts = new Map<string, number>();
+  for (const nodeId of selectedNodeIds) {
+    const node = circuit.nodes.find((entry) => entry.id === nodeId);
+    if (!node) continue;
+    typeCounts.set(node.type, (typeCounts.get(node.type) ?? 0) + 1);
+  }
+  return Array.from(typeCounts.entries())
+    .map(([type, count]) => ({ type, count }))
+    .sort((left, right) => compareText(left.type, right.type));
+}
+
+function diagnosticMatchesNode(
+  diagnostic: DesignCompilerDiagnostic,
+  node: Node,
+  nodePins: string[]
+): boolean {
+  const candidate = normalizeDiagnosticToken(diagnostic.port);
+  if (!candidate) return false;
+
+  const nodeTokens = new Set<string>([
+    normalizeDiagnosticToken(node.id),
+    normalizeDiagnosticToken(node.label),
+    normalizeDiagnosticToken(node.type),
+  ]);
+
+  for (const pin of nodePins) {
+    nodeTokens.add(normalizeDiagnosticToken(pin));
+    nodeTokens.add(normalizeDiagnosticToken(`${node.id}.${pin}`));
+    if (node.label) {
+      nodeTokens.add(normalizeDiagnosticToken(`${node.label}.${pin}`));
+    }
+  }
+
+  for (const token of nodeTokens) {
+    if (!token) continue;
+    if (candidate === token || candidate.endsWith(`.${token}`) || token.endsWith(`.${candidate}`)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function stringifyPropertyValue(value: unknown): string {
+  if (value === null) return 'null';
+  if (value === undefined) return 'undefined';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return '[unserializable]';
+  }
+}
+
+function normalizeDiagnosticToken(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return value.trim().toLowerCase();
+}
+
+function compareText(left: string, right: string): number {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
 }

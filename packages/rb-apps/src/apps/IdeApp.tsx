@@ -12,10 +12,11 @@ import { IdeTopBar } from './ide/components/IdeTopBar';
 import { IdeStatusBar } from './ide/components/IdeStatusBar';
 import { IdeButton, IdeModal } from './ide/components/IdePrimitives';
 import { ProjectSurface } from './ide/surfaces/ProjectSurface';
-import { DesignSurface } from './ide/surfaces/DesignSurface';
+import { DesignSurface, type DesignCompilerStatus } from './ide/surfaces/DesignSurface';
 import { VerifySurface } from './ide/surfaces/VerifySurface';
 import { ExportSurface } from './ide/surfaces/ExportSurface';
 import { ImportSurface } from './ide/surfaces/ImportSurface';
+import { buildExportViewModel } from './ide/viewmodels/buildExportViewModel';
 import {
   IDE_DEFAULT_EXAMPLE_ID,
   IDE_EXAMPLES,
@@ -268,6 +269,36 @@ export const IdeApp: React.FC = () => {
     [hdlText, projectDescription, projectIoRows, projectName, projectVectors, topEntityName, xdcText]
   );
 
+  const exportViewModel = useMemo(() => buildExportViewModel(exportProject), [exportProject]);
+  const designCompilerStatus = useMemo<DesignCompilerStatus>(
+    () => ({
+      dirtySinceVerify: projectHealthCore.dirtySinceVerify,
+      dirtySinceExport: projectHealthCore.dirtySinceExport,
+      errorCount: exportViewModel.errors.length,
+      warningCount: exportViewModel.warnings.length,
+      diagnostics: [
+        ...exportViewModel.errors.map((entry) => ({
+          code: entry.code,
+          message: entry.message,
+          severity: 'error' as const,
+          port: entry.port,
+        })),
+        ...exportViewModel.warnings.map((entry) => ({
+          code: entry.code,
+          message: entry.message,
+          severity: 'warning' as const,
+          port: entry.port,
+        })),
+      ],
+    }),
+    [
+      exportViewModel.errors,
+      exportViewModel.warnings,
+      projectHealthCore.dirtySinceExport,
+      projectHealthCore.dirtySinceVerify,
+    ]
+  );
+
   const verifyMappedInputs = useMemo(
     () =>
       projectIoRows
@@ -357,7 +388,11 @@ export const IdeApp: React.FC = () => {
             onOpenImport={() => setCurrentMode('import')}
           />
         ) : currentMode === 'design' ? (
-          <DesignSurface onOpenPalette={() => null} onCircuitMutated={handleDesignMutation} />
+          <DesignSurface
+            onOpenPalette={() => null}
+            onCircuitMutated={handleDesignMutation}
+            compilerStatus={designCompilerStatus}
+          />
         ) : currentMode === 'verify' ? (
           <VerifySurface
             deterministicHash={determinismHash}
