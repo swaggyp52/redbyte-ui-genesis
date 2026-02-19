@@ -39,6 +39,7 @@ function main() {
     runGate('ide:route-contract', 'pnpm -s ide:gate:route-contract', true),
     runGate('ide:layout-contract', 'pnpm -s ide:gate:layout-contract', true),
     runGate('ide:design-build-contract', 'pnpm -s ide:gate:design-build-contract', true),
+    runGate('ide:design-multiselect-contract', 'pnpm -s ide:gate:design-multiselect-contract', true),
     runGate('ide:design-inspector-contract', 'pnpm -s ide:gate:design-inspector-contract', true),
     runGate('ide:project-readiness-contract', 'pnpm -s ide:gate:project-readiness-contract', true),
     runGate('ide:project-health-live-contract', 'pnpm -s ide:gate:project-health-live-contract', true),

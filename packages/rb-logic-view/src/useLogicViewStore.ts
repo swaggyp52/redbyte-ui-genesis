@@ -378,5 +378,10 @@ declare global {
   interface Window {
     __rbLogicViewStorePatched?: boolean;
     __rbLogicViewStoreStorm?: boolean;
+    __RB_LOGIC_VIEW_STORE__?: typeof useLogicViewStore;
   }
+}
+
+if (typeof window !== 'undefined') {
+  window.__RB_LOGIC_VIEW_STORE__ = useLogicViewStore;
 }

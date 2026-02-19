@@ -496,8 +496,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             return {
               ...n,
               position: {
-                x: snapEnabled ? snapPointToGrid(n.position.x + dx, gridSize) : n.position.x + dx,
-                y: snapEnabled ? snapPointToGrid(n.position.y + dy, gridSize) : n.position.y + dy,
+                // Keep multi-node movement as a single deterministic delta derived from the anchor.
+                x: n.position.x + dx,
+                y: n.position.y + dy,
               },
             };
           }

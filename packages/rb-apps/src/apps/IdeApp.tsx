@@ -35,7 +35,7 @@ type ProjectIoRow = IdeExampleIoRow;
 const INITIAL_EXAMPLE = getIdeExampleById(IDE_DEFAULT_EXAMPLE_ID) ?? IDE_EXAMPLES[0];
 
 export const IdeApp: React.FC = () => {
-  const [currentMode, setCurrentMode] = useState<IdeMode>('project');
+  const [currentMode, setCurrentMode] = useState<IdeMode>(() => resolveInitialIdeMode());
   const [projectName, setProjectName] = useState(INITIAL_EXAMPLE.name);
   const [projectDescription, setProjectDescription] = useState(INITIAL_EXAMPLE.summary);
   const [lastSavedAt, setLastSavedAt] = useState('Seeded example');
@@ -404,6 +404,21 @@ export const IdeApp: React.FC = () => {
     </div>
   );
 };
+
+function resolveInitialIdeMode(): IdeMode {
+  if (typeof window === 'undefined') return 'project';
+  const requestedMode = new URLSearchParams(window.location.search).get('mode')?.trim().toLowerCase();
+  switch (requestedMode) {
+    case 'project':
+    case 'design':
+    case 'verify':
+    case 'export':
+    case 'import':
+      return requestedMode;
+    default:
+      return 'project';
+  }
+}
 
 function normalizeSignalKey(value: string): string {
   return value.trim().toLowerCase().replace(/\[[^\]]+\]/g, '');

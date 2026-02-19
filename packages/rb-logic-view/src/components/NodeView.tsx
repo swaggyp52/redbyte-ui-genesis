@@ -243,6 +243,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
       <g
         transform={nodeTransform}
         data-node-id={node.id}
+        data-node-selected={isSelected ? '1' : '0'}
         onDoubleClick={handleDoubleClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -719,6 +720,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     <g
       transform={nodeTransform}
       data-node-id={node.id}
+      data-node-selected={isSelected ? '1' : '0'}
       onDoubleClick={handleDoubleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}

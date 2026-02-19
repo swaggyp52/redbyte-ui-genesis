@@ -69,7 +69,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
     svgRef,
     camera,
     circuitNodes,
-    // selectedNodeIds — available for future multi-select extensions
+    selectedNodeIds,
     onNodeMoveEnd,
     onNodeSelect,
     onPan,
@@ -159,7 +159,11 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
           s.dragNodeId = nodeId;
           setDragDelta({ x: 0, y: 0 });
 
-          onNodeSelect(nodeId, e.shiftKey);
+          const isAlreadySelected = selectedNodeIds.has(nodeId);
+          const preserveMultiSelection = isAlreadySelected && selectedNodeIds.size > 1 && !e.shiftKey;
+          if (!preserveMultiSelection) {
+            onNodeSelect(nodeId, e.shiftKey);
+          }
           e.currentTarget.setPointerCapture(e.pointerId);
           return;
         }
@@ -179,6 +183,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
       interactionMode,
       isSpacePressed,
       circuitNodes,
+      selectedNodeIds,
       onNodeSelect,
       onClearSelection,
       onWireCancel,
@@ -263,12 +268,12 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
           newY = snapped.y;
         }
 
-        const deltaX = newX - s.nodeStartWorld.x;
-        const deltaY = newY - s.nodeStartWorld.y;
+        const snappedDeltaX = newX - s.nodeStartWorld.x;
+        const snappedDeltaY = newY - s.nodeStartWorld.y;
 
         dragPositionRef.current = { x: newX, y: newY };
         setDragPosition({ x: newX, y: newY });
-        setDragDelta({ x: Math.round(deltaX), y: Math.round(deltaY) });
+        setDragDelta({ x: Math.round(snappedDeltaX), y: Math.round(snappedDeltaY) });
       }
     },
     [camera, svgRef, onPan, setInteractionMode, snapEnabled, gridSize],
@@ -396,3 +401,4 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
     },
   };
 }
+
