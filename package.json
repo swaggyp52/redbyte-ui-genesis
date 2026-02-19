@@ -150,6 +150,7 @@
         "ide:gate:shell-structure": "node ./scripts/gates/ide-shell-structure-contract.mjs",
         "ide:gate:layout-contract": "node ./scripts/gates/ide-layout-contract.mjs",
         "ide:gate:design-build-contract": "node ./scripts/gates/ide-design-build-contract.mjs",
+        "ide:gate:project-readiness-contract": "node ./scripts/gates/ide-project-readiness-contract.mjs",
         "ide:gate:verify-contract": "node ./scripts/gates/ide-verify-contract.mjs",
         "ide:gate:visual-contract": "node ./scripts/gates/ide-visual-contract.mjs",
         "ide:gate:route-contract": "node ./scripts/gates/ide-route-contract.mjs",
