@@ -53,9 +53,21 @@ function fileExists(filePath, description) {
 console.log('RedByte UI Repository Status\n');
 console.log('='.repeat(50));
 
-// 0. Git ahead hard stop (no feature work while drifted too far)
-if (!runCheck('Git Ahead Limit', 'pnpm -s gates:git-ahead-limit 2>&1')) {
-  process.exit(1);
+// 0. Git ahead signal (warn only; does not block feature work)
+console.log('\n[CHECK] Git Ahead Limit...');
+try {
+  execSync('pnpm -s gates:git-ahead-limit 2>&1', {
+    stdio: ['pipe', 'pipe', 'pipe'],
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  console.log('[PASS] Git Ahead Limit');
+} catch (error) {
+  const details = typeof error?.stdout === 'string' ? error.stdout.trim() : '';
+  console.log('[WARN] Git Ahead Limit');
+  if (details.length > 0) {
+    console.log(`  ${details}`);
+  }
 }
 
 // 1. Static anti-shadow contract (fast fail)

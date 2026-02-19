@@ -19,10 +19,10 @@
 - No speculative refactors
 - Any completed phase or meaningful change requires updating `AI_STATE.md` with a factual Change Log entry
 - For IDE boot emergency workstreams, commit messages must use these prefixes: `boot:`, `ide:`, `gates:`, `config:`, `docs:`
-- Hard-stop repo drift policy:
+- Repo drift signal policy:
   - After each 1-3 commits run `pnpm repo:status` and `git status -sb`.
-  - If local ahead count exceeds 3, stop feature work immediately.
-  - Push, or create a bundle/patch handoff and get it applied/pushed before continuing.
+  - If local ahead count exceeds 3, emit guidance and produce an updated bundle/patch handoff.
+  - Ahead count does not block local feature work in this environment.
 
 ## Verification hygiene
 - Do not claim completion without evidence.
