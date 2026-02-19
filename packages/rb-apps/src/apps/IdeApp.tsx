@@ -10,6 +10,7 @@ import { IdeStatusBar } from './ide/components/IdeStatusBar';
 import { ProjectSurface } from './ide/surfaces/ProjectSurface';
 import { DesignSurface } from './ide/surfaces/DesignSurface';
 import { VerifySurface } from './ide/surfaces/VerifySurface';
+import { ExportSurface } from './ide/surfaces/ExportSurface';
 import {
   IdeButton,
   IdeCallout,
@@ -131,6 +132,114 @@ export const IdeApp: React.FC = () => {
   const [saveState] = useState<'saved' | 'unsaved' | 'autosaving'>('saved');
 
   const determinismHash = useMemo(() => '2f4e0bb0f17ac4d2', []);
+  const exportPreview = useMemo(
+    () => ({
+      diagnostics: {
+        success: false,
+        errors: [
+          {
+            type: 'validation' as const,
+            severity: 'error' as const,
+            message: 'Unmapped required input port "count_en". Fix: map "count_en" to "SW0 / V17".',
+          },
+          {
+            type: 'validation' as const,
+            severity: 'error' as const,
+            message: 'Unmapped required output port "q2". Fix: map "q2" to "LD0 / U16".',
+          },
+          {
+            type: 'constraint' as const,
+            severity: 'warning' as const,
+            message:
+              'Ignoring source XDC directive "create_clock" during deterministic Basys3 export; constraints are regenerated from IO mapping.',
+          },
+          {
+            type: 'validation' as const,
+            severity: 'warning' as const,
+            message: 'Unused mapped input "unused_btn" will be ignored by top-entity export.',
+          },
+        ],
+        warnings: [],
+        determinismHash,
+      },
+      artifacts: [
+        {
+          name: 'top.vhd',
+          status: 'ready' as const,
+          note: 'Generated from deterministic netlist.',
+        },
+        {
+          name: 'top.xdc',
+          status: 'blocked' as const,
+          note: 'Blocked until all required ports are mapped.',
+        },
+        {
+          name: 'testbench.vhd',
+          status: 'pending' as const,
+          note: 'Available when vectors and export checks are valid.',
+        },
+      ],
+      mappings: [
+        {
+          port: 'clk',
+          direction: 'in' as const,
+          pin: 'CLK100MHZ',
+          status: 'mapped' as const,
+          notes: 'Required board clock input.',
+          suggestedPin: 'CLK100MHZ',
+        },
+        {
+          port: 'rst',
+          direction: 'in' as const,
+          pin: 'SW0',
+          status: 'mapped' as const,
+          notes: 'Reset control from switch.',
+          suggestedPin: 'SW0',
+        },
+        {
+          port: 'count_en',
+          direction: 'in' as const,
+          pin: '',
+          status: 'missing' as const,
+          notes: 'Top-entity required input.',
+          suggestedPin: 'SW1',
+        },
+        {
+          port: 'q0',
+          direction: 'out' as const,
+          pin: 'LD0',
+          status: 'mapped' as const,
+          notes: 'Output indicator.',
+          suggestedPin: 'LD0',
+        },
+        {
+          port: 'q1',
+          direction: 'out' as const,
+          pin: 'LD1',
+          status: 'mapped' as const,
+          notes: 'Output indicator.',
+          suggestedPin: 'LD1',
+        },
+        {
+          port: 'q2',
+          direction: 'out' as const,
+          pin: '',
+          status: 'missing' as const,
+          notes: 'Top-entity required output.',
+          suggestedPin: 'LD2',
+        },
+        {
+          port: 'unused_btn',
+          direction: 'in' as const,
+          pin: 'SW2',
+          status: 'unused' as const,
+          notes: 'Mapped but not used by top entity.',
+          suggestedPin: 'SW2',
+        },
+      ],
+    }),
+    [determinismHash]
+  );
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -176,6 +285,12 @@ export const IdeApp: React.FC = () => {
             deterministicHash={determinismHash}
             hasVectors={projectReadiness.vectors.length > 0}
             onOpenProjectVectors={() => setCurrentMode('project')}
+          />
+        ) : currentMode === 'export' ? (
+          <ExportSurface
+            diagnostics={exportPreview.diagnostics}
+            artifacts={exportPreview.artifacts}
+            mappings={exportPreview.mappings}
           />
         ) : (
           <ModePlaceholder mode={currentMode} />
