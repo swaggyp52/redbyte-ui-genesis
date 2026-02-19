@@ -21,6 +21,31 @@ export const IdeCard: React.FC<{
   );
 };
 
+export const IdeGrid: React.FC<{
+  columns?: 1 | 2 | 3;
+  children: React.ReactNode;
+  testId?: string;
+}> = ({ columns = 2, children, testId }) => {
+  return (
+    <div className={`ide-grid ide-grid-${columns}`} data-testid={testId}>
+      {children}
+    </div>
+  );
+};
+
+export const IdeSectionHeader: React.FC<{
+  title: string;
+  meta?: React.ReactNode;
+  testId?: string;
+}> = ({ title, meta, testId }) => {
+  return (
+    <header className="ide-section-header" data-testid={testId}>
+      <h3>{title}</h3>
+      {meta ? <span className="ide-section-header-meta">{meta}</span> : null}
+    </header>
+  );
+};
+
 export const IdePanel: React.FC<{
   title: string;
   description?: string;

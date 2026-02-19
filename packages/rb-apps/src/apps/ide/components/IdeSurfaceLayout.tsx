@@ -15,11 +15,11 @@ export const IdeSurfaceLayout: React.FC<IdeSurfaceLayoutProps> = ({ mode, childr
       data-testid={`ide-mode-${mode}`}
       data-ide-mode-marker={mode}
     >
-      <div className="ide-content-grid" data-testid="ide-surface-grid">
+      <div className="ide-content-grid" data-testid="ide-surface-grid" data-grid-columns="12">
         <main className="ide-main-area" data-testid="ide-mode-body">
           {children}
         </main>
-        <aside className="ide-inspector" data-testid="ide-inspector">
+        <aside className="ide-inspector" data-testid="ide-inspector" data-inspector-width="320-420">
           {inspector}
         </aside>
       </div>

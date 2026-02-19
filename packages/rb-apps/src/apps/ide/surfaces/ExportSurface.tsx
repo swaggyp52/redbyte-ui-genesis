@@ -426,9 +426,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               </header>
 
               {viewModel.artifacts.length === 0 && (
-                <IdeCallout tone="warn" title="No artifact data">
-                  Artifact previews appear after a successful export build.
-                </IdeCallout>
+                <div className="ide-empty-stack" data-testid="ide-export-empty-state">
+                  <div className="ide-empty-illustration ide-empty-illustration-export" aria-hidden="true" />
+                  <IdeCallout tone="warn" title="No artifact data">
+                    Artifact previews appear after a successful export build.
+                  </IdeCallout>
+                </div>
               )}
 
               {viewModel.artifacts.length > 0 && (

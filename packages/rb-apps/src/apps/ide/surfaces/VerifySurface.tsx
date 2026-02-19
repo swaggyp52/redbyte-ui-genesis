@@ -396,9 +396,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         </div>
 
         {status === 'idle' && (
-          <IdeCallout tone="info" title="Run to generate evidence">
-            Add vectors from mapped inputs, then run verification to produce PASS/FAIL evidence.
-          </IdeCallout>
+          <div className="ide-empty-stack" data-testid="ide-verify-empty-state">
+            <div className="ide-empty-illustration ide-empty-illustration-verify" aria-hidden="true" />
+            <IdeCallout tone="info" title="Run to generate evidence">
+              Add vectors from mapped inputs, then run verification to produce PASS/FAIL evidence.
+            </IdeCallout>
+          </div>
         )}
 
         {hasResults && (
