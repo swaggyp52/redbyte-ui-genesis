@@ -2,6 +2,7 @@
 
 Status: v1 design token contract for `IdeApp`
 Canonical companion: `docs/ide/ui-contract.md`
+Frozen system spec: `docs/ide/design-system-v1.md`
 
 ## Visual Direction
 

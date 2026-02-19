@@ -1,5 +1,65 @@
 # AI State
 
+## Change Log 2026-02-19 (Authority Launch Hero + Design System Freeze Contract)
+
+**Status**: COMPLETE - Upgraded the public launch surface to communicate deterministic FPGA workflow at-a-glance, froze a design-system v1 contract doc, and added a static gate to prevent visual-system drift.
+
+### What Changed
+
+1. Authority-first launch surface updates
+- Updated `packages/rb-apps/src/apps/HomeApp.tsx`:
+  - replaced generic start card copy with authority headline:
+    - `Deterministic FPGA Design. Visual. Verifiable. Exportable.`
+  - added deterministic flow rail (`Design -> Verify -> Export`) with markers:
+    - `data-testid="home-flow-rail"`
+    - `data-testid="home-flow-step-design"`
+    - `data-testid="home-flow-step-verify"`
+    - `data-testid="home-flow-step-export"`
+  - tightened launch actions:
+    - `Launch IDE`
+    - `View Diagnostics`
+    - `Open Example Workspace`
+  - kept hidden legacy copy marker (`Welcome to RedByte`) for existing quality gate compatibility.
+- Updated `packages/rb-apps/src/apps/HomeApp.module.css`:
+  - added hero eyebrow treatment, flow rail/step styles, and subtle pulse keyframe
+  - tightened CTA spacing and responsive behavior for the flow strip
+  - added visually-hidden utility style for legacy test compatibility.
+
+2. Design-system freeze contract
+- Added `docs/ide/design-system-v1.md`:
+  - canonical visual contract for spacing, typography, surfaces/elevation, motion, radii, layout, and launch CTA structure.
+- Updated `docs/ide/style-guide.md`:
+  - linked to the frozen design-system spec.
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - added canonical motion/easing tokens:
+    - `--rb-motion-fast`
+    - `--rb-motion-normal`
+    - `--rb-motion-slow`
+    - `--rb-ease-standard`
+    - `--rb-ease-emphasis`
+  - normalized key transitions to use tokenized timing/easing.
+
+3. New static design-system contract gate
+- Added `scripts/gates/ide-design-system-contract.mjs`:
+  - validates frozen spec presence and required sections
+  - validates core token presence in `ide-root.css`
+  - validates authority headline/flow/CTA markers in `HomeApp.tsx`
+  - validates required launch-flow style primitives in `HomeApp.module.css`.
+- Updated script wiring:
+  - `package.json` -> `ide:gate:design-system-contract`
+  - `scripts/repo-status.mjs` includes `IDE Design System Contract`
+  - `scripts/verify-gates-classroom.mjs` includes classroom invocation.
+
+### Validation Executed
+
+- `pnpm -s ide:gate:design-system-contract` -> PASS
+- `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx packages/rb-shell/src/__tests__/ui-quality-gate.test.ts` -> PASS
+- `pnpm repo:status` -> PASS (9/9 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Examples Catalog Capability + Guarded Replace Contract)
 
 **Status**: COMPLETE - Added a classroom-realistic starter examples catalog to Project mode, introduced explicit replace confirmation for unsaved work, and locked behavior with a self-contained Playwright contract gate.
