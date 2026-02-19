@@ -1,7 +1,8 @@
 ﻿// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 // IdeApp - IDE-first shell surface with deterministic mode markers.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import { installFatalCapture, pushMount } from '@redbyte/rb-utils';
 import type { RBProject } from '../export/projectFormat';
 import './ide/ide-root.css';
@@ -19,7 +20,7 @@ export const IdeApp: React.FC = () => {
   const [projectName] = useState('Basys3 Design');
   const [projectDescription] = useState('Deterministic student FPGA workspace');
   const [lastSavedAt] = useState('2026-02-19 15:10');
-  const [projectReadiness] = useState({
+  const [projectReadiness, setProjectReadiness] = useState({
     hasCircuit: true,
     ioSignals: [
       { id: 'sw0', direction: 'in' as const, mapped: true },
@@ -32,10 +33,15 @@ export const IdeApp: React.FC = () => {
       { id: 'led3', direction: 'out' as const, mapped: false },
     ],
     vectors: [
-      { id: 'vec-01', tick: 12 },
-      { id: 'vec-02', tick: 13 },
-      { id: 'vec-03', tick: 14 },
-    ] as Array<{ id: string; tick: number }>,
+      { id: 'vec-01', tick: 12, inputs: { clk: 0, rst: 0 }, expected: {} },
+      { id: 'vec-02', tick: 13, inputs: { clk: 1, rst: 0 }, expected: {} },
+      { id: 'vec-03', tick: 14, inputs: { clk: 0, rst: 1 }, expected: {} },
+    ] as Array<{
+      id: string;
+      tick: number;
+      inputs: Record<string, number>;
+      expected: Record<string, number>;
+    }>,
     lastVerify: null as { pass: boolean; failedCount: number } | null,
   });
   const [saveState] = useState<'saved' | 'unsaved' | 'autosaving'>('saved');
@@ -119,6 +125,67 @@ export const IdeApp: React.FC = () => {
     }),
     [projectDescription, projectName, projectReadiness.vectors]
   );
+  const verifyMappedInputs = useMemo(
+    () =>
+      (exportProject.ioMapping?.inputs ?? [])
+        .filter((entry) => (entry.pin ?? '').trim().length > 0)
+        .map((entry) => ({
+          id: entry.label ?? entry.id,
+          label: entry.label ?? entry.id,
+          pin: entry.pin,
+        })),
+    [exportProject.ioMapping]
+  );
+
+  const handleVectorsChange = useCallback(
+    (
+      vectors: Array<{
+        id: string;
+        tick: number;
+        inputs: Record<string, 0 | 1>;
+        expected: Record<string, 0 | 1>;
+      }>
+    ) => {
+      setProjectReadiness((previous) => ({
+        ...previous,
+        vectors,
+      }));
+    },
+    []
+  );
+
+  const handleVerificationComplete = useCallback(
+    (result: { pass: boolean; failedCount: number }) => {
+      setProjectReadiness((previous) => ({
+        ...previous,
+        lastVerify: result,
+      }));
+    },
+    []
+  );
+
+  const handleVerifyFixPath = useCallback(
+    (signalName: string) => {
+      const desiredSignal = normalizeSignalKey(signalName);
+      const targetNode =
+        exportProject.circuit.nodes.find(
+          (node) => normalizeSignalKey(node.label ?? node.id) === desiredSignal
+        ) ??
+        exportProject.circuit.nodes.find(
+          (node) => node.type === 'Lamp' || node.type === 'OUTPUT'
+        );
+
+      setCurrentMode('design');
+
+      if (!targetNode || typeof window === 'undefined') return;
+      window.setTimeout(() => {
+        const viewState = useLogicViewStore.getState();
+        viewState.setToolMode('select');
+        viewState.selectMultipleNodes([targetNode.id], false);
+      }, 0);
+    },
+    [exportProject.circuit.nodes]
+  );
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -164,7 +231,12 @@ export const IdeApp: React.FC = () => {
           <VerifySurface
             deterministicHash={determinismHash}
             hasVectors={projectReadiness.vectors.length > 0}
+            vectors={projectReadiness.vectors}
+            mappedInputs={verifyMappedInputs}
+            onVectorsChange={handleVectorsChange}
+            onVerificationComplete={handleVerificationComplete}
             onOpenProjectVectors={() => setCurrentMode('project')}
+            onFixPath={handleVerifyFixPath}
           />
         ) : currentMode === 'export' ? (
           <ExportSurface project={exportProject} />
@@ -177,5 +249,9 @@ export const IdeApp: React.FC = () => {
     </div>
   );
 };
+
+function normalizeSignalKey(value: string): string {
+  return value.trim().toLowerCase().replace(/\[[^\]]+\]/g, '');
+}
 
 export default IdeApp;
