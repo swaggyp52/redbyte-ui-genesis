@@ -1,8 +1,9 @@
-﻿// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
+// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 // IdeApp - IDE-first shell surface with deterministic mode markers.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
+import type { TestVector } from '@redbyte/rb-utils';
 import { installFatalCapture, pushMount } from '@redbyte/rb-utils';
 import type { RBProject } from '../export/projectFormat';
 import './ide/ide-root.css';
@@ -14,39 +15,200 @@ import { DesignSurface } from './ide/surfaces/DesignSurface';
 import { VerifySurface } from './ide/surfaces/VerifySurface';
 import { ExportSurface } from './ide/surfaces/ExportSurface';
 import { ImportSurface } from './ide/surfaces/ImportSurface';
+import {
+  choosePrimaryProjectCta,
+  deriveProjectHealth,
+  type ProjectHealthCore,
+  type ProjectHealthExportResult,
+  type ProjectHealthVerifyResult,
+} from './ide/projectHealth';
+
+interface ProjectIoRow {
+  id: string;
+  nodeId: string;
+  port: string;
+  label: string;
+  direction: 'in' | 'out';
+  pin: string;
+  required: boolean;
+}
+
+const INITIAL_IO_ROWS: ProjectIoRow[] = [
+  {
+    id: 'clk',
+    nodeId: 'clk_node',
+    port: 'out',
+    label: 'clk',
+    direction: 'in',
+    pin: 'CLK100MHZ',
+    required: true,
+  },
+  {
+    id: 'rst',
+    nodeId: 'rst_node',
+    port: 'out',
+    label: 'rst',
+    direction: 'in',
+    pin: 'SW0',
+    required: true,
+  },
+  {
+    id: 'count_en',
+    nodeId: 'count_en_node',
+    port: 'out',
+    label: 'count_en',
+    direction: 'in',
+    pin: 'SW1',
+    required: true,
+  },
+  {
+    id: 'q0',
+    nodeId: 'q0_node',
+    port: 'in',
+    label: 'q0',
+    direction: 'out',
+    pin: 'LD0',
+    required: true,
+  },
+  {
+    id: 'q1',
+    nodeId: 'q1_node',
+    port: 'in',
+    label: 'q1',
+    direction: 'out',
+    pin: 'LD1',
+    required: true,
+  },
+  {
+    id: 'q2',
+    nodeId: 'q2_node',
+    port: 'in',
+    label: 'q2',
+    direction: 'out',
+    pin: 'LD2',
+    required: true,
+  },
+];
 
 export const IdeApp: React.FC = () => {
   const [currentMode, setCurrentMode] = useState<IdeMode>('project');
   const [projectName] = useState('Basys3 Design');
   const [projectDescription] = useState('Deterministic student FPGA workspace');
   const [lastSavedAt] = useState('2026-02-19 15:10');
-  const [projectReadiness, setProjectReadiness] = useState({
-    hasCircuit: true,
-    ioSignals: [
-      { id: 'sw0', direction: 'in' as const, mapped: true },
-      { id: 'sw1', direction: 'in' as const, mapped: true },
-      { id: 'sw2', direction: 'in' as const, mapped: true },
-      { id: 'sw3', direction: 'in' as const, mapped: true },
-      { id: 'led0', direction: 'out' as const, mapped: true },
-      { id: 'led1', direction: 'out' as const, mapped: true },
-      { id: 'led2', direction: 'out' as const, mapped: false },
-      { id: 'led3', direction: 'out' as const, mapped: false },
-    ],
-    vectors: [
-      { id: 'vec-01', tick: 12, inputs: { clk: 0, rst: 0 }, expected: {} },
-      { id: 'vec-02', tick: 13, inputs: { clk: 1, rst: 0 }, expected: {} },
-      { id: 'vec-03', tick: 14, inputs: { clk: 0, rst: 1 }, expected: {} },
-    ] as Array<{
-      id: string;
-      tick: number;
-      inputs: Record<string, number>;
-      expected: Record<string, number>;
-    }>,
-    lastVerify: null as { pass: boolean; failedCount: number } | null,
+  const [projectIoRows, setProjectIoRows] = useState<ProjectIoRow[]>(INITIAL_IO_ROWS);
+  const [projectVectors, setProjectVectors] = useState<TestVector[]>([]);
+  const [projectHealthCore, setProjectHealthCore] = useState<ProjectHealthCore>({
+    dirtySinceVerify: false,
+    dirtySinceExport: false,
   });
   const [saveState] = useState<'saved' | 'unsaved' | 'autosaving'>('saved');
 
   const determinismHash = useMemo(() => '2f4e0bb0f17ac4d2', []);
+  const hasCircuit = true;
+  const missingRequiredCount = useMemo(
+    () => projectIoRows.filter((entry) => entry.required && entry.pin.trim().length === 0).length,
+    [projectIoRows]
+  );
+  const hasIoMapping = useMemo(
+    () => projectIoRows.filter((entry) => entry.required).length > 0 && missingRequiredCount === 0,
+    [missingRequiredCount, projectIoRows]
+  );
+  const hasVectors = projectVectors.length > 0;
+  const latestVerifyPass = projectHealthCore.lastVerify?.status === 'pass';
+
+  const readiness = useMemo(
+    () => ({
+      hasCircuit,
+      hasIoMapping,
+      hasVectors,
+      verifyPass: latestVerifyPass,
+      missingRequiredCount,
+    }),
+    [hasCircuit, hasIoMapping, hasVectors, latestVerifyPass, missingRequiredCount]
+  );
+  const projectHealth = useMemo(
+    () =>
+      deriveProjectHealth(projectHealthCore, {
+        hasCircuit: readiness.hasCircuit,
+        hasIoMapping: readiness.hasIoMapping,
+        hasVectors: readiness.hasVectors,
+      }),
+    [projectHealthCore, readiness.hasCircuit, readiness.hasIoMapping, readiness.hasVectors]
+  );
+  const primaryProjectCta = useMemo(
+    () =>
+      choosePrimaryProjectCta(projectHealth, {
+        hasCircuit: readiness.hasCircuit,
+        hasIoMapping: readiness.hasIoMapping,
+        hasVectors: readiness.hasVectors,
+      }),
+    [projectHealth, readiness.hasCircuit, readiness.hasIoMapping, readiness.hasVectors]
+  );
+
+  const handleMappingPinChange = useCallback((rowId: string, pin: string) => {
+    setProjectIoRows((previous) =>
+      previous.map((entry) => (entry.id === rowId ? { ...entry, pin } : entry))
+    );
+    setProjectHealthCore((previous) => ({
+      ...previous,
+      dirtySinceExport: true,
+    }));
+  }, []);
+
+  const handleAutoSuggestMapping = useCallback(() => {
+    setProjectIoRows((previous) =>
+      previous.map((entry, index) =>
+        entry.pin.trim().length > 0 ? entry : { ...entry, pin: suggestBasys3Pin(entry, index) }
+      )
+    );
+    setProjectHealthCore((previous) => ({
+      ...previous,
+      dirtySinceExport: true,
+    }));
+  }, []);
+
+  const handleProjectPrimaryAction = useCallback(() => {
+    if (primaryProjectCta.code === 'RBP1001') {
+      handleAutoSuggestMapping();
+      setCurrentMode('project');
+      return;
+    }
+    setCurrentMode(primaryProjectCta.mode);
+  }, [handleAutoSuggestMapping, primaryProjectCta.code, primaryProjectCta.mode]);
+
+  const handleVectorsChange = useCallback((vectors: TestVector[]) => {
+    setProjectVectors(vectors);
+    setProjectHealthCore((previous) => ({
+      ...previous,
+      dirtySinceVerify: true,
+      dirtySinceExport: true,
+    }));
+  }, []);
+
+  const handleVerificationComplete = useCallback((result: ProjectHealthVerifyResult) => {
+    setProjectHealthCore((previous) => ({
+      ...previous,
+      lastVerify: result,
+      dirtySinceVerify: false,
+    }));
+  }, []);
+
+  const handleExportResult = useCallback((result: ProjectHealthExportResult) => {
+    setProjectHealthCore((previous) => ({
+      ...previous,
+      lastExport: result,
+      dirtySinceExport: result.status === 'ok' ? false : previous.dirtySinceExport,
+    }));
+  }, []);
+
+  const handleDesignMutation = useCallback(() => {
+    setProjectHealthCore((previous) => ({
+      ...previous,
+      dirtySinceVerify: true,
+      dirtySinceExport: true,
+    }));
+  }, []);
+
   const exportProject = useMemo<RBProject>(
     () => ({
       kind: 'rb-project',
@@ -106,62 +268,43 @@ export const IdeApp: React.FC = () => {
         },
       },
       ioMapping: {
-        inputs: [
-          { id: 'clk', nodeId: 'clk_node', port: 'out', label: 'clk', pin: 'CLK100MHZ' },
-          { id: 'rst', nodeId: 'rst_node', port: 'out', label: 'rst', pin: 'SW0' },
-          { id: 'count_en', nodeId: 'count_en_node', port: 'out', label: 'count_en', pin: '' },
-          { id: 'unused_btn', nodeId: 'unused_btn_node', port: 'out', label: 'unused_btn', pin: 'SW2' },
-        ],
-        outputs: [
-          { id: 'q0', nodeId: 'q0_node', port: 'in', label: 'q0', pin: 'LD0' },
-          { id: 'q1', nodeId: 'q1_node', port: 'in', label: 'q1', pin: 'LD1' },
-          { id: 'q2', nodeId: 'q2_node', port: 'in', label: 'q2', pin: '' },
-        ],
+        inputs: projectIoRows
+          .filter((entry) => entry.direction === 'in')
+          .map((entry) => ({
+            id: entry.id,
+            nodeId: entry.nodeId,
+            port: entry.port,
+            label: entry.label,
+            pin: entry.pin,
+          })),
+        outputs: projectIoRows
+          .filter((entry) => entry.direction === 'out')
+          .map((entry) => ({
+            id: entry.id,
+            nodeId: entry.nodeId,
+            port: entry.port,
+            label: entry.label,
+            pin: entry.pin,
+          })),
       },
-      vectors: projectReadiness.vectors,
+      vectors: projectVectors,
       meta: {
         appSurface: 'ide-export',
       },
     }),
-    [projectDescription, projectName, projectReadiness.vectors]
+    [projectDescription, projectIoRows, projectName, projectVectors]
   );
+
   const verifyMappedInputs = useMemo(
     () =>
-      (exportProject.ioMapping?.inputs ?? [])
-        .filter((entry) => (entry.pin ?? '').trim().length > 0)
+      projectIoRows
+        .filter((entry) => entry.direction === 'in' && entry.pin.trim().length > 0)
         .map((entry) => ({
-          id: entry.label ?? entry.id,
-          label: entry.label ?? entry.id,
+          id: entry.id,
+          label: entry.label,
           pin: entry.pin,
         })),
-    [exportProject.ioMapping]
-  );
-
-  const handleVectorsChange = useCallback(
-    (
-      vectors: Array<{
-        id: string;
-        tick: number;
-        inputs: Record<string, 0 | 1>;
-        expected: Record<string, 0 | 1>;
-      }>
-    ) => {
-      setProjectReadiness((previous) => ({
-        ...previous,
-        vectors,
-      }));
-    },
-    []
-  );
-
-  const handleVerificationComplete = useCallback(
-    (result: { pass: boolean; failedCount: number }) => {
-      setProjectReadiness((previous) => ({
-        ...previous,
-        lastVerify: result,
-      }));
-    },
-    []
+    [projectIoRows]
   );
 
   const handleVerifyFixPath = useCallback(
@@ -171,9 +314,7 @@ export const IdeApp: React.FC = () => {
         exportProject.circuit.nodes.find(
           (node) => normalizeSignalKey(node.label ?? node.id) === desiredSignal
         ) ??
-        exportProject.circuit.nodes.find(
-          (node) => node.type === 'Lamp' || node.type === 'OUTPUT'
-        );
+        exportProject.circuit.nodes.find((node) => node.type === 'Lamp' || node.type === 'OUTPUT');
 
       setCurrentMode('design');
 
@@ -221,17 +362,25 @@ export const IdeApp: React.FC = () => {
             description={projectDescription}
             determinismHash={determinismHash}
             lastSavedAt={lastSavedAt}
-            readiness={projectReadiness}
+            readiness={readiness}
+            health={projectHealth}
+            mappingRows={projectIoRows}
+            primaryCtaLabel={primaryProjectCta.label}
+            onPrimaryCta={handleProjectPrimaryAction}
+            onUpdateMappingPin={handleMappingPinChange}
+            onAutoSuggestMapping={handleAutoSuggestMapping}
             onOpenDesign={() => setCurrentMode('design')}
+            onOpenVerify={() => setCurrentMode('verify')}
+            onOpenExport={() => setCurrentMode('export')}
             onOpenImport={() => setCurrentMode('import')}
           />
         ) : currentMode === 'design' ? (
-          <DesignSurface onOpenPalette={() => null} />
+          <DesignSurface onOpenPalette={() => null} onCircuitMutated={handleDesignMutation} />
         ) : currentMode === 'verify' ? (
           <VerifySurface
             deterministicHash={determinismHash}
-            hasVectors={projectReadiness.vectors.length > 0}
-            vectors={projectReadiness.vectors}
+            hasVectors={projectVectors.length > 0}
+            vectors={projectVectors}
             mappedInputs={verifyMappedInputs}
             onVectorsChange={handleVectorsChange}
             onVerificationComplete={handleVerificationComplete}
@@ -239,7 +388,7 @@ export const IdeApp: React.FC = () => {
             onFixPath={handleVerifyFixPath}
           />
         ) : currentMode === 'export' ? (
-          <ExportSurface project={exportProject} />
+          <ExportSurface project={exportProject} onExportResult={handleExportResult} />
         ) : (
           <ImportSurface />
         )}
@@ -252,6 +401,14 @@ export const IdeApp: React.FC = () => {
 
 function normalizeSignalKey(value: string): string {
   return value.trim().toLowerCase().replace(/\[[^\]]+\]/g, '');
+}
+
+function suggestBasys3Pin(signal: { id: string; direction: 'in' | 'out' }, index: number): string {
+  if (signal.direction === 'in') {
+    if (signal.id.toLowerCase() === 'clk') return 'CLK100MHZ';
+    return `SW${Math.min(index, 15)}`;
+  }
+  return `LD${Math.min(index, 15)}`;
 }
 
 export default IdeApp;

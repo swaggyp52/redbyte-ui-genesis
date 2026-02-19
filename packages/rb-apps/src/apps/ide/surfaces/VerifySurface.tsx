@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import type { ProjectHealthVerifyResult } from '../projectHealth';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
@@ -74,7 +75,7 @@ export interface VerifySurfaceProps {
   }>;
   mappedInputs?: Array<{ id: string; label?: string; pin?: string }>;
   onVectorsChange?: (vectors: VerifyAuthorVector[]) => void;
-  onVerificationComplete?: (result: { pass: boolean; failedCount: number }) => void;
+  onVerificationComplete?: (result: ProjectHealthVerifyResult) => void;
   onOpenProjectVectors: () => void;
   onFixPath?: (signal: string) => void;
 }
@@ -168,7 +169,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     setResultHash(activeScenario.hash);
     const pass = failing.length === 0;
     setStatus(pass ? 'pass' : 'fail');
-    onVerificationComplete?.({ pass, failedCount: failing.length });
+    onVerificationComplete?.({
+      status: pass ? 'pass' : 'fail',
+      hash: activeScenario.hash,
+      failingTick: failing[0]?.tick,
+      ranAtIso: new Date().toISOString(),
+    });
   };
 
   const clearResults = () => {
@@ -336,9 +342,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         description="Run deterministic vectors, inspect first failure, and prove expected/actual behavior."
         actions={
           <>
-            <IdeButton tone="primary" onClick={runVerification} testId="ide-verify-run">
-              Run verification
-            </IdeButton>
+            <span data-testid="ide-primary-cta">
+              <IdeButton tone="primary" onClick={runVerification} testId="ide-verify-run">
+                Run verification
+              </IdeButton>
+            </span>
             <IdeButton tone="secondary" onClick={clearResults} testId="ide-verify-clear">
               Clear
             </IdeButton>

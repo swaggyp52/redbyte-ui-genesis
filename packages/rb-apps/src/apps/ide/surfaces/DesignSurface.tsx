@@ -14,6 +14,7 @@ import {
 
 export interface DesignSurfaceProps {
   onOpenPalette?: () => void;
+  onCircuitMutated?: () => void;
 }
 
 interface PaletteItem {
@@ -33,7 +34,7 @@ const PALETTE_ITEMS: PaletteItem[] = [
   { type: 'Clock', title: 'Clock', category: 'Sequential' },
 ];
 
-export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) => {
+export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onCircuitMutated }) => {
   const circuit = useCircuitStore((state) => state.circuit);
   const addNode = useCircuitStore((state) => state.addNode);
   const updateCircuit = useCircuitStore((state) => state.updateCircuit);
@@ -98,14 +99,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
       if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z') {
         event.preventDefault();
         undo();
+        onCircuitMutated?.();
       } else if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === 'y' || (event.shiftKey && event.key.toLowerCase() === 'z'))) {
         event.preventDefault();
         redo();
+        onCircuitMutated?.();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [redo, undo]);
+  }, [onCircuitMutated, redo, undo]);
 
   useEffect(() => {
     if (!actionToast) return;
@@ -137,8 +140,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
         x: basePosition.x + extraOffset.x,
         y: basePosition.y + extraOffset.y,
       });
+      onCircuitMutated?.();
     },
-    [addNode, camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, circuit.nodes]
+    [addNode, camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, circuit.nodes, onCircuitMutated]
   );
 
   const addIoPins = useCallback(() => {
@@ -182,15 +186,27 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
     clearSelection();
     if (selectedNodeIds.length + selectedWireIds.length > 0) {
       setActionToast('Removed selected nodes and wires.');
+      onCircuitMutated?.();
     }
-  }, [clearSelection, deleteConnection, deleteNode, selection.nodes, selection.wires]);
+  }, [clearSelection, deleteConnection, deleteNode, onCircuitMutated, selection.nodes, selection.wires]);
 
   const handleCircuitChange = useCallback(
     (nextCircuit: Circuit) => {
       updateCircuit(nextCircuit, { skipHistory: false, enforceLimits: true });
+      onCircuitMutated?.();
     },
-    [updateCircuit]
+    [onCircuitMutated, updateCircuit]
   );
+
+  const handleUndo = useCallback(() => {
+    undo();
+    onCircuitMutated?.();
+  }, [onCircuitMutated, undo]);
+
+  const handleRedo = useCallback(() => {
+    redo();
+    onCircuitMutated?.();
+  }, [onCircuitMutated, redo]);
 
   const selectedNodeIds = useMemo(() => Array.from(selection.nodes).slice(0, 5), [selection.nodes]);
   const selectedWireIds = useMemo(() => Array.from(selection.wires).slice(0, 5), [selection.wires]);
@@ -284,10 +300,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
           description="Build your circuit with deterministic graph updates and explicit editing controls."
           actions={
             <div className="ide-design-primary-actions" data-testid="ide-design-primary-actions">
-              <IdeButton tone="secondary" onClick={addIoPins} testId="ide-design-add-io-pins">
-                Add IO Pins
-              </IdeButton>
-              <IdeButton tone="primary" onClick={addAndGateStarter} testId="ide-design-add-and-starter">
+              <span data-testid="ide-primary-cta">
+                <IdeButton tone="primary" onClick={addIoPins} testId="ide-design-add-io-pins">
+                  Add IO Pins
+                </IdeButton>
+              </span>
+              <IdeButton tone="secondary" onClick={addAndGateStarter} testId="ide-design-add-and-starter">
                 Add AND Starter
               </IdeButton>
             </div>
@@ -340,7 +358,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
               </IdeButton>
               <IdeButton
                 tone="ghost"
-                onClick={undo}
+                onClick={handleUndo}
                 disabled={undoDepth === 0}
                 testId="ide-design-tool-undo"
               >
@@ -348,7 +366,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
               </IdeButton>
               <IdeButton
                 tone="ghost"
-                onClick={redo}
+                onClick={handleRedo}
                 disabled={redoDepth === 0}
                 testId="ide-design-tool-redo"
               >

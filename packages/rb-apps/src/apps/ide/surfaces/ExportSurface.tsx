@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import JSZip from 'jszip';
 import type { RBProject } from '../../../export/projectFormat';
+import type { ProjectHealthExportResult } from '../projectHealth';
 import {
   buildExportViewModel,
   type ExportArtifactView,
@@ -18,11 +19,13 @@ import {
 export interface ExportSurfaceProps {
   project: RBProject;
   onExportBundle?: (artifacts: ExportArtifactView[]) => void;
+  onExportResult?: (result: ProjectHealthExportResult) => void;
 }
 
 export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   project,
   onExportBundle,
+  onExportResult,
 }) => {
   const viewModel = useMemo(() => buildExportViewModel(project), [project]);
   const diagnosticsList = useMemo(
@@ -124,9 +127,23 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   };
 
   const handleExportBundle = async () => {
-    if (hasBlockingErrors) return;
+    if (hasBlockingErrors) {
+      onExportResult?.({
+        status: 'blocked',
+        hash: viewModel.exportHash,
+        artifacts: viewModel.artifacts.map((artifact) => artifact.path),
+        ranAtIso: new Date().toISOString(),
+      });
+      return;
+    }
     if (onExportBundle) {
       onExportBundle(viewModel.artifacts);
+      onExportResult?.({
+        status: 'ok',
+        hash: viewModel.exportHash,
+        artifacts: viewModel.artifacts.map((artifact) => artifact.path),
+        ranAtIso: new Date().toISOString(),
+      });
       return;
     }
     const zipEntries = viewModel.artifacts.filter((artifact) => artifact.preview.trim().length > 0);
@@ -156,10 +173,22 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       link.download = 'redbyte-basys3-bundle.zip';
       link.click();
       URL.revokeObjectURL(url);
+      onExportResult?.({
+        status: 'ok',
+        hash: viewModel.exportHash,
+        artifacts: zipEntries.map((artifact) => artifact.path),
+        ranAtIso: new Date().toISOString(),
+      });
     } catch {
       for (const artifact of zipEntries) {
         handleDownloadArtifact(artifact);
       }
+      onExportResult?.({
+        status: 'ok',
+        hash: viewModel.exportHash,
+        artifacts: zipEntries.map((artifact) => artifact.path),
+        ranAtIso: new Date().toISOString(),
+      });
     }
   };
 
@@ -222,14 +251,16 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           description="Validate Basys3 readiness, resolve blockers, and package Vivado artifacts."
           actions={
             <>
-              <IdeButton
-                tone="primary"
-                onClick={handleExportBundle}
-                disabled={hasBlockingErrors}
-                testId="ide-export-download-all"
-              >
-                Download all (.zip)
-              </IdeButton>
+              <span data-testid="ide-primary-cta">
+                <IdeButton
+                  tone="primary"
+                  onClick={handleExportBundle}
+                  disabled={hasBlockingErrors}
+                  testId="ide-export-download-all"
+                >
+                  Download all (.zip)
+                </IdeButton>
+              </span>
               <IdeButton tone="ghost">Re-run Validation</IdeButton>
             </>
           }
