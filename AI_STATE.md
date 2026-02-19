@@ -1,5 +1,81 @@
 # AI State
 
+## Change Log 2026-02-19 (Verify Workbench Realization: Runtime Truth + Waveform-First Debugger)
+
+**Status**: COMPLETE - Verify mode now runs through runtime-owned state with persistent run evidence, waveform-first workbench composition, deterministic mismatch navigation, and enforced verify-workbench gate coverage.
+
+### What Changed
+
+1. Runtime verify authority and canonical indexing
+- Updated `packages/rb-apps/src/apps/ide/projectRuntime.ts`:
+  - added persisted `verifyLastRun` runtime state (report, waveform, schedule, hashes).
+  - added `actions.verify.run` + `actions.verify.clear` runtime actions.
+  - wired `runVerification` to store canonical verify report + project health updates.
+- Updated `packages/rb-apps/src/apps/ide/verifyReport.ts`:
+  - added `VerifyWaveSample` contract.
+  - added deterministic `buildVerifyWaveSamples(...)`.
+  - added deterministic tick/signal lookup index via `buildVerifyTickSignalIndex(...)`.
+
+2. Verify workbench UI pivot (waveform-first center, runtime-backed results)
+- Updated `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`:
+  - moved to runtime-backed verify results (`lastRun`) and removed local result shadow state.
+  - center workspace now renders waveform/tick scrubber + mismatch table + signal/tick table.
+  - mismatch row click now jumps tick cursor and selects signal.
+  - right dock remains vector authoring/editor.
+  - bottom console now acts as verify activity authority (status/hash/first-fail).
+  - verify export-testbench action is disabled unless runtime status is PASS.
+
+3. Verify -> Design fix-path focus routing
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - Verify fix-path now accepts structured target payload (`signal`, `tick`, `expected`, `actual`).
+  - resolves mapping/node target and routes to Design with deterministic route request metadata.
+  - applies selection + optional wire selection + pan focus on route execution.
+- Updated `packages/rb-apps/src/apps/ide/diagnostics.ts`:
+  - extended route payload contract with optional `wireId`, `signal`, `tick`, and `panTo`.
+
+4. Export testbench schedule parity from verify last run
+- Updated `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`:
+  - now accepts optional `runtimeVerifyRun`.
+  - when latest verify run PASS exists, testbench artifact is regenerated with verify schedule parity.
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`:
+  - passes runtime verify context into export view-model generation.
+- Updated `packages/rb-apps/src/fpga/boards/basys3/testbenchGenerator.ts`:
+  - added schedule override option for deterministic verify/export parity.
+
+5. Verify workbench gate + validation wiring
+- Added `scripts/gates/ide-verify-workbench-contract.mjs`:
+  - asserts waveform workspace dominance in verify center panel.
+  - asserts tick cursor + mismatch table + click-to-tick behavior.
+  - asserts vector editor presence in verify inspector.
+  - asserts export-testbench remains PASS-gated.
+- Wired gate into:
+  - `package.json` (`ide:gate:verify-workbench-contract`)
+  - `scripts/repo-status.mjs`
+  - `scripts/verify-gates-classroom.mjs`.
+
+6. Visual baseline refresh for verify truth screen
+- Updated screenshot baseline:
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-verify-chromium-win32.png`
+- Updated verify UI styling in `packages/rb-apps/src/apps/ide/ide-root.css` for:
+  - left signal dock state styling
+  - waveform interaction affordances
+  - verify workbench/console panel hierarchy
+  - mismatch row link action styling.
+
+### Validation Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:verify-contract` -> PASS
+- `pnpm -s ide:gate:verify-workbench-contract` -> PASS
+- `pnpm -s ide:gate:evidence-capsule-contract` -> PASS
+- `pnpm -s ide:gate:diagnostics-jump-contract` -> PASS
+- `pnpm -s ide:gate:screenshots:update` -> PASS (verify baseline refreshed)
+- `pnpm repo:status` -> PASS (16/16 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Design Workbench Realization: Canvas-Dominant Docked Authoring)
 
 **Status**: COMPLETE - Design mode now behaves as a true docked workbench with runtime-backed authoring, authoritative inspector/console composition, and screenshot/gate proof for layout stability.
