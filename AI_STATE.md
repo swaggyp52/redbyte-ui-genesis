@@ -1,5 +1,92 @@
 # AI State
 
+## Change Log 2026-02-19 (ProjectHealth Live Truth Engine + CTA Contract Gates)
+
+**Status**: COMPLETE - Added a live ProjectHealth authority wired across Design/Verify/Export, redesigned Project mode around readiness truth, and introduced new Playwright contracts for project-health flow and single-primary-CTA consistency.
+
+### What Changed
+
+1. ProjectHealth model + persistence hooks
+- Added `packages/rb-apps/src/apps/ide/projectHealth.ts`.
+  - canonical model and types:
+    - `ProjectHealthCore`, `ProjectHealth`, `ProjectHealthIssue`
+    - `ProjectHealthVerifyResult`, `ProjectHealthExportResult`
+  - derivation and CTA selection helpers:
+    - `deriveProjectHealth(...)`
+    - `choosePrimaryProjectCta(...)`
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - added live project state for IO rows, vectors, and ProjectHealth core
+  - Verify run now persists `lastVerify` and clears `dirtySinceVerify`
+  - Export run now persists `lastExport`; `dirtySinceExport` clears only on successful export
+  - Design mutations now mark both dirty flags true
+  - Project mode now receives computed readiness, health, mapping rows, and primary CTA contract props
+- Updated surface callback contracts:
+  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+    - `onVerificationComplete` now emits `{ status, hash, failingTick, ranAtIso }`
+  - `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+    - added `onExportResult` callback for blocked/ok export outcomes
+  - `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+    - added `onCircuitMutated` hook invocations across mutation paths (add/change/delete/undo/redo)
+
+2. Project surface redesign (readiness + mapping + activity)
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`:
+  - promoted deterministic single primary CTA:
+    - `data-testid="ide-primary-cta"`
+    - `data-testid="ide-project-primary-cta"`
+  - preserved and strengthened readiness/mapping markers:
+    - `ide-project-readiness-checklist`
+    - `ide-project-mapping-banner`
+    - `ide-project-mapping-table`
+    - `ide-project-auto-suggest`
+  - added activity and health markers:
+    - `ide-project-last-verify-status`
+    - `ide-project-last-verify-hash`
+    - `ide-project-last-export-status`
+    - `ide-project-last-export-hash`
+    - `ide-project-dirty-since-verify`
+    - `ide-project-dirty-since-export`
+
+3. New ProjectHealth live contract gate
+- Added `scripts/gates/ide-project-health-live-contract.mjs`.
+  - validates workflow:
+    - initial Project CTA = `Add Test Vectors`
+    - Verify adds vector and runs
+    - Project reflects last verify status + hash
+    - Design mutation flips dirty-since-verify
+    - Project CTA becomes `Run Verification`
+- Updated script wiring:
+  - `package.json` -> `ide:gate:project-health-live-contract`
+  - `scripts/verify-gates-classroom.mjs` includes new gate
+  - `scripts/repo-status.mjs` includes non-blocking runtime signal
+
+4. Primary CTA contract gate + mode CTA markers
+- Added `scripts/gates/ide-primary-cta-contract.mjs`.
+  - asserts each mode (`project|design|verify|export|import`) has exactly one visible `data-testid="ide-primary-cta"`
+- Updated mode surfaces:
+  - `VerifySurface` and `ExportSurface` primary action wrappers
+  - `ImportSurface` primary action wrapper
+- Updated script wiring:
+  - `package.json` -> `ide:gate:primary-cta-contract`
+  - `scripts/verify-gates-classroom.mjs` includes new gate
+  - `scripts/repo-status.mjs` includes non-blocking runtime signal
+
+5. Gate reliability fix
+- Updated `scripts/gates/ide-verify-contract.mjs`:
+  - vector-row assertion now counts actual data rows instead of the empty-table placeholder row.
+
+### Validation Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:project-health-live-contract` -> PASS (with local preview server)
+- `pnpm -s ide:gate:primary-cta-contract` -> PASS (with local preview server)
+- `pnpm -s ide:gate:verify-contract` -> PASS
+- `pnpm -s ide:gate:export-download-contract` -> PASS
+- `pnpm repo:status` -> PASS (5/5 checks), with expected runtime signal warnings when no local IDE server is running at `http://localhost:5173`
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Project->Design->Verify->Export loop clarity tranche)
 
 **Status**: COMPLETE - Closed core student flow gaps by making Project the readiness source-of-truth, tightening Design inspector guidance, enabling Verify vector authoring, and adding Export download/checklist explainers with new regression gates.
