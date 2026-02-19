@@ -103,6 +103,9 @@ if (!runCheck('IDE Project Health Live Contract', 'pnpm -s ide:gate:project-heal
 if (!runCheck('IDE Primary CTA Contract', 'pnpm -s ide:gate:primary-cta-contract 2>&1')) {
   process.exit(1);
 }
+if (!runCheck('IDE Diagnostics Jump Contract', 'pnpm -s ide:gate:diagnostics-jump-contract 2>&1')) {
+  process.exit(1);
+}
 if (!runCheck('IDE Design Multiselect Contract', 'pnpm -s ide:gate:design-multiselect-contract 2>&1')) {
   process.exit(1);
 }

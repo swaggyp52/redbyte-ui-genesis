@@ -150,6 +150,7 @@
         "ide:gate:shell-structure": "node ./scripts/gates/ide-shell-structure-contract.mjs",
         "ide:gate:layout-contract": "node ./scripts/gates/ide-layout-contract.mjs",
         "ide:gate:design-build-contract": "node ./scripts/gates/ide-design-build-contract.mjs",
+        "ide:gate:diagnostics-jump-contract": "node ./scripts/gates/ide-diagnostics-jump-contract.mjs",
         "ide:gate:design-multiselect-contract": "node ./scripts/gates/ide-design-multiselect-contract.mjs",
         "ide:gate:design-inspector-contract": "node ./scripts/gates/ide-design-inspector-contract.mjs",
         "ide:gate:project-readiness-contract": "node ./scripts/gates/ide-project-readiness-contract.mjs",
