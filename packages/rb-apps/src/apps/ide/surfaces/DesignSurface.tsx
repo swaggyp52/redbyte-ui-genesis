@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Circuit, Node } from '@redbyte/rb-logic-core';
+import { TickEngine } from '@redbyte/rb-logic-core';
+import { LogicCanvas, findSmartSpawnPosition, useLogicViewStore } from '@redbyte/rb-logic-view';
+import { useCircuitStore } from '../../../stores/circuitStore';
 import {
   IdeButton,
   IdeCallout,
-  IdeEmptyState,
   IdeInspectorSection,
   IdePanel,
   IdeStatusPill,
@@ -12,29 +15,224 @@ export interface DesignSurfaceProps {
   onOpenPalette?: () => void;
 }
 
-const PALETTE_GROUPS = [
-  { title: 'IO', entries: ['INPUT', 'OUTPUT', 'Switch', 'Lamp'] },
-  { title: 'Logic', entries: ['AND', 'OR', 'NOT', 'NAND', 'NOR'] },
-  { title: 'Sequential', entries: ['DFF', 'JKFF', 'Counter4Bit'] },
+interface PaletteItem {
+  type: string;
+  title: string;
+  category: 'IO' | 'Logic' | 'Sequential';
+}
+
+const PALETTE_ITEMS: PaletteItem[] = [
+  { type: 'INPUT', title: 'Input Pin', category: 'IO' },
+  { type: 'OUTPUT', title: 'Output Pin', category: 'IO' },
+  { type: 'Switch', title: 'Switch', category: 'IO' },
+  { type: 'Lamp', title: 'Lamp', category: 'IO' },
+  { type: 'AND', title: 'AND Gate', category: 'Logic' },
+  { type: 'OR', title: 'OR Gate', category: 'Logic' },
+  { type: 'NOT', title: 'NOT Gate', category: 'Logic' },
+  { type: 'XOR', title: 'XOR Gate', category: 'Logic' },
+  { type: 'NAND', title: 'NAND Gate', category: 'Logic' },
+  { type: 'NOR', title: 'NOR Gate', category: 'Logic' },
+  { type: 'DFlipFlop', title: 'D Flip-Flop', category: 'Sequential' },
+  { type: 'Counter4Bit', title: '4-bit Counter', category: 'Sequential' },
 ];
 
 export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) => {
+  const circuit = useCircuitStore((state) => state.circuit);
+  const addNode = useCircuitStore((state) => state.addNode);
+  const updateCircuit = useCircuitStore((state) => state.updateCircuit);
+  const deleteNode = useCircuitStore((state) => state.deleteNode);
+  const deleteConnection = useCircuitStore((state) => state.deleteConnection);
+  const undo = useCircuitStore((state) => state.undo);
+  const redo = useCircuitStore((state) => state.redo);
+  const setEngine = useCircuitStore((state) => state.setEngine);
+  const setTickEngine = useCircuitStore((state) => state.setTickEngine);
+  const undoDepth = useCircuitStore((state) => state.past.length);
+  const redoDepth = useCircuitStore((state) => state.future.length);
+
+  const camera = useLogicViewStore((state) => state.camera);
+  const toolMode = useLogicViewStore((state) => state.toolMode);
+  const setToolMode = useLogicViewStore((state) => state.setToolMode);
+  const snapToGrid = useLogicViewStore((state) => state.snapToGrid);
+  const toggleSnapToGrid = useLogicViewStore((state) => state.toggleSnapToGrid);
+  const clearSelection = useLogicViewStore((state) => state.clearSelection);
+  const rawSelection = useLogicViewStore((state) => state.selection);
+
+  const selection = useMemo(
+    () => ({
+      nodes: rawSelection?.nodes instanceof Set ? rawSelection.nodes : new Set<string>(),
+      wires: rawSelection?.wires instanceof Set ? rawSelection.wires : new Set<string>(),
+    }),
+    [rawSelection]
+  );
+
+  const [paletteQuery, setPaletteQuery] = useState('');
+  const canvasHostRef = useRef<HTMLDivElement | null>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 880, height: 520 });
+  const [tickEngine] = useState(() => new TickEngine(circuit, { tickRate: 10 }));
+
+  useEffect(() => {
+    setEngine(tickEngine.getEngine());
+    setTickEngine(tickEngine);
+    return () => {
+      tickEngine.dispose();
+    };
+  }, [setEngine, setTickEngine, tickEngine]);
+
+  useEffect(() => {
+    tickEngine.setCircuit(circuit);
+  }, [circuit, tickEngine]);
+
+  useEffect(() => {
+    if (!canvasHostRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      const next = entries[0];
+      if (!next) return;
+      const width = Math.max(640, Math.floor(next.contentRect.width));
+      const height = Math.max(360, Math.floor(next.contentRect.height));
+      setCanvasSize({ width, height });
+    });
+    observer.observe(canvasHostRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        undo();
+      } else if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === 'y' || (event.shiftKey && event.key.toLowerCase() === 'z'))) {
+        event.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [redo, undo]);
+
+  const filteredPalette = useMemo(() => {
+    const query = paletteQuery.trim().toLowerCase();
+    if (!query) return PALETTE_ITEMS;
+    return PALETTE_ITEMS.filter(
+      (item) =>
+        item.title.toLowerCase().includes(query) ||
+        item.type.toLowerCase().includes(query) ||
+        item.category.toLowerCase().includes(query)
+    );
+  }, [paletteQuery]);
+
+  const spawnAtCanvasCenter = useCallback(
+    (nodeType: string, extraOffset: { x: number; y: number } = { x: 0, y: 0 }) => {
+      const center = {
+        x: (canvasSize.width / 2 - camera.x) / camera.zoom,
+        y: (canvasSize.height / 2 - camera.y) / camera.zoom,
+      };
+      const basePosition = findSmartSpawnPosition(circuit.nodes as Node[], center);
+      addNode(nodeType, {
+        x: basePosition.x + extraOffset.x,
+        y: basePosition.y + extraOffset.y,
+      });
+    },
+    [addNode, camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, circuit.nodes]
+  );
+
+  const addIoPins = useCallback(() => {
+    spawnAtCanvasCenter('INPUT', { x: -120, y: -24 });
+    spawnAtCanvasCenter('OUTPUT', { x: 120, y: -24 });
+  }, [spawnAtCanvasCenter]);
+
+  const addAndGateStarter = useCallback(() => {
+    spawnAtCanvasCenter('INPUT', { x: -170, y: -72 });
+    spawnAtCanvasCenter('INPUT', { x: -170, y: 24 });
+    spawnAtCanvasCenter('AND', { x: 0, y: -24 });
+    spawnAtCanvasCenter('OUTPUT', { x: 170, y: -24 });
+  }, [spawnAtCanvasCenter]);
+
+  const deleteSelection = useCallback(() => {
+    const selectedNodeIds = Array.from(selection.nodes);
+    const selectedWireIds = Array.from(selection.wires);
+
+    for (const nodeId of selectedNodeIds) {
+      deleteNode(nodeId);
+    }
+
+    for (const wireId of selectedWireIds) {
+      const parsed = parseWireId(wireId);
+      if (!parsed) continue;
+      deleteConnection(parsed.fromNodeId, parsed.fromPort, parsed.toNodeId, parsed.toPort);
+    }
+
+    clearSelection();
+  }, [clearSelection, deleteConnection, deleteNode, selection.nodes, selection.wires]);
+
+  const handleCircuitChange = useCallback(
+    (nextCircuit: Circuit) => {
+      updateCircuit(nextCircuit, { skipHistory: false, enforceLimits: true });
+    },
+    [updateCircuit]
+  );
+
+  const selectedNodeIds = useMemo(() => Array.from(selection.nodes).slice(0, 5), [selection.nodes]);
+  const selectedWireIds = useMemo(() => Array.from(selection.wires).slice(0, 5), [selection.wires]);
+  const hasSelection = selection.nodes.size > 0 || selection.wires.size > 0;
+
   return (
     <div className="ide-content-grid" data-testid="ide-mode-design" data-ide-mode-marker="design">
       <main className="ide-main-area" data-testid="ide-mode-body">
         <IdePanel
           title="Design Workspace"
-          description="Build deterministic circuit graphs for Basys3."
+          description="Build deterministic Basys3 circuit graphs with direct wire and selection tools."
           actions={
             <div className="ide-design-toolbar">
-              <IdeButton tone="primary">Select</IdeButton>
-              <IdeButton tone="secondary">Wire</IdeButton>
-              <IdeButton tone="ghost">Delete</IdeButton>
-              <IdeButton tone="ghost">Zoom In</IdeButton>
-              <IdeButton tone="ghost">Zoom Out</IdeButton>
+              <IdeButton
+                tone={toolMode === 'select' ? 'primary' : 'secondary'}
+                onClick={() => setToolMode('select')}
+                testId="ide-design-tool-select"
+              >
+                Select
+              </IdeButton>
+              <IdeButton
+                tone={toolMode === 'wire' ? 'primary' : 'secondary'}
+                onClick={() => setToolMode('wire')}
+                testId="ide-design-tool-wire"
+              >
+                Wire
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={toggleSnapToGrid} testId="ide-design-tool-snap">
+                Snap {snapToGrid ? 'On' : 'Off'}
+              </IdeButton>
+              <IdeButton
+                tone="ghost"
+                onClick={undo}
+                disabled={undoDepth === 0}
+                testId="ide-design-tool-undo"
+              >
+                Undo
+              </IdeButton>
+              <IdeButton
+                tone="ghost"
+                onClick={redo}
+                disabled={redoDepth === 0}
+                testId="ide-design-tool-redo"
+              >
+                Redo
+              </IdeButton>
+              <IdeButton
+                tone="danger"
+                onClick={deleteSelection}
+                disabled={!hasSelection}
+                testId="ide-design-tool-delete"
+              >
+                Delete
+              </IdeButton>
+              <IdeButton tone="secondary" onClick={addIoPins} testId="ide-design-add-io-pins">
+                Add IO Pins
+              </IdeButton>
+              <IdeButton tone="primary" onClick={addAndGateStarter} testId="ide-design-add-and-starter">
+                Add AND Starter
+              </IdeButton>
             </div>
           }
-          right={<IdeStatusPill tone="idle">Canvas Ready</IdeStatusPill>}
+          right={<IdeStatusPill tone="ok">Canvas Live</IdeStatusPill>}
           testId="ide-design-panel"
         >
           <div className="ide-design-layout">
@@ -42,53 +240,153 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
               <header className="ide-design-subheader">
                 <h3>Palette</h3>
                 <IdeButton tone="ghost" onClick={onOpenPalette}>
-                  Search
+                  Focus
                 </IdeButton>
               </header>
+              <input
+                type="text"
+                className="ide-design-search"
+                value={paletteQuery}
+                onChange={(event) => setPaletteQuery(event.target.value)}
+                placeholder="Search gates, IO, counters..."
+                data-testid="ide-design-search"
+              />
               <div className="ide-palette-groups">
-                {PALETTE_GROUPS.map((group) => (
-                  <div key={group.title} className="ide-palette-group">
-                    <h4>{group.title}</h4>
-                    <div className="ide-palette-chips">
-                      {group.entries.map((entry) => (
-                        <button key={entry} className="ide-palette-chip" type="button">
-                          {entry}
-                        </button>
-                      ))}
+                {(['IO', 'Logic', 'Sequential'] as const).map((category) => {
+                  const items = filteredPalette.filter((item) => item.category === category);
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={category} className="ide-palette-group">
+                      <h4>{category}</h4>
+                      <div className="ide-palette-chips">
+                        {items.map((item) => (
+                          <button
+                            key={item.type}
+                            className="ide-palette-chip"
+                            type="button"
+                            onClick={() => spawnAtCanvasCenter(item.type)}
+                            data-testid={`ide-design-palette-${item.type.toLowerCase()}`}
+                          >
+                            {item.title}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
 
             <section className="ide-design-canvas" data-testid="ide-design-canvas">
-              <IdeEmptyState
-                title="Start building your circuit"
-                body="Drop IO first, then add logic gates and wires. This surface is intentionally circuit-first."
-                primaryAction={<IdeButton tone="primary">Add input/output pins</IdeButton>}
-                secondaryAction={
-                  <>
-                    <IdeButton tone="secondary">Drop an AND gate</IdeButton>
-                    <IdeButton tone="ghost">Open palette</IdeButton>
-                  </>
-                }
-                testId="ide-design-empty-state"
-              />
+              <div className="ide-design-canvas-live" ref={canvasHostRef} data-testid="ide-design-live-canvas">
+                <LogicCanvas
+                  engine={tickEngine}
+                  circuit={circuit}
+                  width={canvasSize.width}
+                  height={canvasSize.height}
+                  showToolbar={false}
+                  onCircuitChange={handleCircuitChange}
+                  showHints={false}
+                />
+                {circuit.nodes.length === 0 && (
+                  <div className="ide-design-overlay-empty" data-testid="ide-design-empty-state">
+                    <h3>Start building your circuit</h3>
+                    <p>
+                      Place inputs, add a logic gate, wire outputs, and run Verify. Use Add AND Starter for a
+                      quick baseline.
+                    </p>
+                    <div className="ide-inline-actions">
+                      <IdeButton tone="secondary" onClick={addIoPins}>
+                        Add input/output pins
+                      </IdeButton>
+                      <IdeButton tone="primary" onClick={addAndGateStarter}>
+                        Drop an AND starter
+                      </IdeButton>
+                    </div>
+                  </div>
+                )}
+              </div>
             </section>
           </div>
         </IdePanel>
       </main>
 
       <aside className="ide-inspector" data-testid="ide-inspector">
-        <IdeInspectorSection title="Selection">
-          <p className="ide-copy">No node selected. Click a node or wire to edit properties.</p>
+        <IdeInspectorSection title="Workspace Metrics">
+          <div className="ide-kv-list">
+            <div className="ide-kv-row">
+              <span>Nodes</span>
+              <span>{circuit.nodes.length}</span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Wires</span>
+              <span>{circuit.connections.length}</span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Tool</span>
+              <span>{toolMode === 'wire' ? 'Wire' : 'Select'}</span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Snap</span>
+              <span>{snapToGrid ? 'On' : 'Off'}</span>
+            </div>
+          </div>
         </IdeInspectorSection>
-        <IdeInspectorSection title="IO Binding">
-          <IdeCallout tone="info" title="Pin binding">
-            Select an IO node to bind or review Basys3 pin mapping.
+
+        <IdeInspectorSection title="Selection">
+          {hasSelection ? (
+            <div className="ide-design-selection-list">
+              <div>
+                <strong>Nodes</strong>
+                <ul className="ide-list">
+                  {selectedNodeIds.map((nodeId) => (
+                    <li key={nodeId}>
+                      <code>{nodeId}</code>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <strong>Wires</strong>
+                <ul className="ide-list">
+                  {selectedWireIds.map((wireId) => (
+                    <li key={wireId}>
+                      <code>{wireId}</code>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ) : (
+            <p className="ide-copy">No selection. Click a node or wire to inspect it.</p>
+          )}
+        </IdeInspectorSection>
+
+        <IdeInspectorSection title="Next Action">
+          <IdeCallout tone="info" title="Design Flow">
+            Place IO pins, wire through logic gates, then switch to Verify for deterministic test vectors.
           </IdeCallout>
         </IdeInspectorSection>
       </aside>
     </div>
   );
 };
+
+function parseWireId(
+  wireId: string
+): { fromNodeId: string; fromPort: string; toNodeId: string; toPort: string } | null {
+  const separatorIndex = wireId.indexOf('-');
+  if (separatorIndex < 0) return null;
+  const fromRaw = wireId.slice(0, separatorIndex);
+  const toRaw = wireId.slice(separatorIndex + 1);
+  const fromDot = fromRaw.indexOf('.');
+  const toDot = toRaw.indexOf('.');
+  if (fromDot < 0 || toDot < 0) return null;
+
+  return {
+    fromNodeId: fromRaw.slice(0, fromDot),
+    fromPort: fromRaw.slice(fromDot + 1),
+    toNodeId: toRaw.slice(0, toDot),
+    toPort: toRaw.slice(toDot + 1),
+  };
+}
