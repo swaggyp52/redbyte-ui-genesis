@@ -1,118 +1,83 @@
 #!/usr/bin/env node
 
-import { chromium } from 'playwright';
+import { assert, runIdeGate } from './_gateHarness.mjs';
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
+await runIdeGate('IDE verify contract satisfied', async ({ page, baseUrl }) => {
+  await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
+  await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
-function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message);
-  }
-}
+  await page.locator('[data-testid="mode-button-verify"]').click();
+  await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-verify-banner"]', { timeout: 10000 });
 
-async function main() {
-  const browser = await chromium.launch();
-  const context = await browser.newContext({ serviceWorkers: 'block' });
-  const page = await context.newPage();
+  const addVectorFormVisible = await page
+    .locator('[data-testid="ide-verify-add-vector-form"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  assert(addVectorFormVisible, 'verify add-vector form must render');
 
-  try {
-    await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
-    await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
+  const autoInputFieldCount = await page.locator('[data-testid^="ide-verify-add-vector-input-"]').count();
+  assert(autoInputFieldCount >= 1, 'verify add-vector form must include auto-generated input fields');
 
-    await page.locator('[data-testid="mode-button-verify"]').click();
-    await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
-    await page.waitForSelector('[data-testid="ide-verify-banner"]', { timeout: 10000 });
+  const vectorRowsBefore = await page
+    .locator('[data-testid="ide-verify-vectors-table"] tbody tr')
+    .filter({ has: page.locator('code') })
+    .count();
+  await page.locator('[data-testid="ide-verify-add-vector-tick"]').fill('42');
+  await page.locator('[data-testid^="ide-verify-add-vector-input-"]').first().selectOption('1');
+  await page.locator('[data-testid="ide-verify-add-vector-submit"]').click();
+  const vectorRowsAfter = await page
+    .locator('[data-testid="ide-verify-vectors-table"] tbody tr')
+    .filter({ has: page.locator('code') })
+    .count();
+  assert(vectorRowsAfter > vectorRowsBefore, 'adding a vector must increase vector table rows');
 
-    const addVectorFormVisible = await page
-      .locator('[data-testid="ide-verify-add-vector-form"]')
-      .first()
-      .isVisible()
-      .catch(() => false);
-    assert(addVectorFormVisible, 'verify add-vector form must render');
+  await page.locator('[data-testid="ide-verify-vector-fail"]').click();
+  await page.locator('[data-testid="ide-verify-run"]').click();
+  await page.waitForFunction(
+    () => {
+      const label = document.querySelector('[data-testid="ide-verify-status-label"]');
+      return Boolean(label && /FAIL/i.test(label.textContent || ''));
+    },
+    { timeout: 10000 }
+  );
 
-    const autoInputFieldCount = await page
-      .locator('[data-testid^="ide-verify-add-vector-input-"]')
-      .count();
-    assert(autoInputFieldCount >= 1, 'verify add-vector form must include auto-generated input fields');
+  const diffVisible = await page
+    .locator('[data-testid="ide-verify-diff-table"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  assert(diffVisible, 'verify diff table must render in FAIL state');
 
-    const vectorRowsBefore = await page
-      .locator('[data-testid="ide-verify-vectors-table"] tbody tr')
-      .filter({ has: page.locator('code') })
-      .count();
-    await page.locator('[data-testid="ide-verify-add-vector-tick"]').fill('42');
-    await page
-      .locator('[data-testid^="ide-verify-add-vector-input-"]')
-      .first()
-      .selectOption('1');
-    await page.locator('[data-testid="ide-verify-add-vector-submit"]').click();
-    const vectorRowsAfter = await page
-      .locator('[data-testid="ide-verify-vectors-table"] tbody tr')
-      .filter({ has: page.locator('code') })
-      .count();
-    assert(vectorRowsAfter > vectorRowsBefore, 'adding a vector must increase vector table rows');
+  const firstFailTickVisible = await page
+    .locator('[data-testid="ide-verify-first-fail-tick"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  assert(firstFailTickVisible, 'first failing tick must render in FAIL state');
 
-    await page.locator('[data-testid="ide-verify-vector-fail"]').click();
-    await page.locator('[data-testid="ide-verify-run"]').click();
-    await page.waitForFunction(
-      () => {
-        const label = document.querySelector('[data-testid="ide-verify-status-label"]');
-        return Boolean(label && /FAIL/i.test(label.textContent || ''));
-      },
-      { timeout: 10000 }
-    );
+  const fixPathVisible = await page
+    .locator('[data-testid="ide-verify-fix-path"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  assert(fixPathVisible, 'verify FAIL state must expose fix-path action');
 
-    const diffVisible = await page
-      .locator('[data-testid="ide-verify-diff-table"]')
-      .first()
-      .isVisible()
-      .catch(() => false);
-    assert(diffVisible, 'verify diff table must render in FAIL state');
+  await page.locator('[data-testid="ide-verify-vector-pass"]').click();
+  await page.locator('[data-testid="ide-verify-run"]').click();
+  await page.waitForFunction(
+    () => {
+      const label = document.querySelector('[data-testid="ide-verify-status-label"]');
+      return Boolean(label && /PASS/i.test(label.textContent || ''));
+    },
+    { timeout: 10000 }
+  );
 
-    const firstFailTickVisible = await page
-      .locator('[data-testid="ide-verify-first-fail-tick"]')
-      .first()
-      .isVisible()
-      .catch(() => false);
-    assert(firstFailTickVisible, 'first failing tick must render in FAIL state');
+  const hashText = (await page.locator('[data-testid="ide-verify-hash"]').first().textContent().catch(() => ''))?.trim();
+  assert(Boolean(hashText && hashText.length > 0), 'verify hash must be visible when PASS');
 
-    const fixPathVisible = await page
-      .locator('[data-testid="ide-verify-fix-path"]')
-      .first()
-      .isVisible()
-      .catch(() => false);
-    assert(fixPathVisible, 'verify FAIL state must expose fix-path action');
-
-    await page.locator('[data-testid="ide-verify-vector-pass"]').click();
-    await page.locator('[data-testid="ide-verify-run"]').click();
-    await page.waitForFunction(
-      () => {
-        const label = document.querySelector('[data-testid="ide-verify-status-label"]');
-        return Boolean(label && /PASS/i.test(label.textContent || ''));
-      },
-      { timeout: 10000 }
-    );
-
-    const hashText = (
-      await page.locator('[data-testid="ide-verify-hash"]').first().textContent().catch(() => '')
-    )?.trim();
-    assert(Boolean(hashText && hashText.length > 0), 'verify hash must be visible when PASS');
-
-    const exportDisabled = await page
-      .locator('[data-testid="ide-verify-export-testbench"]')
-      .first()
-      .isDisabled();
-    assert(!exportDisabled, 'export testbench button must be enabled after PASS');
-
-    console.log('PASS: IDE verify contract satisfied.');
-  } catch (error) {
-    console.error('FAIL: IDE verify contract violated.');
-    console.error(error instanceof Error ? error.message : String(error));
-    process.exitCode = 1;
-  } finally {
-    await context.close();
-    await browser.close();
-  }
-}
-
-main();
+  const exportDisabled = await page.locator('[data-testid="ide-verify-export-testbench"]').first().isDisabled();
+  assert(!exportDisabled, 'export testbench button must be enabled after PASS');
+});
