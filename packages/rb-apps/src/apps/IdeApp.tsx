@@ -12,105 +12,7 @@ import { ProjectSurface } from './ide/surfaces/ProjectSurface';
 import { DesignSurface } from './ide/surfaces/DesignSurface';
 import { VerifySurface } from './ide/surfaces/VerifySurface';
 import { ExportSurface } from './ide/surfaces/ExportSurface';
-import {
-  IdeButton,
-  IdeCallout,
-  IdeCard,
-  IdeEmptyState,
-  IdeInspectorSection,
-  IdePanel,
-  IdeStatusPill,
-} from './ide/components/IdePrimitives';
-
-const MODE_TEXT: Record<IdeMode, { title: string; description: string; marker: string }> = {
-  project: {
-    title: 'Project Mode',
-    description: 'Project truth, readiness checks, and Basys3 constraints.',
-    marker: 'PROJECT',
-  },
-  design: {
-    title: 'Design Mode',
-    description: 'Circuit-first workspace with deterministic graph updates.',
-    marker: 'DESIGN',
-  },
-  verify: {
-    title: 'Verify Mode',
-    description: 'Deterministic vector execution with explicit pass/fail evidence.',
-    marker: 'VERIFY',
-  },
-  export: {
-    title: 'Export Mode',
-    description: 'Compiler-style artifact validation and Basys3 export preview.',
-    marker: 'EXPORT',
-  },
-  import: {
-    title: 'Import Mode',
-    description: 'HDL/XDC intake with diagnostics and pin mapping guidance.',
-    marker: 'IMPORT',
-  },
-};
-
-const ModePlaceholder: React.FC<{ mode: IdeMode }> = ({ mode }) => {
-  const modeText = MODE_TEXT[mode];
-
-  return (
-    <div className="ide-content-grid" data-testid={`ide-mode-${mode}`} data-ide-mode-marker={mode}>
-      <main className="ide-main-area" data-testid="ide-mode-body">
-        <IdePanel
-          title={modeText.title}
-          description={modeText.description}
-          actions={
-            <>
-              <IdeButton tone="primary">Continue Build</IdeButton>
-              <IdeButton tone="ghost">View Contract</IdeButton>
-            </>
-          }
-          testId="ide-main-panel"
-        >
-          <div className="ide-card-grid">
-            <IdeCard title="Current Focus" subtitle="Intentional surface planning">
-              <p className="ide-copy">
-                This mode now has a locked layout contract. Next commits replace placeholders with
-                fully functional mode-specific panels.
-              </p>
-              <div className="ide-inline-actions">
-                <IdeStatusPill tone="warn">In Progress</IdeStatusPill>
-                <IdeStatusPill tone="idle">{modeText.marker}</IdeStatusPill>
-              </div>
-            </IdeCard>
-            <IdeCard title="Primary Actions" subtitle="Mode-scoped only">
-              <ul className="ide-list">
-                <li>Read and write only allowed RBProject fields.</li>
-                <li>Render deterministic empty, error, and success states.</li>
-                <li>Preserve Basys3-only product constraints.</li>
-              </ul>
-            </IdeCard>
-          </div>
-          <IdeEmptyState
-            title={`${modeText.title} content is being implemented`}
-            body="The shell, typography, spacing, and mode structure are now stable. Next mode commits populate this area with real workflows."
-            primaryAction={<IdeButton tone="primary">Continue Build</IdeButton>}
-            secondaryAction={<IdeButton tone="ghost">View Contract</IdeButton>}
-            testId="ide-mode-empty-state"
-          />
-        </IdePanel>
-      </main>
-
-      <aside className="ide-inspector" data-testid="ide-inspector">
-        <IdeInspectorSection title="Inspector">
-          <p className="ide-copy">
-            Right-side inspection stays consistent across modes. Sections vary by mode depth.
-          </p>
-        </IdeInspectorSection>
-        <IdeInspectorSection title="Determinism">
-          <IdeCallout tone="info" title="Contract">
-            No silent fallback. No hidden mode mutations. No launcher surface at default route.
-          </IdeCallout>
-        </IdeInspectorSection>
-      </aside>
-    </div>
-  );
-};
+import { ImportSurface } from './ide/surfaces/ImportSurface';
 
 export const IdeApp: React.FC = () => {
   const [currentMode, setCurrentMode] = useState<IdeMode>('project');
@@ -127,7 +29,11 @@ export const IdeApp: React.FC = () => {
       { id: 'led2', direction: 'out' as const, mapped: false },
       { id: 'led3', direction: 'out' as const, mapped: false },
     ],
-    vectors: [] as Array<{ id: string; tick: number }>,
+    vectors: [
+      { id: 'vec-01', tick: 12 },
+      { id: 'vec-02', tick: 13 },
+      { id: 'vec-03', tick: 14 },
+    ] as Array<{ id: string; tick: number }>,
     lastVerify: null as { pass: boolean; failedCount: number } | null,
   });
   const [saveState] = useState<'saved' | 'unsaved' | 'autosaving'>('saved');
@@ -260,7 +166,7 @@ export const IdeApp: React.FC = () => {
         ) : currentMode === 'export' ? (
           <ExportSurface project={exportProject} />
         ) : (
-          <ModePlaceholder mode={currentMode} />
+          <ImportSurface />
         )}
       </div>
 
