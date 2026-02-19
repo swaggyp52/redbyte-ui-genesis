@@ -68,6 +68,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
   const [paletteQuery, setPaletteQuery] = useState('');
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 880, height: 520 });
+  const [actionToast, setActionToast] = useState<string | null>(null);
   const [tickEngine] = useState(() => new TickEngine(circuit, { tickRate: 10 }));
 
   useEffect(() => {
@@ -109,6 +110,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [redo, undo]);
 
+  useEffect(() => {
+    if (!actionToast) return;
+    const timeout = window.setTimeout(() => {
+      setActionToast(null);
+    }, 1800);
+    return () => window.clearTimeout(timeout);
+  }, [actionToast]);
+
   const filteredPalette = useMemo(() => {
     const query = paletteQuery.trim().toLowerCase();
     if (!query) return PALETTE_ITEMS;
@@ -138,6 +147,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
   const addIoPins = useCallback(() => {
     spawnAtCanvasCenter('INPUT', { x: -120, y: -24 });
     spawnAtCanvasCenter('OUTPUT', { x: 120, y: -24 });
+    setActionToast('Added starter IO pins.');
   }, [spawnAtCanvasCenter]);
 
   const addAndGateStarter = useCallback(() => {
@@ -145,7 +155,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
     spawnAtCanvasCenter('INPUT', { x: -170, y: 24 });
     spawnAtCanvasCenter('AND', { x: 0, y: -24 });
     spawnAtCanvasCenter('OUTPUT', { x: 170, y: -24 });
+    setActionToast('Added AND starter circuit.');
   }, [spawnAtCanvasCenter]);
+
+  const setSelectMode = useCallback(() => {
+    setToolMode('select');
+    setActionToast('Select mode active.');
+  }, [setToolMode]);
+
+  const setWireMode = useCallback(() => {
+    setToolMode('wire');
+    setActionToast('Wire mode active.');
+  }, [setToolMode]);
 
   const deleteSelection = useCallback(() => {
     const selectedNodeIds = Array.from(selection.nodes);
@@ -162,6 +183,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
     }
 
     clearSelection();
+    if (selectedNodeIds.length + selectedWireIds.length > 0) {
+      setActionToast('Removed selected nodes and wires.');
+    }
   }, [clearSelection, deleteConnection, deleteNode, selection.nodes, selection.wires]);
 
   const handleCircuitChange = useCallback(
@@ -205,7 +229,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
               <button
                 type="button"
                 className={`ide-design-tool-segment ${toolMode === 'select' ? 'is-active' : ''}`}
-                onClick={() => setToolMode('select')}
+                onClick={setSelectMode}
                 data-testid="ide-design-tool-select"
                 aria-pressed={toolMode === 'select'}
               >
@@ -220,7 +244,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
               <button
                 type="button"
                 className={`ide-design-tool-segment ${toolMode === 'wire' ? 'is-active' : ''}`}
-                onClick={() => setToolMode('wire')}
+                onClick={setWireMode}
                 data-testid="ide-design-tool-wire"
                 aria-pressed={toolMode === 'wire'}
               >
@@ -331,19 +355,34 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
                 />
                 {circuit.nodes.length === 0 && (
                   <div className="ide-design-overlay-empty" data-testid="ide-design-empty-state">
-                    <h3>Start building your circuit</h3>
-                    <p>
-                      Place inputs, add a logic gate, wire outputs, and run Verify. Use Add AND Starter for a
-                      quick baseline.
-                    </p>
-                    <div className="ide-inline-actions">
-                      <IdeButton tone="secondary" onClick={addIoPins}>
-                        Add input/output pins
+                    <h3>Build a circuit in three steps</h3>
+                    <ol className="ide-design-empty-steps" data-testid="ide-design-empty-checklist">
+                      <li>
+                        <span className="ide-design-empty-step-index">1</span>
+                        <span>Add Inputs/Outputs</span>
+                      </li>
+                      <li>
+                        <span className="ide-design-empty-step-index">2</span>
+                        <span>Place Gates</span>
+                      </li>
+                      <li>
+                        <span className="ide-design-empty-step-index">3</span>
+                        <span>Wire and Verify</span>
+                      </li>
+                    </ol>
+                    <div className="ide-design-empty-actions">
+                      <IdeButton tone="secondary" onClick={addIoPins} testId="ide-design-empty-add-io">
+                        Add Inputs/Outputs
                       </IdeButton>
-                      <IdeButton tone="primary" onClick={addAndGateStarter}>
-                        Drop an AND starter
+                      <IdeButton tone="primary" onClick={addAndGateStarter} testId="ide-design-empty-add-and">
+                        Add an AND example
                       </IdeButton>
                     </div>
+                  </div>
+                )}
+                {actionToast && (
+                  <div className="ide-design-toast" role="status" data-testid="ide-design-action-toast">
+                    {actionToast}
                   </div>
                 )}
               </div>
