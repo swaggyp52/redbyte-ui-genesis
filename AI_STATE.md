@@ -1,5 +1,56 @@
 # AI State
 
+## Change Log 2026-02-19 (Design Mode Live Editor + Build Contract Gate)
+
+**Status**: COMPLETE - Replaced placeholder Design surface with a live circuit-editing workspace and added a Playwright contract gate that builds and wires a minimal AND flow.
+
+### What Changed
+
+1. Design surface now uses live circuit state and editing interactions
+- Replaced `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`.
+- `DesignSurface` now mounts `LogicCanvas` in controlled mode (`circuit` + `onCircuitChange`) backed by `useCircuitStore`.
+- Added deterministic design actions and tool controls:
+  - Select / Wire tool toggle
+  - Snap toggle
+  - Undo / Redo
+  - Delete selection
+  - Add IO Pins action
+  - Add AND Starter action
+- Added keyboard shortcuts in Design surface:
+  - `Ctrl/Cmd+Z` undo
+  - `Ctrl/Cmd+Y` and `Ctrl/Cmd+Shift+Z` redo
+- Added deterministic palette + search and a clear empty-state flow message.
+
+2. Design mode styling updates
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css` with:
+  - design search input styles
+  - live canvas container styles
+  - empty-state overlay styles
+  - selection list styles
+
+3. New Playwright design build contract gate
+- Added `scripts/gates/ide-design-build-contract.mjs`.
+- Gate validates:
+  - IDE design mode loads and live canvas is present
+  - Add AND starter increases node count
+  - Wire flow (input -> AND -> output) creates connections
+  - No IDE crash marker appears
+  - No page errors during the flow
+- Updated `package.json` with script:
+  - `ide:gate:design-build-contract`
+- Updated `scripts/verify-gates-classroom.mjs` to include:
+  - `ide:design-build-contract`
+
+### Validation Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:design-build-contract` -> PASS
+- `pnpm repo:status` -> PASS (5/5 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Ahead-Limit Warning Restore + Real Export ViewModel Pipeline)
 
 **Status**: COMPLETE - Restored non-blocking ahead-limit behavior in `repo:status` and replaced Export-mode preview payload wiring with the real Basys3 export pipeline viewmodel.
