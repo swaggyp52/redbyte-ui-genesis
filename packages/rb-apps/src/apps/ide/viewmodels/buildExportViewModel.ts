@@ -4,17 +4,30 @@ import {
   exportProjectAsBasys3,
   type Basys3ExportError,
 } from '../../../fpga/boards/basys3/basys3ExportService';
+import {
+  createDiagnosticId,
+  type IdeDiagnostic,
+  type IdeDiagnosticAction,
+  type IdeDiagnosticOwner,
+  type IdeDiagnosticSeverity,
+} from '../diagnostics';
 
 export type ExportDiagnosticSeverity = 'error' | 'warning';
 export type ExportPinDirection = 'in' | 'out' | 'inout';
 export type ExportPinStatus = 'mapped' | 'missing' | 'unused';
 
 export interface ExportDiagnosticView {
+  id: string;
   code: string;
+  title: string;
   message: string;
+  hint: string[];
   fix?: string;
   port?: string;
   severity: ExportDiagnosticSeverity;
+  owner: IdeDiagnosticOwner;
+  actions: IdeDiagnosticAction[];
+  canonical: IdeDiagnostic;
 }
 
 export interface ExportPinTableRow {
@@ -37,6 +50,7 @@ export interface ExportArtifactView {
 
 export interface ExportViewModel {
   status: 'ok' | 'blocked';
+  diagnostics: IdeDiagnostic[];
   errors: ExportDiagnosticView[];
   warnings: ExportDiagnosticView[];
   pinTable: ExportPinTableRow[];
@@ -51,7 +65,8 @@ interface RequiredPortDescriptor {
 
 export function buildExportViewModel(project: RBProject): ExportViewModel {
   const exportResult = exportProjectAsBasys3(project);
-  const diagnostics = collectDiagnostics(exportResult.errors, exportResult.warnings);
+  const diagnostics = collectDiagnostics(project, exportResult.errors, exportResult.warnings);
+  const canonicalDiagnostics = diagnostics.map((entry) => entry.canonical);
   const errors = diagnostics.filter((entry) => entry.severity === 'error');
   const warnings = diagnostics.filter((entry) => entry.severity === 'warning');
   const requiredPorts = collectRequiredPorts(diagnostics);
@@ -60,6 +75,7 @@ export function buildExportViewModel(project: RBProject): ExportViewModel {
 
   return {
     status: errors.length > 0 ? 'blocked' : 'ok',
+    diagnostics: canonicalDiagnostics,
     errors,
     warnings,
     pinTable,
@@ -69,23 +85,56 @@ export function buildExportViewModel(project: RBProject): ExportViewModel {
 }
 
 function collectDiagnostics(
+  project: RBProject,
   exportErrors: Basys3ExportError[],
   exportWarnings: string[]
 ): ExportDiagnosticView[] {
   const seen = new Set<string>();
   const diagnostics: ExportDiagnosticView[] = [];
+  const mappingIndex = buildMappingIndex(project);
 
   const push = (severity: ExportDiagnosticSeverity, message: string) => {
     const key = `${severity}:${message}`;
     if (seen.has(key)) return;
     seen.add(key);
 
-    diagnostics.push({
-      code: diagnosticCodeFor(message, severity),
+    const code = diagnosticCodeFor(message, severity);
+    const fix = fixHintFor(message, severity);
+    const port = extractPortFromMessage(message);
+    const owner = resolveDiagnosticOwner(project, mappingIndex, port, message);
+    const actions = buildDiagnosticActions(owner);
+    const hint = fix.length > 0 ? [fix] : [];
+    const canonicalSeverity: IdeDiagnosticSeverity = severity === 'error' ? 'error' : 'warn';
+    const title = diagnosticTitleFor(code, message, severity);
+    const id = createDiagnosticId({
+      code,
+      owner,
       message,
-      fix: fixHintFor(message, severity),
-      port: extractPortFromMessage(message),
+      hint,
+    });
+    const canonical: IdeDiagnostic = {
+      id,
+      severity: canonicalSeverity,
+      code,
+      title,
+      message,
+      hint,
+      owner,
+      actions,
+    };
+
+    diagnostics.push({
+      id,
+      code,
+      title,
+      message,
+      hint,
+      fix,
+      port,
       severity,
+      owner,
+      actions,
+      canonical,
     });
   };
 
@@ -307,6 +356,149 @@ function severityOrder(severity: ExportDiagnosticSeverity): number {
   return severity === 'error' ? 0 : 1;
 }
 
+interface MappingIndexEntry {
+  nodeId: string;
+  mappingKey: string;
+  portName: string;
+}
+
+function buildMappingIndex(project: RBProject): Map<string, MappingIndexEntry> {
+  const index = new Map<string, MappingIndexEntry>();
+  const upsert = (entry: { id: string; nodeId: string; port: string; label?: string }) => {
+    const portName = resolveMappingPortName(entry);
+    const mappingKey = normalizePort(portName);
+    if (index.has(mappingKey)) return;
+    index.set(mappingKey, {
+      nodeId: entry.nodeId,
+      mappingKey,
+      portName,
+    });
+  };
+
+  for (const input of project.ioMapping?.inputs ?? []) {
+    upsert(input);
+  }
+  for (const output of project.ioMapping?.outputs ?? []) {
+    upsert(output);
+  }
+  return index;
+}
+
+function resolveDiagnosticOwner(
+  project: RBProject,
+  mappingIndex: Map<string, MappingIndexEntry>,
+  port: string | undefined,
+  message: string
+): IdeDiagnosticOwner {
+  const normalizedPort = normalizePort(port ?? '');
+  if (normalizedPort.length > 0) {
+    const mapped = mappingIndex.get(normalizedPort);
+    if (mapped) {
+      return {
+        kind: 'mapping',
+        nodeId: mapped.nodeId,
+        portName: mapped.portName,
+        mappingKey: mapped.mappingKey,
+      };
+    }
+    return {
+      kind: 'port',
+      portName: normalizedPort,
+    };
+  }
+
+  const referencedNodeType = extractNodeTypeFromMessage(message);
+  if (referencedNodeType) {
+    const ownerNode = project.circuit.nodes.find(
+      (node) => normalizePort(node.type) === normalizePort(referencedNodeType)
+    );
+    if (ownerNode) {
+      return {
+        kind: 'node',
+        nodeId: ownerNode.id,
+        portName: ownerNode.label ?? ownerNode.id,
+      };
+    }
+  }
+
+  return {
+    kind: 'file',
+    filePath: 'export',
+  };
+}
+
+function buildDiagnosticActions(owner: IdeDiagnosticOwner): IdeDiagnosticAction[] {
+  if (owner.kind === 'mapping') {
+    return [
+      {
+        kind: 'open-mode',
+        label: 'Open Project Mapping',
+        payload: {
+          mode: 'project',
+          mappingKey: owner.mappingKey,
+          portName: owner.portName,
+          nodeId: owner.nodeId,
+        },
+      },
+      {
+        kind: 'select',
+        label: 'Select mapping row',
+        payload: {
+          mode: 'project',
+          mappingKey: owner.mappingKey,
+          portName: owner.portName,
+          nodeId: owner.nodeId,
+        },
+      },
+    ];
+  }
+  if (owner.kind === 'node') {
+    return [
+      {
+        kind: 'open-mode',
+        label: 'Open Design Inspector',
+        payload: {
+          mode: 'design',
+          nodeId: owner.nodeId,
+          portName: owner.portName,
+        },
+      },
+      {
+        kind: 'select',
+        label: 'Select node',
+        payload: {
+          mode: 'design',
+          nodeId: owner.nodeId,
+          portName: owner.portName,
+        },
+      },
+    ];
+  }
+  if (owner.kind === 'port') {
+    return [
+      {
+        kind: 'open-mode',
+        label: 'Open Project Mapping',
+        payload: {
+          mode: 'project',
+          mappingKey: owner.mappingKey ?? normalizePort(owner.portName ?? ''),
+          portName: owner.portName,
+        },
+      },
+    ];
+  }
+  return [
+    {
+      kind: 'open-mode',
+      label: 'Open Export Diagnostics',
+      payload: {
+        mode: 'export',
+        filePath: owner.filePath,
+      },
+    },
+  ];
+}
+
 function normalizePort(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -372,6 +564,14 @@ function extractPortFromMessage(message: string): string | undefined {
   return undefined;
 }
 
+function extractNodeTypeFromMessage(message: string): string | undefined {
+  const typed = message.match(/node type "([^"]+)"/i);
+  if (typed?.[1]) return typed[1];
+  const fallback = message.match(/unsupported node type\s+([a-zA-Z0-9_]+)/i);
+  if (fallback?.[1]) return fallback[1];
+  return undefined;
+}
+
 function diagnosticCodeFor(
   message: string,
   severity: ExportDiagnosticSeverity
@@ -406,6 +606,21 @@ function fixHintFor(
     return 'Resolve this blocker before exporting.';
   }
   return 'Review this warning before exporting.';
+}
+
+function diagnosticTitleFor(
+  code: string,
+  message: string,
+  severity: ExportDiagnosticSeverity
+): string {
+  if (code === 'RBEX1001') return 'Unmapped required port';
+  if (code === 'RBEX1002') return 'Declared port missing Basys3 assignment';
+  if (code === 'RBEX2001') return 'Unsupported Basys3 pin alias';
+  if (code === 'RBEX2002') return 'Questionable direction mapping';
+  if (code === 'RBEX2003') return 'Unused mapped signal';
+  if (code === 'RBEX3001') return 'Ignored source XDC directive';
+  if (message.length > 0) return message.split('.').at(0) ?? message;
+  return severity === 'error' ? 'Export error' : 'Export warning';
 }
 
 function suggestPin(portName: string, direction: ExportPinDirection): string {
