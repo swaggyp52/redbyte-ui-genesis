@@ -12,10 +12,18 @@ Avoid: flat gray-on-gray and decorative chrome.
 
 1. Grid and spacing
 - 12-column main content grid within bounded container.
-- 8px base rhythm only.
-- Core spacing scale: 8, 16, 24, 32, 40, 48.
+- 8px rhythm with explicit micro-step support only where specified.
+- Allowed spacing scale: 4, 8, 12, 16, 24, 32, 40, 48.
+- No ad-hoc spacing values outside this scale.
 
-2. Typography
+2. Shell dimensions (fixed)
+- Top bar: 56px.
+- Left rail: 72px.
+- Mode header row inside each surface: 48px.
+- Status bar: 32px.
+- Design canvas region fills remaining workspace height and keeps overflow clipped.
+
+3. Typography
 - UI font: `IBM Plex Sans`, fallback `Segoe UI`, sans-serif.
 - Mono font: `IBM Plex Mono`, fallback `Consolas`, monospace.
 - Size tiers:
@@ -24,7 +32,7 @@ Avoid: flat gray-on-gray and decorative chrome.
 3. Body: 13-14px
 4. Secondary/meta: 12px
 
-3. Radius and depth
+4. Radius and depth
 - Radius: 8px default, 12px large containers.
 - Shadow: one soft elevation level for cards/panels.
 

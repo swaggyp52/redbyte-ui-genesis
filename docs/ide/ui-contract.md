@@ -7,20 +7,27 @@ Scope: `IdeApp` default route (`/`)
 
 1. Main content uses a 12-column grid inside a bounded container.
 2. Max content width is 1280px (allowed range 1200-1320px).
-3. Left rail width is fixed at 120-128px.
+3. Left rail width is fixed at 72px.
 4. Right inspector width is fixed at 320px desktop, stacked on narrow viewports.
 5. The main panel and inspector align to a shared top edge.
+6. Global shell dimensions are fixed:
+   - top bar: 56px
+   - left rail: 72px
+   - mode header row: 48px
+   - status bar: 32px
 
 ## 2) Spacing Rhythm (8px Only)
 
 Allowed spacing tokens:
 
-1. 8
-2. 16
-3. 24
-4. 32
-5. 40
-6. 48
+1. 4
+2. 8
+3. 12
+4. 16
+5. 24
+6. 32
+7. 40
+8. 48
 
 No random spacing values for layout or panel padding.
 
@@ -28,7 +35,7 @@ No random spacing values for layout or panel padding.
 
 Every mode must render this order:
 
-1. Title row (48-56px visual block)
+1. Title row (48px visual block)
 2. Action row (primary CTA + secondary actions)
 3. Workspace/body region (fills remaining height)
 4. Right inspector (always present, can be minimal)
