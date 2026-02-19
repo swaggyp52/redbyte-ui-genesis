@@ -40,6 +40,7 @@ function main() {
     runGate('ide:layout-contract', 'pnpm -s ide:gate:layout-contract', true),
     runGate('ide:design-build-contract', 'pnpm -s ide:gate:design-build-contract', true),
     runGate('ide:verify-contract', 'pnpm -s ide:gate:verify-contract', true),
+    runGate('ide:visual-contract', 'pnpm -s ide:gate:visual-contract', true),
     runGate('ide:shell-structure', 'pnpm -s ide:gate:shell-structure', true),
     runGate('ide:fullscreen-no-chrome', 'pnpm -s ide:gate:fullscreen-no-chrome', true),
     runGate('ide:default-launcher-hidden', 'pnpm -s ide:gate:default-launcher-hidden', true),
