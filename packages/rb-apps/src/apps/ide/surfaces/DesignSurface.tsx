@@ -174,29 +174,67 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
   const selectedNodeIds = useMemo(() => Array.from(selection.nodes).slice(0, 5), [selection.nodes]);
   const selectedWireIds = useMemo(() => Array.from(selection.wires).slice(0, 5), [selection.wires]);
   const hasSelection = selection.nodes.size > 0 || selection.wires.size > 0;
+  const activeModeLabel = toolMode === 'wire' ? 'Wire Mode' : 'Select Mode';
 
   return (
     <div className="ide-content-grid" data-testid="ide-mode-design" data-ide-mode-marker="design">
       <main className="ide-main-area" data-testid="ide-mode-body">
         <IdePanel
-          title="Design Workspace"
-          description="Build deterministic Basys3 circuit graphs with direct wire and selection tools."
+          title="Design Command Center"
+          description="Build your circuit with deterministic graph updates and explicit editing controls."
           actions={
-            <div className="ide-design-toolbar">
-              <IdeButton
-                tone={toolMode === 'select' ? 'primary' : 'secondary'}
+            <div className="ide-design-primary-actions" data-testid="ide-design-primary-actions">
+              <IdeButton tone="secondary" onClick={addIoPins} testId="ide-design-add-io-pins">
+                Add IO Pins
+              </IdeButton>
+              <IdeButton tone="primary" onClick={addAndGateStarter} testId="ide-design-add-and-starter">
+                Add AND Starter
+              </IdeButton>
+            </div>
+          }
+          right={<IdeStatusPill tone={toolMode === 'wire' ? 'warn' : 'ok'}>{activeModeLabel}</IdeStatusPill>}
+          testId="ide-design-panel"
+        >
+          <section className="ide-design-command-center" data-testid="ide-design-command-header">
+            <div className="ide-design-command-title">
+              <h3 data-testid="ide-design-mode-title">Design</h3>
+              <p data-testid="ide-design-mode-subtitle">Build your circuit</p>
+            </div>
+
+            <div className="ide-design-tool-segmented" data-testid="ide-design-tool-segmented">
+              <button
+                type="button"
+                className={`ide-design-tool-segment ${toolMode === 'select' ? 'is-active' : ''}`}
                 onClick={() => setToolMode('select')}
-                testId="ide-design-tool-select"
+                data-testid="ide-design-tool-select"
+                aria-pressed={toolMode === 'select'}
               >
-                Select
-              </IdeButton>
-              <IdeButton
-                tone={toolMode === 'wire' ? 'primary' : 'secondary'}
+                <span className="ide-design-tool-icon" aria-hidden="true">
+                  SEL
+                </span>
+                <span className="ide-design-tool-text">
+                  <strong>Select</strong>
+                  <kbd>S</kbd>
+                </span>
+              </button>
+              <button
+                type="button"
+                className={`ide-design-tool-segment ${toolMode === 'wire' ? 'is-active' : ''}`}
                 onClick={() => setToolMode('wire')}
-                testId="ide-design-tool-wire"
+                data-testid="ide-design-tool-wire"
+                aria-pressed={toolMode === 'wire'}
               >
-                Wire
-              </IdeButton>
+                <span className="ide-design-tool-icon" aria-hidden="true">
+                  WIR
+                </span>
+                <span className="ide-design-tool-text">
+                  <strong>Wire</strong>
+                  <kbd>W</kbd>
+                </span>
+              </button>
+            </div>
+
+            <div className="ide-design-command-actions" data-testid="ide-design-command-actions">
               <IdeButton tone="ghost" onClick={toggleSnapToGrid} testId="ide-design-tool-snap">
                 Snap {snapToGrid ? 'On' : 'Off'}
               </IdeButton>
@@ -224,17 +262,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
               >
                 Delete
               </IdeButton>
-              <IdeButton tone="secondary" onClick={addIoPins} testId="ide-design-add-io-pins">
-                Add IO Pins
-              </IdeButton>
-              <IdeButton tone="primary" onClick={addAndGateStarter} testId="ide-design-add-and-starter">
-                Add AND Starter
-              </IdeButton>
+              <span className={`ide-wire-mode-pill ${toolMode === 'wire' ? 'is-wire' : ''}`} data-testid="ide-design-wire-pill">
+                {activeModeLabel}
+              </span>
             </div>
-          }
-          right={<IdeStatusPill tone="ok">Canvas Live</IdeStatusPill>}
-          testId="ide-design-panel"
-        >
+          </section>
+
           <div className="ide-design-layout">
             <section className="ide-design-palette" data-testid="ide-design-palette">
               <header className="ide-design-subheader">
@@ -278,7 +311,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
             </section>
 
             <section className="ide-design-canvas" data-testid="ide-design-canvas">
-              <div className="ide-design-canvas-live" ref={canvasHostRef} data-testid="ide-design-live-canvas">
+              <div
+                className={`ide-design-canvas-live ${toolMode === 'wire' ? 'is-wire-mode' : 'is-select-mode'}`}
+                ref={canvasHostRef}
+                data-testid="ide-design-live-canvas"
+                data-tool-mode={toolMode}
+              >
+                <div className="ide-design-canvas-mode-indicator" data-testid="ide-design-canvas-mode-indicator">
+                  {activeModeLabel}
+                </div>
                 <LogicCanvas
                   engine={tickEngine}
                   circuit={circuit}
