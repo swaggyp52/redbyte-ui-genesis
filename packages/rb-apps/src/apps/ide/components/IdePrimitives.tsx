@@ -98,6 +98,18 @@ export const IdeButton: React.FC<{
   );
 };
 
+export const IdeChip: React.FC<{
+  children: React.ReactNode;
+  tone?: 'neutral' | 'accent' | 'warn';
+  testId?: string;
+}> = ({ children, tone = 'neutral', testId }) => {
+  return (
+    <span className={`ide-chip ide-chip-${tone}`} data-testid={testId}>
+      {children}
+    </span>
+  );
+};
+
 export const IdeStatusPill: React.FC<{
   tone: 'idle' | 'ok' | 'warn' | 'error';
   children: React.ReactNode;
@@ -120,6 +132,33 @@ export const IdeCallout: React.FC<{
     <div className={`ide-callout ide-callout-${tone}`} data-testid={testId}>
       {title && <strong className="ide-callout-title">{title}</strong>}
       <div className="ide-callout-body">{children}</div>
+    </div>
+  );
+};
+
+export const IdeModal: React.FC<{
+  title: string;
+  body: React.ReactNode;
+  actions: React.ReactNode;
+  onClose?: () => void;
+  testId?: string;
+}> = ({ title, body, actions, onClose, testId }) => {
+  return (
+    <div className="ide-modal-backdrop" role="presentation" onClick={onClose}>
+      <section
+        className="ide-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        data-testid={testId}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="ide-modal-header">
+          <h3 className="ide-modal-title">{title}</h3>
+        </header>
+        <div className="ide-modal-body">{body}</div>
+        <footer className="ide-modal-actions">{actions}</footer>
+      </section>
     </div>
   );
 };

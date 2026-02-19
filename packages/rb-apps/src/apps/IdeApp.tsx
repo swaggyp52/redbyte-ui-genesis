@@ -10,11 +10,18 @@ import './ide/ide-root.css';
 import { IdeLeftRail, type IdeMode } from './ide/components/IdeLeftRail';
 import { IdeTopBar } from './ide/components/IdeTopBar';
 import { IdeStatusBar } from './ide/components/IdeStatusBar';
+import { IdeButton, IdeModal } from './ide/components/IdePrimitives';
 import { ProjectSurface } from './ide/surfaces/ProjectSurface';
 import { DesignSurface } from './ide/surfaces/DesignSurface';
 import { VerifySurface } from './ide/surfaces/VerifySurface';
 import { ExportSurface } from './ide/surfaces/ExportSurface';
 import { ImportSurface } from './ide/surfaces/ImportSurface';
+import {
+  IDE_DEFAULT_EXAMPLE_ID,
+  IDE_EXAMPLES,
+  getIdeExampleById,
+  type IdeExampleIoRow,
+} from './ide/examplesCatalog';
 import {
   choosePrimaryProjectCta,
   deriveProjectHealth,
@@ -23,85 +30,23 @@ import {
   type ProjectHealthVerifyResult,
 } from './ide/projectHealth';
 
-interface ProjectIoRow {
-  id: string;
-  nodeId: string;
-  port: string;
-  label: string;
-  direction: 'in' | 'out';
-  pin: string;
-  required: boolean;
-}
+type ProjectIoRow = IdeExampleIoRow;
 
-const INITIAL_IO_ROWS: ProjectIoRow[] = [
-  {
-    id: 'clk',
-    nodeId: 'clk_node',
-    port: 'out',
-    label: 'clk',
-    direction: 'in',
-    pin: 'CLK100MHZ',
-    required: true,
-  },
-  {
-    id: 'rst',
-    nodeId: 'rst_node',
-    port: 'out',
-    label: 'rst',
-    direction: 'in',
-    pin: 'SW0',
-    required: true,
-  },
-  {
-    id: 'count_en',
-    nodeId: 'count_en_node',
-    port: 'out',
-    label: 'count_en',
-    direction: 'in',
-    pin: 'SW1',
-    required: true,
-  },
-  {
-    id: 'q0',
-    nodeId: 'q0_node',
-    port: 'in',
-    label: 'q0',
-    direction: 'out',
-    pin: 'LD0',
-    required: true,
-  },
-  {
-    id: 'q1',
-    nodeId: 'q1_node',
-    port: 'in',
-    label: 'q1',
-    direction: 'out',
-    pin: 'LD1',
-    required: true,
-  },
-  {
-    id: 'q2',
-    nodeId: 'q2_node',
-    port: 'in',
-    label: 'q2',
-    direction: 'out',
-    pin: 'LD2',
-    required: true,
-  },
-];
+const INITIAL_EXAMPLE = getIdeExampleById(IDE_DEFAULT_EXAMPLE_ID) ?? IDE_EXAMPLES[0];
 
 export const IdeApp: React.FC = () => {
   const [currentMode, setCurrentMode] = useState<IdeMode>('project');
-  const [projectName] = useState('Basys3 Design');
-  const [projectDescription] = useState('Deterministic student FPGA workspace');
-  const [lastSavedAt] = useState('2026-02-19 15:10');
-  const [projectIoRows, setProjectIoRows] = useState<ProjectIoRow[]>(INITIAL_IO_ROWS);
-  const [projectVectors, setProjectVectors] = useState<TestVector[]>([]);
+  const [projectName, setProjectName] = useState(INITIAL_EXAMPLE.name);
+  const [projectDescription, setProjectDescription] = useState(INITIAL_EXAMPLE.summary);
+  const [lastSavedAt, setLastSavedAt] = useState('Seeded example');
+  const [projectIoRows, setProjectIoRows] = useState<ProjectIoRow[]>(() => cloneIoRows(INITIAL_EXAMPLE.ioRows));
+  const [projectVectors, setProjectVectors] = useState<TestVector[]>(() => cloneVectors(INITIAL_EXAMPLE.vectors));
+  const [activeExampleId, setActiveExampleId] = useState<string | null>(INITIAL_EXAMPLE.id);
+  const [pendingExampleId, setPendingExampleId] = useState<string | null>(null);
   const [projectHealthCore, setProjectHealthCore] = useState<ProjectHealthCore>({
     dirtySinceVerify: false,
     dirtySinceExport: false,
   });
-  const [saveState] = useState<'saved' | 'unsaved' | 'autosaving'>('saved');
 
   const determinismHash = useMemo(() => '2f4e0bb0f17ac4d2', []);
   const hasCircuit = true;
@@ -115,6 +60,8 @@ export const IdeApp: React.FC = () => {
   );
   const hasVectors = projectVectors.length > 0;
   const latestVerifyPass = projectHealthCore.lastVerify?.status === 'pass';
+  const saveState: 'saved' | 'unsaved' | 'autosaving' =
+    projectHealthCore.dirtySinceVerify || projectHealthCore.dirtySinceExport ? 'unsaved' : 'saved';
 
   const readiness = useMemo(
     () => ({
@@ -126,6 +73,7 @@ export const IdeApp: React.FC = () => {
     }),
     [hasCircuit, hasIoMapping, hasVectors, latestVerifyPass, missingRequiredCount]
   );
+
   const projectHealth = useMemo(
     () =>
       deriveProjectHealth(projectHealthCore, {
@@ -135,6 +83,7 @@ export const IdeApp: React.FC = () => {
       }),
     [projectHealthCore, readiness.hasCircuit, readiness.hasIoMapping, readiness.hasVectors]
   );
+
   const primaryProjectCta = useMemo(
     () =>
       choosePrimaryProjectCta(projectHealth, {
@@ -144,6 +93,57 @@ export const IdeApp: React.FC = () => {
       }),
     [projectHealth, readiness.hasCircuit, readiness.hasIoMapping, readiness.hasVectors]
   );
+
+  const hasUnsavedWork =
+    projectHealthCore.dirtySinceVerify ||
+    projectHealthCore.dirtySinceExport ||
+    Boolean(projectHealthCore.lastVerify) ||
+    Boolean(projectHealthCore.lastExport) ||
+    projectVectors.length > 0;
+
+  const pendingExample = useMemo(
+    () => (pendingExampleId ? getIdeExampleById(pendingExampleId) : undefined),
+    [pendingExampleId]
+  );
+
+  const applyExample = useCallback((exampleId: string) => {
+    const example = getIdeExampleById(exampleId);
+    if (!example) return;
+
+    setActiveExampleId(example.id);
+    setProjectName(example.name);
+    setProjectDescription(example.summary);
+    setProjectIoRows(cloneIoRows(example.ioRows));
+    setProjectVectors(cloneVectors(example.vectors));
+    setProjectHealthCore({
+      dirtySinceVerify: false,
+      dirtySinceExport: false,
+    });
+    setLastSavedAt(`Example loaded: ${example.name}`);
+    setPendingExampleId(null);
+    setCurrentMode('project');
+  }, []);
+
+  const handleOpenExample = useCallback(
+    (exampleId: string) => {
+      if (activeExampleId === exampleId) return;
+      if (hasUnsavedWork) {
+        setPendingExampleId(exampleId);
+        return;
+      }
+      applyExample(exampleId);
+    },
+    [activeExampleId, applyExample, hasUnsavedWork]
+  );
+
+  const handleConfirmExampleReplace = useCallback(() => {
+    if (!pendingExampleId) return;
+    applyExample(pendingExampleId);
+  }, [applyExample, pendingExampleId]);
+
+  const handleCancelExampleReplace = useCallback(() => {
+    setPendingExampleId(null);
+  }, []);
 
   const handleMappingPinChange = useCallback((rowId: string, pin: string) => {
     setProjectIoRows((previous) =>
@@ -209,6 +209,10 @@ export const IdeApp: React.FC = () => {
     }));
   }, []);
 
+  const topEntityName = useMemo(() => buildTopEntityName(projectName), [projectName]);
+  const hdlText = useMemo(() => buildVhdlFromMapping(topEntityName, projectIoRows), [projectIoRows, topEntityName]);
+  const xdcText = useMemo(() => buildConstraintText(projectIoRows), [projectIoRows]);
+
   const exportProject = useMemo<RBProject>(
     () => ({
       kind: 'rb-project',
@@ -217,54 +221,23 @@ export const IdeApp: React.FC = () => {
       updatedAt: '2026-02-19T00:00:00.000Z',
       name: projectName,
       description: projectDescription,
-      circuit: {
-        nodes: [
-          { id: 'clk_node', type: 'Clock', x: 96, y: 80, label: 'clk', config: {}, state: {} },
-          { id: 'rst_node', type: 'Switch', x: 96, y: 148, label: 'rst', config: {}, state: {} },
-          { id: 'count_en_node', type: 'Switch', x: 96, y: 216, label: 'count_en', config: {}, state: {} },
-          { id: 'q0_node', type: 'Lamp', x: 520, y: 132, label: 'q0', config: {}, state: {} },
-          { id: 'q1_node', type: 'Lamp', x: 520, y: 200, label: 'q1', config: {}, state: {} },
-          { id: 'q2_node', type: 'Lamp', x: 520, y: 268, label: 'q2', config: {}, state: {} },
-        ],
-        connections: [],
-      },
+      circuit: buildProjectCircuit(projectIoRows),
       hdl: {
-        top: 'counter_top',
+        top: topEntityName,
         sources: [
           {
             path: 'top.vhd',
             language: 'vhdl',
-            text: [
-              'library IEEE;',
-              'use IEEE.STD_LOGIC_1164.ALL;',
-              '',
-              'entity counter_top is',
-              '  port (',
-              '    clk      : in  std_logic;',
-              '    rst      : in  std_logic;',
-              '    count_en : in  std_logic;',
-              '    q0       : out std_logic;',
-              '    q1       : out std_logic;',
-              '    q2       : out std_logic',
-              '  );',
-              'end counter_top;',
-              '',
-              'architecture rtl of counter_top is',
-              'begin',
-              "  q0 <= count_en;",
-              "  q1 <= rst;",
-              "  q2 <= clk;",
-              'end rtl;',
-            ].join('\n'),
+            text: hdlText,
           },
         ],
       },
       fpga: {
         board: 'basys3',
-        top: 'counter_top',
+        top: topEntityName,
         constraints: {
           type: 'xdc',
-          text: 'create_clock -name sys_clk -period 10.000 [get_ports clk]',
+          text: xdcText,
         },
       },
       ioMapping: {
@@ -292,7 +265,7 @@ export const IdeApp: React.FC = () => {
         appSurface: 'ide-export',
       },
     }),
-    [projectDescription, projectIoRows, projectName, projectVectors]
+    [hdlText, projectDescription, projectIoRows, projectName, projectVectors, topEntityName, xdcText]
   );
 
   const verifyMappedInputs = useMemo(
@@ -314,7 +287,7 @@ export const IdeApp: React.FC = () => {
         exportProject.circuit.nodes.find(
           (node) => normalizeSignalKey(node.label ?? node.id) === desiredSignal
         ) ??
-        exportProject.circuit.nodes.find((node) => node.type === 'Lamp' || node.type === 'OUTPUT');
+        exportProject.circuit.nodes.find((node) => node.type === 'OUTPUT');
 
       setCurrentMode('design');
 
@@ -365,6 +338,15 @@ export const IdeApp: React.FC = () => {
             readiness={readiness}
             health={projectHealth}
             mappingRows={projectIoRows}
+            examples={IDE_EXAMPLES.map((example) => ({
+              id: example.id,
+              name: example.name,
+              summary: example.summary,
+              expectedBehavior: example.expectedBehavior,
+              tags: example.tags,
+            }))}
+            activeExampleId={activeExampleId}
+            onOpenExample={handleOpenExample}
             primaryCtaLabel={primaryProjectCta.label}
             onPrimaryCta={handleProjectPrimaryAction}
             onUpdateMappingPin={handleMappingPinChange}
@@ -394,6 +376,30 @@ export const IdeApp: React.FC = () => {
         )}
       </div>
 
+      {pendingExample ? (
+        <IdeModal
+          title="Replace current workspace with example?"
+          body={
+            <p className="ide-copy">
+              Opening <strong>{pendingExample.name}</strong> replaces the current workspace state.
+              Continue only if you want to discard unsaved progress.
+            </p>
+          }
+          actions={
+            <>
+              <IdeButton tone="ghost" onClick={handleCancelExampleReplace} testId="ide-example-cancel">
+                Keep current project
+              </IdeButton>
+              <IdeButton tone="danger" onClick={handleConfirmExampleReplace} testId="ide-example-confirm">
+                Replace with example
+              </IdeButton>
+            </>
+          }
+          onClose={handleCancelExampleReplace}
+          testId="ide-example-confirm-modal"
+        />
+      ) : null}
+
       <IdeStatusBar mode={currentMode} determinismHash={determinismHash} gateStatus="warn" />
     </div>
   );
@@ -409,6 +415,121 @@ function suggestBasys3Pin(signal: { id: string; direction: 'in' | 'out' }, index
     return `SW${Math.min(index, 15)}`;
   }
   return `LD${Math.min(index, 15)}`;
+}
+
+function cloneIoRows(rows: IdeExampleIoRow[]): IdeExampleIoRow[] {
+  return rows.map((row) => ({ ...row }));
+}
+
+function cloneVectors(vectors: TestVector[]): TestVector[] {
+  return vectors.map((vector) => ({ ...vector }));
+}
+
+function buildProjectCircuit(projectIoRows: ProjectIoRow[]): RBProject['circuit'] {
+  const inputRows = projectIoRows.filter((row) => row.direction === 'in');
+  const outputRows = projectIoRows.filter((row) => row.direction === 'out');
+
+  const inputNodes = inputRows.map((row, index) => ({
+    id: row.nodeId,
+    type: 'INPUT',
+    x: 96,
+    y: 96 + index * 72,
+    label: row.label,
+    config: {},
+    state: {},
+  }));
+
+  const outputNodes = outputRows.map((row, index) => ({
+    id: row.nodeId,
+    type: 'OUTPUT',
+    x: 520,
+    y: 96 + index * 72,
+    label: row.label,
+    config: {},
+    state: {},
+  }));
+
+  return {
+    nodes: [...inputNodes, ...outputNodes],
+    connections: [],
+  };
+}
+
+function buildTopEntityName(projectName: string): string {
+  const normalized = projectName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  const base = normalized.length > 0 ? normalized : 'redbyte_top';
+  return /^[a-z]/.test(base) ? base : `rb_${base}`;
+}
+
+function buildVhdlFromMapping(topName: string, ioRows: ProjectIoRow[]): string {
+  const inputRows = ioRows.filter((row) => row.direction === 'in');
+  const outputRows = ioRows.filter((row) => row.direction === 'out');
+
+  const inputSignals = inputRows.map((row, index) => createSignalName(row.label || row.id, `in_${index}`));
+  const outputSignals = outputRows.map((row, index) => createSignalName(row.label || row.id, `out_${index}`));
+
+  const portLines: string[] = [];
+  for (let index = 0; index < inputSignals.length; index++) {
+    portLines.push(`    ${inputSignals[index]} : in  std_logic;`);
+  }
+  for (let index = 0; index < outputSignals.length; index++) {
+    const suffix = index === outputSignals.length - 1 ? '' : ';';
+    portLines.push(`    ${outputSignals[index]} : out std_logic${suffix}`);
+  }
+
+  const sourceSignal = inputSignals[0] ?? "'0'";
+  const assignmentLines =
+    outputSignals.length > 0
+      ? outputSignals.map((signal) => `  ${signal} <= ${sourceSignal};`)
+      : ['  -- No output ports declared yet.'];
+
+  return [
+    'library IEEE;',
+    'use IEEE.STD_LOGIC_1164.ALL;',
+    '',
+    `entity ${topName} is`,
+    '  port (',
+    ...(portLines.length > 0
+      ? portLines
+      : ['    placeholder_in : in std_logic;', '    placeholder_out : out std_logic']),
+    '  );',
+    `end ${topName};`,
+    '',
+    `architecture rtl of ${topName} is`,
+    'begin',
+    ...assignmentLines,
+    'end rtl;',
+  ].join('\n');
+}
+
+function buildConstraintText(ioRows: ProjectIoRow[]): string {
+  const clockRow = ioRows.find(
+    (row) =>
+      row.direction === 'in' &&
+      /(^clk$|clock|clk100mhz)/i.test(row.label) &&
+      row.pin.trim().length > 0
+  );
+
+  if (!clockRow) {
+    return '# Clock constraint pending: map a clock-like input (clk/clock/clk100mhz) to CLK100MHZ.';
+  }
+
+  const clockSignal = createSignalName(clockRow.label || clockRow.id, 'clk');
+  return `create_clock -name sys_clk -period 10.000 [get_ports ${clockSignal}]`;
+}
+
+function createSignalName(raw: string, fallback: string): string {
+  const normalized = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/^_+|_+$/g, '');
+  if (normalized.length === 0) return fallback;
+  return /^[a-z]/.test(normalized) ? normalized : `sig_${normalized}`;
 }
 
 export default IdeApp;

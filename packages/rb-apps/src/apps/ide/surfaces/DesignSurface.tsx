@@ -62,12 +62,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
     }),
     [rawSelection]
   );
+  const editorCircuit = useMemo(() => normalizeCircuitForCanvas(circuit), [circuit]);
 
   const [paletteQuery, setPaletteQuery] = useState('');
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 880, height: 520 });
   const [actionToast, setActionToast] = useState<string | null>(null);
-  const [tickEngine] = useState(() => new TickEngine(circuit, { tickRate: 10 }));
+  const [tickEngine] = useState(() => new TickEngine(editorCircuit, { tickRate: 10 }));
 
   useEffect(() => {
     setEngine(tickEngine.getEngine());
@@ -78,8 +79,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
   }, [setEngine, setTickEngine, tickEngine]);
 
   useEffect(() => {
-    tickEngine.setCircuit(circuit);
-  }, [circuit, tickEngine]);
+    tickEngine.setCircuit(editorCircuit);
+  }, [editorCircuit, tickEngine]);
 
   useEffect(() => {
     if (!canvasHostRef.current) return;
@@ -135,14 +136,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
         x: (canvasSize.width / 2 - camera.x) / camera.zoom,
         y: (canvasSize.height / 2 - camera.y) / camera.zoom,
       };
-      const basePosition = findSmartSpawnPosition(circuit.nodes as Node[], center);
+      const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
       addNode(nodeType, {
         x: basePosition.x + extraOffset.x,
         y: basePosition.y + extraOffset.y,
       });
       onCircuitMutated?.();
     },
-    [addNode, camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, circuit.nodes, onCircuitMutated]
+    [
+      addNode,
+      camera.x,
+      camera.y,
+      camera.zoom,
+      canvasSize.height,
+      canvasSize.width,
+      editorCircuit.nodes,
+      onCircuitMutated,
+    ]
   );
 
   const addIoPins = useCallback(() => {
@@ -192,7 +202,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
 
   const handleCircuitChange = useCallback(
     (nextCircuit: Circuit) => {
-      updateCircuit(nextCircuit, { skipHistory: false, enforceLimits: true });
+      updateCircuit(normalizeCircuitForCanvas(nextCircuit), { skipHistory: false, enforceLimits: true });
       onCircuitMutated?.();
     },
     [onCircuitMutated, updateCircuit]
@@ -211,12 +221,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
   const selectedNodeIds = useMemo(() => Array.from(selection.nodes).slice(0, 5), [selection.nodes]);
   const selectedWireIds = useMemo(() => Array.from(selection.wires).slice(0, 5), [selection.wires]);
   const selectedNode = useMemo(
-    () => (selectedNodeIds.length > 0 ? circuit.nodes.find((node) => node.id === selectedNodeIds[0]) : undefined),
-    [circuit.nodes, selectedNodeIds]
+    () =>
+      selectedNodeIds.length > 0 ? editorCircuit.nodes.find((node) => node.id === selectedNodeIds[0]) : undefined,
+    [editorCircuit.nodes, selectedNodeIds]
   );
   const selectedNodePins = useMemo(
-    () => deriveNodePins(selectedNode, circuit),
-    [circuit, selectedNode]
+    () => deriveNodePins(selectedNode, editorCircuit),
+    [editorCircuit, selectedNode]
   );
   const hasSelection = selection.nodes.size > 0 || selection.wires.size > 0;
   const activeModeLabel = toolMode === 'wire' ? 'Wire Mode' : 'Select Mode';
@@ -444,14 +455,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
                 </div>
                 <LogicCanvas
                   engine={tickEngine}
-                  circuit={circuit}
+                  circuit={editorCircuit}
                   width={canvasSize.width}
                   height={canvasSize.height}
                   showToolbar={false}
                   onCircuitChange={handleCircuitChange}
                   showHints={false}
                 />
-                {circuit.nodes.length === 0 && (
+                {editorCircuit.nodes.length === 0 && (
                   <div className="ide-design-overlay-empty" data-testid="ide-design-empty-state">
                     <h3>Build a circuit in three steps</h3>
                     <ol className="ide-design-empty-steps" data-testid="ide-design-empty-checklist">
@@ -490,6 +501,26 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
     </IdeSurfaceLayout>
   );
 };
+
+function normalizeCircuitForCanvas(circuit: Circuit): Circuit {
+  return {
+    ...circuit,
+    nodes: circuit.nodes.map((node) => {
+      const fallbackX = typeof node.x === 'number' ? node.x : 0;
+      const fallbackY = typeof node.y === 'number' ? node.y : 0;
+      const position = node.position ?? { x: fallbackX, y: fallbackY };
+      return {
+        ...node,
+        position,
+        x: position.x,
+        y: position.y,
+        config: node.config ?? {},
+        state: node.state ?? {},
+      };
+    }),
+    connections: circuit.connections.map((connection) => ({ ...connection })),
+  };
+}
 
 function parseWireId(
   wireId: string

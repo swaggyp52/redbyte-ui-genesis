@@ -3,8 +3,10 @@ import type { ProjectHealth } from '../projectHealth';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
+  IdeChip,
   IdeCallout,
   IdeDataTable,
+  IdeGrid,
   IdeInspectorSection,
   IdePanel,
   IdeStatusPill,
@@ -32,6 +34,15 @@ export interface ProjectSurfaceProps {
   };
   health: ProjectHealth;
   mappingRows: ProjectMappingRow[];
+  examples: Array<{
+    id: string;
+    name: string;
+    summary: string;
+    expectedBehavior: string;
+    tags: string[];
+  }>;
+  activeExampleId: string | null;
+  onOpenExample: (exampleId: string) => void;
   primaryCtaLabel: string;
   onPrimaryCta: () => void;
   onUpdateMappingPin: (rowId: string, pin: string) => void;
@@ -50,6 +61,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   readiness,
   health,
   mappingRows,
+  examples,
+  activeExampleId,
+  onOpenExample,
   primaryCtaLabel,
   onPrimaryCta,
   onUpdateMappingPin,
@@ -237,6 +251,52 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <span className="ide-status-mono">{determinismHash}</span>
             </div>
           </div>
+        </section>
+
+        <section className="ide-export-section" data-testid="ide-project-examples">
+          <header className="ide-export-section-header">
+            <h3>Starter Examples</h3>
+            <span className="ide-export-section-meta">{examples.length} available</span>
+          </header>
+          <IdeGrid columns={2}>
+            {examples.map((example) => (
+              <article
+                key={example.id}
+                className={`ide-example-card ${activeExampleId === example.id ? 'is-active' : ''}`}
+                data-testid={`ide-example-card-${example.id}`}
+              >
+                <header className="ide-example-card-header">
+                  <h4>{example.name}</h4>
+                  {activeExampleId === example.id ? (
+                    <IdeStatusPill tone="ok">Loaded</IdeStatusPill>
+                  ) : (
+                    <IdeStatusPill tone="idle">Available</IdeStatusPill>
+                  )}
+                </header>
+                <p className="ide-copy">{example.summary}</p>
+                <p className="ide-copy ide-copy-top-gap">
+                  <span className="ide-copy-strong">Expected:</span> {example.expectedBehavior}
+                </p>
+                <div className="ide-example-chip-row">
+                  {example.tags.map((tag) => (
+                    <IdeChip key={`${example.id}-${tag}`} tone="accent">
+                      {tag}
+                    </IdeChip>
+                  ))}
+                </div>
+                <div className="ide-inline-actions">
+                  <IdeButton
+                    tone={activeExampleId === example.id ? 'ghost' : 'secondary'}
+                    onClick={() => onOpenExample(example.id)}
+                    disabled={activeExampleId === example.id}
+                    testId={`ide-open-example-${example.id}`}
+                  >
+                    {activeExampleId === example.id ? 'Loaded' : 'Open example'}
+                  </IdeButton>
+                </div>
+              </article>
+            ))}
+          </IdeGrid>
         </section>
 
         <section className="ide-export-section" data-testid="ide-project-readiness">

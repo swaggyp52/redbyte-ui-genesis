@@ -523,6 +523,40 @@
   gap: var(--ide-space-2);
 }
 
+.ide-example-card {
+  border: 1px solid rgba(58, 87, 116, 0.62);
+  border-radius: var(--ide-radius-s);
+  background: rgba(10, 20, 31, 0.64);
+  padding: var(--ide-space-3);
+  display: grid;
+  gap: var(--ide-space-2);
+  min-height: 186px;
+}
+
+.ide-example-card.is-active {
+  border-color: rgba(82, 210, 115, 0.58);
+  box-shadow: inset 0 0 0 1px rgba(82, 210, 115, 0.2);
+}
+
+.ide-example-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ide-space-2);
+}
+
+.ide-example-card-header h4 {
+  margin: 0;
+  font-size: var(--rb-font-size-3);
+  line-height: var(--rb-line-height-3);
+}
+
+.ide-example-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ide-space-1);
+}
+
 .ide-design-primary-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1125,6 +1159,72 @@
 
 .ide-button:hover:not(:disabled) {
   filter: brightness(1.08);
+}
+
+.ide-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(138, 170, 200, 0.48);
+  padding: 3px 8px;
+  font-size: var(--rb-font-size-1);
+  line-height: var(--rb-line-height-1);
+}
+
+.ide-chip-neutral {
+  color: var(--ide-text-muted);
+  background: rgba(58, 87, 116, 0.22);
+}
+
+.ide-chip-accent {
+  color: #d5fffa;
+  border-color: rgba(46, 196, 182, 0.5);
+  background: rgba(46, 196, 182, 0.16);
+}
+
+.ide-chip-warn {
+  color: #ffe7ad;
+  border-color: rgba(244, 185, 66, 0.5);
+  background: rgba(244, 185, 66, 0.14);
+}
+
+.ide-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(6, 10, 16, 0.62);
+  display: grid;
+  place-items: center;
+  padding: var(--ide-space-4);
+  backdrop-filter: blur(2px);
+}
+
+.ide-modal {
+  width: min(560px, 100%);
+  border: 1px solid rgba(138, 170, 200, 0.48);
+  border-radius: var(--ide-radius-m);
+  background: linear-gradient(180deg, rgba(20, 34, 50, 0.98), rgba(12, 20, 30, 0.98));
+  box-shadow: var(--rb-shadow-2);
+  display: grid;
+  gap: var(--ide-space-3);
+  padding: var(--ide-space-4);
+}
+
+.ide-modal-title {
+  margin: 0;
+  font-size: var(--rb-font-size-5);
+  line-height: var(--rb-line-height-4);
+}
+
+.ide-modal-body {
+  color: var(--ide-text-muted);
+}
+
+.ide-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--ide-space-2);
 }
 
 .ide-status-pill {
