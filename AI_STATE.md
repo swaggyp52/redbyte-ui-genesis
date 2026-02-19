@@ -1,5 +1,62 @@
 # AI State
 
+## Change Log 2026-02-19 (Ahead-Limit Warning Restore + Real Export ViewModel Pipeline)
+
+**Status**: COMPLETE - Restored non-blocking ahead-limit behavior in `repo:status` and replaced Export-mode preview payload wiring with the real Basys3 export pipeline viewmodel.
+
+### What Changed
+
+1. Ahead-limit behavior restored to warning-only in repo status
+- Updated `scripts/repo-status.mjs`:
+  - `gates:git-ahead-limit` now runs as a warning signal only.
+  - Ahead-limit warnings are printed, but do not fail `repo:status`.
+- Updated policy text in `docs/ai-usage-rules.md`:
+  - ahead count is now documented as guidance + handoff signal, not a hard feature-work block.
+
+2. Export mode now uses real export pipeline outputs (no IdeApp preview payload)
+- Added `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`.
+  - Canonical entrypoint: `buildExportViewModel(project: RBProject)`.
+  - Uses `exportProjectAsBasys3(project)` as the authority.
+  - Emits stable UI contract:
+    - `status` (`ok|blocked`)
+    - `errors` / `warnings` with `RBEX` code + fix hint
+    - `pinTable` (required flag, status, direction, suggested pins)
+    - `artifacts` (path/kind/preview/status/note)
+    - `exportHash`
+- Refactored `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`:
+  - consumes `project` and derives UI from `buildExportViewModel(project)`
+  - keeps compiler-style diagnostics + jump-to-mapping + highlight behavior
+  - adds artifact preview tabs driven by real export bundle content
+  - `Export Bundle` now performs concrete file downloads from generated artifact previews when unblocked
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - removed `exportPreview` mock payload assembly
+  - wires `ExportSurface` with a deterministic `RBProject` fixture object
+
+3. Regression guard to prevent return of preview-payload wiring
+- Added `scripts/gates/ide-export-real-pipeline-contract.mjs`.
+  - Fails if `IdeApp.tsx` still contains `exportPreview`.
+  - Fails if `ExportSurface` is not wired to `buildExportViewModel(project)`.
+- Updated `package.json`:
+  - added `gates:ide-export-real-pipeline-contract`.
+- Updated `scripts/repo-status.mjs`:
+  - includes `IDE Export Real Pipeline Contract` static check.
+
+4. Export surface styling support for real artifact preview
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css` with:
+  - required-port pill styles
+  - `inout` direction tag styles
+  - artifact tab strip + preview panel + code area styles
+
+### Validation Executed
+
+- `pnpm -s gates:ide-export-real-pipeline-contract` -> PASS
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm repo:status` -> PASS (5/5 checks), with ahead-limit emitted as non-blocking warning
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Hard-Stop Git Ahead Limit Gate)
 
 **Status**: COMPLETE - Replaced ahead-count warning behavior with a hard-stop gate that blocks `repo:status` when local branch drift exceeds the configured limit.
