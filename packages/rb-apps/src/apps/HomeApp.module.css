@@ -546,12 +546,21 @@
   margin-right: auto;
 }
 
+.heroCredibility {
+  margin: var(--rb-space-2, 8px) 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--rb-ui-lab-accent) 64%, #dbe8f7);
+  font-weight: 600;
+}
+
 .flowRail {
   margin: var(--rb-space-5, 20px) auto 0;
   width: min(980px, 100%);
   display: grid;
   gap: var(--rb-space-2, 8px);
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .flowStep {
@@ -601,6 +610,152 @@
   font-size: 12px;
   line-height: 1.4;
   color: var(--rb-ui-lab-text-muted);
+}
+
+.credibilityGrid {
+  margin: var(--rb-space-4, 16px) auto 0;
+  width: min(980px, 100%);
+  display: grid;
+  gap: var(--rb-space-2, 8px);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.credibilityCard {
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: var(--rb-ui-lab-radius-md);
+  background: color-mix(in srgb, var(--rb-ui-lab-bg-elevated) 88%, var(--rb-ui-lab-accent) 12%);
+  padding: var(--rb-space-3, 12px);
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+
+.credibilityTitle {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--rb-ui-lab-text);
+}
+
+.credibilityValue {
+  margin: 0;
+  font-size: 12px;
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #cbecff;
+}
+
+.credibilityNote {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--rb-ui-lab-text-muted);
+}
+
+.demoStrip {
+  margin: var(--rb-space-4, 16px) auto 0;
+  width: min(980px, 100%);
+  display: grid;
+  gap: var(--rb-space-2, 8px);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.demoCard {
+  border: 1px solid rgba(84, 120, 153, 0.56);
+  border-radius: var(--rb-ui-lab-radius-md);
+  background: linear-gradient(
+    180deg,
+    rgba(20, 35, 50, 0.9) 0%,
+    rgba(10, 20, 31, 0.92) 100%
+  );
+  padding: var(--rb-space-3, 12px);
+  text-align: left;
+  display: grid;
+  gap: var(--rb-space-2, 8px);
+  box-shadow: inset 0 0 0 1px rgba(46, 196, 182, 0.08);
+}
+
+.demoCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--rb-ui-lab-text);
+}
+
+.demoCardStatus {
+  border: 1px solid rgba(46, 196, 182, 0.42);
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: #ccfff8;
+  background: rgba(46, 196, 182, 0.14);
+}
+
+.demoCanvas {
+  display: grid;
+  gap: 6px;
+}
+
+.demoCanvas span {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(102, 163, 214, 0.48);
+}
+
+.demoBarWide {
+  width: 92%;
+}
+
+.demoBarMid {
+  width: 72%;
+}
+
+.demoBarShort {
+  width: 56%;
+}
+
+.demoWave {
+  height: 52px;
+  border-radius: 8px;
+  border: 1px solid rgba(84, 120, 153, 0.55);
+  background: rgba(9, 20, 31, 0.74);
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.demoWave span {
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(46, 196, 182, 0.2) 0%,
+    rgba(46, 196, 182, 0.2) 35%,
+    rgba(249, 199, 79, 0.48) 35%,
+    rgba(249, 199, 79, 0.48) 65%,
+    rgba(46, 196, 182, 0.2) 65%,
+    rgba(46, 196, 182, 0.2) 100%
+  );
+}
+
+.demoFileList {
+  display: grid;
+  gap: 6px;
+}
+
+.demoFileList code {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(138, 170, 200, 0.45);
+  color: #d4e6fb;
+  font-size: 11px;
+  background: rgba(19, 35, 49, 0.72);
 }
 
 .startHereActions {
@@ -681,6 +836,11 @@
   }
 
   .flowRail {
+    grid-template-columns: 1fr;
+  }
+
+  .credibilityGrid,
+  .demoStrip {
     grid-template-columns: 1fr;
   }
 }

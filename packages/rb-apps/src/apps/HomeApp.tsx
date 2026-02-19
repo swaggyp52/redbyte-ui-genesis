@@ -487,6 +487,9 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
             <p className={styles.startHereSubtitle}>
               Basys3-first workflow: design, verify, export, and ship without hidden state.
             </p>
+            <p className={styles.heroCredibility}>
+              Deterministic verification + Vivado-ready export for Basys3.
+            </p>
             <div className={styles.flowRail} data-testid="home-flow-rail">
               <article className={styles.flowStep} data-testid="home-flow-step-design">
                 <span className={styles.flowStepIndex}>01</span>
@@ -507,6 +510,65 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
                 <div>
                   <h3 className={styles.flowStepTitle}>Export</h3>
                   <p className={styles.flowStepNote}>Generate Vivado-ready bundle with constraints.</p>
+                </div>
+              </article>
+              <article className={styles.flowStep} data-testid="home-flow-step-vivado">
+                <span className={styles.flowStepIndex}>04</span>
+                <div>
+                  <h3 className={styles.flowStepTitle}>Vivado</h3>
+                  <p className={styles.flowStepNote}>Run synthesis, simulation, and program Basys3.</p>
+                </div>
+              </article>
+            </div>
+            <div className={styles.credibilityGrid} data-testid="home-credibility-blocks">
+              <article className={styles.credibilityCard} data-testid="home-credibility-hash">
+                <h3 className={styles.credibilityTitle}>Determinism Hash</h3>
+                <p className={styles.credibilityValue}>sha:verify-pass-3f2c</p>
+                <p className={styles.credibilityNote}>Stable verification evidence every run.</p>
+              </article>
+              <article className={styles.credibilityCard} data-testid="home-credibility-export-block">
+                <h3 className={styles.credibilityTitle}>Invalid Export Blocking</h3>
+                <p className={styles.credibilityValue}>RBEX9003</p>
+                <p className={styles.credibilityNote}>Missing pins block export until fixed.</p>
+              </article>
+              <article className={styles.credibilityCard} data-testid="home-credibility-jump-fix">
+                <h3 className={styles.credibilityTitle}>Click-to-Fix Diagnostics</h3>
+                <p className={styles.credibilityValue}>Jump to Mapping</p>
+                <p className={styles.credibilityNote}>Go directly to the offending signal row.</p>
+              </article>
+            </div>
+            <div className={styles.demoStrip} data-testid="home-demo-strip">
+              <article className={styles.demoCard} data-testid="home-demo-shot-project">
+                <header className={styles.demoCardHeader}>
+                  <span>Project</span>
+                  <span className={styles.demoCardStatus}>READYNESS</span>
+                </header>
+                <div className={styles.demoCanvas}>
+                  <span className={styles.demoBarWide} />
+                  <span className={styles.demoBarMid} />
+                  <span className={styles.demoBarShort} />
+                </div>
+              </article>
+              <article className={styles.demoCard} data-testid="home-demo-shot-verify">
+                <header className={styles.demoCardHeader}>
+                  <span>Verify</span>
+                  <span className={styles.demoCardStatus}>PASS</span>
+                </header>
+                <div className={styles.demoWave}>
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </article>
+              <article className={styles.demoCard} data-testid="home-demo-shot-export">
+                <header className={styles.demoCardHeader}>
+                  <span>Export</span>
+                  <span className={styles.demoCardStatus}>BUNDLE</span>
+                </header>
+                <div className={styles.demoFileList}>
+                  <code>top.vhd</code>
+                  <code>top.xdc</code>
+                  <code>testbench.vhd</code>
                 </div>
               </article>
             </div>
