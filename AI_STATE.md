@@ -1,5 +1,38 @@
 # AI State
 
+## Change Log 2026-02-19 (Export Mode Compiler Panel + Mapping Jump UX)
+
+**Status**: COMPLETE - Replaced Export-mode placeholder with an intentional compiler-style surface using existing export diagnostic outputs.
+
+### What Changed
+
+1. Export mode surface implementation
+- Added `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`.
+- Implements:
+  - Build Output diagnostics list with severity pill + deterministic `RBEX` code + fix hint
+  - CTA actions: `Jump to mapping` and `Auto-suggest pins` (when suggestion exists)
+  - I/O mapping table with editable pin cells and status pills (`mapped/missing/unused`)
+  - Jump behavior: scroll-to-row, 1.2s row highlight, and pin input focus
+  - Right inspector with Basys3 context, determinism hash, and artifact checklist
+
+2. IDE wiring
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`.
+- Export tab now renders `ExportSurface` with diagnostics/mappings/artifacts props (import mode remains placeholder).
+
+3. Design token lock additions for consistency
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`.
+- Added canonical `--rb-*` token aliases (radius, spacing, panel/text/border/shadow, font scale).
+- Added export-specific panel/table/diagnostic styles while preserving shared panel rhythm and 8px spacing cadence.
+
+### Validation Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm repo:status` -> PASS (4/4 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Lane A Handoff Artifact + Ahead-Limit Warning Guard)
 
 **Status**: COMPLETE - Produced a pushable Lane A handoff bundle and added a non-blocking local guard that warns when local commit drift exceeds 3 commits.
