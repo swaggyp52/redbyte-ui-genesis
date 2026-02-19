@@ -44,6 +44,7 @@ function main() {
     runGate('ide:project-health-live-contract', 'pnpm -s ide:gate:project-health-live-contract', true),
     runGate('ide:verify-contract', 'pnpm -s ide:gate:verify-contract', true),
     runGate('ide:export-download-contract', 'pnpm -s ide:gate:export-download-contract', true),
+    runGate('ide:primary-cta-contract', 'pnpm -s ide:gate:primary-cta-contract', true),
     runGate('ide:visual-contract', 'pnpm -s ide:gate:visual-contract', true),
     runGate('ide:shell-structure', 'pnpm -s ide:gate:shell-structure', true),
     runGate('ide:fullscreen-no-chrome', 'pnpm -s ide:gate:fullscreen-no-chrome', true),

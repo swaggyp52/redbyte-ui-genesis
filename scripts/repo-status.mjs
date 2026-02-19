@@ -123,6 +123,7 @@ if (!runCheck('Import Pipeline Validation', 'pnpm gates:import-roundtrip 2>&1'))
 
 // 4a. IDE UX runtime signals (non-blocking; fast if a local IDE server is already running)
 runSignalCheck('IDE Project Health Live Contract', 'pnpm -s ide:gate:project-health-live-contract 2>&1');
+runSignalCheck('IDE Primary CTA Contract', 'pnpm -s ide:gate:primary-cta-contract 2>&1');
 
 // 5. Artifact verification
 console.log('\n[CHECK] Artifact Verification...');

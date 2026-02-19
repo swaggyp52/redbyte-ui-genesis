@@ -116,9 +116,11 @@ export const ImportSurface: React.FC = () => {
             <IdeButton tone="secondary" testId="ide-import-parse">
               Parse
             </IdeButton>
-            <IdeButton tone="primary" disabled={!canBuildProject} testId="ide-import-build-project">
-              Build RBProject
-            </IdeButton>
+            <span data-testid="ide-primary-cta">
+              <IdeButton tone="primary" disabled={!canBuildProject} testId="ide-import-build-project">
+                Build RBProject
+              </IdeButton>
+            </span>
             <IdeButton tone="ghost" disabled={unmappedPorts.length === 0} testId="ide-import-apply-mapping">
               Apply Mapping
             </IdeButton>
