@@ -1,5 +1,41 @@
 # AI State
 
+## Change Log 2026-02-19 (Project Mode Composition Pass: Sources-First Workbench + Activity Console)
+
+**Status**: COMPLETE - Project mode now prioritizes sources/readiness/mapping flow in workbench composition, with examples demoted to secondary content.
+
+### What Changed
+
+1. Project surface workbench composition update
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`:
+  - added custom left dock content (`data-testid="ide-project-sources-dock"`) with:
+    - source readiness table
+    - mapped-port coverage
+    - direct actions (`Add Sources`, `Open Canvas`)
+  - added custom bottom console (`data-testid="ide-project-console"`) with:
+    - action-required vs ready callout
+    - mode handoff shortcuts (Design/Verify/Export)
+  - reordered primary content to readability-first sequence:
+    - Readiness + Identity overview grid
+    - I/O mapping (blocking banner + table)
+    - Starter examples (secondary, below core readiness controls)
+
+2. Baseline and gate stability updates
+- Updated project screenshot baseline:
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-project-chromium-win32.png`
+
+### Validation Executed
+
+- `pnpm -s ide:gate:project-health-live-contract` -> PASS
+- `pnpm -s ide:gate:examples-contract` -> PASS
+- `pnpm -s ide:gate:visual-contract` -> PASS
+- `pnpm -s ide:gate:screenshots:update` -> PASS
+- `pnpm repo:status` -> PASS (14/14 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Workbench Composition Refactor: Docked IDE Shell + Layout Contract Gate)
 
 **Status**: COMPLETE - IDE surfaces now mount inside a unified workbench shell (left dock, center workspace, right inspector, bottom compiler console) with deterministic split sizing and gate enforcement.

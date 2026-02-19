@@ -163,10 +163,47 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     health.lastVerify?.status === 'pass' ? 'ok' : health.lastVerify?.status === 'fail' ? 'error' : 'idle';
   const lastExportStatusTone =
     health.lastExport?.status === 'ok' ? 'ok' : health.lastExport?.status === 'blocked' ? 'error' : 'idle';
+  const mappedRequiredCount = useMemo(
+    () => mappingRows.filter((row) => row.required && row.pin.trim().length > 0).length,
+    [mappingRows]
+  );
+  const requiredCount = useMemo(
+    () => mappingRows.filter((row) => row.required).length,
+    [mappingRows]
+  );
+
+  const sourcesRows = useMemo(
+    () => [
+      ['Circuit graph', readiness.hasCircuit ? 'READY' : 'MISSING'],
+      ['Mapped ports', `${mappedRequiredCount}/${requiredCount}`],
+      ['Test vectors', readiness.hasVectors ? 'READY' : 'MISSING'],
+      ['Starter examples', String(examples.length)],
+    ],
+    [examples.length, mappedRequiredCount, readiness.hasCircuit, readiness.hasVectors, requiredCount]
+  );
 
   return (
     <IdeSurfaceLayout
       mode="project"
+      dock={
+        <section className="ide-workbench-placeholder" data-testid="ide-project-sources-dock">
+          <header className="ide-workbench-placeholder-header">
+            <h3>Sources</h3>
+            <IdeStatusPill tone={readiness.hasCircuit ? 'ok' : 'warn'}>
+              {readiness.hasCircuit ? 'GRAPH READY' : 'ADD LOGIC'}
+            </IdeStatusPill>
+          </header>
+          <IdeDataTable columns={['Source', 'State']} rows={sourcesRows} testId="ide-project-sources-table" />
+          <div className="ide-inline-actions">
+            <IdeButton tone="secondary" onClick={onOpenImport}>
+              Add Sources
+            </IdeButton>
+            <IdeButton tone="ghost" onClick={onOpenDesign}>
+              Open Canvas
+            </IdeButton>
+          </div>
+        </section>
+      }
       inspector={
         <>
           <IdeInspectorSection title="Activity">
@@ -245,6 +282,34 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           </IdeInspectorSection>
         </>
       }
+      console={
+        <section className="ide-workbench-console-content" data-testid="ide-project-console">
+          <header className="ide-workbench-console-header">
+            <h3>Project Activity Console</h3>
+            <span className="ide-workbench-console-mode">Project</span>
+          </header>
+          {health.blockingIssues.length > 0 ? (
+            <IdeCallout tone="warn" title="Action required">
+              {health.blockingIssues[0].message}
+            </IdeCallout>
+          ) : (
+            <IdeCallout tone="success" title="Ready for next stage">
+              No blocking diagnostics. Continue to Design, Verify, or Export.
+            </IdeCallout>
+          )}
+          <div className="ide-inline-actions">
+            <IdeButton tone="ghost" onClick={onOpenDesign}>
+              Open Design
+            </IdeButton>
+            <IdeButton tone="ghost" onClick={onOpenVerify}>
+              Run Verify
+            </IdeButton>
+            <IdeButton tone="ghost" onClick={onOpenExport}>
+              Open Export
+            </IdeButton>
+          </div>
+        </section>
+      }
     >
       <IdePanel
         title="Project Truth Engine"
@@ -280,32 +345,66 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         }
         testId="ide-project-panel"
       >
-        <section className="ide-export-section" data-testid="ide-project-identity">
+        <IdeGrid columns={2} testId="ide-project-overview-grid">
+          <section className="ide-export-section" data-testid="ide-project-readiness">
+            <header className="ide-export-section-header">
+              <h3>Readiness</h3>
+            </header>
+            <IdeDataTable
+              columns={['Check', 'Status']}
+              rows={checklistRows}
+              testId="ide-project-readiness-checklist"
+            />
+          </section>
+
+          <section className="ide-export-section" data-testid="ide-project-identity">
+            <header className="ide-export-section-header">
+              <h3>Project Identity</h3>
+            </header>
+            <div className="ide-kv-list">
+              <div className="ide-kv-row">
+                <span>Name</span>
+                <span>{projectName}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Description</span>
+                <span>{description}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Board</span>
+                <span>Basys3 (locked)</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Last Saved</span>
+                <span>{lastSavedAt}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Determinism Hash</span>
+                <span className="ide-status-mono">{determinismHash}</span>
+              </div>
+            </div>
+          </section>
+        </IdeGrid>
+
+        <section className="ide-export-section" data-testid="ide-project-io-mapping">
           <header className="ide-export-section-header">
-            <h3>Project Identity</h3>
+            <h3>I/O Mapping</h3>
           </header>
-          <div className="ide-kv-list">
-            <div className="ide-kv-row">
-              <span>Name</span>
-              <span>{projectName}</span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Description</span>
-              <span>{description}</span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Board</span>
-              <span>Basys3 (locked)</span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Last Saved</span>
-              <span>{lastSavedAt}</span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Determinism Hash</span>
-              <span className="ide-status-mono">{determinismHash}</span>
-            </div>
-          </div>
+          {readiness.missingRequiredCount > 0 ? (
+            <IdeCallout tone="error" title="Missing required ports" testId="ide-project-mapping-banner">
+              {readiness.missingRequiredCount} required port
+              {readiness.missingRequiredCount === 1 ? '' : 's'} missing mapping.
+            </IdeCallout>
+          ) : (
+            <IdeCallout tone="success" title="All required ports mapped" testId="ide-project-mapping-banner">
+              Required inputs and outputs are mapped for Basys3 export.
+            </IdeCallout>
+          )}
+          <IdeDataTable
+            columns={['Signal', 'Direction', 'Pin', 'Required', 'Status']}
+            rows={mappingRowsUi}
+            testId="ide-project-mapping-table"
+          />
         </section>
 
         <section className="ide-export-section" data-testid="ide-project-examples">
@@ -352,38 +451,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               </article>
             ))}
           </IdeGrid>
-        </section>
-
-        <section className="ide-export-section" data-testid="ide-project-readiness">
-          <header className="ide-export-section-header">
-            <h3>Readiness</h3>
-          </header>
-          <IdeDataTable
-            columns={['Check', 'Status']}
-            rows={checklistRows}
-            testId="ide-project-readiness-checklist"
-          />
-        </section>
-
-        <section className="ide-export-section" data-testid="ide-project-io-mapping">
-          <header className="ide-export-section-header">
-            <h3>I/O Mapping</h3>
-          </header>
-          {readiness.missingRequiredCount > 0 ? (
-            <IdeCallout tone="error" title="Missing required ports" testId="ide-project-mapping-banner">
-              {readiness.missingRequiredCount} required port
-              {readiness.missingRequiredCount === 1 ? '' : 's'} missing mapping.
-            </IdeCallout>
-          ) : (
-            <IdeCallout tone="success" title="All required ports mapped" testId="ide-project-mapping-banner">
-              Required inputs and outputs are mapped for Basys3 export.
-            </IdeCallout>
-          )}
-          <IdeDataTable
-            columns={['Signal', 'Direction', 'Pin', 'Required', 'Status']}
-            rows={mappingRowsUi}
-            testId="ide-project-mapping-table"
-          />
         </section>
       </IdePanel>
     </IdeSurfaceLayout>
