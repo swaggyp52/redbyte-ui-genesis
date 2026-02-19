@@ -7,12 +7,13 @@ const LAYOUT_STORAGE_KEY = 'rb.ide.workbench.layout.v1';
 const DEFAULT_LAYOUT = {
   leftWidth: 240,
   rightWidth: 296,
-  consoleHeight: 176,
+  consoleHeight: 72,
 };
 
 const LEFT_WIDTH_RANGE = { min: 200, max: 420 };
 const RIGHT_WIDTH_RANGE = { min: 240, max: 420 };
-const CONSOLE_HEIGHT_RANGE = { min: 128, max: 320 };
+const CONSOLE_HEIGHT_RANGE = { min: 64, max: 320 };
+const EXPANDED_CONSOLE_HEIGHT = 176;
 
 interface WorkbenchLayoutState {
   leftWidth: number;
@@ -33,6 +34,7 @@ export interface IdeWorkbenchShellProps {
   leftDock?: React.ReactNode;
   rightDock?: React.ReactNode;
   console?: React.ReactNode;
+  consoleHasBlocking?: boolean;
 }
 
 export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
@@ -41,6 +43,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   leftDock,
   rightDock,
   console,
+  consoleHasBlocking = false,
 }) => {
   const [layout, setLayout] = useState<WorkbenchLayoutState>(DEFAULT_LAYOUT);
   const resizeRef = useRef<ActiveResizeState | null>(null);
@@ -61,6 +64,18 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout));
   }, [layout]);
+
+  useEffect(() => {
+    if (!consoleHasBlocking) return;
+    setLayout((previous) =>
+      previous.consoleHeight >= EXPANDED_CONSOLE_HEIGHT
+        ? previous
+        : {
+            ...previous,
+            consoleHeight: EXPANDED_CONSOLE_HEIGHT,
+          }
+    );
+  }, [consoleHasBlocking]);
 
   const onPointerMove = useCallback((event: PointerEvent) => {
     const active = resizeRef.current;

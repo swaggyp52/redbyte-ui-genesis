@@ -1,0 +1,183 @@
+From 4ee59f2711ce8f401b4f5c4f12639dd3c4f6d5d8 Mon Sep 17 00:00:00 2001
+From: swaggyp52 <connorangiel@gmail.com>
+Date: Wed, 18 Feb 2026 19:14:53 -0500
+Subject: [PATCH 15/18] docs(handoff): add lane-a apply guide and ahead-limit
+ warning guard
+
+proof: git bundle verify codex_laneA_2026-02-18.bundle
+
+proof: pnpm repo:status
+---
+ AI_STATE.md                  | 32 +++++++++++++++++
+ docs/handoff/APPLY_LANE_A.md | 69 ++++++++++++++++++++++++++++++++++++
+ scripts/repo-status.mjs      | 27 ++++++++++++++
+ 3 files changed, 128 insertions(+)
+ create mode 100644 docs/handoff/APPLY_LANE_A.md
+
+diff --git a/AI_STATE.md b/AI_STATE.md
+index 8846acf2..ca2ec28f 100644
+--- a/AI_STATE.md
++++ b/AI_STATE.md
+@@ -1,5 +1,37 @@
+ # AI State
+ 
++## Change Log 2026-02-19 (Lane A Handoff Artifact + Ahead-Limit Warning Guard)
++
++**Status**: COMPLETE - Produced a pushable Lane A handoff bundle and added a non-blocking local guard that warns when local commit drift exceeds 3 commits.
++
++### What Changed
++
++1. Pushable handoff documentation
++- Added `docs/handoff/APPLY_LANE_A.md`.
++- Includes:
++  - exact commit/base/tip range (`origin/main..HEAD`)
++  - bundle apply flow
++  - patch-series fallback flow
++  - fallback base-hash commands
++  - required verification commands
++
++2. Ahead-limit local warning guard (non-blocking)
++- Updated `scripts/repo-status.mjs`.
++- Added `origin/main..HEAD` ahead-count check with warning threshold `> 3`.
++- Emits loud guidance locally but does not fail `repo:status` or CI by itself.
++
++3. Handoff artifact creation
++- Created and verified `codex_laneA_2026-02-18.bundle` from `origin/main..HEAD`.
++
++### Validation Executed
++
++- `git bundle verify codex_laneA_2026-02-18.bundle` -> PASS
++- `pnpm repo:status` -> PASS (4/4 checks), with ahead-limit warning emitted as expected
++
++### Attribution
++
++- Connor Angiel
++
+ ## Change Log 2026-02-19 (Lane A follow-up: Fixture03 parity hardening + export required-port blocking)
+ 
+ **Status**: COMPLETE - Strengthened sequential parity proof and implemented Lane A #2 export blocking for unmapped required ports with deterministic diagnostics.
+diff --git a/docs/handoff/APPLY_LANE_A.md b/docs/handoff/APPLY_LANE_A.md
+new file mode 100644
+index 00000000..d03676df
+--- /dev/null
++++ b/docs/handoff/APPLY_LANE_A.md
+@@ -0,0 +1,69 @@
++# Apply Lane A Stack (Bundle + Verification)
++
++## Included Range
++
++- Base ref: `origin/main`
++- Base commit: `e5368e5441dfabb3d18d5637301f9261db6489f3`
++- Tip commit: `6612b3bc71795d3b93e4b69d6506fb4235f160cd`
++- Range: `origin/main..HEAD`
++- Bundle file: `codex_laneA_2026-02-18.bundle`
++
++Commits in this range (oldest -> newest):
++
++1. `c656ecce` `docs(ide): add pixel grid and spacing contract`
++2. `ee703270` `feat(ui): enforce max-width and panel rhythm across modes`
++3. `f2c93a59` `feat(project): compute readiness blockers from project data`
++4. `f8ba411d` `feat(verify): finalize failure table and hash placement`
++5. `8df3c303` `test(gates): add ide:gate:layout-contract`
++6. `cbb93fc8` `docs(labs): add ECE141 Basys3 compatibility matrix`
++7. `1f97ca10` `docs(roadmap): add executable ECE141 gap queue`
++8. `813d3d5a` `feat(verify): unify sequential schedule for runner and testbench`
++9. `00291198` `fix(export): emit real testbench and accept CLK100MHZ alias`
++10. `81231cc7` `test(gates): add fixture03 import-verify-export parity check`
++11. `8baeda07` `docs: record lane-a1 sequential parity implementation`
++12. `723985f9` `test(import): enforce fixture03 clock schedule pattern and hash baseline`
++13. `e9030112` `fix(export): block unmapped required ports with compiler-style diagnostics`
++14. `6612b3bc` `docs: record lane-a parity hardening and export blocking`
++
++## Apply via Bundle
++
++```bash
++git pull
++git bundle verify codex_laneA_2026-02-18.bundle
++git bundle unbundle codex_laneA_2026-02-18.bundle
++git merge 6612b3bc71795d3b93e4b69d6506fb4235f160cd
++git push
++```
++
++## Alternative Apply via Patch Series
++
++```bash
++git format-patch origin/main..HEAD -o codex_patches
++```
++
++On target machine:
++
++```bash
++git pull
++git am codex_patches/*.patch
++git push
++```
++
++## Fallback Base (if `origin/main` is unavailable locally)
++
++Use the base hash directly when creating artifacts:
++
++```bash
++git bundle create codex_laneA_2026-02-18.bundle e5368e5441dfabb3d18d5637301f9261db6489f3..HEAD
++git format-patch e5368e5441dfabb3d18d5637301f9261db6489f3..HEAD -o codex_patches
++```
++
++## Post-Apply Verification
++
++Run these before push/PR:
++
++```bash
++pnpm repo:status
++pnpm gates:import-roundtrip
++pnpm -s rc:d2:basys3-bundle-gate
++```
+diff --git a/scripts/repo-status.mjs b/scripts/repo-status.mjs
+index c8739005..3403508a 100644
+--- a/scripts/repo-status.mjs
++++ b/scripts/repo-status.mjs
+@@ -16,6 +16,7 @@ import fs from 'fs';
+ import path from 'path';
+ 
+ const ROOT = process.cwd();
++const AHEAD_WARN_LIMIT = 3;
+ 
+ let totalChecks = 0;
+ let passCount = 0;
+@@ -50,8 +51,34 @@ function fileExists(filePath, description) {
+   return false;
+ }
+ 
++function emitAheadLimitWarning() {
++  try {
++    const aheadRaw = execSync('git rev-list --count origin/main..HEAD', {
++      stdio: ['pipe', 'pipe', 'pipe'],
++      cwd: ROOT,
++      encoding: 'utf8',
++    }).trim();
++    const aheadCount = Number.parseInt(aheadRaw, 10);
++    if (!Number.isFinite(aheadCount)) {
++      console.log(`[warn] unable to parse ahead count: "${aheadRaw}"`);
++      return;
++    }
++    if (aheadCount > AHEAD_WARN_LIMIT) {
++      console.log(
++        `[warn] local branch is ${aheadCount} commits ahead of origin/main (recommended <= ${AHEAD_WARN_LIMIT}).`
++      );
++      console.log(
++        '[warn] guidance: push/PR the current lane stack now, or generate a bundle/patch handoff before adding more commits.'
++      );
++    }
++  } catch {
++    console.log('[warn] ahead-limit check skipped (origin/main not available locally).');
++  }
++}
++
+ console.log('RedByte UI Repository Status\n');
+ console.log('='.repeat(50));
++emitAheadLimitWarning();
+ 
+ // 0. Static anti-shadow contract (fast fail)
+ if (!runCheck('IDE Boot Shadow Contract', 'pnpm gates:ide-boot-shadow-contract 2>&1')) {
+-- 
+2.52.0.windows.1
+

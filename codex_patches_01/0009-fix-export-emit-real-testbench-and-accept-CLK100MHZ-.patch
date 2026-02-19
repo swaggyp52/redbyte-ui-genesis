@@ -1,0 +1,133 @@
+From 0029119863683bfa112e2d93838514770d6a2d80 Mon Sep 17 00:00:00 2001
+From: swaggyp52 <connorangiel@gmail.com>
+Date: Wed, 18 Feb 2026 18:42:57 -0500
+Subject: [PATCH 09/18] fix(export): emit real testbench and accept CLK100MHZ
+ alias
+
+proof: export now generates testbench.vhd from vectors (no placeholder)
+---
+ .../src/fpga/boards/basys3/basys3Bundle.ts    | 33 +++++++++-------
+ .../fpga/boards/basys3/basys3ExportService.ts | 38 +++++++++----------
+ 2 files changed, 38 insertions(+), 33 deletions(-)
+
+diff --git a/packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts b/packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts
+index 71a29e7b..f800a600 100644
+--- a/packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts
++++ b/packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts
+@@ -17,12 +17,14 @@ const BASYS3_SWITCH_PINS = [
+   'V2', 'T3', 'T2', 'R3', 'W2', 'U1', 'T1', 'R2',
+ ];
+ 
+-const BASYS3_LED_PINS = [
+-  'U16', 'E19', 'U19', 'V19', 'W18', 'U15', 'U14', 'V14',
+-  'V13', 'V3', 'W3', 'U3', 'P3', 'N3', 'P1', 'L1',
+-];
+-
+-const BASYS3_ALLOWED_PACKAGE_PINS = new Set([...BASYS3_SWITCH_PINS, ...BASYS3_LED_PINS]);
++const BASYS3_LED_PINS = [
++  'U16', 'E19', 'U19', 'V19', 'W18', 'U15', 'U14', 'V14',
++  'V13', 'V3', 'W3', 'U3', 'P3', 'N3', 'P1', 'L1',
++];
++
++const BASYS3_CLOCK_PIN = 'W5';
++
++const BASYS3_ALLOWED_PACKAGE_PINS = new Set([...BASYS3_SWITCH_PINS, ...BASYS3_LED_PINS, BASYS3_CLOCK_PIN]);
+ 
+ export interface Basys3BundleResult {
+   topV: string;
+@@ -61,14 +63,17 @@ function pinToPackagePin(pin: string): string | null {
+       ? BASYS3_SWITCH_PINS[index]
+       : null;
+   }
+-  if (pin.startsWith('LD')) {
+-    const index = Number.parseInt(pin.slice(2), 10);
+-    return Number.isFinite(index) && index >= 0 && index < BASYS3_LED_PINS.length
+-      ? BASYS3_LED_PINS[index]
+-      : null;
+-  }
+-  return null;
+-}
++  if (pin.startsWith('LD')) {
++    const index = Number.parseInt(pin.slice(2), 10);
++    return Number.isFinite(index) && index >= 0 && index < BASYS3_LED_PINS.length
++      ? BASYS3_LED_PINS[index]
++      : null;
++  }
++  if (pin === 'CLK100MHZ') {
++    return BASYS3_CLOCK_PIN;
++  }
++  return null;
++}
+ 
+ function buildTopXdc(ioMapping: IoMapping, warnings: string[]): string {
+   const lines: string[] = [];
+diff --git a/packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts b/packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts
+index 6a7a9810..e7507ce0 100644
+--- a/packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts
++++ b/packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts
+@@ -10,8 +10,9 @@
+  * All exports must go through this service.
+  */
+ 
+-import { exportBasys3Bundle } from './basys3Bundle';
+-import type { RBProject } from '../../export/projectFormat';
++import { exportBasys3Bundle } from './basys3Bundle';
++import type { RBProject } from '../../export/projectFormat';
++import { generateTestbenchVhdl } from './testbenchGenerator';
+ 
+ export interface Basys3ExportError {
+   type: 'validation' | 'constraint' | 'logic' | 'unknown';
+@@ -73,21 +74,22 @@ function validateProjectForBasys3(project: RBProject): Basys3ExportError[] {
+   }
+ 
+   // Check for unsupported pin aliases
+-  const validPins = new Set([
+-    ...Array.from({ length: 16 }, (_, i) => `SW${i}`),
+-    ...Array.from({ length: 16 }, (_, i) => `LD${i}`),
+-    'BTNC', 'BTNU', 'BTNL', 'BTNR', 'BTND',
+-  ]);
++  const validPins = new Set([
++    ...Array.from({ length: 16 }, (_, i) => `SW${i}`),
++    ...Array.from({ length: 16 }, (_, i) => `LD${i}`),
++    'BTNC', 'BTNU', 'BTNL', 'BTNR', 'BTND',
++    'CLK100MHZ',
++  ]);
+ 
+   for (const entry of project.ioMapping.inputs) {
+     if (entry.pin && !validPins.has(entry.pin)) {
+       errors.push({
+-        type: 'constraint',
+-        severity: 'error',
+-        message: `Unsupported input pin "${entry.pin}" for ${entry.nodeId}.${entry.port}. Valid: SW0-15, BTND/U/L/R/C`,
+-      });
+-    }
+-  }
++        type: 'constraint',
++        severity: 'error',
++        message: `Unsupported input pin "${entry.pin}" for ${entry.nodeId}.${entry.port}. Valid: SW0-15, BTND/U/L/R/C, CLK100MHZ`,
++      });
++    }
++  }
+ 
+   for (const entry of project.ioMapping.outputs) {
+     if (entry.pin && !validPins.has(entry.pin)) {
+@@ -184,12 +186,10 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
+     topVerilog: bundleResult.topV,
+   };
+ 
+-  // TODO: Generate testbench.vhd if vectors present
+-  if (project.vectors && project.vectors.length > 0) {
+-    // Testbench generation will be added in Milestone 5 (Verify)
+-    // For now, mark that it would be generated
+-    result.bundle.testbench = '-- Testbench would be generated here\n';
+-  }
++  // TODO: Generate testbench.vhd if vectors present
++  if (project.vectors && project.vectors.length > 0) {
++    result.bundle.testbench = generateTestbenchVhdl(project, project.vectors);
++  }
+ 
+   // Step 4: Compute determinism hash
+   // Use the encoded project + bundle to detect any non-determinism
+-- 
+2.52.0.windows.1
+

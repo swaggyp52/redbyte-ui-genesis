@@ -12,10 +12,10 @@ await runIdeGate('IDE project health live contract satisfied', async ({ page, ba
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
 
-  const initialCta = await text(page.locator('[data-testid="ide-project-primary-cta"]'));
+  const initialCta = await text(page.locator('[data-testid="ide-project-continue-target"]'));
   assert(
     initialCta.toLowerCase().includes('add test vectors'),
-    `expected initial project CTA "Add Test Vectors", got "${initialCta}"`
+    `expected initial project continue target "Add Test Vectors", got "${initialCta}"`
   );
 
   await page.locator('[data-testid="mode-button-verify"]').click();
@@ -62,9 +62,9 @@ await runIdeGate('IDE project health live contract satisfied', async ({ page, ba
     dirtySinceVerify === 'DIRTY',
     `expected dirty-since-verify indicator to be DIRTY, got "${dirtySinceVerify}"`
   );
-  const ctaAfterMutation = await text(page.locator('[data-testid="ide-project-primary-cta"]'));
+  const ctaAfterMutation = await text(page.locator('[data-testid="ide-project-continue-target"]'));
   assert(
     ctaAfterMutation.toLowerCase().includes('run verification'),
-    `expected project CTA "Run Verification" after design mutation, got "${ctaAfterMutation}"`
+    `expected project continue target "Run Verification" after design mutation, got "${ctaAfterMutation}"`
   );
 });

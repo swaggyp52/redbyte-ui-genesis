@@ -56,6 +56,7 @@ export const IdeApp: React.FC = () => {
   const markDesignMutated = useProjectRuntime((state) => state.markDesignMutated);
   const addDesignNode = useProjectRuntime((state) => state.addDesignNode);
   const addDesignIo = useProjectRuntime((state) => state.addDesignIo);
+  const connectDesignNodes = useProjectRuntime((state) => state.connectDesignNodes);
   const runRuntimeVerification = useProjectRuntime((state) => state.actions.verify.run);
   const clearRuntimeVerification = useProjectRuntime((state) => state.actions.verify.clear);
   const recordExport = useProjectRuntime((state) => state.recordExport);
@@ -452,6 +453,7 @@ export const IdeApp: React.FC = () => {
             onCircuitMutated={handleDesignMutation}
             onRuntimeAddNode={addDesignNode}
             onRuntimeAddIo={addDesignIo}
+            onRuntimeConnect={connectDesignNodes}
             compilerStatus={designCompilerStatus}
             onDiagnosticAction={handleDiagnosticAction}
             diagnosticRouteRequest={diagnosticRouteRequest}

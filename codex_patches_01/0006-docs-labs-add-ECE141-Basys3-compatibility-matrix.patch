@@ -1,0 +1,202 @@
+From cbb93fc8af2f765607199ce072c91d0aca1f4197 Mon Sep 17 00:00:00 2001
+From: swaggyp52 <connorangiel@gmail.com>
+Date: Wed, 18 Feb 2026 18:29:41 -0500
+Subject: [PATCH 06/18] docs(labs): add ECE141 Basys3 compatibility matrix
+
+proof: passes pnpm repo:status
+---
+ AI_STATE.md                                   | 78 ++++++++++++++++
+ .../ece141-basys3-compatibility-matrix.md     | 93 +++++++++++++++++++
+ 2 files changed, 171 insertions(+)
+ create mode 100644 docs/labs/ece141-basys3-compatibility-matrix.md
+
+diff --git a/AI_STATE.md b/AI_STATE.md
+index 3e614c99..7a11f67c 100644
+--- a/AI_STATE.md
++++ b/AI_STATE.md
+@@ -1,5 +1,83 @@
+ # AI State
+ 
++## Change Log 2026-02-18 (ECE141 Lab Compatibility Matrix from Provided Course PDFs)
++
++**Status**: COMPLETE - Added a canonical lab-to-product compatibility matrix using the newly provided 8 lab handouts and 3 manuals as source input.
++
++### What Changed
++
++1. Added `docs/labs/ece141-basys3-compatibility-matrix.md`:
++- Maps Lab 1-8 expectations to RedByte Design -> Verify -> Export requirements.
++- Defines what RedByte replaces/simplifies vs what must remain Vivado/Basys3 compatible.
++- Lists canonical export artifact contract (`top.vhd`, `top.xdc`, `README.txt`, optional `testbench.vhd`, determinism hash).
++- Records high-risk parity gaps to close for full semester coverage (display/button mapping coverage, sequential testbench generation, blocked-state clarity, lab fixtures).
++
++2. Grounded matrix against provided references:
++- ECE141 Lab 1-8 PDFs (objectives/deliverables/design tasks/hardware expectations).
++- VHDL quick start reference (simulation/synthesis and structural HDL framing).
++- Vivado UG910 getting-started flow expectations.
++- Basys3 reference manual hardware capabilities (switches, LEDs, pushbuttons, seven-segment, 100 MHz clock).
++
++### Attribution
++
++- Connor Angiel
++
++## Change Log 2026-02-18 (IDE Design Contract Execution: pixel layout + workflow surfaces + layout gate)
++
++**Status**: COMPLETE - Implemented the requested five-commit sequence to move IDE from coherent shell to intentional instrument-panel layout.
++
++### Delivered Sequence
++
++1. `docs(ide): add pixel grid and spacing contract`
++- Added `docs/ide/ui-contract.md` as canonical pixel-spec contract:
++  - 12-column bounded layout
++  - 8px-only spacing scale
++  - panel rhythm (title row, action row, workspace, inspector)
++  - mode wireframes and acceptance checklist
++- Updated `docs/ide/style-guide.md` to align with contract.
++
++2. `feat(ui): enforce max-width and panel rhythm across modes`
++- Updated shared panel primitive (`packages/rb-apps/src/apps/ide/components/IdePrimitives.tsx`) with deterministic title/action row markers.
++- Updated mode surfaces and placeholder composition:
++  - `packages/rb-apps/src/apps/IdeApp.tsx`
++  - `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
++  - `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
++  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
++- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
++  - bounded content width (1280px within 1200-1320 target)
++  - fixed rail and inspector widths
++  - explicit panel rhythm styling
++  - tokenized spacing tightened to 8px rhythm scale.
++
++3. `feat(project): compute readiness blockers from project data`
++- Updated `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` to compute blockers from structured readiness inputs (IO mapping completeness, vectors, last verify).
++- Updated `packages/rb-apps/src/apps/IdeApp.tsx` to pass readiness model instead of static placeholder counts.
++
++4. `feat(verify): finalize failure table and hash placement`
++- Updated `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` with fixed-top verification summary, deterministic hash anchor, failure-derived status, blocked state, and stable failure diff rendering.
++- Updated `packages/rb-apps/src/apps/ide/ide-root.css` with verify summary grid styling.
++
++5. `test(gates): add ide:gate:layout-contract`
++- Added Playwright gate `scripts/gates/ide-layout-contract.mjs`:
++  - validates left rail width contract and consistency
++  - validates right inspector in all modes
++  - validates title row + action row contract
++  - validates primary CTA or blocked message
++  - validates non-empty mode surfaces across Project/Design/Verify/Export/Import
++- Added script entry in `package.json`: `ide:gate:layout-contract`
++- Added gate to classroom suite in `scripts/verify-gates-classroom.mjs`.
++
++### Verification Executed
++
++- `pnpm --filter @redbyte/playground build` -> PASS
++- `pnpm -s ide:gate:route-contract` -> PASS
++- `pnpm -s ide:gate:shell-structure` -> PASS
++- `pnpm -s ide:gate:layout-contract` -> PASS
++
++### Attribution
++
++- Connor Angiel
++
+ ## Change Log 2026-02-18 (Intentional IDE Design Baseline: docs + shell + Project/Design/Verify v1 + structure gate)
+ 
+ **Status**: COMPLETE - Replaced placeholder IDE styling with an intentional shell system and mode-first UI baselines, while preserving IDE-first boot contract.
+diff --git a/docs/labs/ece141-basys3-compatibility-matrix.md b/docs/labs/ece141-basys3-compatibility-matrix.md
+new file mode 100644
+index 00000000..44172c61
+--- /dev/null
++++ b/docs/labs/ece141-basys3-compatibility-matrix.md
+@@ -0,0 +1,93 @@
++# ECE141 to RedByte Basys3 Compatibility Matrix
++
++Status: Draft v1 (2026-02-18)  
++Owner: Connor Angiel
++
++## Scope
++
++This document maps the provided ECE141 Lab 1-8 handouts and three manuals to RedByte IDE product requirements.
++
++Product loop target:
++1. Design in RedByte IDE
++2. Verify deterministically in RedByte
++3. Export Vivado-ready artifacts
++4. Run in Vivado
++5. Program Basys3 hardware
++
++## Source Inputs
++
++Course lab PDFs:
++- `fac_jung002_ECE141_Lab1 (1).pdf`
++- `fac_jung002_ECE141_Lab2.pdf`
++- `fac_jung002_ECE141_Lab3.pdf`
++- `fac_jung002_ECE141_Lab4.pdf`
++- `fac_jung002_ECE141_Lab5.pdf`
++- `fac_jung002_ECE141_Lab6.pdf`
++- `fac_jung002_ECE141_Lab7.pdf`
++- `fac_jung002_ECE141_Lab8.pdf`
++
++Reference manuals:
++- `ECE348_GECE598_Refer_VHDL_quick_start.pdf`
++- `vivado-getting-started-en-us-2025.1.pdf`
++- `basys3_rm (1).pdf`
++
++Internal RedByte export/manifest contract references:
++- `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts`
++- `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`
++- `packages/rb-apps/src/export/fileTreeManifest.ts`
++
++## Translation Rule (Legacy Lab Stack to RedByte Stack)
++
++The lab PDFs are written around Xilinx ISE + Spartan-3 era flow. RedByte target flow is Vivado + Basys3.  
++For compatibility, RedByte must preserve lab intent while translating tools and board mapping:
++
++- ISE schematic capture -> RedByte Design mode (graph/canvas)
++- HDL Bencher waveform checks -> RedByte Verify mode (deterministic vectors + diff + hash)
++- iMPACT/ISE programming -> Vivado/openFPGALoader Basys3 programming flow
++- Spartan-3 board pin assignment tables -> Basys3 pin map contract
++
++## Per-Lab Compatibility Matrix
++
++| Lab | Course expectation from handout | What RedByte should replace/simplify | What RedByte must still output/prove | Current parity note |
++| --- | --- | --- | --- | --- |
++| Lab 1 (Basic gates) | Draw simple gates, simulate, build truth table, verify outputs, basic hardware familiarity. | Use Design mode gate palette and Verify vectors instead of ISE + HDL Bencher setup steps. | Deterministic verify result, failure diff, and exportable `top.vhd` + `top.xdc` + `README.txt`. | High parity path. This is directly aligned with current RedByte core loop. |
++| Lab 2 (4-bit adder + hierarchy) | Build full-adder macro and hierarchical 4-bit adder; verify cases. | Use reusable subcircuits/components and deterministic verify vectors instead of ISE macro wizard flow. | Correct multi-bit behavior in Verify and Vivado-ready export with stable port naming and deterministic artifact ordering. | Mostly aligned; requires strong submodule UX and bus clarity in Design mode. |
++| Lab 3 (7-seg driver) | Build SSD driver, complete truth table/equations, assign pins, synthesize, implement, generate bitstream, program board. | Keep same logic objective but replace ISE process with RedByte Export readiness panel + Vivado handoff. | Valid SSD-related pin mapping, export that Vivado can place/route, and hardware-visible SSD behavior. | Partial today. Existing Basys3 bundle path is centered on `SW*` and `LD*`; seven-segment parity must be closed. |
++| Lab 4 (Simplified ALU) | Implement opcode-selected ALU (AND/NAND/OR/NOR/XOR/XNOR/Sum/Carry) with enable semantics; synthesize and hardware test. | Use Design mode + Verify mode opcode-driven vectors instead of manual ISE-only checks. | Vector proof for every opcode row and export-valid pin mapping for selected I/O. | High for logic verification, medium for board mapping UX polish. |
++| Lab 5 (2s complement add/sub + SSD) | Top-level arithmetic unit plus SSD display path; include Overflow/C_out/Sign and board integration. | Use structured Project and Export validation to catch missing arithmetic outputs and unmapped ports early. | Deterministic arithmetic verification plus export with full mapped outputs and clear README pin table. | Partial. Arithmetic path is feasible, but SSD-focused board mapping parity is still a gap. |
++| Lab 6 (Latches/flip-flops) | Verify D latch, D FF, T FF, JK FF behavior with simulation evidence. | Verify mode should provide deterministic sequential traces and clear timing-step semantics. | Clock/reset semantics in verify traces, deterministic PASS/FAIL, and optional testbench parity for Vivado sim. | Partial. Core sequential simulation exists; testbench generation and sequential UX should be hardened. |
++| Lab 7 (Synchronous counters) | Build 4-bit counter with Load/CE/reset/CEO, then BCD counter variant; provide state table/equations/simulation/hardware test. | Verify mode should provide counter-state progression checks and blocked-state guidance if clock mapping is missing. | Deterministic sequential vector run proving counter sequence and export-ready clock/reset mapping. | Partial. Counter logic is supported conceptually; robust clock/contract enforcement must remain strict. |
++| Lab 8 (Security lock FSM) | Build Moore FSM + counters, evaluate 12-bit stream in 3-bit windows, detect required sequences (`010`/`100`), show open indicator and count. | Use Design + Verify + Project readiness workflow instead of spread-out manual checks. | Deterministic sequential verification artifacts proving accepted/rejected streams and complete export mapping for hardware indicators. | Partial to medium. Requires strong FSM verification UX and full I/O mapping confidence for final hardware demo parity. |
++
++## Manual-to-Product Contract Matrix
++
++| Manual | Practical requirement | RedByte contract impact |
++| --- | --- | --- |
++| `ECE348_GECE598_Refer_VHDL_quick_start.pdf` | Reinforces VHDL entity/architecture/process semantics and simulation/synthesis split. | Export and import paths must preserve synthesizable structure and deterministic simulation meaning. |
++| `vivado-getting-started-en-us-2025.1.pdf` | Vivado is authoritative ISE replacement; IDE + Tcl/batch flow are first-class. | Export mode should remain compiler-like and produce consistent Vivado handoff artifacts and logs. |
++| `basys3_rm (1).pdf` | Board facts: XC7A35T-1CPG236C, 16 switches, 16 LEDs, 5 pushbuttons, 4-digit seven-segment, 100 MHz clock, JTAG programming path. | Basys3 board profile and pin map gates must stay canonical and complete for course parity. |
++
++## Canonical RedByte Artifact Contract for ECE141
++
++For each lab submission flow, RedByte should be able to produce:
++- `top.vhd`
++- `top.xdc`
++- `README.txt`
++- `testbench.vhd` when vectors exist
++- Determinism hash for verify/export run identity
++
++These names are already represented in RedByte export and file-manifest code paths.
++
++## High-Risk Gaps to Close for Full Semester Parity
++
++1. Expand export pin alias coverage beyond switch/LED-only paths where needed for seven-segment and button-heavy labs.
++2. Replace placeholder testbench output with real deterministic testbench generation for sequential labs.
++3. Keep strict blocked-state messaging when clock or critical mappings are missing (no silent success).
++4. Add lab-oriented verify presets/fixtures for Labs 3-8 so failure diffs map to expected classroom deliverables.
++
++## Acceptance Criteria for Matrix Usage
++
++This matrix is considered actionable when:
++1. Every Phase 1/2 IDE feature ticket references at least one row in this matrix.
++2. Export and verify gates include at least one check tied to each lab category (combinational, arithmetic, sequential, FSM/display).
++3. RedByte docs for student flow remain consistent with this matrix and Basys3-only scope.
+-- 
+2.52.0.windows.1
+

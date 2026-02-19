@@ -185,6 +185,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   return (
     <IdeSurfaceLayout
       mode="project"
+      consoleHasBlocking={health.blockingIssues.length > 0}
       dock={
         <section className="ide-workbench-placeholder" data-testid="ide-project-sources-dock">
           <header className="ide-workbench-placeholder-header">
@@ -312,29 +313,23 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       }
     >
       <IdePanel
-        title="Project Truth Engine"
-        description="One source of truth for readiness, mapping, and verification/export activity."
+        title="Project Setup"
+        description="Sources, mapping, and readiness in one deterministic control surface."
         actions={
           <>
             <span data-testid="ide-primary-cta">
-              <IdeButton tone="primary" onClick={onPrimaryCta} testId="ide-project-primary-cta">
-                {primaryCtaLabel}
+              <IdeButton tone="primary" onClick={onPrimaryCta} testId="ide-project-continue-cta">
+                Continue
               </IdeButton>
+            </span>
+            <span className="ide-chip ide-chip-neutral" data-testid="ide-project-continue-target">
+              Next: {primaryCtaLabel}
             </span>
             <IdeButton tone="secondary" onClick={onAutoSuggestMapping} testId="ide-project-auto-suggest">
               Auto-suggest Basys3
             </IdeButton>
             <IdeButton tone="ghost" onClick={onOpenDesign}>
               Open Design
-            </IdeButton>
-            <IdeButton tone="ghost" onClick={onOpenVerify}>
-              Open Verify
-            </IdeButton>
-            <IdeButton tone="ghost" onClick={onOpenExport}>
-              Open Export
-            </IdeButton>
-            <IdeButton tone="ghost" onClick={onOpenImport}>
-              Import HDL
             </IdeButton>
           </>
         }

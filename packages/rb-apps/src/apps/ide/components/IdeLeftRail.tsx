@@ -43,8 +43,10 @@ export const IdeLeftRail: React.FC<IdeLeftRailProps> = ({ currentMode, onModeCha
               onClick={() => onModeChange(mode.id)}
               className={`ide-mode-button ${isActive ? 'is-active' : ''}`}
               data-testid={`mode-button-${mode.id}`}
+              data-active={isActive ? 'true' : 'false'}
               aria-current={isActive ? 'page' : undefined}
             >
+              <span className="ide-mode-active-rail" aria-hidden="true" />
               <span className="ide-mode-glyph" aria-hidden="true">
                 {mode.shortLabel}
               </span>

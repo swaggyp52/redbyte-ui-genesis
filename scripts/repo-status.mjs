@@ -100,10 +100,19 @@ if (!runCheck('Import Pipeline Validation', 'pnpm gates:import-roundtrip 2>&1'))
 if (!runCheck('IDE Project Health Live Contract', 'pnpm -s ide:gate:project-health-live-contract 2>&1')) {
   process.exit(1);
 }
+if (!runCheck('IDE Project Continue CTA Contract', 'pnpm -s ide:gate:project-continue-cta-contract 2>&1')) {
+  process.exit(1);
+}
 if (!runCheck('IDE Workbench Layout Contract', 'pnpm -s ide:gate:workbench-layout-contract 2>&1')) {
   process.exit(1);
 }
 if (!runCheck('IDE Design Workbench Contract', 'pnpm -s ide:gate:design-workbench-contract 2>&1')) {
+  process.exit(1);
+}
+if (!runCheck('IDE Design Fit Contract', 'pnpm -s ide:gate:design-fit-contract 2>&1')) {
+  process.exit(1);
+}
+if (!runCheck('IDE Design Live Sim Contract', 'pnpm -s ide:gate:design-live-sim-contract 2>&1')) {
   process.exit(1);
 }
 if (!runCheck('IDE Primary CTA Contract', 'pnpm -s ide:gate:primary-cta-contract 2>&1')) {
@@ -121,6 +130,9 @@ if (!runCheck('IDE Examples Contract', 'pnpm -s ide:gate:examples-contract 2>&1'
 if (!runCheck('IDE Design System Contract', 'pnpm -s ide:gate:design-system-contract 2>&1')) {
   process.exit(1);
 }
+if (!runCheck('IDE Shell Chrome Contract', 'pnpm -s ide:gate:shell-chrome-contract 2>&1')) {
+  process.exit(1);
+}
 if (!runCheck('IDE Screenshot Baselines', 'pnpm -s ide:gate:screenshots 2>&1')) {
   process.exit(1);
 }
@@ -128,6 +140,14 @@ if (!runCheck('IDE Verify Workbench Contract', 'pnpm -s ide:gate:verify-workbenc
   process.exit(1);
 }
 if (!runCheck('IDE Evidence Capsule Contract', 'pnpm -s ide:gate:evidence-capsule-contract 2>&1')) {
+  process.exit(1);
+}
+if (
+  !runCheck(
+    'IDE Export Artifact Explorer Contract',
+    'pnpm -s ide:gate:export-artifact-explorer-contract 2>&1'
+  )
+) {
   process.exit(1);
 }
 

@@ -128,6 +128,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [selectedTick, setSelectedTick] = useState<number | null>(null);
   const [selectedSignal, setSelectedSignal] = useState<string | null>(null);
   const [draftTick, setDraftTick] = useState<number>(() => nextVectorTick(vectors));
+  const [runState, setRunState] = useState<'idle' | 'running' | 'complete'>('idle');
   const [draftInputs, setDraftInputs] = useState<Record<string, '0' | '1'>>(() =>
     createDraftInputs(inputFields)
   );
@@ -207,6 +208,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     });
   }, [failingRows, signalTimeline]);
 
+  useEffect(() => {
+    if (lastRun) {
+      setRunState('complete');
+    }
+  }, [lastRun?.reportHash]);
+
   const activeScenario = useMemo(
     () => VERIFY_SCENARIOS.find((scenario) => scenario.id === selectedScenario) ?? VERIFY_SCENARIOS[0],
     [selectedScenario]
@@ -244,16 +251,19 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     authoredVectors.length > 0 || hasVectors ? 'Project vectors loaded' : 'No vectors saved yet';
 
   const runVerification = () => {
+    setRunState('running');
     onRunVerification?.({
       scenarioId: activeScenario.id,
       scenarioName: activeScenario.name,
       deterministicHash: activeScenario.hash,
       rows: activeScenario.rows,
     });
+    setRunState('complete');
   };
 
   const clearResults = () => {
     onClearVerification?.();
+    setRunState('idle');
   };
 
   const handleAddVector = () => {
@@ -310,6 +320,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   return (
     <IdeSurfaceLayout
       mode="verify"
+      consoleHasBlocking={status === 'fail'}
       dock={
         <section className="ide-verify-left-dock" data-testid="ide-verify-left-dock">
           <header className="ide-design-subheader">
@@ -340,6 +351,31 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ? 'Latest run FAIL. Drill into mismatches and fix in Design.'
                 : 'No run recorded yet.'}
           </IdeCallout>
+          <header className="ide-design-subheader">
+            <h3>Failures</h3>
+            <span className="ide-copy">{failingRows.length}</span>
+          </header>
+          <div className="ide-signal-list" data-testid="ide-verify-failures-list">
+            {failingRows.length === 0 ? (
+              <p className="ide-copy">No failing rows in the latest run.</p>
+            ) : (
+              failingRows.slice(0, 8).map((row) => (
+                <button
+                  key={`${row.tick}-${row.signal}`}
+                  type="button"
+                  className="ide-signal-row"
+                  onClick={() => {
+                    setSelectedTick(row.tick);
+                    setSelectedSignal(row.signal);
+                  }}
+                  data-testid={`ide-verify-failure-${toTestId(`${row.signal}-${row.tick}`)}`}
+                >
+                  <span>{row.signal}</span>
+                  <span>t{row.tick}</span>
+                </button>
+              ))
+            )}
+          </div>
         </section>
       }
       inspector={
@@ -536,6 +572,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <h3>Waveform</h3>
                 <span className="ide-section-header-meta">
                   {signalTimeline.length} signals / {timelineTicks.length} ticks
+                </span>
+                <span className="ide-section-header-meta" data-testid="ide-verify-run-state">
+                  {runState.toUpperCase()}
                 </span>
               </header>
               <section className="ide-verify-tick-nav" data-testid="ide-verify-tick-nav">

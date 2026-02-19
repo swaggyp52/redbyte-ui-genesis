@@ -1,0 +1,47 @@
+#!/usr/bin/env node
+
+import { assert, runIdeGate, visible } from './_gateHarness.mjs';
+
+await runIdeGate('IDE shell chrome contract satisfied', async ({ page, baseUrl }) => {
+  await page.goto(`${baseUrl}/?mode=verify`, { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
+  await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
+
+  const topBar = page.locator('[data-testid="ide-top-bar"]').first();
+  const leftRail = page.locator('[data-testid="ide-left-rail"]').first();
+  const consolePanel = page.locator('[data-testid="ide-workbench-console"]').first();
+  assert(await visible(topBar), 'top bar must be visible');
+  assert(await visible(leftRail), 'left rail must be visible');
+  assert(await visible(consolePanel), 'workbench console must be visible');
+
+  const [topBarBox, leftRailBox, consoleBox] = await Promise.all([
+    topBar.boundingBox(),
+    leftRail.boundingBox(),
+    consolePanel.boundingBox(),
+  ]);
+  assert(Boolean(topBarBox), 'top bar bounding box unavailable');
+  assert(Boolean(leftRailBox), 'left rail bounding box unavailable');
+  assert(Boolean(consoleBox), 'console bounding box unavailable');
+  assert(topBarBox.height <= 60, `top bar must stay compact (<=60px), got ${topBarBox.height}`);
+  assert(
+    leftRailBox.width >= 64 && leftRailBox.width <= 76,
+    `left rail width must stay within compact range 64..76px, got ${leftRailBox.width}`
+  );
+  assert(
+    consoleBox.height <= 96,
+    `console should default collapsed in non-blocked mode (<=96px), got ${consoleBox.height}`
+  );
+
+  const activeButton = page.locator('[data-active="true"]').first();
+  assert(await visible(activeButton), 'active rail mode button marker missing');
+
+  await page.locator('[data-testid="mode-button-export"]').click();
+  await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
+  const exportConsole = page.locator('[data-testid="ide-workbench-console"]').first();
+  const exportConsoleBox = await exportConsole.boundingBox();
+  assert(Boolean(exportConsoleBox), 'export console bounding box unavailable');
+  assert(
+    exportConsoleBox.height >= 140,
+    `console should auto-expand on blocking diagnostics (>=140px), got ${exportConsoleBox.height}`
+  );
+});

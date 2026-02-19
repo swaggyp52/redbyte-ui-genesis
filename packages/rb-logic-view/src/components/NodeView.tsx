@@ -234,7 +234,10 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
 
   // No longer need global window listener because we have pointer capture!
   const color = NODE_COLORS[node.type] || '#94a3b8';
-  const isActive = signals?.get(`${node.id}.out`) === 1;
+  const outputSignal = signals?.get(`${node.id}.out`) ?? 0;
+  const inputSignal = signals?.get(`${node.id}.in`) ?? 0;
+  const isActive =
+    node.type === 'OUTPUT' || node.type === 'Lamp' ? inputSignal === 1 : outputSignal === 1;
   const isChip = !!chipMetadata;
   const hasDiagnosticBadge = (diagnosticBadge?.total ?? 0) > 0;
   const diagnosticLabel =

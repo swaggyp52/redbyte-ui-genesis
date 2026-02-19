@@ -235,6 +235,38 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   return (
     <IdeSurfaceLayout
       mode="export"
+      consoleHasBlocking={hasBlockingErrors}
+      dock={
+        <section className="ide-export-file-tree" data-testid="ide-export-artifact-tree">
+          <header className="ide-design-subheader">
+            <h3>Artifacts</h3>
+            <span className="ide-copy">{viewModel.artifacts.length}</span>
+          </header>
+          {viewModel.artifacts.length > 0 ? (
+            <div className="ide-export-file-tree-list">
+              {viewModel.artifacts.map((artifact) => {
+                const selected = selectedArtifactPath === artifact.path;
+                return (
+                  <button
+                    key={artifact.path}
+                    type="button"
+                    className={`ide-signal-row ${selected ? 'is-active' : ''}`}
+                    data-selected={selected ? 'true' : 'false'}
+                    data-testid={`ide-export-artifact-tree-item-${toArtifactTestId(artifact.path)}`}
+                    onClick={() => setSelectedArtifactPath(artifact.path)}
+                  >
+                    <span>{artifact.path}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <IdeCallout tone="warn" title="No artifacts">
+              Build output first to inspect generated files.
+            </IdeCallout>
+          )}
+        </section>
+      }
       inspector={
         <>
           <IdeInspectorSection title="Export Context">
@@ -543,7 +575,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     {selectedArtifact && (
                       <div className="ide-export-artifact-preview">
                       <div className="ide-export-artifact-preview-header">
-                        <span>{selectedArtifact.path}</span>
+                        <span data-testid="ide-export-preview-path">{selectedArtifact.path}</span>
                         <IdeButton
                           tone="secondary"
                           onClick={() => handleDownloadArtifact(selectedArtifact)}
@@ -707,4 +739,12 @@ function statusTone(status: ExportPinStatus): 'ok' | 'error' | 'warn' {
 function resolveRowStatus(baseStatus: ExportPinStatus, pinValue: string): ExportPinStatus {
   if (baseStatus === 'unused') return 'unused';
   return pinValue.trim().length > 0 ? 'mapped' : 'missing';
+}
+
+function toArtifactTestId(path: string): string {
+  return path
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }

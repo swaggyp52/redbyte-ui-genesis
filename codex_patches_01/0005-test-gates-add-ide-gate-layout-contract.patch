@@ -1,0 +1,139 @@
+From 8df3c3038199afbca8b5b9270baf0be62f96e48c Mon Sep 17 00:00:00 2001
+From: swaggyp52 <connorangiel@gmail.com>
+Date: Wed, 18 Feb 2026 18:19:44 -0500
+Subject: [PATCH 05/18] test(gates): add ide:gate:layout-contract
+
+proof: gate added and passes pnpm -s ide:gate:layout-contract
+---
+ package.json                          |  1 +
+ scripts/gates/ide-layout-contract.mjs | 93 +++++++++++++++++++++++++++
+ scripts/verify-gates-classroom.mjs    |  1 +
+ 3 files changed, 95 insertions(+)
+ create mode 100644 scripts/gates/ide-layout-contract.mjs
+
+diff --git a/package.json b/package.json
+index e0213bfa..aacb6f1c 100644
+--- a/package.json
++++ b/package.json
+@@ -146,6 +146,7 @@
+         "ide:gate:export-generates-hdl": "node ./scripts/gates/ide-export-generates-hdl.mjs",
+         "ide:gate:import-renders-schematic": "node ./scripts/gates/ide-import-renders-schematic.mjs",
+         "ide:gate:shell-structure": "node ./scripts/gates/ide-shell-structure-contract.mjs",
++        "ide:gate:layout-contract": "node ./scripts/gates/ide-layout-contract.mjs",
+         "ide:gate:route-contract": "node ./scripts/gates/ide-route-contract.mjs",
+         "gates:ide-boot-shadow-contract": "node ./scripts/gates/ide-boot-shadow-contract.mjs",
+         "verify:gates:log": "pnpm -s verify:gates > verify-gates-latest.txt",
+diff --git a/scripts/gates/ide-layout-contract.mjs b/scripts/gates/ide-layout-contract.mjs
+new file mode 100644
+index 00000000..42d181b3
+--- /dev/null
++++ b/scripts/gates/ide-layout-contract.mjs
+@@ -0,0 +1,93 @@
++#!/usr/bin/env node
++
++import { chromium } from 'playwright';
++
++const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
++
++const SELECTOR_IDE_ROOT = '[data-testid="ide-root"]';
++const SELECTOR_TOP_BAR = '[data-testid="ide-top-bar"]';
++const SELECTOR_LEFT_RAIL = '[data-testid="ide-left-rail"]';
++
++const MODES = ['project', 'design', 'verify', 'export', 'import'];
++
++function assert(condition, message) {
++  if (!condition) {
++    throw new Error(message);
++  }
++}
++
++async function visible(locator) {
++  return locator.first().isVisible().catch(() => false);
++}
++
++async function verifyLayoutContract(page) {
++  await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
++  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
++
++  await page.waitForSelector(SELECTOR_IDE_ROOT, { state: 'visible', timeout: 15000 });
++  await page.waitForSelector(SELECTOR_TOP_BAR, { state: 'visible', timeout: 15000 });
++  await page.waitForSelector(SELECTOR_LEFT_RAIL, { state: 'visible', timeout: 15000 });
++
++  const leftRail = page.locator(SELECTOR_LEFT_RAIL).first();
++  const initialBox = await leftRail.boundingBox();
++  assert(initialBox?.width, 'unable to read left rail width');
++  const initialWidth = Math.round(initialBox.width);
++
++  assert(initialWidth >= 120 && initialWidth <= 128, `left rail width out of contract range: ${initialWidth}px`);
++
++  for (const mode of MODES) {
++    await page.locator(`[data-testid="mode-button-${mode}"]`).click();
++    await page.waitForSelector(`[data-testid="ide-mode-${mode}"]`, { state: 'visible', timeout: 10000 });
++
++    const modeRoot = page.locator(`[data-testid="ide-mode-${mode}"]`).first();
++    const modeMarker = await modeRoot.getAttribute('data-ide-mode-marker');
++    assert(modeMarker === mode, `mode marker mismatch for ${mode}: ${modeMarker}`);
++
++    const inspectorVisible = await visible(modeRoot.locator('[data-testid="ide-inspector"]'));
++    assert(inspectorVisible, `right inspector missing in mode=${mode}`);
++
++    const titleRowVisible = await visible(modeRoot.locator('[data-testid="ide-panel-title-row"]'));
++    assert(titleRowVisible, `title row missing in mode=${mode}`);
++
++    const actionRowVisible = await visible(modeRoot.locator('[data-testid="ide-panel-action-row"]'));
++    assert(actionRowVisible, `action row missing in mode=${mode}`);
++
++    const primaryCount = await modeRoot.locator('.ide-button-primary').count();
++    const blockedCount = await modeRoot.getByText(/blocked/i).count();
++    assert(primaryCount > 0 || blockedCount > 0, `mode=${mode} missing primary CTA or blocked message`);
++
++    const panelCount = await modeRoot.locator('.ide-panel').count();
++    assert(panelCount > 0, `mode=${mode} rendered an empty workspace`);
++
++    const textContent = (await modeRoot.innerText()).trim();
++    assert(textContent.length > 30, `mode=${mode} appears empty`);
++
++    const box = await leftRail.boundingBox();
++    assert(box?.width, `unable to read left rail width in mode=${mode}`);
++    const width = Math.round(box.width);
++    assert(Math.abs(width - initialWidth) <= 2, `left rail width drifted in mode=${mode}: ${width}px`);
++  }
++}
++
++async function main() {
++  const browser = await chromium.launch();
++  const context = await browser.newContext({ serviceWorkers: 'block' });
++  const page = await context.newPage();
++  let exitCode = 0;
++
++  try {
++    await verifyLayoutContract(page);
++    console.log('PASS: IDE layout contract satisfied.');
++  } catch (error) {
++    exitCode = 1;
++    console.error('FAIL: IDE layout contract violated.');
++    console.error(error instanceof Error ? error.message : String(error));
++  } finally {
++    await context.close();
++    await browser.close();
++  }
++
++  process.exit(exitCode);
++}
++
++main();
+diff --git a/scripts/verify-gates-classroom.mjs b/scripts/verify-gates-classroom.mjs
+index a3bfd514..70c7be2b 100644
+--- a/scripts/verify-gates-classroom.mjs
++++ b/scripts/verify-gates-classroom.mjs
+@@ -37,6 +37,7 @@ function main() {
+     runGate('ide:boot-shadow-contract', 'pnpm -s gates:ide-boot-shadow-contract', true),
+     // PHASE 5: New IDE unification gates
+     runGate('ide:route-contract', 'pnpm -s ide:gate:route-contract', true),
++    runGate('ide:layout-contract', 'pnpm -s ide:gate:layout-contract', true),
+     runGate('ide:shell-structure', 'pnpm -s ide:gate:shell-structure', true),
+     runGate('ide:fullscreen-no-chrome', 'pnpm -s ide:gate:fullscreen-no-chrome', true),
+     runGate('ide:default-launcher-hidden', 'pnpm -s ide:gate:default-launcher-hidden', true),
+-- 
+2.52.0.windows.1
+

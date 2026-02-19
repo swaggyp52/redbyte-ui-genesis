@@ -1428,10 +1428,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                     fill="transparent"
                     style={{ cursor: 'pointer', pointerEvents: 'all' }}
                     data-testid={`switch-toggle-${node.id}`}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!editingState.wireStartPort) {

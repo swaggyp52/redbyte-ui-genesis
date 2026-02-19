@@ -1,0 +1,58 @@
+From de8cde0c44673c7c757e017d2829fcc96a4f78d8 Mon Sep 17 00:00:00 2001
+From: swaggyp52 <connorangiel@gmail.com>
+Date: Wed, 18 Feb 2026 19:15:33 -0500
+Subject: [PATCH 16/18] docs(handoff): make lane-a apply range tip-agnostic
+
+---
+ docs/handoff/APPLY_LANE_A.md | 25 +++++++------------------
+ 1 file changed, 7 insertions(+), 18 deletions(-)
+
+diff --git a/docs/handoff/APPLY_LANE_A.md b/docs/handoff/APPLY_LANE_A.md
+index d03676df..5a5e6e36 100644
+--- a/docs/handoff/APPLY_LANE_A.md
++++ b/docs/handoff/APPLY_LANE_A.md
+@@ -4,26 +4,15 @@
+ 
+ - Base ref: `origin/main`
+ - Base commit: `e5368e5441dfabb3d18d5637301f9261db6489f3`
+-- Tip commit: `6612b3bc71795d3b93e4b69d6506fb4235f160cd`
++- Tip ref: `HEAD` (the local stack tip at bundle creation time)
+ - Range: `origin/main..HEAD`
+ - Bundle file: `codex_laneA_2026-02-18.bundle`
+ 
+-Commits in this range (oldest -> newest):
+-
+-1. `c656ecce` `docs(ide): add pixel grid and spacing contract`
+-2. `ee703270` `feat(ui): enforce max-width and panel rhythm across modes`
+-3. `f2c93a59` `feat(project): compute readiness blockers from project data`
+-4. `f8ba411d` `feat(verify): finalize failure table and hash placement`
+-5. `8df3c303` `test(gates): add ide:gate:layout-contract`
+-6. `cbb93fc8` `docs(labs): add ECE141 Basys3 compatibility matrix`
+-7. `1f97ca10` `docs(roadmap): add executable ECE141 gap queue`
+-8. `813d3d5a` `feat(verify): unify sequential schedule for runner and testbench`
+-9. `00291198` `fix(export): emit real testbench and accept CLK100MHZ alias`
+-10. `81231cc7` `test(gates): add fixture03 import-verify-export parity check`
+-11. `8baeda07` `docs: record lane-a1 sequential parity implementation`
+-12. `723985f9` `test(import): enforce fixture03 clock schedule pattern and hash baseline`
+-13. `e9030112` `fix(export): block unmapped required ports with compiler-style diagnostics`
+-14. `6612b3bc` `docs: record lane-a parity hardening and export blocking`
++To print the exact commits included in your local stack:
++
++```bash
++git log --oneline --reverse origin/main..HEAD
++```
+ 
+ ## Apply via Bundle
+ 
+@@ -31,7 +20,7 @@ Commits in this range (oldest -> newest):
+ git pull
+ git bundle verify codex_laneA_2026-02-18.bundle
+ git bundle unbundle codex_laneA_2026-02-18.bundle
+-git merge 6612b3bc71795d3b93e4b69d6506fb4235f160cd
++git merge <bundle-tip-sha-from-verify-or-unbundle-output>
+ git push
+ ```
+ 
+-- 
+2.52.0.windows.1
+

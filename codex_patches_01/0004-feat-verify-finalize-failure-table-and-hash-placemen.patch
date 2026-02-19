@@ -1,0 +1,124 @@
+From f8ba411d9a4d01a746e6b006118b925c962d24f6 Mon Sep 17 00:00:00 2001
+From: swaggyp52 <connorangiel@gmail.com>
+Date: Wed, 18 Feb 2026 18:18:38 -0500
+Subject: [PATCH 04/18] feat(verify): finalize failure table and hash placement
+
+proof: passes pnpm --filter @redbyte/playground build, ide:gate:route-contract, and ide:gate:shell-structure
+---
+ packages/rb-apps/src/apps/ide/ide-root.css    |  6 +++
+ .../src/apps/ide/surfaces/VerifySurface.tsx   | 50 +++++++++++++++----
+ 2 files changed, 47 insertions(+), 9 deletions(-)
+
+diff --git a/packages/rb-apps/src/apps/ide/ide-root.css b/packages/rb-apps/src/apps/ide/ide-root.css
+index 93011671..86ef0cdc 100644
+--- a/packages/rb-apps/src/apps/ide/ide-root.css
++++ b/packages/rb-apps/src/apps/ide/ide-root.css
+@@ -537,6 +537,12 @@
+   color: #a9e8ff;
+ }
+ 
++.ide-verify-summary-grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
++  gap: var(--ide-space-2);
++}
++
+ .ide-signal-list {
+   display: grid;
+   gap: var(--ide-space-2);
+diff --git a/packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx b/packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx
+index d570a7bf..b5149e5a 100644
+--- a/packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx
++++ b/packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx
+@@ -19,15 +19,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
+   hasVectors,
+   onOpenProjectVectors,
+ }) => {
+-  const runPassed = false;
+-
+-  const rows = hasVectors
++  const runRows = hasVectors
+     ? [
+         ['12', 'sum[0]', '1', '1', 'PASS'],
+         ['12', 'carry', '0', '1', 'FAIL'],
+         ['13', 'sum[1]', '1', '1', 'PASS'],
+       ]
+     : [];
++  const failingRows = runRows.filter((row) => row[4] === 'FAIL');
++  const runPassed = hasVectors && failingRows.length === 0;
+ 
+   return (
+     <div className="ide-content-grid" data-testid="ide-mode-verify" data-ide-mode-marker="verify">
+@@ -55,16 +55,22 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
+           <div className={`ide-verify-banner ${runPassed ? 'is-pass' : 'is-fail'}`} data-testid="ide-verify-banner">
+             <div>
+               <p className="ide-verify-label">Verification Result</p>
+-              <h3>{runPassed ? 'PASS - deterministic agreement' : 'FAIL - mismatch detected'}</h3>
++              <h3>
++                {hasVectors
++                  ? runPassed
++                    ? 'PASS - deterministic agreement'
++                    : 'FAIL - mismatch detected'
++                  : 'BLOCKED - add vectors first'}
++              </h3>
+             </div>
+             <div className="ide-verify-hash-block">
+               <span>Hash</span>
+-              <code>{deterministicHash}</code>
++              <code data-testid="ide-verify-hash">{deterministicHash}</code>
+             </div>
+           </div>
+ 
+           {!hasVectors && (
+-            <IdeCallout tone="warn" title="No test vectors yet">
++            <IdeCallout tone="warn" title="Verification is blocked">
+               Add vectors in Project mode to run deterministic verification.
+               <div className="ide-inline-actions">
+                 <IdeButton tone="secondary" onClick={onOpenProjectVectors}>
+@@ -76,14 +82,40 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
+ 
+           {hasVectors && (
+             <>
++              <div className="ide-verify-summary-grid">
++                <div className="ide-metric">
++                  <div className="ide-metric-header">
++                    <span>Total Checks</span>
++                    <span>{runRows.length}</span>
++                  </div>
++                  <p className="ide-copy ide-copy-top-gap">Each row is deterministic by tick + signal.</p>
++                </div>
++                <div className="ide-metric">
++                  <div className="ide-metric-header">
++                    <span>Failures</span>
++                    <span>{failingRows.length}</span>
++                  </div>
++                  <p className="ide-copy ide-copy-top-gap">
++                    {failingRows.length === 0
++                      ? 'No failures in latest run.'
++                      : 'Resolve failure rows before export.'}
++                  </p>
++                </div>
++              </div>
++
+               <IdeDataTable
+                 columns={['Tick', 'Signal', 'Expected', 'Actual', 'Status']}
+-                rows={rows}
++                rows={runRows}
+                 testId="ide-verify-results-table"
+               />
+-              {!runPassed && (
++              {!runPassed && failingRows.length > 0 && (
+                 <IdeCallout tone="error" title="Failure diff">
+-                  Tick 12 signal <code>carry</code> expected <code>0</code> but observed <code>1</code>.
++                  {failingRows.map((row) => (
++                    <div key={`${row[0]}-${row[1]}`}>
++                      Tick <code>{row[0]}</code> signal <code>{row[1]}</code> expected{' '}
++                      <code>{row[2]}</code> but observed <code>{row[3]}</code>.
++                    </div>
++                  ))}
+                 </IdeCallout>
+               )}
+             </>
+-- 
+2.52.0.windows.1
+

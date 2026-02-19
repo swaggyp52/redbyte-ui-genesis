@@ -1,0 +1,35 @@
+From 723985f968ee14144d1cdb0489de0a68afd8a9e9 Mon Sep 17 00:00:00 2001
+From: swaggyp52 <connorangiel@gmail.com>
+Date: Wed, 18 Feb 2026 18:59:23 -0500
+Subject: [PATCH 12/18] test(import): enforce fixture03 clock schedule pattern
+ and hash baseline
+
+proof: pnpm -w exec vitest run packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts --reporter=verbose
+---
+ .../import/__tests__/fixture03-sequential-parity.test.ts    | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts b/packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts
+index d810e259..ad68570a 100644
+--- a/packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts
++++ b/packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts
+@@ -80,12 +80,14 @@ describe('fixture03 sequential verify/export parity', () => {
+     const verifyResult = await runTestVectors(project.circuit, vectors, project.ioMapping, project.hdl);
+     expect(verifyResult.schedule).toBe('clocked_macro');
+     expect(verifyResult.trace.length).toBe(vectors.length);
++    expect(verifyResult.deterministicHash).toBe('sha:3b867e39');
+ 
+     const generatedTestbench = generateTestbenchVhdl(project, vectors);
+     expect(generatedTestbench).toContain('-- schedule=clocked_macro');
+     expect(generatedTestbench).toContain('-- sequence=0->1->0');
+-    expect(generatedTestbench).toContain("clk <= '0';");
+-    expect(generatedTestbench).toContain("clk <= '1';");
++    const macroSchedulePattern = /clk <= '0';\s+wait for CLK_HALF_PERIOD;\s+clk <= '1';\s+wait for CLK_HALF_PERIOD;\s+clk <= '0';\s+wait for CLK_HALF_PERIOD;\s+wait for 0 ns;/g;
++    const macroScheduleMatches = generatedTestbench.match(macroSchedulePattern) ?? [];
++    expect(macroScheduleMatches.length).toBe(vectors.length);
+ 
+     const exportResult = exportProjectAsBasys3(project);
+     expect(exportResult.bundle?.testbench).toBe(generatedTestbench);
+-- 
+2.52.0.windows.1
+

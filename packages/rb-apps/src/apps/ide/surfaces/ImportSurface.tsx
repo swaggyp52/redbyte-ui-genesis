@@ -76,6 +76,14 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
 
   const hasParsedHdl = parsedHdl !== null;
   const hasParsedXdc = xdcResult !== null;
+  const sourceFiles = useMemo(
+    () => [
+      { id: 'hdl', label: 'source.hdl', status: hasParsedHdl ? 'READY' : 'PENDING' },
+      { id: 'xdc', label: 'constraints.xdc', status: hasParsedXdc ? 'READY' : 'OPTIONAL' },
+      { id: 'report', label: 'import-report.json', status: blockingErrors.length === 0 ? 'CLEAN' : 'BLOCKED' },
+    ],
+    [blockingErrors.length, hasParsedHdl, hasParsedXdc]
+  );
   const canApplySuggestions = useMemo(
     () => unmappedPorts.some((port) => Boolean(suggestBasys3Alias(port.name, port.direction))),
     [unmappedPorts]
@@ -209,6 +217,40 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
   return (
     <IdeSurfaceLayout
       mode="import"
+      consoleHasBlocking={blockingErrors.length > 0}
+      dock={
+        <section className="ide-import-file-tree" data-testid="ide-import-file-tree">
+          <header className="ide-design-subheader">
+            <h3>Source Files</h3>
+            <span className="ide-copy">{sourceFiles.length}</span>
+          </header>
+          <div className="ide-export-file-tree-list">
+            {sourceFiles.map((file) => (
+              <button
+                key={file.id}
+                type="button"
+                className={`ide-signal-row ${
+                  (file.id === 'hdl' && tab === 'hdl') || (file.id === 'xdc' && tab === 'xdc')
+                    ? 'is-active'
+                    : ''
+                }`}
+                data-testid={`ide-import-file-tree-item-${file.id}`}
+                onClick={() => {
+                  if (file.id === 'hdl' || file.id === 'xdc') {
+                    setTab(file.id);
+                  }
+                }}
+              >
+                <span>{file.label}</span>
+                <span>{file.status}</span>
+              </button>
+            ))}
+          </div>
+          <IdeCallout tone={canImport ? 'success' : 'info'} title="Import Pipeline">
+            Parse HDL, parse XDC, map ports, then import the RBProject graph.
+          </IdeCallout>
+        </section>
+      }
       inspector={
         <>
           <IdeInspectorSection title="Pipeline Stage">
