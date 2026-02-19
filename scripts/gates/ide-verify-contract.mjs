@@ -24,6 +24,32 @@ async function main() {
     await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
     await page.waitForSelector('[data-testid="ide-verify-banner"]', { timeout: 10000 });
 
+    const addVectorFormVisible = await page
+      .locator('[data-testid="ide-verify-add-vector-form"]')
+      .first()
+      .isVisible()
+      .catch(() => false);
+    assert(addVectorFormVisible, 'verify add-vector form must render');
+
+    const autoInputFieldCount = await page
+      .locator('[data-testid^="ide-verify-add-vector-input-"]')
+      .count();
+    assert(autoInputFieldCount >= 1, 'verify add-vector form must include auto-generated input fields');
+
+    const vectorRowsBefore = await page
+      .locator('[data-testid="ide-verify-vectors-table"] tbody tr')
+      .count();
+    await page.locator('[data-testid="ide-verify-add-vector-tick"]').fill('42');
+    await page
+      .locator('[data-testid^="ide-verify-add-vector-input-"]')
+      .first()
+      .selectOption('1');
+    await page.locator('[data-testid="ide-verify-add-vector-submit"]').click();
+    const vectorRowsAfter = await page
+      .locator('[data-testid="ide-verify-vectors-table"] tbody tr')
+      .count();
+    assert(vectorRowsAfter > vectorRowsBefore, 'adding a vector must increase vector table rows');
+
     await page.locator('[data-testid="ide-verify-vector-fail"]').click();
     await page.locator('[data-testid="ide-verify-run"]').click();
     await page.waitForFunction(
@@ -47,6 +73,13 @@ async function main() {
       .isVisible()
       .catch(() => false);
     assert(firstFailTickVisible, 'first failing tick must render in FAIL state');
+
+    const fixPathVisible = await page
+      .locator('[data-testid="ide-verify-fix-path"]')
+      .first()
+      .isVisible()
+      .catch(() => false);
+    assert(fixPathVisible, 'verify FAIL state must expose fix-path action');
 
     await page.locator('[data-testid="ide-verify-vector-pass"]').click();
     await page.locator('[data-testid="ide-verify-run"]').click();
