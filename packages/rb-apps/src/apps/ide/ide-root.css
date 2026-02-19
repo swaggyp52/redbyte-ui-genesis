@@ -34,6 +34,12 @@
   --rb-elevation-0: none;
   --rb-elevation-1: 0 8px 20px rgba(0, 0, 0, 0.22);
   --rb-elevation-2: 0 12px 30px rgba(0, 0, 0, 0.3);
+  /* Motion */
+  --rb-motion-fast: 120ms;
+  --rb-motion-normal: 180ms;
+  --rb-motion-slow: 260ms;
+  --rb-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --rb-ease-emphasis: cubic-bezier(0.2, 0.8, 0.2, 1);
   /* Surfaces */
   --rb-surface-bg: #091018;
   --rb-panel-bg: #101a24;
@@ -280,7 +286,10 @@
   background: transparent;
   color: var(--ide-text-soft);
   cursor: pointer;
-  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+  transition:
+    border-color var(--rb-motion-fast) var(--rb-ease-standard),
+    background var(--rb-motion-fast) var(--rb-ease-standard),
+    color var(--rb-motion-fast) var(--rb-ease-standard);
 }
 
 .ide-mode-button:hover {
@@ -1126,7 +1135,10 @@
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: filter 120ms ease, background 120ms ease, border-color 120ms ease;
+  transition:
+    filter var(--rb-motion-fast) var(--rb-ease-standard),
+    background var(--rb-motion-fast) var(--rb-ease-standard),
+    border-color var(--rb-motion-fast) var(--rb-ease-standard);
 }
 
 .ide-button:disabled {

@@ -496,6 +496,7 @@
 
 /* Start Here Card */
 .startHere {
+  position: relative;
   grid-area: brand;
   border: 1px solid var(--rb-ui-lab-border-strong);
   border-top: 3px solid var(--rb-ui-lab-accent);
@@ -508,24 +509,102 @@
   text-align: center;
 }
 
+.heroEyebrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--rb-ui-lab-accent) 48%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--rb-ui-lab-accent) 14%, transparent);
+  color: color-mix(in srgb, var(--rb-ui-lab-accent) 75%, #e6f8ff);
+  padding: 4px 12px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
 .startHereTitle {
-  margin: 0;
+  margin: var(--rb-space-3, 12px) 0 0;
   font-size: clamp(28px, 3vw, 40px);
   font-weight: 760;
-  line-height: 1.1;
+  line-height: 1.08;
   letter-spacing: -0.02em;
   color: var(--rb-ui-lab-text);
+  max-width: 840px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .startHereSubtitle {
   margin: var(--rb-space-2, 8px) 0 0;
-  font-size: 15px;
+  font-size: 14px;
   line-height: var(--rb-leading-relaxed, 1.65);
+  color: var(--rb-ui-lab-text-muted);
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.flowRail {
+  margin: var(--rb-space-5, 20px) auto 0;
+  width: min(980px, 100%);
+  display: grid;
+  gap: var(--rb-space-2, 8px);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.flowStep {
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: var(--rb-ui-lab-radius-md);
+  background: color-mix(in srgb, var(--rb-ui-lab-bg-elevated) 86%, var(--rb-ui-lab-accent) 14%);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--rb-space-2, 8px);
+  align-items: start;
+  padding: var(--rb-space-3, 12px);
+  animation: homeFlowPulse 2.8s ease-in-out infinite;
+}
+
+.flowStep:nth-child(2) {
+  animation-delay: 220ms;
+}
+
+.flowStep:nth-child(3) {
+  animation-delay: 440ms;
+}
+
+.flowStepIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--rb-ui-lab-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--rb-ui-lab-accent) 16%, transparent);
+  color: var(--rb-ui-lab-text);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.flowStepTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 720;
+  color: var(--rb-ui-lab-text);
+}
+
+.flowStepNote {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
   color: var(--rb-ui-lab-text-muted);
 }
 
 .startHereActions {
-  margin-top: var(--rb-space-5, 20px);
+  margin-top: var(--rb-space-4, 16px);
   display: flex;
   justify-content: center;
   gap: var(--rb-space-3, 12px);
@@ -565,6 +644,29 @@
   outline-offset: 2px;
 }
 
+.startHereLegacyCopy {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  border: 0;
+  padding: 0;
+  clip: rect(0 0 0 0);
+  overflow: hidden;
+}
+
+@keyframes homeFlowPulse {
+  0%,
+  100% {
+    transform: translateY(0);
+    border-color: var(--rb-ui-lab-border);
+  }
+  50% {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--rb-ui-lab-accent) 52%, transparent);
+  }
+}
+
 @media (max-width: 1060px) {
   .inner {
     grid-template-columns: 1fr;
@@ -576,6 +678,10 @@
       'missions'
       'recent'
       'footer';
+  }
+
+  .flowRail {
+    grid-template-columns: 1fr;
   }
 }
 

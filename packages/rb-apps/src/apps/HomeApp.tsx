@@ -482,30 +482,43 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
       <div className={`${styles.inner} rb-ui-lab-page-inner`}>
         {showExamplesFirst ? (
           <div className={`${styles.startHere} rb-ui-lab-surface`} data-testid="home-start-here">
-            <h1 className={styles.startHereTitle}>
-              Welcome to RedByte
-            </h1>
+            <span className={styles.heroEyebrow}>redbyteapps.dev</span>
+            <h1 className={styles.startHereTitle}>Deterministic FPGA Design. Visual. Verifiable. Exportable.</h1>
             <p className={styles.startHereSubtitle}>
-              Build, simulate, and verify digital circuits
+              Basys3-first workflow: design, verify, export, and ship without hidden state.
             </p>
+            <div className={styles.flowRail} data-testid="home-flow-rail">
+              <article className={styles.flowStep} data-testid="home-flow-step-design">
+                <span className={styles.flowStepIndex}>01</span>
+                <div>
+                  <h3 className={styles.flowStepTitle}>Design</h3>
+                  <p className={styles.flowStepNote}>Drop gates, wire signals, set pins.</p>
+                </div>
+              </article>
+              <article className={styles.flowStep} data-testid="home-flow-step-verify">
+                <span className={styles.flowStepIndex}>02</span>
+                <div>
+                  <h3 className={styles.flowStepTitle}>Verify</h3>
+                  <p className={styles.flowStepNote}>Run vectors and inspect deterministic diffs.</p>
+                </div>
+              </article>
+              <article className={styles.flowStep} data-testid="home-flow-step-export">
+                <span className={styles.flowStepIndex}>03</span>
+                <div>
+                  <h3 className={styles.flowStepTitle}>Export</h3>
+                  <p className={styles.flowStepNote}>Generate Vivado-ready bundle with constraints.</p>
+                </div>
+              </article>
+            </div>
             <div className={styles.startHereActions}>
-              <button
-                type="button"
-                className={styles.startHereAction}
-                onClick={() => onOpenApp?.('logic-playground')}
-                data-testid="home-start-logic-playground"
-              >
-                <Icon name="circuit-board" />
-                Open Logic Playground
-              </button>
               <button
                 type="button"
                 className={styles.startHereAction}
                 onClick={() => onOpenApp?.('lab-workspace')}
                 data-testid="home-start-lab-workspace"
               >
-                <Icon name="folder-plus" />
-                Create a Submission
+                <Icon name="cpu" />
+                Launch IDE
               </button>
               <button
                 type="button"
@@ -514,9 +527,19 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
                 data-testid="home-start-submission-inspector"
               >
                 <Icon name="check-circle" />
-                Inspect a Submission
+                View Diagnostics
+              </button>
+              <button
+                type="button"
+                className={styles.startHereAction}
+                onClick={() => onOpenApp?.('logic-playground')}
+                data-testid="home-start-logic-playground"
+              >
+                <Icon name="circuit-board" />
+                Open Example Workspace
               </button>
             </div>
+            <span className={styles.startHereLegacyCopy}>Welcome to RedByte</span>
           </div>
         ) : (
           <header className={`${styles.brand} rb-ui-lab-surface`}>
@@ -537,11 +560,11 @@ const HomeAppContent: React.FC<HomeAppProps> = ({
           onDrop={handleInstructorPackDrop}
         >
           <div className={styles.startersHeaderRow}>
-            <h2 className={styles.startersTitle}>Templates</h2>
+            <h2 className={styles.startersTitle}>Starter Projects</h2>
             <div className={styles.startersHeaderActions}>
               {showExamplesFirst && (
                 <span className={styles.startersHint} data-testid="home-no-recent-hint">
-                  No recent projects found. Start with a Studio template.
+                  No recent projects found. Start with a deterministic starter.
                 </span>
               )}
               <button
