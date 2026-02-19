@@ -397,7 +397,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
   // Input state
   const [isSpacePressed, setIsSpacePressed] = React.useState(false);
-  const [isAltPressed, setIsAltPressed] = React.useState(false);
+  const [isCtrlPressed, setIsCtrlPressed] = React.useState(false);
   const [hoveredPort, setHoveredPort] = React.useState<{ nodeId: string; portName: string } | null>(null);
   const [showFirstWireToast, setShowFirstWireToast] = React.useState(false);
   const [mousePosition, setMousePosition] = React.useState({ x: 0, y: 0 });
@@ -433,7 +433,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     isReplayMode,
     interactionMode,
     setInteractionMode,
-    snapEnabled: shouldSnap && !isAltPressed,
+    snapEnabled: shouldSnap && !isCtrlPressed,
     gridSize,
   });
 
@@ -472,8 +472,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       const args = lastDragArgs.current;
       if (!args) return;
       const { nodeId, x, y } = args;
-      // Alt temporarily disables snap
-      const snapEnabled = shouldSnap && !isAltPressed;
+      // Ctrl temporarily disables snap
+      const snapEnabled = shouldSnap && !isCtrlPressed;
       const newX = snapEnabled ? snapPointToGrid(x, gridSize) : x;
       const newY = snapEnabled ? snapPointToGrid(y, gridSize) : y;
       // Calculate delta for the dragged node
@@ -506,7 +506,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       };
       commitCircuit(updatedCircuit);
     });
-  }, [circuit, shouldSnap, isAltPressed, gridSize, selection.nodes, commitCircuit, isReplayMode]);
+  }, [circuit, shouldSnap, isCtrlPressed, gridSize, selection.nodes, commitCircuit, isReplayMode]);
   handleNodeMoveRef.current = handleNodeMove;
 
   // Clean up RAF on unmount
@@ -816,9 +816,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       // Space: Enable pan mode
       e.preventDefault(); // Prevent page scroll
       setIsSpacePressed(true);
-    } else if (e.key === 'Alt') {
-      // Alt: Temporarily disable snap
-      setIsAltPressed(true);
+    } else if (e.key === 'Control') {
+      // Ctrl: Temporarily disable snap while held
+      setIsCtrlPressed(true);
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       handleDeleteRef.current();
     } else if (e.key === 'Escape') {
@@ -871,11 +871,44 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     if (e.key === ' ') {
       // Space released: Disable pan mode
       setIsSpacePressed(false);
-    } else if (e.key === 'Alt') {
-      // Alt released: Re-enable snap
-      setIsAltPressed(false);
+    } else if (e.key === 'Control') {
+      // Ctrl released: Re-enable snap
+      setIsCtrlPressed(false);
     }
   }, []);
+
+  const selectedNodes = React.useMemo(
+    () => circuit.nodes.filter((node) => selection.nodes.has(node.id) && node.position),
+    [circuit.nodes, selection.nodes]
+  );
+
+  const selectionBoundsWorld = React.useMemo(
+    () => computeSelectionBounds(selectedNodes),
+    [selectedNodes]
+  );
+
+  const selectionBoundsScreen = React.useMemo(
+    () => worldBoundsToScreen(selectionBoundsWorld, camera),
+    [selectionBoundsWorld, camera]
+  );
+
+  const selectionCountLabel = `${selection.nodes.size} selected`;
+  const activeDragDelta = canvasInput.dragState.dragDelta ?? { x: 0, y: 0 };
+  const showSelectionBounds = Boolean(selectionBoundsScreen) && selection.nodes.size > 0;
+  const showSelectionGhost =
+    showSelectionBounds && interactionMode === 'draggingNode' && selection.nodes.size > 1;
+  const showSnapGuides =
+    shouldSnap &&
+    interactionMode === 'draggingNode' &&
+    Boolean(canvasInput.dragState.dragPosition);
+
+  const snapGuideScreen = React.useMemo(() => {
+    if (!showSnapGuides || !canvasInput.dragState.dragPosition) return null;
+    return {
+      x: canvasInput.dragState.dragPosition.x * camera.zoom + camera.x,
+      y: canvasInput.dragState.dragPosition.y * camera.zoom + camera.y,
+    };
+  }, [camera.x, camera.y, camera.zoom, canvasInput.dragState.dragPosition, showSnapGuides]);
 
   return (
     <CanvasHost
@@ -907,7 +940,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         >
           <div className="flex items-center justify-between gap-2">
             <span className="text-gray-500 uppercase tracking-wide">Selection</span>
-            <span className="font-mono">
+            <span className="font-mono" data-testid="logic-selection-count">
               {selection.nodes.size}n / {selection.wires.size}w
             </span>
           </div>
@@ -973,7 +1006,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             <div><span className="text-cyan-400">F:</span> Fit to view</div>
             <div><span className="text-cyan-400">0:</span> Reset view</div>
             <div><span className="text-cyan-400">G:</span> Toggle snap to grid</div>
-            <div><span className="text-cyan-400">Alt (hold):</span> Disable snap while moving</div>
+            <div><span className="text-cyan-400">Ctrl (hold):</span> Disable snap while moving</div>
             <div><span className="text-cyan-400">Delete/Backspace:</span> Remove selected</div>
             <div className="pt-2 border-t border-gray-700 text-gray-500">
               Selections sync across all views!
@@ -1211,6 +1244,127 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           );
         })()}
 
+        {/* Selection bounds + group move ghost */}
+        {showSelectionBounds && selectionBoundsScreen ? (
+          <g key="selection-bounds-layer" data-testid="logic-selection-bounds-layer">
+            <rect
+              data-testid="logic-selection-bounds"
+              x={selectionBoundsScreen.x}
+              y={selectionBoundsScreen.y}
+              width={selectionBoundsScreen.width}
+              height={selectionBoundsScreen.height}
+              fill="rgba(142, 199, 255, 0.07)"
+              stroke="rgba(142, 199, 255, 0.8)"
+              strokeWidth={1.5}
+              strokeDasharray="6 4"
+              pointerEvents="none"
+            />
+            {showSelectionGhost ? (
+              <rect
+                data-testid="logic-selection-ghost"
+                x={selectionBoundsScreen.x}
+                y={selectionBoundsScreen.y}
+                width={selectionBoundsScreen.width}
+                height={selectionBoundsScreen.height}
+                fill="rgba(46, 196, 182, 0.05)"
+                stroke="rgba(46, 196, 182, 0.85)"
+                strokeWidth={2}
+                strokeDasharray="8 5"
+                pointerEvents="none"
+              />
+            ) : null}
+            <g data-testid="logic-selection-count-badge">
+              <rect
+                x={selectionBoundsScreen.x + 6}
+                y={selectionBoundsScreen.y - 24}
+                width={96}
+                height={18}
+                rx={9}
+                fill="rgba(9, 16, 24, 0.92)"
+                stroke="rgba(142, 199, 255, 0.65)"
+                strokeWidth={1}
+                pointerEvents="none"
+              />
+              <text
+                x={selectionBoundsScreen.x + 54}
+                y={selectionBoundsScreen.y - 12}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="#d9efff"
+                fontFamily="IBM Plex Mono, Consolas, monospace"
+                fontSize={10}
+                pointerEvents="none"
+              >
+                {selectionCountLabel}
+              </text>
+            </g>
+            {interactionMode === 'draggingNode' ? (
+              <g data-testid="logic-selection-delta">
+                <rect
+                  x={selectionBoundsScreen.x + selectionBoundsScreen.width - 110}
+                  y={selectionBoundsScreen.y - 24}
+                  width={104}
+                  height={18}
+                  rx={9}
+                  fill="rgba(9, 16, 24, 0.92)"
+                  stroke="rgba(46, 196, 182, 0.65)"
+                  strokeWidth={1}
+                  pointerEvents="none"
+                />
+                <text
+                  x={selectionBoundsScreen.x + selectionBoundsScreen.width - 58}
+                  y={selectionBoundsScreen.y - 12}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="#b9fff7"
+                  fontFamily="IBM Plex Mono, Consolas, monospace"
+                  fontSize={10}
+                  pointerEvents="none"
+                >
+                  {`\u0394x ${activeDragDelta.x}  \u0394y ${activeDragDelta.y}`}
+                </text>
+              </g>
+            ) : null}
+          </g>
+        ) : null}
+
+        {/* Snap guides while dragging */}
+        {showSnapGuides && snapGuideScreen ? (
+          <g key="snap-guides-layer" data-testid="logic-snap-guides">
+            <line
+              data-testid="logic-snap-guide-x"
+              x1={snapGuideScreen.x}
+              y1={0}
+              x2={snapGuideScreen.x}
+              y2={height}
+              stroke="rgba(46, 196, 182, 0.72)"
+              strokeWidth={1}
+              strokeDasharray="4 4"
+              pointerEvents="none"
+            />
+            <line
+              data-testid="logic-snap-guide-y"
+              x1={0}
+              y1={snapGuideScreen.y}
+              x2={width}
+              y2={snapGuideScreen.y}
+              stroke="rgba(46, 196, 182, 0.72)"
+              strokeWidth={1}
+              strokeDasharray="4 4"
+              pointerEvents="none"
+            />
+            <circle
+              data-testid="logic-snap-indicator"
+              cx={snapGuideScreen.x}
+              cy={snapGuideScreen.y}
+              r={3.5}
+              fill="#2ec4b6"
+              opacity={0.92}
+              pointerEvents="none"
+            />
+          </g>
+        ) : null}
+
         {/* Switch Toggle Overlay Layer */}
         <g id="rb-switch-overlay" style={{ pointerEvents: 'none' }}>
           {visibleNodes
@@ -1296,3 +1450,41 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     </CanvasHost>
   );
 };
+
+interface SelectionBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+function computeSelectionBounds(nodes: Node[]): SelectionBounds | null {
+  if (nodes.length === 0) return null;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  for (const node of nodes) {
+    const position = node.position;
+    if (!position) continue;
+    const halfSize = 24;
+    minX = Math.min(minX, position.x - halfSize);
+    minY = Math.min(minY, position.y - halfSize);
+    maxX = Math.max(maxX, position.x + halfSize);
+    maxY = Math.max(maxY, position.y + halfSize);
+  }
+
+  if (!Number.isFinite(minX) || !Number.isFinite(minY)) return null;
+  return { minX, minY, maxX, maxY };
+}
+
+function worldBoundsToScreen(bounds: SelectionBounds | null, camera: Camera) {
+  if (!bounds) return null;
+  const x = bounds.minX * camera.zoom + camera.x;
+  const y = bounds.minY * camera.zoom + camera.y;
+  const width = (bounds.maxX - bounds.minX) * camera.zoom;
+  const height = (bounds.maxY - bounds.minY) * camera.zoom;
+  if (width <= 0 || height <= 0) return null;
+  return { x, y, width, height };
+}

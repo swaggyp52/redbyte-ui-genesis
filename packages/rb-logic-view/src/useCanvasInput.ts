@@ -35,6 +35,7 @@ export interface CanvasInputHandlers {
     isDragging: boolean;
     dragNodeId: string | null;
     dragPosition: { x: number; y: number } | null;
+    dragDelta: { x: number; y: number } | null;
   };
 }
 
@@ -97,6 +98,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
 
   // Only dragPosition triggers re-renders (visual feedback).
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
+  const [dragDelta, setDragDelta] = useState<{ x: number; y: number } | null>(null);
   // Ref to latest drag position for stable pointer-up callback.
   const dragPositionRef = useRef<{ x: number; y: number } | null>(null);
   const panInertiaRafRef = useRef<number | null>(null);
@@ -114,6 +116,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
   const onPointerDown = useCallback(
     (e: React.PointerEvent<SVGSVGElement>) => {
       stopPanInertia();
+      setDragDelta(null);
       // Guard: replay mode or non-passthrough interaction modes
       if (isReplayMode) return;
       if (interactionMode !== 'idle' && interactionMode !== 'wiring') return;
@@ -154,6 +157,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
           s.dragStartScreen = { x: e.clientX, y: e.clientY };
           s.nodeStartWorld = { x: node.position.x, y: node.position.y };
           s.dragNodeId = nodeId;
+          setDragDelta({ x: 0, y: 0 });
 
           onNodeSelect(nodeId, e.shiftKey);
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -259,8 +263,12 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
           newY = snapped.y;
         }
 
+        const deltaX = newX - s.nodeStartWorld.x;
+        const deltaY = newY - s.nodeStartWorld.y;
+
         dragPositionRef.current = { x: newX, y: newY };
         setDragPosition({ x: newX, y: newY });
+        setDragDelta({ x: Math.round(deltaX), y: Math.round(deltaY) });
       }
     },
     [camera, svgRef, onPan, setInteractionMode, snapEnabled, gridSize],
@@ -284,6 +292,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
         setInteractionMode('idle');
         dragPositionRef.current = null;
         setDragPosition(null);
+        setDragDelta(null);
       }
 
       if (s.mode === 'box-selecting' || s.mode === 'pending-box-select') {
@@ -383,6 +392,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
       isDragging: stateRef.current.mode === 'dragging-node',
       dragNodeId: stateRef.current.dragNodeId,
       dragPosition,
+      dragDelta,
     },
   };
 }
