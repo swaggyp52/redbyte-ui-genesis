@@ -155,6 +155,8 @@
         "ide:gate:project-health-live-contract": "node ./scripts/gates/ide-project-health-live-contract.mjs",
         "ide:gate:examples-contract": "node ./scripts/gates/ide-examples-contract.mjs",
         "ide:gate:design-system-contract": "node ./scripts/gates/ide-design-system-contract.mjs",
+        "ide:gate:screenshots": "pnpm --filter @redbyte/playground build && cross-env CI=1 PW_MODE=ci pnpm exec playwright test tests/e2e/ide-screenshot-baseline.spec.ts --project chromium",
+        "ide:gate:screenshots:update": "pnpm --filter @redbyte/playground build && cross-env CI=1 PW_MODE=ci pnpm exec playwright test tests/e2e/ide-screenshot-baseline.spec.ts --project chromium --update-snapshots",
         "ide:gate:verify-contract": "node ./scripts/gates/ide-verify-contract.mjs",
         "ide:gate:export-download-contract": "node ./scripts/gates/ide-export-download-contract.mjs",
         "ide:gate:primary-cta-contract": "node ./scripts/gates/ide-primary-cta-contract.mjs",
