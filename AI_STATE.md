@@ -1,5 +1,78 @@
 # AI State
 
+## Change Log 2026-02-19 (Design Compiler Identity Tranche: Multiselect Authority + Zoom Bands + Compiler Strip)
+
+**Status**: COMPLETE - Design mode now behaves as a deterministic IR editor with multi-select authority, zoom-banded rendering, compiler telemetry, and regression-gated visual proof.
+
+### What Changed
+
+1. Multi-select authority + deterministic drag contract
+- Updated `packages/rb-logic-view/src/LogicCanvas.tsx`:
+  - selection bounds overlay now includes stable ghost/metrics behavior under constrained canvas height
+  - selection count and drag-delta HUD badges are clamped to viewport bounds (prevents off-canvas markers)
+- Updated `packages/rb-logic-view/src/useCanvasInput.ts`:
+  - preserve multi-selection when starting drag from already-selected node
+  - deterministic snapped drag delta reporting (`dragDelta`)
+- Updated `packages/rb-logic-view/src/components/NodeView.tsx`:
+  - deterministic selection marker on nodes: `data-node-selected="1|0"`
+- Updated `packages/rb-logic-view/src/useLogicViewStore.ts`:
+  - exposed store handle for gate introspection: `window.__RB_LOGIC_VIEW_STORE__`
+- Added/updated gate:
+  - new `scripts/gates/ide-design-multiselect-contract.mjs`
+  - wired in `package.json`, `scripts/repo-status.mjs`, `scripts/verify-gates-classroom.mjs`
+  - gate verifies marquee-select, bounds/count markers, deterministic group movement, bulk delete + undo, and snap-state drag signals.
+
+2. Adaptive grid bands + zoom-aware wire rendering
+- Updated `packages/rb-logic-view/src/tools/grid.tsx`:
+  - discrete deterministic zoom bands (`far`, `medium`, `near`, `detail`)
+  - major/minor line intensity and visibility now zoom-band driven
+  - added markers:
+    - `data-testid="logic-grid-layer"`
+    - `data-grid-zoom-band`
+    - `data-grid-minor-visible`
+- Updated `packages/rb-logic-view/src/components/WireView.tsx`:
+  - zoom-band wire style system for hit area, base/hover/selected stroke widths, and glow bands
+  - deterministic marker: `data-wire-zoom-band`
+
+3. Compiler authority layer in Design mode
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - computes export diagnostics view-model and passes compiler status into Design mode
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - added compiler strip with deterministic markers:
+    - `ide-design-compiler-strip`
+    - `ide-design-ir-hash`
+    - `ide-design-dirty-since-verify`
+    - `ide-design-dirty-since-export`
+    - `ide-design-diagnostics-errors`
+    - `ide-design-diagnostics-warnings`
+    - `ide-design-diagnostics-total`
+  - IR hash now derived from normalized circuit payload (stable digest)
+  - selection inspector upgraded to typed IR view:
+    - single selection: type/id/pins/stable properties + node-linked diagnostics
+    - multi selection: count by type + bulk-action guidance
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - added compiler strip styles, diagnostic severity styling, typed property list styles
+  - responsive compiler-strip column collapse at narrower breakpoints
+
+4. Visual contract + screenshot proof updates
+- Updated `scripts/gates/ide-visual-contract.mjs`:
+  - design mode now requires compiler strip markers and validates IR hash + dirty flags shape
+- Updated screenshot baseline:
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-design-chromium-win32.png`
+
+### Validation Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:design-build-contract` -> PASS
+- `pnpm -s ide:gate:design-multiselect-contract` -> PASS
+- `pnpm -s ide:gate:visual-contract` -> PASS
+- `pnpm -s ide:gate:screenshots` -> PASS
+- `pnpm repo:status` -> PASS (11/11 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Design Interaction Depth Pass: Smooth Canvas Motion + Selection/Wire Authority)
 
 **Status**: COMPLETE - Upgraded Design mode interaction feel and canvas authority without changing deterministic circuit semantics.
