@@ -58,6 +58,17 @@ await runIdeGate('IDE verify contract satisfied', async ({ page, baseUrl }) => {
     .catch(() => false);
   assert(firstFailTickVisible, 'first failing tick must render in FAIL state');
 
+  await page.locator('[data-testid="ide-verify-jump-first-fail"]').click();
+  const selectedTick = await page
+    .locator('[data-testid="ide-verify-selected-tick"]')
+    .first()
+    .textContent()
+    .catch(() => '');
+  assert(
+    (selectedTick ?? '').trim() === '13',
+    `jump-to-first-fail must select tick 13, got "${(selectedTick ?? '').trim()}"`
+  );
+
   const fixPathVisible = await page
     .locator('[data-testid="ide-verify-fix-path"]')
     .first()
@@ -77,6 +88,14 @@ await runIdeGate('IDE verify contract satisfied', async ({ page, baseUrl }) => {
 
   const hashText = (await page.locator('[data-testid="ide-verify-hash"]').first().textContent().catch(() => ''))?.trim();
   assert(Boolean(hashText && hashText.length > 0), 'verify hash must be visible when PASS');
+
+  const reportHashText = (
+    await page.locator('[data-testid="ide-verify-report-hash"]').first().textContent().catch(() => '')
+  )?.trim();
+  assert(Boolean(reportHashText && reportHashText.length > 0), 'verify report hash must be visible when PASS');
+
+  const waveformPoints = await page.locator('[data-testid="ide-verify-waveform-point"]').count();
+  assert(waveformPoints > 0, 'waveform preview must be populated from run data');
 
   const exportDisabled = await page.locator('[data-testid="ide-verify-export-testbench"]').first().isDisabled();
   assert(!exportDisabled, 'export testbench button must be enabled after PASS');

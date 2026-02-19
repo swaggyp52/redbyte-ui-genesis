@@ -12,11 +12,11 @@ await runIdeGate('IDE export download contract satisfied', async ({ page, baseUr
   await page.waitForSelector('[data-testid="ide-export-panel"]', { timeout: 10000 });
 
   const downloadAllVisible = await page
-    .locator('[data-testid="ide-export-download-all"]')
+    .locator('[data-testid="ide-export-build-evidence-capsule"]')
     .first()
     .isVisible()
     .catch(() => false);
-  assert(downloadAllVisible, 'download-all export action must be visible');
+  assert(downloadAllVisible, 'evidence capsule action must be visible');
 
   const readmePreviewVisible = await page
     .locator('[data-testid="ide-export-readme-preview"]')

@@ -47,6 +47,7 @@ function main() {
     runGate('ide:design-system-contract', 'pnpm -s ide:gate:design-system-contract', true),
     runGate('ide:screenshot-baselines', 'pnpm -s ide:gate:screenshots', true),
     runGate('ide:verify-contract', 'pnpm -s ide:gate:verify-contract', true),
+    runGate('ide:evidence-capsule-contract', 'pnpm -s ide:gate:evidence-capsule-contract', true),
     runGate('ide:export-download-contract', 'pnpm -s ide:gate:export-download-contract', true),
     runGate('ide:primary-cta-contract', 'pnpm -s ide:gate:primary-cta-contract', true),
     runGate('ide:diagnostics-jump-contract', 'pnpm -s ide:gate:diagnostics-jump-contract', true),

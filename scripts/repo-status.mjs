@@ -118,6 +118,9 @@ if (!runCheck('IDE Design System Contract', 'pnpm -s ide:gate:design-system-cont
 if (!runCheck('IDE Screenshot Baselines', 'pnpm -s ide:gate:screenshots 2>&1')) {
   process.exit(1);
 }
+if (!runCheck('IDE Evidence Capsule Contract', 'pnpm -s ide:gate:evidence-capsule-contract 2>&1')) {
+  process.exit(1);
+}
 
 // 5. Artifact verification
 console.log('\n[CHECK] Artifact Verification...');

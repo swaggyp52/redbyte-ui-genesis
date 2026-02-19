@@ -1,3 +1,5 @@
+import type { VerifyReport } from './verifyReport';
+
 export type ProjectHealthMode = 'project' | 'design' | 'verify' | 'export' | 'import';
 
 export interface ProjectHealthFixPath {
@@ -14,6 +16,8 @@ export interface ProjectHealthIssue {
 export interface ProjectHealthVerifyResult {
   status: 'pass' | 'fail';
   hash: string;
+  reportHash?: string;
+  report?: VerifyReport;
   failingTick?: number;
   ranAtIso: string;
 }
@@ -21,6 +25,8 @@ export interface ProjectHealthVerifyResult {
 export interface ProjectHealthExportResult {
   status: 'ok' | 'blocked';
   hash?: string;
+  manifestHash?: string;
+  bundleHash?: string;
   artifacts?: string[];
   ranAtIso: string;
 }
@@ -106,7 +112,7 @@ export function deriveProjectHealth(
     blockingIssues.push({
       code: 'RBP2002',
       message: 'Project changed since last successful export.',
-      fixPath: { mode: 'export', actionLabel: 'Download Vivado Bundle' },
+      fixPath: { mode: 'export', actionLabel: 'Build Evidence Capsule' },
     });
   }
 
@@ -130,7 +136,7 @@ export function choosePrimaryProjectCta(
     return { label: 'Run Verification', mode: 'verify', code: 'RBP1004' };
   }
   if (!health.lastExport || health.dirtySinceExport) {
-    return { label: 'Download Vivado Bundle', mode: 'export', code: 'RBP2002' };
+    return { label: 'Build Evidence Capsule', mode: 'export', code: 'RBP2002' };
   }
   return { label: 'Review Project Health', mode: 'project', code: 'RBP0000' };
 }

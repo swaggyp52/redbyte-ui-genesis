@@ -317,7 +317,7 @@ export const IdeApp: React.FC = () => {
         exportProject.circuit.nodes.find(
           (node) => normalizeSignalKey(node.label ?? node.id) === desiredSignal
         ) ??
-        exportProject.circuit.nodes.find((node) => node.type === 'OUTPUT');
+        exportProject.circuit.nodes.find((node) => node.type === 'OUTPUT' || node.type === 'Lamp');
 
       setCurrentMode('design');
 
@@ -424,6 +424,9 @@ export const IdeApp: React.FC = () => {
         ) : currentMode === 'export' ? (
           <ExportSurface
             project={exportProject}
+            verifyResult={projectHealthCore.lastVerify}
+            dirtySinceVerify={projectHealthCore.dirtySinceVerify}
+            determinismHash={determinismHash}
             onExportResult={handleExportResult}
             onDiagnosticAction={handleDiagnosticAction}
           />
@@ -497,31 +500,11 @@ function cloneVectors(vectors: TestVector[]): TestVector[] {
 }
 
 function buildProjectCircuit(projectIoRows: ProjectIoRow[]): RBProject['circuit'] {
-  const inputRows = projectIoRows.filter((row) => row.direction === 'in');
-  const outputRows = projectIoRows.filter((row) => row.direction === 'out');
-
-  const inputNodes = inputRows.map((row, index) => ({
-    id: row.nodeId,
-    type: 'INPUT',
-    x: 96,
-    y: 96 + index * 72,
-    label: row.label,
-    config: {},
-    state: {},
-  }));
-
-  const outputNodes = outputRows.map((row, index) => ({
-    id: row.nodeId,
-    type: 'OUTPUT',
-    x: 520,
-    y: 96 + index * 72,
-    label: row.label,
-    config: {},
-    state: {},
-  }));
-
+  void projectIoRows;
+  // Export projection keeps circuit IR empty and derives top-level ports from IO mapping + HDL.
+  // This avoids injecting non-synthesizable placeholder nodes into the compiler path.
   return {
-    nodes: [...inputNodes, ...outputNodes],
+    nodes: [],
     connections: [],
   };
 }

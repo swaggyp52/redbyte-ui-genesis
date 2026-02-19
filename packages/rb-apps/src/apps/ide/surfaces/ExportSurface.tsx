@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import JSZip from 'jszip';
 import type { RBProject } from '../../../export/projectFormat';
-import type { ProjectHealthExportResult } from '../projectHealth';
-import type { IdeDiagnostic } from '../diagnostics';
+import type { ProjectHealthExportResult, ProjectHealthVerifyResult } from '../projectHealth';
+import { createDiagnosticId, type IdeDiagnostic } from '../diagnostics';
+import { buildEvidenceCapsule } from '../evidenceCapsule';
 import {
   buildExportViewModel,
+  type ExportDiagnosticView,
   type ExportArtifactView,
   type ExportPinStatus,
 } from '../viewmodels/buildExportViewModel';
@@ -19,6 +20,9 @@ import {
 
 export interface ExportSurfaceProps {
   project: RBProject;
+  verifyResult?: ProjectHealthVerifyResult;
+  dirtySinceVerify?: boolean;
+  determinismHash: string;
   onExportBundle?: (artifacts: ExportArtifactView[]) => void;
   onExportResult?: (result: ProjectHealthExportResult) => void;
   onDiagnosticAction?: (diagnostic: IdeDiagnostic) => void;
@@ -26,18 +30,30 @@ export interface ExportSurfaceProps {
 
 export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   project,
+  verifyResult,
+  dirtySinceVerify = false,
+  determinismHash,
   onExportBundle,
   onExportResult,
   onDiagnosticAction,
 }) => {
   const viewModel = useMemo(() => buildExportViewModel(project), [project]);
+  const evidenceDiagnostics = useMemo(
+    () => buildEvidenceDiagnostics(verifyResult, dirtySinceVerify),
+    [dirtySinceVerify, verifyResult]
+  );
   const diagnosticsList = useMemo(
-    () => [...viewModel.errors, ...viewModel.warnings],
-    [viewModel.errors, viewModel.warnings]
+    () => [...evidenceDiagnostics, ...viewModel.errors, ...viewModel.warnings],
+    [evidenceDiagnostics, viewModel.errors, viewModel.warnings]
   );
   const [pinOverrides, setPinOverrides] = useState<Record<string, string>>(() =>
     createPinOverrideMap(viewModel.pinTable)
   );
+  const [capsuleManifestHash, setCapsuleManifestHash] = useState<string>('pending');
+  const [capsuleBundleHash, setCapsuleBundleHash] = useState<string>('pending');
+  const [capsuleFileList, setCapsuleFileList] = useState<string[]>([]);
+  const [capsuleBuildError, setCapsuleBuildError] = useState<string>('');
+  const [capsuleBuildState, setCapsuleBuildState] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [highlightedPort, setHighlightedPort] = useState<string | null>(null);
   const [selectedArtifactPath, setSelectedArtifactPath] = useState<string>(() => {
     const readme = viewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'readme.txt');
@@ -79,7 +95,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     return index;
   }, [viewModel.pinTable]);
 
-  const hasBlockingErrors = viewModel.status === 'blocked';
+  const hasBlockingErrors = diagnosticsList.some((entry) => entry.severity === 'error');
   const mappedCount = viewModel.pinTable.filter((row) => {
     const key = toPortKey(row.port);
     const pinValue = (pinOverrides[key] ?? '').trim();
@@ -119,78 +135,93 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   };
 
   const handleDownloadArtifact = (artifact: ExportArtifactView) => {
-    if (typeof window === 'undefined' || artifact.preview.trim().length === 0) return;
-    const blob = new Blob([artifact.preview], { type: 'text/plain;charset=utf-8' });
+    if (typeof window === 'undefined' || artifact.content.trim().length === 0) return;
+    const blob = new Blob([artifact.content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = artifact.path;
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(link);
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
-  const handleExportBundle = async () => {
+  const handleBuildEvidenceCapsule = async () => {
+    const ranAtIso = new Date().toISOString();
+    setCapsuleBuildError('');
+    setCapsuleBuildState('running');
     if (hasBlockingErrors) {
+      setCapsuleBuildError('Resolve blocking diagnostics before building an evidence capsule.');
+      setCapsuleBuildState('error');
       onExportResult?.({
         status: 'blocked',
         hash: viewModel.exportHash,
         artifacts: viewModel.artifacts.map((artifact) => artifact.path),
-        ranAtIso: new Date().toISOString(),
+        ranAtIso,
       });
       return;
     }
-    if (onExportBundle) {
-      onExportBundle(viewModel.artifacts);
+    if (!verifyResult || verifyResult.status !== 'pass' || dirtySinceVerify) {
+      setCapsuleBuildError('Evidence Capsule requires a PASS verification with no pending design changes.');
+      setCapsuleBuildState('error');
       onExportResult?.({
-        status: 'ok',
+        status: 'blocked',
         hash: viewModel.exportHash,
         artifacts: viewModel.artifacts.map((artifact) => artifact.path),
-        ranAtIso: new Date().toISOString(),
+        ranAtIso,
       });
       return;
     }
-    const zipEntries = viewModel.artifacts.filter((artifact) => artifact.preview.trim().length > 0);
-    if (zipEntries.length === 0 || typeof window === 'undefined') return;
 
     try {
-      const zip = new JSZip();
-      const zipDate = new Date('2026-01-01T00:00:00.000Z');
-      for (const artifact of zipEntries) {
-        zip.file(artifact.path, artifact.preview.replace(/\r\n/g, '\n'), {
-          createFolders: false,
-          date: zipDate,
-        });
+      const capsule = await buildEvidenceCapsule({
+        project,
+        exportViewModel: viewModel,
+        verifyResult,
+        deterministicHash: determinismHash,
+        toolVersion: 'redbyte-ide-v1',
+        createdAtIso: ranAtIso,
+      });
+      if (typeof window !== 'undefined') {
+        const blob = new Blob([capsule.zipBytes], { type: 'application/zip' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'redbyte-evidence-capsule.zip';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.setTimeout(() => URL.revokeObjectURL(url), 0);
       }
 
-      const bytes = await zip.generateAsync({
-        type: 'uint8array',
-        compression: 'STORE',
-        platform: 'DOS',
-        comment: '',
-      });
-
-      const blob = new Blob([bytes], { type: 'application/zip' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'redbyte-basys3-bundle.zip';
-      link.click();
-      URL.revokeObjectURL(url);
+      setCapsuleManifestHash(capsule.manifest.manifestHash);
+      setCapsuleBundleHash(capsule.bundleHash);
+      setCapsuleFileList(capsule.filePaths);
+      setCapsuleBuildState('done');
+      onExportBundle?.(viewModel.artifacts);
       onExportResult?.({
         status: 'ok',
         hash: viewModel.exportHash,
-        artifacts: zipEntries.map((artifact) => artifact.path),
-        ranAtIso: new Date().toISOString(),
+        manifestHash: capsule.manifest.manifestHash,
+        bundleHash: capsule.bundleHash,
+        artifacts: capsule.filePaths,
+        ranAtIso,
       });
-    } catch {
-      for (const artifact of zipEntries) {
-        handleDownloadArtifact(artifact);
-      }
+    } catch (error) {
+      const reason =
+        error instanceof Error && error.message.trim().length > 0
+          ? error.message.trim()
+          : 'unknown build error';
+      setCapsuleBuildError(
+        `Evidence Capsule build failed: ${reason}. Check export diagnostics and artifact readiness.`
+      );
+      setCapsuleBuildState('error');
       onExportResult?.({
-        status: 'ok',
+        status: 'blocked',
         hash: viewModel.exportHash,
-        artifacts: zipEntries.map((artifact) => artifact.path),
-        ranAtIso: new Date().toISOString(),
+        artifacts: viewModel.artifacts.map((artifact) => artifact.path),
+        ranAtIso,
       });
     }
   };
@@ -208,13 +239,41 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               </div>
               <div className="ide-kv-row">
                 <span>Export Hash</span>
-                <span className="ide-status-mono">
+                <span className="ide-status-mono" data-testid="ide-export-context-export-hash">
                   {viewModel.exportHash ? viewModel.exportHash.slice(0, 16) : 'pending'}
                 </span>
               </div>
               <div className="ide-kv-row">
+                <span>Verify Hash</span>
+                <span className="ide-status-mono" data-testid="ide-export-context-verify-hash">
+                  {verifyResult?.hash ? verifyResult.hash.slice(0, 16) : 'pending'}
+                </span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Manifest Hash</span>
+                <span className="ide-status-mono" data-testid="ide-export-context-manifest-hash">
+                  {capsuleManifestHash.slice(0, 16)}
+                </span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Bundle Hash</span>
+                <span className="ide-status-mono">{capsuleBundleHash.slice(0, 16)}</span>
+              </div>
+              <div className="ide-kv-row">
                 <span>Blocking Errors</span>
-                <span>{viewModel.errors.length}</span>
+                <span>{diagnosticsList.filter((entry) => entry.severity === 'error').length}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Capsule Files</span>
+                <span>{capsuleFileList.length > 0 ? capsuleFileList.length : 'pending'}</span>
+              </div>
+              <div className="ide-kv-row" data-testid="ide-export-capsule-build-state">
+                <span>Capsule State</span>
+                <span>{capsuleBuildState.toUpperCase()}</span>
+              </div>
+              <div className="ide-kv-row ide-kv-row-hidden" data-testid="ide-export-capsule-files">
+                <span>Capsule File List</span>
+                <code>{capsuleFileList.join(',')}</code>
               </div>
             </div>
           </IdeInspectorSection>
@@ -250,18 +309,17 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       }
     >
         <IdePanel
-          title="Export Compiler"
-          description="Validate Basys3 readiness, resolve blockers, and package Vivado artifacts."
+          title="Evidence Capsule Compiler"
+          description="Validate Basys3 readiness, run strict verify gates, and package deterministic grading evidence."
           actions={
             <>
               <span data-testid="ide-primary-cta">
                 <IdeButton
                   tone="primary"
-                  onClick={handleExportBundle}
-                  disabled={hasBlockingErrors}
-                  testId="ide-export-download-all"
+                  onClick={handleBuildEvidenceCapsule}
+                  testId="ide-export-build-evidence-capsule"
                 >
-                  Download all (.zip)
+                  Build Evidence Capsule
                 </IdeButton>
               </span>
               <IdeButton tone="ghost">Re-run Validation</IdeButton>
@@ -286,8 +344,18 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               </header>
 
               {hasBlockingErrors && (
-                <IdeCallout tone="error" title="Export blocked" testId="ide-export-blocked-reason">
-                  Resolve blocking diagnostics below, then rerun export.
+                <IdeCallout
+                  tone="error"
+                  title="Evidence Capsule blocked"
+                  testId="ide-export-blocked-reason"
+                >
+                  Resolve blocking diagnostics below, then build again.
+                </IdeCallout>
+              )}
+
+              {capsuleBuildError.length > 0 && (
+                <IdeCallout tone="error" title="Capsule Build Error" testId="ide-export-capsule-error">
+                  {capsuleBuildError}
                 </IdeCallout>
               )}
 
@@ -317,7 +385,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                         <IdeStatusPill tone={entry.severity === 'error' ? 'error' : 'warn'}>
                           {entry.severity === 'error' ? 'ERROR' : 'WARN'}
                         </IdeStatusPill>
-                        <code className="ide-export-diagnostic-code">{entry.code}</code>
+                        <code className="ide-export-diagnostic-code" data-diagnostic-code={entry.code}>
+                          {entry.code}
+                        </code>
                       </div>
                       <p className="ide-export-diagnostic-message">{entry.message}</p>
                       {entry.fix && <p className="ide-export-diagnostic-fix">{entry.fix}</p>}
@@ -464,8 +534,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       </button>
                     ))}
                   </div>
-                  {selectedArtifact && (
-                    <div className="ide-export-artifact-preview">
+                    {selectedArtifact && (
+                      <div className="ide-export-artifact-preview">
                       <div className="ide-export-artifact-preview-header">
                         <span>{selectedArtifact.path}</span>
                         <IdeButton
@@ -529,6 +599,93 @@ function createPinOverrideMap(
     overrides[toPortKey(row.port)] = row.pin ?? '';
   }
   return overrides;
+}
+
+function buildEvidenceDiagnostics(
+  verifyResult: ProjectHealthVerifyResult | undefined,
+  dirtySinceVerify: boolean
+): ExportDiagnosticView[] {
+  const diagnostics: ExportDiagnosticView[] = [];
+
+  if (!verifyResult) {
+    diagnostics.push(createEvidenceDiagnostic({
+      code: 'RBEV1000',
+      message: 'Evidence Capsule requires a verification run before export.',
+      fix: 'Open Verify and run the deterministic vector suite to generate a PASS report.',
+    }));
+    return diagnostics;
+  }
+
+  if (verifyResult.status !== 'pass') {
+    diagnostics.push(createEvidenceDiagnostic({
+      code: 'RBEV1001',
+      message:
+        typeof verifyResult.failingTick === 'number'
+          ? `Latest verification failed at tick ${verifyResult.failingTick}.`
+          : 'Latest verification failed.',
+      fix: 'Open Verify, inspect the failure diff, then rerun until PASS.',
+    }));
+  }
+
+  if (dirtySinceVerify) {
+    diagnostics.push(createEvidenceDiagnostic({
+      code: 'RBEV1002',
+      message: 'Design changed since the last PASS verification run.',
+      fix: 'Rerun verification to refresh deterministic evidence before export.',
+    }));
+  }
+
+  return diagnostics;
+}
+
+function createEvidenceDiagnostic(input: {
+  code: string;
+  message: string;
+  fix: string;
+}): ExportDiagnosticView {
+  const canonical: IdeDiagnostic = {
+    id: createDiagnosticId({
+      code: input.code,
+      owner: {
+        kind: 'file',
+        filePath: 'verify-report.json',
+      },
+      message: input.message,
+      hint: [input.fix],
+    }),
+    severity: 'error',
+    code: input.code,
+    title: 'Evidence gate blocker',
+    message: input.message,
+    hint: [input.fix],
+    owner: {
+      kind: 'file',
+      filePath: 'verify-report.json',
+    },
+    actions: [
+      {
+        kind: 'open-mode',
+        label: 'Open Verify',
+        payload: {
+          mode: 'verify',
+          filePath: 'verify-report.json',
+        },
+      },
+    ],
+  };
+
+  return {
+    id: canonical.id,
+    code: canonical.code,
+    title: canonical.title,
+    message: canonical.message,
+    hint: canonical.hint,
+    fix: input.fix,
+    severity: 'error',
+    owner: canonical.owner,
+    actions: canonical.actions,
+    canonical,
+  };
 }
 
 function toPortKey(value: string): string {

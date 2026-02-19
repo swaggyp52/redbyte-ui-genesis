@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ProjectHealthVerifyResult } from '../projectHealth';
+import { buildVerifyReport } from '../verifyReport';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
@@ -113,9 +114,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const [selectedScenario, setSelectedScenario] = useState<VerifyScenario['id']>('fail');
   const [status, setStatus] = useState<VerifyStatus>('idle');
-  const [resultRows, setResultRows] = useState<Array<Array<React.ReactNode>>>([]);
-  const [failingRows, setFailingRows] = useState<VerifyRow[]>([]);
+  const [runRows, setRunRows] = useState<VerifyRow[]>([]);
   const [resultHash, setResultHash] = useState<string>(deterministicHash);
+  const [reportHash, setReportHash] = useState<string>('pending');
+  const [selectedTick, setSelectedTick] = useState<number | null>(null);
   const [authoredVectors, setAuthoredVectors] = useState<VerifyAuthorVector[]>(() =>
     normalizeVectors(vectors, inputFields)
   );
@@ -143,6 +145,23 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [selectedScenario]
   );
 
+  const resultRows = useMemo(
+    () =>
+      runRows.map((row) => [
+        String(row.tick),
+        row.signal,
+        row.expected,
+        row.actual,
+        row.expected === row.actual ? 'PASS' : 'FAIL',
+      ]),
+    [runRows]
+  );
+
+  const failingRows = useMemo(
+    () => runRows.filter((row) => row.expected !== row.actual),
+    [runRows]
+  );
+
   const vectorRows = useMemo(
     () =>
       authoredVectors.map((vector) => [
@@ -154,33 +173,79 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [authoredVectors, inputFields]
   );
 
+  const timelineTicks = useMemo(() => {
+    return Array.from(new Set(runRows.map((row) => row.tick))).sort((left, right) => left - right);
+  }, [runRows]);
+
+  useEffect(() => {
+    if (timelineTicks.length === 0) {
+      setSelectedTick(null);
+      return;
+    }
+    if (selectedTick === null || !timelineTicks.includes(selectedTick)) {
+      setSelectedTick(timelineTicks[0]);
+    }
+  }, [selectedTick, timelineTicks]);
+
+  const signalTimeline = useMemo(() => {
+    const signalValueMap = new Map<string, Map<number, string>>();
+    for (const row of runRows) {
+      const values = signalValueMap.get(row.signal) ?? new Map<number, string>();
+      values.set(row.tick, row.actual);
+      signalValueMap.set(row.signal, values);
+    }
+    return Array.from(signalValueMap.entries())
+      .sort((left, right) => (left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0))
+      .map(([signal, values]) => ({
+        signal,
+        values: timelineTicks.map((tick) => ({
+          tick,
+          value: values.get(tick) ?? '-',
+        })),
+      }));
+  }, [runRows, timelineTicks]);
+
+  const selectedTickRows = useMemo(() => {
+    if (selectedTick === null) return [];
+    return runRows.filter((row) => row.tick === selectedTick);
+  }, [runRows, selectedTick]);
+
   const runVerification = () => {
     setStatus('running');
-    const rows = activeScenario.rows.map((row) => [
-      String(row.tick),
-      row.signal,
-      row.expected,
-      row.actual,
-      row.expected === row.actual ? 'PASS' : 'FAIL',
-    ]);
-    const failing = activeScenario.rows.filter((row) => row.expected !== row.actual);
-    setResultRows(rows);
-    setFailingRows(failing);
-    setResultHash(activeScenario.hash);
+    const scenarioRows = activeScenario.rows.map((row) => ({ ...row }));
+    const failing = scenarioRows.filter((row) => row.expected !== row.actual);
     const pass = failing.length === 0;
+    const ranAtIso = new Date().toISOString();
+    const report = buildVerifyReport({
+      scenarioId: activeScenario.id,
+      scenarioName: activeScenario.name,
+      status: pass ? 'pass' : 'fail',
+      deterministicHash: activeScenario.hash,
+      rows: scenarioRows,
+      vectors: authoredVectors,
+      generatedAtIso: ranAtIso,
+    });
+
+    setRunRows(scenarioRows);
+    setResultHash(activeScenario.hash);
+    setReportHash(report.reportHash);
+    setSelectedTick(report.firstFailingTick ?? scenarioRows[0]?.tick ?? null);
     setStatus(pass ? 'pass' : 'fail');
     onVerificationComplete?.({
       status: pass ? 'pass' : 'fail',
       hash: activeScenario.hash,
-      failingTick: failing[0]?.tick,
-      ranAtIso: new Date().toISOString(),
+      reportHash: report.reportHash,
+      report,
+      failingTick: report.firstFailingTick ?? failing[0]?.tick,
+      ranAtIso,
     });
   };
 
   const clearResults = () => {
     setStatus('idle');
-    setResultRows([]);
-    setFailingRows([]);
+    setRunRows([]);
+    setReportHash('pending');
+    setSelectedTick(null);
     setResultHash(deterministicHash);
   };
 
@@ -239,7 +304,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const firstFailure = failingRows[0];
   const firstFailureTick = firstFailure?.tick;
-  const hasResults = resultRows.length > 0;
+  const hasResults = runRows.length > 0;
   const canExportTestbench = status === 'pass';
   const vectorSourceLabel =
     authoredVectors.length > 0 || hasVectors ? 'Project vectors loaded' : 'No vectors saved yet';
@@ -328,10 +393,30 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
           <IdeInspectorSection title="Waveform Preview">
             <div className="ide-waveform-stub" data-testid="ide-verify-waveform-preview">
-              <span />
-              <span />
-              <span />
-              <span />
+              {signalTimeline.length === 0 ? (
+                <p className="ide-copy">Waveform data appears after a verification run.</p>
+              ) : (
+                <div className="ide-verify-waveform-grid">
+                  {signalTimeline.map((signalRow) => (
+                    <div key={signalRow.signal} className="ide-verify-waveform-row">
+                      <span className="ide-verify-waveform-label">{signalRow.signal}</span>
+                      <div className="ide-verify-waveform-track">
+                        {signalRow.values.map((point) => (
+                          <span
+                            key={`${signalRow.signal}-${point.tick}`}
+                            className={`ide-verify-waveform-point ${
+                              selectedTick === point.tick ? 'is-selected' : ''
+                            }`}
+                            data-testid="ide-verify-waveform-point"
+                          >
+                            {point.value}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </IdeInspectorSection>
         </>
@@ -392,6 +477,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           <div className="ide-verify-hash-block">
             <span>Hash</span>
             <code data-testid="ide-verify-hash">{resultHash}</code>
+            <span>Report</span>
+            <code data-testid="ide-verify-report-hash">{reportHash}</code>
           </div>
         </div>
 
@@ -406,11 +493,53 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
         {hasResults && (
           <>
+            <section className="ide-verify-tick-nav" data-testid="ide-verify-tick-nav">
+              <div className="ide-inline-actions">
+                <IdeButton
+                  tone="secondary"
+                  onClick={() => {
+                    if (typeof firstFailureTick !== 'number') return;
+                    setSelectedTick(firstFailureTick);
+                  }}
+                  disabled={typeof firstFailureTick !== 'number'}
+                  testId="ide-verify-jump-first-fail"
+                >
+                  Jump to first fail
+                </IdeButton>
+              </div>
+              {timelineTicks.length > 0 && selectedTick !== null ? (
+                <label className="ide-verify-scrubber-field">
+                  Tick
+                  <input
+                    type="range"
+                    min={timelineTicks[0]}
+                    max={timelineTicks[timelineTicks.length - 1]}
+                    step={1}
+                    value={selectedTick}
+                    onChange={(event) => setSelectedTick(Number(event.target.value))}
+                    data-testid="ide-verify-tick-scrubber"
+                  />
+                  <code data-testid="ide-verify-selected-tick">{selectedTick}</code>
+                </label>
+              ) : null}
+            </section>
+
             <IdeDataTable
               columns={['Tick', 'Signal', 'Expected', 'Actual', 'Status']}
               rows={resultRows}
               testId="ide-verify-results-table"
             />
+            <section data-testid="ide-verify-signal-table">
+              <IdeDataTable
+                columns={['Signal', `Tick ${selectedTick ?? '-'}`, 'Expected', 'Actual']}
+                rows={selectedTickRows.map((row) => [
+                  row.signal,
+                  String(row.tick),
+                  row.expected,
+                  row.actual,
+                ])}
+              />
+            </section>
             {status === 'fail' && (
               <section data-testid="ide-verify-diff-table">
                 <IdeCallout tone="error" title="Failure Diff">

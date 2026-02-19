@@ -1,5 +1,82 @@
 # AI State
 
+## Change Log 2026-02-19 (Evidence Capsule v1 + Verify Truth Screen v2)
+
+**Status**: COMPLETE - RedByte IDE now emits deterministic verification reports, builds a real Evidence Capsule zip from the export pipeline, and enforces the workflow with dedicated gates.
+
+### What Changed
+
+1. Verify report contract and hash evidence
+- Added `packages/rb-apps/src/apps/ide/verifyReport.ts`:
+  - canonical `VerifyReport` schema (`rb.verify-report.v1`)
+  - stable row/vector normalization
+  - deterministic `reportHash` (`vrf_*`) derived from report payload.
+- Updated `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`:
+  - run path now builds/publishes full verify report
+  - added report hash marker and first-fail/tick navigation markers
+  - waveform + signal table now render from actual run rows (not static placeholder rows).
+- Updated `packages/rb-apps/src/apps/ide/projectHealth.ts`:
+  - `lastVerify` now carries `report` + `reportHash`
+  - export result supports `manifestHash` + `bundleHash`.
+
+2. Evidence Capsule pipeline and export integration
+- Added `packages/rb-apps/src/apps/ide/evidenceCapsule.ts`:
+  - deterministic zip assembly with fixed entry ordering/date
+  - packages:
+    - `rb-project.json`
+    - `top.vhd`
+    - `top.xdc`
+    - `testbench.vhd`
+    - `vectors.json`
+    - `verify-report.json`
+    - `MANIFEST.json`
+  - computes per-file hashes, manifest hash, bundle hash.
+- Updated `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`:
+  - artifact view now includes full artifact `content` for real packaging/download paths.
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`:
+  - primary CTA is `Build Evidence Capsule`
+  - strict evidence blockers for missing/failing/stale verification (`RBEV1000/1001/1002`)
+  - real capsule build/download wired through `buildEvidenceCapsule(...)`
+  - export inspector now surfaces verify/export/manifest hash metadata and capsule file list markers.
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - wires verify result + dirty-since-verify + determinism hash into export surface
+  - propagates verify report metadata into project health.
+
+3. Gate coverage and reliability for evidence workflow
+- Added `scripts/gates/ide-evidence-capsule-contract.mjs`:
+  - PASS path: verify pass -> build capsule -> assert required files + manifest/verify hash markers
+  - FAIL path: verify fail -> export blocked diagnostics -> jump-to-fix route into Verify.
+- Updated `scripts/gates/ide-verify-contract.mjs`:
+  - verifies first-fail jump, tick scrubber, waveform points, and report hash presence.
+- Updated `scripts/gates/ide-export-download-contract.mjs`:
+  - targets evidence capsule CTA marker.
+- Wired gate into:
+  - `package.json` (`ide:gate:evidence-capsule-contract`)
+  - `scripts/repo-status.mjs`
+  - `scripts/verify-gates-classroom.mjs`.
+
+4. Visual proof updates
+- Updated screenshot baselines for changed authority surfaces:
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-verify-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-export-chromium-win32.png`.
+
+5. Stabilization fix discovered during gate execution
+- Fixed runtime export crash in `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`:
+  - corrected capsule input from undefined `deterministicHash` reference to `determinismHash` prop wiring.
+  - capsule error callout now includes underlying exception detail for deterministic gate failure diagnosis.
+
+### Validation Executed
+
+- `pnpm -s ide:gate:evidence-capsule-contract` -> PASS
+- `pnpm -s ide:gate:verify-contract` -> PASS
+- `pnpm -s ide:gate:export-download-contract` -> PASS
+- `pnpm -s ide:gate:screenshots:update` -> PASS (verify/export baselines refreshed)
+- `pnpm repo:status` -> PASS (13/13 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Compiler Diagnostics Everywhere: Canonical Model + Jump-to-Fix Routing)
 
 **Status**: COMPLETE - Diagnostics are now canonical IR objects with stable IDs, deterministic owners/actions, and cross-mode jump-to-fix routing (Design/Export -> Project/Design target focus).

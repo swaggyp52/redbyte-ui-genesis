@@ -1378,27 +1378,86 @@
 }
 
 .ide-waveform-stub {
-  height: 120px;
+  min-height: 120px;
   border-radius: var(--ide-radius-s);
   border: 1px solid rgba(130, 160, 188, 0.4);
   background: linear-gradient(180deg, rgba(8, 18, 29, 0.78), rgba(14, 27, 40, 0.88));
   display: grid;
-  grid-template-rows: repeat(4, 1fr);
-  gap: 8px;
+  gap: var(--ide-space-2);
   padding: 10px;
 }
 
-.ide-waveform-stub span {
+.ide-verify-waveform-grid {
+  display: grid;
+  gap: var(--ide-space-1);
+}
+
+.ide-verify-waveform-row {
+  display: grid;
+  grid-template-columns: minmax(54px, auto) minmax(0, 1fr);
+  gap: var(--ide-space-1);
+  align-items: center;
+}
+
+.ide-verify-waveform-label {
+  font-family: var(--ide-font-mono);
+  font-size: 10px;
+  color: var(--ide-text-soft);
+}
+
+.ide-verify-waveform-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.ide-verify-waveform-point {
   border-radius: 4px;
-  background: linear-gradient(
-    90deg,
-    rgba(46, 196, 182, 0.12) 0%,
-    rgba(46, 196, 182, 0.12) 25%,
-    rgba(249, 199, 79, 0.42) 25%,
-    rgba(249, 199, 79, 0.42) 55%,
-    rgba(46, 196, 182, 0.12) 55%,
-    rgba(46, 196, 182, 0.12) 100%
-  );
+  border: 1px solid rgba(138, 170, 200, 0.36);
+  background: rgba(34, 56, 77, 0.74);
+  color: #cfe7ff;
+  font-family: var(--ide-font-mono);
+  font-size: 10px;
+  line-height: 1;
+  text-align: center;
+  padding: 4px 0;
+}
+
+.ide-verify-waveform-point.is-selected {
+  border-color: rgba(46, 196, 182, 0.84);
+  background: rgba(16, 78, 83, 0.78);
+  color: #d8fffb;
+}
+
+.ide-verify-tick-nav {
+  display: grid;
+  gap: var(--ide-space-2);
+  padding: var(--ide-space-2);
+  border-radius: var(--ide-radius-s);
+  border: 1px solid rgba(60, 92, 126, 0.5);
+  background: rgba(12, 24, 36, 0.66);
+}
+
+.ide-verify-scrubber-field {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--ide-space-2);
+  font-size: var(--rb-font-size-1);
+  color: var(--ide-text-muted);
+}
+
+.ide-verify-scrubber-field input[type='range'] {
+  width: 100%;
+}
+
+.ide-verify-scrubber-field code {
+  font-family: var(--ide-font-mono);
+  font-size: 11px;
+  color: #bfe7ff;
+  min-width: 3ch;
+  text-align: right;
 }
 
 .ide-button {
@@ -1694,6 +1753,11 @@
 .ide-kv-row span:last-child {
   color: var(--ide-text-strong);
   font-weight: 600;
+}
+
+.ide-kv-row-hidden {
+  font-size: 10px;
+  opacity: 0.75;
 }
 
 .ide-status-bar {

@@ -43,6 +43,7 @@ export interface ExportPinTableRow {
 export interface ExportArtifactView {
   path: string;
   kind: 'vhd' | 'xdc' | 'readme' | 'tb';
+  content: string;
   preview: string;
   status: 'ready' | 'blocked' | 'pending';
   note: string;
@@ -94,18 +95,20 @@ function collectDiagnostics(
   const mappingIndex = buildMappingIndex(project);
 
   const push = (severity: ExportDiagnosticSeverity, message: string) => {
-    const key = `${severity}:${message}`;
+    const normalizedSeverity = normalizeDiagnosticSeverity(severity, message);
+    const key = `${normalizedSeverity}:${message}`;
     if (seen.has(key)) return;
     seen.add(key);
 
-    const code = diagnosticCodeFor(message, severity);
-    const fix = fixHintFor(message, severity);
+    const code = diagnosticCodeFor(message, normalizedSeverity);
+    const fix = fixHintFor(message, normalizedSeverity);
     const port = extractPortFromMessage(message);
     const owner = resolveDiagnosticOwner(project, mappingIndex, port, message);
     const actions = buildDiagnosticActions(owner);
     const hint = fix.length > 0 ? [fix] : [];
-    const canonicalSeverity: IdeDiagnosticSeverity = severity === 'error' ? 'error' : 'warn';
-    const title = diagnosticTitleFor(code, message, severity);
+    const canonicalSeverity: IdeDiagnosticSeverity =
+      normalizedSeverity === 'error' ? 'error' : 'warn';
+    const title = diagnosticTitleFor(code, message, normalizedSeverity);
     const id = createDiagnosticId({
       code,
       owner,
@@ -131,7 +134,7 @@ function collectDiagnostics(
       hint,
       fix,
       port,
-      severity,
+      severity: normalizedSeverity,
       owner,
       actions,
       canonical,
@@ -280,6 +283,7 @@ function buildArtifacts(
     artifacts.push({
       path: 'top.vhd',
       kind: 'vhd',
+      content: normalizeArtifactContent(bundle.topVhd),
       preview: buildPreview(bundle.topVhd),
       status: blocked ? 'blocked' : 'ready',
       note: 'Canonical top-level VHDL export.',
@@ -287,6 +291,7 @@ function buildArtifacts(
     artifacts.push({
       path: 'top.xdc',
       kind: 'xdc',
+      content: normalizeArtifactContent(bundle.topXdc),
       preview: buildPreview(bundle.topXdc),
       status: blocked ? 'blocked' : 'ready',
       note: 'Deterministic Basys3 constraints generated from IO mapping.',
@@ -294,6 +299,7 @@ function buildArtifacts(
     artifacts.push({
       path: 'README.txt',
       kind: 'readme',
+      content: normalizeArtifactContent(bundle.readme),
       preview: buildPreview(bundle.readme),
       status: blocked ? 'blocked' : 'ready',
       note: 'Vivado import instructions.',
@@ -302,6 +308,7 @@ function buildArtifacts(
       artifacts.push({
         path: 'testbench.vhd',
         kind: 'tb',
+        content: normalizeArtifactContent(bundle.testbench),
         preview: buildPreview(bundle.testbench),
         status: blocked ? 'blocked' : 'ready',
         note: 'Deterministic verification schedule mirror.',
@@ -311,6 +318,7 @@ function buildArtifacts(
       artifacts.push({
         path: 'testbench.vhd',
         kind: 'tb',
+        content: '',
         preview: '',
         status: hasVectors ? 'blocked' : 'pending',
         note: hasVectors
@@ -322,6 +330,7 @@ function buildArtifacts(
     artifacts.push({
       path: 'top.vhd',
       kind: 'vhd',
+      content: '',
       preview: '',
       status: 'blocked',
       note: 'Blocked by export diagnostics.',
@@ -329,6 +338,7 @@ function buildArtifacts(
     artifacts.push({
       path: 'top.xdc',
       kind: 'xdc',
+      content: '',
       preview: '',
       status: 'blocked',
       note: 'Blocked by export diagnostics.',
@@ -336,6 +346,7 @@ function buildArtifacts(
     artifacts.push({
       path: 'README.txt',
       kind: 'readme',
+      content: '',
       preview: '',
       status: 'blocked',
       note: 'Blocked by export diagnostics.',
@@ -343,6 +354,7 @@ function buildArtifacts(
     artifacts.push({
       path: 'testbench.vhd',
       kind: 'tb',
+      content: '',
       preview: '',
       status: 'blocked',
       note: 'Blocked by export diagnostics.',
@@ -354,6 +366,15 @@ function buildArtifacts(
 
 function severityOrder(severity: ExportDiagnosticSeverity): number {
   return severity === 'error' ? 0 : 1;
+}
+
+function normalizeDiagnosticSeverity(
+  severity: ExportDiagnosticSeverity,
+  message: string
+): ExportDiagnosticSeverity {
+  if (severity !== 'error') return severity;
+  if (/bundle validation failed/i.test(message)) return 'warning';
+  return severity;
 }
 
 interface MappingIndexEntry {
@@ -634,7 +655,11 @@ function suggestPin(portName: string, direction: ExportPinDirection): string {
 }
 
 function buildPreview(content: string): string {
-  const normalized = content.replace(/\r\n/g, '\n').trim();
+  const normalized = normalizeArtifactContent(content);
   if (normalized.length === 0) return '';
   return normalized.split('\n').slice(0, 160).join('\n');
+}
+
+function normalizeArtifactContent(content: string): string {
+  return content.replace(/\r\n/g, '\n').trim();
 }
