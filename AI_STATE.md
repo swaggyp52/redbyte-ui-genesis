@@ -1,5 +1,77 @@
 # AI State
 
+## Change Log 2026-02-19 (Design Mode Polish Sprint: Command Header + Guided Empty State + Gate Contract)
+
+**Status**: COMPLETE - Delivered Phase 1B design stabilization pass focused on intentional layout, explicit tool affordances, and regression-proof gate assertions.
+
+### What Changed
+
+1. Design UI contract + shell tokens aligned to fixed dimensions
+- Updated `docs/ide/style-guide.md`:
+  - fixed shell dimensions (top bar 56px, left rail 72px, mode header row 48px, status bar 32px)
+  - expanded allowed spacing scale (4/8/12/16/24/32/40/48)
+  - design canvas full-height overflow guidance
+- Updated `docs/ide/ui-contract.md`:
+  - left rail width locked to 72px
+  - fixed shell dimensions documented
+  - title row contract fixed to 48px
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - token updates for shell sizing + spacing aliases
+  - root row heights now use fixed variables
+  - left rail styling tuned for 72px contract
+  - status bar fixed to 32px contract
+
+2. Design Command Center header and tool affordances
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - panel title set to `Design Command Center`
+  - new in-surface command header with:
+    - mode title/subtitle
+    - segmented Select/Wire control with keyboard hints
+    - action group (snap/undo/redo/delete) + wire-mode pill
+  - canvas mode indicator (`Select Mode` / `Wire Mode`)
+  - tool-mode attribute on live canvas for deterministic gate checks
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - command-center layout/styling
+  - segmented control visuals
+  - wire mode pill + live-canvas mode affordance
+  - full-height design layout with overflow clipping
+
+3. Guided empty state and action feedback
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - replaced generic empty copy with 3-step checklist:
+    1. Add Inputs/Outputs
+    2. Place Gates
+    3. Wire and Verify
+  - explicit primary actions:
+    - `Add Inputs/Outputs`
+    - `Add an AND example`
+  - added short-lived action toast for key design actions and mode switches
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - empty-state checklist styles
+  - primary action row styling
+  - deterministic design toast styling
+
+4. Regression gate extension (Design contract)
+- Updated `scripts/gates/ide-design-build-contract.mjs`:
+  - resets circuit state before assertions
+  - asserts command header and segmented tool control presence
+  - asserts empty-state checklist (3 items) + two primary actions
+  - asserts tool toggle consistency via canvas `data-tool-mode`
+  - preserves existing build-flow assertions (AND starter, wiring, crash-free)
+- Updated `scripts/gates/ide-layout-contract.mjs`:
+  - left rail width assertion aligned to 72px contract range
+
+### Validation Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:design-build-contract` -> PASS
+- `pnpm -s ide:gate:layout-contract` -> PASS
+- `pnpm repo:status` -> PASS (5/5 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Design Mode Live Editor + Build Contract Gate)
 
 **Status**: COMPLETE - Replaced placeholder Design surface with a live circuit-editing workspace and added a Playwright contract gate that builds and wires a minimal AND flow.
