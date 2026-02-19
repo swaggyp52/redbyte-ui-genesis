@@ -16,7 +16,6 @@ import fs from 'fs';
 import path from 'path';
 
 const ROOT = process.cwd();
-const AHEAD_WARN_LIMIT = 3;
 
 let totalChecks = 0;
 let passCount = 0;
@@ -51,52 +50,31 @@ function fileExists(filePath, description) {
   return false;
 }
 
-function emitAheadLimitWarning() {
-  try {
-    const aheadRaw = execSync('git rev-list --count origin/main..HEAD', {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      cwd: ROOT,
-      encoding: 'utf8',
-    }).trim();
-    const aheadCount = Number.parseInt(aheadRaw, 10);
-    if (!Number.isFinite(aheadCount)) {
-      console.log(`[warn] unable to parse ahead count: "${aheadRaw}"`);
-      return;
-    }
-    if (aheadCount > AHEAD_WARN_LIMIT) {
-      console.log(
-        `[warn] local branch is ${aheadCount} commits ahead of origin/main (recommended <= ${AHEAD_WARN_LIMIT}).`
-      );
-      console.log(
-        '[warn] guidance: push/PR the current lane stack now, or generate a bundle/patch handoff before adding more commits.'
-      );
-    }
-  } catch {
-    console.log('[warn] ahead-limit check skipped (origin/main not available locally).');
-  }
-}
-
 console.log('RedByte UI Repository Status\n');
 console.log('='.repeat(50));
-emitAheadLimitWarning();
 
-// 0. Static anti-shadow contract (fast fail)
+// 0. Git ahead hard stop (no feature work while drifted too far)
+if (!runCheck('Git Ahead Limit', 'pnpm -s gates:git-ahead-limit 2>&1')) {
+  process.exit(1);
+}
+
+// 1. Static anti-shadow contract (fast fail)
 if (!runCheck('IDE Boot Shadow Contract', 'pnpm gates:ide-boot-shadow-contract 2>&1')) {
   process.exit(1);
 }
 
-// 1. Build (includes typecheck in vite build for product apps)
+// 2. Build (includes typecheck in vite build for product apps)
 if (!runCheck('Building', 'pnpm build 2>&1')) {
   process.exit(1);
 }
 
-// 2. Import roundtrip validation
+// 3. Import roundtrip validation
 if (!runCheck('Import Pipeline Validation', 'pnpm gates:import-roundtrip 2>&1')) {
   console.log('  [info] Import fixtures + roundtrip tests failed');
   process.exit(1);
 }
 
-// 3. Artifact verification
+// 4. Artifact verification
 console.log('\n[CHECK] Artifact Verification...');
 const artifactChecks = [
   ['dist/index.html', 'Root index.html exists'],

@@ -1,5 +1,42 @@
 # AI State
 
+## Change Log 2026-02-19 (Hard-Stop Git Ahead Limit Gate)
+
+**Status**: COMPLETE - Replaced ahead-count warning behavior with a hard-stop gate that blocks `repo:status` when local branch drift exceeds the configured limit.
+
+### What Changed
+
+1. New ahead-limit gate
+- Added `scripts/gates/git-ahead-limit.mjs`.
+- Gate behavior:
+  - reads `git status -sb` ahead count when available
+  - falls back to `git rev-list --count <base>..HEAD` (default base `origin/main`)
+  - fails with exit code 1 when ahead count exceeds limit (default `3`)
+  - supports optional env overrides:
+    - `RB_GIT_AHEAD_LIMIT`
+    - `RB_GIT_AHEAD_BASE`
+
+2. Repo status enforcement
+- Updated `scripts/repo-status.mjs`.
+- Added hard check as first step:
+  - `pnpm -s gates:git-ahead-limit`
+- Removed previous warning-only ahead behavior.
+
+3. Script wiring + policy docs
+- Updated `package.json` scripts:
+  - added `gates:git-ahead-limit`.
+- Updated `docs/ai-usage-rules.md`:
+  - codified non-negotiable hard-stop policy for ahead > 3.
+
+### Validation Executed
+
+- `pnpm -s gates:git-ahead-limit` -> FAIL (expected in current state: ahead 18)
+- `pnpm repo:status` -> FAIL at `Git Ahead Limit` (expected)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Export Mode Compiler Panel + Mapping Jump UX)
 
 **Status**: COMPLETE - Replaced Export-mode placeholder with an intentional compiler-style surface using existing export diagnostic outputs.
