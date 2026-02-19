@@ -93,4 +93,66 @@ describe('fixture03 sequential verify/export parity', () => {
     expect(exportResult.bundle?.testbench).toBe(generatedTestbench);
     expect(exportResult.bundle?.testbench).not.toContain('would be generated here');
   });
+
+  it('blocks export when required top-entity ports are unmapped', () => {
+    const { vhdl } = loadFixture();
+    const project = buildFixtureProject(vhdl);
+    project.ioMapping = {
+      inputs: (project.ioMapping?.inputs ?? []).filter((entry) => entry.label !== 'count_en'),
+      outputs: (project.ioMapping?.outputs ?? []).filter((entry) => entry.label !== 'q2'),
+    };
+
+    const exportResult = exportProjectAsBasys3(project);
+    expect(exportResult.success).toBe(false);
+
+    const blockingMessages = exportResult.errors
+      .filter((error) => error.severity === 'error')
+      .map((error) => error.message);
+
+    expect(blockingMessages).toEqual([
+      'Unmapped required input port "count_en". Fix: map "count_en" to "SW0 / V17".',
+      'Unmapped required output port "q2". Fix: map "q2" to "LD0 / U16".',
+    ]);
+  });
+
+  it('surfaces compiler-style warnings for questionable/unused mappings and ignored XDC directives', () => {
+    const { vhdl } = loadFixture();
+    const project = buildFixtureProject(vhdl);
+    project.ioMapping = {
+      inputs: [
+        ...(project.ioMapping?.inputs ?? []),
+        { id: 'unused_btn', nodeId: 'port_unused_btn', port: 'out', label: 'unused_btn', pin: 'SW2' },
+      ],
+      outputs: [
+        ...(project.ioMapping?.outputs ?? []).map((entry) =>
+          entry.label === 'q0' ? { ...entry, pin: 'SW3' } : entry
+        ),
+      ],
+    };
+    project.fpga = {
+      board: 'basys3',
+      top: 'top',
+      constraints: {
+        type: 'xdc',
+        text: `
+create_clock -period 10.000 -name clk [get_ports clk]
+set_input_delay -clock clk 2.0 [get_ports rst]
+`,
+      },
+    };
+
+    const exportResult = exportProjectAsBasys3(project);
+    expect(exportResult.errors.some((error) => error.message.includes('Unmapped required'))).toBe(false);
+
+    const warningMessages = exportResult.errors
+      .filter((error) => error.severity === 'warning')
+      .map((error) => error.message);
+
+    expect(warningMessages).toEqual(expect.arrayContaining([
+      'Ignoring source XDC directive "create_clock" during deterministic Basys3 export; constraints are regenerated from IO mapping.',
+      'Ignoring source XDC directive "set_input_delay" during deterministic Basys3 export; constraints are regenerated from IO mapping.',
+      'Questionable output mapping "q0" -> SW3: output is mapped to an input/clock alias.',
+      'Unused mapped input "unused_btn" will be ignored by top-entity export.',
+    ]));
+  });
 });
