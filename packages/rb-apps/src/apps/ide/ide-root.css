@@ -1431,9 +1431,18 @@
   gap: var(--ide-space-2);
 }
 
+.ide-verify-left-dock {
+  display: grid;
+  gap: var(--ide-space-2);
+  min-height: 0;
+}
+
 .ide-signal-list {
   display: grid;
   gap: var(--ide-space-2);
+  min-height: 0;
+  overflow: auto;
+  max-height: 320px;
 }
 
 .ide-signal-row {
@@ -1459,6 +1468,12 @@
 .ide-signal-row:focus-visible {
   outline: 2px solid var(--rb-focus-ring);
   outline-offset: 2px;
+}
+
+.ide-signal-row.is-active {
+  border-color: rgba(46, 196, 182, 0.62);
+  color: #d7fffb;
+  background: rgba(46, 196, 182, 0.16);
 }
 
 .ide-verify-vector-form {
@@ -1554,7 +1569,17 @@
   align-items: center;
 }
 
+.ide-verify-waveform-row.is-selected {
+  border-radius: var(--ide-radius-s);
+  background: rgba(46, 196, 182, 0.12);
+}
+
 .ide-verify-waveform-label {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
   font-family: var(--ide-font-mono);
   font-size: 10px;
   color: var(--ide-text-soft);
@@ -1568,8 +1593,8 @@
 }
 
 .ide-verify-waveform-point {
-  border-radius: 4px;
   border: 1px solid rgba(138, 170, 200, 0.36);
+  cursor: pointer;
   background: rgba(34, 56, 77, 0.74);
   color: #cfe7ff;
   font-family: var(--ide-font-mono);
@@ -1577,6 +1602,16 @@
   line-height: 1;
   text-align: center;
   padding: 4px 0;
+  border-radius: 4px;
+  transition:
+    border-color var(--rb-motion-fast) var(--rb-ease-standard),
+    background var(--rb-motion-fast) var(--rb-ease-standard),
+    color var(--rb-motion-fast) var(--rb-ease-standard);
+}
+
+.ide-verify-waveform-point:hover {
+  border-color: rgba(142, 199, 255, 0.72);
+  background: rgba(54, 87, 118, 0.78);
 }
 
 .ide-verify-waveform-point.is-selected {
@@ -1613,6 +1648,45 @@
   color: #bfe7ff;
   min-width: 3ch;
   text-align: right;
+}
+
+.ide-verify-console,
+.ide-verify-workbench,
+.ide-verify-waveform-panel,
+.ide-verify-mismatch-panel {
+  display: grid;
+  gap: var(--ide-space-2);
+}
+
+.ide-verify-workbench {
+  min-height: 0;
+}
+
+.ide-verify-waveform-panel,
+.ide-verify-mismatch-panel {
+  border: 1px solid rgba(58, 87, 116, 0.58);
+  border-radius: var(--ide-radius-s);
+  background: rgba(8, 18, 30, 0.62);
+  padding: var(--ide-space-2);
+}
+
+.ide-verify-console .ide-design-diagnostics-list {
+  max-height: none;
+}
+
+.ide-link-button {
+  border: 0;
+  background: transparent;
+  color: #9dd4ff;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ide-link-button:hover {
+  color: #c9ebff;
 }
 
 .ide-button {

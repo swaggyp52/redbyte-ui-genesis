@@ -15,9 +15,17 @@ export interface IdeDiagnosticOwner {
 export interface IdeDiagnosticRoutePayload {
   mode: IdeDiagnosticMode;
   nodeId?: string;
+  wireId?: string;
   portName?: string;
   mappingKey?: string;
   filePath?: string;
+  signal?: string;
+  tick?: number;
+  panTo?: {
+    x: number;
+    y: number;
+    zoom?: number;
+  };
 }
 
 export type IdeDiagnosticActionKind = 'select' | 'open-mode' | 'apply-fix';

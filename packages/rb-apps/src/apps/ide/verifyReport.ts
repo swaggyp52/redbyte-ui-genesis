@@ -28,6 +28,29 @@ export interface VerifyReport {
   reportHash: string;
 }
 
+export interface VerifyWaveSample {
+  tick: number;
+  signals: Record<string, string>;
+  mismatches: Array<{
+    signal: string;
+    expected: string;
+    actual: string;
+  }>;
+}
+
+export interface VerifyTickSignalIndexEntry {
+  tick: number;
+  signal: string;
+  expected: string;
+  actual: string;
+  status: 'pass' | 'fail';
+}
+
+export interface VerifyTickSignalIndex {
+  ticks: number[];
+  rowsByTick: Record<string, VerifyTickSignalIndexEntry[]>;
+}
+
 interface BuildVerifyReportInput {
   scenarioId: string;
   scenarioName: string;
@@ -97,6 +120,52 @@ export function buildVerifyReport(input: BuildVerifyReportInput): VerifyReport {
     generatedAtIso: input.generatedAtIso,
     reportHash: `vrf_${digestValue(hashSeed)}`,
   };
+}
+
+export function buildVerifyWaveSamples(report: VerifyReport): VerifyWaveSample[] {
+  const index = new Map<number, VerifyWaveSample>();
+  for (const row of report.rows) {
+    const current = index.get(row.tick) ?? {
+      tick: row.tick,
+      signals: {},
+      mismatches: [],
+    };
+    current.signals[row.signal] = row.actual;
+    if (row.status === 'fail') {
+      current.mismatches.push({
+        signal: row.signal,
+        expected: row.expected,
+        actual: row.actual,
+      });
+    }
+    index.set(row.tick, current);
+  }
+
+  return Array.from(index.values()).sort((left, right) => left.tick - right.tick);
+}
+
+export function buildVerifyTickSignalIndex(report: VerifyReport): VerifyTickSignalIndex {
+  const rowsByTick: Record<string, VerifyTickSignalIndexEntry[]> = {};
+  for (const row of report.rows) {
+    const key = String(row.tick);
+    const nextRow: VerifyTickSignalIndexEntry = {
+      tick: row.tick,
+      signal: row.signal,
+      expected: row.expected,
+      actual: row.actual,
+      status: row.status,
+    };
+    if (!rowsByTick[key]) {
+      rowsByTick[key] = [nextRow];
+    } else {
+      rowsByTick[key].push(nextRow);
+    }
+  }
+  const ticks = Object.keys(rowsByTick)
+    .map((value) => Number.parseInt(value, 10))
+    .filter((value) => Number.isFinite(value))
+    .sort((left, right) => left - right);
+  return { ticks, rowsByTick };
 }
 
 function normalizeBitMap(value: Record<string, unknown>): Record<string, 0 | 1> {

@@ -14,7 +14,7 @@ import { IdeStatusBar } from './ide/components/IdeStatusBar';
 import { IdeButton, IdeModal } from './ide/components/IdePrimitives';
 import { ProjectSurface } from './ide/surfaces/ProjectSurface';
 import { DesignSurface, type DesignCompilerStatus } from './ide/surfaces/DesignSurface';
-import { VerifySurface } from './ide/surfaces/VerifySurface';
+import { VerifySurface, type VerifyFailureTarget } from './ide/surfaces/VerifySurface';
 import { ExportSurface } from './ide/surfaces/ExportSurface';
 import { ImportSurface } from './ide/surfaces/ImportSurface';
 import { buildExportViewModel } from './ide/viewmodels/buildExportViewModel';
@@ -31,7 +31,6 @@ import {
   choosePrimaryProjectCta,
   deriveProjectHealth,
   type ProjectHealthExportResult,
-  type ProjectHealthVerifyResult,
 } from './ide/projectHealth';
 import { useProjectRuntime } from './ide/projectRuntime';
 
@@ -47,6 +46,7 @@ export const IdeApp: React.FC = () => {
   const projectIoRows = useProjectRuntime((state) => state.projectIoRows);
   const projectVectors = useProjectRuntime((state) => state.projectVectors);
   const circuit = useProjectRuntime((state) => state.circuit);
+  const verifyLastRun = useProjectRuntime((state) => state.verifyLastRun);
   const projectHealthCore = useProjectRuntime((state) => state.projectHealthCore);
   const loadExample = useProjectRuntime((state) => state.loadExample);
   const loadFromProject = useProjectRuntime((state) => state.loadFromProject);
@@ -56,7 +56,8 @@ export const IdeApp: React.FC = () => {
   const markDesignMutated = useProjectRuntime((state) => state.markDesignMutated);
   const addDesignNode = useProjectRuntime((state) => state.addDesignNode);
   const addDesignIo = useProjectRuntime((state) => state.addDesignIo);
-  const recordVerification = useProjectRuntime((state) => state.recordVerification);
+  const runRuntimeVerification = useProjectRuntime((state) => state.actions.verify.run);
+  const clearRuntimeVerification = useProjectRuntime((state) => state.actions.verify.clear);
   const recordExport = useProjectRuntime((state) => state.recordExport);
 
   const determinismHash = useMemo(() => '2f4e0bb0f17ac4d2', []);
@@ -181,19 +182,23 @@ export const IdeApp: React.FC = () => {
     [setVectors]
   );
 
-  const handleVerificationComplete = useCallback(
-    (result: ProjectHealthVerifyResult) => {
-      recordVerification(result);
-    },
-    [recordVerification]
-  );
-
   const handleExportResult = useCallback(
     (result: ProjectHealthExportResult) => {
       recordExport(result);
     },
     [recordExport]
   );
+
+  const handleRunVerification = useCallback(
+    (input: Parameters<typeof runRuntimeVerification>[0]) => {
+      runRuntimeVerification(input);
+    },
+    [runRuntimeVerification]
+  );
+
+  const handleClearVerification = useCallback(() => {
+    clearRuntimeVerification();
+  }, [clearRuntimeVerification]);
 
   const handleDesignMutation = useCallback(() => {
     markDesignMutated(useCircuitStore.getState().circuit);
@@ -269,7 +274,10 @@ export const IdeApp: React.FC = () => {
     [circuit, hdlText, projectDescription, projectIoRows, projectName, projectVectors, topEntityName, xdcText]
   );
 
-  const exportViewModel = useMemo(() => buildExportViewModel(exportProject), [exportProject]);
+  const exportViewModel = useMemo(
+    () => buildExportViewModel(exportProject, verifyLastRun),
+    [exportProject, verifyLastRun]
+  );
   const handleDiagnosticAction = useCallback((diagnostic: IdeDiagnostic) => {
     const action = choosePrimaryDiagnosticAction(diagnostic);
     if (!action) return;
@@ -305,23 +313,54 @@ export const IdeApp: React.FC = () => {
   );
 
   const handleVerifyFixPath = useCallback(
-    (signalName: string) => {
-      const desiredSignal = normalizeSignalKey(signalName);
-      const targetNode =
-        exportProject.circuit.nodes.find(
-          (node) => normalizeSignalKey(node.label ?? node.id) === desiredSignal
-        ) ?? exportProject.circuit.nodes.find((node) => node.type === 'OUTPUT' || node.type === 'Lamp');
+    (target: VerifyFailureTarget) => {
+      const desiredSignal = normalizeSignalKey(target.signal);
+      const mappingTarget = projectIoRows.find((row) => {
+        const candidates = [row.label, row.id, row.port];
+        return candidates.some((candidate) => normalizeSignalKey(candidate ?? '') === desiredSignal);
+      });
+
+      const mappedNode = mappingTarget
+        ? exportProject.circuit.nodes.find((node) => node.id === mappingTarget.nodeId)
+        : undefined;
+      const namedNode = exportProject.circuit.nodes.find(
+        (node) => normalizeSignalKey(node.label ?? node.id) === desiredSignal
+      );
+      const fallbackNode = exportProject.circuit.nodes.find(
+        (node) => node.type === 'OUTPUT' || node.type === 'Lamp'
+      );
+      const targetNode = mappedNode ?? namedNode ?? fallbackNode;
+
+      const targetWire = targetNode
+        ? exportProject.circuit.connections.find((connection) => {
+            const fromNodeId =
+              typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
+            const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+            return fromNodeId === targetNode.id || toNodeId === targetNode.id;
+          })
+        : undefined;
 
       setCurrentMode('design');
-
-      if (!targetNode || typeof window === 'undefined') return;
-      window.setTimeout(() => {
-        const viewState = useLogicViewStore.getState();
-        viewState.setToolMode('select');
-        viewState.selectMultipleNodes([targetNode.id], false);
-      }, 0);
+      setDiagnosticRouteRequest((previous) => ({
+        mode: 'design',
+        diagnosticId: `verify-fix-${desiredSignal}-${target.tick}`,
+        requestId: (previous?.requestId ?? 0) + 1,
+        nodeId: targetNode?.id,
+        wireId: targetWire?.id,
+        portName: mappingTarget?.port ?? target.signal,
+        mappingKey: mappingTarget?.id,
+        signal: target.signal,
+        tick: target.tick,
+        panTo: targetNode
+          ? {
+              x: targetNode.position?.x ?? targetNode.x ?? 0,
+              y: targetNode.position?.y ?? targetNode.y ?? 0,
+              zoom: 1.25,
+            }
+          : undefined,
+      }));
     },
-    [exportProject.circuit.nodes]
+    [exportProject.circuit.connections, exportProject.circuit.nodes, projectIoRows]
   );
 
   useEffect(() => {
@@ -334,6 +373,18 @@ export const IdeApp: React.FC = () => {
       const viewState = useLogicViewStore.getState();
       viewState.setToolMode('select');
       viewState.selectMultipleNodes([diagnosticRouteRequest.nodeId!], false);
+      if (diagnosticRouteRequest.wireId) {
+        viewState.selectWire(diagnosticRouteRequest.wireId, true);
+      }
+      if (diagnosticRouteRequest.panTo) {
+        const { x, y, zoom } = diagnosticRouteRequest.panTo;
+        const nextZoom = typeof zoom === 'number' ? Math.max(0.6, Math.min(2.4, zoom)) : 1.2;
+        viewState.setCamera({
+          zoom: nextZoom,
+          x: 420 - x * nextZoom,
+          y: 240 - y * nextZoom,
+        });
+      }
     }, 0);
 
     return () => window.clearTimeout(timer);
@@ -410,9 +461,11 @@ export const IdeApp: React.FC = () => {
             deterministicHash={determinismHash}
             hasVectors={projectVectors.length > 0}
             vectors={projectVectors}
+            lastRun={verifyLastRun}
             mappedInputs={verifyMappedInputs}
             onVectorsChange={handleVectorsChange}
-            onVerificationComplete={handleVerificationComplete}
+            onRunVerification={handleRunVerification}
+            onClearVerification={handleClearVerification}
             onOpenProjectVectors={() => setCurrentMode('project')}
             onFixPath={handleVerifyFixPath}
           />
@@ -420,6 +473,7 @@ export const IdeApp: React.FC = () => {
           <ExportSurface
             project={exportProject}
             verifyResult={projectHealthCore.lastVerify}
+            verifyLastRun={verifyLastRun}
             dirtySinceVerify={projectHealthCore.dirtySinceVerify}
             determinismHash={determinismHash}
             onExportResult={handleExportResult}

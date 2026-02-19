@@ -1,7 +1,11 @@
 import type { TestVector } from '@redbyte/rb-utils';
 import type { RBProject } from '../../../export/projectFormat';
 import { compareCodepoint } from '../../../export/codepointSort';
-import { CLOCKED_MACRO_SEQUENCE, deriveVerifySchedule } from './verifySchedule';
+import {
+  CLOCKED_MACRO_SEQUENCE,
+  deriveVerifySchedule,
+  type VerifySchedule,
+} from './verifySchedule';
 
 interface SignalCatalog {
   inputs: string[];
@@ -9,8 +13,30 @@ interface SignalCatalog {
   clock?: string;
 }
 
-export function generateTestbenchVhdl(project: RBProject, vectors: TestVector[]): string {
-  const scheduleContract = deriveVerifySchedule(project.circuit, project.ioMapping, project.hdl);
+interface TestbenchGenerationOptions {
+  scheduleOverride?: {
+    schedule: VerifySchedule;
+    reason?: string;
+    clockSignalName?: string;
+  };
+}
+
+export function generateTestbenchVhdl(
+  project: RBProject,
+  vectors: TestVector[],
+  options?: TestbenchGenerationOptions
+): string {
+  const derivedSchedule = deriveVerifySchedule(project.circuit, project.ioMapping, project.hdl);
+  const scheduleContract =
+    options?.scheduleOverride
+      ? {
+          ...derivedSchedule,
+          schedule: options.scheduleOverride.schedule,
+          reason: options.scheduleOverride.reason ?? derivedSchedule.reason,
+          clockSignalName:
+            options.scheduleOverride.clockSignalName ?? derivedSchedule.clockSignalName,
+        }
+      : derivedSchedule;
   const signalCatalog = collectSignals(project, vectors, scheduleContract.schedule, scheduleContract.clockSignalName);
   const topModule = (project.fpga?.top || project.hdl?.top || 'top').trim() || 'top';
 

@@ -3,6 +3,7 @@ import type { RBProject } from '../../../export/projectFormat';
 import type { ProjectHealthExportResult, ProjectHealthVerifyResult } from '../projectHealth';
 import { createDiagnosticId, type IdeDiagnostic } from '../diagnostics';
 import { buildEvidenceCapsule } from '../evidenceCapsule';
+import type { RuntimeVerifyRun } from '../projectRuntime';
 import {
   buildExportViewModel,
   type ExportDiagnosticView,
@@ -21,6 +22,7 @@ import {
 export interface ExportSurfaceProps {
   project: RBProject;
   verifyResult?: ProjectHealthVerifyResult;
+  verifyLastRun?: RuntimeVerifyRun;
   dirtySinceVerify?: boolean;
   determinismHash: string;
   onExportBundle?: (artifacts: ExportArtifactView[]) => void;
@@ -31,13 +33,17 @@ export interface ExportSurfaceProps {
 export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   project,
   verifyResult,
+  verifyLastRun,
   dirtySinceVerify = false,
   determinismHash,
   onExportBundle,
   onExportResult,
   onDiagnosticAction,
 }) => {
-  const viewModel = useMemo(() => buildExportViewModel(project), [project]);
+  const viewModel = useMemo(
+    () => buildExportViewModel(project, verifyLastRun),
+    [project, verifyLastRun]
+  );
   const evidenceDiagnostics = useMemo(
     () => buildEvidenceDiagnostics(verifyResult, dirtySinceVerify),
     [dirtySinceVerify, verifyResult]

@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Circuit } from '@redbyte/rb-logic-core';
-import type { TestVector } from '@redbyte/rb-utils';
+import type { IoMapping, TestVector } from '@redbyte/rb-utils';
 import type { RBProject } from '../../export/projectFormat';
+import { deriveVerifySchedule } from '../../fpga/boards/basys3/verifySchedule';
 import {
   IDE_DEFAULT_EXAMPLE_ID,
   IDE_EXAMPLES,
@@ -15,12 +16,52 @@ import type {
   ProjectHealthExportResult,
   ProjectHealthVerifyResult,
 } from './projectHealth';
+import {
+  buildVerifyReport,
+  buildVerifyWaveSamples,
+  type VerifyReport,
+  type VerifyReportVector,
+  type VerifyWaveSample,
+} from './verifyReport';
 
 const STORAGE_KEY = 'rb.ide.project-runtime.v1';
 
 const DEFAULT_EXAMPLE = getIdeExampleById(IDE_DEFAULT_EXAMPLE_ID) ?? IDE_EXAMPLES[0];
 
 export type ProjectIoRow = IdeExampleIoRow;
+
+export interface RuntimeVerifyRun {
+  scenarioId: string;
+  scenarioName: string;
+  status: 'pass' | 'fail';
+  deterministicHash: string;
+  reportHash: string;
+  firstFailingTick?: number;
+  generatedAtIso: string;
+  schedule: 'combinational' | 'clocked_macro';
+  report: VerifyReport;
+  waveform: VerifyWaveSample[];
+}
+
+export interface RunVerificationInput {
+  scenarioId: string;
+  scenarioName: string;
+  deterministicHash: string;
+  rows: Array<{
+    tick: number;
+    signal: string;
+    expected: string;
+    actual: string;
+  }>;
+  ranAtIso?: string;
+}
+
+export interface ProjectRuntimeActions {
+  verify: {
+    run: (input: RunVerificationInput) => RuntimeVerifyRun;
+    clear: () => void;
+  };
+}
 
 export interface ProjectRuntimeState {
   projectName: string;
@@ -30,7 +71,9 @@ export interface ProjectRuntimeState {
   projectIoRows: ProjectIoRow[];
   projectVectors: TestVector[];
   circuit: Circuit;
+  verifyLastRun?: RuntimeVerifyRun;
   projectHealthCore: ProjectHealthCore;
+  actions: ProjectRuntimeActions;
   loadExample: (exampleId: string) => void;
   loadFromProject: (project: RBProject) => void;
   setMappingPin: (rowId: string, pin: string) => void;
@@ -45,6 +88,8 @@ export interface ProjectRuntimeState {
     toNodeId: string;
     toPort: string;
   }) => void;
+  runVerification: (input: RunVerificationInput) => RuntimeVerifyRun;
+  clearVerification: () => void;
   recordVerification: (result: ProjectHealthVerifyResult) => void;
   recordExport: (result: ProjectHealthExportResult) => void;
   clearUnsavedState: (label?: string) => void;
@@ -58,6 +103,7 @@ interface PersistedRuntimeState {
   projectIoRows: ProjectIoRow[];
   projectVectors: TestVector[];
   circuit: Circuit;
+  verifyLastRun?: RuntimeVerifyRun;
   projectHealthCore: ProjectHealthCore;
 }
 
@@ -65,6 +111,12 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
   persist(
     (set, get) => ({
       ...stateFromExample(DEFAULT_EXAMPLE),
+      actions: {
+        verify: {
+          run: (input) => get().runVerification(input),
+          clear: () => get().clearVerification(),
+        },
+      },
       loadExample: (exampleId) => {
         const example = getIdeExampleById(exampleId);
         if (!example) return;
@@ -82,6 +134,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           projectIoRows: ioRowsFromProject(project),
           projectVectors: cloneVectors(project.vectors ?? []),
           circuit: cloneCircuit(project.circuit),
+          verifyLastRun: undefined,
           projectHealthCore: {
             dirtySinceVerify: true,
             dirtySinceExport: true,
@@ -206,14 +259,117 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           };
         });
       },
-      recordVerification: (result) => {
+      runVerification: (input) => {
+        let runtimeRun: RuntimeVerifyRun | undefined;
+        set((state) => {
+          const normalizedRows = normalizeVerifyRows(input.rows);
+          const failedRows = normalizedRows.filter((row) => row.expected !== row.actual);
+          const status: 'pass' | 'fail' = failedRows.length > 0 ? 'fail' : 'pass';
+          const ranAtIso = input.ranAtIso ?? new Date().toISOString();
+          const vectors = toVerifyVectors(state.projectVectors);
+          const report = buildVerifyReport({
+            scenarioId: input.scenarioId,
+            scenarioName: input.scenarioName,
+            status,
+            deterministicHash: input.deterministicHash,
+            rows: normalizedRows,
+            vectors,
+            generatedAtIso: ranAtIso,
+          });
+          const scheduleContract = deriveVerifySchedule(
+            state.circuit,
+            toIoMapping(state.projectIoRows)
+          );
+          runtimeRun = {
+            scenarioId: report.scenarioId,
+            scenarioName: report.scenarioName,
+            status: report.status,
+            deterministicHash: report.deterministicHash,
+            reportHash: report.reportHash,
+            firstFailingTick: report.firstFailingTick,
+            generatedAtIso: report.generatedAtIso,
+            schedule: scheduleContract.schedule,
+            report,
+            waveform: buildVerifyWaveSamples(report),
+          };
+
+          return {
+            verifyLastRun: runtimeRun,
+            projectHealthCore: {
+              ...state.projectHealthCore,
+              lastVerify: {
+                status: report.status,
+                hash: report.deterministicHash,
+                reportHash: report.reportHash,
+                report,
+                failingTick: report.firstFailingTick,
+                ranAtIso: report.generatedAtIso,
+              },
+              dirtySinceVerify: false,
+            },
+          };
+        });
+        return runtimeRun ?? {
+          scenarioId: input.scenarioId,
+          scenarioName: input.scenarioName,
+          status: 'fail',
+          deterministicHash: input.deterministicHash,
+          reportHash: 'pending',
+          generatedAtIso: input.ranAtIso ?? new Date().toISOString(),
+          schedule: 'combinational',
+          report: buildVerifyReport({
+            scenarioId: input.scenarioId,
+            scenarioName: input.scenarioName,
+            status: 'fail',
+            deterministicHash: input.deterministicHash,
+            rows: [],
+            vectors: [],
+            generatedAtIso: input.ranAtIso ?? new Date().toISOString(),
+          }),
+          waveform: [],
+        };
+      },
+      clearVerification: () => {
         set((state) => ({
+          verifyLastRun: undefined,
           projectHealthCore: {
             ...state.projectHealthCore,
-            lastVerify: result,
-            dirtySinceVerify: false,
+            lastVerify: undefined,
+            dirtySinceVerify: true,
           },
         }));
+      },
+      recordVerification: (result) => {
+        set((state) => {
+          const nextRun =
+            result.report
+              ? ({
+                  scenarioId: result.report.scenarioId,
+                  scenarioName: result.report.scenarioName,
+                  status: result.status,
+                  deterministicHash: result.hash,
+                  reportHash: result.reportHash ?? result.report.reportHash,
+                  firstFailingTick:
+                    typeof result.failingTick === 'number'
+                      ? result.failingTick
+                      : result.report.firstFailingTick,
+                  generatedAtIso: result.ranAtIso,
+                  schedule: deriveVerifySchedule(state.circuit, toIoMapping(state.projectIoRows))
+                    .schedule,
+                  report: result.report,
+                  waveform: buildVerifyWaveSamples(result.report),
+                } satisfies RuntimeVerifyRun)
+              : state.verifyLastRun;
+
+          return {
+            verifyLastRun: nextRun,
+            projectHealthCore: {
+              ...state.projectHealthCore,
+              lastVerify: result,
+              dirtySinceVerify: false,
+            },
+          };
+        });
       },
       recordExport: (result) => {
         set((state) => ({
@@ -238,7 +394,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
     }),
     {
       name: STORAGE_KEY,
-      version: 1,
+      version: 2,
       partialize: (state): PersistedRuntimeState => ({
         projectName: state.projectName,
         projectDescription: state.projectDescription,
@@ -247,6 +403,9 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         projectIoRows: cloneIoRows(state.projectIoRows),
         projectVectors: cloneVectors(state.projectVectors),
         circuit: cloneCircuit(state.circuit),
+        verifyLastRun: state.verifyLastRun
+          ? cloneVerifyRun(state.verifyLastRun)
+          : undefined,
         projectHealthCore: {
           lastVerify: state.projectHealthCore.lastVerify,
           lastExport: state.projectHealthCore.lastExport,
@@ -267,6 +426,7 @@ function stateFromExample(example: IdeExampleDefinition): PersistedRuntimeState 
     projectIoRows: cloneIoRows(example.ioRows),
     projectVectors: cloneVectors(example.vectors),
     circuit: cloneCircuit(example.circuit),
+    verifyLastRun: undefined,
     projectHealthCore: {
       dirtySinceVerify: false,
       dirtySinceExport: false,
@@ -313,6 +473,81 @@ function cloneCircuit(circuit: Circuit): Circuit {
   return {
     nodes: circuit.nodes.map((node) => ({ ...node })),
     connections: circuit.connections.map((connection) => ({ ...connection })),
+  };
+}
+
+function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
+  return {
+    ...run,
+    report: {
+      ...run.report,
+      rows: run.report.rows.map((row) => ({ ...row })),
+      vectors: run.report.vectors.map((vector) => ({
+        ...vector,
+        inputs: { ...vector.inputs },
+        expected: { ...vector.expected },
+      })),
+    },
+    waveform: run.waveform.map((sample) => ({
+      tick: sample.tick,
+      signals: { ...sample.signals },
+      mismatches: sample.mismatches.map((entry) => ({ ...entry })),
+    })),
+  };
+}
+
+function normalizeVerifyRows(
+  rows: RunVerificationInput['rows']
+): Array<{ tick: number; signal: string; expected: string; actual: string }> {
+  return rows.map((row, index) => ({
+    tick: Number.isFinite(row.tick) ? Math.max(0, Math.floor(row.tick)) : index,
+    signal: row.signal.trim(),
+    expected: String(row.expected),
+    actual: String(row.actual),
+  }));
+}
+
+function toVerifyVectors(vectors: TestVector[]): VerifyReportVector[] {
+  return vectors
+    .map((vector, index) => ({
+      id: `vec-${String(index + 1).padStart(2, '0')}`,
+      tick: Number.isFinite(vector.tick) ? Math.max(0, Math.floor(vector.tick)) : index,
+      inputs: normalizeBitRecord(vector.inputs ?? {}),
+      expected: normalizeBitRecord(vector.expected ?? {}),
+    }))
+    .sort((left, right) => left.tick - right.tick);
+}
+
+function normalizeBitRecord(
+  record: Record<string, boolean | number | string | undefined>
+): Record<string, 0 | 1> {
+  const normalized: Record<string, 0 | 1> = {};
+  for (const key of Object.keys(record).sort()) {
+    normalized[key] = record[key] === true || record[key] === 1 || record[key] === '1' ? 1 : 0;
+  }
+  return normalized;
+}
+
+function toIoMapping(rows: ProjectIoRow[]): IoMapping {
+  return {
+    inputs: rows
+      .filter((row) => row.direction === 'in')
+      .map((row) => ({
+        id: row.id,
+        nodeId: row.nodeId,
+        port: row.port,
+        label: row.label,
+        pin: row.pin,
+      })),
+    outputs: rows
+      .filter((row) => row.direction === 'out')
+      .map((row) => ({
+        id: row.id,
+        nodeId: row.nodeId,
+        port: row.port,
+        label: row.label,
+        pin: row.pin,
+      })),
   };
 }
 

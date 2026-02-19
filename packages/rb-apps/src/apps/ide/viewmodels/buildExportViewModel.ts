@@ -4,6 +4,8 @@ import {
   exportProjectAsBasys3,
   type Basys3ExportError,
 } from '../../../fpga/boards/basys3/basys3ExportService';
+import { generateTestbenchVhdl } from '../../../fpga/boards/basys3/testbenchGenerator';
+import type { RuntimeVerifyRun } from '../projectRuntime';
 import {
   createDiagnosticId,
   type IdeDiagnostic,
@@ -64,7 +66,10 @@ interface RequiredPortDescriptor {
   direction: ExportPinDirection;
 }
 
-export function buildExportViewModel(project: RBProject): ExportViewModel {
+export function buildExportViewModel(
+  project: RBProject,
+  runtimeVerifyRun?: RuntimeVerifyRun
+): ExportViewModel {
   const exportResult = exportProjectAsBasys3(project);
   const diagnostics = collectDiagnostics(project, exportResult.errors, exportResult.warnings);
   const canonicalDiagnostics = diagnostics.map((entry) => entry.canonical);
@@ -72,7 +77,7 @@ export function buildExportViewModel(project: RBProject): ExportViewModel {
   const warnings = diagnostics.filter((entry) => entry.severity === 'warning');
   const requiredPorts = collectRequiredPorts(diagnostics);
   const pinTable = buildPinTable(project, diagnostics, requiredPorts);
-  const artifacts = buildArtifacts(project, exportResult, errors.length > 0);
+  const artifacts = buildArtifacts(project, exportResult, errors.length > 0, runtimeVerifyRun);
 
   return {
     status: errors.length > 0 ? 'blocked' : 'ok',
@@ -274,10 +279,12 @@ function buildPinTable(
 function buildArtifacts(
   project: RBProject,
   exportResult: ReturnType<typeof exportProjectAsBasys3>,
-  blocked: boolean
+  blocked: boolean,
+  runtimeVerifyRun?: RuntimeVerifyRun
 ): ExportArtifactView[] {
   const artifacts: ExportArtifactView[] = [];
   const bundle = exportResult.bundle;
+  const runtimeBackedTestbench = buildRuntimeBackedTestbench(project, runtimeVerifyRun);
 
   if (bundle) {
     artifacts.push({
@@ -304,7 +311,16 @@ function buildArtifacts(
       status: blocked ? 'blocked' : 'ready',
       note: 'Vivado import instructions.',
     });
-    if (bundle.testbench) {
+    if (runtimeBackedTestbench) {
+      artifacts.push({
+        path: 'testbench.vhd',
+        kind: 'tb',
+        content: normalizeArtifactContent(runtimeBackedTestbench.content),
+        preview: buildPreview(runtimeBackedTestbench.content),
+        status: blocked ? 'blocked' : 'ready',
+        note: runtimeBackedTestbench.note,
+      });
+    } else if (bundle.testbench) {
       artifacts.push({
         path: 'testbench.vhd',
         kind: 'tb',
@@ -362,6 +378,24 @@ function buildArtifacts(
   }
 
   return artifacts;
+}
+
+function buildRuntimeBackedTestbench(
+  project: RBProject,
+  runtimeVerifyRun: RuntimeVerifyRun | undefined
+): { content: string; note: string } | undefined {
+  if (!runtimeVerifyRun || runtimeVerifyRun.status !== 'pass') return undefined;
+  if (!project.vectors || project.vectors.length === 0) return undefined;
+  const content = generateTestbenchVhdl(project, project.vectors, {
+    scheduleOverride: {
+      schedule: runtimeVerifyRun.schedule,
+      reason: 'verify-last-run',
+    },
+  });
+  return {
+    content,
+    note: `Deterministic schedule mirrored from latest Verify PASS (${runtimeVerifyRun.schedule}).`,
+  };
 }
 
 function severityOrder(severity: ExportDiagnosticSeverity): number {
