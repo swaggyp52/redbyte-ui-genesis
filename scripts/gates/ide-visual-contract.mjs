@@ -60,6 +60,36 @@ await runIdeGate('IDE visual contract satisfied', async ({ page, baseUrl }) => {
       inspectorWidth >= INSPECTOR_MIN_WIDTH_PX - 2 && inspectorWidth <= INSPECTOR_MAX_WIDTH_PX + 2,
       `mode=${mode} expected inspector width ${INSPECTOR_MIN_WIDTH_PX}-${INSPECTOR_MAX_WIDTH_PX}px, found ${inspectorWidth}px`
     );
+
+    if (mode === 'design') {
+      const compilerStrip = modeRoot.locator('[data-testid="ide-design-compiler-strip"]').first();
+      const irHash = modeRoot.locator('[data-testid="ide-design-ir-hash"]').first();
+      const dirtySinceVerify = modeRoot.locator('[data-testid="ide-design-dirty-since-verify"]').first();
+      const dirtySinceExport = modeRoot.locator('[data-testid="ide-design-dirty-since-export"]').first();
+      const errorCount = modeRoot.locator('[data-testid="ide-design-diagnostics-errors"]').first();
+      const warningCount = modeRoot.locator('[data-testid="ide-design-diagnostics-warnings"]').first();
+
+      assert(await visible(compilerStrip), 'mode=design missing compiler strip marker');
+      assert(await visible(irHash), 'mode=design missing IR hash marker');
+      assert(await visible(dirtySinceVerify), 'mode=design missing dirtySinceVerify marker');
+      assert(await visible(dirtySinceExport), 'mode=design missing dirtySinceExport marker');
+      assert(await visible(errorCount), 'mode=design missing diagnostics error marker');
+      assert(await visible(warningCount), 'mode=design missing diagnostics warning marker');
+
+      const hashText = ((await irHash.textContent()) ?? '').trim().toLowerCase();
+      assert(/^[0-9a-f]{8}$/.test(hashText), `mode=design invalid IR hash text "${hashText}"`);
+
+      const dirtyVerifyText = ((await dirtySinceVerify.textContent()) ?? '').trim().toLowerCase();
+      const dirtyExportText = ((await dirtySinceExport.textContent()) ?? '').trim().toLowerCase();
+      assert(
+        dirtyVerifyText === 'yes' || dirtyVerifyText === 'no',
+        `mode=design invalid dirtySinceVerify text "${dirtyVerifyText}"`
+      );
+      assert(
+        dirtyExportText === 'yes' || dirtyExportText === 'no',
+        `mode=design invalid dirtySinceExport text "${dirtyExportText}"`
+      );
+    }
   }
 
   await page.setViewportSize({ width: 760, height: 900 });
