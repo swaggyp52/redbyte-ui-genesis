@@ -39,6 +39,8 @@ export interface NodeViewProps {
   debugTick?: number | null;
   /** When provided by CanvasInputController, overrides node.position for rendering during drag. */
   dragPosition?: { x: number; y: number } | null;
+  diagnosticBadge?: { error: number; warn: number; total: number };
+  onDiagnosticBadgeClick?: (nodeId: string) => void;
 }
 
 const NODE_COLORS: Record<string, string> = {
@@ -84,6 +86,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   highlightedPort,
   debugTick,
   dragPosition: externalDragPosition,
+  diagnosticBadge,
+  onDiagnosticBadgeClick,
 }) => {
   // Safe rotation: default to 0 if undefined to prevent rotate(undefined) SVG errors
   const safeRotation = Number.isFinite(node.rotation) ? node.rotation : 0;
@@ -232,6 +236,44 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const color = NODE_COLORS[node.type] || '#94a3b8';
   const isActive = signals?.get(`${node.id}.out`) === 1;
   const isChip = !!chipMetadata;
+  const hasDiagnosticBadge = (diagnosticBadge?.total ?? 0) > 0;
+  const diagnosticLabel =
+    (diagnosticBadge?.error ?? 0) > 0
+      ? `E${diagnosticBadge?.error ?? 0}`
+      : `W${diagnosticBadge?.warn ?? 0}`;
+  const diagnosticBadgeFill = (diagnosticBadge?.error ?? 0) > 0 ? '#dc2626' : '#d97706';
+
+  const renderDiagnosticBadge = (x: number, y: number) => {
+    if (!hasDiagnosticBadge) return null;
+    return (
+      <g
+        data-testid={`logic-node-diagnostic-badge-${node.id}`}
+        onMouseDown={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        onClick={(event) => {
+          event.stopPropagation();
+          onDiagnosticBadgeClick?.(node.id);
+        }}
+        style={{ cursor: 'pointer' }}
+      >
+        <circle cx={x} cy={y} r={8} fill={diagnosticBadgeFill} stroke="#f8fafc" strokeWidth={1.5} />
+        <text
+          x={x}
+          y={y}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#f8fafc"
+          fontSize={8}
+          fontWeight="700"
+          style={{ userSelect: 'none', pointerEvents: 'none' }}
+        >
+          {diagnosticLabel}
+        </text>
+      </g>
+    );
+  };
 
   // Render custom chip with black-box appearance
   if (isChip && chipMetadata) {
@@ -290,6 +332,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
             style={{ pointerEvents: 'none' }}
           />
         )}
+
+        {renderDiagnosticBadge(size / 2 - 8, -chipHeight / 2 + 10)}
 
         {/* Hover hint - double-click to drill down */}
         {isHovered && onNodeDoubleClick && (
@@ -769,6 +813,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         />
       )}
 
+      {renderDiagnosticBadge(size / 2 - 8, -size / 2 + 10)}
+
       {/* Switch toggle control - DISABLED: now rendered in LogicCanvas overlay layer to avoid SVG clipping */}
       {/* Toggle is rendered in LogicCanvas.tsx <g id="rb-switch-overlay"> above all nodes */}
 
@@ -1026,6 +1072,9 @@ export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => 
     prevProps.camera.zoom === nextProps.camera.zoom &&
     prevProps.dragPosition?.x === nextProps.dragPosition?.x &&
     prevProps.dragPosition?.y === nextProps.dragPosition?.y &&
+    prevProps.diagnosticBadge?.error === nextProps.diagnosticBadge?.error &&
+    prevProps.diagnosticBadge?.warn === nextProps.diagnosticBadge?.warn &&
+    prevProps.diagnosticBadge?.total === nextProps.diagnosticBadge?.total &&
     JSON.stringify(prevProps.node.state) === JSON.stringify(nextProps.node.state) &&
     JSON.stringify(prevProps.chipMetadata) === JSON.stringify(nextProps.chipMetadata) &&
     prevProps.wireStartPort?.nodeId === nextProps.wireStartPort?.nodeId &&

@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ProjectHealth } from '../projectHealth';
+import type { IdeDiagnosticRouteRequest } from '../diagnostics';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
@@ -51,6 +52,7 @@ export interface ProjectSurfaceProps {
   onOpenVerify: () => void;
   onOpenExport: () => void;
   onOpenImport: () => void;
+  diagnosticRouteRequest?: IdeDiagnosticRouteRequest | null;
 }
 
 export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
@@ -72,7 +74,46 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   onOpenVerify,
   onOpenExport,
   onOpenImport,
+  diagnosticRouteRequest,
 }) => {
+  const [highlightedMappingKey, setHighlightedMappingKey] = useState<string | null>(null);
+  const mappingInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const highlightResetTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (highlightResetTimer.current !== null && typeof window !== 'undefined') {
+        window.clearTimeout(highlightResetTimer.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!diagnosticRouteRequest) return;
+    if (diagnosticRouteRequest.mode !== 'project') return;
+
+    const mappingKey = toMappingKey(
+      diagnosticRouteRequest.mappingKey ?? diagnosticRouteRequest.portName ?? ''
+    );
+    if (!mappingKey) return;
+
+    const input = mappingInputRefs.current[mappingKey];
+    if (!input) return;
+
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    input.focus();
+    setHighlightedMappingKey(mappingKey);
+
+    if (highlightResetTimer.current !== null && typeof window !== 'undefined') {
+      window.clearTimeout(highlightResetTimer.current);
+    }
+    if (typeof window !== 'undefined') {
+      highlightResetTimer.current = window.setTimeout(() => {
+        setHighlightedMappingKey(null);
+      }, 1200);
+    }
+  }, [diagnosticRouteRequest]);
+
   const checklistRows = useMemo(
     () => [
       ['Has circuit', statusPill(readiness.hasCircuit)],
@@ -86,22 +127,36 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const mappingRowsUi = useMemo(
     () =>
       mappingRows.map((row, index) => [
-        <code key={`${row.id}-signal`}>{row.label}</code>,
+        <div
+          key={`${row.id}-signal`}
+          className={`ide-project-map-cell ${
+            highlightedMappingKey === toMappingKey(row.label) ? 'is-highlighted' : ''
+          }`}
+          data-testid={`ide-project-map-row-${toMappingKey(row.label)}`}
+        >
+          <code>{row.label}</code>
+        </div>,
         row.direction.toUpperCase(),
         <input
           key={`${row.id}-pin`}
-          className="ide-export-pin-input"
+          ref={(node) => {
+            mappingInputRefs.current[toMappingKey(row.label)] = node;
+          }}
+          className={`ide-export-pin-input ${
+            highlightedMappingKey === toMappingKey(row.label) ? 'is-highlighted' : ''
+          }`}
           value={row.pin}
           onChange={(event) => onUpdateMappingPin(row.id, event.target.value.toUpperCase().trim())}
           placeholder={suggestBasys3Pin(row, index)}
           aria-label={`pin-${row.id}`}
+          data-testid={`ide-project-map-input-${toMappingKey(row.label)}`}
         />,
         row.required ? 'Required' : 'Optional',
         <IdeStatusPill key={`${row.id}-mapped`} tone={row.pin.trim().length > 0 ? 'ok' : 'warn'}>
           {row.pin.trim().length > 0 ? 'Mapped' : 'Missing'}
         </IdeStatusPill>,
       ]),
-    [mappingRows, onUpdateMappingPin]
+    [highlightedMappingKey, mappingRows, onUpdateMappingPin]
   );
 
   const lastVerifyStatusTone =
@@ -350,4 +405,8 @@ function suggestBasys3Pin(signal: { id: string; direction: 'in' | 'out' }, index
 function formatIso(value: string | undefined): string {
   if (!value) return 'never';
   return value.replace('T', ' ').replace('.000Z', 'Z');
+}
+
+function toMappingKey(value: string): string {
+  return value.trim().toLowerCase();
 }

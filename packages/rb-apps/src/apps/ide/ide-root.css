@@ -786,6 +786,71 @@
   color: #ff8a8a;
 }
 
+.ide-design-diagnostics-drawer {
+  margin-top: var(--ide-space-2);
+  border: 1px solid rgba(58, 87, 116, 0.58);
+  border-radius: var(--ide-radius-s);
+  background: rgba(8, 19, 30, 0.78);
+  padding: var(--ide-space-2);
+  display: grid;
+  gap: var(--ide-space-2);
+}
+
+.ide-design-diagnostics-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ide-space-2);
+}
+
+.ide-design-diagnostics-drawer-header h3 {
+  margin: 0;
+  font-size: var(--rb-font-size-2);
+  color: var(--ide-text-strong);
+}
+
+.ide-design-diagnostics-list {
+  display: grid;
+  gap: var(--ide-space-2);
+  max-height: 188px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.ide-design-diagnostic-row {
+  border: 1px solid rgba(80, 112, 144, 0.52);
+  border-radius: var(--ide-radius-s);
+  background: rgba(9, 20, 31, 0.8);
+  padding: var(--ide-space-2);
+  display: grid;
+  gap: var(--ide-space-1);
+}
+
+.ide-design-diagnostic-row.is-error {
+  border-color: rgba(255, 138, 138, 0.6);
+}
+
+.ide-design-diagnostic-row.is-warning {
+  border-color: rgba(247, 211, 125, 0.58);
+}
+
+.ide-design-diagnostic-row-header {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-1);
+  flex-wrap: wrap;
+}
+
+.ide-design-diagnostic-row-header code {
+  font-family: var(--ide-font-mono);
+  font-size: 11px;
+  color: var(--ide-text-soft);
+}
+
+.ide-design-diagnostic-hint {
+  color: #9bc4df;
+}
+
 .ide-design-layout {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
@@ -1842,6 +1907,22 @@
 .ide-export-pin-input:focus {
   outline: 2px solid var(--rb-focus-ring);
   outline-offset: 1px;
+}
+
+.ide-export-pin-input.is-highlighted,
+.ide-project-map-cell.is-highlighted {
+  animation: ide-project-map-flash 1.2s ease-out 1;
+}
+
+@keyframes ide-project-map-flash {
+  0% {
+    box-shadow: 0 0 0 2px rgba(46, 196, 182, 0.58);
+    background: rgba(46, 196, 182, 0.2);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(46, 196, 182, 0);
+    background: transparent;
+  }
 }
 
 .ide-export-direction {

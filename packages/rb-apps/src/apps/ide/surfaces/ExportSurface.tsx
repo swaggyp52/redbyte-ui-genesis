@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import JSZip from 'jszip';
 import type { RBProject } from '../../../export/projectFormat';
 import type { ProjectHealthExportResult } from '../projectHealth';
+import type { IdeDiagnostic } from '../diagnostics';
 import {
   buildExportViewModel,
   type ExportArtifactView,
@@ -20,12 +21,14 @@ export interface ExportSurfaceProps {
   project: RBProject;
   onExportBundle?: (artifacts: ExportArtifactView[]) => void;
   onExportResult?: (result: ProjectHealthExportResult) => void;
+  onDiagnosticAction?: (diagnostic: IdeDiagnostic) => void;
 }
 
 export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   project,
   onExportBundle,
   onExportResult,
+  onDiagnosticAction,
 }) => {
   const viewModel = useMemo(() => buildExportViewModel(project), [project]);
   const diagnosticsList = useMemo(
@@ -295,7 +298,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               )}
 
               <div className="ide-export-diagnostic-list">
-                {diagnosticsList.map((entry, index) => {
+                {diagnosticsList.map((entry) => {
                   const portKey = entry.port ? toPortKey(entry.port) : undefined;
                   const mappingRow = portKey ? mappingIndex.get(portKey) : undefined;
                   const hasSuggestion =
@@ -304,10 +307,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
                   return (
                     <article
-                      key={`${entry.code}-${index}`}
+                      key={entry.id}
                       className={`ide-export-diagnostic-row ${
                         entry.severity === 'error' ? 'is-error' : 'is-warning'
                       }`}
+                      data-testid={`ide-export-diagnostic-${entry.id}`}
                     >
                       <div className="ide-export-diagnostic-meta">
                         <IdeStatusPill tone={entry.severity === 'error' ? 'error' : 'warn'}>
@@ -318,11 +322,21 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       <p className="ide-export-diagnostic-message">{entry.message}</p>
                       {entry.fix && <p className="ide-export-diagnostic-fix">{entry.fix}</p>}
                       <div className="ide-export-diagnostic-actions">
-                        {mappingRow && portKey && (
-                          <IdeButton tone="secondary" onClick={() => jumpToMapping(portKey)}>
-                            Jump to mapping
-                          </IdeButton>
-                        )}
+                        <IdeButton
+                          tone="secondary"
+                          onClick={() => {
+                            if (onDiagnosticAction) {
+                              onDiagnosticAction(entry.canonical);
+                              return;
+                            }
+                            if (mappingRow && portKey) {
+                              jumpToMapping(portKey);
+                            }
+                          }}
+                          testId={`ide-export-diagnostic-action-${entry.id}`}
+                        >
+                          {onDiagnosticAction ? 'Show fix path' : 'Jump to mapping'}
+                        </IdeButton>
                         {mappingRow && portKey && hasSuggestion && (
                           <IdeButton tone="ghost" onClick={() => applySuggestion(portKey)}>
                             Auto-suggest pins

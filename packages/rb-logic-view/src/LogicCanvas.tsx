@@ -47,6 +47,8 @@ export interface LogicCanvasProps {
   isReplayMode?: boolean;
   tickRate?: number;
   tickCount?: number;
+  nodeDiagnosticBadges?: Record<string, { error: number; warn: number; total: number }>;
+  onNodeDiagnosticBadgeClick?: (nodeId: string) => void;
 }
 
 export const LogicCanvas: React.FC<LogicCanvasProps> = ({
@@ -76,6 +78,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   isReplayMode = false,
   tickRate = 0,
   tickCount = 0,
+  nodeDiagnosticBadges,
+  onNodeDiagnosticBadgeClick,
 }) => {
   trackRender('LogicCanvas');
   const uiTick = useUiTickStore((state) => state.uiTick);
@@ -1227,6 +1231,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               dragPosition={canvasInput.dragState.dragNodeId === node.id ? canvasInput.dragState.dragPosition : undefined}
               validWireTargets={validWireTargetKeys}
               hoveredWireTargetState={hoveredWireTargetState}
+              diagnosticBadge={nodeDiagnosticBadges?.[node.id]}
+              onDiagnosticBadgeClick={onNodeDiagnosticBadgeClick}
             />
           ))}
         </g>

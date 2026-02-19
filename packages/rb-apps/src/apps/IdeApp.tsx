@@ -18,6 +18,11 @@ import { ExportSurface } from './ide/surfaces/ExportSurface';
 import { ImportSurface } from './ide/surfaces/ImportSurface';
 import { buildExportViewModel } from './ide/viewmodels/buildExportViewModel';
 import {
+  choosePrimaryDiagnosticAction,
+  type IdeDiagnostic,
+  type IdeDiagnosticRouteRequest,
+} from './ide/diagnostics';
+import {
   IDE_DEFAULT_EXAMPLE_ID,
   IDE_EXAMPLES,
   getIdeExampleById,
@@ -44,6 +49,7 @@ export const IdeApp: React.FC = () => {
   const [projectVectors, setProjectVectors] = useState<TestVector[]>(() => cloneVectors(INITIAL_EXAMPLE.vectors));
   const [activeExampleId, setActiveExampleId] = useState<string | null>(INITIAL_EXAMPLE.id);
   const [pendingExampleId, setPendingExampleId] = useState<string | null>(null);
+  const [diagnosticRouteRequest, setDiagnosticRouteRequest] = useState<IdeDiagnosticRouteRequest | null>(null);
   const [projectHealthCore, setProjectHealthCore] = useState<ProjectHealthCore>({
     dirtySinceVerify: false,
     dirtySinceExport: false,
@@ -270,33 +276,26 @@ export const IdeApp: React.FC = () => {
   );
 
   const exportViewModel = useMemo(() => buildExportViewModel(exportProject), [exportProject]);
+  const handleDiagnosticAction = useCallback((diagnostic: IdeDiagnostic) => {
+    const action = choosePrimaryDiagnosticAction(diagnostic);
+    if (!action) return;
+    setCurrentMode(action.payload.mode as IdeMode);
+    setDiagnosticRouteRequest((previous) => ({
+      ...action.payload,
+      diagnosticId: diagnostic.id,
+      requestId: (previous?.requestId ?? 0) + 1,
+    }));
+  }, []);
+
   const designCompilerStatus = useMemo<DesignCompilerStatus>(
     () => ({
       dirtySinceVerify: projectHealthCore.dirtySinceVerify,
       dirtySinceExport: projectHealthCore.dirtySinceExport,
-      errorCount: exportViewModel.errors.length,
-      warningCount: exportViewModel.warnings.length,
-      diagnostics: [
-        ...exportViewModel.errors.map((entry) => ({
-          code: entry.code,
-          message: entry.message,
-          severity: 'error' as const,
-          port: entry.port,
-        })),
-        ...exportViewModel.warnings.map((entry) => ({
-          code: entry.code,
-          message: entry.message,
-          severity: 'warning' as const,
-          port: entry.port,
-        })),
-      ],
+      errorCount: exportViewModel.diagnostics.filter((entry) => entry.severity === 'error').length,
+      warningCount: exportViewModel.diagnostics.filter((entry) => entry.severity === 'warn').length,
+      diagnostics: exportViewModel.diagnostics,
     }),
-    [
-      exportViewModel.errors,
-      exportViewModel.warnings,
-      projectHealthCore.dirtySinceExport,
-      projectHealthCore.dirtySinceVerify,
-    ]
+    [exportViewModel.diagnostics, projectHealthCore.dirtySinceExport, projectHealthCore.dirtySinceVerify]
   );
 
   const verifyMappedInputs = useMemo(
@@ -331,6 +330,21 @@ export const IdeApp: React.FC = () => {
     },
     [exportProject.circuit.nodes]
   );
+
+  useEffect(() => {
+    if (!diagnosticRouteRequest) return;
+    if (diagnosticRouteRequest.mode !== 'design') return;
+    if (!diagnosticRouteRequest.nodeId) return;
+    if (typeof window === 'undefined') return;
+
+    const timer = window.setTimeout(() => {
+      const viewState = useLogicViewStore.getState();
+      viewState.setToolMode('select');
+      viewState.selectMultipleNodes([diagnosticRouteRequest.nodeId!], false);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [diagnosticRouteRequest]);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -386,12 +400,15 @@ export const IdeApp: React.FC = () => {
             onOpenVerify={() => setCurrentMode('verify')}
             onOpenExport={() => setCurrentMode('export')}
             onOpenImport={() => setCurrentMode('import')}
+            diagnosticRouteRequest={diagnosticRouteRequest}
           />
         ) : currentMode === 'design' ? (
           <DesignSurface
             onOpenPalette={() => null}
             onCircuitMutated={handleDesignMutation}
             compilerStatus={designCompilerStatus}
+            onDiagnosticAction={handleDiagnosticAction}
+            diagnosticRouteRequest={diagnosticRouteRequest}
           />
         ) : currentMode === 'verify' ? (
           <VerifySurface
@@ -405,7 +422,11 @@ export const IdeApp: React.FC = () => {
             onFixPath={handleVerifyFixPath}
           />
         ) : currentMode === 'export' ? (
-          <ExportSurface project={exportProject} onExportResult={handleExportResult} />
+          <ExportSurface
+            project={exportProject}
+            onExportResult={handleExportResult}
+            onDiagnosticAction={handleDiagnosticAction}
+          />
         ) : (
           <ImportSurface />
         )}

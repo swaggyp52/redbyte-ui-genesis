@@ -4,6 +4,7 @@ import { TickEngine } from '@redbyte/rb-logic-core';
 import { LogicCanvas, findSmartSpawnPosition, useLogicViewStore } from '@redbyte/rb-logic-view';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { digestValue } from '../../../utils/digest';
+import type { IdeDiagnostic, IdeDiagnosticRouteRequest } from '../diagnostics';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
@@ -17,13 +18,8 @@ export interface DesignSurfaceProps {
   onOpenPalette?: () => void;
   onCircuitMutated?: () => void;
   compilerStatus?: DesignCompilerStatus;
-}
-
-export interface DesignCompilerDiagnostic {
-  code: string;
-  message: string;
-  severity: 'error' | 'warning';
-  port?: string;
+  onDiagnosticAction?: (diagnostic: IdeDiagnostic) => void;
+  diagnosticRouteRequest?: IdeDiagnosticRouteRequest | null;
 }
 
 export interface DesignCompilerStatus {
@@ -31,7 +27,7 @@ export interface DesignCompilerStatus {
   dirtySinceExport: boolean;
   errorCount: number;
   warningCount: number;
-  diagnostics: DesignCompilerDiagnostic[];
+  diagnostics: IdeDiagnostic[];
 }
 
 interface PaletteItem {
@@ -55,6 +51,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   onOpenPalette,
   onCircuitMutated,
   compilerStatus,
+  onDiagnosticAction,
+  diagnosticRouteRequest,
 }) => {
   const circuit = useCircuitStore((state) => state.circuit);
   const addNode = useCircuitStore((state) => state.addNode);
@@ -71,6 +69,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const camera = useLogicViewStore((state) => state.camera);
   const toolMode = useLogicViewStore((state) => state.toolMode);
   const setToolMode = useLogicViewStore((state) => state.setToolMode);
+  const selectMultipleNodes = useLogicViewStore((state) => state.selectMultipleNodes);
   const snapToGrid = useLogicViewStore((state) => state.snapToGrid);
   const toggleSnapToGrid = useLogicViewStore((state) => state.toggleSnapToGrid);
   const clearSelection = useLogicViewStore((state) => state.clearSelection);
@@ -91,6 +90,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const previousWireCountRef = useRef(editorCircuit.connections.length);
   const [canvasSize, setCanvasSize] = useState({ width: 880, height: 520 });
   const [actionToast, setActionToast] = useState<string | null>(null);
+  const [diagnosticFilterNodeId, setDiagnosticFilterNodeId] = useState<string | null>(null);
   const [tickEngine] = useState(() => new TickEngine(editorCircuit, { tickRate: 10 }));
 
   useEffect(() => {
@@ -141,6 +141,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }, 1800);
     return () => window.clearTimeout(timeout);
   }, [actionToast]);
+
+  useEffect(() => {
+    if (!diagnosticRouteRequest) return;
+    if (diagnosticRouteRequest.mode !== 'design') return;
+    if (!diagnosticRouteRequest.nodeId) return;
+    setDiagnosticFilterNodeId(diagnosticRouteRequest.nodeId);
+  }, [diagnosticRouteRequest]);
 
   useEffect(() => {
     const previous = previousWireCountRef.current;
@@ -265,17 +272,46 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => (selectedNode ? describeNodeProperties(selectedNode) : []),
     [selectedNode]
   );
-  const selectedNodeDiagnostics = useMemo(
-    () =>
-      selectedNode
-        ? (compilerStatus?.diagnostics ?? []).filter((diagnostic) =>
-            diagnosticMatchesNode(diagnostic, selectedNode, selectedNodePins)
-          )
-        : [],
-    [compilerStatus?.diagnostics, selectedNode, selectedNodePins]
-  );
   const selectedTypeSummary = useMemo(() => summarizeSelectionTypes(selection.nodes, editorCircuit), [editorCircuit, selection.nodes]);
   const compilerDiagnostics = compilerStatus?.diagnostics ?? [];
+  const diagnosticsByNode = useMemo(() => {
+    const index = new Map<string, IdeDiagnostic[]>();
+    for (const diagnostic of compilerDiagnostics) {
+      const nodeIds = resolveDiagnosticNodeIds(diagnostic, editorCircuit);
+      for (const nodeId of nodeIds) {
+        const existing = index.get(nodeId);
+        if (existing) {
+          existing.push(diagnostic);
+        } else {
+          index.set(nodeId, [diagnostic]);
+        }
+      }
+    }
+    return index;
+  }, [compilerDiagnostics, editorCircuit]);
+  const nodeDiagnosticBadges = useMemo(() => {
+    const badges: Record<string, { error: number; warn: number; total: number }> = {};
+    for (const [nodeId, diagnostics] of diagnosticsByNode.entries()) {
+      const error = diagnostics.filter((entry) => entry.severity === 'error').length;
+      const warn = diagnostics.filter((entry) => entry.severity === 'warn').length;
+      badges[nodeId] = {
+        error,
+        warn,
+        total: diagnostics.length,
+      };
+    }
+    return badges;
+  }, [diagnosticsByNode]);
+  const selectedNodeDiagnostics = useMemo(
+    () => (selectedNode ? diagnosticsByNode.get(selectedNode.id) ?? [] : []),
+    [diagnosticsByNode, selectedNode]
+  );
+  const diagnosticsDrawerRows = useMemo(() => {
+    if (diagnosticFilterNodeId) {
+      return diagnosticsByNode.get(diagnosticFilterNodeId) ?? [];
+    }
+    return compilerDiagnostics;
+  }, [compilerDiagnostics, diagnosticFilterNodeId, diagnosticsByNode]);
   const compilerErrorCount = compilerStatus?.errorCount ?? 0;
   const compilerWarningCount = compilerStatus?.warningCount ?? 0;
   const dirtySinceVerify = compilerStatus?.dirtySinceVerify ?? true;
@@ -300,6 +336,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       : toolMode === 'wire'
         ? 'Click two ports to create a wire.'
         : 'Click a node to inspect it. Drag to reposition.';
+  const handleNodeDiagnosticBadgeClick = useCallback(
+    (nodeId: string) => {
+      setToolMode('select');
+      selectMultipleNodes([nodeId], false);
+      setDiagnosticFilterNodeId((previous) => (previous === nodeId ? null : nodeId));
+    },
+    [selectMultipleNodes, setToolMode]
+  );
+  const clearDiagnosticFilter = useCallback(() => {
+    setDiagnosticFilterNodeId(null);
+  }, []);
 
   return (
     <IdeSurfaceLayout
@@ -379,7 +426,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       {selectedNodeDiagnostics.map((diagnostic) => (
                         <li
                           key={`${selectedNode.id}-${diagnostic.code}-${diagnostic.message}`}
-                          className={`ide-design-selection-warning-item is-${diagnostic.severity}`}
+                          className={`ide-design-selection-warning-item ${
+                            diagnostic.severity === 'error' ? 'is-error' : 'is-warning'
+                          }`}
                         >
                           <span>{diagnostic.code}</span>
                           <span>{diagnostic.message}</span>
@@ -577,6 +626,72 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
           </section>
 
+          <section
+            className="ide-design-diagnostics-drawer"
+            data-testid="ide-design-diagnostics-drawer"
+            data-filtered-node={diagnosticFilterNodeId ?? 'all'}
+          >
+            <header className="ide-design-diagnostics-drawer-header">
+              <h3>Compiler Diagnostics</h3>
+              <div className="ide-inline-actions">
+                {diagnosticFilterNodeId ? (
+                  <span className="ide-copy" data-testid="ide-design-diagnostics-filtered-node">
+                    filtered: <code>{diagnosticFilterNodeId}</code>
+                  </span>
+                ) : (
+                  <span className="ide-copy">all nodes</span>
+                )}
+                {diagnosticFilterNodeId ? (
+                  <IdeButton
+                    tone="ghost"
+                    onClick={clearDiagnosticFilter}
+                    testId="ide-design-diagnostics-clear-filter"
+                  >
+                    Clear filter
+                  </IdeButton>
+                ) : null}
+              </div>
+            </header>
+            <div className="ide-design-diagnostics-list">
+              {diagnosticsDrawerRows.length > 0 ? (
+                diagnosticsDrawerRows.slice(0, 12).map((diagnostic) => (
+                  <article
+                    key={diagnostic.id}
+                    className={`ide-design-diagnostic-row ${
+                      diagnostic.severity === 'error' ? 'is-error' : 'is-warning'
+                    }`}
+                    data-testid={`ide-design-diagnostic-${diagnostic.id}`}
+                  >
+                    <div className="ide-design-diagnostic-row-header">
+                      <IdeStatusPill tone={diagnostic.severity === 'error' ? 'error' : 'warn'}>
+                        {diagnostic.severity === 'error' ? 'ERROR' : 'WARN'}
+                      </IdeStatusPill>
+                      <code>{diagnostic.code}</code>
+                      <span>{diagnostic.title}</span>
+                    </div>
+                    <p className="ide-copy">{diagnostic.message}</p>
+                    {diagnostic.hint.length > 0 ? (
+                      <p className="ide-copy ide-design-diagnostic-hint">{diagnostic.hint[0]}</p>
+                    ) : null}
+                    <div className="ide-inline-actions">
+                      {onDiagnosticAction ? (
+                        <IdeButton
+                          tone="secondary"
+                          onClick={() => onDiagnosticAction(diagnostic)}
+                          testId={`ide-design-diagnostic-action-${diagnostic.id}`}
+                        >
+                          Show fix path
+                        </IdeButton>
+                      ) : null}
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <p className="ide-copy">No diagnostics currently linked to this view.</p>
+              )}
+            </div>
+          </section>
+
           <div className="ide-design-layout">
             <section className="ide-design-palette" data-testid="ide-design-palette">
               <header className="ide-design-subheader">
@@ -645,6 +760,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   showToolbar={false}
                   onCircuitChange={handleCircuitChange}
                   showHints={false}
+                  nodeDiagnosticBadges={nodeDiagnosticBadges}
+                  onNodeDiagnosticBadgeClick={handleNodeDiagnosticBadgeClick}
                 />
                 {editorCircuit.nodes.length === 0 && (
                   <div className="ide-design-overlay-empty" data-testid="ide-design-empty-state">
@@ -845,14 +962,33 @@ function summarizeSelectionTypes(
     .sort((left, right) => compareText(left.type, right.type));
 }
 
-function diagnosticMatchesNode(
-  diagnostic: DesignCompilerDiagnostic,
+function resolveDiagnosticNodeIds(diagnostic: IdeDiagnostic, circuit: Circuit): string[] {
+  const directNodeId = normalizeDiagnosticToken(diagnostic.owner.nodeId);
+  if (directNodeId.length > 0) {
+    const exists = circuit.nodes.find((node) => normalizeDiagnosticToken(node.id) === directNodeId);
+    return exists ? [exists.id] : [];
+  }
+
+  const candidateTokens = new Set<string>();
+  candidateTokens.add(normalizeDiagnosticToken(diagnostic.owner.portName));
+  candidateTokens.add(normalizeDiagnosticToken(diagnostic.owner.mappingKey));
+  if (Array.from(candidateTokens).every((entry) => entry.length === 0)) return [];
+
+  const matches: string[] = [];
+  for (const node of circuit.nodes) {
+    const nodePins = deriveNodePins(node, circuit);
+    if (diagnosticMatchesNodeTokens(candidateTokens, node, nodePins)) {
+      matches.push(node.id);
+    }
+  }
+  return matches;
+}
+
+function diagnosticMatchesNodeTokens(
+  candidateTokens: Set<string>,
   node: Node,
   nodePins: string[]
 ): boolean {
-  const candidate = normalizeDiagnosticToken(diagnostic.port);
-  if (!candidate) return false;
-
   const nodeTokens = new Set<string>([
     normalizeDiagnosticToken(node.id),
     normalizeDiagnosticToken(node.label),
@@ -867,10 +1003,13 @@ function diagnosticMatchesNode(
     }
   }
 
-  for (const token of nodeTokens) {
-    if (!token) continue;
-    if (candidate === token || candidate.endsWith(`.${token}`) || token.endsWith(`.${candidate}`)) {
-      return true;
+  for (const candidate of candidateTokens) {
+    if (!candidate) continue;
+    for (const token of nodeTokens) {
+      if (!token) continue;
+      if (candidate === token || candidate.endsWith(`.${token}`) || token.endsWith(`.${candidate}`)) {
+        return true;
+      }
     }
   }
   return false;
