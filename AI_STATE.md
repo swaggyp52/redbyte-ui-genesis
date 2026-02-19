@@ -1,5 +1,87 @@
 # AI State
 
+## Change Log 2026-02-19 (Compiler Diagnostics Everywhere: Canonical Model + Jump-to-Fix Routing)
+
+**Status**: COMPLETE - Diagnostics are now canonical IR objects with stable IDs, deterministic owners/actions, and cross-mode jump-to-fix routing (Design/Export -> Project/Design target focus).
+
+### What Changed
+
+1. Canonical diagnostic contract and stable IDs
+- Added `packages/rb-apps/src/apps/ide/diagnostics.ts`:
+  - canonical `IdeDiagnostic` model with:
+    - stable `id` hash (`createDiagnosticId`)
+    - `severity`, `code`, `title`, `message`, `hint[]`
+    - typed owner (`node|port|mapping|file`)
+    - deterministic action payloads (`select|open-mode|apply-fix`)
+  - added `choosePrimaryDiagnosticAction(...)` helper for deterministic fix-path routing.
+
+2. Export diagnostics mapped into canonical model
+- Updated `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`:
+  - export diagnostics now include canonical owner/action metadata and stable IDs
+  - added deterministic owner resolution from project mapping + node references
+  - added deterministic fix-path actions (project mapping focus / design node focus / export fallback)
+  - `ExportViewModel` now exposes canonical `diagnostics` alongside `errors`/`warnings`.
+
+3. IDE-level diagnostics router (click -> mode switch -> focus/select)
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - introduced app-level diagnostic route state (`IdeDiagnosticRouteRequest`)
+  - added centralized `handleDiagnosticAction(...)` that executes canonical primary action
+  - wired route dispatch to Design/Export surfaces
+  - wired project/design focus behaviors from route payload:
+    - mapping-target routes focus Project mapping row input
+    - node-target routes open Design and select node in Logic View store.
+
+4. Surface integration: actionable diagnostics in Design/Export and focused target in Project
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`:
+  - diagnostics now expose deterministic action buttons (`Show fix path`)
+  - row-level deterministic markers (`ide-export-diagnostic-*`, `ide-export-diagnostic-action-*`)
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - consumes canonical diagnostics
+  - added diagnostics drawer (`ide-design-diagnostics-drawer`) with deterministic fix-path actions
+  - node filter state integrates with router target
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`:
+  - accepts route requests and focuses mapping inputs deterministically
+  - highlights focused mapping rows/inputs for jump feedback.
+
+5. Node-level compiler signal in canvas
+- Updated `packages/rb-logic-view/src/LogicCanvas.tsx` and `packages/rb-logic-view/src/components/NodeView.tsx`:
+  - node diagnostic badge payload support
+  - node badges render `E#/W#` and are clickable
+  - clicking a badge sets design diagnostics filter + node selection.
+
+6. Gates and regression enforcement
+- Added `scripts/gates/ide-diagnostics-jump-contract.mjs`:
+  - asserts diagnostic existence
+  - click diagnostic in Design/Export
+  - verifies mode switch and exact Project mapping input focus (`q2`)
+  - verifies dirty-since-export indicator state.
+- Wired new gate in:
+  - `package.json` (`ide:gate:diagnostics-jump-contract`)
+  - `scripts/repo-status.mjs`
+  - `scripts/verify-gates-classroom.mjs`
+- Updated `scripts/gates/ide-design-multiselect-contract.mjs` for deterministic fallback robustness under current canvas interaction changes.
+
+7. Visual contract artifacts updated
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css` for diagnostics drawer and mapping-focus highlight styles.
+- Updated screenshot baselines:
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-design-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-export-chromium-win32.png`
+
+### Validation Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:diagnostics-jump-contract` -> PASS
+- `pnpm -s ide:gate:primary-cta-contract` -> PASS
+- `pnpm -s ide:gate:visual-contract` -> PASS
+- `pnpm -s ide:gate:design-multiselect-contract` -> PASS
+- `pnpm -s ide:gate:screenshots:update` -> PASS (design/export baselines refreshed)
+- `pnpm -s ide:gate:screenshots` -> PASS
+- `pnpm repo:status` -> PASS (12/12 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Design Compiler Identity Tranche: Multiselect Authority + Zoom Bands + Compiler Strip)
 
 **Status**: COMPLETE - Design mode now behaves as a deterministic IR editor with multi-select authority, zoom-banded rendering, compiler telemetry, and regression-gated visual proof.
