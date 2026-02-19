@@ -1,5 +1,84 @@
 # AI State
 
+## Change Log 2026-02-19 (Project->Design->Verify->Export loop clarity tranche)
+
+**Status**: COMPLETE - Closed core student flow gaps by making Project the readiness source-of-truth, tightening Design inspector guidance, enabling Verify vector authoring, and adding Export download/checklist explainers with new regression gates.
+
+### What Changed
+
+1. Project mode now controls readiness truth
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`:
+  - explicit sections with deterministic markers:
+    - `data-testid="ide-project-identity"`
+    - `data-testid="ide-project-io-mapping"`
+    - `data-testid="ide-project-readiness"`
+  - added required-mapping banner + quick action:
+    - `data-testid="ide-project-mapping-banner"`
+    - `data-testid="ide-project-auto-suggest"`
+  - added readiness checklist table:
+    - `data-testid="ide-project-readiness-checklist"`
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx` to pass Project identity/readiness data.
+
+2. Design mode UX clarified (intentional canvas, reduced palette)
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - reduced add palette to 8 primitives (Input, Output, AND, OR, XOR, NOT, DFF, Clock)
+  - added tool HUD + one-line hint (`data-testid="ide-design-tool-hud"`)
+  - added selection inspector with type/id/pins + delete action:
+    - `data-testid="ide-design-selection-inspector"`
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css` with new HUD/selection inspector styles.
+
+3. Verify mode now supports vector authoring + fix path action
+- Replaced `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`:
+  - add-vector form with tick + auto-generated fields from mapped inputs
+  - basic vector generation action
+  - fail-state `Fix path in Design` action (`data-testid="ide-verify-fix-path"`)
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - Verify now receives mapped inputs from project IO mapping
+  - vector edits update Project readiness vectors
+  - verify result updates latest pass/fail status in Project readiness
+  - fix-path callback selects matching output node in Design mode
+- Updated `scripts/gates/ide-verify-contract.mjs`:
+  - asserts add-vector form renders
+  - asserts auto input fields exist
+  - asserts adding vector increases vector table rows
+  - retains FAIL/PASS/hash assertions
+
+4. Export mode now presents one-click bundle + explainers
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`:
+  - primary action now downloads all artifacts as deterministic zip:
+    - `data-testid="ide-export-download-all"`
+  - added `README` preview section:
+    - `data-testid="ide-export-readme-preview"`
+  - added Vivado mini-checklist section:
+    - `data-testid="ide-export-vivado-checklist"`
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css` with checklist/readme preview styles.
+
+5. New gates and session push handoff scripts
+- Added `scripts/gates/ide-project-readiness-contract.mjs`
+- Added `scripts/gates/ide-design-inspector-contract.mjs`
+- Added `scripts/gates/ide-export-download-contract.mjs`
+- Updated `package.json` with:
+  - `ide:gate:project-readiness-contract`
+  - `ide:gate:design-inspector-contract`
+  - `ide:gate:export-download-contract`
+- Updated `scripts/verify-gates-classroom.mjs` to run all three new gates.
+- Added handoff scripts at repo root:
+  - `PUSH_THIS.ps1`
+  - `PUSH_THIS.sh`
+
+### Validation Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:project-readiness-contract` -> PASS
+- `pnpm -s ide:gate:design-build-contract` -> PASS
+- `pnpm -s ide:gate:design-inspector-contract` -> PASS
+- `pnpm -s ide:gate:verify-contract` -> PASS
+- `pnpm -s ide:gate:export-download-contract` -> PASS
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Surface Layout Freeze + Verify Truth Screen + Visual Contract Gates)
 
 **Status**: COMPLETE - Standardized all IDE tabs on one shared surface layout contract, replaced Verify with a deterministic truth-screen workflow, introduced diagnostics-first Import surface, and added new Playwright contract gates.
