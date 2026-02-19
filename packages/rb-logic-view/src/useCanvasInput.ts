@@ -1,6 +1,6 @@
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
 
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { screenToWorld, clientToLocal, worldToGrid } from '@redbyte/rb-viewport';
 
 // ---------------------------------------------------------------------------
@@ -52,6 +52,7 @@ interface MutableState {
   dragStartScreen: { x: number; y: number };
   nodeStartWorld: { x: number; y: number };
   panLastScreen: { x: number; y: number };
+  panVelocity: { x: number; y: number };
   dragNodeId: string | null;
   boxStartScreen: { x: number; y: number };
 }
@@ -89,6 +90,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
     dragStartScreen: { x: 0, y: 0 },
     nodeStartWorld: { x: 0, y: 0 },
     panLastScreen: { x: 0, y: 0 },
+    panVelocity: { x: 0, y: 0 },
     dragNodeId: null,
     boxStartScreen: { x: 0, y: 0 },
   });
@@ -97,12 +99,21 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   // Ref to latest drag position for stable pointer-up callback.
   const dragPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const panInertiaRafRef = useRef<number | null>(null);
+
+  const stopPanInertia = useCallback(() => {
+    if (panInertiaRafRef.current !== null) {
+      cancelAnimationFrame(panInertiaRafRef.current);
+      panInertiaRafRef.current = null;
+    }
+  }, []);
 
   // -------------------------------------------------------------------
   // Pointer Down
   // -------------------------------------------------------------------
   const onPointerDown = useCallback(
     (e: React.PointerEvent<SVGSVGElement>) => {
+      stopPanInertia();
       // Guard: replay mode or non-passthrough interaction modes
       if (isReplayMode) return;
       if (interactionMode !== 'idle' && interactionMode !== 'wiring') return;
@@ -113,6 +124,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
       if (e.button === 1 || (e.button === 0 && isSpacePressed)) {
         s.mode = 'panning';
         s.panLastScreen = { x: e.clientX, y: e.clientY };
+        s.panVelocity = { x: 0, y: 0 };
         setInteractionMode('panning');
         return;
       }
@@ -167,6 +179,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
       onClearSelection,
       onWireCancel,
       setInteractionMode,
+      stopPanInertia,
     ],
   );
 
@@ -182,6 +195,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
         const dx = e.clientX - s.panLastScreen.x;
         const dy = e.clientY - s.panLastScreen.y;
         onPan(dx, dy);
+        s.panVelocity = { x: dx, y: dy };
         s.panLastScreen = { x: e.clientX, y: e.clientY };
         return;
       }
@@ -313,16 +327,36 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
       }
 
       if (s.mode === 'panning') {
+        const { x: startVx, y: startVy } = s.panVelocity;
+        if (Math.hypot(startVx, startVy) > 0.1) {
+          let vx = startVx;
+          let vy = startVy;
+          stopPanInertia();
+          const step = () => {
+            vx *= 0.86;
+            vy *= 0.86;
+            if (Math.abs(vx) < 0.05 && Math.abs(vy) < 0.05) {
+              panInertiaRafRef.current = null;
+              return;
+            }
+            onPan(vx, vy);
+            panInertiaRafRef.current = requestAnimationFrame(step);
+          };
+          panInertiaRafRef.current = requestAnimationFrame(step);
+        }
         setInteractionMode('idle');
       }
 
       // Always reset internal mode.
       s.mode = 'idle';
       s.dragNodeId = null;
+      s.panVelocity = { x: 0, y: 0 };
     },
     [
       onNodeMoveEnd,
       setInteractionMode,
+      onPan,
+      stopPanInertia,
       onClearSelection,
       onMarqueeChange,
       onMarqueeCommit,
@@ -331,6 +365,12 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
       circuitNodes,
     ],
   );
+
+  useEffect(() => {
+    return () => {
+      stopPanInertia();
+    };
+  }, [stopPanInertia]);
 
   // -------------------------------------------------------------------
   // Return value

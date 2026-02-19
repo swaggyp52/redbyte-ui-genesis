@@ -1,5 +1,82 @@
 # AI State
 
+## Change Log 2026-02-19 (Design Interaction Depth Pass: Smooth Canvas Motion + Selection/Wire Authority)
+
+**Status**: COMPLETE - Upgraded Design mode interaction feel and canvas authority without changing deterministic circuit semantics.
+
+### What Changed
+
+1. Design surface command instrumentation and interaction markers
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - added live interaction-state tracking from `useLogicViewStore` (`idle`, `wiring`, `boxSelecting`, `panning`, `draggingNode`)
+  - added deterministic metrics markers:
+    - `data-testid="ide-design-zoom-indicator"`
+    - `data-testid="ide-design-undo-depth"`
+    - `data-testid="ide-design-redo-depth"`
+    - `data-testid="ide-design-interaction-indicator"`
+    - `data-testid="ide-design-canvas-zoom-indicator"`
+  - added interaction pill in command actions (`data-testid="ide-design-interaction-pill"`)
+  - added wire-link feedback toast on connection count increments.
+
+2. Canvas motion and interaction polish in `rb-logic-view`
+- Updated `packages/rb-logic-view/src/LogicCanvas.tsx`:
+  - added smooth wheel-zoom momentum with decay (requestAnimationFrame loop) for less abrupt camera zooming
+  - added additional canvas state markers:
+    - `data-testid="logic-canvas-svg"`
+    - `data-testid="logic-wire-preview"`
+    - `data-testid="logic-wire-preview-tip"`
+    - `data-testid="logic-box-marquee"`
+    - `data-testid="logic-first-wire-toast"`
+    - HUD zoom marker `data-testid="logic-canvas-hud-zoom"`
+  - upgraded wire preview rendering with animated dashed flow + endpoint pulse
+  - refined grid tones for higher-contrast deep-dark canvas readability
+  - passed explicit `isHovered` state into `WireView` to distinguish hover from net/selected highlighting.
+- Updated `packages/rb-logic-view/src/useCanvasInput.ts`:
+  - added pan inertia on pointer release (decay loop) with cleanup/cancel guards
+  - preserved deterministic circuit mutation path (camera-only smoothing).
+- Updated `packages/rb-logic-view/src/components/WireView.tsx`:
+  - added explicit hover state rendering (`isHovered`) with differentiated glow
+  - added selected-wire overlay pass for clearer selection authority
+  - added wire data attributes (`data-wire-id`, hovered/selected flags) for consistent styling hooks.
+- Updated `packages/rb-logic-view/src/components/NodeView.tsx`:
+  - added subtle hover/selected scale treatment for node interaction depth.
+
+3. Design CSS authority pass
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - added depth indicators (`.ide-design-depth-pill`)
+  - added interaction-driven command/canvas styling (`data-interaction-mode`)
+  - added canvas zoom badge styling
+  - added logic-canvas styling hooks (`.rb-logic-canvas-svg`, `.rb-logic-marquee`)
+  - tightened transition polish around wire/selection states.
+
+4. Gate hardening for new interaction contract
+- Replaced `scripts/gates/ide-design-build-contract.mjs` with `_gateHarness`-based self-contained execution.
+- Extended assertions to cover:
+  - design command/empty-state contract
+  - zoom/depth markers
+  - marquee selection marker visibility
+  - multi-select delete path
+  - no crash marker during build flow.
+
+5. Visual proof baseline refresh
+- Updated screenshot baseline:
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-design-chromium-win32.png`
+  - reflects new design-canvas authority polish while preserving global visual contract.
+
+### Validation Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:design-build-contract` -> PASS
+- `pnpm -s ide:gate:visual-contract` -> PASS
+- `pnpm -s ide:gate:screenshots` -> FAIL (expected baseline drift on design mode only)
+- `pnpm -s ide:gate:screenshots:update` -> PASS (design baseline regenerated)
+- `pnpm -s ide:gate:screenshots` -> PASS
+- `pnpm repo:status` -> PASS (10/10 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Visual Proof + Public Authority Tranche)
 
 **Status**: COMPLETE - Added enforced screenshot baselines for Home + all IDE modes, upgraded Home into a product-grade authority surface, and tightened IDE visual hierarchy/interaction polish using frozen tokens.

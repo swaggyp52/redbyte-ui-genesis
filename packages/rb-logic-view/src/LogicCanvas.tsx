@@ -176,6 +176,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const [highlightedNodeId, setHighlightedNodeId] = React.useState<string | null>(null);
   const [showHud, setShowHud] = React.useState(true);
   const hudTimerRef = React.useRef<number | null>(null);
+  const wheelMomentumRef = React.useRef(0);
+  const wheelRafRef = React.useRef<number | null>(null);
+  const wheelAnchorRef = React.useRef({ x: 0, y: 0 });
+  const wheelStepRef = React.useRef<(() => void) | null>(null);
   const bumpHud = React.useCallback(() => {
     setShowHud(true);
     if (hudTimerRef.current) {
@@ -185,6 +189,29 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       setShowHud(false);
     }, 2400);
   }, []);
+
+  const stopWheelMomentum = React.useCallback(() => {
+    if (wheelRafRef.current !== null) {
+      window.cancelAnimationFrame(wheelRafRef.current);
+      wheelRafRef.current = null;
+    }
+    wheelMomentumRef.current = 0;
+  }, []);
+
+  React.useEffect(() => {
+    wheelStepRef.current = () => {
+      const momentum = wheelMomentumRef.current;
+      if (Math.abs(momentum) < 0.05) {
+        stopWheelMomentum();
+        return;
+      }
+      zoomFn(momentum, wheelAnchorRef.current.x, wheelAnchorRef.current.y);
+      wheelMomentumRef.current *= 0.78;
+      wheelRafRef.current = window.requestAnimationFrame(() => {
+        wheelStepRef.current?.();
+      });
+    };
+  }, [stopWheelMomentum, zoomFn]);
 
   const viewBounds = React.useMemo(() => {
     const margin = 200;
@@ -764,17 +791,24 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       if (hudTimerRef.current) {
         window.clearTimeout(hudTimerRef.current);
       }
+      stopWheelMomentum();
     };
-  }, []);
+  }, [stopWheelMomentum]);
 
   // CanvasHost wheel handler
   const handleWheelActive = React.useCallback((e: WheelEvent) => {
     if (interactionMode === 'draggingNode' || interactionMode === 'boxSelecting') {
       return;
     }
-    const delta = e.ctrlKey ? -e.deltaY * 0.5 : -e.deltaY;
-    zoomFn(delta, e.clientX, e.clientY);
-  }, [zoomFn, interactionMode]);
+    const delta = e.ctrlKey ? -e.deltaY * 0.45 : -e.deltaY * 0.9;
+    wheelAnchorRef.current = { x: e.clientX, y: e.clientY };
+    wheelMomentumRef.current = Math.max(-160, Math.min(160, wheelMomentumRef.current + delta * 0.18));
+    if (wheelRafRef.current === null) {
+      wheelRafRef.current = window.requestAnimationFrame(() => {
+        wheelStepRef.current?.();
+      });
+    }
+  }, [interactionMode]);
 
   // CanvasHost keyboard handlers
   const handleKeyDownActive = React.useCallback((e: KeyboardEvent) => {
@@ -886,6 +920,12 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             <span className="font-mono">{interactionMode}</span>
           </div>
           <div className="flex items-center justify-between gap-2">
+            <span className="text-gray-500 uppercase tracking-wide">Zoom</span>
+            <span className="font-mono" data-testid="logic-canvas-hud-zoom">
+              {Math.round(camera.zoom * 100)}%
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
             <span className="text-gray-500 uppercase tracking-wide">Snap</span>
             <span className="font-mono">{shouldSnap ? 'On' : 'Off'}</span>
           </div>
@@ -944,7 +984,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
       {/* First Wire Toast */}
       {showFirstWireToast && (
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-none">
+        <div
+          className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-none"
+          data-testid="logic-first-wire-toast"
+        >
           <div className="bg-blue-600/90 border border-blue-500 rounded-lg px-4 py-3 text-sm text-white shadow-lg animate-fade-in">
             <div className="flex items-center gap-2">
               <span className="text-lg">🎉</span>
@@ -961,6 +1004,11 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
       <svg
         ref={svgRef}
+        className="rb-logic-canvas-svg"
+        data-testid="logic-canvas-svg"
+        data-interaction-mode={interactionMode}
+        data-tool-mode={toolMode}
+        data-wire-preview-active={editingState.wireStartPort ? '1' : '0'}
         width={width}
         height={height}
         style={{
@@ -992,9 +1040,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         <g key="grid-layer">
           {renderGrid(camera, width, height, {
             size: gridSize,
-            color: '#1a1a1a',
+            color: '#142233',
             majorLineInterval: 5,
-            majorLineColor: '#2a2a2a',
+            majorLineColor: '#24405a',
           })}
         </g>
 
@@ -1026,6 +1074,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                 nodes={circuit.nodes}
                 camera={camera}
                 isSelected={selection.wires.has(wireId)}
+                isHovered={hoveredWireId === wireId}
                 isNetHighlighted={isNetHighlighted}
                 onSelect={selectWire}
                 onHover={setHoveredWireId}
@@ -1058,17 +1107,40 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             }
 
             return (
-              <line
-                x1={startX}
-                y1={startY}
-                x2={mousePosition.x}
-                y2={mousePosition.y}
-                stroke={isValid ? "#00ffff" : "#ef4444"}
-                strokeWidth="2"
-                strokeDasharray="5,5"
-                opacity="0.7"
-                pointerEvents="none"
-              />
+              <>
+                <line
+                  data-testid="logic-wire-preview"
+                  x1={startX}
+                  y1={startY}
+                  x2={mousePosition.x}
+                  y2={mousePosition.y}
+                  stroke={isValid ? '#00ffff' : '#ef4444'}
+                  strokeWidth="2"
+                  strokeDasharray="8,6"
+                  opacity="0.78"
+                  pointerEvents="none"
+                >
+                  <animate
+                    attributeName="stroke-dashoffset"
+                    from="0"
+                    to="28"
+                    dur="0.42s"
+                    repeatCount="indefinite"
+                  />
+                </line>
+                <circle
+                  data-testid="logic-wire-preview-tip"
+                  cx={mousePosition.x}
+                  cy={mousePosition.y}
+                  r="3"
+                  fill={isValid ? '#2ec4b6' : '#ef4444'}
+                  opacity="0.72"
+                  pointerEvents="none"
+                >
+                  <animate attributeName="r" values="2.2;4.8;2.2" dur="0.42s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.52;0.95;0.52" dur="0.42s" repeatCount="indefinite" />
+                </circle>
+              </>
             );
           })()}
         </g>
@@ -1124,6 +1196,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
           return (
             <rect
+              className="rb-logic-marquee"
+              data-testid="logic-box-marquee"
               x={x}
               y={y}
               width={width}

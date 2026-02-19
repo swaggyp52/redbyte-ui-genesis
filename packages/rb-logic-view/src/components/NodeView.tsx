@@ -164,6 +164,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const screenX = pos.x * camera.zoom + camera.x;
   const screenY = pos.y * camera.zoom + camera.y;
   const size = 48 * camera.zoom;
+  const nodeScale = isDragging ? 1 : isSelected ? 1.03 : isHovered ? 1.018 : 1;
+  const nodeTransform = `translate(${screenX}, ${screenY}) rotate(${safeRotation}) scale(${nodeScale})`;
 
   const isSwitch = node.type === 'Switch' || node.type === 'INPUT';
   const switchState = node.state?.isOn ?? 0;
@@ -239,7 +241,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
 
     return (
       <g
-        transform={`translate(${screenX}, ${screenY}) rotate(${safeRotation})`}
+        transform={nodeTransform}
         data-node-id={node.id}
         onDoubleClick={handleDoubleClick}
         onMouseEnter={() => setIsHovered(true)}
@@ -715,9 +717,11 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   // Standard node rendering
   return (
     <g
-      transform={`translate(${screenX}, ${screenY}) rotate(${safeRotation})`}
+      transform={nodeTransform}
       data-node-id={node.id}
       onDoubleClick={handleDoubleClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
       data-testid={`node-${node.type}-${node.id}`}
     >

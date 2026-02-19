@@ -54,6 +54,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
   const toggleSnapToGrid = useLogicViewStore((state) => state.toggleSnapToGrid);
   const clearSelection = useLogicViewStore((state) => state.clearSelection);
   const rawSelection = useLogicViewStore((state) => state.selection);
+  const interactionMode = useLogicViewStore((state) => state.interactionMode);
 
   const selection = useMemo(
     () => ({
@@ -66,6 +67,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
 
   const [paletteQuery, setPaletteQuery] = useState('');
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
+  const previousWireCountRef = useRef(editorCircuit.connections.length);
   const [canvasSize, setCanvasSize] = useState({ width: 880, height: 520 });
   const [actionToast, setActionToast] = useState<string | null>(null);
   const [tickEngine] = useState(() => new TickEngine(editorCircuit, { tickRate: 10 }));
@@ -118,6 +120,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
     }, 1800);
     return () => window.clearTimeout(timeout);
   }, [actionToast]);
+
+  useEffect(() => {
+    const previous = previousWireCountRef.current;
+    const current = editorCircuit.connections.length;
+    if (current > previous) {
+      setActionToast(previous === 0 ? 'First wire linked.' : 'Wire linked.');
+    }
+    previousWireCountRef.current = current;
+  }, [editorCircuit.connections.length]);
 
   const filteredPalette = useMemo(() => {
     const query = paletteQuery.trim().toLowerCase();
@@ -231,10 +242,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
   );
   const hasSelection = selection.nodes.size > 0 || selection.wires.size > 0;
   const activeModeLabel = toolMode === 'wire' ? 'Wire Mode' : 'Select Mode';
+  const zoomPercent = Math.round(camera.zoom * 100);
+  const interactionLabel =
+    interactionMode === 'boxSelecting'
+      ? 'Marquee Select'
+      : interactionMode === 'panning'
+        ? 'Panning'
+        : interactionMode === 'draggingNode'
+          ? 'Dragging Node'
+          : interactionMode === 'wiring'
+            ? 'Wiring'
+            : 'Idle';
   const toolHint =
-    toolMode === 'wire'
-      ? 'Click two ports to create a wire.'
-      : 'Click a node to inspect it. Drag to reposition.';
+    interactionMode === 'boxSelecting'
+      ? 'Drag to marquee-select multiple nodes. Hold Shift to add to selection.'
+      : toolMode === 'wire'
+        ? 'Click two ports to create a wire.'
+        : 'Click a node to inspect it. Drag to reposition.';
 
   return (
     <IdeSurfaceLayout
@@ -258,6 +282,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
               <div className="ide-kv-row">
                 <span>Snap</span>
                 <span>{snapToGrid ? 'On' : 'Off'}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Zoom</span>
+                <span data-testid="ide-design-zoom-indicator">{zoomPercent}%</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Interaction</span>
+                <span data-testid="ide-design-interaction-indicator">{interactionLabel}</span>
               </div>
             </div>
           </IdeInspectorSection>
@@ -324,7 +356,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
           right={<IdeStatusPill tone={toolMode === 'wire' ? 'warn' : 'ok'}>{activeModeLabel}</IdeStatusPill>}
           testId="ide-design-panel"
         >
-          <section className="ide-design-command-center" data-testid="ide-design-command-header">
+          <section
+            className="ide-design-command-center"
+            data-testid="ide-design-command-header"
+            data-interaction-mode={interactionMode}
+          >
             <div className="ide-design-command-title">
               <h3 data-testid="ide-design-mode-title">Design</h3>
               <p data-testid="ide-design-mode-subtitle">Build your circuit</p>
@@ -364,6 +400,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
             </div>
 
             <div className="ide-design-command-actions" data-testid="ide-design-command-actions">
+              <span className="ide-design-depth-pill" data-testid="ide-design-undo-depth">
+                Undo {undoDepth}
+              </span>
+              <span className="ide-design-depth-pill" data-testid="ide-design-redo-depth">
+                Redo {redoDepth}
+              </span>
               <IdeButton tone="ghost" onClick={toggleSnapToGrid} testId="ide-design-tool-snap">
                 Snap {snapToGrid ? 'On' : 'Off'}
               </IdeButton>
@@ -393,6 +435,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
               </IdeButton>
               <span className={`ide-wire-mode-pill ${toolMode === 'wire' ? 'is-wire' : ''}`} data-testid="ide-design-wire-pill">
                 {activeModeLabel}
+              </span>
+              <span className="ide-wire-mode-pill" data-testid="ide-design-interaction-pill">
+                {interactionLabel}
               </span>
             </div>
           </section>
@@ -449,9 +494,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette, onC
                 ref={canvasHostRef}
                 data-testid="ide-design-live-canvas"
                 data-tool-mode={toolMode}
+                data-interaction-mode={interactionMode}
               >
                 <div className="ide-design-canvas-mode-indicator" data-testid="ide-design-canvas-mode-indicator">
                   {activeModeLabel}
+                </div>
+                <div className="ide-design-canvas-zoom-indicator" data-testid="ide-design-canvas-zoom-indicator">
+                  {zoomPercent}% zoom
                 </div>
                 <LogicCanvas
                   engine={tickEngine}

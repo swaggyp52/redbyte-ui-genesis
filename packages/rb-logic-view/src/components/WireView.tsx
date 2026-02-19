@@ -27,6 +27,7 @@ export interface WireViewProps {
   nodes: Node[];
   camera: Camera;
   isSelected: boolean;
+  isHovered?: boolean;
   isNetHighlighted?: boolean;
   onSelect: (wireId: string, addToSelection: boolean) => void;
   onHover?: (wireId: string | null) => void;
@@ -40,6 +41,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
   nodes,
   camera,
   isSelected,
+  isHovered = false,
   isNetHighlighted = false,
   onSelect,
   onHover,
@@ -70,11 +72,15 @@ const WireViewComponent: React.FC<WireViewProps> = ({
   };
 
   const strokeColor = signal === 1 ? '#22c55e' : '#6b7280';
+  const hoverColor = '#8ec7ff';
   const isActive = signal === 1;
   const netHighlightColor = '#fbbf24'; // amber-400
 
   return (
     <g
+      data-wire-id={wireId}
+      data-wire-hovered={isHovered ? '1' : '0'}
+      data-wire-selected={isSelected ? '1' : '0'}
       onClick={handleClick}
       onMouseEnter={() => onHover?.(wireId)}
       onMouseLeave={() => onHover?.(null)}
@@ -155,14 +161,47 @@ const WireViewComponent: React.FC<WireViewProps> = ({
         )}
       </g>
 
+      {/* Hover glow (distinct from net highlight) */}
+      <g key={`${wireId}-hover-glow`}>
+        {isHovered && !isSelected && (
+          <path
+            d={path}
+            fill="none"
+            stroke={hoverColor}
+            strokeWidth={7}
+            opacity={0.24}
+            filter="blur(4px)"
+          />
+        )}
+      </g>
+
       {/* Visible wire */}
       <path
         d={path}
         fill="none"
-        stroke={isSelected ? '#3b82f6' : isNetHighlighted ? netHighlightColor : strokeColor}
-        strokeWidth={isSelected ? 4 : 2}
+        stroke={
+          isSelected
+            ? '#3b82f6'
+            : isHovered
+              ? hoverColor
+              : isNetHighlighted
+                ? netHighlightColor
+                : strokeColor
+        }
+        strokeWidth={isSelected ? 4 : isHovered ? 3 : 2}
         opacity={signal === 1 ? 1 : 0.5}
       />
+
+      {isSelected && (
+        <path
+          d={path}
+          fill="none"
+          stroke="#b7dbff"
+          strokeWidth={1.5}
+          strokeDasharray="9 6"
+          opacity={0.9}
+        />
+      )}
 
       {/* Animated signal flow particles - stable group */}
       <g key={`${wireId}-particles`}>
