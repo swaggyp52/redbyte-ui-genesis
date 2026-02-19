@@ -3,6 +3,7 @@ import type { Circuit, Node } from '@redbyte/rb-logic-core';
 import { TickEngine } from '@redbyte/rb-logic-core';
 import { LogicCanvas, findSmartSpawnPosition, useLogicViewStore } from '@redbyte/rb-logic-view';
 import { useCircuitStore } from '../../../stores/circuitStore';
+import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
   IdeCallout,
@@ -201,8 +202,68 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
   const activeModeLabel = toolMode === 'wire' ? 'Wire Mode' : 'Select Mode';
 
   return (
-    <div className="ide-content-grid" data-testid="ide-mode-design" data-ide-mode-marker="design">
-      <main className="ide-main-area" data-testid="ide-mode-body">
+    <IdeSurfaceLayout
+      mode="design"
+      inspector={
+        <>
+          <IdeInspectorSection title="Workspace Metrics">
+            <div className="ide-kv-list">
+              <div className="ide-kv-row">
+                <span>Nodes</span>
+                <span>{circuit.nodes.length}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Wires</span>
+                <span>{circuit.connections.length}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Tool</span>
+                <span>{toolMode === 'wire' ? 'Wire' : 'Select'}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Snap</span>
+                <span>{snapToGrid ? 'On' : 'Off'}</span>
+              </div>
+            </div>
+          </IdeInspectorSection>
+
+          <IdeInspectorSection title="Selection">
+            {hasSelection ? (
+              <div className="ide-design-selection-list">
+                <div>
+                  <strong>Nodes</strong>
+                  <ul className="ide-list">
+                    {selectedNodeIds.map((nodeId) => (
+                      <li key={nodeId}>
+                        <code>{nodeId}</code>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <strong>Wires</strong>
+                  <ul className="ide-list">
+                    {selectedWireIds.map((wireId) => (
+                      <li key={wireId}>
+                        <code>{wireId}</code>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <p className="ide-copy">No selection. Click a node or wire to inspect it.</p>
+            )}
+          </IdeInspectorSection>
+
+          <IdeInspectorSection title="Next Action">
+            <IdeCallout tone="info" title="Design Flow">
+              Place IO pins, wire through logic gates, then switch to Verify for deterministic test vectors.
+            </IdeCallout>
+          </IdeInspectorSection>
+        </>
+      }
+    >
         <IdePanel
           title="Design Command Center"
           description="Build your circuit with deterministic graph updates and explicit editing controls."
@@ -389,66 +450,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
             </section>
           </div>
         </IdePanel>
-      </main>
-
-      <aside className="ide-inspector" data-testid="ide-inspector">
-        <IdeInspectorSection title="Workspace Metrics">
-          <div className="ide-kv-list">
-            <div className="ide-kv-row">
-              <span>Nodes</span>
-              <span>{circuit.nodes.length}</span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Wires</span>
-              <span>{circuit.connections.length}</span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Tool</span>
-              <span>{toolMode === 'wire' ? 'Wire' : 'Select'}</span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Snap</span>
-              <span>{snapToGrid ? 'On' : 'Off'}</span>
-            </div>
-          </div>
-        </IdeInspectorSection>
-
-        <IdeInspectorSection title="Selection">
-          {hasSelection ? (
-            <div className="ide-design-selection-list">
-              <div>
-                <strong>Nodes</strong>
-                <ul className="ide-list">
-                  {selectedNodeIds.map((nodeId) => (
-                    <li key={nodeId}>
-                      <code>{nodeId}</code>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <strong>Wires</strong>
-                <ul className="ide-list">
-                  {selectedWireIds.map((wireId) => (
-                    <li key={wireId}>
-                      <code>{wireId}</code>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          ) : (
-            <p className="ide-copy">No selection. Click a node or wire to inspect it.</p>
-          )}
-        </IdeInspectorSection>
-
-        <IdeInspectorSection title="Next Action">
-          <IdeCallout tone="info" title="Design Flow">
-            Place IO pins, wire through logic gates, then switch to Verify for deterministic test vectors.
-          </IdeCallout>
-        </IdeInspectorSection>
-      </aside>
-    </div>
+    </IdeSurfaceLayout>
   );
 };
 

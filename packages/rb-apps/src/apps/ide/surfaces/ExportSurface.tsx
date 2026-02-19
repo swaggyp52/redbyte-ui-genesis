@@ -5,6 +5,7 @@ import {
   type ExportArtifactView,
   type ExportPinStatus,
 } from '../viewmodels/buildExportViewModel';
+import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
   IdeCallout,
@@ -127,8 +128,59 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   };
 
   return (
-    <div className="ide-content-grid" data-testid="ide-mode-export" data-ide-mode-marker="export">
-      <main className="ide-main-area" data-testid="ide-mode-body">
+    <IdeSurfaceLayout
+      mode="export"
+      inspector={
+        <>
+          <IdeInspectorSection title="Export Context">
+            <div className="ide-kv-list">
+              <div className="ide-kv-row">
+                <span>Board</span>
+                <span>Basys3</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Export Hash</span>
+                <span className="ide-status-mono">
+                  {viewModel.exportHash ? viewModel.exportHash.slice(0, 16) : 'pending'}
+                </span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Blocking Errors</span>
+                <span>{viewModel.errors.length}</span>
+              </div>
+            </div>
+          </IdeInspectorSection>
+
+          <IdeInspectorSection title="Artifact Checklist">
+            <div className="ide-export-artifact-list">
+              {viewModel.artifacts.map((artifact) => (
+                <div key={artifact.path} className="ide-export-artifact-row">
+                  <div>
+                    <div className="ide-export-artifact-name">{artifact.path}</div>
+                    <div className="ide-export-artifact-note">{artifact.note}</div>
+                  </div>
+                  <IdeStatusPill
+                    tone={
+                      artifact.status === 'ready'
+                        ? 'ok'
+                        : artifact.status === 'blocked'
+                          ? 'error'
+                          : 'warn'
+                    }
+                  >
+                    {artifact.status === 'ready'
+                      ? 'Ready'
+                      : artifact.status === 'blocked'
+                        ? 'Blocked'
+                        : 'Pending'}
+                  </IdeStatusPill>
+                </div>
+              ))}
+            </div>
+          </IdeInspectorSection>
+        </>
+      }
+    >
         <IdePanel
           title="Export Compiler"
           description="Validate Basys3 readiness, resolve blockers, and package Vivado artifacts."
@@ -354,57 +406,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </section>
           </div>
         </IdePanel>
-      </main>
-
-      <aside className="ide-inspector" data-testid="ide-inspector">
-        <IdeInspectorSection title="Export Context">
-          <div className="ide-kv-list">
-            <div className="ide-kv-row">
-              <span>Board</span>
-              <span>Basys3</span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Export Hash</span>
-              <span className="ide-status-mono">
-                {viewModel.exportHash ? viewModel.exportHash.slice(0, 16) : 'pending'}
-              </span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Blocking Errors</span>
-              <span>{viewModel.errors.length}</span>
-            </div>
-          </div>
-        </IdeInspectorSection>
-
-        <IdeInspectorSection title="Artifact Checklist">
-          <div className="ide-export-artifact-list">
-            {viewModel.artifacts.map((artifact) => (
-              <div key={artifact.path} className="ide-export-artifact-row">
-                <div>
-                  <div className="ide-export-artifact-name">{artifact.path}</div>
-                  <div className="ide-export-artifact-note">{artifact.note}</div>
-                </div>
-                <IdeStatusPill
-                  tone={
-                    artifact.status === 'ready'
-                      ? 'ok'
-                      : artifact.status === 'blocked'
-                        ? 'error'
-                        : 'warn'
-                  }
-                >
-                  {artifact.status === 'ready'
-                    ? 'Ready'
-                    : artifact.status === 'blocked'
-                      ? 'Blocked'
-                      : 'Pending'}
-                </IdeStatusPill>
-              </div>
-            ))}
-          </div>
-        </IdeInspectorSection>
-      </aside>
-    </div>
+    </IdeSurfaceLayout>
   );
 };
 

@@ -32,14 +32,20 @@ export const IdePanel: React.FC<{
   return (
     <section className="ide-panel" data-testid={testId}>
       <header className="ide-panel-header" data-testid="ide-panel-title-row">
-        <div>
-          <h2 className="ide-panel-title">{title}</h2>
-          {description && <p className="ide-panel-description">{description}</p>}
+        <div className="ide-surface-header" data-testid="ide-surface-header">
+          <div>
+            <h2 className="ide-panel-title" data-testid="ide-surface-title">
+              {title}
+            </h2>
+            {description && <p className="ide-panel-description">{description}</p>}
+          </div>
+          {right}
         </div>
-        {right}
       </header>
       <div className="ide-panel-actions" data-testid="ide-panel-action-row">
-        {actions}
+        <div className="ide-surface-actions" data-testid="ide-surface-actions">
+          {actions}
+        </div>
       </div>
       <div className="ide-panel-body">{children}</div>
     </section>
