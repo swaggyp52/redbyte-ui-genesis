@@ -75,18 +75,28 @@ if (!runCheck('IDE Boot Shadow Contract', 'pnpm gates:ide-boot-shadow-contract 2
   process.exit(1);
 }
 
-// 2. Build (includes typecheck in vite build for product apps)
+// 2. Static IDE export contract (real pipeline, no preview payloads)
+if (
+  !runCheck(
+    'IDE Export Real Pipeline Contract',
+    'pnpm -s gates:ide-export-real-pipeline-contract 2>&1'
+  )
+) {
+  process.exit(1);
+}
+
+// 3. Build (includes typecheck in vite build for product apps)
 if (!runCheck('Building', 'pnpm build 2>&1')) {
   process.exit(1);
 }
 
-// 3. Import roundtrip validation
+// 4. Import roundtrip validation
 if (!runCheck('Import Pipeline Validation', 'pnpm gates:import-roundtrip 2>&1')) {
   console.log('  [info] Import fixtures + roundtrip tests failed');
   process.exit(1);
 }
 
-// 4. Artifact verification
+// 5. Artifact verification
 console.log('\n[CHECK] Artifact Verification...');
 const artifactChecks = [
   ['dist/index.html', 'Root index.html exists'],

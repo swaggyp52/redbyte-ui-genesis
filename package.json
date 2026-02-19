@@ -60,6 +60,7 @@
         "release:gate": "pnpm typecheck && pnpm lint && pnpm test && pnpm --filter @redbyte/playground build",
         "repo:status": "node ./scripts/repo-status.mjs",
         "gates:git-ahead-limit": "node ./scripts/gates/git-ahead-limit.mjs",
+        "gates:ide-export-real-pipeline-contract": "node ./scripts/gates/ide-export-real-pipeline-contract.mjs",
         "gates:no-deep-imports": "node ./scripts/check-no-deep-imports.mjs",
         "gates:import-roundtrip": "node ./scripts/gates/import-roundtrip.mjs",
         "agent:status": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/agent-status.ps1",
