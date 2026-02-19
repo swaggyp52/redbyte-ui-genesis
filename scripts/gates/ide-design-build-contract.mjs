@@ -22,9 +22,26 @@ async function main() {
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
 
     await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
+    await page.evaluate(() => {
+      const store = window.__RB_CIRCUIT_STORE__;
+      if (store?.getState) {
+        store.getState().reset();
+      }
+    });
     await page.locator('[data-testid="mode-button-design"]').click();
     await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
     await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="ide-design-command-header"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="ide-design-tool-segmented"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="ide-design-empty-state"]', { timeout: 10000 });
+
+    const checklistCount = await page.locator('[data-testid="ide-design-empty-checklist"] li').count();
+    assert(checklistCount === 3, `expected three empty-state checklist steps, found ${checklistCount}`);
+
+    const primaryCtaCount = await page
+      .locator('[data-testid="ide-design-empty-add-io"], [data-testid="ide-design-empty-add-and"]')
+      .count();
+    assert(primaryCtaCount === 2, `expected two empty-state primary actions, found ${primaryCtaCount}`);
 
     const initialSnapshot = await page.evaluate(() => {
       const store = window.__RB_CIRCUIT_STORE__;
@@ -33,6 +50,19 @@ async function main() {
       return { nodes: circuit.nodes.length, wires: circuit.connections.length };
     });
     assert(initialSnapshot, 'circuit store unavailable on window.__RB_CIRCUIT_STORE__');
+
+    await page.locator('[data-testid="ide-design-tool-select"]').click();
+    await page.waitForFunction(
+      () => document.querySelector('[data-testid="ide-design-live-canvas"]')?.getAttribute('data-tool-mode') === 'select',
+      { timeout: 5000 }
+    );
+    await page.locator('[data-testid="ide-design-tool-wire"]').click();
+    await page.waitForFunction(
+      () => document.querySelector('[data-testid="ide-design-live-canvas"]')?.getAttribute('data-tool-mode') === 'wire',
+      { timeout: 5000 }
+    );
+    const wirePillText = (await page.locator('[data-testid="ide-design-wire-pill"]').first().textContent())?.trim();
+    assert(wirePillText === 'Wire Mode', `wire mode pill mismatch: ${wirePillText}`);
 
     await page.locator('[data-testid="ide-design-add-and-starter"]').click();
 

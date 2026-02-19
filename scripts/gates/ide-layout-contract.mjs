@@ -33,7 +33,7 @@ async function verifyLayoutContract(page) {
   assert(initialBox?.width, 'unable to read left rail width');
   const initialWidth = Math.round(initialBox.width);
 
-  assert(initialWidth >= 120 && initialWidth <= 128, `left rail width out of contract range: ${initialWidth}px`);
+  assert(initialWidth >= 70 && initialWidth <= 74, `left rail width out of contract range: ${initialWidth}px`);
 
   for (const mode of MODES) {
     await page.locator(`[data-testid="mode-button-${mode}"]`).click();
