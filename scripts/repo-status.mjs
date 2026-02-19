@@ -40,6 +40,31 @@ function runCheck(name, command) {
   }
 }
 
+function runSignalCheck(name, command) {
+  console.log(`\n[SIGNAL] ${name}...`);
+  try {
+    execSync(command, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      cwd: ROOT,
+      encoding: 'utf8',
+    });
+    console.log(`[PASS] ${name}`);
+    return true;
+  } catch (error) {
+    console.log(`[WARN] ${name}`);
+    const details = [
+      typeof error?.stdout === 'string' ? error.stdout.trim() : '',
+      typeof error?.stderr === 'string' ? error.stderr.trim() : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+    if (details.length > 0) {
+      console.log(details);
+    }
+    return false;
+  }
+}
+
 function fileExists(filePath, description) {
   const fullPath = path.join(ROOT, filePath);
   if (fs.existsSync(fullPath)) {
@@ -95,6 +120,9 @@ if (!runCheck('Import Pipeline Validation', 'pnpm gates:import-roundtrip 2>&1'))
   console.log('  [info] Import fixtures + roundtrip tests failed');
   process.exit(1);
 }
+
+// 4a. IDE UX runtime signals (non-blocking; fast if a local IDE server is already running)
+runSignalCheck('IDE Project Health Live Contract', 'pnpm -s ide:gate:project-health-live-contract 2>&1');
 
 // 5. Artifact verification
 console.log('\n[CHECK] Artifact Verification...');

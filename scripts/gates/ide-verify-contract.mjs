@@ -38,6 +38,7 @@ async function main() {
 
     const vectorRowsBefore = await page
       .locator('[data-testid="ide-verify-vectors-table"] tbody tr')
+      .filter({ has: page.locator('code') })
       .count();
     await page.locator('[data-testid="ide-verify-add-vector-tick"]').fill('42');
     await page
@@ -47,6 +48,7 @@ async function main() {
     await page.locator('[data-testid="ide-verify-add-vector-submit"]').click();
     const vectorRowsAfter = await page
       .locator('[data-testid="ide-verify-vectors-table"] tbody tr')
+      .filter({ has: page.locator('code') })
       .count();
     assert(vectorRowsAfter > vectorRowsBefore, 'adding a vector must increase vector table rows');
 
