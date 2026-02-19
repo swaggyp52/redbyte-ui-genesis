@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
+import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
   IdeCallout,
@@ -7,6 +8,47 @@ import {
   IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
+
+interface VerifyRow {
+  tick: number;
+  signal: string;
+  expected: string;
+  actual: string;
+}
+
+interface VerifyScenario {
+  id: 'fail' | 'pass';
+  name: string;
+  hash: string;
+  rows: VerifyRow[];
+}
+
+const VERIFY_SCENARIOS: VerifyScenario[] = [
+  {
+    id: 'fail',
+    name: 'Counter mismatch sample',
+    hash: 'sha:verify-fail-7b91',
+    rows: [
+      { tick: 12, signal: 'sum[0]', expected: '1', actual: '1' },
+      { tick: 12, signal: 'carry', expected: '0', actual: '1' },
+      { tick: 13, signal: 'sum[1]', expected: '1', actual: '1' },
+      { tick: 14, signal: 'q2', expected: '1', actual: '0' },
+    ],
+  },
+  {
+    id: 'pass',
+    name: 'Counter baseline sample',
+    hash: 'sha:verify-pass-3f2c',
+    rows: [
+      { tick: 12, signal: 'sum[0]', expected: '1', actual: '1' },
+      { tick: 12, signal: 'carry', expected: '0', actual: '0' },
+      { tick: 13, signal: 'sum[1]', expected: '1', actual: '1' },
+      { tick: 14, signal: 'q2', expected: '1', actual: '1' },
+    ],
+  },
+];
+
+type VerifyStatus = 'idle' | 'blocked' | 'running' | 'pass' | 'fail';
 
 export interface VerifySurfaceProps {
   deterministicHash: string;
@@ -19,134 +61,167 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   hasVectors,
   onOpenProjectVectors,
 }) => {
-  const runRows = hasVectors
-    ? [
-        ['12', 'sum[0]', '1', '1', 'PASS'],
-        ['12', 'carry', '0', '1', 'FAIL'],
-        ['13', 'sum[1]', '1', '1', 'PASS'],
-      ]
-    : [];
-  const failingRows = runRows.filter((row) => row[4] === 'FAIL');
-  const runPassed = hasVectors && failingRows.length === 0;
+  const [selectedScenario, setSelectedScenario] = useState<VerifyScenario['id']>('fail');
+  const [status, setStatus] = useState<VerifyStatus>('idle');
+  const [resultRows, setResultRows] = useState<Array<Array<React.ReactNode>>>([]);
+  const [failingRows, setFailingRows] = useState<VerifyRow[]>([]);
+  const [resultHash, setResultHash] = useState<string>(deterministicHash);
+
+  const activeScenario = useMemo(
+    () => VERIFY_SCENARIOS.find((scenario) => scenario.id === selectedScenario) ?? VERIFY_SCENARIOS[0],
+    [selectedScenario]
+  );
+
+  const runVerification = () => {
+    setStatus('running');
+    const rows = activeScenario.rows.map((row) => [
+      String(row.tick),
+      row.signal,
+      row.expected,
+      row.actual,
+      row.expected === row.actual ? 'PASS' : 'FAIL',
+    ]);
+    const failing = activeScenario.rows.filter((row) => row.expected !== row.actual);
+    setResultRows(rows);
+    setFailingRows(failing);
+    setResultHash(activeScenario.hash);
+    setStatus(failing.length > 0 ? 'fail' : 'pass');
+  };
+
+  const clearResults = () => {
+    setStatus('idle');
+    setResultRows([]);
+    setFailingRows([]);
+    setResultHash(deterministicHash);
+  };
+
+  const firstFailureTick = failingRows[0]?.tick;
+  const hasResults = resultRows.length > 0;
+  const canExportTestbench = status === 'pass';
+  const vectorSourceLabel = hasVectors ? 'Project vectors loaded' : 'Using sample vectors';
 
   return (
-    <div className="ide-content-grid" data-testid="ide-mode-verify" data-ide-mode-marker="verify">
-      <main className="ide-main-area" data-testid="ide-mode-body">
-        <IdePanel
-          title="Verification"
-          description="Deterministic vector execution and failure diagnostics."
-          actions={
-            <>
-              <IdeButton tone="primary">Run Verification</IdeButton>
+    <IdeSurfaceLayout
+      mode="verify"
+      inspector={
+        <>
+          <IdeInspectorSection title="Vectors">
+            <p className="ide-copy">{vectorSourceLabel}</p>
+            <div className="ide-signal-list">
+              {VERIFY_SCENARIOS.map((scenario) => (
+                <button
+                  key={scenario.id}
+                  className="ide-signal-row"
+                  type="button"
+                  onClick={() => setSelectedScenario(scenario.id)}
+                  data-testid={`ide-verify-vector-${scenario.id}`}
+                >
+                  {scenario.name}
+                </button>
+              ))}
+            </div>
+            <div className="ide-inline-actions">
               <IdeButton tone="ghost" onClick={onOpenProjectVectors}>
-                Open Vectors
+                Add vectors
               </IdeButton>
-            </>
-          }
-          right={
-            runPassed ? (
-              <IdeStatusPill tone="ok">PASS</IdeStatusPill>
-            ) : (
-              <IdeStatusPill tone={hasVectors ? 'error' : 'warn'}>{hasVectors ? 'FAIL' : 'No Vectors'}</IdeStatusPill>
-            )
-          }
-          testId="ide-verify-panel"
-        >
-          <div className={`ide-verify-banner ${runPassed ? 'is-pass' : 'is-fail'}`} data-testid="ide-verify-banner">
-            <div>
-              <p className="ide-verify-label">Verification Result</p>
-              <h3>
-                {hasVectors
-                  ? runPassed
-                    ? 'PASS - deterministic agreement'
-                    : 'FAIL - mismatch detected'
-                  : 'BLOCKED - add vectors first'}
-              </h3>
+              <IdeButton tone="ghost">Import sample</IdeButton>
             </div>
-            <div className="ide-verify-hash-block">
-              <span>Hash</span>
-              <code data-testid="ide-verify-hash">{deterministicHash}</code>
+          </IdeInspectorSection>
+
+          <IdeInspectorSection title="Waveform Preview">
+            <div className="ide-waveform-stub" data-testid="ide-verify-waveform-preview">
+              <span />
+              <span />
+              <span />
+              <span />
             </div>
+          </IdeInspectorSection>
+        </>
+      }
+    >
+      <IdePanel
+        title="Verification Truth Screen"
+        description="Run deterministic vectors, inspect first failure, and prove expected/actual behavior."
+        actions={
+          <>
+            <IdeButton tone="primary" onClick={runVerification} testId="ide-verify-run">
+              Run
+            </IdeButton>
+            <IdeButton tone="secondary" onClick={clearResults} testId="ide-verify-clear">
+              Clear
+            </IdeButton>
+            <IdeButton tone="ghost" disabled={!canExportTestbench} testId="ide-verify-export-testbench">
+              Export testbench
+            </IdeButton>
+          </>
+        }
+        right={
+          <IdeStatusPill tone={status === 'pass' ? 'ok' : status === 'fail' ? 'error' : 'idle'}>
+            {status === 'pass'
+              ? 'PASS'
+              : status === 'fail'
+                ? 'FAIL'
+                : status === 'running'
+                    ? 'RUNNING'
+                    : 'IDLE'}
+          </IdeStatusPill>
+        }
+        testId="ide-verify-panel"
+      >
+        <div className={`ide-verify-banner ${status === 'pass' ? 'is-pass' : 'is-fail'}`} data-testid="ide-verify-banner">
+          <div>
+            <p className="ide-verify-label">Verification Result</p>
+            <h3 data-testid="ide-verify-status-label">
+              {status === 'pass'
+                ? 'PASS - deterministic agreement'
+                : status === 'fail'
+                  ? 'FAIL - mismatch detected'
+                  : status === 'running'
+                      ? 'RUNNING - deterministic checks in progress'
+                      : 'IDLE - run verification'}
+            </h3>
+            {status === 'fail' && typeof firstFailureTick === 'number' && (
+              <p className="ide-copy" data-testid="ide-verify-first-fail-tick">
+                First failing tick: <code>{firstFailureTick}</code>
+              </p>
+            )}
           </div>
+          <div className="ide-verify-hash-block">
+            <span>Hash</span>
+            <code data-testid="ide-verify-hash">{resultHash}</code>
+          </div>
+        </div>
 
-          {!hasVectors && (
-            <IdeCallout tone="warn" title="Verification is blocked">
-              Add vectors in Project mode to run deterministic verification.
-              <div className="ide-inline-actions">
-                <IdeButton tone="secondary" onClick={onOpenProjectVectors}>
-                  Add vectors
-                </IdeButton>
-              </div>
-            </IdeCallout>
-          )}
+        {status === 'idle' && (
+          <IdeCallout tone="info" title="Run to generate evidence">
+            Choose a vector set in the left panel, then run verification to produce PASS/FAIL evidence.
+          </IdeCallout>
+        )}
 
-          {hasVectors && (
-            <>
-              <div className="ide-verify-summary-grid">
-                <div className="ide-metric">
-                  <div className="ide-metric-header">
-                    <span>Total Checks</span>
-                    <span>{runRows.length}</span>
-                  </div>
-                  <p className="ide-copy ide-copy-top-gap">Each row is deterministic by tick + signal.</p>
-                </div>
-                <div className="ide-metric">
-                  <div className="ide-metric-header">
-                    <span>Failures</span>
-                    <span>{failingRows.length}</span>
-                  </div>
-                  <p className="ide-copy ide-copy-top-gap">
-                    {failingRows.length === 0
-                      ? 'No failures in latest run.'
-                      : 'Resolve failure rows before export.'}
-                  </p>
-                </div>
-              </div>
-
-              <IdeDataTable
-                columns={['Tick', 'Signal', 'Expected', 'Actual', 'Status']}
-                rows={runRows}
-                testId="ide-verify-results-table"
-              />
-              {!runPassed && failingRows.length > 0 && (
-                <IdeCallout tone="error" title="Failure diff">
-                  {failingRows.map((row) => (
-                    <div key={`${row[0]}-${row[1]}`}>
-                      Tick <code>{row[0]}</code> signal <code>{row[1]}</code> expected{' '}
-                      <code>{row[2]}</code> but observed <code>{row[3]}</code>.
-                    </div>
-                  ))}
+        {hasResults && (
+          <>
+            <IdeDataTable
+              columns={['Tick', 'Signal', 'Expected', 'Actual', 'Status']}
+              rows={resultRows}
+              testId="ide-verify-results-table"
+            />
+            {status === 'fail' && (
+              <section data-testid="ide-verify-diff-table">
+                <IdeCallout tone="error" title="Failure Diff">
+                  <ul className="ide-list">
+                    {failingRows.map((row) => (
+                      <li key={`${row.tick}-${row.signal}`}>
+                        Tick <code>{row.tick}</code> signal <code>{row.signal}</code> expected{' '}
+                        <code>{row.expected}</code> but observed <code>{row.actual}</code>.
+                      </li>
+                    ))}
+                  </ul>
                 </IdeCallout>
-              )}
-            </>
-          )}
-        </IdePanel>
-      </main>
-
-      <aside className="ide-inspector" data-testid="ide-inspector">
-        <IdeInspectorSection title="Signal Picker">
-          <div className="ide-signal-list">
-            <button className="ide-signal-row" type="button">
-              sum[0]
-            </button>
-            <button className="ide-signal-row" type="button">
-              sum[1]
-            </button>
-            <button className="ide-signal-row" type="button">
-              carry
-            </button>
-          </div>
-        </IdeInspectorSection>
-
-        <IdeInspectorSection title="Waveform Preview">
-          <div className="ide-waveform-stub" data-testid="ide-verify-waveform-stub">
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-        </IdeInspectorSection>
-      </aside>
-    </div>
+              </section>
+            )}
+          </>
+        )}
+      </IdePanel>
+    </IdeSurfaceLayout>
   );
 };
