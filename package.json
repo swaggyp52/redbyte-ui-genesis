@@ -153,6 +153,7 @@
         "ide:gate:design-inspector-contract": "node ./scripts/gates/ide-design-inspector-contract.mjs",
         "ide:gate:project-readiness-contract": "node ./scripts/gates/ide-project-readiness-contract.mjs",
         "ide:gate:project-health-live-contract": "node ./scripts/gates/ide-project-health-live-contract.mjs",
+        "ide:gate:examples-contract": "node ./scripts/gates/ide-examples-contract.mjs",
         "ide:gate:verify-contract": "node ./scripts/gates/ide-verify-contract.mjs",
         "ide:gate:export-download-contract": "node ./scripts/gates/ide-export-download-contract.mjs",
         "ide:gate:primary-cta-contract": "node ./scripts/gates/ide-primary-cta-contract.mjs",

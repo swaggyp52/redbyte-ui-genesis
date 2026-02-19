@@ -103,6 +103,9 @@ if (!runCheck('IDE Project Health Live Contract', 'pnpm -s ide:gate:project-heal
 if (!runCheck('IDE Primary CTA Contract', 'pnpm -s ide:gate:primary-cta-contract 2>&1')) {
   process.exit(1);
 }
+if (!runCheck('IDE Examples Contract', 'pnpm -s ide:gate:examples-contract 2>&1')) {
+  process.exit(1);
+}
 
 // 5. Artifact verification
 console.log('\n[CHECK] Artifact Verification...');
