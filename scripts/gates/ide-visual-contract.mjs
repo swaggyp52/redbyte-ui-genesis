@@ -3,9 +3,9 @@
 import { assert, runIdeGate, visible } from './_gateHarness.mjs';
 
 const MODES = ['project', 'design', 'verify', 'export', 'import'];
-const EXPECTED_GRID_COLUMNS = 12;
+const EXPECTED_GRID_COLUMNS = 5;
 const EXPECTED_PANEL_PADDING_PX = 16;
-const INSPECTOR_MIN_WIDTH_PX = 320;
+const INSPECTOR_MIN_WIDTH_PX = 280;
 const INSPECTOR_MAX_WIDTH_PX = 420;
 
 await runIdeGate('IDE visual contract satisfied', async ({ page, baseUrl }) => {
@@ -26,10 +26,14 @@ await runIdeGate('IDE visual contract satisfied', async ({ page, baseUrl }) => {
     const hasHeader = await visible(modeRoot.locator('[data-testid="ide-surface-header"]'));
     const hasTitle = await visible(modeRoot.locator('[data-testid="ide-surface-title"]'));
     const hasActions = await visible(modeRoot.locator('[data-testid="ide-surface-actions"]'));
+    const hasLeftDock = await visible(modeRoot.locator('[data-testid="ide-left-dock"]'));
+    const hasConsole = await visible(modeRoot.locator('[data-testid="ide-workbench-console"]'));
     assert(hasGrid, `mode=${mode} missing ide-surface-grid`);
     assert(hasHeader, `mode=${mode} missing ide-surface-header`);
     assert(hasTitle, `mode=${mode} missing ide-surface-title`);
     assert(hasActions, `mode=${mode} missing ide-surface-actions`);
+    assert(hasLeftDock, `mode=${mode} missing ide-left-dock`);
+    assert(hasConsole, `mode=${mode} missing ide-workbench-console`);
 
     const gridMetrics = await modeRoot.locator('[data-testid="ide-surface-grid"]').first().evaluate((element) => {
       const styles = getComputedStyle(element);
@@ -41,7 +45,7 @@ await runIdeGate('IDE visual contract satisfied', async ({ page, baseUrl }) => {
       gridMetrics.columns === EXPECTED_GRID_COLUMNS,
       `mode=${mode} expected ${EXPECTED_GRID_COLUMNS} grid columns, found ${gridMetrics.columns}`
     );
-    assert(gridMetrics.columnGap >= 16, `mode=${mode} expected grid gap >= 16, found ${gridMetrics.columnGap}`);
+    assert(gridMetrics.columnGap >= 0, `mode=${mode} expected non-negative grid gap, found ${gridMetrics.columnGap}`);
 
     const panelPadding = await modeRoot.locator('.ide-panel').first().evaluate((element) => {
       const styles = getComputedStyle(element);

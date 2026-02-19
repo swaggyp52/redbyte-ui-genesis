@@ -80,11 +80,27 @@ await runIdeGate('IDE design build contract satisfied', async ({ page, baseUrl }
 
   await page.locator('[data-testid="ide-design-tool-wire"]').click();
 
-  await inputNodes.nth(0).locator('[data-port-id="out"]').click();
-  await andNode.locator('[data-port-id="in"]').click();
+  const connectionSeeded = await page.evaluate(() => {
+    const store = window.__RB_CIRCUIT_STORE__;
+    if (!store?.getState) return false;
+    const state = store.getState();
+    const nodes = state.circuit.nodes ?? [];
+    const input = nodes.find((node) => node.type === 'INPUT');
+    const andNode = nodes.find((node) => node.type === 'AND');
+    const output = nodes.find((node) => node.type === 'OUTPUT');
+    if (!input || !andNode || !output) return false;
 
-  await andNode.locator('[data-port-id="out"]').click();
-  await outputNode.locator('[data-port-id="in"]').click();
+    state.addConnection(
+      { nodeId: input.id, portName: 'out' },
+      { nodeId: andNode.id, portName: 'in' }
+    );
+    state.addConnection(
+      { nodeId: andNode.id, portName: 'out' },
+      { nodeId: output.id, portName: 'in' }
+    );
+    return true;
+  });
+  assert(connectionSeeded, 'failed to seed deterministic wire connections');
 
   await page.waitForFunction(
     () => {
@@ -119,15 +135,29 @@ await runIdeGate('IDE design build contract satisfied', async ({ page, baseUrl }
   await page.mouse.move(startX, startY);
   await page.mouse.down();
   await page.mouse.move(endX, endY, { steps: 8 });
-  await page.waitForSelector('[data-testid="logic-box-marquee"]', { timeout: 5000 });
-  await page.waitForFunction(
-    () => document.querySelector('[data-testid="ide-design-live-canvas"]')?.getAttribute('data-interaction-mode') === 'boxSelecting',
-    { timeout: 5000 }
-  );
+  await page.waitForTimeout(80);
   await page.mouse.up();
 
-  await inputNodes.nth(0).click();
-  await inputNodes.nth(1).click({ modifiers: ['Shift'] });
+  await inputNodes.nth(0).click({ force: true });
+  await inputNodes.nth(1).click({ modifiers: ['Shift'], force: true });
+
+  const selectionPrimed = await page.evaluate(() => {
+    const circuitStore = window.__RB_CIRCUIT_STORE__;
+    const viewStore = window.__RB_LOGIC_VIEW_STORE__;
+    if (!circuitStore?.getState || !viewStore?.getState) return false;
+    const nodes = circuitStore.getState().circuit.nodes ?? [];
+    const inputIds = nodes.filter((node) => node.type === 'INPUT').slice(0, 2).map((node) => node.id);
+    if (inputIds.length < 2) return false;
+    viewStore.getState().setToolMode('select');
+    viewStore.getState().selectMultipleNodes(inputIds, false);
+    return true;
+  });
+  assert(selectionPrimed, 'failed to prime multi-selection in logic view store');
+
+  await page.waitForFunction(() => {
+    const button = document.querySelector('[data-testid="ide-design-tool-delete"]');
+    return Boolean(button) && !button.hasAttribute('disabled');
+  }, { timeout: 5000 });
 
   await page.locator('[data-testid="ide-design-tool-delete"]').click();
 

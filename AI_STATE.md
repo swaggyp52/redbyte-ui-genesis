@@ -1,5 +1,72 @@
 # AI State
 
+## Change Log 2026-02-19 (Workbench Composition Refactor: Docked IDE Shell + Layout Contract Gate)
+
+**Status**: COMPLETE - IDE surfaces now mount inside a unified workbench shell (left dock, center workspace, right inspector, bottom compiler console) with deterministic split sizing and gate enforcement.
+
+### What Changed
+
+1. Added unified workbench shell component
+- Added `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`:
+  - new mode shell structure:
+    - left dock (`data-testid="ide-left-dock"`)
+    - center workspace (`data-testid="ide-mode-body"`)
+    - right inspector (`data-testid="ide-inspector"`)
+    - bottom console (`data-testid="ide-workbench-console"`)
+  - deterministic split sizing with local persistence (`rb.ide.workbench.layout.v1`)
+  - resize handles for left/right docks and bottom console:
+    - `ide-workbench-resize-left`
+    - `ide-workbench-resize-right`
+    - `ide-workbench-resize-bottom`
+
+2. Routed all surfaces through workbench shell
+- Updated `packages/rb-apps/src/apps/ide/components/IdeSurfaceLayout.tsx`:
+  - now wraps every mode via `IdeWorkbenchShell`.
+  - preserves existing mode markers/contracts while standardizing composition.
+
+3. Locked workbench composition styling
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - added workbench layout rules (desktop + responsive collapse)
+  - dock/console/divider styling aligned to token system
+  - ensured center workspace dominance and inspector compatibility.
+
+4. Added deterministic workbench contract gate
+- Added `scripts/gates/ide-workbench-layout-contract.mjs`:
+  - validates all modes render docks/workspace/console
+  - validates center workspace remains dominant
+  - validates left dock resize handle actually changes dock width.
+- Wired gate into:
+  - `package.json` (`ide:gate:workbench-layout-contract`)
+  - `scripts/repo-status.mjs`
+  - `scripts/verify-gates-classroom.mjs`
+
+5. Stabilized affected gate expectations after shell refactor
+- Updated `scripts/gates/ide-visual-contract.mjs`:
+  - updated grid expectation to workbench columns + dock/console presence.
+- Updated `scripts/gates/ide-design-build-contract.mjs`:
+  - reduced canvas-hit-test flake by deterministic connection seeding/selection priming.
+
+6. Visual baseline refresh for new shell composition
+- Updated screenshot baselines:
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-project-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-design-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-verify-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-export-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-import-chromium-win32.png`
+
+### Validation Executed
+
+- `pnpm -s ide:gate:workbench-layout-contract` -> PASS
+- `pnpm -s ide:gate:layout-contract` -> PASS
+- `pnpm -s ide:gate:design-build-contract` -> PASS
+- `pnpm -s ide:gate:visual-contract` -> PASS
+- `pnpm -s ide:gate:screenshots:update` -> PASS
+- `pnpm repo:status` -> PASS (14/14 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (RBProjectRuntime Source-of-Truth Wiring)
 
 **Status**: COMPLETE - IDE runtime state now has a single persisted authority for project data, circuit graph, mapping, vectors, and health flags.

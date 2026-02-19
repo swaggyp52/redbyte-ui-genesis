@@ -334,6 +334,119 @@
   text-align: center;
 }
 
+.ide-workbench-shell {
+  --ide-workbench-left-width: 272px;
+  --ide-workbench-right-width: 344px;
+  --ide-workbench-console-height: 176px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 6px minmax(var(--ide-workbench-console-height), 128px);
+  gap: var(--ide-space-2);
+  min-height: 0;
+  height: 100%;
+  padding: var(--ide-space-4) var(--ide-space-5);
+}
+
+.ide-workbench-main {
+  display: grid;
+  grid-template-columns:
+    minmax(220px, var(--ide-workbench-left-width))
+    8px
+    minmax(0, 1fr)
+    8px
+    minmax(280px, var(--ide-workbench-right-width));
+  gap: 0;
+  min-height: 0;
+}
+
+.ide-workbench-dock {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid color-mix(in srgb, var(--ide-border) 84%, #6ba8dc 16%);
+  border-radius: var(--ide-radius-m);
+  background: linear-gradient(180deg, rgba(15, 25, 36, 0.9), rgba(11, 20, 30, 0.92));
+  box-shadow: var(--rb-shadow-1);
+  padding: var(--ide-space-3);
+}
+
+.ide-workbench-workspace {
+  min-height: 0;
+  overflow: auto;
+  padding: 0 var(--ide-space-3);
+}
+
+.ide-workbench-divider {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  position: relative;
+}
+
+.ide-workbench-divider::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(95, 128, 158, 0.22);
+  transition: background 180ms ease;
+}
+
+.ide-workbench-divider:hover::after,
+.ide-workbench-divider:focus-visible::after {
+  background: rgba(142, 199, 255, 0.44);
+}
+
+.ide-workbench-divider-vertical {
+  cursor: col-resize;
+}
+
+.ide-workbench-divider-horizontal {
+  height: 6px;
+  cursor: row-resize;
+}
+
+.ide-workbench-console {
+  min-height: 128px;
+  overflow: auto;
+  border: 1px solid color-mix(in srgb, var(--ide-border) 82%, #8ec7ff 18%);
+  border-radius: var(--ide-radius-m);
+  background: linear-gradient(180deg, rgba(13, 22, 31, 0.95), rgba(8, 15, 22, 0.97));
+  box-shadow: var(--rb-shadow-1);
+  padding: var(--ide-space-3);
+}
+
+.ide-workbench-console-content,
+.ide-workbench-placeholder {
+  display: grid;
+  gap: var(--ide-space-2);
+}
+
+.ide-workbench-console-header,
+.ide-workbench-placeholder-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ide-space-2);
+}
+
+.ide-workbench-console-header h3,
+.ide-workbench-placeholder-header h3 {
+  margin: 0;
+  font-size: var(--rb-font-size-3);
+  line-height: var(--rb-line-height-3);
+}
+
+.ide-workbench-console-mode {
+  border: 1px solid rgba(88, 131, 166, 0.5);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--ide-text-soft);
+  font-size: var(--rb-font-size-1);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .ide-content-grid {
   display: grid;
   grid-template-columns: repeat(var(--rb-grid-columns), minmax(0, 1fr));
@@ -368,6 +481,20 @@
   width: min(100%, var(--rb-inspector-max));
   min-width: var(--rb-inspector-min);
   justify-self: end;
+}
+
+.ide-workbench-main .ide-main-area {
+  grid-column: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ide-workbench-main .ide-inspector {
+  grid-column: auto;
+  width: 100%;
+  min-width: 0;
+  justify-self: stretch;
 }
 
 .ide-card-grid {
@@ -2176,6 +2303,16 @@
     gap: var(--ide-space-4);
   }
 
+  .ide-workbench-shell {
+    --ide-workbench-left-width: 232px;
+    --ide-workbench-right-width: 312px;
+    padding: var(--ide-space-3);
+  }
+
+  .ide-workbench-workspace {
+    padding: 0 var(--ide-space-2);
+  }
+
   .ide-main-area,
   .ide-inspector {
     grid-column: 1 / -1;
@@ -2247,6 +2384,32 @@
   .ide-left-rail-nav {
     flex-direction: row;
     overflow-x: auto;
+  }
+
+  .ide-workbench-shell {
+    grid-template-rows: minmax(0, 1fr) 0 minmax(160px, 220px);
+    padding: var(--ide-space-2);
+    gap: var(--ide-space-2);
+  }
+
+  .ide-workbench-main {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
+    gap: var(--ide-space-2);
+  }
+
+  .ide-workbench-divider-vertical,
+  .ide-workbench-divider-horizontal {
+    display: none;
+  }
+
+  .ide-workbench-dock {
+    max-height: 210px;
+  }
+
+  .ide-workbench-workspace {
+    min-height: 320px;
+    padding: 0;
   }
 
   .ide-mode-button {

@@ -1,4 +1,5 @@
 import React from 'react';
+import { IdeWorkbenchShell } from './IdeWorkbenchShell';
 
 type IdeSurfaceMode = 'project' | 'design' | 'verify' | 'export' | 'import';
 
@@ -6,23 +7,24 @@ export interface IdeSurfaceLayoutProps {
   mode: IdeSurfaceMode;
   children: React.ReactNode;
   inspector: React.ReactNode;
+  dock?: React.ReactNode;
+  console?: React.ReactNode;
 }
 
-export const IdeSurfaceLayout: React.FC<IdeSurfaceLayoutProps> = ({ mode, children, inspector }) => {
+export const IdeSurfaceLayout: React.FC<IdeSurfaceLayoutProps> = ({
+  mode,
+  children,
+  inspector,
+  dock,
+  console,
+}) => {
   return (
-    <section
-      className="ide-surface-shell"
-      data-testid={`ide-mode-${mode}`}
-      data-ide-mode-marker={mode}
-    >
-      <div className="ide-content-grid" data-testid="ide-surface-grid" data-grid-columns="12">
-        <main className="ide-main-area" data-testid="ide-mode-body">
-          {children}
-        </main>
-        <aside className="ide-inspector" data-testid="ide-inspector" data-inspector-width="320-420">
-          {inspector}
-        </aside>
-      </div>
-    </section>
+    <IdeWorkbenchShell
+      mode={mode}
+      workspace={children}
+      leftDock={dock}
+      rightDock={inspector}
+      console={console}
+    />
   );
 };
