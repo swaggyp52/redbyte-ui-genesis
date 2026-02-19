@@ -1,5 +1,37 @@
 # AI State
 
+## Change Log 2026-02-19 (Lane A Handoff Artifact + Ahead-Limit Warning Guard)
+
+**Status**: COMPLETE - Produced a pushable Lane A handoff bundle and added a non-blocking local guard that warns when local commit drift exceeds 3 commits.
+
+### What Changed
+
+1. Pushable handoff documentation
+- Added `docs/handoff/APPLY_LANE_A.md`.
+- Includes:
+  - exact commit/base/tip range (`origin/main..HEAD`)
+  - bundle apply flow
+  - patch-series fallback flow
+  - fallback base-hash commands
+  - required verification commands
+
+2. Ahead-limit local warning guard (non-blocking)
+- Updated `scripts/repo-status.mjs`.
+- Added `origin/main..HEAD` ahead-count check with warning threshold `> 3`.
+- Emits loud guidance locally but does not fail `repo:status` or CI by itself.
+
+3. Handoff artifact creation
+- Created and verified `codex_laneA_2026-02-18.bundle` from `origin/main..HEAD`.
+
+### Validation Executed
+
+- `git bundle verify codex_laneA_2026-02-18.bundle` -> PASS
+- `pnpm repo:status` -> PASS (4/4 checks), with ahead-limit warning emitted as expected
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Lane A follow-up: Fixture03 parity hardening + export required-port blocking)
 
 **Status**: COMPLETE - Strengthened sequential parity proof and implemented Lane A #2 export blocking for unmapped required ports with deterministic diagnostics.

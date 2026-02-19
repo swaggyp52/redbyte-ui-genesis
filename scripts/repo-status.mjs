@@ -16,6 +16,7 @@ import fs from 'fs';
 import path from 'path';
 
 const ROOT = process.cwd();
+const AHEAD_WARN_LIMIT = 3;
 
 let totalChecks = 0;
 let passCount = 0;
@@ -50,8 +51,34 @@ function fileExists(filePath, description) {
   return false;
 }
 
+function emitAheadLimitWarning() {
+  try {
+    const aheadRaw = execSync('git rev-list --count origin/main..HEAD', {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      cwd: ROOT,
+      encoding: 'utf8',
+    }).trim();
+    const aheadCount = Number.parseInt(aheadRaw, 10);
+    if (!Number.isFinite(aheadCount)) {
+      console.log(`[warn] unable to parse ahead count: "${aheadRaw}"`);
+      return;
+    }
+    if (aheadCount > AHEAD_WARN_LIMIT) {
+      console.log(
+        `[warn] local branch is ${aheadCount} commits ahead of origin/main (recommended <= ${AHEAD_WARN_LIMIT}).`
+      );
+      console.log(
+        '[warn] guidance: push/PR the current lane stack now, or generate a bundle/patch handoff before adding more commits.'
+      );
+    }
+  } catch {
+    console.log('[warn] ahead-limit check skipped (origin/main not available locally).');
+  }
+}
+
 console.log('RedByte UI Repository Status\n');
 console.log('='.repeat(50));
+emitAheadLimitWarning();
 
 // 0. Static anti-shadow contract (fast fail)
 if (!runCheck('IDE Boot Shadow Contract', 'pnpm gates:ide-boot-shadow-contract 2>&1')) {
