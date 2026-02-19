@@ -898,6 +898,26 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const showSelectionBounds = Boolean(selectionBoundsScreen) && selection.nodes.size > 0;
   const showSelectionGhost =
     showSelectionBounds && interactionMode === 'draggingNode' && selection.nodes.size > 1;
+  const selectionBadgeLayout = React.useMemo(() => {
+    if (!selectionBoundsScreen) return null;
+    const badgeHeight = 18;
+    const countWidth = 96;
+    const deltaWidth = 104;
+    const margin = 6;
+    const top = clampValue(selectionBoundsScreen.y - 24, margin, height - badgeHeight - margin);
+    const countLeft = clampValue(selectionBoundsScreen.x + 6, margin, width - countWidth - margin);
+    const deltaLeft = clampValue(
+      selectionBoundsScreen.x + selectionBoundsScreen.width - (deltaWidth + margin),
+      margin,
+      width - deltaWidth - margin
+    );
+
+    return {
+      top,
+      countLeft,
+      deltaLeft,
+    };
+  }, [selectionBoundsScreen, height, width]);
   const showSnapGuides =
     shouldSnap &&
     interactionMode === 'draggingNode' &&
@@ -1276,8 +1296,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             ) : null}
             <g data-testid="logic-selection-count-badge">
               <rect
-                x={selectionBoundsScreen.x + 6}
-                y={selectionBoundsScreen.y - 24}
+                x={selectionBadgeLayout?.countLeft ?? selectionBoundsScreen.x + 6}
+                y={selectionBadgeLayout?.top ?? selectionBoundsScreen.y - 24}
                 width={96}
                 height={18}
                 rx={9}
@@ -1287,8 +1307,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                 pointerEvents="none"
               />
               <text
-                x={selectionBoundsScreen.x + 54}
-                y={selectionBoundsScreen.y - 12}
+                x={(selectionBadgeLayout?.countLeft ?? selectionBoundsScreen.x + 6) + 48}
+                y={(selectionBadgeLayout?.top ?? selectionBoundsScreen.y - 24) + 12}
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="#d9efff"
@@ -1302,8 +1322,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             {interactionMode === 'draggingNode' ? (
               <g data-testid="logic-selection-delta">
                 <rect
-                  x={selectionBoundsScreen.x + selectionBoundsScreen.width - 110}
-                  y={selectionBoundsScreen.y - 24}
+                  x={selectionBadgeLayout?.deltaLeft ?? selectionBoundsScreen.x + selectionBoundsScreen.width - 110}
+                  y={selectionBadgeLayout?.top ?? selectionBoundsScreen.y - 24}
                   width={104}
                   height={18}
                   rx={9}
@@ -1313,8 +1333,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                   pointerEvents="none"
                 />
                 <text
-                  x={selectionBoundsScreen.x + selectionBoundsScreen.width - 58}
-                  y={selectionBoundsScreen.y - 12}
+                  x={(selectionBadgeLayout?.deltaLeft ?? selectionBoundsScreen.x + selectionBoundsScreen.width - 110) + 52}
+                  y={(selectionBadgeLayout?.top ?? selectionBoundsScreen.y - 24) + 12}
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill="#b9fff7"
@@ -1488,4 +1508,9 @@ function worldBoundsToScreen(bounds: SelectionBounds | null, camera: Camera) {
   const height = (bounds.maxY - bounds.minY) * camera.zoom;
   if (width <= 0 || height <= 0) return null;
   return { x, y, width, height };
+}
+
+function clampValue(value: number, min: number, max: number): number {
+  if (max < min) return min;
+  return Math.min(max, Math.max(min, value));
 }

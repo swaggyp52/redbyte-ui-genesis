@@ -38,23 +38,52 @@ async function runDeterministicPass(page, baseUrl) {
   const beforeDragPositions = await getSelectedNodePositions(page);
   assert(beforeDragPositions.length > 1, 'expected selected node positions for multiselect drag');
 
-  const anchorId = beforeDragPositions[0]?.id;
+  const preferredAnchor =
+    beforeDragPositions.find((entry) => entry.type === 'AND') ??
+    beforeDragPositions.find((entry) => entry.type !== 'INPUT' && entry.type !== 'Switch') ??
+    beforeDragPositions[0];
+  const anchorId = preferredAnchor?.id;
   assert(Boolean(anchorId), 'missing anchor node id for deterministic drag');
-  const anchorLocator = page.locator(`g[data-node-id="${anchorId}"]`).first();
-  const anchorBox = await anchorLocator.boundingBox();
-  assert(Boolean(anchorBox), `missing anchor bounds for node ${anchorId}`);
+  const anchorScreen = await page.evaluate((id) => {
+    const circuitStore = window.__RB_CIRCUIT_STORE__;
+    const logicStore = window.__RB_LOGIC_VIEW_STORE__;
+    const svg = document.querySelector('[data-testid="logic-canvas-svg"]');
+    const svgBounds = svg?.getBoundingClientRect();
+    const node = circuitStore?.getState?.().circuit?.nodes?.find((entry) => entry.id === id);
+    const camera = logicStore?.getState?.().camera;
+    if (!node?.position || !camera || !svgBounds) return null;
+    return {
+      x: svgBounds.left + node.position.x * camera.zoom + camera.x,
+      y: svgBounds.top + node.position.y * camera.zoom + camera.y,
+    };
+  }, anchorId);
+  assert(Boolean(anchorScreen), `missing anchor screen position for node ${anchorId}`);
 
-  const startX = anchorBox.x + anchorBox.width / 2;
-  const startY = anchorBox.y + anchorBox.height / 2;
+  const startX = anchorScreen.x;
+  const startY = anchorScreen.y;
   const endX = startX + DRAG_DELTA.x;
   const endY = startY + DRAG_DELTA.y;
 
   await page.mouse.move(startX, startY);
   await page.mouse.down();
   await page.mouse.move(endX, endY, { steps: 12 });
-  await page.waitForSelector('[data-testid="logic-selection-delta"]', { timeout: 5000 });
-  await page.waitForSelector('[data-testid="logic-snap-guides"]', { timeout: 5000 });
-  await page.waitForSelector('[data-testid="logic-snap-indicator"]', { timeout: 5000 });
+  const snapState = await page.evaluate(() => {
+    const store = window.__RB_LOGIC_VIEW_STORE__;
+    const interactionMode = store?.getState?.().interactionMode ?? 'unknown';
+    const snapEnabled = store?.getState?.().snapToGrid ?? false;
+    const hasGuides = Boolean(document.querySelector('[data-testid="logic-snap-guides"]'));
+    const hasIndicator = Boolean(document.querySelector('[data-testid="logic-snap-indicator"]'));
+    const hasBounds = Boolean(document.querySelector('[data-testid="logic-selection-bounds"]'));
+    return { interactionMode, snapEnabled, hasGuides, hasIndicator, hasBounds };
+  });
+  assert(
+    snapState.interactionMode === 'draggingNode',
+    `expected draggingNode interaction mode during group drag, got "${snapState.interactionMode}"`
+  );
+  assert(snapState.snapEnabled, 'expected snap to grid enabled during multiselect drag');
+  assert(snapState.hasGuides, 'snap guides marker missing while dragging selected nodes');
+  assert(snapState.hasIndicator, 'snap indicator marker missing while dragging selected nodes');
+  assert(snapState.hasBounds, 'selection bounds marker missing during multiselect drag');
   await page.mouse.up();
 
   await page.waitForTimeout(120);
@@ -196,6 +225,7 @@ async function getSelectedNodePositions(page) {
         if (!position) return null;
         return {
           id,
+          type: node.type,
           x: Math.round(position.x),
           y: Math.round(position.y),
         };
