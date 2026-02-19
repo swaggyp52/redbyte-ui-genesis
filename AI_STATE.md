@@ -1,5 +1,46 @@
 # AI State
 
+## Change Log 2026-02-19 (Lane A follow-up: Fixture03 parity hardening + export required-port blocking)
+
+**Status**: COMPLETE - Strengthened sequential parity proof and implemented Lane A #2 export blocking for unmapped required ports with deterministic diagnostics.
+
+### What Changed
+
+1. Fixture03 parity hardening (metadata + behavior proof)
+- Updated `packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts`.
+- Added deterministic verify hash assertion:
+  - `verifyResult.deterministicHash === "sha:3b867e39"`.
+- Replaced weak clock checks with strict generated-VHDL macro schedule pattern assertion:
+  - `clk <= '0' -> wait -> clk <= '1' -> wait -> clk <= '0' -> wait -> wait for 0 ns`
+  - Must appear once per vector.
+
+2. Lane A #2: export blocks unmapped required ports (compiler-style reporting)
+- Updated `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`.
+- Added required-port derivation from:
+  - top entity/module ports (from HDL sources), and
+  - declared circuit IO nodes.
+- Enforced blocking errors when required ports are unmapped, direction-mismatched, or missing pin assignments.
+- Added deterministic warning reporting for:
+  - questionable pin-direction pairings,
+  - unused mapped entries,
+  - ignored source XDC directives (export regenerates deterministic constraints from IO mapping).
+
+3. Fixture gate coverage for Lane A #2
+- Extended `packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts` with:
+  - failing export test for missing required `count_en`/`q2` mappings (deterministic error list),
+  - warning-path test for questionable mapping + unused mapping + ignored XDC directives.
+
+### Validation Executed
+
+- `pnpm -w exec vitest run packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts --reporter=verbose` -> PASS
+- `pnpm gates:import-roundtrip` -> PASS
+- `pnpm -s rc:d2:basys3-bundle-gate` -> PASS
+- `pnpm repo:status` -> PASS (4/4 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-18 (ECE141 Queue Lock + Lane A1 Sequential Verify/Export Parity)
 
 **Status**: COMPLETE - Added executable ECE141 gap queue and implemented Lane A #1 (clocked verify/export parity) with fixture-gated proof.
