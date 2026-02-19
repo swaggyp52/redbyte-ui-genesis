@@ -1490,6 +1490,24 @@
   color: var(--ide-text-soft);
 }
 
+.ide-export-readme-code {
+  max-height: 280px;
+}
+
+.ide-export-checklist {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: var(--ide-space-1);
+  font-size: var(--rb-font-size-2);
+  color: var(--ide-text-muted);
+}
+
+.ide-export-checklist code {
+  font-family: var(--ide-font-mono);
+  color: var(--ide-text-strong);
+}
+
 @media (max-width: 1120px) {
   .ide-top-bar {
     grid-template-columns: 1fr;

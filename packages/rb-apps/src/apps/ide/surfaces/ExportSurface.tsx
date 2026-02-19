@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import JSZip from 'jszip';
 import type { RBProject } from '../../../export/projectFormat';
 import {
   buildExportViewModel,
@@ -32,9 +33,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     createPinOverrideMap(viewModel.pinTable)
   );
   const [highlightedPort, setHighlightedPort] = useState<string | null>(null);
-  const [selectedArtifactPath, setSelectedArtifactPath] = useState<string>(() =>
-    viewModel.artifacts[0]?.path ?? ''
-  );
+  const [selectedArtifactPath, setSelectedArtifactPath] = useState<string>(() => {
+    const readme = viewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'readme.txt');
+    return readme?.path ?? viewModel.artifacts[0]?.path ?? '';
+  });
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
   const pinInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const highlightResetTimer = useRef<number | null>(null);
@@ -50,7 +52,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     }
     const exists = viewModel.artifacts.some((artifact) => artifact.path === selectedArtifactPath);
     if (!exists) {
-      setSelectedArtifactPath(viewModel.artifacts[0].path);
+      const readme = viewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'readme.txt');
+      setSelectedArtifactPath(readme?.path ?? viewModel.artifacts[0].path);
     }
   }, [viewModel.artifacts, selectedArtifactPath]);
 
@@ -79,6 +82,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const selectedArtifact =
     viewModel.artifacts.find((artifact) => artifact.path === selectedArtifactPath) ??
     viewModel.artifacts[0];
+  const readmeArtifact = viewModel.artifacts.find(
+    (artifact) => artifact.path.toLowerCase() === 'readme.txt'
+  );
+  const readmePreview = (readmeArtifact?.preview ?? '').split('\n').slice(0, 20).join('\n').trim();
 
   const jumpToMapping = (portKey: string) => {
     const row = rowRefs.current[portKey];
@@ -116,14 +123,43 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  const handleExportBundle = () => {
+  const handleExportBundle = async () => {
     if (hasBlockingErrors) return;
     if (onExportBundle) {
       onExportBundle(viewModel.artifacts);
       return;
     }
-    for (const artifact of viewModel.artifacts) {
-      handleDownloadArtifact(artifact);
+    const zipEntries = viewModel.artifacts.filter((artifact) => artifact.preview.trim().length > 0);
+    if (zipEntries.length === 0 || typeof window === 'undefined') return;
+
+    try {
+      const zip = new JSZip();
+      const zipDate = new Date('2026-01-01T00:00:00.000Z');
+      for (const artifact of zipEntries) {
+        zip.file(artifact.path, artifact.preview.replace(/\r\n/g, '\n'), {
+          createFolders: false,
+          date: zipDate,
+        });
+      }
+
+      const bytes = await zip.generateAsync({
+        type: 'uint8array',
+        compression: 'STORE',
+        platform: 'DOS',
+        comment: '',
+      });
+
+      const blob = new Blob([bytes], { type: 'application/zip' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'redbyte-basys3-bundle.zip';
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      for (const artifact of zipEntries) {
+        handleDownloadArtifact(artifact);
+      }
     }
   };
 
@@ -190,9 +226,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 tone="primary"
                 onClick={handleExportBundle}
                 disabled={hasBlockingErrors}
-                testId="ide-export-primary-cta"
+                testId="ide-export-download-all"
               >
-                Export Bundle
+                Download all (.zip)
               </IdeButton>
               <IdeButton tone="ghost">Re-run Validation</IdeButton>
             </>
@@ -403,6 +439,33 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   )}
                 </>
               )}
+            </section>
+
+            <section className="ide-export-section" data-testid="ide-export-readme-preview">
+              <header className="ide-export-section-header">
+                <h3>README Preview</h3>
+                <span className="ide-export-section-meta">first 20 lines</span>
+              </header>
+              {readmePreview.length > 0 ? (
+                <pre className="ide-export-artifact-code ide-export-readme-code">{readmePreview}</pre>
+              ) : (
+                <IdeCallout tone="warn" title="README unavailable">
+                  README preview appears after export validation produces artifact text.
+                </IdeCallout>
+              )}
+            </section>
+
+            <section className="ide-export-section" data-testid="ide-export-vivado-checklist">
+              <header className="ide-export-section-header">
+                <h3>Vivado Steps</h3>
+              </header>
+              <ol className="ide-export-checklist">
+                <li>Create a Vivado RTL project for Basys3.</li>
+                <li>Add <code>top.vhd</code> as a Design Source.</li>
+                <li>Add <code>top.xdc</code> as Constraints.</li>
+                <li>Add <code>testbench.vhd</code> as Simulation Source only.</li>
+                <li>Run synthesis, implementation, bitstream, then program Basys3.</li>
+              </ol>
             </section>
           </div>
         </IdePanel>
