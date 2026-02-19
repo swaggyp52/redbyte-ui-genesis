@@ -1,5 +1,77 @@
 # AI State
 
+## Change Log 2026-02-19 (Surface Layout Freeze + Verify Truth Screen + Visual Contract Gates)
+
+**Status**: COMPLETE - Standardized all IDE tabs on one shared surface layout contract, replaced Verify with a deterministic truth-screen workflow, introduced diagnostics-first Import surface, and added new Playwright contract gates.
+
+### What Changed
+
+1. Shared surface layout contract across modes
+- Added `packages/rb-apps/src/apps/ide/components/IdeSurfaceLayout.tsx`.
+  - canonical mode wrapper with:
+    - `data-testid="ide-mode-<mode>"`
+    - `data-testid="ide-surface-grid"`
+    - shared main/inspector shell
+- Updated `packages/rb-apps/src/apps/ide/components/IdePrimitives.tsx`:
+  - `IdePanel` now emits deterministic surface markers:
+    - `data-testid="ide-surface-header"`
+    - `data-testid="ide-surface-title"`
+    - `data-testid="ide-surface-actions"`
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - added shared `.ide-surface-shell`, `.ide-surface-header`, `.ide-surface-actions`
+  - updated design mode selectors to use surface shell marker scope
+
+2. Mode conformance to shared header + grid
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` to use `IdeSurfaceLayout`.
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` to use `IdeSurfaceLayout`.
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` to use `IdeSurfaceLayout`.
+
+3. Verify Mode v1 (truth screen)
+- Replaced `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`.
+- New deterministic Verify flow:
+  - header actions: `Run`, `Clear`, `Export testbench` (enabled only on PASS)
+  - left panel vectors with deterministic fail/pass scenarios
+  - main panel PASS/FAIL banner + first failing tick + diff callout + deterministic hash
+  - waveform preview panel retained in inspector
+
+4. Import Mode diagnostics-first surface
+- Added `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`.
+- Includes:
+  - parse/build/apply actions in header
+  - parsed ports table
+  - unmapped ports list with Basys3 suggestions and apply action
+  - warnings panel for ignored constraint directives
+  - schematic preview stub
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - replaced old mode placeholder with `ImportSurface`
+  - seeded deterministic sample vectors for mode continuity
+
+5. New Playwright gates and wiring
+- Added `scripts/gates/ide-verify-contract.mjs`:
+  - verifies FAIL flow renders diff + first failing tick
+  - verifies PASS flow renders hash and enables export-testbench action
+- Added `scripts/gates/ide-visual-contract.mjs`:
+  - verifies all five tabs expose shared surface markers:
+    - `ide-surface-grid`
+    - `ide-surface-header`
+    - `ide-surface-title`
+    - `ide-surface-actions`
+- Updated `package.json` scripts:
+  - `ide:gate:verify-contract`
+  - `ide:gate:visual-contract`
+- Updated `scripts/verify-gates-classroom.mjs` to include both new gates.
+
+### Validation Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:verify-contract` -> PASS
+- `pnpm -s ide:gate:visual-contract` -> PASS
+- `pnpm repo:status` -> PASS (5/5 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Design Mode Polish Sprint: Command Header + Guided Empty State + Gate Contract)
 
 **Status**: COMPLETE - Delivered Phase 1B design stabilization pass focused on intentional layout, explicit tool affordances, and regression-proof gate assertions.
