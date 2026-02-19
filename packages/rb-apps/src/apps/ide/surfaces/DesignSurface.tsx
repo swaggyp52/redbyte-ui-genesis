@@ -25,16 +25,12 @@ interface PaletteItem {
 const PALETTE_ITEMS: PaletteItem[] = [
   { type: 'INPUT', title: 'Input Pin', category: 'IO' },
   { type: 'OUTPUT', title: 'Output Pin', category: 'IO' },
-  { type: 'Switch', title: 'Switch', category: 'IO' },
-  { type: 'Lamp', title: 'Lamp', category: 'IO' },
   { type: 'AND', title: 'AND Gate', category: 'Logic' },
   { type: 'OR', title: 'OR Gate', category: 'Logic' },
-  { type: 'NOT', title: 'NOT Gate', category: 'Logic' },
   { type: 'XOR', title: 'XOR Gate', category: 'Logic' },
-  { type: 'NAND', title: 'NAND Gate', category: 'Logic' },
-  { type: 'NOR', title: 'NOR Gate', category: 'Logic' },
-  { type: 'DFlipFlop', title: 'D Flip-Flop', category: 'Sequential' },
-  { type: 'Counter4Bit', title: '4-bit Counter', category: 'Sequential' },
+  { type: 'NOT', title: 'NOT Gate', category: 'Logic' },
+  { type: 'DFlipFlop', title: 'DFF', category: 'Sequential' },
+  { type: 'Clock', title: 'Clock', category: 'Sequential' },
 ];
 
 export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) => {
@@ -198,8 +194,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
 
   const selectedNodeIds = useMemo(() => Array.from(selection.nodes).slice(0, 5), [selection.nodes]);
   const selectedWireIds = useMemo(() => Array.from(selection.wires).slice(0, 5), [selection.wires]);
+  const selectedNode = useMemo(
+    () => (selectedNodeIds.length > 0 ? circuit.nodes.find((node) => node.id === selectedNodeIds[0]) : undefined),
+    [circuit.nodes, selectedNodeIds]
+  );
+  const selectedNodePins = useMemo(
+    () => deriveNodePins(selectedNode, circuit),
+    [circuit, selectedNode]
+  );
   const hasSelection = selection.nodes.size > 0 || selection.wires.size > 0;
   const activeModeLabel = toolMode === 'wire' ? 'Wire Mode' : 'Select Mode';
+  const toolHint =
+    toolMode === 'wire'
+      ? 'Click two ports to create a wire.'
+      : 'Click a node to inspect it. Drag to reposition.';
 
   return (
     <IdeSurfaceLayout
@@ -228,31 +236,38 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
           </IdeInspectorSection>
 
           <IdeInspectorSection title="Selection">
-            {hasSelection ? (
-              <div className="ide-design-selection-list">
-                <div>
-                  <strong>Nodes</strong>
-                  <ul className="ide-list">
-                    {selectedNodeIds.map((nodeId) => (
-                      <li key={nodeId}>
-                        <code>{nodeId}</code>
-                      </li>
-                    ))}
-                  </ul>
+            {selectedNode ? (
+              <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
+                <div className="ide-kv-list">
+                  <div className="ide-kv-row">
+                    <span>Type</span>
+                    <span data-testid="ide-design-selection-type">{selectedNode.type}</span>
+                  </div>
+                  <div className="ide-kv-row">
+                    <span>Node ID</span>
+                    <span>
+                      <code data-testid="ide-design-selection-id">{selectedNode.id}</code>
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <strong>Wires</strong>
-                  <ul className="ide-list">
-                    {selectedWireIds.map((wireId) => (
-                      <li key={wireId}>
-                        <code>{wireId}</code>
-                      </li>
-                    ))}
-                  </ul>
+                <div className="ide-design-selection-pins" data-testid="ide-design-selection-pins">
+                  {selectedNodePins.map((pin) => (
+                    <span key={`${selectedNode.id}-${pin}`} className="ide-design-pin-pill">
+                      {pin}
+                    </span>
+                  ))}
                 </div>
+                <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
+                  Delete selected node
+                </IdeButton>
               </div>
             ) : (
-              <p className="ide-copy">No selection. Click a node or wire to inspect it.</p>
+              <p className="ide-copy">No node selected. Click a node to inspect type, id, and pins.</p>
+            )}
+            {selectedWireIds.length > 0 && (
+              <div className="ide-copy-top-gap">
+                <strong>Selected wires:</strong> {selectedWireIds.length}
+              </div>
             )}
           </IdeInspectorSection>
 
@@ -366,7 +381,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
                 className="ide-design-search"
                 value={paletteQuery}
                 onChange={(event) => setPaletteQuery(event.target.value)}
-                placeholder="Search gates, IO, counters..."
+                placeholder="Search gates, IO, DFF, clock..."
                 data-testid="ide-design-search"
               />
               <div className="ide-palette-groups">
@@ -396,6 +411,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({ onOpenPalette }) =
             </section>
 
             <section className="ide-design-canvas" data-testid="ide-design-canvas">
+              <div className="ide-design-tool-hud" data-testid="ide-design-tool-hud">
+                <span className="ide-design-tool-hud-label">{activeModeLabel}</span>
+                <span className="ide-design-tool-hud-hint">{toolHint}</span>
+              </div>
               <div
                 className={`ide-design-canvas-live ${toolMode === 'wire' ? 'is-wire-mode' : 'is-select-mode'}`}
                 ref={canvasHostRef}
@@ -471,4 +490,50 @@ function parseWireId(
     toNodeId: toRaw.slice(0, toDot),
     toPort: toRaw.slice(toDot + 1),
   };
+}
+
+const NODE_PIN_CATALOG: Record<string, string[]> = {
+  INPUT: ['out'],
+  OUTPUT: ['in'],
+  Switch: ['out'],
+  Lamp: ['in'],
+  Clock: ['out'],
+  AND: ['a', 'b', 'out'],
+  OR: ['a', 'b', 'out'],
+  XOR: ['a', 'b', 'out'],
+  NOT: ['in', 'out'],
+  DFlipFlop: ['d', 'clk', 'q'],
+};
+
+function deriveNodePins(node: Node | undefined, circuit: Circuit): string[] {
+  if (!node) return [];
+  const listed = NODE_PIN_CATALOG[node.type];
+  if (listed && listed.length > 0) return listed;
+
+  const inferred = new Set<string>();
+  for (const connection of circuit.connections) {
+    const fromNodeId = typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
+    const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+    if (fromNodeId === node.id) {
+      const fromPort =
+        typeof connection.from === 'string'
+          ? connection.fromPort ?? connection.fromPin ?? 'out'
+          : connection.from.portName ?? connection.from.port ?? 'out';
+      inferred.add(fromPort);
+    }
+    if (toNodeId === node.id) {
+      const toPort =
+        typeof connection.to === 'string'
+          ? connection.toPort ?? connection.toPin ?? 'in'
+          : connection.to.portName ?? connection.to.port ?? 'in';
+      inferred.add(toPort);
+    }
+  }
+
+  if (inferred.size === 0) {
+    inferred.add('in');
+    inferred.add('out');
+  }
+
+  return Array.from(inferred).sort();
 }
