@@ -18,7 +18,9 @@ export const IdeApp: React.FC = () => {
   const [currentMode, setCurrentMode] = useState<IdeMode>('project');
   const [projectName] = useState('Basys3 Design');
   const [projectDescription] = useState('Deterministic student FPGA workspace');
+  const [lastSavedAt] = useState('2026-02-19 15:10');
   const [projectReadiness] = useState({
+    hasCircuit: true,
     ioSignals: [
       { id: 'sw0', direction: 'in' as const, mapped: true },
       { id: 'sw1', direction: 'in' as const, mapped: true },
@@ -151,6 +153,7 @@ export const IdeApp: React.FC = () => {
             projectName={projectName}
             description={projectDescription}
             determinismHash={determinismHash}
+            lastSavedAt={lastSavedAt}
             readiness={projectReadiness}
             onOpenDesign={() => setCurrentMode('design')}
             onOpenImport={() => setCurrentMode('import')}
