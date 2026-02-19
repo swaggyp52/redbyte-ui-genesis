@@ -12,6 +12,54 @@ export interface GridConfig {
   majorLineColor?: string;
 }
 
+type GridZoomBand = 'far' | 'medium' | 'near' | 'detail';
+
+interface GridBandStyle {
+  majorStroke: number;
+  majorOpacity: number;
+  minorStroke: number;
+  minorOpacity: number;
+  showMinorLines: boolean;
+}
+
+const GRID_BAND_STYLES: Record<GridZoomBand, GridBandStyle> = {
+  far: {
+    majorStroke: 1,
+    majorOpacity: 0.3,
+    minorStroke: 0.45,
+    minorOpacity: 0,
+    showMinorLines: false,
+  },
+  medium: {
+    majorStroke: 1,
+    majorOpacity: 0.34,
+    minorStroke: 0.5,
+    minorOpacity: 0.13,
+    showMinorLines: true,
+  },
+  near: {
+    majorStroke: 1.05,
+    majorOpacity: 0.4,
+    minorStroke: 0.55,
+    minorOpacity: 0.18,
+    showMinorLines: true,
+  },
+  detail: {
+    majorStroke: 1.1,
+    majorOpacity: 0.46,
+    minorStroke: 0.62,
+    minorOpacity: 0.24,
+    showMinorLines: true,
+  },
+};
+
+export function resolveGridZoomBand(zoom: number): GridZoomBand {
+  if (zoom < 0.5) return 'far';
+  if (zoom < 1) return 'medium';
+  if (zoom < 2) return 'near';
+  return 'detail';
+}
+
 /**
  * Render an infinite grid using SVG
  */
@@ -22,6 +70,8 @@ export function renderGrid(
   config: GridConfig
 ): JSX.Element {
   const { size, color, majorLineInterval = 5, majorLineColor = '#444' } = config;
+  const band = resolveGridZoomBand(camera.zoom);
+  const bandStyle = GRID_BAND_STYLES[band];
 
   const lines: JSX.Element[] = [];
 
@@ -35,6 +85,7 @@ export function renderGrid(
   for (let x = startX; x <= endX; x += size) {
     const screenX = x * camera.zoom + camera.x;
     const isMajor = x % (size * majorLineInterval) === 0;
+    if (!isMajor && !bandStyle.showMinorLines) continue;
     lines.push(
       <line
         key={`v-${x}`}
@@ -43,8 +94,8 @@ export function renderGrid(
         x2={screenX}
         y2={height}
         stroke={isMajor ? majorLineColor : color}
-        strokeWidth={isMajor ? 1 : 0.5}
-        opacity={isMajor ? 0.4 : 0.2}
+        strokeWidth={isMajor ? bandStyle.majorStroke : bandStyle.minorStroke}
+        opacity={isMajor ? bandStyle.majorOpacity : bandStyle.minorOpacity}
       />
     );
   }
@@ -53,6 +104,7 @@ export function renderGrid(
   for (let y = startY; y <= endY; y += size) {
     const screenY = y * camera.zoom + camera.y;
     const isMajor = y % (size * majorLineInterval) === 0;
+    if (!isMajor && !bandStyle.showMinorLines) continue;
     lines.push(
       <line
         key={`h-${y}`}
@@ -61,11 +113,19 @@ export function renderGrid(
         x2={width}
         y2={screenY}
         stroke={isMajor ? majorLineColor : color}
-        strokeWidth={isMajor ? 1 : 0.5}
-        opacity={isMajor ? 0.4 : 0.2}
+        strokeWidth={isMajor ? bandStyle.majorStroke : bandStyle.minorStroke}
+        opacity={isMajor ? bandStyle.majorOpacity : bandStyle.minorOpacity}
       />
     );
   }
 
-  return <g>{lines}</g>;
+  return (
+    <g
+      data-testid="logic-grid-layer"
+      data-grid-zoom-band={band}
+      data-grid-minor-visible={bandStyle.showMinorLines ? '1' : '0'}
+    >
+      {lines}
+    </g>
+  );
 }

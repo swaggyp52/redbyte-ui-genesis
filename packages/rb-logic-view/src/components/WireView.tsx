@@ -22,6 +22,74 @@ const getConnectionKey = (connection: Connection) => {
   return { fromNodeId, toNodeId, fromPortName, toPortName, wireId };
 };
 
+type WireZoomBand = 'far' | 'medium' | 'near' | 'detail';
+
+interface WireBandStyle {
+  hitWidth: number;
+  baseStroke: number;
+  hoverStroke: number;
+  selectedStroke: number;
+  overlayStroke: number;
+  glowStroke: number;
+  netGlowStroke: number;
+  probeGlowStroke: number;
+  mismatchGlowStroke: number;
+}
+
+function resolveWireZoomBand(zoom: number): WireZoomBand {
+  if (zoom < 0.5) return 'far';
+  if (zoom < 1) return 'medium';
+  if (zoom < 2) return 'near';
+  return 'detail';
+}
+
+const WIRE_BAND_STYLES: Record<WireZoomBand, WireBandStyle> = {
+  far: {
+    hitWidth: 12,
+    baseStroke: 1.4,
+    hoverStroke: 2.1,
+    selectedStroke: 2.8,
+    overlayStroke: 1.1,
+    glowStroke: 4.8,
+    netGlowStroke: 6,
+    probeGlowStroke: 4.4,
+    mismatchGlowStroke: 4.8,
+  },
+  medium: {
+    hitWidth: 11,
+    baseStroke: 1.8,
+    hoverStroke: 2.6,
+    selectedStroke: 3.4,
+    overlayStroke: 1.3,
+    glowStroke: 5.6,
+    netGlowStroke: 7.2,
+    probeGlowStroke: 5.2,
+    mismatchGlowStroke: 5.8,
+  },
+  near: {
+    hitWidth: 10,
+    baseStroke: 2.1,
+    hoverStroke: 3,
+    selectedStroke: 3.9,
+    overlayStroke: 1.5,
+    glowStroke: 6.2,
+    netGlowStroke: 8,
+    probeGlowStroke: 5.8,
+    mismatchGlowStroke: 6.3,
+  },
+  detail: {
+    hitWidth: 9,
+    baseStroke: 2.4,
+    hoverStroke: 3.3,
+    selectedStroke: 4.2,
+    overlayStroke: 1.6,
+    glowStroke: 6.8,
+    netGlowStroke: 8.6,
+    probeGlowStroke: 6.2,
+    mismatchGlowStroke: 6.8,
+  },
+};
+
 export interface WireViewProps {
   connection: Connection;
   nodes: Node[];
@@ -75,19 +143,22 @@ const WireViewComponent: React.FC<WireViewProps> = ({
   const hoverColor = '#8ec7ff';
   const isActive = signal === 1;
   const netHighlightColor = '#fbbf24'; // amber-400
+  const zoomBand = resolveWireZoomBand(camera.zoom);
+  const bandStyle = WIRE_BAND_STYLES[zoomBand];
 
   return (
     <g
       data-wire-id={wireId}
       data-wire-hovered={isHovered ? '1' : '0'}
       data-wire-selected={isSelected ? '1' : '0'}
+      data-wire-zoom-band={zoomBand}
       onClick={handleClick}
       onMouseEnter={() => onHover?.(wireId)}
       onMouseLeave={() => onHover?.(null)}
       style={{ cursor: 'pointer' }}
     >
       {/* Invisible wider path for easier clicking */}
-      <path d={path} fill="none" stroke="transparent" strokeWidth={10} />
+      <path d={path} fill="none" stroke="transparent" strokeWidth={bandStyle.hitWidth} />
 
       {/* Net highlight glow (hover/select net) - stable group */}
       <g key={`${wireId}-net-highlight`}>
@@ -96,7 +167,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
             d={path}
             fill="none"
             stroke={netHighlightColor}
-            strokeWidth={9}
+            strokeWidth={bandStyle.netGlowStroke}
             opacity={0.25}
             filter="blur(5px)"
           />
@@ -111,7 +182,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
             d={path}
             fill="none"
             stroke={color}
-            strokeWidth={6}
+            strokeWidth={bandStyle.probeGlowStroke}
             opacity={0.35}
             filter="blur(3px)"
           />
@@ -126,7 +197,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
             d={path}
             fill="none"
             stroke={color}
-            strokeWidth={7}
+            strokeWidth={bandStyle.mismatchGlowStroke}
             opacity={0.45}
             filter="blur(3px)"
           />
@@ -140,7 +211,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
             d={path}
             fill="none"
             stroke={strokeColor}
-            strokeWidth={6}
+            strokeWidth={bandStyle.glowStroke}
             opacity={0.3}
             filter="blur(3px)"
           />
@@ -154,7 +225,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
             d={path}
             fill="none"
             stroke="#3b82f6"
-            strokeWidth={8}
+            strokeWidth={bandStyle.netGlowStroke}
             opacity={0.4}
             filter="blur(4px)"
           />
@@ -168,7 +239,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
             d={path}
             fill="none"
             stroke={hoverColor}
-            strokeWidth={7}
+            strokeWidth={bandStyle.glowStroke}
             opacity={0.24}
             filter="blur(4px)"
           />
@@ -188,7 +259,13 @@ const WireViewComponent: React.FC<WireViewProps> = ({
                 ? netHighlightColor
                 : strokeColor
         }
-        strokeWidth={isSelected ? 4 : isHovered ? 3 : 2}
+        strokeWidth={
+          isSelected
+            ? bandStyle.selectedStroke
+            : isHovered
+              ? bandStyle.hoverStroke
+              : bandStyle.baseStroke
+        }
         opacity={signal === 1 ? 1 : 0.5}
       />
 
@@ -197,7 +274,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
           d={path}
           fill="none"
           stroke="#b7dbff"
-          strokeWidth={1.5}
+          strokeWidth={bandStyle.overlayStroke}
           strokeDasharray="9 6"
           opacity={0.9}
         />
